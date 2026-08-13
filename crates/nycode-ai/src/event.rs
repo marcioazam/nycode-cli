@@ -113,6 +113,37 @@ pub struct Usage {
     pub estimated: bool,
 }
 
+impl std::ops::AddAssign for Usage {
+    /// Soma o usage de um turno ao acumulado do pedido.
+    ///
+    /// `estimated` é `OR` e não soma: basta um turno heurístico para que o
+    /// total deixe de ser medido, e apresentá-lo como medido é o que o NFR-4
+    /// proíbe.
+    ///
+    /// A desestruturação é o ponto: um campo novo em [`Usage`] não compila até
+    /// que alguém decida aqui como ele soma. A versão anterior era uma lista de
+    /// atribuições escrita à mão, e `reasoning_tokens` ficou de fora dela sem
+    /// que nada quebrasse — o total publicado dizia zero para um número que o
+    /// gateway tinha medido.
+    fn add_assign(&mut self, turn: Self) {
+        let Self {
+            input_tokens,
+            output_tokens,
+            cache_read_tokens,
+            cache_write_tokens,
+            reasoning_tokens,
+            estimated,
+        } = turn;
+
+        self.input_tokens += input_tokens;
+        self.output_tokens += output_tokens;
+        self.cache_read_tokens += cache_read_tokens;
+        self.cache_write_tokens += cache_write_tokens;
+        self.reasoning_tokens += reasoning_tokens;
+        self.estimated |= estimated;
+    }
+}
+
 /// Um evento normalizado do stream de resposta.
 #[derive(Debug, Clone, PartialEq)]
 pub enum StreamEvent {

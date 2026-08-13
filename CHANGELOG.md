@@ -169,6 +169,30 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Corrigido
 
+- **O total de tokens publicado omitia `reasoning_tokens`.** A soma do usage era
+  uma lista de atribuições escrita à mão, e ela cobria cinco dos seis campos de
+  `Usage`. O campo não é morto — os dois decodificadores OpenAI o preenchem e
+  têm teste para isso —, então o modo `--output-format json` publicava
+  `"reasoning_tokens": 0` para um turno em que o gateway tinha medido outro
+  número, e o rodapé da sessão interativa contava a mesma coisa.
+
+  A soma passou a viver junto do tipo, como `AddAssign` em `Usage`, e
+  desestrutura o valor recebido: um campo novo em `Usage` não compila até que
+  alguém decida ali como ele soma. A alternativa seria outra lista à mão, com o
+  mesmo modo de falha esperando o próximo campo.
+
+- **Um turno que nunca disse como terminou era reportado como concluído.** O
+  laço do agente fechava a lacuna com `unwrap_or(StopReason::EndTurn)`, o que
+  contradizia por escrito o módulo logo abaixo: `event.rs` abre dizendo que a
+  projeção preserva o que o gateway emitiu e nunca inventa um `EndTurn`, e tem
+  teste para isso. A garantia era desfeita uma camada acima, onde nada olhava.
+
+  A consequência era observável: `exit::code_for` mapeia `EndTurn` para
+  `ExitCode::SUCCESS`, então um turno cujo motivo de parada nunca chegou saía
+  com código 0, indistinguível de uma resposta completa para o script que
+  encadeia `nycode`. Agora vira `Unrecognized("ausente")`, que já cai no código
+  de saída reservado e sobrevive intacto até o stream de eventos JSON.
+
 - **O dialeto `openai-completions` não executava ferramenta nenhuma.** O chunk
   de `finish_reason` precisa fechar as chamadas que ficaram abertas *e* encerrar
   a mensagem, mas `StreamDecoder::decode` devolve um evento por linha do wire: o

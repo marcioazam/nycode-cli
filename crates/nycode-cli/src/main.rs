@@ -22,7 +22,7 @@ use std::time::Duration;
 use clap::Parser;
 use nycode_ai::Config;
 
-use route::{Route, choose};
+use route::{choose, Route};
 
 #[derive(Debug, Parser)]
 #[command(
@@ -272,10 +272,15 @@ mod tests {
 
         let code = run::headless(&cli, prepared, "oi").await.unwrap();
 
-        assert_eq!(
+        // O backend nao emitiu motivo de parada nenhum. Traduzir isso em
+        // sucesso faria um turno mudo passar por concluido, e o script que
+        // encadeia `nycode` seguiria adiante sobre uma resposta que nunca veio.
+        // Qual e o codigo exato e assunto de `exit::code_for`, que tem os
+        // proprios testes; aqui o que se protege e que nao seja zero.
+        assert_ne!(
             format!("{code:?}"),
             format!("{:?}", ExitCode::SUCCESS),
-            "um turno sem stop_reason termina como end_turn"
+            "um turno que nao disse como terminou nao e sucesso"
         );
         let saved = store.load("sessao-1").unwrap();
         assert_eq!(saved.len(), 1, "o pedido do usuario precisa ficar gravado");

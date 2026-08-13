@@ -99,18 +99,6 @@ fn should_compact(err: &Error, already: usize) -> bool {
     already < MAX_COMPACTIONS && matches!(err, Error::Wire(wire) if wire.is_context_overflow())
 }
 
-/// Soma o usage de um turno ao acumulado do pedido.
-///
-/// `estimated` é `OR` e não soma: basta um turno heurístico para que o total
-/// deixe de ser medido, e apresentá-lo como medido é o que o NFR-4 proíbe.
-fn accumulate(total: &mut Usage, turn: Usage) {
-    total.input_tokens += turn.input_tokens;
-    total.output_tokens += turn.output_tokens;
-    total.cache_read_tokens += turn.cache_read_tokens;
-    total.cache_write_tokens += turn.cache_write_tokens;
-    total.estimated |= turn.estimated;
-}
-
 pub struct Agent {
     backend: Arc<dyn Backend>,
     tools: HashMap<String, Arc<dyn Tool>>,
@@ -267,8 +255,16 @@ impl Agent {
                 }
                 Err(err) => return Err(err),
             };
-            accumulate(&mut usage, turn.usage());
-            let stop_reason = turn.stop_reason().cloned().unwrap_or(StopReason::EndTurn);
+            usage += turn.usage();
+            // Um turno que terminou sem dizer por quê não é um turno concluído.
+            // `event.rs` se recusa a inventar `EndTurn` na projeção do wire, e
+            // inventá-lo aqui desfaria a garantia uma camada acima: `EndTurn`
+            // vira código de saída zero, e o pedido sai indistinguível de um
+            // que o gateway deu por encerrado.
+            let stop_reason = turn
+                .stop_reason()
+                .cloned()
+                .unwrap_or_else(|| StopReason::Unrecognized("ausente".to_owned()));
             let calls = turn.tool_calls();
 
             self.record_assistant_turn(&turn, &calls);

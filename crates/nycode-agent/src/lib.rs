@@ -26,6 +26,8 @@ pub mod turn;
 mod agent_test;
 #[cfg(test)]
 mod compaction_test;
+#[cfg(test)]
+mod outcome_test;
 
 pub use agent::{Agent, Observer, Outcome, Silent};
 pub use backend::Backend;
