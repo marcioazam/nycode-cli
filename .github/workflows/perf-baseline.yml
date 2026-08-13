@@ -1,0 +1,152 @@
+name: perf-baseline
+
+# Remede o concorrente contra quem o piso relativo e calculado e abre PR quando
+# o numero se move (ADR-0012, restricao 4).
+#
+# Existe separado do `ci` por uma razao de desenho: o CI de PR nao fala com a
+# rede. Medir o concorrente ao vivo em todo PR daria sempre o numero atual ao
+# custo de quebrar builds por motivo alheio ao diff sob revisao. Aqui a medicao
+# e agendada, o resultado vira proposta em PR, e nada bloqueia.
+
+on:
+  schedule:
+    # Segunda de manha, cedo o bastante para o PR estar aberto no comeco da
+    # semana. Se ficar mais de dois meses sem atualizar o baseline, o ADR-0012
+    # manda retirar o piso relativo em vez de mante-lo como ficcao.
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  remeasure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: ler o baseline em vigor
+        id: base
+        run: |
+          set -euo pipefail
+          f=scripts/perf-baseline.txt
+          get() { sed -n "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*\(.*\)$/\1/p" "$f" | head -1; }
+          {
+            echo "version=$(get version)"
+            echo "digest=$(get artifact_sha256)"
+            echo "url=$(get source_url)"
+            echo "startup_us=$(get startup_fastest_us)"
+            echo "rss_kb=$(get peak_rss_kb)"
+            echo "binary_b=$(get binary_bytes)"
+          } >>"$GITHUB_OUTPUT"
+
+      # Falha fechado enquanto o digest for o sentinela. O ADR-0012 exige que o
+      # artefato do concorrente seja fixado e verificado antes da execucao, e
+      # baixar sem ter contra o que conferir e exatamente o que a restricao 3
+      # proibe. Quem ligar este workflow fixa as duas coisas no mesmo commit.
+      - name: o digest precisa estar fixado
+        run: |
+          if [ "${{ steps.base.outputs.digest }}" = "nao-fixado" ]; then
+            echo "::error::scripts/perf-baseline.txt ainda tem artifact_sha256=nao-fixado."
+            echo "Fixe, no mesmo commit:"
+            echo "  artifact_sha256  o sha256 do binario do concorrente"
+            echo "  source_url       a URL direta do artefato, nao a pagina de releases"
+            echo "Ver ADR-0012, restricao 3."
+            exit 1
+          fi
+
+      - run: sudo apt-get update && sudo apt-get install -y time hyperfine
+
+      # A ordem e o controle: conferir antes de extrair, e extrair antes de
+      # executar. O digest e do arquivo como ele chega da rede, nao do binario
+      # que sai dele — a release do codex publica o executavel dentro de um
+      # `.tar.gz`, e verificar o conteudo depois de desempacotar ja seria
+      # executar o desempacotador sobre bytes nao verificados.
+      - name: baixar o artefato do concorrente e conferir o digest
+        run: |
+          set -euo pipefail
+          curl -fsSL -o artefato "${{ steps.base.outputs.url }}"
+          echo "${{ steps.base.outputs.digest }}  artefato" | sha256sum -c -
+
+      - name: extrair o binario
+        run: |
+          set -euo pipefail
+          case "${{ steps.base.outputs.url }}" in
+          *.tar.gz | *.tgz)
+            mkdir -p extraido
+            tar -xzf artefato -C extraido
+            # O tarball traz um unico executavel, com o nome do alvo.
+            found="$(find extraido -type f -perm -u+x -print -quit)"
+            [ -n "${found}" ] || { echo "::error::nenhum executavel no artefato"; exit 1; }
+            mv "${found}" competitor
+            ;;
+          *)
+            mv artefato competitor
+            ;;
+          esac
+          chmod +x competitor
+          ./competitor --version
+
+      # Mesmo metodo dos dois lados, que e o que torna a razao comparavel: o
+      # `perf-gate.sh` mede o nycode assim, e um numero obtido de outra forma
+      # nao entra no mesmo quociente.
+      - name: medir
+        id: measured
+        run: |
+          set -euo pipefail
+          hyperfine --shell=none --warmup 20 --runs 200 --export-json h.json -- './competitor --version'
+          startup_us=$(python3 -c "import json;print(round(json.load(open('h.json'))['results'][0]['min']*1e6))")
+          rss_kb=$(/usr/bin/time -f '%M' ./competitor --version 2>&1 >/dev/null | tail -1)
+          {
+            echo "startup_us=${startup_us}"
+            echo "rss_kb=${rss_kb}"
+            echo "binary_b=$(stat -c%s competitor)"
+          } >>"$GITHUB_OUTPUT"
+
+      # Ruido de runner compartilhado nao merece um PR por semana. So um desvio
+      # que muda o piso de forma perceptivel vira proposta.
+      - name: abrir PR se o numero se moveu
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          moved=$(python3 - <<'PY'
+          old = (${{ steps.base.outputs.startup_us }}, ${{ steps.base.outputs.rss_kb }}, ${{ steps.base.outputs.binary_b }})
+          new = (${{ steps.measured.outputs.startup_us }}, ${{ steps.measured.outputs.rss_kb }}, ${{ steps.measured.outputs.binary_b }})
+          print(int(any(abs(n - o) > 0.05 * o for o, n in zip(old, new))))
+          PY
+          )
+          if [ "$moved" = "0" ]; then
+            echo "baseline estavel; nada a propor"
+            exit 0
+          fi
+
+          sed -i \
+            -e "s/^startup_fastest_us = .*/startup_fastest_us = ${{ steps.measured.outputs.startup_us }}/" \
+            -e "s/^peak_rss_kb       = .*/peak_rss_kb       = ${{ steps.measured.outputs.rss_kb }}/" \
+            -e "s/^binary_bytes      = .*/binary_bytes      = ${{ steps.measured.outputs.binary_b }}/" \
+            -e "s/^measured_at      = .*/measured_at      = $(date -u +%Y-%m-%d)/" \
+            scripts/perf-baseline.txt
+
+          branch="perf-baseline/$(date -u +%Y-%m-%d)"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add scripts/perf-baseline.txt
+          git commit -m "perf: remede o baseline de ${{ steps.base.outputs.version }}"
+          git push -u origin "$branch"
+          gh pr create --title "perf: baseline do concorrente se moveu" --body "$(cat <<EOF
+          Medicao agendada de \`${{ steps.base.outputs.version }}\`, mesmo metodo do \`perf-gate.sh\`.
+
+          | Metrica | Baseline em vigor | Medido agora |
+          |---|---:|---:|
+          | Startup, menor observado | ${{ steps.base.outputs.startup_us }} us | ${{ steps.measured.outputs.startup_us }} us |
+          | RSS de pico | ${{ steps.base.outputs.rss_kb }} KB | ${{ steps.measured.outputs.rss_kb }} KB |
+          | Binario | ${{ steps.base.outputs.binary_b }} B | ${{ steps.measured.outputs.binary_b }} B |
+
+          Os pisos relativos derivam destes numeros: startup e binario em baseline/5, RSS em baseline/2.
+          Se o concorrente melhorou, este PR aperta a nossa barra — que e o modo de falha que o
+          piso absoluto sozinho nao cobre (ADR-0012).
+          EOF
+          )"

@@ -1,0 +1,39 @@
+[package]
+name = "nycode-mcp"
+description = "Cliente MCP do NyCode CLI: transporte stdio e Streamable HTTP sobre o SDK oficial."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+async-trait = "0.1.92"
+nycode-agent = { version = "0.1.0", path = "../nycode-agent" }
+# ADR-0004: o SDK oficial, so com as features de cliente. `reqwest` com rustls e
+# o mesmo do `nycode-ai`, para nao trazer uma segunda pilha de TLS ao binario.
+rmcp = { version = "3.1.2", default-features = false, features = [
+    "client",
+    "transport-child-process",
+    "transport-streamable-http-client",
+    "transport-streamable-http-client-reqwest",
+] }
+serde_json = "1.0.151"
+thiserror = "2.0.20"
+tokio = { version = "1.53.1", features = ["process", "rt", "time"] }
+tracing = "0.1.44"
+
+[dev-dependencies]
+# O lado servidor existe so para os testes: um par de canais em memoria fala o
+# protocolo de verdade sem depender de ter um servidor instalado na maquina. O
+# resolver 3 mantem estas features fora do build de release.
+rmcp = { version = "3.1.2", default-features = false, features = [
+    "server",
+    "transport-async-rw",
+] }
+tempfile = "3.24.0"
+tokio = { version = "1.53.1", features = ["io-util", "rt-multi-thread", "macros"] }

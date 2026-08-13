@@ -1,0 +1,61 @@
+# Baseline do concorrente contra quem o piso relativo e calculado (ADR-0012).
+#
+# Formato: <chave> = <valor>. Toda chave abaixo e obrigatoria; o gate recusa o
+# arquivo com chave faltando, valor nao numerico onde numero e esperado, ou
+# numero <= 0. Um baseline malformado e erro de uso, nao violacao de piso: sem
+# ele o piso relativo nao existe, e um gate que segue sem metade dos pisos
+# aprova em silencio.
+#
+# Tres regras que o ADR-0012 impoe a este arquivo:
+#
+#   1. O numero e sempre medido por este repositorio, com o metodo do proprio
+#      gate. Numero de terceiro serve para escolher contra quem medir; nunca
+#      vira valor de gate. As suites publicas divergem entre si (~32ms, ~34,5ms
+#      e ~37,7ms para o mesmo binario) e nenhuma publicou a versao medida.
+#
+#   2. O digest do artefato e fixado e verificado antes de qualquer execucao
+#      que o baixe. Adotar versao nova e uma alteracao de digest visivel em
+#      diff de PR.
+#
+#   3. Quem atualiza este arquivo e o workflow agendado `perf-baseline.yml`,
+#      que abre PR quando o numero se move. O `perf-gate.sh` so le: o CI de PR
+#      nao fala com a rede.
+#
+# `artifact_sha256` e do arquivo em `source_url` como ele e baixado, antes de
+# qualquer extracao. A release do codex publica o binario dentro de um
+# `.tar.gz`, entao o digest e do tarball e a conferencia acontece sobre ele; o
+# `perf-baseline.yml` so extrai depois que o `sha256sum -c` passa. O
+# `perf-gate.sh` nao toca no artefato e por isso nao depende do digest.
+#
+# O `codex-package_SHA256SUMS` publicado na release nao serve de contraparte:
+# ele cobre so os archives `*-package-*`, que embutem `rg` e `bwrap`, e nao
+# menciona o tarball do binario puro. Nao havendo contra o que conferir a nao
+# ser o que este repositorio fixou, adotar versao nova e uma alteracao de digest
+# visivel em diff de PR — que e o controle que o NFR-8 exige.
+
+competitor       = codex-cli
+version          = 0.147.0
+measured_at      = 2026-08-13
+source_url       = https://github.com/openai/codex/releases/download/rust-v0.147.0/codex-x86_64-unknown-linux-musl.tar.gz
+artifact_sha256  = 0246e2e773834e07f0fb5249ed6ebad12e4591e608f8c7bb97dd6a9690544c36
+
+# Medicoes do ADR-0012, mesmo metodo nos dois lados: `hyperfine --shell=none
+# --warmup 20 --runs 200` e `/usr/bin/time -f %M`, ambos os binarios ELF
+# stripped. O binario do codex e musl estatico e o do nycode e dinamico contra
+# a glibc do sistema, entao parte da diferenca de tamanho e a libc que nao
+# estamos carregando.
+#
+# `startup_fastest_us` e o MENOR tempo observado, nao a mediana, porque e o que o
+# `perf-gate.sh` compara do nosso lado: nosso minimo contra a mediana dele
+# inflaria a razao a nosso favor, que e a direcao errada para um piso. Em quatro
+# amostragens pareadas o minimo do codex ficou entre 3446us e 5097us — dispersao
+# de 1,5x — contra 6061us a 12618us na mediana, dispersao de 2,1x. Fica o menor
+# dos quatro: e o numero mais favoravel ao concorrente, e portanto o mais honesto
+# para calcular a nossa barra.
+#
+# As outras duas metricas nao dependem de estimador. RSS variou 21892 a 22212 KB
+# e o tamanho do binario e exato.
+
+startup_fastest_us = 3446
+peak_rss_kb        = 22212
+binary_bytes       = 258278208

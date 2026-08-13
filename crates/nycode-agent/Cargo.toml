@@ -1,0 +1,27 @@
+[package]
+name = "nycode-agent"
+description = "Loop de agente do NyCode CLI: despacho de ferramentas, estado de turno e cancelamento."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+async-trait = "0.1.92"
+futures-util = "0.3.34"
+nycode-ai = { version = "0.1.0", path = "../nycode-ai" }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+thiserror = "2.0.20"
+tokio = { version = "1.53.1", features = ["rt-multi-thread", "macros", "process", "fs", "sync", "time"] }
+tracing = "0.1.44"
+
+[dev-dependencies]
+tempfile = "3.24.0"
+tokio = { version = "1.53.1", features = ["rt-multi-thread", "macros", "test-util", "time"] }
+tokio-test = "0.4.5"

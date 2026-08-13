@@ -1,0 +1,31 @@
+/target
+**/*.rs.bk
+*.pdb
+
+# Artefatos de cobertura e benchmark
+/coverage
+lcov.info
+cov.lcov
+coverage.json
+coverage-baseline.json
+/bench-results
+
+# Artefatos que o proprio nycode grava ao rodar. Hooks, skills e regras em
+# `.nycode/` sao versionaveis; sessao e cache de catalogo nao. O `**` e
+# obrigatorio: um padrao com barra no meio fica ancorado na raiz do repositorio
+# e nao alcancaria as raizes de teste sob `crates/`, que e onde a suite grava.
+**/.nycode/sessions/
+**/.nycode/catalog.json
+
+# Ambiente local
+.env
+.env.*
+!.env.example
+
+# Estado local de ferramenta de agente, por maquina.
+.omc/
+
+# Editores
+.idea/
+*.swp
+.DS_Store

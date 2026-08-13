@@ -1,0 +1,27 @@
+[package]
+name = "nycode-parity"
+description = "Harness diferencial: compara o contrato observavel do NyCode CLI com o do harness de referencia."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+# Existe como binario, e nao so como biblioteca, para que o CI possa executa-lo:
+# uma verificacao que so roda sob demanda e uma verificacao que nao acontece.
+[[bin]]
+name = "nycode-parity"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1.0.104"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+similar = "3.1.2"
+tempfile = "3.24.0"
+tokio = { version = "1.53.1", features = ["rt-multi-thread", "macros", "process", "fs"] }

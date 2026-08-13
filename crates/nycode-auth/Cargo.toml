@@ -1,0 +1,27 @@
+[package]
+name = "nycode-auth"
+description = "Resolucao de credenciais do NyCode CLI: cofre do sistema, ambiente e, sob flag, OAuth de assinatura."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+keyring = "4.1.6"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+thiserror = "2.0.20"
+tracing = "0.1.44"
+
+# ADR-0001: compilado apenas sob demanda explicita, e desligado em runtime mesmo
+# quando presente. Nao faz parte de `default`.
+oauth2 = { version = "5.0.0", optional = true }
+
+[features]
+default = []
+subscription-oauth = ["dep:oauth2"]

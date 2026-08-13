@@ -1,0 +1,85 @@
+nycode
+Copyright (c) 2026 Nylla
+
+Este produto inclui software desenvolvido por terceiros, sob as licenças abaixo.
+
+--------------------------------------------------------------------------------
+pi (earendil-works/pi)
+--------------------------------------------------------------------------------
+
+Partes do nycode derivam da arquitetura e do comportamento observável do `pi`,
+consultado como referência no commit 581d75a89cea21e50d6a26df840352f94427f633.
+
+    MIT License
+    Copyright (c) 2025 Mario Zechner
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+
+"pi" e o logotipo do pi são marcas da Earendil. O nycode não usa essas marcas e
+não é afiliado nem endossado pela Earendil ou por Mario Zechner.
+
+--------------------------------------------------------------------------------
+codex-cli (openai/codex) — baseline de performance
+--------------------------------------------------------------------------------
+
+O nycode não deriva código do `codex`. O que este repositório faz é medir o
+binário publicado, para calcular o piso relativo de performance descrito no
+ADR-0012: o artefato é baixado da página de releases, tem o digest conferido
+contra o que está fixado em `scripts/perf-baseline.txt`, é executado apenas com
+`--version` e não é redistribuído.
+
+    Apache License 2.0
+    Copyright (c) 2025 OpenAI
+
+    Licensed under the Apache License, Version 2.0 (the "License"); you may not
+    use this file except in compliance with the License. You may obtain a copy
+    of the License at http://www.apache.org/licenses/LICENSE-2.0
+
+"Codex" e "OpenAI" são marcas da OpenAI. O nycode não usa essas marcas, não é
+afiliado nem endossado pela OpenAI, e a comparação de performance registrada nos
+documentos deste repositório é medição própria, não declaração do fabricante.
+
+--------------------------------------------------------------------------------
+Proveniência: material proibido
+--------------------------------------------------------------------------------
+
+O código-fonte do Claude Code exposto em 2026-03-31, e qualquer derivado dele,
+não é usado como referência neste projeto sob nenhuma circunstância. Ver o
+non-goal de proveniência em `.specs/nycode-rs/spec.md`.
+
+--------------------------------------------------------------------------------
+Aviso de risco: OAuth de assinatura
+--------------------------------------------------------------------------------
+
+O nycode pode ser compilado com a feature `subscription-oauth`, que autentica
+contra provedores de modelo usando tokens OAuth emitidos para assinaturas de
+consumidor.
+
+    ATENÇÃO. Desde fevereiro de 2026 os Consumer Terms da Anthropic restringem
+    o uso de tokens OAuth de contas Free, Pro e Max ao Claude Code e ao
+    claude.ai. Usá-los em qualquer outra ferramenta constitui violação dos
+    termos e há enforcement server-side ativo desde janeiro de 2026. Contas já
+    foram suspensas por esse padrão de uso. Políticas equivalentes podem existir
+    em outros provedores.
+
+Esta feature não faz parte do build padrão, permanece desligada em runtime até
+habilitação explícita, e seu uso é de responsabilidade exclusiva do operador. O
+caminho recomendado e suportado é o nylla-gateway com chave de API.
+
+Ver `docs/architecture/decisions/0001-subscription-oauth-is-a-flagged-accepted-risk.md`.

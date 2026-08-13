@@ -1,0 +1,10 @@
+# Nomes de produto que o `doc_markdown` confunde com identificadores. `..`
+# preserva a lista padrão do clippy em vez de substituí-la.
+doc-valid-idents = [
+    "OpenAI", "OpenAPI", "OAuth", "MCP", "SSE", "JSONL", "ADR", "ToS",
+    "TypeScript", "JavaScript", "...",
+]
+
+# Um arquivo de 500 linhas ja e o teto imposto pelo gate de arquitetura do
+# repositorio; a funcao que ocupa 100 delas quase sempre esta escondendo duas.
+too-many-lines-threshold = 100

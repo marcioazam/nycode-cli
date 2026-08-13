@@ -1,0 +1,52 @@
+# Politica de dependencias.
+#
+# Uma dependencia com aviso de seguranca, ou com licenca que contamina a
+# distribuicao, e um defeito que nenhum teste pega. O gate roda no CI
+# (job `supply-chain`) e falha fechado.
+
+[graph]
+all-features = true
+
+[advisories]
+# Um aviso de seguranca sem correcao ainda precisa aparecer no PR que o
+# introduziu, mesmo que a acao seja aceitar o risco por enquanto.
+yanked = "deny"
+ignore = []
+
+[licenses]
+# O NyCode CLI e MIT. Copyleft forte na arvore mudaria as obrigacoes de quem
+# distribui o binario, e essa e uma decisao de produto, nao um acidente de
+# `cargo add`.
+allow = [
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "BSL-1.0",
+    "CC0-1.0",
+    # Licenca de dados, nao de software: cobre o bundle de certificados raiz da
+    # Mozilla que o rustls carrega (`webpki-roots`, `webpki-root-certs`). E
+    # permissiva e nao impoe obrigacao sobre a distribuicao do binario.
+    "CDLA-Permissive-2.0",
+    "ISC",
+    "MIT",
+    "MIT-0",
+    "MPL-2.0",
+    "Unicode-3.0",
+    "Unlicense",
+    "Zlib",
+]
+confidence-threshold = 0.9
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+# ADR-0001: `oauth2` so entra atras da feature `subscription-oauth`. O job
+# `default-build-has-no-subscription-oauth` verifica a arvore padrao; aqui a
+# crate e permitida porque `cargo deny` roda com todas as features.
+deny = []
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

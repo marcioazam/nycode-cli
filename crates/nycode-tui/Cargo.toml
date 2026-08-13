@@ -1,0 +1,17 @@
+[package]
+name = "nycode-tui"
+description = "Renderizador diferencial de terminal do NyCode CLI."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+crossterm = "0.29.0"
+thiserror = "2.0.20"
+unicode-width = "0.2.2"

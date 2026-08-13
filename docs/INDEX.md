@@ -1,0 +1,81 @@
+# Índice de documentação — NyCode CLI
+
+Desenvolvimento guiado por spec: o documento é a fonte de verdade, o código segue
+o documento. Uma divergência entre os dois é um defeito de um dos lados, nunca
+uma diferença tolerada.
+
+## Mapa
+
+| Documento | Papel |
+|---|---|
+| [`.specs/nycode-rs/spec.md`](../.specs/nycode-rs/spec.md) | WHAT e WHY: problema, objetivo, FR-1..20, NFR-1..7, non-goals, critérios de aceite |
+| [`.specs/nycode-rs/research.md`](../.specs/nycode-rs/research.md) | RECON que fundamentou a decisão de portar |
+| [`.specs/nycode-rs/research-sota-2026.md`](../.specs/nycode-rs/research-sota-2026.md) | RECON que fundamenta a emenda de escopo de 2026-08-13 |
+| [`sources/`](../sources/README.md) | Material bruto das pesquisas, com as passagens efetivamente usadas |
+| [`PRD.md`](../PRD.md) | Produto: usuários, métricas de sucesso, estado de entrega por requisito |
+| [`requirements/REQUIREMENTS.md`](requirements/REQUIREMENTS.md) | Requisitos consolidados, com os invariantes travados no CI |
+| [`architecture/ARCHITECTURE.md`](architecture/ARCHITECTURE.md) | Estrutura em crates, fluxo de execução, conceitos transversais |
+| [`architecture/decisions/`](architecture/decisions/README.md) | ADRs: decisões significativas e o porquê delas |
+| [`product/ROADMAP.md`](product/ROADMAP.md) | Ondas de trabalho: agora, próximo, depois |
+| [`specs/SPEC_TEMPLATE.md`](specs/SPEC_TEMPLATE.md) | Modelo para a spec de uma feature nova |
+| [`specs/001-fronteira-de-confianca/`](specs/001-fronteira-de-confianca/spec.md) | Fronteira de confiança do agente: consentimento de extensão, confinamento e contenção de caminho |
+| [`../CHANGELOG.md`](../CHANGELOG.md) | Histórico de mudanças |
+| [`../README.md`](../README.md) | Porta de entrada: instalação, uso, números medidos |
+| [`../NOTICE`](../NOTICE) | Atribuições de terceiros e aviso de risco |
+
+A spec vive em `.specs/nycode-rs/` e não em `docs/specs/`. Os ADRs a referenciam
+por caminho relativo; mover o arquivo quebraria esses links.
+
+## Onde cada coisa é decidida
+
+- **O que o produto faz e para quem** — `PRD.md` e a seção de requisitos da spec.
+- **Como é construído** — `ARCHITECTURE.md`.
+- **Por que foi construído assim** — um ADR. Uma escolha significativa que não
+  tem ADR é uma escolha que ninguém poderá revisar depois.
+- **Se está pronto** — os gates de CI, não a opinião de quem escreveu. E o
+  critério é o caminho de produção executar o código, não ele existir: três
+  requisitos estiveram marcados como entregues por módulos implementados,
+  testados e nunca chamados pelo binário. Cobertura alta não distingue os dois
+  casos, porque o teste chama o que a produção não chama.
+
+## Invariantes travados no CI
+
+Não são aspirações; o build quebra quando qualquer um deles regride.
+
+| Invariante | Piso | Onde |
+|---|---|---|
+| Cobertura agregada de produção | 95% | [`scripts/coverage-gate.sh`](../scripts/coverage-gate.sh) |
+| Dependências sem aviso de segurança nem licença incompatível | obrigatório | [`deny.toml`](../deny.toml), job `supply-chain` |
+| Cobertura por arquivo de produção | 90% | [`scripts/coverage-gate.sh`](../scripts/coverage-gate.sh) |
+| Relatório de cobertura completo e mais novo que o código | obrigatório | [`scripts/coverage-gate.sh`](../scripts/coverage-gate.sh) |
+| O gate de cobertura continua capaz de reprovar | obrigatório | [`scripts/coverage-gate-test.sh`](../scripts/coverage-gate-test.sh) |
+| Startup da sessão montada (NFR-1) | 15.000 µs | [`scripts/perf-gate.sh`](../scripts/perf-gate.sh) |
+| Startup de chegada do processo (NFR-1) | 3.000 µs, ou baseline ÷ 3 | [`scripts/perf-gate.sh`](../scripts/perf-gate.sh) |
+| Memória de sessão ociosa (NFR-2) | 14 MiB | [`scripts/perf-gate.sh`](../scripts/perf-gate.sh) |
+| Memória na chegada (NFR-2) | 8 MiB, ou baseline ÷ 2 | [`scripts/perf-gate.sh`](../scripts/perf-gate.sh) |
+| Binário auto-contido (NFR-3) | 16 MiB, ou baseline ÷ 5 | [`scripts/perf-gate.sh`](../scripts/perf-gate.sh) |
+| O gate de performance continua capaz de reprovar | obrigatório | [`scripts/perf-gate-test.sh`](../scripts/perf-gate-test.sh) |
+| Performance não é medida antes de a política de dependências passar (NFR-8) | obrigatório | `needs: [supply-chain]` no job `perf` do [`ci.yml`](../.github/workflows/ci.yml) |
+| O artefato do concorrente tem digest fixado antes de ser executado (NFR-8) | obrigatório | [`perf-baseline.yml`](../.github/workflows/perf-baseline.yml) |
+| `subscription-oauth` fora do build padrão | obrigatório | [`ci.yml`](../.github/workflows/ci.yml) |
+| O harness de paridade continua capaz de acusar divergência | obrigatório | [`scripts/parity-gate.sh`](../scripts/parity-gate.sh), job `parity` |
+
+Cada métrica de performance tem dois pisos e vale o mais apertado dos dois: um
+absoluto, perto do valor medido, que pega regressão nossa; e um relativo ao
+[baseline do concorrente](../scripts/perf-baseline.txt), que pega o mercado
+passando na frente ([ADR-0012](architecture/decisions/0012-performance-e-medida-contra-um-concorrente-nomeado.md)).
+A carga da sessão montada só tem piso absoluto, porque não há sonda equivalente
+do outro lado para comparar
+([ADR-0013](architecture/decisions/0013-o-gate-mede-a-sessao-montada-e-nao-o-version.md)).
+
+A comparação de paridade completa precisa de um gateway e do harness de
+referência. Quando eles não estão configurados, o job diz isso em voz alta e o
+que continua travado é que o próprio harness ainda detecta divergência — um
+harness que não pode falhar é pior que nenhum.
+
+## Ciclo de trabalho
+
+Spec antes de código. Para uma feature nova: escrever a spec a partir do
+[modelo](specs/SPEC_TEMPLATE.md), registrar as decisões significativas como ADR,
+implementar com o teste que falha primeiro, e só então atualizar o
+[`CHANGELOG.md`](../CHANGELOG.md).

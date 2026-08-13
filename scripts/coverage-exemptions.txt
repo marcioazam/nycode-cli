@@ -1,0 +1,52 @@
+# Exemptions do gate de cobertura (espelha o ADR-0393 do nylla-gateway).
+#
+# Formato: <caminho> <kind> <razao>
+#   kind = no-statements | platform | below-floor
+#
+# O gate ratcheta cada linha. Uma entrada cujo arquivo sumiu, um `no-statements`
+# que ganhou uma funcao, ou um `below-floor` que alcancou o piso -> FALHA.
+#
+# Os dois kinds nao sao a mesma coisa e nao se leem juntos:
+#
+#   `below-floor` dispensa um arquivo medido de alcancar o piso. E decisao
+#   revisavel, nunca atalho: escreva o teste que falha primeiro e veja se a
+#   linha ainda e necessaria. A tabela esta vazia de `below-floor` de proposito,
+#   e a intencao e que continue.
+#
+#   `no-statements` declara um fato sobre um arquivo que o instrumentador nao
+#   alcanca, e existe porque desde o ADR-0010 o gate exige que todo arquivo de
+#   producao apareca no relatorio. Nao dispensa ninguem de nada: no dia em que o
+#   arquivo ganhar uma linha instrumentada, a entrada falha o gate e o piso de
+#   90% passa a valer para ele.
+#
+# Quando os pisos subiram de 90/80 para 95/90 (ADR-0003), tres arquivos ficaram
+# abaixo do piso novo: `observer.rs` em 82.5%, `agent.rs` em 86.0% e `main.rs` em
+# 89.9%. Nenhum virou exemption. O `observer.rs` estava intestavel por desenho —
+# fixava `std::io::stdout()` no construtor — e a resposta foi parametrizar os
+# destinos de saida, nao dispensar o arquivo. Os tres foram para 100%, 100% e
+# 98.6%.
+
+# --- Glue de modulo: so `mod`, `pub mod` e reexport -----------------------------
+# Nenhuma destas linhas executa. Um `pub use` e resolvido pelo compilador e nao
+# sobrevive ate o binario, entao nao ha o que instrumentar nem o que cobrir.
+crates/nycode-agent/src/lib.rs no-statements so declaracoes de modulo e reexports
+crates/nycode-agent/src/mcp/mod.rs no-statements so declaracoes de modulo e reexports
+crates/nycode-agent/src/policy/mod.rs no-statements so declaracoes de modulo e reexports
+crates/nycode-agent/src/session/mod.rs no-statements so declaracoes de modulo e reexports
+crates/nycode-agent/src/tools/search/mod.rs no-statements so declaracoes de modulo e reexports
+crates/nycode-ai/src/anthropic/mod.rs no-statements so declaracoes de modulo e reexports
+crates/nycode-ai/src/lib.rs no-statements so declaracoes de modulo e reexports
+crates/nycode-ai/src/openai/mod.rs no-statements so declaracoes de modulo e reexports
+crates/nycode-ai/src/transport/mod.rs no-statements so declaracoes de modulo e reexports
+crates/nycode-mcp/src/lib.rs no-statements so declaracoes de modulo e reexports
+crates/nycode-parity/src/lib.rs no-statements so declaracoes de modulo e reexports
+crates/nycode-tui/src/lib.rs no-statements so declaracoes de modulo e reexports
+
+# --- Tipo de erro cujo unico codigo e derivado ----------------------------------
+# Alem do glue, o arquivo declara `enum Error` com o `Display` vindo de
+# `#[derive(thiserror::Error)]`. A expansao carrega `#[automatically_derived]`, e
+# o instrumentador do rustc nao marca codigo derivado: o relatorio nao atribui
+# uma unica funcao ao arquivo. Nao e codigo sem teste — a mensagem que o usuario
+# le quando falta credencial esta assertada em
+# `resolver::tests::the_error_names_every_way_to_supply_the_credential`.
+crates/nycode-auth/src/lib.rs no-statements o unico codigo e um Display derivado, que o instrumentador nao marca

@@ -1,0 +1,55 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/nycode-ai",
+    "crates/nycode-agent",
+    "crates/nycode-mcp",
+    "crates/nycode-tui",
+    "crates/nycode-auth",
+    "crates/nycode-cli",
+    "crates/nycode-parity",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.96"
+license = "MIT"
+repository = "https://github.com/nylla/nycode-cli"
+authors = ["Nylla"]
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_debug_implementations = "warn"
+
+[workspace.lints.clippy]
+all = { level = "deny", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+# Um `unwrap` num caminho de produção é uma decisão, não um atalho.
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+todo = "deny"
+module_name_repetitions = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+
+[profile.dev]
+# Informacao de debug completa domina o tamanho do diretorio de build (varios
+# GB). `line-tables-only` preserva backtraces com numero de linha, que e o que
+# de fato se usa, por uma fracao do espaco.
+debug = "line-tables-only"
+
+[profile.release]
+# NFR-3 depende de um binario pequeno: LTO completo, uma unidade de codegen,
+# panic sem unwinding e simbolos removidos.
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
+opt-level = 3
+
+[profile.bench]
+inherits = "release"
+strip = "none"
+debug = 1
