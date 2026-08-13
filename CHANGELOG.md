@@ -169,6 +169,27 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Corrigido
 
+- **Um `--resume` longo que estourasse o contexto derrubava o processo.** O modo
+  headless persistia fatiando `history()` a partir da contagem de mensagens que
+  vieram do disco. A compactação automática dispara dentro do próprio turno e
+  reescreve o histórico — primeira mensagem, marcador de elisão e os últimos
+  turnos —, então uma sessão retomada com quarenta mensagens virava oito e o
+  índice quarenta caía fora do slice. O perfil de release usa `panic = "abort"`,
+  e a queda acontecia **depois** de as ferramentas já terem escrito no disco.
+  `unwrap` e `panic!` são `deny` de clippy, mas indexação de slice escapa do
+  lint.
+
+  Abaixo do limiar de queda o resultado era pior por ser silencioso: os índices
+  deslocam, e a sessão gravava um recorte que não corresponde às mensagens
+  novas — incluindo o marcador de elisão, que é artefato da janela de contexto e
+  não algo que a conversa produziu.
+
+  Clampar o índice pararia a queda e manteria o recorte errado. A correção é o
+  agente registrar o que o pedido acrescentou, num diário que a compactação não
+  toca: `messages` é o contexto que vai ao modelo e pode encolher, `produced()`
+  é o que aconteceu e vai para o arquivo de sessão. Quem persiste deixa de fazer
+  aritmética de índice sobre uma lista que outra camada reescreve.
+
 - **Responder numa sessão gravada antes dos identificadores apagava a conversa
   da leitura.** Um arquivo v1 não tem `id` em registro nenhum, então `tip` não
   achava ponta, o `append` gravava a mensagem nova como **raiz**, e a leitura

@@ -67,7 +67,7 @@ impl Agent {
             });
         }
 
-        self.messages.push(Message::tool_results(results));
+        self.record(Message::tool_results(results));
         end
     }
 
@@ -80,7 +80,7 @@ impl Agent {
             .iter()
             .map(|call| ContentBlock::tool_error(call.id.clone(), CANCELLED_BY_USER))
             .collect();
-        self.messages.push(Message::tool_results(results));
+        self.record(Message::tool_results(results));
     }
 
     /// Instala os hooks descobertos no workspace.

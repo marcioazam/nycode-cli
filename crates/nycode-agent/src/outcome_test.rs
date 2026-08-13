@@ -111,6 +111,54 @@ async fn an_estimated_turn_keeps_the_total_estimated() {
 }
 
 #[tokio::test]
+async fn what_a_run_produced_excludes_the_history_it_started_from() {
+    // Quem persiste precisa saber o que acrescentar ao arquivo de sessao. Fazer
+    // isso por indice sobre o historico e fragil: a compactacao reescreve a
+    // lista no meio do pedido, e o indice passa a apontar para outra mensagem.
+    let (_dir, ctx) = workspace();
+    let backend = Arc::new(FakeBackend::new(vec![crate::agent_test::text_turn("ok")]));
+    let mut agent = Agent::new(backend, ctx)
+        .with_message(nycode_ai::anthropic::Message::user("veio do disco"))
+        .with_message(nycode_ai::anthropic::Message::assistant(vec![
+            nycode_ai::anthropic::ContentBlock::text("tambem do disco"),
+        ]));
+
+    agent.run("oi", &mut Silent).await.unwrap();
+
+    let produced = agent.produced();
+    assert_eq!(
+        produced.len(),
+        2,
+        "o pedido e a resposta deste turno, e nada do disco: {produced:?}"
+    );
+    assert_eq!(agent.history().len(), 4, "o historico completo continua la");
+}
+
+#[tokio::test]
+async fn compaction_does_not_erase_what_the_run_produced() {
+    // A compactacao encolhe o historico para caber na janela de contexto, e o
+    // arquivo de sessao nao pode encolher junto: ele e o registro duravel da
+    // conversa. Fatiar `history()` por indice depois disto grava o recorte
+    // errado, ou estoura o fim do slice.
+    let (_dir, ctx) = workspace();
+    let backend = Arc::new(FakeBackend::new(vec![crate::agent_test::text_turn("ok")]));
+    let mut agent = Agent::new(backend, ctx);
+    for n in 0..40 {
+        agent = agent.with_message(nycode_ai::anthropic::Message::user(format!("antiga {n}")));
+    }
+
+    agent.run("oi", &mut Silent).await.unwrap();
+    let antes = agent.produced().to_vec();
+    agent.compact_now();
+
+    assert_eq!(
+        agent.produced(),
+        antes.as_slice(),
+        "compactar muda o contexto, nao o que este pedido acrescentou"
+    );
+}
+
+#[tokio::test]
 async fn a_turn_that_never_reported_a_stop_reason_is_not_passed_off_as_a_clean_end() {
     // `event.rs` promete que a projecao preserva o que o gateway emitiu e nunca
     // inventa um `EndTurn`. Inventa-lo aqui desfaz a promessa uma camada acima:

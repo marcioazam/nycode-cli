@@ -18,7 +18,6 @@ pub async fn headless(
         mut agent,
         store,
         session_id,
-        persisted,
         ..
     } = prepared;
 
@@ -38,8 +37,13 @@ pub async fn headless(
     // nunca aconteceu se o backend recusar o pedido. Um cancelamento, porém,
     // conta como acontecido — as ferramentas que rodaram mudaram o disco, e uma
     // sessão que não registra isso descreve um repositório que não existe.
+    // O agente diz o que este pedido acrescentou. Fatiar `history()` a partir
+    // do que veio do disco parecia equivalente e não é: a compactação
+    // automática reescreve o histórico no meio do turno, e o índice passa a
+    // apontar para outra mensagem — ou para além do fim, derrubando o processo
+    // depois de as ferramentas já terem mudado o disco.
     if session::produced_history(&outcome) {
-        for message in &agent.history()[persisted..] {
+        for message in agent.produced() {
             store.append(&session_id, message)?;
         }
     }

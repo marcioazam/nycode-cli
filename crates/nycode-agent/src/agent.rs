@@ -112,6 +112,16 @@ pub struct Agent {
     /// Mensagens que o usuário digitou enquanto o turno corria.
     steering: Option<tokio::sync::mpsc::Receiver<String>>,
     hooks: crate::policy::Hooks,
+    /// O que este pedido acrescentou à conversa, na ordem em que aconteceu.
+    ///
+    /// Separado de `messages` porque os dois respondem a perguntas diferentes:
+    /// `messages` é o contexto que vai ao modelo e a compactação o reescreve
+    /// para caber na janela; isto é o registro do que aconteceu, que vai para o
+    /// arquivo de sessão e não pode encolher junto. Rastrear a diferença por
+    /// índice sobre `messages` não sobrevive a uma compactação no meio do
+    /// pedido — o índice passa a apontar para outra mensagem, ou para além do
+    /// fim.
+    journal: Vec<Message>,
 }
 
 impl std::fmt::Debug for Agent {
@@ -144,7 +154,27 @@ impl Agent {
             approver: Arc::new(crate::policy::Never),
             steering: None,
             hooks: crate::policy::Hooks::default(),
+            journal: Vec::new(),
         }
+    }
+
+    /// Acrescenta uma mensagem à conversa durante um pedido.
+    ///
+    /// Todo caminho que fala com o modelo passa por aqui: é o que impede o
+    /// contexto e o registro durável de divergirem em silêncio.
+    fn record(&mut self, message: Message) {
+        self.journal.push(message.clone());
+        self.messages.push(message);
+    }
+
+    /// O que este pedido acrescentou, para quem precisa persistir.
+    ///
+    /// Não inclui o histórico com que a sessão foi aberta, nem o marcador que a
+    /// compactação insere — esse é um artefato da janela de contexto e não algo
+    /// que a conversa tenha produzido.
+    #[must_use]
+    pub fn produced(&self) -> &[Message] {
+        &self.journal
     }
 
     /// Substitui quem responde quando o gate pergunta.
@@ -220,7 +250,10 @@ impl Agent {
     ) -> Result<Outcome> {
         let mut content = attachments;
         content.push(ContentBlock::text(prompt));
-        self.messages.push(Message {
+        // O registro é deste pedido: o que o anterior acrescentou já foi
+        // persistido por quem o pediu.
+        self.journal.clear();
+        self.record(Message {
             role: nycode_ai::anthropic::Role::User,
             content,
         });
@@ -235,7 +268,7 @@ impl Agent {
             // conversa inteira.
             for message in self.take_steering() {
                 observer.on_notice(&format!("acrescentado ao turno: {message}"));
-                self.messages.push(Message::user(message));
+                self.record(Message::user(message));
             }
 
             let (turn, interrupted) = match self.stream_one_turn(observer).await {
@@ -424,7 +457,7 @@ impl Agent {
             });
         }
         if !blocks.is_empty() {
-            self.messages.push(Message::assistant(blocks));
+            self.record(Message::assistant(blocks));
         }
     }
 }
