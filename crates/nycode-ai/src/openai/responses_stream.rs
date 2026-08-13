@@ -20,6 +20,9 @@ pub struct ResponsesDecoder {
     call_ids: HashMap<String, String>,
     usage: Usage,
     completed: bool,
+    /// O usage já saiu pela drenagem. Sem isto ele sairia a cada chamada e a
+    /// drenagem nunca terminaria.
+    usage_drained: bool,
 }
 
 impl ResponsesDecoder {
@@ -177,8 +180,12 @@ impl StreamDecoder for ResponsesDecoder {
     /// `response.completed`, e `decode` devolve um evento por linha do wire —
     /// aquele evento já é o `MessageEnd`. Um turno cortado não reporta nada:
     /// inventaria número que o gateway não mandou.
-    fn trailing(&mut self) -> Option<StreamEvent> {
-        self.completed.then_some(StreamEvent::Usage(self.usage))
+    fn drain(&mut self) -> Option<StreamEvent> {
+        if !self.completed || self.usage_drained {
+            return None;
+        }
+        self.usage_drained = true;
+        Some(StreamEvent::Usage(self.usage))
     }
 }
 
@@ -186,17 +193,22 @@ impl StreamDecoder for ResponsesDecoder {
 mod tests {
     use super::*;
 
+    /// Reproduz a ordem de `stream::decode`: drena antes de cada linha e de
+    /// novo no encerramento. Um helper que só drenasse no fim esconderia um
+    /// evento preso entre duas linhas.
     fn decode_all(events: &[&str]) -> (Vec<StreamEvent>, ResponsesDecoder) {
         let mut decoder = ResponsesDecoder::new();
         let mut out = Vec::new();
         for raw in events {
+            while let Some(event) = decoder.drain() {
+                out.push(event);
+            }
             if let Some(event) = decoder.decode(raw).expect("deveria decodificar") {
                 out.push(event);
             }
         }
-        // O fim do corpo é o que drena o evento final, como em `stream::decode`.
-        if decoder.completed() {
-            out.extend(decoder.trailing());
+        while let Some(event) = decoder.drain() {
+            out.push(event);
         }
         (out, decoder)
     }
@@ -376,7 +388,7 @@ mod tests {
             .decode(r#"{"type":"response.completed","response":{"usage":{"input_tokens":1}}}"#)
             .expect("deveria decodificar");
 
-        match decoder.trailing() {
+        match decoder.drain() {
             Some(StreamEvent::Usage(usage)) => assert!(usage.estimated),
             other => panic!("esperado usage estimado, veio {other:?}"),
         }
@@ -389,7 +401,7 @@ mod tests {
         let (events, mut decoder) =
             decode_all(&[r#"{"type":"response.output_text.delta","delta":"parc"}"#]);
         assert!(!decoder.completed());
-        assert!(decoder.trailing().is_none());
+        assert!(decoder.drain().is_none());
         assert!(
             !events
                 .iter()

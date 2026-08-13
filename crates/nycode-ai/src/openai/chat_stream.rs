@@ -1,6 +1,6 @@
 //! Projeção do stream de Chat Completions.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 use serde_json::Value;
 
@@ -16,10 +16,16 @@ const DONE: &str = "[DONE]";
 /// Chamadas de ferramenta chegam indexadas por posição no array `tool_calls`,
 /// e só o primeiro fragmento traz `id` e `name`. Sem guardar o mapa de índice
 /// para id, os argumentos de chamadas paralelas se misturam.
+///
+/// Este é o dialeto que mais empacota evento numa linha só: um chunk pode abrir
+/// duas chamadas de uma vez, e o chunk de `finish_reason` precisa fechar todas
+/// as que ficaram abertas *e* encerrar a mensagem. Como `decode` devolve um
+/// evento por linha, o excedente fica na fila e sai por [`Self::drain`].
 #[derive(Debug, Default)]
 pub struct ChatDecoder {
     tool_ids: HashMap<u64, String>,
     open_tools: Vec<String>,
+    pending: VecDeque<StreamEvent>,
     usage: Usage,
     saw_done: bool,
     announced_start: bool,
@@ -47,8 +53,12 @@ impl ChatDecoder {
             .unwrap_or(0);
     }
 
-    fn decode_tool_delta(&mut self, calls: &[Value]) -> Option<StreamEvent> {
-        let call = calls.first()?;
+    /// Projeta uma entrada do array `tool_calls` para a fila.
+    ///
+    /// Abertura e argumentos podem vir no mesmo fragmento, e são dois eventos:
+    /// tratar o chunk como "ou um ou outro" trunca o JSON da chamada logo no
+    /// começo, e o modelo recebe de volta um erro de parse que ele não causou.
+    fn absorb_tool_call(&mut self, call: &Value) {
         let index = call.get("index").and_then(Value::as_u64).unwrap_or(0);
         let function = call.get("function");
 
@@ -63,7 +73,7 @@ impl ChatDecoder {
                 .to_owned();
             self.tool_ids.insert(index, id.to_owned());
             self.open_tools.push(id.to_owned());
-            return Some(StreamEvent::ToolCallStart {
+            self.pending.push_back(StreamEvent::ToolCallStart {
                 id: id.to_owned(),
                 name,
             });
@@ -71,12 +81,16 @@ impl ChatDecoder {
 
         let fragment = function
             .and_then(|f| f.get("arguments"))
-            .and_then(Value::as_str)?;
-        let id = self.tool_ids.get(&index)?;
-        Some(StreamEvent::ToolCallDelta {
-            id: id.clone(),
-            json_fragment: fragment.to_owned(),
-        })
+            .and_then(Value::as_str)
+            .filter(|fragment| !fragment.is_empty());
+        if let Some(fragment) = fragment
+            && let Some(id) = self.tool_ids.get(&index)
+        {
+            self.pending.push_back(StreamEvent::ToolCallDelta {
+                id: id.clone(),
+                json_fragment: fragment.to_owned(),
+            });
+        }
     }
 }
 
@@ -126,14 +140,17 @@ impl StreamDecoder for ChatDecoder {
         };
 
         if let Some(reason) = choice.get("finish_reason").and_then(Value::as_str) {
-            // Um turno pode encerrar com ferramentas ainda abertas; fecha-las
-            // aqui garante que o acumulador as considere completas.
-            if let Some(id) = self.open_tools.pop() {
-                return Ok(Some(StreamEvent::ToolCallEnd { id }));
+            // Fechar as ferramentas que ficaram abertas e encerrar a mensagem
+            // sao coisas distintas que chegam na mesma linha. Entregar so uma
+            // delas deixa o turno sem `stop_reason`, e o agente encerra dando o
+            // pedido por concluido sem executar a ferramenta.
+            for id in std::mem::take(&mut self.open_tools) {
+                self.pending.push_back(StreamEvent::ToolCallEnd { id });
             }
-            return Ok(Some(StreamEvent::MessageEnd {
+            self.pending.push_back(StreamEvent::MessageEnd {
                 stop_reason: StopReason::from_openai(reason),
-            }));
+            });
+            return Ok(self.pending.pop_front());
         }
 
         let delta = choice.get("delta");
@@ -143,7 +160,10 @@ impl StreamDecoder for ChatDecoder {
             .and_then(|d| d.get("tool_calls"))
             .and_then(Value::as_array)
         {
-            return Ok(self.decode_tool_delta(calls));
+            for call in calls {
+                self.absorb_tool_call(call);
+            }
+            return Ok(self.pending.pop_front());
         }
         // O gateway emite `reasoning_content` em canal separado quando o pedido
         // sinaliza thinking; misturar com o texto visivel entregaria ao usuario
@@ -164,19 +184,32 @@ impl StreamDecoder for ChatDecoder {
     fn mark_usage_estimated(&mut self) {
         self.usage.estimated = true;
     }
+
+    fn drain(&mut self) -> Option<StreamEvent> {
+        self.pending.pop_front()
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    /// Reproduz a ordem de `stream::decode`: drena antes de cada linha e de
+    /// novo no encerramento. Um helper que não drenasse veria só o primeiro
+    /// evento de cada linha, que é exatamente o defeito que se quer pegar.
     fn decode_all(events: &[&str]) -> (Vec<StreamEvent>, ChatDecoder) {
         let mut decoder = ChatDecoder::new();
         let mut out = Vec::new();
         for raw in events {
+            while let Some(event) = decoder.drain() {
+                out.push(event);
+            }
             if let Some(event) = decoder.decode(raw).expect("deveria decodificar") {
                 out.push(event);
             }
+        }
+        while let Some(event) = decoder.drain() {
+            out.push(event);
         }
         (out, decoder)
     }
@@ -240,6 +273,81 @@ mod tests {
                 id: "call_a".to_owned()
             }
         );
+    }
+
+    #[test]
+    fn a_tool_turn_reports_tool_use_and_closes_every_open_call() {
+        // O `finish_reason` e o fechamento da ferramenta caem na mesma linha do
+        // wire. Emitir so um dos dois deixa o turno sem `stop_reason`, e o
+        // agente encerra sem executar a ferramenta que o modelo pediu.
+        let (events, _) = decode_all(&[
+            r#"{"id":"c1","choices":[{"delta":{"role":"assistant"},"index":0}]}"#,
+            r#"{"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_a","function":{"name":"read","arguments":""}}]},"index":0}]}"#,
+            r#"{"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"arguments":"{}"}}]},"index":0}]}"#,
+            r#"{"choices":[{"delta":{},"index":0,"finish_reason":"tool_calls"}]}"#,
+            "[DONE]",
+        ]);
+
+        assert!(
+            events.contains(&StreamEvent::ToolCallEnd {
+                id: "call_a".to_owned()
+            }),
+            "a chamada aberta precisa ser fechada: {events:?}"
+        );
+        assert!(
+            events.contains(&StreamEvent::MessageEnd {
+                stop_reason: StopReason::ToolUse
+            }),
+            "sem o MessageEnd o agente nao executa a ferramenta: {events:?}"
+        );
+    }
+
+    #[test]
+    fn two_parallel_calls_in_one_chunk_are_both_announced() {
+        // O array `tool_calls` pode trazer mais de uma chamada no mesmo chunk.
+        // Ler so a primeira perde a outra sem deixar rastro.
+        let (events, _) = decode_all(&[
+            r#"{"id":"c1","choices":[{"delta":{"role":"assistant"},"index":0}]}"#,
+            r#"{"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_a","function":{"name":"read","arguments":""}},{"index":1,"id":"call_b","function":{"name":"grep","arguments":""}}]},"index":0}]}"#,
+            r#"{"choices":[{"delta":{},"index":0,"finish_reason":"tool_calls"}]}"#,
+            "[DONE]",
+        ]);
+
+        for (id, name) in [("call_a", "read"), ("call_b", "grep")] {
+            assert!(
+                events.contains(&StreamEvent::ToolCallStart {
+                    id: id.to_owned(),
+                    name: name.to_owned()
+                }),
+                "{id} precisa ser anunciada: {events:?}"
+            );
+            assert!(
+                events.contains(&StreamEvent::ToolCallEnd { id: id.to_owned() }),
+                "{id} precisa ser fechada: {events:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn arguments_that_ride_along_with_the_opening_fragment_are_not_lost() {
+        // Backends compativeis mandam `id`, `name` e o comeco dos argumentos no
+        // mesmo fragmento. Descartar o pedaco trunca o JSON da chamada.
+        let (events, _) = decode_all(&[
+            r#"{"id":"c1","choices":[{"delta":{"role":"assistant"},"index":0}]}"#,
+            r#"{"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_a","function":{"name":"read","arguments":"{\"path\":"}}]},"index":0}]}"#,
+            r#"{"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"arguments":"\"a.rs\"}"}}]},"index":0}]}"#,
+            r#"{"choices":[{"delta":{},"index":0,"finish_reason":"tool_calls"}]}"#,
+            "[DONE]",
+        ]);
+
+        let montado: String = events
+            .iter()
+            .filter_map(|event| match event {
+                StreamEvent::ToolCallDelta { json_fragment, .. } => Some(json_fragment.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(montado, r#"{"path":"a.rs"}"#, "{events:?}");
     }
 
     #[test]

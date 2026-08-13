@@ -25,7 +25,10 @@ struct State<S> {
     events: S,
     decoder: Box<dyn StreamDecoder>,
     bytes: usize,
+    /// O corpo acabou. Ainda pode haver evento guardado pelo dialeto.
     finished: bool,
+    /// Um erro encerrou o stream. Nada mais sai, nem o que estava na fila.
+    failed: bool,
 }
 
 /// Converte o stream SSE bruto em eventos canônicos.
@@ -51,9 +54,18 @@ where
             decoder,
             bytes: 0,
             finished: false,
+            failed: false,
         },
         |mut state| async move {
             loop {
+                if state.failed {
+                    return None;
+                }
+                // Antes de puxar a proxima linha: uma linha do wire pode ter
+                // rendido mais de um evento, e o que sobrou sai aqui.
+                if let Some(event) = state.decoder.drain() {
+                    return Some((Ok(event), state));
+                }
                 if state.finished {
                     return None;
                 }
@@ -65,13 +77,13 @@ where
                             // Evento sem correspondencia observavel, como `ping`.
                             Ok(None) => {}
                             Err(err) => {
-                                state.finished = true;
+                                state.failed = true;
                                 return Some((Err(err), state));
                             }
                         }
                     }
                     Some(Err(err)) => {
-                        state.finished = true;
+                        state.failed = true;
                         let failure = if err.is_idle() {
                             Error::StreamIdle { bytes: state.bytes }
                         } else {
@@ -81,13 +93,15 @@ where
                     }
                     None => {
                         state.finished = true;
-                        if state.decoder.completed() {
-                            // O dialeto pode ter guardado um evento que só cabe
-                            // depois do encerramento — no `responses`, o usage.
-                            let trailing = state.decoder.trailing();
-                            return trailing.map(|event| (Ok(event), state));
+                        if !state.decoder.completed() {
+                            state.failed = true;
+                            return Some((
+                                Err(Error::TruncatedStream { bytes: state.bytes }),
+                                state,
+                            ));
                         }
-                        return Some((Err(Error::TruncatedStream { bytes: state.bytes }), state));
+                        // Encerrou limpo: o laco volta ao topo e a drenagem
+                        // entrega o que o dialeto guardou para o fim.
                     }
                 }
             }
@@ -133,6 +147,43 @@ mod tests {
 
     fn feed(events: Vec<SseEvent>) -> Vec<std::result::Result<SseEvent, Cut>> {
         events.into_iter().map(Ok).collect()
+    }
+
+    #[tokio::test]
+    async fn a_chat_tool_turn_reaches_the_caller_with_its_stop_reason() {
+        // O chunk de `finish_reason` fecha a ferramenta e encerra a mensagem ao
+        // mesmo tempo. Se o driver entregar so o primeiro dos dois, o turno
+        // chega sem `stop_reason`, `wants_tools` e falso e o agente devolve
+        // resposta pronta sem executar nada — o dialeto inteiro fica sem
+        // ferramenta.
+        let raw = futures_util::stream::iter(feed(vec![
+            sse(r#"{"id":"c1","choices":[{"delta":{"role":"assistant"},"index":0}]}"#),
+            sse(
+                r#"{"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_a","function":{"name":"read","arguments":"{}"}}]},"index":0}]}"#,
+            ),
+            sse(r#"{"choices":[{"delta":{},"index":0,"finish_reason":"tool_calls"}]}"#),
+            sse("[DONE]"),
+        ]));
+
+        let events: Result<Vec<_>> = decode(raw, crate::openai::Chat.decoder())
+            .collect::<Vec<_>>()
+            .await
+            .into_iter()
+            .collect();
+        let events = events.expect("stream completo nao deveria falhar");
+
+        assert!(
+            events.contains(&StreamEvent::ToolCallEnd {
+                id: "call_a".to_owned()
+            }),
+            "{events:?}"
+        );
+        assert!(
+            events.contains(&StreamEvent::MessageEnd {
+                stop_reason: StopReason::ToolUse
+            }),
+            "{events:?}"
+        );
     }
 
     #[tokio::test]

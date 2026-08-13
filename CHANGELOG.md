@@ -169,6 +169,35 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Corrigido
 
+- **O dialeto `openai-completions` não executava ferramenta nenhuma.** O chunk
+  de `finish_reason` precisa fechar as chamadas que ficaram abertas *e* encerrar
+  a mensagem, mas `StreamDecoder::decode` devolve um evento por linha do wire: o
+  `return` que emitia o `ToolCallEnd` engolia o `MessageEnd`, e não existe uma
+  segunda linha com `finish_reason` para recuperá-lo — o chunk de usage vem com
+  `choices` vazio. O turno chegava ao agente sem `stop_reason`,
+  `Turn::wants_tools` respondia `false`, e o laço devolvia `Outcome` descartando
+  as chamadas que o modelo tinha pedido. Com chamadas paralelas o dano dobrava:
+  um único `pop()` fechava uma e as outras nunca saíam de `open_tools`.
+
+  O mesmo caminho perdia mais duas coisas em silêncio. O array `tool_calls` era
+  lido só na primeira posição, então a segunda chamada de um chunk paralelo
+  sumia antes de ser anunciada; e o fragmento de abertura era tratado como "ou
+  id e nome, ou argumentos", quando o backend manda os três juntos — o começo do
+  JSON era descartado e o modelo recebia de volta um erro de parse que não tinha
+  causado.
+
+  A correção é uma só para os quatro defeitos: o decodificador ganhou fila, e o
+  `trailing()` que existia para o usage do `responses` virou um `drain()` que o
+  driver esvazia antes de puxar cada linha e de novo no encerramento. Um dialeto
+  que empacota vários eventos numa linha passa a caber no contrato, em vez de
+  ter que escolher qual deles perder.
+
+  Nenhum teste pegava, e o que existia congelava o defeito:
+  `assembles_a_tool_call_from_indexed_fragments` afirmava o `ToolCallEnd` e nunca
+  que um `MessageEnd` tinha sido emitido, e `Kind::OpenAiChat` só aparecia em
+  teste de nome de dialeto e de header — nada dirigia o dialeto através do
+  agente. Cada uma das linhas defeituosas estava coberta.
+
 - **O primeiro `Ctrl+C` transformava a sessão interativa num no-op silencioso.**
   `Cancel` era um latch de mão única, e a sessão compartilhava um único sinal
   com o agente por todos os turnos. Depois da primeira interrupção, cada pedido

@@ -31,13 +31,19 @@ pub trait StreamDecoder: Send {
 
     fn mark_usage_estimated(&mut self);
 
-    /// Evento que o dialeto só consegue emitir depois do encerramento.
+    /// Eventos que o dialeto empacotou numa linha só e ainda não entregou.
     ///
-    /// Existe por causa do `responses`, que concentra `stop_reason` e usage no
-    /// mesmo evento de wire — e [`Self::decode`] devolve um evento por linha.
-    /// Anthropic e Chat têm evento terminal próprio para o usage e não precisam
+    /// [`Self::decode`] devolve um evento por linha do wire, e há dialetos que
+    /// concentram vários na mesma: o Chat fecha as ferramentas abertas e
+    /// encerra a mensagem no mesmo chunk de `finish_reason`, e o `responses`
+    /// junta `stop_reason` e usage em `response.completed`. O driver drena isto
+    /// antes de puxar a próxima linha e de novo no encerramento, então nada
+    /// fica preso — e quem devolve um evento aqui precisa parar de devolvê-lo,
+    /// ou a drenagem não termina.
+    ///
+    /// Anthropic tem evento terminal próprio para cada coisa e não precisa
     /// disto, então o padrão é não emitir nada.
-    fn trailing(&mut self) -> Option<StreamEvent> {
+    fn drain(&mut self) -> Option<StreamEvent> {
         None
     }
 }
