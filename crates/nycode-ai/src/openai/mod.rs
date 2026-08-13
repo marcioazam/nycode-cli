@@ -6,6 +6,7 @@
 //! num par de arquivos — a forma da requisição e a projeção do stream mudam por
 //! razões diferentes.
 
+mod cache;
 mod chat;
 mod chat_stream;
 mod responses;

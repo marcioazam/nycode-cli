@@ -18,6 +18,9 @@ use tokio::net::{TcpListener, TcpStream};
 /// folgados; um corpo maior que isto é engano, não uso.
 const MAX_BODY: usize = 4 * 1024 * 1024;
 
+/// Pede o desligamento negociado, sem sinal, ao fim da entrada padrão.
+const SHUTDOWN_FLAG: &str = "--shutdown-on-stdin";
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let listener = TcpListener::bind("127.0.0.1:0").await?;
@@ -28,18 +31,33 @@ async fn main() -> Result<()> {
     // do tokio custaria uma feature a mais no binario.
     std::io::Write::flush(&mut std::io::stdout())?;
 
-    let mut closed = stdin_closed();
+    // Fechar a entrada padrao encerra o fixture, e so quando pedido. E como a
+    // bateria de testes o desliga sem sinal, e ha uma razao concreta para nao
+    // usar sinal ali: um processo morto por `SIGKILL` nunca grava o arquivo de
+    // perfil, e a casca de E/S apareceria com zero por cento de cobertura por
+    // um motivo que nao tem nada a ver com ela estar testada.
+    //
+    // Opcional porque quem sobe o fixture em segundo plano — o
+    // `parity-gate.sh` — nao segura a entrada padrao, e ali ela e `/dev/null`:
+    // EOF na primeira leitura. Incondicional, o gateway morria depois de
+    // anunciar a porta e antes do primeiro pedido, e o gate acusava o
+    // candidato de falha de transporte que era do instrumento.
+    //
+    // Nao e superficie de rede: quem fecha a entrada padrao ja e dono do
+    // processo.
+    let (tx, mut closed) = tokio::sync::oneshot::channel();
+    let mut _owner = None;
+    if std::env::args().any(|arg| arg == SHUTDOWN_FLAG) {
+        watch_stdin(tx);
+    } else {
+        // Segurar o remetente e o que mantem o receptor pendente para sempre:
+        // largado, ele resolveria na hora e o desligamento voltaria a ser
+        // incondicional, so que por outro caminho.
+        _owner = Some(tx);
+    }
 
     loop {
         tokio::select! {
-            // Fechar a entrada padrao encerra o fixture. E como o processo pai
-            // o desliga sem sinal, e ha uma razao concreta para nao usar sinal:
-            // um processo morto por `SIGKILL` nunca grava o arquivo de perfil,
-            // e a casca de E/S apareceria com zero por cento de cobertura por
-            // um motivo que nao tem nada a ver com ela estar testada.
-            //
-            // Nao e superficie de rede: quem fecha a entrada padrao ja e dono
-            // do processo.
             _ = &mut closed => return Ok(()),
             accepted = listener.accept() => {
                 let (stream, _) = accepted?;
@@ -56,19 +74,17 @@ async fn main() -> Result<()> {
     }
 }
 
-/// Resolve quando a entrada padrão chega ao fim.
+/// Avisa pelo canal quando a entrada padrão chegar ao fim.
 ///
 /// Numa thread bloqueante, e não no runtime: ler a entrada padrão de forma
 /// assíncrona custaria uma feature a mais do tokio, e esta leitura nunca
 /// devolve dado — só o fim dele.
-fn stdin_closed() -> tokio::sync::oneshot::Receiver<()> {
-    let (tx, rx) = tokio::sync::oneshot::channel();
+fn watch_stdin(tx: tokio::sync::oneshot::Sender<()>) {
     std::thread::spawn(move || {
         let mut descartado = Vec::new();
         let _ = std::io::Read::read_to_end(&mut std::io::stdin(), &mut descartado);
         let _ = tx.send(());
     });
-    rx
 }
 
 async fn handle(mut stream: TcpStream) -> Result<()> {

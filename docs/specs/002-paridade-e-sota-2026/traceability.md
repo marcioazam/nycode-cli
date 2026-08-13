@@ -52,12 +52,49 @@ que o balde A cataloga.
 | B7 — os dois estouros sem erro | fechado | [`shrink.rs`](../../../crates/nycode-agent/src/agent/shrink.rs) `silent_overflow`; janela vinda de `windows_of` |
 | C2 — tarifa com faixa e regra de 2× | fechado | [`catalog/mod.rs`](../../../crates/nycode-ai/src/catalog/mod.rs) |
 | C3 — catálogo hidratado em runtime | fechado | `discover_catalog`; nenhuma tabela fixa no binário |
-| A3/C1 — cache fora do Anthropic | parcial | só `prompt_cache_key`; falta `prompt_cache_retention` e `prompt_cache_options.mode` |
+| A3/C1 — cache fora do Anthropic | fechado com recusa declarada | `CacheRetention` de três estados em [`sampling`](../../../crates/nycode-ai/src/sampling/mod.rs); `prompt_cache_key` cortado a 64 e `prompt_cache_retention` em [`openai/cache.rs`](../../../crates/nycode-ai/src/openai/cache.rs); `ttl: "1h"` no marcador Anthropic. **`prompt_cache_options.mode` fica de fora**: a referência só o emite quando o modelo declara aceitá-lo, e o catálogo daqui ainda não traz capacidade por modelo — emiti-lo às cegas troca economia por falha. Reabre quando o catálogo trouxer capacidades. |
 | B2 — retry em duas camadas | aberto | há retry de transporte; falta a política sobre a resposta |
 | B3 — `Retry-After` em HTTP-date | fechado | [`retry.rs`](../../../crates/nycode-ai/src/transport/retry.rs) `parse_imf_fixdate`, sem dependência nova |
 | B4/B5/B6 — higiene de payload | aberto | sem saneamento de par substituto, sem reparo de JSON parcial, sem coerção contra schema |
 | B8 — `tool_choice` canônico | aberto | o termo não existe no crate |
 | B9 — estimativa ancorada no último usage | aberto | — |
+
+## Paridade real — o que a primeira execução contra a referência revelou
+
+A referência foi construída no commit que o [`NOTICE`](../../../NOTICE) fixa
+(`581d75a`, `pi` 0.84.1) e o gate rodou em modo **completo** pela primeira vez.
+Nenhuma das três descobertas era hipótese; todas apareceram ao rodar.
+
+**O instrumento reprovava o que deveria medir.** O fixture passou a encerrar ao
+ver o fim da entrada padrão — necessário para gravar o perfil de cobertura — e o
+`parity-gate.sh` o sobe em segundo plano, onde a entrada padrão é `/dev/null`.
+O gateway morria depois de anunciar a porta e antes do primeiro pedido, e o gate
+acusava o candidato de falha de transporte. Corrigido: o desligamento negociado
+agora é pedido por `--shutdown-on-stdin`.
+
+**O `exec` do gate descartava a limpeza.** O script terminava em
+`exec "${HARNESS}"`, que substitui o shell — e com ele o `trap cleanup EXIT`. O
+fixture ficava órfão a cada execução, segurando porta e cano de saída; quem
+chamasse o gate através de um pipe nunca via o fim. Corrigido, e o harness ganhou
+prazo por execução: sem ele uma referência que pendura pendura o gate, e num CI
+isso queima o job inteiro sem diagnóstico.
+
+**A referência não aceita gateway por `ANTHROPIC_BASE_URL`.** É a descoberta que
+bloqueia a paridade real. `Harness::reference` define a variável, e o `pi` desta
+versão **a ignora**: o endpoint vem da definição do modelo. Na execução de
+diagnóstico a referência foi à API real da Anthropic e voltou com um `401` de
+`request_id` genuíno, com a chave `fixture` — o pedido saiu para fora, com
+credencial falsa e sem conteúdo de conversa, e é registrado aqui porque uma
+chamada externa não intencional se declara.
+
+O teste `the_reference_harness_is_pointed_at_the_gateway_by_environment` **passa
+com a premissa falsa**: ele afirma que o harness *define* a variável, nunca que a
+referência a *honra*. É a classe de defeito que originou este épico, agora dentro
+do próprio instrumento que existe para medi-la.
+
+Estado: paridade real **bloqueada**, com causa nomeada. Reabre quando
+`Harness::reference` apontar a referência pelo mecanismo que ela de fato lê —
+definição de modelo com endpoint próprio, e não variável de ambiente.
 
 ## O que a onda 0 mudou de premissa
 

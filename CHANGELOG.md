@@ -42,6 +42,30 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
   maduro do ACP é subprocesso local sobre entrada e saída padrão, sem socket
   escutando e sem decisão de autenticação de rede pendente.
 
+- **Retenção de cache passa a ter três estados, e a longa passa a ser pedível.**
+  `Sampling` carregava um booleano: ligado ou desligado. A retenção estendida é
+  um terceiro estado, com outra tarifa — e o repositório já sabia disso do lado
+  errado. `Usage::cache_write_1h_tokens` existia, `catalog::cost` já o cobrava ao
+  dobro da tarifa de entrada, e **nada no repositório conseguia pedir a retenção
+  que produziria esse número**: o modelo de custo tratava um estado inalcançável.
+
+  Agora `CacheRetention` tem `Off`, `Short` e `Long`. O dialeto Anthropic leva a
+  retenção dentro do próprio marcador (`ttl: "1h"`); os dois dialetos OpenAI a
+  declaram ao lado da chave (`prompt_cache_retention: "24h"`). O padrão continua
+  sendo a curta: a longa se paga em sessão com intervalos grandes entre turnos, e
+  ligá-la por omissão cobraria de todo mundo o que serve a poucos.
+
+  A chave também passou a ser cortada ao limite de 64 caracteres do formato, e
+  **pelo começo**: um id de sessão termina no que o distingue, e cortar a cauda
+  colidiria duas sessões de mesmo prefixo num balde só — o erro exato que a chave
+  existe para evitar.
+
+  Fica de fora, declarado: `prompt_cache_options.mode`. Ele serve para desligar o
+  cache implícito, e a referência só o emite quando o **modelo** declara aceitá-lo
+  — modelos mais antigos recusam o pedido inteiro por causa dele. O catálogo deste
+  repositório ainda não declara capacidade por modelo; emiti-lo às cegas trocaria
+  uma economia por uma falha. Reabre quando o catálogo trouxer capacidades.
+
 - **`Retry-After` em data HTTP deixa de ser descartado.** A RFC 9110 admite as
   duas formas e provedores grandes usam a data; este cliente lia só os segundos.
   Um cabeçalho descartado vira `None`, o cliente cai no backoff local e volta
@@ -103,6 +127,19 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
   a partir de um diretório temporário e passou a falhar quando `TMPDIR` ficou oito
   caracteres mais longo que `/tmp` — a mesma falha que num terminal real teria
   passado por decoração.
+
+- **O desligamento por entrada padrão do fixture matava o gate de paridade.** O
+  fixture passou a encerrar ao ver o fim da entrada padrão — o que resolve a
+  cobertura, porque processo morto por sinal não grava perfil. Só que o
+  `parity-gate.sh` sobe o fixture em segundo plano, e ali a entrada padrão é
+  `/dev/null`: EOF na primeira leitura. O gateway morria depois de anunciar a
+  porta e antes do primeiro pedido, e o gate acusava o candidato de falha de
+  transporte que era do próprio instrumento — a forma mais cara de erro num gate,
+  porque a acusação parece vir do que ele deveria medir.
+
+  O desligamento negociado agora é pedido por `--shutdown-on-stdin`, e a bateria
+  de testes o pede. Quem sobe o fixture em segundo plano não precisa saber que
+  existe uma entrada padrão para segurar.
 
 - **O gateway de fixture aparecia com zero por cento de cobertura sem ter deixado
   de ser testado.** A bateria o desligava com sinal, e um processo morto por sinal

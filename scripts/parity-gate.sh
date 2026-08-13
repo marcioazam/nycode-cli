@@ -81,7 +81,11 @@ fi
 
 if [[ -z "${REFERENCE}" ]]; then
   echo "parity-gate: modo instrumento — PARITY_REFERENCE nao aponta para o harness de referencia" >&2
-  exec "${HARNESS}" --nycode "${BINARY}" --self-check
+  # Sem `exec`: ele substitui este shell, e com ele some o `trap cleanup EXIT`
+  # de cima. O fixture ficava orfao a cada execucao, segurando a porta e o cano
+  # de saida — quem chamasse o gate atraves de um pipe nunca via o fim.
+  "${HARNESS}" --nycode "${BINARY}" --self-check
+  exit $?
 fi
 
 if ! command -v "${REFERENCE}" >/dev/null 2>&1 && [[ ! -x "${REFERENCE}" ]]; then
@@ -90,4 +94,6 @@ if ! command -v "${REFERENCE}" >/dev/null 2>&1 && [[ ! -x "${REFERENCE}" ]]; the
 fi
 
 echo "parity-gate: comparando ${BINARY} contra ${REFERENCE}"
-exec "${HARNESS}" --nycode "${BINARY}" --reference "${REFERENCE}"
+# Sem `exec`, pela mesma razao de cima: o fixture precisa ser colhido pelo trap.
+"${HARNESS}" --nycode "${BINARY}" --reference "${REFERENCE}"
+exit $?

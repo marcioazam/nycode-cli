@@ -53,6 +53,10 @@ impl Drop for Fixture {
 /// Sobe o fixture e devolve-o já com o endereço que ele anunciou.
 fn start() -> Fixture {
     let mut child = Command::new(env!("CARGO_BIN_EXE_nycode-parity-fixture"))
+        // Pedido de propósito: o desligamento por entrada padrão é o que grava
+        // o perfil de cobertura, e é opcional justamente porque quem sobe o
+        // fixture em segundo plano não segura a entrada padrão.
+        .arg("--shutdown-on-stdin")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
@@ -148,6 +152,91 @@ fn a_route_the_fixture_does_not_serve_is_refused_rather_than_answered() {
     let response = request(&fixture.address, "GET /v1/responses", "");
 
     assert!(response.starts_with("HTTP/1.1 404"), "{response}");
+}
+
+#[test]
+fn a_request_whose_head_makes_no_sense_is_dropped_without_an_answer() {
+    // Responder alguma coisa a um cabecalho que nao se entende esconderia um
+    // cliente quebrado atras de uma resposta plausivel — e o gate compara
+    // respostas, entao o engano viraria paridade.
+    let fixture = start();
+
+    // Uma linha de requisicao tem metodo e caminho. Com uma palavra so nao ha
+    // o que rotear, e e ai que o fixture larga a conexao em vez de responder.
+    let mut stream = TcpStream::connect(&fixture.address).unwrap();
+    stream.write_all(b"SOZINHO\r\n\r\n").unwrap();
+    stream.flush().unwrap();
+
+    let mut response = String::new();
+    stream.read_to_string(&mut response).unwrap();
+    assert!(response.is_empty(), "{response}");
+}
+
+#[test]
+fn a_body_that_arrives_in_two_pieces_is_assembled_before_being_answered() {
+    // O corpo de um turno com prompt de sistema e schemas de ferramenta nao
+    // cabe num pacote. Responder ao primeiro pedaco decidiria a rota com meio
+    // JSON, e o fixture responderia a coisa errada com cara de certa.
+    let fixture = start();
+
+    let body = r#"{"messages":[{"role":"user","content":"crie saida.txt"}]}"#;
+    let (head, tail) = body.split_at(20);
+
+    let mut stream = TcpStream::connect(&fixture.address).unwrap();
+    stream
+        .write_all(
+            format!(
+                "POST /v1/messages HTTP/1.1\r\nHost: fixture\r\nContent-Length: {}\r\n\r\n{head}",
+                body.len()
+            )
+            .as_bytes(),
+        )
+        .unwrap();
+    stream.flush().unwrap();
+
+    // A pausa e o ponto: sem ela o sistema operacional pode juntar as duas
+    // escritas num pacote so, e o teste passaria sem exercitar a montagem.
+    std::thread::sleep(Duration::from_millis(50));
+    stream.write_all(tail.as_bytes()).unwrap();
+    stream.flush().unwrap();
+
+    let mut response = String::new();
+    stream.read_to_string(&mut response).unwrap();
+    assert!(response.contains(r#""name":"write""#), "{response}");
+}
+
+#[test]
+fn a_fixture_launched_without_the_flag_survives_a_closed_stdin() {
+    // O `parity-gate.sh` sobe o fixture em segundo plano, e ali a entrada
+    // padrao e `/dev/null`: EOF na primeira leitura. Com o desligamento por
+    // stdin incondicional o gateway morria depois de anunciar a porta e antes
+    // do primeiro pedido — e o gate acusava o candidato de falha de
+    // transporte, que e o instrumento reprovando o que ele deveria medir.
+    let mut child = Command::new(env!("CARGO_BIN_EXE_nycode-parity-fixture"))
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("o fixture deveria subir");
+
+    let stdout = child.stdout.take().expect("stdout foi pedido em pipe");
+    let mut linha = String::new();
+    BufReader::new(stdout)
+        .read_line(&mut linha)
+        .expect("o fixture anuncia a porta na primeira linha");
+    let address = linha
+        .trim()
+        .trim_start_matches("http://")
+        .trim_end_matches("/v1")
+        .to_owned();
+
+    let response = request(&address, "GET /v1/models", "");
+    assert!(response.starts_with("HTTP/1.1 200 OK"), "{response}");
+
+    // Sinal aqui e o certo: sem a bandeira nao ha desligamento negociado, e e
+    // exatamente isso que este teste protege. O perfil de cobertura desta
+    // execucao se perde, e os outros cinco testes o gravam.
+    let _ = child.kill();
+    let _ = child.wait();
 }
 
 #[test]

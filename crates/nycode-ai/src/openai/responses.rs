@@ -51,10 +51,11 @@ impl Dialect for Responses {
         if let Some(effort) = sampling.thinking.effort() {
             body["reasoning"] = json!({ "effort": effort.name });
         }
-        if sampling.cache_prefix
-            && let Some(key) = sampling.cache_key.as_deref()
-        {
+        if let Some(key) = super::cache::key_of(sampling) {
             body["prompt_cache_key"] = json!(key);
+        }
+        if let Some(retention) = super::cache::retention_of(sampling) {
+            body["prompt_cache_retention"] = json!(retention);
         }
         // Sequencia de parada nao entra: este endpoint nao a aceita, e mandar
         // um campo que o servidor recusa transforma um pedido valido em 400. A
