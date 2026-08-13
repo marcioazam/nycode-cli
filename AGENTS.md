@@ -113,11 +113,11 @@ ela fica porque é a única com par comparável no concorrente.
 
 | Carga | Métrica | Piso absoluto | Piso relativo | Medido |
 |---|---|---:|---|---:|
-| Sessão montada | menor tempo | 15.000 µs | — | 2.901 µs |
-| Sessão montada | RSS de pico | 14.336 KB | — | 8.364 KB |
-| Chegada do processo | menor tempo | 3.000 µs | ÷ 3 | 589 µs |
-| Chegada do processo | RSS de pico | 8.192 KB | ÷ 2 | 5.096 KB |
-| Binário | tamanho | 16.777.216 B | ÷ 5 | 12.030.616 B |
+| Sessão montada | menor tempo | 15.000 µs | — | 3.880 µs |
+| Sessão montada | RSS de pico | 14.336 KB | — | 10.572 KB |
+| Chegada do processo | menor tempo | 3.000 µs | ÷ 3 | 558 µs |
+| Chegada do processo | RSS de pico | 8.192 KB | ÷ 2 | 5.896 KB |
+| Binário | tamanho | 16.777.216 B | ÷ 5 | 13.728.800 B |
 
 O tempo comparado é o **menor** observado, não a mediana: num runner
 compartilhado a mediana mede a contenção e o mínimo mede o programa. Os dois
@@ -126,7 +126,7 @@ do concorrente inflaria a razão a nosso favor.
 
 A sessão montada não tem piso relativo: o concorrente não expõe sonda
 equivalente, e um piso relativo sem medição do outro lado seria ficção. Repare
-que o RSS dela, 8.364 KB, já passa do piso de 8.192 KB da chegada — os dois
+que o RSS dela, 10.572 KB, já passa do piso de 8.192 KB da chegada — os dois
 números medem coisas diferentes, e reaproveitar um no lugar do outro reprova
 sem que nada tenha regredido.
 

@@ -23,9 +23,22 @@ questionar em seis meses, vira um ADR — para que a discussão aconteça uma ve
 | [0015](0015-o-cancelamento-e-por-turno.md) | O cancelamento é por turno, e cancelar termina o processo | aceito | 2026-08-13 |
 | [0016](0016-extensao-do-workspace-exige-consentimento.md) | Uma extensão declarada pelo workspace exige consentimento registrado antes da primeira execução | aceito | 2026-08-13 |
 | [0017](0017-duas-politicas-de-confinamento.md) | O confinamento tem duas políticas, e quem invoca escolhe qual | aceito | 2026-08-13 |
+| [0018](0018-a-contencao-de-caminho-e-imposta-na-abertura.md) | A contenção de caminho é imposta na abertura, não na validação | aceito | 2026-08-13 |
+| [0019](0019-a-busca-usa-o-motor-do-ripgrep-como-biblioteca.md) | A busca usa o motor do ripgrep como biblioteca, e o `.gitignore` decide o que é derivado | aceito | 2026-08-13 |
+| [0020](0020-o-despacho-de-ferramentas-e-sequencial.md) | O despacho de ferramentas é sequencial, divergindo da referência | aceito | 2026-08-13 |
+| [0021](0021-terminar-e-sinalizar-o-grupo-nao-o-lider.md) | Terminar um processo é sinalizar o grupo, não o líder | aceito | 2026-08-13 |
+| [0022](0022-o-post-tool-use-recebe-a-saida-cortada-e-o-tamanho-dela.md) | O `post-tool-use` recebe a saída cortada e o tamanho dela | aceito | 2026-08-13 |
+| [0023](0023-o-registro-de-filhos-destacados-morre-com-o-processo.md) | O registro de filhos destacados morre com o processo | aceito | 2026-08-13 |
+| [0024](0024-o-grupo-morre-quando-o-lider-sai-nao-quando-o-cano-cala.md) | O grupo morre quando o líder sai, não quando o cano cala | aceito | 2026-08-13 |
+| [0025](0025-o-nivel-de-raciocinio-e-um-conceito-do-harness.md) | O nível de raciocínio é um conceito do harness, e o dialeto traduz | aceito | 2026-08-13 |
+| [0026](0026-o-preco-vem-do-catalogo-descoberto.md) | O preço vem do catálogo descoberto, e o custo é calculado no cliente | aceito | 2026-08-13 |
+| [0027](0027-a-compactacao-dispara-por-limiar-e-o-erro-e-a-rede.md) | A compactação dispara por limiar, e o erro passa a ser a rede de segurança | aceito | 2026-08-13 |
+| [0028](0028-o-consentimento-fixa-a-definicao-declarada.md) | O consentimento fixa a definição declarada, e não só o que é executado | aceito | 2026-08-13 |
+| [0029](0029-a-integracao-com-editor-fala-acp.md) | A integração com editor fala ACP, e não um protocolo próprio | aceito | 2026-08-13 |
 
-Os ADRs [0005](0005-sandbox-de-so-por-processo-auxiliar.md) e
-[0009](0009-hooks-sao-executaveis-com-contrato-json.md) receberam emenda em
+Os ADRs [0005](0005-sandbox-de-so-por-processo-auxiliar.md),
+[0009](0009-hooks-sao-executaveis-com-contrato-json.md) e
+[0021](0021-terminar-e-sinalizar-o-grupo-nao-o-lider.md) receberam emenda em
 2026-08-13, depois de uma auditoria encontrar restrições declaradas neles sem
 correspondência no código. Cada um traz a seção `Emenda` no fim, dizendo o que
 subiu até o documento e o que desceu até o código.

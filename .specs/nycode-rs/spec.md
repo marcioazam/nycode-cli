@@ -117,11 +117,44 @@ NFR-6 exige.
 
 - Runtime JavaScript ou TypeScript embutido. Extensões não são código in-process.
 - Instalador de pacotes próprio. A distribuição de capacidades usa MCP.
-- Interface gráfica, web ou de editor. O alvo é o terminal.
+- Interface gráfica ou web própria. O alvo é o terminal. Falar com um editor por
+  protocolo padronizado não é ter interface de editor: quem desenha a interface é
+  o editor, e o `nycode` continua sendo um processo de terminal.
 - Hospedar inferência. O NyCode CLI é cliente.
 - Integração com servidor de linguagem, controle de depurador e automação de
   navegador. São diferenciais reais em 2026 e estão fora desta emenda; entram
   por spec própria se entrarem.
+- Sessão remota sobre socket: um modo servidor que receba comandos de fora. A
+  referência tem a pilha inteira — protocolo em CBOR, servidor e cliente — e
+  **nada dentro dela a instancia fora dos testes**: os três pacotes se declaram
+  experimentais e não têm consumidor real. FR-12 já entrega o stream de eventos
+  estruturados para quem integra o binário, que é a necessidade que um modo
+  servidor atenderia. Entra por spec própria se entrar, e a decisão de
+  autenticação vem junto: a referência autentica só por permissão de arquivo, e
+  isso não basta para o FR-10.
+
+## Emenda de escopo — integração de editor
+
+A integração de editor sai do não-escopo e entra como FR-21, por
+[`docs/specs/002-paridade-e-sota-2026/spec.md`](../../docs/specs/002-paridade-e-sota-2026/spec.md).
+
+- **FR-21** Um editor conversa com o `nycode` por protocolo padronizado de
+  cliente de agente, sem adaptador de terceiro.
+
+A razão de reabrir: quando esta spec foi escrita, integração de editor
+significava escrever uma extensão por editor, e o custo era proporcional ao
+número de editores. Deixou de ser. Existe protocolo padronizado com adoção em
+mais de vinte agentes, registry desde janeiro de 2026 e implementação nativa em
+uma família de IDEs — e existe SDK em Rust, o que torna a superfície obrigatória
+quatro métodos mais uma notificação.
+
+O que **não** é reaberto: o não-escopo de sessão remota sobre socket permanece
+inteiro. O modelo maduro do protocolo é subprocesso local sobre entrada e saída
+padrão — o editor lança o binário e conversa com ele, e não há socket escutando
+nem decisão de autenticação de rede a tomar. O transporte remoto do próprio
+protocolo é declarado work in progress pelos autores dele. Se um dia deixar de
+ser, a decisão volta à mesa com a autenticação junto, como o item de sessão
+remota abaixo já exige.
 
 ## Non-goals de proveniência
 

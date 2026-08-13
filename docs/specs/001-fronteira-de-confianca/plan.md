@@ -72,7 +72,10 @@ destravam o resto.
   [`walk.rs`](../../../crates/nycode-agent/src/tools/search/walk.rs) é o modelo.
 - **FR-8** Escape do caminho no perfil SBPL, ou recusa da raiz que ele não
   consegue representar.
-- **FR-12** `kill_on_drop(true)` no comando de shell e no hook.
+- **FR-12** O filho nasce líder de grupo de processo; no prazo, o grupo e o
+  líder recebem sinal e o chamador espera a colheita. `kill_on_drop` fica como
+  última rede para o drop do future, não como mecanismo principal — matar só o
+  wrapper `bwrap` deixou o processo no namespace escrevendo depois do corte.
 - **FR-13** Inspeção do código de saída do hook.
 
 ### Onda 2 — Confinamento

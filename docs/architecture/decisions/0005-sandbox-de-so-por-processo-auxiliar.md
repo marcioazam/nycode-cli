@@ -41,7 +41,9 @@ negada.
   o mesmo caminho do Codex e não exige `unsafe`. Sem `bwrap`, não há
   confinamento e o aviso obrigatório abaixo é o que o usuário recebe.
 - **macOS.** `sandbox-exec` com perfil gerado, invocado como processo, porque
-  `sandbox_init` só existe por FFI.
+  `sandbox_init` só existe por FFI. O perfil abre em `(allow default)` e nega uma
+  lista, o que o torna **mais fraco** que o namespace do Linux — e essa diferença
+  é relatada, não escondida; ver a segunda emenda abaixo.
 - **Demais plataformas.** Sem confinamento.
 
 A restrição que não é negociável: **quando o confinamento não está disponível,
@@ -121,3 +123,37 @@ nega justamente o que a maioria deles existe para fazer. A correção está no
 da sessão", e a implementação condicionava o aviso à sessão ser gravável — o que
 deixava a sessão interativa com gate `Ask` alcançar `bash` sem aviso nenhum. O
 critério correto é o comando ser alcançável, não a sessão ser gravável.
+
+## Emenda — 2026-08-13 (2): o macOS não é equivalente ao Linux, e passa a dizer isso
+
+O texto acima tratava as duas plataformas como confinadas e ponto. Elas não são
+comparáveis, e a diferença é de categoria e não de grau.
+
+`bwrap` monta um mount namespace novo e liga só o que o `argv` pediu: o que não
+foi ligado **não existe** para o filho. O perfil Seatbelt gerado começa em
+`(allow default)` e nega uma lista — escrita fora da raiz, rede quando a política
+pede. Toda capacidade que ninguém listou continua liberada. Uma política que nega
+por omissão contém também o que ninguém previu; uma que permite por omissão
+contém só o que alguém lembrou de listar.
+
+**A decisão é relatar a diferença, não apagá-la.** `Confinement::strength()`
+devolve três posturas — nega por omissão, permite por omissão, ausente — e as
+duas superfícies do não negociável passam a distingui-las: o aviso em `stderr`
+diz "confinamento PARCIAL" no macOS, e a resposta que vai ao modelo carrega
+`[confinamento parcial: a politica permite por omissao e nega uma lista]`. Isto é
+o FR-8: uma política que permite por omissão nunca é relatada como equivalente a
+uma que nega.
+
+**O que foi descartado, e por quê:** reescrever o perfil para `(deny default)`
+com allowlist. É o endurecimento certo, e não foi feito aqui por uma razão que é
+melhor registrar do que disfarçar — exige enumerar cada capacidade que um
+`cargo build`, um `npm install` e um `git` legítimos usam no macOS, e **nenhuma
+dessas suposições é verificável sem um Mac**. Um perfil restritivo escrito às
+cegas tem dois desfechos: quebra todo comando real, ou tem um furo que ninguém
+mediu e volta a prometer o que não entrega. Publicar o perfil fraco dizendo que é
+fraco é honesto; publicar um forte não testado não é.
+
+**Reabrir quando** houver um Mac no CI ou na mão de quem for mexer. O trabalho é
+o perfil `(deny default)` com allowlist, validado contra um build real de cada
+ecossistema que o agente encosta. Enquanto isso, o aviso é a mitigação, e o
+usuário de macOS decide com a informação correta na tela.

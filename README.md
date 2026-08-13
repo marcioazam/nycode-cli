@@ -24,13 +24,13 @@ CI, não aspirações:
 
 | | Piso | Medido | Gate |
 |---|---:|---:|---|
-| Startup da sessão montada | 15.000 µs | **2.901 µs** | `perf-gate.sh` |
-| Memória de uma sessão ociosa | 14 MiB | **8,2 MiB** | `perf-gate.sh` |
-| Chegada do processo (`--version`) | 1.148 µs | **589 µs** | `perf-gate.sh` |
-| Memória na chegada | 8 MiB | **5,0 MiB** | `perf-gate.sh` |
-| Binário auto-contido | 16 MiB | **11,5 MiB, roda de qualquer diretório** | `perf-gate.sh` |
-| Cobertura agregada de produção | 95% | **97,9%** em 786 testes | `coverage-gate.sh` |
-| Divergência da referência | zero | harness com as 5 dimensões | `parity-gate.sh` |
+| Startup da sessão montada | 15.000 µs | **3.880 µs** | `perf-gate.sh` |
+| Memória de uma sessão ociosa | 14 MiB | **10,3 MiB** | `perf-gate.sh` |
+| Chegada do processo (`--version`) | 1.148 µs | **558 µs** | `perf-gate.sh` |
+| Memória na chegada | 8 MiB | **5,8 MiB** | `perf-gate.sh` |
+| Binário auto-contido | 16 MiB | **13,1 MiB, roda de qualquer diretório** | `perf-gate.sh` |
+| Cobertura agregada de produção | 95% | **97,8%** em 1.076 testes | `coverage-gate.sh` |
+| Divergência da referência | zero | 5 dimensões implementadas e **observadas**; a comparação contra a referência espera o binário dela | `parity-gate.sh` |
 
 "Sessão montada" é o número que importa: credencial resolvida, workspace
 varrido, árvore de sessão indexada e servidores MCP no ar. É o que os
@@ -40,8 +40,8 @@ requisitos descrevem, e medi-lo exigiu parar de medir `--version` — que o
 
 Cada métrica tem dois pisos e vale o mais apertado: um absoluto, perto do valor
 medido, e um relativo ao concorrente nativo mais rápido — hoje o `codex-cli`,
-que chega em 3.446 µs contra os nossos 589 µs e ocupa 22 MiB contra os nossos
-5. Um piso só olharia para o próprio umbigo e não veria o mercado passar na
+que chega em 3.446 µs contra os nossos 558 µs e ocupa 22 MiB contra os nossos
+5,8. Um piso só olharia para o próprio umbigo e não veria o mercado passar na
 frente
 ([ADR-0012](docs/architecture/decisions/0012-performance-e-medida-contra-um-concorrente-nomeado.md)).
 Os tempos dos dois lados são o menor observado, não a mediana: num runner
@@ -80,6 +80,38 @@ verticais navegam o histórico, `Ctrl+C` interrompe o turno e `Ctrl+D` sai.
 progresso de ferramentas vai para `stderr`. Códigos de saída distinguem sucesso
 de recusa (3), estouro de limite (4), motivo desconhecido (6) e cancelamento
 (130), para que um script encadeando `nycode` não precise parsear texto.
+
+### Configuração
+
+`~/.config/nycode/settings.json`, todo campo opcional. Ausente significa o
+padrão, então um arquivo que ajusta uma coisa não repete as outras:
+
+```json
+{
+  "keep_recent": 8,
+  "tool_limit": 64,
+  "command_timeout_secs": 120,
+  "provider": {
+    "base_url": "https://gateway.interno/v1",
+    "dialect": "openai-completions",
+    "model": "modelo-local",
+    "max_tokens": 8192
+  }
+}
+```
+
+O bloco `provider` é o FR-9: apontar o binário para outro gateway, incluindo
+qualquer endpoint OpenAI-compatível, sem repetir três flags a cada invocação. A
+escolha é por campo — trocar só o `base_url` mantém o diálogo e o modelo
+padrão. A flag vence o arquivo, para que quem configurou a máquina ainda consiga
+apontar para o gateway de fábrica numa execução sem editar nada.
+
+O arquivo é do usuário e nunca do workspace. Um `settings.json` versionado no
+repositório esticaria o próprio prazo de comando e o próprio teto de turnos, que
+são os limites que existem para contê-lo, e escolheria para onde a sessão fala.
+Um campo que não existe é recusado com aviso em vez de ignorado em silêncio,
+porque erro de digitação aceito calado deixa quem configurou achando que
+configurou.
 
 ## Mapa de documentos
 

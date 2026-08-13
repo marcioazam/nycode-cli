@@ -11,6 +11,7 @@ uma diferença tolerada.
 | [`.specs/nycode-rs/spec.md`](../.specs/nycode-rs/spec.md) | WHAT e WHY: problema, objetivo, FR-1..20, NFR-1..7, non-goals, critérios de aceite |
 | [`.specs/nycode-rs/research.md`](../.specs/nycode-rs/research.md) | RECON que fundamentou a decisão de portar |
 | [`.specs/nycode-rs/research-sota-2026.md`](../.specs/nycode-rs/research-sota-2026.md) | RECON que fundamenta a emenda de escopo de 2026-08-13 |
+| [`.specs/nycode-rs/research-paridade-2026.md`](../.specs/nycode-rs/research-paridade-2026.md) | RECON que fundamenta a spec 002 e a emenda de escopo de integração com editor |
 | [`sources/`](../sources/README.md) | Material bruto das pesquisas, com as passagens efetivamente usadas |
 | [`PRD.md`](../PRD.md) | Produto: usuários, métricas de sucesso, estado de entrega por requisito |
 | [`requirements/REQUIREMENTS.md`](requirements/REQUIREMENTS.md) | Requisitos consolidados, com os invariantes travados no CI |
@@ -19,6 +20,7 @@ uma diferença tolerada.
 | [`product/ROADMAP.md`](product/ROADMAP.md) | Ondas de trabalho: agora, próximo, depois |
 | [`specs/SPEC_TEMPLATE.md`](specs/SPEC_TEMPLATE.md) | Modelo para a spec de uma feature nova |
 | [`specs/001-fronteira-de-confianca/`](specs/001-fronteira-de-confianca/spec.md) | Fronteira de confiança do agente: consentimento de extensão, confinamento e contenção de caminho |
+| [`specs/002-paridade-e-sota-2026/`](specs/002-paridade-e-sota-2026/spec.md) | Paridade com a referência e elevação a SOTA 2026: o inventário de sessenta deltas, triado, com o que se adota, o que se recusa e o que fica adiado |
 | [`../CHANGELOG.md`](../CHANGELOG.md) | Histórico de mudanças |
 | [`../README.md`](../README.md) | Porta de entrada: instalação, uso, números medidos |
 | [`../NOTICE`](../NOTICE) | Atribuições de terceiros e aviso de risco |

@@ -1,0 +1,87 @@
+# traceability — paridade com a referência e elevação a SOTA 2026
+
+Registro ordenado do épico. As histórias são as ondas do [`plan.md`](plan.md), na
+ordem em que rodam. Uma linha só muda para **fechado** com evidência verificada,
+nunca presumida — e a evidência é o comando cuja saída foi lida, não a intenção
+de rodá-lo.
+
+Estado em 2026-08-13.
+
+## Histórias
+
+| # | História | Baldes | Estado |
+|---|---|---|---|
+| 1 | Onda 0 — documento e instrumento | — | fechado |
+| 2 | Onda 1 — o fio para de degradar em silêncio | A1, A2, A3, A5, A7, B1–B9, C1–C3 | aberto |
+| 3 | Onda 2 — contexto e ferramentas | A4, A6, B10–B24, C4, C6 | aberto |
+| 4 | Onda 3 — superfície de comando | B25–B31 | aberto |
+| 5 | Onda 4 — Agent Client Protocol | C5 | aberto |
+| 6 | Onda 5 — TUI | B32–B39 | aberto |
+
+## Onda 0 — evidência
+
+| Item | Estado | Evidência |
+|---|---|---|
+| Spec da feature | fechado | [`spec.md`](spec.md), 30 FRs e 2 NFRs locais |
+| Plano com o inventário de 60 deltas em quatro baldes | fechado | [`plan.md`](plan.md) |
+| Este registro | fechado | este arquivo |
+| Material bruto da pesquisa | fechado | [`sources/research_paridade-pi-e-sota-2026.md`](../../../sources/research_paridade-pi-e-sota-2026.md) |
+| RECON derivado | fechado | [`.specs/nycode-rs/research-paridade-2026.md`](../../../.specs/nycode-rs/research-paridade-2026.md) |
+| Emenda do não-escopo do produto para ACP | fechado | [`.specs/nycode-rs/spec.md`](../../../.specs/nycode-rs/spec.md), seção "Fora de escopo" |
+| ADR do nível de raciocínio | fechado | [ADR-0025](../../architecture/decisions/0025-o-nivel-de-raciocinio-e-um-conceito-do-harness.md) |
+| ADR do custo no catálogo | fechado | [ADR-0026](../../architecture/decisions/0026-o-preco-vem-do-catalogo-descoberto.md) |
+| ADR do gatilho de compactação | fechado | [ADR-0027](../../architecture/decisions/0027-a-compactacao-dispara-por-limiar-e-o-erro-e-a-rede.md) |
+| ADR da fixação da definição MCP | fechado | [ADR-0028](../../architecture/decisions/0028-o-consentimento-fixa-a-definicao-declarada.md) |
+| ADR do ACP | fechado | [ADR-0029](../../architecture/decisions/0029-a-integracao-com-editor-fala-acp.md) |
+| A paridade roda de fato | fechado | [`scripts/parity-gate.sh`](../../../scripts/parity-gate.sh) com `parity-fixture.sh`; o gate deixa de sair com zero por ausência de ambiente |
+
+## Onda 1 — evidência
+
+Um item só é `fechado` quando tem chamador de produção, e não quando tem linha
+executada por teste — é o NFR-2 local da [`spec.md`](spec.md) aplicado à própria
+tabela. `parcial` diz o que falta, para que a linha não vire a afirmação falsa
+que o balde A cataloga.
+
+| Delta | Estado | Evidência |
+|---|---|---|
+| A1 — `Sampling` alcançável | fechado | [`tuning.rs`](../../../crates/nycode-cli/src/session/tuning.rs) `tuned_client`; a amostragem é a única forma de chegar ao cliente |
+| A2 — dialetos OpenAI leem `sampling` em `body()` | fechado | [`responses.rs`](../../../crates/nycode-ai/src/openai/responses.rs), [`chat.rs`](../../../crates/nycode-ai/src/openai/chat.rs) |
+| A5 — custo em moeda | fechado | rodapé com `$`; [`panel/mod.rs`](../../../crates/nycode-tui/src/panel/mod.rs) `money` |
+| A7 — vocabulário de estouro | fechado | [`error.rs`](../../../crates/nycode-ai/src/error.rs), 14 marcadores |
+| B1 — nível de raciocínio com rebaixamento dito | fechado | `--thinking`; `caveats` nomeia o pedido e o que saiu |
+| B7 — os dois estouros sem erro | fechado | [`shrink.rs`](../../../crates/nycode-agent/src/agent/shrink.rs) `silent_overflow`; janela vinda de `windows_of` |
+| C2 — tarifa com faixa e regra de 2× | fechado | [`catalog/mod.rs`](../../../crates/nycode-ai/src/catalog/mod.rs) |
+| C3 — catálogo hidratado em runtime | fechado | `discover_catalog`; nenhuma tabela fixa no binário |
+| A3/C1 — cache fora do Anthropic | parcial | só `prompt_cache_key`; falta `prompt_cache_retention` e `prompt_cache_options.mode` |
+| B2 — retry em duas camadas | aberto | há retry de transporte; falta a política sobre a resposta |
+| B3 — `Retry-After` em HTTP-date | fechado | [`retry.rs`](../../../crates/nycode-ai/src/transport/retry.rs) `parse_imf_fixdate`, sem dependência nova |
+| B4/B5/B6 — higiene de payload | aberto | sem saneamento de par substituto, sem reparo de JSON parcial, sem coerção contra schema |
+| B8 — `tool_choice` canônico | aberto | o termo não existe no crate |
+| B9 — estimativa ancorada no último usage | aberto | — |
+
+## O que a onda 0 mudou de premissa
+
+Três coisas que a análise encontrou e que não estavam previstas quando o épico
+foi pedido, registradas aqui porque mudam o custo das ondas seguintes.
+
+**A referência não é um alvo uniforme.** Três dos dez pacotes dela —
+`server`, `session-backends` e a emissão de spans de `telemetry` — não são
+instanciados por nada fora de teste dentro do próprio projeto dela. Portar
+qualquer um seria portar código morto, e o balde D os recusa por esse motivo e
+não por escopo.
+
+**A assimetria A1 não é um esquecimento isolado, é uma classe.** `with_sampling`
+tem teste, tem cobertura acima do piso, e nunca foi chamado por produção. Os
+pisos de cobertura do NFR-5 não detectam isso por construção: eles medem se a
+linha foi executada, e um teste a executa. Daí o NFR-2 local da
+[`spec.md`](spec.md), que é a única verificação nova que este épico acrescenta
+aos gates.
+
+**A pesquisa externa encontrou uma fonte contaminada.** Uma das melhores
+análises de arquitetura de harness publicadas em 2026 declara derivar parte do
+conteúdo do código-fonte vazado do Claude Code. Os non-goals de proveniência da
+[`spec.md`](../../../.specs/nycode-rs/spec.md) do produto proíbem esse material e
+qualquer derivado dele. A fonte está registrada em
+[`sources/`](../../../sources/) marcada como não utilizável, e nenhuma afirmação
+deste épico se apoia nela — o registro existe para que a próxima pesquisa não a
+encontre de novo e a use sem perceber.

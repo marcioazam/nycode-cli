@@ -63,15 +63,24 @@ persistência de sessão com `--continue` e `--resume` (FR-5); leitura de
 alternativo por configuração (FR-9); credenciais no cofre do sistema
 operacional (FR-10).
 
-**Parcial.** O `catalog::fetch` de FR-6 está implementado e nunca é chamado pelo
-binário, que usa o modelo padrão da flag. Dos três mecanismos de FR-7, só skills
-está ligado: MCP não tem transporte real nem chamada no binário, e hooks não
-existem. O conjunto somente-leitura de FR-3 (`grep`, `find`, `ls`) está
-declarado no gate de permissão e não existe como ferramenta. De FR-12, faltam os
-eventos JSON.
+Também entregues, pelas ondas B e C do
+[roadmap](docs/product/ROADMAP.md): o catálogo descoberto do endpoint (FR-6); o
+conjunto somente-leitura `grep`, `find` e `ls` (FR-3, parte de leitura); o
+confinamento do shell pelo sistema operacional (FR-11); os três modos de saída,
+com `--output-format json` (FR-12); slash commands do projeto (FR-13); a sessão
+em árvore com `/tree` e `/fork` (FR-14); subagentes pela ferramenta `task`
+(FR-15); hooks de ciclo de vida (FR-16, com a ressalva abaixo); plan mode por
+`/plan` (FR-17); direcionamento durante o turno (FR-18); troca de modelo por
+`/model` (FR-19); e imagem por `--image` (FR-20).
 
-**Pendente.** O conjunto FR-11 e FR-13 a FR-20, que entrou na spec com as ondas
-B e C do [roadmap](docs/product/ROADMAP.md).
+**Parcial.** Só FR-7, e por um motivo estreito: os três mecanismos de extensão
+estão ligados, mas dos quatro eventos de hook que o
+[ADR-0009](docs/architecture/decisions/0009-hooks-sao-executaveis-com-contrato-json.md)
+desenhou, só `pre-tool-use` dispara. Os outros três estão declarados e adiados.
+
+A tabela por requisito, com a verificação de cada um, está em
+[`docs/requirements/REQUIREMENTS.md`](docs/requirements/REQUIREMENTS.md); esta
+seção resume e aquela manda.
 
 ## 5. Requisitos não-funcionais
 

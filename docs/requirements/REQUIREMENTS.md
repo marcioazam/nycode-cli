@@ -14,12 +14,12 @@
 | FR-4 | A resposta é transmitida incrementalmente, com cancelamento a qualquer momento sem corromper a sessão | entregue |
 | FR-5 | Sessões são persistidas e podem ser continuadas ou retomadas | entregue |
 | FR-6 | O catálogo de modelos é descoberto, não hardcoded | entregue |
-| FR-7 | Capacidades adicionais chegam por MCP, hooks e skills, sem recompilar | parcial (MCP e skills ligados; hooks não existem) |
+| FR-7 | Capacidades adicionais chegam por MCP, hooks e skills, sem recompilar | entregue (os três ligados; os quatro eventos de hook do ADR-0009 disparam e aparecem no cabeçalho da sessão) |
 | FR-8 | `AGENTS.md`, `SKILL.md` e regras de projeto são lidos sem configuração | entregue |
-| FR-9 | Um provider alternativo pode ser configurado por arquivo, incluindo endpoints OpenAI-compatíveis | entregue |
+| FR-9 | Um provider alternativo pode ser configurado por arquivo, incluindo endpoints OpenAI-compatíveis | entregue (bloco `provider` de `~/.config/nycode/settings.json`; flag vence o arquivo) |
 | FR-10 | Credenciais ficam no cofre do sistema operacional, não em texto plano | entregue |
 | FR-11 | O comando de shell roda sob sandbox do sistema operacional | entregue (bubblewrap no Linux, Seatbelt no macOS; ausência é avisada) |
-| FR-12 | Três modos de saída: interativo, `-p` e stream de eventos JSON | parcial (interativo e `-p`; falta o modo JSON) |
+| FR-12 | Três modos de saída: interativo, `-p` e stream de eventos JSON | entregue (`--output-format json`) |
 | FR-13 | Slash commands como templates de markdown com argumentos | entregue |
 | FR-14 | A sessão é uma árvore navegável, com branching in-place | entregue (formato v2, `/tree`, `/fork`) |
 | FR-15 | O agente delega trabalho a subagentes com contexto próprio | entregue (ferramenta `task`) |
@@ -29,19 +29,31 @@
 | FR-19 | O modelo pode ser trocado no meio da sessão, com custo visível | entregue (`/model`) |
 | FR-20 | Imagens podem ser anexadas ao pedido | entregue (`--image`) |
 
-### Requisitos parcialmente entregues
+### FR-7 em detalhe
 
-Três requisitos estiveram marcados como entregues sem que o código
-correspondente executasse em produção. O NFR-4 proíbe degradar em silêncio; a
-mesma regra vale para este documento.
+Esta tabela já declarou o FR-7 entregue sem que o código correspondente
+executasse em produção, e depois declarou pendente parte do que já rodava. O
+NFR-4 proíbe degradar em silêncio, e a mesma regra vale para este documento nos
+dois sentidos: declarar pendente o que já roda leva a próxima decisão de escopo
+a ser tomada sobre um mapa errado.
 
-- **FR-7.** Dois dos três mecanismos estão ligados. MCP fala o protocolo de
-  verdade pelo crate `nycode-mcp`, com transporte stdio e Streamable HTTP
-  ([ADR-0004](../architecture/decisions/0004-cliente-mcp-usa-o-sdk-oficial-rmcp.md)),
-  e as ferramentas dos servidores declarados entram no catálogo do agente.
-  Hooks não existem em nenhuma forma
-  ([ADR-0009](../architecture/decisions/0009-hooks-sao-executaveis-com-contrato-json.md)
-  fixa o contrato; falta implementar).
+Os três mecanismos estão ligados. MCP fala o protocolo de verdade pelo crate
+`nycode-mcp`, com transporte stdio e Streamable HTTP
+([ADR-0004](../architecture/decisions/0004-cliente-mcp-usa-o-sdk-oficial-rmcp.md)),
+e as ferramentas dos servidores declarados entram no catálogo do agente; skills
+são carregadas do workspace; hooks são descobertos em `session::prepare`, pedem
+consentimento ([ADR-0016](../architecture/decisions/0016-extensao-do-workspace-exige-consentimento.md))
+e podem vetar uma chamada
+([ADR-0009](../architecture/decisions/0009-hooks-sao-executaveis-com-contrato-json.md)).
+
+O ciclo de vida fechou. Os quatro eventos que o ADR-0009 desenhou disparam:
+`session-start` depois do consentimento e antes do primeiro turno, `pre-tool-use`
+antes do gate e com direito de veto, `post-tool-use` depois de a ferramenta ter
+rodado de fato, e `session-end` depois de o último turno ter passado. O que
+faltava ao último era o contrato do payload, e ele está no
+[ADR-0022](../architecture/decisions/0022-o-post-tool-use-recebe-a-saida-cortada-e-o-tamanho-dela.md):
+o hook recebe o começo da saída cortado em 64 KiB mais o tamanho de que veio, e
+não veta, porque a chamada já aconteceu.
 
 ## Não-funcionais
 
