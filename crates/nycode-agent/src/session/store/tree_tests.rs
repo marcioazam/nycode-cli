@@ -150,6 +150,54 @@ fn a_v1_file_without_identifiers_still_reads_as_a_conversation() {
 }
 
 #[test]
+fn appending_to_a_v1_session_does_not_orphan_its_history() {
+    // Retomar uma sessao antiga e responder. `tip` nao acha id nenhum num
+    // arquivo v1, entao a mensagem nova e gravada como raiz; `path_to` so
+    // enxerga registros com id e devolve so ela. A conversa continua no disco
+    // e some da leitura, sem aviso — que e a forma mais cara de perder dado.
+    let (_dir, store) = store();
+    let path = store.path_for("antiga");
+    let lines = [
+        r#"{"v":1,"ts":1,"message":{"role":"user","content":[{"type":"text","text":"um"}]}}"#,
+        r#"{"v":1,"ts":2,"message":{"role":"user","content":[{"type":"text","text":"dois"}]}}"#,
+    ];
+    // Com quebra no fim, que e como `append_child` grava.
+    std::fs::write(&path, format!("{}\n", lines.join("\n"))).unwrap();
+
+    store
+        .append("antiga", &Message::user("tres"))
+        .expect("acrescentar a uma sessao v1");
+
+    assert_eq!(
+        texts(&store.load("antiga").unwrap()),
+        vec!["um", "dois", "tres"]
+    );
+}
+
+#[test]
+fn a_v1_session_keeps_growing_across_several_appends() {
+    // O segundo append ja encontra um `tip` com id e encadeia normalmente. O
+    // prefixo v1 precisa continuar na frente, e nao ser reintroduzido a cada
+    // leitura nem sumir depois que a arvore comeca.
+    let (_dir, store) = store();
+    let path = store.path_for("antiga");
+    std::fs::write(
+        &path,
+        "{\"v\":1,\"ts\":1,\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"um\"}]}}\n",
+    )
+    .unwrap();
+
+    for texto in ["dois", "tres"] {
+        store.append("antiga", &Message::user(texto)).unwrap();
+    }
+
+    assert_eq!(
+        texts(&store.load("antiga").unwrap()),
+        vec!["um", "dois", "tres"]
+    );
+}
+
+#[test]
 fn a_record_from_a_future_version_is_ignored_rather_than_guessed_at() {
     let (_dir, store) = store();
     let path = store.path_for("futura");

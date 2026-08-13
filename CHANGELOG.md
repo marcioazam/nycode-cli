@@ -169,6 +169,26 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Corrigido
 
+- **Responder numa sessão gravada antes dos identificadores apagava a conversa
+  da leitura.** Um arquivo v1 não tem `id` em registro nenhum, então `tip` não
+  achava ponta, o `append` gravava a mensagem nova como **raiz**, e a leitura
+  passava a seguir a árvore a partir dela — o índice de `id` não enxerga
+  registro v1, e a caminhada terminava na primeira parada. `--resume` numa
+  sessão antiga devolvia só a última mensagem, e o modelo recebia uma conversa
+  sem passado.
+
+  O que torna isto caro é que nada se perdia no disco: o arquivo continua
+  append-only e íntegro, com todas as mensagens lá. A perda existia só na
+  leitura, que é onde ninguém procura. A correção é o prefixo — a corrida de
+  registros sem `id` que abre o arquivo entra na frente do caminho reconstruído.
+
+  O teste que cobria compatibilidade v1 só **lia** um arquivo v1 e nunca
+  acrescentava a um, que é justamente o caso de uso da compatibilidade.
+
+  A reconstrução da conversa saiu de `store.rs` para `store/tree.rs`: é lógica
+  pura sobre registros já carregados, os testes dela já viviam em arquivo
+  separado, e o `store` fica com o I/O.
+
 - **O total de tokens publicado omitia `reasoning_tokens`.** A soma do usage era
   uma lista de atribuições escrita à mão, e ela cobria cinco dos seis campos de
   `Usage`. O campo não é morto — os dois decodificadores OpenAI o preenchem e

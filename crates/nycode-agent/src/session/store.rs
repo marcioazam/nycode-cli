@@ -13,6 +13,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, Result};
 
+mod tree;
+
 /// Versão do formato de registro.
 ///
 /// Gravada em toda linha para que um leitor futuro reconheça um arquivo antigo
@@ -206,7 +208,7 @@ impl Store {
     /// É o que uma ramificação precisa: retomar um nó do meio significa mandar
     /// ao modelo só o que levou até ele, e não os ramos irmãos.
     pub fn path_to(&self, id: &str, record_id: &str) -> Result<Vec<Message>> {
-        Ok(chain_to(&self.records(id)?, record_id))
+        Ok(tree::chain_to(&self.records(id)?, record_id))
     }
 
     /// Lê as mensagens de uma sessão.
@@ -220,17 +222,12 @@ impl Store {
         // O caminho ativo é o que leva ao último registro gravado. Devolver o
         // arquivo inteiro mandaria ramos abandonados ao modelo como se fossem
         // parte da conversa.
-        match records.last().and_then(|r| r.id.as_deref()) {
-            Some(tip) => {
-                // Os registros já estão em mãos: relê-los para montar a cadeia
-                // dobrava o custo de retomar uma sessão. Anotar a ponta aqui é
-                // o que faz o primeiro append depois do resume não reler nada.
-                self.remember_tip(id, tip);
-                Ok(chain_to(&records, tip))
-            }
-            // Sem `id` em lugar nenhum é arquivo v1: lista, na ordem gravada.
-            None => Ok(records.into_iter().map(|r| r.message).collect()),
+        // Anotar a ponta aqui é o que faz o primeiro append depois do resume
+        // não reler o arquivo.
+        if let Some(tip) = records.last().and_then(|r| r.id.as_deref()) {
+            self.remember_tip(id, tip);
         }
+        Ok(tree::conversation(&records))
     }
 
     /// Sessões existentes, da mais recente para a mais antiga.
@@ -272,35 +269,6 @@ impl Store {
     pub fn dir(&self) -> &Path {
         &self.dir
     }
-}
-
-/// As mensagens da raiz até um registro, seguindo os pais.
-///
-/// Recebe os registros já lidos em vez de reler: quem chama sempre acabou de
-/// carregar o arquivo, e ler de novo dobra o custo de retomar a sessão.
-fn chain_to(records: &[Record], record_id: &str) -> Vec<Message> {
-    let by_id: std::collections::HashMap<&str, &Record> = records
-        .iter()
-        .filter_map(|r| r.id.as_deref().map(|rid| (rid, r)))
-        .collect();
-
-    let mut chain = Vec::new();
-    let mut cursor = Some(record_id);
-    // O teto existe porque um `parent_id` apontando para trás em ciclo —
-    // arquivo editado à mão, por exemplo — penduraria a leitura.
-    while let Some(current) = cursor.take() {
-        let Some(record) = by_id.get(current) else {
-            break;
-        };
-        chain.push(record.message.clone());
-        if chain.len() > records.len() {
-            break;
-        }
-        cursor = record.parent_id.as_deref();
-    }
-
-    chain.reverse();
-    chain
 }
 
 /// Identificador de registro, único dentro de um arquivo.
