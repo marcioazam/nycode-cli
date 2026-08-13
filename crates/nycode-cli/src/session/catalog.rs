@@ -188,6 +188,7 @@ mod tests {
             display_name: id.to_owned(),
             context_window: Some(200_000),
             max_output_tokens: Some(8192),
+            price: None,
         }
     }
 

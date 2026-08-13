@@ -51,17 +51,18 @@ impl Tool for Write {
             return ToolOutput::error(format!("{requested} e um diretorio"));
         }
 
-        if let Some(parent) = path.parent()
-            && let Err(err) = tokio::fs::create_dir_all(parent).await
-        {
+        // Componente a componente a partir da raiz: um `create_dir_all` sobre o
+        // caminho inteiro resolve link em cada nível na hora em que chega nele,
+        // e um componente que vire link durante a criação faz os diretórios
+        // seguintes nascerem fora do workspace.
+        if let Err(err) = crate::tool::contain::create_parents(ctx.root(), &path) {
             return ToolOutput::error(format!(
-                "nao foi possivel criar {}: {err}",
-                parent.display()
+                "nao foi possivel criar o diretorio de {requested}: {err}"
             ));
         }
 
         let existed = path.exists();
-        match tokio::fs::write(&path, content).await {
+        match crate::tool::contain::write(ctx.root(), &path, content.as_bytes()).await {
             Ok(()) => {
                 let verb = if existed { "substituido" } else { "criado" };
                 ToolOutput::ok(format!("{requested} {verb} ({} bytes)", content.len()))

@@ -4,6 +4,16 @@
 //! mensagens, sistema e ferramentas, e mais nada. Sem `cache_control` o cache
 //! de prompt do backend nunca acerta, e a contabilidade de cache que o `Usage`
 //! já reportava media sempre zero — a métrica existia sem a causa (NFR-7).
+//!
+//! Depois existiram como buraco de outro tipo, pior de encontrar: o tipo estava
+//! completo, `Client::with_sampling` estava escrito, e **nenhum dos dois tinha
+//! chamador de produção**. Os dois dialetos OpenAI mencionavam `sampling` só
+//! dentro de helper de teste. Temperatura, raciocínio e sequência de parada
+//! eram código inalcançável com cobertura acima do piso.
+
+pub mod thinking;
+
+pub use thinking::{Effort, ThinkingLevel};
 
 /// O que modula uma requisição além do conteúdo dela.
 #[derive(Debug, Clone, PartialEq)]
@@ -15,10 +25,17 @@ pub struct Sampling {
     pub temperature: Option<f32>,
     pub top_p: Option<f32>,
     pub stop_sequences: Vec<String>,
-    /// Orçamento de raciocínio, quando o modelo o expõe.
-    pub thinking_budget: Option<u32>,
+    /// Quanto raciocinar. O dialeto traduz para o que o provedor dele pede.
+    pub thinking: ThinkingLevel,
     /// Marcar o prefixo estável para o cache do backend.
     pub cache_prefix: bool,
+    /// Chave que agrupa os pedidos de uma mesma sessão no cache do backend.
+    ///
+    /// Existe porque os dois formatos cacheiam de jeitos diferentes: o
+    /// Anthropic marca um ponto de corte dentro do corpo, o OpenAI declara uma
+    /// chave e deixa o backend achar o prefixo comum entre pedidos que a
+    /// compartilham. Implementar um não entrega o outro, e o NFR-7 pede os dois.
+    pub cache_key: Option<String>,
 }
 
 impl Default for Sampling {
@@ -27,11 +44,12 @@ impl Default for Sampling {
             temperature: None,
             top_p: None,
             stop_sequences: Vec::new(),
+            thinking: ThinkingLevel::Off,
             // Ligado por padrão: o prefixo de uma sessão de agente é grande e
             // repetido a cada turno, que é exatamente o caso que o cache
             // resolve. Desligá-lo é a escolha que precisa de motivo.
-            thinking_budget: None,
             cache_prefix: true,
+            cache_key: None,
         }
     }
 }
@@ -50,8 +68,21 @@ impl Sampling {
     }
 
     #[must_use]
-    pub const fn with_thinking(mut self, budget: u32) -> Self {
-        self.thinking_budget = Some(budget);
+    pub const fn with_thinking(mut self, level: ThinkingLevel) -> Self {
+        self.thinking = level;
+        self
+    }
+
+    #[must_use]
+    pub const fn with_top_p(mut self, top_p: f32) -> Self {
+        self.top_p = Some(top_p);
+        self
+    }
+
+    /// Amarra o cache do backend a uma sessão.
+    #[must_use]
+    pub fn with_cache_key(mut self, key: impl Into<String>) -> Self {
+        self.cache_key = Some(key.into());
         self
     }
 
@@ -90,7 +121,7 @@ mod tests {
         let sampling = Sampling::default();
         assert_eq!(sampling.temperature, None);
         assert_eq!(sampling.top_p, None);
-        assert_eq!(sampling.thinking_budget, None);
+        assert_eq!(sampling.thinking, ThinkingLevel::Off);
         assert!(sampling.stop_sequences.is_empty());
     }
 
@@ -98,12 +129,14 @@ mod tests {
     fn each_knob_can_be_set_explicitly() {
         let sampling = Sampling::default()
             .with_temperature(0.2)
-            .with_thinking(4096)
+            .with_top_p(0.9)
+            .with_thinking(ThinkingLevel::Medium)
             .with_stop_sequences(vec!["FIM".to_owned()])
             .without_cache();
 
         assert_eq!(sampling.temperature, Some(0.2));
-        assert_eq!(sampling.thinking_budget, Some(4096));
+        assert_eq!(sampling.top_p, Some(0.9));
+        assert_eq!(sampling.thinking, ThinkingLevel::Medium);
         assert_eq!(sampling.stop_sequences, vec!["FIM".to_owned()]);
         assert!(!sampling.cache_prefix);
     }

@@ -8,7 +8,7 @@
 use std::path::PathBuf;
 
 use anyhow::{Context, Result, bail};
-use nycode_parity::{Harness, diff, run};
+use nycode_parity::{Harness, diff, run, unattested};
 
 /// Diferença de tokens tolerada antes de virar divergência.
 ///
@@ -30,12 +30,14 @@ const DEFAULT_PROMPTS: &[&str] = &[
 
 /// Texto de uso, impresso por `--help`.
 const USAGE: &str = "uso: nycode-parity --nycode <bin> --reference <bin> [--prompt <texto>]...\n\
+     ou:  nycode-parity --nycode <bin> --self-check [--prompt <texto>]...\n\
      ambiente: NYCODE_BASE_URL, NYCODE_API_KEY";
 
 #[derive(Debug, PartialEq, Eq)]
 struct Options {
     nycode: PathBuf,
-    reference: PathBuf,
+    /// Ausente em `--self-check`, que não compara com ninguém.
+    reference: Option<PathBuf>,
     base_url: String,
     api_key: String,
     prompts: Vec<String>,
@@ -62,12 +64,14 @@ where
     let mut nycode = None;
     let mut reference = None;
     let mut prompts = Vec::new();
+    let mut self_check = false;
 
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--nycode" => nycode = args.next().map(PathBuf::from),
             "--reference" => reference = args.next().map(PathBuf::from),
             "--prompt" => prompts.extend(args.next()),
+            "--self-check" => self_check = true,
             "--help" | "-h" => return Ok(Request::Help),
             other => bail!("argumento desconhecido: {other}"),
         }
@@ -77,9 +81,18 @@ where
         prompts = DEFAULT_PROMPTS.iter().map(|p| (*p).to_owned()).collect();
     }
 
+    // Pedir os dois e ambiguo: um deles seria ignorado em silencio, e quem
+    // passou `--reference` acharia que comparou.
+    if self_check && reference.is_some() {
+        bail!("--self-check nao compara com ninguem; nao passe --reference junto");
+    }
+    if !self_check && reference.is_none() {
+        bail!("faltou --reference <caminho>, ou --self-check para verificar so o instrumento");
+    }
+
     Ok(Request::Compare(Box::new(Options {
         nycode: nycode.context("faltou --nycode <caminho>")?,
-        reference: reference.context("faltou --reference <caminho>")?,
+        reference,
         base_url: base_url.context("NYCODE_BASE_URL precisa apontar para o gateway")?,
         api_key: api_key.context("NYCODE_API_KEY precisa estar definida")?,
         prompts,
@@ -102,9 +115,18 @@ async fn main() -> Result<()> {
         Request::Compare(options) => *options,
     };
     let candidate = Harness::nycode(&options.nycode, &options.base_url, &options.api_key);
-    let reference = Harness::reference(&options.reference, &options.base_url, &options.api_key);
+    let Some(reference_path) = options.reference.clone() else {
+        return self_check(&candidate, &options.prompts).await;
+    };
+    let reference = Harness::reference(&reference_path, &options.base_url, &options.api_key);
 
     let mut diverged = 0;
+    // Uma dimensao so e "sem evidencia" quando ficou vazia em *toda* a
+    // execucao. Por prompt seria errado: "responda apenas com a palavra: ok"
+    // legitimamente nao chama ferramenta, e reprovar isso transformaria a
+    // guarda em ruido. O defeito que ela existe para pegar e o dialeto lendo o
+    // vocabulario errado, e esse zera a dimensao em todo prompt.
+    let mut never_attested: Vec<&'static str> = nycode_parity::DIMENSIONS.to_vec();
 
     for prompt in &options.prompts {
         // Cada harness roda num workspace próprio, semeado igual: comparar
@@ -117,6 +139,9 @@ async fn main() -> Result<()> {
 
         let observed_reference = run(&reference, left.path(), prompt).await?;
         let observed_candidate = run(&candidate, right.path(), prompt).await?;
+
+        let absent = unattested(&observed_reference, &observed_candidate);
+        never_attested.retain(|dimension| absent.contains(dimension));
 
         let divergences = diff(&observed_reference, &observed_candidate, TOKEN_TOLERANCE);
         if divergences.is_empty() {
@@ -131,6 +156,23 @@ async fn main() -> Result<()> {
         }
     }
 
+    // A ausencia de evidencia e reportada depois de todos os prompts, e vem
+    // antes do veredito: duas ausencias sao iguais, e um "sem divergencia"
+    // impresso sobre elas e indistinguivel de paridade para quem le a saida.
+    if !never_attested.is_empty() {
+        println!(
+            "SEM EVIDENCIA em nenhum dos {} prompts:",
+            options.prompts.len()
+        );
+        for dimension in &never_attested {
+            println!("  {dimension}: vazia nos dois lados em toda a execucao");
+        }
+        bail!(
+            "{} dimensoes nao foram comparadas em execucao nenhuma; aprovar sobre ausencia e paridade falsa (NFR-6)",
+            never_attested.len()
+        );
+    }
+
     if diverged > 0 {
         bail!(
             "{diverged} de {} prompts divergiram; toda divergencia precisa virar ADR ou correcao (NFR-6)",
@@ -142,6 +184,48 @@ async fn main() -> Result<()> {
         "paridade: {} prompts sem divergencia",
         options.prompts.len()
     );
+    Ok(())
+}
+
+/// Verifica o instrumento sem comparar com ninguém.
+///
+/// Existe porque o harness de referência nem sempre está instalado, e nesse
+/// caso a alternativa era não rodar nada — que é como o gate passou a vida
+/// inteira. Isto não é paridade e não é anunciado como tal: é a prova de que o
+/// harness consegue observar o candidato, que é metade do defeito histórico.
+/// A outra metade — ler a referência — só a comparação de verdade cobre.
+async fn self_check(candidate: &Harness, prompts: &[String]) -> Result<()> {
+    let mut never_attested: Vec<&'static str> = nycode_parity::DIMENSIONS.to_vec();
+
+    for prompt in prompts {
+        let workspace = tempfile::tempdir()?;
+        seed(workspace.path())?;
+        let observed = run(candidate, workspace.path(), prompt).await?;
+
+        // Comparar o transcrito consigo mesmo responde exatamente "quais
+        // dimensoes ficaram vazias nele".
+        let absent = unattested(&observed, &observed);
+        never_attested.retain(|dimension| absent.contains(dimension));
+        println!("observado: {prompt}");
+    }
+
+    if !never_attested.is_empty() {
+        println!("SEM EVIDENCIA em nenhum dos {} prompts:", prompts.len());
+        for dimension in &never_attested {
+            println!("  {dimension}: vazia em toda a execucao");
+        }
+        bail!(
+            "o harness nao conseguiu observar {} dimensoes do candidato; sem isso a comparacao com a referencia aprovaria por ausencia (NFR-6)",
+            never_attested.len()
+        );
+    }
+
+    println!(
+        "instrumento: as {} dimensoes foram observadas no candidato em {} prompts",
+        nycode_parity::DIMENSIONS.len(),
+        prompts.len()
+    );
+    println!("instrumento: isto NAO e paridade — falta o lado da referencia");
     Ok(())
 }
 
@@ -187,7 +271,7 @@ mod tests {
             .unwrap(),
         );
         assert_eq!(options.nycode, PathBuf::from("/bin/a"));
-        assert_eq!(options.reference, PathBuf::from("/bin/b"));
+        assert_eq!(options.reference, Some(PathBuf::from("/bin/b")));
         assert_eq!(options.base_url, "http://gw/v1");
     }
 
@@ -200,6 +284,36 @@ mod tests {
 
         let err = parse(args(&["--nycode", "/bin/a"]), url, key).unwrap_err();
         assert!(err.to_string().contains("--reference"), "{err}");
+    }
+
+    #[test]
+    fn self_check_runs_without_a_reference() {
+        // O harness de referencia nem sempre esta instalado, e a alternativa
+        // era nao rodar nada — que e como o gate passou a vida inteira.
+        let (url, key) = gateway();
+        let options =
+            compared(parse(args(&["--nycode", "/bin/a", "--self-check"]), url, key).unwrap());
+        assert_eq!(options.reference, None);
+    }
+
+    #[test]
+    fn self_check_together_with_a_reference_is_refused_rather_than_silently_resolved() {
+        // Escolher um dos dois faria quem passou `--reference` acreditar que
+        // comparou quando so o instrumento foi verificado.
+        let (url, key) = gateway();
+        let err = parse(
+            args(&["--nycode", "/a", "--reference", "/b", "--self-check"]),
+            url,
+            key,
+        )
+        .unwrap_err();
+        assert!(err.to_string().contains("--self-check"), "{err}");
+    }
+
+    #[test]
+    fn the_usage_mentions_both_modes() {
+        assert!(USAGE.contains("--reference"));
+        assert!(USAGE.contains("--self-check"));
     }
 
     #[test]

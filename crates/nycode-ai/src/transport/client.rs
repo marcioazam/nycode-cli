@@ -73,6 +73,22 @@ impl Client {
         self
     }
 
+    /// A amostragem desta sessão, para quem precisa derivar outra dela.
+    #[must_use]
+    pub const fn sampling(&self) -> &crate::sampling::Sampling {
+        &self.sampling
+    }
+
+    /// Parâmetros configurados que o dialeto em uso não sabe emitir.
+    ///
+    /// Quem monta a sessão consulta e conta ao usuário. Um parâmetro
+    /// configurado e descartado sem aviso é a degradação silenciosa do NFR-4 —
+    /// só que na ida do pedido, onde ninguém estava olhando.
+    #[must_use]
+    pub fn unsupported_sampling(&self) -> Vec<&'static str> {
+        self.dialect.unsupported_sampling(&self.sampling)
+    }
+
     /// Empresta o cliente HTTP, para quem precisa falar com o mesmo endpoint.
     ///
     /// O catálogo de modelos usa este, e não um segundo cliente: pool de
@@ -116,13 +132,29 @@ impl Client {
         system: Option<String>,
         tools: Vec<ToolSpec>,
     ) -> Result<impl Stream<Item = Result<StreamEvent>> + Send + use<>> {
+        self.stream_with(messages, system, tools, self.sampling.clone())
+            .await
+    }
+
+    /// O mesmo, com a amostragem desta chamada.
+    ///
+    /// Existe para o pedido de uma vez só: um resumo não é prefixo de nada e
+    /// não se repete no turno seguinte, então marcá-lo para o cache cobraria
+    /// escrita que ninguém vai reusar.
+    pub async fn stream_with(
+        &self,
+        messages: Vec<Message>,
+        system: Option<String>,
+        tools: Vec<ToolSpec>,
+        sampling: crate::sampling::Sampling,
+    ) -> Result<impl Stream<Item = Result<StreamEvent>> + Send + use<>> {
         let body = self.dialect.body(&UnifiedRequest {
             model: &self.config.model,
             max_tokens: self.config.max_tokens,
             messages: &messages,
             system: system.as_deref(),
             tools: &tools,
-            sampling: &self.sampling,
+            sampling: &sampling,
         });
 
         let mut attempt = 1;
@@ -130,7 +162,13 @@ impl Client {
             match self.attempt(&body).await {
                 Ok(stream) => return Ok(stream),
                 Err(err) if err.is_retryable() && self.retry.should_retry(attempt) => {
-                    let delay = self.retry.delay(attempt, retry_after_of(&err));
+                    // Espalhada: `N` sessões que receberam o mesmo 503 esperam
+                    // o mesmo tanto e batem no backend juntas de novo, que é
+                    // como uma falha transitória vira permanente.
+                    let delay = super::retry::spread(
+                        self.retry.delay(attempt, retry_after_of(&err)),
+                        super::retry::entropy(),
+                    );
                     tracing::warn!(
                         attempt,
                         delay_ms = delay.as_millis(),
@@ -166,7 +204,7 @@ impl Client {
             .headers()
             .get("retry-after")
             .and_then(|v| v.to_str().ok())
-            .and_then(parse_retry_after);
+            .and_then(|v| parse_retry_after(v, super::retry::now_secs()));
 
         if !status.is_success() {
             let text = response.text().await.unwrap_or_default();

@@ -38,5 +38,6 @@ pub use error::{Error, Result};
 pub use policy::sandbox::{self, Confinement};
 pub use policy::{AllowAll, Allowlist, Decision, Gate, ReadOnly};
 pub use session::{Store, compact};
+pub use tool::sanitize;
 pub use tool::{Tool, ToolCall, ToolContext, ToolOutput};
 pub use turn::Turn;

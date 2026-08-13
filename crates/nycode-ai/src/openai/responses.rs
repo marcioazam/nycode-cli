@@ -40,6 +40,26 @@ impl Dialect for Responses {
         if !request.tools.is_empty() {
             body["tools"] = Value::Array(request.tools.iter().map(declare_tool).collect());
         }
+
+        let sampling = request.sampling;
+        if let Some(temperature) = sampling.temperature {
+            body["temperature"] = json!(temperature);
+        }
+        if let Some(top_p) = sampling.top_p {
+            body["top_p"] = json!(top_p);
+        }
+        if let Some(effort) = sampling.thinking.effort() {
+            body["reasoning"] = json!({ "effort": effort.name });
+        }
+        if sampling.cache_prefix
+            && let Some(key) = sampling.cache_key.as_deref()
+        {
+            body["prompt_cache_key"] = json!(key);
+        }
+        // Sequencia de parada nao entra: este endpoint nao a aceita, e mandar
+        // um campo que o servidor recusa transforma um pedido valido em 400. A
+        // configuracao nao e descartada em silencio — `unsupported_sampling` a
+        // declara para quem monta a sessao contar ao usuario.
         body
     }
 
@@ -53,6 +73,14 @@ impl Dialect for Responses {
 
     fn name(&self) -> &'static str {
         "openai-responses"
+    }
+
+    fn unsupported_sampling(&self, sampling: &crate::sampling::Sampling) -> Vec<&'static str> {
+        if sampling.stop_sequences.is_empty() {
+            Vec::new()
+        } else {
+            vec!["stop_sequences"]
+        }
     }
 }
 
@@ -138,6 +166,80 @@ mod tests {
         })
     }
 
+    fn body_with(sampling: &crate::sampling::Sampling) -> Value {
+        Responses.body(&UnifiedRequest {
+            model: "m",
+            max_tokens: 4096,
+            messages: &[Message::user("oi")],
+            system: Some("sistema"),
+            tools: &[],
+            sampling,
+        })
+    }
+
+    #[test]
+    fn nothing_the_caller_did_not_ask_for_reaches_the_wire() {
+        let body = body_with(&crate::sampling::Sampling::default());
+        for absent in ["temperature", "top_p", "reasoning", "prompt_cache_key"] {
+            assert!(body.get(absent).is_none(), "{absent} nao foi pedido");
+        }
+    }
+
+    #[test]
+    fn the_sampling_knobs_reach_the_wire_when_they_are_set() {
+        let body = body_with(
+            &crate::sampling::Sampling::default()
+                .with_temperature(0.2)
+                .with_top_p(0.9)
+                .with_thinking(crate::sampling::ThinkingLevel::Medium),
+        );
+
+        assert!((body["temperature"].as_f64().unwrap() - 0.2).abs() < 1e-6);
+        assert!((body["top_p"].as_f64().unwrap() - 0.9).abs() < 1e-6);
+        assert_eq!(body["reasoning"]["effort"], "medium");
+    }
+
+    #[test]
+    fn a_level_above_what_this_endpoint_offers_is_downgraded_not_dropped() {
+        // O conjunto documentado vai ate `high`. Descartar deixaria o turno sem
+        // raciocinio nenhum, que e o oposto do que foi pedido.
+        let body = body_with(
+            &crate::sampling::Sampling::default()
+                .with_thinking(crate::sampling::ThinkingLevel::Max),
+        );
+        assert_eq!(body["reasoning"]["effort"], "high");
+    }
+
+    #[test]
+    fn the_cache_key_reaches_the_wire_so_nfr7_holds_in_this_dialect_too() {
+        let body = body_with(&crate::sampling::Sampling::default().with_cache_key("sessao-1"));
+        assert_eq!(body["prompt_cache_key"], "sessao-1");
+    }
+
+    #[test]
+    fn a_stop_sequence_is_declared_unsupported_instead_of_being_sent_or_dropped() {
+        // Este endpoint nao aceita o campo, e manda-lo transforma um pedido
+        // valido em 400. Descartar em silencio e o que o NFR-4 proibe, entao o
+        // dialeto declara e quem monta a sessao conta ao usuario.
+        let sampling =
+            crate::sampling::Sampling::default().with_stop_sequences(vec!["FIM".to_owned()]);
+
+        assert!(body_with(&sampling).get("stop").is_none());
+        assert_eq!(
+            Responses.unsupported_sampling(&sampling),
+            ["stop_sequences"]
+        );
+    }
+
+    #[test]
+    fn without_a_stop_sequence_there_is_nothing_to_declare() {
+        assert!(
+            Responses
+                .unsupported_sampling(&crate::sampling::Sampling::default())
+                .is_empty()
+        );
+    }
+
     #[test]
     fn never_emits_fields_the_gateway_refuses() {
         // `previous_response_id`, `background` e `conversation` sao recusados
@@ -220,6 +322,7 @@ mod tests {
             name: "read".to_owned(),
             description: "le".to_owned(),
             input_schema: json!({ "type": "object" }),
+            extension: false,
         }];
         let body = body_of(&[Message::user("oi")], None, &tools);
         assert_eq!(body["tools"][0]["type"], "function");

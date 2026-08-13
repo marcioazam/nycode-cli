@@ -6,7 +6,14 @@
 //! sejam só a diferença entre elas.
 
 pub mod catalog;
+mod consent;
 pub mod paths;
+pub mod phases;
+pub mod settings;
+pub mod tuning;
+mod warnings;
+
+pub use phases::Phases;
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -33,10 +40,25 @@ pub type Rebuild = Box<dyn Fn(&str) -> anyhow::Result<Arc<dyn nycode_agent::Back
 
 /// Tudo que as duas superfícies precisam, montado uma vez só.
 pub struct Prepared {
+    /// Quanto cada etapa da montagem custou.
+    pub phases: Phases,
+    /// Os hooks, para o evento de fim de sessão.
+    ///
+    /// Guardados à parte porque o agente é dono dos seus e a superfície que
+    /// encerra a sessão não é a que a montou: `session-end` precisa disparar
+    /// depois de o último turno ter passado, e é fora do agente que isso se
+    /// sabe.
+    pub lifecycle: nycode_agent::policy::Hooks,
     pub agent: Agent,
     pub cancel: Cancel,
     pub store: Store,
     pub session_id: String,
+    /// O modelo que a sessão resolveu, entre flag, arquivo e padrão.
+    ///
+    /// Vem daqui e não da invocação porque desde o FR-9 a flag pode estar
+    /// ausente: quem lê `cli.model` vê `None` e mostraria o padrão embutido no
+    /// lugar do que o arquivo escolheu.
+    pub model: String,
     /// Quantas mensagens já estavam no disco antes deste processo.
     pub persisted: usize,
     pub context: Context,
@@ -49,20 +71,77 @@ pub struct Prepared {
     pub mcp: Vec<Arc<nycode_mcp::Session>>,
     /// Modelos que o endpoint serve, para `/model` ter o que listar.
     pub models: Vec<String>,
+    /// Tarifas por modelo, para os que o catálogo precifica.
+    ///
+    /// Um mapa e não um campo em `models` porque a ausência é o caso comum: a
+    /// maioria dos endpoints declara identificador e janela, e não preço.
+    pub prices: std::collections::BTreeMap<String, nycode_ai::catalog::Price>,
+    /// Janela de contexto por modelo, para os que o catálogo dimensiona.
+    ///
+    /// Acompanha a troca de modelo pela mesma razão que a tarifa: comparar o
+    /// usage do modelo novo contra o limite do antigo dá um número errado com
+    /// a mesma cara de um certo.
+    pub windows: std::collections::BTreeMap<String, u64>,
     pub rebuild: Rebuild,
+}
+
+/// Busca o catálogo do endpoint e confere que o modelo pedido existe nele.
+///
+/// O catálogo é do endpoint, não uma lista fixa no binário (FR-6). Conferir
+/// aqui transforma um erro de digitação em mensagem útil, em vez de numa recusa
+/// do gateway três camadas adiante.
+async fn discover_catalog(
+    client: &Arc<Client>,
+    root: &std::path::Path,
+    model: &str,
+) -> anyhow::Result<catalog::Catalog> {
+    let catalog = catalog::resolve(client, root).await;
+    if let Some(warning) = catalog::warning(&catalog) {
+        eprintln!("{warning}");
+    }
+    catalog::check(&catalog, model).map_err(|reason| anyhow::anyhow!(reason))?;
+    Ok(catalog)
+}
+
+/// Descobre os hooks do repositório e retém só os que foram consentidos.
+///
+/// O terceiro mecanismo de extensão do ADR-0002. Um `pre-tool-use` veta antes
+/// do gate: uma política que só rodasse depois não conseguiria proibir nada que
+/// o gate permitisse. E pelo ADR-0016 um hook vem do repositório, roda a cada
+/// chamada de ferramenta e recebe todo argumento e resultado — executá-lo sem
+/// consentimento é entregar isso a quem escreveu o diretório.
+async fn consented_hooks(root: &std::path::Path, interactive: bool) -> nycode_agent::policy::Hooks {
+    let hooks = nycode_agent::policy::Hooks::discover(root);
+    let hooks = hooks.clone().retaining(&consent::authorize(
+        root,
+        &hooks.declarations(),
+        interactive,
+    ));
+    if let Some(notice) = warnings::hooks_notice(&hooks) {
+        eprintln!("nycode: {notice}");
+    }
+    announce_start(&hooks, root).await;
+    hooks
 }
 
 /// Resolve credencial, workspace, contexto e sessão.
 pub async fn prepare(cli: &Cli) -> anyhow::Result<Prepared> {
+    let mut phases = Phases::start();
     let credential = nycode_auth::Resolver::new("gateway")
         .with_env_vars(&["NYCODE_API_KEY", "NYLLA_API_KEY"])
+        .with_file(cli.api_key_file.clone())
         .resolve(cli.api_key.as_deref())?;
     tracing::debug!(source = ?credential.source, "credencial resolvida");
 
-    let config = Config::new(&cli.base_url, &credential.secret)?
-        .with_model(&cli.model)
-        .with_max_tokens(cli.max_tokens)
-        .with_dialect(nycode_ai::Kind::parse(&cli.dialect)?);
+    // Do usuário, nunca do workspace: um `.nycode/settings.json` do repositório
+    // esticaria o próprio prazo e o próprio teto de turnos, que são os limites
+    // que existem para contê-lo, e apontaria o provider para onde quisesse.
+    let settings = settings::Settings::discover();
+    let provider = settings::resolve(cli, &settings.provider);
+    let config = Config::new(&provider.base_url, &credential.secret)?
+        .with_model(&provider.model)
+        .with_max_tokens(provider.max_tokens)
+        .with_dialect(nycode_ai::Kind::parse(&provider.dialect)?);
 
     let root = match &cli.cwd {
         Some(dir) => dir.clone(),
@@ -70,126 +149,127 @@ pub async fn prepare(cli: &Cli) -> anyhow::Result<Prepared> {
     };
     let ctx = ToolContext::new(root)?;
     let root = ctx.root().to_path_buf();
+    phases.mark("credencial");
 
     // As convencoes do repositorio especializam o prompt base. Um AGENTS.md
     // existente passa a valer sem nenhuma configuracao.
     let context = Context::discover(&root);
     let system = context.system_prompt(SYSTEM_PROMPT, &root);
+    phases.mark("workspace");
 
     let store = Store::open(root.join(".nycode/sessions"))?;
     let (session_id, history) = resolve(&store, cli)?;
     let persisted = history.len();
+    phases.mark("sessao");
 
+    // A chave amarra o cache do backend a esta sessão. Vem do id da sessão, e
+    // não de um valor novo por processo: retomar com `--continue` precisa cair
+    // no mesmo balde, senão o prefixo é reescrito e o NFR-7 se perde
+    // exatamente na sessão longa, que é a que mais tem a ganhar.
     // Guardada antes de o cliente consumi-la: a troca de modelo precisa da
     // mesma configuração, e reconstruí-la do zero significaria reautenticar.
     let template = config.clone();
-    let client = Arc::new(Client::new(config)?);
+    let (client, sampling) = tuning::tuned_client(cli, &session_id, config, &provider.dialect)?;
 
-    // O catálogo é do endpoint, não uma lista fixa no binário (FR-6). Validar
-    // aqui transforma um erro de digitação em mensagem útil, em vez de numa
-    // recusa do gateway três camadas adiante.
-    let catalog = catalog::resolve(&client, &root).await;
-    if let Some(warning) = catalog::warning(&catalog) {
-        eprintln!("{warning}");
-    }
-    catalog::check(&catalog, &cli.model).map_err(|reason| anyhow::anyhow!(reason))?;
+    let catalog = discover_catalog(&client, &root, &provider.model).await?;
+    phases.mark("catalogo");
 
     let cancel = watch_for_interrupt(cli.prompt.is_some());
     // A partir daqui o cliente é só um backend: a coerção acontece uma vez, e
     // o `Task` recebe o mesmo, para o filho falar com o mesmo gateway.
     let backend: Arc<dyn nycode_agent::Backend> = client;
 
+    // A janela é do catálogo descoberto, nunca um padrão embutido: sem número
+    // declarado o agente não compara nada, e é assim que ele evita acusar
+    // truncamento silencioso num endpoint que só não publica o tamanho.
+    let windows = tuning::windows_of(&catalog.models);
     let mut agent = Agent::new(Arc::clone(&backend), ctx)
         .with_system(system)
-        .with_cancel(cancel.clone());
+        .with_cancel(cancel.clone())
+        .with_tool_limit(settings.tool_limit)
+        .with_keep_recent(settings.keep_recent);
+    if let Some(window) = windows.get(&provider.model).copied() {
+        agent = agent.with_context_window(window);
+    }
     for message in history {
         agent = agent.with_message(message);
     }
-    for tool in nycode_agent::tools::all() {
+    for tool in nycode_agent::tools::all_within(settings.command_timeout) {
         agent = agent.with_tool(tool);
     }
 
-    let writable = cli.allow_writes;
+    // O subagente herda a concessão do pai: um filho que pudesse mais que quem
+    // o chamou seria uma escada de privilégio (FR-15).
+    let grant = crate::invocation::grant::Grant::from_flags(cli.allow_writes, cli.allow_all);
     agent = agent.with_tool(Arc::new(
-        nycode_agent::tools::Task::new(backend).with_gate(move || subagent_gate(writable)),
+        nycode_agent::tools::Task::new(backend).with_gate(move || grant.gate()),
     ));
 
-    for warning in startup_warnings(writable) {
+    for warning in
+        warnings::startup_warnings(warnings::bash_is_reachable(grant, cli.prompt.is_none()))
+    {
         eprintln!("nycode: {warning}");
     }
 
-    // O terceiro mecanismo de extensão do ADR-0002. Um `pre-tool-use` veta
-    // antes do gate: uma política que só rodasse depois não conseguiria
-    // proibir nada que o gate permitisse.
-    let hooks = nycode_agent::policy::Hooks::discover(&root);
-    if let Some(notice) = hooks_notice(&hooks) {
-        eprintln!("nycode: {notice}");
-    }
+    let hooks = consented_hooks(&root, cli.prompt.is_none()).await;
+    let lifecycle = hooks.clone();
     agent = agent.with_hooks(hooks);
 
-    let (mcp, extra) = attach_mcp(&root).await;
+    phases.mark("agente");
+
+    let (mcp, extra) = attach_mcp(&root, cli.prompt.is_none()).await;
     for tool in extra {
         agent = agent.with_tool(tool);
     }
+    phases.mark("mcp");
 
-    if cli.allow_writes {
-        agent = agent.with_gate(Box::new(nycode_agent::AllowAll));
-    }
+    agent = agent.with_gate(grant.gate());
 
     Ok(Prepared {
+        phases,
+        lifecycle,
         agent,
         cancel,
         store,
         session_id,
+        model: provider.model,
         persisted,
         context,
         root,
         mcp,
         models: catalog.ids().into_iter().map(ToOwned::to_owned).collect(),
+        prices: tuning::prices_of(&catalog.models),
+        windows,
         rebuild: Box::new(move |model| {
             let mut config = template.clone();
             model.clone_into(&mut config.model);
-            Ok(Arc::new(Client::new(config)?) as Arc<dyn nycode_agent::Backend>)
+            // A amostragem acompanha a troca de modelo. Sem isto, `/model`
+            // devolveria uma sessao sem raciocinio e sem chave de cache, e o
+            // usuario nao teria como saber que perdeu os dois.
+            Ok(
+                Arc::new(Client::new(config)?.with_sampling(sampling.clone()))
+                    as Arc<dyn nycode_agent::Backend>,
+            )
         }),
     })
 }
 
-/// Com o que o subagente é permissionado (FR-15).
+/// Dispara o primeiro dos três eventos de hook que rodam.
 ///
-/// Herda de quem o chama: um filho que pudesse mais que o pai seria uma escada
-/// de privilégio.
-fn subagent_gate(writable: bool) -> Box<dyn nycode_agent::Gate> {
-    if writable {
-        Box::new(nycode_agent::AllowAll)
-    } else {
-        Box::new(nycode_agent::ReadOnly)
-    }
-}
+/// Depois do consentimento e antes do primeiro turno: um `session-start` existe
+/// para preparar o que a sessão vai usar, e rodá-lo depois de a sessão começar
+/// seria rodá-lo tarde demais para isso. Um veto aqui não veta nada — o hook que
+/// pode recusar é o de chamada de ferramenta, e o ADR-0009 é explícito de que os
+/// de ciclo de vida observam.
+async fn announce_start(hooks: &nycode_agent::policy::Hooks, root: &Path) {
+    use nycode_agent::policy::hooks::{Event, Payload};
 
-/// O que o usuário precisa saber antes do primeiro turno.
-///
-/// FR-11: rodar sem confinamento em silêncio é a degradação que o NFR-4 proíbe.
-/// A diferença entre "protegido" e "achou que estava protegido" é a única que
-/// importa aqui, e só o usuário pode decidir se ela é aceitável. Numa sessão
-/// somente-leitura não há o que confinar, e o aviso seria ruído.
-fn startup_warnings(writable: bool) -> Vec<String> {
-    writable
-        .then(nycode_agent::sandbox::detect_from_path)
-        .and_then(|confinement| confinement.warning())
-        .into_iter()
-        .collect()
-}
-
-/// Quais hooks o repositório instalou.
-///
-/// Silêncio quando não há nenhum: anunciar uma lista vazia treina o usuário a
-/// ignorar a linha, e é justamente ela que precisa ser lida no dia em que um
-/// hook aparecer sem ele saber.
-fn hooks_notice(hooks: &nycode_agent::policy::Hooks) -> Option<String> {
-    if hooks.is_empty() {
-        return None;
-    }
-    Some(format!("hooks ativos: {}", hooks.declared().join(", ")))
+    hooks
+        .fire(
+            Event::SessionStart,
+            &Payload::for_session(Event::SessionStart, root),
+        )
+        .await;
 }
 
 /// Conecta aos servidores MCP declarados no workspace.
@@ -200,16 +280,25 @@ fn hooks_notice(hooks: &nycode_agent::policy::Hooks) -> Option<String> {
 /// ferramenta que o usuário esperava e não apareceu precisa ter explicação.
 async fn attach_mcp(
     root: &Path,
+    interactive: bool,
 ) -> (
     Vec<Arc<nycode_mcp::Session>>,
     Vec<Arc<dyn nycode_agent::Tool>>,
 ) {
-    let servers = nycode_agent::mcp::discover(root);
+    let mut servers = nycode_agent::mcp::discover(root);
     if servers.is_empty() {
         return (Vec::new(), Vec::new());
     }
 
-    let (sessions, tools, failures) = nycode_mcp::connect_all(&servers).await;
+    // ADR-0016: o `.mcp.json` vem do repositório, e subir o que ele declara sem
+    // consentimento é executar código de terceiro por ter aberto o diretório.
+    let permitidos = consent::authorize(root, &consent::declarations_of(&servers), interactive);
+    servers.retain(|name, _| permitidos.contains(name));
+    if servers.is_empty() {
+        return (Vec::new(), Vec::new());
+    }
+
+    let (sessions, tools, failures) = nycode_mcp::connect_all(&servers, root).await;
     for failure in failures {
         eprintln!("nycode: {failure}");
     }
@@ -266,72 +355,6 @@ pub fn produced_history(outcome: &Result<nycode_agent::Outcome, nycode_agent::Er
 }
 
 #[cfg(test)]
-mod policy_test {
-    use super::*;
-
-    fn call(name: &str) -> nycode_agent::ToolCall {
-        nycode_agent::ToolCall {
-            id: "t1".to_owned(),
-            name: name.to_owned(),
-            input: serde_json::Value::Null,
-        }
-    }
-
-    #[test]
-    fn a_subagent_of_a_read_only_session_cannot_write() {
-        // Um filho que pudesse mais que o pai seria uma escada de privilegio.
-        assert!(!subagent_gate(false).check(&call("write")).is_allowed());
-        assert!(subagent_gate(false).check(&call("read")).is_allowed());
-    }
-
-    #[test]
-    fn a_subagent_of_a_writable_session_can_write() {
-        assert!(subagent_gate(true).check(&call("write")).is_allowed());
-    }
-
-    #[test]
-    fn a_read_only_session_is_not_warned_about_a_sandbox_it_does_not_need() {
-        // Nao ha o que confinar, e o aviso seria ruido.
-        assert!(startup_warnings(false).is_empty());
-    }
-
-    #[test]
-    fn a_writable_session_is_warned_only_when_there_is_no_confinement() {
-        // O resultado depende da maquina; o que se protege e a correspondencia
-        // entre o aviso e a ausencia de confinamento.
-        let warned = !startup_warnings(true).is_empty();
-        let confined = nycode_agent::sandbox::detect_from_path().is_enforced();
-        assert_eq!(warned, !confined);
-    }
-
-    #[test]
-    fn a_workspace_without_hooks_says_nothing() {
-        // Anunciar lista vazia treina o usuario a ignorar a linha, e e ela que
-        // precisa ser lida no dia em que um hook aparecer sem ele saber.
-        let dir = tempfile::tempdir().unwrap();
-        let hooks = nycode_agent::policy::Hooks::discover(dir.path());
-        assert_eq!(hooks_notice(&hooks), None);
-    }
-
-    #[test]
-    fn a_workspace_with_hooks_names_them() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join(".nycode/hooks/pre-tool-use");
-        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-        std::fs::write(&path, "#!/bin/sh\nexit 0").unwrap();
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt as _;
-            std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
-        }
-
-        let hooks = nycode_agent::policy::Hooks::discover(dir.path());
-        let notice = hooks_notice(&hooks).expect("ha um hook");
-        assert!(notice.contains("pre-tool-use"), "{notice}");
-    }
-}
-
-#[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::panic)]
 mod tests {
     use super::*;
@@ -348,6 +371,25 @@ mod tests {
         let mut argv = vec!["nycode", "-p", "oi"];
         argv.extend_from_slice(extra);
         Cli::try_parse_from(argv).unwrap()
+    }
+
+    #[tokio::test]
+    async fn headless_refusal_leaves_the_mcp_catalog_empty_without_spawning() {
+        // Sem interlocutor, uma declaração do repositório é negada e a sessão
+        // segue sem ela (ADR-0016). O comando existe de propósito: usar um nome
+        // inválido permitiria o teste passar porque o spawn falhou, e não
+        // porque o consentimento veio antes dele.
+        let root = tempfile::tempdir().unwrap();
+        std::fs::write(
+            root.path().join(".mcp.json"),
+            r#"{"mcpServers":{"nao-confiado":{"command":"true"}}}"#,
+        )
+        .unwrap();
+
+        let (sessions, tools) = attach_mcp(root.path(), false).await;
+
+        assert!(sessions.is_empty());
+        assert!(tools.is_empty());
     }
 
     #[test]
@@ -430,6 +472,35 @@ mod tests {
         assert!(!produced_history(&Err(nycode_agent::Error::Workspace(
             "sem permissao".to_owned()
         ))));
+    }
+
+    #[tokio::test]
+    async fn a_workspace_without_servers_connects_to_nothing() {
+        // O caminho comum, e o que precisa custar zero: descobrir que nao ha
+        // `.mcp.json` nao pode gastar nada do orcamento de arranque.
+        let dir = tempfile::tempdir().unwrap();
+        let (sessions, tools) = attach_mcp(dir.path(), false).await;
+
+        assert!(sessions.is_empty());
+        assert!(tools.is_empty());
+    }
+
+    #[tokio::test]
+    async fn a_declared_server_does_not_run_without_consent() {
+        // ADR-0016: o `.mcp.json` vem do repositorio, e subir o que ele declara
+        // sem consentimento e executar codigo de terceiro por ter aberto o
+        // diretorio. Sem interlocutor a resposta e nao, e a sessao segue.
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join(".mcp.json"),
+            r#"{"mcpServers":{"docs":{"command":"nao-existe-mesmo"}}}"#,
+        )
+        .unwrap();
+
+        let (sessions, tools) = attach_mcp(dir.path(), false).await;
+
+        assert!(sessions.is_empty(), "nada foi autorizado a subir");
+        assert!(tools.is_empty());
     }
 
     #[tokio::test]

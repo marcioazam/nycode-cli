@@ -68,6 +68,19 @@ pub trait Dialect: Send + Sync {
 
     /// Nome para diagnóstico.
     fn name(&self) -> &'static str;
+
+    /// Parâmetros de amostragem configurados que este dialeto não sabe emitir.
+    ///
+    /// Existe porque o NFR-4 proíbe degradar em silêncio, e um parâmetro que o
+    /// usuário configurou e o dialeto descarta é exatamente isso — só que na
+    /// ida do pedido, e não na volta da resposta. Quem monta a sessão consulta
+    /// e conta ao usuário; devolver a lista em vez de imprimir aqui mantém a
+    /// crate sem opinião sobre onde a mensagem sai.
+    ///
+    /// O padrão é vazio: um dialeto que emite tudo não precisa dizer nada.
+    fn unsupported_sampling(&self, _sampling: &crate::sampling::Sampling) -> Vec<&'static str> {
+        Vec::new()
+    }
 }
 
 /// Dialetos disponíveis.

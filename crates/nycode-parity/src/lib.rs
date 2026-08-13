@@ -17,13 +17,18 @@
 //!
 //! As cinco dimensões são comparadas de fato. A sequência de ferramentas e a
 //! contabilidade de tokens vêm do modo de eventos JSON dos dois harnesses,
-//! traduzido em [`runner`] do dialeto de cada um: o formato divergir não é o
-//! defeito que o NFR-6 quer pegar, o contrato observável divergir é.
+//! traduzido em [`dialect`] do vocabulário de cada um: o formato divergir não é
+//! o defeito que o NFR-6 quer pegar, o contrato observável divergir é.
 
+pub mod dialect;
+pub mod fixture;
 pub mod runner;
 pub mod transcript;
 pub mod workspace;
 
+pub use dialect::Events;
 pub use runner::{Harness, run};
-pub use transcript::{Divergence, TokenAccounting, ToolInvocation, Transcript, diff};
+pub use transcript::{
+    DIMENSIONS, Divergence, TokenAccounting, ToolInvocation, Transcript, diff, unattested,
+};
 pub use workspace::snapshot;

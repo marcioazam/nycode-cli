@@ -39,7 +39,11 @@ impl Default for Timeouts {
 }
 
 /// Endpoint e credencial de um provider.
-#[derive(Debug, Clone, PartialEq, Eq)]
+///
+/// `Debug` é manual e redige a chave. É a struct mais exposta das que carregam
+/// segredo — clonada para a troca de modelo, guardada no cliente, passada entre
+/// camadas —, então derivá-lo faria de qualquer `{:?}` num log um vazamento.
+#[derive(Clone, PartialEq, Eq)]
 pub struct Config {
     /// URL base, sem barra final e já incluindo o prefixo de versão.
     ///
@@ -53,6 +57,19 @@ pub struct Config {
     pub dialect: crate::dialect::Kind,
     /// Prazos de rede aplicados a este endpoint.
     pub timeouts: Timeouts,
+}
+
+impl std::fmt::Debug for Config {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Config")
+            .field("base_url", &self.base_url)
+            .field("api_key", &"<redigido>")
+            .field("model", &self.model)
+            .field("max_tokens", &self.max_tokens)
+            .field("dialect", &self.dialect)
+            .field("timeouts", &self.timeouts)
+            .finish()
+    }
 }
 
 impl Config {
@@ -70,11 +87,7 @@ impl Config {
         if trimmed.is_empty() {
             return Err(Error::Config("base_url vazia".to_owned()));
         }
-        if !trimmed.starts_with("http://") && !trimmed.starts_with("https://") {
-            return Err(Error::Config(format!(
-                "base_url precisa de esquema http(s): {base_url}"
-            )));
-        }
+        crate::destination::refuse_plaintext_outside_loopback(trimmed)?;
         Ok(Self {
             base_url: trimmed.to_owned(),
             api_key: api_key.into(),
@@ -128,6 +141,19 @@ mod tests {
     use super::*;
 
     #[test]
+    fn a_debug_view_of_the_config_never_contains_the_key() {
+        // E a struct mais exposta das que carregam segredo: clonada na troca de
+        // modelo, guardada no cliente, passada entre camadas. Um `{:?}` num log
+        // de erro despejaria a chave.
+        let cfg = Config::new("https://gw/v1", "sk-chave-do-usuario").unwrap();
+        let rendered = format!("{cfg:?}");
+
+        assert!(!rendered.contains("sk-chave-do-usuario"), "{rendered}");
+        // O resto fica: sem o endpoint e o modelo o `{:?}` nao serve para nada.
+        assert!(rendered.contains("https://gw/v1"), "{rendered}");
+    }
+
+    #[test]
     fn trailing_slash_does_not_produce_a_double_slash_route() {
         let cfg = Config::new("https://gw.example.com/v1/", "k").unwrap();
         assert_eq!(
@@ -146,6 +172,26 @@ mod tests {
         // origem do erro de configuracao.
         let err = Config::new("gw.example.com/v1", "k").expect_err("deveria recusar");
         assert!(matches!(err, Error::Config(msg) if msg.contains("esquema")));
+    }
+
+    #[test]
+    fn a_remote_gateway_in_plaintext_is_refused_before_the_key_is_stored() {
+        // `--base-url` e a variavel de ambiente chegam sem revisao, e o binario
+        // anexa a credencial ao que vier. Recusar na construcao e o que impede
+        // ela de sair em texto claro depois.
+        let err = Config::new("http://api.exemplo.com/v1", "segredo").expect_err("deveria recusar");
+        assert!(
+            matches!(err, Error::Config(msg) if msg.contains("texto claro fora de loopback")),
+            "a recusa precisa dizer por que"
+        );
+    }
+
+    #[test]
+    fn the_local_gateway_still_works_without_tls() {
+        // O padrao do produto e um gateway na propria maquina: exigir TLS ali
+        // obrigaria cada usuario a emitir certificado para falar consigo mesmo.
+        Config::new(Config::DEFAULT_BASE_URL, "k").unwrap();
+        Config::new("http://localhost:8080/v1", "k").unwrap();
     }
 
     #[test]

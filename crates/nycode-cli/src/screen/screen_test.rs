@@ -102,6 +102,22 @@ fn emitting_to_the_scrollback_translates_line_endings() {
 }
 
 #[test]
+fn what_goes_to_the_scrollback_cannot_repaint_what_is_already_there() {
+    // O scrollback recebe conteudo que o harness nao escreveu: o que `/tree`
+    // mostra, o erro que carrega saida de comando, o que foi enfileirado. Com o
+    // escape intacto esse texto sobe linhas e escreve por cima do que ja estava
+    // ali — que pode ter sido a pergunta de aprovacao.
+    let mut panel = Panel::new(Vec::new(), 80);
+    panel
+        .emit("\u{1b}[3A\u{1b}[2Kaprovar bash? (s/n)\n")
+        .unwrap();
+
+    let written = String::from_utf8_lossy(panel.written()).to_string();
+    assert!(!written.contains('\u{1b}'), "{written:?}");
+    assert_eq!(written, "aprovar bash? (s/n)\r\n");
+}
+
+#[test]
 fn resizing_changes_the_reported_width() {
     let mut panel = Panel::new(Vec::new(), 80);
     panel.resize(40);
@@ -299,21 +315,54 @@ fn switching_the_model_keeps_the_conversation() {
 }
 
 #[test]
+fn switching_the_model_takes_the_declared_window_with_it() {
+    // Comparar o usage do modelo novo contra a janela do antigo e como o
+    // numero certo produz a conclusao errada: num modelo maior, todo turno
+    // seria acusado de truncamento; num menor, o truncamento passaria batido.
+    let (_dir, turns) = agentic(plain_turn("x", nycode_ai::Usage::default()), 0);
+    let mut turns = turns
+        .rebuilding(|_| {
+            Ok(std::sync::Arc::new(Canned {
+                events: std::sync::Mutex::new(Vec::new()),
+            }) as Arc<dyn nycode_agent::Backend>)
+        })
+        .with_windows(
+            [
+                ("grande".to_owned(), 1_000_000_u64),
+                ("pequeno".to_owned(), 8_192),
+            ]
+            .into_iter()
+            .collect(),
+        );
+
+    turns.switch_model("grande").unwrap();
+    assert_eq!(turns.context_window(), Some(1_000_000));
+
+    turns.switch_model("pequeno").unwrap();
+    assert_eq!(turns.context_window(), Some(8_192));
+
+    // Um modelo que o catalogo nao dimensiona apaga a janela em vez de herdar
+    // a do anterior.
+    turns.switch_model("sem-tamanho").unwrap();
+    assert_eq!(turns.context_window(), None);
+}
+
+#[test]
 fn a_session_that_cannot_rebuild_says_so_instead_of_pretending() {
     let (_dir, mut turns) = agentic(plain_turn("x", nycode_ai::Usage::default()), 0);
     let err = turns.switch_model("nylla-opus-4").unwrap_err();
     assert!(err.to_string().contains("nylla-opus-4"), "{err}");
 }
 
-#[test]
-fn compacting_reanchors_what_is_left_to_persist() {
+#[tokio::test]
+async fn compacting_reanchors_what_is_left_to_persist() {
     // Sem reancorar, o `drain` seguinte fatiaria alem do fim e devolveria
     // vazio para sempre.
     let (_dir, mut turns) = agentic(plain_turn("x", nycode_ai::Usage::default()), 0);
     let long: Vec<Message> = (0..20).map(|i| Message::user(format!("{i}"))).collect();
     turns.replace_history(long);
 
-    let removed = turns.compact();
+    let removed = turns.compact().await;
     assert!(removed > 0, "havia o que cortar");
     assert!(turns.drain().is_empty());
 }

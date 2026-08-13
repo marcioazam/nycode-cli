@@ -8,10 +8,11 @@
 //! `grep` por lá; sem estas, negar `bash` o deixa cego, e a escolha passa a ser
 //! entre dar shell ou não ter agente.
 
+mod collect;
+mod engine;
 mod find;
 mod grep;
 mod ls;
-pub(crate) mod walk;
 
 pub use find::Find;
 pub use grep::Grep;

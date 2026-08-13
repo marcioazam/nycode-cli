@@ -103,6 +103,12 @@ pub struct Usage {
     pub cache_read_tokens: u64,
     /// Tokens gravados em cache neste turno. Nunca soma ao total.
     pub cache_write_tokens: u64,
+    /// Subconjunto de `cache_write_tokens` gravado com retenção longa.
+    ///
+    /// Separado porque é cobrado a outra tarifa — o dobro da de entrada, e não
+    /// a de escrita de cache. Somá-lo ao resto subestimaria a fatura de toda
+    /// sessão longa, que é exatamente onde a retenção longa é usada.
+    pub cache_write_1h_tokens: u64,
     /// Subconjunto de `output_tokens` gasto em raciocínio. Nunca soma ao total.
     pub reasoning_tokens: u64,
     /// O gateway sinaliza contagem heurística via `x-nylla-usage-estimated`.
@@ -131,6 +137,7 @@ impl std::ops::AddAssign for Usage {
             output_tokens,
             cache_read_tokens,
             cache_write_tokens,
+            cache_write_1h_tokens,
             reasoning_tokens,
             estimated,
         } = turn;
@@ -139,6 +146,7 @@ impl std::ops::AddAssign for Usage {
         self.output_tokens += output_tokens;
         self.cache_read_tokens += cache_read_tokens;
         self.cache_write_tokens += cache_write_tokens;
+        self.cache_write_1h_tokens += cache_write_1h_tokens;
         self.reasoning_tokens += reasoning_tokens;
         self.estimated |= estimated;
     }

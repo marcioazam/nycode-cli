@@ -21,11 +21,19 @@ impl Agent {
                 name: tool.name().to_owned(),
                 description: tool.description().to_owned(),
                 input_schema: tool.input_schema(),
+                extension: tool.is_extension(),
             })
             .collect();
         // Ordem estavel: um catalogo que muda de ordem entre execucoes invalida
         // o cache de prompt do backend sem nenhum ganho.
-        specs.sort_by(|a, b| a.name.cmp(&b.name));
+        //
+        // Estaveis primeiro, e so depois as extensoes. Ordenar tudo junto por
+        // nome punha uma ferramenta de servidor no meio do prefixo — um
+        // `docs__search` cai entre `bash` e `edit` —, entao conectar um servidor
+        // deslocava o resto e o ponto de corte do cache passava a cobrir algo
+        // diferente. Com a particao, uma extensao nova so aparece depois do
+        // corte, e o prefixo cacheado nao muda (NFR-7).
+        specs.sort_by(|a, b| a.extension.cmp(&b.extension).then(a.name.cmp(&b.name)));
         specs
     }
 
@@ -92,13 +100,8 @@ impl Agent {
 
     /// A razão pela qual um hook vetou a chamada, se vetou.
     async fn vetoed(&self, call: &ToolCall) -> Option<String> {
-        let payload = crate::policy::hooks::Payload {
-            event: crate::policy::hooks::Event::PreToolUse,
-            tool: Some(call.name.clone()),
-            input: Some(call.input.clone()),
-            output: None,
-            cwd: self.ctx.root().display().to_string(),
-        };
+        let payload =
+            crate::policy::hooks::Payload::for_call(&call.name, &call.input, self.ctx.root());
 
         let response = self
             .hooks
@@ -115,6 +118,39 @@ impl Agent {
                 format!("`{}` foi vetada por um hook do repositorio", call.name)
             }),
         )
+    }
+
+    /// Conta ao hook o que a ferramenta produziu.
+    ///
+    /// Não veta, e não tem como vetar: quando isto roda, o arquivo já foi
+    /// escrito e o comando já rodou. Uma recusa que chegue aqui é registrada em
+    /// voz alta e ignorada — obedecê-la seria inventar um veto retroativo, e
+    /// calá-la deixaria quem escreveu o hook acreditando que ele protege
+    /// alguma coisa ([ADR-0022](../../../../docs/architecture/decisions/0022-o-post-tool-use-recebe-a-saida-cortada-e-o-tamanho-dela.md)).
+    ///
+    /// Um hook que falha ou estoura o prazo também não muda o resultado. A
+    /// assimetria com `pre-tool-use` é real e deliberada: lá a falha aberta
+    /// deixa passar uma chamada que talvez devesse ser barrada, aqui não há o
+    /// que deixar passar.
+    async fn observed(&self, call: &ToolCall, output: &ToolOutput) {
+        use crate::policy::hooks::{Event, Payload};
+
+        // Sem hook não se monta o payload: ele carrega uma cópia da saída da
+        // ferramenta, e pagá-la a cada chamada para descartar em seguida seria
+        // cobrar de todo workspace o preço de um recurso que ele não usa.
+        if !self.hooks.has(Event::PostToolUse) {
+            return;
+        }
+
+        let payload = Payload::for_result(&call.name, &call.input, output, self.ctx.root());
+        if let Some(response) = self.hooks.fire(Event::PostToolUse, &payload).await
+            && response.is_denial()
+        {
+            tracing::warn!(
+                tool = %call.name,
+                "post-tool-use respondeu `deny`; so `pre-tool-use` veta, e a ferramenta ja rodou"
+            );
+        }
     }
 
     pub(super) async fn execute(&self, call: &crate::tool::ToolCall) -> ToolOutput {
@@ -159,6 +195,213 @@ impl Agent {
             ));
         }
 
-        tool.execute(input, &self.ctx).await
+        // O evento é `post-tool-use`, e só dispara depois de a ferramenta ter
+        // rodado de fato. Um veto, uma recusa do gate ou um nome desconhecido
+        // saem acima sem passar por aqui: anunciar uso de ferramenta onde não
+        // houve uso faria um hook de auditoria registrar o que não aconteceu.
+        let output = tool.execute(input, &self.ctx).await;
+        self.observed(call, &output).await;
+        output
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use crate::tool::Tool;
+
+    /// Uma ferramenta de mentira que declara de que lado do corte fica.
+    #[derive(Debug)]
+    struct Fake {
+        name: &'static str,
+        extension: bool,
+    }
+
+    #[async_trait::async_trait]
+    #[allow(clippy::unnecessary_literal_bound)]
+    impl Tool for Fake {
+        fn name(&self) -> &str {
+            self.name
+        }
+        fn description(&self) -> &str {
+            "de mentira"
+        }
+        fn input_schema(&self) -> serde_json::Value {
+            serde_json::json!({ "type": "object" })
+        }
+        fn is_extension(&self) -> bool {
+            self.extension
+        }
+        async fn execute(
+            &self,
+            _input: serde_json::Value,
+            _ctx: &crate::tool::ToolContext,
+        ) -> crate::tool::ToolOutput {
+            crate::tool::ToolOutput::ok(RESULTADO)
+        }
+    }
+
+    /// O que a ferramenta de mentira devolve, para o hook ter o que ler.
+    const RESULTADO: &str = "a ferramenta produziu isto";
+
+    fn agent_with(tools: &[(&'static str, bool)]) -> (tempfile::TempDir, crate::Agent) {
+        let dir = tempfile::tempdir().expect("um diretorio temporario");
+        let ctx = crate::ToolContext::new(dir.path()).expect("uma raiz valida");
+        let backend: Arc<dyn crate::Backend> =
+            Arc::new(crate::backend::fake::FakeBackend::new(Vec::new()));
+        let mut agent = crate::Agent::new(backend, ctx);
+        for (name, extension) in tools {
+            agent = agent.with_tool(Arc::new(Fake {
+                name,
+                extension: *extension,
+            }));
+        }
+        (dir, agent)
+    }
+
+    #[test]
+    fn a_server_tool_never_lands_in_the_middle_of_the_native_ones() {
+        // Ordenar tudo junto por nome punha `docs__search` entre `bash` e
+        // `edit`, entao conectar um servidor deslocava o resto do array e o
+        // ponto de corte do cache passava a cobrir outra coisa (NFR-7).
+        let (_dir, agent) = agent_with(&[("edit", false), ("docs__search", true), ("bash", false)]);
+
+        let nomes: Vec<_> = agent.specs().into_iter().map(|s| s.name).collect();
+        assert_eq!(nomes, vec!["bash", "edit", "docs__search"]);
+    }
+
+    #[test]
+    fn the_order_does_not_change_between_calls() {
+        let (_dir, agent) = agent_with(&[("edit", false), ("docs__search", true), ("bash", false)]);
+        assert_eq!(agent.specs(), agent.specs());
+    }
+
+    /// Instala um hook executável na raiz do agente.
+    fn install(root: &std::path::Path, event: crate::policy::hooks::Event, body: &str) {
+        let path = root.join(".nycode/hooks").join(event.filename());
+        std::fs::create_dir_all(path.parent().expect("o diretorio de hooks")).expect("criar");
+        std::fs::write(&path, format!("#!/bin/sh\n{body}\n")).expect("escrever");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt as _;
+            std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755))
+                .expect("bit de execucao");
+        }
+    }
+
+    fn call(name: &str) -> crate::tool::ToolCall {
+        crate::tool::ToolCall {
+            id: "t1".to_owned(),
+            name: name.to_owned(),
+            input: serde_json::json!({ "arg": 1 }),
+        }
+    }
+
+    /// Um agente que permite tudo, com os hooks do diretório já descobertos.
+    fn agent_with_hooks(dir: &tempfile::TempDir) -> crate::Agent {
+        let ctx = crate::ToolContext::new(dir.path()).expect("uma raiz valida");
+        let backend: Arc<dyn crate::Backend> =
+            Arc::new(crate::backend::fake::FakeBackend::new(Vec::new()));
+        crate::Agent::new(backend, ctx)
+            .with_tool(Arc::new(Fake {
+                name: "read",
+                extension: false,
+            }))
+            .with_gate(Box::new(crate::policy::AllowAll))
+            .with_hooks(crate::policy::Hooks::discover(dir.path()))
+    }
+
+    #[tokio::test]
+    async fn a_post_tool_hook_sees_what_the_tool_produced() {
+        // O evento so serve se carregar o resultado: um hook de auditoria que
+        // recebesse so o nome registraria que `read` rodou e nada do que leu.
+        let dir = tempfile::tempdir().expect("um diretorio temporario");
+        install(
+            dir.path(),
+            crate::policy::hooks::Event::PostToolUse,
+            "cat > visto.json",
+        );
+        let agent = agent_with_hooks(&dir);
+
+        let output = agent.execute(&call("read")).await;
+
+        let visto = std::fs::read_to_string(dir.path().join("visto.json")).expect("o hook rodou");
+        let visto: serde_json::Value = serde_json::from_str(&visto).expect("contrato JSON");
+        assert_eq!(visto["event"], "post-tool-use");
+        assert_eq!(visto["tool"], "read");
+        assert_eq!(visto["output"], RESULTADO);
+        assert_eq!(visto["input"]["arg"], 1);
+        assert_eq!(output.content, RESULTADO, "o resultado segue intacto");
+    }
+
+    #[tokio::test]
+    async fn a_denial_after_the_fact_does_not_turn_a_good_result_into_an_error() {
+        // O veto e de `pre-tool-use` e so dele. Obedecer uma recusa aqui seria
+        // inventar veto retroativo sobre um arquivo que ja foi escrito.
+        let dir = tempfile::tempdir().expect("um diretorio temporario");
+        install(
+            dir.path(),
+            crate::policy::hooks::Event::PostToolUse,
+            r#"echo '{"decision":"deny","reason":"tarde demais"}'"#,
+        );
+        let agent = agent_with_hooks(&dir);
+
+        let output = agent.execute(&call("read")).await;
+
+        assert!(!output.is_error, "{}", output.content);
+        assert_eq!(output.content, RESULTADO);
+    }
+
+    #[tokio::test]
+    async fn a_hook_that_hangs_after_the_fact_does_not_fail_a_tool_that_worked() {
+        // O hook nao pode virar um caminho de falha da ferramenta: ela ja
+        // rodou, e transformar o sucesso dela em erro faria o modelo desfazer
+        // um trabalho que aconteceu.
+        let dir = tempfile::tempdir().expect("um diretorio temporario");
+        install(
+            dir.path(),
+            crate::policy::hooks::Event::PostToolUse,
+            "sleep 60",
+        );
+        let mut agent = agent_with_hooks(&dir);
+        agent = agent.with_hooks(
+            crate::policy::Hooks::discover(dir.path())
+                .with_timeout(std::time::Duration::from_millis(200)),
+        );
+
+        let output = agent.execute(&call("read")).await;
+
+        assert!(!output.is_error, "{}", output.content);
+        assert_eq!(output.content, RESULTADO);
+    }
+
+    #[tokio::test]
+    async fn a_call_that_never_ran_produces_no_post_tool_event() {
+        // Anunciar uso de ferramenta onde nao houve uso faria um hook de
+        // auditoria registrar o que nao aconteceu — e faria o veto do
+        // `pre-tool-use` parecer, no registro, uma execucao.
+        let dir = tempfile::tempdir().expect("um diretorio temporario");
+        install(
+            dir.path(),
+            crate::policy::hooks::Event::PreToolUse,
+            r#"echo '{"decision":"deny","reason":"nao"}'"#,
+        );
+        install(
+            dir.path(),
+            crate::policy::hooks::Event::PostToolUse,
+            "cat > visto.json",
+        );
+        let agent = agent_with_hooks(&dir);
+
+        let vetada = agent.execute(&call("read")).await;
+        let desconhecida = agent.execute(&call("nao-existe")).await;
+
+        assert!(vetada.is_error);
+        assert!(desconhecida.is_error);
+        assert!(
+            !dir.path().join("visto.json").exists(),
+            "nenhuma das duas chegou a rodar ferramenta nenhuma"
+        );
     }
 }

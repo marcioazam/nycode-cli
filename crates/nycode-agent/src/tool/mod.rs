@@ -1,4 +1,16 @@
-//! Contrato de ferramenta e o contexto em que ela roda.
+//! Contrato de ferramenta, o contexto em que ela roda, e o que a saída dela
+//! pode ser.
+//!
+//! O que uma ferramenta produz não é texto do harness: vem de um comando, de um
+//! arquivo do repositório ou de um servidor de terceiro. [`sanitize`] é o que
+//! impede esse texto de virar controle de terminal no caminho até o usuário.
+//!
+//! E o caminho que ela recebe também não é do harness. [`ToolContext::resolve`]
+//! decide se ele está dentro da raiz; [`contain`] é o que faz a decisão valer
+//! até a abertura, fechando a janela entre uma coisa e outra.
+
+pub mod contain;
+pub mod sanitize;
 
 use std::path::{Component, Path, PathBuf};
 
@@ -180,6 +192,16 @@ pub trait Tool: Send + Sync {
     /// Descrição enviada ao modelo. É o que determina se a ferramenta é usada
     /// na hora certa, então vale mais que a implementação.
     fn description(&self) -> &str;
+
+    /// Se esta ferramenta pode entrar ou sair entre sessões.
+    ///
+    /// Uma nativa está sempre lá; uma de servidor MCP aparece porque o
+    /// workspace a declarou e some quando o servidor não sobe. Quem declara
+    /// isso decide de que lado do ponto de corte do cache a ferramenta fica
+    /// (NFR-7), e o padrão é o lado estável porque é onde as nativas ficam.
+    fn is_extension(&self) -> bool {
+        false
+    }
 
     fn input_schema(&self) -> Value;
 

@@ -31,14 +31,6 @@ pub const DEFAULT_TOOL_LIMIT: usize = 50;
 /// retomar.
 const CANCELLED_BY_USER: &str = "cancelado pelo usuario antes de executar";
 
-/// Quantas vezes um mesmo pedido pode ser compactado antes de desistir.
-///
-/// A compactação converge sozinha — depois da primeira o histórico já está no
-/// mínimo e `compact` devolve `None` —, mas um teto explícito é o que garante
-/// que um gateway respondendo estouro a qualquer pedido não faça o agente
-/// compactar até esquecer a tarefa.
-const MAX_COMPACTIONS: usize = 2;
-
 /// Recebe o que acontece durante o turno.
 ///
 /// Existe para que a CLI imprima incrementalmente e os testes capturem sem
@@ -91,14 +83,6 @@ enum RoundEnd {
     Cancelled,
 }
 
-/// Se vale compactar o histórico em resposta a este erro.
-///
-/// Só estouro de janela, e só até o teto: um gateway que responde estouro a
-/// qualquer pedido faria o agente compactar até esquecer a tarefa.
-fn should_compact(err: &Error, already: usize) -> bool {
-    already < MAX_COMPACTIONS && matches!(err, Error::Wire(wire) if wire.is_context_overflow())
-}
-
 pub struct Agent {
     backend: Arc<dyn Backend>,
     tools: HashMap<String, Arc<dyn Tool>>,
@@ -107,6 +91,14 @@ pub struct Agent {
     messages: Vec<Message>,
     system: Option<String>,
     tool_limit: usize,
+    /// Quantos turnos recentes a compactacao preserva intactos.
+    keep_recent: usize,
+    /// Janela de contexto que o catálogo declara para o modelo atual.
+    ///
+    /// `None` enquanto o catálogo não a declara, e é assim que fica: sem número
+    /// declarado não há com o que comparar o usage, e chutar um faria o harness
+    /// acusar truncamento onde não houve.
+    context_window: Option<u64>,
     cancel: Cancel,
     approver: Arc<dyn Approver>,
     /// Mensagens que o usuário digitou enquanto o turno corria.
@@ -135,6 +127,8 @@ impl std::fmt::Debug for Agent {
 }
 
 mod dispatch;
+mod shrink;
+pub mod transform;
 
 impl Agent {
     pub fn new(backend: Arc<dyn Backend>, ctx: ToolContext) -> Self {
@@ -148,6 +142,8 @@ impl Agent {
             messages: Vec::new(),
             system: None,
             tool_limit: DEFAULT_TOOL_LIMIT,
+            keep_recent: DEFAULT_KEEP_RECENT,
+            context_window: None,
             cancel: Cancel::new(),
             // Sem ninguém a quem perguntar, a resposta é não: aprovar por
             // omissão daria a um pipeline a permissão que ninguém concedeu.
@@ -274,8 +270,8 @@ impl Agent {
             let (turn, interrupted) = match self.stream_one_turn(observer).await {
                 Ok(TurnEnd::Complete(turn)) => (turn, false),
                 Ok(TurnEnd::Cancelled(turn)) => (turn, true),
-                Err(err) if should_compact(&err, compactions) => {
-                    let Some(removed) = self.compact_history() else {
+                Err(err) if shrink::should_compact(&err, compactions) => {
+                    let Some(removed) = self.compact_history().await else {
                         // Já está no mínimo: insistir repetiria o mesmo pedido
                         // e o mesmo erro, num laço.
                         return Err(err);
@@ -300,7 +296,49 @@ impl Agent {
                 .unwrap_or_else(|| StopReason::Unrecognized("ausente".to_owned()));
             let calls = turn.tool_calls();
 
+            // O provider também reporta estouro de janela sem erro nenhum
+            // (FR-5): status 200, stream bem formado, e a janela estourada
+            // escondida no `stop_reason` ou no usage. Ler isso aqui é o que
+            // impede a falha de sair daqui com cara de resposta.
+            let overflowed = shrink::silent_overflow(
+                &stop_reason,
+                turn.text().is_empty() && calls.is_empty(),
+                turn.usage().input_tokens,
+                self.context_window,
+            );
+
+            // Turno vazio não se registra: gravá-lo poluiria o histórico com um
+            // assistente que não disse nada, e é justamente o histórico que
+            // precisa encolher para o próximo caber.
+            if overflowed == Some(shrink::SilentOverflow::ProducedNothing)
+                && shrink::may_compact(compactions)
+                && let Some(removed) = self.compact_history().await
+            {
+                compactions += 1;
+                observer.on_notice(&format!(
+                    "o turno parou no limite sem produzir nada; {removed} mensagens antigas foram compactadas"
+                ));
+                continue;
+            }
+
             self.record_assistant_turn(&turn, &calls);
+
+            if let Some(shrink::SilentOverflow::InputAboveWindow { input, window }) = overflowed {
+                // A resposta veio e vale; o que não pode é o próximo turno ser
+                // truncado do mesmo jeito, com o modelo esquecendo o começo da
+                // conversa e nada dizendo por quê.
+                observer.on_notice(&format!(
+                    "a entrada deste turno ({input} tokens) passou da janela declarada ({window}); o provider truncou o inicio da conversa"
+                ));
+                if shrink::may_compact(compactions)
+                    && let Some(removed) = self.compact_history().await
+                {
+                    compactions += 1;
+                    observer.on_notice(&format!(
+                        "{removed} mensagens antigas foram compactadas para o proximo turno caber"
+                    ));
+                }
+            }
 
             if interrupted {
                 self.close_pending_calls(&calls);
@@ -392,26 +430,16 @@ impl Agent {
         self.system.as_deref()
     }
 
-    /// Compacta agora, a pedido do usuário.
-    ///
-    /// Devolve zero quando não há o que cortar, em vez de fingir que cortou.
-    pub fn compact_now(&mut self) -> usize {
-        self.compact_history().unwrap_or(0)
-    }
-
-    /// Compacta o histórico, devolvendo quantas mensagens saíram.
-    fn compact_history(&mut self) -> Option<usize> {
-        let compacted = crate::session::compact(&self.messages, DEFAULT_KEEP_RECENT)?;
-        self.messages = compacted.messages;
-        Some(compacted.removed)
-    }
-
     async fn stream_one_turn(&self, observer: &mut impl Observer) -> Result<TurnEnd> {
         let mut stream = tokio::select! {
             biased;
             () = self.cancel.cancelled() => return Ok(TurnEnd::Cancelled(Turn::new())),
+            // O histórico vai ajustado, e não cru: um `tool_use` sem
+            // `tool_result` faz o provedor recusar o pedido inteiro, e retomar
+            // um ponto da árvore (FR-14) ou trocar de modelo (FR-19) produz
+            // exatamente esse par quebrado.
             stream = self.backend.stream(
-                self.messages.clone(),
+                transform::for_provider(&self.messages),
                 self.system.clone(),
                 self.specs(),
             ) => stream?,

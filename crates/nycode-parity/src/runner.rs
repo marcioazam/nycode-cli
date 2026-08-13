@@ -4,7 +4,8 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 
-use crate::transcript::{TokenAccounting, ToolInvocation, Transcript};
+use crate::dialect::{Events, read_events};
+use crate::transcript::Transcript;
 use crate::workspace::snapshot;
 
 /// Um harness executável a ser medido.
@@ -63,21 +64,6 @@ impl Harness {
     }
 }
 
-/// Como ler o stream de eventos de um harness.
-///
-/// Os dois publicam NDJSON, mas não com os mesmos nomes de campo. Traduzir aqui
-/// é o que permite comparar contrato observável em vez de formato de saída — o
-/// formato divergir não é o defeito que o NFR-6 quer pegar.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Events {
-    /// Etiqueta `type`, com `tool_start` e `result`.
-    Nycode,
-    /// Etiqueta `type`, com `tool_use` e `usage` aninhado na mensagem.
-    Reference,
-    /// O harness não publica eventos; as duas dimensões ficam vazias.
-    None,
-}
-
 /// Roda um harness num workspace e devolve o contrato observado.
 ///
 /// O workspace é fotografado depois da execução, não antes e depois: comparar
@@ -110,84 +96,6 @@ pub async fn run(harness: &Harness, workspace: &Path, prompt: &str) -> Result<Tr
         error: observed.error.or_else(|| extract_error(&stderr)),
         exit_code: output.status.code().unwrap_or(-1),
     })
-}
-
-/// O que o stream de eventos revelou.
-#[derive(Debug, Default)]
-struct Observed {
-    tools: Vec<ToolInvocation>,
-    tokens: TokenAccounting,
-    stop_reason: Option<String>,
-    error: Option<String>,
-}
-
-/// Lê o NDJSON de um harness no dialeto dele.
-///
-/// Uma linha que não é JSON é ignorada em vez de derrubar a comparação: um
-/// harness pode escrever prosa em stdout antes do primeiro evento, e isso não é
-/// divergência de contrato.
-fn read_events(stdout: &str, dialect: Events) -> Observed {
-    let mut observed = Observed::default();
-    if dialect == Events::None {
-        return observed;
-    }
-
-    for line in stdout.lines() {
-        let Ok(value) = serde_json::from_str::<serde_json::Value>(line) else {
-            continue;
-        };
-        let Some(kind) = value.get("type").and_then(serde_json::Value::as_str) else {
-            continue;
-        };
-
-        match (dialect, kind) {
-            (Events::Nycode, "tool_start") | (Events::Reference, "tool_use") => {
-                if let Some(name) = value.get("name").and_then(serde_json::Value::as_str) {
-                    let arguments = value
-                        .get("input")
-                        .or_else(|| value.get("arguments"))
-                        .cloned()
-                        .unwrap_or(serde_json::Value::Null);
-                    observed.tools.push(ToolInvocation::new(name, &arguments));
-                }
-            }
-            // O evento de fechamento tem nome diferente em cada dialeto, e o
-            // mesmo conteúdo: `stop_reason` e a contabilidade do turno.
-            (Events::Nycode, "result") | (Events::Reference, "message") => {
-                observed.stop_reason = value
-                    .get("stop_reason")
-                    .and_then(serde_json::Value::as_str)
-                    .map(ToOwned::to_owned);
-                observed.tokens = read_usage(value.get("usage"));
-            }
-            (_, "error") => {
-                observed.error = value
-                    .get("message")
-                    .or_else(|| value.get("error"))
-                    .and_then(serde_json::Value::as_str)
-                    .map(ToOwned::to_owned);
-            }
-            _ => {}
-        }
-    }
-    observed
-}
-
-/// Projeta a contabilidade de tokens de um evento.
-fn read_usage(usage: Option<&serde_json::Value>) -> TokenAccounting {
-    let Some(usage) = usage else {
-        return TokenAccounting::default();
-    };
-    let number = |name: &str| usage.get(name).and_then(serde_json::Value::as_u64);
-
-    TokenAccounting {
-        input: number("input_tokens").unwrap_or(0),
-        output: number("output_tokens").unwrap_or(0),
-        estimated: usage
-            .get("estimated")
-            .and_then(serde_json::Value::as_bool)
-            .unwrap_or(false),
-    }
 }
 
 /// Deduz o motivo de parada a partir do código de saída.
@@ -335,123 +243,5 @@ mod tests {
         assert_eq!(reference.events, Events::Reference);
         assert!(reference.args.contains(&"json".to_owned()));
         assert_eq!(reference.args.last().unwrap(), "-p");
-    }
-
-    #[test]
-    fn the_nycode_stream_yields_the_tool_sequence_in_order() {
-        let stdout = concat!(
-            r#"{"type":"text","text":"vou ler"}"#,
-            "\n",
-            r#"{"type":"tool_start","name":"read","input":{"path":"a.rs"}}"#,
-            "\n",
-            r#"{"type":"tool_end","name":"read","is_error":false,"output":"x"}"#,
-            "\n",
-            r#"{"type":"tool_start","name":"bash","input":{"command":"ls"}}"#,
-            "\n",
-            r#"{"type":"result","stop_reason":"end_turn","usage":{"input_tokens":120,"output_tokens":30},"tool_rounds":2}"#,
-            "\n",
-        );
-
-        let observed = read_events(stdout, Events::Nycode);
-        let names: Vec<_> = observed.tools.iter().map(|t| t.name.as_str()).collect();
-        assert_eq!(names, vec!["read", "bash"]);
-        assert_eq!(observed.tokens.input, 120);
-        assert_eq!(observed.tokens.output, 30);
-        assert_eq!(observed.stop_reason.as_deref(), Some("end_turn"));
-    }
-
-    #[test]
-    fn the_reference_dialect_is_translated_rather_than_compared_verbatim() {
-        // O formato divergir nao e o defeito que o NFR-6 quer pegar; o
-        // contrato observavel divergir e.
-        let stdout = concat!(
-            r#"{"type":"tool_use","name":"read","arguments":{"path":"a.rs"}}"#,
-            "\n",
-            r#"{"type":"message","stop_reason":"end_turn","usage":{"input_tokens":120,"output_tokens":30}}"#,
-            "\n",
-        );
-
-        let observed = read_events(stdout, Events::Reference);
-        assert_eq!(observed.tools.len(), 1);
-        assert_eq!(observed.tools[0].name, "read");
-        assert_eq!(observed.tokens.input, 120);
-        assert_eq!(observed.stop_reason.as_deref(), Some("end_turn"));
-    }
-
-    #[test]
-    fn the_same_call_written_two_ways_is_not_a_divergence() {
-        // Ordem de chaves difere entre serializadores; sem normalizacao toda
-        // execucao acusaria divergencia falsa.
-        let ny = read_events(
-            r#"{"type":"tool_start","name":"write","input":{"path":"a","content":"b"}}"#,
-            Events::Nycode,
-        );
-        let re = read_events(
-            r#"{"type":"tool_use","name":"write","arguments":{"content":"b","path":"a"}}"#,
-            Events::Reference,
-        );
-        assert_eq!(ny.tools, re.tools);
-    }
-
-    #[test]
-    fn an_estimated_usage_survives_the_translation() {
-        // Comparar um numero medido com um estimado como se fossem iguais e
-        // exatamente o que o NFR-4 proibe.
-        let observed = read_events(
-            r#"{"type":"result","stop_reason":"end_turn","usage":{"input_tokens":10,"output_tokens":2,"estimated":true}}"#,
-            Events::Nycode,
-        );
-        assert!(observed.tokens.estimated);
-    }
-
-    #[test]
-    fn an_error_event_becomes_the_error_envelope() {
-        let observed = read_events(
-            r#"{"type":"error","message":"prompt is too long"}"#,
-            Events::Nycode,
-        );
-        assert_eq!(observed.error.as_deref(), Some("prompt is too long"));
-    }
-
-    #[test]
-    fn a_line_that_is_not_an_event_is_skipped_instead_of_failing() {
-        // Um harness pode escrever prosa antes do primeiro evento; isso nao e
-        // divergencia de contrato.
-        let stdout = concat!(
-            "carregando...\n",
-            "{isto nao e json\n",
-            r#"{"sem":"etiqueta"}"#,
-            "\n",
-            r#"{"type":"tool_start","name":"read","input":{}}"#,
-            "\n",
-        );
-
-        let observed = read_events(stdout, Events::Nycode);
-        assert_eq!(observed.tools.len(), 1);
-    }
-
-    #[test]
-    fn a_harness_without_an_event_mode_reports_nothing_rather_than_guessing() {
-        let stdout = r#"{"type":"tool_start","name":"read","input":{}}"#;
-        let observed = read_events(stdout, Events::None);
-        assert!(observed.tools.is_empty());
-        assert_eq!(observed.tokens, TokenAccounting::default());
-    }
-
-    #[test]
-    fn a_stream_without_a_final_event_falls_back_to_the_exit_code() {
-        // Um harness morto no meio nao publica `result`; deduzir do codigo de
-        // saida e melhor que declarar `end_turn`.
-        let observed = read_events(r#"{"type":"text","text":"parcial"}"#, Events::Nycode);
-        assert_eq!(observed.stop_reason, None);
-    }
-
-    #[test]
-    fn a_result_without_usage_reports_zero_rather_than_failing() {
-        let observed = read_events(
-            r#"{"type":"result","stop_reason":"end_turn"}"#,
-            Events::Nycode,
-        );
-        assert_eq!(observed.tokens, TokenAccounting::default());
     }
 }

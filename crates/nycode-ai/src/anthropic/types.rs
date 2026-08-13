@@ -125,6 +125,15 @@ pub struct ToolSpec {
     pub name: String,
     pub description: String,
     pub input_schema: Value,
+    /// Se esta ferramenta pode entrar ou sair entre sessões.
+    ///
+    /// Uma ferramenta de servidor MCP aparece porque o workspace a declarou, e
+    /// some quando o servidor não sobe. Uma nativa está sempre lá. A distinção
+    /// existe para o ponto de corte do cache: ele é posto na última estável, e
+    /// o que varia fica depois dele — senão conectar um servidor invalida o
+    /// prefixo inteiro (NFR-7).
+    #[serde(skip)]
+    pub extension: bool,
 }
 
 /// Corpo de `POST /v1/messages`.

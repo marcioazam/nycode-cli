@@ -21,6 +21,22 @@ pub struct Capped {
 }
 
 impl Capped {
+    /// O começo de um texto que já está na memória, com o tamanho de origem.
+    ///
+    /// Nem todo teto começa num arquivo: a saída de uma ferramenta já é
+    /// `String` quando alguém precisa cortá-la, e o que precisa ser preservado
+    /// é a mesma dupla — o pedaço que passa adiante e o tamanho de que ele
+    /// veio. Reimplementar isso no ponto de uso perderia o segundo, que é
+    /// justamente o que impede o corte de ser silencioso.
+    #[must_use]
+    pub fn head_of(text: &str, cap: usize) -> Self {
+        let end = cap.min(text.len());
+        Self {
+            bytes: text.as_bytes()[..end].to_vec(),
+            total: text.len() as u64,
+        }
+    }
+
     /// Se o arquivo é maior do que o que foi guardado.
     #[must_use]
     pub fn truncated(&self) -> bool {
@@ -43,9 +59,17 @@ impl Capped {
 
 /// Lê um arquivo guardando no máximo `cap` bytes.
 pub async fn read(path: &Path, cap: usize) -> std::io::Result<Capped> {
+    read_open(tokio::fs::File::open(path).await?, cap).await
+}
+
+/// O mesmo, sobre um arquivo que já está aberto.
+///
+/// É por aqui que a leitura contida entra: [`crate::tool::contain`] devolve um
+/// descritor, e reabrir por caminho para ler desfaria a garantia que ele acabou
+/// de dar.
+pub async fn read_open(file: tokio::fs::File, cap: usize) -> std::io::Result<Capped> {
     use tokio::io::AsyncReadExt as _;
 
-    let file = tokio::fs::File::open(path).await?;
     let total = file.metadata().await?.len();
 
     let mut bytes = Vec::with_capacity(reserve(total, cap));
@@ -65,6 +89,124 @@ pub fn read_blocking(path: &Path, cap: usize) -> std::io::Result<Capped> {
     file.take(ceiling(cap)).read_to_end(&mut bytes)?;
 
     Ok(Capped { bytes, total })
+}
+
+/// Uma faixa de linhas de um arquivo, e o que sobrou fora dela.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Window {
+    /// As linhas pedidas, já concatenadas.
+    pub text: String,
+    /// Número da primeira linha incluída, contando de 1.
+    pub first: u64,
+    /// Quantas linhas entraram.
+    pub lines: u64,
+    /// Se há conteúdo depois da última linha incluída.
+    pub more: bool,
+    /// Se o arquivo não é texto.
+    pub binary: bool,
+}
+
+impl Window {
+    /// A linha por onde a próxima chamada deve começar.
+    #[must_use]
+    pub const fn next_offset(&self) -> u64 {
+        self.first + self.lines
+    }
+}
+
+/// Teto de bytes percorridos para alcançar a faixa pedida.
+///
+/// Alcançar a linha um milhão exige ler tudo que vem antes dela, e "tudo" não
+/// tem tamanho conhecido. O teto é de percurso, não de memória: o que se guarda
+/// continua sendo `cap`.
+const SCAN_CEILING: u64 = 8 * 1024 * 1024;
+
+/// Tamanho de cada leitura do disco.
+const CHUNK: usize = 64 * 1024;
+
+/// Lê `limit` linhas a partir de `offset`, guardando no máximo `cap` bytes.
+///
+/// Percorre em blocos e monta linha a linha em vez de ler o arquivo e depois
+/// recortar: um minificado de um megabyte é uma linha só, e `read_until` sobre
+/// ele traria o megabyte inteiro para a memória antes de qualquer corte.
+pub async fn read_window(
+    file: tokio::fs::File,
+    offset: u64,
+    limit: Option<u64>,
+    cap: usize,
+) -> std::io::Result<Window> {
+    use tokio::io::AsyncReadExt as _;
+
+    let offset = offset.max(1);
+    let mut reader = file;
+    let mut chunk = vec![0u8; CHUNK];
+    let mut pending: Vec<u8> = Vec::new();
+
+    let mut window = Window {
+        text: String::new(),
+        first: offset,
+        lines: 0,
+        more: false,
+        binary: false,
+    };
+    let mut number: u64 = 0;
+    let mut scanned: u64 = 0;
+
+    loop {
+        let read = reader.read(&mut chunk).await?;
+        if read == 0 {
+            break;
+        }
+        scanned += read as u64;
+        if chunk[..read].contains(&0) {
+            // Byte nulo é a marca de binário, e `\0` é UTF-8 válido: sem esta
+            // checagem um arquivo de nulos passa como texto e vira lixo no
+            // contexto do modelo.
+            window.binary = true;
+            return Ok(window);
+        }
+        pending.extend_from_slice(&chunk[..read]);
+
+        while let Some(end) = pending.iter().position(|byte| *byte == b'\n') {
+            let line: Vec<u8> = pending.drain(..=end).collect();
+            if !absorb(&mut window, &mut number, &line, offset, limit, cap) {
+                return Ok(window);
+            }
+        }
+
+        if scanned >= SCAN_CEILING {
+            window.more = true;
+            return Ok(window);
+        }
+    }
+
+    // A última linha do arquivo pode não terminar em newline.
+    if !pending.is_empty() {
+        absorb(&mut window, &mut number, &pending, offset, limit, cap);
+    }
+    Ok(window)
+}
+
+/// Considera uma linha, devolvendo se vale continuar lendo.
+fn absorb(
+    window: &mut Window,
+    number: &mut u64,
+    line: &[u8],
+    offset: u64,
+    limit: Option<u64>,
+    cap: usize,
+) -> bool {
+    *number += 1;
+    if *number < offset {
+        return true;
+    }
+    if limit.is_some_and(|limit| window.lines >= limit) || window.text.len() + line.len() > cap {
+        window.more = true;
+        return false;
+    }
+    window.text.push_str(&String::from_utf8_lossy(line));
+    window.lines += 1;
+    true
 }
 
 /// Quanto reservar de antemão: o tamanho do arquivo, preso ao teto.
@@ -159,5 +301,33 @@ mod tests {
         };
 
         assert_eq!(capped.text(), "instrucao");
+    }
+
+    #[test]
+    fn capping_text_in_memory_keeps_the_size_it_came_from() {
+        // Sem o tamanho de origem o corte e silencioso, e quem recebe o pedaco
+        // decide como se tivesse lido tudo.
+        let capped = Capped::head_of("comeco-MEIO-fim", 6);
+
+        assert_eq!(capped.text(), "comeco");
+        assert_eq!(capped.total, 15);
+        assert!(capped.truncated());
+    }
+
+    #[test]
+    fn text_that_fits_the_ceiling_is_not_marked_as_cut() {
+        let capped = Capped::head_of("curto", 4096);
+
+        assert_eq!(capped.text(), "curto");
+        assert!(!capped.truncated());
+    }
+
+    #[test]
+    fn capping_in_the_middle_of_a_character_drops_it_instead_of_corrupting() {
+        // O teto e em bytes e o texto e UTF-8: cortar em 8 parte o `ç` ao meio.
+        let capped = Capped::head_of("coracao ç", 8);
+
+        assert_eq!(capped.text(), "coracao ");
+        assert!(capped.truncated());
     }
 }

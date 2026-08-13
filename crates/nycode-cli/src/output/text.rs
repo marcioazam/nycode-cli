@@ -2,7 +2,7 @@
 
 use std::io::Write;
 
-use nycode_agent::{Observer, ToolOutput};
+use nycode_agent::{Observer, ToolOutput, sanitize};
 use serde_json::Value;
 
 /// Escreve texto incrementalmente e anota chamadas de ferramenta no progresso.
@@ -92,12 +92,16 @@ impl<W: Write + Send, P: Write + Send> Observer for Stdout<W, P> {
         let _ = writeln!(
             self.progress,
             "  \u{2717} {name}: {}",
-            first_line(&output.content)
+            sanitize::plain(first_line(&output.content))
         );
     }
 }
 
 /// Resumo de uma linha dos argumentos, para não despejar JSON no terminal.
+///
+/// Chave e valor vêm do modelo, então passam pela limpeza — e passam **antes**
+/// do corte: limpar depois deixaria um escape partido ao meio, cujo resto
+/// chegaria à tela como texto.
 fn summarize(input: &Value) -> String {
     let Some(obj) = input.as_object() else {
         return String::new();
@@ -105,10 +109,10 @@ fn summarize(input: &Value) -> String {
     obj.iter()
         .map(|(key, value)| {
             let rendered = match value {
-                Value::String(s) => truncate(s, 60),
-                other => truncate(&other.to_string(), 60),
+                Value::String(s) => truncate(&sanitize::plain(s), 60),
+                other => truncate(&sanitize::plain(&other.to_string()), 60),
             };
-            format!("{key}={rendered}")
+            format!("{}={rendered}", sanitize::plain(key))
         })
         .collect::<Vec<_>>()
         .join(", ")
@@ -229,6 +233,40 @@ mod tests {
         let progress = written(sink).1;
         assert!(progress.contains("erro"));
         assert!(!progress.contains("stack"));
+    }
+
+    #[test]
+    fn a_tool_failure_cannot_repaint_the_terminal_on_its_way_to_the_screen() {
+        // A mensagem de erro carrega saida do comando, que e conteudo de
+        // terceiro. Com o escape intacto ela sobe duas linhas e escreve por
+        // cima do que ja estava ali — que pode ter sido a pergunta de aprovacao.
+        let mut sink = sink(false);
+        sink.on_tool_end(
+            "bash",
+            &ToolOutput::error("\u{1b}[2A\u{1b}[2Kaprovar? (s/n)"),
+        );
+
+        let progress = written(sink).1;
+        assert!(!progress.contains('\u{1b}'), "{progress:?}");
+        assert!(progress.contains("aprovar? (s/n)"), "{progress}");
+    }
+
+    #[test]
+    fn an_argument_cannot_smuggle_terminal_control_into_the_progress_line() {
+        // O argumento vem do modelo, que pode ser induzido a emiti-lo.
+        let summary = summarize(&json!({ "command": "echo \u{1b}]0;titulo\u{7}oi" }));
+        assert_eq!(summary, "command=echo oi");
+    }
+
+    #[test]
+    fn cleaning_happens_before_truncation_so_no_escape_is_cut_in_half() {
+        // Limpar depois do corte deixaria o resto de uma sequencia partida
+        // chegar a tela como texto.
+        let escape_longo = format!("\u{1b}[38;2;255;0;0m{}", "a".repeat(80));
+        let summary = summarize(&json!({ "x": escape_longo }));
+
+        assert!(!summary.contains('\u{1b}'), "{summary:?}");
+        assert!(summary.starts_with("x=aaa"), "{summary}");
     }
 
     #[test]

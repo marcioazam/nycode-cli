@@ -22,6 +22,11 @@ coverage-baseline.json
 .env.*
 !.env.example
 
+# Estado de sessão do próprio nycode, gravado na raiz do workspace: transcritos,
+# catálogo de modelos em cache. O transcrito carrega todo prompt e o conteúdo de
+# todo arquivo lido no turno, e um `git add -A` o levaria junto.
+.nycode/
+
 # Estado local de ferramenta de agente, por maquina.
 .omc/
 

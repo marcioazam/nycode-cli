@@ -20,6 +20,24 @@ pub trait Backend: Send + Sync {
         system: Option<String>,
         tools: Vec<ToolSpec>,
     ) -> nycode_ai::Result<EventStream>;
+
+    /// Um pedido de uma vez só, fora da conversa.
+    ///
+    /// Separado de [`Backend::stream`] porque a amostragem difere: o que vai
+    /// aqui não é prefixo de nada e não se repete no turno seguinte, então
+    /// marcá-lo para o cache paga escrita que ninguém vai reusar. Sem
+    /// ferramenta pela mesma razão — quem pede um resumo não quer que o modelo
+    /// vá ler arquivo.
+    ///
+    /// O padrão delega ao `stream`, para que um backend de teste não precise
+    /// saber da distinção.
+    async fn oneshot(
+        &self,
+        messages: Vec<Message>,
+        system: Option<String>,
+    ) -> nycode_ai::Result<EventStream> {
+        self.stream(messages, system, Vec::new()).await
+    }
 }
 
 #[async_trait]
@@ -31,6 +49,19 @@ impl Backend for Client {
         tools: Vec<ToolSpec>,
     ) -> nycode_ai::Result<EventStream> {
         let stream = Client::stream(self, messages, system, tools).await?;
+        Ok(Box::pin(stream))
+    }
+
+    async fn oneshot(
+        &self,
+        messages: Vec<Message>,
+        system: Option<String>,
+    ) -> nycode_ai::Result<EventStream> {
+        // O cache desligado é o ponto: um resumo é conteúdo de uso único, e
+        // marcá-lo cobraria escrita de cache sobre um prefixo que o próximo
+        // turno não vai reencontrar.
+        let solo = self.sampling().clone().without_cache();
+        let stream = Client::stream_with(self, messages, system, Vec::new(), solo).await?;
         Ok(Box::pin(stream))
     }
 }
@@ -57,6 +88,13 @@ pub(crate) mod fake {
         /// eles: mesma conversa, outro sistema e outro conjunto de ferramentas.
         context: Mutex<(Option<String>, Vec<ToolSpec>)>,
         failure: Mutex<Option<nycode_ai::Error>>,
+        /// O que um pedido de uma vez só responde.
+        ///
+        /// Fila própria, e não a dos turnos: o resumo da compactação é uma
+        /// chamada a mais, e servi-lo da mesma fila deslocaria os turnos que o
+        /// teste programou para o laço. Vazio significa "não respondeu", que é
+        /// o caminho de degradação que a compactação já trata.
+        oneshot: Mutex<Option<String>>,
     }
 
     impl FakeBackend {
@@ -66,6 +104,7 @@ pub(crate) mod fake {
                 seen: Mutex::new(Vec::new()),
                 context: Mutex::new((None, Vec::new())),
                 failure: Mutex::new(None),
+                oneshot: Mutex::new(None),
             }
         }
 
@@ -75,6 +114,7 @@ pub(crate) mod fake {
                 seen: Mutex::new(Vec::new()),
                 context: Mutex::new((None, Vec::new())),
                 failure: Mutex::new(Some(err)),
+                oneshot: Mutex::new(None),
             }
         }
 
@@ -88,7 +128,15 @@ pub(crate) mod fake {
                 seen: Mutex::new(Vec::new()),
                 context: Mutex::new((None, Vec::new())),
                 failure: Mutex::new(Some(err)),
+                oneshot: Mutex::new(None),
             }
+        }
+
+        /// O que um pedido de uma vez só passa a responder.
+        #[must_use]
+        pub fn answering_oneshot(self, text: &str) -> Self {
+            *self.oneshot.lock().unwrap() = Some(text.to_owned());
+            self
         }
 
         /// Quantos turnos ainda não foram consumidos.
@@ -145,6 +193,25 @@ pub(crate) mod fake {
             let turn = self.turns.lock().unwrap().pop().unwrap_or_default();
             Ok(Box::pin(futures_util::stream::iter(
                 turn.into_iter().map(Ok),
+            )))
+        }
+
+        /// Responde da fila própria, sem tocar na dos turnos.
+        ///
+        /// Servir o pedido de uma vez só da fila do laço deslocaria os turnos
+        /// que o teste programou, e o teste passaria a medir a ordem em vez do
+        /// que ele diz medir.
+        async fn oneshot(
+            &self,
+            _messages: Vec<Message>,
+            _system: Option<String>,
+        ) -> nycode_ai::Result<EventStream> {
+            let text = self.oneshot.lock().unwrap().clone();
+            let eventos = text
+                .map(|text| vec![StreamEvent::TextDelta(text)])
+                .unwrap_or_default();
+            Ok(Box::pin(futures_util::stream::iter(
+                eventos.into_iter().map(Ok),
             )))
         }
     }

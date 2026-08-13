@@ -19,8 +19,9 @@ pub struct Skill {
 
 /// Diretórios varridos, em ordem de precedência crescente.
 ///
-/// O escopo de projeto vence o global porque uma convenção do repositório é mais
-/// específica que uma preferência da máquina.
+/// Os três vêm do repositório; não há escopo global aqui, e o último vence.
+/// Uma skill não vira processo, mas o nome e a descrição dela entram no prompt
+/// de sistema, então a origem é a mesma de todo o resto: o diretório clonado.
 const SKILL_DIRS: &[&str] = &[".nycode/skills", ".claude/skills", ".agents/skills"];
 
 /// Descobre skills a partir da raiz do workspace.
@@ -104,14 +105,27 @@ fn field(frontmatter: &str, key: &str) -> Option<String> {
 }
 
 /// Renderiza as skills como bloco de instrução.
+///
+/// O corpo fica de fora — despejar todos de uma vez gastaria a janela com
+/// instrução que a maioria dos turnos não usa. Mas o **caminho** entra: sem ele
+/// o modelo sabe que a skill existe e não tem como carregar o corpo dela, e a
+/// economia de janela vira a skill não funcionar.
 #[must_use]
 pub fn render(skills: &[Skill]) -> Option<String> {
     if skills.is_empty() {
         return None;
     }
-    let mut out = String::from("# Skills disponiveis\n\n");
+    let mut out = String::from(
+        "# Skills disponiveis\n\nLeia o arquivo indicado para carregar a skill antes de segui-la.\n\n",
+    );
     for skill in skills {
-        let _ = write!(out, "## {}\n{}\n\n", skill.name, skill.description);
+        let _ = write!(
+            out,
+            "## {}\n{}\nArquivo: {}\n\n",
+            skill.name,
+            skill.description,
+            skill.path.display()
+        );
     }
     Some(out)
 }
@@ -262,5 +276,22 @@ mod tests {
         assert!(rendered.contains("revisor"));
         assert!(rendered.contains("Revisa codigo"));
         assert!(!rendered.contains("Instrucoes detalhadas"));
+    }
+
+    #[test]
+    fn rendering_names_the_file_so_the_body_can_be_loaded_when_it_is_needed() {
+        // Deixar o corpo de fora so funciona se houver como busca-lo depois.
+        // Sem o caminho, o modelo sabe que a skill existe e nao consegue segui-la
+        // — a economia de janela vira a skill nao funcionar.
+        let dir = tempfile::tempdir().unwrap();
+        write_skill(dir.path(), ".nycode/skills", "revisor", VALID);
+
+        let rendered = render(&discover(dir.path())).unwrap();
+
+        assert!(
+            rendered.contains("SKILL.md"),
+            "o caminho do manifesto precisa aparecer: {rendered}"
+        );
+        assert!(rendered.contains("revisor/SKILL.md"), "{rendered}");
     }
 }

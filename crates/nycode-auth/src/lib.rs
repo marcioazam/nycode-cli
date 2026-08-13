@@ -27,6 +27,9 @@ pub enum Error {
 
     #[error("cofre de credenciais do sistema indisponivel: {0}")]
     Keyring(String),
+
+    #[error("arquivo de credencial `{path}`: {reason}")]
+    CredentialFile { path: String, reason: String },
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

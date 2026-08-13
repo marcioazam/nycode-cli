@@ -8,6 +8,798 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Adicionado
 
+- **O inventário do que a referência entrega e este repositório não.** Sessenta
+  deltas, lidos do `pi` no commit que o [`NOTICE`](NOTICE) fixa, triados em quatro
+  baldes na [spec 002](docs/specs/002-paridade-e-sota-2026/spec.md): o que se
+  adota, o que se adota modificado, o que se recusa e por quê, e o que fica
+  adiado com o gatilho que o reabre.
+
+  O achado que motivou o épico não é uma feature ausente. São **oito capacidades
+  que este repositório declara ter e não tem**, e o caso limite é o controle de
+  raciocínio: `Sampling` carrega `thinking_budget`, `Client::with_sampling` existe
+  para configurá-lo, e nenhum dos dois tem chamador fora de teste. Os dois
+  dialetos OpenAI mencionam `sampling` só dentro de helper `#[cfg(test)]` — a
+  função que monta o corpo do pedido nunca o consulta.
+
+  Os pisos de cobertura não pegam essa classe por construção: eles medem se a
+  linha rodou, e o teste a roda. O `with_sampling` tem cobertura acima do piso e
+  zero chamadores. Daí a verificação nova que a spec 002 acrescenta, que é sobre
+  chamador de produção e não sobre linha executada.
+
+- **Cinco ADRs**: [0025](docs/architecture/decisions/0025-o-nivel-de-raciocinio-e-um-conceito-do-harness.md)
+  nível de raciocínio como conceito do harness,
+  [0026](docs/architecture/decisions/0026-o-preco-vem-do-catalogo-descoberto.md)
+  preço vindo do catálogo descoberto,
+  [0027](docs/architecture/decisions/0027-a-compactacao-dispara-por-limiar-e-o-erro-e-a-rede.md)
+  compactação por limiar com o erro rebaixado a rede de segurança,
+  [0028](docs/architecture/decisions/0028-o-consentimento-fixa-a-definicao-declarada.md)
+  consentimento fixando a definição declarada, e
+  [0029](docs/architecture/decisions/0029-a-integracao-com-editor-fala-acp.md)
+  integração com editor por ACP.
+
+- **FR-21 no produto**, por emenda de escopo: integração de editor sai do
+  não-escopo. O que **não** foi reaberto é a sessão remota sobre socket — o modo
+  maduro do ACP é subprocesso local sobre entrada e saída padrão, sem socket
+  escutando e sem decisão de autenticação de rede pendente.
+
+- **`Retry-After` em data HTTP deixa de ser descartado.** A RFC 9110 admite as
+  duas formas e provedores grandes usam a data; este cliente lia só os segundos.
+  Um cabeçalho descartado vira `None`, o cliente cai no backoff local e volta
+  antes do que o servidor pediu — contra a fila que o servidor está justamente
+  tentando drenar.
+
+  A objeção registrada no código era o relógio: interpretar a data exige um
+  confiável nos dois lados, e errar produziria espera arbitrária. Ela é
+  respondida por duas guardas, e não por confiar mais no relógio. Uma data já
+  passada — cliente adiantado, ou resposta que demorou — vira espera zero, e não
+  um número enorme por subtração invertida; e o teto de `max_delay` continua
+  limitando o resultado, como já limitava a forma em segundos.
+
+  Sem dependência nova: `IMF-fixdate` é de largura fixa, e uma crate de data
+  paga-se em bytes no binário auto-contido que o NFR-3 orça. As duas formas
+  obsoletas da RFC ficam de fora — quem envia é obrigado à fixdate, e escrever
+  analisador para o que nenhum gateway de 2026 emite custaria o mesmo binário
+  sem cobrir caso nenhum.
+
+- **Os dois estouros de janela que o provider reporta sem erro nenhum (FR-5).**
+  Status 200, stream bem formado, e nada para o gatilho de compactação olhar —
+  é a forma mais cara de degradação silenciosa que o fio tem, porque o harness
+  entrega os dois ao usuário como se fossem resposta.
+
+  O primeiro é o turno que **para no limite sem emitir conteúdo**: só acontece
+  quando o prompt ocupou a janela inteira e não sobrou espaço para gerar. Antes
+  ele voltava como texto vazio com `stop_reason` de limite. Agora o histórico é
+  compactado e o turno se refaz — não há resposta a preservar. Parar no limite
+  **com** texto continua sendo outra coisa, um teto de saída, e não dispara
+  compactação: confundir os dois gastaria o orçamento no problema errado e ainda
+  jogaria fora o texto que chegou.
+
+  O segundo é o usage que declara **entrada acima da janela do modelo**: o
+  provider truncou o começo da conversa e respondeu assim mesmo. Aqui a resposta
+  vale e não se joga fora; o que muda é que o truncamento passa a ser dito, e o
+  histórico compacta para o próximo turno caber. A janela vem do catálogo
+  descoberto e de nenhum padrão embutido — sem número declarado não há
+  comparação, e inventar um faria o harness acusar truncamento em todo endpoint
+  que simplesmente não publica o tamanho. Ela acompanha a troca de modelo pela
+  mesma razão que a tarifa: comparar o usage do modelo novo contra o limite do
+  antigo dá um número errado com a mesma cara de um certo.
+
+### Corrigido
+
+- **A permissão sumia do rodapé de quem trabalha num caminho fundo.** A linha era
+  montada inteira e depois cortada pela direita, e a permissão é o último campo:
+  num terminal de 80 colunas bastava o caminho do workspace passar de dezenove
+  caracteres para `somente-leitura` desaparecer. O usuário ficava numa sessão que
+  recusa escrita sem nada no rodapé dizendo por quê — um estado que some por
+  causa da largura do terminal é a degradação silenciosa que o NFR-4 proíbe.
+
+  Agora quem cede espaço é o caminho, e cede pelo começo: `…/um-projeto` no lugar
+  de `/home/alguem/source/um-projeto`. O começo é onde os projetos de uma máquina
+  se parecem; o fim é o que os distingue. Os campos de comprimento fixo — sessão,
+  modelo, contagem e permissão — não cedem.
+
+  O defeito era coberto e invisível: todos os testes do rodapé mediam largura
+  200, onde nada trunca. Apareceu de lado, num teste de sessão que monta o rodapé
+  a partir de um diretório temporário e passou a falhar quando `TMPDIR` ficou oito
+  caracteres mais longo que `/tmp` — a mesma falha que num terminal real teria
+  passado por decoração.
+
+- **O gateway de fixture aparecia com zero por cento de cobertura sem ter deixado
+  de ser testado.** A bateria o desligava com sinal, e um processo morto por sinal
+  nunca grava o arquivo de perfil: a casca de E/S do gateway constava no relatório
+  como código que ninguém executou, quando cinco testes a exercitavam. O
+  desligamento agora fecha a entrada padrão, e o faz em `Drop` — numa chamada ao
+  fim de cada teste, uma asserção que falha nunca chegaria lá, e o perfil se
+  perderia justamente na execução que interessa investigar.
+
+  O caminho de saída sem sinal já estava escrito no fixture e nunca tinha rodado:
+  faltava a feature `sync` do tokio no manifesto do crate, então o binário não
+  compilava.
+
+- **Cancelar um comando deixava vivo o que ele tinha iniciado.** O `kill_on_drop`
+  do tokio manda `SIGKILL` ao processo direto, e só a ele — o mesmo defeito que o
+  [ADR-0021](docs/architecture/decisions/0021-terminar-e-sinalizar-o-grupo-nao-o-lider.md)
+  fechou no caminho do prazo e deixou aberto no do cancelamento, afirmando que
+  ele "cobre o `drop` do future". Cobria metade: o líder.
+
+  O teste que existia não pegava porque o comando largado nele escreve por conta
+  própria, e ali matar o líder basta. Com um comando cujo neto é quem escreve, a
+  sentinela foi de 16 para 62 bytes **depois** de o comando ser largado — escrita
+  no workspace que o modelo estava inspecionando, depois de a ferramenta ter dito
+  que interrompeu.
+
+  A guarda dispara enquanto o filho ainda não foi colhido, e é isso que torna o
+  número seguro de sinalizar: o zumbi reserva o PID, que é também o identificador
+  do grupo. No caminho normal ela é desarmada, porque depois da colheita o número
+  deixou de ser nosso e sinalizá-lo alcançaria quem o herdou.
+
+- **Trocar de modelo no meio da sessão podia derrubar a conversa inteira.** O
+  `openai-responses` emite `call_id` que passa de 450 caracteres e contém `|`; a
+  Anthropic aceita `^[a-zA-Z0-9_-]+$` com no máximo 64. Os três dialetos ecoavam
+  o identificador cru, e o `set_backend` mantém o histórico de propósito — é o
+  que a troca de modelo precisa. Uma sessão que acumulasse chamadas de ferramenta
+  sob um dialeto e trocasse para o outro mandaria identificadores que o provedor
+  recusa, e a recusa é **da conversa inteira**, não da chamada: a sessão pararia
+  de funcionar sem que nada no histórico estivesse errado.
+
+  A reescrita acontece na montagem do corpo, e não na recepção, porque o
+  `call_id` precisa voltar intacto para quem o emitiu — normalizar na entrada
+  quebraria o caso comum, que é não trocar de dialeto. É determinística e sem
+  estado: o bloco de uso e o resultado que responde a ele passam pela mesma
+  função na mesma montagem, então o par continua casando sem mapa de sessão. O
+  resumo que entra quando o identificador é longo demais é do original e não do
+  já limpo — dois identificadores que só diferem fora do alfabeto colidiriam
+  depois da limpeza, e dois usos com o mesmo identificador são uma conversa
+  recusada por outro motivo.
+
+- **As skills não podiam ser carregadas.** O bloco de skills publicava nome e
+  descrição sem o caminho do `SKILL.md`, então o modelo sabia que a skill existia
+  e não tinha como buscar o corpo dela. Deixar o corpo de fora é certo e continua
+  — despejar todos gastaria a janela com instrução que a maioria dos turnos não
+  usa —, mas a economia só funciona se houver como carregar depois.
+
+- **Duas das cinco dimensões do harness de paridade não podiam ler a
+  referência.** O dialeto de referência procurava `tool_use` com `name` e
+  `input`, e `message` com `usage` na raiz — que é o formato de fio da Anthropic,
+  o mesmo que o nosso próprio dialeto já trata. O `pi --mode json` emite
+  `tool_execution_start` com `toolName` e `args`, e `message_end` com
+  `stopReason` e `usage.input`/`usage.output` dentro de `message`. Uma varredura
+  no código da referência confirma que ela nunca emitiu evento de stream chamado
+  `tool_use`: o nome existe lá como bloco de conteúdo da Anthropic, que é a
+  semelhança que enganou.
+
+  Apontado ao `pi` de verdade, o resultado não seria divergência de
+  comportamento: a sequência de ferramentas ficaria vazia e a contabilidade de
+  tokens daria `0/0` em toda execução, por motivo estrutural. Um gate que reprova
+  sempre pelo mesmo motivo errado é um gate que alguém desliga.
+
+  Os dezoito testes do dialeto não podiam perceber isso porque validavam o
+  parser contra um formato inventado no próprio teste. Os novos leem uma
+  transcrição montada a partir do que a referência documenta em
+  `packages/coding-agent/docs/json.md` e `docs/session-format.md`, com a origem
+  citada no fixture — a diferença entre testar contra o que existe e testar
+  contra o que se imaginou.
+
+  O vocabulário de parada passa a ser traduzido em vez de comparado verbatim: a
+  referência diz `stop` onde nós dizemos `end_turn`, e comparar as duas grafias
+  marcaria divergência em toda execução bem-sucedida. Um valor fora da tabela
+  passa inteiro, pela mesma razão que o nosso stream preserva
+  `StopReason::Unrecognized`.
+
+  O dialeto saiu de `runner.rs` para `dialect.rs`: rodar um harness e fotografar
+  o disco muda por um motivo, traduzir o que cada harness publica muda por outro.
+
+- **Um comando que deixa processo em segundo plano deixou de ser reportado como
+  estouro de prazo.** `sleep 30 & echo pronto` sai na hora e com sucesso, mas o
+  neto herda a ponta de escrita do `stdout` e a segura: a drenagem esperava um
+  EOF que não vinha, o turno ficava preso os trinta segundos inteiros, e o modelo
+  recebia `comando excedeu 30s e foi interrompido`. Uma execução bem-sucedida
+  reportada como falha é pior que uma lenta, porque o passo seguinte é decidido
+  sobre um fato falso.
+
+  O grupo passa a ser terminado no instante em que o líder sai, em paralelo com a
+  drenagem
+  ([ADR-0024](docs/architecture/decisions/0024-o-grupo-morre-quando-o-lider-sai-nao-quando-o-cano-cala.md)).
+  O que havia antes tentava fazer isso depois do `join` das duas coisas, e não
+  podia funcionar: o `join` não completa enquanto a drenagem não termina, então o
+  sinal que a destravaria só sairia depois de ela ter se destravado sozinha. E
+  não funcionava nem se a ordem estivesse certa — o término partia do `Child`, e
+  depois do `wait` o tokio já colheu o filho, então não havia mais PID a
+  sinalizar. O comentário no código afirmava a garantia que nenhuma das duas
+  metades entregava.
+
+  O identificador do grupo passa a ser guardado antes da espera, que é enquanto
+  ele existe. A saída já escrita não se perde: fechar a ponta de escrita não
+  descarta byte que já está no cano.
+
+### Adicionado
+
+- **`edit` passou a casar e a gravar num arquivo com CRLF.** O modelo escreve
+  `old_string` com `\n`, sempre. Num arquivo com CRLF o casamento exato nunca
+  dava certo, e a resposta era `nao encontrado; confira espacos e indentacao` —
+  que manda procurar uma diferença invisível e queima uma rodada. Basta um `.bat`
+  ou um `.csproj` no repositório para o caso aparecer.
+
+  Ao gravar, a terminação original volta. Converter para LF transformaria a
+  edição de uma linha num diff de arquivo inteiro no `git`, e quem revisa
+  perderia de vista o que mudou. Arquivo misto fica byte a byte como estava:
+  normalizar ali reescreveria as linhas que já eram LF, que é justamente o
+  estrago que se quer evitar.
+
+  Não há tratamento de BOM, e a ausência é deliberada. Escrevi um e descobri
+  medindo que ele não muda nenhum desfecho — o BOM fica no começo do conteúdo e
+  atravessa a substituição sozinho, com os testes passando com e sem o código.
+  Os testes ficaram; o código saiu.
+
+- **Cota esgotada e problema de faturamento falham na hora.** Os dois chegam com
+  429, o mesmo status da vazão, e a vazão é o caso que passa com espera. Cota não
+  passa: o backoff gastava o orçamento inteiro de retentativa para repetir, no
+  fim, a mesma mensagem que a primeira tentativa já trazia — com o usuário
+  olhando para uma tela parada durante a espera.
+
+- **Um orçamento de raciocínio não come mais o teto inteiro.** Neste provedor o
+  raciocínio divide o `max_tokens` com a resposta, e um orçamento sem folga
+  produz um turno que pensa e não responde: gastou tokens, demorou, e devolveu
+  nada. Agora o teto sobe para caber os dois, com mil tokens reservados para a
+  resposta. Quem cede é o teto e não o orçamento — encolher o raciocínio daria
+  menos do que foi pedido sem dizer, e abaixo de mil tokens o provedor recusaria
+  o pedido de qualquer forma.
+
+- **`stdin` canalizado entra no prompt em modo headless.** `cat README.md |
+  nycode -p "resuma isto"` é a convenção de todo utilitário Unix, e sem ela o
+  binário só entrava num pipeline por `$(cat ...)` e pela briga de escape do
+  shell que isso traz. O `stdout` já carregava só a resposta; faltava a outra
+  ponta.
+
+  O texto canalizado vai depois do prompt, porque o que o usuário digitou é a
+  instrução e o que veio pelo cano é o material sobre o qual ela age — invertido,
+  um arquivo longo empurraria a instrução para o fim de uma mensagem enorme. Um
+  cano sozinho vira o prompt inteiro. O teto de 256 KiB existe para que
+  `cat enorme.log | nycode` não vire uma `String` do tamanho do arquivo antes de
+  qualquer decisão sobre ele.
+
+- **`grep` aceita `context` e `literal`.** Sem contexto, toda busca útil vira
+  busca seguida de `read` — duas rodadas para responder o que uma resolve. E um
+  padrão como `foo(bar)` é um grupo de captura em regex, então procurar o texto
+  exato dependia de o modelo escapar certo na primeira tentativa; agora o erro de
+  padrão inválido também diz que existe `literal`.
+
+  O motor do ripgrep já suportava os dois, então a mudança é passar parâmetro. O
+  que exigiu cuidado foi o teto: ele passou a contar **linhas emitidas** em vez
+  de casamentos, porque sobre casamentos um contexto de cinco multiplicaria a
+  resposta por onze sem nada perceber. Linha que casa sai com `:` e linha de
+  contexto com `-`, que é a convenção do `grep` e é o que diz ao modelo qual das
+  onze ele procurou. Contexto acima de cinco é recortado em vez de recusado —
+  recusar custaria uma rodada para conseguir o que cinco linhas já davam.
+
+- **`post-tool-use` passou a disparar, e o FR-7 fechou.** O ADR-0009 desenhou
+  quatro eventos de hook; este era o que faltava, e o que o mantinha adiado era
+  uma pergunta de contrato: quanto da saída de uma ferramenta chega ao hook. Ela
+  não tem tamanho conhecido por ninguém no caminho — `bash` derrama o excedente
+  para arquivo, um servidor MCP devolve o que quiser —, e o hook dispara uma vez
+  por chamada de ferramenta contra um orçamento de RSS de 14 MiB.
+
+  O contrato é o começo da saída, cortado em 64 KiB, **mais o número de bytes de
+  que esse começo veio**
+  ([ADR-0022](docs/architecture/decisions/0022-o-post-tool-use-recebe-a-saida-cortada-e-o-tamanho-dela.md)).
+  Nenhuma das duas metades serve sozinha: sem o corte o payload tem o tamanho da
+  saída de uma ferramenta, e sem o tamanho o hook decide sobre um pedaço
+  acreditando ter lido tudo. O corte reusa o `capped::Capped`, que já é o par
+  "pedaço guardado + tamanho de origem" do repositório. O payload carrega também
+  se a ferramenta marcou erro: achatar isso deixaria um hook de auditoria
+  adivinhando pelo texto se o comando funcionou.
+
+  O evento **não veta**, e uma recusa que chegue nele é registrada em voz alta e
+  ignorada — quando ele roda, o arquivo já foi escrito. Ele também só dispara
+  depois de a ferramenta ter rodado de fato: um veto do `pre-tool-use`, uma
+  recusa do gate ou um nome desconhecido não produzem evento, porque anunciar
+  uso de ferramenta onde não houve uso faria o registro descrever o que não
+  aconteceu.
+
+  No caminho, um defeito que o evento novo tornaria comum: a escrita do payload
+  no `stdin` do hook acontecia **fora** do prazo. O buffer de um cano no Linux é
+  de 64 KiB, e acima disso `write_all` espera o hook ler — um hook que não lê o
+  stdin penduraria a chamada de ferramenta sem teto nenhum. Já valia para um
+  `write` de conteúdo grande.
+
+- **O provider passou a ser configurável por arquivo, que é o que o FR-9 promete
+  desde sempre.** O requisito estava declarado entregue e não estava: um provider
+  alternativo se escolhia por flag e por variável de ambiente, e o `por arquivo`
+  do texto não existia em lugar nenhum do caminho de produção. A única leitura de
+  arquivo na camada de IA era o cache do catálogo de modelos, que é outra coisa.
+
+  O bloco `provider` do `settings.json` aceita `base_url`, `dialect`, `model` e
+  `max_tokens`, e a ordem é flag, depois arquivo, depois o padrão embutido. A
+  flag vence porque é a exceção declarada na hora: quem apontou a máquina para um
+  gateway interno ainda precisa conseguir usar o de fábrica numa execução sem
+  editar o arquivo e lembrar de desfazer.
+
+  A escolha é por campo e não pelo bloco inteiro. Trocar só o `base_url` mantém o
+  diálogo e o modelo padrão, e `--model` sozinho não arrasta o endpoint de volta.
+  Um bloco atômico obrigaria a repetir os quatro campos para mudar um, que é a
+  forma de o arquivo envelhecer errado quando um padrão do binário muda.
+
+  O padrão saiu do `default_value` do `clap` para que isso fosse possível: com
+  ele, toda invocação chega preenchida e não há como distinguir o que o usuário
+  pediu do que veio de fábrica — o arquivo nunca seria consultado. A ausência da
+  flag é o sinal, e é o que `session::settings::resolve` decide.
+
+  Endpoint em branco e teto de tokens zero são recusados na leitura, não aceitos
+  como se fossem o padrão: os dois montam a sessão e só falham na primeira ida ao
+  modelo, longe da causa.
+
+- **`grep` passou a ser regex de verdade, e as três ferramentas de busca passaram
+  a respeitar o `.gitignore`.** A busca era `haystack.contains(&needle)`: um
+  modelo que escrevesse `fn \w+\(` recebia zero resultados sem nada dizer que o
+  padrão não fora interpretado — a pior forma de falhar, porque parece que o
+  termo não existe. Agora o motor é o do ripgrep, como biblioteca
+  ([ADR-0019](docs/architecture/decisions/0019-a-busca-usa-o-motor-do-ripgrep-como-biblioteca.md)),
+  e um padrão inválido diz o que está errado.
+
+  A lista fixa de sete diretórios saiu. Ela errava dos dois lados: não conhecia
+  o diretório de saída que um projeto configurou, e escondia um `dist/` que
+  alguém versionou de propósito. Quem decide agora é o `.gitignore` do
+  repositório, que é a declaração que o projeto já mantém. Fora dela ficam só o
+  `.git` e o `.gitignore` global do usuário — este último desligado porque faria
+  a mesma pergunta ter respostas diferentes em duas máquinas.
+
+  A varredura passou a ser preguiçosa: a busca para de ler ao atingir o teto de
+  resultados, em vez de materializar até 20.000 caminhos antes de examinar o
+  primeiro casamento. Continua determinística, porque uma ordem que muda entre
+  execuções invalida o cache de prompt (NFR-7) e faz o harness de paridade
+  acusar divergência que não existe. E a detecção de binário passou a ser por
+  byte nulo em vez de falha de UTF-8 — um arquivo cheio de nulos é UTF-8 válido
+  e antes passava.
+
+  Custo medido: 1,42 MiB de binário, de 12.101.720 B para 13.587.008 B, contra
+  um piso de 16.777.216 B. Sobram 3,04 MiB. O `pi` resolve o mesmo problema
+  baixando os binários do `rg` e do `fd` do GitHub sem verificar digest e
+  prependando o diretório ao `PATH` de todo comando de shell; como biblioteca não
+  há artefato para verificar.
+
+- **`read` ganhou `offset` e `limit`, e o truncamento passou a dizer como
+  continuar.** O schema só aceitava `path`, então acima de 256 KiB o resto do
+  arquivo era **inalcançável por essa ferramenta**: o aviso dizia que cortou e
+  não havia próxima chamada a fazer. Agora a leitura é por faixa de linhas, a
+  numeração é absoluta, e o aviso diz `use offset=N para continuar` — um turno a
+  menos por arquivo grande. Um `offset` além do fim diz que a linha não existe,
+  em vez de responder vazio e fazer o modelo concluir que leu tudo.
+
+  A faixa é montada linha a linha durante a leitura, e não recortada depois: um
+  arquivo minificado é uma linha só, e lê-lo inteiro para depois cortar traria o
+  megabyte para a memória antes do corte.
+
+  A detecção de binário passou a ser por byte nulo. `\0` é UTF-8 válido, então a
+  recusa por falha de decodificação deixava passar exatamente o arquivo que
+  menos serve ao modelo.
+
+  `grep` e `find` seguiram o mesmo princípio: o aviso de teto diz o que
+  restringir — `path`, `glob`, ou um padrão mais específico — em vez de só
+  constatar o corte, que fazia o modelo repetir a mesma busca esperando resposta
+  diferente.
+
+### Corrigido
+
+- **Conectar um servidor MCP deixou de invalidar o prefixo cacheado (NFR-7).** O
+  catálogo era ordenado por nome, com o ponto de corte do cache na última
+  ferramenta do array. Uma ferramenta de servidor chamada `docs__search` cai
+  entre `bash` e `edit`: ela não era acrescentada ao fim, era **inserida no
+  meio**, deslocando o resto e fazendo o ponto de corte passar a cobrir outra
+  coisa. O resultado é o oposto do que o cache existe para fazer — o turno
+  inteiro repaga.
+
+  Agora o catálogo é particionado: nativas primeiro, extensões depois, cada
+  grupo ordenado por nome, e o marcador vai na última **estável**. Uma extensão
+  nova só aparece depois do corte e não conta. Sem nenhuma estável não há
+  marcador, porque marcar a primeira extensão faria o ponto de corte se mover
+  junto com o que ele deveria excluir. A distinção é declarada pela própria
+  ferramenta, e não inferida do nome.
+
+- **A compactação deixou de apagar o rastro do que já tinha sido feito.** O
+  marcador dizia que houve compactação e mais nada, então o modelo relia os
+  mesmos arquivos para descobrir onde estava — exatamente o trabalho que a
+  compactação acabara de economizar, gasto de novo no turno seguinte. Agora o
+  marcador carrega adiante os caminhos lidos e os modificados, a uma linha por
+  arquivo, com teto de sessenta e a contagem do que não coube.
+
+  As listas são cumulativas: o marcador da compactação anterior está dentro do
+  trecho que a seguinte descarta, e é lido de volta — sem isso a segunda
+  compactação apagaria o que a primeira preservou. Um arquivo que mudou não
+  aparece também como lido, porque o modelo o reabriria antes de mexer nele de
+  novo.
+
+  Fica de fora, e é decisão e não esquecimento: o resumo em prosa do trecho
+  descartado. Gerá-lo exige uma chamada ao modelo dentro do que hoje é uma
+  função pura sobre mensagens, o que muda o contrato da compactação e o caminho
+  de retentativa automática. Isso é spec própria.
+
+- **O backoff de retentativa passou a ser espalhado.** Ele era exponencial puro,
+  então `N` sessões que receberam o mesmo 503 esperavam exatamente o mesmo tanto
+  e batiam no backend juntas de novo — que é como uma falha transitória vira
+  permanente. Metade da espera continua fixa, para preservar o crescimento que o
+  backoff existe para dar, e metade é sorteada. A entropia vem do subsegundo do
+  relógio: espalhar retentativa não é uso criptográfico, e uma crate a mais
+  custa binário que o NFR-3 não tem para gastar nisto.
+
+- **A gravação de sessão passou a esperar o disco.** O `write` volta quando o
+  núcleo aceitou os bytes, não quando o disco os tem, e uma queda de energia
+  entre uma coisa e outra deixa uma linha pela metade. A linha pela metade não
+  termina em newline, então o próximo append cola o registro seguinte no
+  fragmento e perde dois em vez de um — o descarte de linha corrompida que já
+  existia cobre uma linha, não duas.
+
+- **O `--probe-startup` passou a reportar fases nomeadas.** O gate media a
+  sessão montada e dava um número só, que diz que regrediu sem dizer onde:
+  credencial, varredura do workspace, índice de sessão, catálogo e MCP têm
+  causas e correções diferentes, e um salto de 2 ms é ação imediata se for a
+  varredura e é o esperado se for um servidor novo. Sai em `stderr`, em
+  microssegundos — no regime deste binário, uma etapa de 300 µs arredondada para
+  `0ms` é uma etapa invisível.
+
+- **O renderizador diferencial ganhou um contador de descartes.** Um gate de
+  tempo não distingue "ficou lento" de "voltou a redesenhar tudo", e o segundo é
+  o defeito que o ADR-0008 existe para não ter. O contador não conta o descarte
+  causado por escrever no scrollback, que é consequência esperada: contá-lo o
+  faria subir a cada linha de progresso, que é o mesmo que não medir nada.
+
+- **O rodapé passou a mostrar o tamanho do erro de cache, e não só a taxa.** Um
+  turno com 90% de acerto sobre um contexto de cem mil tokens repaga dez mil, e
+  o rodapé mostrava `cache 90%`. Agora mostra também `repagou 10.0k`: o número
+  que faz alguém olhar para o que está reescrevendo o começo do contexto.
+  Repagamento abaixo de mil tokens não conta — é a granularidade do ponto de
+  corte, e contá-la faria o rodapé acusar desperdício em toda sessão saudável.
+  Compactar zera o baseline, porque ali o prompt seguinte é conteúdo novo;
+  trocar de modelo não zera, porque ali o prompt é o mesmo e é cobrado de novo
+  de verdade.
+
+### Corrigido
+
+- **Terminar um comando ou hook deixava um processo órfão rodando.** O
+  `kill_on_drop` mata o processo direto, e só ele. Sob `bubblewrap
+  --unshare-pid` isso é um defeito específico e medido: o `bwrap` externo morre
+  e o processo dentro do namespace de PID, que lá dentro é PID 1, segue vivo e
+  escrevendo no workspace. A suíte provou com um orçamento de 60 segundos: a
+  escrita continuou pelos 60. Um hook roda a cada chamada de ferramenta, então
+  o que escapava se acumulava na sessão, depois de o harness ter dito ao modelo
+  que interrompeu.
+
+  Agora o filho nasce líder de um grupo de processo próprio e terminar é
+  sinalizar o **grupo**, não o líder
+  ([ADR-0021](docs/architecture/decisions/0021-terminar-e-sinalizar-o-grupo-nao-o-lider.md)).
+  Vale também sob bubblewrap: grupo de processo é herdado no `fork` e o perfil
+  não passa `--new-session`, então o processo dentro do namespace de PID fica no
+  grupo do `bwrap` externo e o sinal ao grupo o alcança. A referência nunca teve
+  o defeito porque nunca confiou em matar o líder: o spawn dela é `detached` e o
+  término vai ao grupo desde sempre.
+
+- **Um filho destacado deixou de sobreviver à morte do próprio harness.** O
+  ADR-0021 fechou o caso de quem larga o future — prazo e cancelamento — e
+  declarou o preço: um filho destacado não está no grupo de frente do terminal,
+  então `Ctrl+C` não chega a ele. Sobrava o caso em que o processo `nycode`
+  inteiro morre. Num `SIGTERM`, num terminal fechado, **nenhum `drop` roda**:
+  nem o `kill_on_drop`, nem o término do grupo. O comando sobrevivia ao harness
+  escrevendo no workspace, e um hook dispara a cada chamada de ferramenta, então
+  o que escapava se acumulava.
+
+  Agora existe o registro dos filhos destacados que o processo subiu e ainda não
+  colheu, varrido quando o sinal chega
+  ([ADR-0023](docs/architecture/decisions/0023-o-registro-de-filhos-destacados-morre-com-o-processo.md)).
+  Ele não é um estático global: é um valor com dono, porque varrer a instância
+  do processo dentro da suíte mataria os filhos dos testes correndo ao lado — e
+  sem essa costura a varredura ficaria sem o teste que prova a morte do neto.
+
+  A baixa sai **junto com a colheita, nunca depois dela**, e o compilador
+  garante a ordem porque a anotação é declarada depois do `Child`. É o que
+  impede o defeito mais sério possível aqui: enquanto o líder não foi colhido, o
+  zumbi reserva o PID, que é também o identificador do grupo, então a varredura
+  só alcança processo que este harness subiu. Um registro que só crescesse
+  guardaria número que o sistema já entregou a outra pessoa.
+
+  Quem dispara a varredura é uma tarefa do runtime e não um handler de sinal:
+  `tokio::signal` já resolve a parte que precisa ser async-signal-safe. `SIGINT`
+  entra na lista só onde ninguém já o usa — em headless ele cancela o turno, e
+  numa sessão interativa chega como tecla.
+
+- **A saída que passava do teto deixou de ser jogada fora.** O corte guardava a
+  cauda e descartava o resto, então um erro que ficasse acima dos 64 KiB era
+  inalcançável: a cauda podia não ter a causa, e não havia onde olhar. Agora o
+  excedente vai para um arquivo em `/tmp/nycode/`, e o aviso diz o caminho. O
+  arquivo recebe a saída inteira e não só o pedaço cortado — mandar o modelo
+  para um pedaço seria mandá-lo para o lugar errado.
+
+### Adicionado
+
+- **A compactação passou a resumir o que descarta.** O marcador levava os
+  caminhos dos arquivos tocados, o que responde "no que eu mexi"; faltava "onde
+  eu estava". Agora um pedido de uma vez só ao modelo produz o resumo, que entra
+  na frente das listas. O pedido vai **sem ferramenta e com o cache desligado**:
+  quem pede um resumo não quer que o modelo vá ler arquivo, e marcar para cache
+  um conteúdo de uso único cobraria escrita que o turno seguinte não reusa.
+
+  A falha desse pedido não impede a compactação, e isso é o desenho e não a
+  exceção: compactar acontece quando a janela estourou, que é exatamente quando
+  uma chamada a mais tem a maior chance de falhar. Sem resumo, o marcador com as
+  listas vale por si.
+
+- **`session-start` e `session-end` passaram a disparar.** O ADR-0009 desenhou
+  quatro eventos de hook e só `pre-tool-use` rodava. Os dois de ciclo de vida
+  não precisam de payload de ferramenta: o primeiro dispara depois do
+  consentimento e antes do primeiro turno, o segundo depois de o último ter
+  passado. O quarto, `post-tool-use`, esperou o contrato do payload e entrou
+  logo depois — está no topo desta seção.
+
+- **Os números que governam o agente saíram do binário.** Turnos recentes
+  preservados na compactação, teto de idas e voltas de ferramenta e prazo de
+  comando eram constantes. Isso serve enquanto o padrão serve, e deixa de servir
+  na primeira sessão em que não serve — um repositório de arquivos grandes
+  precisa de outra janela, uma suíte lenta precisa de outro prazo, e quem
+  descobre isso não tinha o que fazer além de recompilar. Agora vêm de
+  `~/.config/nycode/settings.json`.
+
+  Do **usuário**, nunca do workspace, pela razão que o ADR-0016 já registrou: um
+  `.nycode/settings.json` do repositório seria auto-certificante, porque a
+  ferramenta `write` sob permissão ampla esticaria o próprio prazo e o próprio
+  teto de turnos — justamente os limites que existem para contê-la. Campo
+  ausente é o padrão, campo desconhecido é recusado em voz alta, e zero em
+  qualquer um é recusado em vez de obedecido: seria uma sessão que não faz nada,
+  e o usuário procuraria o defeito noutro lugar.
+
+### Segurança
+
+- **A credencial parou de sair em texto claro para fora da máquina.** `Config::new`
+  aceitava qualquer `base_url` com esquema `http(s)`, e um servidor MCP por HTTP
+  declarado no `.mcp.json` do repositório clonado não era validado de forma
+  nenhuma. Nos dois casos o binário anexa a credencial ao destino, e o destino
+  vinha de um lugar que o usuário não necessariamente conferiu. Agora `http://`
+  só vale para loopback, e o resto exige TLS. O gateway local — que é o padrão do
+  produto — continua funcionando sem certificado, porque exigi-lo ali obrigaria
+  cada usuário a emitir um para falar consigo mesmo.
+
+  A regra mora em `nycode_ai::destination` e é a mesma nos dois pontos. Ela lida
+  com as formas que escondem o host de uma leitura ingênua: `http://127.0.0.1@evil.com/`
+  fala com `evil.com`, e ler o começo do authority daria loopback.
+
+- **A chave de API deixou de precisar aparecer no `ps`.** `--api-key` põe o
+  segredo no `argv`, onde qualquer processo da máquina o lê, e no histórico do
+  shell depois disso. Entrou `--api-key-file`, consultado antes do ambiente e do
+  cofre. Como o valor é um caminho, `/dev/stdin` e substituição de processo —
+  `--api-key-file <(pass show gateway)` — funcionam sem caso especial. As duas
+  flags se excluem, para não inventar uma precedência que o usuário teria de
+  adivinhar.
+
+  Um arquivo comum que outras contas da máquina possam ler é recusado, com a
+  mesma justificativa do `ssh` e uma mensagem que diz o `chmod` a rodar: mover a
+  credencial do `argv` para o disco só ajuda se o disco não for público. O teste
+  de modo não vale para `/dev/stdin` nem para pipe, que negá-los recusaria
+  justamente o uso mais seguro. Um arquivo ilegível é erro e não ausência —
+  cair para o ambiente escolheria outra credencial em silêncio.
+
+- **O confinamento do macOS parou de ser relatado como equivalente ao do Linux.**
+  `bwrap` monta um namespace e liga só o que foi pedido; o perfil Seatbelt abre
+  em `(allow default)` e nega uma lista. A primeira política contém também o que
+  ninguém previu, a segunda contém só o que alguém lembrou de listar, e as duas
+  respondiam `is_enforced() == true` — que era tudo que o aviso e a resposta ao
+  modelo consultavam. `Confinement::strength()` passa a distinguir três posturas,
+  o aviso em `stderr` diz "confinamento PARCIAL" no macOS, e a resposta ao modelo
+  carrega `[confinamento parcial: a politica permite por omissao e nega uma lista]`.
+
+  O perfil em si não foi endurecido, e a
+  [segunda emenda ao ADR-0005](docs/architecture/decisions/0005-sandbox-de-so-por-processo-auxiliar.md)
+  registra por quê: um `(deny default)` exige enumerar cada capacidade que um
+  build legítimo usa, e nada disso é verificável sem um Mac. Publicar o perfil
+  fraco dizendo que é fraco é honesto; publicar um forte não testado não é.
+
+- **O shell confinado deixou de ser shell de login.** `bash -lc` carregava
+  `/etc/profile` e o perfil do usuário dentro do confinamento, devolvendo ao
+  processo filho variáveis e funções que a allowlist de ambiente acabara de
+  tirar — e cobrando o arranque do perfil em cada comando. Agora é `bash -c`; o
+  `PATH` completo, que era o que o `-l` dava de útil, a allowlist já entrega.
+
+- **O catálogo parou de mandar a credencial em dois formatos ao mesmo tempo.**
+  A busca de modelos enviava `x-api-key` e `Authorization: Bearer` na mesma
+  requisição, independentemente do dialeto. Agora usa o cabeçalho do dialeto
+  configurado, e só ele.
+
+- **O kill-switch do [ADR-0001](docs/architecture/decisions/0001-subscription-oauth-is-a-flagged-accepted-risk.md)
+  foi auditado e o resultado registrado em vez de disfarçado.** `State::blocked()`
+  não é chamado em lugar nenhum, porque o caminho de assinatura é inteiramente
+  declarativo: nenhum token é adquirido ou usado, então não há rejeição a
+  detectar. A mitigação real hoje é essa inércia, e ela virou verificação — o CI
+  reprova se qualquer arquivo fora do módulo passar a referenciar `subscription::`,
+  obrigando quem implementar o fluxo a ligar o kill-switch junto.
+
+- **Uma extensão declarada pelo repositório deixou de rodar só por alguém ter
+  aberto o diretório.** O `.mcp.json` e os executáveis de `.claude/hooks/` são
+  lidos da raiz do workspace — o diretório que um `git clone` acabou de
+  preencher com conteúdo de terceiro — e os dois terminavam em `Command::new`
+  sem passar por decisão nenhuma. Clonar e abrir executava. Agora cada
+  declaração pede consentimento, e o registro vive **fora** do workspace
+  ([ADR-0016](docs/architecture/decisions/0016-extensao-do-workspace-exige-consentimento.md)):
+  dentro dele seria auto-certificante, porque a ferramenta `write` sob permissão
+  ampla concederia a própria confiança.
+
+  A impressão digital é SHA-256 e cobre coisas diferentes conforme o caso. De um
+  servidor MCP, a linha de comando, que é a mesma coisa que a pergunta mostra.
+  De um hook, o **conteúdo do executável** enquanto o que se mostra é o caminho
+  — senão reescrever o script sob um nome já confiado passaria livre, que é a
+  forma que o rug pull toma ali. Trocar qualquer um dos dois faz a pergunta
+  voltar.
+
+  Sem interlocutor, nega e degrada: a extensão não sobe, a sessão segue, e o
+  `stderr` diz o que foi recusado e o que teria rodado. É a mesma regra que o
+  `Approver::Never` já aplicava a chamada de ferramenta, e nenhum pipeline
+  existente quebra por causa dela. As chaves de ambiente aparecem na pergunta;
+  os valores nunca, porque são segredo do usuário e um prompt os despejaria na
+  tela e no scrollback.
+
+- **Hook e servidor MCP passaram a rodar confinados, e o confinamento ganhou
+  duas políticas.** A ADR-0005 declarava que o buraco do `McpTool` fechava "pela
+  mesma via", e `sandbox::wrap` era chamado num único lugar do workspace. Ao
+  fechá-lo, descobriu-se que a consequência era inaplicável como escrita:
+  `workspace-write` nega rede, e um servidor MCP existe para falar com uma API —
+  confiná-lo assim não o protege, o inutiliza. Daí a segunda política
+  ([ADR-0017](docs/architecture/decisions/0017-duas-politicas-de-confinamento.md)):
+  o shell e o hook escrevem no workspace e não alcançam rede, o servidor alcança
+  rede e não escreve no workspace. As duas assimétricas porque os riscos são.
+
+- **Um link simbólico no repositório deixou de contornar a contenção de
+  caminho.** `ToolContext::resolve` normalizava componentes e barrava `..` e
+  caminho absoluto, e `<raiz>/atalho` satisfazia `starts_with` por construção —
+  então `read` lia o alvo e `write` o sobrescrevia. Pior: o mesmo valia para
+  `AGENTS.md`, cujo conteúdo entra no **prompt de sistema** na abertura da
+  sessão, sem nenhuma chamada de ferramenta, sem gate e sem o modelo precisar
+  cooperar. A normalização continua léxica onde precisa ser, porque `write` cria
+  arquivo que ainda não existe, e ganhou a canonicalização do ancestral
+  existente mais próximo. Vale para as ferramentas e para instrução, skill e
+  comando.
+
+- **Extensão deixou de herdar o ambiente do harness.** Nem o servidor MCP nem o
+  hook chamavam `env_clear`, então o filho recebia `NYCODE_API_KEY` e o resto
+  das credenciais do usuário — para um processo que o repositório escolheu e
+  que alcança a rede. Agora recebem uma allowlist mínima mais o que a
+  configuração declarar.
+
+- **O comando de shell era o terceiro filho, e era o que faltava.** A correção
+  acima alcançou o hook e o servidor MCP e deixou `bash` de fora, que é o pior
+  dos três: o comando é composto pelo modelo a partir de conteúdo do
+  repositório, então um `AGENTS.md` que peça "rode `env`" entregava a chave do
+  gateway sem contornar camada de política nenhuma — o gate autorizou `bash`, e
+  `bash` foi o que rodou. As três cópias da lista viraram uma, em
+  `policy::environment`, e o comando passa a receber `PATH`, `HOME`, `LANG`,
+  `LC_ALL`, `TERM` e `TMPDIR`.
+
+  Fechar sem saída faria o usuário exportar a variável dentro do próprio
+  comando, então a lista é extensível por `~/.config/nycode/environment.json`.
+  Do usuário, nunca do workspace: um `.nycode/` do repositório reabriria o
+  ambiente que ele mesmo não deveria ver, pela razão que o ADR-0016 já
+  registrou. Arquivo ausente ou corrompido é o mínimo, nunca o ambiente inteiro.
+
+- **O teto de saída do shell passou a valer sobre a memória, e não só sobre o
+  que o modelo lê.** `Command::output` lê os dois canos até o fim antes de
+  devolver, então o corte em 64 KiB acontecia depois de a saída inteira já estar
+  residente: um `cargo build` verboso, um `find /` ou um `yes` cresciam o
+  processo sem limite, contra um orçamento de RSS de 14 MiB. É o mesmo defeito
+  que `capped::read` já tinha corrigido na leitura de arquivo — "todo teto
+  limitava o que chega ao modelo, e nenhum limitava o que entra na memória" — e
+  o shell era o caso que sobrou. Agora a leitura é incremental e o processo
+  segura no máximo o dobro do teto, qualquer que seja o tamanho da saída.
+
+  Duas consequências visíveis. O que sobra passou a ser a **cauda** e não o
+  começo, porque num comando o que decide o passo seguinte está no fim — o erro
+  do compilador, o resumo do teste —, e a mensagem de truncamento diz qual ponta
+  sobreviveu, senão o modelo leria a primeira linha do bloco como a primeira
+  linha do comando. E os dois canais passaram a ser drenados junto com a espera
+  pelo processo: ler um de cada vez trava quando o outro enche o buffer do cano,
+  que no Linux é menor que a saída de um build.
+
+- **Saída de ferramenta deixou de poder redesenhar o terminal.** Nada do que
+  chegava à tela passava por limpeza de sequência de escape, e saída de
+  ferramenta é conteúdo que o harness não escreveu — de um comando que o modelo
+  compôs, de um arquivo do repositório, de um servidor MCP. Com o escape intacto
+  esse texto sobe linhas, apaga o que está nelas e escreve por cima: o que
+  estava ali pode ter sido a pergunta de aprovação, e o usuário responde a um
+  prompt que o conteúdo desenhou. Um `\r` sozinho basta para a sobrescrita.
+
+  Agora o scrollback da sessão interativa e as linhas de progresso passam por
+  `tool::sanitize`, que remove as cinco famílias de escape, os controles C0 e
+  C1, e os controles de direção de escrita — estes últimos porque fazem uma
+  linha ser exibida em ordem diferente da que está gravada, e um agente que
+  revisa código precisa ler o que está gravado. `\t` e `\n` ficam. A limpeza
+  acontece **antes** do corte de largura, senão um escape partido ao meio
+  chegaria à tela como texto.
+
+  Três fronteiras deliberadas. O painel não passa pela limpeza, porque o escape
+  ali é composto pelo próprio harness. A ferramenta `read` também não: um script
+  que contém escape precisa chegar ao modelo com ele, e a saída de `read` não
+  vai para a tela. E a resposta do modelo em `stdout` continua literal, porque é
+  o que o contrato de pipe promete.
+
+- **A contenção de caminho passou a valer até a abertura, e não só até a
+  validação.** `ToolContext::resolve` decidia certo e devolvia um `PathBuf`, e
+  `read`, `write` e `edit` reabriam por caminho depois — então bastava um
+  componente virar link simbólico entre uma coisa e outra para a decisão deixar
+  de valer. Em `edit` a janela ia da leitura até a escrita, com a contagem de
+  ocorrências no meio; em `write`, da criação dos diretórios até a escrita. Um
+  repositório que o agente clonou pode conter o processo que faz a troca.
+
+  Agora a resposta é um descritor: `tool::contain` resolve o caminho uma vez sob
+  `RESOLVE_BENEATH` e devolve o arquivo aberto, sem segunda resolução para
+  envenenar. `RESOLVE_BENEATH` e não `O_NOFOLLOW` de propósito — um link que
+  aponta para dentro da raiz é uso legítimo e continua funcionando
+  ([ADR-0018](docs/architecture/decisions/0018-a-contencao-de-caminho-e-imposta-na-abertura.md)).
+  Diretório intermediário passou a ser criado componente a componente a partir
+  da raiz, porque `create_dir_all` resolve link em cada nível na hora em que
+  chega nele, e criar diretório fora do workspace já é escrever fora dele.
+
+  Onde `openat2` não existe — núcleo anterior ao 5.6, filtro de chamadas de
+  contêiner, sistema que não é Linux — a abertura volta a ser por caminho, com a
+  validação léxica como única garantia. O módulo distingue "o núcleo não conhece
+  a chamada" de "o núcleo recusou o caminho": tratar recusa como ausência de
+  suporte cairia no caminho sem contenção justamente quando ela funcionou.
+
+  Custo medido: 71 KB de binário, de 12.030.616 B para 12.101.720 B, porque o
+  `rustix` já estava na árvore por `crossterm` e `keyring` e só o módulo `fs`
+  entrou.
+
+- **A resposta de um servidor MCP ganhou teto, e os argumentos passaram a ser
+  conferidos antes de sair.** A resposta era montada com `join` e ia inteira
+  para a janela de contexto: um servidor que devolvesse o índice inteiro
+  empurrava para fora o histórico que interessa, e um servidor é código de
+  terceiro que o repositório declarou — o tamanho da resposta não é escolha do
+  usuário. O teto é o mesmo da saída de comando, 64 KiB, e diz quanto ficou de
+  fora. Ele vale sobre o que sai, não sobre o que entra: o SDK já desserializou
+  a resposta quando o corte acontece, e limitar o quadro no transporte é o que
+  faltaria para o teto ser de memória também.
+
+  E o schema que o servidor declara deixou de ser só declaração. Ele era
+  encaminhado ao modelo e nunca conferido, então um argumento obrigatório
+  faltando virava erro de desserialização do outro lado, com a mensagem que
+  aquele servidor escolheu escrever, a um processo de distância da causa. Agora
+  presença do obrigatório e tipo do primeiro nível são conferidos antes da
+  chamada. Não é validação completa e o módulo diz que não é: schema aninhado,
+  `oneOf` e `enum` passam, porque um validador de JSON Schema inteiro é uma
+  árvore de dependências para transformar um erro remoto legível num erro local
+  legível. O que o módulo não entende, ele deixa passar — recusar o
+  desconhecido transformaria cada schema exótico numa ferramenta quebrada.
+
+- **`--allow-writes` deixou de conceder shell e ferramenta de terceiro.** O nome
+  prometia escrita de arquivo e o efeito era trocar o gate por um que permitia
+  tudo, inclusive `bash` e o catálogo inteiro de todo servidor MCP. A concessão
+  virou um valor de três estados, e `--allow-all` é a flag separada para quem
+  quer a maior.
+
+- **Injeção no perfil do Seatbelt.** A raiz do workspace era interpolada crua
+  numa string SBPL, e aspa e barra invertida são legais em nome de diretório no
+  macOS: um caminho fechava o literal e o resto virava política, devolvendo ao
+  comando o que a política acabou de negar.
+
+- **O modelo passou a saber quando um comando rodou solto.** A ADR-0005 exigia
+  duas coisas quando não há confinamento — aviso ao usuário e o fato na resposta
+  do modelo — e só a primeira existia, condicionada a `--allow-writes`. A sessão
+  interativa usa o gate `Ask`, que chega a `bash` por aprovação no prompt sem
+  flag nenhuma: quem aprovava o fazia acreditando que o comando estava contido.
+
+- **Nenhum portador de credencial revela mais o segredo em `{:?}`.** `Config`,
+  `Credential` e o `env` de `ServerConfig` derivavam `Debug`. A higiene estava
+  correta e nada vazava hoje; a trava é contra a próxima linha de log.
+
+- **Um hook que falha voltou a ser ruidoso**, como a ADR-0009 exigia e o código
+  não fazia: o código de saída era descartado, então um hook de política
+  quebrado era ignorado em silêncio. E os eventos que ainda não disparavam
+  deixaram de ser descobertos e anunciados no cabeçalho enquanto não
+  disparassem — um controle que se anuncia e não existe é pior que a ausência
+  dele.
+
+- **Transcritos de sessão saíram do alcance do `git add -A`.** O store grava em
+  `.nycode/` dentro da árvore versionada, e o transcrito carrega todo prompt e o
+  conteúdo de todo arquivo lido no turno.
+
+  A auditoria que originou tudo isto está em
+  [`docs/specs/001-fronteira-de-confianca/`](docs/specs/001-fronteira-de-confianca/spec.md),
+  com a matriz que liga cada achado ao requisito e ao teste que o protege.
+
+### Adicionado
+
 - **NFR-8 — segurança precede performance, com consequência e não como slogan.**
   As duas estavam em níveis documentais diferentes sem que ninguém tivesse
   decidido isso: performance era NFR-1 a NFR-3, cada um com orçamento e gate,

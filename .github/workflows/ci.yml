@@ -47,6 +47,22 @@ jobs:
           echo "build padrao limpo"
       - name: a feature ainda compila quando pedida explicitamente
         run: cargo check --workspace --features nycode-cli/subscription-oauth
+      # O ADR-0001 cita um kill-switch como mitigacao. Ele nao pode disparar hoje
+      # porque nenhum token de assinatura circula: o modulo nao tem consumidor. A
+      # mitigacao real, enquanto isso, e a inercia — e e ela que este check
+      # protege. No dia em que alguem ligar o fluxo de OAuth, isto reprova e
+      # obriga a ligar tambem `State::blocked` a rejeicao do provider.
+      - name: o caminho de assinatura continua inerte
+        run: |
+          consumidores=$(grep -rln --include='*.rs' 'subscription::' crates/ \
+            | grep -v 'crates/nycode-auth/src/subscription.rs' || true)
+          if [ -n "$consumidores" ]; then
+            echo "::error::o modulo de assinatura ganhou consumidor: $consumidores"
+            echo "Antes que isso valha: ligue State::blocked ao caminho que detecta"
+            echo "rejeicao do provider, e atualize o ADR-0001 e este check."
+            exit 1
+          fi
+          echo "caminho inerte; o kill-switch nao tem o que disparar"
 
   coverage:
     runs-on: ubuntu-latest
@@ -103,10 +119,12 @@ jobs:
       - uses: taiki-e/install-action@cargo-deny
       - run: cargo deny check
 
-  # NFR-4 e NFR-6. A comparacao completa exige um gateway e o harness de
-  # referencia; sem eles, o que ainda da para travar e que o proprio harness
-  # continua capaz de acusar divergencia. Um harness que nao pode falhar e pior
-  # que nenhum, porque compra confianca sem entregar evidencia.
+  # NFR-4 e NFR-6. A comparacao completa exige o harness de referencia; o
+  # gateway deixou de ser bloqueio, porque o `nycode-parity-fixture` serve um
+  # deterministico e local. Sem a referencia o gate roda em modo instrumento,
+  # que prova que o harness observa o candidato — e diz em voz alta que isso nao
+  # e paridade. Um harness que nao pode falhar e pior que nenhum, porque compra
+  # confianca sem entregar evidencia.
   parity:
     runs-on: ubuntu-latest
     steps:

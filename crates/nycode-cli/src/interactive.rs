@@ -48,7 +48,7 @@ pub trait Turns: Send {
     /// Substitui o histórico, ao retomar de outro ponto da árvore.
     fn replace_history(&mut self, messages: Vec<Message>);
     /// Compacta agora, devolvendo quantas mensagens saíram.
-    fn compact(&mut self) -> usize;
+    async fn compact(&mut self) -> usize;
     /// Entra ou sai do plan mode.
     fn set_planning(&mut self, planning: bool);
     /// Troca o modelo, mantendo a conversa.
@@ -94,6 +94,8 @@ pub struct Session {
     planning: bool,
     /// Modelos que o endpoint serve, para `/model`.
     models: Vec<String>,
+    /// Tarifas por modelo, para o rodapé mostrar custo e não só volume.
+    prices: std::collections::BTreeMap<String, nycode_ai::catalog::Price>,
     /// Conexões MCP vivas, seguradas até o fim da sessão.
     ///
     /// Sem isto o processo do servidor morreria assim que a preparação saísse
@@ -130,7 +132,14 @@ impl Session {
             root,
             mcp,
             models,
+            prices,
+            windows,
             rebuild,
+            // As fases interessam a quem mede o arranque, não a quem conversa.
+            phases: _,
+            lifecycle: _,
+            // Quem abre a sessão já recebeu o modelo resolvido por parâmetro.
+            model: _,
         } = prepared;
 
         // Numa sessão interativa há a quem perguntar, então o gate pergunta em
@@ -155,16 +164,19 @@ impl Session {
         let agent = agent.with_steering(queued);
 
         let (files, skills) = loaded(&context, &root);
+        let price = prices.get(&model).cloned();
         Self {
             panel: Panel::new(
                 crate::session::paths::display_path(&root),
                 session_id.clone(),
                 model,
                 writable,
+                price,
             ),
             turns: Box::new(
                 crate::screen::Agentic::new(agent, persisted, quiet)
                     .rebuilding(rebuild)
+                    .with_windows(windows)
                     .restoring(move || {
                         // Sair do plan mode devolve o gate que a sessão tinha, e
                         // não um padrão: com `--allow-writes` ele permitia tudo, e
@@ -182,6 +194,7 @@ impl Session {
             header: nycode_tui::header(env!("CARGO_PKG_VERSION"), &files, &skills, width),
             commands: context.commands,
             models,
+            prices,
             approvals,
             steering: Some(steering),
             branch: None,
@@ -200,6 +213,7 @@ impl Session {
                 id.to_owned(),
                 "nylla-sonnet-4.5".to_owned(),
                 true,
+                None,
             ),
             turns,
             cancel: Cancel::new(),
@@ -208,6 +222,7 @@ impl Session {
             header: vec!["nycode".to_owned()],
             commands: Vec::new(),
             models: Vec::new(),
+            prices: std::collections::BTreeMap::new(),
             approvals: None,
             steering: None,
             branch: None,
@@ -327,13 +342,18 @@ impl Session {
             }
             builtin::Effect::SwitchModel(model) => {
                 self.turns.switch_model(&model)?;
-                self.panel.set_model(model.clone());
+                // O preço acompanha o modelo: cobrar os turnos novos à tarifa
+                // do modelo antigo daria um número errado com a mesma cara de
+                // um certo.
+                let price = self.prices.get(&model).cloned();
+                self.panel.set_model(model.clone(), price);
                 surface.emit(&format!("\nmodelo agora: {model}\n\n"))?;
                 surface.draw(&self.panel.frame(surface.width()))?;
                 return Ok(());
             }
             builtin::Effect::Compact => {
-                let removed = self.turns.compact();
+                let removed = self.turns.compact().await;
+                self.panel.compacted();
                 surface.emit(&format!(
                     "\n{removed} mensagens antigas foram compactadas\n\n"
                 ))?;

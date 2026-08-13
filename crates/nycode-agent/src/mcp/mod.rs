@@ -5,6 +5,7 @@
 //! nome prefixado pelo servidor — ver ADR-0002.
 
 pub mod config;
+mod schema;
 mod tool;
 
 pub use config::{Endpoint, ServerConfig, discover};

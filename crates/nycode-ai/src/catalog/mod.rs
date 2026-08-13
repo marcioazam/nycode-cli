@@ -5,6 +5,10 @@
 //! significaria envelhecer a cada release de modelo; o `models.dev` existe como
 //! complemento comunitário para metadados que um endpoint não declara.
 
+pub mod cost;
+
+pub use cost::{Cost, Price, Rates, Tier};
+
 use serde::Deserialize;
 use serde_json::Value;
 
@@ -18,7 +22,9 @@ pub const MODELS_DEV_URL: &str = "https://models.dev/api.json";
 ///
 /// Serializável porque o catálogo é cacheado em disco: buscá-lo a cada execução
 /// colocaria uma ida à rede no caminho de startup, que o NFR-1 mede.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, Deserialize)]
+// Sem `Eq`: o preço é ponto flutuante, e igualdade exata de `f64` não é uma
+// relação de equivalência. `PartialEq` é o que os testes precisam.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, Deserialize)]
 pub struct Model {
     pub id: String,
     pub display_name: String,
@@ -27,6 +33,13 @@ pub struct Model {
     /// Sem ela a interface não tem como dizer quanto resta antes de compactar.
     pub context_window: Option<u64>,
     pub max_output_tokens: Option<u64>,
+    /// Tarifas declaradas pelo endpoint, quando ele as declara.
+    ///
+    /// `None` é dizer que não se sabe, e a interface mostra volume sem custo.
+    /// O FR-6 proíbe tabela fixa no binário, e estimar por família de modelo
+    /// daria um número inventado com a mesma cara de um medido (ADR-0026).
+    #[serde(default)]
+    pub price: Option<Price>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -41,13 +54,18 @@ struct ModelsResponse {
 /// teto, um gateway que aceita a conexão e não responde trava o binário sem
 /// desenhar nada na tela.
 pub async fn fetch(http: &reqwest::Client, config: &Config) -> Result<Vec<Model>> {
-    let response = http
+    // O cabeçalho é o do dialeto configurado, e só ele. Mandar `x-api-key` e
+    // `Authorization` juntos entregava a credencial em dois formatos a quem
+    // estivesse do outro lado — e o outro lado é um `base_url` que o usuário
+    // aponta, não necessariamente o gateway que ele imagina.
+    let mut request = http
         .get(config.endpoint("models"))
-        .header("x-api-key", &config.api_key)
-        .header("authorization", format!("Bearer {}", config.api_key))
-        .timeout(config.timeouts.catalog)
-        .send()
-        .await?;
+        .timeout(config.timeouts.catalog);
+    for (name, value) in config.dialect.build().headers(&config.api_key) {
+        request = request.header(name, value);
+    }
+
+    let response = request.send().await?;
 
     let status = response.status();
     if !status.is_success() {
@@ -89,6 +107,7 @@ fn parse_model(raw: &Value) -> Option<Model> {
             .to_owned(),
         context_window: number(&["context_window", "context_length"]),
         max_output_tokens: number(&["max_output_tokens", "max_tokens"]),
+        price: cost::parse(raw),
         id,
     })
 }
@@ -112,6 +131,57 @@ mod tests {
 
     fn config(server: &MockServer) -> Config {
         Config::new(format!("{}/v1", server.uri()), "chave").unwrap()
+    }
+
+    #[tokio::test]
+    async fn the_catalog_sends_only_the_header_its_dialect_uses() {
+        // Mandar `x-api-key` e `Authorization` juntos entregava a credencial em
+        // dois formatos, e o destino e um `base_url` que o usuario aponta — nao
+        // necessariamente o gateway que ele imagina.
+        use wiremock::matchers::header;
+
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/v1/models"))
+            .and(header("x-api-key", "chave"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({"data":[]})))
+            .mount(&server)
+            .await;
+
+        // Anthropic autentica por `x-api-key`; o `Authorization` nao pode ir.
+        fetch(&reqwest::Client::new(), &config(&server))
+            .await
+            .expect("o catalogo respondeu");
+
+        let recebidas = server.received_requests().await.expect("houve pedido");
+        assert!(
+            recebidas[0].headers.get("authorization").is_none(),
+            "a credencial foi tambem no formato do outro dialeto"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_dialect_that_authenticates_with_bearer_does_not_send_the_other_header() {
+        use wiremock::matchers::header;
+
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/v1/models"))
+            .and(header("authorization", "Bearer chave"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({"data":[]})))
+            .mount(&server)
+            .await;
+
+        let config = config(&server).with_dialect(crate::dialect::Kind::OpenAiChat);
+        fetch(&reqwest::Client::new(), &config)
+            .await
+            .expect("o catalogo respondeu");
+
+        let recebidas = server.received_requests().await.expect("houve pedido");
+        assert!(
+            recebidas[0].headers.get("x-api-key").is_none(),
+            "a credencial foi tambem no formato do outro dialeto"
+        );
     }
 
     #[tokio::test]

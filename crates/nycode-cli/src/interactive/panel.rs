@@ -5,6 +5,7 @@
 
 use crossterm::event::Event;
 use nycode_ai::Usage;
+use nycode_ai::catalog::Price;
 use nycode_tui::{Action, Editor, Gutter, Key, Reaction, Status, Tally};
 
 use super::{CONTINUATION, PROMPT};
@@ -59,10 +60,22 @@ pub struct Panel {
     session: String,
     model: String,
     writable: bool,
+    /// Tarifas do modelo atual, quando o catálogo as declara.
+    ///
+    /// Sem preço o rodapé mostra volume e cala sobre custo. O FR-6 proíbe
+    /// tabela fixa no binário, então a ausência é um estado normal e não uma
+    /// falha de configuração.
+    price: Option<Price>,
 }
 
 impl Panel {
-    pub fn new(workspace: String, session: String, model: String, writable: bool) -> Self {
+    pub fn new(
+        workspace: String,
+        session: String,
+        model: String,
+        writable: bool,
+        price: Option<Price>,
+    ) -> Self {
         Self {
             editor: Editor::new(),
             tally: Tally::default(),
@@ -70,6 +83,7 @@ impl Panel {
             session,
             model,
             writable,
+            price,
         }
     }
 
@@ -77,13 +91,16 @@ impl Panel {
         &mut self.editor
     }
 
-    /// Soma o custo de mais um turno.
-    /// Troca o modelo mostrado no rodapé.
-    pub fn set_model(&mut self, model: String) {
+    /// Troca o modelo mostrado no rodapé, e com ele as tarifas.
+    ///
+    /// Os dois andam juntos porque separá-los cobraria os turnos do modelo novo
+    /// à tarifa do antigo, e o número errado é pior que nenhum.
+    pub fn set_model(&mut self, model: String, price: Option<Price>) {
         self.model = model;
+        self.price = price;
     }
 
-    pub const fn absorb(&mut self, usage: Usage) {
+    pub fn absorb(&mut self, usage: Usage) {
         self.tally.absorb(
             usage.input_tokens,
             usage.output_tokens,
@@ -91,6 +108,18 @@ impl Panel {
             usage.cache_write_tokens,
         );
         self.tally.estimated |= usage.estimated;
+        if let Some(price) = &self.price {
+            self.tally.absorb_cost(price.cost(usage).total());
+        }
+    }
+
+    /// Declara que o contexto encolheu de propósito.
+    ///
+    /// O prompt do próximo turno é conteúdo novo, e não conteúdo recobrado;
+    /// contá-lo como repagamento acusaria desperdício onde o harness fez a
+    /// coisa certa.
+    pub const fn compacted(&mut self) {
+        self.tally.forget_prefix();
     }
 
     /// Monta o quadro do painel: editor mais rodapé.

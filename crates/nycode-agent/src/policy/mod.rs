@@ -13,11 +13,15 @@
 //! perde o controle sobre o que sequer é tentado.
 
 pub mod approval;
+pub mod environment;
 pub mod hooks;
 pub mod permission;
+pub mod process;
 pub mod sandbox;
+pub mod trust;
 
 pub use approval::{Always, Approver, Asking, Never};
+pub use environment::config_dir;
 pub use hooks::Hooks;
 pub use permission::{AllowAll, Allowlist, Ask, Decision, Gate, ReadOnly};
 pub use sandbox::Confinement;

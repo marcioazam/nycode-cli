@@ -62,7 +62,13 @@ impl Tool for Edit {
             Err(err) => return ToolOutput::error(err.to_string()),
         };
 
-        let Ok(read) = crate::capped::read(&path, MAX_BYTES).await else {
+        // Pelo descritor: entre esta leitura e a escrita lá embaixo há a
+        // comparação de ocorrências, que é a maior janela de troca de caminho
+        // do repositório.
+        let Ok(opened) = crate::tool::contain::open_read_async(ctx.root(), &path) else {
+            return ToolOutput::error(format!("nao foi possivel ler {requested}"));
+        };
+        let Ok(read) = crate::capped::read_open(opened, MAX_BYTES).await else {
             return ToolOutput::error(format!("nao foi possivel ler {requested}"));
         };
         // A substituição faz uma cópia, então o pico é o dobro do arquivo.
@@ -74,9 +80,16 @@ impl Tool for Edit {
                 read.total
             ));
         }
-        let Ok(contents) = std::str::from_utf8(&read.bytes) else {
+        let Ok(raw) = std::str::from_utf8(&read.bytes) else {
             return ToolOutput::error(format!("nao foi possivel ler {requested}"));
         };
+
+        // O modelo escreve `old_string` com `\n`, sempre. Num arquivo com CRLF
+        // isso nunca casa, e a resposta hoje seria "nao encontrado; confira
+        // espacos e indentacao" — que manda procurar a diferença errada, porque
+        // o que difere é invisível.
+        let shape = Shape::of(raw);
+        let contents = shape.to_lf(raw);
 
         // Uma edicao ambigua e o modo classico de corromper um arquivo: o modelo
         // pede a primeira ocorrencia e recebe outra. Recusar e obrigar mais
@@ -98,14 +111,63 @@ impl Tool for Edit {
             }
         }
 
-        let updated = contents.replacen(old, new, 1);
-        match tokio::fs::write(&path, &updated).await {
+        let updated = shape.restore(&contents.replacen(old, new, 1));
+        match crate::tool::contain::write(ctx.root(), &path, updated.as_bytes()).await {
             Ok(()) => ToolOutput::ok(format!(
                 "{requested} editado ({} bytes -> {} bytes)",
-                contents.len(),
+                raw.len(),
                 updated.len()
             )),
             Err(err) => ToolOutput::error(format!("nao foi possivel escrever {requested}: {err}")),
+        }
+    }
+}
+
+/// A terminação de linha que a edição precisa devolver intacta.
+///
+/// Casar exige normalizar, porque o modelo só escreve `\n`. Gravar exige
+/// desnormalizar, porque um arquivo que troca de terminação vira um diff de
+/// arquivo inteiro no `git` — a edição de uma linha aparece como reescrita de
+/// todas, e quem revisa não consegue ver o que mudou.
+///
+/// O BOM não entra aqui, e a ausência é deliberada: ele fica no começo do
+/// conteúdo e atravessa a substituição intacto por conta própria. Tratá-lo
+/// explicitamente seria código que não muda nenhum desfecho — os testes que o
+/// cobrem passam com e sem. Eles ficam mesmo assim, para que uma implementação
+/// futura não o perca sem alguém notar.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Shape {
+    crlf: bool,
+}
+
+impl Shape {
+    /// Lê a terminação do arquivo como ele está no disco.
+    ///
+    /// Só é `crlf` quando **toda** quebra é CRLF. Num arquivo misto a conversão
+    /// de ida e volta reescreveria as linhas que já eram LF, que é justamente o
+    /// diff de arquivo inteiro que se quer evitar — ali o byte cru preserva mais.
+    fn of(raw: &str) -> Self {
+        let quebras = raw.matches('\n').count();
+        Self {
+            crlf: quebras > 0 && raw.matches("\r\n").count() == quebras,
+        }
+    }
+
+    /// O conteúdo na forma em que o modelo escreve.
+    fn to_lf(self, raw: &str) -> String {
+        if self.crlf {
+            raw.replace("\r\n", "\n")
+        } else {
+            raw.to_owned()
+        }
+    }
+
+    /// O conteúdo de volta na forma do arquivo.
+    fn restore(self, updated: &str) -> String {
+        if self.crlf {
+            updated.replace('\n', "\r\n")
+        } else {
+            updated.to_owned()
         }
     }
 }
@@ -123,6 +185,92 @@ mod tests {
 
     fn edit(old: &str, new: &str) -> Value {
         json!({ "path": "a.rs", "old_string": old, "new_string": new })
+    }
+
+    /// Lê o arquivo como bytes, que é onde CRLF e BOM aparecem.
+    fn bytes_of(dir: &tempfile::TempDir) -> Vec<u8> {
+        std::fs::read(dir.path().join("a.rs")).unwrap()
+    }
+
+    #[tokio::test]
+    async fn a_multiline_match_works_in_a_file_that_uses_crlf() {
+        // O modelo so escreve `\n`. Num arquivo com CRLF o casamento exato falha
+        // e a resposta manda "confira espacos e indentacao" — procurar uma
+        // diferenca que e invisivel.
+        let (_dir, ctx) = workspace_with("fn main() {\r\n    antigo();\r\n}\r\n");
+
+        let out = Edit
+            .execute(
+                edit("fn main() {\n    antigo();", "fn main() {\n    novo();"),
+                &ctx,
+            )
+            .await;
+
+        assert!(!out.is_error, "{}", out.content);
+    }
+
+    #[tokio::test]
+    async fn a_crlf_file_is_still_crlf_after_the_edit() {
+        // Converter para LF ao gravar transforma a edicao de uma linha num diff
+        // de arquivo inteiro, e quem revisa perde de vista o que mudou.
+        let (dir, ctx) = workspace_with("um\r\ndois\r\ntres\r\n");
+
+        let out = Edit.execute(edit("dois", "DOIS"), &ctx).await;
+
+        assert!(!out.is_error, "{}", out.content);
+        assert_eq!(bytes_of(&dir), b"um\r\nDOIS\r\ntres\r\n");
+    }
+
+    #[tokio::test]
+    async fn an_lf_file_does_not_gain_carriage_returns() {
+        // A restauracao so vale onde havia CRLF; aplicada sempre, ela corromperia
+        // todo arquivo Unix do repositorio.
+        let (dir, ctx) = workspace_with("um\ndois\ntres\n");
+
+        Edit.execute(edit("dois", "DOIS"), &ctx).await;
+
+        assert_eq!(bytes_of(&dir), b"um\nDOIS\ntres\n");
+    }
+
+    #[tokio::test]
+    async fn a_file_with_a_bom_keeps_it() {
+        // Nenhum codigo trata o BOM: ele atravessa a substituicao por conta
+        // propria. O teste fica para que uma implementacao futura nao o perca
+        // sem alguem notar — perder o BOM e invisivel em inspecao por texto.
+        let (dir, ctx) = workspace_with("\u{feff}antigo\n");
+
+        let out = Edit.execute(edit("antigo", "novo"), &ctx).await;
+
+        assert!(!out.is_error, "{}", out.content);
+        assert_eq!(bytes_of(&dir), "\u{feff}novo\n".as_bytes());
+    }
+
+    #[tokio::test]
+    async fn a_file_without_a_bom_does_not_gain_one() {
+        let (dir, ctx) = workspace_with("antigo\n");
+
+        Edit.execute(edit("antigo", "novo"), &ctx).await;
+
+        assert_eq!(bytes_of(&dir), b"novo\n");
+    }
+
+    #[tokio::test]
+    async fn a_file_with_mixed_endings_is_left_byte_exact() {
+        // Normalizar um arquivo misto reescreveria as linhas que ja eram LF, que
+        // e justamente o diff de arquivo inteiro que se quer evitar. Ali o byte
+        // cru preserva mais.
+        let (dir, ctx) = workspace_with("um\r\ndois\ntres\r\n");
+
+        Edit.execute(edit("dois", "DOIS"), &ctx).await;
+
+        assert_eq!(bytes_of(&dir), b"um\r\nDOIS\ntres\r\n");
+    }
+
+    #[test]
+    fn a_file_of_a_single_line_has_no_endings_to_preserve() {
+        // Sem quebra nenhuma nao ha terminacao dominante a deduzir, e supor CRLF
+        // acrescentaria um retorno que o arquivo nunca teve.
+        assert!(!Shape::of("sem quebra").crlf);
     }
 
     #[tokio::test]

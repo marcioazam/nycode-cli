@@ -44,11 +44,17 @@ impl Policy {
 /// Monta a linha de comando confinada de um comando de shell.
 ///
 /// Atalho para [`prefix`] com a política do shell, que é o caso de longe mais
-/// comum e o único que precisa de `bash -lc`.
+/// comum e o único que precisa de um shell.
+///
+/// `-c` e não `-lc`: um shell de login carrega `/etc/profile` e o perfil do
+/// usuário, o que traz para dentro do confinamento variáveis e funções que a
+/// allowlist de ambiente acabou de tirar — e faz cada comando pagar o arranque
+/// do perfil. O que o `-l` dava de útil, um `PATH` completo, a allowlist já
+/// entrega.
 #[must_use]
 pub fn wrap(confinement: &Confinement, root: &Path, command: &str) -> Vec<String> {
     let mut argv = prefix(confinement, Policy::WorkspaceWrite, root);
-    argv.extend(["bash".to_owned(), "-lc".to_owned(), command.to_owned()]);
+    argv.extend(["bash".to_owned(), "-c".to_owned(), command.to_owned()]);
     argv
 }
 
@@ -182,8 +188,31 @@ mod tests {
         };
         assert_eq!(
             wrap(&ausente, Path::new("/w"), "echo oi"),
-            vec!["bash", "-lc", "echo oi"]
+            vec!["bash", "-c", "echo oi"]
         );
+    }
+
+    #[test]
+    fn the_shell_is_not_a_login_shell() {
+        // Um shell de login carrega `/etc/profile` e o perfil do usuario, o que
+        // devolve para dentro do confinamento o ambiente que a allowlist acabou
+        // de tirar — e cobra o arranque do perfil em cada comando.
+        for confinement in [
+            bwrap(),
+            Confinement::Seatbelt {
+                program: "sandbox-exec".to_owned(),
+            },
+            Confinement::Unavailable {
+                reason: "teste".to_owned(),
+            },
+        ] {
+            let argv = wrap(&confinement, Path::new("/w"), "echo oi");
+            assert!(
+                !argv.contains(&"-lc".to_owned()) && !argv.contains(&"-l".to_owned()),
+                "{confinement:?} ainda usa shell de login: {argv:?}"
+            );
+            assert!(argv.contains(&"-c".to_owned()), "{argv:?}");
+        }
     }
 
     #[test]

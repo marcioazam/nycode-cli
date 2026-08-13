@@ -41,5 +41,7 @@ subscription-oauth = ["nycode-auth/subscription-oauth"]
 
 [dev-dependencies]
 tempfile = "3.24.0"
-tokio = { version = "1.53.1", features = ["rt-multi-thread", "macros"] }
+# `process` so para o teste da varredura de encerramento, que precisa de um
+# filho de verdade para anotar no registro. Nao entra no binario.
+tokio = { version = "1.53.1", features = ["rt-multi-thread", "macros", "process"] }
 wiremock = "0.6.5"

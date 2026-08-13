@@ -39,6 +39,14 @@ impl Tool for Read {
                 "path": {
                     "type": "string",
                     "description": "Caminho do arquivo, relativo a raiz do workspace"
+                },
+                "offset": {
+                    "type": "integer",
+                    "description": "Linha por onde comecar, contando de 1. Padrao: 1"
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Quantas linhas devolver. Padrao: o que couber no teto"
                 }
             },
             "required": ["path"]
@@ -55,38 +63,53 @@ impl Tool for Read {
             Err(err) => return ToolOutput::error(err.to_string()),
         };
 
-        let read = match crate::capped::read(&path, MAX_BYTES).await {
-            Ok(read) => read,
+        // Pelo descritor, e não pelo caminho: `resolve` decidiu que este
+        // caminho está dentro da raiz, e reabrir por caminho deixaria a decisão
+        // valer só até alguém trocar um componente por link.
+        let opened = match crate::tool::contain::open_read_async(ctx.root(), &path) {
+            Ok(file) => file,
             Err(err) => {
                 return ToolOutput::error(format!("nao foi possivel ler {requested}: {err}"));
             }
         };
-        let truncated = read.truncated();
 
-        let text = match std::str::from_utf8(&read.bytes) {
-            Ok(text) => text,
-            // Cortar no teto pode partir um codepoint ao meio, e isso não é o
-            // mesmo que um binário: ali o inválido está só nas últimas bytes.
-            Err(err) if truncated && read.bytes.len() - err.valid_up_to() < 4 => read.text(),
-            // Um binario lido como texto vira lixo no contexto e desperdica
-            // tokens.
-            Err(_) => {
-                return ToolOutput::error(format!(
-                    "{requested} nao e texto UTF-8 ({} bytes)",
-                    read.total
-                ));
+        let offset = input.get("offset").and_then(Value::as_u64).unwrap_or(1);
+        let limit = input.get("limit").and_then(Value::as_u64);
+
+        let window = match crate::capped::read_window(opened, offset, limit, MAX_BYTES).await {
+            Ok(window) => window,
+            Err(err) => {
+                return ToolOutput::error(format!("nao foi possivel ler {requested}: {err}"));
             }
         };
-
-        let mut out = String::with_capacity(text.len() + 64);
-        for (n, line) in text.lines().enumerate() {
-            let _ = writeln!(out, "{:>6}\t{line}", n + 1);
+        if window.binary {
+            // Um binário lido como texto vira lixo no contexto e desperdiça
+            // tokens.
+            return ToolOutput::error(format!("{requested} nao e texto"));
         }
-        if truncated {
+        if window.lines == 0 {
+            // Vazio faria o modelo concluir que o arquivo acabou; dizer que a
+            // linha não existe é o que o faz corrigir o `offset`.
+            return ToolOutput::ok(if window.first > 1 {
+                format!("{requested} nao tem a linha {}", window.first)
+            } else {
+                format!("{requested} esta vazio")
+            });
+        }
+
+        let mut out = String::with_capacity(window.text.len() + 96);
+        for (n, line) in window.text.lines().enumerate() {
+            let _ = writeln!(out, "{:>6}\t{line}", window.first + n as u64);
+        }
+        if window.more {
+            // O aviso diz o próximo passo em vez de só constatar o corte: sem o
+            // `offset`, o modelo gasta um turno descobrindo como continuar.
             let _ = write!(
                 out,
-                "\n[truncado em {MAX_BYTES} bytes; o arquivo tem {}]\n",
-                read.total
+                "\n[mostrando as linhas {}-{}; use offset={} para continuar]\n",
+                window.first,
+                window.next_offset() - 1,
+                window.next_offset()
             );
         }
         ToolOutput::ok(out)
@@ -150,27 +173,89 @@ mod tests {
 
         let out = Read.execute(json!({ "path": "bin" }), &ctx).await;
         assert!(out.is_error);
-        assert!(out.content.contains("UTF-8"));
+        assert!(out.content.contains("nao e texto"), "{}", out.content);
     }
 
     #[tokio::test]
-    async fn oversized_files_are_truncated_and_say_so() {
-        // Truncar em silencio faria o modelo raciocinar sobre um arquivo que ele
-        // acha que leu inteiro.
+    async fn a_file_of_null_bytes_is_binary_even_though_it_is_valid_utf8() {
+        // `\0` e UTF-8 valido, entao a recusa por falha de decodificacao
+        // deixava passar exatamente o arquivo que menos serve ao modelo.
         let (dir, ctx) = workspace();
-        let big = "x".repeat(MAX_BYTES + 5_000);
+        std::fs::write(dir.path().join("nulos.bin"), [0u8; 64]).unwrap();
+
+        let out = Read.execute(json!({ "path": "nulos.bin" }), &ctx).await;
+        assert!(out.is_error, "{}", out.content);
+    }
+
+    #[tokio::test]
+    async fn a_truncated_read_says_how_to_continue_instead_of_only_that_it_cut() {
+        // Sem o proximo `offset` o modelo gasta um turno descobrindo como
+        // seguir, ou conclui que o resto do arquivo e inalcancavel — que era o
+        // caso, porque o schema so aceitava `path`.
+        let (dir, ctx) = workspace();
+        let big = format!("{}\n", vec!["linha"; 200_000].join("\n"));
         std::fs::write(dir.path().join("big.txt"), &big).unwrap();
 
         let out = Read.execute(json!({ "path": "big.txt" }), &ctx).await;
+
+        assert!(!out.is_error, "{}", out.content);
+        assert!(out.content.contains("use offset="), "{}", out.content);
+    }
+
+    #[tokio::test]
+    async fn the_offset_continues_from_where_the_previous_call_stopped() {
+        let (dir, ctx) = workspace();
+        std::fs::write(dir.path().join("linhas.txt"), "um\ndois\ntres\nquatro\n").unwrap();
+
+        let out = Read
+            .execute(json!({ "path": "linhas.txt", "offset": 3 }), &ctx)
+            .await;
+
+        assert!(out.content.contains("tres"), "{}", out.content);
+        assert!(!out.content.contains("dois"), "{}", out.content);
+        assert!(
+            out.content.contains("     3\t"),
+            "a numeracao e absoluta: {}",
+            out.content
+        );
+    }
+
+    #[tokio::test]
+    async fn a_limit_bounds_how_much_comes_back() {
+        let (dir, ctx) = workspace();
+        std::fs::write(dir.path().join("linhas.txt"), "um\ndois\ntres\nquatro\n").unwrap();
+
+        let out = Read
+            .execute(json!({ "path": "linhas.txt", "limit": 2 }), &ctx)
+            .await;
+
+        assert!(out.content.contains("um"), "{}", out.content);
+        assert!(!out.content.contains("tres"), "{}", out.content);
+        assert!(out.content.contains("use offset=3"), "{}", out.content);
+    }
+
+    #[tokio::test]
+    async fn an_offset_past_the_end_says_so_instead_of_answering_empty() {
+        // Vazio faria o modelo concluir que leu tudo.
+        let (dir, ctx) = workspace();
+        std::fs::write(dir.path().join("curto.txt"), "so uma linha\n").unwrap();
+
+        let out = Read
+            .execute(json!({ "path": "curto.txt", "offset": 99 }), &ctx)
+            .await;
+
         assert!(!out.is_error);
-        assert!(out.content.contains("[truncado em"));
-        assert!(out.content.contains(&(MAX_BYTES + 5_000).to_string()));
+        assert!(
+            out.content.contains("nao tem a linha 99"),
+            "{}",
+            out.content
+        );
     }
 
     #[tokio::test]
     async fn a_codepoint_split_by_the_ceiling_is_not_mistaken_for_a_binary() {
-        // O corte no teto cai no meio de um caractere de dois bytes. Recusar o
-        // arquivo como binario perderia um texto perfeitamente legivel.
+        // O corte cai no meio de um caractere de dois bytes. Recusar o arquivo
+        // como binario perderia um texto perfeitamente legivel.
         let (dir, ctx) = workspace();
         let mut big = "x".repeat(MAX_BYTES - 1);
         big.push_str(&"ç".repeat(10));
@@ -179,7 +264,6 @@ mod tests {
         let out = Read.execute(json!({ "path": "acentos.txt" }), &ctx).await;
 
         assert!(!out.is_error, "{}", out.content);
-        assert!(out.content.contains("[truncado em"));
     }
 
     #[test]

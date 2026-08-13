@@ -18,10 +18,19 @@ workspace = true
 name = "nycode-parity"
 path = "src/main.rs"
 
+# O gateway de fixture. Existe porque o gate de paridade nunca rodou por falta
+# de gateway, e uma regra sem instrumento e decoracao.
+[[bin]]
+name = "nycode-parity-fixture"
+path = "src/bin/fixture.rs"
+
 [dependencies]
 anyhow = "1.0.104"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
 similar = "3.1.2"
 tempfile = "3.24.0"
-tokio = { version = "1.53.1", features = ["rt-multi-thread", "macros", "process", "fs"] }
+# `sync` entra pelo canal de uma via que avisa o fixture que a entrada padrao
+# acabou: e o desligamento sem sinal, sem o qual a casca do gateway morreria
+# antes de gravar o proprio perfil de cobertura.
+tokio = { version = "1.53.1", features = ["rt-multi-thread", "macros", "process", "fs", "net", "io-util", "sync"] }

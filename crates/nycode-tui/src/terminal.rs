@@ -26,6 +26,7 @@ pub struct Terminal<W: Write> {
     out: W,
     renderer: Renderer,
     origin: usize,
+    full_redraws: usize,
 }
 
 impl<W: Write> Terminal<W> {
@@ -34,7 +35,25 @@ impl<W: Write> Terminal<W> {
             out,
             renderer: Renderer::new(width),
             origin: 0,
+            full_redraws: 0,
         }
+    }
+
+    /// Quantas vezes o estado diferencial foi descartado por [`Self::invalidate`].
+    ///
+    /// O renderizador diferencial existe para que o quadro seguinte custe só o
+    /// que mudou, e um contador é a única forma de saber que isso parou de
+    /// valer: um gate de tempo não distingue "ficou lento" de "voltou a
+    /// redesenhar tudo", e o segundo é o defeito que o ADR-0008 existe para não
+    /// ter.
+    ///
+    /// Não conta o descarte de [`Self::emit`]. Ali ele é consequência esperada
+    /// de escrever no scrollback — as linhas do painel saíram do lugar —, e
+    /// contá-lo faria o número subir a cada linha de progresso, que é o mesmo
+    /// que não medir nada.
+    #[must_use]
+    pub const fn full_redraws(&self) -> usize {
+        self.full_redraws
     }
 
     /// Largura corrente do terminal, ou um padrão razoável quando não há um.
@@ -112,6 +131,7 @@ impl<W: Write> Terminal<W> {
 
     /// Força o próximo quadro a redesenhar tudo.
     pub fn invalidate(&mut self) {
+        self.full_redraws += 1;
         self.renderer.invalidate();
     }
 
@@ -199,6 +219,21 @@ mod tests {
             worst < 200,
             "um token custou {worst} bytes; o painel inteiro vazou"
         );
+    }
+
+    #[test]
+    fn discarding_the_diff_is_counted_but_writing_to_the_scrollback_is_not() {
+        // O contador so serve se subir quando o diferencial e descartado sem
+        // que o scrollback tenha mudado: contar o `emit` o faria subir a cada
+        // linha de progresso, que e o mesmo que nao medir nada.
+        let mut term = Terminal::new(Vec::new(), 80);
+        assert_eq!(term.full_redraws(), 0);
+
+        term.emit("progresso\n").unwrap();
+        assert_eq!(term.full_redraws(), 0, "escrever no scrollback e esperado");
+
+        term.invalidate();
+        assert_eq!(term.full_redraws(), 1);
     }
 
     #[test]

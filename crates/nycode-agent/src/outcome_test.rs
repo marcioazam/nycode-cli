@@ -29,6 +29,7 @@ async fn the_reasoning_tokens_of_a_turn_reach_the_total() {
             output_tokens: 5,
             cache_read_tokens: 3,
             cache_write_tokens: 2,
+            cache_write_1h_tokens: 1,
             reasoning_tokens: 4,
             estimated: false,
         }),
@@ -64,6 +65,7 @@ async fn every_field_of_usage_survives_two_turns() {
                 output_tokens: n,
                 cache_read_tokens: n,
                 cache_write_tokens: n,
+                cache_write_1h_tokens: n,
                 reasoning_tokens: n,
                 estimated: false,
             }),
@@ -83,6 +85,7 @@ async fn every_field_of_usage_survives_two_turns() {
     assert_eq!(usage.output_tokens, 7);
     assert_eq!(usage.cache_read_tokens, 7);
     assert_eq!(usage.cache_write_tokens, 7);
+    assert_eq!(usage.cache_write_1h_tokens, 7);
     assert_eq!(usage.reasoning_tokens, 7);
 }
 
@@ -149,7 +152,7 @@ async fn compaction_does_not_erase_what_the_run_produced() {
 
     agent.run("oi", &mut Silent).await.unwrap();
     let antes = agent.produced().to_vec();
-    agent.compact_now();
+    agent.compact_now().await;
 
     assert_eq!(
         agent.produced(),

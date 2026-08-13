@@ -16,10 +16,12 @@
 //! agente inutilizável, e a maioria dos hooks é observação. O risco é real e
 //! está aceito no ADR: quem quer bloqueio garantido usa o gate, que é código.
 
+mod contract;
+
+pub use contract::{Event, Payload, Response};
+
 use std::path::{Path, PathBuf};
 use std::time::Duration;
-
-use serde::{Deserialize, Serialize};
 
 /// Teto de tempo de um hook.
 ///
@@ -38,61 +40,19 @@ const MAX_OUTPUT: usize = 64 * 1024;
 /// Diretórios varridos, em ordem de precedência crescente.
 const HOOK_DIRS: &[&str] = &[".claude/hooks", ".nycode/hooks"];
 
-/// Momento do ciclo de vida em que um hook roda.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum Event {
-    SessionStart,
-    /// O único que pode vetar.
-    PreToolUse,
-    PostToolUse,
-    SessionEnd,
-}
-
-impl Event {
-    /// Nome do arquivo que responde por este evento.
-    #[must_use]
-    pub const fn filename(self) -> &'static str {
-        match self {
-            Self::SessionStart => "session-start",
-            Self::PreToolUse => "pre-tool-use",
-            Self::PostToolUse => "post-tool-use",
-            Self::SessionEnd => "session-end",
-        }
-    }
-}
-
-/// O que o hook recebe em stdin.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Payload {
-    pub event: Event,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub tool: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub input: Option<serde_json::Value>,
-    /// Saída da ferramenta, em `post-tool-use`.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub output: Option<String>,
-    pub cwd: String,
-}
-
-/// O que o hook responde em stdout.
-#[derive(Debug, Clone, Default, Deserialize)]
-pub struct Response {
-    /// `"deny"` veta a chamada. Qualquer outra coisa a deixa passar.
-    #[serde(default)]
-    pub decision: Option<String>,
-    /// A razão que chega ao modelo.
-    #[serde(default)]
-    pub reason: Option<String>,
-}
-
-impl Response {
-    #[must_use]
-    pub fn is_denial(&self) -> bool {
-        self.decision.as_deref() == Some("deny")
-    }
-}
+/// Os eventos que de fato disparam.
+///
+/// São os quatro que o ADR-0009 desenhou. A lista continua existindo, e a
+/// descoberta continua consultando-a em vez de aceitar qualquer nome de
+/// arquivo, porque é ela que impede um evento de aparecer no cabeçalho da
+/// sessão como ativo sem rodar: quem o instalasse pararia de procurar, e um
+/// controle anunciado e inexistente é pior que a ausência dele.
+const FIRED: &[Event] = &[
+    Event::SessionStart,
+    Event::PreToolUse,
+    Event::PostToolUse,
+    Event::SessionEnd,
+];
 
 /// Os hooks descobertos num workspace.
 #[derive(Debug, Clone, Default)]
@@ -111,12 +71,7 @@ impl Hooks {
 
         for relative in HOOK_DIRS {
             let dir = root.join(relative);
-            for event in [
-                Event::SessionStart,
-                Event::PreToolUse,
-                Event::PostToolUse,
-                Event::SessionEnd,
-            ] {
+            for event in FIRED {
                 let candidate = dir.join(event.filename());
                 if is_executable(&candidate) {
                     scripts.insert(event.filename(), candidate);
@@ -146,10 +101,50 @@ impl Hooks {
         self.scripts.is_empty()
     }
 
+    /// Se algum executável responde por este evento.
+    ///
+    /// Quem dispara consulta antes de montar o payload. O de `post-tool-use`
+    /// carrega uma cópia da saída da ferramenta, e num workspace sem hook
+    /// nenhum essa cópia seria paga a cada chamada para ser descartada logo em
+    /// seguida.
+    #[must_use]
+    pub fn has(&self, event: Event) -> bool {
+        self.scripts.contains_key(event.filename())
+    }
+
     /// Nomes dos eventos com hook, para o cabeçalho da sessão.
     #[must_use]
     pub fn declared(&self) -> Vec<&'static str> {
         self.scripts.keys().copied().collect()
+    }
+
+    /// Como cada hook se apresenta ao pedido de consentimento (ADR-0016).
+    ///
+    /// A impressão digital cobre o conteúdo do executável e não o caminho:
+    /// reescrever o script sob um nome já confiado é a forma que o rug pull
+    /// toma aqui. Um script ilegível vira conteúdo vazio, o que muda a
+    /// impressão e faz o consentimento ser pedido de novo — que é o desfecho
+    /// seguro.
+    #[must_use]
+    pub fn declarations(&self) -> Vec<crate::policy::trust::Declaration> {
+        self.scripts
+            .iter()
+            .map(|(event, path)| {
+                let content = std::fs::read(path).unwrap_or_default();
+                crate::policy::trust::Declaration::covering(
+                    *event,
+                    path.display().to_string(),
+                    String::from_utf8_lossy(&content),
+                )
+            })
+            .collect()
+    }
+
+    /// Mantém apenas os hooks cujos nomes foram autorizados.
+    #[must_use]
+    pub fn retaining(mut self, allowed: &std::collections::BTreeSet<String>) -> Self {
+        self.scripts.retain(|event, _| allowed.contains(*event));
+        self
     }
 
     /// Roda o hook de um evento, se houver.
@@ -161,36 +156,57 @@ impl Hooks {
         let program = self.scripts.get(event.filename())?;
 
         let body = serde_json::to_string(payload).ok()?;
-        let run = spawn(program, &self.root, body);
-
-        match tokio::time::timeout(self.timeout, run).await {
-            Ok(Some(stdout)) => parse(&stdout, program),
-            Ok(None) => None,
-            Err(_) => {
-                tracing::warn!(
-                    hook = %program.display(),
-                    "hook excedeu o tempo e foi ignorado"
-                );
-                None
-            }
-        }
+        let stdout = spawn(program, &self.root, body, self.timeout).await?;
+        parse(&stdout, program)
     }
 }
 
-/// Executa o hook e devolve o stdout.
-async fn spawn(program: &Path, cwd: &Path, body: String) -> Option<String> {
-    use tokio::io::AsyncWriteExt as _;
-
+/// Executa o hook e devolve o stdout, cortando no prazo.
+///
+/// O prazo é aplicado aqui dentro e não em volta da chamada porque quem estoura
+/// precisa poder matar o processo e **esperar** que ele morra. Largar o future
+/// conta com o `kill_on_drop`, que envia o sinal e segue em frente: o `bwrap`
+/// morre, o script confinado ainda tem a janela até o namespace cair, e sob
+/// carga essa janela chega a durar mais que o teste que a mede.
+async fn spawn(program: &Path, cwd: &Path, body: String, limit: Duration) -> Option<String> {
     let mut child = start(program, cwd).await?;
+    // A anotação é o que alcança este hook se o processo morrer por sinal: ali
+    // nenhum `drop` roda, e o grupo destacado ficaria de pé. Ela sai sozinha em
+    // todo caminho que colhe o filho, inclusive no `drop` deste future.
+    let _tracked = crate::policy::process::shared().track(&child);
 
-    if let Some(mut stdin) = child.stdin.take() {
-        let _ = stdin.write_all(body.as_bytes()).await;
-        // Sem o fechamento, um hook que lê stdin até o fim nunca termina.
-        drop(stdin);
-    }
-
+    let stdin = child.stdin.take();
     let mut stdout = child.stdout.take()?;
-    let kept = read_capped(&mut stdout, MAX_OUTPUT).await;
+
+    // A escrita fica **dentro** do prazo, junto com a leitura. O payload de
+    // `post-tool-use` carrega saída de ferramenta e passa do buffer do cano, e
+    // ali `write_all` espera o hook ler: fora do prazo, um hook que não lê o
+    // stdin penduraria a chamada de ferramenta sem teto nenhum.
+    let piped = async move {
+        use tokio::io::AsyncWriteExt as _;
+
+        // O hook le o contrato do `stdin` inteiro, sem linha de controle a
+        // frente: qualquer byte a mais seria lido pelo script como payload.
+        if let Some(mut stdin) = stdin {
+            let _ = stdin.write_all(body.as_bytes()).await;
+            // Largar o `stdin` aqui é o que o fecha, e sem o fechamento um hook
+            // que lê até o fim nunca termina.
+        }
+        read_capped(&mut stdout, MAX_OUTPUT).await
+    };
+
+    let Ok(kept) = tokio::time::timeout(limit, piped).await else {
+        tracing::warn!(
+            hook = %program.display(),
+            "hook excedeu o tempo e foi interrompido"
+        );
+        // Matar o grupo cobre o neto; matar so o lider o deixava orfao, e
+        // sob confinamento isso significava um processo escrevendo no
+        // workspace depois de o harness ter dito que o interrompeu.
+        crate::policy::process::kill(&mut child);
+        let _ = child.wait().await;
+        return None;
+    };
 
     // Saída não-zero é falha do hook, e falha de hook é ruidosa (ADR-0009).
     // Descartar o status deixava um hook quebrado ser ignorado em silêncio, que
@@ -244,15 +260,27 @@ async fn read_capped(stdout: &mut tokio::process::ChildStdout, cap: usize) -> Ve
 /// pularia em silêncio um hook que existe e está instalado, que é o pior
 /// desfecho possível para uma camada de política.
 async fn start(program: &Path, cwd: &Path) -> Option<tokio::process::Child> {
+    start_with(program, cwd, &crate::policy::sandbox::detect_from_path()).await
+}
+
+/// O mesmo, com o confinamento escolhido.
+///
+/// A escolha é parâmetro porque o ramo sem wrapper e os erros de `exec` são
+/// comportamento de segurança que precisa ser exercitável numa máquina que
+/// tenha `bwrap` instalado.
+async fn start_with(
+    program: &Path,
+    cwd: &Path,
+    confinement: &crate::policy::sandbox::Confinement,
+) -> Option<tokio::process::Child> {
     /// Quanto esperar antes da segunda tentativa.
     const SETTLE: Duration = Duration::from_millis(50);
 
     // O hook roda sob a mesma política do comando de shell (ADR-0009,
     // ADR-0017): é política local, precisa escrever no workspace e não tem por
     // que alcançar a rede.
-    let confinement = crate::policy::sandbox::detect_from_path();
     let argv = crate::policy::sandbox::prefix(
-        &confinement,
+        confinement,
         crate::policy::sandbox::Policy::WorkspaceWrite,
         cwd,
     );
@@ -278,7 +306,14 @@ async fn start(program: &Path, cwd: &Path) -> Option<tokio::process::Child> {
             // dispara a cada chamada de ferramenta, então o que fica para trás
             // se acumula ao longo da sessão, ainda escrevendo no workspace.
             .kill_on_drop(true);
-        clear_environment(&mut command);
+        // Um hook vem do repositório e alcança a rede: herdar o ambiente do
+        // harness faria de qualquer clone um canal de saída para a credencial.
+        crate::policy::environment::clear(&mut command);
+        // Líder de um grupo próprio: terminar é sinalizar o grupo e o líder.
+        // O processo lançado pelo `bwrap` herda o grupo mesmo dentro do novo
+        // namespace de PID; o teste da sentinela prova a propriedade que
+        // importa, em vez de inferi-la da topologia dos namespaces.
+        crate::policy::process::detach(&mut command);
         let started = command.spawn();
 
         match started {
@@ -293,28 +328,6 @@ async fn start(program: &Path, cwd: &Path) -> Option<tokio::process::Child> {
         }
     }
     None
-}
-
-/// Variáveis que um hook recebe mesmo com o ambiente limpo.
-///
-/// Sem `PATH` um hook escrito como `#!/usr/bin/env bash` não acha o próprio
-/// interpretador. O que um hook precisa além disto ele lê do contrato JSON, que
-/// já carrega a raiz do workspace no campo `cwd`.
-const PASSTHROUGH: &[&str] = &["PATH", "HOME", "LANG", "LC_ALL", "TERM", "TMPDIR"];
-
-/// Limpa o ambiente do hook, preservando o mínimo que o faz executar.
-///
-/// O ambiente do harness carrega as credenciais do usuário. Um hook vem do
-/// repositório, roda a cada chamada de ferramenta e alcança a rede: herdá-las
-/// faria de qualquer repositório clonado um canal de saída para a chave do
-/// gateway.
-fn clear_environment(command: &mut tokio::process::Command) {
-    command.env_clear();
-    for key in PASSTHROUGH {
-        if let Some(value) = std::env::var_os(key) {
-            command.env(key, value);
-        }
-    }
 }
 
 /// `ETXTBSY`, sem depender de uma crate de constantes de libc.

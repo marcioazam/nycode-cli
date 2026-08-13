@@ -146,6 +146,14 @@ impl Store {
         writeln!(file, "{line}")
             .map_err(|err| Error::Workspace(format!("gravar sessao {id}: {err}")))?;
 
+        // O `write` volta quando o núcleo aceitou os bytes, não quando o disco
+        // os tem. Uma queda de energia entre uma coisa e outra deixa a sessão
+        // com uma linha pela metade, e a linha pela metade não termina em
+        // newline — então o próximo append cola o registro seguinte no
+        // fragmento e perde dois em vez de um.
+        file.sync_all()
+            .map_err(|err| Error::Workspace(format!("sincronizar sessao {id}: {err}")))?;
+
         // A ponta é o último registro gravado, inclusive quando este append
         // ramificou a partir do meio da árvore.
         self.remember_tip(id, &record_id);

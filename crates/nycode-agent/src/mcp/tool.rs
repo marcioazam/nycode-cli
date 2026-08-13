@@ -70,7 +70,20 @@ impl Tool for McpTool {
         self.schema.clone()
     }
 
+    /// Uma ferramenta de servidor entra e sai com o `.mcp.json` do workspace.
+    fn is_extension(&self) -> bool {
+        true
+    }
+
     async fn execute(&self, input: Value, _ctx: &ToolContext) -> ToolOutput {
+        // O schema deixou de ser só declaração: encaminhá-lo ao modelo sem
+        // nunca conferi-lo fazia um argumento faltando virar erro de
+        // desserialização do outro lado, com a mensagem que aquele servidor
+        // escolheu escrever, a um processo de distância da causa.
+        if let Err(reason) = super::schema::check(&self.schema, &input) {
+            return ToolOutput::error(format!("{}: {reason}", self.qualified_name));
+        }
+
         // O servidor roda fora do processo e nao conhece a raiz do workspace,
         // entao o contexto local nao se aplica: o isolamento aqui e o do
         // sistema operacional, nao o do `ToolContext`.
@@ -134,6 +147,14 @@ mod tests {
     }
 
     #[test]
+    fn a_server_tool_declares_itself_as_an_extension() {
+        // E o que a mantem fora do prefixo cacheado: ela entra quando o
+        // workspace a declara e some quando o servidor nao sobe, e um prefixo
+        // que muda por isso e um cache que erra o turno inteiro (NFR-7).
+        assert!(tool(FakeTransport::responding(Ok(String::new()))).is_extension());
+    }
+
+    #[test]
     fn names_are_qualified_by_server() {
         // Dois servidores com uma ferramenta `search` colidiriam no catalogo e o
         // modelo chamaria a errada sem nenhum sinal.
@@ -170,6 +191,35 @@ mod tests {
         assert!(out.is_error);
         assert!(out.content.contains("docs__search"));
         assert!(out.content.contains("conexao recusada"));
+    }
+
+    #[tokio::test]
+    async fn arguments_the_declared_schema_refuses_do_not_reach_the_server() {
+        // O erro chega perto da causa e o modelo corrige na volta, em vez de
+        // receber a mensagem que aquele servidor escolheu escrever.
+        let transport = FakeTransport::responding(Ok("nunca".to_owned()));
+        let (_dir, ctx) = ctx();
+        let mcp = McpTool::new(
+            "docs",
+            "search",
+            "d",
+            json!({
+                "type": "object",
+                "properties": { "q": { "type": "string" } },
+                "required": ["q"]
+            }),
+            transport.clone(),
+        );
+
+        let out = mcp.execute(json!({ "limite": 5 }), &ctx).await;
+
+        assert!(out.is_error);
+        assert!(out.content.contains("docs__search"), "{}", out.content);
+        assert!(out.content.contains('q'), "{}", out.content);
+        assert!(
+            transport.calls.lock().unwrap().is_empty(),
+            "a chamada nao pode ter saido"
+        );
     }
 
     #[test]

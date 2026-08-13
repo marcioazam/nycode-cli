@@ -43,6 +43,32 @@ impl Dialect for Chat {
         if !request.tools.is_empty() {
             body["tools"] = Value::Array(request.tools.iter().map(declare_tool).collect());
         }
+
+        // Ate a spec 002 este dialeto nao consultava `sampling` em ponto
+        // nenhum: a unica mencao ao tipo estava num helper `#[cfg(test)]`.
+        // Temperatura, raciocinio e sequencia de parada eram configuraveis e
+        // nunca saiam do processo.
+        let sampling = request.sampling;
+        if let Some(temperature) = sampling.temperature {
+            body["temperature"] = json!(temperature);
+        }
+        if let Some(top_p) = sampling.top_p {
+            body["top_p"] = json!(top_p);
+        }
+        if !sampling.stop_sequences.is_empty() {
+            body["stop"] = json!(sampling.stop_sequences);
+        }
+        if let Some(effort) = sampling.thinking.effort() {
+            body["reasoning_effort"] = json!(effort.name);
+        }
+        // O cache deste dialeto e por chave, nao por ponto de corte: o backend
+        // agrupa pedidos que declaram a mesma chave e reaproveita o prefixo
+        // comum. Sem ela o NFR-7 valia so para o dialeto Anthropic.
+        if sampling.cache_prefix
+            && let Some(key) = sampling.cache_key.as_deref()
+        {
+            body["prompt_cache_key"] = json!(key);
+        }
         body
     }
 
@@ -162,6 +188,79 @@ mod tests {
         })
     }
 
+    fn body_with(sampling: &crate::sampling::Sampling) -> Value {
+        Chat.body(&UnifiedRequest {
+            model: "m",
+            max_tokens: 512,
+            messages: &[Message::user("oi")],
+            system: Some("sistema"),
+            tools: &[],
+            sampling,
+        })
+    }
+
+    #[test]
+    fn nothing_the_caller_did_not_ask_for_reaches_the_wire() {
+        let body = body_with(&crate::sampling::Sampling::default());
+        for absent in [
+            "temperature",
+            "top_p",
+            "stop",
+            "reasoning_effort",
+            "prompt_cache_key",
+        ] {
+            assert!(body.get(absent).is_none(), "{absent} nao foi pedido");
+        }
+    }
+
+    #[test]
+    fn the_sampling_knobs_reach_the_wire_when_they_are_set() {
+        // A assimetria que a spec 002 fechou: este dialeto nunca consultava
+        // `sampling`, e a unica mencao ao tipo no arquivo estava num helper de
+        // teste. Temperatura e raciocinio eram configuraveis e nao saiam daqui.
+        let body = body_with(
+            &crate::sampling::Sampling::default()
+                .with_temperature(0.2)
+                .with_top_p(0.9)
+                .with_thinking(crate::sampling::ThinkingLevel::High)
+                .with_stop_sequences(vec!["FIM".to_owned()]),
+        );
+
+        assert!((body["temperature"].as_f64().unwrap() - 0.2).abs() < 1e-6);
+        assert!((body["top_p"].as_f64().unwrap() - 0.9).abs() < 1e-6);
+        assert_eq!(body["stop"][0], "FIM");
+        assert_eq!(body["reasoning_effort"], "high");
+    }
+
+    #[test]
+    fn the_cache_key_reaches_the_wire_so_nfr7_holds_in_this_dialect_too() {
+        // Este formato nao tem ponto de corte: o backend agrupa pelos pedidos
+        // que declaram a mesma chave. Sem ela o NFR-7 valia so no Anthropic.
+        let body = body_with(&crate::sampling::Sampling::default().with_cache_key("sessao-1"));
+        assert_eq!(body["prompt_cache_key"], "sessao-1");
+    }
+
+    #[test]
+    fn turning_the_cache_off_drops_the_key_instead_of_sending_it() {
+        let body = body_with(
+            &crate::sampling::Sampling::default()
+                .with_cache_key("sessao-1")
+                .without_cache(),
+        );
+        assert!(body.get("prompt_cache_key").is_none());
+    }
+
+    #[test]
+    fn this_dialect_emits_every_knob_it_is_given() {
+        // Nao ha nada a declarar como nao suportado: se um dia houver, o teste
+        // falha e alguem precisa decidir o que dizer ao usuario.
+        let sampling = crate::sampling::Sampling::default()
+            .with_temperature(0.2)
+            .with_stop_sequences(vec!["FIM".to_owned()])
+            .with_thinking(crate::sampling::ThinkingLevel::Max);
+        assert!(Chat.unsupported_sampling(&sampling).is_empty());
+    }
+
     #[test]
     fn uses_max_completion_tokens_not_max_tokens() {
         // O gateway documenta que backends OpenAI-compativeis recebem o teto
@@ -245,6 +344,7 @@ mod tests {
             name: "read".to_owned(),
             description: "le arquivo".to_owned(),
             input_schema: json!({ "type": "object" }),
+            extension: false,
         }];
         let body = body_of(&[Message::user("oi")], None, &tools);
         assert_eq!(body["tools"][0]["type"], "function");

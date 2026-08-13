@@ -11,8 +11,13 @@ use serde::{Deserialize, Serialize};
 
 /// Arquivos consultados, em ordem de precedência crescente.
 ///
-/// O escopo de projeto vence o global: um servidor declarado no repositório é
-/// mais específico que uma preferência da máquina.
+/// Os três vêm do repositório; não há escopo global aqui, e o último vence.
+///
+/// Dizer que "o escopo de projeto vence o global" sugeria uma camada confiável
+/// acima destes, que não existe: os três estão sob controle de quem escreveu o
+/// diretório, e é por isso que todos passam pelo consentimento do
+/// [ADR-0016](../../../../docs/architecture/decisions/0016-extensao-do-workspace-exige-consentimento.md)
+/// antes de virar processo.
 const CONFIG_FILES: &[&str] = &[".mcp.json", ".claude/mcp.json", ".nycode/mcp.json"];
 
 /// Como falar com um servidor MCP.
@@ -22,7 +27,12 @@ const CONFIG_FILES: &[&str] = &[".mcp.json", ".claude/mcp.json", ".nycode/mcp.js
 /// Streamable HTTP com um servidor que já está no ar. É a mesma convenção que
 /// os outros harnesses gravam, e por isso `command` e `url` são opcionais em
 /// vez de um enum etiquetado — o arquivo existente precisa continuar valendo.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+///
+/// `Debug` é manual e redige os valores de `env`, que são credenciais que o
+/// usuário escreveu para o servidor. `Serialize` fica derivado de propósito: ele
+/// existe para regravar o arquivo, onde os valores precisam sair inteiros — o
+/// que não pode é um `{:?}` num log despejá-los.
+#[derive(Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ServerConfig {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub command: Option<String>,
@@ -35,6 +45,21 @@ pub struct ServerConfig {
     /// Desabilitado sem precisar remover a entrada.
     #[serde(default)]
     pub disabled: bool,
+}
+
+impl std::fmt::Debug for ServerConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // As chaves ficam: uma variável nova é informação de depuração legítima,
+        // e é o que o pedido de consentimento também mostra.
+        let env: Vec<&str> = self.env.keys().map(String::as_str).collect();
+        f.debug_struct("ServerConfig")
+            .field("command", &self.command)
+            .field("url", &self.url)
+            .field("args", &self.args)
+            .field("env", &env)
+            .field("disabled", &self.disabled)
+            .finish()
+    }
 }
 
 /// Como um servidor deve ser alcançado.
@@ -56,6 +81,10 @@ impl ServerConfig {
     /// Uma entrada sem `command` nem `url` não descreve servidor nenhum, e
     /// tratá-la como stdio com comando vazio produziria um erro de `spawn`
     /// confuso em vez de dizer o que está faltando.
+    ///
+    /// A `url` é validada aqui e não no uso: ela vem de um arquivo do
+    /// repositório clonado, e o erro precisa nomear o servidor enquanto ainda se
+    /// sabe qual é.
     pub fn endpoint(&self) -> Result<Endpoint, String> {
         match (&self.command, &self.url) {
             (Some(command), None) => Ok(Endpoint::Stdio {
@@ -63,7 +92,11 @@ impl ServerConfig {
                 args: self.args.clone(),
                 env: self.env.clone(),
             }),
-            (None, Some(url)) => Ok(Endpoint::Http { url: url.clone() }),
+            (None, Some(url)) => {
+                nycode_ai::refuse_plaintext_outside_loopback(url)
+                    .map_err(|err| format!("{err}"))?;
+                Ok(Endpoint::Http { url: url.clone() })
+            }
             (Some(_), Some(_)) => {
                 Err("declara `command` e `url` ao mesmo tempo; escolha um".to_owned())
             }
@@ -132,6 +165,37 @@ mod tests {
         assert_eq!(docs.args, vec!["-y", "srv"]);
         assert_eq!(docs.env["TOKEN"], "x");
         assert!(!docs.disabled);
+    }
+
+    #[test]
+    fn a_debug_view_of_a_server_config_never_contains_its_tokens() {
+        // O `env` do `.mcp.json` carrega credencial que o usuario escreveu para
+        // o servidor. As chaves sao informacao de depuracao legitima; os valores
+        // nao tem por que aparecer em log nenhum.
+        let config = ServerConfig {
+            command: Some("npx".to_owned()),
+            env: BTreeMap::from([("TOKEN".to_owned(), "valor-sensivel".to_owned())]),
+            ..ServerConfig::default()
+        };
+        let rendered = format!("{config:?}");
+
+        assert!(!rendered.contains("valor-sensivel"), "{rendered}");
+        assert!(rendered.contains("TOKEN"), "{rendered}");
+        assert!(rendered.contains("npx"), "{rendered}");
+    }
+
+    #[test]
+    fn the_serialized_form_still_carries_the_values_the_file_needs() {
+        // `Serialize` existe para regravar o arquivo, onde o valor precisa sair
+        // inteiro. Redigi-lo ali corromperia a configuracao do usuario.
+        let config = ServerConfig {
+            command: Some("npx".to_owned()),
+            env: BTreeMap::from([("TOKEN".to_owned(), "valor-sensivel".to_owned())]),
+            ..ServerConfig::default()
+        };
+        let json = serde_json::to_string(&config).unwrap();
+
+        assert!(json.contains("valor-sensivel"), "{json}");
     }
 
     #[test]
@@ -243,6 +307,29 @@ mod tests {
                 url: "https://exemplo/mcp".to_owned()
             }
         );
+    }
+
+    #[test]
+    fn a_repository_that_points_the_server_at_plaintext_off_machine_is_refused() {
+        // O `.mcp.json` vem do diretorio clonado. Sem esta recusa, um repositorio
+        // hostil aponta o servidor para um host proprio e le em texto claro tudo
+        // o que a sessao mandar ao "servidor MCP".
+        let config = ServerConfig {
+            url: Some("http://coletor.exemplo.com/mcp".to_owned()),
+            ..ServerConfig::default()
+        };
+        let err = config.endpoint().expect_err("deveria recusar");
+        assert!(err.contains("texto claro fora de loopback"), "{err}");
+    }
+
+    #[test]
+    fn a_server_on_the_local_machine_still_works_without_tls() {
+        // Servidor MCP local por HTTP e a forma comum de desenvolver um.
+        let config = ServerConfig {
+            url: Some("http://127.0.0.1:3000/mcp".to_owned()),
+            ..ServerConfig::default()
+        };
+        assert!(config.endpoint().is_ok());
     }
 
     #[test]

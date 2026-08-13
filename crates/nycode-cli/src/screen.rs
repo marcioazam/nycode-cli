@@ -59,8 +59,19 @@ impl<W: Write + Send> Surface for Panel<W> {
         Ok(())
     }
 
+    /// Acrescenta ao scrollback, sem deixar o texto controlar o terminal.
+    ///
+    /// O scrollback recebe conteúdo que o harness não escreveu — o que `/tree`
+    /// mostra de uma sessão, a mensagem de erro que carrega saída de comando, o
+    /// que foi enfileirado. Com o escape intacto, esse texto sobe linhas e
+    /// escreve por cima do que já estava ali, e o que estava ali pode ter sido a
+    /// pergunta de aprovação.
+    ///
+    /// A limpeza é aqui e não no `draw`: o painel emite escape de propósito —
+    /// posicionamento de cursor e saída sincronizada — e é o próprio harness que
+    /// o compõe.
     fn emit(&mut self, text: &str) -> std::io::Result<()> {
-        self.terminal.emit(text)
+        self.terminal.emit(&nycode_agent::sanitize::plain(text))
     }
 
     fn width(&self) -> usize {
@@ -92,6 +103,11 @@ pub struct Agentic {
     /// Uma fábrica e não um cliente pronto porque o modelo só é conhecido
     /// quando o usuário pede a troca.
     rebuild: crate::session::Rebuild,
+    /// Janela de contexto por modelo, como o catálogo a declarou.
+    ///
+    /// Fica aqui e não no painel porque quem a usa é o agente: é com ela que
+    /// ele percebe que o provider truncou a entrada e respondeu assim mesmo.
+    windows: std::collections::BTreeMap<String, u64>,
     drained: usize,
     quiet: bool,
 }
@@ -111,10 +127,27 @@ impl Agentic {
             base_system: agent.system().unwrap_or_default().to_owned(),
             restore: Box::new(|| Box::new(nycode_agent::ReadOnly)),
             rebuild: Box::new(|model| anyhow::bail!("esta sessao nao sabe trocar para `{model}`")),
+            windows: std::collections::BTreeMap::new(),
             agent,
             drained: persisted,
             quiet,
         }
+    }
+
+    /// As janelas de contexto que o catálogo declarou, por modelo.
+    ///
+    /// Sem elas a troca de modelo deixaria o agente comparando o usage do novo
+    /// contra o limite do antigo.
+    #[must_use]
+    pub fn with_windows(mut self, windows: std::collections::BTreeMap<String, u64>) -> Self {
+        self.windows = windows;
+        self
+    }
+
+    /// A janela que o agente carrega agora, para conferência em teste.
+    #[cfg(test)]
+    pub const fn context_window(&self) -> Option<u64> {
+        self.agent.context_window()
     }
 
     /// Como construir o backend de outro modelo.
@@ -197,11 +230,16 @@ impl Turns for Agentic {
         // O histórico fica: continuar a mesma conversa com outro modelo é o
         // ponto — recomeçar já dava para fazer abrindo outra sessão.
         self.agent.set_backend((self.rebuild)(model)?);
+        // A janela acompanha o modelo. Deixar a do anterior compararia o usage
+        // do novo contra o limite do antigo — e um modelo maior seria acusado
+        // de truncar o que coube, um menor truncaria sem ninguém notar.
+        self.agent
+            .set_context_window(self.windows.get(model).copied());
         Ok(())
     }
 
-    fn compact(&mut self) -> usize {
-        let removed = self.agent.compact_now();
+    async fn compact(&mut self) -> usize {
+        let removed = self.agent.compact_now().await;
         // O histórico encolheu; sem reancorar, o próximo `drain` fatiaria além
         // do fim e devolveria vazio para sempre.
         self.drained = self.drained.min(self.agent.history().len());

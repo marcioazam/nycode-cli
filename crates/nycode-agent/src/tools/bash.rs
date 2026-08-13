@@ -1,85 +1,59 @@
 //! Ferramenta `bash`: executa um comando na raiz do workspace.
+//!
+//! Aqui vive só o contrato que o modelo vê — nome, descrição, argumentos e o
+//! que volta. Como o comando sobe e o que o contém é de [`launch`]; de um
+//! processo terminado ao texto que chega ao modelo é de [`output`].
 
-use std::fmt::Write as _;
-use std::process::Stdio;
 use std::time::Duration;
 
 use async_trait::async_trait;
 use serde_json::{Value, json};
 
-use crate::policy::sandbox::{self, Confinement};
+use crate::policy::environment::Allowlist;
+use crate::policy::sandbox::Confinement;
 use crate::tool::{Tool, ToolContext, ToolOutput};
 
-/// Teto de tempo de um comando.
-///
-/// Sem isto, um comando que espera entrada — um `git commit` sem `-m`, um
-/// instalador interativo — trava o turno para sempre.
-const DEFAULT_TIMEOUT: Duration = Duration::from_secs(90);
+mod capture;
+mod launch;
+mod output;
+mod supervise;
 
-/// Teto de saída capturada.
-///
-/// A saída vai inteira para o contexto do modelo. Um `find /` despejaria a
-/// janela inteira e empurraria para fora o histórico que interessa.
-const MAX_OUTPUT: usize = 64 * 1024;
+use launch::Launch;
 
-#[derive(Debug, Clone)]
+/// Prazo padrão de um comando de shell.
+pub use launch::DEFAULT_TIMEOUT as DEFAULT_COMMAND_TIMEOUT;
+
+#[derive(Debug, Clone, Default)]
 pub struct Bash {
-    timeout: Duration,
-    confinement: Confinement,
-}
-
-impl Default for Bash {
-    fn default() -> Self {
-        Self {
-            timeout: DEFAULT_TIMEOUT,
-            confinement: sandbox::detect_from_path(),
-        }
-    }
+    launch: Launch,
 }
 
 impl Bash {
     #[must_use]
     pub fn with_timeout(timeout: Duration) -> Self {
         Self {
-            timeout,
-            ..Self::default()
+            launch: Launch::with_timeout(timeout),
         }
     }
 
     /// Substitui o confinamento detectado.
     #[must_use]
     pub fn with_confinement(mut self, confinement: Confinement) -> Self {
-        self.confinement = confinement;
+        self.launch = self.launch.with_confinement(confinement);
+        self
+    }
+
+    /// Substitui a lista de variáveis que o comando recebe.
+    #[must_use]
+    pub fn with_environment(mut self, environment: Allowlist) -> Self {
+        self.launch = self.launch.with_environment(environment);
         self
     }
 
     /// Como os comandos desta ferramenta são confinados.
     #[must_use]
     pub const fn confinement(&self) -> &Confinement {
-        &self.confinement
-    }
-
-    /// Se terminar o comando leva junto os processos que ele iniciou.
-    ///
-    /// Só o namespace de PID do `bubblewrap` garante isso. Sem ele o término
-    /// alcança o `bash` e para o laço, mas um neto já iniciado sobrevive — e a
-    /// mensagem precisa dizer isso, em vez de afirmar uma interrupção completa
-    /// que não aconteceu.
-    const fn ends_the_whole_tree(&self) -> bool {
-        matches!(self.confinement, Confinement::Bubblewrap { .. })
-    }
-
-    /// O que dizer quando o prazo estoura.
-    fn timed_out(&self) -> String {
-        let secs = self.timeout.as_secs();
-        if self.ends_the_whole_tree() {
-            format!("comando excedeu {secs}s e foi interrompido")
-        } else {
-            format!(
-                "comando excedeu {secs}s e foi interrompido; sem confinamento, \
-                 processos que ele tenha iniciado podem seguir rodando"
-            )
-        }
+        self.launch.confinement()
     }
 }
 
@@ -114,84 +88,18 @@ impl Tool for Bash {
             return ToolOutput::error("`command` vazio");
         }
 
-        // O confinamento envolve o comando; sem ele o `argv` é o `bash -lc` de
-        // sempre, e o aviso na abertura da sessão é o que diz isso ao usuário.
-        let argv = sandbox::wrap(&self.confinement, ctx.root(), command);
-        let Some((program, rest)) = argv.split_first() else {
-            return ToolOutput::error("confinamento produziu uma linha de comando vazia");
-        };
-
-        let spawned = tokio::process::Command::new(program)
-            .args(rest)
-            .current_dir(ctx.root())
-            // Sem isto o comando herda o terminal e pode bloquear esperando
-            // entrada que nunca vem.
-            .stdin(Stdio::null())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            // Largar o future não mata o processo: o `Child` do tokio o
-            // desanexa no drop, e o comando segue escrevendo no workspace
-            // depois de a ferramenta ter dito que o interrompeu. Isto vale para
-            // os dois caminhos que largam o future — o prazo aqui e o
-            // cancelamento no despacho (ADR-0015).
-            .kill_on_drop(true)
-            .output();
-
-        // A ligação é deliberada: o `Timeout` é largado ao fim desta instrução,
-        // e é esse drop que termina o comando. Deixá-lo dentro do `match`
-        // adiaria o término para depois do braço.
-        let finished = tokio::time::timeout(self.timeout, spawned).await;
-
-        let output = match finished {
-            Ok(Ok(output)) => output,
-            Ok(Err(err)) => return ToolOutput::error(format!("nao foi possivel executar: {err}")),
-            Err(_) => return ToolOutput::error(self.timed_out()),
-        };
-
-        let code = output.status.code();
-        let mut rendered = String::new();
-        append_section(&mut rendered, "stdout", &output.stdout);
-        append_section(&mut rendered, "stderr", &output.stderr);
-
-        match code {
-            Some(0) => {
-                if rendered.is_empty() {
-                    rendered.push_str("(sem saida)");
-                }
-                ToolOutput::ok(rendered)
-            }
-            // Um comando que falhou precisa chegar marcado como erro, senao o
-            // modelo segue como se o teste tivesse passado.
-            Some(code) => ToolOutput::error(format!("codigo de saida {code}\n{rendered}")),
-            None => ToolOutput::error(format!("terminado por sinal\n{rendered}")),
+        match self.launch.run(ctx.root(), command).await {
+            Ok(output) => output::render(&output, self.confinement().strength()),
+            Err(message) => ToolOutput::error(message),
         }
     }
 }
 
-fn append_section(out: &mut String, label: &str, bytes: &[u8]) {
-    if bytes.is_empty() {
-        return;
-    }
-    let truncated = bytes.len() > MAX_OUTPUT;
-    let slice = if truncated {
-        &bytes[..MAX_OUTPUT]
-    } else {
-        bytes
-    };
-    let text = String::from_utf8_lossy(slice);
-
-    let _ = write!(out, "--- {label} ---\n{text}");
-    if !text.ends_with('\n') {
-        out.push('\n');
-    }
-    if truncated {
-        let _ = writeln!(out, "[truncado; {label} tem {} bytes]", bytes.len());
-    }
-}
-
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::panic)]
 mod tests {
     use super::*;
+    use crate::policy::sandbox;
 
     fn workspace() -> (tempfile::TempDir, ToolContext) {
         let dir = tempfile::tempdir().unwrap();
@@ -199,15 +107,17 @@ mod tests {
         (dir, ctx)
     }
 
-    /// A ferramenta sem confinamento.
+    /// A ferramenta sem confinamento e com o ambiente no mínimo.
     ///
     /// Os testes de comportamento da ferramenta — captura de saida, codigo de
-    /// erro, timeout — sao sobre a ferramenta, nao sobre o sandbox, e nao podem
-    /// depender de `bwrap` estar instalado na maquina de quem roda.
+    /// erro — sao sobre a ferramenta, nao sobre o sandbox nem sobre a
+    /// configuracao de quem roda a suite.
     fn bare() -> Bash {
-        Bash::default().with_confinement(Confinement::Unavailable {
-            reason: "teste".to_owned(),
-        })
+        Bash::default()
+            .with_confinement(Confinement::Unavailable {
+                reason: "teste".to_owned(),
+            })
+            .with_environment(Allowlist::default())
     }
 
     #[tokio::test]
@@ -252,114 +162,20 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn a_hanging_command_is_interrupted_by_the_timeout() {
-        // Sem o teto, um comando que espera entrada trava o turno para sempre.
+    async fn a_timeout_reaches_the_model_as_a_failure() {
+        // O texto da mensagem e do `launch`; o que se protege aqui e que ela
+        // chega marcada como erro, e nao como saida normal de um comando.
         let (_dir, ctx) = workspace();
-        let bash = Bash::with_timeout(Duration::from_millis(200)).with_confinement(
-            Confinement::Unavailable {
+        let bash = Bash::with_timeout(Duration::from_millis(200))
+            .with_confinement(Confinement::Unavailable {
                 reason: "teste".to_owned(),
-            },
-        );
+            })
+            .with_environment(Allowlist::default());
+
         let out = bash.execute(json!({ "command": "sleep 30" }), &ctx).await;
 
         assert!(out.is_error);
-        assert!(out.content.contains("excedeu"));
-    }
-
-    #[tokio::test]
-    async fn dropping_a_running_command_ends_it_instead_of_orphaning_it() {
-        // Largar o future e o que acontece nos dois caminhos que interrompem um
-        // comando: o estouro de prazo aqui e o cancelamento no despacho. Sem
-        // matar o processo ele segue escrevendo no workspace que o modelo esta
-        // inspecionando, e a ferramenta afirma uma interrupcao que nao houve.
-        let (_dir, ctx) = workspace();
-        let sentinela = ctx.root().join("sentinela.txt");
-        let size = || std::fs::metadata(&sentinela).map_or(0, |m| m.len());
-
-        // Teto alto de proposito: quem termina o comando neste teste e o drop, e
-        // nao o prazo. Amarrar o teste ao prazo o faria correr com o arranque do
-        // `bash -lc`, que e um shell de login e demora sob carga.
-        let bash =
-            Bash::with_timeout(Duration::from_mins(1)).with_confinement(Confinement::Unavailable {
-                reason: "teste".to_owned(),
-            });
-        // `Box::pin`, e nao `tokio::pin!`: o segundo produz um `Pin<&mut F>`, e
-        // largar a referencia nao larga o future nem o processo que ele segura.
-        let mut running = Box::pin(bash.execute(
-            json!({ "command": "while true; do echo . >> sentinela.txt; sleep 0.02; done" }),
-            &ctx,
-        ));
-
-        // Esperar o primeiro sinal de vida e o que remove a corrida: so faz
-        // sentido largar um comando que ja comecou a escrever.
-        let alive = async {
-            let deadline = std::time::Instant::now() + Duration::from_secs(30);
-            while size() == 0 && std::time::Instant::now() < deadline {
-                tokio::time::sleep(Duration::from_millis(10)).await;
-            }
-        };
-        tokio::select! {
-            _ = &mut running => {}
-            () = alive => {}
-        }
-        drop(running);
-
-        tokio::time::sleep(Duration::from_millis(150)).await;
-        let logo_depois = size();
-        assert!(
-            logo_depois > 0,
-            "o comando precisa ter escrito algo, senao o teste passa a toa"
-        );
-        tokio::time::sleep(Duration::from_millis(500)).await;
-
-        assert_eq!(
-            logo_depois,
-            size(),
-            "o comando continuou escrevendo depois de largado"
-        );
-    }
-
-    #[test]
-    fn the_timeout_message_admits_what_it_cannot_guarantee() {
-        // Afirmar interrupcao completa onde ela nao e garantida repetiria, com
-        // texto novo, o defeito que o termino corrige.
-        let sem_confinamento = Bash::default().with_confinement(Confinement::Unavailable {
-            reason: "teste".to_owned(),
-        });
-        assert!(
-            sem_confinamento
-                .timed_out()
-                .contains("podem seguir rodando"),
-            "{}",
-            sem_confinamento.timed_out()
-        );
-
-        let confinado = Bash::default().with_confinement(Confinement::Bubblewrap {
-            program: "bwrap".to_owned(),
-        });
-        assert!(confinado.timed_out().contains("interrompido"));
-        assert!(
-            !confinado.timed_out().contains("podem seguir rodando"),
-            "sob namespace de PID a interrupcao e completa: {}",
-            confinado.timed_out()
-        );
-    }
-
-    #[tokio::test]
-    async fn stdin_is_closed_so_interactive_commands_do_not_block() {
-        let (_dir, ctx) = workspace();
-        let bash =
-            Bash::with_timeout(Duration::from_secs(5)).with_confinement(Confinement::Unavailable {
-                reason: "teste".to_owned(),
-            });
-        // `cat` sem argumento leria stdin para sempre se ele nao estivesse fechado.
-        let out = bash.execute(json!({ "command": "cat" }), &ctx).await;
-
-        assert!(
-            !out.is_error,
-            "stdin fechado deveria encerrar o cat: {}",
-            out.content
-        );
+        assert!(out.content.contains("excedeu"), "{}", out.content);
     }
 
     #[tokio::test]
@@ -389,12 +205,28 @@ mod tests {
 
     #[tokio::test]
     async fn a_silent_successful_command_says_it_produced_nothing() {
-        // String vazia faria o modelo achar que a ferramenta falhou.
+        // String vazia faria o modelo achar que a ferramenta falhou. O `bare()`
+        // roda sem confinamento, entao a resposta tambem carrega esse fato —
+        // que e o que a ADR-0005 exige e o que o `output` monta.
         let (_dir, ctx) = workspace();
         let out = bare().execute(json!({ "command": "true" }), &ctx).await;
 
         assert!(!out.is_error);
-        assert_eq!(out.content, "(sem saida)");
+        assert!(out.content.ends_with("(sem saida)"), "{}", out.content);
+    }
+
+    #[tokio::test]
+    async fn an_unconfined_command_carries_the_fact_into_the_model_answer() {
+        // A outra metade do nao negociavel da ADR-0005: o aviso em `stderr`
+        // fala com o usuario, isto fala com o modelo.
+        let (_dir, ctx) = workspace();
+        let out = bare().execute(json!({ "command": "echo oi" }), &ctx).await;
+
+        assert!(
+            out.content.starts_with(output::UNCONFINED),
+            "{}",
+            out.content
+        );
     }
 
     #[tokio::test]

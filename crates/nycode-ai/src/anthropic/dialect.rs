@@ -6,7 +6,6 @@ use super::{Decoder, Request};
 use crate::dialect::{Dialect, StreamDecoder, UnifiedRequest, parse_nested_error};
 use crate::error::{ApiError, Result};
 use crate::event::StreamEvent;
-use crate::sampling::{self, Sampling};
 
 /// Versão da API enviada em toda requisição.
 ///
@@ -48,13 +47,14 @@ impl Dialect for Messages {
         let wire = Request {
             model: request.model.to_owned(),
             max_tokens: request.max_tokens,
-            messages: request.messages.to_vec(),
+            messages: super::identifier::rewrite(request.messages),
             system: request.system.map(ToOwned::to_owned),
             tools: request.tools.to_vec(),
             stream: true,
         };
+        let breakpoint = super::decorate::stable_prefix_end(request.tools);
         let mut body = serde_json::to_value(wire).unwrap_or_else(|_| json!({}));
-        decorate(&mut body, request.sampling);
+        super::decorate::decorate(&mut body, request.sampling, breakpoint);
         body
     }
 
@@ -71,67 +71,18 @@ impl Dialect for Messages {
     }
 }
 
-/// Acrescenta ao corpo o que não é conteúdo: amostragem, raciocínio e cache.
-///
-/// Feito por cima do JSON serializado, e não por campos em `Request`, porque
-/// `cache_control` muda a *forma* de `system` — de string para lista de blocos
-/// — e essa forma só existe quando o cache está ligado.
-fn decorate(body: &mut Value, sampling: &Sampling) {
-    let Some(object) = body.as_object_mut() else {
-        return;
-    };
-
-    if let Some(temperature) = sampling.temperature {
-        object.insert("temperature".to_owned(), json!(temperature));
-    }
-    if let Some(top_p) = sampling.top_p {
-        object.insert("top_p".to_owned(), json!(top_p));
-    }
-    if !sampling.stop_sequences.is_empty() {
-        object.insert("stop_sequences".to_owned(), json!(sampling.stop_sequences));
-    }
-    if let Some(budget) = sampling.thinking_budget {
-        object.insert(
-            "thinking".to_owned(),
-            json!({ "type": "enabled", "budget_tokens": budget }),
-        );
-    }
-
-    if !sampling.cache_prefix {
-        return;
-    }
-
-    // O prefixo estável é o sistema mais as ferramentas: é o que se repete
-    // idêntico a cada turno. Marcar depois disso não acerta, porque o histórico
-    // cresce e um prefixo que muda é um cache que erra.
-    if let Some(Value::String(text)) = object.get("system") {
-        let block = json!([{
-            "type": "text",
-            "text": text,
-            "cache_control": sampling::ephemeral(),
-        }]);
-        object.insert("system".to_owned(), block);
-    }
-
-    if let Some(Value::Array(tools)) = object.get_mut("tools") {
-        // Só a última: o marcador cobre tudo que veio antes dele, e um por
-        // ferramenta gastaria os pontos de corte que o backend limita.
-        if let Some(Value::Object(last)) = tools.last_mut() {
-            last.insert("cache_control".to_owned(), sampling::ephemeral());
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::anthropic::{ContentBlock, Message, ToolSpec};
+    use crate::sampling::{Sampling, ThinkingLevel};
 
     fn tool() -> ToolSpec {
         ToolSpec {
             name: "read".to_owned(),
             description: "le".to_owned(),
             input_schema: json!({ "type": "object" }),
+            extension: false,
         }
     }
 
@@ -170,6 +121,7 @@ mod tests {
                 name: "read".to_owned(),
                 description: "le".to_owned(),
                 input_schema: json!({ "type": "object" }),
+                extension: false,
             },
             tool(),
         ];
@@ -184,6 +136,67 @@ mod tests {
 
         assert!(body["tools"][0].get("cache_control").is_none());
         assert!(body["tools"][1].get("cache_control").is_some());
+    }
+
+    #[test]
+    fn a_server_tool_stays_outside_the_cached_prefix() {
+        // Uma ferramenta de servidor entra quando o workspace a declara e some
+        // quando o servidor nao sobe. Com o marcador no fim do array, conectar
+        // um servidor mudava o que estava dentro do prefixo e o cache errava o
+        // turno inteiro.
+        let tools = [
+            ToolSpec {
+                name: "read".to_owned(),
+                description: "le".to_owned(),
+                input_schema: json!({ "type": "object" }),
+                extension: false,
+            },
+            ToolSpec {
+                name: "docs__search".to_owned(),
+                description: "busca".to_owned(),
+                input_schema: json!({ "type": "object" }),
+                extension: true,
+            },
+        ];
+        let body = Messages.body(&UnifiedRequest {
+            model: "m",
+            max_tokens: 8,
+            messages: &[Message::user("oi")],
+            system: None,
+            tools: &tools,
+            sampling: &Sampling::default(),
+        });
+
+        assert!(
+            body["tools"][0].get("cache_control").is_some(),
+            "o corte fecha na ultima estavel"
+        );
+        assert!(
+            body["tools"][1].get("cache_control").is_none(),
+            "a extensao fica depois do corte"
+        );
+    }
+
+    #[test]
+    fn with_only_server_tools_there_is_no_stable_prefix_to_mark() {
+        // Marcar a primeira extensao faria o ponto de corte se mover junto com
+        // o que ele deveria excluir.
+        let tools = [ToolSpec {
+            name: "docs__search".to_owned(),
+            description: "busca".to_owned(),
+            input_schema: json!({ "type": "object" }),
+            extension: true,
+        }];
+        let body = Messages.body(&UnifiedRequest {
+            model: "m",
+            max_tokens: 8,
+            messages: &[Message::user("oi")],
+            system: None,
+            tools: &tools,
+            sampling: &Sampling::default(),
+        });
+
+        assert!(body["tools"][0].get("cache_control").is_none());
     }
 
     #[test]
@@ -223,13 +236,55 @@ mod tests {
     fn the_sampling_knobs_reach_the_wire_when_they_are_set() {
         let sampling = Sampling::default()
             .with_temperature(0.2)
-            .with_thinking(4096)
+            .with_thinking(ThinkingLevel::Medium)
             .with_stop_sequences(vec!["FIM".to_owned()]);
         let body = body_with(&sampling);
 
         assert!((body["temperature"].as_f64().unwrap() - 0.2).abs() < 1e-6);
         assert_eq!(body["stop_sequences"][0], "FIM");
         assert_eq!(body["thinking"]["type"], "enabled");
+        assert_eq!(
+            body["thinking"]["budget_tokens"],
+            ThinkingLevel::Medium.budget().unwrap()
+        );
+    }
+
+    #[test]
+    fn a_thinking_budget_that_would_eat_the_ceiling_raises_it_instead_of_shrinking() {
+        // O raciocinio divide o teto com a resposta neste provedor. Sem folga, o
+        // turno pensa e nao responde: gastou tokens, demorou, e devolveu nada.
+        // Quem cede e o teto — encolher o orcamento daria menos do que foi
+        // pedido sem dizer, que e o que o NFR-4 proibe.
+        let body = Messages.body(&UnifiedRequest {
+            model: "nylla-sonnet-4.5",
+            max_tokens: 2048,
+            messages: &[Message::user("oi")],
+            system: None,
+            tools: &[tool()],
+            sampling: &Sampling::default().with_thinking(ThinkingLevel::Low),
+        });
+
+        assert_eq!(body["thinking"]["budget_tokens"], 2048);
+        assert_eq!(
+            body["max_tokens"], 3072,
+            "o teto precisa abrir espaco para a resposta: {}",
+            body["max_tokens"]
+        );
+    }
+
+    #[test]
+    fn a_thinking_budget_that_already_fits_leaves_the_ceiling_alone() {
+        // Subir o teto quando ele ja cabe cobraria por saida que ninguem pediu.
+        let body = Messages.body(&UnifiedRequest {
+            model: "nylla-sonnet-4.5",
+            max_tokens: 8192,
+            messages: &[Message::user("oi")],
+            system: None,
+            tools: &[tool()],
+            sampling: &Sampling::default().with_thinking(ThinkingLevel::Medium),
+        });
+
+        assert_eq!(body["max_tokens"], 8192);
         assert_eq!(body["thinking"]["budget_tokens"], 4096);
     }
 

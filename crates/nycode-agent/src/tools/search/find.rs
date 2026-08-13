@@ -5,7 +5,6 @@ use std::fmt::Write as _;
 use async_trait::async_trait;
 use serde_json::{Value, json};
 
-use super::walk;
 use crate::tool::{Tool, ToolContext, ToolOutput};
 
 /// Teto de caminhos devolvidos.
@@ -59,13 +58,17 @@ impl Tool for Find {
             None => ctx.root().to_path_buf(),
         };
 
+        let glob = match super::engine::glob(pattern) {
+            Ok(glob) => glob,
+            Err(message) => return ToolOutput::error(message),
+        };
+
         // O padrão casa contra o nome do arquivo, e também contra o caminho
         // relativo: um modelo escreve tanto `*.rs` quanto `src/*.rs`.
-        let hits: Vec<_> = walk::files(&root)
-            .into_iter()
+        let hits: Vec<_> = super::engine::files(&root)
             .filter(|found| {
                 let name = found.relative.rsplit('/').next().unwrap_or(&found.relative);
-                walk::matches_glob(pattern, name) || walk::matches_glob(pattern, &found.relative)
+                glob.is_match(name) || glob.is_match(&found.relative)
             })
             .collect();
 
@@ -81,7 +84,8 @@ impl Tool for Find {
         if truncated {
             let _ = write!(
                 out,
-                "\n[truncado em {MAX_RESULTS} de {} resultados]",
+                "\n[mostrando {MAX_RESULTS} de {} arquivos; restrinja com `path` \
+                 ou com um padrao mais especifico]",
                 hits.len()
             );
         }
@@ -175,6 +179,12 @@ mod tests {
         let ctx = ToolContext::new(dir.path()).unwrap();
 
         let out = Find.execute(json!({ "pattern": "*.txt" }), &ctx).await;
-        assert!(out.content.contains("truncado"), "{}", out.content);
+        // Diz quantos existem e o que fazer, e nao so que cortou.
+        assert!(out.content.contains("restrinja"), "{}", out.content);
+        assert!(
+            out.content.contains(&(MAX_RESULTS + 20).to_string()),
+            "{}",
+            out.content
+        );
     }
 }

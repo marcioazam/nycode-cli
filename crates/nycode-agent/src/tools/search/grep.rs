@@ -7,21 +7,19 @@
 use std::fmt::Write as _;
 
 use async_trait::async_trait;
+use grep_regex::RegexMatcherBuilder;
+use grep_searcher::{BinaryDetection, SearcherBuilder};
 use serde_json::{Value, json};
 
-use super::walk;
+use super::collect::{Collect, MAX_MATCHES};
+use super::engine;
 use crate::tool::{Tool, ToolContext, ToolOutput};
 
-/// Teto de linhas devolvidas.
+/// Teto de linhas de contexto por lado.
 ///
-/// Um padrão que casa com tudo produziria uma resposta maior que a janela.
-const MAX_MATCHES: usize = 200;
-
-/// Teto de bytes por linha exibida.
-///
-/// Um arquivo minificado tem linhas de megabytes; uma delas basta para estourar
-/// a janela.
-const MAX_LINE: usize = 300;
+/// Pedir vinte linhas em volta de duzentos casamentos é pedir o arquivo inteiro
+/// de volta pela porta dos fundos.
+const MAX_CONTEXT: usize = 5;
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Grep;
@@ -34,9 +32,10 @@ impl Tool for Grep {
     }
 
     fn description(&self) -> &str {
-        "Busca um texto no conteudo dos arquivos do workspace e devolve as linhas \
-         que casam, com caminho e numero de linha. Aceita um filtro de nome de \
-         arquivo em `glob`. Nao modifica nada."
+        "Busca uma expressao regular no conteudo dos arquivos do workspace e \
+         devolve as linhas que casam, com caminho e numero de linha. Respeita o \
+         `.gitignore` do projeto. Aceita um filtro de nome de arquivo em `glob`. \
+         Nao modifica nada."
     }
 
     fn input_schema(&self) -> Value {
@@ -45,7 +44,7 @@ impl Tool for Grep {
             "properties": {
                 "pattern": {
                     "type": "string",
-                    "description": "Texto a procurar no conteudo dos arquivos"
+                    "description": "Expressao regular a procurar no conteudo dos arquivos"
                 },
                 "path": {
                     "type": "string",
@@ -53,11 +52,21 @@ impl Tool for Grep {
                 },
                 "glob": {
                     "type": "string",
-                    "description": "Filtro de nome de arquivo, com `*` e `?`. Exemplo: `*.rs`"
+                    "description": "Filtro de caminho, com `*`, `?` e `**`. Exemplo: `*.rs` ou `src/**/*.rs`"
                 },
                 "case_sensitive": {
                     "type": "boolean",
                     "description": "Diferenciar maiusculas de minusculas. Padrao: false"
+                },
+                "literal": {
+                    "type": "boolean",
+                    "description": "Tratar `pattern` como texto exato, sem metacaracteres. \
+                                    Use para procurar algo como `foo(bar)` sem escapar. Padrao: false"
+                },
+                "context": {
+                    "type": "integer",
+                    "description": "Quantas linhas mostrar antes e depois de cada casamento, \
+                                    ate 5. Padrao: 0"
                 }
             },
             "required": ["pattern"]
@@ -76,73 +85,105 @@ impl Tool for Grep {
             Ok(root) => root,
             Err(message) => return ToolOutput::error(message),
         };
-        let glob = input.get("glob").and_then(Value::as_str);
+        let glob = match input.get("glob").and_then(Value::as_str).map(engine::glob) {
+            Some(Ok(glob)) => Some(glob),
+            Some(Err(message)) => return ToolOutput::error(message),
+            None => None,
+        };
         let case_sensitive = input
             .get("case_sensitive")
             .and_then(Value::as_bool)
             .unwrap_or(false);
 
-        let needle = if case_sensitive {
-            pattern.to_owned()
-        } else {
-            pattern.to_lowercase()
+        let literal = input
+            .get("literal")
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
+        // Recortado no teto em vez de recusado: o modelo pediu contexto, e
+        // devolver erro por ter pedido demais custa uma rodada para conseguir o
+        // que cinco linhas já dariam.
+        let context = usize::try_from(input.get("context").and_then(Value::as_u64).unwrap_or(0))
+            .unwrap_or(MAX_CONTEXT)
+            .min(MAX_CONTEXT);
+
+        let matcher = match RegexMatcherBuilder::new()
+            .case_insensitive(!case_sensitive)
+            .fixed_strings(literal)
+            .line_terminator(Some(b'\n'))
+            .build(pattern)
+        {
+            Ok(matcher) => matcher,
+            // O modelo escreve o padrão; um erro que não diz o que está errado
+            // faz ele tentar o mesmo de novo.
+            Err(err) => {
+                return ToolOutput::error(format!(
+                    "expressao regular invalida `{pattern}`: {err}; \
+                     para procurar o texto exato, passe `literal: true`"
+                ));
+            }
         };
 
+        let mut searcher = SearcherBuilder::new()
+            .line_number(true)
+            .before_context(context)
+            .after_context(context)
+            // Um binário lido como texto vira lixo no contexto; parar no
+            // primeiro byte nulo é melhor que despejar bytes que não
+            // significam nada para o modelo.
+            .binary_detection(BinaryDetection::quit(0))
+            .build();
+
         let mut out = String::new();
-        let mut matches = 0;
+        let mut hits = 0;
+        let mut lines = 0;
         let mut truncated = false;
 
-        for found in walk::files(&root) {
-            if let Some(glob) = glob {
-                let name = found.relative.rsplit('/').next().unwrap_or(&found.relative);
-                if !walk::matches_glob(glob, name) {
-                    continue;
-                }
-            }
-            // Um binário lido como texto vira lixo no contexto; pular é melhor
-            // que despejar bytes que não significam nada para o modelo.
-            let Ok(contents) = std::fs::read_to_string(&found.path) else {
+        for found in engine::files(&root) {
+            if let Some(glob) = &glob
+                && !glob.is_match(&found.relative)
+                && !glob.is_match(name_of(&found.relative))
+            {
                 continue;
-            };
-
-            for (number, line) in contents.lines().enumerate() {
-                let haystack = if case_sensitive {
-                    line.to_owned()
-                } else {
-                    line.to_lowercase()
-                };
-                if !haystack.contains(&needle) {
-                    continue;
-                }
-
-                if matches >= MAX_MATCHES {
-                    truncated = true;
-                    break;
-                }
-                matches += 1;
-                let _ = writeln!(
-                    out,
-                    "{}:{}: {}",
-                    found.relative,
-                    number + 1,
-                    clip(line.trim_end())
-                );
             }
-            if truncated {
+
+            let sink = Collect {
+                out: &mut out,
+                relative: &found.relative,
+                hits: &mut hits,
+                lines: &mut lines,
+                cap: MAX_MATCHES,
+            };
+            // Uma falha de leitura é um arquivo que sumiu ou que não é legível;
+            // parar a busca por isso perderia tudo que já foi encontrado.
+            let _ = searcher.search_path(&matcher, &found.path, sink);
+
+            if lines >= MAX_MATCHES {
+                truncated = true;
                 break;
             }
         }
 
-        if matches == 0 {
+        if hits == 0 {
             // Uma resposta vazia faria o modelo suspeitar da ferramenta em vez
             // de concluir que o termo não existe.
             return ToolOutput::ok(format!("nenhuma linha casa com `{pattern}`"));
         }
         if truncated {
-            let _ = write!(out, "\n[truncado em {MAX_MATCHES} resultados]");
+            // Diz o próximo passo em vez de só constatar o corte: sem isso o
+            // modelo repete a mesma busca esperando resposta diferente.
+            let _ = write!(
+                out,
+                "\n[{MAX_MATCHES} linhas, o teto; restrinja com `path` ou `glob`, \
+                 reduza `context`, ou torne o padrao mais especifico]"
+            );
         }
         ToolOutput::ok(out)
     }
+}
+
+/// O nome do arquivo dentro de um caminho relativo.
+fn name_of(relative: &str) -> &str {
+    relative.rsplit('/').next().unwrap_or(relative)
 }
 
 /// Resolve o subdiretório da busca, ou a raiz.
@@ -151,15 +192,6 @@ fn resolve_scope(input: &Value, ctx: &ToolContext) -> Result<std::path::PathBuf,
         return Ok(ctx.root().to_path_buf());
     };
     ctx.resolve(requested).map_err(|err| err.to_string())
-}
-
-/// Encurta uma linha longa demais para o contexto.
-fn clip(line: &str) -> String {
-    if line.chars().count() <= MAX_LINE {
-        return line.to_owned();
-    }
-    let kept: String = line.chars().take(MAX_LINE).collect();
-    format!("{kept}...")
 }
 
 #[cfg(test)]
@@ -276,6 +308,113 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn context_lines_come_back_so_the_match_does_not_need_a_second_read() {
+        // Sem contexto, toda busca util vira busca seguida de `read` — duas
+        // rodadas para responder o que uma resolve.
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("a.rs"),
+            "primeira\nsegunda\nalvo\nquarta\nquinta\n",
+        )
+        .unwrap();
+        let ctx = ToolContext::new(dir.path()).unwrap();
+
+        let out = Grep
+            .execute(json!({ "pattern": "alvo", "context": 1 }), &ctx)
+            .await;
+
+        assert!(out.content.contains("segunda"), "{}", out.content);
+        assert!(out.content.contains("quarta"), "{}", out.content);
+        assert!(
+            !out.content.contains("primeira"),
+            "contexto de 1 nao pode trazer a linha 1: {}",
+            out.content
+        );
+    }
+
+    #[tokio::test]
+    async fn a_context_line_is_marked_differently_from_the_line_that_matched() {
+        // Onze linhas sem distincao deixam o modelo sem saber qual delas e a
+        // que ele procurou.
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("a.rs"), "antes\nalvo\ndepois\n").unwrap();
+        let ctx = ToolContext::new(dir.path()).unwrap();
+
+        let out = Grep
+            .execute(json!({ "pattern": "alvo", "context": 1 }), &ctx)
+            .await;
+
+        assert!(out.content.contains("a.rs:2: alvo"), "{}", out.content);
+        assert!(out.content.contains("a.rs-1- antes"), "{}", out.content);
+    }
+
+    #[tokio::test]
+    async fn a_literal_search_finds_text_that_would_be_metacharacters_in_a_regex() {
+        // `foo(bar)` como regex e um grupo de captura e nao casa com o texto.
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("a.rs"), "chamada de foo(bar) aqui\n").unwrap();
+        let ctx = ToolContext::new(dir.path()).unwrap();
+
+        let como_regex = Grep.execute(json!({ "pattern": "foo(bar)" }), &ctx).await;
+        assert!(
+            como_regex.content.contains("nenhuma linha"),
+            "como regex nao deveria casar: {}",
+            como_regex.content
+        );
+
+        let literal = Grep
+            .execute(json!({ "pattern": "foo(bar)", "literal": true }), &ctx)
+            .await;
+        assert!(literal.content.contains("foo(bar)"), "{}", literal.content);
+    }
+
+    #[tokio::test]
+    async fn an_invalid_pattern_says_how_to_search_for_it_as_text() {
+        // So recusar faz o modelo tentar escapar por conta e gastar outra rodada.
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = ToolContext::new(dir.path()).unwrap();
+
+        let out = Grep.execute(json!({ "pattern": "a(" }), &ctx).await;
+
+        assert!(out.is_error);
+        assert!(out.content.contains("literal"), "{}", out.content);
+    }
+
+    #[tokio::test]
+    async fn context_cannot_push_the_answer_past_the_line_ceiling() {
+        // O teto conta linhas e nao casamentos: sobre casamentos, um contexto de
+        // cinco multiplicaria a resposta por onze sem nada perceber.
+        let dir = tempfile::tempdir().unwrap();
+        let many = "alvo\n".repeat(MAX_MATCHES + 50);
+        std::fs::write(dir.path().join("muitos.txt"), many).unwrap();
+        let ctx = ToolContext::new(dir.path()).unwrap();
+
+        let out = Grep
+            .execute(json!({ "pattern": "alvo", "context": 5 }), &ctx)
+            .await;
+
+        assert_eq!(
+            out.content.lines().filter(|l| l.contains("muitos")).count(),
+            MAX_MATCHES
+        );
+    }
+
+    #[tokio::test]
+    async fn a_context_beyond_the_ceiling_is_clipped_instead_of_refused() {
+        // Recusar custa uma rodada para conseguir o que cinco linhas ja davam.
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("a.rs"), "alvo\n").unwrap();
+        let ctx = ToolContext::new(dir.path()).unwrap();
+
+        let out = Grep
+            .execute(json!({ "pattern": "alvo", "context": 9000 }), &ctx)
+            .await;
+
+        assert!(!out.is_error, "{}", out.content);
+        assert!(out.content.contains("alvo"), "{}", out.content);
+    }
+
+    #[tokio::test]
     async fn too_many_matches_are_truncated_and_say_so() {
         let dir = tempfile::tempdir().unwrap();
         let many = "alvo\n".repeat(MAX_MATCHES + 50);
@@ -283,7 +422,9 @@ mod tests {
         let ctx = ToolContext::new(dir.path()).unwrap();
 
         let out = Grep.execute(json!({ "pattern": "alvo" }), &ctx).await;
-        assert!(out.content.contains("truncado"), "{}", out.content);
+        // O aviso diz o proximo passo: so constatar o corte faz o modelo
+        // repetir a mesma busca esperando resposta diferente.
+        assert!(out.content.contains("restrinja"), "{}", out.content);
         assert_eq!(
             out.content.lines().filter(|l| l.contains("muitos")).count(),
             MAX_MATCHES

@@ -8,7 +8,9 @@
 //! eventos do stream. As duas coisas evoluem por motivos diferentes.
 
 mod decoder;
+mod decorate;
 mod dialect;
+mod identifier;
 mod types;
 
 pub use decoder::Decoder;

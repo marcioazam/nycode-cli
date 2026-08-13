@@ -16,7 +16,7 @@ mod search;
 mod task;
 mod write;
 
-pub use bash::Bash;
+pub use bash::{Bash, DEFAULT_COMMAND_TIMEOUT};
 pub use edit::Edit;
 pub use read::Read;
 pub use search::{Find, Grep, Ls};
@@ -42,8 +42,19 @@ pub fn mutating() -> Vec<Arc<dyn Tool>> {
 /// Todas as ferramentas nativas, prontas para registro.
 #[must_use]
 pub fn all() -> Vec<Arc<dyn Tool>> {
+    all_within(DEFAULT_COMMAND_TIMEOUT)
+}
+
+/// O mesmo, com o prazo que o usuário escolheu para o comando de shell.
+///
+/// O prazo é parâmetro e não constante porque uma suíte lenta é diferente de um
+/// comando travado, e só quem roda o repositório sabe qual é qual.
+#[must_use]
+pub fn all_within(command_timeout: std::time::Duration) -> Vec<Arc<dyn Tool>> {
     let mut tools = read_only();
-    tools.extend(mutating());
+    tools.push(Arc::new(Write));
+    tools.push(Arc::new(Edit));
+    tools.push(Arc::new(Bash::with_timeout(command_timeout)));
     tools
 }
 

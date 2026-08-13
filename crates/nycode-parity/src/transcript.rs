@@ -153,6 +153,55 @@ pub fn diff(
     found
 }
 
+/// As dimensões que uma execução precisa ter exercitado.
+pub const DIMENSIONS: &[&str] = &[
+    "sequencia de tool calls",
+    "estado do disco",
+    "stop_reason",
+    "contabilidade de tokens",
+];
+
+/// Dimensões que não carregam evidência em nenhum dos dois lados.
+///
+/// O [`diff`] compara por igualdade, e duas ausências são iguais. Uma sequência
+/// de ferramentas vazia dos dois lados, ou uma contabilidade zerada dos dois
+/// lados, passa no diff sem ter comparado nada — e o resultado é indistinguível
+/// de paridade real para quem lê a saída.
+///
+/// Não é hipótese: o dialeto da referência já procurou o vocabulário errado, e
+/// naquele estado a sequência de ferramentas teria ficado vazia e a
+/// contabilidade daria `0/0` em toda execução, com o gate aprovando.
+///
+/// Isto é o predicado por par de execuções. Quem decide reprovar precisa
+/// acumular ao longo de todos os prompts, porque um prompt sozinho pode
+/// legitimamente não chamar ferramenta — o conjunto padrão tem um assim. O que
+/// não é legítimo é a dimensão ficar vazia em todos.
+///
+/// O `README.md` semeado no workspace faz o instantâneo de arquivos nunca ser
+/// legitimamente vazio, então vazio ali significa que a fotografia falhou.
+#[must_use]
+pub fn unattested(reference: &Transcript, candidate: &Transcript) -> Vec<&'static str> {
+    let mut absent = Vec::new();
+
+    if reference.tools.is_empty() && candidate.tools.is_empty() {
+        absent.push("sequencia de tool calls");
+    }
+    if reference.files.is_empty() && candidate.files.is_empty() {
+        absent.push("estado do disco");
+    }
+    if reference.stop_reason.is_empty() && candidate.stop_reason.is_empty() {
+        absent.push("stop_reason");
+    }
+    if zeroed(reference.tokens) && zeroed(candidate.tokens) {
+        absent.push("contabilidade de tokens");
+    }
+    absent
+}
+
+const fn zeroed(tokens: TokenAccounting) -> bool {
+    tokens.input == 0 && tokens.output == 0
+}
+
 fn diff_tokens(
     reference: TokenAccounting,
     candidate: TokenAccounting,
@@ -357,6 +406,45 @@ mod tests {
         assert_eq!(
             d.to_string(),
             "stop_reason: referencia=end_turn candidato=refusal"
+        );
+    }
+
+    #[test]
+    fn a_dimension_empty_on_both_sides_is_reported_as_unattested() {
+        // O caso que o diff nao pega: duas ausencias sao iguais, e o gate
+        // imprimiria "ok" sem ter comparado nada.
+        let empty = Transcript::default();
+        assert!(diff(&empty, &empty, 0).is_empty(), "o diff aprova");
+
+        let absent = unattested(&empty, &empty);
+        assert!(absent.contains(&"sequencia de tool calls"));
+        assert!(absent.contains(&"estado do disco"));
+        assert!(absent.contains(&"stop_reason"));
+        assert!(absent.contains(&"contabilidade de tokens"));
+    }
+
+    #[test]
+    fn a_dimension_present_on_one_side_is_attested_because_the_diff_will_catch_it() {
+        // Basta um lado carregar evidencia: se o outro nao carrega, e o diff
+        // que acusa, e acusar duas vezes so dobraria o ruido.
+        let mut reference = base();
+        reference.tools.clear();
+        assert!(!unattested(&reference, &base()).contains(&"sequencia de tool calls"));
+    }
+
+    #[test]
+    fn a_complete_pair_of_runs_is_fully_attested() {
+        assert!(unattested(&base(), &base()).is_empty());
+    }
+
+    #[test]
+    fn tokens_count_as_attested_when_either_direction_is_nonzero() {
+        // Uma resposta que so gera saida, sem entrada contabilizada, ainda
+        // provou que o dialeto sabe ler usage.
+        let mut only_output = Transcript::default();
+        only_output.tokens.output = 1;
+        assert!(
+            !unattested(&only_output, &Transcript::default()).contains(&"contabilidade de tokens")
         );
     }
 

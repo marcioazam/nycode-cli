@@ -10,8 +10,8 @@
 mod exit;
 mod image;
 mod interactive;
+mod invocation;
 mod output;
-mod route;
 mod run;
 mod screen;
 mod session;
@@ -20,99 +20,8 @@ use std::process::ExitCode;
 use std::time::Duration;
 
 use clap::Parser;
-use nycode_ai::Config;
 
-use route::{choose, Route};
-
-#[derive(Debug, Parser)]
-#[command(
-    name = "nycode",
-    version,
-    about = "Agente de codificacao em terminal, apontado para um nylla-gateway",
-    disable_help_subcommand = true
-)]
-struct Cli {
-    /// Executa um unico prompt e escreve a resposta em stdout.
-    #[arg(short = 'p', long = "print", value_name = "PROMPT")]
-    prompt: Option<String>,
-
-    /// URL base do gateway, incluindo o prefixo de versao.
-    #[arg(long, env = "NYCODE_BASE_URL", default_value = Config::DEFAULT_BASE_URL)]
-    base_url: String,
-
-    /// Chave de API do gateway.
-    ///
-    /// Ausente, e resolvida do ambiente e depois do cofre do sistema.
-    #[arg(long, hide_env_values = true)]
-    api_key: Option<String>,
-
-    /// Formato de wire: anthropic-messages, openai-completions ou openai-responses.
-    #[arg(long, env = "NYCODE_DIALECT", default_value = "anthropic-messages")]
-    dialect: String,
-
-    /// Modelo a usar.
-    #[arg(long, env = "NYCODE_MODEL", default_value = Config::DEFAULT_MODEL)]
-    model: String,
-
-    /// Teto de tokens de saida por turno.
-    #[arg(long, default_value_t = Config::DEFAULT_MAX_TOKENS)]
-    max_tokens: u32,
-
-    /// Diretorio de trabalho do agente.
-    #[arg(long, value_name = "DIR")]
-    cwd: Option<std::path::PathBuf>,
-
-    /// Suprime o progresso de ferramentas em stderr.
-    #[arg(short, long)]
-    quiet: bool,
-
-    /// Imagem a anexar ao pedido. Pode repetir.
-    ///
-    /// O arquivo é lido e embutido; o backend nunca busca nada por conta
-    /// própria, o que mantém quem alcança a rede sob controle do operador.
-    #[arg(short = 'i', long = "image", value_name = "ARQUIVO")]
-    images: Vec<std::path::PathBuf>,
-
-    /// Formato da resposta em modo headless.
-    ///
-    /// `json` publica um evento por linha em stdout — sequência de ferramentas,
-    /// contabilidade de tokens e motivo de parada — para quem integra o
-    /// binário em vez de ler a saída.
-    #[arg(long, value_enum, default_value_t = output::Format::Text)]
-    output_format: output::Format,
-
-    /// Retoma a sessao mais recente deste workspace.
-    ///
-    /// O campo nao pode se chamar `continue`, que e palavra reservada, entao o
-    /// nome longo e declarado explicitamente: derivar do campo produziria
-    /// `--continue-session`, que nao e a interface documentada.
-    #[arg(short = 'c', long = "continue")]
-    continue_session: bool,
-
-    /// Retoma uma sessao pelo identificador.
-    #[arg(long, value_name = "ID")]
-    resume: Option<String>,
-
-    /// Permite que o agente escreva, edite e execute comandos.
-    ///
-    /// Sem esta flag a sessao e somente-leitura. Em modo headless nao ha a quem
-    /// perguntar, entao a permissao precisa ser dada de antemao.
-    #[arg(long)]
-    allow_writes: bool,
-
-    /// Monta a sessao, mantem-na ociosa por MS milissegundos e sai.
-    ///
-    /// O NFR-1 e o NFR-2 orcam a sessao montada, e nenhuma outra superficie
-    /// para nesse ponto: o modo headless segue para o turno e o interativo toma
-    /// posse do terminal. Sem esta rota o gate so alcanca `--version`, que o
-    /// `clap` resolve antes do runtime, da credencial e do disco.
-    ///
-    /// A ociosidade e parametro porque as duas medicoes querem coisas opostas:
-    /// a latencia quer sair assim que a sessao fica pronta, e o pico de memoria
-    /// quer esperar o runtime e as conexoes MCP assentarem.
-    #[arg(long, value_name = "MS", num_args = 0..=1, default_missing_value = "0")]
-    probe_startup: Option<u64>,
-}
+use invocation::{Cli, Route, choose};
 
 fn main() -> ExitCode {
     let cli = Cli::parse();
@@ -154,8 +63,27 @@ fn main() -> ExitCode {
 /// o invocou.
 async fn run(cli: &Cli, has_terminal: bool) -> anyhow::Result<ExitCode> {
     match choose(cli.probe_startup, cli.prompt.clone(), has_terminal) {
-        Route::Headless(prompt) => run::headless(cli, session::prepare(cli).await?, &prompt).await,
-        Route::Interactive => interactive_session(cli, session::prepare(cli).await?).await,
+        Route::Headless(prompt) => {
+            // Lido antes de montar a sessão: se o cano trouxer o material, ele
+            // é parte do pedido, e montar antes de saber o pedido inteiro só
+            // adiaria a mesma espera.
+            let piped = run::piped(has_terminal, &mut std::io::stdin());
+            let prompt = run::with_piped(&prompt, piped.as_deref());
+            let prepared = session::prepare(cli).await?;
+            let ending = Ending::of(&prepared);
+            sweep_on_termination(true);
+            let code = run::headless(cli, prepared, &prompt).await;
+            ending.fire().await;
+            code
+        }
+        Route::Interactive => {
+            let prepared = session::prepare(cli).await?;
+            let ending = Ending::of(&prepared);
+            sweep_on_termination(false);
+            let code = interactive_session(cli, prepared).await;
+            ending.fire().await;
+            code
+        }
         Route::Probe(idle) => Ok(probe_startup(session::prepare(cli).await?, idle)),
         Route::NoTerminal => {
             eprintln!(
@@ -183,6 +111,102 @@ async fn interactive_session(cli: &Cli, prepared: session::Prepared) -> anyhow::
     outcome
 }
 
+/// O que dispara quando a sessão acaba.
+///
+/// Colhido antes de a superfície consumir a sessão, e disparado depois: o
+/// `session-end` existe para o hook fechar o que abriu, e fechá-lo enquanto o
+/// último turno ainda corre seria fechá-lo cedo. A sonda de arranque não
+/// dispara nenhum dos dois — ela mede a montagem e sai sem sessão para encerrar.
+struct Ending {
+    hooks: nycode_agent::policy::Hooks,
+    root: std::path::PathBuf,
+}
+
+impl Ending {
+    fn of(prepared: &session::Prepared) -> Self {
+        Self {
+            hooks: prepared.lifecycle.clone(),
+            root: prepared.root.clone(),
+        }
+    }
+
+    async fn fire(&self) {
+        use nycode_agent::policy::hooks::{Event, Payload};
+        self.hooks
+            .fire(
+                Event::SessionEnd,
+                &Payload::for_session(Event::SessionEnd, &self.root),
+            )
+            .await;
+    }
+}
+
+/// Termina os filhos destacados antes de o processo morrer por um sinal.
+///
+/// `SIGTERM` e o terminal fechando matam o processo sem rodar `drop` nenhum, e
+/// um filho destacado não está no grupo de frente do terminal — o sinal não
+/// chega a ele ([ADR-0021](../../../docs/architecture/decisions/0021-terminar-e-sinalizar-o-grupo-nao-o-lider.md)).
+/// Sem esta varredura o comando sobrevive ao harness e segue escrevendo no
+/// workspace ([ADR-0023](../../../docs/architecture/decisions/0023-o-registro-de-filhos-destacados-morre-com-o-processo.md)).
+///
+/// Mora ao lado de `main` pela mesma razão que o modo bruto: disposição de
+/// sinal é estado global do processo, e enterrá-la num módulo deixaria o dono
+/// do processo sem controle sobre ela. A sonda de arranque não chama — ela não
+/// sobe filho nenhum, e observar sinal ali mediria uma sessão que a rota não
+/// monta.
+#[cfg(unix)]
+fn sweep_on_termination(headless: bool) {
+    for kind in terminating(headless) {
+        let raw = kind.as_raw_value();
+        match tokio::signal::unix::signal(kind) {
+            Ok(mut stream) => drop(tokio::spawn(async move {
+                let _ = stream.recv().await;
+                std::process::exit(after_signal(nycode_agent::policy::process::shared(), raw));
+            })),
+            // Não conseguir observar não derruba a sessão: o efeito é o de
+            // antes, com o sinal matando o processo direto.
+            Err(err) => tracing::warn!(sinal = raw, %err, "sinal de termino nao observado"),
+        }
+    }
+}
+
+#[cfg(not(unix))]
+const fn sweep_on_termination(_headless: bool) {}
+
+/// Os sinais cuja chegada precisa varrer o registro antes de o processo morrer.
+///
+/// `SIGINT` fica de fora de onde alguém já o usa. Em headless quem o consome é
+/// `session::watch_for_interrupt`, para cancelar o turno; numa sessão
+/// interativa o terminal está em modo bruto e `Ctrl+C` chega como tecla, não
+/// como sinal. Escutá-lo nos dois lugares faria a mesma interrupção cancelar o
+/// turno e matar o processo.
+#[cfg(unix)]
+fn terminating(headless: bool) -> Vec<tokio::signal::unix::SignalKind> {
+    use tokio::signal::unix::SignalKind;
+
+    let mut kinds = vec![SignalKind::terminate(), SignalKind::hangup()];
+    if !headless {
+        kinds.push(SignalKind::interrupt());
+    }
+    kinds
+}
+
+/// Varre o registro e devolve o código de saída que a convenção dá ao sinal.
+///
+/// O registro é parâmetro, e não a instância do processo, porque varrer aquela
+/// dentro da suíte mataria os filhos dos testes que estivessem correndo ao
+/// lado. É a costura que torna esta linha exercitável.
+fn after_signal(registry: &nycode_agent::policy::process::Registry, signal: i32) -> i32 {
+    let ended = registry.sweep();
+    if ended > 0 {
+        // Terminar processo do usuário em silêncio esconderia justamente o
+        // fato que o registro existe para produzir.
+        eprintln!("nycode: {ended} processo(s) destacado(s) terminado(s) no encerramento");
+    }
+    // 128 + número do sinal, a mesma convenção de `exit::CANCELLED`.
+    128 + signal
+}
+
 /// Monta a sessão, mantém-na parada e sai sem gastar um turno.
 ///
 /// Mora ao lado de `main` pelo mesmo motivo que [`interactive_session`]: é uma
@@ -190,6 +214,11 @@ async fn interactive_session(cli: &Cli, prepared: session::Prepared) -> anyhow::
 /// aconteceu em [`session::prepare`]; o que resta aqui é não desmontar cedo
 /// demais.
 fn probe_startup(prepared: session::Prepared, idle: Duration) -> ExitCode {
+    // Em `stderr`, e antes da espera. O gate mede o processo por fora e o que
+    // ele lê é um número só, que diz que regrediu sem dizer onde; a repartição
+    // por etapa é o que transforma "o arranque piorou 2 ms" em uma ação.
+    eprintln!("nycode: fases {}", prepared.phases.report());
+
     // Parar a thread, e não o timer do runtime, é deliberado: o que se quer
     // medir é um processo que não tem o que fazer, e a feature `time` do tokio
     // chegaria aqui só por transitividade de outra crate.
@@ -206,26 +235,6 @@ fn probe_startup(prepared: session::Prepared, idle: Duration) -> ExitCode {
 #[allow(clippy::unwrap_used, clippy::panic)]
 mod tests {
     use super::*;
-    use clap::CommandFactory;
-
-    #[test]
-    fn cli_definition_is_valid() {
-        Cli::command().debug_assert();
-    }
-
-    #[test]
-    fn the_probe_flag_defaults_to_no_idle_and_still_accepts_one() {
-        // `--probe-startup` sozinho e a medicao de latencia, a mais frequente.
-        // Exigir valor dela transformaria o caso comum no mais verboso.
-        let bare = Cli::try_parse_from(["nycode", "--probe-startup"]).unwrap();
-        assert_eq!(bare.probe_startup, Some(0));
-
-        let held = Cli::try_parse_from(["nycode", "--probe-startup", "250"]).unwrap();
-        assert_eq!(held.probe_startup, Some(250));
-
-        let absent = Cli::try_parse_from(["nycode"]).unwrap();
-        assert_eq!(absent.probe_startup, None);
-    }
 
     /// Backend que não emite nada, para exercitar o modo headless sem rede.
     #[derive(Debug)]
@@ -245,6 +254,8 @@ mod tests {
 
     fn prepared(root: &std::path::Path) -> session::Prepared {
         session::Prepared {
+            phases: crate::session::Phases::default(),
+            lifecycle: nycode_agent::policy::Hooks::default(),
             agent: nycode_agent::Agent::new(
                 std::sync::Arc::new(Mute),
                 nycode_agent::ToolContext::new(root).unwrap(),
@@ -252,11 +263,14 @@ mod tests {
             cancel: nycode_agent::Cancel::new(),
             store: nycode_agent::Store::open(root.join(".nycode/sessions")).unwrap(),
             session_id: "sessao-1".to_owned(),
+            model: "modelo-de-teste".to_owned(),
             persisted: 0,
             context: nycode_agent::Context::default(),
             root: root.to_path_buf(),
             mcp: Vec::new(),
             models: Vec::new(),
+            prices: std::collections::BTreeMap::new(),
+            windows: std::collections::BTreeMap::new(),
             rebuild: Box::new(|_| anyhow::bail!("sem troca de modelo aqui")),
         }
     }
@@ -370,6 +384,65 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn a_detached_child_left_over_is_terminated_when_a_signal_ends_the_process() {
+        // O registro so vale se a varredura do encerramento de fato o esvaziar:
+        // um filho destacado que sobra ao harness segue escrevendo no workspace
+        // que o modelo estava inspecionando (ADR-0023).
+        let registry = nycode_agent::policy::process::Registry::default();
+        let mut command = tokio::process::Command::new("sleep");
+        command
+            .arg("30")
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .kill_on_drop(true);
+        // Destacado como os filhos de verdade: sem o grupo proprio a varredura
+        // nao teria o que sinalizar, e o teste passaria sem exercitar nada.
+        nycode_agent::policy::process::detach(&mut command);
+        let mut child = command.spawn().unwrap();
+        let tracked = registry.track(&child);
+        assert_eq!(registry.pending(), 1);
+
+        let code = after_signal(&registry, 15);
+
+        assert_eq!(code, 143, "128 + SIGTERM, a convencao que o shell espera");
+        assert_eq!(registry.pending(), 0, "a varredura precisa esvaziar");
+        drop(tracked);
+        // A varredura mandou `SIGKILL` ao grupo; o filho precisa ter morrido
+        // por sinal, e nao seguir vivo ate o `drop` do proprio teste.
+        let status = child.wait().await.unwrap();
+        assert!(
+            !status.success(),
+            "o filho sobreviveu a varredura: {status}"
+        );
+    }
+
+    #[test]
+    fn the_interrupt_is_only_watched_where_nothing_else_already_uses_it() {
+        // Em headless o `Ctrl+C` cancela o turno, e numa sessao interativa ele
+        // chega como tecla. Escuta-lo nos dois lugares faria a mesma
+        // interrupcao cancelar o turno e matar o processo.
+        use tokio::signal::unix::SignalKind;
+
+        assert!(!terminating(true).contains(&SignalKind::interrupt()));
+        assert!(terminating(false).contains(&SignalKind::interrupt()));
+        for headless in [true, false] {
+            let kinds = terminating(headless);
+            assert!(kinds.contains(&SignalKind::terminate()), "{headless}");
+            assert!(kinds.contains(&SignalKind::hangup()), "{headless}");
+        }
+    }
+
+    #[test]
+    fn a_process_that_left_nothing_behind_still_exits_by_the_signal_it_got() {
+        // O caminho normal: cada baixa ja saiu sozinha. O codigo de saida
+        // continua sendo o do sinal, senao um script nao distingue "terminado"
+        // de "falhou".
+        let registry = nycode_agent::policy::process::Registry::default();
+        assert_eq!(after_signal(&registry, 2), 130);
+        assert_eq!(after_signal(&registry, 1), 129);
+    }
+
+    #[tokio::test]
     async fn a_prompt_takes_the_headless_path_even_without_a_terminal() {
         // Sem gateway o turno falha; o que este teste protege e que `-p` nao
         // depende de TTY, que e o caso de uso de CI.
@@ -393,36 +466,5 @@ mod tests {
             run(&cli, false).await.is_err(),
             "sem gateway o turno precisa falhar, nao fingir sucesso"
         );
-    }
-
-    #[test]
-    fn defaults_point_at_the_gateway_without_any_flags() {
-        // O ponto do nycode e abrir sessao sem configurar endpoint nem catalogo.
-        let cli = Cli::try_parse_from(["nycode", "-p", "oi"]).unwrap();
-        assert_eq!(cli.base_url, Config::DEFAULT_BASE_URL);
-        assert_eq!(cli.model, Config::DEFAULT_MODEL);
-        assert_eq!(cli.prompt.as_deref(), Some("oi"));
-        assert!(!cli.quiet);
-    }
-
-    #[test]
-    fn flags_override_the_defaults() {
-        let cli = Cli::try_parse_from([
-            "nycode",
-            "--base-url",
-            "https://gw.example.com/v1",
-            "--model",
-            "nylla-grok-4.5",
-            "--max-tokens",
-            "512",
-            "--quiet",
-            "-p",
-            "faca",
-        ])
-        .unwrap();
-        assert_eq!(cli.base_url, "https://gw.example.com/v1");
-        assert_eq!(cli.model, "nylla-grok-4.5");
-        assert_eq!(cli.max_tokens, 512);
-        assert!(cli.quiet);
     }
 }

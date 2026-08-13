@@ -5,7 +5,6 @@ use std::fmt::Write as _;
 use async_trait::async_trait;
 use serde_json::{Value, json};
 
-use super::walk;
 use crate::tool::{Tool, ToolContext, ToolOutput};
 
 /// Teto de entradas listadas.
@@ -79,21 +78,28 @@ impl Tool for Ls {
 /// O teto é parâmetro para que o teste que prova o limite use dez entradas em
 /// vez de quinhentas.
 fn listing(dir: &std::path::Path, cap: usize) -> Option<(Vec<String>, usize)> {
-    let entries = std::fs::read_dir(dir).ok()?;
+    if !dir.is_dir() {
+        return None;
+    }
 
     let mut kept = std::collections::BinaryHeap::new();
     let mut total = 0;
 
-    for entry in entries.flatten() {
-        let name = entry.file_name();
-        let name = name.to_string_lossy().to_string();
-        // Os mesmos diretórios que a varredura pula: listá-los convidaria o
-        // modelo a entrar neles.
-        if walk::SKIPPED.contains(&name.as_str()) {
+    // A mesma política da varredura, com profundidade de um: o que o
+    // `.gitignore` declara derivado não é listado, porque listá-lo convidaria o
+    // modelo a entrar nele.
+    for entry in super::engine::walker(dir)
+        .max_depth(Some(1))
+        .build()
+        .flatten()
+    {
+        // A raiz da listagem também é uma entrada da varredura.
+        if entry.depth() == 0 {
             continue;
         }
+        let name = entry.file_name().to_string_lossy().to_string();
 
-        let Ok(kind) = entry.file_type() else {
+        let Some(kind) = entry.file_type() else {
             continue;
         };
 
@@ -125,6 +131,9 @@ mod tests {
         let root = dir.path();
         std::fs::create_dir_all(root.join("src")).unwrap();
         std::fs::create_dir_all(root.join("target")).unwrap();
+        // O que todo repositorio Rust real declara, e que passou a ser quem
+        // decide o que a listagem esconde.
+        std::fs::write(root.join(".gitignore"), "target/\n").unwrap();
         std::fs::write(root.join("README.md"), "cinco").unwrap();
         std::fs::write(root.join("src/main.rs"), "").unwrap();
         let ctx = ToolContext::new(root).unwrap();
@@ -145,11 +154,13 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn build_output_is_not_offered_to_the_model() {
+    async fn what_the_repository_declared_as_derived_is_not_offered_to_the_model() {
         // Lista-lo convidaria o modelo a entrar num diretorio que a varredura
-        // pula de proposito.
+        // pula. Quem decide o que e derivado e o `.gitignore` do projeto, e nao
+        // uma lista fixa que nao conhece o diretorio de saida deste projeto.
         let out = ls(json!({})).await;
         assert!(!out.content.contains("target"), "{}", out.content);
+        assert!(out.content.contains("src/"), "{}", out.content);
     }
 
     #[tokio::test]

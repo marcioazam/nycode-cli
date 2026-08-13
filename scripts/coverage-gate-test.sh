@@ -37,6 +37,18 @@ failed=0
 # de arquivos. O caso que exercita relatorio velho remarca o fonte de proposito.
 readonly SOURCE_MTIME=200101010000
 
+# A data que o caso de relatorio velho usa.
+#
+# Precisa ser fixa e no futuro pelo mesmo motivo que a de cima e fixa e no
+# passado. Remarcar com `touch` sem argumento usa o relogio, e o relatorio tinha
+# acabado de ser escrito: quando as duas escritas caem no mesmo tique do sistema
+# de arquivos as datas empatam, `find -newer` e estritamente maior, e o gate
+# aprova um relatorio que o teste montou justamente para ser reprovado. Falhava
+# em torno de uma execucao em doze — o bastante para o caso ser ignorado como
+# ruido, que e o pior estado possivel para a bateria que prova que o gate ainda
+# reprova.
+readonly STALE_SOURCE_MTIME=209901010000
+
 sandbox() { # sandbox <nome> -> caminho da raiz sintetica
   local box="${WORK}/$1"
   mkdir -p "${box}/scripts"
@@ -128,7 +140,7 @@ check 1 "arquivo no chao reprova mesmo com o agregado em 99%" "${box}" "abaixo d
 box="$(sandbox stale_report)"
 source_file "${box}" crates/x/src/a.rs
 report "${box}" crates/x/src/a.rs 100 100
-touch "${box}/crates/x/src/a.rs"
+touch -t "${STALE_SOURCE_MTIME}" "${box}/crates/x/src/a.rs"
 check 2 "relatorio mais velho que o fonte e recusado" "${box}" "mais velho que"
 
 # --- Completude do relatorio ----------------------------------------------------

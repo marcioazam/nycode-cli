@@ -19,7 +19,70 @@ fn panel() -> Panel {
         "sessao-1".to_owned(),
         "nylla-sonnet-4.5".to_owned(),
         true,
+        None,
     )
+}
+
+/// Um painel cujo modelo tem tarifa declarada pelo catálogo.
+fn priced_panel() -> Panel {
+    Panel::new(
+        "~/proj".to_owned(),
+        "sessao-1".to_owned(),
+        "nylla-sonnet-4.5".to_owned(),
+        true,
+        Some(nycode_ai::catalog::Price {
+            base: nycode_ai::catalog::Rates {
+                input: 3.0,
+                output: 15.0,
+                cache_read: 0.3,
+                cache_write: 3.75,
+            },
+            tiers: Vec::new(),
+        }),
+    )
+}
+
+#[test]
+fn a_priced_model_turns_token_counts_into_a_cost_in_the_footer() {
+    // O FR-19 pede custo. Ate a spec 002 o rodape mostrava volume e chamava
+    // aquilo de custo — duas grandezas que divergem por ordens de magnitude.
+    let mut panel = priced_panel();
+    panel.absorb(Usage {
+        input_tokens: 1_000_000,
+        output_tokens: 1_000_000,
+        ..Usage::default()
+    });
+
+    let linha = &panel.frame(200)[1];
+    assert!(linha.contains("$18.00"), "{linha}");
+}
+
+#[test]
+fn a_model_without_a_declared_price_shows_no_cost_at_all() {
+    // Estimar daria um numero inventado com a mesma cara de um medido.
+    let mut panel = panel();
+    panel.absorb(Usage {
+        input_tokens: 1_000_000,
+        output_tokens: 1_000_000,
+        ..Usage::default()
+    });
+
+    let linha = &panel.frame(200)[1];
+    assert!(!linha.contains('$'), "{linha}");
+}
+
+#[test]
+fn switching_model_switches_the_price_with_it() {
+    // Cobrar os turnos do modelo novo a tarifa do antigo daria um numero
+    // errado com a mesma cara de um certo.
+    let mut panel = priced_panel();
+    panel.set_model("outro".to_owned(), None);
+    panel.absorb(Usage {
+        input_tokens: 1_000_000,
+        ..Usage::default()
+    });
+
+    assert!(!panel.frame(200)[1].contains('$'));
 }
 
 fn typed(editor: &mut Editor, text: &str) {

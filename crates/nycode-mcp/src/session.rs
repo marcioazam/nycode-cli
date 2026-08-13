@@ -95,6 +95,19 @@ impl Transport for Session {
     }
 }
 
+/// Teto do que uma resposta de servidor entrega ao modelo.
+///
+/// O mesmo teto da saída de comando, e pela mesma razão: a resposta vai inteira
+/// para a janela de contexto, e um servidor que devolva o índice inteiro empurra
+/// para fora o histórico que interessa. Um servidor é código de terceiro que o
+/// repositório declarou, então o tamanho da resposta não é escolha do usuário.
+///
+/// O teto vale sobre o que sai daqui, não sobre o que entra: o `rmcp` já
+/// desserializou a resposta quando esta função a recebe. Limitar o quadro no
+/// transporte é o que faltaria para o teto ser de memória também, e depende de o
+/// SDK expor a costura.
+const MAX_RESPONSE: usize = 64 * 1024;
+
 /// Junta o conteúdo textual de um resultado.
 fn render(result: &rmcp::model::CallToolResult) -> String {
     let parts: Vec<String> = result
@@ -104,15 +117,36 @@ fn render(result: &rmcp::model::CallToolResult) -> String {
         .collect();
 
     if !parts.is_empty() {
-        return parts.join("\n");
+        return capped(parts.join("\n"));
     }
     // Sem bloco de texto, o conteúdo estruturado é o que houver de resposta;
     // devolver vazio faria uma resposta legítima parecer ausência de resposta.
     result
         .structured_content
         .as_ref()
-        .map(ToString::to_string)
+        .map(|content| capped(content.to_string()))
         .unwrap_or_default()
+}
+
+/// Corta no teto, dizendo que cortou e de quanto.
+///
+/// Truncar em silêncio faria o modelo raciocinar sobre uma resposta que ele
+/// acredita ter lido inteira, que é a degradação que o NFR-4 proíbe.
+fn capped(rendered: String) -> String {
+    if rendered.len() <= MAX_RESPONSE {
+        return rendered;
+    }
+    // Recuar até a fronteira de caractere: cortar no byte partiria um codepoint
+    // e o que chega ao modelo deixaria de ser texto válido.
+    let mut cut = MAX_RESPONSE;
+    while cut > 0 && !rendered.is_char_boundary(cut) {
+        cut -= 1;
+    }
+    let total = rendered.len();
+    format!(
+        "{}\n[truncado: estes sao os primeiros {cut} bytes; a resposta tem {total}]",
+        &rendered[..cut]
+    )
 }
 
 /// O que uma conexão bem-sucedida entrega: a sessão viva e as ferramentas dela.
@@ -162,7 +196,12 @@ mod tests {
         let (dir, context) = ctx();
         let (_session, tools) = against(Reply::Failure("indice offline".to_owned())).await;
 
-        let output = tools[0].execute(serde_json::json!({}), &context).await;
+        // O dublê declara `q` obrigatório, e a conferência de schema acontece
+        // antes da chamada: omiti-lo faria o teste medir a conferência em vez
+        // do que ele diz medir.
+        let output = tools[0]
+            .execute(serde_json::json!({ "q": "erro" }), &context)
+            .await;
 
         assert!(output.is_error, "o servidor sinalizou erro");
         assert!(
@@ -227,9 +266,41 @@ mod tests {
         let (dir, context) = ctx();
         let (_session, tools) = against(Reply::Structured(serde_json::json!({ "total": 3 }))).await;
 
-        let output = tools[0].execute(serde_json::json!({}), &context).await;
+        let output = tools[0]
+            .execute(serde_json::json!({ "q": "x" }), &context)
+            .await;
         assert!(output.content.contains("total"), "{}", output.content);
         drop(dir);
+    }
+
+    #[test]
+    fn an_oversized_response_is_cut_and_says_the_real_size() {
+        // A resposta vai inteira para a janela de contexto, e um servidor e
+        // codigo de terceiro que o repositorio declarou: o tamanho dela nao e
+        // escolha do usuario. Cortar em silencio faria o modelo raciocinar
+        // sobre uma resposta que acredita ter lido inteira.
+        let grande = "x".repeat(MAX_RESPONSE + 500);
+        let out = capped(grande);
+
+        assert!(out.contains("[truncado"), "{}", &out[out.len() - 120..]);
+        assert!(out.contains(&(MAX_RESPONSE + 500).to_string()));
+        assert!(out.len() < MAX_RESPONSE + 200, "cortou de verdade");
+    }
+
+    #[test]
+    fn a_response_that_fits_is_untouched() {
+        assert_eq!(capped("curta".to_owned()), "curta");
+    }
+
+    #[test]
+    fn the_cut_never_splits_a_character() {
+        // Cortar no byte partiria um codepoint e o que chega ao modelo
+        // deixaria de ser texto valido.
+        let out = capped("á".repeat(MAX_RESPONSE));
+        assert!(out.contains("[truncado"));
+        // O `format!` so produz `String` valida; o que se protege e que o
+        // recuo ate a fronteira aconteceu antes da fatia.
+        assert!(out.starts_with('á'));
     }
 
     #[tokio::test]
@@ -237,7 +308,9 @@ mod tests {
         let (dir, context) = ctx();
         let (_session, tools) = against(Reply::Empty).await;
 
-        let output = tools[0].execute(serde_json::json!({}), &context).await;
+        let output = tools[0]
+            .execute(serde_json::json!({ "q": "x" }), &context)
+            .await;
         assert!(output.content.is_empty());
         assert!(!output.is_error);
         drop(dir);

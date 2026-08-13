@@ -232,6 +232,8 @@ async fn the_header_names_what_the_session_loaded_before_the_first_prompt() {
     let root = dir.path().to_path_buf();
 
     let prepared = crate::session::Prepared {
+        phases: crate::session::Phases::default(),
+        lifecycle: nycode_agent::policy::Hooks::default(),
         agent: nycode_agent::Agent::new(
             Arc::new(super::fakes::Mute),
             nycode_agent::ToolContext::new(&root).unwrap(),
@@ -239,11 +241,14 @@ async fn the_header_names_what_the_session_loaded_before_the_first_prompt() {
         cancel: Cancel::new(),
         store: Store::open(root.join(".nycode/sessions")).unwrap(),
         session_id: "sessao-1".to_owned(),
+        model: "modelo-de-teste".to_owned(),
         persisted: 0,
         context: Context::discover(&root),
         root,
         mcp: Vec::new(),
         models: Vec::new(),
+        prices: std::collections::BTreeMap::new(),
+        windows: std::collections::BTreeMap::new(),
         rebuild: Box::new(|_| anyhow::bail!("sem troca de modelo neste teste")),
     };
 
