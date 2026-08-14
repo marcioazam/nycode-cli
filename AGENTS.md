@@ -50,12 +50,12 @@ o padrão externo existir.
 | Cobertura de diff (seção acima) | `GATE-01` | Satisfeito desde 2026-08-14; só no CI, piso de 80% |
 | Mutation testing por diff (seção acima) | `GATE-04` | Satisfeito desde 2026-08-14; só no CI, escopo `--in-diff` |
 | Complexidade cognitiva e ciclomática por função, com ratchet (seção acima) | `GATE-05` / `GATE-06` | Satisfeito desde 2026-08-14; roda em `ci-local.sh --full`, não é exceção só-CI |
+| Duplicação de código (seção acima) | `GATE-08` | Satisfeito desde 2026-08-14; roda em `ci-local.sh --full`, teto de 5%, sem ratchet — medição no dia em que o gate nasceu já ficava abaixo do teto |
 
 ### O que ainda não tem instrumento
 
-Sem gate automatizado hoje — citado no roadmap
-([`docs/product/ROADMAP.md`](docs/product/ROADMAP.md)) com o ID que fecha:
-duplicação de código (`GATE-08`).
+Nenhum gate do padrão sem instrumento hoje. `GATE-16` tem waiver formal — ver
+a seção "Waiver" abaixo, não uma pendência de implementação.
 
 `GATE-16` (trilha test-first automatizada) é diferente dos dois acima: não é
 "ainda não chegamos lá", é um waiver formal
@@ -410,6 +410,34 @@ Medido com `codemetrics` (github.com/richardwooding/codemetrics), binário
 Go com backend tree-sitter para Rust, instalado por download de release com
 digest conferido — mesmo padrão já usado para `actionlint`.
 
+## Duplicação de código — `GATE-08`
+
+Teto de **5%** de linhas duplicadas. Medido com `jscpd` v5 (motor Rust
+nativo, github.com/kucherenko/jscpd) — o próprio `--threshold`/`--exit-code`
+do binário não faz o que o `--help` sugere: com o reporter `console`
+presente (sozinho ou combinado com `threshold`), `--exit-code` reprova assim
+que existe qualquer clone, ignorando o teto por completo. Confirmado
+testando os dois lados (teto de 1% e teto de 99% contra a mesma árvore
+deram o mesmo `exit 1`).
+[`scripts/duplication-gate.sh`](scripts/duplication-gate.sh) por isso lê o
+`jscpd-report.json` (reporter `json`) e faz a própria comparação contra o
+teto, em vez de confiar na decisão do binário sem verificar.
+
+Mesmo princípio de escopo do "Complexidade por função" acima: duplicação é
+propriedade do estado atual da árvore, não do que um PR introduziu, então
+roda contra `crates/` inteiro em `scripts/ci-local.sh --full`, não é uma
+exceção só-CI. **Sem ratchet**, ao contrário do teto de 500 linhas e do de
+complexidade: a duplicação medida no dia em que este gate nasceu (1,95% de
+linhas) já ficava abaixo do teto sem precisar de baseline nenhum.
+
+`jscpd` não publica um `checksums.txt` assinado pelo projeto como
+`codemetrics` publica — o digest fixado na instalação por download foi
+calculado por este repositório no momento da adoção, não conferido contra
+um valor de terceiro independente do GitHub. Protege contra o asset mudar
+sem bump de versão; é uma garantia mais fraca que a dos outros binários
+baixados por release neste repositório, e a nota fica registrada aqui em
+vez de implícita.
+
 ## CI local — a definição única de verde
 
 [`scripts/ci-local.sh`](scripts/ci-local.sh) é a definição, e o workflow do
@@ -470,12 +498,14 @@ scripts/file-length-gate-test.sh
 scripts/gen-test-map-test.sh
 scripts/architecture-boundary-gate-test.sh
 scripts/complexity-gate-test.sh
+scripts/duplication-gate-test.sh
 scripts/perf-gate-test.sh
 scripts/layout-gate.sh
 scripts/file-length-gate.sh
 scripts/gen-test-map.sh --check
 scripts/architecture-boundary-gate.sh
 scripts/complexity-gate.sh
+scripts/duplication-gate.sh
 cargo llvm-cov --workspace --all-features --json --output-path coverage.json
 scripts/coverage-gate.sh coverage.json
 cargo build --release

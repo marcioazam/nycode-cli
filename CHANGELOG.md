@@ -27,6 +27,27 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
   baixado com digest conferido, mesma classe de `actionlint`/`zizmor`/
   `gitleaks` já usados aqui) entre os candidatos.
 
+- **Gate de duplicação de código, teto de 5% (`GATE-08` do padrão
+  SOTA-2026).** Medido com `jscpd` v5 (motor Rust nativo,
+  github.com/kucherenko/jscpd). O próprio `--threshold`/`--exit-code` do
+  binário não faz o que o `--help` sugere — com o reporter `console`
+  presente, `--exit-code` reprova assim que existe qualquer clone,
+  ignorando o teto por completo, confirmado testando teto de 1% e teto de
+  99% contra a mesma árvore (mesmo `exit 1` nos dois). O gate lê o
+  `jscpd-report.json` (reporter `json`) e faz a própria comparação, em vez
+  de confiar na decisão do binário. Mesmo escopo do gate de complexidade:
+  roda contra `crates/` inteiro em `scripts/ci-local.sh --full`, não é
+  exceção só-CI. Sem ratchet — a duplicação medida no dia em que o gate
+  nasceu (1,95% de linhas) já ficava abaixo do teto. `jscpd` não publica
+  `checksums.txt` assinado como `codemetrics`; o digest da instalação por
+  download foi calculado por este repositório na adoção, não conferido
+  contra um valor de terceiro — nota registrada explicitamente no
+  `AGENTS.md`, não deixada implícita.
+
+  Com este gate, todo item do roadmap SOTA-2026 (ADR-0032) tem instrumento
+  ou waiver formal — resta só a proteção de branch/`CODEOWNERS` no GitHub,
+  que segue exigindo confirmação explícita do usuário.
+
 - **Waiver formal para `GATE-16` do padrão SOTA-2026 ([ADR-0033](docs/architecture/decisions/0033-gate-16-fica-sem-instrumento-conflito-com-hook-e-squash-merge.md)).**
   Uma implementação foi desenhada (classificação por linha, distinguindo
   `#[cfg(test)]` inline de produção, já que o idioma dominante deste
