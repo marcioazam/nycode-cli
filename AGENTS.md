@@ -49,13 +49,13 @@ o padrão externo existir.
 | Idade mínima de dependência nova (seção acima) | `SP-04` | Satisfeito desde 2026-08-14; só no CI, mesma exceção do teto de PR |
 | Cobertura de diff (seção acima) | `GATE-01` | Satisfeito desde 2026-08-14; só no CI, piso de 80% |
 | Mutation testing por diff (seção acima) | `GATE-04` | Satisfeito desde 2026-08-14; só no CI, escopo `--in-diff` |
+| Complexidade cognitiva e ciclomática por função, com ratchet (seção acima) | `GATE-05` / `GATE-06` | Satisfeito desde 2026-08-14; roda em `ci-local.sh --full`, não é exceção só-CI |
 
 ### O que ainda não tem instrumento
 
-Sem gate automatizado hoje — cada um citado no roadmap
+Sem gate automatizado hoje — citado no roadmap
 ([`docs/product/ROADMAP.md`](docs/product/ROADMAP.md)) com o ID que fecha:
-complexidade cognitiva e ciclomática por função (`GATE-05`, `GATE-06`),
-e duplicação (`GATE-08`).
+duplicação de código (`GATE-08`).
 
 `GATE-16` (trilha test-first automatizada) é diferente dos dois acima: não é
 "ainda não chegamos lá", é um waiver formal
@@ -386,6 +386,30 @@ Gate: [`scripts/mutation-gate.sh`](scripts/mutation-gate.sh), no job
 mesma razão das outras exceções desta seção: a base certa de comparação só
 é conhecida dentro de um pull request.
 
+## Complexidade por função — `GATE-05`/`GATE-06`
+
+Ciclomática (McCabe) conta ponto de decisão de forma achatada: 1 + um por
+ramo. Cognitiva (SonarSource) pesa mais a aninhada — duas funções com o
+mesmo número de ramos podem ter cognitiva bem diferente se uma aninha e a
+outra não (ex.: um dispatch de tecla pode ter ciclomática alta e cognitiva
+baixa por ser um `match` achatado). O gate cobre as duas, nunca uma no lugar
+da outra, teto de 15 em cada.
+
+Diferente dos gates PR-only acima: complexidade é propriedade do estado
+atual de uma função, não do que um PR introduziu, então roda contra a
+árvore inteira em [`scripts/complexity-gate.sh`](scripts/complexity-gate.sh)
+— mesmo lugar de `layout-gate.sh`/`file-length-gate.sh` em
+`scripts/ci-local.sh --full`, não uma exceção só-CI. Com ratchet, mesmo
+princípio do "Teto de 500 linhas" acima: função que já excedia um dos dois
+tetos no dia em que o gate nasceu tem entrada em
+[`scripts/complexity-baseline.txt`](scripts/complexity-baseline.txt) com os
+dois valores daquele dia — não pode crescer em nenhum dos dois, e a entrada
+cai quando a função encolhe para dentro dos dois tetos ou some.
+
+Medido com `codemetrics` (github.com/richardwooding/codemetrics), binário
+Go com backend tree-sitter para Rust, instalado por download de release com
+digest conferido — mesmo padrão já usado para `actionlint`.
+
 ## CI local — a definição única de verde
 
 [`scripts/ci-local.sh`](scripts/ci-local.sh) é a definição, e o workflow do
@@ -445,11 +469,13 @@ scripts/layout-gate-test.sh
 scripts/file-length-gate-test.sh
 scripts/gen-test-map-test.sh
 scripts/architecture-boundary-gate-test.sh
+scripts/complexity-gate-test.sh
 scripts/perf-gate-test.sh
 scripts/layout-gate.sh
 scripts/file-length-gate.sh
 scripts/gen-test-map.sh --check
 scripts/architecture-boundary-gate.sh
+scripts/complexity-gate.sh
 cargo llvm-cov --workspace --all-features --json --output-path coverage.json
 scripts/coverage-gate.sh coverage.json
 cargo build --release
