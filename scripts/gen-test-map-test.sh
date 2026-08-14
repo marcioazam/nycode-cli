@@ -159,6 +159,32 @@ else
   failed=$((failed + 1))
 fi
 
+# --- Saida independe do locale de quem roda -------------------------------------
+#
+# `sort` (usado tanto na lista de crates quanto dentro de list_section) ordena
+# diferente dependendo de LC_ALL/LC_COLLATE: a colacao de "en_US.UTF-8" trata
+# "." e "/" diferente da colacao "C". Um arquivo "sandbox.rs" ao lado de um
+# diretorio "sandbox/" e o caso exato que muda de ordem entre as duas -- e foi
+# achado assim: test_map gerado nesta maquina (en_US.UTF-8) ficou "desatualizado"
+# no runner do GitHub Actions (locale diferente), embora nenhum .rs tivesse
+# mudado. O gerador precisa produzir a MESMA saida em qualquer locale.
+
+box="$(tree independe_de_locale)"
+arquivo "${box}/crates/x/src/policy/confinement/sandbox.rs" "pub fn f() {}" "" "#[cfg(test)]" "mod tests {}"
+arquivo "${box}/crates/x/src/policy/confinement/sandbox/profile.rs" "pub fn g() {}" "" "#[cfg(test)]" "mod tests {}"
+out_c="${box}.c.test_map"
+out_utf8="${box}.utf8.test_map"
+LC_ALL=C bash "${GEN}" "${box}" "${out_c}" >/dev/null
+LC_ALL=en_US.utf8 bash "${GEN}" "${box}" "${out_utf8}" >/dev/null
+if diff -q "${out_c}" "${out_utf8}" >/dev/null; then
+  printf 'ok      %s\n' "a saida e identica sob C e en_US.UTF-8"
+  passed=$((passed + 1))
+else
+  printf 'FALHOU  %s\n        as duas saidas divergem:\n%s\n' \
+    "a saida e identica sob C e en_US.UTF-8" "$(diff "${out_c}" "${out_utf8}")"
+  failed=$((failed + 1))
+fi
+
 # --- Erro de uso ----------------------------------------------------------------
 
 check_status 2 "raiz inexistente e erro de uso" "${WORK}/nao/existe" "${WORK}/saida.txt" -- "nao encontrada"
