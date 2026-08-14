@@ -1,0 +1,67 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/suzuki-shunsuke/pinact/refs/heads/main/json-schema/pinact.json
+# pinact - https://github.com/suzuki-shunsuke/pinact
+#
+# Toda `uses:` neste repositorio precisa ser um SHA de commit de 40 caracteres,
+# com um comentario de versao ao lado. Tag e branch sao mutaveis: em marco de
+# 2026 a TeamPCP fez force-push em 76 das 77 tags de aquasecurity/trivy-action
+# para um ladrao de credencial (CVE-2026-33634), e em marco de 2025
+# tj-actions/changed-files foi reapontada do mesmo jeito (CVE-2025-30066).
+#
+# Aplique local e no CI com:
+#   pinact run -fix=false -no-api            # offline, checagem sintatica do SHA
+#   pinact run -fix=false --verify-comment    # online, SHA <-> comentario batem
+version: 3
+
+# Um SHA fixado sozinho nao prova que o commit pertence ao repositorio
+# upstream: o SHA de um fork e igualmente fixavel. `--verify-comment` resolve o
+# comentario de versao pela API e recusa se nao bater, entao o comentario e
+# controle de seguranca e nao documentacao. `separator` mantem o formato
+# estavel para o Dependabot.
+separator: "  # "
+
+# Periodo de carencia. Comprometimento de supply chain costuma ser detectado em
+# menos de uma semana, entao recusar adotar um release antes de envelhecer
+# descarta a maior parte da janela em que uma tag envenenada fica viva.
+min_age:
+  value: 7
+  always: true
+
+# Sem bloco `files:`: a varredura padrao do pinact ja cobre
+# .github/workflows/*.{yml,yaml} e (*/){0,3}action.{yml,yaml}, que alcancaria
+# composite actions sob .github/actions/*/ se este repositorio vier a ter uma.
+# Declarar `files:` substituiria esse padrao em vez de estende-lo.
+
+# Tres acoes cujo esquema de referencia e, por desenho do mantenedor upstream, um
+# nome movel sem tag semver — `pinact` nao consegue verificar o comentario contra
+# nada porque nao ha tag para verificar. As tres continuam fixadas por SHA de 40
+# caracteres nos workflows: o vetor que o pin fecha (uma branch reescrita
+# silenciosamente) fica fechado; o residual e so a ausencia de verificacao
+# automatica contra uma tag inexistente.
+#
+#   dtolnay/rust-toolchain@stable
+#     O README do proprio projeto documenta isto como uso pretendido: o ref *e*
+#     o seletor de canal do Rust (`stable`, `nightly`, `1.89.0`, ...). Nao ha tag
+#     `v1.x` que corresponda a este esquema. Fixar a SHA da branch congela a
+#     logica da acao; renovar para receber Rust estavel novo e trabalho do
+#     Dependabot, nao automatico.
+#
+#   taiki-e/install-action@cargo-deny, @cargo-llvm-cov, @zizmor
+#     A propria interface da acao usa uma tag por ferramenta que o mantenedor
+#     avanca a cada release da ferramenta — nao e um numero de versao da acao.
+rules:
+  - ignore: true
+    conditions:
+      - expr: |
+          ActionName == "dtolnay/rust-toolchain" && ActionVersion == "4360b52568e2003a75bf9bc1d59f33a8e3fc893c"
+  - ignore: true
+    conditions:
+      - expr: |
+          ActionName == "taiki-e/install-action" && ActionVersion == "be8e48a54f508d12604e2a74fda853e27889c2dc"
+  - ignore: true
+    conditions:
+      - expr: |
+          ActionName == "taiki-e/install-action" && ActionVersion == "3ee274a48739f9c49921feda61cb199dc7520e62"
+  - ignore: true
+    conditions:
+      - expr: |
+          ActionName == "taiki-e/install-action" && ActionVersion == "41f31fbbf48a4bea86678f0220274a1f7d1e2e50"

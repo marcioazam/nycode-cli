@@ -8,6 +8,44 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Adicionado
 
+- **CI endurecido para SOTA 2026: 52 achados medidos, zero em severidade média
+  e alta.** O `AGENTS.md` já dizia que artefato de terceiro verifica digest
+  antes de executar, com o esperado fixado em arquivo versionado —
+  `perf-baseline.yml` cumpre isso à risca. E os três workflows executavam doze
+  referências a action de terceiro sem fixar nenhuma. `zizmor` mediu o custo
+  real: 31 `unpinned-uses` de severidade alta, 10 `artipacked` (credencial
+  persistida no checkout), 10 `excessive-permissions`, 1 `cache-poisoning`
+  (cache restaurado no workflow que publica). `actionlint` achou uma perna de
+  release que quebraria hoje: `macos-13` é label de runner aposentado.
+
+  Corrigido: toda `uses:` é SHA de 40 caracteres com comentário verificado
+  ([ADR-0030](docs/architecture/decisions/0030-toda-action-de-terceiro-e-fixada-por-sha-verificado.md)),
+  `persist-credentials: false` em todo checkout, `permissions: contents: read`
+  no topo de cada workflow com escalada só onde publica, cache removido do
+  `release.yml`, `macos-13` → `macos-15-intel`. Três exceções documentadas em
+  `.pinact.yaml`, não silenciosas: `dtolnay/rust-toolchain@stable` e as tags
+  móveis de `taiki-e/install-action` usam, por desenho do mantenedor upstream,
+  um esquema sem tag semver — continuam fixadas por SHA, só sem verificação
+  automática contra uma tag que não existe.
+
+  Também novo: `merge_group` no gatilho (a fila de merge é a peça do lado
+  remoto que impõe o mesmo bloqueio que os hooks locais impõem do lado do
+  desenvolvedor), `concurrency` com cancelamento, `timeout-minutes` por job, e
+  `.github/dependabot.yml` para manter os pins vivos — fixar sem atualizador
+  trocaria um risco por outro.
+
+  As quatro ferramentas — `actionlint`, `zizmor`, `pinact`, `gitleaks` — agora
+  rodam no nível rápido de [`ci-local.sh`](scripts/ci-local.sh) e no job
+  `workflows` do CI, reprovando se ausentes. `zizmor.yml` nasce sem `rules:`
+  de supressão, e a política é que continue assim: um achado médio ou alto
+  vira correção, não entrada de exceção.
+
+  Fica de fora, registrado e não silencioso: `softprops/action-gh-release`
+  poderia virar `gh release create` (achado informacional, sugestão de
+  redução de dependência, não correção de segurança) — fora do escopo desta
+  rodada porque reescreveria comportamento do caminho de publicação, e essa
+  decisão merece escrutínio próprio.
+
 - **O inventário do que a referência entrega e este repositório não.** Sessenta
   deltas, lidos do `pi` no commit que o [`NOTICE`](NOTICE) fixa, triados em quatro
   baldes na [spec 002](docs/specs/002-paridade-e-sota-2026/spec.md): o que se

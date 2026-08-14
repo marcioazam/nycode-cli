@@ -37,7 +37,12 @@ Uma regra de prioridade sem consequência é decoração, então esta tem quatro
   de o usuário já ter decidido agir não é dizer.
 - **Código que baixa artefato de terceiro verifica o digest antes de executar**,
   com o esperado fixado em arquivo versionado e a adoção de um novo passando por
-  diff de PR.
+  diff de PR. Vale para tarball ([`perf-baseline.txt`](scripts/perf-baseline.txt))
+  e vale para action: toda `uses:` nos workflows é um SHA de 40 caracteres com
+  comentário de versão verificado
+  ([ADR-0030](docs/architecture/decisions/0030-toda-action-de-terceiro-e-fixada-por-sha-verificado.md)).
+  Uma action é código de terceiro executado com um token do repositório — a
+  mesma regra, na mesma fronteira.
 
 No CI a precedência é literal: o job `perf` declara `needs: [supply-chain]`, então
 o resultado de performance não é produzido enquanto a política de dependências não
@@ -206,6 +211,13 @@ verde de dez minutos atrás pode ser de outra árvore.
 Um clone sem `core.hooksPath` ativo não tem gate nenhum e parece ter;
 `scripts/ci-local.sh --check-hooks` recusa em voz alta quando esse é o caso.
 
+**O próprio workflow é auditado**, no nível rápido: `actionlint` (sintaxe e
+`shellcheck` dos `run:`), `zizmor` (segurança — action não fixada, permissão
+larga, credencial persistida), `pinact` (todo `uses:` é SHA verificado, ADR-0030)
+e `gitleaks` (segredo commitado). Ferramenta ausente reprova com a linha de
+instalação na mensagem — mesmo precedente do `perf-gate` sem `hyperfine`:
+requisito sem medição é requisito sem gate.
+
 ## Antes de dizer que terminou
 
 `scripts/ci-local.sh --full` é o comando, e a lista abaixo é o que ele roda — na
@@ -217,6 +229,10 @@ CI impõe (NFR-8).
 cargo fmt --all --check
 cargo clippy --workspace --all-targets --all-features
 cargo test --workspace --all-features
+actionlint
+zizmor --no-progress --collect all --min-severity medium .
+pinact run -fix=false -no-api
+gitleaks detect --no-banner --redact --exit-code 1
 cargo deny check
 scripts/coverage-gate-test.sh
 scripts/layout-gate-test.sh

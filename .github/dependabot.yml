@@ -1,0 +1,38 @@
+# Mantem vivos os pins que o ADR-0030 exige. Fixar uma action por SHA sem
+# atualizador trocaria um risco (branch reescrita) por outro (correcao de
+# seguranca upstream que nunca chega) — o Dependabot abre PR quando o SHA
+# fixado tem uma versao nova, e o diff mostra o SHA velho e o novo lado a
+# lado, revisavel como qualquer outra mudanca.
+version: 2
+
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    # Mesma carencia do `min_age: 7` em .pinact.yaml, e pela mesma razao
+    # (ADR-0030): comprometimento de supply chain costuma ser detectado em
+    # menos de uma semana, entao esperar descarta a maior parte da janela em
+    # que uma versao envenenada fica viva.
+    cooldown:
+      default-days: 7
+    # As tres actions cujo ref e um nome movel sem tag semver
+    # (dtolnay/rust-toolchain@stable, taiki-e/install-action@cargo-deny /
+    # @cargo-llvm-cov / @zizmor) nao tem "versao nova" que o Dependabot possa
+    # detectar por comparacao semver — ele so entende range de versao numa
+    # tag. Elas continuam fixadas por SHA (ADR-0030) e sao renovadas a mao,
+    # remedindo o SHA atual da branch ou tag movel quando necessario.
+    ignore:
+      - dependency-name: "dtolnay/rust-toolchain"
+      - dependency-name: "taiki-e/install-action"
+
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+    # `cargo deny` ja falha fechado para aviso de seguranca e licenca
+    # incompativel; o Dependabot aqui e sobre manter a arvore atualizada, nao
+    # sobre detectar vulnerabilidade — os dois gates fazem trabalho diferente.
+    open-pull-requests-limit: 10

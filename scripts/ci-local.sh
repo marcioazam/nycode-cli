@@ -68,10 +68,35 @@ step() { # step <descricao> <comando...>
   fi
 }
 
+# Ferramenta ausente reprova, no mesmo precedente do `perf-gate`, que falha
+# fechado sem `hyperfine`: requisito sem medicao e requisito sem gate. A
+# mensagem diz como instalar, porque um gate que so diz "nao encontrado" manda
+# quem le procurar sozinho o que o proprio gate ja sabe.
+require_tool() { # require_tool <binario> <linha de instalacao>
+  local tool="$1" install="$2"
+  if ! command -v "${tool}" >/dev/null 2>&1; then
+    echo "ci-local: \`${tool}\` nao encontrado." >&2
+    echo "  instale: ${install}" >&2
+    exit 1
+  fi
+}
+
 fast() {
   step "formatacao" cargo fmt --all --check
   step "clippy" cargo clippy --workspace --all-targets --all-features
   step "testes" cargo test --workspace --all-features
+
+  # As quatro rodam em segundos e pegam o que so apareceria no remoto — actions
+  # nao fixadas, permissao larga, credencial persistida, segredo commitado.
+  # `-no-api`: a checagem que precisa de rede fica para o job `workflows` do CI.
+  require_tool actionlint "cargo install actionlint --locked (ou: go install github.com/rhysd/actionlint/cmd/actionlint@latest)"
+  step "lint dos workflows" actionlint
+  require_tool zizmor "cargo install zizmor --locked (ou: pipx install zizmor)"
+  step "seguranca dos workflows" zizmor --no-progress --collect all --min-severity medium .
+  require_tool pinact "go install github.com/suzuki-shunsuke/pinact/cmd/pinact@latest"
+  step "actions fixadas por SHA" pinact run -fix=false -no-api
+  require_tool gitleaks "brew install gitleaks (ou: veja https://github.com/gitleaks/gitleaks#installing)"
+  step "segredo commitado" gitleaks detect --no-banner --redact --exit-code 1
 }
 
 full() {
