@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# CI local completo antes de publicar.
+#
+# Empurrar e a outra fronteira onde o erro deixa de ser barato: o que sai daqui
+# alcanca quem nao viu o que foi feito. Mesma sequencia do merge, pela mesma
+# razao.
+#
+# Ativado por `git config core.hooksPath .githooks`.
+set -euo pipefail
+exec "$(git rev-parse --show-toplevel)/scripts/ci-local.sh" --full

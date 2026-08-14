@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Nivel rapido do CI local, a cada commit.
+#
+# Rapido de proposito: quem esta iterando precisa do erro que nao compila e do
+# teste que quebrou, que sao a maioria, sem pagar a sequencia inteira a cada
+# salvamento. A garantia completa e do merge, onde o erro deixa de ser barato.
+#
+# Ativado por `git config core.hooksPath .githooks`.
+set -euo pipefail
+exec "$(git rev-parse --show-toplevel)/scripts/ci-local.sh" --fast

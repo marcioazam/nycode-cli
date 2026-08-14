@@ -42,6 +42,38 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
   maduro do ACP é subprocesso local sobre entrada e saída padrão, sem socket
   escutando e sem decisão de autenticação de rede pendente.
 
+- **CI local com bloqueio de merge, e uma definição só de verde.** Cobertura e
+  performance já falhavam fechado; layout, ordem test-first e documentação eram
+  convenção escrita e mais nada. Convenção sem instrumento é decoração — o mesmo
+  argumento que este repositório usou para fechar o gate de paridade.
+
+  [`scripts/ci-local.sh`](scripts/ci-local.sh) tem dois níveis: o rápido
+  (formatação, clippy, testes, ~1 min) roda a cada commit, e o completo — a
+  sequência inteira do `AGENTS.md` — é exigido no merge e no push, imposto pelos
+  hooks versionados em `.githooks/`. O hook **executa** o CI em vez de confiar em
+  resultado anterior: um verde de dez minutos atrás pode ser de outra árvore.
+
+  A ativação é manual por clone (`git config core.hooksPath .githooks`) porque o
+  git não tem como saber que o repositório traz hooks. `--check-hooks` recusa em
+  voz alta quando não estão ativos: um hook que ninguém ativou é pior que nenhum,
+  porque parece proteger.
+
+- **Teto de sete arquivos de código por diretório, com gate.** Duas pastas já
+  passavam: `policy` e `session`, com oito cada. As duas foram divididas por
+  responsabilidade antes de o gate entrar — `policy/confinement` reúne o que
+  decide até onde o comando alcança depois de começar, e `session/provider` reúne
+  quem serve o modelo e como o pedido chega até ele.
+
+  Uma subpasta por diretório, e não duas: o corte mais simples que resolve o
+  gatilho. E segue o idioma dominante daqui, `foo.rs` mais `foo/`, que nove
+  módulos já usam — forçar `foo/mod.rs` renomearia nove módulos contra o estilo
+  da casa sem ganhar nada.
+
+  [`scripts/layout-gate.sh`](scripts/layout-gate.sh) nasce sem arquivo de
+  exemption, e a falha nomeia o diretório, lista os arquivos e avisa que nome
+  vago (`utils`, `helpers`, `common`) não resolve — uma falha que só diz
+  "estourou" empurra justamente para a gaveta.
+
 - **Argumento de ferramenta que chega pela metade é reparado, e o reparo é dito.**
   Um `tool_use` viaja como fragmentos de JSON. Quando o turno era cortado — prazo,
   gateway que parou de enviar, cancelamento — o que sobrava virava `Value::Null`

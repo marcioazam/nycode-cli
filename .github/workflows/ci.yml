@@ -21,6 +21,16 @@ jobs:
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets --all-features
 
+  # O teto de sete arquivos por diretorio. Job proprio e nao passo do `lint`
+  # porque nao depende de toolchain nem de cache: reprova em segundos, e
+  # separado ele diz o que reprovou sem se misturar a um erro de compilacao.
+  layout:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: scripts/layout-gate-test.sh
+      - run: scripts/layout-gate.sh
+
   test:
     runs-on: ubuntu-latest
     steps:
