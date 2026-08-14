@@ -8,6 +8,23 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Adicionado
 
+- **Gate de fronteira de arquitetura, allowlist do grafo de dependência
+  entre crates (`GATE-15`/`ARCH-04`/`ARCH-05` do padrão SOTA-2026).** O
+  Cargo já recusa um ciclo verdadeiro; o que faltava era pegar uma
+  dependência nova entre crates — legal para o Cargo, mas que muda a direção
+  pretendida da arquitetura sem ninguém decidir isso explicitamente. Cada
+  crate deste workspace é tratado como um contexto delimitado (`ARCH-04`):
+  não há fatia mais fina que o Cargo exponha mecanicamente para checar, então
+  a fronteira verificada é de crate, não de módulo interno.
+
+  [`scripts/architecture-boundary-allowlist.txt`](scripts/architecture-boundary-allowlist.txt)
+  lista as sete arestas reais do grafo atual (`nycode-agent -> nycode-ai`,
+  `nycode-mcp -> nycode-agent`, e as cinco de `nycode-cli` para os crates que
+  ele compõe). Uma dependência real sem entrada na lista reprova; uma
+  entrada cuja dependência sumiu também reprova — a lista descreve o grafo
+  real, nunca aspiração. TDD contra workspaces sintéticos, dez casos, verde
+  de primeira.
+
 - **`test_map` gerado na raiz do repositório (`AI-10` do padrão SOTA-2026).**
   Investigação inicial mostrou que este repositório não tem relação 1:1 entre
   arquivo-fonte e teste — `crates/nycode-agent/src/agent_test.rs` é um módulo

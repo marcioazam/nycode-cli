@@ -45,6 +45,7 @@ o padrão externo existir.
 | Teto de 500 linhas por arquivo, com ratchet (seção acima) | `GATE-07` / `ARCH-11` | Satisfeito desde 2026-08-14; `RAT-04` cobre o legado de 4 arquivos |
 | Teto de PR assistido por IA (seção acima) | `GATE-11` / `AI-01` | Satisfeito desde 2026-08-14; só no CI, ver a exceção documentada em "CI local" |
 | `test_map` gerado e citado aqui (seção acima) | `AI-10` | Satisfeito desde 2026-08-14; inventário por crate, não mapeamento 1:1 — ver a seção |
+| Fronteira de arquitetura, allowlist do grafo de crates (seção acima) | `GATE-15` / `ARCH-04` / `ARCH-05` | Satisfeito desde 2026-08-14; fronteira de crate, não de módulo interno — ver a seção |
 
 ### O que ainda não tem instrumento
 
@@ -52,9 +53,8 @@ Sem gate automatizado hoje — cada um citado no roadmap
 ([`docs/product/ROADMAP.md`](docs/product/ROADMAP.md)) com o ID que fecha:
 cobertura de diff (`GATE-01`), mutation score por crate (`GATE-04`),
 complexidade cognitiva e ciclomática por função (`GATE-05`, `GATE-06`),
-duplicação (`GATE-08`), idade mínima de dependência nova (`SP-04`), trilha
-test-first automatizada (`GATE-16`), e fronteira de import entre crates
-(`GATE-15`).
+duplicação (`GATE-08`), idade mínima de dependência nova (`SP-04`), e trilha
+test-first automatizada (`GATE-16`).
 
 ### Waiver
 
@@ -301,6 +301,24 @@ edite `test_map` à mão**. `scripts/gen-test-map.sh --check` reprova se o
 arquivo commitado ficou desatualizado; roda em `scripts/ci-local.sh --full`
 e no job `layout` do CI.
 
+## Fronteira de arquitetura — `GATE-15`/`ARCH-04`/`ARCH-05`
+
+O Cargo já recusa um ciclo de verdade — o que este gate cobre é diferente:
+uma dependência nova entre crates, legal para o Cargo, mas que muda a
+direção pretendida da arquitetura sem ninguém decidir isso explicitamente.
+Cada crate deste workspace é um contexto delimitado (`ARCH-04`); não há
+fatia mais fina que o Cargo exponha mecanicamente para checar, então a
+fronteira aqui é de crate, não de módulo interno.
+
+[`scripts/architecture-boundary-allowlist.txt`](scripts/architecture-boundary-allowlist.txt)
+lista toda aresta permitida (`origem -> destino`). Uma dependência real sem
+entrada na lista reprova — precisa de linha adicionada à mão, o que força
+revisão antes de aceitar mais uma aresta. Uma entrada cuja dependência sumiu
+do `Cargo.toml` também reprova: a lista descreve o grafo real, não aspiração
+("uma fronteira que existe só em documentação não é fronteira", `ARCH-06`).
+
+Gate: [`scripts/architecture-boundary-gate.sh`](scripts/architecture-boundary-gate.sh).
+
 ## CI local — a definição única de verde
 
 [`scripts/ci-local.sh`](scripts/ci-local.sh) é a definição, e o workflow do
@@ -356,10 +374,12 @@ scripts/coverage-gate-test.sh
 scripts/layout-gate-test.sh
 scripts/file-length-gate-test.sh
 scripts/gen-test-map-test.sh
+scripts/architecture-boundary-gate-test.sh
 scripts/perf-gate-test.sh
 scripts/layout-gate.sh
 scripts/file-length-gate.sh
 scripts/gen-test-map.sh --check
+scripts/architecture-boundary-gate.sh
 cargo llvm-cov --workspace --all-features --json --output-path coverage.json
 scripts/coverage-gate.sh coverage.json
 cargo build --release
