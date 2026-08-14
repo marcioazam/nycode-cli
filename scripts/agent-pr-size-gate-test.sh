@@ -137,6 +137,10 @@ box="$(repo cargo_lock_excluido)"
 commit "${box}" Cargo.lock 900 "Claude Code:claude-sonnet-5"
 check 0 "Cargo.lock nao entra na contagem de linhas nem de arquivos" "${box}"
 
+box="$(repo test_map_excluido)"
+commit "${box}" test_map 900 "Claude Code:claude-sonnet-5"
+check 0 "test_map nao entra na contagem, por ser gerado (GATE-11)" "${box}"
+
 # --- Erro de uso ----------------------------------------------------------------
 
 box="$(repo ref_base_invalida)"
