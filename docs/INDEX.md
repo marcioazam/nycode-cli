@@ -57,6 +57,7 @@ Não são aspirações; o build quebra quando qualquer um deles regride.
 | O gate de cobertura continua capaz de reprovar | obrigatório | [`scripts/coverage-gate-test.sh`](../scripts/coverage-gate-test.sh) |
 | Teto de 500 linhas por arquivo, com ratchet para o legado (`GATE-07`/`RAT-04`) | 500, ou o baseline registrado | [`scripts/file-length-gate.sh`](../scripts/file-length-gate.sh) |
 | O gate de tamanho de arquivo continua capaz de reprovar | obrigatório | [`scripts/file-length-gate-test.sh`](../scripts/file-length-gate-test.sh) |
+| Teto de PR assistido por IA (`GATE-11`/`AI-01`), só no job `pr-size` do CI | 400 linhas / 15 arquivos | [`scripts/agent-pr-size-gate.sh`](../scripts/agent-pr-size-gate.sh) |
 | Startup da sessão montada (NFR-1) | 15.000 µs | [`scripts/perf-gate.sh`](../scripts/perf-gate.sh) |
 | Startup de chegada do processo (NFR-1) | 3.000 µs, ou baseline ÷ 3 | [`scripts/perf-gate.sh`](../scripts/perf-gate.sh) |
 | Memória de sessão ociosa (NFR-2) | 14 MiB | [`scripts/perf-gate.sh`](../scripts/perf-gate.sh) |
