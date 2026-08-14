@@ -18,6 +18,14 @@
 
 set -euo pipefail
 
+# `sort` colaciona diferente por locale -- "." e "/" trocam de ordem entre
+# "C" e "en_US.UTF-8", e um arquivo "sandbox.rs" ao lado do diretorio
+# "sandbox/" e o caso que expoe isso. Forcado aqui para que a saida seja a
+# mesma em qualquer maquina ou runner, nunca dependente do ambiente de quem
+# chama (achado rodando este gerador contra o workspace real: gerado nesta
+# maquina passava, e "--check" reprovava no CI, sem nenhum .rs ter mudado).
+export LC_ALL=C
+
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly ROOT
 
