@@ -56,19 +56,9 @@ O [ADR-0032](../architecture/decisions/0032-adota-padrao-externo-sota-2026-nivel
 declarou conformidade L2 com o padrão externo `base-software-rules`. O que
 ficou de fora da primeira fatia, cada item já citando o ID de regra que fecha:
 
-*(Cinco itens saíram desta lista em 2026-08-14: o teto de 500 linhas por
-arquivo, `GATE-07`/`ARCH-11` — ganhou gate com ratchet, ver
-[`scripts/file-length-gate.sh`](../../scripts/file-length-gate.sh); o teto
-de PR assistido por IA, `GATE-11`/`AI-01` — ganhou gate só no CI, ver
-[`scripts/agent-pr-size-gate.sh`](../../scripts/agent-pr-size-gate.sh); o
-`test_map`, `AI-10` — gerado, ver [`test_map`](../../test_map) e
-[`scripts/gen-test-map.sh`](../../scripts/gen-test-map.sh); a fronteira de
-arquitetura, `GATE-15`/`ARCH-04`/`ARCH-05` — allowlist do grafo de crates,
-ver [`scripts/architecture-boundary-gate.sh`](../../scripts/architecture-boundary-gate.sh);
-e as lacunas de `docs/` — `GLOSSARY.md`, `business-rules.md`,
-`THREAT_MODEL.md`, `RUNBOOK.md`, `ONBOARDING.md`, `SLO.md` (adaptado para CLI,
-sem burn-rate de serviço). Os cinco com a seção correspondente no
-`AGENTS.md` ou o link acima.)*
+*(O que já satisfaz o padrão, com data e nota, vive na tabela de
+reconciliação do [`AGENTS.md`](../../AGENTS.md) — não repetido aqui para não
+divergir. Esta lista é só o que falta.)*
 
 - **Cobertura de diff.** `GATE-01`.
 - **Mutation testing por crate, com ratchet.** `GATE-04`. Precisa de pesquisa
@@ -76,8 +66,6 @@ sem burn-rate de serviço). Os cinco com a seção correspondente no
 - **Complexidade cognitiva e ciclomática por função.** `GATE-05`, `GATE-06`,
   `ARCH-10`. Sem candidato de ferramenta Rust confirmado ainda.
 - **Duplicação de código, teto de 5%.** `GATE-08`. Idem.
-- **Idade mínima de dependência nova, 30 dias.** `SP-04`, parte de `GATE-13`.
-  Script contra a API do crates.io.
 - **Trilha test-first automatizada** — commit RED só toca teste, commit
   GREEN não toca teste. `GATE-16`.
 - **Proteção de branch + exigência de aprovação do `CODEOWNERS` no GitHub.**

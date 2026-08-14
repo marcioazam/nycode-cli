@@ -39,13 +39,14 @@ o padrão externo existir.
 | Layout — teto de arquivos por diretório (seção acima) | `ADV-01` | Mais rígido — o padrão só torna isso consultivo |
 | Toda action fixada por SHA verificado (ADR-0030) | `SP-06` | Satisfeito |
 | `gitleaks` no `ci-local.sh` (seção "CI local") | `GATE-12` | Satisfeito |
-| `cargo deny check` no `ci-local.sh` | parte de `GATE-13` | Cobre licença e CVE conhecida; não cobre idade mínima de dependência (`SP-04`) |
+| `cargo deny check` no `ci-local.sh` | parte de `GATE-13` | Cobre licença e CVE conhecida |
 | Não negociáveis de código (seção acima) | análogo a `SEC-11` | Satisfeito, mais estrito |
 | NFR-8, segurança antes de performance | filosofia fail-closed do padrão | Sem ID específico |
 | Teto de 500 linhas por arquivo, com ratchet (seção acima) | `GATE-07` / `ARCH-11` | Satisfeito desde 2026-08-14; `RAT-04` cobre o legado de 4 arquivos |
 | Teto de PR assistido por IA (seção acima) | `GATE-11` / `AI-01` | Satisfeito desde 2026-08-14; só no CI, ver a exceção documentada em "CI local" |
 | `test_map` gerado e citado aqui (seção acima) | `AI-10` | Satisfeito desde 2026-08-14; inventário por crate, não mapeamento 1:1 — ver a seção |
 | Fronteira de arquitetura, allowlist do grafo de crates (seção acima) | `GATE-15` / `ARCH-04` / `ARCH-05` | Satisfeito desde 2026-08-14; fronteira de crate, não de módulo interno — ver a seção |
+| Idade mínima de dependência nova (seção acima) | `SP-04` | Satisfeito desde 2026-08-14; só no CI, mesma exceção do teto de PR |
 
 ### O que ainda não tem instrumento
 
@@ -53,8 +54,7 @@ Sem gate automatizado hoje — cada um citado no roadmap
 ([`docs/product/ROADMAP.md`](docs/product/ROADMAP.md)) com o ID que fecha:
 cobertura de diff (`GATE-01`), mutation score por crate (`GATE-04`),
 complexidade cognitiva e ciclomática por função (`GATE-05`, `GATE-06`),
-duplicação (`GATE-08`), idade mínima de dependência nova (`SP-04`), e trilha
-test-first automatizada (`GATE-16`).
+duplicação (`GATE-08`), e trilha test-first automatizada (`GATE-16`).
 
 ### Waiver
 
@@ -319,6 +319,22 @@ do `Cargo.toml` também reprova: a lista descreve o grafo real, não aspiração
 
 Gate: [`scripts/architecture-boundary-gate.sh`](scripts/architecture-boundary-gate.sh).
 
+## Idade mínima de dependência — `SP-04`
+
+Uma dependência **nova** — nome que não existia no `Cargo.lock` da base do
+PR — precisa de pelo menos **30 dias** de existência verificada no
+crates.io. Entre 4% e 6% dos pacotes sugeridos por modelo são alucinados
+(`AI-11`), e um nome recém-criado no registro não teve tempo de ser
+identificado como tal pela comunidade. Bump de versão de dependência já
+confiada não conta — não é o risco que isto cobre. Crate interno deste
+workspace também não conta.
+
+Gate: [`scripts/dependency-age-gate.sh`](scripts/dependency-age-gate.sh), no
+mesmo job `pr-size` do CI — **só no CI**, pela mesma razão do teto de PR
+assistido por IA (a base certa de comparação só é conhecida dentro de um
+pull request) mais uma segunda: verificar existência no registro é
+`audit`, a exceção documentada a "sem rede em verificação".
+
 ## CI local — a definição única de verde
 
 [`scripts/ci-local.sh`](scripts/ci-local.sh) é a definição, e o workflow do
@@ -339,12 +355,14 @@ verde de dez minutos atrás pode ser de outra árvore.
 Um clone sem `core.hooksPath` ativo não tem gate nenhum e parece ter;
 `scripts/ci-local.sh --check-hooks` recusa em voz alta quando esse é o caso.
 
-**Uma exceção documentada:** o gate de "Teto de PR assistido por IA" (seção
-acima) roda só no CI, nunca em `--full`. A base certa de comparação é o alvo real do
-PR (`github.base_ref`), que só é conhecido dentro de um pull request — pode
-não ser `main` num PR empilhado sobre outro. Localmente não há como adivinhar
-isso sem arriscar comparar contra a base errada, e um gate que compara contra
-a base errada é pior que nenhum.
+**Duas exceções documentadas:** os gates de "Teto de PR assistido por IA" e
+"Idade mínima de dependência" (seções acima) rodam só no CI, nunca em
+`--full`. A base certa de comparação é o alvo real do PR (`github.base_ref`),
+que só é conhecido dentro de um pull request — pode não ser `main` num PR
+empilhado sobre outro. Localmente não há como adivinhar isso sem arriscar
+comparar contra a base errada, e um gate que compara contra a base errada é
+pior que nenhum. O segundo tem um motivo a mais: verificar existência no
+registro é rede, e `verify-all`/`--full` são deliberadamente sem rede.
 
 **O próprio workflow é auditado**, no nível rápido: `actionlint` (sintaxe e
 `shellcheck` dos `run:`), `zizmor` (segurança — action não fixada, permissão
