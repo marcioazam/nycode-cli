@@ -8,6 +8,19 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Adicionado
 
+- **Conformidade formal com o padrão externo SOTA-2026 (base-software-rules),
+  nível L2.**
+  ([ADR-0032](docs/architecture/decisions/0032-adota-padrao-externo-sota-2026-nivel-l2.md))
+  Regras já vinculantes deste repositório (cobertura, layout, pinning de
+  action) ganham ID citável do padrão; lacunas reais (mutation testing,
+  complexidade, duplicação, cobertura de diff, `test_map`) ficam nomeadas em
+  [`docs/product/ROADMAP.md`](docs/product/ROADMAP.md) em vez de invisíveis.
+  Novo: `CLAUDE.md` (ponte para `AGENTS.md`), `SECURITY.md`,
+  `CONTRIBUTING.md`, `.github/CODEOWNERS`. Rodapé de commit assistido por IA
+  muda de `Co-Authored-By` para `Assisted-by: <agente>:<modelo>` — o primeiro
+  é campo de crédito de autoria humana, e usá-lo para atribuição de máquina
+  corrompe esse dado.
+
 - **CI endurecido para SOTA 2026: 52 achados medidos, zero em severidade média
   e alta.** O `AGENTS.md` já dizia que artefato de terceiro verifica digest
   antes de executar, com o esperado fixado em arquivo versionado —

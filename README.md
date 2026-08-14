@@ -1,5 +1,8 @@
 # NyCode CLI
 
+Conformidade: SOTA-2026 v1.1.0, nível L2 (standard) — ver
+[ADR-0032](docs/architecture/decisions/0032-adota-padrao-externo-sota-2026-nivel-l2.md).
+
 Harness de coding agent em terminal, escrito em Rust, que já vem apontado para um
 [`nylla-gateway`](https://github.com/nylla/nylla-gateway) self-hosted.
 

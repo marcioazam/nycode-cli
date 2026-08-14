@@ -24,6 +24,10 @@ uma diferença tolerada.
 | [`../CHANGELOG.md`](../CHANGELOG.md) | Histórico de mudanças |
 | [`../README.md`](../README.md) | Porta de entrada: instalação, uso, números medidos |
 | [`../NOTICE`](../NOTICE) | Atribuições de terceiros e aviso de risco |
+| [`../CLAUDE.md`](../CLAUDE.md) | Ponte para `AGENTS.md`, sem conteúdo normativo próprio |
+| [`../SECURITY.md`](../SECURITY.md) | Como reportar vulnerabilidade, escopo, riscos já aceitos |
+| [`../CONTRIBUTING.md`](../CONTRIBUTING.md) | Fluxo mecânico de contribuição; regras vivem no `AGENTS.md` |
+| [`../.github/CODEOWNERS`](../.github/CODEOWNERS) | Caminhos críticos com dono nomeado |
 
 A spec vive em `.specs/nycode-rs/` e não em `docs/specs/`. Os ADRs a referenciam
 por caminho relativo; mover o arquivo quebraria esses links.

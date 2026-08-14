@@ -50,6 +50,37 @@ hooks, subagentes, plan mode, troca de modelo e entrada de imagem.
   sobrevive a ela. Só faz sentido depois de FR-14, que é o que torna o histórico
   completo recuperável.
 
+## Pendências da adoção do SOTA-2026 (ADR-0032)
+
+O [ADR-0032](../architecture/decisions/0032-adota-padrao-externo-sota-2026-nivel-l2.md)
+declarou conformidade L2 com o padrão externo `base-software-rules`. O que
+ficou de fora dessa primeira fatia, cada item já citando o ID de regra que
+fecha:
+
+- **Cobertura de diff.** `GATE-01`.
+- **Mutation testing por crate, com ratchet.** `GATE-04`. Precisa de pesquisa
+  de ferramenta — `cargo-mutants` é a candidata óbvia, a confirmar.
+- **Complexidade cognitiva e ciclomática por função.** `GATE-05`, `GATE-06`,
+  `ARCH-10`. Sem candidato de ferramenta Rust confirmado ainda.
+- **Duplicação de código, teto de 5%.** `GATE-08`. Idem.
+- **Teto de 500 linhas por arquivo, como gate automatizado.** `GATE-07`,
+  `ARCH-11`. Script no padrão de `scripts/layout-gate.sh`.
+- **Tamanho de PR de agente, ≤400 linhas / 15 arquivos.** `GATE-11`, `AI-01`.
+  Script sobre `git diff`.
+- **Idade mínima de dependência nova, 30 dias.** `SP-04`, parte de `GATE-13`.
+  Script contra a API do crates.io.
+- **Trilha test-first automatizada** — commit RED só toca teste, commit
+  GREEN não toca teste. `GATE-16`.
+- **`test_map` gerado e citado no `AGENTS.md`.** `AI-10`.
+- **Lacunas de `docs/`:** `GLOSSARY.md`, mapeamento de regra de negócio (hoje
+  disperso entre spec e ADRs), `THREAT_MODEL.md` (reconciliar com
+  `docs/specs/001-fronteira-de-confianca/checklists/security.md`),
+  `RUNBOOK.md`, `ONBOARDING.md`, `SLO.md` (avaliar se cabe — CLI sem
+  componente server-side pode não ter SLI de latência de serviço).
+- **Proteção de branch + exigência de aprovação do `CODEOWNERS` no GitHub.**
+  Configuração de infraestrutura compartilhada — precisa de confirmação
+  explícita antes de qualquer mudança.
+
 ## Fora do roadmap
 
 Runtime JavaScript embutido, instalador de pacotes próprio, interface gráfica ou
