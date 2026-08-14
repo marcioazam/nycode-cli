@@ -8,6 +8,17 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Adicionado
 
+- **Gate de cobertura de diff, piso de 80% (`GATE-01` do padrão SOTA-2026).**
+  Mede só as linhas de produção adicionadas ou modificadas pelo PR, não o
+  agregado do projeto — um arquivo grande e bem testado absorve, no
+  agregado, o erro de arredondamento de uma função nova sem teste nenhum.
+  Construído sobre `cargo llvm-cov report --lcov`, que reaproveita os dados
+  de perfil já gerados pelo passo de cobertura no mesmo job, sem rerodar os
+  testes. Roda no job `coverage` do CI, condicionado a
+  `github.event_name == 'pull_request'` — terceira exceção documentada a
+  `scripts/ci-local.sh --full`, mesma razão das outras duas: a base certa de
+  comparação só é conhecida dentro de um pull request.
+
 - **Gate de idade mínima de dependência nova, 30 dias (`SP-04` do padrão
   SOTA-2026).** Só verifica dependência genuinamente nova (nome ausente no
   `Cargo.lock` da base do PR) — bump de versão e crate interno não contam.
