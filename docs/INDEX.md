@@ -28,6 +28,7 @@ uma diferença tolerada.
 | [`../SECURITY.md`](../SECURITY.md) | Como reportar vulnerabilidade, escopo, riscos já aceitos |
 | [`../CONTRIBUTING.md`](../CONTRIBUTING.md) | Fluxo mecânico de contribuição; regras vivem no `AGENTS.md` |
 | [`../.github/CODEOWNERS`](../.github/CODEOWNERS) | Caminhos críticos com dono nomeado |
+| [`../test_map`](../test_map) | Inventário por crate de onde os testes vivem (`AI-10`); gerado, nunca editado à mão |
 
 A spec vive em `.specs/nycode-rs/` e não em `docs/specs/`. Os ADRs a referenciam
 por caminho relativo; mover o arquivo quebraria esses links.
@@ -58,6 +59,7 @@ Não são aspirações; o build quebra quando qualquer um deles regride.
 | Teto de 500 linhas por arquivo, com ratchet para o legado (`GATE-07`/`RAT-04`) | 500, ou o baseline registrado | [`scripts/file-length-gate.sh`](../scripts/file-length-gate.sh) |
 | O gate de tamanho de arquivo continua capaz de reprovar | obrigatório | [`scripts/file-length-gate-test.sh`](../scripts/file-length-gate-test.sh) |
 | Teto de PR assistido por IA (`GATE-11`/`AI-01`), só no job `pr-size` do CI | 400 linhas / 15 arquivos | [`scripts/agent-pr-size-gate.sh`](../scripts/agent-pr-size-gate.sh) |
+| [`test_map`](../test_map) em dia (`AI-10`) | obrigatório | [`scripts/gen-test-map.sh --check`](../scripts/gen-test-map.sh) |
 | Startup da sessão montada (NFR-1) | 15.000 µs | [`scripts/perf-gate.sh`](../scripts/perf-gate.sh) |
 | Startup de chegada do processo (NFR-1) | 3.000 µs, ou baseline ÷ 3 | [`scripts/perf-gate.sh`](../scripts/perf-gate.sh) |
 | Memória de sessão ociosa (NFR-2) | 14 MiB | [`scripts/perf-gate.sh`](../scripts/perf-gate.sh) |

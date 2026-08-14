@@ -44,6 +44,7 @@ o padrão externo existir.
 | NFR-8, segurança antes de performance | filosofia fail-closed do padrão | Sem ID específico |
 | Teto de 500 linhas por arquivo, com ratchet (seção acima) | `GATE-07` / `ARCH-11` | Satisfeito desde 2026-08-14; `RAT-04` cobre o legado de 4 arquivos |
 | Teto de PR assistido por IA (seção acima) | `GATE-11` / `AI-01` | Satisfeito desde 2026-08-14; só no CI, ver a exceção documentada em "CI local" |
+| `test_map` gerado e citado aqui (seção acima) | `AI-10` | Satisfeito desde 2026-08-14; inventário por crate, não mapeamento 1:1 — ver a seção |
 
 ### O que ainda não tem instrumento
 
@@ -52,8 +53,8 @@ Sem gate automatizado hoje — cada um citado no roadmap
 cobertura de diff (`GATE-01`), mutation score por crate (`GATE-04`),
 complexidade cognitiva e ciclomática por função (`GATE-05`, `GATE-06`),
 duplicação (`GATE-08`), idade mínima de dependência nova (`SP-04`), trilha
-test-first automatizada (`GATE-16`), fronteira de import entre crates
-(`GATE-15`), e `test_map` gerado (`AI-10`).
+test-first automatizada (`GATE-16`), e fronteira de import entre crates
+(`GATE-15`).
 
 ### Waiver
 
@@ -283,6 +284,23 @@ Gate: [`scripts/agent-pr-size-gate.sh`](scripts/agent-pr-size-gate.sh), job
 `pr-size` do CI — **só no CI**, nunca em `scripts/ci-local.sh --full` (ver a
 exceção documentada na seção seguinte).
 
+## Mapa de testes — `AI-10`
+
+[`test_map`](test_map), na raiz, gerado e mantido em dia — consulte-o antes
+de mexer num arquivo para saber onde procurar o teste que o protege. Ele
+**não** mapeia arquivo-fonte para teste específico: este repositório tem
+módulos de fixture compartilhados entre vários arquivos de teste
+(`agent_test.rs` é usado por `outcome_test.rs` e `compaction_test.rs`, por
+exemplo), então essa relação 1:1 seria falsa em vários casos reais — e um
+mapa errado ensina a confiar onde não devia, o que é pior que nenhum mapa. O
+que existe é o inventário honesto, por crate: onde vivem os testes inline,
+os arquivos de teste dedicados e os testes de integração.
+
+Gerado por [`scripts/gen-test-map.sh`](scripts/gen-test-map.sh) — **nunca
+edite `test_map` à mão**. `scripts/gen-test-map.sh --check` reprova se o
+arquivo commitado ficou desatualizado; roda em `scripts/ci-local.sh --full`
+e no job `layout` do CI.
+
 ## CI local — a definição única de verde
 
 [`scripts/ci-local.sh`](scripts/ci-local.sh) é a definição, e o workflow do
@@ -337,9 +355,11 @@ cargo deny check
 scripts/coverage-gate-test.sh
 scripts/layout-gate-test.sh
 scripts/file-length-gate-test.sh
+scripts/gen-test-map-test.sh
 scripts/perf-gate-test.sh
 scripts/layout-gate.sh
 scripts/file-length-gate.sh
+scripts/gen-test-map.sh --check
 cargo llvm-cov --workspace --all-features --json --output-path coverage.json
 scripts/coverage-gate.sh coverage.json
 cargo build --release

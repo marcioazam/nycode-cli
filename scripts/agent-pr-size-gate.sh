@@ -12,8 +12,10 @@
 # conservador da regra, e o unico jeito mecanico de decidir dado que a
 # maioria dos commits deste repositorio ja carrega o rodape.
 #
-# `Cargo.lock` nao entra na contagem — e churn mecanico do `cargo`, nunca
-# escrito a mao, exatamente o que o padrao ja exclui ("lockfile churn").
+# `Cargo.lock` e `test_map` nao entram na contagem: sao gerados, nunca
+# escritos a mao, exatamente o que o padrao ja exclui ("Generated code,
+# lockfile churn... excluded from the count"). Um arquivo gerado novo entra
+# nesta lista quando nascer, do mesmo jeito.
 #
 # Diferente dos outros gates, este NAO roda em scripts/ci-local.sh --full: a
 # base certa de comparacao e o alvo real do PR, que so e conhecido dentro de
@@ -61,7 +63,9 @@ fi
 file_count=0
 line_count=0
 while IFS=$'\t' read -r added deleted path; do
-  [[ -z "${path}" || "${path}" == "Cargo.lock" ]] && continue
+  case "${path}" in
+  "" | "Cargo.lock" | "test_map") continue ;;
+  esac
   file_count=$((file_count + 1))
   if [[ "${added}" != "-" && "${deleted}" != "-" ]]; then
     line_count=$((line_count + added + deleted))
