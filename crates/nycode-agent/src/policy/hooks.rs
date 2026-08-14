@@ -173,7 +173,7 @@ async fn spawn(program: &Path, cwd: &Path, body: String, limit: Duration) -> Opt
     // A anotação é o que alcança este hook se o processo morrer por sinal: ali
     // nenhum `drop` roda, e o grupo destacado ficaria de pé. Ela sai sozinha em
     // todo caminho que colhe o filho, inclusive no `drop` deste future.
-    let _tracked = crate::policy::process::shared().track(&child);
+    let _tracked = crate::policy::confinement::process::shared().track(&child);
 
     let stdin = child.stdin.take();
     let mut stdout = child.stdout.take()?;
@@ -203,7 +203,7 @@ async fn spawn(program: &Path, cwd: &Path, body: String, limit: Duration) -> Opt
         // Matar o grupo cobre o neto; matar so o lider o deixava orfao, e
         // sob confinamento isso significava um processo escrevendo no
         // workspace depois de o harness ter dito que o interrompeu.
-        crate::policy::process::kill(&mut child);
+        crate::policy::confinement::process::kill(&mut child);
         let _ = child.wait().await;
         return None;
     };
@@ -260,7 +260,12 @@ async fn read_capped(stdout: &mut tokio::process::ChildStdout, cap: usize) -> Ve
 /// pularia em silêncio um hook que existe e está instalado, que é o pior
 /// desfecho possível para uma camada de política.
 async fn start(program: &Path, cwd: &Path) -> Option<tokio::process::Child> {
-    start_with(program, cwd, &crate::policy::sandbox::detect_from_path()).await
+    start_with(
+        program,
+        cwd,
+        &crate::policy::confinement::sandbox::detect_from_path(),
+    )
+    .await
 }
 
 /// O mesmo, com o confinamento escolhido.
@@ -271,7 +276,7 @@ async fn start(program: &Path, cwd: &Path) -> Option<tokio::process::Child> {
 async fn start_with(
     program: &Path,
     cwd: &Path,
-    confinement: &crate::policy::sandbox::Confinement,
+    confinement: &crate::policy::confinement::sandbox::Confinement,
 ) -> Option<tokio::process::Child> {
     /// Quanto esperar antes da segunda tentativa.
     const SETTLE: Duration = Duration::from_millis(50);
@@ -279,9 +284,9 @@ async fn start_with(
     // O hook roda sob a mesma política do comando de shell (ADR-0009,
     // ADR-0017): é política local, precisa escrever no workspace e não tem por
     // que alcançar a rede.
-    let argv = crate::policy::sandbox::prefix(
+    let argv = crate::policy::confinement::sandbox::prefix(
         confinement,
-        crate::policy::sandbox::Policy::WorkspaceWrite,
+        crate::policy::confinement::sandbox::Policy::WorkspaceWrite,
         cwd,
     );
 
@@ -308,12 +313,12 @@ async fn start_with(
             .kill_on_drop(true);
         // Um hook vem do repositório e alcança a rede: herdar o ambiente do
         // harness faria de qualquer clone um canal de saída para a credencial.
-        crate::policy::environment::clear(&mut command);
+        crate::policy::confinement::environment::clear(&mut command);
         // Líder de um grupo próprio: terminar é sinalizar o grupo e o líder.
         // O processo lançado pelo `bwrap` herda o grupo mesmo dentro do novo
         // namespace de PID; o teste da sentinela prova a propriedade que
         // importa, em vez de inferi-la da topologia dos namespaces.
-        crate::policy::process::detach(&mut command);
+        crate::policy::confinement::process::detach(&mut command);
         let started = command.spawn();
 
         match started {

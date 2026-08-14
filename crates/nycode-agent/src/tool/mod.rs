@@ -9,7 +9,9 @@
 //! decide se ele está dentro da raiz; [`contain`] é o que faz a decisão valer
 //! até a abertura, fechando a janela entre uma coisa e outra.
 
+pub mod coerce;
 pub mod contain;
+pub mod repair;
 pub mod sanitize;
 
 use std::path::{Component, Path, PathBuf};

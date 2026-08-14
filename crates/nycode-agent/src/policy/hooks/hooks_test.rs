@@ -608,8 +608,8 @@ async fn the_event_that_fires_is_the_one_that_is_discovered() {
     assert_eq!(hooks.declared(), vec!["pre-tool-use"]);
 }
 
-fn no_confinement() -> crate::policy::sandbox::Confinement {
-    crate::policy::sandbox::Confinement::Unavailable {
+fn no_confinement() -> crate::policy::confinement::sandbox::Confinement {
+    crate::policy::confinement::sandbox::Confinement::Unavailable {
         reason: "teste".to_owned(),
     }
 }

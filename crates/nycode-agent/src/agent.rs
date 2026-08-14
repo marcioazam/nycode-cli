@@ -296,6 +296,15 @@ impl Agent {
                 .unwrap_or_else(|| StopReason::Unrecognized("ausente".to_owned()));
             let calls = turn.tool_calls();
 
+            // Um argumento que chegou pela metade foi reparado, e isso se diz:
+            // sem o aviso, um stream truncado vira uma chamada de aparência
+            // normal e o usuário atribui ao modelo uma decisão do transporte.
+            for name in turn.repaired_calls() {
+                observer.on_notice(&format!(
+                    "os argumentos de `{name}` chegaram truncados; o que veio inteiro foi aproveitado e o resto, descartado"
+                ));
+            }
+
             // O provider também reporta estouro de janela sem erro nenhum
             // (FR-5): status 200, stream bem formado, e a janela estourada
             // escondida no `stop_reason` ou no usage. Ler isso aqui é o que

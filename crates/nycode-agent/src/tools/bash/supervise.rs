@@ -27,7 +27,7 @@ pub async fn collect(
     // A anotação é o que alcança este comando se o processo morrer por sinal:
     // ali nenhum `drop` roda, e o grupo destacado seguiria escrevendo no
     // workspace. Ela sai sozinha em todo caminho que colhe o filho.
-    let _tracked = crate::policy::process::shared().track(&child);
+    let _tracked = crate::policy::confinement::process::shared().track(&child);
     let missing = |canal| {
         std::io::Error::new(
             std::io::ErrorKind::BrokenPipe,
@@ -49,12 +49,12 @@ pub async fn collect(
     // Guardado enquanto existe: depois do `wait` o tokio já colheu o filho e
     // `Child::id` devolve `None`, então quem quiser sinalizar o grupo depois
     // disso precisa ter anotado o número antes.
-    let group = crate::policy::process::group_of(&child);
+    let group = crate::policy::confinement::process::group_of(&child);
 
     // Declarada depois do `child` para largar antes dele: o `drop` do `Child`
     // colhe o filho, e a guarda precisa sinalizar enquanto o PID ainda é dele.
     // É o caminho do cancelamento — largar este future mataria só o líder.
-    let mut cancelled = crate::policy::process::GroupOnDrop::arm(&child);
+    let mut cancelled = crate::policy::confinement::process::GroupOnDrop::arm(&child);
 
     // Terminar o grupo **aqui**, colado no `wait`, e não depois do `join`.
     //
@@ -70,7 +70,7 @@ pub async fn collect(
     let waiting = async {
         let status = child.wait().await;
         if let Some(group) = group {
-            let _ = crate::policy::process::terminate_group(group);
+            let _ = crate::policy::confinement::process::terminate_group(group);
         }
         status
     };

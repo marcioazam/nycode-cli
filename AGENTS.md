@@ -37,7 +37,12 @@ Uma regra de prioridade sem consequência é decoração, então esta tem quatro
   de o usuário já ter decidido agir não é dizer.
 - **Código que baixa artefato de terceiro verifica o digest antes de executar**,
   com o esperado fixado em arquivo versionado e a adoção de um novo passando por
-  diff de PR.
+  diff de PR. Vale para tarball ([`perf-baseline.txt`](scripts/perf-baseline.txt))
+  e vale para action: toda `uses:` nos workflows é um SHA de 40 caracteres com
+  comentário de versão verificado
+  ([ADR-0030](docs/architecture/decisions/0030-toda-action-de-terceiro-e-fixada-por-sha-verificado.md)).
+  Uma action é código de terceiro executado com um token do repositório — a
+  mesma regra, na mesma fronteira.
 
 No CI a precedência é literal: o job `perf` declara `needs: [supply-chain]`, então
 o resultado de performance não é produzido enquanto a política de dependências não
@@ -163,23 +168,82 @@ versão, data e digest. Três coisas que decorrem disso:
 - Mudança relevante entra no [`CHANGELOG.md`](CHANGELOG.md).
 - O mapa completo está em [`docs/INDEX.md`](docs/INDEX.md).
 
+## Layout — teto de sete arquivos por diretório
+
+Um diretório de código comporta no máximo **sete** arquivos. Passou disso, divide
+em subpastas **por responsabilidade**, nunca por tipo técnico: separar structs de
+traits deixa o mesmo problema, só que espalhado.
+
+O número não mede beleza. Mede quanto alguém precisa segurar na cabeça de uma vez
+para saber onde mexer — e vale igual para quem lê o repositório pela primeira vez
+e para um agente decidindo onde pôr o arquivo seguinte.
+
+Um módulo com filhos tem **diretório e arquivo**: `foo.rs` mais `foo/` é o idioma
+dominante daqui e satisfaz a regra; `foo/mod.rs` também. Arquivo de teste não
+conta contra o teto — contá-lo puniria quem testa mais.
+
+**Nome vago é sinal de parada, não opção.** Se o único nome que couber for `utils`,
+`helpers`, `misc`, `common`, `core`, `shared` ou `base`, a divisão ainda não foi
+encontrada: pare e reporte que aquele diretório precisa de decisão de arquitetura,
+em vez de esconder o problema numa gaveta.
+
+Gate: [`scripts/layout-gate.sh`](scripts/layout-gate.sh). Sem arquivo de exemption,
+e isso é decisão — ele nasceu limpo, e a primeira exceção seria a que ensina que
+existe exceção.
+
+## CI local — a definição única de verde
+
+[`scripts/ci-local.sh`](scripts/ci-local.sh) é a definição, e o workflow do
+GitHub roda os mesmos gates. Um CI remoto que diverge do local ensina a ignorar o
+local, e aí o único sinal que sobra é o mais lento.
+
+```bash
+git config core.hooksPath .githooks   # uma vez por clone
+scripts/ci-local.sh --fast            # ~1 min, roda no pre-commit
+scripts/ci-local.sh --full            # a sequência inteira, exigida no merge
+```
+
+**Merge sem `--full` verde é proibido.** Os hooks em [`.githooks/`](.githooks/)
+impõem isso: `pre-commit` roda o rápido, `pre-merge-commit` e `pre-push` rodam o
+completo. O hook **executa** o CI — não confia em resultado anterior, porque um
+verde de dez minutos atrás pode ser de outra árvore.
+
+Um clone sem `core.hooksPath` ativo não tem gate nenhum e parece ter;
+`scripts/ci-local.sh --check-hooks` recusa em voz alta quando esse é o caso.
+
+**O próprio workflow é auditado**, no nível rápido: `actionlint` (sintaxe e
+`shellcheck` dos `run:`), `zizmor` (segurança — action não fixada, permissão
+larga, credencial persistida), `pinact` (todo `uses:` é SHA verificado, ADR-0030)
+e `gitleaks` (segredo commitado). Ferramenta ausente reprova com a linha de
+instalação na mensagem — mesmo precedente do `perf-gate` sem `hyperfine`:
+requisito sem medição é requisito sem gate.
+
 ## Antes de dizer que terminou
 
-Na ordem, com a saída verificada e não presumida. Segurança antes de performance
+`scripts/ci-local.sh --full` é o comando, e a lista abaixo é o que ele roda — na
+ordem, com a saída verificada e não presumida. Segurança antes de performance
 também aqui: `cargo deny` roda antes do gate de performance, como o `needs:` do
 CI impõe (NFR-8).
 
 ```bash
+# verifica core.hooksPath == .githooks antes de qualquer trabalho real
 cargo fmt --all --check
 cargo clippy --workspace --all-targets --all-features
 cargo test --workspace --all-features
+actionlint
+zizmor --no-progress --collect all --min-severity medium .
+pinact run -fix=false -no-api
+gitleaks detect --no-banner --redact --exit-code 1
 cargo deny check
 scripts/coverage-gate-test.sh
+scripts/layout-gate-test.sh
+scripts/perf-gate-test.sh
+scripts/layout-gate.sh
 cargo llvm-cov --workspace --all-features --json --output-path coverage.json
 scripts/coverage-gate.sh coverage.json
 cargo build --release
-scripts/perf-gate-test.sh
 scripts/perf-gate.sh
+scripts/parity-gate.sh
 ```
 
 ## Estilo

@@ -20,11 +20,19 @@ permissions:
   contents: write
   pull-requests: write
 
+# Agendado uma vez por semana; nao ha execucao concorrente a cancelar, so a
+# preocupacao de duas execucoes do mesmo dia colidirem no `git push`.
+concurrency:
+  group: perf-baseline
+
 jobs:
   remeasure:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5.1.0
+        with:
+          persist-credentials: false
 
       - name: ler o baseline em vigor
         id: base
@@ -46,8 +54,10 @@ jobs:
       # baixar sem ter contra o que conferir e exatamente o que a restricao 3
       # proibe. Quem ligar este workflow fixa as duas coisas no mesmo commit.
       - name: o digest precisa estar fixado
+        env:
+          ARTIFACT_DIGEST: ${{ steps.base.outputs.digest }}
         run: |
-          if [ "${{ steps.base.outputs.digest }}" = "nao-fixado" ]; then
+          if [ "${ARTIFACT_DIGEST}" = "nao-fixado" ]; then
             echo "::error::scripts/perf-baseline.txt ainda tem artifact_sha256=nao-fixado."
             echo "Fixe, no mesmo commit:"
             echo "  artifact_sha256  o sha256 do binario do concorrente"
@@ -64,15 +74,20 @@ jobs:
       # `.tar.gz`, e verificar o conteudo depois de desempacotar ja seria
       # executar o desempacotador sobre bytes nao verificados.
       - name: baixar o artefato do concorrente e conferir o digest
+        env:
+          ARTIFACT_URL: ${{ steps.base.outputs.url }}
+          ARTIFACT_DIGEST: ${{ steps.base.outputs.digest }}
         run: |
           set -euo pipefail
-          curl -fsSL -o artefato "${{ steps.base.outputs.url }}"
-          echo "${{ steps.base.outputs.digest }}  artefato" | sha256sum -c -
+          curl -fsSL -o artefato "${ARTIFACT_URL}"
+          echo "${ARTIFACT_DIGEST}  artefato" | sha256sum -c -
 
       - name: extrair o binario
+        env:
+          ARTIFACT_URL: ${{ steps.base.outputs.url }}
         run: |
           set -euo pipefail
-          case "${{ steps.base.outputs.url }}" in
+          case "${ARTIFACT_URL}" in
           *.tar.gz | *.tgz)
             mkdir -p extraido
             tar -xzf artefato -C extraido
@@ -109,11 +124,19 @@ jobs:
       - name: abrir PR se o numero se moveu
         env:
           GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          BASE_VERSION: ${{ steps.base.outputs.version }}
+          BASE_STARTUP_US: ${{ steps.base.outputs.startup_us }}
+          BASE_RSS_KB: ${{ steps.base.outputs.rss_kb }}
+          BASE_BINARY_B: ${{ steps.base.outputs.binary_b }}
+          MEASURED_STARTUP_US: ${{ steps.measured.outputs.startup_us }}
+          MEASURED_RSS_KB: ${{ steps.measured.outputs.rss_kb }}
+          MEASURED_BINARY_B: ${{ steps.measured.outputs.binary_b }}
         run: |
           set -euo pipefail
-          moved=$(python3 - <<'PY'
-          old = (${{ steps.base.outputs.startup_us }}, ${{ steps.base.outputs.rss_kb }}, ${{ steps.base.outputs.binary_b }})
-          new = (${{ steps.measured.outputs.startup_us }}, ${{ steps.measured.outputs.rss_kb }}, ${{ steps.measured.outputs.binary_b }})
+          moved=$(python3 - <<PY
+          old = (${BASE_STARTUP_US}, ${BASE_RSS_KB}, ${BASE_BINARY_B})
+          new = (${MEASURED_STARTUP_US}, ${MEASURED_RSS_KB}, ${MEASURED_BINARY_B})
           print(int(any(abs(n - o) > 0.05 * o for o, n in zip(old, new))))
           PY
           )
@@ -123,9 +146,9 @@ jobs:
           fi
 
           sed -i \
-            -e "s/^startup_fastest_us = .*/startup_fastest_us = ${{ steps.measured.outputs.startup_us }}/" \
-            -e "s/^peak_rss_kb       = .*/peak_rss_kb       = ${{ steps.measured.outputs.rss_kb }}/" \
-            -e "s/^binary_bytes      = .*/binary_bytes      = ${{ steps.measured.outputs.binary_b }}/" \
+            -e "s/^startup_fastest_us = .*/startup_fastest_us = ${MEASURED_STARTUP_US}/" \
+            -e "s/^peak_rss_kb       = .*/peak_rss_kb       = ${MEASURED_RSS_KB}/" \
+            -e "s/^binary_bytes      = .*/binary_bytes      = ${MEASURED_BINARY_B}/" \
             -e "s/^measured_at      = .*/measured_at      = $(date -u +%Y-%m-%d)/" \
             scripts/perf-baseline.txt
 
@@ -134,16 +157,20 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -b "$branch"
           git add scripts/perf-baseline.txt
-          git commit -m "perf: remede o baseline de ${{ steps.base.outputs.version }}"
-          git push -u origin "$branch"
+          git commit -m "perf: remede o baseline de ${BASE_VERSION}"
+          # O checkout rodou com persist-credentials: false, entao o token nao
+          # esta no .git/config para nenhum passo — inclusive os que baixam o
+          # artefato de terceiro, acima. So este push precisa dele, e so aqui
+          # ele e injetado, na URL, e nao antes.
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${REPOSITORY}.git" "HEAD:refs/heads/${branch}"
           gh pr create --title "perf: baseline do concorrente se moveu" --body "$(cat <<EOF
-          Medicao agendada de \`${{ steps.base.outputs.version }}\`, mesmo metodo do \`perf-gate.sh\`.
+          Medicao agendada de \`${BASE_VERSION}\`, mesmo metodo do \`perf-gate.sh\`.
 
           | Metrica | Baseline em vigor | Medido agora |
           |---|---:|---:|
-          | Startup, menor observado | ${{ steps.base.outputs.startup_us }} us | ${{ steps.measured.outputs.startup_us }} us |
-          | RSS de pico | ${{ steps.base.outputs.rss_kb }} KB | ${{ steps.measured.outputs.rss_kb }} KB |
-          | Binario | ${{ steps.base.outputs.binary_b }} B | ${{ steps.measured.outputs.binary_b }} B |
+          | Startup, menor observado | ${BASE_STARTUP_US} us | ${MEASURED_STARTUP_US} us |
+          | RSS de pico | ${BASE_RSS_KB} KB | ${MEASURED_RSS_KB} KB |
+          | Binario | ${BASE_BINARY_B} B | ${MEASURED_BINARY_B} B |
 
           Os pisos relativos derivam destes numeros: startup e binario em baseline/5, RSS em baseline/2.
           Se o concorrente melhorou, este PR aperta a nossa barra — que e o modo de falha que o

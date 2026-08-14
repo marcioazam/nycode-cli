@@ -7,7 +7,7 @@
 use std::fmt::Write as _;
 
 use super::capture::{Captured, Finished};
-use crate::policy::sandbox::Strength;
+use crate::policy::confinement::sandbox::Strength;
 use crate::tool::ToolOutput;
 
 /// Teto de saída capturada, por canal.

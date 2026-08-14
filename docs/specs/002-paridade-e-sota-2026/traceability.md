@@ -12,9 +12,9 @@ Estado em 2026-08-13.
 | # | História | Baldes | Estado |
 |---|---|---|---|
 | 1 | Onda 0 — documento e instrumento | — | fechado |
-| 2 | Onda 1 — o fio para de degradar em silêncio | A1, A2, A3, A5, A7, B1–B9, C1–C3 | aberto |
-| 3 | Onda 2 — contexto e ferramentas | A4, A6, B10–B24, C4, C6 | aberto |
-| 4 | Onda 3 — superfície de comando | B25–B31 | aberto |
+| 2 | Onda 1 — o fio para de degradar em silêncio | A1, A2, A3, A5, A7, B1–B7, C1–C3 | fechado |
+| 3 | Onda 2 — contexto e ferramentas | A4, A6, B9, B10–B24, C4, C6 | aberto |
+| 4 | Onda 3 — superfície de comando | B8, B25–B31 | aberto |
 | 5 | Onda 4 — Agent Client Protocol | C5 | aberto |
 | 6 | Onda 5 — TUI | B32–B39 | aberto |
 
@@ -52,12 +52,51 @@ que o balde A cataloga.
 | B7 — os dois estouros sem erro | fechado | [`shrink.rs`](../../../crates/nycode-agent/src/agent/shrink.rs) `silent_overflow`; janela vinda de `windows_of` |
 | C2 — tarifa com faixa e regra de 2× | fechado | [`catalog/mod.rs`](../../../crates/nycode-ai/src/catalog/mod.rs) |
 | C3 — catálogo hidratado em runtime | fechado | `discover_catalog`; nenhuma tabela fixa no binário |
-| A3/C1 — cache fora do Anthropic | parcial | só `prompt_cache_key`; falta `prompt_cache_retention` e `prompt_cache_options.mode` |
-| B2 — retry em duas camadas | aberto | há retry de transporte; falta a política sobre a resposta |
+| A3/C1 — cache fora do Anthropic | fechado com recusa declarada | `CacheRetention` de três estados em [`sampling`](../../../crates/nycode-ai/src/sampling/mod.rs); `prompt_cache_key` cortado a 64 e `prompt_cache_retention` em [`openai/cache.rs`](../../../crates/nycode-ai/src/openai/cache.rs); `ttl: "1h"` no marcador Anthropic. **`prompt_cache_options.mode` fica de fora**: a referência só o emite quando o modelo declara aceitá-lo, e o catálogo daqui ainda não traz capacidade por modelo — emiti-lo às cegas troca economia por falha. Reabre quando o catálogo trouxer capacidades. |
+| B2 — retry em duas camadas | fechado | os quatro elementos já estavam em [`error.rs`](../../../crates/nycode-ai/src/error.rs), com chamador no laço de [`client.rs`](../../../crates/nycode-ai/src/transport/client.rs): transporte (`is_timeout`/`is_connect`), política sobre a resposta (`Api(api)`), allow-list de transitório (408, 409, 429, 500, 502, 503, 504) e deny-list de limite de conta (`is_exhausted`, conferida **antes** da allow-list, para um 429 de cota não gastar o orçamento). Divergência deliberada e já documentada: erro in-band de stream nunca é retentado, porque o turno começou e ferramentas podem ter rodado. |
 | B3 — `Retry-After` em HTTP-date | fechado | [`retry.rs`](../../../crates/nycode-ai/src/transport/retry.rs) `parse_imf_fixdate`, sem dependência nova |
-| B4/B5/B6 — higiene de payload | aberto | sem saneamento de par substituto, sem reparo de JSON parcial, sem coerção contra schema |
-| B8 — `tool_choice` canônico | aberto | o termo não existe no crate |
-| B9 — estimativa ancorada no último usage | aberto | — |
+| B5 — reparo de JSON parcial de tool call | fechado | [`tool/repair.rs`](../../../crates/nycode-agent/src/tool/repair.rs), consumido em `Turn::tool_calls`; o reparo é anunciado por `repaired_calls` |
+| B6 — coerção contra o schema | fechado | [`tool/coerce.rs`](../../../crates/nycode-agent/src/tool/coerce.rs), aplicado em `dispatch::execute` **antes** do hook e do gate |
+| B4 — par substituto UTF-16 | **recusado** | é um defeito de linguagem UTF-16, e não de protocolo. `String` em Rust é UTF-8 válido por construção, e UTF-8 não codifica substituto: não existe caminho neste repositório que produza um par incompleto. A referência precisa disso porque strings JavaScript são UTF-16. Portar seria copiar a solução de um problema que aqui não existe. |
+| B8 — `tool_choice` canônico | **movido para a Onda 3** | o termo não existe no crate, e implementá-lo agora criaria capacidade sem chamador — exatamente o que este épico persegue. O chamador dele é `--tools`/`--no-tools` (B25), que é Onda 3. Vai junto. |
+| B9 — estimativa ancorada no último usage | **movido para a Onda 2** | mesmo motivo: quem consome a estimativa é o gatilho por limiar (A4/C4), que é Onda 2. Construir o enabler uma onda antes do consumidor deixaria a Onda 1 impossível de fechar sob a própria regra. |
+
+## Paridade real — o que a primeira execução contra a referência revelou
+
+A referência foi construída no commit que o [`NOTICE`](../../../NOTICE) fixa
+(`581d75a`, `pi` 0.84.1) e o gate rodou em modo **completo** pela primeira vez.
+Nenhuma das três descobertas era hipótese; todas apareceram ao rodar.
+
+**O instrumento reprovava o que deveria medir.** O fixture passou a encerrar ao
+ver o fim da entrada padrão — necessário para gravar o perfil de cobertura — e o
+`parity-gate.sh` o sobe em segundo plano, onde a entrada padrão é `/dev/null`.
+O gateway morria depois de anunciar a porta e antes do primeiro pedido, e o gate
+acusava o candidato de falha de transporte. Corrigido: o desligamento negociado
+agora é pedido por `--shutdown-on-stdin`.
+
+**O `exec` do gate descartava a limpeza.** O script terminava em
+`exec "${HARNESS}"`, que substitui o shell — e com ele o `trap cleanup EXIT`. O
+fixture ficava órfão a cada execução, segurando porta e cano de saída; quem
+chamasse o gate através de um pipe nunca via o fim. Corrigido, e o harness ganhou
+prazo por execução: sem ele uma referência que pendura pendura o gate, e num CI
+isso queima o job inteiro sem diagnóstico.
+
+**A referência não aceita gateway por `ANTHROPIC_BASE_URL`.** É a descoberta que
+bloqueia a paridade real. `Harness::reference` define a variável, e o `pi` desta
+versão **a ignora**: o endpoint vem da definição do modelo. Na execução de
+diagnóstico a referência foi à API real da Anthropic e voltou com um `401` de
+`request_id` genuíno, com a chave `fixture` — o pedido saiu para fora, com
+credencial falsa e sem conteúdo de conversa, e é registrado aqui porque uma
+chamada externa não intencional se declara.
+
+O teste `the_reference_harness_is_pointed_at_the_gateway_by_environment` **passa
+com a premissa falsa**: ele afirma que o harness *define* a variável, nunca que a
+referência a *honra*. É a classe de defeito que originou este épico, agora dentro
+do próprio instrumento que existe para medi-la.
+
+Estado: paridade real **bloqueada**, com causa nomeada. Reabre quando
+`Harness::reference` apontar a referência pelo mecanismo que ela de fato lê —
+definição de modelo com endpoint próprio, e não variável de ambiente.
 
 ## O que a onda 0 mudou de premissa
 
