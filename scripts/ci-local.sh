@@ -154,6 +154,7 @@ full() {
   step "auto-teste do gerador de test_map" scripts/gen-test-map-test.sh
   step "auto-teste do gate de fronteira de arquitetura" scripts/architecture-boundary-gate-test.sh
   step "auto-teste do gate de complexidade" scripts/complexity-gate-test.sh
+  step "auto-teste do gate de duplicacao" scripts/duplication-gate-test.sh
   step "auto-teste do gate de performance" scripts/perf-gate-test.sh
 
   step "layout" scripts/layout-gate.sh
@@ -161,6 +162,7 @@ full() {
   step "test_map em dia" scripts/gen-test-map.sh --check
   step "fronteira de arquitetura" scripts/architecture-boundary-gate.sh
   step "complexidade" scripts/complexity-gate.sh
+  step "duplicacao" scripts/duplication-gate.sh
   step "cobertura" cargo llvm-cov --workspace --all-features --json \
     --output-path coverage.json
   step "gate de cobertura" scripts/coverage-gate.sh coverage.json

@@ -42,11 +42,12 @@ jobs:
 
   # O teto de sete arquivos por diretorio, o teto de 500 linhas por arquivo
   # (GATE-07/ARCH-11 do padrao externo, com ratchet), a atualidade do
-  # test_map (AI-10), o grafo de dependencia entre crates (GATE-15) e a
+  # test_map (AI-10), o grafo de dependencia entre crates (GATE-15), a
   # complexidade cognitiva/ciclomatica por funcao (GATE-05/GATE-06, tambem
-  # com ratchet). Job proprio e nao passo do `lint` porque nenhum depende de
-  # toolchain nem de cache: reprovam em segundos, e separado dizem o que
-  # reprovou sem se misturar a um erro de compilacao.
+  # com ratchet) e a duplicacao de codigo (GATE-08). Job proprio e nao passo
+  # do `lint` porque nenhum depende de toolchain nem de cache: reprovam em
+  # segundos, e separado dizem o que reprovou sem se misturar a um erro de
+  # compilacao.
   layout:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -79,6 +80,26 @@ jobs:
           sudo mv codemetrics /usr/local/bin/codemetrics
       - run: scripts/complexity-gate-test.sh
       - run: scripts/complexity-gate.sh
+      # jscpd (github.com/kucherenko/jscpd) tambem nao publica action.yml.
+      # Diferente de codemetrics, o release nao traz um checksums.txt
+      # assinado pelo projeto -- o digest abaixo foi calculado por este
+      # repositorio no momento da adocao (sha256sum sobre o asset baixado de
+      # releases/download, a mesma API do GitHub que qualquer verificacao
+      # usaria). Protege contra o asset mudar sem bump de versao; nao e' uma
+      # confirmacao de terceiro independente do GitHub, que codemetrics tem
+      # e este nao.
+      - name: instala jscpd (digest calculado nesta adocao, sem checksums.txt oficial)
+        env:
+          JSCPD_VERSION: "5.0.15"
+          JSCPD_SHA256: bf46eef9d74e15af108e5fdb21ecf4f8679c54f10814815cb037209332d66ec4
+        run: |
+          curl -fsSL -o jscpd.tar.gz \
+            "https://github.com/kucherenko/jscpd/releases/download/v${JSCPD_VERSION}/jscpd-linux-x64-gnu.tar.gz"
+          echo "${JSCPD_SHA256}  jscpd.tar.gz" | sha256sum -c -
+          tar xzf jscpd.tar.gz jscpd
+          sudo mv jscpd /usr/local/bin/jscpd
+      - run: scripts/duplication-gate-test.sh
+      - run: scripts/duplication-gate.sh
 
   # Teto de PR assistido por IA (GATE-11/AI-01) e idade minima de dependencia
   # nova (SP-04). So aqui, e nao em scripts/ci-local.sh --full: a base certa
