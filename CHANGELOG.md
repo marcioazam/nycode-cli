@@ -8,6 +8,22 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Adicionado
 
+- **`test_map` gerado na raiz do repositório (`AI-10` do padrão SOTA-2026).**
+  Investigação inicial mostrou que este repositório não tem relação 1:1 entre
+  arquivo-fonte e teste — `crates/nycode-agent/src/agent_test.rs` é um módulo
+  de fixture compartilhado, importado também por `outcome_test.rs` e
+  `compaction_test.rs`, nenhum dos quais protege só o arquivo cujo nome
+  ecoa. Um mapa que afirmasse esse mapeamento seria falso em vários casos
+  reais, e a própria regra AI-10 avisa que um mapa errado é pior que nenhum.
+
+  Em vez disso, [`scripts/gen-test-map.sh`](scripts/gen-test-map.sh) gera um
+  inventário honesto por crate — onde vivem os testes inline
+  (`#[cfg(test)]`), os arquivos de teste dedicados (`mod *_test;`) e os
+  testes de integração — sem afirmar qual protege qual arquivo específico.
+  `--check` reprova se o [`test_map`](test_map) commitado ficou
+  desatualizado; roda em `scripts/ci-local.sh --full` e no job `layout` do
+  CI, TDD completo contra árvores sintéticas (12 casos, verde de primeira).
+
 - **Gate de teto de PR assistido por IA (`GATE-11`/`AI-01` do padrão
   SOTA-2026).** Detecção mecânica de "assistido por IA": qualquer commit no
   intervalo com rodapé `Assisted-by:` põe o PR inteiro sob o teto de 400

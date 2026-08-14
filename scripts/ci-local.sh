@@ -151,10 +151,12 @@ full() {
   step "auto-teste do gate de cobertura" scripts/coverage-gate-test.sh
   step "auto-teste do gate de layout" scripts/layout-gate-test.sh
   step "auto-teste do gate de tamanho de arquivo" scripts/file-length-gate-test.sh
+  step "auto-teste do gerador de test_map" scripts/gen-test-map-test.sh
   step "auto-teste do gate de performance" scripts/perf-gate-test.sh
 
   step "layout" scripts/layout-gate.sh
   step "tamanho de arquivo" scripts/file-length-gate.sh
+  step "test_map em dia" scripts/gen-test-map.sh --check
   step "cobertura" cargo llvm-cov --workspace --all-features --json \
     --output-path coverage.json
   step "gate de cobertura" scripts/coverage-gate.sh coverage.json

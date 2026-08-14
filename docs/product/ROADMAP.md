@@ -56,12 +56,14 @@ O [ADR-0032](../architecture/decisions/0032-adota-padrao-externo-sota-2026-nivel
 declarou conformidade L2 com o padrão externo `base-software-rules`. O que
 ficou de fora da primeira fatia, cada item já citando o ID de regra que fecha:
 
-*(Dois itens saíram desta lista em 2026-08-14: o teto de 500 linhas por
+*(Três itens saíram desta lista em 2026-08-14: o teto de 500 linhas por
 arquivo, `GATE-07`/`ARCH-11` — ganhou gate com ratchet, ver
-[`scripts/file-length-gate.sh`](../../scripts/file-length-gate.sh) — e o teto
+[`scripts/file-length-gate.sh`](../../scripts/file-length-gate.sh); o teto
 de PR assistido por IA, `GATE-11`/`AI-01` — ganhou gate só no CI, ver
-[`scripts/agent-pr-size-gate.sh`](../../scripts/agent-pr-size-gate.sh). Ambos
-com a seção correspondente no `AGENTS.md`.)*
+[`scripts/agent-pr-size-gate.sh`](../../scripts/agent-pr-size-gate.sh); e o
+`test_map`, `AI-10` — gerado, ver [`test_map`](../../test_map) e
+[`scripts/gen-test-map.sh`](../../scripts/gen-test-map.sh). Os três com a
+seção correspondente no `AGENTS.md`.)*
 
 - **Cobertura de diff.** `GATE-01`.
 - **Mutation testing por crate, com ratchet.** `GATE-04`. Precisa de pesquisa
@@ -73,7 +75,6 @@ com a seção correspondente no `AGENTS.md`.)*
   Script contra a API do crates.io.
 - **Trilha test-first automatizada** — commit RED só toca teste, commit
   GREEN não toca teste. `GATE-16`.
-- **`test_map` gerado e citado no `AGENTS.md`.** `AI-10`.
 - **Lacunas de `docs/`:** `GLOSSARY.md`, mapeamento de regra de negócio (hoje
   disperso entre spec e ADRs), `THREAT_MODEL.md` (reconciliar com
   `docs/specs/001-fronteira-de-confianca/checklists/security.md`),

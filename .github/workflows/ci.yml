@@ -40,11 +40,11 @@ jobs:
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets --all-features
 
-  # O teto de sete arquivos por diretorio e o teto de 500 linhas por arquivo
-  # (GATE-07/ARCH-11 do padrao externo, com ratchet). Job proprio e nao passo
-  # do `lint` porque nenhum dos dois depende de toolchain nem de cache:
-  # reprovam em segundos, e separado dizem o que reprovou sem se misturar a
-  # um erro de compilacao.
+  # O teto de sete arquivos por diretorio, o teto de 500 linhas por arquivo
+  # (GATE-07/ARCH-11 do padrao externo, com ratchet) e a atualidade do
+  # test_map (AI-10). Job proprio e nao passo do `lint` porque nenhum dos
+  # tres depende de toolchain nem de cache: reprovam em segundos, e separado
+  # dizem o que reprovou sem se misturar a um erro de compilacao.
   layout:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -56,6 +56,8 @@ jobs:
       - run: scripts/layout-gate.sh
       - run: scripts/file-length-gate-test.sh
       - run: scripts/file-length-gate.sh
+      - run: scripts/gen-test-map-test.sh
+      - run: scripts/gen-test-map.sh --check
 
   # Teto de PR assistido por IA (GATE-11/AI-01 do padrao externo). So aqui, e
   # nao em scripts/ci-local.sh --full: a base certa de comparacao (o alvo real
