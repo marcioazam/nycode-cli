@@ -65,6 +65,7 @@ Não são aspirações; o build quebra quando qualquer um deles regride.
 | Teto de 500 linhas por arquivo, com ratchet para o legado (`GATE-07`/`RAT-04`) | 500, ou o baseline registrado | [`scripts/file-length-gate.sh`](../scripts/file-length-gate.sh) |
 | O gate de tamanho de arquivo continua capaz de reprovar | obrigatório | [`scripts/file-length-gate-test.sh`](../scripts/file-length-gate-test.sh) |
 | Teto de PR assistido por IA (`GATE-11`/`AI-01`), só no job `pr-size` do CI | 400 linhas / 15 arquivos | [`scripts/agent-pr-size-gate.sh`](../scripts/agent-pr-size-gate.sh) |
+| Idade mínima de dependência nova (`SP-04`), só no job `pr-size` do CI | 30 dias | [`scripts/dependency-age-gate.sh`](../scripts/dependency-age-gate.sh) |
 | [`test_map`](../test_map) em dia (`AI-10`) | obrigatório | [`scripts/gen-test-map.sh --check`](../scripts/gen-test-map.sh) |
 | Grafo de dependência entre crates bate com a allowlist (`GATE-15`) | 0 arestas não declaradas | [`scripts/architecture-boundary-gate.sh`](../scripts/architecture-boundary-gate.sh) |
 | Startup da sessão montada (NFR-1) | 15.000 µs | [`scripts/perf-gate.sh`](../scripts/perf-gate.sh) |
