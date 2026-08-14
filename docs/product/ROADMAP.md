@@ -60,9 +60,9 @@ ficou de fora da primeira fatia, cada item já citando o ID de regra que fecha:
 reconciliação do [`AGENTS.md`](../../AGENTS.md) — não repetido aqui para não
 divergir. Esta lista é só o que falta.)*
 
-- **Duplicação de código, teto de 5%.** `GATE-08`. Ferramenta recomendada
-  pela mesma pesquisa: `jscpd` v5 / motor Rust (`cargo install jscpd`),
-  `.rs` como formato nativo, flag `--threshold`.
+Todo gate do padrão já tem instrumento ou waiver formal — nada pendente de
+ferramenta abaixo desta linha, só a exceção de infraestrutura compartilhada.
+
 - **Trilha test-first automatizada** — commit RED só toca teste, commit
   GREEN não toca teste. `GATE-16`. **Não é mais um "falta fazer": é um
   waiver formal** ([ADR-0033](../architecture/decisions/0033-gate-16-fica-sem-instrumento-conflito-com-hook-e-squash-merge.md),

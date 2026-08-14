@@ -71,6 +71,7 @@ Não são aspirações; o build quebra quando qualquer um deles regride.
 | [`test_map`](../test_map) em dia (`AI-10`) | obrigatório | [`scripts/gen-test-map.sh --check`](../scripts/gen-test-map.sh) |
 | Grafo de dependência entre crates bate com a allowlist (`GATE-15`) | 0 arestas não declaradas | [`scripts/architecture-boundary-gate.sh`](../scripts/architecture-boundary-gate.sh) |
 | Complexidade cognitiva/ciclomática por função, com ratchet (`GATE-05`/`GATE-06`) | 15 / 15, ou o baseline registrado | [`scripts/complexity-gate.sh`](../scripts/complexity-gate.sh) |
+| Duplicação de código (`GATE-08`) | 5% de linhas | [`scripts/duplication-gate.sh`](../scripts/duplication-gate.sh) |
 | Startup da sessão montada (NFR-1) | 15.000 µs | [`scripts/perf-gate.sh`](../scripts/perf-gate.sh) |
 | Startup de chegada do processo (NFR-1) | 3.000 µs, ou baseline ÷ 3 | [`scripts/perf-gate.sh`](../scripts/perf-gate.sh) |
 | Memória de sessão ociosa (NFR-2) | 14 MiB | [`scripts/perf-gate.sh`](../scripts/perf-gate.sh) |
