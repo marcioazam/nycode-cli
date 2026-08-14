@@ -61,10 +61,21 @@ reconciliação do [`AGENTS.md`](../../AGENTS.md) — não repetido aqui para n�
 divergir. Esta lista é só o que falta.)*
 
 - **Complexidade cognitiva e ciclomática por função.** `GATE-05`, `GATE-06`,
-  `ARCH-10`. Sem candidato de ferramenta Rust confirmado ainda.
-- **Duplicação de código, teto de 5%.** `GATE-08`. Idem.
+  `ARCH-10`. Pesquisa de ferramenta concluída em 2026-08-14: escolhida
+  `codemetrics` (github.com/richardwooding/codemetrics), binário Go com
+  backend tree-sitter para Rust, flags `--diff`/`--max-cognitive`/
+  `--max-cyclomatic`/`--baseline` já prontas pro formato de gate deste
+  repositório.
+- **Duplicação de código, teto de 5%.** `GATE-08`. Ferramenta recomendada
+  pela mesma pesquisa: `jscpd` v5 / motor Rust (`cargo install jscpd`),
+  `.rs` como formato nativo, flag `--threshold`.
 - **Trilha test-first automatizada** — commit RED só toca teste, commit
-  GREEN não toca teste. `GATE-16`.
+  GREEN não toca teste. `GATE-16`. **Não é mais um "falta fazer": é um
+  waiver formal** ([ADR-0033](../architecture/decisions/0033-gate-16-fica-sem-instrumento-conflito-com-hook-e-squash-merge.md),
+  expira 2027-02-14) — o gate, como o padrão externo especifica, conflita
+  com o hook `pre-commit` deste repositório (que já impede um commit RED
+  de existir) e com squash-merge (que apaga a separação RED/GREEN de
+  `main` no merge). Reabrir exige mudar uma dessas duas políticas.
 - **Proteção de branch + exigência de aprovação do `CODEOWNERS` no GitHub.**
   Configuração de infraestrutura compartilhada — precisa de confirmação
   explícita antes de qualquer mudança.

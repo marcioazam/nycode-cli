@@ -55,7 +55,20 @@ o padrão externo existir.
 Sem gate automatizado hoje — cada um citado no roadmap
 ([`docs/product/ROADMAP.md`](docs/product/ROADMAP.md)) com o ID que fecha:
 complexidade cognitiva e ciclomática por função (`GATE-05`, `GATE-06`),
-duplicação (`GATE-08`), e trilha test-first automatizada (`GATE-16`).
+e duplicação (`GATE-08`).
+
+`GATE-16` (trilha test-first automatizada) é diferente dos dois acima: não é
+"ainda não chegamos lá", é um waiver formal
+([ADR-0033](docs/architecture/decisions/0033-gate-16-fica-sem-instrumento-conflito-com-hook-e-squash-merge.md)).
+Uma implementação foi desenhada e revisada adversarialmente antes de qualquer
+commit, e a revisão achou que o gate, como o guia do padrão especifica,
+conflita com duas políticas que este repositório já adotou deliberadamente:
+o hook `pre-commit` roda `cargo test` e por isso já impede um commit RED
+(teste quebrado) de existir sem `--no-verify`, que as regras deste projeto
+proíbem; e squash-merge apaga a separação RED/GREEN de `main` no momento do
+merge, então mesmo uma implementação correta nunca alcançaria o "checável
+meses depois" que é o objetivo declarado do gate. Reabrir exige mudar uma das
+duas políticas, não escrever mais bash — ver a seção "Decisão" do ADR.
 
 ### Waiver
 
@@ -63,7 +76,8 @@ Desvio de regra `MUST` do padrão exige waiver formal: ADR em
 `docs/architecture/decisions/` com regra, escopo, razão, controle
 compensatório, dono e expiração de no máximo dois trimestres — mesmo
 mecanismo do `CONFORMANCE.md` do padrão. Vale para os gates que entrarem daqui
-para frente.
+para frente. `GATE-16` ([ADR-0033](docs/architecture/decisions/0033-gate-16-fica-sem-instrumento-conflito-com-hook-e-squash-merge.md),
+expira 2027-02-14) é o primeiro uso deste mecanismo.
 
 **Não vale retroativamente para a cobertura**: a política deste repositório
 de nunca abrir exemption `below-floor` (ver "Cobertura de teste" acima) é

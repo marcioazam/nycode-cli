@@ -35,6 +35,10 @@ questionar em seis meses, vira um ADR — para que a discussão aconteça uma ve
 | [0027](0027-a-compactacao-dispara-por-limiar-e-o-erro-e-a-rede.md) | A compactação dispara por limiar, e o erro passa a ser a rede de segurança | aceito | 2026-08-13 |
 | [0028](0028-o-consentimento-fixa-a-definicao-declarada.md) | O consentimento fixa a definição declarada, e não só o que é executado | aceito | 2026-08-13 |
 | [0029](0029-a-integracao-com-editor-fala-acp.md) | A integração com editor fala ACP, e não um protocolo próprio | aceito | 2026-08-13 |
+| [0030](0030-toda-action-de-terceiro-e-fixada-por-sha-verificado.md) | Toda action de terceiro é fixada por SHA verificado, com carência de sete dias | aceito | 2026-08-14 |
+| [0031](0031-o-piso-relativo-de-chegada-do-processo-absorve-a-variancia-do-runner-do-ci.md) | O piso relativo de "chegada do processo" absorve a variância do runner do CI | aceito | 2026-08-14 |
+| [0032](0032-adota-padrao-externo-sota-2026-nivel-l2.md) | Adota o padrão externo SOTA-2026 (base-software-rules) no nível L2 | aceito | 2026-08-14 |
+| [0033](0033-gate-16-fica-sem-instrumento-conflito-com-hook-e-squash-merge.md) | GATE-16 (trilha test-first) fica sem instrumento — conflita com o hook de commit e com squash-merge | aceito | 2026-08-14 |
 
 Os ADRs [0005](0005-sandbox-de-so-por-processo-auxiliar.md),
 [0009](0009-hooks-sao-executaveis-com-contrato-json.md) e
