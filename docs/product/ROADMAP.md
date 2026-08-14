@@ -60,12 +60,6 @@ ficou de fora da primeira fatia, cada item já citando o ID de regra que fecha:
 reconciliação do [`AGENTS.md`](../../AGENTS.md) — não repetido aqui para não
 divergir. Esta lista é só o que falta.)*
 
-- **Complexidade cognitiva e ciclomática por função.** `GATE-05`, `GATE-06`,
-  `ARCH-10`. Pesquisa de ferramenta concluída em 2026-08-14: escolhida
-  `codemetrics` (github.com/richardwooding/codemetrics), binário Go com
-  backend tree-sitter para Rust, flags `--diff`/`--max-cognitive`/
-  `--max-cyclomatic`/`--baseline` já prontas pro formato de gate deste
-  repositório.
 - **Duplicação de código, teto de 5%.** `GATE-08`. Ferramenta recomendada
   pela mesma pesquisa: `jscpd` v5 / motor Rust (`cargo install jscpd`),
   `.rs` como formato nativo, flag `--threshold`.
