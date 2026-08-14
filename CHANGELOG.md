@@ -8,6 +8,25 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Adicionado
 
+- **Gate de complexidade cognitiva e ciclomática por função, com ratchet
+  (`GATE-05`/`GATE-06` do padrão SOTA-2026).** Ciclomática (McCabe) conta
+  ponto de decisão de forma achatada; cognitiva (SonarSource) pesa mais a
+  aninhada — duas funções com o mesmo número de ramos podem pontuar bem
+  diferente se uma aninha e a outra não. O gate cobre as duas, teto de 15
+  em cada. Diferente dos gates PR-only já existentes, complexidade é
+  propriedade do estado atual de uma função, não do que um PR introduziu,
+  então roda contra a árvore inteira em `scripts/ci-local.sh --full`, mesmo
+  lugar de `layout-gate.sh`/`file-length-gate.sh`. Com ratchet igual ao
+  teto de 500 linhas: oito funções que já excediam um dos dois tetos no dia
+  em que o gate nasceu entraram no baseline com os valores exatos daquele
+  dia — não podem crescer, e a entrada cai quando a função encolhe ou some.
+  Medido com `codemetrics` (github.com/richardwooding/codemetrics), binário
+  Go com backend tree-sitter para Rust, escolhido pelo usuário sobre `cccc`
+  depois de uma pesquisa que comparou maturidade, ergonomia de gate
+  (`--diff`/`--baseline` nativos) e categoria de ferramenta (binário
+  baixado com digest conferido, mesma classe de `actionlint`/`zizmor`/
+  `gitleaks` já usados aqui) entre os candidatos.
+
 - **Waiver formal para `GATE-16` do padrão SOTA-2026 ([ADR-0033](docs/architecture/decisions/0033-gate-16-fica-sem-instrumento-conflito-com-hook-e-squash-merge.md)).**
   Uma implementação foi desenhada (classificação por linha, distinguindo
   `#[cfg(test)]` inline de produção, já que o idioma dominante deste
