@@ -156,4 +156,4 @@ a consequência negativa está declarada no ADR.
 
 ## Glossário
 
-Ver o [glossário da arquitetura](../architecture/ARCHITECTURE.md#12-glossário).
+Ver [`docs/GLOSSARY.md`](../GLOSSARY.md).

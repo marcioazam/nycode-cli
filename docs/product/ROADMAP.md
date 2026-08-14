@@ -56,16 +56,19 @@ O [ADR-0032](../architecture/decisions/0032-adota-padrao-externo-sota-2026-nivel
 declarou conformidade L2 com o padrão externo `base-software-rules`. O que
 ficou de fora da primeira fatia, cada item já citando o ID de regra que fecha:
 
-*(Quatro itens saíram desta lista em 2026-08-14: o teto de 500 linhas por
+*(Cinco itens saíram desta lista em 2026-08-14: o teto de 500 linhas por
 arquivo, `GATE-07`/`ARCH-11` — ganhou gate com ratchet, ver
 [`scripts/file-length-gate.sh`](../../scripts/file-length-gate.sh); o teto
 de PR assistido por IA, `GATE-11`/`AI-01` — ganhou gate só no CI, ver
 [`scripts/agent-pr-size-gate.sh`](../../scripts/agent-pr-size-gate.sh); o
 `test_map`, `AI-10` — gerado, ver [`test_map`](../../test_map) e
-[`scripts/gen-test-map.sh`](../../scripts/gen-test-map.sh); e a fronteira de
+[`scripts/gen-test-map.sh`](../../scripts/gen-test-map.sh); a fronteira de
 arquitetura, `GATE-15`/`ARCH-04`/`ARCH-05` — allowlist do grafo de crates,
-ver [`scripts/architecture-boundary-gate.sh`](../../scripts/architecture-boundary-gate.sh).
-Os quatro com a seção correspondente no `AGENTS.md`.)*
+ver [`scripts/architecture-boundary-gate.sh`](../../scripts/architecture-boundary-gate.sh);
+e as lacunas de `docs/` — `GLOSSARY.md`, `business-rules.md`,
+`THREAT_MODEL.md`, `RUNBOOK.md`, `ONBOARDING.md`, `SLO.md` (adaptado para CLI,
+sem burn-rate de serviço). Os cinco com a seção correspondente no
+`AGENTS.md` ou o link acima.)*
 
 - **Cobertura de diff.** `GATE-01`.
 - **Mutation testing por crate, com ratchet.** `GATE-04`. Precisa de pesquisa
@@ -77,11 +80,6 @@ Os quatro com a seção correspondente no `AGENTS.md`.)*
   Script contra a API do crates.io.
 - **Trilha test-first automatizada** — commit RED só toca teste, commit
   GREEN não toca teste. `GATE-16`.
-- **Lacunas de `docs/`:** `GLOSSARY.md`, mapeamento de regra de negócio (hoje
-  disperso entre spec e ADRs), `THREAT_MODEL.md` (reconciliar com
-  `docs/specs/001-fronteira-de-confianca/checklists/security.md`),
-  `RUNBOOK.md`, `ONBOARDING.md`, `SLO.md` (avaliar se cabe — CLI sem
-  componente server-side pode não ter SLI de latência de serviço).
 - **Proteção de branch + exigência de aprovação do `CODEOWNERS` no GitHub.**
   Configuração de infraestrutura compartilhada — precisa de confirmação
   explícita antes de qualquer mudança.

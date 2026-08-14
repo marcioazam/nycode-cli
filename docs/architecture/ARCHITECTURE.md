@@ -185,11 +185,5 @@ literal: o job `perf` declara `needs: [supply-chain]`.
 
 ## 12. Glossário
 
-| Termo | Significado |
-|---|---|
-| **Dialeto** | Formato de wire de um provedor: Anthropic Messages, OpenAI Chat Completions, OpenAI Responses |
-| **Turno** | Uma resposta do modelo, montada a partir dos eventos de stream |
-| **Rodada** | Um ciclo pedido-ferramenta-resultado dentro de um `run` |
-| **Gate** | A política que autoriza ou nega uma chamada de ferramenta |
-| **Paridade** | Igualdade de contrato observável entre `nycode` e o harness de referência |
-| **Exemption** | Dispensa declarada de um piso de cobertura, sempre com ratchet |
+Ver [`docs/GLOSSARY.md`](../GLOSSARY.md) — linguagem ubíqua completa, mantida
+num único lugar para não divergir daqui.

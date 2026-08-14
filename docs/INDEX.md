@@ -29,6 +29,12 @@ uma diferença tolerada.
 | [`../CONTRIBUTING.md`](../CONTRIBUTING.md) | Fluxo mecânico de contribuição; regras vivem no `AGENTS.md` |
 | [`../.github/CODEOWNERS`](../.github/CODEOWNERS) | Caminhos críticos com dono nomeado |
 | [`../test_map`](../test_map) | Inventário por crate de onde os testes vivem (`AI-10`); gerado, nunca editado à mão |
+| [`GLOSSARY.md`](GLOSSARY.md) | Linguagem ubíqua — os termos, com o mesmo significado no código e nos ADRs |
+| [`business-rules.md`](business-rules.md) | Regras que atravessam requisitos individuais (`BR-N`) — segurança-antes-de-performance, proveniência, o que nunca degrada em silêncio |
+| [`THREAT_MODEL.md`](THREAT_MODEL.md) | Ativos, fronteiras de confiança, ameaças e mitigação — vista de alto nível sobre o [checklist de segurança](specs/001-fronteira-de-confianca/checklists/security.md) |
+| [`RUNBOOK.md`](RUNBOOK.md) | Detecção, confirmação, mitigação e escalonamento dos três modos de falha mais prováveis |
+| [`ONBOARDING.md`](ONBOARDING.md) | Do clone ao primeiro teste passando |
+| [`SLO.md`](SLO.md) | Os indicadores de nível deste CLI (não há serviço no ar, então não há burn-rate) |
 
 A spec vive em `.specs/nycode-rs/` e não em `docs/specs/`. Os ADRs a referenciam
 por caminho relativo; mover o arquivo quebraria esses links.
