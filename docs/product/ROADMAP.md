@@ -56,14 +56,16 @@ O [ADR-0032](../architecture/decisions/0032-adota-padrao-externo-sota-2026-nivel
 declarou conformidade L2 com o padrão externo `base-software-rules`. O que
 ficou de fora da primeira fatia, cada item já citando o ID de regra que fecha:
 
-*(Três itens saíram desta lista em 2026-08-14: o teto de 500 linhas por
+*(Quatro itens saíram desta lista em 2026-08-14: o teto de 500 linhas por
 arquivo, `GATE-07`/`ARCH-11` — ganhou gate com ratchet, ver
 [`scripts/file-length-gate.sh`](../../scripts/file-length-gate.sh); o teto
 de PR assistido por IA, `GATE-11`/`AI-01` — ganhou gate só no CI, ver
-[`scripts/agent-pr-size-gate.sh`](../../scripts/agent-pr-size-gate.sh); e o
+[`scripts/agent-pr-size-gate.sh`](../../scripts/agent-pr-size-gate.sh); o
 `test_map`, `AI-10` — gerado, ver [`test_map`](../../test_map) e
-[`scripts/gen-test-map.sh`](../../scripts/gen-test-map.sh). Os três com a
-seção correspondente no `AGENTS.md`.)*
+[`scripts/gen-test-map.sh`](../../scripts/gen-test-map.sh); e a fronteira de
+arquitetura, `GATE-15`/`ARCH-04`/`ARCH-05` — allowlist do grafo de crates,
+ver [`scripts/architecture-boundary-gate.sh`](../../scripts/architecture-boundary-gate.sh).
+Os quatro com a seção correspondente no `AGENTS.md`.)*
 
 - **Cobertura de diff.** `GATE-01`.
 - **Mutation testing por crate, com ratchet.** `GATE-04`. Precisa de pesquisa
