@@ -47,14 +47,15 @@ o padrão externo existir.
 | `test_map` gerado e citado aqui (seção acima) | `AI-10` | Satisfeito desde 2026-08-14; inventário por crate, não mapeamento 1:1 — ver a seção |
 | Fronteira de arquitetura, allowlist do grafo de crates (seção acima) | `GATE-15` / `ARCH-04` / `ARCH-05` | Satisfeito desde 2026-08-14; fronteira de crate, não de módulo interno — ver a seção |
 | Idade mínima de dependência nova (seção acima) | `SP-04` | Satisfeito desde 2026-08-14; só no CI, mesma exceção do teto de PR |
+| Cobertura de diff (seção acima) | `GATE-01` | Satisfeito desde 2026-08-14; só no CI, piso de 80% |
 
 ### O que ainda não tem instrumento
 
 Sem gate automatizado hoje — cada um citado no roadmap
 ([`docs/product/ROADMAP.md`](docs/product/ROADMAP.md)) com o ID que fecha:
-cobertura de diff (`GATE-01`), mutation score por crate (`GATE-04`),
-complexidade cognitiva e ciclomática por função (`GATE-05`, `GATE-06`),
-duplicação (`GATE-08`), e trilha test-first automatizada (`GATE-16`).
+mutation score por crate (`GATE-04`), complexidade cognitiva e ciclomática
+por função (`GATE-05`, `GATE-06`), duplicação (`GATE-08`), e trilha
+test-first automatizada (`GATE-16`).
 
 ### Waiver
 
@@ -335,6 +336,21 @@ assistido por IA (a base certa de comparação só é conhecida dentro de um
 pull request) mais uma segunda: verificar existência no registro é
 `audit`, a exceção documentada a "sem rede em verificação".
 
+## Cobertura de diff — `GATE-01`
+
+Pelo menos **80%** das linhas de produção adicionadas ou modificadas por um
+PR precisam estar cobertas. Diferente do piso agregado e do piso por
+arquivo (NFR-5, seção acima), que medem o estado do mundo: um arquivo
+grande e bem testado absorve, no agregado, o erro de arredondamento de uma
+função nova sem teste nenhum. O diff mede exatamente o que o PR introduziu.
+
+Construído sobre `cargo llvm-cov report --lcov`, que reaproveita os dados
+de perfil já gerados pelo passo de cobertura no mesmo job — não roda os
+testes de novo. Gate: [`scripts/diff-coverage-gate.sh`](scripts/diff-coverage-gate.sh),
+no job `coverage` do CI, condicionado a `github.event_name == 'pull_request'`
+— mesma razão das outras duas exceções abaixo: a base certa de comparação
+só é conhecida dentro de um pull request.
+
 ## CI local — a definição única de verde
 
 [`scripts/ci-local.sh`](scripts/ci-local.sh) é a definição, e o workflow do
@@ -355,14 +371,15 @@ verde de dez minutos atrás pode ser de outra árvore.
 Um clone sem `core.hooksPath` ativo não tem gate nenhum e parece ter;
 `scripts/ci-local.sh --check-hooks` recusa em voz alta quando esse é o caso.
 
-**Duas exceções documentadas:** os gates de "Teto de PR assistido por IA" e
-"Idade mínima de dependência" (seções acima) rodam só no CI, nunca em
-`--full`. A base certa de comparação é o alvo real do PR (`github.base_ref`),
-que só é conhecido dentro de um pull request — pode não ser `main` num PR
-empilhado sobre outro. Localmente não há como adivinhar isso sem arriscar
-comparar contra a base errada, e um gate que compara contra a base errada é
-pior que nenhum. O segundo tem um motivo a mais: verificar existência no
-registro é rede, e `verify-all`/`--full` são deliberadamente sem rede.
+**Três exceções documentadas:** os gates de "Teto de PR assistido por IA",
+"Idade mínima de dependência" e "Cobertura de diff" (seções acima) rodam só
+no CI, nunca em `--full`. A base certa de comparação é o alvo real do PR
+(`github.base_ref`), que só é conhecido dentro de um pull request — pode não
+ser `main` num PR empilhado sobre outro. Localmente não há como adivinhar
+isso sem arriscar comparar contra a base errada, e um gate que compara
+contra a base errada é pior que nenhum. O segundo tem um motivo a mais:
+verificar existência no registro é rede, e `verify-all`/`--full` são
+deliberadamente sem rede.
 
 **O próprio workflow é auditado**, no nível rápido: `actionlint` (sintaxe e
 `shellcheck` dos `run:`), `zizmor` (segurança — action não fixada, permissão
