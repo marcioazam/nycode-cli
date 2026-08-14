@@ -35,7 +35,7 @@ pub use cancel::Cancel;
 pub use context::Context;
 pub use context::commands::{Command, Invocation};
 pub use error::{Error, Result};
-pub use policy::sandbox::{self, Confinement};
+pub use policy::confinement::sandbox::{self, Confinement};
 pub use policy::{AllowAll, Allowlist, Decision, Gate, ReadOnly};
 pub use session::{Store, compact};
 pub use tool::sanitize;

@@ -5,12 +5,10 @@
 //! o modo headless e para o interativo. Fica aqui para que as duas superfícies
 //! sejam só a diferença entre elas.
 
-pub mod catalog;
 mod consent;
 pub mod paths;
 pub mod phases;
-pub mod settings;
-pub mod tuning;
+pub mod provider;
 mod warnings;
 
 pub use phases::Phases;
@@ -94,12 +92,12 @@ async fn discover_catalog(
     client: &Arc<Client>,
     root: &std::path::Path,
     model: &str,
-) -> anyhow::Result<catalog::Catalog> {
-    let catalog = catalog::resolve(client, root).await;
-    if let Some(warning) = catalog::warning(&catalog) {
+) -> anyhow::Result<provider::catalog::Catalog> {
+    let catalog = provider::catalog::resolve(client, root).await;
+    if let Some(warning) = provider::catalog::warning(&catalog) {
         eprintln!("{warning}");
     }
-    catalog::check(&catalog, model).map_err(|reason| anyhow::anyhow!(reason))?;
+    provider::catalog::check(&catalog, model).map_err(|reason| anyhow::anyhow!(reason))?;
     Ok(catalog)
 }
 
@@ -136,8 +134,8 @@ pub async fn prepare(cli: &Cli) -> anyhow::Result<Prepared> {
     // Do usuário, nunca do workspace: um `.nycode/settings.json` do repositório
     // esticaria o próprio prazo e o próprio teto de turnos, que são os limites
     // que existem para contê-lo, e apontaria o provider para onde quisesse.
-    let settings = settings::Settings::discover();
-    let provider = settings::resolve(cli, &settings.provider);
+    let settings = provider::settings::Settings::discover();
+    let provider = provider::settings::resolve(cli, &settings.provider);
     let config = Config::new(&provider.base_url, &credential.secret)?
         .with_model(&provider.model)
         .with_max_tokens(provider.max_tokens)
@@ -169,7 +167,8 @@ pub async fn prepare(cli: &Cli) -> anyhow::Result<Prepared> {
     // Guardada antes de o cliente consumi-la: a troca de modelo precisa da
     // mesma configuração, e reconstruí-la do zero significaria reautenticar.
     let template = config.clone();
-    let (client, sampling) = tuning::tuned_client(cli, &session_id, config, &provider.dialect)?;
+    let (client, sampling) =
+        provider::tuning::tuned_client(cli, &session_id, config, &provider.dialect)?;
 
     let catalog = discover_catalog(&client, &root, &provider.model).await?;
     phases.mark("catalogo");
@@ -182,7 +181,7 @@ pub async fn prepare(cli: &Cli) -> anyhow::Result<Prepared> {
     // A janela é do catálogo descoberto, nunca um padrão embutido: sem número
     // declarado o agente não compara nada, e é assim que ele evita acusar
     // truncamento silencioso num endpoint que só não publica o tamanho.
-    let windows = tuning::windows_of(&catalog.models);
+    let windows = provider::tuning::windows_of(&catalog.models);
     let mut agent = Agent::new(Arc::clone(&backend), ctx)
         .with_system(system)
         .with_cancel(cancel.clone())
@@ -238,7 +237,7 @@ pub async fn prepare(cli: &Cli) -> anyhow::Result<Prepared> {
         root,
         mcp,
         models: catalog.ids().into_iter().map(ToOwned::to_owned).collect(),
-        prices: tuning::prices_of(&catalog.models),
+        prices: provider::tuning::prices_of(&catalog.models),
         windows,
         rebuild: Box::new(move |model| {
             let mut config = template.clone();

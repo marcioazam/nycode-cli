@@ -164,12 +164,14 @@ mod tests {
         // O ponto do nycode e abrir sessao sem configurar endpoint nem catalogo.
         // Desde o FR-9 o padrao nao mora no `clap`: a ausencia aqui e o que
         // deixa o arquivo de configuracao ser consultado antes dele, e quem
-        // decide e `session::settings::resolve`.
+        // decide e `session::provider::settings::resolve`.
         let cli = Cli::try_parse_from(["nycode", "-p", "oi"]).unwrap();
         assert_eq!(cli.base_url, None);
         assert_eq!(cli.model, None);
-        let decided =
-            crate::session::settings::resolve(&cli, &crate::session::settings::Provider::default());
+        let decided = crate::session::provider::settings::resolve(
+            &cli,
+            &crate::session::provider::settings::Provider::default(),
+        );
         assert_eq!(decided.base_url, nycode_ai::Config::DEFAULT_BASE_URL);
         assert_eq!(decided.model, nycode_ai::Config::DEFAULT_MODEL);
         assert_eq!(cli.prompt.as_deref(), Some("oi"));
