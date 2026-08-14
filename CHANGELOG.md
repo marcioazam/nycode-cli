@@ -8,6 +8,19 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Adicionado
 
+- **Lacunas de `docs/` do padrão externo SOTA-2026 fechadas: `GLOSSARY.md`,
+  `business-rules.md`, `THREAT_MODEL.md`, `RUNBOOK.md`, `ONBOARDING.md`,
+  `SLO.md`.** O glossário embutido em `ARCHITECTURE.md` virou
+  [`docs/GLOSSARY.md`](docs/GLOSSARY.md) — único, expandido, referenciado em
+  vez de duplicado. `business-rules.md` não repete a tabela de FR/NFR de
+  `REQUIREMENTS.md`; captura as regras que atravessam requisitos individuais
+  (`BR-N`), como segurança-antes-de-performance e proveniência proibida.
+  `THREAT_MODEL.md` é a vista de alto nível sobre o checklist de segurança
+  já existente da fronteira de confiança, sem duplicar as linhas. `SLO.md`
+  adapta o conceito para um CLI sem serviço no ar: os indicadores são os
+  pisos de performance e cobertura já travados no CI, sem política de error
+  budget (não há burn-rate sem tráfego de produção).
+
 - **Gate de fronteira de arquitetura, allowlist do grafo de dependência
   entre crates (`GATE-15`/`ARCH-04`/`ARCH-05` do padrão SOTA-2026).** O
   Cargo já recusa um ciclo verdadeiro; o que faltava era pegar uma
