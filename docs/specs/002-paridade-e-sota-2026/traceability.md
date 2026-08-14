@@ -12,9 +12,9 @@ Estado em 2026-08-13.
 | # | História | Baldes | Estado |
 |---|---|---|---|
 | 1 | Onda 0 — documento e instrumento | — | fechado |
-| 2 | Onda 1 — o fio para de degradar em silêncio | A1, A2, A3, A5, A7, B1–B9, C1–C3 | aberto |
-| 3 | Onda 2 — contexto e ferramentas | A4, A6, B10–B24, C4, C6 | aberto |
-| 4 | Onda 3 — superfície de comando | B25–B31 | aberto |
+| 2 | Onda 1 — o fio para de degradar em silêncio | A1, A2, A3, A5, A7, B1–B7, C1–C3 | fechado |
+| 3 | Onda 2 — contexto e ferramentas | A4, A6, B9, B10–B24, C4, C6 | aberto |
+| 4 | Onda 3 — superfície de comando | B8, B25–B31 | aberto |
 | 5 | Onda 4 — Agent Client Protocol | C5 | aberto |
 | 6 | Onda 5 — TUI | B32–B39 | aberto |
 
@@ -53,7 +53,7 @@ que o balde A cataloga.
 | C2 — tarifa com faixa e regra de 2× | fechado | [`catalog/mod.rs`](../../../crates/nycode-ai/src/catalog/mod.rs) |
 | C3 — catálogo hidratado em runtime | fechado | `discover_catalog`; nenhuma tabela fixa no binário |
 | A3/C1 — cache fora do Anthropic | fechado com recusa declarada | `CacheRetention` de três estados em [`sampling`](../../../crates/nycode-ai/src/sampling/mod.rs); `prompt_cache_key` cortado a 64 e `prompt_cache_retention` em [`openai/cache.rs`](../../../crates/nycode-ai/src/openai/cache.rs); `ttl: "1h"` no marcador Anthropic. **`prompt_cache_options.mode` fica de fora**: a referência só o emite quando o modelo declara aceitá-lo, e o catálogo daqui ainda não traz capacidade por modelo — emiti-lo às cegas troca economia por falha. Reabre quando o catálogo trouxer capacidades. |
-| B2 — retry em duas camadas | aberto | há retry de transporte; falta a política sobre a resposta |
+| B2 — retry em duas camadas | fechado | os quatro elementos já estavam em [`error.rs`](../../../crates/nycode-ai/src/error.rs), com chamador no laço de [`client.rs`](../../../crates/nycode-ai/src/transport/client.rs): transporte (`is_timeout`/`is_connect`), política sobre a resposta (`Api(api)`), allow-list de transitório (408, 409, 429, 500, 502, 503, 504) e deny-list de limite de conta (`is_exhausted`, conferida **antes** da allow-list, para um 429 de cota não gastar o orçamento). Divergência deliberada e já documentada: erro in-band de stream nunca é retentado, porque o turno começou e ferramentas podem ter rodado. |
 | B3 — `Retry-After` em HTTP-date | fechado | [`retry.rs`](../../../crates/nycode-ai/src/transport/retry.rs) `parse_imf_fixdate`, sem dependência nova |
 | B5 — reparo de JSON parcial de tool call | fechado | [`tool/repair.rs`](../../../crates/nycode-agent/src/tool/repair.rs), consumido em `Turn::tool_calls`; o reparo é anunciado por `repaired_calls` |
 | B6 — coerção contra o schema | fechado | [`tool/coerce.rs`](../../../crates/nycode-agent/src/tool/coerce.rs), aplicado em `dispatch::execute` **antes** do hook e do gate |
