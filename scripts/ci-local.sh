@@ -43,10 +43,37 @@ usage_error() {
 # Um hook que ninguem ativou e pior que nenhum: ele parece proteger. O `git` nao
 # tem como saber que o repositorio traz hooks versionados, entao a ativacao e um
 # comando manual — e a unica forma de ela nao ser esquecida e alguem conferir.
+# Canoniza um caminho sem exigir que ele exista — so o pai precisa existir.
+# `realpath -m` faria isto direto, mas e extensao GNU: o `realpath` do macOS
+# (BSD) nao aceita `-m`, e este script tambem roda na maquina de quem
+# desenvolve, nao so no CI (que e sempre Linux). `cd` no diretorio-pai e
+# recompor com `basename` fica portavel aos dois.
+canon() { # canon <caminho> -> caminho canonico (ou o proprio caminho, se o pai nao existir)
+  local p="$1" dir base pai
+  dir="$(dirname -- "${p}")"
+  base="$(basename -- "${p}")"
+  if pai="$(cd -- "${dir}" 2>/dev/null && pwd -P)"; then
+    printf '%s/%s\n' "${pai}" "${base}"
+  else
+    printf '%s\n' "${p}"
+  fi
+}
+
 check_hooks() {
-  local configured
+  local configured expected resolved
   configured="$(git config --get core.hooksPath || true)"
-  if [[ "${configured}" == "${HOOKS_DIR}" ]]; then
+  expected="$(canon "${ROOT}/${HOOKS_DIR}")"
+  # git aceita caminho absoluto ou relativo para core.hooksPath (relativo a
+  # raiz do worktree); comparar como string crua faz um caminho absoluto para
+  # o mesmo diretorio reprovar por engano.
+  if [[ -n "${configured}" ]]; then
+    if [[ "${configured}" = /* ]]; then
+      resolved="$(canon "${configured}")"
+    else
+      resolved="$(canon "${ROOT}/${configured}")"
+    fi
+  fi
+  if [[ -n "${resolved:-}" && "${resolved}" == "${expected}" ]]; then
     return 0
   fi
   echo "ci-local: os hooks versionados nao estao ativos neste clone." >&2
@@ -100,6 +127,18 @@ fast() {
 }
 
 full() {
+  # Nao roda scripts/ci-local-test.sh como um passo daqui: ao contrario de
+  # coverage/layout/perf, esse auto-teste testa este proprio script — copiando
+  # ci-local.sh para uma raiz sintetica e rodando `--full` de novo dentro dela.
+  # Chamar o auto-teste a partir de full() faria a copia sandboxed tentar
+  # rodar seu proprio auto-teste, que copia de novo, sem fundo. O auto-teste
+  # continua existindo e sendo exigido (ver TDD trail), so nao se chama daqui.
+  #
+  # Primeiro de tudo, porque e o mais barato e o unico cuja falta invalida o
+  # resto: "verde no nivel completo" sem hooks ativos e uma frase que engana
+  # justamente o clone que mais precisava do gate.
+  step "hooks ativos" check_hooks
+
   fast
 
   # Seguranca antes de performance, literal: a politica de dependencia decide

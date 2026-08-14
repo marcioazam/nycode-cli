@@ -226,6 +226,7 @@ também aqui: `cargo deny` roda antes do gate de performance, como o `needs:` do
 CI impõe (NFR-8).
 
 ```bash
+# verifica core.hooksPath == .githooks antes de qualquer trabalho real
 cargo fmt --all --check
 cargo clippy --workspace --all-targets --all-features
 cargo test --workspace --all-features

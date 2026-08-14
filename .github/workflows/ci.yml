@@ -62,8 +62,34 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5.1.0
         with:
           persist-credentials: false
-      - uses: rhysd/actionlint@03d0035246f3e81f36aed592ffb4bebf33a03106  # v1.7.7
-      - run: actionlint
+      # rhysd/actionlint nao publica action.yml/action.yaml (so um Dockerfile na
+      # raiz): um `uses:` cairia no fallback de container action e nao poe o
+      # binario no PATH do runner, entao `run: actionlint` sozinho falharia com
+      # "comando nao encontrado" e derrubaria o job antes de zizmor/pinact/
+      # gitleaks rodarem. O binario e baixado direto do release e o digest e
+      # conferido contra o valor publicado, no mesmo padrao que
+      # perf-baseline.yml ja usa para o binario do concorrente — o script
+      # instalador oficial do projeto nao confere digest nenhum, so teria
+      # movido o problema. v1.7.12 e nao v1.7.7 (a tag que este repositorio
+      # fixava antes desta correcao) porque o dataset de labels de runner do
+      # v1.7.7 e mais velho que `macos-15-intel`, usado em release.yml, e
+      # reprova esse label como desconhecido — verificado rodando as duas
+      # versoes contra os workflows deste repositorio.
+      - name: instala actionlint (digest conferido contra o release)
+        env:
+          ACTIONLINT_VERSION: "1.7.12"
+          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+        run: |
+          curl -fsSL -o actionlint.tar.gz \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          echo "${ACTIONLINT_SHA256}  actionlint.tar.gz" | sha256sum -c -
+          tar xzf actionlint.tar.gz actionlint
+      - run: ./actionlint
+      # Auto-teste do gate local: ci-local.sh nao pode chamar isto de dentro de
+      # full() (a copia sandboxed reentraria em si mesma, sem fundo), entao
+      # roda aqui — o mesmo motivo pelo qual layout-gate-test.sh roda tanto
+      # daqui quanto de dentro de full().
+      - run: scripts/ci-local-test.sh
       - uses: taiki-e/install-action@41f31fbbf48a4bea86678f0220274a1f7d1e2e50  # zizmor
       - run: zizmor --no-progress --collect all --min-severity medium .
       - uses: suzuki-shunsuke/pinact-action@896d595f299e71d65b9d28349d6956abe144390a  # v3.0.0
