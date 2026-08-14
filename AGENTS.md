@@ -15,6 +15,65 @@ Referências permitidas: `pi` (MIT), `grok-build` (Apache-2.0), `codex`
 (Apache-2.0), `opencode` (MIT), `goose` (Apache-2.0), com as obrigações de
 atribuição cumpridas no [`NOTICE`](NOTICE).
 
+## Padrão externo — SOTA-2026 v1.1.0, nível L2
+
+Padrão: SOTA-2026 v1.1.0 (`base-software-rules`, mantido fora deste
+repositório). Nível de conformidade: **L2 (standard)** — o `CONFORMANCE.md`
+do padrão define L2 como "qualquer serviço, biblioteca ou produto do qual
+outra pessoa ou sistema dependa"; este repositório já publica release
+([`release.yml`](.github/workflows/release.yml)) e documenta instalação no
+`README.md` — não é protótipo (L1). Decisão registrada em
+[ADR-0032](docs/architecture/decisions/0032-adota-padrao-externo-sota-2026-nivel-l2.md).
+
+Este repositório não copia o texto do padrão: cita o ID da regra e diz onde
+ela já está satisfeita ou onde ainda falta instrumento. Um número que
+existisse em dois lugares seria, por definição, um dos dois já errado — o
+mesmo princípio que este `AGENTS.md` já aplicava aos próprios gates antes de
+o padrão externo existir.
+
+### O que já satisfaz uma regra do padrão
+
+| Regra deste `AGENTS.md` | ID do padrão | Nota |
+|---|---|---|
+| Cobertura de teste (seção acima) | `GATE-03` / `GATE-02` | Pisos idênticos aos do padrão |
+| Layout — teto de arquivos por diretório (seção acima) | `ADV-01` | Mais rígido — o padrão só torna isso consultivo |
+| Toda action fixada por SHA verificado (ADR-0030) | `SP-06` | Satisfeito |
+| `gitleaks` no `ci-local.sh` (seção "CI local") | `GATE-12` | Satisfeito |
+| `cargo deny check` no `ci-local.sh` | parte de `GATE-13` | Cobre licença e CVE conhecida; não cobre idade mínima de dependência (`SP-04`) |
+| Não negociáveis de código (seção acima) | análogo a `SEC-11` | Satisfeito, mais estrito |
+| NFR-8, segurança antes de performance | filosofia fail-closed do padrão | Sem ID específico |
+| Teto de 500 linhas por arquivo, com ratchet (seção acima) | `GATE-07` / `ARCH-11` | Satisfeito desde 2026-08-14; `RAT-04` cobre o legado de 4 arquivos |
+
+### O que ainda não tem instrumento
+
+Sem gate automatizado hoje — cada um citado no roadmap
+([`docs/product/ROADMAP.md`](docs/product/ROADMAP.md)) com o ID que fecha:
+cobertura de diff (`GATE-01`), mutation score por crate (`GATE-04`),
+complexidade cognitiva e ciclomática por função (`GATE-05`, `GATE-06`),
+duplicação (`GATE-08`), tamanho de PR de agente (`GATE-11`), idade mínima de
+dependência nova (`SP-04`), trilha test-first automatizada (`GATE-16`),
+fronteira de import entre crates (`GATE-15`), e `test_map` gerado (`AI-10`).
+
+### Waiver
+
+Desvio de regra `MUST` do padrão exige waiver formal: ADR em
+`docs/architecture/decisions/` com regra, escopo, razão, controle
+compensatório, dono e expiração de no máximo dois trimestres — mesmo
+mecanismo do `CONFORMANCE.md` do padrão. Vale para os gates que entrarem daqui
+para frente.
+
+**Não vale retroativamente para a cobertura**: a política deste repositório
+de nunca abrir exemption `below-floor` (ver "Cobertura de teste" acima) é
+decisão permanente, não uma exceção temporária — por isso não usa o mecanismo
+de waiver, que por definição expira.
+
+### Spec normativa fora do padrão de template
+
+A spec vive em [`.specs/nycode-rs/spec.md`](.specs/nycode-rs/spec.md), não em
+`docs/specs/`, como o template do padrão sugeriria. Desvio deliberado e
+documentado: mover o arquivo quebraria os links relativos que 31 ADRs já
+fazem para ele. `docs/specs/NNN-slug/` continua para spec de feature.
+
 ## Segurança primeiro, performance em segundo — NFR-8
 
 Quando as duas se opõem e não há forma que atenda às duas, **a segurança define o
@@ -191,6 +250,22 @@ Gate: [`scripts/layout-gate.sh`](scripts/layout-gate.sh). Sem arquivo de exempti
 e isso é decisão — ele nasceu limpo, e a primeira exceção seria a que ensina que
 existe exceção.
 
+## Teto de 500 linhas por arquivo — `GATE-07`/`ARCH-11`
+
+Um arquivo `.rs` comporta no máximo **500** linhas — vale igual para arquivo de
+teste e de produção, porque o teto mede o quanto um agente consegue editar com
+confiança de uma vez, não beleza. Diferente do teto de arquivos por diretório,
+este gate nasceu **com ratchet** (`RAT-04`): quatro arquivos já excediam o teto
+no dia em que o gate entrou, e têm entrada em
+[`scripts/file-length-baseline.txt`](scripts/file-length-baseline.txt) com o
+número de linhas daquele dia. Um arquivo do baseline não pode crescer além do
+registrado, e a entrada cai sozinha — reprovando o gate — quando o arquivo
+encolhe para dentro do teto ou some. Arquivo novo acima do teto não entra
+sozinho no baseline: precisa de linha adicionada à mão, o que força revisão
+humana antes de aceitar mais um arquivo grande.
+
+Gate: [`scripts/file-length-gate.sh`](scripts/file-length-gate.sh).
+
 ## CI local — a definição única de verde
 
 [`scripts/ci-local.sh`](scripts/ci-local.sh) é a definição, e o workflow do
@@ -237,8 +312,10 @@ gitleaks detect --no-banner --redact --exit-code 1
 cargo deny check
 scripts/coverage-gate-test.sh
 scripts/layout-gate-test.sh
+scripts/file-length-gate-test.sh
 scripts/perf-gate-test.sh
 scripts/layout-gate.sh
+scripts/file-length-gate.sh
 cargo llvm-cov --workspace --all-features --json --output-path coverage.json
 scripts/coverage-gate.sh coverage.json
 cargo build --release
@@ -254,3 +331,10 @@ teste em inglês, descrevendo o comportamento protegido e não o método exercit
 `a_tool_failure_is_marked_as_an_error_for_the_model`, não `test_execute`. Um
 comentário explica a restrição que o código não consegue mostrar; nunca narra o
 que a linha seguinte faz.
+
+Rodapé de commit assistido por IA: `Assisted-by: <agente>:<modelo>`, nunca
+`Co-Authored-By`. O campo `Co-Authored-By` certifica autoria humana — usá-lo
+para atribuição de máquina corrompe esse dado (`AI-09` do padrão externo
+adotado acima). Pelo mesmo motivo, nenhum agente adiciona rodapé de sign-off:
+só um humano certifica a origem de uma contribuição (`AI-08`). Vale para
+commits novos; o histórico existente não é reescrito.
