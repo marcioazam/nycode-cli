@@ -19,6 +19,28 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
   `scripts/ci-local.sh --full`, mesma razão das outras duas: a base certa de
   comparação só é conhecida dentro de um pull request.
 
+- **Gate de mutation testing por diff, zero mutante sobrevivente (`GATE-04`
+  do padrão SOTA-2026).** Cobertura pergunta "essa linha rodou?"; mutation
+  testing pergunta "se essa linha estivesse errada, algum teste
+  perceberia?" — pergunta estritamente mais forte, por isso o padrão trata
+  mutation score como a prova e cobertura como o piso. Mutar o workspace
+  inteiro não cabe num gate de PR (2144 mutantes contados no dia em que este
+  gate foi desenhado); `cargo mutants --in-diff` restringe aos mutantes
+  dentro do que o PR de fato tocou, mesmo princípio do gate de cobertura de
+  diff aplicado a um instrumento diferente. Não ratcheta contra o legado do
+  resto do workspace — como o escopo já é só o diff, não há legado dentro do
+  escopo por definição. Roda no job `mutation` do CI, condicionado a
+  `github.event_name == 'pull_request'` — mesma razão das outras exceções: a
+  base certa de comparação só é conhecida dentro de um pull request.
+
+  TDD contra a lógica de decisão pura (sem `cargo`) e, para provar a fiação
+  de ponta a ponta, contra um crate sintético mínimo criado em dois commits
+  — um placeholder e a implementação real — para existir um diff genuíno
+  entre eles; a primeira tentativa usava `HEAD~0`/`HEAD` sobre um único
+  commit, sem diff nenhum para escopar. `taiki-e/install-action@cargo-mutants`
+  fixado por SHA (ADR-0030), com a mesma exceção de `--verify-comment` já
+  registrada em `.pinact.yaml` para as outras ferramentas dessa action.
+
 - **Gate de idade mínima de dependência nova, 30 dias (`SP-04` do padrão
   SOTA-2026).** Só verifica dependência genuinamente nova (nome ausente no
   `Cargo.lock` da base do PR) — bump de versão e crate interno não contam.

@@ -60,8 +60,6 @@ ficou de fora da primeira fatia, cada item já citando o ID de regra que fecha:
 reconciliação do [`AGENTS.md`](../../AGENTS.md) — não repetido aqui para não
 divergir. Esta lista é só o que falta.)*
 
-- **Mutation testing por crate, com ratchet.** `GATE-04`. Precisa de pesquisa
-  de ferramenta — `cargo-mutants` é a candidata óbvia, a confirmar.
 - **Complexidade cognitiva e ciclomática por função.** `GATE-05`, `GATE-06`,
   `ARCH-10`. Sem candidato de ferramenta Rust confirmado ainda.
 - **Duplicação de código, teto de 5%.** `GATE-08`. Idem.

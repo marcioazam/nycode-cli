@@ -48,14 +48,14 @@ o padrão externo existir.
 | Fronteira de arquitetura, allowlist do grafo de crates (seção acima) | `GATE-15` / `ARCH-04` / `ARCH-05` | Satisfeito desde 2026-08-14; fronteira de crate, não de módulo interno — ver a seção |
 | Idade mínima de dependência nova (seção acima) | `SP-04` | Satisfeito desde 2026-08-14; só no CI, mesma exceção do teto de PR |
 | Cobertura de diff (seção acima) | `GATE-01` | Satisfeito desde 2026-08-14; só no CI, piso de 80% |
+| Mutation testing por diff (seção acima) | `GATE-04` | Satisfeito desde 2026-08-14; só no CI, escopo `--in-diff` |
 
 ### O que ainda não tem instrumento
 
 Sem gate automatizado hoje — cada um citado no roadmap
 ([`docs/product/ROADMAP.md`](docs/product/ROADMAP.md)) com o ID que fecha:
-mutation score por crate (`GATE-04`), complexidade cognitiva e ciclomática
-por função (`GATE-05`, `GATE-06`), duplicação (`GATE-08`), e trilha
-test-first automatizada (`GATE-16`).
+complexidade cognitiva e ciclomática por função (`GATE-05`, `GATE-06`),
+duplicação (`GATE-08`), e trilha test-first automatizada (`GATE-16`).
 
 ### Waiver
 
@@ -351,6 +351,27 @@ no job `coverage` do CI, condicionado a `github.event_name == 'pull_request'`
 — mesma razão das outras duas exceções abaixo: a base certa de comparação
 só é conhecida dentro de um pull request.
 
+## Mutation testing por diff — `GATE-04`
+
+Cobertura pergunta "essa linha rodou?"; mutation testing pergunta "se essa
+linha estivesse errada, algum teste perceberia?" — a segunda pergunta é
+estritamente mais forte, e é por isso que o padrão externo trata mutation
+score como a prova, cobertura como o piso. **Nenhum mutante pode sobreviver
+nas linhas que o PR tocou.**
+
+Mutar o workspace inteiro não cabe num gate de PR — 2144 mutantes contados
+no dia em que este gate foi desenhado, cada um exigindo rebuild e retest
+completo. `cargo mutants --in-diff` restringe aos mutantes dentro do que o
+PR de fato tocou, o mesmo princípio de "Cobertura de diff" acima aplicado a
+um instrumento diferente. Não ratcheta contra o legado do resto do
+workspace: como o escopo já é só o diff, não há legado dentro do escopo por
+definição.
+
+Gate: [`scripts/mutation-gate.sh`](scripts/mutation-gate.sh), no job
+`mutation` do CI, condicionado a `github.event_name == 'pull_request'` —
+mesma razão das outras exceções desta seção: a base certa de comparação só
+é conhecida dentro de um pull request.
+
 ## CI local — a definição única de verde
 
 [`scripts/ci-local.sh`](scripts/ci-local.sh) é a definição, e o workflow do
@@ -371,15 +392,15 @@ verde de dez minutos atrás pode ser de outra árvore.
 Um clone sem `core.hooksPath` ativo não tem gate nenhum e parece ter;
 `scripts/ci-local.sh --check-hooks` recusa em voz alta quando esse é o caso.
 
-**Três exceções documentadas:** os gates de "Teto de PR assistido por IA",
-"Idade mínima de dependência" e "Cobertura de diff" (seções acima) rodam só
-no CI, nunca em `--full`. A base certa de comparação é o alvo real do PR
-(`github.base_ref`), que só é conhecido dentro de um pull request — pode não
-ser `main` num PR empilhado sobre outro. Localmente não há como adivinhar
-isso sem arriscar comparar contra a base errada, e um gate que compara
-contra a base errada é pior que nenhum. O segundo tem um motivo a mais:
-verificar existência no registro é rede, e `verify-all`/`--full` são
-deliberadamente sem rede.
+**Quatro exceções documentadas:** os gates de "Teto de PR assistido por IA",
+"Idade mínima de dependência", "Cobertura de diff" e "Mutation testing por
+diff" (seções acima) rodam só no CI, nunca em `--full`. A base certa de
+comparação é o alvo real do PR (`github.base_ref`), que só é conhecido
+dentro de um pull request — pode não ser `main` num PR empilhado sobre
+outro. Localmente não há como adivinhar isso sem arriscar comparar contra a
+base errada, e um gate que compara contra a base errada é pior que nenhum.
+O segundo tem um motivo a mais: verificar existência no registro é rede, e
+`verify-all`/`--full` são deliberadamente sem rede.
 
 **O próprio workflow é auditado**, no nível rápido: `actionlint` (sintaxe e
 `shellcheck` dos `run:`), `zizmor` (segurança — action não fixada, permissão
