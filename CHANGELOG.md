@@ -8,6 +8,25 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Adicionado
 
+- **Gate de teto de 500 linhas por arquivo, com ratchet para o legado
+  (`GATE-07`/`ARCH-11`/`RAT-04` do padrão SOTA-2026).** Quatro arquivos já
+  excediam o teto no dia em que o gate entrou —
+  `crates/nycode-agent/src/agent_test.rs` (775), `.../hooks_test.rs` (705),
+  `crates/nycode-agent/src/agent/dispatch.rs` (515) e
+  `crates/nycode-cli/src/session/mod.rs` (512) — e um gate que bloqueasse
+  direto teria quebrado o CI em arquivos sem relação com a mudança que o
+  introduziu. Em vez disso, [`scripts/file-length-baseline.txt`](scripts/file-length-baseline.txt)
+  registra o tamanho de cada um no dia do baseline: o arquivo pode ficar do
+  jeito que está, não pode crescer, e a entrada cai — reprovando o gate —
+  quando o arquivo encolhe para dentro do teto ou some. Arquivo de teste
+  conta igual a arquivo de produção, diferente do gate de layout: o teto mede
+  o quanto um agente edita com confiança de uma vez, e isso não muda por o
+  arquivo ser teste.
+
+  [`scripts/file-length-gate.sh`](scripts/file-length-gate.sh) e seu
+  auto-teste entram em `scripts/ci-local.sh --full` (job `layout` do CI),
+  antes do próprio gate, no mesmo precedente dos outros gates locais.
+
 - **Conformidade formal com o padrão externo SOTA-2026 (base-software-rules),
   nível L2.**
   ([ADR-0032](docs/architecture/decisions/0032-adota-padrao-externo-sota-2026-nivel-l2.md))

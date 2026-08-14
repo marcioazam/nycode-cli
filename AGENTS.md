@@ -42,17 +42,17 @@ o padrão externo existir.
 | `cargo deny check` no `ci-local.sh` | parte de `GATE-13` | Cobre licença e CVE conhecida; não cobre idade mínima de dependência (`SP-04`) |
 | Não negociáveis de código (seção acima) | análogo a `SEC-11` | Satisfeito, mais estrito |
 | NFR-8, segurança antes de performance | filosofia fail-closed do padrão | Sem ID específico |
+| Teto de 500 linhas por arquivo, com ratchet (seção acima) | `GATE-07` / `ARCH-11` | Satisfeito desde 2026-08-14; `RAT-04` cobre o legado de 4 arquivos |
 
 ### O que ainda não tem instrumento
 
 Sem gate automatizado hoje — cada um citado no roadmap
 ([`docs/product/ROADMAP.md`](docs/product/ROADMAP.md)) com o ID que fecha:
 cobertura de diff (`GATE-01`), mutation score por crate (`GATE-04`),
-complexidade cognitiva e ciclomática por função (`GATE-05`, `GATE-06`), teto
-de 500 linhas por arquivo (`GATE-07`), duplicação (`GATE-08`), tamanho de PR
-de agente (`GATE-11`), idade mínima de dependência nova (`SP-04`), trilha
-test-first automatizada (`GATE-16`), fronteira de import entre crates
-(`GATE-15`), e `test_map` gerado (`AI-10`).
+complexidade cognitiva e ciclomática por função (`GATE-05`, `GATE-06`),
+duplicação (`GATE-08`), tamanho de PR de agente (`GATE-11`), idade mínima de
+dependência nova (`SP-04`), trilha test-first automatizada (`GATE-16`),
+fronteira de import entre crates (`GATE-15`), e `test_map` gerado (`AI-10`).
 
 ### Waiver
 
@@ -250,6 +250,22 @@ Gate: [`scripts/layout-gate.sh`](scripts/layout-gate.sh). Sem arquivo de exempti
 e isso é decisão — ele nasceu limpo, e a primeira exceção seria a que ensina que
 existe exceção.
 
+## Teto de 500 linhas por arquivo — `GATE-07`/`ARCH-11`
+
+Um arquivo `.rs` comporta no máximo **500** linhas — vale igual para arquivo de
+teste e de produção, porque o teto mede o quanto um agente consegue editar com
+confiança de uma vez, não beleza. Diferente do teto de arquivos por diretório,
+este gate nasceu **com ratchet** (`RAT-04`): quatro arquivos já excediam o teto
+no dia em que o gate entrou, e têm entrada em
+[`scripts/file-length-baseline.txt`](scripts/file-length-baseline.txt) com o
+número de linhas daquele dia. Um arquivo do baseline não pode crescer além do
+registrado, e a entrada cai sozinha — reprovando o gate — quando o arquivo
+encolhe para dentro do teto ou some. Arquivo novo acima do teto não entra
+sozinho no baseline: precisa de linha adicionada à mão, o que força revisão
+humana antes de aceitar mais um arquivo grande.
+
+Gate: [`scripts/file-length-gate.sh`](scripts/file-length-gate.sh).
+
 ## CI local — a definição única de verde
 
 [`scripts/ci-local.sh`](scripts/ci-local.sh) é a definição, e o workflow do
@@ -296,8 +312,10 @@ gitleaks detect --no-banner --redact --exit-code 1
 cargo deny check
 scripts/coverage-gate-test.sh
 scripts/layout-gate-test.sh
+scripts/file-length-gate-test.sh
 scripts/perf-gate-test.sh
 scripts/layout-gate.sh
+scripts/file-length-gate.sh
 cargo llvm-cov --workspace --all-features --json --output-path coverage.json
 scripts/coverage-gate.sh coverage.json
 cargo build --release

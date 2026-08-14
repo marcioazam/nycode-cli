@@ -54,8 +54,11 @@ hooks, subagentes, plan mode, troca de modelo e entrada de imagem.
 
 O [ADR-0032](../architecture/decisions/0032-adota-padrao-externo-sota-2026-nivel-l2.md)
 declarou conformidade L2 com o padrão externo `base-software-rules`. O que
-ficou de fora dessa primeira fatia, cada item já citando o ID de regra que
-fecha:
+ficou de fora da primeira fatia, cada item já citando o ID de regra que fecha:
+
+*(O teto de 500 linhas por arquivo, `GATE-07`/`ARCH-11`, saiu desta lista em
+2026-08-14 — ganhou gate com ratchet, ver [`scripts/file-length-gate.sh`](../../scripts/file-length-gate.sh)
+e a seção correspondente do `AGENTS.md`.)*
 
 - **Cobertura de diff.** `GATE-01`.
 - **Mutation testing por crate, com ratchet.** `GATE-04`. Precisa de pesquisa
@@ -63,8 +66,6 @@ fecha:
 - **Complexidade cognitiva e ciclomática por função.** `GATE-05`, `GATE-06`,
   `ARCH-10`. Sem candidato de ferramenta Rust confirmado ainda.
 - **Duplicação de código, teto de 5%.** `GATE-08`. Idem.
-- **Teto de 500 linhas por arquivo, como gate automatizado.** `GATE-07`,
-  `ARCH-11`. Script no padrão de `scripts/layout-gate.sh`.
 - **Tamanho de PR de agente, ≤400 linhas / 15 arquivos.** `GATE-11`, `AI-01`.
   Script sobre `git diff`.
 - **Idade mínima de dependência nova, 30 dias.** `SP-04`, parte de `GATE-13`.
