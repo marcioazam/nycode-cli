@@ -8,6 +8,26 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Adicionado
 
+- **Gate de idade mínima de dependência nova, 30 dias (`SP-04` do padrão
+  SOTA-2026).** Só verifica dependência genuinamente nova (nome ausente no
+  `Cargo.lock` da base do PR) — bump de versão e crate interno não contam.
+  Consulta a API do crates.io (com `User-Agent` identificável, exigido pela
+  política deles) e reprova nome não encontrado no registro ou publicado há
+  menos de 30 dias. Roda no mesmo job `pr-size` do CI, nunca em
+  `scripts/ci-local.sh --full` — a base certa de comparação só é conhecida
+  em contexto de PR, e a checagem é rede por natureza (`audit`, a exceção a
+  "sem rede em verificação").
+
+  TDD contra repositórios git sintéticos e, para a checagem de registro,
+  contra a API real do crates.io (`libc`/`cfg-if`, que nunca saem do ar, em
+  vez de uma dependência "recente" que envelheceria e quebraria o teste).
+  Três defeitos reais encontrados e corrigidos no processo: um bug de teste
+  (saída de `jq` sem `-r` produzia JSON com aspas duplicadas), um bug de
+  produção (`git ls-tree` retorna caminho com prefixo `crates/`, não o nome
+  nu do crate — a exclusão de crate interno não excluía nada) e o mesmo
+  defeito de locale já corrigido em `gen-test-map.sh`: `comm` exige a mesma
+  colação de `sort`, que diverge por locale sem `LC_ALL=C` fixado.
+
 - **Lacunas de `docs/` do padrão externo SOTA-2026 fechadas: `GLOSSARY.md`,
   `business-rules.md`, `THREAT_MODEL.md`, `RUNBOOK.md`, `ONBOARDING.md`,
   `SLO.md`.** O glossário embutido em `ARCHITECTURE.md` virou

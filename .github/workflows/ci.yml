@@ -62,13 +62,14 @@ jobs:
       - run: scripts/architecture-boundary-gate-test.sh
       - run: scripts/architecture-boundary-gate.sh
 
-  # Teto de PR assistido por IA (GATE-11/AI-01 do padrao externo). So aqui, e
-  # nao em scripts/ci-local.sh --full: a base certa de comparacao (o alvo real
-  # do PR, que pode nao ser main num PR empilhado sobre outro) so e conhecida
-  # de verdade dentro do contexto de um pull request -- e' o `github.base_ref`
-  # do evento. Localmente nao ha como decidir isso sem adivinhar, e um gate
-  # que adivinha errado e pior que nenhum. `fetch-depth: 0` porque o gate
-  # precisa do historico completo para achar o merge-base.
+  # Teto de PR assistido por IA (GATE-11/AI-01) e idade minima de dependencia
+  # nova (SP-04). So aqui, e nao em scripts/ci-local.sh --full: a base certa
+  # de comparacao (o alvo real do PR, que pode nao ser main num PR empilhado
+  # sobre outro) so e conhecida de verdade dentro do contexto de um pull
+  # request -- e' o `github.base_ref` do evento. Localmente nao ha como
+  # decidir isso sem adivinhar, e um gate que adivinha errado e pior que
+  # nenhum. `fetch-depth: 0` porque os dois gates precisam do historico
+  # completo para achar o merge-base.
   pr-size:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
@@ -85,6 +86,12 @@ jobs:
           # por quem abre o PR (nome de branch), e um valor assim direto no
           # shell e' injecao de template (zizmor, template-injection). Via
           # env, o bash trata como dado.
+          BASE_REF: ${{ github.base_ref }}
+      # Idade minima de dependencia nova (SP-04). Mesmo job: ja tem o
+      # fetch-depth 0 e a base real do PR que o gate tambem precisa.
+      - run: scripts/dependency-age-gate-test.sh
+      - run: scripts/dependency-age-gate.sh "origin/${BASE_REF}" "HEAD"
+        env:
           BASE_REF: ${{ github.base_ref }}
 
   # Lint do proprio workflow: sem toolchain, sem cache, reprova em segundos.
