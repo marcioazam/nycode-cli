@@ -43,6 +43,7 @@ o padrão externo existir.
 | Não negociáveis de código (seção acima) | análogo a `SEC-11` | Satisfeito, mais estrito |
 | NFR-8, segurança antes de performance | filosofia fail-closed do padrão | Sem ID específico |
 | Teto de 500 linhas por arquivo, com ratchet (seção acima) | `GATE-07` / `ARCH-11` | Satisfeito desde 2026-08-14; `RAT-04` cobre o legado de 4 arquivos |
+| Teto de PR assistido por IA (seção acima) | `GATE-11` / `AI-01` | Satisfeito desde 2026-08-14; só no CI, ver a exceção documentada em "CI local" |
 
 ### O que ainda não tem instrumento
 
@@ -50,9 +51,9 @@ Sem gate automatizado hoje — cada um citado no roadmap
 ([`docs/product/ROADMAP.md`](docs/product/ROADMAP.md)) com o ID que fecha:
 cobertura de diff (`GATE-01`), mutation score por crate (`GATE-04`),
 complexidade cognitiva e ciclomática por função (`GATE-05`, `GATE-06`),
-duplicação (`GATE-08`), tamanho de PR de agente (`GATE-11`), idade mínima de
-dependência nova (`SP-04`), trilha test-first automatizada (`GATE-16`),
-fronteira de import entre crates (`GATE-15`), e `test_map` gerado (`AI-10`).
+duplicação (`GATE-08`), idade mínima de dependência nova (`SP-04`), trilha
+test-first automatizada (`GATE-16`), fronteira de import entre crates
+(`GATE-15`), e `test_map` gerado (`AI-10`).
 
 ### Waiver
 
@@ -266,6 +267,22 @@ humana antes de aceitar mais um arquivo grande.
 
 Gate: [`scripts/file-length-gate.sh`](scripts/file-length-gate.sh).
 
+## Teto de PR assistido por IA — `GATE-11`/`AI-01`
+
+Um PR assistido por IA comporta no máximo **400 linhas alteradas** e **15
+arquivos**. `Cargo.lock` não entra na contagem — é churn mecânico do `cargo`,
+nunca escrito à mão.
+
+Detecção mecânica de "assistido por IA": qualquer commit no intervalo com
+rodapé `Assisted-by:` (ver "Estilo" abaixo) põe o intervalo inteiro sob o
+teto — o lado conservador da regra, e o único jeito mecânico de decidir dado
+que a maioria dos commits deste repositório já carrega o rodapé. PR
+inteiramente humano cai em `ADV-02`, que é só consultivo.
+
+Gate: [`scripts/agent-pr-size-gate.sh`](scripts/agent-pr-size-gate.sh), job
+`pr-size` do CI — **só no CI**, nunca em `scripts/ci-local.sh --full` (ver a
+exceção documentada na seção seguinte).
+
 ## CI local — a definição única de verde
 
 [`scripts/ci-local.sh`](scripts/ci-local.sh) é a definição, e o workflow do
@@ -285,6 +302,13 @@ verde de dez minutos atrás pode ser de outra árvore.
 
 Um clone sem `core.hooksPath` ativo não tem gate nenhum e parece ter;
 `scripts/ci-local.sh --check-hooks` recusa em voz alta quando esse é o caso.
+
+**Uma exceção documentada:** o gate de "Teto de PR assistido por IA" (seção
+acima) roda só no CI, nunca em `--full`. A base certa de comparação é o alvo real do
+PR (`github.base_ref`), que só é conhecido dentro de um pull request — pode
+não ser `main` num PR empilhado sobre outro. Localmente não há como adivinhar
+isso sem arriscar comparar contra a base errada, e um gate que compara contra
+a base errada é pior que nenhum.
 
 **O próprio workflow é auditado**, no nível rápido: `actionlint` (sintaxe e
 `shellcheck` dos `run:`), `zizmor` (segurança — action não fixada, permissão

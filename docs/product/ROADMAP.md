@@ -56,9 +56,12 @@ O [ADR-0032](../architecture/decisions/0032-adota-padrao-externo-sota-2026-nivel
 declarou conformidade L2 com o padrão externo `base-software-rules`. O que
 ficou de fora da primeira fatia, cada item já citando o ID de regra que fecha:
 
-*(O teto de 500 linhas por arquivo, `GATE-07`/`ARCH-11`, saiu desta lista em
-2026-08-14 — ganhou gate com ratchet, ver [`scripts/file-length-gate.sh`](../../scripts/file-length-gate.sh)
-e a seção correspondente do `AGENTS.md`.)*
+*(Dois itens saíram desta lista em 2026-08-14: o teto de 500 linhas por
+arquivo, `GATE-07`/`ARCH-11` — ganhou gate com ratchet, ver
+[`scripts/file-length-gate.sh`](../../scripts/file-length-gate.sh) — e o teto
+de PR assistido por IA, `GATE-11`/`AI-01` — ganhou gate só no CI, ver
+[`scripts/agent-pr-size-gate.sh`](../../scripts/agent-pr-size-gate.sh). Ambos
+com a seção correspondente no `AGENTS.md`.)*
 
 - **Cobertura de diff.** `GATE-01`.
 - **Mutation testing por crate, com ratchet.** `GATE-04`. Precisa de pesquisa
@@ -66,8 +69,6 @@ e a seção correspondente do `AGENTS.md`.)*
 - **Complexidade cognitiva e ciclomática por função.** `GATE-05`, `GATE-06`,
   `ARCH-10`. Sem candidato de ferramenta Rust confirmado ainda.
 - **Duplicação de código, teto de 5%.** `GATE-08`. Idem.
-- **Tamanho de PR de agente, ≤400 linhas / 15 arquivos.** `GATE-11`, `AI-01`.
-  Script sobre `git diff`.
 - **Idade mínima de dependência nova, 30 dias.** `SP-04`, parte de `GATE-13`.
   Script contra a API do crates.io.
 - **Trilha test-first automatizada** — commit RED só toca teste, commit

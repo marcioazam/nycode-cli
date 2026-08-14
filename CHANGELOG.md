@@ -8,6 +8,25 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Adicionado
 
+- **Gate de teto de PR assistido por IA (`GATE-11`/`AI-01` do padrão
+  SOTA-2026).** Detecção mecânica de "assistido por IA": qualquer commit no
+  intervalo com rodapé `Assisted-by:` põe o PR inteiro sob o teto de 400
+  linhas alteradas / 15 arquivos (`Cargo.lock` excluído — churn mecânico do
+  `cargo`). Roda só no job `pr-size` do CI, nunca em
+  `scripts/ci-local.sh --full` — exceção documentada, porque a base certa de
+  comparação (o alvo real do PR) só é conhecida dentro do contexto de um
+  pull request via `github.base_ref`, e pode não ser `main` num PR
+  empilhado sobre outro.
+
+  Rodando o gate contra a própria PR desta fatia de trabalho
+  ([#8](https://github.com/marcioazam/nycode-cli/pull/8)) confirmou que ela
+  já excede o teto — 619 linhas em dois commits, antes mesmo deste terceiro.
+  Achado esperado e não corrigido retroativamente: dividir o histórico já
+  publicado exigiria reescrita, e o próprio ADR-0032 previu PRs subsequentes
+  para o que não coubesse na primeira fatia. A partir daqui, cada item novo
+  do roadmap entra numa PR própria — este, por exemplo, foi empilhado numa
+  branch separada em vez de crescer a PR #8.
+
 - **Gate de teto de 500 linhas por arquivo, com ratchet para o legado
   (`GATE-07`/`ARCH-11`/`RAT-04` do padrão SOTA-2026).** Quatro arquivos já
   excediam o teto no dia em que o gate entrou —
