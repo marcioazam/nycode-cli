@@ -8,6 +8,20 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Adicionado
 
+- **Waiver formal para `GATE-16` do padrão SOTA-2026 ([ADR-0033](docs/architecture/decisions/0033-gate-16-fica-sem-instrumento-conflito-com-hook-e-squash-merge.md)).**
+  Uma implementação foi desenhada (classificação por linha, distinguindo
+  `#[cfg(test)]` inline de produção, já que o idioma dominante deste
+  workspace mistura os dois no mesmo arquivo) e revisada
+  adversarialmente antes de qualquer commit. A revisão achou que o gate,
+  como o guia do padrão especifica, conflita com duas políticas que este
+  repositório já adotou: o hook `pre-commit` roda `cargo test` e por isso
+  já impede um commit RED (teste quebrado) de existir sem `--no-verify`,
+  proibido pelas regras deste projeto; e squash-merge apaga a separação
+  RED/GREEN de `main` no momento do merge — mesmo uma implementação
+  correta nunca alcançaria "checável meses depois", o objetivo declarado
+  do gate. `GATE-16` continua sem instrumento até uma das duas políticas
+  mudar deliberadamente; waiver expira em 2027-02-14.
+
 - **Gate de cobertura de diff, piso de 80% (`GATE-01` do padrão SOTA-2026).**
   Mede só as linhas de produção adicionadas ou modificadas pelo PR, não o
   agregado do projeto — um arquivo grande e bem testado absorve, no
