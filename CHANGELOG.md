@@ -8,6 +8,44 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Adicionado
 
+- **CI endurecido para SOTA 2026: 52 achados medidos, zero em severidade média
+  e alta.** O `AGENTS.md` já dizia que artefato de terceiro verifica digest
+  antes de executar, com o esperado fixado em arquivo versionado —
+  `perf-baseline.yml` cumpre isso à risca. E os três workflows executavam doze
+  referências a action de terceiro sem fixar nenhuma. `zizmor` mediu o custo
+  real: 31 `unpinned-uses` de severidade alta, 10 `artipacked` (credencial
+  persistida no checkout), 10 `excessive-permissions`, 1 `cache-poisoning`
+  (cache restaurado no workflow que publica). `actionlint` achou uma perna de
+  release que quebraria hoje: `macos-13` é label de runner aposentado.
+
+  Corrigido: toda `uses:` é SHA de 40 caracteres com comentário verificado
+  ([ADR-0030](docs/architecture/decisions/0030-toda-action-de-terceiro-e-fixada-por-sha-verificado.md)),
+  `persist-credentials: false` em todo checkout, `permissions: contents: read`
+  no topo de cada workflow com escalada só onde publica, cache removido do
+  `release.yml`, `macos-13` → `macos-15-intel`. Três exceções documentadas em
+  `.pinact.yaml`, não silenciosas: `dtolnay/rust-toolchain@stable` e as tags
+  móveis de `taiki-e/install-action` usam, por desenho do mantenedor upstream,
+  um esquema sem tag semver — continuam fixadas por SHA, só sem verificação
+  automática contra uma tag que não existe.
+
+  Também novo: `merge_group` no gatilho (a fila de merge é a peça do lado
+  remoto que impõe o mesmo bloqueio que os hooks locais impõem do lado do
+  desenvolvedor), `concurrency` com cancelamento, `timeout-minutes` por job, e
+  `.github/dependabot.yml` para manter os pins vivos — fixar sem atualizador
+  trocaria um risco por outro.
+
+  As quatro ferramentas — `actionlint`, `zizmor`, `pinact`, `gitleaks` — agora
+  rodam no nível rápido de [`ci-local.sh`](scripts/ci-local.sh) e no job
+  `workflows` do CI, reprovando se ausentes. `zizmor.yml` nasce sem `rules:`
+  de supressão, e a política é que continue assim: um achado médio ou alto
+  vira correção, não entrada de exceção.
+
+  Fica de fora, registrado e não silencioso: `softprops/action-gh-release`
+  poderia virar `gh release create` (achado informacional, sugestão de
+  redução de dependência, não correção de segurança) — fora do escopo desta
+  rodada porque reescreveria comportamento do caminho de publicação, e essa
+  decisão merece escrutínio próprio.
+
 - **O inventário do que a referência entrega e este repositório não.** Sessenta
   deltas, lidos do `pi` no commit que o [`NOTICE`](NOTICE) fixa, triados em quatro
   baldes na [spec 002](docs/specs/002-paridade-e-sota-2026/spec.md): o que se
@@ -41,6 +79,94 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
   não-escopo. O que **não** foi reaberto é a sessão remota sobre socket — o modo
   maduro do ACP é subprocesso local sobre entrada e saída padrão, sem socket
   escutando e sem decisão de autenticação de rede pendente.
+
+- **CI local com bloqueio de merge, e uma definição só de verde.** Cobertura e
+  performance já falhavam fechado; layout, ordem test-first e documentação eram
+  convenção escrita e mais nada. Convenção sem instrumento é decoração — o mesmo
+  argumento que este repositório usou para fechar o gate de paridade.
+
+  [`scripts/ci-local.sh`](scripts/ci-local.sh) tem dois níveis: o rápido
+  (formatação, clippy, testes, ~1 min) roda a cada commit, e o completo — a
+  sequência inteira do `AGENTS.md` — é exigido no merge e no push, imposto pelos
+  hooks versionados em `.githooks/`. O hook **executa** o CI em vez de confiar em
+  resultado anterior: um verde de dez minutos atrás pode ser de outra árvore.
+
+  A ativação é manual por clone (`git config core.hooksPath .githooks`) porque o
+  git não tem como saber que o repositório traz hooks. `--check-hooks` recusa em
+  voz alta quando não estão ativos: um hook que ninguém ativou é pior que nenhum,
+  porque parece proteger.
+
+- **Teto de sete arquivos de código por diretório, com gate.** Duas pastas já
+  passavam: `policy` e `session`, com oito cada. As duas foram divididas por
+  responsabilidade antes de o gate entrar — `policy/confinement` reúne o que
+  decide até onde o comando alcança depois de começar, e `session/provider` reúne
+  quem serve o modelo e como o pedido chega até ele.
+
+  Uma subpasta por diretório, e não duas: o corte mais simples que resolve o
+  gatilho. E segue o idioma dominante daqui, `foo.rs` mais `foo/`, que nove
+  módulos já usam — forçar `foo/mod.rs` renomearia nove módulos contra o estilo
+  da casa sem ganhar nada.
+
+  [`scripts/layout-gate.sh`](scripts/layout-gate.sh) nasce sem arquivo de
+  exemption, e a falha nomeia o diretório, lista os arquivos e avisa que nome
+  vago (`utils`, `helpers`, `common`) não resolve — uma falha que só diz
+  "estourou" empurra justamente para a gaveta.
+
+- **Argumento de ferramenta que chega pela metade é reparado, e o reparo é dito.**
+  Um `tool_use` viaja como fragmentos de JSON. Quando o turno era cortado — prazo,
+  gateway que parou de enviar, cancelamento — o que sobrava virava `Value::Null`
+  **em silêncio**, e a ferramenta recebia nulo sem que nada registrasse que houve
+  truncamento.
+
+  O reparo é conservador, e nisto diverge da referência. Fechar a aspa de uma
+  string interrompida é o reparo óbvio e é o errado: `{"path":"src/ma` viraria
+  `{"path":"src/ma"}`, e a escrita aconteceria num caminho que o modelo nunca
+  pediu — com cara de pedido legítimo. Aqui o valor que estava sendo escrito é
+  **descartado**, não completado: o que chegou inteiro se aproveita, o que faltou
+  fica faltando, e a ferramenta recusa por argumento ausente, que é uma falha que
+  se lê. E o agente avisa que reparou, porque um stream truncado não pode virar
+  uma chamada de aparência normal — o usuário atribuiria ao modelo uma decisão
+  que foi do transporte.
+
+- **Valor certo no tipo errado deixa de virar o padrão em silêncio.** Um modelo
+  emite `{"limit": "10"}` com alguma frequência. As ferramentas leem com `as_u64`,
+  que devolvia `None`, e caíam no padrão sem dizer nada: o modelo pedia dez
+  linhas, recebia outra coisa, e nada no turno registrava a diferença.
+
+  Agora o argumento é lido no tipo que o schema declara — número em texto,
+  booleano em texto, escalar onde cabe lista. A coerção não inventa valor:
+  `"talvez"` continua não sendo número e a ferramenta recusa como recusaria antes,
+  e `10.5` num campo inteiro fica como está em vez de ser arredondado por conta
+  própria.
+
+  Ela roda **antes** do hook e do gate, e a ordem é de segurança e não de
+  conveniência: o que a política inspeciona e o que o usuário aprova precisa ser
+  exatamente o que roda. Coagir depois trocaria o argumento sob uma decisão já
+  tomada.
+
+- **Retenção de cache passa a ter três estados, e a longa passa a ser pedível.**
+  `Sampling` carregava um booleano: ligado ou desligado. A retenção estendida é
+  um terceiro estado, com outra tarifa — e o repositório já sabia disso do lado
+  errado. `Usage::cache_write_1h_tokens` existia, `catalog::cost` já o cobrava ao
+  dobro da tarifa de entrada, e **nada no repositório conseguia pedir a retenção
+  que produziria esse número**: o modelo de custo tratava um estado inalcançável.
+
+  Agora `CacheRetention` tem `Off`, `Short` e `Long`. O dialeto Anthropic leva a
+  retenção dentro do próprio marcador (`ttl: "1h"`); os dois dialetos OpenAI a
+  declaram ao lado da chave (`prompt_cache_retention: "24h"`). O padrão continua
+  sendo a curta: a longa se paga em sessão com intervalos grandes entre turnos, e
+  ligá-la por omissão cobraria de todo mundo o que serve a poucos.
+
+  A chave também passou a ser cortada ao limite de 64 caracteres do formato, e
+  **pelo começo**: um id de sessão termina no que o distingue, e cortar a cauda
+  colidiria duas sessões de mesmo prefixo num balde só — o erro exato que a chave
+  existe para evitar.
+
+  Fica de fora, declarado: `prompt_cache_options.mode`. Ele serve para desligar o
+  cache implícito, e a referência só o emite quando o **modelo** declara aceitá-lo
+  — modelos mais antigos recusam o pedido inteiro por causa dele. O catálogo deste
+  repositório ainda não declara capacidade por modelo; emiti-lo às cegas trocaria
+  uma economia por uma falha. Reabre quando o catálogo trouxer capacidades.
 
 - **`Retry-After` em data HTTP deixa de ser descartado.** A RFC 9110 admite as
   duas formas e provedores grandes usam a data; este cliente lia só os segundos.
@@ -103,6 +229,19 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
   a partir de um diretório temporário e passou a falhar quando `TMPDIR` ficou oito
   caracteres mais longo que `/tmp` — a mesma falha que num terminal real teria
   passado por decoração.
+
+- **O desligamento por entrada padrão do fixture matava o gate de paridade.** O
+  fixture passou a encerrar ao ver o fim da entrada padrão — o que resolve a
+  cobertura, porque processo morto por sinal não grava perfil. Só que o
+  `parity-gate.sh` sobe o fixture em segundo plano, e ali a entrada padrão é
+  `/dev/null`: EOF na primeira leitura. O gateway morria depois de anunciar a
+  porta e antes do primeiro pedido, e o gate acusava o candidato de falha de
+  transporte que era do próprio instrumento — a forma mais cara de erro num gate,
+  porque a acusação parece vir do que ele deveria medir.
+
+  O desligamento negociado agora é pedido por `--shutdown-on-stdin`, e a bateria
+  de testes o pede. Quem sobe o fixture em segundo plano não precisa saber que
+  existe uma entrada padrão para segurar.
 
 - **O gateway de fixture aparecia com zero por cento de cobertura sem ter deixado
   de ser testado.** A bateria o desligava com sinal, e um processo morto por sinal

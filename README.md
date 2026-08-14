@@ -140,12 +140,27 @@ no binário e apagaria o ganho que motiva o projeto. Ver
 
 ## Desenvolvimento
 
+**Primeiro comando num clone novo** — sem ele os gates existem e não valem:
+
 ```bash
-cargo test --workspace --all-features
-cargo clippy --workspace --all-targets --all-features
+git config core.hooksPath .githooks
 ```
 
-Os três gates que fecham o CI:
+A partir daí, `pre-commit` roda o nível rápido do CI local e `pre-merge-commit`
+roda o completo. **Merge sem o completo verde é proibido.**
+
+```bash
+scripts/ci-local.sh --fast    # ~1 min: formatacao, clippy, testes
+scripts/ci-local.sh --full    # a sequencia inteira, exigida no merge
+```
+
+Os gates que fecham o CI, e que o `--full` roda em ordem:
+
+```bash
+# Layout: no maximo sete arquivos de codigo por diretorio, sem exemption.
+scripts/layout-gate-test.sh
+scripts/layout-gate.sh
+```
 
 ```bash
 # Cobertura: 95% agregado e 90% por arquivo de producao, exemptions so encolhem.

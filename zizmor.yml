@@ -1,0 +1,12 @@
+# zizmor - https://docs.zizmor.sh/configuration/
+#
+# Este arquivo nao suprime achado nenhum, e isso e a politica. Os tres
+# workflows deste repositorio ficam limpos em severidade media e alta sem
+# excecao — o gate compara contra `--min-severity medium`, e ficar vermelho e
+# a resposta certa quando um achado desses aparecer, nao uma entrada aqui.
+#
+# Se um achado legitimo e inevitavel aparecer um dia, a resposta e um ADR de
+# risco aceito, com a supressao datada e a razao dentro do proprio `rules:`
+# abaixo — nunca uma supressao muda ou sem explicacao. Uma supressao velha e
+# pior que nenhuma: ela cobre em silencio um achado novo no mesmo arquivo.
+rules: {}

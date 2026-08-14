@@ -57,7 +57,7 @@ pub fn decorate(body: &mut Value, sampling: &Sampling, breakpoint: Option<usize>
         );
     }
 
-    if !sampling.cache_prefix {
+    if !sampling.cache.is_on() {
         return;
     }
 
@@ -68,12 +68,12 @@ pub fn decorate(body: &mut Value, sampling: &Sampling, breakpoint: Option<usize>
         let block = json!([{
             "type": "text",
             "text": text,
-            "cache_control": sampling::ephemeral(),
+            "cache_control": sampling::marker(sampling.cache),
         }]);
         object.insert("system".to_owned(), block);
     }
 
-    mark_tool_prefix(object, breakpoint);
+    mark_tool_prefix(object, breakpoint, sampling.cache);
 }
 
 /// Põe o marcador na ferramenta que fecha o prefixo estável.
@@ -86,14 +86,18 @@ pub fn decorate(body: &mut Value, sampling: &Sampling, breakpoint: Option<usize>
 /// não sobe; com o marcador no fim, conectar um servidor mudaria o que está
 /// dentro do prefixo e o cache erraria o turno inteiro. Com ele na última
 /// estável, o que varia fica depois do corte e não conta.
-fn mark_tool_prefix(object: &mut serde_json::Map<String, Value>, breakpoint: Option<usize>) {
+fn mark_tool_prefix(
+    object: &mut serde_json::Map<String, Value>,
+    breakpoint: Option<usize>,
+    retention: sampling::CacheRetention,
+) {
     let Some(index) = breakpoint else {
         return;
     };
     if let Some(Value::Array(tools)) = object.get_mut("tools")
         && let Some(Value::Object(marked)) = tools.get_mut(index)
     {
-        marked.insert("cache_control".to_owned(), sampling::ephemeral());
+        marked.insert("cache_control".to_owned(), sampling::marker(retention));
     }
 }
 

@@ -32,6 +32,7 @@
 crates/nycode-agent/src/lib.rs no-statements so declaracoes de modulo e reexports
 crates/nycode-agent/src/mcp/mod.rs no-statements so declaracoes de modulo e reexports
 crates/nycode-agent/src/policy/mod.rs no-statements so declaracoes de modulo e reexports
+crates/nycode-agent/src/policy/confinement.rs no-statements so declaracoes de modulo e reexports
 crates/nycode-agent/src/session/mod.rs no-statements so declaracoes de modulo e reexports
 crates/nycode-agent/src/tools/search/mod.rs no-statements so declaracoes de modulo e reexports
 crates/nycode-ai/src/anthropic/mod.rs no-statements so declaracoes de modulo e reexports
@@ -39,6 +40,7 @@ crates/nycode-ai/src/lib.rs no-statements so declaracoes de modulo e reexports
 crates/nycode-ai/src/openai/mod.rs no-statements so declaracoes de modulo e reexports
 crates/nycode-ai/src/transport/mod.rs no-statements so declaracoes de modulo e reexports
 crates/nycode-cli/src/invocation/mod.rs no-statements so declaracoes de modulo e reexports
+crates/nycode-cli/src/session/provider.rs no-statements so declaracoes de modulo e reexports
 crates/nycode-mcp/src/lib.rs no-statements so declaracoes de modulo e reexports
 crates/nycode-parity/src/lib.rs no-statements so declaracoes de modulo e reexports
 crates/nycode-tui/src/lib.rs no-statements so declaracoes de modulo e reexports

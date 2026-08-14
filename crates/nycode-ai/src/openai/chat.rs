@@ -64,10 +64,11 @@ impl Dialect for Chat {
         // O cache deste dialeto e por chave, nao por ponto de corte: o backend
         // agrupa pedidos que declaram a mesma chave e reaproveita o prefixo
         // comum. Sem ela o NFR-7 valia so para o dialeto Anthropic.
-        if sampling.cache_prefix
-            && let Some(key) = sampling.cache_key.as_deref()
-        {
+        if let Some(key) = super::cache::key_of(sampling) {
             body["prompt_cache_key"] = json!(key);
+        }
+        if let Some(retention) = super::cache::retention_of(sampling) {
+            body["prompt_cache_retention"] = json!(retention);
         }
         body
     }
@@ -248,6 +249,36 @@ mod tests {
                 .without_cache(),
         );
         assert!(body.get("prompt_cache_key").is_none());
+    }
+
+    #[test]
+    fn long_retention_is_asked_for_on_the_wire_and_not_only_accounted_for() {
+        // `Usage::cache_write_1h_tokens` ja existia e `catalog::cost` ja o
+        // cobrava ao dobro; nada no repositorio conseguia pedir a retencao
+        // longa. A contabilidade tratava um estado inalcancavel.
+        let body = body_with(
+            &crate::sampling::Sampling::default()
+                .with_cache_key("sessao-1")
+                .with_long_cache(),
+        );
+        assert_eq!(body["prompt_cache_retention"], "24h");
+    }
+
+    #[test]
+    fn short_retention_says_nothing_instead_of_naming_the_default() {
+        let body = body_with(&crate::sampling::Sampling::default().with_cache_key("sessao-1"));
+        assert!(body.get("prompt_cache_retention").is_none());
+    }
+
+    #[test]
+    fn an_oversized_cache_key_is_clamped_instead_of_being_refused_by_the_backend() {
+        // O formato limita a chave a 64 caracteres. Um id de sessao mais longo
+        // faria o backend recusar o pedido inteiro por causa de um campo que
+        // existe para economizar.
+        let body = body_with(
+            &crate::sampling::Sampling::default().with_cache_key("s".repeat(200).as_str()),
+        );
+        assert_eq!(body["prompt_cache_key"].as_str().unwrap().len(), 64);
     }
 
     #[test]

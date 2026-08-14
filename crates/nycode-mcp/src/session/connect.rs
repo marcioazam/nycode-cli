@@ -98,7 +98,7 @@ fn stdio_command(
     // herdar o ambiente do harness seria entregar a credencial a um processo
     // que o repositório escolheu. O que ele precisa além do mínimo está no
     // `.mcp.json`, que é onde a decisão fica visível para quem revisa.
-    nycode_agent::policy::environment::clear(&mut cmd);
+    nycode_agent::policy::confinement::environment::clear(&mut cmd);
     // O declarado vem por último e vence: é o que o usuário escreveu.
     for (key, value) in env {
         cmd.env(key, value);

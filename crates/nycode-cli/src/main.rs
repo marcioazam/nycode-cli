@@ -161,7 +161,10 @@ fn sweep_on_termination(headless: bool) {
         match tokio::signal::unix::signal(kind) {
             Ok(mut stream) => drop(tokio::spawn(async move {
                 let _ = stream.recv().await;
-                std::process::exit(after_signal(nycode_agent::policy::process::shared(), raw));
+                std::process::exit(after_signal(
+                    nycode_agent::policy::confinement::process::shared(),
+                    raw,
+                ));
             })),
             // Não conseguir observar não derruba a sessão: o efeito é o de
             // antes, com o sinal matando o processo direto.
@@ -196,7 +199,10 @@ fn terminating(headless: bool) -> Vec<tokio::signal::unix::SignalKind> {
 /// O registro é parâmetro, e não a instância do processo, porque varrer aquela
 /// dentro da suíte mataria os filhos dos testes que estivessem correndo ao
 /// lado. É a costura que torna esta linha exercitável.
-fn after_signal(registry: &nycode_agent::policy::process::Registry, signal: i32) -> i32 {
+fn after_signal(
+    registry: &nycode_agent::policy::confinement::process::Registry,
+    signal: i32,
+) -> i32 {
     let ended = registry.sweep();
     if ended > 0 {
         // Terminar processo do usuário em silêncio esconderia justamente o
@@ -388,7 +394,7 @@ mod tests {
         // O registro so vale se a varredura do encerramento de fato o esvaziar:
         // um filho destacado que sobra ao harness segue escrevendo no workspace
         // que o modelo estava inspecionando (ADR-0023).
-        let registry = nycode_agent::policy::process::Registry::default();
+        let registry = nycode_agent::policy::confinement::process::Registry::default();
         let mut command = tokio::process::Command::new("sleep");
         command
             .arg("30")
@@ -397,7 +403,7 @@ mod tests {
             .kill_on_drop(true);
         // Destacado como os filhos de verdade: sem o grupo proprio a varredura
         // nao teria o que sinalizar, e o teste passaria sem exercitar nada.
-        nycode_agent::policy::process::detach(&mut command);
+        nycode_agent::policy::confinement::process::detach(&mut command);
         let mut child = command.spawn().unwrap();
         let tracked = registry.track(&child);
         assert_eq!(registry.pending(), 1);
@@ -437,7 +443,7 @@ mod tests {
         // O caminho normal: cada baixa ja saiu sozinha. O codigo de saida
         // continua sendo o do sinal, senao um script nao distingue "terminado"
         // de "falhou".
-        let registry = nycode_agent::policy::process::Registry::default();
+        let registry = nycode_agent::policy::confinement::process::Registry::default();
         assert_eq!(after_signal(&registry, 2), 130);
         assert_eq!(after_signal(&registry, 1), 129);
     }
