@@ -43,13 +43,14 @@ readonly PROBE_RSS_FLOOR_KB=14336 # 14 MiB
 # Por metrica, e nao uniformes, porque as razoes medidas diferem por quase cinco
 # vezes entre elas: 21,8x em tempo contra 4,4x em memoria. Uma margem uniforme
 # de 5x reprovaria hoje em memoria e seria frouxa em tempo.
-# Startup em /3 e nao em /5 porque a razao tem que sobreviver a duas medicoes
-# feitas em momentos diferentes: a nossa, aqui, e a do concorrente, no workflow
-# agendado. Tomando o pior dos nossos minimos (560us) contra o melhor dos dele
-# (3446us), a razao observada no pior caso e 6,2x — um piso em /5 deixaria 1,2x
-# de folga e reprovaria por ruido, enquanto /3 deixa 2x. A folga real e maior;
-# o que /3 protege e a margem, nao a media.
-readonly STARTUP_RATIO=3
+# Startup em /2 e nao em /3 desde o ADR-0031: a primeira execucao real de CI
+# deste repositorio mediu 1163-1178us (minimo de 200, no runner do GitHub
+# Actions) contra um piso de 1148us em /3 — o runner e quase 3x mais lento
+# aqui do que a maquina de desenvolvimento (386-410us), um salto maior que o
+# pior caso local (560us) que motivou o /3 original. /2 da 1723us, cerca de
+# 46% de folga sobre o pior valor de CI observado. Ainda assim menos folga que
+# o /3 original dava sobre o mercado — o ADR-0031 registra a troca.
+readonly STARTUP_RATIO=2
 readonly RSS_RATIO=2
 readonly BINARY_RATIO=5
 
