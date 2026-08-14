@@ -85,11 +85,34 @@ impl Turn {
         self.stop_reason.as_ref()
     }
 
+    /// Nomes das chamadas cujos argumentos precisaram de reparo.
+    ///
+    /// Existe para que o reparo seja dito. Recuperar o que dá de um turno
+    /// cortado é o comportamento certo; fazê-lo sem avisar transformaria um
+    /// stream truncado numa chamada de aparência normal, e o usuário atribuiria
+    /// ao modelo uma decisão que foi do transporte.
+    #[must_use]
+    pub fn repaired_calls(&self) -> Vec<String> {
+        self.completed
+            .iter()
+            .filter_map(|id| self.partial.get(id))
+            .filter(|call| {
+                !call.json.trim().is_empty()
+                    && serde_json::from_str::<Value>(&call.json).is_err()
+                    && crate::tool::repair::repair(&call.json).is_some()
+            })
+            .map(|call| call.name.clone())
+            .collect()
+    }
+
     /// Chamadas prontas para execução, na ordem em que o modelo as pediu.
     ///
-    /// Uma chamada cujos argumentos não formam JSON válido é devolvida com
-    /// `input` nulo e o erro de parse chega ao modelo como resultado, em vez de
-    /// derrubar o turno: o modelo consegue corrigir a própria chamada.
+    /// Argumentos que chegaram pela metade são reparados — o que veio inteiro
+    /// se aproveita, o que estava sendo escrito se descarta. Quando nem isso
+    /// produz JSON, `input` fica nulo e o erro de parse chega ao modelo como
+    /// resultado, em vez de derrubar o turno: o modelo corrige a própria
+    /// chamada. Ver [`crate::tool::repair`] para por que o descarte é mais
+    /// seguro que completar a string interrompida.
     #[must_use]
     pub fn tool_calls(&self) -> Vec<ToolCall> {
         let mut calls: Vec<_> = self
@@ -109,7 +132,7 @@ impl Turn {
                 input: if call.json.trim().is_empty() {
                     Value::Object(serde_json::Map::new())
                 } else {
-                    serde_json::from_str(&call.json).unwrap_or(Value::Null)
+                    crate::tool::repair::repair(&call.json).unwrap_or(Value::Null)
                 },
             })
             .collect()
@@ -279,20 +302,58 @@ mod tests {
         );
     }
 
-    #[test]
-    fn malformed_arguments_surface_as_null_rather_than_panicking() {
-        let turn = turn_from(vec![
+    /// Um turno com uma unica chamada, cujos argumentos sao o texto dado.
+    fn call_with(json: &str) -> Turn {
+        turn_from(vec![
             StreamEvent::ToolCallStart {
                 id: "t1".into(),
                 name: "read".into(),
             },
             StreamEvent::ToolCallDelta {
                 id: "t1".into(),
-                json_fragment: "{isto nao e json".into(),
+                json_fragment: json.into(),
             },
             StreamEvent::ToolCallEnd { id: "t1".into() },
-        ]);
+        ])
+    }
+
+    #[test]
+    fn malformed_arguments_never_reach_the_tool_as_a_value_nobody_asked_for() {
+        // Nem `Null` nem objeto vazio executam nada: os dois fazem a ferramenta
+        // recusar por argumento ausente, que e uma falha que se le. O que nao
+        // pode acontecer e um campo aparecer com valor que o modelo nao enviou.
+        let turn = call_with("{isto nao e json");
+        assert!(
+            turn.tool_calls()[0].input.get("path").is_none(),
+            "{:?}",
+            turn.tool_calls()[0].input
+        );
+    }
+
+    #[test]
+    fn text_that_is_not_json_at_all_stays_null() {
+        let turn = call_with("isto nao e json");
         assert_eq!(turn.tool_calls()[0].input, Value::Null);
+    }
+
+    #[test]
+    fn a_truncated_argument_keeps_what_arrived_whole_and_says_so() {
+        // O stream cortou no meio do segundo valor. O primeiro chegou inteiro e
+        // vale; o segundo e descartado em vez de completado, porque completar
+        // uma string interrompida entregaria a ferramenta um caminho que o
+        // modelo nunca pediu.
+        let turn = call_with(r#"{"limit":10,"path":"src/ma"#);
+        let input = &turn.tool_calls()[0].input;
+
+        assert_eq!(input["limit"], 10);
+        assert!(input.get("path").is_none(), "{input:?}");
+        assert_eq!(turn.repaired_calls(), vec!["read".to_owned()]);
+    }
+
+    #[test]
+    fn an_argument_that_arrived_whole_is_not_reported_as_repaired() {
+        let turn = call_with(r#"{"path":"a.rs"}"#);
+        assert!(turn.repaired_calls().is_empty());
     }
 
     #[test]

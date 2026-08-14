@@ -55,9 +55,11 @@ que o balde A cataloga.
 | A3/C1 — cache fora do Anthropic | fechado com recusa declarada | `CacheRetention` de três estados em [`sampling`](../../../crates/nycode-ai/src/sampling/mod.rs); `prompt_cache_key` cortado a 64 e `prompt_cache_retention` em [`openai/cache.rs`](../../../crates/nycode-ai/src/openai/cache.rs); `ttl: "1h"` no marcador Anthropic. **`prompt_cache_options.mode` fica de fora**: a referência só o emite quando o modelo declara aceitá-lo, e o catálogo daqui ainda não traz capacidade por modelo — emiti-lo às cegas troca economia por falha. Reabre quando o catálogo trouxer capacidades. |
 | B2 — retry em duas camadas | aberto | há retry de transporte; falta a política sobre a resposta |
 | B3 — `Retry-After` em HTTP-date | fechado | [`retry.rs`](../../../crates/nycode-ai/src/transport/retry.rs) `parse_imf_fixdate`, sem dependência nova |
-| B4/B5/B6 — higiene de payload | aberto | sem saneamento de par substituto, sem reparo de JSON parcial, sem coerção contra schema |
-| B8 — `tool_choice` canônico | aberto | o termo não existe no crate |
-| B9 — estimativa ancorada no último usage | aberto | — |
+| B5 — reparo de JSON parcial de tool call | fechado | [`tool/repair.rs`](../../../crates/nycode-agent/src/tool/repair.rs), consumido em `Turn::tool_calls`; o reparo é anunciado por `repaired_calls` |
+| B6 — coerção contra o schema | fechado | [`tool/coerce.rs`](../../../crates/nycode-agent/src/tool/coerce.rs), aplicado em `dispatch::execute` **antes** do hook e do gate |
+| B4 — par substituto UTF-16 | **recusado** | é um defeito de linguagem UTF-16, e não de protocolo. `String` em Rust é UTF-8 válido por construção, e UTF-8 não codifica substituto: não existe caminho neste repositório que produza um par incompleto. A referência precisa disso porque strings JavaScript são UTF-16. Portar seria copiar a solução de um problema que aqui não existe. |
+| B8 — `tool_choice` canônico | **movido para a Onda 3** | o termo não existe no crate, e implementá-lo agora criaria capacidade sem chamador — exatamente o que este épico persegue. O chamador dele é `--tools`/`--no-tools` (B25), que é Onda 3. Vai junto. |
+| B9 — estimativa ancorada no último usage | **movido para a Onda 2** | mesmo motivo: quem consome a estimativa é o gatilho por limiar (A4/C4), que é Onda 2. Construir o enabler uma onda antes do consumidor deixaria a Onda 1 impossível de fechar sob a própria regra. |
 
 ## Paridade real — o que a primeira execução contra a referência revelou
 

@@ -42,6 +42,38 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
   maduro do ACP é subprocesso local sobre entrada e saída padrão, sem socket
   escutando e sem decisão de autenticação de rede pendente.
 
+- **Argumento de ferramenta que chega pela metade é reparado, e o reparo é dito.**
+  Um `tool_use` viaja como fragmentos de JSON. Quando o turno era cortado — prazo,
+  gateway que parou de enviar, cancelamento — o que sobrava virava `Value::Null`
+  **em silêncio**, e a ferramenta recebia nulo sem que nada registrasse que houve
+  truncamento.
+
+  O reparo é conservador, e nisto diverge da referência. Fechar a aspa de uma
+  string interrompida é o reparo óbvio e é o errado: `{"path":"src/ma` viraria
+  `{"path":"src/ma"}`, e a escrita aconteceria num caminho que o modelo nunca
+  pediu — com cara de pedido legítimo. Aqui o valor que estava sendo escrito é
+  **descartado**, não completado: o que chegou inteiro se aproveita, o que faltou
+  fica faltando, e a ferramenta recusa por argumento ausente, que é uma falha que
+  se lê. E o agente avisa que reparou, porque um stream truncado não pode virar
+  uma chamada de aparência normal — o usuário atribuiria ao modelo uma decisão
+  que foi do transporte.
+
+- **Valor certo no tipo errado deixa de virar o padrão em silêncio.** Um modelo
+  emite `{"limit": "10"}` com alguma frequência. As ferramentas leem com `as_u64`,
+  que devolvia `None`, e caíam no padrão sem dizer nada: o modelo pedia dez
+  linhas, recebia outra coisa, e nada no turno registrava a diferença.
+
+  Agora o argumento é lido no tipo que o schema declara — número em texto,
+  booleano em texto, escalar onde cabe lista. A coerção não inventa valor:
+  `"talvez"` continua não sendo número e a ferramenta recusa como recusaria antes,
+  e `10.5` num campo inteiro fica como está em vez de ser arredondado por conta
+  própria.
+
+  Ela roda **antes** do hook e do gate, e a ordem é de segurança e não de
+  conveniência: o que a política inspeciona e o que o usuário aprova precisa ser
+  exatamente o que roda. Coagir depois trocaria o argumento sob uma decisão já
+  tomada.
+
 - **Retenção de cache passa a ter três estados, e a longa passa a ser pedível.**
   `Sampling` carregava um booleano: ligado ou desligado. A retenção estendida é
   um terceiro estado, com outra tarifa — e o repositório já sabia disso do lado

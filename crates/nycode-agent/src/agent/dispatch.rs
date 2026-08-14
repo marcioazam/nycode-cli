@@ -154,6 +154,29 @@ impl Agent {
     }
 
     pub(super) async fn execute(&self, call: &crate::tool::ToolCall) -> ToolOutput {
+        // Um valor certo no tipo errado — `"limit": "10"` — fazia a ferramenta
+        // cair no padrão sem dizer nada: o modelo pedia dez linhas, recebia
+        // outra coisa, e nada no turno registrava a diferença.
+        //
+        // Antes do hook e do gate, e não depois: o que a política inspeciona e
+        // o que o usuário aprova precisa ser exatamente o que roda. Coagir
+        // depois trocaria o argumento sob uma decisão já tomada.
+        //
+        // Uma ferramenta desconhecida segue como veio — não há schema contra o
+        // qual comparar, e o erro dela sai mais abaixo, depois de o hook ter
+        // visto a tentativa como via antes.
+        let coerced;
+        let call = match self.tools.get(call.name.as_str()) {
+            Some(tool) => {
+                coerced = crate::tool::ToolCall {
+                    input: crate::tool::coerce::coerce(call.input.clone(), &tool.input_schema()),
+                    ..call.clone()
+                };
+                &coerced
+            }
+            None => call,
+        };
+
         // O hook vem antes do gate: ele é política do repositório, e uma
         // política que só roda depois de o gate aprovar não consegue proibir
         // nada que o gate permita.
@@ -245,6 +268,36 @@ mod tests {
     /// O que a ferramenta de mentira devolve, para o hook ter o que ler.
     const RESULTADO: &str = "a ferramenta produziu isto";
 
+    /// Ferramenta que declara tipo e devolve o que recebeu.
+    ///
+    /// A [`Fake`] não serve para a coerção: o schema dela não tem propriedade
+    /// nenhuma, e sem tipo declarado não há o que coagir.
+    struct Typed;
+
+    #[async_trait::async_trait]
+    #[allow(clippy::unnecessary_literal_bound)]
+    impl Tool for Typed {
+        fn name(&self) -> &str {
+            "typed"
+        }
+        fn description(&self) -> &str {
+            "declara tipo e devolve o que recebeu"
+        }
+        fn input_schema(&self) -> serde_json::Value {
+            serde_json::json!({
+                "type": "object",
+                "properties": { "limit": { "type": "integer" } }
+            })
+        }
+        async fn execute(
+            &self,
+            input: serde_json::Value,
+            _ctx: &crate::tool::ToolContext,
+        ) -> crate::tool::ToolOutput {
+            crate::tool::ToolOutput::ok(input.to_string())
+        }
+    }
+
     fn agent_with(tools: &[(&'static str, bool)]) -> (tempfile::TempDir, crate::Agent) {
         let dir = tempfile::tempdir().expect("um diretorio temporario");
         let ctx = crate::ToolContext::new(dir.path()).expect("uma raiz valida");
@@ -310,6 +363,61 @@ mod tests {
             }))
             .with_gate(Box::new(crate::policy::AllowAll))
             .with_hooks(crate::policy::Hooks::discover(dir.path()))
+    }
+
+    #[tokio::test]
+    async fn a_value_in_the_wrong_type_reaches_the_tool_in_the_declared_one() {
+        // Sem a coercao, `as_u64` devolvia `None` e a ferramenta caia no
+        // padrao: o modelo pedia dez, recebia outra coisa, e nada dizia.
+        let dir = tempfile::tempdir().expect("um diretorio temporario");
+        let ctx = crate::ToolContext::new(dir.path()).expect("uma raiz valida");
+        let backend: Arc<dyn crate::Backend> =
+            Arc::new(crate::backend::fake::FakeBackend::new(Vec::new()));
+        let agent = crate::Agent::new(backend, ctx)
+            .with_tool(Arc::new(Typed))
+            .with_gate(Box::new(crate::policy::AllowAll));
+
+        let output = agent
+            .execute(&crate::tool::ToolCall {
+                id: "t1".to_owned(),
+                name: "typed".to_owned(),
+                input: serde_json::json!({ "limit": "10" }),
+            })
+            .await;
+
+        assert_eq!(output.content, r#"{"limit":10}"#, "{}", output.content);
+    }
+
+    #[tokio::test]
+    async fn the_policy_inspects_the_argument_that_will_actually_run() {
+        // A ordem e de seguranca, nao de conveniencia: coagir depois do hook
+        // faria a politica decidir sobre um argumento e a ferramenta rodar com
+        // outro. O hook precisa ver `10`, nao `"10"`.
+        let dir = tempfile::tempdir().expect("um diretorio temporario");
+        install(
+            dir.path(),
+            crate::policy::hooks::Event::PreToolUse,
+            "cat > visto.json",
+        );
+        let ctx = crate::ToolContext::new(dir.path()).expect("uma raiz valida");
+        let backend: Arc<dyn crate::Backend> =
+            Arc::new(crate::backend::fake::FakeBackend::new(Vec::new()));
+        let agent = crate::Agent::new(backend, ctx)
+            .with_tool(Arc::new(Typed))
+            .with_gate(Box::new(crate::policy::AllowAll))
+            .with_hooks(crate::policy::Hooks::discover(dir.path()));
+
+        agent
+            .execute(&crate::tool::ToolCall {
+                id: "t1".to_owned(),
+                name: "typed".to_owned(),
+                input: serde_json::json!({ "limit": "10" }),
+            })
+            .await;
+
+        let visto = std::fs::read_to_string(dir.path().join("visto.json")).expect("o hook rodou");
+        let visto: serde_json::Value = serde_json::from_str(&visto).expect("contrato JSON");
+        assert_eq!(visto["input"]["limit"], 10, "{visto}");
     }
 
     #[tokio::test]
