@@ -8,6 +8,38 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Adicionado
 
+- **Gate de teto de 500 linhas por arquivo, com ratchet para o legado
+  (`GATE-07`/`ARCH-11`/`RAT-04` do padrão SOTA-2026).** Quatro arquivos já
+  excediam o teto no dia em que o gate entrou —
+  `crates/nycode-agent/src/agent_test.rs` (775), `.../hooks_test.rs` (705),
+  `crates/nycode-agent/src/agent/dispatch.rs` (515) e
+  `crates/nycode-cli/src/session/mod.rs` (512) — e um gate que bloqueasse
+  direto teria quebrado o CI em arquivos sem relação com a mudança que o
+  introduziu. Em vez disso, [`scripts/file-length-baseline.txt`](scripts/file-length-baseline.txt)
+  registra o tamanho de cada um no dia do baseline: o arquivo pode ficar do
+  jeito que está, não pode crescer, e a entrada cai — reprovando o gate —
+  quando o arquivo encolhe para dentro do teto ou some. Arquivo de teste
+  conta igual a arquivo de produção, diferente do gate de layout: o teto mede
+  o quanto um agente edita com confiança de uma vez, e isso não muda por o
+  arquivo ser teste.
+
+  [`scripts/file-length-gate.sh`](scripts/file-length-gate.sh) e seu
+  auto-teste entram em `scripts/ci-local.sh --full` (job `layout` do CI),
+  antes do próprio gate, no mesmo precedente dos outros gates locais.
+
+- **Conformidade formal com o padrão externo SOTA-2026 (base-software-rules),
+  nível L2.**
+  ([ADR-0032](docs/architecture/decisions/0032-adota-padrao-externo-sota-2026-nivel-l2.md))
+  Regras já vinculantes deste repositório (cobertura, layout, pinning de
+  action) ganham ID citável do padrão; lacunas reais (mutation testing,
+  complexidade, duplicação, cobertura de diff, `test_map`) ficam nomeadas em
+  [`docs/product/ROADMAP.md`](docs/product/ROADMAP.md) em vez de invisíveis.
+  Novo: `CLAUDE.md` (ponte para `AGENTS.md`), `SECURITY.md`,
+  `CONTRIBUTING.md`, `.github/CODEOWNERS`. Rodapé de commit assistido por IA
+  muda de `Co-Authored-By` para `Assisted-by: <agente>:<modelo>` — o primeiro
+  é campo de crédito de autoria humana, e usá-lo para atribuição de máquina
+  corrompe esse dado.
+
 - **CI endurecido para SOTA 2026: 52 achados medidos, zero em severidade média
   e alta.** O `AGENTS.md` já dizia que artefato de terceiro verifica digest
   antes de executar, com o esperado fixado em arquivo versionado —
