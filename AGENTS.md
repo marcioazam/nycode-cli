@@ -517,6 +517,15 @@ e `gitleaks` (segredo commitado). Ferramenta ausente reprova com a linha de
 instalação na mensagem — mesmo precedente do `perf-gate` sem `hyperfine`:
 requisito sem medição é requisito sem gate.
 
+**A definição de verde também vale do lado remoto** — `main` tem proteção
+de branch no GitHub exigindo os 12 checks acima, `strict` (branch precisa
+estar atualizada com `main`), sem force-push nem deleção
+([ADR-0034](docs/architecture/decisions/0034-protecao-de-branch-exige-ci-verde-sem-aprovacao-separada.md)).
+Deliberadamente sem exigência de aprovação humana separada — mantenedor
+único, então uma aprovação obrigatória seria auto-aprovação, não uma
+segunda perspectiva de verdade; revisar isso se um segundo colaborador
+regular aparecer.
+
 ## Antes de dizer que terminou
 
 `scripts/ci-local.sh --full` é o comando, e a lista abaixo é o que ele roda — na

@@ -39,6 +39,7 @@ questionar em seis meses, vira um ADR — para que a discussão aconteça uma ve
 | [0031](0031-o-piso-relativo-de-chegada-do-processo-absorve-a-variancia-do-runner-do-ci.md) | O piso relativo de "chegada do processo" absorve a variância do runner do CI | aceito | 2026-08-14 |
 | [0032](0032-adota-padrao-externo-sota-2026-nivel-l2.md) | Adota o padrão externo SOTA-2026 (base-software-rules) no nível L2 | aceito | 2026-08-14 |
 | [0033](0033-gate-16-fica-sem-instrumento-conflito-com-hook-e-squash-merge.md) | GATE-16 (trilha test-first) fica sem instrumento — conflita com o hook de commit e com squash-merge | aceito | 2026-08-14 |
+| [0034](0034-protecao-de-branch-exige-ci-verde-sem-aprovacao-separada.md) | Proteção de branch em `main` exige CI verde, sem aprovação humana separada | aceito | 2026-08-14 |
 
 Os ADRs [0005](0005-sandbox-de-so-por-processo-auxiliar.md),
 [0009](0009-hooks-sao-executaveis-com-contrato-json.md) e
