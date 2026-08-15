@@ -9,8 +9,6 @@
   arquivo num terminal que suporte truecolor.
 -->
 
-# NyCode CLI
-
 Harness de coding agent em terminal, escrito em Rust do zero — não um fork,
 não um wrapper. Conformidade: SOTA-2026 v1.1.0, nível L2 (standard) — ver
 [ADR-0032](docs/architecture/decisions/0032-adota-padrao-externo-sota-2026-nivel-l2.md).
