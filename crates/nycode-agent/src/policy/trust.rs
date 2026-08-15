@@ -65,7 +65,7 @@ impl Declaration {
     pub fn fingerprint(&self) -> String {
         let mut hasher = Sha256::new();
         hasher.update(self.covered.as_ref().unwrap_or(&self.detail).as_bytes());
-        format!("{:x}", hasher.finalize())
+        hex::encode(hasher.finalize())
     }
 }
 
@@ -292,6 +292,14 @@ mod tests {
         assert_ne!(a.fingerprint(), c.fingerprint());
         // Hexadecimal de SHA-256.
         assert_eq!(a.fingerprint().len(), 64);
+        // Vetor conhecido (sha256sum "npx servidor"): estabilidade e tamanho
+        // nao provam que o algoritmo, a ordem de byte ou a caixa do hex sao os
+        // certos -- uma variante quebrada mas consistente passaria nas tres
+        // asserções acima do mesmo jeito.
+        assert_eq!(
+            a.fingerprint(),
+            "499ed7dd4fb9599b0f6b6d24304a27ca82d6b6b51380e0dcc0f5c42cf437c7e8"
+        );
     }
 
     #[test]
