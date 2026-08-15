@@ -185,11 +185,68 @@ literal: o job `perf` declara `needs: [supply-chain]`.
 
 ## 12. Glossário
 
-| Termo | Significado |
-|---|---|
-| **Dialeto** | Formato de wire de um provedor: Anthropic Messages, OpenAI Chat Completions, OpenAI Responses |
-| **Turno** | Uma resposta do modelo, montada a partir dos eventos de stream |
-| **Rodada** | Um ciclo pedido-ferramenta-resultado dentro de um `run` |
-| **Gate** | A política que autoriza ou nega uma chamada de ferramenta |
-| **Paridade** | Igualdade de contrato observável entre `nycode` e o harness de referência |
-| **Exemption** | Dispensa declarada de um piso de cobertura, sempre com ratchet |
+Ver [`docs/GLOSSARY.md`](../GLOSSARY.md) — linguagem ubíqua completa, mantida
+num único lugar para não divergir daqui.
+
+## 13. Idiomas e práticas de linguagem (Rust, 2026)
+
+`edition = "2024"`, `rust-version = "1.96"` (`Cargo.toml`) — os padrões
+abaixo são os que o código deste workspace já pratica, não recomendação
+genérica; cada um cita onde verificar.
+
+**Erro: tipado nas libs, `anyhow` na borda do binário.** Toda crate
+biblioteca (`nycode-ai`, `nycode-agent`, `nycode-auth`, `nycode-mcp`,
+`nycode-tui`) define `#[derive(Debug, Error)] pub enum Error` com
+`thiserror`, ex. `crates/nycode-agent/src/error.rs:5-6` (variantes como
+`PathEscape(String)`, mais `#[error(transparent)] Wire(#[from]
+nycode_ai::Error)` pra encapsular erro de outra crate sem perder a cadeia) e
+`crates/nycode-ai/src/error.rs` (`ApiError` com métodos de domínio como
+`is_retryable`). Só os binários (`nycode-cli`, `nycode-parity`) usam
+`anyhow`, como `Result` de topo em `main.rs`/`run.rs` — erro tipado é
+contrato entre módulos internos, `anyhow` é o bastante numa borda que só
+imprime e sai.
+
+**Runtime assíncrono construído sob demanda, não `#[tokio::main]`.**
+`crates/nycode-cli/src/main.rs` monta `tokio::runtime::Builder::
+new_multi_thread().enable_all().build()` manualmente dentro de `fn main`,
+depois de resolver os argumentos da CLI — comentário no próprio código:
+"o runtime só é construído aqui: um `--version` não paga por ele." Cada
+crate habilita só as features do `tokio` que usa (`nycode-mcp` liga
+`["process","rt","time"]`; `nycode-cli` liga `["rt-multi-thread","macros",
+"signal"]`) em vez de `features = ["full"]`.
+
+**`serde`: `deny_unknown_fields` no que humano edita, `rename_all` no que
+máquina emite.** Config de arquivo (editada por humano) usa
+`#[serde(deny_unknown_fields)]`, ex. `crates/nycode-cli/src/session/
+provider/settings.rs` — um campo digitado errado vira erro de parse, não
+silêncio. Tipo de wire/protocolo (emitido por máquina) usa `#[serde(tag =
+"type", rename_all = "snake_case")]` pra união marcada, ex.
+`crates/nycode-ai/src/anthropic/types.rs`. A escolha é deliberada: validação
+estrita onde erro humano é provável, permissiva onde o formato já é
+controlado no outro lado.
+
+**Trait object pra plugável, genérico pra fixo.** `Backend`
+(`crates/nycode-agent/src/backend.rs`), `Tool`
+(`crates/nycode-agent/src/tool/mod.rs`) e `Gate`
+(`crates/nycode-agent/src/policy/permission.rs`) são todos guardados como
+`dyn` (`Arc<dyn Backend>`, `Arc<dyn Tool>`, `Box<dyn Gate>` em
+`agent.rs`) — várias implementações coexistem e trocam em runtime.
+`Observer` (`agent.rs`) só é tomado como `&mut impl Observer` (ex.
+`agent.rs:233,245,442`), nunca `dyn Observer` — é um sink fixo por
+chamada, conhecido em cada call site, então despacho estático evita o custo
+de vtable/alocação que o caso plugável aceita de propósito. A escolha entre
+os dois reflete pensamento de portas-e-adaptadores 2026: a fronteira que
+precisa ser plugável em runtime (`Backend`/`Tool`/`Gate` — os pontos onde o
+sistema troca de implementação sem recompilar) paga o custo de indireção;
+a que não precisa, não paga.
+
+**Lint além do `Cargo.toml`.** `clippy.toml` fixa
+`too-many-lines-threshold = 100`, com a razão escrita no próprio arquivo:
+"um arquivo de 500 linhas já é o teto imposto pelo gate de arquitetura do
+repositório; a função que ocupa 100 delas quase sempre está escondendo
+duas" — o número não é arbitrário, espelha o teto de arquivo (GATE-07,
+seção acima). `rustfmt.toml` é mínimo: `edition = "2024"`, `max_width =
+100`, `use_field_init_shorthand = true`.
+
+**Convenção de nomenclatura e organização de arquivo** — ver
+[`docs/CONVENTIONS.md`](../CONVENTIONS.md), não repetida aqui.

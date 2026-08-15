@@ -1,0 +1,24 @@
+# Baseline do gate de teto de 500 linhas por arquivo (GATE-07/ARCH-11 do
+# padrao externo SOTA-2026, ver a secao "Padrao externo" do AGENTS.md).
+#
+# Ratchet, RAT-04: a contagem so pode cair, nunca subir. Uma entrada aqui e o
+# numero exato de linhas do arquivo no dia em que o gate nasceu — se o
+# arquivo crescer alem do numero registrado, o gate reprova mesmo estando na
+# lista. Se o arquivo encolher para dentro do teto, remova a linha; o gate
+# reprova sozinho se a entrada ficar desatualizada por sobra.
+#
+# Isto nao e a tabela de exemption de cobertura (scripts/coverage-exemptions.txt):
+# aqui nao ha "below-floor" que dispensa alguem de encolher, so um respiro
+# para nao quebrar o CI em arquivos que ja eram assim antes deste gate
+# existir.
+#
+# Formato: <caminho a partir da raiz do repositorio> <linhas no dia do baseline>
+#
+# Nasce em 2026-08-14 com os quatro arquivos que ja excediam o teto no dia em
+# que o gate entrou — nenhum e novo. Arquivo de teste conta igual a arquivo
+# de producao: o teto mede o quanto um agente consegue editar de uma vez, e
+# isso nao muda por o arquivo ser teste (ARCH-11).
+crates/nycode-agent/src/agent_test.rs 775
+crates/nycode-agent/src/policy/hooks/hooks_test.rs 705
+crates/nycode-agent/src/agent/dispatch.rs 515
+crates/nycode-cli/src/session/mod.rs 512

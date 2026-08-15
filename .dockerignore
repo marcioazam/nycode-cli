@@ -1,0 +1,29 @@
+# Mantem o contexto de build enxuto -- so Cargo.toml, Cargo.lock e crates/
+# entram no builder (ver COPY no Dockerfile). Tudo abaixo nunca precisa
+# atravessar pro daemon do Docker.
+
+.git/
+target/
+mutants.out/
+mutants.out.old/
+coverage/
+lcov.info
+cov.lcov
+coverage.json
+coverage-baseline.json
+*.sarif
+bench-results/
+
+.nycode/
+.omc/
+
+.env
+.env.*
+!.env.example
+
+.idea/
+*.swp
+.DS_Store
+
+Dockerfile
+.dockerignore
