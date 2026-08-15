@@ -15,6 +15,82 @@ Referências permitidas: `pi` (MIT), `grok-build` (Apache-2.0), `codex`
 (Apache-2.0), `opencode` (MIT), `goose` (Apache-2.0), com as obrigações de
 atribuição cumpridas no [`NOTICE`](NOTICE).
 
+## Padrão externo — SOTA-2026 v1.1.0, nível L2
+
+Padrão: SOTA-2026 v1.1.0 (`base-software-rules`, mantido fora deste
+repositório). Nível de conformidade: **L2 (standard)** — o `CONFORMANCE.md`
+do padrão define L2 como "qualquer serviço, biblioteca ou produto do qual
+outra pessoa ou sistema dependa"; este repositório já publica release
+([`release.yml`](.github/workflows/release.yml)) e documenta instalação no
+`README.md` — não é protótipo (L1). Decisão registrada em
+[ADR-0032](docs/architecture/decisions/0032-adota-padrao-externo-sota-2026-nivel-l2.md).
+
+Este repositório não copia o texto do padrão: cita o ID da regra e diz onde
+ela já está satisfeita ou onde ainda falta instrumento. Um número que
+existisse em dois lugares seria, por definição, um dos dois já errado — o
+mesmo princípio que este `AGENTS.md` já aplicava aos próprios gates antes de
+o padrão externo existir.
+
+### O que já satisfaz uma regra do padrão
+
+| Regra deste `AGENTS.md` | ID do padrão | Nota |
+|---|---|---|
+| Cobertura de teste (seção acima) | `GATE-03` / `GATE-02` | Pisos idênticos aos do padrão |
+| Layout — teto de arquivos por diretório (seção acima) | `ADV-01` | Mais rígido — o padrão só torna isso consultivo |
+| Toda action fixada por SHA verificado (ADR-0030) | `SP-06` | Satisfeito |
+| `gitleaks` no `ci-local.sh` (seção "CI local") | `GATE-12` | Satisfeito |
+| `cargo deny check` no `ci-local.sh` | parte de `GATE-13` | Cobre licença e CVE conhecida |
+| Não negociáveis de código (seção acima) | análogo a `SEC-11` | Satisfeito, mais estrito |
+| NFR-8, segurança antes de performance | filosofia fail-closed do padrão | Sem ID específico |
+| Teto de 500 linhas por arquivo, com ratchet (seção acima) | `GATE-07` / `ARCH-11` | Satisfeito desde 2026-08-14; `RAT-04` cobre o legado de 4 arquivos |
+| Teto de PR assistido por IA (seção acima) | `GATE-11` / `AI-01` | Satisfeito desde 2026-08-14; só no CI, ver a exceção documentada em "CI local" |
+| `test_map` gerado e citado aqui (seção acima) | `AI-10` | Satisfeito desde 2026-08-14; inventário por crate, não mapeamento 1:1 — ver a seção |
+| Fronteira de arquitetura, allowlist do grafo de crates (seção acima) | `GATE-15` / `ARCH-04` / `ARCH-05` | Satisfeito desde 2026-08-14; fronteira de crate, não de módulo interno — ver a seção |
+| Idade mínima de dependência nova (seção acima) | `SP-04` | Satisfeito desde 2026-08-14; só no CI, mesma exceção do teto de PR |
+| Cobertura de diff (seção acima) | `GATE-01` | Satisfeito desde 2026-08-14; só no CI, piso de 80% |
+| Mutation testing por diff (seção acima) | `GATE-04` | Satisfeito desde 2026-08-14; só no CI, escopo `--in-diff` |
+| Complexidade cognitiva e ciclomática por função, com ratchet (seção acima) | `GATE-05` / `GATE-06` | Satisfeito desde 2026-08-14; roda em `ci-local.sh --full`, não é exceção só-CI |
+| Duplicação de código (seção acima) | `GATE-08` | Satisfeito desde 2026-08-14; roda em `ci-local.sh --full`, teto de 5%, sem ratchet — medição no dia em que o gate nasceu já ficava abaixo do teto |
+
+### O que ainda não tem instrumento
+
+Nenhum gate do padrão sem instrumento hoje. `GATE-16` tem waiver formal — ver
+a seção "Waiver" abaixo, não uma pendência de implementação.
+
+`GATE-16` (trilha test-first automatizada) é diferente dos dois acima: não é
+"ainda não chegamos lá", é um waiver formal
+([ADR-0033](docs/architecture/decisions/0033-gate-16-fica-sem-instrumento-conflito-com-hook-e-squash-merge.md)).
+Uma implementação foi desenhada e revisada adversarialmente antes de qualquer
+commit, e a revisão achou que o gate, como o guia do padrão especifica,
+conflita com duas políticas que este repositório já adotou deliberadamente:
+o hook `pre-commit` roda `cargo test` e por isso já impede um commit RED
+(teste quebrado) de existir sem `--no-verify`, que as regras deste projeto
+proíbem; e squash-merge apaga a separação RED/GREEN de `main` no momento do
+merge, então mesmo uma implementação correta nunca alcançaria o "checável
+meses depois" que é o objetivo declarado do gate. Reabrir exige mudar uma das
+duas políticas, não escrever mais bash — ver a seção "Decisão" do ADR.
+
+### Waiver
+
+Desvio de regra `MUST` do padrão exige waiver formal: ADR em
+`docs/architecture/decisions/` com regra, escopo, razão, controle
+compensatório, dono e expiração de no máximo dois trimestres — mesmo
+mecanismo do `CONFORMANCE.md` do padrão. Vale para os gates que entrarem daqui
+para frente. `GATE-16` ([ADR-0033](docs/architecture/decisions/0033-gate-16-fica-sem-instrumento-conflito-com-hook-e-squash-merge.md),
+expira 2027-02-14) é o primeiro uso deste mecanismo.
+
+**Não vale retroativamente para a cobertura**: a política deste repositório
+de nunca abrir exemption `below-floor` (ver "Cobertura de teste" acima) é
+decisão permanente, não uma exceção temporária — por isso não usa o mecanismo
+de waiver, que por definição expira.
+
+### Spec normativa fora do padrão de template
+
+A spec vive em [`.specs/nycode-rs/spec.md`](.specs/nycode-rs/spec.md), não em
+`docs/specs/`, como o template do padrão sugeriria. Desvio deliberado e
+documentado: mover o arquivo quebraria os links relativos que 31 ADRs já
+fazem para ele. `docs/specs/NNN-slug/` continua para spec de feature.
+
 ## Segurança primeiro, performance em segundo — NFR-8
 
 Quando as duas se opõem e não há forma que atenda às duas, **a segurança define o
@@ -47,6 +123,27 @@ Uma regra de prioridade sem consequência é decoração, então esta tem quatro
 No CI a precedência é literal: o job `perf` declara `needs: [supply-chain]`, então
 o resultado de performance não é produzido enquanto a política de dependências não
 passa. A ordem do bloco em "Antes de dizer que terminou" é a mesma.
+
+### Toda review avalia segurança e performance, nunca só uma
+
+NFR-8 decide o que acontece quando as duas se opõem; esta seção é sobre
+quando avaliar as duas — sempre, não só no conflito. Nenhuma mudança entra
+sem que ambas tenham sido consideradas explicitamente, humana ou por
+agente:
+
+- **Mecânico, já vale hoje**: os gates de CI que fecham segurança
+  (`cargo deny`, `gitleaks`, `zizmor`, `pinact`, `SP-04`) e performance
+  (NFR-1/2/3, `perf-gate.sh`) são obrigatórios, não consultivos — um PR não
+  fecha sem os dois passando.
+- **Disciplina de review, onde não há gate**: mudança que toca superfície
+  de confiança (entrada do usuário, credencial, execução de código de
+  terceiro, permissão) usa o padrão `doubt-driven` — revisor em contexto
+  limpo, adversarial, antes do commit — e não o julgamento de quem
+  escreveu. `docs/THREAT_MODEL.md` lista a superfície já identificada;
+  mudança que introduz superfície nova atualiza o documento no mesmo PR,
+  não depois.
+- **As duas competem, a segurança decide** — não uma regra nova, só o link
+  de volta pra NFR-8 acima, pra que quem lê esta seção não a leia isolada.
 
 ## Cobertura de teste — NFR-5
 
@@ -191,6 +288,198 @@ Gate: [`scripts/layout-gate.sh`](scripts/layout-gate.sh). Sem arquivo de exempti
 e isso é decisão — ele nasceu limpo, e a primeira exceção seria a que ensina que
 existe exceção.
 
+## Teto de 500 linhas por arquivo — `GATE-07`/`ARCH-11`
+
+Um arquivo `.rs` comporta no máximo **500** linhas — vale igual para arquivo de
+teste e de produção, porque o teto mede o quanto um agente consegue editar com
+confiança de uma vez, não beleza. Diferente do teto de arquivos por diretório,
+este gate nasceu **com ratchet** (`RAT-04`): quatro arquivos já excediam o teto
+no dia em que o gate entrou, e têm entrada em
+[`scripts/file-length-baseline.txt`](scripts/file-length-baseline.txt) com o
+número de linhas daquele dia. Um arquivo do baseline não pode crescer além do
+registrado, e a entrada cai sozinha — reprovando o gate — quando o arquivo
+encolhe para dentro do teto ou some. Arquivo novo acima do teto não entra
+sozinho no baseline: precisa de linha adicionada à mão, o que força revisão
+humana antes de aceitar mais um arquivo grande.
+
+Gate: [`scripts/file-length-gate.sh`](scripts/file-length-gate.sh).
+
+## Teto de PR assistido por IA — `GATE-11`/`AI-01`
+
+Um PR assistido por IA comporta no máximo **400 linhas alteradas** e **15
+arquivos**. `Cargo.lock` não entra na contagem — é churn mecânico do `cargo`,
+nunca escrito à mão.
+
+Detecção mecânica de "assistido por IA": qualquer commit no intervalo com
+rodapé `Assisted-by:` (ver "Estilo" abaixo) põe o intervalo inteiro sob o
+teto — o lado conservador da regra, e o único jeito mecânico de decidir dado
+que a maioria dos commits deste repositório já carrega o rodapé. PR
+inteiramente humano cai em `ADV-02`, que é só consultivo.
+
+Gate: [`scripts/agent-pr-size-gate.sh`](scripts/agent-pr-size-gate.sh), job
+`pr-size` do CI — **só no CI**, nunca em `scripts/ci-local.sh --full` (ver a
+exceção documentada na seção seguinte).
+
+## Mapa de testes — `AI-10`
+
+[`test_map`](test_map), na raiz, gerado e mantido em dia — consulte-o antes
+de mexer num arquivo para saber onde procurar o teste que o protege. Ele
+**não** mapeia arquivo-fonte para teste específico: este repositório tem
+módulos de fixture compartilhados entre vários arquivos de teste
+(`agent_test.rs` é usado por `outcome_test.rs` e `compaction_test.rs`, por
+exemplo), então essa relação 1:1 seria falsa em vários casos reais — e um
+mapa errado ensina a confiar onde não devia, o que é pior que nenhum mapa. O
+que existe é o inventário honesto, por crate: onde vivem os testes inline,
+os arquivos de teste dedicados e os testes de integração.
+
+Gerado por [`scripts/gen-test-map.sh`](scripts/gen-test-map.sh) — **nunca
+edite `test_map` à mão**. `scripts/gen-test-map.sh --check` reprova se o
+arquivo commitado ficou desatualizado; roda em `scripts/ci-local.sh --full`
+e no job `layout` do CI.
+
+## Fronteira de arquitetura — `GATE-15`/`ARCH-04`/`ARCH-05`
+
+O Cargo já recusa um ciclo de verdade — o que este gate cobre é diferente:
+uma dependência nova entre crates, legal para o Cargo, mas que muda a
+direção pretendida da arquitetura sem ninguém decidir isso explicitamente.
+Cada crate deste workspace é um contexto delimitado (`ARCH-04`); não há
+fatia mais fina que o Cargo exponha mecanicamente para checar, então a
+fronteira aqui é de crate, não de módulo interno.
+
+[`scripts/architecture-boundary-allowlist.txt`](scripts/architecture-boundary-allowlist.txt)
+lista toda aresta permitida (`origem -> destino`). Uma dependência real sem
+entrada na lista reprova — precisa de linha adicionada à mão, o que força
+revisão antes de aceitar mais uma aresta. Uma entrada cuja dependência sumiu
+do `Cargo.toml` também reprova: a lista descreve o grafo real, não aspiração
+("uma fronteira que existe só em documentação não é fronteira", `ARCH-06`).
+
+Gate: [`scripts/architecture-boundary-gate.sh`](scripts/architecture-boundary-gate.sh).
+
+## Idade mínima de dependência — `SP-04`
+
+Uma dependência **nova** — nome que não existia no `Cargo.lock` da base do
+PR — precisa de pelo menos **30 dias** de existência verificada no
+crates.io. Entre 4% e 6% dos pacotes sugeridos por modelo são alucinados
+(`AI-11`), e um nome recém-criado no registro não teve tempo de ser
+identificado como tal pela comunidade. Bump de versão de dependência já
+confiada não conta — não é o risco que isto cobre. Crate interno deste
+workspace também não conta.
+
+Gate: [`scripts/dependency-age-gate.sh`](scripts/dependency-age-gate.sh), no
+mesmo job `pr-size` do CI — **só no CI**, pela mesma razão do teto de PR
+assistido por IA (a base certa de comparação só é conhecida dentro de um
+pull request) mais uma segunda: verificar existência no registro é
+`audit`, a exceção documentada a "sem rede em verificação".
+
+## Cobertura de diff — `GATE-01`
+
+Pelo menos **80%** das linhas de produção adicionadas ou modificadas por um
+PR precisam estar cobertas. Diferente do piso agregado e do piso por
+arquivo (NFR-5, seção acima), que medem o estado do mundo: um arquivo
+grande e bem testado absorve, no agregado, o erro de arredondamento de uma
+função nova sem teste nenhum. O diff mede exatamente o que o PR introduziu.
+
+Construído sobre `cargo llvm-cov report --lcov`, que reaproveita os dados
+de perfil já gerados pelo passo de cobertura no mesmo job — não roda os
+testes de novo. Gate: [`scripts/diff-coverage-gate.sh`](scripts/diff-coverage-gate.sh),
+no job `coverage` do CI, condicionado a `github.event_name == 'pull_request'`
+— mesma razão das outras duas exceções abaixo: a base certa de comparação
+só é conhecida dentro de um pull request.
+
+## Mutation testing por diff — `GATE-04`
+
+Cobertura pergunta "essa linha rodou?"; mutation testing pergunta "se essa
+linha estivesse errada, algum teste perceberia?" — a segunda pergunta é
+estritamente mais forte, e é por isso que o padrão externo trata mutation
+score como a prova, cobertura como o piso. **Nenhum mutante pode sobreviver
+nas linhas que o PR tocou.**
+
+Mutar o workspace inteiro não cabe num gate de PR — 2144 mutantes contados
+no dia em que este gate foi desenhado, cada um exigindo rebuild e retest
+completo. `cargo mutants --in-diff` restringe aos mutantes dentro do que o
+PR de fato tocou, o mesmo princípio de "Cobertura de diff" acima aplicado a
+um instrumento diferente. Não ratcheta contra o legado do resto do
+workspace: como o escopo já é só o diff, não há legado dentro do escopo por
+definição.
+
+Gate: [`scripts/mutation-gate.sh`](scripts/mutation-gate.sh), no job
+`mutation` do CI, condicionado a `github.event_name == 'pull_request'` —
+mesma razão das outras exceções desta seção: a base certa de comparação só
+é conhecida dentro de um pull request.
+
+## Complexidade por função — `GATE-05`/`GATE-06`
+
+Ciclomática (McCabe) conta ponto de decisão de forma achatada: 1 + um por
+ramo. Cognitiva (SonarSource) pesa mais a aninhada — duas funções com o
+mesmo número de ramos podem ter cognitiva bem diferente se uma aninha e a
+outra não (ex.: um dispatch de tecla pode ter ciclomática alta e cognitiva
+baixa por ser um `match` achatado). O gate cobre as duas, nunca uma no lugar
+da outra, teto de 15 em cada.
+
+Diferente dos gates PR-only acima: complexidade é propriedade do estado
+atual de uma função, não do que um PR introduziu, então roda contra a
+árvore inteira em [`scripts/complexity-gate.sh`](scripts/complexity-gate.sh)
+— mesmo lugar de `layout-gate.sh`/`file-length-gate.sh` em
+`scripts/ci-local.sh --full`, não uma exceção só-CI. Com ratchet, mesmo
+princípio do "Teto de 500 linhas" acima: função que já excedia um dos dois
+tetos no dia em que o gate nasceu tem entrada em
+[`scripts/complexity-baseline.txt`](scripts/complexity-baseline.txt) com os
+dois valores daquele dia — não pode crescer em nenhum dos dois, e a entrada
+cai quando a função encolhe para dentro dos dois tetos ou some.
+
+Medido com `codemetrics` (github.com/richardwooding/codemetrics), binário
+Go com backend tree-sitter para Rust, instalado por download de release com
+digest conferido — mesmo padrão já usado para `actionlint`.
+
+## Duplicação de código — `GATE-08`
+
+Teto de **5%** de linhas duplicadas. Medido com `jscpd` v5 (motor Rust
+nativo, github.com/kucherenko/jscpd) — o próprio `--threshold`/`--exit-code`
+do binário não faz o que o `--help` sugere: com o reporter `console`
+presente (sozinho ou combinado com `threshold`), `--exit-code` reprova assim
+que existe qualquer clone, ignorando o teto por completo. Confirmado
+testando os dois lados (teto de 1% e teto de 99% contra a mesma árvore
+deram o mesmo `exit 1`).
+[`scripts/duplication-gate.sh`](scripts/duplication-gate.sh) por isso lê o
+`jscpd-report.json` (reporter `json`) e faz a própria comparação contra o
+teto, em vez de confiar na decisão do binário sem verificar.
+
+Mesmo princípio de escopo do "Complexidade por função" acima: duplicação é
+propriedade do estado atual da árvore, não do que um PR introduziu, então
+roda contra `crates/` inteiro em `scripts/ci-local.sh --full`, não é uma
+exceção só-CI. **Sem ratchet**, ao contrário do teto de 500 linhas e do de
+complexidade: a duplicação medida no dia em que este gate nasceu (1,95% de
+linhas) já ficava abaixo do teto sem precisar de baseline nenhum.
+
+`jscpd` não publica um `checksums.txt` assinado pelo projeto como
+`codemetrics` publica — o digest fixado na instalação por download foi
+calculado por este repositório no momento da adoção, não conferido contra
+um valor de terceiro independente do GitHub. Protege contra o asset mudar
+sem bump de versão; é uma garantia mais fraca que a dos outros binários
+baixados por release neste repositório, e a nota fica registrada aqui em
+vez de implícita.
+
+## Container — canal de distribuição adicional
+
+Fora do padrão SOTA-2026 (sem ID de regra) — pedido direto do usuário, não
+item do roadmap ADR-0032. `Dockerfile` multi-stage: builder
+`rust:1.96-slim-bookworm`, runtime `gcr.io/distroless/cc-debian12:nonroot`,
+os dois fixados por digest. A escolha da imagem final não é preferência
+genérica: `release.yml` compila para `x86_64-unknown-linux-gnu` (glibc
+dinâmico) e `nycode-ai` usa `reqwest` com `rustls-platform-verifier`, que lê
+o trust store do sistema operacional em runtime — `scratch`/
+`distroless/static` não têm nem libc nem trust store, então ficam fora.
+`cc-debian12` tem os dois. Binário compilado com `cargo auditable`
+(embute a árvore de dependências resolvida no próprio binário, sem custo de
+runtime). Usuário não-root fixado por UID numérico (`65532:65532`), não a
+string `nonroot`.
+
+Job `docker` no CI builda e roda um smoke test (`--version`), nunca publica
+— publicar exige pedido explícito do usuário, mesma regra de
+`review-and-sync` aplicada ao resto deste repositório. `Dockerfile` lintado
+com `hadolint`, que também não publica `checksums.txt` — mesmo padrão de
+digest calculado nesta adoção já usado para `jscpd`.
+
 ## CI local — a definição única de verde
 
 [`scripts/ci-local.sh`](scripts/ci-local.sh) é a definição, e o workflow do
@@ -211,12 +500,31 @@ verde de dez minutos atrás pode ser de outra árvore.
 Um clone sem `core.hooksPath` ativo não tem gate nenhum e parece ter;
 `scripts/ci-local.sh --check-hooks` recusa em voz alta quando esse é o caso.
 
+**Quatro exceções documentadas:** os gates de "Teto de PR assistido por IA",
+"Idade mínima de dependência", "Cobertura de diff" e "Mutation testing por
+diff" (seções acima) rodam só no CI, nunca em `--full`. A base certa de
+comparação é o alvo real do PR (`github.base_ref`), que só é conhecido
+dentro de um pull request — pode não ser `main` num PR empilhado sobre
+outro. Localmente não há como adivinhar isso sem arriscar comparar contra a
+base errada, e um gate que compara contra a base errada é pior que nenhum.
+O segundo tem um motivo a mais: verificar existência no registro é rede, e
+`verify-all`/`--full` são deliberadamente sem rede.
+
 **O próprio workflow é auditado**, no nível rápido: `actionlint` (sintaxe e
 `shellcheck` dos `run:`), `zizmor` (segurança — action não fixada, permissão
 larga, credencial persistida), `pinact` (todo `uses:` é SHA verificado, ADR-0030)
 e `gitleaks` (segredo commitado). Ferramenta ausente reprova com a linha de
 instalação na mensagem — mesmo precedente do `perf-gate` sem `hyperfine`:
 requisito sem medição é requisito sem gate.
+
+**A definição de verde também vale do lado remoto** — `main` tem proteção
+de branch no GitHub exigindo os 12 checks acima, `strict` (branch precisa
+estar atualizada com `main`), sem force-push nem deleção
+([ADR-0034](docs/architecture/decisions/0034-protecao-de-branch-exige-ci-verde-sem-aprovacao-separada.md)).
+Deliberadamente sem exigência de aprovação humana separada — mantenedor
+único, então uma aprovação obrigatória seria auto-aprovação, não uma
+segunda perspectiva de verdade; revisar isso se um segundo colaborador
+regular aparecer.
 
 ## Antes de dizer que terminou
 
@@ -237,8 +545,18 @@ gitleaks detect --no-banner --redact --exit-code 1
 cargo deny check
 scripts/coverage-gate-test.sh
 scripts/layout-gate-test.sh
+scripts/file-length-gate-test.sh
+scripts/gen-test-map-test.sh
+scripts/architecture-boundary-gate-test.sh
+scripts/complexity-gate-test.sh
+scripts/duplication-gate-test.sh
 scripts/perf-gate-test.sh
 scripts/layout-gate.sh
+scripts/file-length-gate.sh
+scripts/gen-test-map.sh --check
+scripts/architecture-boundary-gate.sh
+scripts/complexity-gate.sh
+scripts/duplication-gate.sh
 cargo llvm-cov --workspace --all-features --json --output-path coverage.json
 scripts/coverage-gate.sh coverage.json
 cargo build --release
@@ -254,3 +572,10 @@ teste em inglês, descrevendo o comportamento protegido e não o método exercit
 `a_tool_failure_is_marked_as_an_error_for_the_model`, não `test_execute`. Um
 comentário explica a restrição que o código não consegue mostrar; nunca narra o
 que a linha seguinte faz.
+
+Rodapé de commit assistido por IA: `Assisted-by: <agente>:<modelo>`, nunca
+`Co-Authored-By`. O campo `Co-Authored-By` certifica autoria humana — usá-lo
+para atribuição de máquina corrompe esse dado (`AI-09` do padrão externo
+adotado acima). Pelo mesmo motivo, nenhum agente adiciona rodapé de sign-off:
+só um humano certifica a origem de uma contribuição (`AI-08`). Vale para
+commits novos; o histórico existente não é reescrito.

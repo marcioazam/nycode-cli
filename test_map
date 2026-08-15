@@ -1,0 +1,197 @@
+# test_map -- gerado por scripts/gen-test-map.sh (AI-10 do padrao externo
+# SOTA-2026). NAO EDITE A MAO: scripts/gen-test-map.sh --check falha se este
+# arquivo estiver desatualizado.
+#
+# Inventario por crate de onde os testes vivem -- nao mapeia arquivo-fonte
+# para teste especifico. Este repositorio tem modulos de fixture
+# compartilhados entre varios arquivos de teste (agent_test.rs e usado por
+# outcome_test.rs e compaction_test.rs, por exemplo), entao uma relacao 1:1
+# seria falsa em varios casos reais. Um mapa errado ensina a confiar onde nao
+# devia, o que e pior que nenhum mapa.
+
+## nycode-agent
+
+Testes inline (#[cfg(test)] dentro do proprio arquivo):
+  crates/nycode-agent/src/agent/dispatch.rs
+  crates/nycode-agent/src/agent/transform.rs
+  crates/nycode-agent/src/backend.rs
+  crates/nycode-agent/src/cancel.rs
+  crates/nycode-agent/src/capped.rs
+  crates/nycode-agent/src/context/commands.rs
+  crates/nycode-agent/src/context/instructions.rs
+  crates/nycode-agent/src/context/mod.rs
+  crates/nycode-agent/src/context/skills.rs
+  crates/nycode-agent/src/error.rs
+  crates/nycode-agent/src/lib.rs
+  crates/nycode-agent/src/mcp/config.rs
+  crates/nycode-agent/src/mcp/schema.rs
+  crates/nycode-agent/src/mcp/tool.rs
+  crates/nycode-agent/src/policy/approval.rs
+  crates/nycode-agent/src/policy/confinement/environment.rs
+  crates/nycode-agent/src/policy/confinement/sandbox.rs
+  crates/nycode-agent/src/policy/confinement/sandbox/profile.rs
+  crates/nycode-agent/src/policy/hooks.rs
+  crates/nycode-agent/src/policy/permission.rs
+  crates/nycode-agent/src/policy/trust.rs
+  crates/nycode-agent/src/session/compaction/marker.rs
+  crates/nycode-agent/src/session/compaction/mod.rs
+  crates/nycode-agent/src/session/store.rs
+  crates/nycode-agent/src/tool/coerce.rs
+  crates/nycode-agent/src/tool/contain.rs
+  crates/nycode-agent/src/tool/mod.rs
+  crates/nycode-agent/src/tool/repair.rs
+  crates/nycode-agent/src/tool/sanitize.rs
+  crates/nycode-agent/src/tools/bash.rs
+  crates/nycode-agent/src/tools/bash/capture.rs
+  crates/nycode-agent/src/tools/bash/launch.rs
+  crates/nycode-agent/src/tools/bash/output.rs
+  crates/nycode-agent/src/tools/bash/supervise.rs
+  crates/nycode-agent/src/tools/edit.rs
+  crates/nycode-agent/src/tools/mod.rs
+  crates/nycode-agent/src/tools/read.rs
+  crates/nycode-agent/src/tools/search/collect.rs
+  crates/nycode-agent/src/tools/search/engine.rs
+  crates/nycode-agent/src/tools/search/find.rs
+  crates/nycode-agent/src/tools/search/grep.rs
+  crates/nycode-agent/src/tools/search/ls.rs
+  crates/nycode-agent/src/tools/task.rs
+  crates/nycode-agent/src/tools/write.rs
+  crates/nycode-agent/src/turn.rs
+
+Arquivos de teste dedicados (mod *_test;):
+  crates/nycode-agent/src/agent_test.rs
+  crates/nycode-agent/src/compaction_test.rs
+  crates/nycode-agent/src/outcome_test.rs
+  crates/nycode-agent/src/policy/hooks/hooks_test.rs
+  crates/nycode-agent/src/tools/task_test.rs
+
+Testes de integracao:
+  (nenhum)
+
+## nycode-ai
+
+Testes inline (#[cfg(test)] dentro do proprio arquivo):
+  crates/nycode-ai/src/anthropic/decoder.rs
+  crates/nycode-ai/src/anthropic/dialect.rs
+  crates/nycode-ai/src/anthropic/identifier.rs
+  crates/nycode-ai/src/anthropic/types.rs
+  crates/nycode-ai/src/catalog/cost.rs
+  crates/nycode-ai/src/catalog/mod.rs
+  crates/nycode-ai/src/config.rs
+  crates/nycode-ai/src/destination.rs
+  crates/nycode-ai/src/dialect.rs
+  crates/nycode-ai/src/error.rs
+  crates/nycode-ai/src/event.rs
+  crates/nycode-ai/src/openai/cache.rs
+  crates/nycode-ai/src/openai/chat.rs
+  crates/nycode-ai/src/openai/chat_stream.rs
+  crates/nycode-ai/src/openai/responses.rs
+  crates/nycode-ai/src/openai/responses_stream.rs
+  crates/nycode-ai/src/sampling/mod.rs
+  crates/nycode-ai/src/sampling/thinking.rs
+  crates/nycode-ai/src/transport/client.rs
+  crates/nycode-ai/src/transport/retry.rs
+  crates/nycode-ai/src/transport/stream.rs
+
+Arquivos de teste dedicados (mod *_test;):
+  (nenhum)
+
+Testes de integracao:
+  (nenhum)
+
+## nycode-auth
+
+Testes inline (#[cfg(test)] dentro do proprio arquivo):
+  crates/nycode-auth/src/resolver.rs
+  crates/nycode-auth/src/subscription.rs
+
+Arquivos de teste dedicados (mod *_test;):
+  (nenhum)
+
+Testes de integracao:
+  (nenhum)
+
+## nycode-cli
+
+Testes inline (#[cfg(test)] dentro do proprio arquivo):
+  crates/nycode-cli/src/exit.rs
+  crates/nycode-cli/src/image.rs
+  crates/nycode-cli/src/interactive.rs
+  crates/nycode-cli/src/interactive/approval.rs
+  crates/nycode-cli/src/interactive/builtin.rs
+  crates/nycode-cli/src/interactive/panel.rs
+  crates/nycode-cli/src/invocation/cli.rs
+  crates/nycode-cli/src/invocation/grant.rs
+  crates/nycode-cli/src/invocation/route.rs
+  crates/nycode-cli/src/main.rs
+  crates/nycode-cli/src/output/events.rs
+  crates/nycode-cli/src/output/mod.rs
+  crates/nycode-cli/src/output/text.rs
+  crates/nycode-cli/src/run.rs
+  crates/nycode-cli/src/screen.rs
+  crates/nycode-cli/src/screen/raw.rs
+  crates/nycode-cli/src/session/consent.rs
+  crates/nycode-cli/src/session/mod.rs
+  crates/nycode-cli/src/session/paths.rs
+  crates/nycode-cli/src/session/phases.rs
+  crates/nycode-cli/src/session/provider/catalog.rs
+  crates/nycode-cli/src/session/provider/settings.rs
+  crates/nycode-cli/src/session/provider/tuning.rs
+  crates/nycode-cli/src/session/warnings.rs
+
+Arquivos de teste dedicados (mod *_test;):
+  crates/nycode-cli/src/interactive/builtin_test.rs
+  crates/nycode-cli/src/interactive/panel_test.rs
+  crates/nycode-cli/src/screen/screen_test.rs
+
+Testes de integracao:
+  crates/nycode-cli/tests/e2e.rs
+
+## nycode-mcp
+
+Testes inline (#[cfg(test)] dentro do proprio arquivo):
+  crates/nycode-mcp/src/error.rs
+  crates/nycode-mcp/src/lib.rs
+  crates/nycode-mcp/src/session.rs
+  crates/nycode-mcp/src/session/connect.rs
+
+Arquivos de teste dedicados (mod *_test;):
+  (nenhum)
+
+Testes de integracao:
+  (nenhum)
+
+## nycode-parity
+
+Testes inline (#[cfg(test)] dentro do proprio arquivo):
+  crates/nycode-parity/src/dialect.rs
+  crates/nycode-parity/src/fixture.rs
+  crates/nycode-parity/src/main.rs
+  crates/nycode-parity/src/runner.rs
+  crates/nycode-parity/src/transcript.rs
+  crates/nycode-parity/src/workspace.rs
+
+Arquivos de teste dedicados (mod *_test;):
+  (nenhum)
+
+Testes de integracao:
+  crates/nycode-parity/tests/cli.rs
+  crates/nycode-parity/tests/fixture.rs
+
+## nycode-tui
+
+Testes inline (#[cfg(test)] dentro do proprio arquivo):
+  crates/nycode-tui/src/diff.rs
+  crates/nycode-tui/src/editor.rs
+  crates/nycode-tui/src/keys.rs
+  crates/nycode-tui/src/layout.rs
+  crates/nycode-tui/src/panel/mod.rs
+  crates/nycode-tui/src/panel/tally.rs
+  crates/nycode-tui/src/terminal.rs
+  crates/nycode-tui/src/width.rs
+
+Arquivos de teste dedicados (mod *_test;):
+  (nenhum)
+
+Testes de integracao:
+  (nenhum)

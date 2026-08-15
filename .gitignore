@@ -10,6 +10,11 @@ coverage.json
 coverage-baseline.json
 /bench-results
 
+# Saida do cargo-mutants (GATE-04). Gravada no cwd a cada execucao de
+# scripts/mutation-gate.sh ou scripts/mutation-gate-test.sh; nunca versionada.
+mutants.out/
+mutants.out.old/
+
 # Artefatos que o proprio nycode grava ao rodar. Hooks, skills e regras em
 # `.nycode/` sao versionaveis; sessao e cache de catalogo nao. O `**` e
 # obrigatorio: um padrao com barra no meio fica ancorado na raiz do repositorio

@@ -45,7 +45,7 @@ min_age:
 #     logica da acao; renovar para receber Rust estavel novo e trabalho do
 #     Dependabot, nao automatico.
 #
-#   taiki-e/install-action@cargo-deny, @cargo-llvm-cov, @zizmor
+#   taiki-e/install-action@cargo-deny, @cargo-llvm-cov, @zizmor, @cargo-mutants
 #     A propria interface da acao usa uma tag por ferramenta que o mantenedor
 #     avanca a cada release da ferramenta — nao e um numero de versao da acao.
 rules:
@@ -65,3 +65,7 @@ rules:
     conditions:
       - expr: |
           ActionName == "taiki-e/install-action" && ActionVersion == "41f31fbbf48a4bea86678f0220274a1f7d1e2e50"
+  - ignore: true
+    conditions:
+      - expr: |
+          ActionName == "taiki-e/install-action" && ActionVersion == "77ef4f772e4d87962d8178aaa1b3a4aa037b94c3"
