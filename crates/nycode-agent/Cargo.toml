@@ -17,15 +17,18 @@ futures-util = "0.3.34"
 globset = "0.4.20"
 grep-regex = "0.1.14"
 grep-searcher = "0.1.17"
+hex = "0.4.3"
 ignore = "0.4.33"
 nycode-ai = { version = "0.1.0", path = "../nycode-ai" }
 rustix = { version = "1.1.4", default-features = false, features = ["fs", "process", "std"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
 # ADR-0016: a impressao digital de uma declaracao precisa ser criptografica,
-# porque o ataque esperado e trocar o comando mantendo o hash. Ja estava na
-# arvore por transitividade; declarar nao acrescenta dependencia nova.
-sha2 = "0.10"
+# porque o ataque esperado e trocar o comando mantendo o hash. A 0.11 aqui
+# convive com uma 0.10 transitiva (nycode-auth -> keyring -> secret-service),
+# entao a arvore carrega duas familias de sha2/digest ate esse consumidor
+# tambem subir -- cargo deny so avisa (multiple-versions = "warn"), nao bloqueia.
+sha2 = "0.11"
 thiserror = "2.0.20"
 tokio = { version = "1.53.1", features = ["rt-multi-thread", "macros", "process", "fs", "sync", "time"] }
 tracing = "0.1.44"
