@@ -438,6 +438,27 @@ sem bump de versão; é uma garantia mais fraca que a dos outros binários
 baixados por release neste repositório, e a nota fica registrada aqui em
 vez de implícita.
 
+## Container — canal de distribuição adicional
+
+Fora do padrão SOTA-2026 (sem ID de regra) — pedido direto do usuário, não
+item do roadmap ADR-0032. `Dockerfile` multi-stage: builder
+`rust:1.96-slim-bookworm`, runtime `gcr.io/distroless/cc-debian12:nonroot`,
+os dois fixados por digest. A escolha da imagem final não é preferência
+genérica: `release.yml` compila para `x86_64-unknown-linux-gnu` (glibc
+dinâmico) e `nycode-ai` usa `reqwest` com `rustls-platform-verifier`, que lê
+o trust store do sistema operacional em runtime — `scratch`/
+`distroless/static` não têm nem libc nem trust store, então ficam fora.
+`cc-debian12` tem os dois. Binário compilado com `cargo auditable`
+(embute a árvore de dependências resolvida no próprio binário, sem custo de
+runtime). Usuário não-root fixado por UID numérico (`65532:65532`), não a
+string `nonroot`.
+
+Job `docker` no CI builda e roda um smoke test (`--version`), nunca publica
+— publicar exige pedido explícito do usuário, mesma regra de
+`review-and-sync` aplicada ao resto deste repositório. `Dockerfile` lintado
+com `hadolint`, que também não publica `checksums.txt` — mesmo padrão de
+digest calculado nesta adoção já usado para `jscpd`.
+
 ## CI local — a definição única de verde
 
 [`scripts/ci-local.sh`](scripts/ci-local.sh) é a definição, e o workflow do

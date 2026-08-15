@@ -179,6 +179,23 @@ scripts/perf-gate.sh
 O CI também verifica que a feature `subscription-oauth` não entrou
 transitivamente no build padrão.
 
+### Container
+
+Canal de distribuição adicional, não o principal — o binário auto-contido
+por plataforma (ver [Estado](#estado)) continua sendo a instalação padrão.
+A imagem **ainda não é publicada** em nenhum registry; hoje só builda e é
+testada no CI (job `docker`), local pra quem quiser rodar assim:
+
+```bash
+docker build -t nycode:local .
+docker run --rm nycode:local --version
+```
+
+Multi-stage, `gcr.io/distroless/cc-debian12:nonroot` (glibc + certificados,
+sem shell nem gerenciador de pacote), usuário não-root (UID 65532), binário
+com `cargo auditable` embutido. O porquê de cada escolha está comentado no
+próprio `Dockerfile`.
+
 ## Aviso
 
 O NyCode CLI pode ser compilado com a feature `subscription-oauth`, que **não

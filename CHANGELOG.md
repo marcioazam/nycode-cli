@@ -8,6 +8,23 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Adicionado
 
+- **Suporte a container (`Dockerfile`, `.dockerignore`), pedido direto do
+  usuário — fora do padrão SOTA-2026, sem ID de regra.** Multi-stage:
+  builder `rust:1.96-slim-bookworm`, runtime
+  `gcr.io/distroless/cc-debian12:nonroot`, os dois fixados por digest. A
+  escolha da imagem final segue diretamente do que o próprio código deste
+  repositório exige: `release.yml` compila para `x86_64-unknown-linux-gnu`
+  (glibc dinâmico) e `nycode-ai` usa `reqwest` com
+  `rustls-platform-verifier`, que lê o trust store do sistema operacional
+  em runtime — `scratch`/`distroless/static` não têm libc nem trust store
+  nenhum, então ficam descartados. Binário compilado com `cargo auditable`
+  (embute a árvore de dependências resolvida no próprio binário). Usuário
+  não-root fixado por UID numérico (`65532:65532`). Novo job `docker` no CI
+  builda a imagem, linta com `hadolint` (digest calculado nesta adoção,
+  mesmo padrão de `jscpd`/`codemetrics`) e roda um smoke test — **nunca
+  publica**; é canal de distribuição adicional, não o principal, e
+  publicar exige pedido explícito do usuário.
+
 - **Gate de complexidade cognitiva e ciclomática por função, com ratchet
   (`GATE-05`/`GATE-06` do padrão SOTA-2026).** Ciclomática (McCabe) conta
   ponto de decisão de forma achatada; cognitiva (SonarSource) pesa mais a
