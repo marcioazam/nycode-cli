@@ -2,6 +2,13 @@
   <img src="docs/assets/nycode-pixel.svg" alt="nycode" width="480">
 </p>
 
+<!--
+  Versao pra terminal (nao renderiza aqui -- o GitHub nao interpreta ANSI
+  dentro de markdown): meio-bloco unicode + truecolor 24-bit, fundo
+  transparente. Ver docs/assets/nycode-wordmark-ansi.txt; `cat` esse
+  arquivo num terminal que suporte truecolor.
+-->
+
 # NyCode CLI
 
 Harness de coding agent em terminal, escrito em Rust do zero — não um fork,
