@@ -82,6 +82,7 @@ Não são aspirações; o build quebra quando qualquer um deles regride.
 | O artefato do concorrente tem digest fixado antes de ser executado (NFR-8) | obrigatório | [`perf-baseline.yml`](../.github/workflows/perf-baseline.yml) |
 | `subscription-oauth` fora do build padrão | obrigatório | [`ci.yml`](../.github/workflows/ci.yml) |
 | O harness de paridade continua capaz de acusar divergência | obrigatório | [`scripts/parity-gate.sh`](../scripts/parity-gate.sh), job `parity` |
+| A imagem de container builda, passa no `hadolint` e roda (`--version`) | obrigatório | [`Dockerfile`](../Dockerfile), job `docker` |
 
 Cada métrica de performance tem dois pisos e vale o mais apertado dos dois: um
 absoluto, perto do valor medido, que pega regressão nossa; e um relativo ao

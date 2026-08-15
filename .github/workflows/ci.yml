@@ -391,3 +391,35 @@ jobs:
           NYCODE_BASE_URL: ${{ vars.PARITY_BASE_URL }}
           NYCODE_API_KEY: ${{ secrets.PARITY_API_KEY }}
           PARITY_REFERENCE: ${{ vars.PARITY_REFERENCE }}
+
+  # Canal de distribuicao adicional, nao o principal (ver comentario no topo
+  # do Dockerfile) -- so builda e faz smoke test, nunca publica. Publicar
+  # exige pedido explicito do usuario, mesma regra ja aplicada ao resto
+  # deste repositorio.
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5.1.0
+        with:
+          persist-credentials: false
+      # hadolint (github.com/hadolint/hadolint) tambem nao publica
+      # checksums.txt -- mesmo problema ja resolvido pro actionlint acima
+      # (linha ~125), mesmo padrao replicado aqui.
+      - name: instala hadolint (digest calculado nesta adocao, sem checksums.txt oficial)
+        env:
+          HADOLINT_VERSION: "2.15.1"
+          HADOLINT_SHA256: c7187db94eeeeca956519a6af171adc31453941a1e777961f6e680f697c8c507
+        run: |
+          curl -fsSL -o hadolint \
+            "https://github.com/hadolint/hadolint/releases/download/v${HADOLINT_VERSION}/hadolint-Linux-x86_64"
+          echo "${HADOLINT_SHA256}  hadolint" | sha256sum -c -
+          chmod +x hadolint
+          sudo mv hadolint /usr/local/bin/hadolint
+      - run: hadolint Dockerfile
+      - run: docker build -t nycode:ci .
+      - name: smoke test -- a imagem builda e roda
+        run: |
+          version_output="$(docker run --rm nycode:ci --version)"
+          echo "${version_output}"
+          [[ -n "${version_output}" ]]
