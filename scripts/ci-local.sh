@@ -11,9 +11,10 @@
 #            commit: pega o erro que nao compila e o teste que quebrou, que sao
 #            a maioria, sem cobrar oito minutos de quem esta iterando.
 #
-#   --full   a sequencia inteira do AGENTS.md, com cobertura, layout, release,
-#            performance e paridade. E o que o merge exige, porque merge e a
-#            fronteira depois da qual o erro deixa de ser barato.
+#   --full   a sequencia inteira do AGENTS.md, com cobertura, layout, tamanho
+#            de arquivo, release, performance e paridade. E o que o merge
+#            exige, porque merge e a fronteira depois da qual o erro deixa de
+#            ser barato.
 #
 # A ordem do `--full` nao e arbitraria: `cargo deny` roda ANTES do gate de
 # performance, como o `needs: [supply-chain]` do workflow impoe. E o NFR-8
@@ -149,9 +150,19 @@ full() {
   # pior que um gate que reprova, porque nao deixa rastro.
   step "auto-teste do gate de cobertura" scripts/coverage-gate-test.sh
   step "auto-teste do gate de layout" scripts/layout-gate-test.sh
+  step "auto-teste do gate de tamanho de arquivo" scripts/file-length-gate-test.sh
+  step "auto-teste do gerador de test_map" scripts/gen-test-map-test.sh
+  step "auto-teste do gate de fronteira de arquitetura" scripts/architecture-boundary-gate-test.sh
+  step "auto-teste do gate de complexidade" scripts/complexity-gate-test.sh
+  step "auto-teste do gate de duplicacao" scripts/duplication-gate-test.sh
   step "auto-teste do gate de performance" scripts/perf-gate-test.sh
 
   step "layout" scripts/layout-gate.sh
+  step "tamanho de arquivo" scripts/file-length-gate.sh
+  step "test_map em dia" scripts/gen-test-map.sh --check
+  step "fronteira de arquitetura" scripts/architecture-boundary-gate.sh
+  step "complexidade" scripts/complexity-gate.sh
+  step "duplicacao" scripts/duplication-gate.sh
   step "cobertura" cargo llvm-cov --workspace --all-features --json \
     --output-path coverage.json
   step "gate de cobertura" scripts/coverage-gate.sh coverage.json

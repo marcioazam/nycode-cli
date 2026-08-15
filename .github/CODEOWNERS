@@ -1,0 +1,14 @@
+# Dono padrão — mantenedor único hoje; caminho aqui para quando isso mudar.
+*                               @marcioazam
+
+# Credenciais
+/crates/nycode-auth/           @marcioazam
+
+# CI/CD e postura de segurança
+/.github/workflows/            @marcioazam
+/deny.toml                     @marcioazam
+/.pinact.yaml                  @marcioazam
+/zizmor.yml                    @marcioazam
+
+# Decisões de arquitetura
+/docs/architecture/decisions/  @marcioazam

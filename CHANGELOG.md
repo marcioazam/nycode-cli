@@ -8,6 +8,257 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Adicionado
 
+- **Proteção de branch em `main`, configurada no GitHub
+  ([ADR-0034](docs/architecture/decisions/0034-protecao-de-branch-exige-ci-verde-sem-aprovacao-separada.md)).**
+  Até esta data `main` não tinha proteção nenhuma (confirmado via API antes
+  de configurar). Exige os 12 checks de CI atuais, `strict` (branch
+  atualizada com `main` antes do merge), bloqueia force-push e deleção.
+  Deliberadamente sem exigência de aprovação humana separada — mantenedor
+  único (`.github/CODEOWNERS`), então essa exigência seria auto-aprovação,
+  não revisão de verdade; revisar se um segundo colaborador regular
+  aparecer. Item que ficava fora do escopo autônomo desde o início da
+  adoção do SOTA-2026 — fechado só depois de confirmação explícita do
+  usuário sobre qual nível de proteção configurar.
+
+- **Três documentos que fecham lacunas de uma checklist pedida diretamente
+  pelo usuário, fora do padrão SOTA-2026.** `docs/CONVENTIONS.md` (novo) —
+  nomenclatura e organização de arquivo/pasta/documento já praticadas neste
+  repositório (idioma `foo.rs`+`foo/`, 11 pares confirmados; teste inline
+  dominante, 110 arquivos, vs. arquivo dedicado `*_test.rs`, minoria, 9
+  arquivos; par `<área>-gate.sh`+`<área>-gate-test.sh`, 11 de 12 gates),
+  escritas em vez de tribais. `docs/architecture/ARCHITECTURE.md` ganhou a
+  seção 13 ("Idiomas e práticas de linguagem, Rust 2026") — os padrões
+  reais de código (error handling `thiserror`-nas-libs/`anyhow`-nos-binários,
+  runtime tokio construído sob demanda, `serde` com `deny_unknown_fields`
+  vs. `rename_all`, trait object pra plugável vs. genérico pra fixo),
+  grounded em citações verificadas, não recomendação genérica; também
+  satisfaz o pedido de "melhores práticas de arquitetura 2026" enquadrando
+  o padrão de traits plugáveis como ports-and-adapters, sem criar documento
+  paralelo. `AGENTS.md` ganhou uma seção amarrando NFR-8 (segurança antes
+  de performance) e `THREAT_MODEL.md` numa política explícita: toda review
+  avalia as duas, sempre — não só quando entram em conflito.
+
+- **Suporte a container (`Dockerfile`, `.dockerignore`), pedido direto do
+  usuário — fora do padrão SOTA-2026, sem ID de regra.** Multi-stage:
+  builder `rust:1.96-slim-bookworm`, runtime
+  `gcr.io/distroless/cc-debian12:nonroot`, os dois fixados por digest. A
+  escolha da imagem final segue diretamente do que o próprio código deste
+  repositório exige: `release.yml` compila para `x86_64-unknown-linux-gnu`
+  (glibc dinâmico) e `nycode-ai` usa `reqwest` com
+  `rustls-platform-verifier`, que lê o trust store do sistema operacional
+  em runtime — `scratch`/`distroless/static` não têm libc nem trust store
+  nenhum, então ficam descartados. Binário compilado com `cargo auditable`
+  (embute a árvore de dependências resolvida no próprio binário). Usuário
+  não-root fixado por UID numérico (`65532:65532`). Novo job `docker` no CI
+  builda a imagem, linta com `hadolint` (digest calculado nesta adoção,
+  mesmo padrão de `jscpd`/`codemetrics`) e roda um smoke test — **nunca
+  publica**; é canal de distribuição adicional, não o principal, e
+  publicar exige pedido explícito do usuário.
+
+- **Gate de complexidade cognitiva e ciclomática por função, com ratchet
+  (`GATE-05`/`GATE-06` do padrão SOTA-2026).** Ciclomática (McCabe) conta
+  ponto de decisão de forma achatada; cognitiva (SonarSource) pesa mais a
+  aninhada — duas funções com o mesmo número de ramos podem pontuar bem
+  diferente se uma aninha e a outra não. O gate cobre as duas, teto de 15
+  em cada. Diferente dos gates PR-only já existentes, complexidade é
+  propriedade do estado atual de uma função, não do que um PR introduziu,
+  então roda contra a árvore inteira em `scripts/ci-local.sh --full`, mesmo
+  lugar de `layout-gate.sh`/`file-length-gate.sh`. Com ratchet igual ao
+  teto de 500 linhas: oito funções que já excediam um dos dois tetos no dia
+  em que o gate nasceu entraram no baseline com os valores exatos daquele
+  dia — não podem crescer, e a entrada cai quando a função encolhe ou some.
+  Medido com `codemetrics` (github.com/richardwooding/codemetrics), binário
+  Go com backend tree-sitter para Rust, escolhido pelo usuário sobre `cccc`
+  depois de uma pesquisa que comparou maturidade, ergonomia de gate
+  (`--diff`/`--baseline` nativos) e categoria de ferramenta (binário
+  baixado com digest conferido, mesma classe de `actionlint`/`zizmor`/
+  `gitleaks` já usados aqui) entre os candidatos.
+
+- **Gate de duplicação de código, teto de 5% (`GATE-08` do padrão
+  SOTA-2026).** Medido com `jscpd` v5 (motor Rust nativo,
+  github.com/kucherenko/jscpd). O próprio `--threshold`/`--exit-code` do
+  binário não faz o que o `--help` sugere — com o reporter `console`
+  presente, `--exit-code` reprova assim que existe qualquer clone,
+  ignorando o teto por completo, confirmado testando teto de 1% e teto de
+  99% contra a mesma árvore (mesmo `exit 1` nos dois). O gate lê o
+  `jscpd-report.json` (reporter `json`) e faz a própria comparação, em vez
+  de confiar na decisão do binário. Mesmo escopo do gate de complexidade:
+  roda contra `crates/` inteiro em `scripts/ci-local.sh --full`, não é
+  exceção só-CI. Sem ratchet — a duplicação medida no dia em que o gate
+  nasceu (1,95% de linhas) já ficava abaixo do teto. `jscpd` não publica
+  `checksums.txt` assinado como `codemetrics`; o digest da instalação por
+  download foi calculado por este repositório na adoção, não conferido
+  contra um valor de terceiro — nota registrada explicitamente no
+  `AGENTS.md`, não deixada implícita.
+
+  Com este gate, todo item do roadmap SOTA-2026 (ADR-0032) tem instrumento
+  ou waiver formal — resta só a proteção de branch/`CODEOWNERS` no GitHub,
+  que segue exigindo confirmação explícita do usuário.
+
+- **Waiver formal para `GATE-16` do padrão SOTA-2026 ([ADR-0033](docs/architecture/decisions/0033-gate-16-fica-sem-instrumento-conflito-com-hook-e-squash-merge.md)).**
+  Uma implementação foi desenhada (classificação por linha, distinguindo
+  `#[cfg(test)]` inline de produção, já que o idioma dominante deste
+  workspace mistura os dois no mesmo arquivo) e revisada
+  adversarialmente antes de qualquer commit. A revisão achou que o gate,
+  como o guia do padrão especifica, conflita com duas políticas que este
+  repositório já adotou: o hook `pre-commit` roda `cargo test` e por isso
+  já impede um commit RED (teste quebrado) de existir sem `--no-verify`,
+  proibido pelas regras deste projeto; e squash-merge apaga a separação
+  RED/GREEN de `main` no momento do merge — mesmo uma implementação
+  correta nunca alcançaria "checável meses depois", o objetivo declarado
+  do gate. `GATE-16` continua sem instrumento até uma das duas políticas
+  mudar deliberadamente; waiver expira em 2027-02-14.
+
+- **Gate de cobertura de diff, piso de 80% (`GATE-01` do padrão SOTA-2026).**
+  Mede só as linhas de produção adicionadas ou modificadas pelo PR, não o
+  agregado do projeto — um arquivo grande e bem testado absorve, no
+  agregado, o erro de arredondamento de uma função nova sem teste nenhum.
+  Construído sobre `cargo llvm-cov report --lcov`, que reaproveita os dados
+  de perfil já gerados pelo passo de cobertura no mesmo job, sem rerodar os
+  testes. Roda no job `coverage` do CI, condicionado a
+  `github.event_name == 'pull_request'` — terceira exceção documentada a
+  `scripts/ci-local.sh --full`, mesma razão das outras duas: a base certa de
+  comparação só é conhecida dentro de um pull request.
+
+- **Gate de mutation testing por diff, zero mutante sobrevivente (`GATE-04`
+  do padrão SOTA-2026).** Cobertura pergunta "essa linha rodou?"; mutation
+  testing pergunta "se essa linha estivesse errada, algum teste
+  perceberia?" — pergunta estritamente mais forte, por isso o padrão trata
+  mutation score como a prova e cobertura como o piso. Mutar o workspace
+  inteiro não cabe num gate de PR (2144 mutantes contados no dia em que este
+  gate foi desenhado); `cargo mutants --in-diff` restringe aos mutantes
+  dentro do que o PR de fato tocou, mesmo princípio do gate de cobertura de
+  diff aplicado a um instrumento diferente. Não ratcheta contra o legado do
+  resto do workspace — como o escopo já é só o diff, não há legado dentro do
+  escopo por definição. Roda no job `mutation` do CI, condicionado a
+  `github.event_name == 'pull_request'` — mesma razão das outras exceções: a
+  base certa de comparação só é conhecida dentro de um pull request.
+
+  TDD contra a lógica de decisão pura (sem `cargo`) e, para provar a fiação
+  de ponta a ponta, contra um crate sintético mínimo criado em dois commits
+  — um placeholder e a implementação real — para existir um diff genuíno
+  entre eles; a primeira tentativa usava `HEAD~0`/`HEAD` sobre um único
+  commit, sem diff nenhum para escopar. `taiki-e/install-action@cargo-mutants`
+  fixado por SHA (ADR-0030), com a mesma exceção de `--verify-comment` já
+  registrada em `.pinact.yaml` para as outras ferramentas dessa action.
+
+- **Gate de idade mínima de dependência nova, 30 dias (`SP-04` do padrão
+  SOTA-2026).** Só verifica dependência genuinamente nova (nome ausente no
+  `Cargo.lock` da base do PR) — bump de versão e crate interno não contam.
+  Consulta a API do crates.io (com `User-Agent` identificável, exigido pela
+  política deles) e reprova nome não encontrado no registro ou publicado há
+  menos de 30 dias. Roda no mesmo job `pr-size` do CI, nunca em
+  `scripts/ci-local.sh --full` — a base certa de comparação só é conhecida
+  em contexto de PR, e a checagem é rede por natureza (`audit`, a exceção a
+  "sem rede em verificação").
+
+  TDD contra repositórios git sintéticos e, para a checagem de registro,
+  contra a API real do crates.io (`libc`/`cfg-if`, que nunca saem do ar, em
+  vez de uma dependência "recente" que envelheceria e quebraria o teste).
+  Três defeitos reais encontrados e corrigidos no processo: um bug de teste
+  (saída de `jq` sem `-r` produzia JSON com aspas duplicadas), um bug de
+  produção (`git ls-tree` retorna caminho com prefixo `crates/`, não o nome
+  nu do crate — a exclusão de crate interno não excluía nada) e o mesmo
+  defeito de locale já corrigido em `gen-test-map.sh`: `comm` exige a mesma
+  colação de `sort`, que diverge por locale sem `LC_ALL=C` fixado.
+
+- **Lacunas de `docs/` do padrão externo SOTA-2026 fechadas: `GLOSSARY.md`,
+  `business-rules.md`, `THREAT_MODEL.md`, `RUNBOOK.md`, `ONBOARDING.md`,
+  `SLO.md`.** O glossário embutido em `ARCHITECTURE.md` virou
+  [`docs/GLOSSARY.md`](docs/GLOSSARY.md) — único, expandido, referenciado em
+  vez de duplicado. `business-rules.md` não repete a tabela de FR/NFR de
+  `REQUIREMENTS.md`; captura as regras que atravessam requisitos individuais
+  (`BR-N`), como segurança-antes-de-performance e proveniência proibida.
+  `THREAT_MODEL.md` é a vista de alto nível sobre o checklist de segurança
+  já existente da fronteira de confiança, sem duplicar as linhas. `SLO.md`
+  adapta o conceito para um CLI sem serviço no ar: os indicadores são os
+  pisos de performance e cobertura já travados no CI, sem política de error
+  budget (não há burn-rate sem tráfego de produção).
+
+- **Gate de fronteira de arquitetura, allowlist do grafo de dependência
+  entre crates (`GATE-15`/`ARCH-04`/`ARCH-05` do padrão SOTA-2026).** O
+  Cargo já recusa um ciclo verdadeiro; o que faltava era pegar uma
+  dependência nova entre crates — legal para o Cargo, mas que muda a direção
+  pretendida da arquitetura sem ninguém decidir isso explicitamente. Cada
+  crate deste workspace é tratado como um contexto delimitado (`ARCH-04`):
+  não há fatia mais fina que o Cargo exponha mecanicamente para checar, então
+  a fronteira verificada é de crate, não de módulo interno.
+
+  [`scripts/architecture-boundary-allowlist.txt`](scripts/architecture-boundary-allowlist.txt)
+  lista as sete arestas reais do grafo atual (`nycode-agent -> nycode-ai`,
+  `nycode-mcp -> nycode-agent`, e as cinco de `nycode-cli` para os crates que
+  ele compõe). Uma dependência real sem entrada na lista reprova; uma
+  entrada cuja dependência sumiu também reprova — a lista descreve o grafo
+  real, nunca aspiração. TDD contra workspaces sintéticos, dez casos, verde
+  de primeira.
+
+- **`test_map` gerado na raiz do repositório (`AI-10` do padrão SOTA-2026).**
+  Investigação inicial mostrou que este repositório não tem relação 1:1 entre
+  arquivo-fonte e teste — `crates/nycode-agent/src/agent_test.rs` é um módulo
+  de fixture compartilhado, importado também por `outcome_test.rs` e
+  `compaction_test.rs`, nenhum dos quais protege só o arquivo cujo nome
+  ecoa. Um mapa que afirmasse esse mapeamento seria falso em vários casos
+  reais, e a própria regra AI-10 avisa que um mapa errado é pior que nenhum.
+
+  Em vez disso, [`scripts/gen-test-map.sh`](scripts/gen-test-map.sh) gera um
+  inventário honesto por crate — onde vivem os testes inline
+  (`#[cfg(test)]`), os arquivos de teste dedicados (`mod *_test;`) e os
+  testes de integração — sem afirmar qual protege qual arquivo específico.
+  `--check` reprova se o [`test_map`](test_map) commitado ficou
+  desatualizado; roda em `scripts/ci-local.sh --full` e no job `layout` do
+  CI, TDD completo contra árvores sintéticas (12 casos, verde de primeira).
+
+- **Gate de teto de PR assistido por IA (`GATE-11`/`AI-01` do padrão
+  SOTA-2026).** Detecção mecânica de "assistido por IA": qualquer commit no
+  intervalo com rodapé `Assisted-by:` põe o PR inteiro sob o teto de 400
+  linhas alteradas / 15 arquivos (`Cargo.lock` excluído — churn mecânico do
+  `cargo`). Roda só no job `pr-size` do CI, nunca em
+  `scripts/ci-local.sh --full` — exceção documentada, porque a base certa de
+  comparação (o alvo real do PR) só é conhecida dentro do contexto de um
+  pull request via `github.base_ref`, e pode não ser `main` num PR
+  empilhado sobre outro.
+
+  Rodando o gate contra a própria PR desta fatia de trabalho
+  ([#8](https://github.com/marcioazam/nycode-cli/pull/8)) confirmou que ela
+  já excede o teto — 619 linhas em dois commits, antes mesmo deste terceiro.
+  Achado esperado e não corrigido retroativamente: dividir o histórico já
+  publicado exigiria reescrita, e o próprio ADR-0032 previu PRs subsequentes
+  para o que não coubesse na primeira fatia. A partir daqui, cada item novo
+  do roadmap entra numa PR própria — este, por exemplo, foi empilhado numa
+  branch separada em vez de crescer a PR #8.
+
+- **Gate de teto de 500 linhas por arquivo, com ratchet para o legado
+  (`GATE-07`/`ARCH-11`/`RAT-04` do padrão SOTA-2026).** Quatro arquivos já
+  excediam o teto no dia em que o gate entrou —
+  `crates/nycode-agent/src/agent_test.rs` (775), `.../hooks_test.rs` (705),
+  `crates/nycode-agent/src/agent/dispatch.rs` (515) e
+  `crates/nycode-cli/src/session/mod.rs` (512) — e um gate que bloqueasse
+  direto teria quebrado o CI em arquivos sem relação com a mudança que o
+  introduziu. Em vez disso, [`scripts/file-length-baseline.txt`](scripts/file-length-baseline.txt)
+  registra o tamanho de cada um no dia do baseline: o arquivo pode ficar do
+  jeito que está, não pode crescer, e a entrada cai — reprovando o gate —
+  quando o arquivo encolhe para dentro do teto ou some. Arquivo de teste
+  conta igual a arquivo de produção, diferente do gate de layout: o teto mede
+  o quanto um agente edita com confiança de uma vez, e isso não muda por o
+  arquivo ser teste.
+
+  [`scripts/file-length-gate.sh`](scripts/file-length-gate.sh) e seu
+  auto-teste entram em `scripts/ci-local.sh --full` (job `layout` do CI),
+  antes do próprio gate, no mesmo precedente dos outros gates locais.
+
+- **Conformidade formal com o padrão externo SOTA-2026 (base-software-rules),
+  nível L2.**
+  ([ADR-0032](docs/architecture/decisions/0032-adota-padrao-externo-sota-2026-nivel-l2.md))
+  Regras já vinculantes deste repositório (cobertura, layout, pinning de
+  action) ganham ID citável do padrão; lacunas reais (mutation testing,
+  complexidade, duplicação, cobertura de diff, `test_map`) ficam nomeadas em
+  [`docs/product/ROADMAP.md`](docs/product/ROADMAP.md) em vez de invisíveis.
+  Novo: `CLAUDE.md` (ponte para `AGENTS.md`), `SECURITY.md`,
+  `CONTRIBUTING.md`, `.github/CODEOWNERS`. Rodapé de commit assistido por IA
+  muda de `Co-Authored-By` para `Assisted-by: <agente>:<modelo>` — o primeiro
+  é campo de crédito de autoria humana, e usá-lo para atribuição de máquina
+  corrompe esse dado.
+
 - **CI endurecido para SOTA 2026: 52 achados medidos, zero em severidade média
   e alta.** O `AGENTS.md` já dizia que artefato de terceiro verifica digest
   antes de executar, com o esperado fixado em arquivo versionado —
