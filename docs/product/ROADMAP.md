@@ -60,8 +60,9 @@ ficou de fora da primeira fatia, cada item já citando o ID de regra que fecha:
 reconciliação do [`AGENTS.md`](../../AGENTS.md) — não repetido aqui para não
 divergir. Esta lista é só o que falta.)*
 
-Todo gate do padrão já tem instrumento ou waiver formal — nada pendente de
-ferramenta abaixo desta linha, só a exceção de infraestrutura compartilhada.
+Todo gate do padrão já tem instrumento ou waiver formal, e a proteção de
+branch já está configurada — nada pendente de ferramenta nem de
+infraestrutura abaixo desta linha.
 
 - **Trilha test-first automatizada** — commit RED só toca teste, commit
   GREEN não toca teste. `GATE-16`. **Não é mais um "falta fazer": é um
@@ -69,10 +70,8 @@ ferramenta abaixo desta linha, só a exceção de infraestrutura compartilhada.
   expira 2027-02-14) — o gate, como o padrão externo especifica, conflita
   com o hook `pre-commit` deste repositório (que já impede um commit RED
   de existir) e com squash-merge (que apaga a separação RED/GREEN de
-  `main` no merge). Reabrir exige mudar uma dessas duas políticas.
-- **Proteção de branch + exigência de aprovação do `CODEOWNERS` no GitHub.**
-  Configuração de infraestrutura compartilhada — precisa de confirmação
-  explícita antes de qualquer mudança.
+  `main` no merge). Reabrir exige mudar uma dessas duas políticas —
+  confirmado com o usuário em 2026-08-14 que o waiver fica como está.
 
 ## Fora do roadmap
 
