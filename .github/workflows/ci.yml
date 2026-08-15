@@ -40,9 +40,14 @@ jobs:
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets --all-features
 
-  # O teto de sete arquivos por diretorio. Job proprio e nao passo do `lint`
-  # porque nao depende de toolchain nem de cache: reprova em segundos, e
-  # separado ele diz o que reprovou sem se misturar a um erro de compilacao.
+  # O teto de sete arquivos por diretorio, o teto de 500 linhas por arquivo
+  # (GATE-07/ARCH-11 do padrao externo, com ratchet), a atualidade do
+  # test_map (AI-10), o grafo de dependencia entre crates (GATE-15), a
+  # complexidade cognitiva/ciclomatica por funcao (GATE-05/GATE-06, tambem
+  # com ratchet) e a duplicacao de codigo (GATE-08). Job proprio e nao passo
+  # do `lint` porque nenhum depende de toolchain nem de cache: reprovam em
+  # segundos, e separado dizem o que reprovou sem se misturar a um erro de
+  # compilacao.
   layout:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -52,6 +57,81 @@ jobs:
           persist-credentials: false
       - run: scripts/layout-gate-test.sh
       - run: scripts/layout-gate.sh
+      - run: scripts/file-length-gate-test.sh
+      - run: scripts/file-length-gate.sh
+      - run: scripts/gen-test-map-test.sh
+      - run: scripts/gen-test-map.sh --check
+      - run: scripts/architecture-boundary-gate-test.sh
+      - run: scripts/architecture-boundary-gate.sh
+      # codemetrics (github.com/richardwooding/codemetrics) nao publica
+      # action.yml na raiz do jeito que este repositorio fixa por SHA
+      # (ADR-0030) exigiria para uma composite action de terceiro; o binario
+      # e baixado direto do release e o digest e conferido contra o valor
+      # publicado, mesmo padrao ja usado para actionlint acima.
+      - name: instala codemetrics (digest conferido contra o release)
+        env:
+          CODEMETRICS_VERSION: "0.12.5"
+          CODEMETRICS_SHA256: c5f05849f82cdb0fe0f6ffa1171fe62a2424bedce619cf4bf3693723886f7dc4
+        run: |
+          curl -fsSL -o codemetrics.tar.gz \
+            "https://github.com/richardwooding/codemetrics/releases/download/v${CODEMETRICS_VERSION}/codemetrics_${CODEMETRICS_VERSION}_linux_amd64.tar.gz"
+          echo "${CODEMETRICS_SHA256}  codemetrics.tar.gz" | sha256sum -c -
+          tar xzf codemetrics.tar.gz codemetrics
+          sudo mv codemetrics /usr/local/bin/codemetrics
+      - run: scripts/complexity-gate-test.sh
+      - run: scripts/complexity-gate.sh
+      # jscpd (github.com/kucherenko/jscpd) tambem nao publica action.yml.
+      # Diferente de codemetrics, o release nao traz um checksums.txt
+      # assinado pelo projeto -- o digest abaixo foi calculado por este
+      # repositorio no momento da adocao (sha256sum sobre o asset baixado de
+      # releases/download, a mesma API do GitHub que qualquer verificacao
+      # usaria). Protege contra o asset mudar sem bump de versao; nao e' uma
+      # confirmacao de terceiro independente do GitHub, que codemetrics tem
+      # e este nao.
+      - name: instala jscpd (digest calculado nesta adocao, sem checksums.txt oficial)
+        env:
+          JSCPD_VERSION: "5.0.15"
+          JSCPD_SHA256: bf46eef9d74e15af108e5fdb21ecf4f8679c54f10814815cb037209332d66ec4
+        run: |
+          curl -fsSL -o jscpd.tar.gz \
+            "https://github.com/kucherenko/jscpd/releases/download/v${JSCPD_VERSION}/jscpd-linux-x64-gnu.tar.gz"
+          echo "${JSCPD_SHA256}  jscpd.tar.gz" | sha256sum -c -
+          tar xzf jscpd.tar.gz jscpd
+          sudo mv jscpd /usr/local/bin/jscpd
+      - run: scripts/duplication-gate-test.sh
+      - run: scripts/duplication-gate.sh
+
+  # Teto de PR assistido por IA (GATE-11/AI-01) e idade minima de dependencia
+  # nova (SP-04). So aqui, e nao em scripts/ci-local.sh --full: a base certa
+  # de comparacao (o alvo real do PR, que pode nao ser main num PR empilhado
+  # sobre outro) so e conhecida de verdade dentro do contexto de um pull
+  # request -- e' o `github.base_ref` do evento. Localmente nao ha como
+  # decidir isso sem adivinhar, e um gate que adivinha errado e pior que
+  # nenhum. `fetch-depth: 0` porque os dois gates precisam do historico
+  # completo para achar o merge-base.
+  pr-size:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5.1.0
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - run: scripts/agent-pr-size-gate-test.sh
+      - run: scripts/agent-pr-size-gate.sh "origin/${BASE_REF}" "HEAD"
+        env:
+          # Nunca interpolar github.base_ref direto no run: -- e' controlado
+          # por quem abre o PR (nome de branch), e um valor assim direto no
+          # shell e' injecao de template (zizmor, template-injection). Via
+          # env, o bash trata como dado.
+          BASE_REF: ${{ github.base_ref }}
+      # Idade minima de dependencia nova (SP-04). Mesmo job: ja tem o
+      # fetch-depth 0 e a base real do PR que o gate tambem precisa.
+      - run: scripts/dependency-age-gate-test.sh
+      - run: scripts/dependency-age-gate.sh "origin/${BASE_REF}" "HEAD"
+        env:
+          BASE_REF: ${{ github.base_ref }}
 
   # Lint do proprio workflow: sem toolchain, sem cache, reprova em segundos.
   # Fecha o mesmo argumento que `layout` ja fecha, aplicado aos workflows.
@@ -179,6 +259,28 @@ jobs:
           fi
           echo "caminho inerte; o kill-switch nao tem o que disparar"
 
+  # Mutation testing por diff (GATE-04). So em pull_request, pelo mesmo
+  # motivo dos outros gates PR-only: a base real so e conhecida no evento.
+  # Mutar o workspace inteiro nao cabe aqui -- 2144 mutantes contados no dia
+  # em que este gate foi desenhado, cada um exigindo rebuild e retest
+  # completo -- entao `cargo mutants --in-diff` restringe ao que o PR tocou.
+  mutation:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5.1.0
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c  # stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6  # v2.9.2
+      - uses: taiki-e/install-action@77ef4f772e4d87962d8178aaa1b3a4aa037b94c3  # cargo-mutants
+      - run: scripts/mutation-gate-test.sh
+      - run: scripts/mutation-gate.sh "origin/${BASE_REF}" "HEAD"
+        env:
+          BASE_REF: ${{ github.base_ref }}
+
   coverage:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -186,6 +288,10 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5.1.0
         with:
           persist-credentials: false
+          # fetch-depth 0: o passo de cobertura de diff (GATE-01), mais abaixo,
+          # precisa do historico completo para achar o merge-base com a base
+          # real do PR.
+          fetch-depth: 0
       - uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c  # stable
         with:
           components: llvm-tools-preview
@@ -205,6 +311,17 @@ jobs:
       - run: scripts/coverage-gate-test.sh
       - run: cargo llvm-cov --workspace --all-features --json --output-path coverage.json
       - run: scripts/coverage-gate.sh coverage.json
+      # Cobertura de diff (GATE-01), so em pull_request: precisa da base real
+      # do PR, que so o evento conhece. `cargo llvm-cov report` reaproveita os
+      # dados de perfil do passo acima -- nao roda os testes de novo.
+      - if: github.event_name == 'pull_request'
+        run: scripts/diff-coverage-gate-test.sh
+      - if: github.event_name == 'pull_request'
+        run: cargo llvm-cov report --lcov --output-path lcov.info
+      - if: github.event_name == 'pull_request'
+        run: scripts/diff-coverage-gate.sh lcov.info "origin/${BASE_REF}" "HEAD"
+        env:
+          BASE_REF: ${{ github.base_ref }}
 
   perf:
     runs-on: ubuntu-latest
@@ -274,3 +391,35 @@ jobs:
           NYCODE_BASE_URL: ${{ vars.PARITY_BASE_URL }}
           NYCODE_API_KEY: ${{ secrets.PARITY_API_KEY }}
           PARITY_REFERENCE: ${{ vars.PARITY_REFERENCE }}
+
+  # Canal de distribuicao adicional, nao o principal (ver comentario no topo
+  # do Dockerfile) -- so builda e faz smoke test, nunca publica. Publicar
+  # exige pedido explicito do usuario, mesma regra ja aplicada ao resto
+  # deste repositorio.
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5.1.0
+        with:
+          persist-credentials: false
+      # hadolint (github.com/hadolint/hadolint) tambem nao publica
+      # checksums.txt -- mesmo problema ja resolvido pro actionlint acima
+      # (linha ~125), mesmo padrao replicado aqui.
+      - name: instala hadolint (digest calculado nesta adocao, sem checksums.txt oficial)
+        env:
+          HADOLINT_VERSION: "2.15.1"
+          HADOLINT_SHA256: c7187db94eeeeca956519a6af171adc31453941a1e777961f6e680f697c8c507
+        run: |
+          curl -fsSL -o hadolint \
+            "https://github.com/hadolint/hadolint/releases/download/v${HADOLINT_VERSION}/hadolint-Linux-x86_64"
+          echo "${HADOLINT_SHA256}  hadolint" | sha256sum -c -
+          chmod +x hadolint
+          sudo mv hadolint /usr/local/bin/hadolint
+      - run: hadolint Dockerfile
+      - run: docker build -t nycode:ci .
+      - name: smoke test -- a imagem builda e roda
+        run: |
+          version_output="$(docker run --rm nycode:ci --version)"
+          echo "${version_output}"
+          [[ -n "${version_output}" ]]

@@ -1,0 +1,25 @@
+# Baseline do gate de complexidade cognitiva e ciclomatica por funcao
+# (GATE-05/GATE-06 do padrao externo SOTA-2026, ver a secao "Padrao externo"
+# do AGENTS.md).
+#
+# Ratchet, mesmo principio do file-length-baseline.txt (GATE-07/RAT-04): os
+# dois numeros aqui sao os valores exatos no dia em que o gate nasceu -- se a
+# funcao crescer alem de qualquer um dos dois, o gate reprova mesmo estando
+# na lista. Se a funcao encolher para dentro dos dois tetos (15/15), remova a
+# linha; o gate reprova sozinho se a entrada ficar desatualizada por sobra.
+#
+# Nao e' below-floor: nao dispensa ninguem de encolher, so evita quebrar o CI
+# em funcoes que ja eram assim antes deste gate existir.
+#
+# Formato: <caminho a partir da raiz do repositorio> <funcao> <cognitiva> <ciclomatica>
+#
+# Nasce em 2026-08-14 com as oito funcoes que ja excediam pelo menos um dos
+# dois tetos no dia em que o gate entrou, medidas com codemetrics v0.12.5.
+crates/nycode-agent/src/agent.rs run_with 26 18
+crates/nycode-agent/src/tools/bash/capture.rs drain 25 15
+crates/nycode-ai/src/transport/stream.rs decode 18 13
+crates/nycode-agent/src/agent/transform.rs for_provider 16 8
+crates/nycode-agent/src/tool/repair.rs of 16 13
+crates/nycode-cli/src/interactive.rs take_turn 8 17
+crates/nycode-cli/src/interactive/panel.rs step 11 17
+crates/nycode-tui/src/keys.rs translate 3 25
