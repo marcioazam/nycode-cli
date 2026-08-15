@@ -10,6 +10,7 @@
 //! ferramenta `write`, sob permissão ampla, concederia a própria confiança.
 
 use std::collections::BTreeMap;
+use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
 use sha2::{Digest as _, Sha256};
@@ -68,8 +69,10 @@ impl Declaration {
         hasher
             .finalize()
             .iter()
-            .map(|byte| format!("{byte:02x}"))
-            .collect()
+            .fold(String::new(), |mut hex, byte| {
+                let _ = write!(hex, "{byte:02x}");
+                hex
+            })
     }
 }
 
