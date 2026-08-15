@@ -35,6 +35,7 @@ uma diferença tolerada.
 | [`RUNBOOK.md`](RUNBOOK.md) | Detecção, confirmação, mitigação e escalonamento dos três modos de falha mais prováveis |
 | [`ONBOARDING.md`](ONBOARDING.md) | Do clone ao primeiro teste passando |
 | [`SLO.md`](SLO.md) | Os indicadores de nível deste CLI (não há serviço no ar, então não há burn-rate) |
+| [`CONVENTIONS.md`](CONVENTIONS.md) | Nomenclatura e organização de arquivo/pasta/documento já praticadas, escritas em vez de tribal |
 
 A spec vive em `.specs/nycode-rs/` e não em `docs/specs/`. Os ADRs a referenciam
 por caminho relativo; mover o arquivo quebraria esses links.
