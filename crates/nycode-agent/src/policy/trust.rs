@@ -65,7 +65,11 @@ impl Declaration {
     pub fn fingerprint(&self) -> String {
         let mut hasher = Sha256::new();
         hasher.update(self.covered.as_ref().unwrap_or(&self.detail).as_bytes());
-        format!("{:x}", hasher.finalize())
+        hasher
+            .finalize()
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect()
     }
 }
 
