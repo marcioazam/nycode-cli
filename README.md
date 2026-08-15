@@ -21,11 +21,9 @@
 
 # NyCode CLI
 
-Conformidade: SOTA-2026 v1.1.0, nível L2 (standard) — ver
+Harness de coding agent em terminal, escrito em Rust do zero — não um fork,
+não um wrapper. Conformidade: SOTA-2026 v1.1.0, nível L2 (standard) — ver
 [ADR-0032](docs/architecture/decisions/0032-adota-padrao-externo-sota-2026-nivel-l2.md).
-
-Harness de coding agent em terminal, escrito em Rust, que já vem apontado para um
-[`nylla-gateway`](https://github.com/nylla/nylla-gateway) self-hosted.
 
 ```bash
 export NYCODE_BASE_URL=https://seu-gateway/v1
@@ -35,9 +33,45 @@ nycode -p "explique este repositorio"
 
 ## Por que existe
 
-O gateway expõe credenciais próprias como API padrão OpenAI e Anthropic, e até
-aqui dependia inteiramente de clientes de terceiros para ser consumido. Cada um
-traz sua própria política de autenticação, seu ciclo de release e seu risco de
+O ecossistema de agentes de código em terminal já resolveu, cada um à sua
+maneira, pedaços importantes do problema — mas nenhum reúne tudo numa base
+única, auditável e sob controle ponta a ponta. O objetivo declarado do
+NyCode é extrair o que cada harness já validado publicamente faz bem e
+reconstruir num único binário Rust: memory-safe por construção, sem
+garbage collector, com os pisos de startup/memória/tamanho medidos contra
+concorrente que a tabela abaixo documenta.
+
+Referências permitidas e por quê, com a licença de cada uma — atribuição
+formal, quando há derivação de código de verdade, fica em
+[`NOTICE`](NOTICE), não aqui:
+
+- [`pi`](https://github.com/earendil-works/pi) (MIT) — arquitetura e
+  comportamento observável, a referência mais próxima; **a única com
+  derivação de código atribuída no `NOTICE`** hoje.
+- [`codex`](https://github.com/openai/codex) (Apache-2.0) — baseline de
+  performance medida (ADR-0012), nunca fonte de código.
+- [`opencode`](https://github.com/sst/opencode) (MIT) — arquitetura
+  cliente/servidor e sessão paralela, referência de leitura.
+- [`goose`](https://github.com/block/goose) (Apache-2.0) — extensões via
+  MCP e portabilidade entre provedores, referência de leitura.
+- [`grok-build`](https://github.com/xai-org/grok-build) (Apache-2.0) —
+  harness Rust da xAI, referência de leitura mais próxima em linguagem.
+
+Nenhuma dessas é usada como origem de código além de `pi`; as demais
+informam decisão de design, e a lista completa do que foi adotado,
+recusado ou adiado de cada uma vive em
+[`research-sota-2026.md`](.specs/nycode-rs/research-sota-2026.md). Cada
+nome citado é marca de seu respectivo projeto/empresa; o NyCode não usa
+essas marcas e não é afiliado nem endossado por nenhum deles — mesmo
+critério já aplicado a `pi` e `codex` no [`NOTICE`](NOTICE).
+**Proibido, em qualquer circunstância:** o código-fonte vazado do Claude
+Code e qualquer derivado — ver "Proveniência" no [`AGENTS.md`](AGENTS.md).
+
+Separado disso, mas motivo igualmente real de existir: o
+[`nylla-gateway`](https://github.com/nylla/nylla-gateway) self-hosted expõe
+credenciais próprias como API padrão OpenAI e Anthropic, e até aqui
+dependia inteiramente de clientes de terceiros para ser consumido — cada um
+com sua própria política de autenticação, ciclo de release e risco de
 descontinuidade. O NyCode CLI é a superfície de agente que a Nylla controla
 ponta a ponta.
 
