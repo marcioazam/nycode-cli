@@ -1,0 +1,27 @@
+# Allowlist do gate de fronteira de arquitetura (GATE-15/ARCH-04/ARCH-05 do
+# padrao externo SOTA-2026, ver a secao correspondente do AGENTS.md).
+#
+# Uma linha e' uma aresta permitida no grafo de dependencia interna:
+# `<crate-origem> -> <crate-destino>` significa que o Cargo.toml de
+# <crate-origem> pode depender de <crate-destino>. Uma dependencia real que
+# nao esta aqui reprova o gate -- precisa de linha adicionada a mao, o que
+# forca revisao humana antes de aceitar mais uma aresta. Uma linha aqui cuja
+# dependencia sumiu do Cargo.toml tambem reprova: esta lista descreve o
+# grafo real, nao aspiracoes.
+#
+# Camadas pretendidas, de baixo para cima: nycode-ai (cliente de wire) e
+# nycode-auth (credenciais) nao dependem de nada interno -- sao a base.
+# nycode-agent monta o loop de agente sobre nycode-ai. nycode-mcp e' cliente
+# MCP que usa o mesmo loop de agente para expor ferramentas remotas.
+# nycode-tui e' so renderizador, sem dependencia interna nenhuma -- nao
+# conhece agente nem wire. nycode-cli e' o binario, o unico ponto que
+# compoe todo o resto. nycode-parity e' harness de paridade, isolado, sem
+# dependencia interna (nao referencia o binario que testa por fora).
+
+nycode-agent -> nycode-ai
+nycode-cli -> nycode-agent
+nycode-cli -> nycode-ai
+nycode-cli -> nycode-auth
+nycode-cli -> nycode-mcp
+nycode-cli -> nycode-tui
+nycode-mcp -> nycode-agent

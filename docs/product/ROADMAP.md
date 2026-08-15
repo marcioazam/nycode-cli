@@ -50,6 +50,29 @@ hooks, subagentes, plan mode, troca de modelo e entrada de imagem.
   sobrevive a ela. Só faz sentido depois de FR-14, que é o que torna o histórico
   completo recuperável.
 
+## Pendências da adoção do SOTA-2026 (ADR-0032)
+
+O [ADR-0032](../architecture/decisions/0032-adota-padrao-externo-sota-2026-nivel-l2.md)
+declarou conformidade L2 com o padrão externo `base-software-rules`. O que
+ficou de fora da primeira fatia, cada item já citando o ID de regra que fecha:
+
+*(O que já satisfaz o padrão, com data e nota, vive na tabela de
+reconciliação do [`AGENTS.md`](../../AGENTS.md) — não repetido aqui para não
+divergir. Esta lista é só o que falta.)*
+
+Todo gate do padrão já tem instrumento ou waiver formal, e a proteção de
+branch já está configurada — nada pendente de ferramenta nem de
+infraestrutura abaixo desta linha.
+
+- **Trilha test-first automatizada** — commit RED só toca teste, commit
+  GREEN não toca teste. `GATE-16`. **Não é mais um "falta fazer": é um
+  waiver formal** ([ADR-0033](../architecture/decisions/0033-gate-16-fica-sem-instrumento-conflito-com-hook-e-squash-merge.md),
+  expira 2027-02-14) — o gate, como o padrão externo especifica, conflita
+  com o hook `pre-commit` deste repositório (que já impede um commit RED
+  de existir) e com squash-merge (que apaga a separação RED/GREEN de
+  `main` no merge). Reabrir exige mudar uma dessas duas políticas —
+  confirmado com o usuário em 2026-08-14 que o waiver fica como está.
+
 ## Fora do roadmap
 
 Runtime JavaScript embutido, instalador de pacotes próprio, interface gráfica ou
