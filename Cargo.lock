@@ -1709,6 +1709,7 @@ dependencies = [
  "globset",
  "grep-regex",
  "grep-searcher",
+ "hex",
  "ignore",
  "nycode-ai",
  "rustix",
