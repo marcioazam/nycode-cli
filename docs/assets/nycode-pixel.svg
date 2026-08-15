@@ -1,6 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 168 52" width="1344" height="416" shape-rendering="crispEdges" role="img" aria-label="nycode pixel wordmark">
 <title>nycode</title>
-<rect width="168" height="52" fill="#000"/>
 <g transform="translate(9 8)">
   <path fill="#606060" d="M0 35h6v1h-6z"/>
   <path fill="#646464" d="M0 33h1v2h-1zM1 34h5v1h-5zM15 35h4v1h-4z"/>
