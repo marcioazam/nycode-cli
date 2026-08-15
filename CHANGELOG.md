@@ -8,6 +8,18 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Adicionado
 
+- **Proteção de branch em `main`, configurada no GitHub
+  ([ADR-0034](docs/architecture/decisions/0034-protecao-de-branch-exige-ci-verde-sem-aprovacao-separada.md)).**
+  Até esta data `main` não tinha proteção nenhuma (confirmado via API antes
+  de configurar). Exige os 12 checks de CI atuais, `strict` (branch
+  atualizada com `main` antes do merge), bloqueia force-push e deleção.
+  Deliberadamente sem exigência de aprovação humana separada — mantenedor
+  único (`.github/CODEOWNERS`), então essa exigência seria auto-aprovação,
+  não revisão de verdade; revisar se um segundo colaborador regular
+  aparecer. Item que ficava fora do escopo autônomo desde o início da
+  adoção do SOTA-2026 — fechado só depois de confirmação explícita do
+  usuário sobre qual nível de proteção configurar.
+
 - **Três documentos que fecham lacunas de uma checklist pedida diretamente
   pelo usuário, fora do padrão SOTA-2026.** `docs/CONVENTIONS.md` (novo) —
   nomenclatura e organização de arquivo/pasta/documento já praticadas neste
