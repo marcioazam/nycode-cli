@@ -124,6 +124,27 @@ No CI a precedência é literal: o job `perf` declara `needs: [supply-chain]`, e
 o resultado de performance não é produzido enquanto a política de dependências não
 passa. A ordem do bloco em "Antes de dizer que terminou" é a mesma.
 
+### Toda review avalia segurança e performance, nunca só uma
+
+NFR-8 decide o que acontece quando as duas se opõem; esta seção é sobre
+quando avaliar as duas — sempre, não só no conflito. Nenhuma mudança entra
+sem que ambas tenham sido consideradas explicitamente, humana ou por
+agente:
+
+- **Mecânico, já vale hoje**: os gates de CI que fecham segurança
+  (`cargo deny`, `gitleaks`, `zizmor`, `pinact`, `SP-04`) e performance
+  (NFR-1/2/3, `perf-gate.sh`) são obrigatórios, não consultivos — um PR não
+  fecha sem os dois passando.
+- **Disciplina de review, onde não há gate**: mudança que toca superfície
+  de confiança (entrada do usuário, credencial, execução de código de
+  terceiro, permissão) usa o padrão `doubt-driven` — revisor em contexto
+  limpo, adversarial, antes do commit — e não o julgamento de quem
+  escreveu. `docs/THREAT_MODEL.md` lista a superfície já identificada;
+  mudança que introduz superfície nova atualiza o documento no mesmo PR,
+  não depois.
+- **As duas competem, a segurança decide** — não uma regra nova, só o link
+  de volta pra NFR-8 acima, pra que quem lê esta seção não a leia isolada.
+
 ## Cobertura de teste — NFR-5
 
 Dois pisos, ambos duros, ambos falhando fechado

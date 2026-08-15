@@ -8,6 +8,24 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Adicionado
 
+- **Três documentos que fecham lacunas de uma checklist pedida diretamente
+  pelo usuário, fora do padrão SOTA-2026.** `docs/CONVENTIONS.md` (novo) —
+  nomenclatura e organização de arquivo/pasta/documento já praticadas neste
+  repositório (idioma `foo.rs`+`foo/`, 11 pares confirmados; teste inline
+  dominante, 110 arquivos, vs. arquivo dedicado `*_test.rs`, minoria, 9
+  arquivos; par `<área>-gate.sh`+`<área>-gate-test.sh`, 11 de 12 gates),
+  escritas em vez de tribais. `docs/architecture/ARCHITECTURE.md` ganhou a
+  seção 13 ("Idiomas e práticas de linguagem, Rust 2026") — os padrões
+  reais de código (error handling `thiserror`-nas-libs/`anyhow`-nos-binários,
+  runtime tokio construído sob demanda, `serde` com `deny_unknown_fields`
+  vs. `rename_all`, trait object pra plugável vs. genérico pra fixo),
+  grounded em citações verificadas, não recomendação genérica; também
+  satisfaz o pedido de "melhores práticas de arquitetura 2026" enquadrando
+  o padrão de traits plugáveis como ports-and-adapters, sem criar documento
+  paralelo. `AGENTS.md` ganhou uma seção amarrando NFR-8 (segurança antes
+  de performance) e `THREAT_MODEL.md` numa política explícita: toda review
+  avalia as duas, sempre — não só quando entram em conflito.
+
 - **Suporte a container (`Dockerfile`, `.dockerignore`), pedido direto do
   usuário — fora do padrão SOTA-2026, sem ID de regra.** Multi-stage:
   builder `rust:1.96-slim-bookworm`, runtime
