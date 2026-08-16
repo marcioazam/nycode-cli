@@ -540,7 +540,7 @@ cargo clippy --workspace --all-targets --all-features
 cargo test --workspace --all-features
 actionlint
 zizmor --no-progress --collect all --min-severity medium .
-pinact run -fix=false -no-api
+pinact run --check
 gitleaks detect --no-banner --redact --exit-code 1
 cargo deny check
 scripts/coverage-gate-test.sh

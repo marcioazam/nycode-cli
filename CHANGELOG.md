@@ -463,6 +463,25 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Corrigido
 
+- **O `ci-local.sh` chamava o `pinact` com a CLI da versão anterior, e a linha
+  de instalação que ele mesmo imprime entrega a nova.** `pinact run
+  -fix=false -no-api` é a forma da v2; a v3 removeu as duas flags e responde
+  `flag provided but not defined: -fix`. Como `require_tool` manda instalar com
+  `@latest`, quem seguia a instrução do próprio gate ficava com um binário que o
+  gate não sabia dirigir — e o passo falhava por incompatibilidade de CLI, não
+  por action desfixada. Num clone novo isso trava `--fast` inteiro, e portanto o
+  `pre-commit`.
+
+  Agora é `pinact run --check`: reprova sem reescrever arquivo e sem rede, que é
+  exatamente o que a divisão de trabalho já documentada pedia — a verificação
+  com rede (`--verify`, o par SHA/tag conferido contra o upstream) é a que o job
+  `workflows` pede pelo `verify: true` da `pinact-action`, que já está na v3.0.0.
+  O CI remoto, então, sempre rodou a v3; era o local que tinha ficado atrás,
+  contra a regra de que os dois lados rodam o mesmo gate.
+
+  Confirmado que o gate continua capaz de reprovar, e não só de passar: contra um
+  workflow com `actions/checkout@v4` a nova invocação sai com 1 e nomeia a linha.
+
 - **A permissão sumia do rodapé de quem trabalha num caminho fundo.** A linha era
   montada inteira e depois cortada pela direita, e a permissão é o último campo:
   num terminal de 80 colunas bastava o caminho do workspace passar de dezenove
