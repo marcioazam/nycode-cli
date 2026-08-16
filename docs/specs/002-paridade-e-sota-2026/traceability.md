@@ -81,22 +81,29 @@ chamasse o gate através de um pipe nunca via o fim. Corrigido, e o harness ganh
 prazo por execução: sem ele uma referência que pendura pendura o gate, e num CI
 isso queima o job inteiro sem diagnóstico.
 
-**A referência não aceita gateway por `ANTHROPIC_BASE_URL`.** É a descoberta que
-bloqueia a paridade real. `Harness::reference` define a variável, e o `pi` desta
-versão **a ignora**: o endpoint vem da definição do modelo. Na execução de
-diagnóstico a referência foi à API real da Anthropic e voltou com um `401` de
-`request_id` genuíno, com a chave `fixture` — o pedido saiu para fora, com
-credencial falsa e sem conteúdo de conversa, e é registrado aqui porque uma
-chamada externa não intencional se declara.
+**A referência não aceita gateway por `ANTHROPIC_BASE_URL`.** Foi a descoberta
+que bloqueava a paridade real: `Harness::reference` definia a variável, e o
+`pi` desta versão **a ignora**. Na execução de diagnóstico a referência foi à
+API real da Anthropic e voltou com um `401` de `request_id` genuíno, com a
+chave `fixture` — o pedido saiu para fora, com credencial falsa e sem
+conteúdo de conversa, e é registrado aqui porque uma chamada externa não
+intencional se declara.
 
-O teste `the_reference_harness_is_pointed_at_the_gateway_by_environment` **passa
-com a premissa falsa**: ele afirma que o harness *define* a variável, nunca que a
-referência a *honra*. É a classe de defeito que originou este épico, agora dentro
-do próprio instrumento que existe para medi-la.
+O teste `the_reference_harness_is_pointed_at_the_gateway_by_environment`
+**passava com a premissa falsa**: ele afirmava que o harness *define* a
+variável, nunca que a referência a *honra*. Foi renomeado para
+`the_gateway_is_offered_to_the_reference_by_environment` e, nesta frente,
+substituído pelo observável
+`the_reference_harness_reaches_the_local_gateway_instead_of_the_real_api`,
+que asserta a contabilidade constante do fixture (`input = 1234`).
+[ADR-0035](../../architecture/decisions/0035-a-referencia-de-paridade-e-apontada-por-models-json.md)
+grava o mecanismo: `models.json` + `PI_CODING_AGENT_DIR`.
 
-Estado: paridade real **bloqueada**, com causa nomeada. Reabre quando
-`Harness::reference` apontar a referência pelo mecanismo que ela de fato lê —
-definição de modelo com endpoint próprio, e não variável de ambiente.
+Estado: o apontamento no harness está fechado. A paridade real no CI
+continua **bloqueada** enquanto o job `parity` não obtém a referência e
+roda em modo completo — sem `PARITY_REFERENCE` o
+[`parity-gate.sh`](../../../scripts/parity-gate.sh) cai em modo instrumento,
+que o próprio script declara não ser paridade.
 
 ## O que a onda 0 mudou de premissa
 
