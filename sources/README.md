@@ -15,6 +15,7 @@ os trechos que sustentam uma afirmação, com contexto suficiente para julgá-lo
 |---|---|---|
 | [`research_sota-2026-harnesses.md`](research_sota-2026-harnesses.md) | O que "SOTA 2026" exige de um harness de terminal | [`research-sota-2026.md`](../.specs/nycode-rs/research-sota-2026.md), ADRs 0004 a 0009 |
 | [`research_paridade-pi-e-sota-2026.md`](research_paridade-pi-e-sota-2026.md) | O que a referência entrega que este repositório não, e o que 2026 pede além dela | [`research-paridade-2026.md`](../.specs/nycode-rs/research-paridade-2026.md), [spec 002](../docs/specs/002-paridade-e-sota-2026/spec.md), ADRs 0025 a 0029 |
+| [`research_pi-gateway-local.md`](research_pi-gateway-local.md) | O mecanismo que o `pi` 0.84.1 lê para apontar a um gateway local | Frente 0 da spec 002, ADR-0035 |
 
 Um arquivo pode carregar fonte que **não** deve ser usada. O
 [`research_paridade-pi-e-sota-2026.md`](research_paridade-pi-e-sota-2026.md)

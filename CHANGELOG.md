@@ -8,6 +8,18 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Adicionado
 
+- **Nota de pesquisa: o mecanismo que a referência lê para apontar a um
+  gateway local.** [`sources/research_pi-gateway-local.md`](sources/research_pi-gateway-local.md).
+  O `pi` 0.84.1, no commit que o NOTICE fixa, ignora `ANTHROPIC_BASE_URL` e
+  resolve o endpoint pela definição de modelo em `models.json`, num diretório
+  redirecionável por `PI_CODING_AGENT_DIR`. Confirmado por um comando cuja
+  saída foi lida: o `pi` falou com o `nycode-parity-fixture` local
+  (`msg_fixture`, `input: 1234`) e, no controle sem o arquivo, voltou à API
+  real da Anthropic com `401` de `request_id` genuíno. O `baseUrl` que funciona
+  no dialeto `anthropic-messages` é a origem sem `/v1` — o SDK posta em
+  `/v1/messages`. Fecha o ponto de decisão da Frente 0 da spec 002: não é
+  preciso repinar o NOTICE, interceptar por DNS, nem abrir waiver.
+
 - **Proteção de branch em `main`, configurada no GitHub
   ([ADR-0034](docs/architecture/decisions/0034-protecao-de-branch-exige-ci-verde-sem-aprovacao-separada.md)).**
   Até esta data `main` não tinha proteção nenhuma (confirmado via API antes
