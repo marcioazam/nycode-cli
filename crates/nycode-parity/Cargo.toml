@@ -36,3 +36,9 @@ tempfile = "3.24.0"
 # `time` entra pelo prazo de execucao: sem ele um harness que pendura pendura o
 # gate, e num CI isso queima o job inteiro sem diagnostico.
 tokio = { version = "1.53.1", features = ["rt-multi-thread", "macros", "process", "fs", "net", "io-util", "sync", "time"] }
+
+[dev-dependencies]
+# O teste de apontamento da referencia e async porque `run` e async. A
+# dependencia de producao ja traz o tokio; esta entrada e o que o crate de
+# integracao enxerga.
+tokio = { version = "1.53.1", features = ["rt-multi-thread", "macros"] }

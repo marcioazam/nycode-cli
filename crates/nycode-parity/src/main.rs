@@ -118,7 +118,8 @@ async fn main() -> Result<()> {
     let Some(reference_path) = options.reference.clone() else {
         return self_check(&candidate, &options.prompts).await;
     };
-    let reference = Harness::reference(&reference_path, &options.base_url, &options.api_key);
+    let (reference, _agent_dir) =
+        Harness::reference(&reference_path, &options.base_url, &options.api_key)?;
 
     let mut diverged = 0;
     // Uma dimensao so e "sem evidencia" quando ficou vazia em *toda* a
