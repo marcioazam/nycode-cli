@@ -8,6 +8,18 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Adicionado
 
+- **Nota de pesquisa: o mecanismo que a referência lê para apontar a um
+  gateway local.** [`sources/research_pi-gateway-local.md`](sources/research_pi-gateway-local.md).
+  O `pi` 0.84.1, no commit que o NOTICE fixa, ignora `ANTHROPIC_BASE_URL` e
+  resolve o endpoint pela definição de modelo em `models.json`, num diretório
+  redirecionável por `PI_CODING_AGENT_DIR`. Confirmado por um comando cuja
+  saída foi lida: o `pi` falou com o `nycode-parity-fixture` local
+  (`msg_fixture`, `input: 1234`) e, no controle sem o arquivo, voltou à API
+  real da Anthropic com `401` de `request_id` genuíno. O `baseUrl` que funciona
+  no dialeto `anthropic-messages` é a origem sem `/v1` — o SDK posta em
+  `/v1/messages`. Fecha o ponto de decisão da Frente 0 da spec 002: não é
+  preciso repinar o NOTICE, interceptar por DNS, nem abrir waiver.
+
 - **Proteção de branch em `main`, configurada no GitHub
   ([ADR-0034](docs/architecture/decisions/0034-protecao-de-branch-exige-ci-verde-sem-aprovacao-separada.md)).**
   Até esta data `main` não tinha proteção nenhuma (confirmado via API antes
@@ -462,6 +474,54 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
   antigo dá um número errado com a mesma cara de um certo.
 
 ### Corrigido
+
+- **O `ci-local.sh` chamava o `pinact` com a CLI da versão anterior, e a linha
+  de instalação que ele mesmo imprime entrega a nova.** `pinact run
+  -fix=false -no-api` é a forma da v2; a v3 removeu as duas flags e responde
+  `flag provided but not defined: -fix`. Como `require_tool` manda instalar com
+  `@latest`, quem seguia a instrução do próprio gate ficava com um binário que o
+  gate não sabia dirigir — e o passo falhava por incompatibilidade de CLI, não
+  por action desfixada. Num clone novo isso trava `--fast` inteiro, e portanto o
+  `pre-commit`.
+
+  Agora é `pinact run --check`: reprova sem reescrever arquivo e sem rede, que é
+  exatamente o que a divisão de trabalho já documentada pedia — a verificação
+  com rede (`--verify`, o par SHA/tag conferido contra o upstream) é a que o job
+  `workflows` pede pelo `verify: true` da `pinact-action`, que já está na v3.0.0.
+  O CI remoto, então, sempre rodou a v3; era o local que tinha ficado atrás,
+  contra a regra de que os dois lados rodam o mesmo gate.
+
+  Confirmado que o gate continua capaz de reprovar, e não só de passar: contra um
+  workflow com `actions/checkout@v4` a nova invocação sai com 1 e nomeia a linha.
+
+- **O `ROADMAP.md` declarava o produto pronto e afirmava uma causa de bloqueio
+  que já era falsa.** Lido sozinho, ele dizia que as ondas A, B e C fecharam e
+  que só restavam dois itens em "Depois" — sem citar nenhuma das quatro ondas
+  que a [rastreabilidade da spec 002](docs/specs/002-paridade-e-sota-2026/traceability.md)
+  registra como abertas desde o mesmo dia. Pela regra do
+  [`docs/INDEX.md`](docs/INDEX.md) isso é defeito de um dos dois lados, nunca
+  diferença tolerada, e o lado errado era o roadmap.
+
+  Havia uma afirmação pior que a omissão: o roadmap dizia que a paridade
+  completa "espera um gateway configurado". Deixou de ser verdade quando o
+  `nycode-parity-fixture` passou a servir um gateway determinístico e local; o
+  bloqueio real, descoberto ao rodar, é a referência não ler
+  `ANTHROPIC_BASE_URL`. Um documento que nomeia a causa errada é pior que um
+  que se cala, porque manda o próximo leitor resolver o problema que não
+  existe.
+
+  E duas contradições diretas. O roadmap recusava temas com "entra quando
+  alguém pedir", enquanto o plano da spec 002 já os traz como o delta B36, na
+  Onda 5; a recusa fica registrada, marcada como superada — apagá-la esconderia
+  que a decisão mudou. E "Fora do roadmap" listava "interface gráfica ou de
+  editor" como non-goal, o que lido hoje excluiria a Onda 4: a `spec.md` do
+  produto já tinha sido emendada com a distinção que faltava aqui — falar com um
+  editor por protocolo padronizado não é ter interface de editor, porque quem
+  desenha a interface é o editor.
+
+  O roadmap agora **aponta** para a rastreabilidade em vez de repetir o estado
+  dela. Duplicar o estado por onda criaria a segunda cópia que fica errada
+  primeiro, que é a mesma classe de defeito de origem.
 
 - **A permissão sumia do rodapé de quem trabalha num caminho fundo.** A linha era
   montada inteira e depois cortada pela direita, e a permissão é o último campo:

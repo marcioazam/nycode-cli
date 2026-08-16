@@ -116,13 +116,16 @@ fast() {
 
   # As quatro rodam em segundos e pegam o que so apareceria no remoto — actions
   # nao fixadas, permissao larga, credencial persistida, segredo commitado.
-  # `-no-api`: a checagem que precisa de rede fica para o job `workflows` do CI.
+  # `--check`: reprova sem reescrever arquivo e sem rede. A verificacao que
+  # precisa de rede (`--verify`, o par SHA/tag conferido contra o upstream) fica
+  # para o job `workflows` do CI, que a pede pelo `verify: true` da
+  # pinact-action.
   require_tool actionlint "cargo install actionlint --locked (ou: go install github.com/rhysd/actionlint/cmd/actionlint@latest)"
   step "lint dos workflows" actionlint
   require_tool zizmor "cargo install zizmor --locked (ou: pipx install zizmor)"
   step "seguranca dos workflows" zizmor --no-progress --collect all --min-severity medium .
   require_tool pinact "go install github.com/suzuki-shunsuke/pinact/cmd/pinact@latest"
-  step "actions fixadas por SHA" pinact run -fix=false -no-api
+  step "actions fixadas por SHA" pinact run --check
   require_tool gitleaks "brew install gitleaks (ou: veja https://github.com/gitleaks/gitleaks#installing)"
   step "segredo commitado" gitleaks detect --no-banner --redact --exit-code 1
 }
