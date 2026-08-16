@@ -8,6 +8,16 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Adicionado
 
+- **A referência de paridade é apontada por `models.json` num diretório
+  efêmero ([ADR-0035](docs/architecture/decisions/0035-a-referencia-de-paridade-e-apontada-por-models-json.md)).**
+  `Harness::reference` deixa de oferecer `ANTHROPIC_BASE_URL` — variável que o
+  `pi` 0.84.1 ignora — e passa a gravar a definição de modelo que ele de fato
+  lê, redirecionada por `PI_CODING_AGENT_DIR`. O `baseUrl` é a origem sem
+  `/v1`, porque o SDK posta em `/v1/messages`. O teste
+  `the_reference_harness_reaches_the_local_gateway_instead_of_the_real_api`
+  asserta a contabilidade constante do fixture (`input = 1234`): ausência de
+  chamada externa provada pela presença da local, não por "não deu 401".
+
 - **Nota de pesquisa: o mecanismo que a referência lê para apontar a um
   gateway local.** [`sources/research_pi-gateway-local.md`](sources/research_pi-gateway-local.md).
   O `pi` 0.84.1, no commit que o NOTICE fixa, ignora `ANTHROPIC_BASE_URL` e

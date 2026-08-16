@@ -59,31 +59,65 @@ impl Harness {
 
     /// O harness de referência, dirigido em modo de eventos JSON.
     ///
-    /// **A referência não lê `ANTHROPIC_BASE_URL`.** A variável é definida aqui
-    /// e a versão fixada no [`NOTICE`] a ignora: o endpoint dela vem da
-    /// definição do modelo. Verificado ao rodar — a referência foi à API real
-    /// e voltou com `401` de `request_id` genuíno, em vez de falar com o
-    /// gateway local.
+    /// **A referência não lê `ANTHROPIC_BASE_URL`.** O endpoint vem da definição
+    /// de modelo em `models.json`, num diretório redirecionável por
+    /// `PI_CODING_AGENT_DIR`. Verificado ao rodar: com só a variável de
+    /// ambiente a referência foi à API real e voltou `401`; com o arquivo
+    /// abaixo ela falou com o fixture local e devolveu `msg_fixture` /
+    /// `input: 1234`. Registro em
+    /// [`sources/research_pi-gateway-local.md`](../../../../sources/research_pi-gateway-local.md).
     ///
-    /// Fica como está, e declarado, porque remover a variável não aproxima nada
-    /// e apagaria o registro de por que a paridade real não fecha. Apontar a
-    /// referência pelo mecanismo que ela de fato lê é o trabalho que destrava o
-    /// NFR-6, e está registrado na rastreabilidade da spec 002.
+    /// O `baseUrl` do dialeto `anthropic-messages` é a origem, sem `/v1`: o
+    /// SDK posta em `/v1/messages`. A URL que o fixture anuncia traz o sufixo,
+    /// e passar essa string faria o SDK pedir `/v1/v1/messages`, que o fixture
+    /// recusa. O `TempDir` tem de viver até o fim da execução — é o diretório
+    /// que a variável aponta.
     ///
     /// [`NOTICE`]: ../../../NOTICE
-    #[must_use]
-    pub fn reference(program: impl Into<PathBuf>, base_url: &str, api_key: &str) -> Self {
-        Self {
+    pub fn reference(
+        program: impl Into<PathBuf>,
+        base_url: &str,
+        api_key: &str,
+    ) -> Result<(Self, tempfile::TempDir)> {
+        let agent_dir = tempfile::tempdir()
+            .context("nao foi possivel criar o diretorio de agente da referencia")?;
+        let origin = origin_from_gateway_url(base_url);
+        let models = serde_json::json!({
+            "providers": {
+                "anthropic": {
+                    "baseUrl": origin,
+                    "api": "anthropic-messages",
+                    "apiKey": api_key,
+                }
+            }
+        });
+        std::fs::write(agent_dir.path().join("models.json"), models.to_string())
+            .context("nao foi possivel gravar models.json da referencia")?;
+
+        let harness = Self {
             label: "referencia".to_owned(),
             program: program.into(),
             args: vec!["--mode".to_owned(), "json".to_owned(), "-p".to_owned()],
-            env: vec![
-                ("ANTHROPIC_BASE_URL".to_owned(), base_url.to_owned()),
-                ("ANTHROPIC_API_KEY".to_owned(), api_key.to_owned()),
-            ],
+            env: vec![(
+                "PI_CODING_AGENT_DIR".to_owned(),
+                agent_dir.path().to_string_lossy().into_owned(),
+            )],
             events: Events::Reference,
-        }
+        };
+        Ok((harness, agent_dir))
     }
+}
+
+/// Origem que o SDK `anthropic-messages` aceita como `baseURL`.
+///
+/// O fixture anuncia `http://127.0.0.1:<porta>/v1`. O cliente da Anthropic
+/// trata `baseURL` como origem e posta em `/v1/messages`. Manter o sufixo
+/// duplica o caminho.
+fn origin_from_gateway_url(base_url: &str) -> String {
+    base_url
+        .trim_end_matches('/')
+        .trim_end_matches("/v1")
+        .to_owned()
 }
 
 /// Roda um harness num workspace e devolve o contrato observado.
@@ -314,25 +348,55 @@ mod tests {
     }
 
     #[test]
-    fn the_gateway_is_offered_to_the_reference_by_environment() {
-        // O nome anterior dizia "e apontado ao gateway", e este teste nunca
-        // verificou isso: ele afirma que a variavel e *oferecida*, nunca que a
-        // referencia a *honra*. A versao fixada no NOTICE nao a le — o endpoint
-        // dela vem da definicao do modelo —, e ao rodar de verdade a referencia
-        // foi a API real e voltou com 401.
-        //
-        // O teste fica, com o nome do que ele mede, porque a variavel continua
-        // sendo o que o harness oferece. O que nao pode e o nome prometer uma
-        // garantia que nao existe: um teste assim passa com a premissa falsa, e
-        // e essa a classe de defeito que este epico inteiro persegue.
-        let harness = Harness::reference("/usr/bin/pi", "http://gw/v1", "k");
+    fn origin_from_gateway_url_strips_the_v1_suffix_the_sdk_would_duplicate() {
+        assert_eq!(
+            origin_from_gateway_url("http://127.0.0.1:9/v1"),
+            "http://127.0.0.1:9"
+        );
+        assert_eq!(
+            origin_from_gateway_url("http://127.0.0.1:9/v1/"),
+            "http://127.0.0.1:9"
+        );
+        assert_eq!(
+            origin_from_gateway_url("http://127.0.0.1:9"),
+            "http://127.0.0.1:9"
+        );
+    }
+
+    #[test]
+    fn the_reference_harness_points_at_the_gateway_via_a_model_definition() {
+        let (harness, agent_dir) = Harness::reference("/usr/bin/pi", "http://gw/v1", "k").unwrap();
+        let dir = harness
+            .env
+            .iter()
+            .find(|(key, _)| key == "PI_CODING_AGENT_DIR")
+            .map(|(_, value)| value.as_str())
+            .expect("o diretorio de agente e o vetor que a referencia le");
+        assert_eq!(dir, agent_dir.path().to_string_lossy());
         assert!(
-            harness
+            !harness
                 .env
                 .iter()
-                .any(|(k, v)| k == "ANTHROPIC_BASE_URL" && v == "http://gw/v1")
+                .any(|(key, _)| key == "ANTHROPIC_BASE_URL"),
+            "a variavel que a referencia ignora nao e o apontamento"
         );
-        assert!(harness.env.iter().any(|(k, _)| k == "ANTHROPIC_API_KEY"));
+
+        let models: serde_json::Value = serde_json::from_str(
+            &std::fs::read_to_string(agent_dir.path().join("models.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            models["providers"]["anthropic"]["baseUrl"].as_str(),
+            Some("http://gw")
+        );
+        assert_eq!(
+            models["providers"]["anthropic"]["api"].as_str(),
+            Some("anthropic-messages")
+        );
+        assert_eq!(
+            models["providers"]["anthropic"]["apiKey"].as_str(),
+            Some("k")
+        );
     }
 
     #[test]
@@ -348,7 +412,8 @@ mod tests {
             "o prompt e anexado depois dos argumentos"
         );
 
-        let reference = Harness::reference("/usr/bin/pi", "http://gw/v1", "k");
+        let (reference, _agent_dir) =
+            Harness::reference("/usr/bin/pi", "http://gw/v1", "k").unwrap();
         assert_eq!(reference.events, Events::Reference);
         assert!(reference.args.contains(&"json".to_owned()));
         assert_eq!(reference.args.last().unwrap(), "-p");
