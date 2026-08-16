@@ -482,6 +482,35 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
   Confirmado que o gate continua capaz de reprovar, e não só de passar: contra um
   workflow com `actions/checkout@v4` a nova invocação sai com 1 e nomeia a linha.
 
+- **O `ROADMAP.md` declarava o produto pronto e afirmava uma causa de bloqueio
+  que já era falsa.** Lido sozinho, ele dizia que as ondas A, B e C fecharam e
+  que só restavam dois itens em "Depois" — sem citar nenhuma das quatro ondas
+  que a [rastreabilidade da spec 002](docs/specs/002-paridade-e-sota-2026/traceability.md)
+  registra como abertas desde o mesmo dia. Pela regra do
+  [`docs/INDEX.md`](docs/INDEX.md) isso é defeito de um dos dois lados, nunca
+  diferença tolerada, e o lado errado era o roadmap.
+
+  Havia uma afirmação pior que a omissão: o roadmap dizia que a paridade
+  completa "espera um gateway configurado". Deixou de ser verdade quando o
+  `nycode-parity-fixture` passou a servir um gateway determinístico e local; o
+  bloqueio real, descoberto ao rodar, é a referência não ler
+  `ANTHROPIC_BASE_URL`. Um documento que nomeia a causa errada é pior que um
+  que se cala, porque manda o próximo leitor resolver o problema que não
+  existe.
+
+  E duas contradições diretas. O roadmap recusava temas com "entra quando
+  alguém pedir", enquanto o plano da spec 002 já os traz como o delta B36, na
+  Onda 5; a recusa fica registrada, marcada como superada — apagá-la esconderia
+  que a decisão mudou. E "Fora do roadmap" listava "interface gráfica ou de
+  editor" como non-goal, o que lido hoje excluiria a Onda 4: a `spec.md` do
+  produto já tinha sido emendada com a distinção que faltava aqui — falar com um
+  editor por protocolo padronizado não é ter interface de editor, porque quem
+  desenha a interface é o editor.
+
+  O roadmap agora **aponta** para a rastreabilidade em vez de repetir o estado
+  dela. Duplicar o estado por onda criaria a segunda cópia que fica errada
+  primeiro, que é a mesma classe de defeito de origem.
+
 - **A permissão sumia do rodapé de quem trabalha num caminho fundo.** A linha era
   montada inteira e depois cortada pela direita, e a permissão é o último campo:
   num terminal de 80 colunas bastava o caminho do workspace passar de dezenove

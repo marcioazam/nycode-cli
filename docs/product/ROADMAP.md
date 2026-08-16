@@ -15,6 +15,11 @@ As três foram entregues. FR-1 a FR-20 e NFR-1 a NFR-7 estão em `entregue` na
 [tabela de requisitos](../requirements/REQUIREMENTS.md), e o
 [CHANGELOG](../../CHANGELOG.md) registra cada uma com a razão.
 
+Concluídas não significa que o trabalho de produto terminou. No mesmo dia, a
+[spec 002](../specs/002-paridade-e-sota-2026/spec.md) abriu um épico de sessenta
+deltas contra o harness de referência, e quatro das ondas dele seguem abertas —
+a seção "Épico de paridade e SOTA 2026" abaixo.
+
 O que a Onda A fechou não era feature nova: era a distância entre "implementado"
 e "executa em produção". A TUI, o cancelamento, o cliente MCP, o catálogo e a
 compactação existiam no código e nenhum era chamado — a documentação declarava
@@ -31,15 +36,57 @@ hooks, subagentes, plan mode, troca de modelo e entrada de imagem.
 ### O que ficou de fora, e por quê
 
 - **Temas.** Cosmético, e o rodapé e o cabeçalho já respeitam a largura do
-  terminal. Entra quando alguém pedir.
+  terminal. **Esta recusa foi superada no mesmo dia**: a
+  [spec 002](../specs/002-paridade-e-sota-2026/plan.md) trouxe temas para
+  dentro do escopo como o delta B36, na Onda 5. Vale a spec, não esta linha —
+  ela fica registrada porque a razão original ("entra quando alguém pedir")
+  ainda explica por que temas não entraram nas ondas A, B e C.
 - **`/import` e `/session`.** `/export` cobre o caminho de saída, que é o que
   resolve "quero levar esta conversa para outro lugar". A volta exige decidir o
   que fazer com um histórico que referencia arquivos que mudaram, e isso é uma
   spec, não um comando.
-- **Paridade contra o harness de referência.** O job existe e falha fechado, mas
-  a comparação completa espera um gateway configurado. Até lá, o que trava é a
-  suíte do próprio harness, que garante que ele continua capaz de acusar
-  divergência.
+- **Paridade contra o harness de referência.** O job existe e falha fechado.
+  **A causa registrada aqui — "espera um gateway configurado" — deixou de ser
+  verdade em 2026-08-13**, quando o `nycode-parity-fixture` passou a servir um
+  gateway determinístico e local. O bloqueio real é outro, e foi descoberto ao
+  rodar: a referência não lê `ANTHROPIC_BASE_URL`, então apontá-la ao gateway
+  local não funciona pelo mecanismo que o harness usava. Está registrado com a
+  evidência na
+  [rastreabilidade da spec 002](../specs/002-paridade-e-sota-2026/traceability.md),
+  seção "Paridade real". Até destravar, o que trava é a suíte do próprio
+  harness, que garante que ele continua capaz de acusar divergência.
+
+## Épico de paridade e SOTA 2026 — em andamento
+
+A [spec 002](../specs/002-paridade-e-sota-2026/spec.md) triou sessenta deltas
+entre este repositório e o harness de referência em quatro baldes, e o
+[plano](../specs/002-paridade-e-sota-2026/plan.md) os distribuiu em seis ondas.
+As Ondas 0 e 1 fecharam; as Ondas 2 a 5 estão abertas, e a paridade real está
+bloqueada com causa nomeada.
+
+**O estado por onda e por delta vive na
+[rastreabilidade](../specs/002-paridade-e-sota-2026/traceability.md), e não
+aqui.** Este roadmap aponta para lá de propósito: uma segunda cópia do estado
+seria, por construção, a que fica errada primeiro — e foi exatamente esse tipo
+de divergência que originou o épico. O que fica aqui é só o suficiente para que
+o roadmap não afirme o contrário do que a rastreabilidade registra.
+
+| Onda | Escopo | Depende de |
+|---|---|---|
+| 2 — contexto e ferramentas | Transformação de mensagem, compactação por limiar, ferramentas, instruções de projeto, Agent Skills, consentimento MCP | Onda 1 |
+| 3 — superfície de comando | Flags e comandos que ligam o que a Onda 2 constrói | Onda 2 |
+| 4 — Agent Client Protocol | Integração com editor ([ADR-0029](../architecture/decisions/0029-a-integracao-com-editor-fala-acp.md)) | independente |
+| 5 — TUI | Autocomplete, localizador, temas, markdown, imagem no terminal | independente |
+
+A Onda 2 tem ordem interna travada pelo plano, e não é preferência de estilo: a
+transformação de mensagem precede a compactação por limiar, porque compactar um
+histórico que ainda contém chamada de ferramenta órfã produz um resumo que
+descreve um estado que nunca existiu — falha silenciosa, não erro de build.
+
+Antes de qualquer uma delas vem destravar a paridade real, pela razão que o
+plano dá: o NFR-6 é a regra que o épico inteiro serve, e fechar mais uma onda
+sem instrumento em modo completo repetiria a classe de defeito que a spec 002
+foi escrita para eliminar.
 
 ## Depois
 
@@ -47,8 +94,10 @@ hooks, subagentes, plan mode, troca de modelo e entrada de imagem.
   release.
 - **Reset de contexto com artefato de handoff.** A compactação preserva
   continuidade sem dar página limpa, e há relato de que a "context anxiety"
-  sobrevive a ela. Só faz sentido depois de FR-14, que é o que torna o histórico
-  completo recuperável.
+  sobrevive a ela. **Não está mais bloqueado**: dependia de FR-14, que está
+  entregue. Espera a Onda 2, e não FR-14 — o handoff se sobrepõe aos deltas de
+  resumo de compactação (B10, B11), e desenhá-lo agora seria desenhá-lo contra
+  uma compactação que está mudando embaixo dele.
 
 ## Pendências da adoção do SOTA-2026 (ADR-0032)
 
@@ -76,8 +125,15 @@ infraestrutura abaixo desta linha.
 ## Fora do roadmap
 
 Runtime JavaScript embutido, instalador de pacotes próprio, interface gráfica ou
-de editor, e hospedagem de inferência. São non-goals declarados na
-[spec](../../.specs/nycode-rs/spec.md#fora-de-escopo), não itens adiados.
+web própria, hospedagem de inferência e sessão remota sobre socket. São non-goals
+declarados na [spec](../../.specs/nycode-rs/spec.md#fora-de-escopo), não itens
+adiados.
+
+"Interface própria" não inclui **falar** com um editor: quem desenha a interface
+é o editor, e o `nycode` continua sendo um processo de terminal. É por isso que a
+Onda 4 acima não contradiz esta lista — a integração por protocolo padronizado
+saiu do não-escopo e entrou como FR-21, pela
+[emenda de escopo](../../.specs/nycode-rs/spec.md#emenda-de-escopo--integração-de-editor).
 
 Integração com servidor de linguagem, controle de depurador e automação de
 navegador são diferenciais reais em 2026 e ficaram fora desta emenda. Entram por
