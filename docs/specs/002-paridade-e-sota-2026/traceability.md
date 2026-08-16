@@ -18,6 +18,8 @@ Estado em 2026-08-13.
 | 5 | Onda 4 — Agent Client Protocol | C5 | aberto |
 | 6 | Onda 5 — TUI | B32–B39 | aberto |
 
+Fatiamento em PRs, sem duplicar estado: [`ondas.md`](ondas.md).
+
 ## Onda 0 — evidência
 
 | Item | Estado | Evidência |
@@ -99,11 +101,39 @@ que asserta a contabilidade constante do fixture (`input = 1234`).
 [ADR-0035](../../architecture/decisions/0035-a-referencia-de-paridade-e-apontada-por-models-json.md)
 grava o mecanismo: `models.json` + `PI_CODING_AGENT_DIR`.
 
-Estado: o apontamento no harness está fechado. A paridade real no CI
-continua **bloqueada** enquanto o job `parity` não obtém a referência e
-roda em modo completo — sem `PARITY_REFERENCE` o
-[`parity-gate.sh`](../../../scripts/parity-gate.sh) cai em modo instrumento,
-que o próprio script declara não ser paridade.
+**O instrumento media o prompt de sistema.** `plan()` procurava `README.md`
+no corpo inteiro; a referência manda esse caminho no sistema, e o fixture
+pedia `read` em todo turno — inclusive no prompt que só pede a palavra
+"ok". Corrigido: a decisão lê só `messages`. Teste
+`a_readme_in_the_system_prompt_does_not_ask_for_a_read`.
+
+**O usage da referência é por rodada, o do candidato é a soma do turno.**
+Dois `message_end` com `1234/56` contra um `result` com `2468/112` não é
+divergência de contrato. O dialeto soma. Teste
+`the_reference_usage_is_summed_across_assistant_turns`.
+
+**A paridade real no CI deixa de depender de `vars.PARITY_REFERENCE`.** O
+job `parity` baixa o tarball do commit `581d75a`, o Node 22.19.0 e o
+catálogo em [`scripts/parity-pi-model-data.tar.gz`](../../../scripts/parity-pi-model-data.tar.gz),
+confere os três sha256 de [`scripts/parity-reference.txt`](../../../scripts/parity-reference.txt)
+antes de extrair, constrói o `dist/cli.js` e aponta `PARITY_REFERENCE`
+para o wrapper. Evidência local, comando cuja saída foi lida:
+
+```
+PARITY_REFERENCE=/home/marcio/source/pi-reference/pi scripts/parity-gate.sh
+# parity-gate: comparando ... contra /home/marcio/source/pi-reference/pi
+# ok: responda apenas com a palavra: ok
+# ok: leia o arquivo README.md e diga em uma linha o que ele contem
+# ok: crie um arquivo chamado saida.txt com o texto pronto
+# paridade: 3 prompts sem divergencia
+```
+
+Um stub no lugar da referência ainda reprova (sequência de ferramentas
+diferente) — o gate pode falhar, que era o critério de pronto da Frente 0.
+
+O pacote npm `@earendil-works/pi-coding-agent@0.84.1` **não** é este
+commit: o `gitHead` publicado é `53fa77c` (a tag), 117 commits atrás.
+Usá-lo mediria outra referência.
 
 ## O que a onda 0 mudou de premissa
 

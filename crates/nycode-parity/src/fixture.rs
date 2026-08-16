@@ -49,18 +49,33 @@ pub enum Plan {
 ///
 /// Um pedido que já carrega `tool_result` é a segunda metade de um turno de
 /// ferramenta: o script encerra em vez de pedir outra, senão o laço não pararia.
+///
+/// Só o que o usuário mandou conta. A referência inclui `README.md` no prompt
+/// de sistema; procurar no corpo inteiro pedia `read` em todo turno.
 #[must_use]
 pub fn plan(body: &str) -> Plan {
-    if body.contains("tool_result") {
+    let haystack = user_facing(body);
+    if haystack.contains("tool_result") {
         return Plan::Text;
     }
-    if body.contains("saida.txt") {
+    if haystack.contains("saida.txt") {
         return Plan::Write;
     }
-    if body.contains("README.md") {
+    if haystack.contains("README.md") {
         return Plan::Read;
     }
     Plan::Text
+}
+
+/// Texto em que o script decide o plano: mensagens, nunca o `system`.
+fn user_facing(body: &str) -> String {
+    let Ok(value) = serde_json::from_str::<Value>(body) else {
+        return body.to_owned();
+    };
+    match value.get("messages") {
+        Some(messages) => messages.to_string(),
+        None => body.to_owned(),
+    }
 }
 
 /// O corpo SSE correspondente a um plano.
@@ -275,6 +290,16 @@ mod tests {
     #[test]
     fn a_request_asking_for_nothing_in_particular_answers_in_text() {
         assert_eq!(plan(r#"{"messages":[{"text":"responda ok"}]}"#), Plan::Text);
+    }
+
+    #[test]
+    fn a_readme_in_the_system_prompt_does_not_ask_for_a_read() {
+        // A referência manda README.md no prompt de sistema. Procurar no corpo
+        // inteiro fazia o fixture pedir `read` em todo turno, inclusive no
+        // prompt que só pede a palavra "ok" — divergência do instrumento, não
+        // do candidato.
+        let body = r#"{"system":"leia README.md se existir","messages":[{"role":"user","content":"responda ok"}]}"#;
+        assert_eq!(plan(body), Plan::Text);
     }
 
     #[test]
