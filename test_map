@@ -177,6 +177,7 @@ Arquivos de teste dedicados (mod *_test;):
 Testes de integracao:
   crates/nycode-parity/tests/cli.rs
   crates/nycode-parity/tests/fixture.rs
+  crates/nycode-parity/tests/reference_gateway.rs
 
 ## nycode-tui
 
