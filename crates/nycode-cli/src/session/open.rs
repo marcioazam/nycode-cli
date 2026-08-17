@@ -17,6 +17,10 @@ pub fn resolve(store: &Store, cli: &Cli) -> anyhow::Result<(String, Vec<Message>
         anyhow::ensure!(!name.is_empty(), "nome de sessao vazio");
         std::fs::write(store.dir().join(format!("{id}.name")), name)
             .with_context(|| format!("gravar nome da sessao `{id}`"))?;
+        anyhow::ensure!(
+            name_of(store, &id).as_deref() == Some(name),
+            "nome de sessao `{id}` nao persistiu"
+        );
     }
     Ok((id, history))
 }
@@ -156,6 +160,13 @@ mod tests {
     use super::resolve;
     use crate::Cli;
 
+    struct CwdFile(std::path::PathBuf);
+    impl Drop for CwdFile {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_file(&self.0);
+        }
+    }
+
     fn store() -> (tempfile::TempDir, Store) {
         let dir = tempfile::tempdir().unwrap();
         let store = Store::open(dir.path().join("s")).unwrap();
@@ -240,13 +251,7 @@ mod tests {
         );
         let path = std::env::current_dir().unwrap().join(&src);
         std::fs::copy(store.path_for("origem"), &path).unwrap();
-        struct Clean(std::path::PathBuf);
-        impl Drop for Clean {
-            fn drop(&mut self) {
-                let _ = std::fs::remove_file(&self.0);
-            }
-        }
-        let _clean = Clean(path);
+        let _clean = CwdFile(path);
         let (_id, history) = resolve(&store, &parse(&["--fork", &src])).unwrap();
         assert_eq!(history, vec![Message::user("base")]);
     }

@@ -12,7 +12,6 @@ pub mod phases;
 pub mod provider;
 mod warnings;
 
-pub(crate) use open::name_of;
 pub use open::resolve;
 pub use phases::Phases;
 
@@ -367,7 +366,6 @@ mod tests {
 
         assert!(!id.is_empty());
         assert!(history.is_empty());
-        assert!(name_of(&store, &id).is_none());
     }
 
     #[test]
