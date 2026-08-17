@@ -51,6 +51,7 @@ Testes inline (#[cfg(test)] dentro do proprio arquivo):
   crates/nycode-agent/src/tools/bash/output.rs
   crates/nycode-agent/src/tools/bash/supervise.rs
   crates/nycode-agent/src/tools/edit.rs
+  crates/nycode-agent/src/tools/edit/replace.rs
   crates/nycode-agent/src/tools/mod.rs
   crates/nycode-agent/src/tools/read.rs
   crates/nycode-agent/src/tools/search/collect.rs

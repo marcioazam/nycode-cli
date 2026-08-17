@@ -8,6 +8,9 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Alterado
 
+- **`edit` aceita substituições disjuntas, `bash` tem prazo por
+  chamada, e `read` devolve imagem** (B17, B18, B19).
+
 - **O resumo de compactação pede seções nomeadas, o marcador leva a
   cauda, e `/fork` registra o ramo abandonado.** O pedido de resumo
   fixa `Objetivo`, `Restricoes`, `Progresso`, `Decisoes`, `Proximos

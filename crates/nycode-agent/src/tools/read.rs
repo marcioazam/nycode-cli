@@ -63,6 +63,13 @@ impl Tool for Read {
             Err(err) => return ToolOutput::error(err.to_string()),
         };
 
+        if let Ok(opened) = crate::tool::contain::open_read_async(ctx.root(), &path)
+            && let Ok(peek) = crate::capped::read_open(opened, 16).await
+            && recognize(&peek.bytes).is_some()
+        {
+            return read_image(requested, ctx, &path).await;
+        }
+
         // Pelo descritor, e não pelo caminho: `resolve` decidiu que este
         // caminho está dentro da raiz, e reabrir por caminho deixaria a decisão
         // valer só até alguém trocar um componente por link.
@@ -83,8 +90,6 @@ impl Tool for Read {
             }
         };
         if window.binary {
-            // Um binário lido como texto vira lixo no contexto e desperdiça
-            // tokens.
             return ToolOutput::error(format!("{requested} nao e texto"));
         }
         if window.lines == 0 {
@@ -114,6 +119,65 @@ impl Tool for Read {
         }
         ToolOutput::ok(out)
     }
+}
+
+/// Teto de uma imagem lida como ferramenta — o mesmo do anexo ao pedido.
+const MAX_IMAGE_BYTES: usize = 5_242_880;
+
+const RECOGNIZED: &[(&[u8], &str)] = &[
+    (&[0x89, b'P', b'N', b'G'], "image/png"),
+    (&[0xff, 0xd8, 0xff], "image/jpeg"),
+    (b"GIF87a", "image/gif"),
+    (b"GIF89a", "image/gif"),
+    (b"RIFF", "image/webp"),
+];
+
+async fn read_image(requested: &str, ctx: &ToolContext, path: &std::path::Path) -> ToolOutput {
+    let Ok(opened) = crate::tool::contain::open_read_async(ctx.root(), path) else {
+        return ToolOutput::error(format!("{requested} nao e texto"));
+    };
+    let Ok(read) = crate::capped::read_open(opened, MAX_IMAGE_BYTES).await else {
+        return ToolOutput::error(format!("{requested} nao e texto"));
+    };
+    if read.truncated() {
+        return ToolOutput::error(format!(
+            "{requested} tem {} bytes; o teto para imagem e {MAX_IMAGE_BYTES}",
+            read.total
+        ));
+    }
+    let Some(media_type) = recognize(&read.bytes) else {
+        return ToolOutput::error(format!("{requested} nao e texto"));
+    };
+    ToolOutput::image(media_type, encode(&read.bytes))
+}
+
+fn recognize(bytes: &[u8]) -> Option<&'static str> {
+    let (_, media_type) = RECOGNIZED
+        .iter()
+        .find(|(magic, _)| bytes.starts_with(magic))?;
+    if *media_type == "image/webp" && bytes.get(8..12) != Some(b"WEBP") {
+        return None;
+    }
+    Some(media_type)
+}
+
+fn encode(bytes: &[u8]) -> String {
+    const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
+    for chunk in bytes.chunks(3) {
+        let packed = chunk.iter().enumerate().fold(0_u32, |acc, (i, byte)| {
+            acc + (u32::from(*byte) << (16 - 8 * i))
+        });
+        for slot in 0..4 {
+            if slot > chunk.len() {
+                out.push('=');
+                continue;
+            }
+            let index = (packed >> (18 - 6 * slot)) & 0b0011_1111;
+            out.push(char::from(ALPHABET[index as usize]));
+        }
+    }
+    out
 }
 
 #[cfg(test)]
@@ -174,6 +238,21 @@ mod tests {
         let out = Read.execute(json!({ "path": "bin" }), &ctx).await;
         assert!(out.is_error);
         assert!(out.content.contains("nao e texto"), "{}", out.content);
+    }
+
+    #[tokio::test]
+    async fn an_image_file_is_returned_as_an_image() {
+        let (dir, ctx) = workspace();
+        let mut png = vec![0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a];
+        png.extend_from_slice(b"conteudo falso de imagem");
+        std::fs::write(dir.path().join("foto.png"), &png).unwrap();
+
+        let out = Read.execute(json!({ "path": "foto.png" }), &ctx).await;
+        assert!(!out.is_error, "{}", out.content);
+        let image = out.image.expect("read de imagem precisa carregar o anexo");
+        assert_eq!(image.media_type, "image/png");
+        assert_eq!(image.data, "iVBORw0KGgpjb250ZXVkbyBmYWxzbyBkZSBpbWFnZW0=");
+        assert_eq!(recognize(b"RIFF\0\0\0\0WAVE"), None);
     }
 
     #[tokio::test]

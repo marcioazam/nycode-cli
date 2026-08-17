@@ -74,7 +74,11 @@ impl Tool for Bash {
         json!({
             "type": "object",
             "properties": {
-                "command": { "type": "string", "description": "Comando a executar" }
+                "command": { "type": "string", "description": "Comando a executar" },
+                "timeout": {
+                    "type": "integer",
+                    "description": "Prazo em segundos desta chamada; omitido usa o padrao da sessao"
+                }
             },
             "required": ["command"]
         })
@@ -87,8 +91,16 @@ impl Tool for Bash {
         if command.trim().is_empty() {
             return ToolOutput::error("`command` vazio");
         }
+        let launch = if let Some(value) = input.get("timeout") {
+            let Some(secs) = value.as_u64().filter(|secs| *secs > 0) else {
+                return ToolOutput::error("`timeout` precisa ser um inteiro positivo de segundos");
+            };
+            self.launch.clone().with_deadline(Duration::from_secs(secs))
+        } else {
+            self.launch.clone()
+        };
 
-        match self.launch.run(ctx.root(), command).await {
+        match launch.run(ctx.root(), command).await {
             Ok(output) => output::render(&output, self.confinement().strength()),
             Err(message) => ToolOutput::error(message),
         }
@@ -176,6 +188,32 @@ mod tests {
 
         assert!(out.is_error);
         assert!(out.content.contains("excedeu"), "{}", out.content);
+    }
+
+    #[tokio::test]
+    async fn a_per_call_timeout_overrides_the_construction_deadline() {
+        let (_dir, ctx) = workspace();
+        let bash = Bash::with_timeout(Duration::from_secs(30))
+            .with_confinement(Confinement::Unavailable {
+                reason: "teste".to_owned(),
+            })
+            .with_environment(Allowlist::default());
+
+        let out = bash
+            .execute(json!({ "command": "sleep 30", "timeout": 1 }), &ctx)
+            .await;
+        assert!(out.is_error, "{}", out.content);
+        assert!(out.content.contains("1s"), "{}", out.content);
+    }
+
+    #[tokio::test]
+    async fn a_zero_timeout_is_refused_before_running() {
+        let (_dir, ctx) = workspace();
+        let out = bare()
+            .execute(json!({ "command": "true", "timeout": 0 }), &ctx)
+            .await;
+        assert!(out.is_error);
+        assert!(out.content.contains("timeout"), "{}", out.content);
     }
 
     #[tokio::test]
