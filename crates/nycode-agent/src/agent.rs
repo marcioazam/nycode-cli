@@ -98,6 +98,8 @@ pub struct Agent {
     /// declarado não há com o que comparar o usage, e chutar um faria o harness
     /// acusar truncamento onde não houve.
     context_window: Option<u64>,
+    /// Se o modelo atual aceita imagem. Sem declaração no catálogo, `true`.
+    vision: bool,
     cancel: Cancel,
     approver: Arc<dyn Approver>,
     /// Mensagens que o usuário digitou enquanto o turno corria.
@@ -125,6 +127,7 @@ impl std::fmt::Debug for Agent {
     }
 }
 
+mod adapt;
 mod dispatch;
 mod shrink;
 pub mod transform;
@@ -143,6 +146,7 @@ impl Agent {
             tool_limit: DEFAULT_TOOL_LIMIT,
             keep_recent: DEFAULT_KEEP_RECENT,
             context_window: None,
+            vision: true,
             cancel: Cancel::new(),
             // Sem ninguém a quem perguntar, a resposta é não: aprovar por
             // omissão daria a um pipeline a permissão que ninguém concedeu.
@@ -160,20 +164,6 @@ impl Agent {
     fn record(&mut self, message: Message) {
         self.journal.push(message.clone());
         self.messages.push(message);
-    }
-
-    fn record_sent(
-        &mut self,
-        text: &str,
-        calls: &[crate::tool::ToolCall],
-        reason: &StopReason,
-        cancelled: bool,
-    ) {
-        if let Some(message) =
-            transform::assistant_turn(text, calls, transform::discard_on_send(reason, cancelled))
-        {
-            self.record(message);
-        }
     }
 
     /// O que este pedido acrescentou, para quem precisa persistir.
@@ -340,7 +330,13 @@ impl Agent {
                 continue;
             }
 
-            self.record_sent(turn.text(), &calls, &stop_reason, interrupted);
+            self.record_sent(
+                turn.text(),
+                turn.reasoning(),
+                &calls,
+                &stop_reason,
+                interrupted,
+            );
 
             if let Some(shrink::SilentOverflow::InputAboveWindow { input, window }) = overflowed {
                 // A resposta veio e vale; o que não pode é o próximo turno ser
@@ -458,7 +454,7 @@ impl Agent {
             // um ponto da árvore (FR-14) ou trocar de modelo (FR-19) produz
             // exatamente esse par quebrado.
             stream = self.backend.stream(
-                transform::for_provider(&self.messages),
+                transform::for_model(&self.messages, self.vision),
                 self.system.clone(),
                 self.specs(),
             ) => stream?,

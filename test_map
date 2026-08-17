@@ -12,6 +12,7 @@
 ## nycode-agent
 
 Testes inline (#[cfg(test)] dentro do proprio arquivo):
+  crates/nycode-agent/src/agent/adapt.rs
   crates/nycode-agent/src/agent/dispatch.rs
   crates/nycode-agent/src/agent/transform.rs
   crates/nycode-agent/src/backend.rs

@@ -189,6 +189,7 @@ mod tests {
             context_window: Some(200_000),
             max_output_tokens: Some(8192),
             price: None,
+            vision: None,
         }
     }
 
