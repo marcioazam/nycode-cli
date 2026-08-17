@@ -167,4 +167,28 @@ impl Agent {
         let text = turn.text().trim().to_owned();
         (!text.is_empty()).then_some(text)
     }
+
+    pub(super) fn record_sent(
+        &mut self,
+        text: &str,
+        reasoning: &str,
+        calls: &[crate::tool::ToolCall],
+        reason: &nycode_ai::StopReason,
+        cancelled: bool,
+    ) {
+        if let Some(message) = super::transform::assistant_turn(
+            text,
+            reasoning,
+            calls,
+            super::transform::discard_on_send(reason, cancelled),
+        ) {
+            self.record(message);
+        }
+    }
+
+    #[must_use]
+    pub const fn with_vision(mut self, vision: bool) -> Self {
+        self.vision = vision;
+        self
+    }
 }

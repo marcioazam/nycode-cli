@@ -187,9 +187,7 @@ pub async fn prepare(cli: &Cli) -> anyhow::Result<Prepared> {
         .with_cancel(cancel.clone())
         .with_tool_limit(settings.tool_limit)
         .with_keep_recent(settings.keep_recent);
-    if let Some(window) = windows.get(&provider.model).copied() {
-        agent = agent.with_context_window(window);
-    }
+    agent = provider::tuning::apply_caps(agent, &catalog.models, &provider.model);
     for message in history {
         agent = agent.with_message(message);
     }

@@ -66,6 +66,29 @@ pub fn windows_of(models: &[nycode_ai::Model]) -> BTreeMap<String, u64> {
         .collect()
 }
 
+/// Aplica janela e visão que o catálogo declarou para este modelo.
+///
+/// Sem declaração, o agente fica como nasceu: sem janela para comparar e
+/// com visão ligada — o comportamento antigo, imagens no fio.
+#[must_use]
+pub fn apply_caps(
+    agent: nycode_agent::Agent,
+    models: &[nycode_ai::Model],
+    id: &str,
+) -> nycode_agent::Agent {
+    let Some(model) = models.iter().find(|model| model.id == id) else {
+        return agent;
+    };
+    let mut agent = agent;
+    if let Some(window) = model.context_window {
+        agent = agent.with_context_window(window);
+    }
+    if let Some(vision) = model.vision {
+        agent = agent.with_vision(vision);
+    }
+    agent
+}
+
 /// O que dizer ao usuário sobre o que o dialeto não fará.
 ///
 /// Devolve as linhas em vez de imprimi-las para que o caminho seja testável sem
@@ -182,6 +205,7 @@ mod tests {
             context_window: None,
             max_output_tokens: None,
             price,
+            vision: None,
         };
         let precificado = Price {
             base: nycode_ai::catalog::Rates {
@@ -208,12 +232,55 @@ mod tests {
             context_window,
             max_output_tokens: None,
             price: None,
+            vision: None,
         };
 
         let mapa = windows_of(&[modelo("com", Some(200_000)), modelo("sem", None)]);
 
         assert_eq!(mapa.get("com"), Some(&200_000));
         assert!(!mapa.contains_key("sem"));
+    }
+
+    struct Mute;
+
+    #[async_trait::async_trait]
+    impl nycode_agent::Backend for Mute {
+        async fn stream(
+            &self,
+            _messages: Vec<nycode_ai::anthropic::Message>,
+            _system: Option<String>,
+            _tools: Vec<nycode_ai::anthropic::ToolSpec>,
+        ) -> nycode_ai::Result<nycode_agent::backend::EventStream> {
+            Ok(Box::pin(futures_util::stream::empty()))
+        }
+    }
+
+    fn agent() -> nycode_agent::Agent {
+        let dir = tempfile::tempdir().unwrap();
+        nycode_agent::Agent::new(
+            std::sync::Arc::new(Mute),
+            nycode_agent::ToolContext::new(dir.path()).unwrap(),
+        )
+    }
+
+    fn modelo(id: &str, context_window: Option<u64>, vision: Option<bool>) -> nycode_ai::Model {
+        nycode_ai::Model {
+            id: id.to_owned(),
+            display_name: id.to_owned(),
+            context_window,
+            max_output_tokens: None,
+            price: None,
+            vision,
+        }
+    }
+
+    #[test]
+    fn apply_caps_takes_window_and_vision_from_the_named_model() {
+        let models = [modelo("com", Some(200_000), Some(false))];
+        let tuned = apply_caps(agent(), &models, "com");
+        assert_eq!(tuned.context_window(), Some(200_000));
+        let unknown = apply_caps(agent(), &models, "outro");
+        assert_eq!(unknown.context_window(), None);
     }
 
     #[test]

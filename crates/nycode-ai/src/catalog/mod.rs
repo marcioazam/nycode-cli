@@ -40,6 +40,12 @@ pub struct Model {
     /// daria um número inventado com a mesma cara de um medido (ADR-0026).
     #[serde(default)]
     pub price: Option<Price>,
+    /// Se o modelo aceita imagem, quando o catálogo declara.
+    ///
+    /// `None` é o comportamento antigo: o pedido leva o anexo. `Some(false)`
+    /// tira a imagem do fio.
+    #[serde(default)]
+    pub vision: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -108,8 +114,20 @@ fn parse_model(raw: &Value) -> Option<Model> {
         context_window: number(&["context_window", "context_length"]),
         max_output_tokens: number(&["max_output_tokens", "max_tokens"]),
         price: cost::parse(raw),
+        vision: vision_of(raw),
         id,
     })
+}
+
+fn vision_of(raw: &Value) -> Option<bool> {
+    if let Some(flag) = raw.get("vision").and_then(Value::as_bool) {
+        return Some(flag);
+    }
+    let inputs = raw
+        .pointer("/modalities/input")
+        .or_else(|| raw.get("input"))
+        .and_then(Value::as_array)?;
+    Some(inputs.iter().any(|item| item.as_str() == Some("image")))
 }
 
 #[cfg(test)]
@@ -289,6 +307,32 @@ mod tests {
 
         let openai = parse_model(&json!({"id":"b","max_tokens":4096})).unwrap();
         assert_eq!(openai.max_output_tokens, Some(4096));
+    }
+
+    #[test]
+    fn vision_comes_from_the_catalog_not_from_a_hardcoded_family() {
+        assert_eq!(
+            parse_model(&json!({"id": "a", "vision": false}))
+                .unwrap()
+                .vision,
+            Some(false)
+        );
+        assert_eq!(
+            parse_model(&json!({
+                "id": "b",
+                "modalities": {"input": ["text", "image"]}
+            }))
+            .unwrap()
+            .vision,
+            Some(true)
+        );
+        assert_eq!(
+            parse_model(&json!({"id": "c", "input": ["text"]}))
+                .unwrap()
+                .vision,
+            Some(false)
+        );
+        assert_eq!(parse_model(&json!({"id": "d"})).unwrap().vision, None);
     }
 
     #[test]
