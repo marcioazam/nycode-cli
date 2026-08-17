@@ -166,7 +166,7 @@ fn encode(bytes: &[u8]) -> String {
     let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
     for chunk in bytes.chunks(3) {
         let packed = chunk.iter().enumerate().fold(0_u32, |acc, (i, byte)| {
-            acc | (u32::from(*byte) << (16 - 8 * i))
+            acc + (u32::from(*byte) << (16 - 8 * i))
         });
         for slot in 0..4 {
             if slot > chunk.len() {
