@@ -396,6 +396,8 @@ mod tests {
 
         editor.apply(Action::Previous);
         assert_eq!(editor.text(), "antigo");
+        editor.clear_history();
+        assert!(editor.history().is_empty());
     }
 
     #[test]

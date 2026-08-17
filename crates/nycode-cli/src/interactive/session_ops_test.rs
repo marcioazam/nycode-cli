@@ -1,10 +1,9 @@
-//! B28: `/session`, `/copy`, `/new` e `/reload`.
-
 use std::sync::Arc;
 
 use crossterm::event::KeyCode;
 use nycode_ai::anthropic::{ContentBlock, Message};
 
+use super::builtin::{Available, Effect, resolve};
 use super::fakes::{Recording, Scripted, delivered, key, typing};
 use super::*;
 
@@ -25,6 +24,16 @@ async fn submit(session: &mut Session, typed: &str) -> String {
     surface.scrollback
 }
 
+#[test]
+fn new_and_reload_confirm_instead_of_passing_through() {
+    let (_dir, store) = store();
+    let a = &Available::default();
+    let new = Effect::Show("\nnova sessao: abc\n\n".into());
+    assert_eq!(resolve("/new", &store, "abc", a), new);
+    let reload = Effect::Show("\nrecursos recarregados\n\n".into());
+    assert_eq!(resolve("/reload", &store, "s", a), reload);
+}
+
 #[tokio::test]
 async fn session_lists_id_name_and_message_count() {
     let (_dir, store) = store();
@@ -33,21 +42,16 @@ async fn session_lists_id_name_and_message_count() {
     let mut session = Session::with_turns(Box::new(Scripted::default()), store, "sessao-1");
     let out = submit(&mut session, "/session").await;
     assert_eq!(session.panel.model(), "nylla-sonnet-4.5");
-    assert!(
-        out.contains("sessao-1") && out.contains("projeto") && out.contains("mensagens: 1"),
-        "{out}"
-    );
+    let listed =
+        out.contains("sessao-1") && out.contains("projeto") && out.contains("mensagens: 1");
+    assert!(listed, "{out}");
 }
 
 #[tokio::test]
 async fn copy_shows_the_last_assistant_text() {
     let (_dir, store) = store();
-    store
-        .append(
-            "sessao-1",
-            &Message::assistant(vec![ContentBlock::text("resposta")]),
-        )
-        .unwrap();
+    let reply = Message::assistant(vec![ContentBlock::text("resposta")]);
+    store.append("sessao-1", &reply).unwrap();
     store.append("sessao-1", &Message::user("pedido")).unwrap();
     let mut session = Session::with_turns(Box::new(Scripted::default()), store, "sessao-1");
     let out = submit(&mut session, "/copy").await;
@@ -63,10 +67,8 @@ async fn a_new_session_drops_the_previous_history() {
     };
     let retargets = Arc::clone(&turns.retargets);
     let mut session = Session::with_turns(Box::new(turns), store, "sessao-1");
-    session
-        .panel
-        .editor_mut()
-        .seed_history(["antigo".to_owned()]);
+    let editor = session.panel.editor_mut();
+    editor.seed_history(["antigo".to_owned()]);
     submit(&mut session, "/new").await;
     assert!(session.turns.history().is_empty());
     assert_ne!(session.id, "sessao-1");
@@ -96,8 +98,6 @@ async fn reload_keeps_the_invocation_system_flag() {
     session.system = Some("so isto".to_owned());
     submit(&mut session, "/reload").await;
     let text = last_system.lock().unwrap();
-    assert!(
-        text.as_deref().unwrap_or("").contains("so isto"),
-        "{text:?}"
-    );
+    let kept = text.as_deref().unwrap_or("").contains("so isto");
+    assert!(kept, "{text:?}");
 }
