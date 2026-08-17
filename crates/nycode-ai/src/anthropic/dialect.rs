@@ -308,6 +308,7 @@ mod tests {
                 ContentBlock::image("image/png", "QUJD"),
                 ContentBlock::text("o que ha nesta captura?"),
             ],
+            discarded: false,
         };
         let body = Messages.body(&UnifiedRequest {
             model: "m",

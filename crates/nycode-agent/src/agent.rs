@@ -67,9 +67,8 @@ pub struct Outcome {
 
 /// Como um turno terminou de ser lido do stream.
 ///
-/// O turno parcial acompanha o cancelamento porque o texto que o modelo já
-/// emitiu precisa entrar no histórico: descartá-lo faria a sessão retomada
-/// mentir sobre o que aconteceu.
+/// O texto parcial entra no histórico marcado para não reenvio: o usuário viu;
+/// o provedor recusa o incompleto.
 #[derive(Debug)]
 enum TurnEnd {
     Complete(Turn),
@@ -249,10 +248,7 @@ impl Agent {
         // O registro é deste pedido: o que o anterior acrescentou já foi
         // persistido por quem o pediu.
         self.journal.clear();
-        self.record(Message {
-            role: nycode_ai::anthropic::Role::User,
-            content,
-        });
+        self.record(Message::user_blocks(content));
 
         let mut rounds = 0;
         let mut usage = Usage::default();
@@ -330,7 +326,13 @@ impl Agent {
                 continue;
             }
 
-            self.record_assistant_turn(&turn, &calls);
+            if let Some(message) = transform::assistant_turn(
+                turn.text(),
+                &calls,
+                transform::discard_on_send(&stop_reason, interrupted),
+            ) {
+                self.record(message);
+            }
 
             if let Some(shrink::SilentOverflow::InputAboveWindow { input, window }) = overflowed {
                 // A resposta veio e vale; o que não pode é o próximo turno ser
@@ -474,27 +476,5 @@ impl Agent {
             turn.absorb(event);
         }
         Ok(TurnEnd::Complete(turn))
-    }
-
-    /// Registra o turno do assistente no histórico.
-    ///
-    /// Os blocos `tool_use` precisam voltar ao backend junto com os resultados,
-    /// senão o próximo turno referencia ids que o modelo não vê e o backend
-    /// rejeita a conversa.
-    fn record_assistant_turn(&mut self, turn: &Turn, calls: &[crate::tool::ToolCall]) {
-        let mut blocks = Vec::new();
-        if !turn.text().is_empty() {
-            blocks.push(ContentBlock::text(turn.text()));
-        }
-        for call in calls {
-            blocks.push(ContentBlock::ToolUse {
-                id: call.id.clone(),
-                name: call.name.clone(),
-                input: call.input.clone(),
-            });
-        }
-        if !blocks.is_empty() {
-            self.record(Message::assistant(blocks));
-        }
     }
 }

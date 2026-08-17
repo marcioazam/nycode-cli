@@ -363,6 +363,7 @@ mod tests {
                 },
                 ContentBlock::tool_result("c1", "ok"),
             ],
+            discarded: false,
         };
         let body = body_of(&[mixed], None, &[]);
         assert_eq!(body["messages"][0]["role"], "assistant");
@@ -422,6 +423,7 @@ mod tests {
                 ContentBlock::image("image/png", "QUJD"),
                 ContentBlock::text("o que ha nesta captura?"),
             ],
+            discarded: false,
         };
         let converted = convert(&message);
 

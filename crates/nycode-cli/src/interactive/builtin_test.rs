@@ -108,6 +108,7 @@ fn a_tool_result_is_not_offered_as_a_resume_point() {
             &Message {
                 role: Role::User,
                 content: vec![ContentBlock::tool_result("t1", "saida")],
+                discarded: false,
             },
         )
         .unwrap();
