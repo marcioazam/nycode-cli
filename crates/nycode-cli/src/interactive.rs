@@ -1,15 +1,9 @@
 //! Sessão interativa (FR-1).
 //!
-//! O modelo é o do scrollback: a conversa é escrita no fluxo do terminal como a
-//! de qualquer programa de linha de comando, e só o painel de baixo — editor e
-//! rodapé — é redesenhado no lugar. Rolagem, busca e cópia continuam sendo do
-//! emulador ([ADR-0008](../../../docs/architecture/decisions/0008-a-tui-usa-o-renderizador-proprio-sobre-o-scrollback.md)).
-//!
-//! Este módulo é o laço, não o terminal. As duas dependências que o tornariam
-//! intestável — para onde desenhar e o que roda um turno — entram por trait, e
-//! a ligação com o terminal de verdade vive em [`crate::screen`]. Em modo bruto
-//! o `Ctrl+C` não vira `SIGINT`: chega como tecla, e por isso o laço continua
-//! lendo eventos enquanto o turno corre.
+//! Scrollback no fluxo do terminal; só o painel de baixo redesenha no lugar
+//! ([ADR-0008](../../../docs/architecture/decisions/0008-a-tui-usa-o-renderizador-proprio-sobre-o-scrollback.md)).
+//! Superfície e turnos entram por trait. Em modo bruto o `Ctrl+C` chega como
+//! tecla, e o laço continua lendo enquanto o turno corre.
 
 use crossterm::event::Event;
 use futures_util::{Stream, StreamExt};
@@ -55,11 +49,7 @@ pub trait Turns: Send {
     fn switch_model(&mut self, model: &str) -> anyhow::Result<()>;
 }
 
-/// Instrução acrescentada ao sistema em plan mode.
-///
-/// O gate somente-leitura já impede a mutação; isto diz ao modelo *por que* ela
-/// não está disponível. Sem a explicação ele tentaria escrever, receberia
-/// recusa, e gastaria rodadas descobrindo o que já era para saber.
+/// Em plan mode o gate já impede mutação; isto explica o porquê ao modelo.
 pub const PLAN_SYSTEM: &str = "\n\nMODO DE PLANEJAMENTO: nesta fase voce nao pode \
      modificar nada — escrita, edicao e execucao de comando estao desligadas, e \
      tentar usa-las so gasta uma rodada. Investigue com as ferramentas de \
@@ -96,11 +86,11 @@ pub struct Session {
     models: Vec<String>,
     /// Tarifas por modelo, para o rodapé mostrar custo e não só volume.
     prices: std::collections::BTreeMap<String, nycode_ai::catalog::Price>,
-    /// Conexões MCP vivas, seguradas até o fim da sessão.
-    ///
-    /// Sem isto o processo do servidor morreria assim que a preparação saísse
-    /// de escopo, e a primeira chamada do modelo falharia longe da causa.
+    /// Servidores MCP vivos até o fim da sessão.
     _mcp: Vec<std::sync::Arc<nycode_mcp::Session>>,
+    /// Pedidos para depois deste turno, sem injetar no turno corrente.
+    later: Option<tokio::sync::mpsc::Sender<String>>,
+    follow_up: Option<tokio::sync::mpsc::Receiver<String>>,
 }
 
 impl std::fmt::Debug for Session {
@@ -142,10 +132,7 @@ impl Session {
             model: _,
         } = prepared;
 
-        // Numa sessão interativa há a quem perguntar, então o gate pergunta em
-        // vez de decidir de antemão — decidir obrigaria a escolher entre sessão
-        // inútil e cheque em branco. Com `--allow-writes` a decisão já foi
-        // tomada e não há o que perguntar.
+        // Com `--allow-writes` a decisão já foi tomada; senão o gate pergunta.
         let (agent, approvals) = if writable {
             (agent, None)
         } else {
@@ -158,10 +145,9 @@ impl Session {
             )
         };
 
-        // A fila é pequena de propósito: acumular dez correções para despejar
-        // de uma vez confundiria mais que ajudaria.
         let (steering, queued) = tokio::sync::mpsc::channel(4);
         let agent = agent.with_steering(queued);
+        let (later, follow_up) = tokio::sync::mpsc::channel(4);
 
         let (files, skills) = loaded(&context, &root);
         let price = prices.get(&model).cloned();
@@ -178,9 +164,7 @@ impl Session {
                     .rebuilding(rebuild)
                     .with_windows(windows)
                     .restoring(move || {
-                        // Sair do plan mode devolve o gate que a sessão tinha, e
-                        // não um padrão: com `--allow-writes` ele permitia tudo, e
-                        // voltar a perguntar seria mudar a sessão pelas costas.
+                        // `--allow-writes` devolve AllowAll; senão volta a perguntar.
                         if writable {
                             Box::new(nycode_agent::AllowAll)
                         } else {
@@ -197,6 +181,8 @@ impl Session {
             prices,
             approvals,
             steering: Some(steering),
+            later: Some(later),
+            follow_up: Some(follow_up),
             branch: None,
             quitting: false,
             planning: false,
@@ -225,6 +211,8 @@ impl Session {
             prices: std::collections::BTreeMap::new(),
             approvals: None,
             steering: None,
+            later: None,
+            follow_up: None,
             branch: None,
             quitting: false,
             planning: false,
@@ -243,6 +231,14 @@ impl Session {
     #[cfg(test)]
     fn with_cancel(mut self, cancel: Cancel) -> Self {
         self.cancel = cancel;
+        self
+    }
+
+    #[cfg(test)]
+    fn pending_follow_up(mut self, text: &str) -> Self {
+        let (tx, rx) = tokio::sync::mpsc::channel(1);
+        let _ = tx.try_send(text.to_owned());
+        self.follow_up = Some(rx);
         self
     }
 
@@ -277,6 +273,12 @@ impl Session {
                 Step::Quit => break,
                 Step::Submit(typed) => {
                     self.take_turn(surface, events, typed).await?;
+                    while !self.quitting {
+                        let Some(next) = self.next_follow_up() else {
+                            break;
+                        };
+                        self.take_turn(surface, events, next).await?;
+                    }
                     if self.quitting {
                         break;
                     }
@@ -297,12 +299,8 @@ impl Session {
         S: Surface,
         E: Stream<Item = std::io::Result<Event>> + Unpin,
     {
-        // O painel sai do caminho: o turno escreve no scrollback, e o painel
-        // volta por cima do que ficou.
         surface.emit(&format!("\n{PROMPT}{typed}\n\n"))?;
 
-        // Embutidos primeiro: um `/tree.md` no repositório não pode sequestrar
-        // a navegação da sessão.
         let names: Vec<String> = self.commands.iter().map(|c| c.name.clone()).collect();
         let available = builtin::Available {
             commands: &names,
@@ -358,9 +356,6 @@ impl Session {
             }
         }
 
-        // Um slash command é expandido aqui e vira um pedido comum. O modelo
-        // não sabe que existiu um comando, o que mantém o vocabulário de wire
-        // intacto.
         let prompt = match nycode_agent::context::commands::resolve(&typed, &self.commands) {
             Invocation::NotACommand => typed,
             Invocation::Expanded(prompt) => prompt,
@@ -373,8 +368,6 @@ impl Session {
             }
         };
 
-        // Cada turno começa com o sinal intacto. Um Ctrl+C interrompe o turno
-        // em que chegou, e não a sessão (ADR-0015).
         self.cancel.rearm();
 
         let outcome = approval::run_turn(
@@ -384,12 +377,11 @@ impl Session {
             &self.cancel,
             self.approvals.as_mut(),
             self.steering.as_ref(),
+            self.later.as_ref(),
             &prompt,
         )
         .await;
 
-        // Persistido antes de reportar erro: as ferramentas que rodaram já
-        // mudaram o disco.
         for message in self.turns.drain() {
             // Depois de um `/fork`, o primeiro registro pendura no ponto
             // escolhido; os seguintes seguem a ponta normalmente.
@@ -411,6 +403,10 @@ impl Session {
         surface.emit("\n")?;
         surface.draw(&self.panel.frame(surface.width()))?;
         Ok(())
+    }
+
+    fn next_follow_up(&mut self) -> Option<String> {
+        self.follow_up.as_mut()?.try_recv().ok()
     }
 
     /// Grava a partir de outro ponto e registra o que o ramo abandonado fez.
@@ -462,8 +458,6 @@ pub fn previous_prompts(history: &[Message]) -> Vec<String> {
         .iter()
         .filter(|message| message.role == Role::User)
         .filter_map(|message| {
-            // Uma mensagem de usuário também carrega resultados de ferramenta;
-            // esses não são prompts e não pertencem ao histórico do editor.
             let texts: Vec<&str> = message
                 .content
                 .iter()
