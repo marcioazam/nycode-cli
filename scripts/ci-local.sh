@@ -174,8 +174,10 @@ full() {
   step "gate de performance" scripts/perf-gate.sh
 
   # A paridade fecha a sequencia porque e a unica que depende de binario de
-  # terceiro. Sem `PARITY_REFERENCE` ela roda em modo instrumento e diz isso em
-  # voz alta, em vez de sair com zero fingindo comparacao.
+  # terceiro. O job `parity` do CI obtem a referencia com digest conferido e
+  # compara. Sem `PARITY_REFERENCE` daqui o gate roda em modo instrumento e
+  # diz isso em voz alta — `--full` e deliberadamente sem rede, e baixar a
+  # referencia aqui quebraria essa regra.
   step "paridade" scripts/parity-gate.sh
 }
 
