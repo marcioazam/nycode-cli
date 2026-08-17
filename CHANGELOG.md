@@ -8,6 +8,14 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Alterado
 
+- **Imagem some do fio quando o catálogo diz que o modelo não tem visão,
+  e o raciocínio fica no histórico como texto.** Sem declaração no
+  catálogo, o pedido leva o anexo — o comportamento antigo. `Some(false)`
+  troca a imagem por um marcador, e anexos seguidos viram um só. O
+  raciocínio deixa de ser descartado no registro do turno: vai como texto,
+  para uma troca de modelo (FR-19) não mandar bloco assinado a quem não
+  assina. Costura de B15/B16 da spec 002, em `adapt.rs` e `transform.rs`.
+
 - **O envio ao provedor descarta turno interrompido e fecha chamada órfã.**
   Um assistente que parou em erro ou cancelamento fica no histórico (o
   usuário viu o texto) e não volta no pedido — o provedor recusa o

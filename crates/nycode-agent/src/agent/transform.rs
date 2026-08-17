@@ -80,6 +80,13 @@ pub fn for_provider(messages: &[Message]) -> Vec<Message> {
     out
 }
 
+/// Ajusta o histórico ao modelo atual e ao que o provedor aceita.
+#[must_use]
+pub fn for_model(messages: &[Message], vision: bool) -> Vec<Message> {
+    let adapted = super::adapt::images(messages, vision);
+    for_provider(&adapted)
+}
+
 /// Assistente interrompido fica no histórico e fora do pedido.
 fn sendable(messages: &[Message]) -> impl Iterator<Item = &Message> {
     messages
@@ -92,8 +99,16 @@ fn sendable(messages: &[Message]) -> impl Iterator<Item = &Message> {
 /// `discarded` marca parada de erro ou cancelamento: o journal guarda o que o
 /// usuário viu; [`for_provider`] não reenvia.
 #[must_use]
-pub(crate) fn assistant_turn(text: &str, calls: &[ToolCall], discarded: bool) -> Option<Message> {
+pub(crate) fn assistant_turn(
+    text: &str,
+    reasoning: &str,
+    calls: &[ToolCall],
+    discarded: bool,
+) -> Option<Message> {
     let mut content = Vec::new();
+    if !reasoning.is_empty() {
+        content.push(ContentBlock::text(reasoning));
+    }
     if !text.is_empty() {
         content.push(ContentBlock::text(text));
     }
@@ -398,9 +413,25 @@ mod tests {
 
     #[test]
     fn an_assistant_turn_carries_the_discard_flag_into_history() {
-        let dropped = assistant_turn("parcial", &[], true).unwrap();
+        let dropped = assistant_turn("parcial", "", &[], true).unwrap();
         assert!(dropped.discarded);
-        assert!(!assistant_turn("ok", &[], false).unwrap().discarded);
+        assert!(!assistant_turn("ok", "", &[], false).unwrap().discarded);
+    }
+
+    #[test]
+    fn reasoning_is_kept_as_text_so_a_model_switch_still_sees_it() {
+        // Sem bloco assinado, o envio cross-model e texto. Sumir com o
+        // raciocinio faria a sessao retomada mentir sobre o que o modelo pensou.
+        let message = assistant_turn("resposta", "pensei nisto", &[], false).unwrap();
+        let texts: Vec<&str> = message
+            .content
+            .iter()
+            .filter_map(|b| match b {
+                ContentBlock::Text { text } => Some(text.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(texts, ["pensei nisto", "resposta"]);
     }
 
     #[tokio::test]

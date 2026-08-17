@@ -169,6 +169,8 @@ com chamador de produção, não só com teste.
 
 | Delta | Estado | Evidência |
 |---|---|---|
-| A6 — transformação antes do envio | fechado | [`agent.rs`](../../../crates/nycode-agent/src/agent.rs) `stream_one_turn` chama [`for_provider`](../../../crates/nycode-agent/src/agent/transform.rs); teste `the_send_path_drops_a_discarded_turn_and_closes_an_orphan` |
+| A6 — transformação antes do envio | fechado | [`agent.rs`](../../../crates/nycode-agent/src/agent.rs) `stream_one_turn` chama [`for_model`](../../../crates/nycode-agent/src/agent/transform.rs) (visão + [`for_provider`](../../../crates/nycode-agent/src/agent/transform.rs)); teste `the_send_path_drops_a_discarded_turn_and_closes_an_orphan` |
 | B13 — descarte de turno com erro ou cancelamento | fechado | `Message.discarded`; `discard_on_send` no registro do turno; `for_provider` não reenvia. Testes `an_interrupted_assistant_turn_is_not_sent`, `an_orphaned_call_and_a_discarded_turn_send_results_without_the_interrupted_one` |
 | B14 — resultado sintético para chamada órfã | fechado | já em `for_provider` (`a_call_left_open_at_the_end_gets_a_result`); o pedido 2.1 não reimplementa |
+| B15 — imagem fora do fio em modelo sem visão | fechado | [`adapt.rs`](../../../crates/nycode-agent/src/agent/adapt.rs); capacidade vem do catálogo (`Model.vision`), sem família hardcoded; [`apply_caps`](../../../crates/nycode-cli/src/session/provider/tuning.rs) no arranque. Troca de modelo no meio da sessão herda a visão da abertura — FR-19 fecha isso noutro pedido. Testes `a_text_only_model_does_not_receive_the_image`, `a_text_only_model_does_not_put_the_image_on_the_wire`, `vision_comes_from_the_catalog_not_from_a_hardcoded_family` |
+| B16 — raciocínio cross-model vira texto | fechado | `assistant_turn` grava o raciocínio como `ContentBlock::text` antes da resposta visível; não há bloco assinado neste harness. Teste `reasoning_is_kept_as_text_so_a_model_switch_still_sees_it` |
