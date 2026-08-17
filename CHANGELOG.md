@@ -8,6 +8,11 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Alterado
 
+- **Alt+Enter durante o turno enfileira o próximo pedido, sem
+  direcionar o corrente.** Enter continua injetando no turno
+  (`with_steering`). Alt+Enter só é interceptado no `steer()` com o
+  turno em curso; fora dele, continua quebrando linha (B22).
+
 - **`grep`, `find` e `ls` aceitam `limit` por chamada, e o resultado
   de ferramenta pode encerrar o turno.** Sem `limit`, vale o teto da
   ferramenta; acima do teto recorta; zero recusa (B20). Se todas as
