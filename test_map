@@ -54,6 +54,7 @@ Testes inline (#[cfg(test)] dentro do proprio arquivo):
   crates/nycode-agent/src/tools/edit/replace.rs
   crates/nycode-agent/src/tools/mod.rs
   crates/nycode-agent/src/tools/read.rs
+  crates/nycode-agent/src/tools/search/cap.rs
   crates/nycode-agent/src/tools/search/collect.rs
   crates/nycode-agent/src/tools/search/engine.rs
   crates/nycode-agent/src/tools/search/find.rs

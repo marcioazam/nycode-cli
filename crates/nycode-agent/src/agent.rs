@@ -80,6 +80,7 @@ enum TurnEnd {
 enum RoundEnd {
     Complete,
     Cancelled,
+    Stopped,
 }
 
 pub struct Agent {
@@ -264,10 +265,7 @@ impl Agent {
         let mut usage = Usage::default();
         let mut compactions = 0;
         loop {
-            // Direcionamento entra aqui e em nenhum outro lugar: entre rodadas
-            // o histórico está fechado, com todo `tool_use` já pareado. Injetar
-            // no meio de uma rodada quebraria o par e o backend recusaria a
-            // conversa inteira.
+            // Entre rodadas o histórico está fechado; injetar no meio quebraria o par.
             let (turn, interrupted) = match self.next_turn(observer, compactions).await {
                 Ok(TurnEnd::Complete(turn)) => (turn, false),
                 Ok(TurnEnd::Cancelled(turn)) => (turn, true),
@@ -286,30 +284,18 @@ impl Agent {
                 Err(err) => return Err(err),
             };
             usage += turn.usage();
-            // Um turno que terminou sem dizer por quê não é um turno concluído.
-            // `event.rs` se recusa a inventar `EndTurn` na projeção do wire, e
-            // inventá-lo aqui desfaria a garantia uma camada acima: `EndTurn`
-            // vira código de saída zero, e o pedido sai indistinguível de um
-            // que o gateway deu por encerrado.
             let stop_reason = turn
                 .stop_reason()
                 .cloned()
                 .unwrap_or_else(|| StopReason::Unrecognized("ausente".to_owned()));
             let calls = turn.tool_calls();
 
-            // Um argumento que chegou pela metade foi reparado, e isso se diz:
-            // sem o aviso, um stream truncado vira uma chamada de aparência
-            // normal e o usuário atribui ao modelo uma decisão do transporte.
             for name in turn.repaired_calls() {
                 observer.on_notice(&format!(
                     "os argumentos de `{name}` chegaram truncados; o que veio inteiro foi aproveitado e o resto, descartado"
                 ));
             }
 
-            // O provider também reporta estouro de janela sem erro nenhum
-            // (FR-5): status 200, stream bem formado, e a janela estourada
-            // escondida no `stop_reason` ou no usage. Ler isso aqui é o que
-            // impede a falha de sair daqui com cara de resposta.
             let overflowed = shrink::silent_overflow(
                 &stop_reason,
                 turn.text().is_empty() && calls.is_empty(),
@@ -317,9 +303,6 @@ impl Agent {
                 self.context_window,
             );
 
-            // Turno vazio não se registra: gravá-lo poluiria o histórico com um
-            // assistente que não disse nada, e é justamente o histórico que
-            // precisa encolher para o próximo caber.
             if overflowed == Some(shrink::SilentOverflow::ProducedNothing)
                 && shrink::may_compact(compactions)
                 && let Some(removed) = self.compact_history().await
@@ -382,9 +365,33 @@ impl Agent {
                 });
             }
 
-            if self.run_tool_round(&calls, observer).await == RoundEnd::Cancelled {
-                return Err(Error::Cancelled);
+            if let Some(outcome) = self
+                .after_round(&calls, observer, &turn, stop_reason, rounds, usage)
+                .await?
+            {
+                return Ok(outcome);
             }
+        }
+    }
+
+    async fn after_round(
+        &mut self,
+        calls: &[crate::tool::ToolCall],
+        observer: &mut impl Observer,
+        turn: &Turn,
+        stop_reason: StopReason,
+        rounds: usize,
+        usage: Usage,
+    ) -> Result<Option<Outcome>> {
+        match self.run_tool_round(calls, observer).await {
+            RoundEnd::Cancelled => Err(Error::Cancelled),
+            RoundEnd::Stopped => Ok(Some(Outcome {
+                text: turn.text().to_owned(),
+                stop_reason,
+                tool_rounds: rounds,
+                usage,
+            })),
+            RoundEnd::Complete => Ok(None),
         }
     }
 

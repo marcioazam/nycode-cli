@@ -11,9 +11,14 @@ use std::sync::Arc;
 
 use nycode_ai::{StopReason, StreamEvent, Usage};
 
+use async_trait::async_trait;
+use serde_json::{Value, json};
+
 use crate::agent::{Agent, Silent};
-use crate::agent_test::workspace;
+use crate::agent_test::{text_turn, tool_turn, workspace};
 use crate::backend::fake::FakeBackend;
+use crate::policy::AllowAll;
+use crate::tool::{Tool, ToolContext, ToolOutput};
 
 #[tokio::test]
 async fn the_reasoning_tokens_of_a_turn_reach_the_total() {
@@ -214,4 +219,130 @@ async fn a_reported_stop_reason_is_handed_over_untouched() {
         outcome.stop_reason,
         StopReason::Unrecognized("motivo_novo".to_owned())
     );
+}
+
+#[derive(Debug)]
+struct Done;
+
+#[async_trait]
+#[allow(clippy::unnecessary_literal_bound)]
+impl Tool for Done {
+    fn name(&self) -> &str {
+        "done"
+    }
+    fn description(&self) -> &str {
+        "encerra"
+    }
+    fn input_schema(&self) -> Value {
+        json!({ "type": "object" })
+    }
+    async fn execute(&self, _input: Value, _ctx: &ToolContext) -> ToolOutput {
+        let mut out = ToolOutput::ok("pronto");
+        out.stop();
+        out
+    }
+}
+
+#[derive(Debug)]
+struct Keep;
+
+#[async_trait]
+#[allow(clippy::unnecessary_literal_bound)]
+impl Tool for Keep {
+    fn name(&self) -> &str {
+        "keep"
+    }
+    fn description(&self) -> &str {
+        "continua"
+    }
+    fn input_schema(&self) -> Value {
+        json!({ "type": "object" })
+    }
+    async fn execute(&self, _input: Value, _ctx: &ToolContext) -> ToolOutput {
+        ToolOutput::ok("ainda")
+    }
+}
+
+fn two_tools(first: &str, second: &str) -> Vec<StreamEvent> {
+    vec![
+        StreamEvent::MessageStart { id: "m".into() },
+        StreamEvent::ToolCallStart {
+            id: "t1".into(),
+            name: first.into(),
+        },
+        StreamEvent::ToolCallDelta {
+            id: "t1".into(),
+            json_fragment: "{}".into(),
+        },
+        StreamEvent::ToolCallEnd { id: "t1".into() },
+        StreamEvent::ToolCallStart {
+            id: "t2".into(),
+            name: second.into(),
+        },
+        StreamEvent::ToolCallDelta {
+            id: "t2".into(),
+            json_fragment: "{}".into(),
+        },
+        StreamEvent::ToolCallEnd { id: "t2".into() },
+        StreamEvent::MessageEnd {
+            stop_reason: StopReason::ToolUse,
+        },
+    ]
+}
+
+#[tokio::test]
+async fn a_terminating_result_skips_the_follow_up_model_turn() {
+    let (_dir, ctx) = workspace();
+    let backend = Arc::new(FakeBackend::new(vec![
+        tool_turn("t1", "done", "{}"),
+        text_turn("nao deveria chegar"),
+    ]));
+    let mut agent = Agent::new(backend.clone(), ctx)
+        .with_gate(Box::new(AllowAll))
+        .with_tool(Arc::new(Done));
+
+    let outcome = agent.run("feche", &mut Silent).await.unwrap();
+    assert_eq!(backend.seen.lock().unwrap().len(), 1);
+    assert_eq!(outcome.tool_rounds, 1);
+}
+
+#[tokio::test]
+async fn a_mixed_batch_does_not_stop_the_turn() {
+    let (_dir, ctx) = workspace();
+    let backend = Arc::new(FakeBackend::new(vec![
+        two_tools("done", "keep"),
+        text_turn("continuou"),
+    ]));
+    let mut agent = Agent::new(backend.clone(), ctx)
+        .with_gate(Box::new(AllowAll))
+        .with_tool(Arc::new(Done))
+        .with_tool(Arc::new(Keep));
+
+    let _ = agent.run("misto", &mut Silent).await.unwrap();
+    assert_eq!(backend.seen.lock().unwrap().len(), 2);
+}
+
+#[tokio::test]
+async fn a_post_tool_hook_stops_the_turn_without_denying() {
+    let (dir, ctx) = workspace();
+    let path = dir.path().join(".nycode/hooks/post-tool-use");
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    std::fs::write(&path, "#!/bin/sh\necho '{\"terminate\":true}'\n").unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt as _;
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+    }
+
+    let backend = Arc::new(FakeBackend::new(vec![
+        tool_turn("t1", "keep", "{}"),
+        text_turn("nao deveria chegar"),
+    ]));
+    let mut agent = Agent::new(backend.clone(), ctx)
+        .with_gate(Box::new(AllowAll))
+        .with_tool(Arc::new(Keep))
+        .with_hooks(crate::policy::Hooks::discover(dir.path()));
+
+    let _ = agent.run("feche", &mut Silent).await.unwrap();
+    assert_eq!(backend.seen.lock().unwrap().len(), 1);
 }

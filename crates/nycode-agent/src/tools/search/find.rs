@@ -36,6 +36,10 @@ impl Tool for Find {
                 "path": {
                     "type": "string",
                     "description": "Subdiretorio onde buscar, relativo a raiz. Padrao: a raiz"
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Maximo de caminhos devolvidos. Padrao: 300"
                 }
             },
             "required": ["pattern"]
@@ -58,6 +62,10 @@ impl Tool for Find {
             None => ctx.root().to_path_buf(),
         };
 
+        let cap = match super::cap::of(&input, MAX_RESULTS) {
+            Ok(cap) => cap,
+            Err(err) => return err,
+        };
         let glob = match super::engine::glob(pattern) {
             Ok(glob) => glob,
             Err(message) => return ToolOutput::error(message),
@@ -76,15 +84,15 @@ impl Tool for Find {
             return ToolOutput::ok(format!("nenhum arquivo casa com `{pattern}`"));
         }
 
-        let truncated = hits.len() > MAX_RESULTS;
+        let truncated = hits.len() > cap;
         let mut out = String::new();
-        for found in hits.iter().take(MAX_RESULTS) {
+        for found in hits.iter().take(cap) {
             let _ = writeln!(out, "{}", found.relative);
         }
         if truncated {
             let _ = write!(
                 out,
-                "\n[mostrando {MAX_RESULTS} de {} arquivos; restrinja com `path` \
+                "\n[mostrando {cap} de {} arquivos; restrinja com `path` \
                  ou com um padrao mais especifico]",
                 hits.len()
             );
@@ -186,5 +194,22 @@ mod tests {
             "{}",
             out.content
         );
+    }
+    #[tokio::test]
+    async fn a_per_call_limit_caps_below_the_default() {
+        let dir = tempfile::tempdir().unwrap();
+        for i in 0..5 {
+            std::fs::write(dir.path().join(format!("a{i}.txt")), "").unwrap();
+        }
+        let ctx = ToolContext::new(dir.path()).unwrap();
+        let out = Find
+            .execute(json!({ "pattern": "*.txt", "limit": 2 }), &ctx)
+            .await;
+        let hits = out.content.lines().filter(|l| l.starts_with('a')).count();
+        assert_eq!(hits, 2, "{}", out.content);
+        let exact = Find
+            .execute(json!({ "pattern": "*.txt", "limit": 5 }), &ctx)
+            .await;
+        assert!(!exact.content.contains("mostrando"), "{}", exact.content);
     }
 }

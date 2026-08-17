@@ -41,6 +41,8 @@ pub struct ToolOutput {
     /// frente como se a operação tivesse funcionado.
     pub is_error: bool,
     pub image: Option<ToolImage>,
+    /// Encerra o turno depois desta rodada, se todas as chamadas pedirem.
+    pub terminate: bool,
 }
 
 /// Imagem no resultado de uma ferramenta (FR-15).
@@ -57,6 +59,7 @@ impl ToolOutput {
             content: content.into(),
             is_error: false,
             image: None,
+            terminate: false,
         }
     }
 
@@ -66,6 +69,7 @@ impl ToolOutput {
             content: content.into(),
             is_error: true,
             image: None,
+            terminate: false,
         }
     }
 
@@ -78,7 +82,12 @@ impl ToolOutput {
                 media_type: media_type.into(),
                 data: data.into(),
             }),
+            terminate: false,
         }
+    }
+
+    pub(crate) fn stop(&mut self) {
+        self.terminate = true;
     }
 
     #[must_use]
