@@ -91,6 +91,10 @@ impl Panel {
         &mut self.editor
     }
 
+    pub fn model(&self) -> &str {
+        &self.model
+    }
+
     /// Troca o modelo mostrado no rodapé, e com ele as tarifas.
     ///
     /// Os dois andam juntos porque separá-los cobraria os turnos do modelo novo

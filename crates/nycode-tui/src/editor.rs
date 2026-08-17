@@ -83,6 +83,12 @@ impl Editor {
             .extend(entries.into_iter().filter(|e| !e.trim().is_empty()));
     }
 
+    pub fn clear_history(&mut self) {
+        self.history.clear();
+        self.browsing = None;
+        self.draft.clear();
+    }
+
     /// Monta o quadro do editor na largura dada.
     #[must_use]
     pub fn frame(&self, width: usize, gutter: Gutter<'_>) -> Frame {

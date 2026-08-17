@@ -10,8 +10,7 @@
 //! coluna zero", então um texto escrito sem cuidado sai em escada.
 
 use std::io::Write;
-
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use nycode_agent::Agent;
 use nycode_ai::Usage;
@@ -108,6 +107,7 @@ pub struct Agentic {
     /// Fica aqui e não no painel porque quem a usa é o agente: é com ela que
     /// ele percebe que o provider truncou a entrada e respondeu assim mesmo.
     windows: std::collections::BTreeMap<String, u64>,
+    sampling: Option<Arc<Mutex<nycode_ai::Sampling>>>,
     drained: usize,
     quiet: bool,
 }
@@ -128,6 +128,7 @@ impl Agentic {
             restore: Box::new(|| Box::new(nycode_agent::ReadOnly)),
             rebuild: Box::new(|model| anyhow::bail!("esta sessao nao sabe trocar para `{model}`")),
             windows: std::collections::BTreeMap::new(),
+            sampling: None,
             agent,
             drained: persisted,
             quiet,
@@ -141,6 +142,12 @@ impl Agentic {
     #[must_use]
     pub fn with_windows(mut self, windows: std::collections::BTreeMap<String, u64>) -> Self {
         self.windows = windows;
+        self
+    }
+
+    #[must_use]
+    pub fn with_sampling(mut self, sampling: Arc<Mutex<nycode_ai::Sampling>>) -> Self {
+        self.sampling = Some(sampling);
         self
     }
 
@@ -229,6 +236,15 @@ impl Turns for Agentic {
     fn set_system(&mut self, system: String) {
         self.base_system.clone_from(&system);
         self.agent.set_system(Some(system));
+    }
+
+    fn retarget_backend(&mut self, session_id: &str, model: &str) -> anyhow::Result<()> {
+        if let Some(slot) = &self.sampling {
+            slot.lock()
+                .map_err(|_| anyhow::anyhow!("amostragem da sessao envenenada"))?
+                .cache_key = Some(session_id.to_owned());
+        }
+        self.switch_model(model)
     }
 
     fn switch_model(&mut self, model: &str) -> anyhow::Result<()> {

@@ -21,6 +21,10 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
   Pedido sem ferramentas declara `tool_choice: none`. A allowlist não é
   permissão; nome desconhecido recusa a sessão (B8, B25, FR-18).
 
+### Corrigido
+
+- **Fork de arquivo vazio recusa; `/reload` guarda `--system`; `/new` retargeta o cache.**
+
 ### Alterado
 
 - **O consentimento MCP fixa também a definição que o servidor declara.**

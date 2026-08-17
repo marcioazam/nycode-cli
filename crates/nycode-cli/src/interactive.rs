@@ -8,7 +8,7 @@
 use clap::Parser as _;
 use crossterm::event::Event;
 use futures_util::{Stream, StreamExt};
-use nycode_agent::{Cancel, Context, Invocation, Store};
+use nycode_agent::{Cancel, Invocation, Store};
 use nycode_ai::Usage;
 use nycode_ai::anthropic::Message;
 use nycode_tui::Key;
@@ -20,18 +20,13 @@ pub const CONTINUATION: &str = "  ";
 
 /// Para onde o painel é desenhado e o scrollback recebe texto.
 pub trait Surface {
-    /// Desenha o painel, redesenhando apenas o que mudou.
     fn draw(&mut self, frame: &[String]) -> std::io::Result<()>;
-    /// Acrescenta texto ao scrollback, acima do painel.
     fn emit(&mut self, text: &str) -> std::io::Result<()>;
     fn width(&self) -> usize;
     fn resize(&mut self, width: usize);
 }
 
 /// O que o laço precisa de um agente.
-///
-/// É uma interface pequena sobre uma implementação grande de propósito: o laço
-/// não conhece backend, ferramenta nem observer.
 #[async_trait::async_trait]
 pub trait Turns: Send {
     /// Roda um pedido até o fim, atendendo o cancelamento.
@@ -49,6 +44,7 @@ pub trait Turns: Send {
     /// Troca o modelo, mantendo a conversa.
     fn switch_model(&mut self, model: &str) -> anyhow::Result<()>;
     fn set_system(&mut self, system: String);
+    fn retarget_backend(&mut self, session_id: &str, model: &str) -> anyhow::Result<()>;
 }
 
 /// Em plan mode o gate já impede mutação; isto explica o porquê ao modelo.
@@ -94,6 +90,8 @@ pub struct Session {
     /// Pedidos para depois deste turno, sem injetar no turno corrente.
     later: Option<tokio::sync::mpsc::Sender<String>>,
     follow_up: Option<tokio::sync::mpsc::Receiver<String>>,
+    system: Option<String>,
+    append_system: Option<String>,
 }
 
 impl std::fmt::Debug for Session {
@@ -112,7 +110,7 @@ impl Session {
         prepared: crate::session::Prepared,
         model: String,
         writable: bool,
-        quiet: bool,
+        cli: &crate::Cli,
         width: usize,
     ) -> Self {
         let crate::session::Prepared {
@@ -128,6 +126,7 @@ impl Session {
             prices,
             windows,
             rebuild,
+            sampling,
             // As fases interessam a quem mede o arranque, não a quem conversa.
             phases: _,
             lifecycle: _,
@@ -163,8 +162,9 @@ impl Session {
                 price,
             ),
             turns: Box::new(
-                crate::screen::Agentic::new(agent, persisted, quiet)
+                crate::screen::Agentic::new(agent, persisted, cli.quiet)
                     .rebuilding(rebuild)
+                    .with_sampling(sampling)
                     .with_windows(windows)
                     .restoring(move || {
                         // `--allow-writes` devolve AllowAll; senão volta a perguntar.
@@ -191,6 +191,8 @@ impl Session {
             quitting: false,
             planning: false,
             _mcp: mcp,
+            system: cli.system.clone(),
+            append_system: cli.append_system.clone(),
         }
     }
 
@@ -222,6 +224,8 @@ impl Session {
             quitting: false,
             planning: false,
             _mcp: Vec::new(),
+            system: None,
+            append_system: None,
         }
     }
 
@@ -419,6 +423,9 @@ impl Session {
                 self.branch = None;
                 self.turns.replace_history(Vec::new());
                 self.panel.retarget(self.id.clone());
+                self.panel.editor_mut().clear_history();
+                let model = self.panel.model().to_owned();
+                self.turns.retarget_backend(&self.id, &model)?;
             }
             Some("reload") => self.reload_resources(width)?,
             _ => {}
@@ -426,7 +433,6 @@ impl Session {
         Ok(())
     }
 
-    /// Grava a partir de outro ponto e registra o que o ramo abandonado fez.
     fn resume_from(&mut self, record_id: String) -> anyhow::Result<()> {
         let next = self.store.path_to(&self.id, &record_id)?;
         let note = nycode_agent::session::compaction::notice(
@@ -447,8 +453,11 @@ impl Session {
     }
 
     fn reload_resources(&mut self, width: usize) -> anyhow::Result<()> {
-        let context = Context::discover(&self.root);
-        let cli = crate::Cli::try_parse_from(["nycode"]).map_err(|err| anyhow::anyhow!("{err}"))?;
+        let context = nycode_agent::Context::discover(&self.root);
+        let mut cli =
+            crate::Cli::try_parse_from(["nycode"]).map_err(|err| anyhow::anyhow!("{err}"))?;
+        cli.system.clone_from(&self.system);
+        cli.append_system.clone_from(&self.append_system);
         let system = context.system_prompt(
             &crate::invocation::prompt::resolve(&cli, &self.root)?,
             &self.root,
@@ -479,6 +488,9 @@ pub mod builtin;
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::panic)]
 pub(crate) mod fakes;
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::panic)]
+mod session_ops_test;
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::panic)]
 mod tests;
