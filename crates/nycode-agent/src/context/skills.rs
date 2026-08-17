@@ -385,12 +385,16 @@ mod tests {
             dir.path(),
             ".nycode/skills",
             "pdf",
-            "---\nname: pdf\ndescription: extrai texto\nlicense: MIT\ncompatibility: needs git\nallowed-tools: Read\nmetadata:\n  author: nylla\n---\ncorpo\n",
+            "---\nname: pdf\ndescription: extrai texto\nlicense: MIT\ncompatibility: needs git\nallowed-tools: Read\nmetadata:\n  author: nylla\n    deeper: ignored\n---\ncorpo\n",
         );
         let rendered = render(&discover(dir.path())).unwrap();
         assert!(rendered.contains("MIT"), "{rendered}");
         assert!(rendered.contains("needs git"), "{rendered}");
         assert!(rendered.contains("Read"), "{rendered}");
         assert!(rendered.contains("nylla"), "{rendered}");
+        assert!(
+            !rendered.contains("deeper") && !rendered.contains("ignored"),
+            "{rendered}"
+        );
     }
 }
