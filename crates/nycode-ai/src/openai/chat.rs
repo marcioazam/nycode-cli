@@ -70,6 +70,7 @@ impl Dialect for Chat {
         if let Some(retention) = super::cache::retention_of(sampling) {
             body["prompt_cache_retention"] = json!(retention);
         }
+        crate::ToolChoice::of(request.tools).emit_openai(&mut body);
         body
     }
 

@@ -6,6 +6,12 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ## [Não lançado]
 
+### Adicionado
+
+- **`--tools` e `--no-tools` restringem o catálogo enviado ao modelo.**
+  Pedido sem ferramentas declara `tool_choice: none`. A allowlist não é
+  permissão; nome desconhecido recusa a sessão (B8, B25, FR-18).
+
 ### Alterado
 
 - **O consentimento MCP fixa também a definição que o servidor declara.**

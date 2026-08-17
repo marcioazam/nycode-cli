@@ -127,6 +127,7 @@ Testes inline (#[cfg(test)] dentro do proprio arquivo):
   crates/nycode-cli/src/interactive/approval.rs
   crates/nycode-cli/src/interactive/builtin.rs
   crates/nycode-cli/src/interactive/panel.rs
+  crates/nycode-cli/src/invocation/catalog.rs
   crates/nycode-cli/src/invocation/cli.rs
   crates/nycode-cli/src/invocation/grant.rs
   crates/nycode-cli/src/invocation/route.rs

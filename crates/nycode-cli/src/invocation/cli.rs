@@ -120,6 +120,14 @@ pub struct Cli {
     #[arg(long)]
     pub allow_all: bool,
 
+    /// Restringe o catalogo enviado ao modelo. Nomes separados por virgula.
+    #[arg(long, value_name = "NOMES", value_delimiter = ',', num_args = 1)]
+    pub tools: Vec<String>,
+
+    /// Nao oferece ferramenta nenhuma ao modelo.
+    #[arg(long, conflicts_with = "tools")]
+    pub no_tools: bool,
+
     /// Monta a sessao, mantem-na ociosa por MS milissegundos e sai.
     ///
     /// O NFR-1 e o NFR-2 orcam a sessao montada, e nenhuma outra superficie
@@ -224,5 +232,18 @@ mod tests {
             Some(std::path::Path::new("/dev/stdin"))
         );
         assert!(cli.api_key.is_none());
+    }
+
+    #[test]
+    fn tools_flags_restrict_the_catalog_and_exclude_each_other() {
+        let listed = Cli::try_parse_from(["nycode", "--tools", "read,grep,find"]).unwrap();
+        assert_eq!(listed.tools, vec!["read", "grep", "find"]);
+        assert!(!listed.no_tools);
+        let none = Cli::try_parse_from(["nycode", "--no-tools"]).unwrap();
+        assert!(none.no_tools);
+        assert!(none.tools.is_empty());
+        let err = Cli::try_parse_from(["nycode", "--tools", "read", "--no-tools"])
+            .expect_err("as duas flags se excluem");
+        assert_eq!(err.kind(), clap::error::ErrorKind::ArgumentConflict);
     }
 }

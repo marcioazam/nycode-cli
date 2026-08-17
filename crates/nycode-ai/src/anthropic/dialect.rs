@@ -55,6 +55,7 @@ impl Dialect for Messages {
         let breakpoint = super::decorate::stable_prefix_end(request.tools);
         let mut body = serde_json::to_value(wire).unwrap_or_else(|_| json!({}));
         super::decorate::decorate(&mut body, request.sampling, breakpoint);
+        crate::ToolChoice::of(request.tools).emit_anthropic(&mut body);
         body
     }
 

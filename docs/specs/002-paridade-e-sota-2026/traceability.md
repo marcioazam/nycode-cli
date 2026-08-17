@@ -60,7 +60,7 @@ que o balde A cataloga.
 | B5 — reparo de JSON parcial de tool call | fechado | [`tool/repair.rs`](../../../crates/nycode-agent/src/tool/repair.rs), consumido em `Turn::tool_calls`; o reparo é anunciado por `repaired_calls` |
 | B6 — coerção contra o schema | fechado | [`tool/coerce.rs`](../../../crates/nycode-agent/src/tool/coerce.rs), aplicado em `dispatch::execute` **antes** do hook e do gate |
 | B4 — par substituto UTF-16 | **recusado** | é um defeito de linguagem UTF-16, e não de protocolo. `String` em Rust é UTF-8 válido por construção, e UTF-8 não codifica substituto: não existe caminho neste repositório que produza um par incompleto. A referência precisa disso porque strings JavaScript são UTF-16. Portar seria copiar a solução de um problema que aqui não existe. |
-| B8 — `tool_choice` canônico | **movido para a Onda 3** | o termo não existe no crate, e implementá-lo agora criaria capacidade sem chamador — exatamente o que este épico persegue. O chamador dele é `--tools`/`--no-tools` (B25), que é Onda 3. Vai junto. |
+| B8 — `tool_choice` canônico | fechado na Onda 3 | ver a evidência da Onda 3; o chamador é `--tools`/`--no-tools` (B25) |
 | B9 — estimativa ancorada no último usage | **movido para a Onda 2** | mesmo motivo: quem consome a estimativa é o gatilho por limiar (A4/C4), que é Onda 2. Construir o enabler uma onda antes do consumidor deixaria a Onda 1 impossível de fechar sob a própria regra. |
 
 ## Paridade real — o que a primeira execução contra a referência revelou
@@ -189,3 +189,12 @@ com chamador de produção, não só com teste.
 | B23 — instruções ancestrais, do usuário e override | fechado | `from_sources` empilha config do usuário, ancestrais e raiz; `AGENTS.override.md` substitui AGENTS/CLAUDE/NYCODE só naquele diretório. Testes `an_ancestor_directory_contributes_its_instructions`, `user_config_instructions_are_loaded_before_the_project`, `an_override_in_a_directory_replaces_other_instruction_files_there` |
 | B24 — campos Agent Skills e skill não invocável | fechado | `license`, `compatibility`, `allowed-tools`, `metadata` entram no catálogo; `disable-model-invocation: true` permanece em `discover` e some de `render`. Testes `optional_agent_skills_fields_are_declared_in_the_catalog`, `a_skill_that_disables_model_invocation_is_kept_but_not_rendered` |
 | C6 — consentimento fixa a definição declarada | fechado | [`definition.rs`](../../../crates/nycode-agent/src/policy/definition.rs) pina o conjunto depois do handshake; [`keep_declared`](../../../crates/nycode-cli/src/session/consent.rs) recusa o servidor se ela mudou. Testes `pin_grants_the_first_snapshot_and_refuses_a_silent_change`, `cover_is_order_independent_and_injective`, `a_server_name_that_embeds_the_qualifier_is_refused` |
+
+## Onda 3 — evidência
+
+A história permanece aberta até o restante dos PRs.
+
+| Delta | Estado | Evidência |
+|---|---|---|
+| B8 — `tool_choice` canônico | fechado | [`ToolChoice`](../../../crates/nycode-ai/src/dialect.rs); catálogo vazio emite `none` nos três dialetos. Teste `tool_choice_follows_whether_the_catalog_is_empty` |
+| B25 — restrição de ferramentas por nome | fechado | `--tools` / `--no-tools`; filtro em [`catalog.rs`](../../../crates/nycode-cli/src/invocation/catalog.rs) sobre o que o modelo vê, não o gate. Testes `a_name_list_is_the_catalog_sent_to_the_model_not_a_grant`, `an_unknown_name_is_an_error_instead_of_an_empty_catalog` |
