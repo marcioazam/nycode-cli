@@ -136,6 +136,7 @@ impl Agent {
             summary.as_deref(),
         )?;
         self.messages = compacted.messages;
+        self.last_usage = None;
         Some(compacted.removed)
     }
 
@@ -190,5 +191,113 @@ impl Agent {
     pub const fn with_vision(mut self, vision: bool) -> Self {
         self.vision = vision;
         self
+    }
+
+    pub(crate) fn note_usage(&mut self, usage: &nycode_ai::Usage, discarded: bool) {
+        if discarded || usage.estimated {
+            return;
+        }
+        let tokens = usage.input_tokens.saturating_add(usage.output_tokens);
+        if tokens == 0 {
+            return;
+        }
+        self.last_usage = Some(tokens);
+        self.last_usage_at = self.messages.len().saturating_sub(1);
+    }
+
+    #[cfg(test)]
+    pub(crate) fn with_usage_anchor(mut self, tokens: u64, at: usize) -> Self {
+        self.last_usage = Some(tokens);
+        self.last_usage_at = at;
+        self
+    }
+
+    pub(super) async fn next_turn(
+        &mut self,
+        observer: &mut impl super::Observer,
+        already: usize,
+    ) -> crate::error::Result<super::TurnEnd> {
+        for message in self.take_steering() {
+            observer.on_notice(&format!("acrescentado ao turno: {message}"));
+            self.record(Message::user(message));
+        }
+        if let Some(removed) = self.compact_if_over(already).await {
+            observer.on_notice(&format!(
+                "contexto no limiar; {removed} mensagens antigas foram compactadas"
+            ));
+        }
+        self.stream_one_turn(observer).await
+    }
+
+    async fn compact_if_over(&mut self, already: usize) -> Option<usize> {
+        if !may_compact(already) {
+            return None;
+        }
+        let occupied = super::occupancy::occupancy(
+            &self.messages,
+            self.last_usage.map(|tokens| (tokens, self.last_usage_at)),
+        );
+        if !super::occupancy::over_threshold(occupied, self.context_window) {
+            return None;
+        }
+        self.compact_history().await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use nycode_ai::Usage;
+    use nycode_ai::anthropic::Message;
+
+    use crate::Agent;
+    use crate::backend::fake::FakeBackend;
+
+    fn agent() -> Agent {
+        let (_dir, ctx) = crate::agent_test::workspace();
+        Agent::new(Arc::new(FakeBackend::new(Vec::new())), ctx).with_message(Message::user("oi"))
+    }
+
+    #[test]
+    fn estimated_usage_is_not_an_anchor() {
+        let mut agent = agent();
+        agent.note_usage(
+            &Usage {
+                input_tokens: 190_000,
+                estimated: true,
+                ..Usage::default()
+            },
+            false,
+        );
+        assert!(agent.last_usage.is_none());
+    }
+
+    #[test]
+    fn a_real_usage_anchors_the_message_that_was_just_recorded() {
+        let mut agent = agent();
+        agent.note_usage(
+            &Usage {
+                input_tokens: 80,
+                output_tokens: 10,
+                ..Usage::default()
+            },
+            false,
+        );
+        assert_eq!(agent.last_usage, Some(90));
+        assert_eq!(agent.last_usage_at, 0);
+    }
+
+    #[test]
+    fn a_discarded_turn_does_not_anchor() {
+        let mut agent = agent();
+        agent.note_usage(
+            &Usage {
+                input_tokens: 80,
+                ..Usage::default()
+            },
+            true,
+        );
+        assert!(agent.last_usage.is_none());
     }
 }

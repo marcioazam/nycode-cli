@@ -100,6 +100,9 @@ pub struct Agent {
     context_window: Option<u64>,
     /// Se o modelo atual aceita imagem. Sem declaração no catálogo, `true`.
     vision: bool,
+    /// Último usage real, em tokens, e o índice da mensagem que ele cobre.
+    last_usage: Option<u64>,
+    last_usage_at: usize,
     cancel: Cancel,
     approver: Arc<dyn Approver>,
     /// Mensagens que o usuário digitou enquanto o turno corria.
@@ -129,6 +132,7 @@ impl std::fmt::Debug for Agent {
 
 mod adapt;
 mod dispatch;
+mod occupancy;
 mod shrink;
 pub mod transform;
 
@@ -147,6 +151,8 @@ impl Agent {
             keep_recent: DEFAULT_KEEP_RECENT,
             context_window: None,
             vision: true,
+            last_usage: None,
+            last_usage_at: 0,
             cancel: Cancel::new(),
             // Sem ninguém a quem perguntar, a resposta é não: aprovar por
             // omissão daria a um pipeline a permissão que ninguém concedeu.
@@ -262,12 +268,7 @@ impl Agent {
             // o histórico está fechado, com todo `tool_use` já pareado. Injetar
             // no meio de uma rodada quebraria o par e o backend recusaria a
             // conversa inteira.
-            for message in self.take_steering() {
-                observer.on_notice(&format!("acrescentado ao turno: {message}"));
-                self.record(Message::user(message));
-            }
-
-            let (turn, interrupted) = match self.stream_one_turn(observer).await {
+            let (turn, interrupted) = match self.next_turn(observer, compactions).await {
                 Ok(TurnEnd::Complete(turn)) => (turn, false),
                 Ok(TurnEnd::Cancelled(turn)) => (turn, true),
                 Err(err) if shrink::should_compact(&err, compactions) => {
@@ -337,6 +338,7 @@ impl Agent {
                 &stop_reason,
                 interrupted,
             );
+            self.note_usage(&turn.usage(), interrupted);
 
             if let Some(shrink::SilentOverflow::InputAboveWindow { input, window }) = overflowed {
                 // A resposta veio e vale; o que não pode é o próximo turno ser
@@ -414,6 +416,7 @@ impl Agent {
     /// Substitui o histórico, ao retomar de outro ponto da árvore.
     pub fn set_history(&mut self, messages: Vec<Message>) {
         self.messages = messages;
+        self.last_usage = None;
     }
 
     /// Troca o backend no meio da sessão.
