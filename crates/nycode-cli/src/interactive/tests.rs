@@ -434,3 +434,25 @@ async fn a_session_runs_a_turn_through_its_own_loop() {
     assert_eq!(*prompts.lock().unwrap(), vec!["oi".to_owned()]);
     assert!(format!("{session:?}").contains("sessao-1"));
 }
+
+#[tokio::test]
+async fn a_queued_follow_up_runs_after_the_turn() {
+    let turns = Scripted::default();
+    let prompts = turns.prompts.clone();
+    let (_dir, store) = store();
+    let mut session =
+        Session::with_turns(Box::new(turns), store, "sessao-1").pending_follow_up("depois");
+
+    let mut surface = Recording::new();
+    let mut events = typing("primeiro");
+    events.push(key(KeyCode::Enter));
+    session
+        .run(&mut surface, &mut delivered(events))
+        .await
+        .unwrap();
+
+    assert_eq!(
+        *prompts.lock().unwrap(),
+        vec!["primeiro".to_owned(), "depois".to_owned()]
+    );
+}

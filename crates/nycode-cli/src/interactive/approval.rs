@@ -5,12 +5,12 @@
 //! agente, porque os dois correm ao mesmo tempo. O canal é o que os une sem
 //! inverter a posse: o loop pergunta, este arquivo atende.
 
-use crossterm::event::{Event, KeyCode};
+use crossterm::event::{Event, KeyCode, KeyModifiers};
 use futures_util::{Stream, StreamExt};
 use nycode_agent::Cancel;
 use nycode_agent::policy::approval::Request;
 use nycode_ai::Usage;
-use nycode_tui::{Editor, Reaction};
+use nycode_tui::{Action, Editor, Reaction};
 
 use super::{Surface, Turns, interrupts};
 
@@ -22,6 +22,9 @@ pub type Approvals = tokio::sync::mpsc::Receiver<Request>;
 /// Devolve o usage do pedido para que o rodapé some a conta da sessão. Um turno
 /// cancelado devolve zero em vez de erro: ele já foi gravado, e o usuário sabe
 /// que cancelou.
+///
+/// Os dois canais de teclado não se fundem: um injeta no turno, o outro espera.
+#[allow(clippy::too_many_arguments)]
 pub async fn run_turn<E, S>(
     turns: &mut dyn Turns,
     events: &mut E,
@@ -29,6 +32,7 @@ pub async fn run_turn<E, S>(
     cancel: &Cancel,
     approvals: Option<&mut Approvals>,
     steering: Option<&tokio::sync::mpsc::Sender<String>>,
+    later: Option<&tokio::sync::mpsc::Sender<String>>,
     prompt: &str,
 ) -> anyhow::Result<Usage>
 where
@@ -63,7 +67,7 @@ where
             // acontecendo até ser respondida.
             Some(request) = pending => ask(surface, events, request).await?,
             Some(Ok(event)) = events.next() => {
-                steer(surface, cancel, steering, &mut typed, &event)?;
+                steer(surface, cancel, steering, later, &mut typed, &event)?;
             }
         }
     }
@@ -78,6 +82,7 @@ fn steer<S: Surface>(
     surface: &mut S,
     cancel: &Cancel,
     steering: Option<&tokio::sync::mpsc::Sender<String>>,
+    later: Option<&tokio::sync::mpsc::Sender<String>>,
     typed: &mut Editor,
     event: &Event,
 ) -> anyhow::Result<()> {
@@ -89,6 +94,20 @@ fn steer<S: Surface>(
     let Event::Key(key) = event else {
         return Ok(());
     };
+
+    if key.code == KeyCode::Enter && key.modifiers.contains(KeyModifiers::ALT) {
+        let Some(sender) = later else {
+            return Ok(());
+        };
+        let Reaction::Submitted(message) = typed.apply(Action::Submit) else {
+            return Ok(());
+        };
+        if message.trim().is_empty() {
+            return Ok(());
+        }
+        return push_queue(surface, sender, &message, "depois");
+    }
+
     let Some(sender) = steering else {
         return Ok(());
     };
@@ -102,13 +121,19 @@ fn steer<S: Surface>(
     if message.trim().is_empty() {
         return Ok(());
     }
+    push_queue(surface, sender, &message, "na fila")
+}
 
-    // Cheio significa que quatro mensagens ainda não foram recolhidas; perder a
-    // nova em silêncio seria pior que avisar.
-    if sender.try_send(message.clone()).is_err() {
+fn push_queue<S: Surface>(
+    surface: &mut S,
+    sender: &tokio::sync::mpsc::Sender<String>,
+    message: &str,
+    label: &str,
+) -> anyhow::Result<()> {
+    if sender.try_send(message.to_owned()).is_err() {
         surface.emit("\n  (a fila esta cheia; a mensagem nao entrou)\n")?;
     } else {
-        surface.emit(&format!("\n  na fila: {message}\n"))?;
+        surface.emit(&format!("\n  {label}: {message}\n"))?;
     }
     Ok(())
 }
@@ -297,7 +322,15 @@ mod tests {
         let mut events: Vec<Event> = text.chars().map(|c| key(KeyCode::Char(c))).collect();
         events.push(key(KeyCode::Enter));
         for event in events {
-            steer(&mut surface, &cancel, Some(&sender), &mut editor, &event).unwrap();
+            steer(
+                &mut surface,
+                &cancel,
+                Some(&sender),
+                None,
+                &mut editor,
+                &event,
+            )
+            .unwrap();
         }
 
         let mut queued = Vec::new();
@@ -332,7 +365,15 @@ mod tests {
         let mut surface = crate::interactive::fakes::Recording::new();
         let mut editor = Editor::new();
         for event in [key(KeyCode::Char('x')), key(KeyCode::Enter)] {
-            steer(&mut surface, &cancel, Some(&sender), &mut editor, &event).unwrap();
+            steer(
+                &mut surface,
+                &cancel,
+                Some(&sender),
+                None,
+                &mut editor,
+                &event,
+            )
+            .unwrap();
         }
 
         assert!(
@@ -354,6 +395,7 @@ mod tests {
             &mut surface,
             &cancel,
             Some(&sender),
+            None,
             &mut editor,
             &ctrl('c'),
         )
@@ -371,6 +413,7 @@ mod tests {
         steer(
             &mut surface,
             &cancel,
+            None,
             None,
             &mut editor,
             &key(KeyCode::Char('x')),
@@ -396,5 +439,54 @@ mod tests {
     #[test]
     fn non_string_arguments_are_rendered_as_json() {
         assert!(summarize(&json!({ "limit": 42 })).contains("limit=42"));
+    }
+    fn alt_enter() -> Event {
+        Event::Key(crossterm::event::KeyEvent::new(
+            KeyCode::Enter,
+            KeyModifiers::ALT,
+        ))
+    }
+
+    #[test]
+    fn alt_enter_during_a_turn_queues_a_follow_up_instead_of_steering() {
+        let (steer_tx, mut steer_rx) = tokio::sync::mpsc::channel(4);
+        let (later_tx, mut later_rx) = tokio::sync::mpsc::channel(4);
+        let cancel = Cancel::new();
+        let mut surface = crate::interactive::fakes::Recording::new();
+        let mut editor = Editor::new();
+
+        for event in crate::interactive::fakes::typing("olhe depois") {
+            steer(
+                &mut surface,
+                &cancel,
+                Some(&steer_tx),
+                Some(&later_tx),
+                &mut editor,
+                &event,
+            )
+            .unwrap();
+        }
+        steer(
+            &mut surface,
+            &cancel,
+            Some(&steer_tx),
+            Some(&later_tx),
+            &mut editor,
+            &alt_enter(),
+        )
+        .unwrap();
+
+        assert!(steer_rx.try_recv().is_err());
+        assert_eq!(later_rx.try_recv().unwrap(), "olhe depois");
+        assert!(
+            surface.scrollback.contains("depois"),
+            "{}",
+            surface.scrollback
+        );
+        assert!(
+            !surface.scrollback.contains("na fila"),
+            "{}",
+            surface.scrollback
+        );
     }
 }
