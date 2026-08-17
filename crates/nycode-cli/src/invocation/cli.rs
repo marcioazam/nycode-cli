@@ -106,6 +106,22 @@ pub struct Cli {
     #[arg(long, value_name = "ID")]
     pub resume: Option<String>,
 
+    /// Identificador exato; cria a sessao se ainda nao existir.
+    #[arg(long = "session-id", value_name = "ID", conflicts_with_all = ["resume", "continue_session"])]
+    pub session_id: Option<String>,
+
+    /// Nome de exibicao da sessao.
+    #[arg(short = 'n', long = "name", value_name = "NOME")]
+    pub name: Option<String>,
+
+    /// Copia uma sessao (caminho ou id) para um arquivo novo.
+    #[arg(long, value_name = "CAMINHO|ID", conflicts_with_all = ["resume", "continue_session"])]
+    pub fork: Option<String>,
+
+    /// Importa um JSONL de sessao para este workspace.
+    #[arg(long, value_name = "ARQUIVO", conflicts_with_all = ["resume", "continue_session", "fork"])]
+    pub import: Option<std::path::PathBuf>,
+
     /// Permite que o agente escreva, edite e execute comandos.
     ///
     /// Sem esta flag a sessao e somente-leitura. Em modo headless nao ha a quem
@@ -262,5 +278,50 @@ mod tests {
         assert!(replaced.append_system.is_none());
         let appended = Cli::try_parse_from(["nycode", "--append-system", "extra"]).unwrap();
         assert_eq!(appended.append_system.as_deref(), Some("extra"));
+    }
+
+    #[test]
+    fn named_forked_and_imported_sessions() {
+        use crate::session::{name_of, resolve};
+        use nycode_agent::Store;
+        use nycode_ai::anthropic::Message;
+        let dir = tempfile::tempdir().unwrap();
+        let store = Store::open(dir.path().join("s")).unwrap();
+        let parse = |extra: &[&str]| {
+            let mut argv = vec!["nycode", "-p", "oi"];
+            argv.extend_from_slice(extra);
+            Cli::try_parse_from(argv).unwrap()
+        };
+        let (id, history) = resolve(&store, &parse(&["--session-id", "minha"])).unwrap();
+        assert_eq!((id.as_str(), history.len()), ("minha", 0));
+        store.append("minha", &Message::user("oi")).unwrap();
+        assert_eq!(
+            resolve(&store, &parse(&["--session-id", "minha"]))
+                .unwrap()
+                .1
+                .len(),
+            1
+        );
+        assert!(resolve(&store, &parse(&["--session-id", "../x"])).is_err());
+        let (id, _) = resolve(&store, &parse(&["--session-id", "s1", "--name", "auth"])).unwrap();
+        assert_eq!(name_of(&store, &id).as_deref(), Some("auth"));
+        assert!(resolve(&store, &parse(&["--name", "   "])).is_err());
+        store.append("origem", &Message::user("base")).unwrap();
+        store.append("alvo", &Message::user("keep")).unwrap();
+        let (id, history) = resolve(&store, &parse(&["--fork", "origem"])).unwrap();
+        assert_ne!(id, "origem");
+        assert_eq!(history.len(), 1);
+        assert!(
+            resolve(
+                &store,
+                &parse(&["--fork", "origem", "--session-id", "alvo"])
+            )
+            .is_err()
+        );
+        let junk = dir.path().join("not.jsonl");
+        std::fs::write(&junk, "x\n").unwrap();
+        assert!(resolve(&store, &parse(&["--import", junk.to_str().unwrap()])).is_err());
+        let err = Cli::try_parse_from(["nycode", "--fork", "s", "--continue"]).unwrap_err();
+        assert_eq!(err.kind(), clap::error::ErrorKind::ArgumentConflict);
     }
 }

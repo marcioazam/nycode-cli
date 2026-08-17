@@ -23,13 +23,18 @@ pub enum Effect {
     /// Encerrar a sessão.
     Quit,
     /// Passar a gravar a partir deste registro.
-    Fork { record_id: String, shown: String },
+    Fork {
+        record_id: String,
+        shown: String,
+    },
     /// Compactar o histórico agora.
     Compact,
     /// Entrar ou sair do modo de planejamento.
     TogglePlan,
     /// Trocar de modelo, mantendo a conversa.
     SwitchModel(String),
+    NewSession,
+    Reload,
 }
 
 /// Nome e resumo de cada embutido, para o `/help`.
@@ -41,6 +46,10 @@ const BUILTINS: &[(&str, &str)] = &[
     ("/model [id]", "lista os modelos, ou troca para <id>"),
     ("/compact", "compacta o historico agora"),
     ("/export", "escreve a conversa em markdown no stdout"),
+    ("/session", "mostra id, arquivo e tamanho desta sessao"),
+    ("/copy", "mostra a ultima resposta do agente"),
+    ("/new", "comeca uma sessao nova, sem o historico atual"),
+    ("/reload", "rele instrucoes, skills e comandos do disco"),
     ("/quit", "encerra a sessao"),
 ];
 
@@ -70,6 +79,10 @@ pub fn resolve(line: &str, store: &Store, id: &str, available: &Available<'_>) -
         "model" => model(argument.trim(), available.models),
         "compact" => Effect::Compact,
         "export" => Effect::Show(export(store, id)),
+        "session" => Effect::Show(stats(store, id)),
+        "copy" => Effect::Show(copy_last(store, id)),
+        "new" => Effect::NewSession,
+        "reload" => Effect::Reload,
         "quit" | "exit" => Effect::Quit,
         _ => Effect::Passthrough,
     }
@@ -160,6 +173,31 @@ fn fork(store: &Store, id: &str, argument: &str) -> Effect {
     Effect::Fork {
         record_id: record_id.clone(),
         shown: format!("\nretomando de: {summary}\n\n"),
+    }
+}
+
+fn stats(store: &Store, id: &str) -> String {
+    let path = store.path_for(id);
+    let messages = store.load(id).map_or(0, |m| m.len());
+    let bytes = std::fs::metadata(&path).map_or(0, |m| m.len());
+    let nome = crate::session::name_of(store, id).unwrap_or_else(|| "(sem nome)".to_owned());
+    format!(
+        "\nsessao: {id}\nnome: {nome}\narquivo: {}\nmensagens: {messages}\nbytes: {bytes}\n\n",
+        path.display()
+    )
+}
+
+fn copy_last(store: &Store, id: &str) -> String {
+    let text = store.load(id).ok().and_then(|messages| {
+        messages
+            .into_iter()
+            .rev()
+            .find(|message| message.role == Role::Assistant)
+            .map(|message| render(&message))
+    });
+    match text {
+        Some(text) => format!("\nultima resposta:\n\n{text}\n\n"),
+        None => "\nnenhuma resposta do agente para copiar.\n\n".to_owned(),
     }
 }
 

@@ -92,6 +92,7 @@ impl Turns for Scripted {
         self.model = model.to_owned();
         Ok(())
     }
+    fn set_system(&mut self, _system: String) {}
     async fn compact(&mut self) -> usize {
         let removed = self.history.len().saturating_sub(1);
         self.history.truncate(1);
@@ -146,6 +147,7 @@ impl Turns for CancelAware {
     fn switch_model(&mut self, _model: &str) -> anyhow::Result<()> {
         Ok(())
     }
+    fn set_system(&mut self, _system: String) {}
     async fn compact(&mut self) -> usize {
         0
     }

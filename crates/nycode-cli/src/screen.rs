@@ -226,6 +226,11 @@ impl Turns for Agentic {
         }));
     }
 
+    fn set_system(&mut self, system: String) {
+        self.base_system.clone_from(&system);
+        self.agent.set_system(Some(system));
+    }
+
     fn switch_model(&mut self, model: &str) -> anyhow::Result<()> {
         // O histórico fica: continuar a mesma conversa com outro modelo é o
         // ponto — recomeçar já dava para fazer abrindo outra sessão.

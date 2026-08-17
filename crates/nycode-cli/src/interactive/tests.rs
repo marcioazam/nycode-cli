@@ -456,3 +456,27 @@ async fn a_queued_follow_up_runs_after_the_turn() {
         vec!["primeiro".to_owned(), "depois".to_owned()]
     );
 }
+
+#[tokio::test]
+async fn session_copy_new_and_reload_do_not_spend_a_turn() {
+    let mut events = typing("/session");
+    events.push(key(KeyCode::Enter));
+    events.extend(typing("/copy"));
+    events.push(key(KeyCode::Enter));
+    events.extend(typing("/new"));
+    events.push(key(KeyCode::Enter));
+    events.extend(typing("/reload"));
+    events.push(key(KeyCode::Enter));
+    let turns = Scripted::default();
+    let prompts = turns.prompts.clone();
+    let (surface, ..) = drive_with(events, turns).await;
+    let out = &surface.scrollback;
+    assert!(prompts.lock().unwrap().is_empty());
+    assert!(
+        out.contains("sessao:")
+            && out.contains("nenhuma resposta")
+            && out.contains("nova sessao:")
+            && out.contains("recursos recarregados"),
+        "{out}"
+    );
+}

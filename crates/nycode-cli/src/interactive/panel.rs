@@ -100,6 +100,11 @@ impl Panel {
         self.price = price;
     }
 
+    pub fn retarget(&mut self, session: String) {
+        self.session = session;
+        self.tally = Tally::default();
+    }
+
     pub fn absorb(&mut self, usage: Usage) {
         self.tally.absorb(
             usage.input_tokens,
