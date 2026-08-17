@@ -8,6 +8,16 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Adicionado
 
+- **O job `parity` do CI obtém a referência com digest conferido e compara
+  de verdade.** O tarball do commit que o NOTICE fixa (`581d75a`), o Node
+  22.19.0 e o catálogo de modelos gerado da referência têm sha256 em
+  [`scripts/parity-reference.txt`](scripts/parity-reference.txt); o job
+  confere cada um antes de extrair (NFR-8). Sem `PARITY_REFERENCE` o
+  `parity-gate.sh` continua em modo instrumento — só o `--full` local, que
+  é sem rede. O fixture deixa de tratar `README.md` no prompt de sistema
+  como pedido de leitura, e o dialeto soma o usage por rodada da
+  referência, que é o que o candidato já publica acumulado.
+
 - **A referência de paridade é apontada por `models.json` num diretório
   efêmero ([ADR-0035](docs/architecture/decisions/0035-a-referencia-de-paridade-e-apontada-por-models-json.md)).**
   `Harness::reference` deixa de oferecer `ANTHROPIC_BASE_URL` — variável que o

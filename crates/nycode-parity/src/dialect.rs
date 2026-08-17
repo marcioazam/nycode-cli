@@ -110,7 +110,16 @@ fn absorb_closing(observed: &mut Observed, dialect: Events, value: &serde_json::
         .get(stop)
         .and_then(serde_json::Value::as_str)
         .map(|raw| translate_stop_reason(dialect, raw));
-    observed.tokens = read_usage(dialect, carrier.get("usage"));
+    add_usage(
+        &mut observed.tokens,
+        read_usage(dialect, carrier.get("usage")),
+    );
+}
+
+fn add_usage(into: &mut TokenAccounting, add: TokenAccounting) {
+    into.input = into.input.saturating_add(add.input);
+    into.output = into.output.saturating_add(add.output);
+    into.estimated |= add.estimated;
 }
 
 /// Traduz o motivo da parada para o vocabulário desta comparação.
@@ -210,6 +219,24 @@ mod tests {
         assert_eq!(observed.tokens.input, 120);
         assert_eq!(observed.tokens.output, 34);
         assert!(!observed.tokens.estimated);
+    }
+
+    #[test]
+    fn the_reference_usage_is_summed_across_assistant_turns() {
+        // A referência publica um `message_end` por resposta do assistente, com
+        // o usage daquela rodada. O candidato publica um `result` com a soma do
+        // turno. Comparar o último evento dela com o acumulado dele acusava
+        // 1234 contra 2468 em todo turno de ferramenta — formato, não contrato.
+        let stdout = concat!(
+            r#"{"type":"message_end","message":{"stopReason":"toolUse","usage":{"input":1234,"output":56}}}"#,
+            "\n",
+            r#"{"type":"message_end","message":{"stopReason":"stop","usage":{"input":1234,"output":56}}}"#,
+            "\n",
+        );
+        let observed = read_events(stdout, Events::Reference);
+        assert_eq!(observed.tokens.input, 2468);
+        assert_eq!(observed.tokens.output, 112);
+        assert_eq!(observed.stop_reason.as_deref(), Some("end_turn"));
     }
 
     #[test]

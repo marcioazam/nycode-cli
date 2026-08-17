@@ -1,0 +1,35 @@
+# Referencia de paridade (NFR-6, NFR-8).
+#
+# O NOTICE fixa o commit 581d75a da referencia (`pi` 0.84.1). O tarball
+# publicado no npm com a mesma versao aponta para outro commit (53fa77c, a
+# tag de release), 117 commits atras — inclusive "preserve usage in streaming
+# events", que muda exatamente a dimensao de tokens. O artefato que o job
+# executa e o tarball do GitHub *deste* commit, nao o pacote npm.
+#
+# `artifact_sha256` e do arquivo em `source_url` como ele e baixado, antes de
+# qualquer extracao — o mesmo padrao do `perf-baseline.txt`. Adotar commit
+# novo e uma alteracao de digest visivel em diff de PR.
+#
+# O catalogo de modelos da referencia nao vive no git (diretorio gerado). Sem
+# ele o `build:offline` recusa. O tarball em `model_data` e o snapshot
+# hidratado no clone deste commit, com digest proprio; extrair depois da
+# fonte e antes do build. Nao e o programa: e o insumo que o gerador da
+# propria referencia exigiria em `npm run hydrate:model-data`.
+#
+# O Node e o runtime da referencia (`engines.node >= 22.19.0`). O digest e o
+# publicado em SHASUMS256.txt da versao. So linux x86_64: e o que o job do CI
+# roda. Quem compara na mao aponta `PARITY_REFERENCE` para um `pi` ja
+# construido neste commit.
+
+reference_name     = pi
+reference_version  = 0.84.1
+reference_commit   = 581d75a89cea21e50d6a26df840352f94427f633
+source_url         = https://github.com/earendil-works/pi/archive/581d75a89cea21e50d6a26df840352f94427f633.tar.gz
+artifact_sha256    = 613436f63eeb5bb08863ee6fe8d00142c297812daea59ccee5af65acb1b433fe
+
+node_version       = 22.19.0
+node_url           = https://nodejs.org/dist/v22.19.0/node-v22.19.0-linux-x64.tar.xz
+node_sha256        = c0649af18e6a24f6fe5535a3e86b341dd49a8e71117c8b68bde973ef834f16f2
+
+model_data         = scripts/parity-pi-model-data.tar.gz
+model_data_sha256  = 0d00a9fe94f94109d282ca106fb75283de9a1f83be2b85a234b948323a8ff35c
