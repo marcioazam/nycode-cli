@@ -175,8 +175,10 @@ literal: o job `perf` declara `needs: [supply-chain]`.
 
 ## 11. Riscos e dívida técnica
 
-- **FR-1 pendente.** A TUI interativa tem o renderizador diferencial pronto em
-  `nycode-tui`, mas ainda não está ligada ao binário.
+- **Onda 5 da spec 002.** A TUI interativa já está ligada ao binário (Onda A);
+  o que falta é autocomplete, localizador, temas, markdown rico e imagem no
+  terminal — deltas B32–B39, ainda abertos na
+  [rastreabilidade](../specs/002-paridade-e-sota-2026/traceability.md).
 - **`subscription-oauth` é risco aceito e isolado.** O CI verifica que a crate
   `oauth2` não entrou transitivamente no build padrão
   ([ADR-0001](decisions/0001-subscription-oauth-is-a-flagged-accepted-risk.md)).
