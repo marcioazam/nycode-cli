@@ -221,7 +221,10 @@ fn the_loaded_summary_names_context_files_relative_to_the_root() {
     )
     .unwrap();
 
-    let (files, skills) = loaded(&Context::discover(dir.path()), dir.path());
+    let (files, skills) = loaded(
+        &Context::from_sources(dir.path(), None, Some(dir.path())),
+        dir.path(),
+    );
     assert_eq!(files, vec!["AGENTS.md".to_owned()]);
     assert_eq!(skills, vec!["revisar".to_owned()]);
 }
@@ -229,7 +232,10 @@ fn the_loaded_summary_names_context_files_relative_to_the_root() {
 #[test]
 fn an_empty_workspace_loads_nothing() {
     let dir = tempfile::tempdir().unwrap();
-    let (files, skills) = loaded(&Context::discover(dir.path()), dir.path());
+    let (files, skills) = loaded(
+        &Context::from_sources(dir.path(), None, Some(dir.path())),
+        dir.path(),
+    );
     assert!(files.is_empty());
     assert!(skills.is_empty());
 }

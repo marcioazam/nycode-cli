@@ -8,6 +8,12 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Alterado
 
+- **Instruções vêm também dos ancestrais e da config do usuário, e uma
+  skill pode se recusar ao modelo.** `AGENTS.override.md` substitui os
+  outros arquivos de instrução só naquele diretório (B23). O catálogo
+  declara os campos da spec Agent Skills; `disable-model-invocation`
+  tira a skill do prompt e a mantém carregada (B24).
+
 - **Alt+Enter durante o turno enfileira o próximo pedido, sem
   direcionar o corrente.** Enter continua injetando no turno
   (`with_steering`). Alt+Enter só é interceptado no `steer()` com o
