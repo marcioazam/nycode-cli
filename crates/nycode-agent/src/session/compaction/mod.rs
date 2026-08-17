@@ -5,9 +5,11 @@
 //! pedido original e os turnos recentes, e nunca separar uma chamada de
 //! ferramenta do resultado dela.
 
+mod branch;
 mod marker;
 
-pub use marker::SUMMARY_PROMPT;
+pub use branch::{abandoned, notice};
+pub use marker::{SUMMARY_PROMPT, is_marker};
 
 use nycode_ai::anthropic::{ContentBlock, Message, Role};
 
@@ -54,6 +56,7 @@ pub fn compact_with(
     out.push(Message::user(marker::build(
         &marker::touched(&messages[head..cut]),
         summary,
+        &messages[cut..],
     )));
     out.extend_from_slice(&messages[cut..]);
 
@@ -313,6 +316,16 @@ mod tests {
 
         let marker = marker_of(&compact(&messages, 6).unwrap());
         assert!(marker.contains("e mais 15"), "{marker}");
+    }
+
+    #[test]
+    fn the_marker_carries_the_messages_that_were_kept() {
+        // Sem a cauda no marcador, reconstruir para nele perderia o que a
+        // compactacao decidiu preservar.
+        let messages = conversation(30);
+        let marker = marker_of(&compact(&messages, 6).unwrap());
+        assert!(marker.contains("resposta 29"), "{marker}");
+        assert!(marker.contains("<cauda-retida>"), "{marker}");
     }
 
     #[test]

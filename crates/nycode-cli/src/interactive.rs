@@ -320,11 +320,7 @@ impl Session {
                 return Ok(());
             }
             builtin::Effect::Fork { record_id, shown } => {
-                // Gravar a partir de outro ponto é o que ramifica; o histórico
-                // do agente passa a ser o caminho até lá.
-                let history = self.store.path_to(&self.id, &record_id)?;
-                self.turns.replace_history(history);
-                self.branch = Some(record_id);
+                self.resume_from(record_id)?;
                 surface.emit(&shown)?;
                 surface.draw(&self.panel.frame(surface.width()))?;
                 return Ok(());
@@ -414,6 +410,26 @@ impl Session {
         }
         surface.emit("\n")?;
         surface.draw(&self.panel.frame(surface.width()))?;
+        Ok(())
+    }
+
+    /// Grava a partir de outro ponto e registra o que o ramo abandonado fez.
+    fn resume_from(&mut self, record_id: String) -> anyhow::Result<()> {
+        let next = self.store.path_to(&self.id, &record_id)?;
+        let note = nycode_agent::session::compaction::notice(
+            nycode_agent::session::compaction::abandoned(&self.turns.history(), &next),
+        );
+        let (history, branch) = match note {
+            Some(note) => {
+                let id =
+                    self.store
+                        .append_child(&self.id, Some(&record_id), &Message::user(note))?;
+                (self.store.path_to(&self.id, &id)?, id)
+            }
+            None => (next, record_id),
+        };
+        self.turns.replace_history(history);
+        self.branch = Some(branch);
         Ok(())
     }
 }
