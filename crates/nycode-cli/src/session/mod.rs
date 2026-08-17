@@ -16,7 +16,7 @@ pub use open::resolve;
 pub use phases::Phases;
 
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use nycode_agent::{Agent, Cancel, Context, Store, ToolContext};
 use nycode_ai::{Client, Config};
@@ -74,6 +74,7 @@ pub struct Prepared {
     /// a mesma cara de um certo.
     pub windows: std::collections::BTreeMap<String, u64>,
     pub rebuild: Rebuild,
+    pub sampling: Arc<Mutex<nycode_ai::Sampling>>,
 }
 
 /// Busca o catálogo do endpoint e confere que o modelo pedido existe nele.
@@ -210,6 +211,8 @@ pub async fn prepare(cli: &Cli) -> anyhow::Result<Prepared> {
 
     agent = agent.with_gate(grant.gate());
 
+    let sampling = Arc::new(Mutex::new(sampling));
+    let sampling_for_rebuild = Arc::clone(&sampling);
     Ok(Prepared {
         phases,
         lifecycle,
@@ -225,16 +228,19 @@ pub async fn prepare(cli: &Cli) -> anyhow::Result<Prepared> {
         models: catalog.ids().into_iter().map(ToOwned::to_owned).collect(),
         prices: provider::tuning::prices_of(&catalog.models),
         windows,
+        sampling,
         rebuild: Box::new(move |model| {
             let mut config = template.clone();
             model.clone_into(&mut config.model);
             // A amostragem acompanha a troca de modelo. Sem isto, `/model`
             // devolveria uma sessao sem raciocinio e sem chave de cache, e o
             // usuario nao teria como saber que perdeu os dois.
-            Ok(
-                Arc::new(Client::new(config)?.with_sampling(sampling.clone()))
-                    as Arc<dyn nycode_agent::Backend>,
-            )
+            let snapshot = sampling_for_rebuild
+                .lock()
+                .map_err(|_| anyhow::anyhow!("amostragem da sessao envenenada"))?
+                .clone();
+            Ok(Arc::new(Client::new(config)?.with_sampling(snapshot))
+                as Arc<dyn nycode_agent::Backend>)
         }),
     })
 }

@@ -91,6 +91,10 @@ impl Panel {
         &mut self.editor
     }
 
+    pub fn model(&self) -> &str {
+        &self.model
+    }
+
     /// Troca o modelo mostrado no rodapé, e com ele as tarifas.
     ///
     /// Os dois andam juntos porque separá-los cobraria os turnos do modelo novo
@@ -98,6 +102,11 @@ impl Panel {
     pub fn set_model(&mut self, model: String, price: Option<Price>) {
         self.model = model;
         self.price = price;
+    }
+
+    pub fn retarget(&mut self, session: String) {
+        self.session = session;
+        self.tally = Tally::default();
     }
 
     pub fn absorb(&mut self, usage: Usage) {
