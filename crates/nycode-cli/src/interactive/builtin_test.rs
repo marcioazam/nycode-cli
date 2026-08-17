@@ -430,6 +430,10 @@ async fn a_turn_after_a_fork_hangs_off_the_point_that_was_chosen() {
     assert!(texts.contains(&"primeiro".to_owned()), "{texts:?}");
     assert!(texts.contains(&"novo rumo".to_owned()), "{texts:?}");
     assert!(
+        texts.iter().any(|text| text.contains("ramo abandonado")),
+        "o ramo abandonado precisa de aviso no caminho novo: {texts:?}"
+    );
+    assert!(
         !texts.contains(&"segundo".to_owned()),
         "o ramo abandonado nao pode voltar ao caminho ativo: {texts:?}"
     );

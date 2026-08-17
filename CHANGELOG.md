@@ -8,6 +8,16 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Alterado
 
+- **O resumo de compactação pede seções nomeadas, o marcador leva a
+  cauda, e `/fork` registra o ramo abandonado.** O pedido de resumo
+  fixa `Objetivo`, `Restricoes`, `Progresso`, `Decisoes`, `Proximos
+  passos` e `Contexto critico`, nesta ordem — prefixo estável para o
+  cache (B10, NFR-7). O marcador passa a carregar a cauda retida, e
+  reconstruir a sessão para nele: o que veio antes já está dentro
+  (B11). `/fork` grava um aviso do que ficou no ramo, em vez de só
+  trocar o caminho (B12). O aviso não interrompe a reconstrução — o
+  prefixo compartilhado continua no caminho novo.
+
 - **A compactação dispara por limiar de ocupação antes do pedido.** A
   ocupação ancora no último usage real e estima só a cauda (B9). Sem janela
   no catálogo, o comportamento antigo permanece: só o erro dispara. O

@@ -118,6 +118,56 @@ fn an_abandoned_branch_is_still_readable_by_its_own_tip() {
 }
 
 #[test]
+fn reconstruction_stops_at_a_compaction_marker() {
+    // O marcador e autocontido: o que veio antes ja esta dentro, e reler o
+    // historico anterior recolocaria na janela o que a compactacao tirou.
+    let (_dir, store) = store();
+    store.append("s", &Message::user("tarefa")).unwrap();
+    store.append("s", &Message::user("meio")).unwrap();
+    store
+        .append("s", &Message::user("[historico anterior compactado]"))
+        .unwrap();
+    store.append("s", &Message::user("depois")).unwrap();
+
+    assert_eq!(
+        texts(&store.load("s").unwrap()),
+        vec!["[historico anterior compactado]", "depois"]
+    );
+}
+
+#[test]
+fn a_branch_notice_does_not_drop_the_shared_prefix() {
+    // O aviso descreve o que ficou para trás; o ponto do fork continua no
+    // caminho. Parar a reconstrução nele apagaria a tarefa original.
+    let (_dir, store) = store();
+    store.append("s", &Message::user("comum")).unwrap();
+    let fork = store.tip("s").unwrap();
+    store.append("s", &Message::user("exploracao")).unwrap();
+    store
+        .append_child(
+            "s",
+            Some(&fork),
+            &Message::user(
+                "[ramo abandonado; o que aconteceu nele continua valendo como contexto]",
+            ),
+        )
+        .unwrap();
+    store.append("s", &Message::user("depois")).unwrap();
+
+    let loaded = texts(&store.load("s").unwrap());
+    assert_eq!(loaded[0], "comum");
+    assert!(
+        loaded.iter().any(|text| text.contains("ramo abandonado")),
+        "{loaded:?}"
+    );
+    assert!(loaded.iter().any(|text| text == "depois"), "{loaded:?}");
+    assert!(
+        !loaded.iter().any(|text| text == "exploracao"),
+        "{loaded:?}"
+    );
+}
+
+#[test]
 fn a_branch_continues_from_where_it_was_resumed() {
     let (_dir, store) = store();
     store.append("s", &Message::user("comum")).unwrap();
