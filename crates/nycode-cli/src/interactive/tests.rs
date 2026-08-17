@@ -243,7 +243,7 @@ async fn the_header_names_what_the_session_loaded_before_the_first_prompt() {
         session_id: "sessao-1".to_owned(),
         model: "modelo-de-teste".to_owned(),
         persisted: 0,
-        context: Context::discover(&root),
+        context: Context::from_sources(&root, None, Some(&root)),
         root,
         mcp: Vec::new(),
         models: Vec::new(),

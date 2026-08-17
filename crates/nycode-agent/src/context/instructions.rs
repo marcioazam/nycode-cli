@@ -8,8 +8,11 @@
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
-/// Arquivos de instrução procurados na raiz, em ordem de leitura.
+/// Arquivos de instrução procurados em cada camada, em ordem de leitura.
 const INSTRUCTION_FILES: &[&str] = &["AGENTS.md", "CLAUDE.md", "NYCODE.md"];
+
+/// Substitui os demais arquivos de instrução *naquele* diretório.
+const OVERRIDE: &str = "AGENTS.override.md";
 
 /// Diretórios de regras, cujo conteúdo `.md` é lido por inteiro.
 const RULE_DIRS: &[&str] = &[".claude/rules", ".nycode/rules"];
@@ -26,19 +29,72 @@ pub struct Instruction {
 /// Um `AGENTS.md` gigante consumiria a janela antes da primeira pergunta.
 const MAX_BYTES: usize = 64 * 1024;
 
-/// Carrega os arquivos de instrução do workspace.
+/// Carrega as camadas visíveis nesta máquina: config do usuário, ancestrais e raiz.
 #[must_use]
 pub fn discover(root: &Path) -> Vec<Instruction> {
-    let mut found = Vec::new();
+    from_sources(
+        root,
+        crate::policy::config_dir(
+            std::env::var_os("XDG_CONFIG_HOME")
+                .as_deref()
+                .map(Path::new),
+            std::env::var_os("HOME").as_deref().map(Path::new),
+        )
+        .as_deref(),
+        None,
+    )
+}
 
-    for name in INSTRUCTION_FILES {
-        if let Some(instruction) = read(root, &root.join(name)) {
-            found.push(instruction);
+/// `ceiling` limita a subida: sem ele, sobe até a raiz do sistema de arquivos.
+#[must_use]
+pub(crate) fn from_sources(
+    root: &Path,
+    user: Option<&Path>,
+    ceiling: Option<&Path>,
+) -> Vec<Instruction> {
+    let mut found = Vec::new();
+    if let Some(dir) = user {
+        found.extend(layer(dir));
+    }
+    for dir in chain(root, ceiling) {
+        found.extend(layer(&dir));
+    }
+    found
+}
+
+fn chain(root: &Path, ceiling: Option<&Path>) -> Vec<PathBuf> {
+    let mut dirs = Vec::new();
+    let mut current = root.to_path_buf();
+    loop {
+        if ceiling.is_some_and(|stop| !current.starts_with(stop)) {
+            break;
+        }
+        dirs.push(current.clone());
+        let Some(parent) = current.parent() else {
+            break;
+        };
+        if parent == current.as_path() {
+            break;
+        }
+        current = parent.to_path_buf();
+    }
+    dirs.reverse();
+    dirs
+}
+
+fn layer(dir: &Path) -> Vec<Instruction> {
+    let mut found = Vec::new();
+    if let Some(over) = read(dir, &dir.join(OVERRIDE)) {
+        found.push(over);
+    } else {
+        for name in INSTRUCTION_FILES {
+            if let Some(instruction) = read(dir, &dir.join(name)) {
+                found.push(instruction);
+            }
         }
     }
-
-    for dir in RULE_DIRS {
-        let Ok(entries) = std::fs::read_dir(root.join(dir)) else {
+    for relative in RULE_DIRS {
+        let Ok(entries) = std::fs::read_dir(dir.join(relative)) else {
             continue;
         };
         let mut rules: Vec<_> = entries
@@ -46,16 +102,13 @@ pub fn discover(root: &Path) -> Vec<Instruction> {
             .map(|e| e.path())
             .filter(|p| p.extension().is_some_and(|ext| ext == "md"))
             .collect();
-        // Ordem alfabetica: a ordem do sistema de arquivos varia entre maquinas
-        // e mudaria o prompt sem que ninguem tivesse mudado nada.
         rules.sort();
-        found.extend(rules.iter().filter_map(|p| read(root, p)));
+        found.extend(rules.iter().filter_map(|p| read(dir, p)));
     }
-
     found
 }
 
-/// Lê um arquivo de instrução, se ele de fato pertencer ao workspace.
+/// Lê um arquivo de instrução, se ele de fato pertencer à camada.
 ///
 /// A checagem de link é aqui e não no chamador porque todo caminho de leitura
 /// passa por esta função, e uma que escapasse dela bastaria para reabrir o
@@ -64,7 +117,7 @@ fn read(root: &Path, path: &Path) -> Option<Instruction> {
     if !crate::tool::stays_within(root, path) {
         tracing::warn!(
             path = %path.display(),
-            "arquivo de instrucao aponta para fora do workspace, ignorado"
+            "arquivo de instrucao aponta para fora da camada, ignorado"
         );
         return None;
     }
@@ -126,7 +179,7 @@ mod tests {
         write(dir.path(), "AGENTS.md", "regra de agentes");
         write(dir.path(), "CLAUDE.md", "regra do claude");
 
-        let found = discover(dir.path());
+        let found = from_sources(dir.path(), None, Some(dir.path()));
         assert_eq!(found.len(), 2);
         assert!(found[0].contents.contains("regra de agentes"));
     }
@@ -144,7 +197,7 @@ mod tests {
         std::os::unix::fs::symlink(outside.path().join("segredo"), dir.path().join("AGENTS.md"))
             .unwrap();
 
-        let found = discover(dir.path());
+        let found = from_sources(dir.path(), None, Some(dir.path()));
         assert!(found.is_empty(), "{found:?}");
     }
 
@@ -163,7 +216,7 @@ mod tests {
         )
         .unwrap();
 
-        assert!(discover(dir.path()).is_empty());
+        assert!(from_sources(dir.path(), None, Some(dir.path())).is_empty());
     }
 
     #[test]
@@ -175,7 +228,7 @@ mod tests {
         write(dir.path(), ".claude/rules/alfa.md", "a");
         write(dir.path(), ".claude/rules/meio.md", "m");
 
-        let contents: Vec<_> = discover(dir.path())
+        let contents: Vec<_> = from_sources(dir.path(), None, Some(dir.path()))
             .into_iter()
             .map(|i| i.contents)
             .collect();
@@ -188,7 +241,7 @@ mod tests {
         write(dir.path(), ".claude/rules/regra.md", "vale");
         write(dir.path(), ".claude/rules/notas.txt", "nao vale");
 
-        let contents: Vec<_> = discover(dir.path())
+        let contents: Vec<_> = from_sources(dir.path(), None, Some(dir.path()))
             .into_iter()
             .map(|i| i.contents)
             .collect();
@@ -200,7 +253,7 @@ mod tests {
         // Um arquivo em branco so gastaria tokens de cabecalho.
         let dir = tempfile::tempdir().unwrap();
         write(dir.path(), "AGENTS.md", "   \n\n");
-        assert!(discover(dir.path()).is_empty());
+        assert!(from_sources(dir.path(), None, Some(dir.path())).is_empty());
     }
 
     #[test]
@@ -209,14 +262,14 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         write(dir.path(), "AGENTS.md", &"x".repeat(MAX_BYTES + 1_000));
 
-        let found = discover(dir.path());
+        let found = from_sources(dir.path(), None, Some(dir.path()));
         assert!(found[0].contents.contains("[truncado]"));
     }
 
     #[test]
     fn a_workspace_without_conventions_renders_nothing() {
         let dir = tempfile::tempdir().unwrap();
-        assert!(discover(dir.path()).is_empty());
+        assert!(from_sources(dir.path(), None, Some(dir.path())).is_empty());
         assert!(render(dir.path(), &[]).is_none());
     }
 
@@ -227,8 +280,57 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         write(dir.path(), "AGENTS.md", "sempre rodar os testes");
 
-        let rendered = render(dir.path(), &discover(dir.path())).unwrap();
+        let rendered = render(
+            dir.path(),
+            &from_sources(dir.path(), None, Some(dir.path())),
+        )
+        .unwrap();
         assert!(rendered.contains("## AGENTS.md"));
         assert!(rendered.contains("sempre rodar os testes"));
+    }
+    #[test]
+    fn an_ancestor_directory_contributes_its_instructions() {
+        let dir = tempfile::tempdir().unwrap();
+        write(dir.path(), "AGENTS.md", "ancestral");
+        write(dir.path(), "proj/AGENTS.md", "projeto");
+        let found = from_sources(&dir.path().join("proj"), None, Some(dir.path()));
+        let texts: Vec<_> = found.iter().map(|i| i.contents.as_str()).collect();
+        assert_eq!(texts, ["ancestral", "projeto"]);
+    }
+
+    #[test]
+    fn user_config_instructions_are_loaded_before_the_project() {
+        let dir = tempfile::tempdir().unwrap();
+        write(dir.path(), "user/AGENTS.md", "pessoal");
+        write(dir.path(), "proj/AGENTS.md", "projeto");
+        let found = from_sources(
+            &dir.path().join("proj"),
+            Some(&dir.path().join("user")),
+            Some(&dir.path().join("proj")),
+        );
+        let texts: Vec<_> = found.iter().map(|i| i.contents.as_str()).collect();
+        assert_eq!(texts, ["pessoal", "projeto"]);
+    }
+
+    #[test]
+    fn an_override_in_a_directory_replaces_other_instruction_files_there() {
+        let dir = tempfile::tempdir().unwrap();
+        write(dir.path(), "AGENTS.md", "ancestral");
+        write(dir.path(), "proj/AGENTS.md", "projeto");
+        write(dir.path(), "proj/CLAUDE.md", "claude");
+        write(dir.path(), "proj/AGENTS.override.md", "local");
+        let found = from_sources(&dir.path().join("proj"), None, Some(dir.path()));
+        let texts: Vec<_> = found.iter().map(|i| i.contents.as_str()).collect();
+        assert_eq!(texts, ["ancestral", "local"]);
+    }
+
+    #[test]
+    fn an_override_does_not_hide_instructions_from_another_directory() {
+        let dir = tempfile::tempdir().unwrap();
+        write(dir.path(), "AGENTS.md", "ancestral");
+        write(dir.path(), "proj/AGENTS.override.md", "local");
+        let found = from_sources(&dir.path().join("proj"), None, Some(dir.path()));
+        let texts: Vec<_> = found.iter().map(|i| i.contents.as_str()).collect();
+        assert_eq!(texts, ["ancestral", "local"]);
     }
 }

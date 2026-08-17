@@ -3,6 +3,7 @@
 //! O formato é o padrão aberto que Claude Code, Codex e outros já leem, então
 //! uma skill escrita para qualquer um deles funciona aqui sem tradução.
 
+use std::collections::BTreeMap;
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
@@ -15,6 +16,11 @@ pub struct Skill {
     pub description: String,
     pub body: String,
     pub path: PathBuf,
+    pub license: Option<String>,
+    pub compatibility: Option<String>,
+    pub allowed_tools: Option<String>,
+    pub metadata: BTreeMap<String, String>,
+    pub disable_model_invocation: bool,
 }
 
 /// Diretórios varridos, em ordem de precedência crescente.
@@ -75,6 +81,12 @@ pub fn load(root: &Path, path: &Path) -> Option<Skill> {
         description,
         body: body.trim().to_owned(),
         path: path.to_path_buf(),
+        license: optional(frontmatter, "license"),
+        compatibility: optional(frontmatter, "compatibility"),
+        allowed_tools: optional(frontmatter, "allowed-tools"),
+        metadata: mapping(frontmatter, "metadata"),
+        disable_model_invocation: optional(frontmatter, "disable-model-invocation")
+            .is_some_and(|v| v == "true"),
     })
 }
 
@@ -104,6 +116,39 @@ fn field(frontmatter: &str, key: &str) -> Option<String> {
     })
 }
 
+fn optional(frontmatter: &str, key: &str) -> Option<String> {
+    field(frontmatter, key).filter(|value| !value.is_empty())
+}
+
+fn mapping(frontmatter: &str, key: &str) -> BTreeMap<String, String> {
+    let header = format!("{key}:");
+    let mut lines = frontmatter.lines().peekable();
+    let mut map = BTreeMap::new();
+    while let Some(line) = lines.next() {
+        if line.trim() != header {
+            continue;
+        }
+        while let Some(next) = lines.peek().copied() {
+            let Some(rest) = next.strip_prefix("  ") else {
+                break;
+            };
+            let Some((k, v)) = rest.split_once(':') else {
+                break;
+            };
+            if k.is_empty() || k.starts_with(' ') {
+                break;
+            }
+            map.insert(
+                k.trim().to_owned(),
+                v.trim().trim_matches(['"', '\'']).to_owned(),
+            );
+            lines.next();
+        }
+        break;
+    }
+    map
+}
+
 /// Renderiza as skills como bloco de instrução.
 ///
 /// O corpo fica de fora — despejar todos de uma vez gastaria a janela com
@@ -112,22 +157,39 @@ fn field(frontmatter: &str, key: &str) -> Option<String> {
 /// economia de janela vira a skill não funcionar.
 #[must_use]
 pub fn render(skills: &[Skill]) -> Option<String> {
-    if skills.is_empty() {
+    let visible: Vec<&Skill> = skills
+        .iter()
+        .filter(|skill| !skill.disable_model_invocation)
+        .collect();
+    if visible.is_empty() {
         return None;
     }
     let mut out = String::from(
         "# Skills disponiveis\n\nLeia o arquivo indicado para carregar a skill antes de segui-la.\n\n",
     );
-    for skill in skills {
-        let _ = write!(
+    for skill in visible {
+        let _ = writeln!(
             out,
-            "## {}\n{}\nArquivo: {}\n\n",
+            "## {}\n{}\nArquivo: {}",
             skill.name,
             skill.description,
             skill.path.display()
         );
+        declare(&mut out, "Licenca", skill.license.as_deref());
+        declare(&mut out, "Compatibilidade", skill.compatibility.as_deref());
+        declare(&mut out, "Ferramentas", skill.allowed_tools.as_deref());
+        for (key, value) in &skill.metadata {
+            let _ = writeln!(out, "{key}: {value}");
+        }
+        out.push('\n');
     }
     Some(out)
+}
+
+fn declare(out: &mut String, label: &str, value: Option<&str>) {
+    if let Some(value) = value {
+        let _ = writeln!(out, "{label}: {value}");
+    }
 }
 
 #[cfg(test)]
@@ -293,5 +355,42 @@ mod tests {
             "o caminho do manifesto precisa aparecer: {rendered}"
         );
         assert!(rendered.contains("revisor/SKILL.md"), "{rendered}");
+    }
+    #[test]
+    fn a_skill_that_disables_model_invocation_is_kept_but_not_rendered() {
+        let dir = tempfile::tempdir().unwrap();
+        write_skill(
+            dir.path(),
+            ".nycode/skills",
+            "secreto",
+            "---\nname: secreto\ndescription: nao mostre\ndisable-model-invocation: true\n---\ncorpo\n",
+        );
+        write_skill(dir.path(), ".nycode/skills", "revisor", VALID);
+        let skills = discover(dir.path());
+        assert_eq!(skills.len(), 2);
+        assert!(
+            skills
+                .iter()
+                .any(|s| s.name == "secreto" && s.disable_model_invocation)
+        );
+        let rendered = render(&skills).unwrap();
+        assert!(!rendered.contains("secreto"), "{rendered}");
+        assert!(rendered.contains("revisor"), "{rendered}");
+    }
+
+    #[test]
+    fn optional_agent_skills_fields_are_declared_in_the_catalog() {
+        let dir = tempfile::tempdir().unwrap();
+        write_skill(
+            dir.path(),
+            ".nycode/skills",
+            "pdf",
+            "---\nname: pdf\ndescription: extrai texto\nlicense: MIT\ncompatibility: needs git\nallowed-tools: Read\nmetadata:\n  author: nylla\n---\ncorpo\n",
+        );
+        let rendered = render(&discover(dir.path())).unwrap();
+        assert!(rendered.contains("MIT"), "{rendered}");
+        assert!(rendered.contains("needs git"), "{rendered}");
+        assert!(rendered.contains("Read"), "{rendered}");
+        assert!(rendered.contains("nylla"), "{rendered}");
     }
 }
