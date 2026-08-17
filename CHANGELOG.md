@@ -8,6 +8,10 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Alterado
 
+- **O consentimento MCP fixa também a definição que o servidor declara.**
+  Depois do handshake o conjunto é pinado; troca pede de novo (C6,
+  ADR-0028). Nome com `__` ou o separador do registro é recusado.
+
 - **Instruções vêm também dos ancestrais e da config do usuário, e uma
   skill pode se recusar ao modelo.** `AGENTS.override.md` substitui os
   outros arquivos de instrução só naquele diretório (B23). O catálogo

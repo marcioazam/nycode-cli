@@ -57,6 +57,14 @@ impl std::fmt::Debug for Session {
     }
 }
 
+impl Session {
+    /// O nome com que o workspace declarou este servidor.
+    #[must_use]
+    pub fn name(&self) -> &str {
+        &self.server
+    }
+}
+
 #[async_trait]
 impl Transport for Session {
     async fn call(&self, tool: &str, arguments: Value) -> Result<String, String> {

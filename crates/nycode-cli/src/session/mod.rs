@@ -296,10 +296,7 @@ async fn attach_mcp(
     }
 
     let (sessions, tools, failures) = nycode_mcp::connect_all(&servers, root).await;
-    for failure in failures {
-        eprintln!("nycode: {failure}");
-    }
-    (sessions, tools)
+    consent::keep_declared(root, interactive, sessions, tools, failures)
 }
 
 /// Decide qual sessão usar e carrega o histórico dela.

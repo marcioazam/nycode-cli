@@ -11,8 +11,11 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 use std::path::Path;
 
+use nycode_agent::Tool;
 use nycode_agent::mcp::{Endpoint, ServerConfig};
 use nycode_agent::policy::trust::{self, Consent, Declaration, Never, Trust};
+use serde_json::Value;
+use std::sync::Arc;
 
 /// Como cada servidor declarado se apresenta ao pedido de consentimento.
 ///
@@ -83,8 +86,24 @@ fn authorize_within(
     store: Option<&Path>,
     consent: &mut dyn Consent,
 ) -> BTreeSet<String> {
+    use nycode_agent::policy::definition::usable;
+
+    let valid: Vec<Declaration> = declarations
+        .iter()
+        .filter(|declaration| {
+            usable(&declaration.name) || {
+                eprintln!(
+                    "nycode: `{}` tem nome invalido e nao vai rodar",
+                    declaration.name
+                );
+                false
+            }
+        })
+        .cloned()
+        .collect();
+
     let mut registro = store.map(Trust::load).unwrap_or_default();
-    let decidido = trust::authorize(root, declarations, &mut registro, consent);
+    let decidido = trust::authorize(root, &valid, &mut registro, consent);
 
     for aviso in &decidido.refused {
         eprintln!("nycode: {aviso}");
@@ -134,22 +153,85 @@ impl Consent for AskOnStdin {
     }
 }
 
+/// Depois do handshake: pin da definição, ou recusa se ela mudou (ADR-0028).
+#[must_use]
+pub fn keep_declared(
+    root: &Path,
+    interactive: bool,
+    sessions: Vec<Arc<nycode_mcp::Session>>,
+    tools: Vec<Arc<dyn Tool>>,
+    failures: Vec<nycode_mcp::Error>,
+) -> (Vec<Arc<nycode_mcp::Session>>, Vec<Arc<dyn Tool>>) {
+    use nycode_agent::policy::definition::{self, belongs};
+
+    for failure in failures {
+        eprintln!("nycode: {failure}");
+    }
+    let mut perguntando = AskOnStdin;
+    let mut calado = Never;
+    let consent: &mut dyn Consent = if interactive {
+        &mut perguntando
+    } else {
+        &mut calado
+    };
+    let names: Vec<String> = sessions
+        .iter()
+        .map(|session| session.name().to_owned())
+        .collect();
+    let listed: Vec<(String, String, Value)> = tools
+        .iter()
+        .map(|tool| {
+            (
+                tool.name().to_owned(),
+                tool.description().to_owned(),
+                tool.input_schema(),
+            )
+        })
+        .collect();
+    let refs: Vec<(&str, &str, &Value)> = listed
+        .iter()
+        .map(|(name, description, schema)| (name.as_str(), description.as_str(), schema))
+        .collect();
+    let servers: Vec<&str> = names.iter().map(String::as_str).collect();
+    let store = trust::default_store_path();
+    let mut registro = store.as_deref().map(Trust::load).unwrap_or_default();
+    let inicial = registro.clone();
+    let keep = definition::keep_names(root, &servers, &refs, &mut registro, consent);
+    if registro != inicial {
+        persist(&registro, store.as_deref());
+    }
+    let sessions = sessions
+        .into_iter()
+        .filter(|session| keep.contains(session.name()))
+        .collect();
+    let tools = tools
+        .into_iter()
+        .filter(|tool| keep.iter().any(|name| belongs(name, tool.name())))
+        .collect();
+    (sessions, tools)
+}
+
 /// O texto da pergunta.
 ///
 /// Separado da leitura porque é a parte que precisa estar certa e a parte que
 /// dá para verificar: o que se mostra decide se a resposta do usuário significa
 /// alguma coisa.
 fn prompt_for(declaration: &Declaration) -> String {
+    if let Some(server) = declaration
+        .name
+        .strip_suffix(nycode_agent::policy::definition::TOOLS_MARK)
+    {
+        return format!(
+            "nycode: a definicao declarada de `{server}` mudou:\n  {}\nnycode: confiar de novo? [s/N] ",
+            declaration.detail
+        );
+    }
     format!(
         "nycode: o repositorio declara `{}`, que executa:\n  {}\nnycode: confiar e executar? [s/N] ",
         declaration.name, declaration.detail
     )
 }
 
-/// Se a linha digitada é um sim.
-///
-/// Só o afirmativo explícito passa. Enter vazio, lixo, ou o `n` são não — o
-/// padrão de uma pergunta de segurança é a resposta que não concede nada.
 fn answers_yes(line: &str) -> bool {
     matches!(
         line.trim().to_lowercase().as_str(),
@@ -315,5 +397,43 @@ mod tests {
         for nao in ["", "\n", "n", "N", "nao", "no", "talvez", "ss", "sy"] {
             assert!(!answers_yes(nao), "{nao:?} nao deveria autorizar");
         }
+    }
+
+    #[test]
+    fn a_server_name_that_embeds_the_qualifier_is_refused() {
+        let permitidos = authorize_within(
+            Path::new("/w"),
+            &[
+                Declaration::new("docs__extra", "npx x"),
+                Declaration::new("docs\u{1f}tools", "npx y"),
+            ],
+            None,
+            &mut Responde(true),
+        );
+        assert!(permitidos.is_empty());
+    }
+
+    #[test]
+    fn a_changed_definition_asks_to_trust_again() {
+        let empty = serde_json::json!({});
+        let declaration =
+            nycode_agent::policy::definition::of("docs", &[("busca", "procura", &empty)]);
+        let texto = prompt_for(&declaration);
+        assert!(texto.contains("docs"), "{texto}");
+        assert!(!texto.contains('\u{1f}'), "{texto}");
+        assert!(texto.contains("mudou"), "{texto}");
+        assert!(texto.contains("busca"), "{texto}");
+    }
+
+    #[test]
+    fn keep_declared_without_servers_is_empty() {
+        let falha = nycode_mcp::Error::Config {
+            server: "x".to_owned(),
+            reason: "y".to_owned(),
+        };
+        let (sessions, tools) =
+            keep_declared(Path::new("/w"), false, Vec::new(), Vec::new(), vec![falha]);
+        assert!(sessions.is_empty());
+        assert!(tools.is_empty());
     }
 }
