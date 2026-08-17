@@ -61,6 +61,7 @@ impl Dialect for Responses {
         // um campo que o servidor recusa transforma um pedido valido em 400. A
         // configuracao nao e descartada em silencio — `unsupported_sampling` a
         // declara para quem monta a sessao contar ao usuario.
+        crate::ToolChoice::of(request.tools).emit_openai(&mut body);
         body
     }
 

@@ -5,7 +5,7 @@
 //! por configuração e, mais importante, testar cada projeção isoladamente contra
 //! o contrato que o gateway documenta.
 
-use serde_json::Value;
+use serde_json::{Value, json};
 
 use crate::anthropic::{Message, ToolSpec};
 use crate::error::{ApiError, Result};
@@ -20,6 +20,40 @@ pub struct UnifiedRequest<'a> {
     pub system: Option<&'a str>,
     pub tools: &'a [ToolSpec],
     pub sampling: &'a crate::sampling::Sampling,
+}
+
+/// Como o modelo deve tratar as ferramentas deste pedido.
+/// Catálogo vazio declara `none`; catálogo presente omite o campo.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ToolChoice {
+    /// Padrão dos provedores; não vai no fio.
+    Auto,
+    /// `--no-tools` ou um resumo sem catálogo.
+    None,
+}
+
+impl ToolChoice {
+    /// O que o tamanho do catálogo decide.
+    #[must_use]
+    pub fn of(tools: &[ToolSpec]) -> Self {
+        if tools.is_empty() {
+            Self::None
+        } else {
+            Self::Auto
+        }
+    }
+
+    pub(crate) fn emit_anthropic(self, body: &mut Value) {
+        if self == Self::None {
+            body["tool_choice"] = json!({ "type": "none" });
+        }
+    }
+
+    pub(crate) fn emit_openai(self, body: &mut Value) {
+        if self == Self::None {
+            body["tool_choice"] = json!("none");
+        }
+    }
 }
 
 /// Projeta eventos SSE de um dialeto no vocabulário canônico.
@@ -233,5 +267,36 @@ mod tests {
         );
         assert_eq!(err.kind, "context_length_exceeded");
         assert!(err.is_context_overflow());
+    }
+
+    #[test]
+    fn tool_choice_follows_whether_the_catalog_is_empty() {
+        let tools = [ToolSpec {
+            name: "read".to_owned(),
+            description: "le".to_owned(),
+            input_schema: json!({ "type": "object" }),
+            extension: false,
+        }];
+        assert_eq!(ToolChoice::of(&[]), ToolChoice::None);
+        assert_eq!(ToolChoice::of(&tools), ToolChoice::Auto);
+        let sampling = crate::sampling::Sampling::default();
+        let messages = [Message::user("oi")];
+        let body = |kind: Kind, tools: &[ToolSpec]| {
+            kind.build().body(&UnifiedRequest {
+                model: "m",
+                max_tokens: 512,
+                messages: &messages,
+                system: None,
+                tools,
+                sampling: &sampling,
+            })
+        };
+        let empty = body(Kind::AnthropicMessages, &[]);
+        assert_eq!(empty["tool_choice"]["type"], "none");
+        assert!(empty.get("tools").is_none());
+        let full = body(Kind::OpenAiChat, &tools);
+        assert!(full.get("tool_choice").is_none());
+        assert!(full.get("tools").is_some());
+        assert_eq!(body(Kind::OpenAiResponses, &[])["tool_choice"], "none");
     }
 }
