@@ -68,11 +68,7 @@ impl Agent {
             };
             observer.on_tool_end(&call.name, &output);
 
-            results.push(if output.is_error {
-                ContentBlock::tool_error(call.id.clone(), output.content)
-            } else {
-                ContentBlock::tool_result(call.id.clone(), output.content)
-            });
+            results.extend(output.into_blocks(&call.id));
         }
 
         self.record(Message::tool_results(results));

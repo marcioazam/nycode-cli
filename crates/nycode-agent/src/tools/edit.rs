@@ -5,6 +5,8 @@ use serde_json::{Value, json};
 
 use crate::tool::{Tool, ToolContext, ToolOutput};
 
+mod replace;
+
 /// Teto de bytes de um arquivo editável.
 ///
 /// Generoso para qualquer arquivo de código real, e ainda assim um teto: sem
@@ -23,8 +25,9 @@ impl Tool for Edit {
     }
 
     fn description(&self) -> &str {
-        "Substitui uma ocorrencia exata de texto num arquivo. O texto procurado \
-         precisa ser unico no arquivo; inclua contexto ao redor para garantir isso."
+        "Substitui ocorrencias exatas de texto num arquivo. Cada trecho \
+         procurado precisa ser unico; varias trocas disjuntas vao em \
+         `replacements` na mesma chamada."
     }
 
     fn input_schema(&self) -> Value {
@@ -33,29 +36,24 @@ impl Tool for Edit {
             "properties": {
                 "path": { "type": "string", "description": "Caminho relativo a raiz" },
                 "old_string": { "type": "string", "description": "Texto exato a substituir" },
-                "new_string": { "type": "string", "description": "Texto que entra no lugar" }
+                "new_string": { "type": "string", "description": "Texto que entra no lugar" },
+                "replacements": {
+                    "type": "array",
+                    "description": "Trocas disjuntas no mesmo arquivo, cada uma com old_string e new_string"
+                }
             },
-            "required": ["path", "old_string", "new_string"]
+            "required": ["path"]
         })
     }
 
     async fn execute(&self, input: Value, ctx: &ToolContext) -> ToolOutput {
-        let field = |name: &str| input.get(name).and_then(Value::as_str);
-
-        let (Some(requested), Some(old), Some(new)) =
-            (field("path"), field("old_string"), field("new_string"))
-        else {
-            return ToolOutput::error(
-                "argumentos obrigatorios: `path`, `old_string` e `new_string`",
-            );
+        let Some(requested) = input.get("path").and_then(Value::as_str) else {
+            return ToolOutput::error("argumento obrigatorio ausente: `path`");
         };
-
-        if old == new {
-            return ToolOutput::error("`old_string` e `new_string` sao iguais; nada a fazer");
-        }
-        if old.is_empty() {
-            return ToolOutput::error("`old_string` vazio casaria em qualquer posicao");
-        }
+        let pairs = match pairs_from(&input) {
+            Ok(pairs) => pairs,
+            Err(output) => return output,
+        };
 
         let path = match ctx.resolve(requested) {
             Ok(path) => path,
@@ -90,28 +88,10 @@ impl Tool for Edit {
         // o que difere é invisível.
         let shape = Shape::of(raw);
         let contents = shape.to_lf(raw);
-
-        // Uma edicao ambigua e o modo classico de corromper um arquivo: o modelo
-        // pede a primeira ocorrencia e recebe outra. Recusar e obrigar mais
-        // contexto e mais barato que desfazer.
-        let occurrences = contents.matches(old).count();
-        match occurrences {
-            0 => {
-                return ToolOutput::error(format!(
-                    "`old_string` nao encontrado em {requested}; \
-                     confira espacos e indentacao"
-                ));
-            }
-            1 => {}
-            n => {
-                return ToolOutput::error(format!(
-                    "`old_string` aparece {n} vezes em {requested}; \
-                     inclua mais contexto para torna-lo unico"
-                ));
-            }
-        }
-
-        let updated = shape.restore(&contents.replacen(old, new, 1));
+        let updated = match replace::apply(&contents, &pairs) {
+            Ok(updated) => shape.restore(&updated),
+            Err(err) => return ToolOutput::error(format!("{err} ({requested})")),
+        };
         match crate::tool::contain::write(ctx.root(), &path, updated.as_bytes()).await {
             Ok(()) => ToolOutput::ok(format!(
                 "{requested} editado ({} bytes -> {} bytes)",
@@ -120,6 +100,36 @@ impl Tool for Edit {
             )),
             Err(err) => ToolOutput::error(format!("nao foi possivel escrever {requested}: {err}")),
         }
+    }
+}
+
+fn pairs_from(input: &Value) -> Result<Vec<(String, String)>, ToolOutput> {
+    if let Some(list) = input.get("replacements").and_then(Value::as_array) {
+        if list.is_empty() {
+            return Err(ToolOutput::error("`replacements` vazio; nada a fazer"));
+        }
+        let mut pairs = Vec::with_capacity(list.len());
+        for item in list {
+            let old = item.get("old_string").and_then(Value::as_str);
+            let new = item.get("new_string").and_then(Value::as_str);
+            match (old, new) {
+                (Some(old), Some(new)) => pairs.push((old.to_owned(), new.to_owned())),
+                _ => {
+                    return Err(ToolOutput::error(
+                        "cada item de `replacements` precisa de `old_string` e `new_string`",
+                    ));
+                }
+            }
+        }
+        return Ok(pairs);
+    }
+
+    let field = |name: &str| input.get(name).and_then(Value::as_str);
+    match (field("old_string"), field("new_string")) {
+        (Some(old), Some(new)) => Ok(vec![(old.to_owned(), new.to_owned())]),
+        _ => Err(ToolOutput::error(
+            "argumentos obrigatorios: `path`, `old_string` e `new_string`",
+        )),
     }
 }
 
@@ -386,12 +396,36 @@ mod tests {
         let out = Edit.execute(json!({ "path": "a.rs" }), &ctx).await;
         assert!(out.is_error);
         assert!(out.content.contains("old_string"));
+        let empty = Edit
+            .execute(json!({ "path": "a.rs", "replacements": [] }), &ctx)
+            .await;
+        assert!(empty.is_error);
     }
 
     #[test]
-    fn the_schema_requires_all_three_arguments() {
-        let required = Edit.input_schema()["required"].as_array().unwrap().len();
-        assert_eq!(required, 3);
+    fn the_schema_requires_the_path() {
+        let schema = Edit.input_schema();
+        let required = schema["required"].as_array().unwrap();
+        assert_eq!(required, &["path"]);
         assert_eq!(Edit.name(), "edit");
+    }
+
+    #[tokio::test]
+    async fn disjoint_replacements_edit_the_file_in_one_call() {
+        let (dir, ctx) = workspace_with("um dois tres\n");
+        let out = Edit
+            .execute(
+                json!({
+                    "path": "a.rs",
+                    "replacements": [
+                        {"old_string": "um", "new_string": "UM"},
+                        {"old_string": "tres", "new_string": "TRES"}
+                    ]
+                }),
+                &ctx,
+            )
+            .await;
+        assert!(!out.is_error, "{}", out.content);
+        assert_eq!(bytes_of(&dir), b"UM dois TRES\n");
     }
 }
