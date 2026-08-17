@@ -4,7 +4,6 @@
 //! que um crash deixa a sessão truncada ou vazia. Acrescentar uma linha por vez
 //! significa que o pior caso é perder o último turno, não a conversa inteira.
 
-use std::cmp::Reverse;
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
 
@@ -258,7 +257,7 @@ impl Store {
             })
             .collect();
 
-        sessions.sort_by_key(|s| Reverse(s.modified));
+        sessions.sort_by(|a, b| b.modified.cmp(&a.modified).then(b.id.cmp(&a.id)));
         Ok(sessions)
     }
 
@@ -439,6 +438,29 @@ mod tests {
         let ids: Vec<_> = store.list().unwrap().into_iter().map(|s| s.id).collect();
         assert_eq!(ids.first().map(String::as_str), Some("recente"));
         assert_eq!(store.latest().unwrap().unwrap().id, "recente");
+    }
+
+    #[test]
+    fn listing_breaks_a_mtime_tie_with_the_newer_id() {
+        // `--continue` escolhe `latest()`. No runner do CI os dois appends
+        // caem no mesmo segundo e a ordem de `readdir` vence — a sessão
+        // antiga volta como se fosse a recente.
+        let (_dir, store) = store();
+        store
+            .append("0000000002", &Message::user("recente"))
+            .unwrap();
+        store
+            .append("0000000001", &Message::user("antiga"))
+            .unwrap();
+        let tied =
+            std::time::SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(1_700_000_000);
+        for id in ["0000000001", "0000000002"] {
+            std::fs::File::open(store.dir().join(format!("{id}.jsonl")))
+                .unwrap()
+                .set_modified(tied)
+                .unwrap();
+        }
+        assert_eq!(store.latest().unwrap().unwrap().id, "0000000002");
     }
 
     #[test]

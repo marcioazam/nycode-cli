@@ -90,6 +90,13 @@ impl ContentBlock {
 pub struct Message {
     pub role: Role,
     pub content: Vec<ContentBlock>,
+    /// Turno que parou em erro ou cancelamento.
+    ///
+    /// O histórico guarda o que o modelo já emitiu; o provedor recusa receber
+    /// isso de volta. Quem monta o pedido descarta o turno no envio. `false`
+    /// some do JSON para não mudar o journal antigo.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub discarded: bool,
 }
 
 impl Message {
@@ -98,6 +105,7 @@ impl Message {
         Self {
             role: Role::User,
             content: vec![ContentBlock::text(text)],
+            discarded: false,
         }
     }
 
@@ -106,6 +114,7 @@ impl Message {
         Self {
             role: Role::Assistant,
             content,
+            discarded: false,
         }
     }
 
@@ -115,6 +124,17 @@ impl Message {
         Self {
             role: Role::User,
             content: results,
+            discarded: false,
+        }
+    }
+
+    /// Pedido do usuário com blocos mistos — texto e anexos.
+    #[must_use]
+    pub fn user_blocks(content: Vec<ContentBlock>) -> Self {
+        Self {
+            role: Role::User,
+            content,
+            discarded: false,
         }
     }
 }
@@ -212,5 +232,18 @@ mod tests {
         let msg = Message::tool_results(vec![ContentBlock::tool_result("t1", "ok")]);
         assert_eq!(msg.role, Role::User);
         assert_eq!(serde_json::to_value(&msg).unwrap()["role"], "user");
+    }
+
+    #[test]
+    fn a_kept_message_omits_discarded_from_the_journal() {
+        // Journal antigo não tem o campo; o padrão precisa ser omitir `false`.
+        let value = serde_json::to_value(Message::user("oi")).unwrap();
+        assert!(value.get("discarded").is_none());
+        let loaded: Message = serde_json::from_value(serde_json::json!({
+            "role": "assistant",
+            "content": [{"type": "text", "text": "parcial"}]
+        }))
+        .unwrap();
+        assert!(!loaded.discarded);
     }
 }
