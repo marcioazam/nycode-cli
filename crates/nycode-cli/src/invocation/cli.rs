@@ -128,6 +128,14 @@ pub struct Cli {
     #[arg(long, conflicts_with = "tools")]
     pub no_tools: bool,
 
+    /// Substitui o prompt de sistema embutido. Instrucoes e skills continuam.
+    #[arg(long, value_name = "TEXTO")]
+    pub system: Option<String>,
+
+    /// Acrescenta ao prompt de sistema, depois da base e antes das instrucoes.
+    #[arg(long, value_name = "TEXTO")]
+    pub append_system: Option<String>,
+
     /// Monta a sessao, mantem-na ociosa por MS milissegundos e sai.
     ///
     /// O NFR-1 e o NFR-2 orcam a sessao montada, e nenhuma outra superficie
@@ -245,5 +253,14 @@ mod tests {
         let err = Cli::try_parse_from(["nycode", "--tools", "read", "--no-tools"])
             .expect_err("as duas flags se excluem");
         assert_eq!(err.kind(), clap::error::ErrorKind::ArgumentConflict);
+    }
+
+    #[test]
+    fn system_flags_replace_or_append_the_base_prompt() {
+        let replaced = Cli::try_parse_from(["nycode", "--system", "base"]).unwrap();
+        assert_eq!(replaced.system.as_deref(), Some("base"));
+        assert!(replaced.append_system.is_none());
+        let appended = Cli::try_parse_from(["nycode", "--append-system", "extra"]).unwrap();
+        assert_eq!(appended.append_system.as_deref(), Some("extra"));
     }
 }

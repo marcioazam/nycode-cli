@@ -8,6 +8,11 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Adicionado
 
+- **`--system` e `--append-system` substituem ou acrescentam o prompt de
+  sistema.** Arquivos `.nycode/SYSTEM.md` / `APPEND_SYSTEM.md` e os
+  equivalentes na config do usuário entram quando a flag falta. Instruções
+  e skills continuam anexadas (B26, FR-21).
+
 - **`--tools` e `--no-tools` restringem o catálogo enviado ao modelo.**
   Pedido sem ferramentas declara `tool_choice: none`. A allowlist não é
   permissão; nome desconhecido recusa a sessão (B8, B25, FR-18).
