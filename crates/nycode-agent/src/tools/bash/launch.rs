@@ -54,6 +54,13 @@ impl Launch {
         }
     }
 
+    /// Só troca o prazo, sem redescobrir confinamento nem ambiente.
+    #[must_use]
+    pub fn with_deadline(mut self, timeout: Duration) -> Self {
+        self.timeout = timeout;
+        self
+    }
+
     /// Substitui o confinamento detectado.
     #[must_use]
     pub fn with_confinement(mut self, confinement: Confinement) -> Self {

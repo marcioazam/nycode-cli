@@ -17,6 +17,7 @@ pub mod sanitize;
 use std::path::{Component, Path, PathBuf};
 
 use async_trait::async_trait;
+use nycode_ai::anthropic::ContentBlock;
 use serde_json::Value;
 
 use crate::error::{Error, Result};
@@ -39,6 +40,14 @@ pub struct ToolOutput {
     /// que apenas descreve um erro. Achatar os dois faz o agente seguir em
     /// frente como se a operação tivesse funcionado.
     pub is_error: bool,
+    pub image: Option<ToolImage>,
+}
+
+/// Imagem no resultado de uma ferramenta (FR-15).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ToolImage {
+    pub media_type: String,
+    pub data: String,
 }
 
 impl ToolOutput {
@@ -47,6 +56,7 @@ impl ToolOutput {
         Self {
             content: content.into(),
             is_error: false,
+            image: None,
         }
     }
 
@@ -55,7 +65,35 @@ impl ToolOutput {
         Self {
             content: content.into(),
             is_error: true,
+            image: None,
         }
+    }
+
+    #[must_use]
+    pub fn image(media_type: impl Into<String>, data: impl Into<String>) -> Self {
+        Self {
+            content: String::new(),
+            is_error: false,
+            image: Some(ToolImage {
+                media_type: media_type.into(),
+                data: data.into(),
+            }),
+        }
+    }
+
+    #[must_use]
+    pub fn into_blocks(self, tool_use_id: impl Into<String>) -> Vec<ContentBlock> {
+        let id = tool_use_id.into();
+        let mut blocks = Vec::with_capacity(2);
+        blocks.push(if self.is_error {
+            ContentBlock::tool_error(id, self.content)
+        } else {
+            ContentBlock::tool_result(id, self.content)
+        });
+        if let Some(image) = self.image {
+            blocks.push(ContentBlock::image(image.media_type, image.data));
+        }
+        blocks
     }
 }
 
@@ -336,5 +374,16 @@ mod tests {
     fn tool_output_carries_the_error_flag_distinctly() {
         assert!(!ToolOutput::ok("conteudo").is_error);
         assert!(ToolOutput::error("falhou").is_error);
+        assert_eq!(ToolOutput::ok("ok").into_blocks("t1").len(), 1);
+    }
+
+    #[test]
+    fn an_image_result_becomes_a_tool_result_and_an_image_block() {
+        let blocks = ToolOutput::image("image/png", "QUJD").into_blocks("t1");
+        assert_eq!(blocks.len(), 2);
+        assert!(
+            matches!(&blocks[0], ContentBlock::ToolResult { tool_use_id, .. } if tool_use_id == "t1")
+        );
+        assert!(matches!(blocks[1], ContentBlock::Image { .. }));
     }
 }
