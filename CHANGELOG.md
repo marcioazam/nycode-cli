@@ -8,6 +8,12 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Alterado
 
+- **A compactação dispara por limiar de ocupação antes do pedido.** A
+  ocupação ancora no último usage real e estima só a cauda (B9). Sem janela
+  no catálogo, o comportamento antigo permanece: só o erro dispara. O
+  erro continua sendo a rede de segurança (ADR-0027). O corte ainda retém
+  N mensagens; o gatilho é que deixa de esperar o turno perdido.
+
 - **Imagem some do fio quando o catálogo diz que o modelo não tem visão,
   e o raciocínio fica no histórico como texto.** Sem declaração no
   catálogo, o pedido leva o anexo — o comportamento antigo. `Some(false)`
