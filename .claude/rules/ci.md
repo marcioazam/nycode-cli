@@ -1,0 +1,18 @@
+---
+paths:
+  - ".github/**"
+  - "scripts/ci-local.sh"
+  - ".githooks/**"
+  - "scripts/agent-harness/**"
+---
+
+# CI local
+
+A definição de verde é [`scripts/ci-local.sh`](../../scripts/ci-local.sh)
+(`AGENTS.md`, seção CI local). O workflow do GitHub roda os mesmos gates.
+
+- `--fast` no pre-commit; `--full` no merge. Hook **executa**, não confia em
+  verde antigo.
+- Não use `--no-verify`. O veto do harness recusa.
+- GATE-11, SP-04, GATE-01 e GATE-04 são só no CI: a base do PR não é
+  adivinhável localmente.
