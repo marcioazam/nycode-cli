@@ -41,18 +41,13 @@ pub fn for_provider(messages: &[Message]) -> Vec<Message> {
     let mut out: Vec<Message> = Vec::with_capacity(messages.len());
     let mut pending: Vec<String> = Vec::new();
 
-    for message in messages {
+    for message in sendable(messages) {
         match message.role {
             Role::Assistant => {
                 // Dois turnos de assistente seguidos com chamada aberta no
                 // primeiro nao acontecem pelo laco, mas acontecem por corte de
                 // arvore. Fechar antes mantem o par intacto.
                 close(&mut out, &mut pending);
-                if message.discarded {
-                    // Parada de erro ou cancelamento: incompleto, o provedor
-                    // recusa. O histórico guarda; o envio não.
-                    continue;
-                }
                 pending = declared(message);
                 out.push(message.clone());
             }
@@ -83,6 +78,13 @@ pub fn for_provider(messages: &[Message]) -> Vec<Message> {
 
     close(&mut out, &mut pending);
     out
+}
+
+/// Assistente interrompido fica no histórico e fora do pedido.
+fn sendable(messages: &[Message]) -> impl Iterator<Item = &Message> {
+    messages
+        .iter()
+        .filter(|message| message.role == Role::User || !message.discarded)
 }
 
 /// Monta o turno do assistente que entra no histórico.

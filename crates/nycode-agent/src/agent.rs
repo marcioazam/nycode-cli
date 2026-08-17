@@ -162,6 +162,20 @@ impl Agent {
         self.messages.push(message);
     }
 
+    fn record_sent(
+        &mut self,
+        text: &str,
+        calls: &[crate::tool::ToolCall],
+        reason: &StopReason,
+        cancelled: bool,
+    ) {
+        if let Some(message) =
+            transform::assistant_turn(text, calls, transform::discard_on_send(reason, cancelled))
+        {
+            self.record(message);
+        }
+    }
+
     /// O que este pedido acrescentou, para quem precisa persistir.
     ///
     /// Não inclui o histórico com que a sessão foi aberta, nem o marcador que a
@@ -326,13 +340,7 @@ impl Agent {
                 continue;
             }
 
-            if let Some(message) = transform::assistant_turn(
-                turn.text(),
-                &calls,
-                transform::discard_on_send(&stop_reason, interrupted),
-            ) {
-                self.record(message);
-            }
+            self.record_sent(turn.text(), &calls, &stop_reason, interrupted);
 
             if let Some(shrink::SilentOverflow::InputAboveWindow { input, window }) = overflowed {
                 // A resposta veio e vale; o que não pode é o próximo turno ser
