@@ -198,3 +198,4 @@ A história permanece aberta até o restante dos PRs.
 |---|---|---|
 | B8 — `tool_choice` canônico | fechado | [`ToolChoice`](../../../crates/nycode-ai/src/dialect.rs); catálogo vazio emite `none` nos três dialetos. Teste `tool_choice_follows_whether_the_catalog_is_empty` |
 | B25 — restrição de ferramentas por nome | fechado | `--tools` / `--no-tools`; filtro em [`catalog.rs`](../../../crates/nycode-cli/src/invocation/catalog.rs) sobre o que o modelo vê, não o gate. Testes `a_name_list_is_the_catalog_sent_to_the_model_not_a_grant`, `an_unknown_name_is_an_error_instead_of_an_empty_catalog` |
+| B26 — system prompt substituível e acrescentável | fechado | [`prompt.rs`](../../../crates/nycode-cli/src/invocation/prompt.rs); `--system` / `--append-system` e `.nycode/SYSTEM.md`. Testes `a_project_file_replaces_the_builtin`, `the_system_flag_replaces_files`, `an_append_file_follows_the_base` |

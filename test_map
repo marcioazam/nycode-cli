@@ -130,6 +130,7 @@ Testes inline (#[cfg(test)] dentro do proprio arquivo):
   crates/nycode-cli/src/invocation/catalog.rs
   crates/nycode-cli/src/invocation/cli.rs
   crates/nycode-cli/src/invocation/grant.rs
+  crates/nycode-cli/src/invocation/prompt.rs
   crates/nycode-cli/src/invocation/route.rs
   crates/nycode-cli/src/main.rs
   crates/nycode-cli/src/output/events.rs

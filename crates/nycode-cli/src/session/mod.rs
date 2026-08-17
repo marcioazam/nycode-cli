@@ -22,14 +22,6 @@ use nycode_ai::{Client, Config};
 
 use crate::Cli;
 
-/// Prompt de sistema mínimo.
-///
-/// Modelos de fronteira já são treinados para o formato de agente de codificação;
-/// prompt longo aqui gasta contexto sem ganho proporcional.
-const SYSTEM_PROMPT: &str = "Voce e o NyCode CLI, um agente de codificacao que opera \
-     no terminal dentro do repositorio do usuario. Use as ferramentas disponiveis para \
-     inspecionar arquivos antes de afirmar qualquer coisa sobre o codigo. Seja direto.";
-
 /// Como construir o backend de outro modelo.
 ///
 /// Fechada sobre a configuração já resolvida — endpoint, credencial, dialeto —
@@ -152,7 +144,7 @@ pub async fn prepare(cli: &Cli) -> anyhow::Result<Prepared> {
     // As convencoes do repositorio especializam o prompt base. Um AGENTS.md
     // existente passa a valer sem nenhuma configuracao.
     let context = Context::discover(&root);
-    let system = context.system_prompt(SYSTEM_PROMPT, &root);
+    let system = context.system_prompt(&crate::invocation::prompt::resolve(cli, &root)?, &root);
     phases.mark("workspace");
 
     let store = Store::open(root.join(".nycode/sessions"))?;
