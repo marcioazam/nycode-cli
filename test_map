@@ -33,6 +33,7 @@ Testes inline (#[cfg(test)] dentro do proprio arquivo):
   crates/nycode-agent/src/policy/confinement/environment.rs
   crates/nycode-agent/src/policy/confinement/sandbox.rs
   crates/nycode-agent/src/policy/confinement/sandbox/profile.rs
+  crates/nycode-agent/src/policy/definition.rs
   crates/nycode-agent/src/policy/hooks.rs
   crates/nycode-agent/src/policy/permission.rs
   crates/nycode-agent/src/policy/trust.rs
