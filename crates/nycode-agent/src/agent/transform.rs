@@ -11,7 +11,10 @@
 //! módulo é a costura que o conserta, e ele é puro de propósito: a correção é
 //! decidível olhando só a sequência de mensagens.
 
+use nycode_ai::StopReason;
 use nycode_ai::anthropic::{ContentBlock, Message, Role};
+
+use crate::tool::ToolCall;
 
 /// O que um resultado sintético diz ao modelo.
 ///
@@ -23,13 +26,14 @@ const INTERRUPTED: &str = "A chamada foi interrompida antes de produzir resultad
 
 /// Ajusta o histórico ao que o provedor aceita.
 ///
-/// Duas correções, ambas necessárias para que um histórico retomado ou trocado
-/// de modelo continue válido:
+/// Três correções, todas necessárias para que um histórico retomado ou
+/// trocado de modelo continue válido:
 ///
+/// - turno que parou em erro ou cancelamento não é reenviado;
 /// - toda chamada de ferramenta ganha um resultado, sintético quando falta;
 /// - todo resultado sem chamada correspondente é descartado.
 ///
-/// A segunda existe porque o corte pode cair do outro lado: um ramo retomado a
+/// A terceira existe porque o corte pode cair do outro lado: um ramo retomado a
 /// partir do resultado, sem a mensagem do assistente que o pediu, carrega um
 /// `tool_result` que não referencia nada.
 #[must_use]
@@ -37,7 +41,7 @@ pub fn for_provider(messages: &[Message]) -> Vec<Message> {
     let mut out: Vec<Message> = Vec::with_capacity(messages.len());
     let mut pending: Vec<String> = Vec::new();
 
-    for message in messages {
+    for message in sendable(messages) {
         match message.role {
             Role::Assistant => {
                 // Dois turnos de assistente seguidos com chamada aberta no
@@ -66,10 +70,7 @@ pub fn for_provider(messages: &[Message]) -> Vec<Message> {
                 // Uma mensagem que ficou sem conteudo depois do descarte nao
                 // pode ir: o provedor recusa conteudo vazio.
                 if !content.is_empty() {
-                    out.push(Message {
-                        role: Role::User,
-                        content,
-                    });
+                    out.push(Message::user_blocks(content));
                 }
             }
         }
@@ -77,6 +78,47 @@ pub fn for_provider(messages: &[Message]) -> Vec<Message> {
 
     close(&mut out, &mut pending);
     out
+}
+
+/// Assistente interrompido fica no histórico e fora do pedido.
+fn sendable(messages: &[Message]) -> impl Iterator<Item = &Message> {
+    messages
+        .iter()
+        .filter(|message| message.role == Role::User || !message.discarded)
+}
+
+/// Monta o turno do assistente que entra no histórico.
+///
+/// `discarded` marca parada de erro ou cancelamento: o journal guarda o que o
+/// usuário viu; [`for_provider`] não reenvia.
+#[must_use]
+pub(crate) fn assistant_turn(text: &str, calls: &[ToolCall], discarded: bool) -> Option<Message> {
+    let mut content = Vec::new();
+    if !text.is_empty() {
+        content.push(ContentBlock::text(text));
+    }
+    for call in calls {
+        content.push(ContentBlock::ToolUse {
+            id: call.id.clone(),
+            name: call.name.clone(),
+            input: call.input.clone(),
+        });
+    }
+    if content.is_empty() {
+        return None;
+    }
+    Some(Message {
+        role: Role::Assistant,
+        content,
+        discarded,
+    })
+}
+
+/// Se este `stop_reason` é o que a referência não reenvia.
+#[must_use]
+pub(crate) fn discard_on_send(reason: &StopReason, cancelled: bool) -> bool {
+    cancelled
+        || matches!(reason, StopReason::Unrecognized(raw) if raw == "error" || raw == "aborted")
 }
 
 /// Fecha as chamadas abertas com resultados sintéticos.
@@ -282,5 +324,120 @@ mod tests {
             Message::tool_results(vec![result("t2"), result("t1")]),
         ];
         assert_eq!(for_provider(&history), history);
+    }
+
+    fn discarded_assistant(text: &str) -> Message {
+        let mut message = Message::assistant(vec![ContentBlock::text(text)]);
+        message.discarded = true;
+        message
+    }
+
+    #[test]
+    fn an_interrupted_assistant_turn_is_not_sent() {
+        // O provedor recusa turno incompleto (raciocínio sem item, JSON pela
+        // metade). O histórico guarda o que o usuário viu; o envio não.
+        let history = vec![
+            Message::user("oi"),
+            discarded_assistant("parcial"),
+            Message::user("continua"),
+        ];
+        let sent = for_provider(&history);
+        let texts: Vec<&str> = sent
+            .iter()
+            .flat_map(|m| m.content.iter())
+            .filter_map(|b| match b {
+                ContentBlock::Text { text } => Some(text.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(texts, ["oi", "continua"]);
+    }
+
+    #[test]
+    fn an_orphaned_call_and_a_discarded_turn_send_results_without_the_interrupted_one() {
+        // Retomar ramo + cancelar: o pedido precisa fechar a órfã e não
+        // reenviar o turno interrompido.
+        let mut interrupted = Message::assistant(vec![call("t-cancel")]);
+        interrupted.discarded = true;
+        let history = vec![
+            Message::user("oi"),
+            Message::assistant(vec![call("t1")]),
+            interrupted,
+            Message::user("continua"),
+        ];
+        let sent = for_provider(&history);
+        assert!(
+            sent.iter().all(|m| !m.discarded),
+            "turno interrompido nao vai ao provedor: {sent:?}"
+        );
+        let ids: Vec<String> = sent.iter().flat_map(ids_of).collect();
+        assert_eq!(ids, ["t1"], "so a orfa sobrevivente: {sent:?}");
+        assert!(
+            sent.iter()
+                .flat_map(|m| m.content.iter())
+                .all(|b| !matches!(b, ContentBlock::ToolUse { id, .. } if id == "t-cancel")),
+            "chamada do turno cancelado nao vai: {sent:?}"
+        );
+    }
+
+    #[test]
+    fn a_cancelled_or_errored_stop_is_dropped_on_the_next_send() {
+        use nycode_ai::StopReason;
+        assert!(discard_on_send(&StopReason::EndTurn, true));
+        assert!(discard_on_send(
+            &StopReason::Unrecognized("error".into()),
+            false
+        ));
+        assert!(discard_on_send(
+            &StopReason::Unrecognized("aborted".into()),
+            false
+        ));
+        assert!(!discard_on_send(&StopReason::EndTurn, false));
+        assert!(!discard_on_send(&StopReason::ToolUse, false));
+    }
+
+    #[test]
+    fn an_assistant_turn_carries_the_discard_flag_into_history() {
+        let dropped = assistant_turn("parcial", &[], true).unwrap();
+        assert!(dropped.discarded);
+        assert!(!assistant_turn("ok", &[], false).unwrap().discarded);
+    }
+
+    #[tokio::test]
+    async fn the_send_path_drops_a_discarded_turn_and_closes_an_orphan() {
+        use std::sync::Arc;
+
+        use crate::agent::{Agent, Silent};
+        use crate::backend::fake::FakeBackend;
+
+        let (_dir, ctx) = crate::agent_test::workspace();
+        let backend = Arc::new(FakeBackend::new(vec![crate::agent_test::text_turn("ok")]));
+        let mut agent = Agent::new(backend.clone(), ctx);
+        agent.set_history(vec![
+            Message::user("oi"),
+            Message::assistant(vec![call("t1")]),
+            discarded_assistant("parcial"),
+        ]);
+        agent.run("continua", &mut Silent).await.unwrap();
+
+        let sent = backend.last_messages();
+        let texts: Vec<&str> = sent
+            .iter()
+            .flat_map(|m| m.content.iter())
+            .filter_map(|b| match b {
+                ContentBlock::Text { text } => Some(text.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert!(
+            !texts.iter().any(|t| t.contains("parcial")),
+            "turno interrompido no corpo: {sent:?}"
+        );
+        assert!(
+            sent.iter().flat_map(|m| m.content.iter()).any(
+                |b| matches!(b, ContentBlock::ToolResult { tool_use_id, .. } if tool_use_id == "t1")
+            ),
+            "orfa sem resultado: {sent:?}"
+        );
     }
 }

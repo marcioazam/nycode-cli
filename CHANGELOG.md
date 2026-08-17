@@ -8,6 +8,14 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Alterado
 
+- **O envio ao provedor descarta turno interrompido e fecha chamada órfã.**
+  Um assistente que parou em erro ou cancelamento fica no histórico (o
+  usuário viu o texto) e não volta no pedido — o provedor recusa o
+  incompleto. Chamada sem resultado ganha síntese; resultado sem chamada
+  some. É a costura de A6/B13/B14 da spec 002, em `transform.rs`.
+  `--continue` desempata sessões com o mesmo mtime pelo identificador, não
+  pela ordem do diretório.
+
 - **O ROADMAP deixa de tratar a paridade real como bloqueada.** A Frente 0
   fechou o instrumento em modo completo no CI; o que resta das Ondas 2 a 5
   da spec 002 é produto. `ARCHITECTURE.md` deixa de chamar a TUI de FR-1

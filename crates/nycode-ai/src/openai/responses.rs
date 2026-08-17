@@ -360,6 +360,7 @@ mod tests {
                 ContentBlock::image("image/jpeg", "QUJD"),
                 ContentBlock::text("descreva"),
             ],
+            discarded: false,
         };
         let items = convert(&message);
         let content = &items[0]["content"];
