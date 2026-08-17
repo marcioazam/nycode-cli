@@ -12,6 +12,7 @@ pub mod phases;
 pub mod provider;
 mod warnings;
 
+pub(crate) use open::name_of;
 pub use open::resolve;
 pub use phases::Phases;
 
