@@ -340,6 +340,7 @@ mod tests {
     #[tokio::test]
     async fn a_debug_view_names_the_server_without_dumping_the_connection() {
         let (session, _tools) = against(Reply::Empty).await;
+        assert_eq!(session.name(), "docs");
         let rendered = format!("{session:?}");
         assert!(rendered.contains("docs"), "{rendered}");
     }

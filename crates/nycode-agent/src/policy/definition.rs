@@ -199,27 +199,15 @@ mod tests {
     }
 
     #[test]
+    #[rustfmt::skip]
     fn cover_is_order_independent_and_injective() {
         let vazio = serde_json::json!({});
         let s = schema();
         let fp = |tools: &[(&str, &str, &Value)]| of("docs", tools).fingerprint();
-        assert_eq!(
-            fp(&[("b", "d", &s), ("a", "d", &s)]),
-            fp(&[("a", "d", &s), ("b", "d", &s)])
-        );
-        assert_eq!(
-            fp(&[("t", "d", &serde_json::json!({"b": 1, "a": 1}))]),
-            fp(&[("t", "d", &serde_json::json!({"a": 1, "b": 1}))])
-        );
-        assert_ne!(
-            fp(&[("t", "d", &serde_json::json!({"type": "string"}))]),
-            fp(&[("t", "d", &serde_json::json!({"type": "number"}))])
-        );
-        assert_ne!(
-            fp(&[("a", "d1\0{}\nb\0d2", &vazio)]),
-            fp(&[("a", "d1", &vazio), ("b", "d2", &vazio)])
-        );
-        assert_eq!(fp(&[]), of("docs", &[]).fingerprint());
+        assert_eq!(fp(&[("b", "d", &s), ("a", "d", &s)]), fp(&[("a", "d", &s), ("b", "d", &s)]));
+        assert_eq!(fp(&[("t", "d", &serde_json::json!({"b": 1, "a": 1}))]), fp(&[("t", "d", &serde_json::json!({"a": 1, "b": 1}))]));
+        assert_ne!(fp(&[("t", "d", &serde_json::json!({"type": "string"}))]), fp(&[("t", "d", &serde_json::json!({"type": "number"}))]));
+        assert_ne!(fp(&[("a", "d1\0{}\nb\0d2", &vazio)]), fp(&[("a", "d1", &vazio), ("b", "d2", &vazio)]));
         assert_ne!(fp(&[]), fp(&[("t", "d", &vazio)]));
         assert!(of("docs", &[]).detail.contains("nenhuma"));
     }

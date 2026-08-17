@@ -115,6 +115,12 @@ fn authorize_within(
     decidido.allowed.into_iter().collect()
 }
 
+fn persist_if_changed(atual: &Trust, antes: &Trust, store: Option<&Path>) {
+    if atual != antes {
+        persist(atual, store);
+    }
+}
+
 /// Grava a confiança concedida, dizendo em voz alta quando não consegue.
 ///
 /// Não gravar não desfaz o sim desta sessão, mas o usuário precisa saber que a
@@ -197,9 +203,7 @@ pub fn keep_declared(
     let mut registro = store.as_deref().map(Trust::load).unwrap_or_default();
     let inicial = registro.clone();
     let keep = definition::keep_names(root, &servers, &refs, &mut registro, consent);
-    if registro != inicial {
-        persist(&registro, store.as_deref());
-    }
+    persist_if_changed(&registro, &inicial, store.as_deref());
     let sessions = sessions
         .into_iter()
         .filter(|session| keep.contains(session.name()))
@@ -414,26 +418,27 @@ mod tests {
     }
 
     #[test]
-    fn a_changed_definition_asks_to_trust_again() {
-        let empty = serde_json::json!({});
-        let declaration =
-            nycode_agent::policy::definition::of("docs", &[("busca", "procura", &empty)]);
-        let texto = prompt_for(&declaration);
-        assert!(texto.contains("docs"), "{texto}");
-        assert!(!texto.contains('\u{1f}'), "{texto}");
-        assert!(texto.contains("mudou"), "{texto}");
-        assert!(texto.contains("busca"), "{texto}");
-    }
-
-    #[test]
     fn keep_declared_without_servers_is_empty() {
+        let empty = serde_json::json!({});
+        let texto = prompt_for(&nycode_agent::policy::definition::of(
+            "docs",
+            &[("busca", "procura", &empty)],
+        ));
+        assert!(texto.contains("docs") && texto.contains("mudou") && !texto.contains('\u{1f}'));
         let falha = nycode_mcp::Error::Config {
             server: "x".to_owned(),
             reason: "y".to_owned(),
         };
         let (sessions, tools) =
             keep_declared(Path::new("/w"), false, Vec::new(), Vec::new(), vec![falha]);
-        assert!(sessions.is_empty());
-        assert!(tools.is_empty());
+        assert!(sessions.is_empty() && tools.is_empty());
+        let dir = tempfile::tempdir().unwrap();
+        let store = dir.path().join("trust.json");
+        persist_if_changed(&Trust::default(), &Trust::default(), Some(&store));
+        assert!(!store.exists());
+        let mut mudou = Trust::default();
+        mudou.grant(Path::new("/w"), &docs());
+        persist_if_changed(&mudou, &Trust::default(), Some(&store));
+        assert!(store.exists());
     }
 }

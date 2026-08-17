@@ -67,7 +67,6 @@ Testes inline (#[cfg(test)] dentro do proprio arquivo):
 
 Arquivos de teste dedicados (mod *_test;):
   crates/nycode-agent/src/agent_test.rs
-  crates/nycode-agent/src/asi_test.rs
   crates/nycode-agent/src/compaction_test.rs
   crates/nycode-agent/src/outcome_test.rs
   crates/nycode-agent/src/policy/hooks/hooks_test.rs
