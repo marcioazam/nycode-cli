@@ -33,12 +33,20 @@ impl Tool for Ls {
                 "path": {
                     "type": "string",
                     "description": "Diretorio a listar, relativo a raiz. Padrao: a raiz"
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Maximo de entradas devolvidas. Padrao: 500"
                 }
             }
         })
     }
 
     async fn execute(&self, input: Value, ctx: &ToolContext) -> ToolOutput {
+        let cap = match super::cap::of(&input, MAX_ENTRIES) {
+            Ok(cap) => cap,
+            Err(err) => return err,
+        };
         let requested = input.get("path").and_then(Value::as_str).unwrap_or(".");
         let dir = match ctx.resolve(requested) {
             Ok(path) => path,
@@ -49,7 +57,7 @@ impl Tool for Ls {
             return ToolOutput::error(format!("`{requested}` nao e um diretorio"));
         }
 
-        let Some((listed, total)) = listing(&dir, MAX_ENTRIES) else {
+        let Some((listed, total)) = listing(&dir, cap) else {
             return ToolOutput::error(format!("nao foi possivel listar `{requested}`"));
         };
 
@@ -61,8 +69,8 @@ impl Tool for Ls {
         for line in &listed {
             let _ = writeln!(out, "{line}");
         }
-        if total > MAX_ENTRIES {
-            let _ = write!(out, "\n[truncado em {MAX_ENTRIES} de {total} entradas]");
+        if total > cap {
+            let _ = write!(out, "\n[truncado em {cap} de {total} entradas]");
         }
         ToolOutput::ok(out)
     }
@@ -249,5 +257,16 @@ mod tests {
 
         let out = Ls.execute(json!({}), &ctx).await;
         assert!(out.content.contains("truncado"), "{}", out.content);
+    }
+    #[tokio::test]
+    async fn a_per_call_limit_caps_below_the_default() {
+        let dir = tempfile::tempdir().unwrap();
+        for i in 0..5 {
+            std::fs::write(dir.path().join(format!("a{i}.txt")), "").unwrap();
+        }
+        let ctx = ToolContext::new(dir.path()).unwrap();
+        let out = Ls.execute(json!({ "limit": 2 }), &ctx).await;
+        let hits = out.content.lines().filter(|l| l.contains(".txt")).count();
+        assert_eq!(hits, 2, "{}", out.content);
     }
 }

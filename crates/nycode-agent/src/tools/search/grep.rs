@@ -67,6 +67,10 @@ impl Tool for Grep {
                     "type": "integer",
                     "description": "Quantas linhas mostrar antes e depois de cada casamento, \
                                     ate 5. Padrao: 0"
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Maximo de linhas devolvidas. Padrao: 200"
                 }
             },
             "required": ["pattern"]
@@ -85,10 +89,14 @@ impl Tool for Grep {
             Ok(root) => root,
             Err(message) => return ToolOutput::error(message),
         };
-        let glob = match input.get("glob").and_then(Value::as_str).map(engine::glob) {
-            Some(Ok(glob)) => Some(glob),
-            Some(Err(message)) => return ToolOutput::error(message),
-            None => None,
+        let glob = match input
+            .get("glob")
+            .and_then(Value::as_str)
+            .map(engine::glob)
+            .transpose()
+        {
+            Ok(glob) => glob,
+            Err(message) => return ToolOutput::error(message),
         };
         let case_sensitive = input
             .get("case_sensitive")
@@ -105,6 +113,10 @@ impl Tool for Grep {
         let context = usize::try_from(input.get("context").and_then(Value::as_u64).unwrap_or(0))
             .unwrap_or(MAX_CONTEXT)
             .min(MAX_CONTEXT);
+        let cap = match super::cap::of(&input, MAX_MATCHES) {
+            Ok(cap) => cap,
+            Err(err) => return err,
+        };
 
         let matcher = match RegexMatcherBuilder::new()
             .case_insensitive(!case_sensitive)
@@ -151,13 +163,13 @@ impl Tool for Grep {
                 relative: &found.relative,
                 hits: &mut hits,
                 lines: &mut lines,
-                cap: MAX_MATCHES,
+                cap,
             };
             // Uma falha de leitura é um arquivo que sumiu ou que não é legível;
             // parar a busca por isso perderia tudo que já foi encontrado.
             let _ = searcher.search_path(&matcher, &found.path, sink);
 
-            if lines >= MAX_MATCHES {
+            if lines >= cap {
                 truncated = true;
                 break;
             }
@@ -173,7 +185,7 @@ impl Tool for Grep {
             // modelo repete a mesma busca esperando resposta diferente.
             let _ = write!(
                 out,
-                "\n[{MAX_MATCHES} linhas, o teto; restrinja com `path` ou `glob`, \
+                "\n[{cap} linhas, o teto; restrinja com `path` ou `glob`, \
                  reduza `context`, ou torne o padrao mais especifico]"
             );
         }
@@ -429,5 +441,17 @@ mod tests {
             out.content.lines().filter(|l| l.contains("muitos")).count(),
             MAX_MATCHES
         );
+    }
+
+    #[tokio::test]
+    async fn a_per_call_limit_caps_below_the_default() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("m.txt"), "alvo\nalvo\nalvo\n").unwrap();
+        let ctx = ToolContext::new(dir.path()).unwrap();
+        let out = Grep
+            .execute(json!({ "pattern": "alvo", "limit": 1 }), &ctx)
+            .await;
+        let hits = out.content.lines().filter(|l| l.contains("m.txt")).count();
+        assert_eq!(hits, 1, "{}", out.content);
     }
 }

@@ -24,15 +24,8 @@ impl Agent {
                 extension: tool.is_extension(),
             })
             .collect();
-        // Ordem estavel: um catalogo que muda de ordem entre execucoes invalida
-        // o cache de prompt do backend sem nenhum ganho.
-        //
-        // Estaveis primeiro, e so depois as extensoes. Ordenar tudo junto por
-        // nome punha uma ferramenta de servidor no meio do prefixo — um
-        // `docs__search` cai entre `bash` e `edit` —, entao conectar um servidor
-        // deslocava o resto e o ponto de corte do cache passava a cobrir algo
-        // diferente. Com a particao, uma extensao nova so aparece depois do
-        // corte, e o prefixo cacheado nao muda (NFR-7).
+        // Estaveis primeiro, extensoes depois: uma ferramenta de servidor no
+        // meio do prefixo deslocaria o ponto de corte do cache (NFR-7).
         specs.sort_by(|a, b| a.extension.cmp(&b.extension).then(a.name.cmp(&b.name)));
         specs
     }
@@ -48,6 +41,7 @@ impl Agent {
     ) -> RoundEnd {
         let mut results = Vec::with_capacity(calls.len());
         let mut end = RoundEnd::Complete;
+        let mut stops = Vec::with_capacity(calls.len());
 
         for call in calls {
             if end == RoundEnd::Cancelled {
@@ -67,10 +61,13 @@ impl Agent {
                 output = self.execute(call) => output,
             };
             observer.on_tool_end(&call.name, &output);
-
+            stops.push(output.terminate);
             results.extend(output.into_blocks(&call.id));
         }
 
+        if end == RoundEnd::Complete && !stops.is_empty() && stops.iter().all(|stop| *stop) {
+            end = RoundEnd::Stopped;
+        }
         self.record(Message::tool_results(results));
         end
     }
@@ -128,7 +125,7 @@ impl Agent {
     /// assimetria com `pre-tool-use` é real e deliberada: lá a falha aberta
     /// deixa passar uma chamada que talvez devesse ser barrada, aqui não há o
     /// que deixar passar.
-    async fn observed(&self, call: &ToolCall, output: &ToolOutput) {
+    async fn observed(&self, call: &ToolCall, output: &mut ToolOutput) {
         use crate::policy::hooks::{Event, Payload};
 
         // Sem hook não se monta o payload: ele carrega uma cópia da saída da
@@ -139,13 +136,16 @@ impl Agent {
         }
 
         let payload = Payload::for_result(&call.name, &call.input, output, self.ctx.root());
-        if let Some(response) = self.hooks.fire(Event::PostToolUse, &payload).await
-            && response.is_denial()
-        {
-            tracing::warn!(
-                tool = %call.name,
-                "post-tool-use respondeu `deny`; so `pre-tool-use` veta, e a ferramenta ja rodou"
-            );
+        if let Some(response) = self.hooks.fire(Event::PostToolUse, &payload).await {
+            if response.is_denial() {
+                tracing::warn!(
+                    tool = %call.name,
+                    "post-tool-use respondeu `deny`; so `pre-tool-use` veta, e a ferramenta ja rodou"
+                );
+            }
+            if response.terminate {
+                output.stop();
+            }
         }
     }
 
@@ -218,8 +218,8 @@ impl Agent {
         // rodado de fato. Um veto, uma recusa do gate ou um nome desconhecido
         // saem acima sem passar por aqui: anunciar uso de ferramenta onde não
         // houve uso faria um hook de auditoria registrar o que não aconteceu.
-        let output = tool.execute(input, &self.ctx).await;
-        self.observed(call, &output).await;
+        let mut output = tool.execute(input, &self.ctx).await;
+        self.observed(call, &mut output).await;
         output
     }
 }
