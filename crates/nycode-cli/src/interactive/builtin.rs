@@ -23,18 +23,13 @@ pub enum Effect {
     /// Encerrar a sessão.
     Quit,
     /// Passar a gravar a partir deste registro.
-    Fork {
-        record_id: String,
-        shown: String,
-    },
+    Fork { record_id: String, shown: String },
     /// Compactar o histórico agora.
     Compact,
     /// Entrar ou sair do modo de planejamento.
     TogglePlan,
     /// Trocar de modelo, mantendo a conversa.
     SwitchModel(String),
-    NewSession,
-    Reload,
 }
 
 /// Nome e resumo de cada embutido, para o `/help`.
@@ -81,8 +76,8 @@ pub fn resolve(line: &str, store: &Store, id: &str, available: &Available<'_>) -
         "export" => Effect::Show(export(store, id)),
         "session" => Effect::Show(stats(store, id)),
         "copy" => Effect::Show(copy_last(store, id)),
-        "new" => Effect::NewSession,
-        "reload" => Effect::Reload,
+        "new" => Effect::Show(format!("\nnova sessao: {id}\n\n")),
+        "reload" => Effect::Show("\nrecursos recarregados\n\n".to_owned()),
         "quit" | "exit" => Effect::Quit,
         _ => Effect::Passthrough,
     }

@@ -306,6 +306,7 @@ impl Session {
         E: Stream<Item = std::io::Result<Event>> + Unpin,
     {
         surface.emit(&format!("\n{PROMPT}{typed}\n\n"))?;
+        self.apply_if_session_op(&typed, surface.width())?;
 
         let names: Vec<String> = self.commands.iter().map(|c| c.name.clone()).collect();
         let available = builtin::Available {
@@ -357,21 +358,6 @@ impl Session {
                 surface.draw(&self.panel.frame(surface.width()))?;
                 return Ok(());
             }
-            builtin::Effect::NewSession => {
-                self.id = Store::new_id();
-                self.branch = None;
-                self.turns.replace_history(Vec::new());
-                self.panel.retarget(self.id.clone());
-                surface.emit(&format!("\nnova sessao: {}\n\n", self.id))?;
-                surface.draw(&self.panel.frame(surface.width()))?;
-                return Ok(());
-            }
-            builtin::Effect::Reload => {
-                self.reload_resources(surface.width())?;
-                surface.emit("\nrecursos recarregados\n\n")?;
-                surface.draw(&self.panel.frame(surface.width()))?;
-                return Ok(());
-            }
         }
 
         let prompt = match nycode_agent::context::commands::resolve(&typed, &self.commands) {
@@ -420,6 +406,24 @@ impl Session {
 
     fn next_follow_up(&mut self) -> Option<String> {
         self.follow_up.as_mut()?.try_recv().ok()
+    }
+
+    fn apply_if_session_op(&mut self, typed: &str, width: usize) -> anyhow::Result<()> {
+        let name = typed.trim().strip_prefix('/').map(|rest| {
+            rest.split_once(char::is_whitespace)
+                .map_or(rest, |(n, _)| n)
+        });
+        match name {
+            Some("new") => {
+                self.id = Store::new_id();
+                self.branch = None;
+                self.turns.replace_history(Vec::new());
+                self.panel.retarget(self.id.clone());
+            }
+            Some("reload") => self.reload_resources(width)?,
+            _ => {}
+        }
+        Ok(())
     }
 
     /// Grava a partir de outro ponto e registra o que o ramo abandonado fez.
