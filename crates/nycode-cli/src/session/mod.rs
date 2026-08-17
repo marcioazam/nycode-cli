@@ -191,16 +191,12 @@ pub async fn prepare(cli: &Cli) -> anyhow::Result<Prepared> {
     for message in history {
         agent = agent.with_message(message);
     }
-    for tool in nycode_agent::tools::all_within(settings.command_timeout) {
-        agent = agent.with_tool(tool);
-    }
 
     // O subagente herda a concessão do pai: um filho que pudesse mais que quem
     // o chamou seria uma escada de privilégio (FR-15).
     let grant = crate::invocation::grant::Grant::from_flags(cli.allow_writes, cli.allow_all);
-    agent = agent.with_tool(Arc::new(
-        nycode_agent::tools::Task::new(backend).with_gate(move || grant.gate()),
-    ));
+    agent = crate::invocation::catalog::add_natives(agent, cli, settings.command_timeout);
+    agent = crate::invocation::catalog::add_task(agent, cli, backend, grant);
 
     for warning in
         warnings::startup_warnings(warnings::bash_is_reachable(grant, cli.prompt.is_none()))
@@ -215,9 +211,8 @@ pub async fn prepare(cli: &Cli) -> anyhow::Result<Prepared> {
     phases.mark("agente");
 
     let (mcp, extra) = attach_mcp(&root, cli.prompt.is_none()).await;
-    for tool in extra {
-        agent = agent.with_tool(tool);
-    }
+    crate::invocation::catalog::check_requested(cli, &extra)?;
+    agent = crate::invocation::catalog::add_extensions(agent, cli, extra);
     phases.mark("mcp");
 
     agent = agent.with_gate(grant.gate());

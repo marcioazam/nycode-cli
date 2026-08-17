@@ -1,10 +1,9 @@
 //! O que o usuário pediu na linha de comando, e o que isso decide.
 //!
-//! Os três módulos mudam juntos e é por isso que moram juntos: uma flag nova
-//! entra em [`cli`], e a pergunta seguinte é sempre para qual rota ela leva
-//! ([`route`]) e o que ela permite ao agente ([`grant`]). Separá-los por tipo
-//! técnico espalharia uma única decisão por três diretórios.
+//! Uma flag nova entra em [`cli`]: rota ([`route`]), permissão ([`grant`]),
+//! catálogo oferecido ao modelo ([`catalog`]).
 
+pub mod catalog;
 pub mod cli;
 pub mod grant;
 pub mod route;
