@@ -269,6 +269,20 @@ mod tests {
     }
 
     #[test]
+    fn the_kept_tail_stops_at_the_character_cap() {
+        // Vinte linhas de 200 caracteres enchem o teto na última; a vigésima
+        // primeira já não cabe. `>=` tiraria a que completa o teto; `==` só
+        // pararia num encaixe exato e deixaria a transbordante entrar.
+        let tail: Vec<Message> = (0..21)
+            .map(|i| Message::user(format!("m{i:02}{}", "y".repeat(188))))
+            .collect();
+        assert_eq!(preview(&tail[0]).len(), 200);
+        let marker = build(&Touched::default(), None, &tail);
+        assert!(marker.contains("m19"), "{marker}");
+        assert!(!marker.contains("m20"), "{marker}");
+    }
+
+    #[test]
     fn a_compaction_elision_is_recognised_as_the_rebuild_stop() {
         assert!(is_marker(&Message::user(ELISION)));
         assert!(!is_marker(&Message::user("pedido comum")));
