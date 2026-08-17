@@ -50,8 +50,18 @@ pub struct Touched {
 /// acabara de economizar, gasto de novo no turno seguinte. Carregar os caminhos
 /// adiante custa uma linha por arquivo e evita uma chamada de ferramenta por
 /// arquivo.
-pub fn build(touched: &Touched, summary: Option<&str>) -> String {
-    let mut out = ELISION.to_owned();
+pub fn build(touched: &Touched, summary: Option<&str>, tail: &[Message]) -> String {
+    with_header(ELISION, touched, summary, tail)
+}
+
+/// O mesmo conteúdo, com outro cabeçalho — ramo abandonado não é compactação.
+pub(super) fn with_header(
+    header: &str,
+    touched: &Touched,
+    summary: Option<&str>,
+    tail: &[Message],
+) -> String {
+    let mut out = header.to_owned();
     // O resumo vem antes das listas: é o que responde "onde eu estava", e as
     // listas respondem "no que eu mexi". Ler o segundo sem o primeiro faz o
     // modelo reabrir arquivo para descobrir por quê.
@@ -60,19 +70,43 @@ pub fn build(touched: &Touched, summary: Option<&str>) -> String {
     }
     append_list(&mut out, READ_OPEN, READ_CLOSE, &touched.read);
     append_list(&mut out, WRITTEN_OPEN, WRITTEN_CLOSE, &touched.modified);
+    append_tail(&mut out, tail);
     out
+}
+
+/// Se esta mensagem é o marcador de compactação.
+///
+/// Reconstruir o contexto para nele: o que veio antes já está dentro. Um aviso
+/// de ramo abandonado não conta — o prefixo compartilhado continua no caminho.
+#[must_use]
+pub fn is_marker(message: &Message) -> bool {
+    message.content.iter().any(|block| {
+        matches!(
+            block,
+            ContentBlock::Text { text } if text.contains("[historico anterior compactado")
+        )
+    })
 }
 
 /// O que se pede ao modelo para resumir o trecho que sai.
 ///
-/// Pede o estado e não a narrativa: o que a conversa descobriu, o que decidiu e
-/// o que ficou por fazer. Um resumo que reconta a ordem dos turnos gasta janela
-/// para dizer o que o histórico recente já diz.
+/// Seções nomeadas e nesta ordem: um resumo em prosa livre muda o prefixo a
+/// cada compactação e quebra o cache (NFR-7).
 pub const SUMMARY_PROMPT: &str = "Resuma o trecho de conversa acima para que outro \
-     agente possa continuar de onde ele parou. Escreva no maximo dez linhas, em \
-     topicos, cobrindo: o que foi descoberto sobre o codigo, que decisoes foram \
-     tomadas e por que, e o que ficou por fazer. Nao reconte a ordem dos turnos e \
-     nao repita conteudo de arquivo. Responda so com o resumo.";
+     agente possa continuar de onde ele parou. Use exatamente estas secoes, nesta \
+     ordem, em markdown:\n\
+     ## Objetivo\n\
+     ## Restricoes\n\
+     ## Progresso\n\
+     ## Decisoes\n\
+     ## Proximos passos\n\
+     ## Contexto critico\n\
+     Cada secao em no maximo tres linhas. Nao reconte a ordem dos turnos e nao \
+     repita conteudo de arquivo. Responda so com as secoes.";
+
+const TAIL_OPEN: &str = "<cauda-retida>";
+const TAIL_CLOSE: &str = "</cauda-retida>";
+const TAIL_CHAR_CAP: usize = 4_000;
 
 fn append_list(out: &mut String, open: &str, close: &str, paths: &BTreeSet<String>) {
     if paths.is_empty() {
@@ -86,6 +120,40 @@ fn append_list(out: &mut String, open: &str, close: &str, paths: &BTreeSet<Strin
         let _ = writeln!(out, "[e mais {}]", paths.len() - MAX_LISTED);
     }
     out.push_str(close);
+}
+
+fn append_tail(out: &mut String, tail: &[Message]) {
+    if tail.is_empty() {
+        return;
+    }
+    let _ = write!(out, "\n{TAIL_OPEN}\n");
+    let mut used = 0;
+    for message in tail {
+        let line = preview(message);
+        if used + line.len() > TAIL_CHAR_CAP {
+            break;
+        }
+        let _ = writeln!(out, "{line}");
+        used += line.len();
+    }
+    out.push_str(TAIL_CLOSE);
+}
+
+fn preview(message: &Message) -> String {
+    let who = match message.role {
+        nycode_ai::anthropic::Role::User => "usuario",
+        nycode_ai::anthropic::Role::Assistant => "nycode",
+    };
+    let text = message
+        .content
+        .iter()
+        .find_map(|block| match block {
+            ContentBlock::Text { text } => Some(text.as_str()),
+            _ => None,
+        })
+        .unwrap_or("...");
+    let text = text.chars().take(200).collect::<String>();
+    format!("{who}: {text}")
 }
 
 /// Extrai do trecho descartado quais arquivos foram lidos e quais mudaram.
@@ -164,6 +232,45 @@ mod tests {
 
     #[test]
     fn a_marker_without_anything_to_say_is_just_the_elision() {
-        assert_eq!(build(&Touched::default(), None), ELISION);
+        assert_eq!(build(&Touched::default(), None, &[]), ELISION);
+    }
+
+    #[test]
+    fn the_prompt_names_the_sections_in_a_stable_order() {
+        let sections = [
+            "## Objetivo",
+            "## Restricoes",
+            "## Progresso",
+            "## Decisoes",
+            "## Proximos passos",
+            "## Contexto critico",
+        ];
+        let positions: Vec<usize> = sections
+            .iter()
+            .filter_map(|section| SUMMARY_PROMPT.find(section))
+            .collect();
+        assert_eq!(
+            positions.len(),
+            sections.len(),
+            "faltou secao em {SUMMARY_PROMPT}"
+        );
+        assert!(
+            positions.windows(2).all(|pair| pair[0] < pair[1]),
+            "secoes fora de ordem em {SUMMARY_PROMPT}"
+        );
+    }
+
+    #[test]
+    fn the_marker_carries_the_kept_tail() {
+        let tail = [Message::user("ainda vale")];
+        let marker = build(&Touched::default(), None, &tail);
+        assert!(marker.contains("ainda vale"), "{marker}");
+        assert!(marker.contains("<cauda-retida>"), "{marker}");
+    }
+
+    #[test]
+    fn a_compaction_elision_is_recognised_as_the_rebuild_stop() {
+        assert!(is_marker(&Message::user(ELISION)));
+        assert!(!is_marker(&Message::user("pedido comum")));
     }
 }

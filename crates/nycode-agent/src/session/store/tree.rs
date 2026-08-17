@@ -57,6 +57,9 @@ pub(super) fn chain_to(records: &[Record], record_id: &str) -> Vec<Message> {
             break;
         };
         chain.push(record.message.clone());
+        if crate::session::compaction::is_marker(&record.message) {
+            break;
+        }
         if chain.len() > records.len() {
             break;
         }
