@@ -87,6 +87,23 @@ mod tests {
     fn a_stale_index_falls_back_to_estimating_everything() {
         let history = vec![Message::user("aa")];
         assert_eq!(occupancy(&history, Some((9_000, 3))), 1);
+        // Índice igual ao comprimento: não é a última mensagem, é depois dela.
+        assert_eq!(occupancy(&history, Some((9_000, 1))), 1);
+    }
+
+    #[test]
+    fn a_tool_call_counts_name_and_arguments_together() {
+        let history = vec![Message::assistant(vec![ContentBlock::ToolUse {
+            id: "t1".into(),
+            name: "read".into(),
+            input: serde_json::json!({"path": "a.rs"}),
+        }])];
+        let chars = 4 + serde_json::json!({"path": "a.rs"}).to_string().len() as u64;
+        assert_eq!(occupancy(&history, None), chars.div_ceil(4));
+        assert_ne!(
+            chars.div_ceil(4),
+            (4 * serde_json::json!({"path": "a.rs"}).to_string().len() as u64).div_ceil(4)
+        );
     }
 
     #[test]
