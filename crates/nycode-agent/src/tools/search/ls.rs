@@ -268,5 +268,7 @@ mod tests {
         let out = Ls.execute(json!({ "limit": 2 }), &ctx).await;
         let hits = out.content.lines().filter(|l| l.contains(".txt")).count();
         assert_eq!(hits, 2, "{}", out.content);
+        let exact = Ls.execute(json!({ "limit": 5 }), &ctx).await;
+        assert!(!exact.content.contains("truncado"), "{}", exact.content);
     }
 }

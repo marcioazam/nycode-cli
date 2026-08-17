@@ -207,5 +207,9 @@ mod tests {
             .await;
         let hits = out.content.lines().filter(|l| l.starts_with('a')).count();
         assert_eq!(hits, 2, "{}", out.content);
+        let exact = Find
+            .execute(json!({ "pattern": "*.txt", "limit": 5 }), &ctx)
+            .await;
+        assert!(!exact.content.contains("mostrando"), "{}", exact.content);
     }
 }
