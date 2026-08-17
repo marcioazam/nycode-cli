@@ -408,6 +408,7 @@ mod tests {
         let required = schema["required"].as_array().unwrap();
         assert_eq!(required, &["path"]);
         assert_eq!(Edit.name(), "edit");
+        assert!(Edit.description().contains("replacements"));
     }
 
     #[tokio::test]

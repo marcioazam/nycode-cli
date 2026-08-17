@@ -122,7 +122,7 @@ impl Tool for Read {
 }
 
 /// Teto de uma imagem lida como ferramenta — o mesmo do anexo ao pedido.
-const MAX_IMAGE_BYTES: usize = 5 * 1024 * 1024;
+const MAX_IMAGE_BYTES: usize = 5_242_880;
 
 const RECOGNIZED: &[(&[u8], &str)] = &[
     (&[0x89, b'P', b'N', b'G'], "image/png"),
@@ -251,7 +251,8 @@ mod tests {
         assert!(!out.is_error, "{}", out.content);
         let image = out.image.expect("read de imagem precisa carregar o anexo");
         assert_eq!(image.media_type, "image/png");
-        assert_eq!(image.data, encode(&png));
+        assert_eq!(image.data, "iVBORw0KGgpjb250ZXVkbyBmYWxzbyBkZSBpbWFnZW0=");
+        assert_eq!(recognize(b"RIFF\0\0\0\0WAVE"), None);
     }
 
     #[tokio::test]
