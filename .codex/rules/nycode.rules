@@ -1,0 +1,46 @@
+# gerado por scripts/agent-harness/gen-adapters.sh; nao edite
+
+prefix_rule(
+  pattern = ["git", "commit", "--no-verify"],
+  decision = "forbidden",
+  justification = "bypass do hook versionado (AGENTS.md CI local)",
+)
+
+prefix_rule(
+  pattern = ["git", "push", "--force"],
+  decision = "forbidden",
+  justification = "force-push (ADR-0034)",
+)
+
+prefix_rule(
+  pattern = ["git", "push", "-f"],
+  decision = "forbidden",
+  justification = "force-push curto (ADR-0034)",
+)
+
+prefix_rule(
+  pattern = ["git", "push", "-f"],
+  decision = "forbidden",
+  justification = "force-push curto no fim (ADR-0034)",
+)
+
+prefix_rule(
+  pattern = ["curl", "bash"],
+  decision = "forbidden",
+  justification = "pipeline sem digest (NFR-8)",
+)
+
+prefix_rule(
+  pattern = ["wget", "bash"],
+  decision = "forbidden",
+  justification = "pipeline sem digest (NFR-8)",
+)
+
+# test-map: write test_map — so veto.sh (nao e argv)
+# perf-baseline: write scripts/perf-baseline.txt — so veto.sh (nao e argv)
+# complexity-baseline: write scripts/complexity-baseline.txt — so veto.sh (nao e argv)
+# file-length-baseline: write scripts/file-length-baseline.txt — so veto.sh (nao e argv)
+# coverage-exemptions: write scripts/coverage-exemptions.txt — so veto.sh (nao e argv)
+# waiver-registry: write scripts/waiver/registry.txt — so veto.sh (nao e argv)
+# read-env: read .env — so veto.sh (nao e argv)
+# read-env-star: read .env.* — so veto.sh (nao e argv)
