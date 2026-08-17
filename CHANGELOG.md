@@ -6,6 +6,13 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ## [Não lançado]
 
+### Alterado
+
+- **O ROADMAP deixa de tratar a paridade real como bloqueada.** A Frente 0
+  fechou o instrumento em modo completo no CI; o que resta das Ondas 2 a 5
+  da spec 002 é produto. `ARCHITECTURE.md` deixa de chamar a TUI de FR-1
+  pendente — o renderizador já está no binário desde a Onda A.
+
 ### Adicionado
 
 - **O job `parity` do CI obtém a referência com digest conferido e compara
