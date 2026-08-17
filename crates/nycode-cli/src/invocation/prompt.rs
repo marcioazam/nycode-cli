@@ -196,4 +196,22 @@ mod tests {
         let err = from_sources(&cli_with(None, None), dir.path(), None).unwrap_err();
         assert!(err.to_string().contains("SYSTEM.md"), "{err}");
     }
+
+    #[test]
+    fn an_empty_append_does_not_add_a_blank_section() {
+        let dir = tempfile::tempdir().unwrap();
+        assert_eq!(
+            from_sources(&cli_with(Some("base"), Some("")), dir.path(), None).unwrap(),
+            "base"
+        );
+    }
+
+    #[test]
+    fn a_file_under_the_byte_ceiling_is_not_marked_truncated() {
+        let dir = tempfile::tempdir().unwrap();
+        write(dir.path(), ".nycode/SYSTEM.md", &"x".repeat(2000));
+        let prompt = from_sources(&cli_with(None, None), dir.path(), None).unwrap();
+        assert_eq!(prompt.len(), 2000);
+        assert!(!prompt.contains("[truncado]"));
+    }
 }
