@@ -5,7 +5,7 @@ ordem em que rodam. Uma linha só muda para **fechado** com evidência verificad
 nunca presumida — e a evidência é o comando cuja saída foi lida, não a intenção
 de rodá-lo.
 
-Estado em 2026-08-13.
+Estado em 2026-08-16.
 
 ## Histórias
 

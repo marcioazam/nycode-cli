@@ -45,24 +45,21 @@ hooks, subagentes, plan mode, troca de modelo e entrada de imagem.
   resolve "quero levar esta conversa para outro lugar". A volta exige decidir o
   que fazer com um histórico que referencia arquivos que mudaram, e isso é uma
   spec, não um comando.
-- **Paridade contra o harness de referência.** O job existe e falha fechado.
-  **A causa registrada aqui — "espera um gateway configurado" — deixou de ser
-  verdade em 2026-08-13**, quando o `nycode-parity-fixture` passou a servir um
-  gateway determinístico e local. O bloqueio real é outro, e foi descoberto ao
-  rodar: a referência não lê `ANTHROPIC_BASE_URL`, então apontá-la ao gateway
-  local não funciona pelo mecanismo que o harness usava. Está registrado com a
-  evidência na
+- **Paridade contra o harness de referência.** O job existe, falha fechado, e
+  o CI compara em modo completo: obtém a referência do commit que o NOTICE
+  fixa, com digest conferido ([ADR-0035](../architecture/decisions/0035-a-referencia-de-paridade-e-apontada-por-models-json.md)).
+  O que resta das Ondas 2 a 5 é produto, não instrumento. A evidência do
+  destravamento vive na
   [rastreabilidade da spec 002](../specs/002-paridade-e-sota-2026/traceability.md),
-  seção "Paridade real". Até destravar, o que trava é a suíte do próprio
-  harness, que garante que ele continua capaz de acusar divergência.
+  seção "Paridade real".
 
 ## Épico de paridade e SOTA 2026 — em andamento
 
 A [spec 002](../specs/002-paridade-e-sota-2026/spec.md) triou sessenta deltas
 entre este repositório e o harness de referência em quatro baldes, e o
 [plano](../specs/002-paridade-e-sota-2026/plan.md) os distribuiu em seis ondas.
-As Ondas 0 e 1 fecharam; as Ondas 2 a 5 estão abertas, e a paridade real está
-bloqueada com causa nomeada.
+As Ondas 0 e 1 e a Frente 0 (paridade em modo completo) fecharam; as Ondas 2
+a 5 estão abertas.
 
 **O estado por onda e por delta vive na
 [rastreabilidade](../specs/002-paridade-e-sota-2026/traceability.md), e não
@@ -83,10 +80,9 @@ transformação de mensagem precede a compactação por limiar, porque compactar
 histórico que ainda contém chamada de ferramenta órfã produz um resumo que
 descreve um estado que nunca existiu — falha silenciosa, não erro de build.
 
-Antes de qualquer uma delas vem destravar a paridade real, pela razão que o
-plano dá: o NFR-6 é a regra que o épico inteiro serve, e fechar mais uma onda
-sem instrumento em modo completo repetiria a classe de defeito que a spec 002
-foi escrita para eliminar.
+A Frente 0 destravou o instrumento em modo completo. Fechar onda de produto
+sem ele repetiria a classe de defeito que a spec 002 foi escrita para
+eliminar; com ele no CI, a próxima entrega é a Onda 2.
 
 ## Depois
 
