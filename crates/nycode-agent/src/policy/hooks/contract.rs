@@ -160,6 +160,9 @@ pub struct Response {
     /// A razão que chega ao modelo.
     #[serde(default)]
     pub reason: Option<String>,
+    /// Encerra o turno depois desta rodada, se todas as chamadas pedirem (FR-17).
+    #[serde(default)]
+    pub terminate: bool,
 }
 
 impl Response {
