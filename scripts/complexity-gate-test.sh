@@ -102,6 +102,11 @@ n="$(evaluate "${json}")"
 check_count 1 "${n}" "ciclomatica acima do teto, sem baseline, reprova"
 
 reset_baseline
+json="$(metrics_json "${WORK}/3b.json" "crates/x/src/a.rs complexa 4 11")"
+n="$(evaluate "${json}")"
+check_count 1 "${n}" "ciclomatica 11 sem baseline reprova (teto GATE-06 e 10)"
+
+reset_baseline
 read_baseline "$(baseline "crates/x/src/legado.rs velha 20 10")"
 json="$(metrics_json "${WORK}/4.json" "crates/x/src/legado.rs velha 20 10")"
 n="$(evaluate "${json}")"

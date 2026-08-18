@@ -5,7 +5,7 @@
 # Ratchet, mesmo principio do file-length-baseline.txt (GATE-07/RAT-04): os
 # dois numeros aqui sao os valores exatos no dia em que o gate nasceu -- se a
 # funcao crescer alem de qualquer um dos dois, o gate reprova mesmo estando
-# na lista. Se a funcao encolher para dentro dos dois tetos (15/15), remova a
+# na lista. Se a funcao encolher para dentro dos dois tetos (15/10), remova a
 # linha; o gate reprova sozinho se a entrada ficar desatualizada por sobra.
 #
 # Nao e' below-floor: nao dispensa ninguem de encolher, so evita quebrar o CI
@@ -23,3 +23,14 @@ crates/nycode-agent/src/tool/repair.rs of 16 13
 crates/nycode-cli/src/interactive.rs take_turn 8 17
 crates/nycode-cli/src/interactive/panel.rs step 11 17
 crates/nycode-tui/src/keys.rs translate 3 25
+crates/nycode-agent/src/tool/sanitize.rs skip_escape 15 11
+crates/nycode-agent/src/tools/search/grep.rs execute 13 15
+crates/nycode-ai/src/openai/chat.rs convert 13 14
+crates/nycode-ai/src/openai/chat_stream.rs decode 12 11
+crates/nycode-agent/src/tools/read.rs execute 11 13
+crates/nycode-agent/src/tools/search/find.rs execute 10 14
+crates/nycode-parity/src/transcript.rs diff 10 11
+crates/nycode-parity/src/main.rs parse 8 13
+crates/nycode-ai/src/transport/retry.rs parse_imf_fixdate 6 13
+crates/nycode-cli/src/interactive/builtin.rs resolve 1 14
+crates/nycode-tui/src/editor.rs apply 1 14

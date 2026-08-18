@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# Atribuicao (AI-07..09). Falha aberta: erro de parse nao bloqueia o commit;
+# o CI (scripts/attribution/gate.sh) e o gate.
+#
+# Detecta ambiente de agente e acrescenta Assisted-by se faltar. Nunca
+# adiciona Signed-off-by. Remove Co-Authored-By que nomeia modelo.
+set -u
+
+msg="${1:-}"
+[[ -n "${msg}" && -f "${msg}" ]] || exit 0
+
+tmp="$(mktemp)" || exit 0
+trap 'rm -f "${tmp}"' EXIT
+
+python3 - "${msg}" "${tmp}" <<'PY' || exit 0
+import os, re, sys
+
+src, dst = sys.argv[1], sys.argv[2]
+try:
+    text = open(src, encoding="utf-8").read()
+except OSError:
+    sys.exit(0)
+
+model = re.compile(
+    r"^Co-Authored-By:.*(claude|chatgpt|gpt-|grok|composer|cursor|copilot|gemini|sonnet|opus|codex)",
+    re.I | re.M,
+)
+text = model.sub("", text)
+
+agent = os.environ.get("NYCODE_ASSISTED_BY", "").strip()
+if not agent and os.environ.get("CLAUDECODE"):
+    agent = "claude:" + os.environ.get("ANTHROPIC_MODEL", "unknown")
+if not agent and (os.environ.get("CURSOR_AGENT") or os.environ.get("CURSOR_TRACE_ID")):
+    agent = "cursor:" + os.environ.get("CURSOR_MODEL", "unknown")
+
+if agent and not re.search(r"^Assisted-by:", text, re.M):
+    if not text.endswith("\n"):
+        text += "\n"
+    text += f"\nAssisted-by: {agent}\n"
+
+open(dst, "w", encoding="utf-8").write(text)
+PY
+
+if [[ -s "${tmp}" ]]; then
+  cat "${tmp}" >"${msg}" || exit 0
+fi
+exit 0
