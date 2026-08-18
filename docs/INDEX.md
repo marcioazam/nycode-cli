@@ -15,6 +15,7 @@ uma diferença tolerada.
 | [`sources/`](../sources/README.md) | Material bruto das pesquisas, com as passagens efetivamente usadas |
 | [`PRD.md`](../PRD.md) | Produto: usuários, métricas de sucesso, estado de entrega por requisito |
 | [`requirements/REQUIREMENTS.md`](requirements/REQUIREMENTS.md) | Requisitos consolidados, com os invariantes travados no CI |
+| [`CONFORMANCE-MATRIX.md`](CONFORMANCE-MATRIX.md) | Estado de migração para SOTA-2026 v1.4.0 por FR e perfil |
 | [`architecture/ARCHITECTURE.md`](architecture/ARCHITECTURE.md) | Estrutura em crates, fluxo de execução, conceitos transversais |
 | [`architecture/decisions/`](architecture/decisions/README.md) | ADRs: decisões significativas e o porquê delas |
 | [`product/ROADMAP.md`](product/ROADMAP.md) | Ondas de trabalho: agora, próximo, depois |
@@ -71,7 +72,7 @@ Não são aspirações; o build quebra quando qualquer um deles regride.
 | Nenhum mutante sobrevivente nas linhas tocadas (`GATE-04`), só no job `mutation` em PR | 0 mutantes | [`scripts/mutation-gate.sh`](../scripts/mutation-gate.sh) |
 | [`test_map`](../test_map) em dia (`AI-10`) | obrigatório | [`scripts/gen-test-map.sh --check`](../scripts/gen-test-map.sh) |
 | Grafo de dependência entre crates bate com a allowlist (`GATE-15`) | 0 arestas não declaradas | [`scripts/architecture-boundary-gate.sh`](../scripts/architecture-boundary-gate.sh) |
-| Complexidade cognitiva/ciclomática por função, com ratchet (`GATE-05`/`GATE-06`) | 15 / 15, ou o baseline registrado | [`scripts/complexity-gate.sh`](../scripts/complexity-gate.sh) |
+| Complexidade cognitiva/ciclomática por função, com ratchet (`GATE-05`/`GATE-06`) | conforme `GATE-05`/`GATE-06`, ou o baseline registrado | [`scripts/complexity-gate.sh`](../scripts/complexity-gate.sh) |
 | Duplicação de código (`GATE-08`) | 5% de linhas | [`scripts/duplication-gate.sh`](../scripts/duplication-gate.sh) |
 | Startup da sessão montada (NFR-1) | 15.000 µs | [`scripts/perf-gate.sh`](../scripts/perf-gate.sh) |
 | Startup de chegada do processo (NFR-1) | 3.000 µs, ou baseline ÷ 3 | [`scripts/perf-gate.sh`](../scripts/perf-gate.sh) |
