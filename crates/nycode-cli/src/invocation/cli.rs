@@ -106,6 +106,22 @@ pub struct Cli {
     #[arg(long, value_name = "ID")]
     pub resume: Option<String>,
 
+    /// Identificador exato; cria a sessao se ainda nao existir.
+    #[arg(long = "session-id", value_name = "ID", conflicts_with_all = ["resume", "continue_session"])]
+    pub session_id: Option<String>,
+
+    /// Nome de exibicao da sessao.
+    #[arg(short = 'n', long = "name", value_name = "NOME")]
+    pub name: Option<String>,
+
+    /// Copia uma sessao (caminho ou id) para um arquivo novo.
+    #[arg(long, value_name = "CAMINHO|ID", conflicts_with_all = ["resume", "continue_session"])]
+    pub fork: Option<String>,
+
+    /// Importa um JSONL de sessao para este workspace.
+    #[arg(long, value_name = "ARQUIVO", conflicts_with_all = ["resume", "continue_session", "fork"])]
+    pub import: Option<std::path::PathBuf>,
+
     /// Permite que o agente escreva, edite e execute comandos.
     ///
     /// Sem esta flag a sessao e somente-leitura. Em modo headless nao ha a quem
@@ -262,5 +278,11 @@ mod tests {
         assert!(replaced.append_system.is_none());
         let appended = Cli::try_parse_from(["nycode", "--append-system", "extra"]).unwrap();
         assert_eq!(appended.append_system.as_deref(), Some("extra"));
+    }
+
+    #[test]
+    fn fork_conflicts_with_continue() {
+        let err = Cli::try_parse_from(["nycode", "--fork", "s", "--continue"]).unwrap_err();
+        assert_eq!(err.kind(), clap::error::ErrorKind::ArgumentConflict);
     }
 }
