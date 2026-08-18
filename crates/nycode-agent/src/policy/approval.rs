@@ -7,7 +7,11 @@
 //! Em modo headless não há a quem perguntar, e o padrão é negar. Aprovar por
 //! omissão daria a um pipeline de CI a permissão que ninguém concedeu.
 
+use std::collections::HashSet;
+use std::sync::{Arc, Mutex};
+
 use async_trait::async_trait;
+use sha2::{Digest as _, Sha256};
 
 use crate::tool::ToolCall;
 
@@ -94,6 +98,128 @@ impl Approver for Asking {
             return false;
         }
         response.await.unwrap_or(false)
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub struct ApprovalKey {
+    actor: String,
+    tool: String,
+    target: String,
+    params: String,
+}
+
+impl ApprovalKey {
+    #[must_use]
+    pub fn of(actor: &str, call: &ToolCall) -> Option<Self> {
+        let target = canonical_target(call)?;
+        Some(Self {
+            actor: actor.to_owned(),
+            tool: call.name.clone(),
+            target,
+            params: digest_params(&call.input),
+        })
+    }
+}
+
+fn nonempty_str(input: &serde_json::Value, key: &str) -> Option<String> {
+    let value = input.get(key)?.as_str()?.trim();
+    if value.is_empty() {
+        None
+    } else {
+        Some(value.to_owned())
+    }
+}
+
+fn path_target(call: &ToolCall) -> Option<String> {
+    nonempty_str(&call.input, "path").or_else(|| nonempty_str(&call.input, "file"))
+}
+
+fn shell_target(call: &ToolCall) -> Option<String> {
+    if let Some(command) = nonempty_str(&call.input, "command") {
+        return Some(command);
+    }
+    if let Some(description) = nonempty_str(&call.input, "description") {
+        return Some(description);
+    }
+    let argv = call.input.get("argv")?.as_array()?;
+    if argv.is_empty() {
+        return None;
+    }
+    Some(
+        argv.iter()
+            .filter_map(serde_json::Value::as_str)
+            .collect::<Vec<_>>()
+            .join("\0"),
+    )
+}
+
+fn canonical_target(call: &ToolCall) -> Option<String> {
+    if let Some(path) = path_target(call) {
+        return Some(path);
+    }
+    if matches!(call.name.as_str(), "write" | "edit" | "read") {
+        return None;
+    }
+    if let Some(shell) = shell_target(call) {
+        return Some(shell);
+    }
+    match call.name.as_str() {
+        "bash" | "task" => None,
+        _ => Some(call.name.clone()),
+    }
+}
+
+fn digest_params(input: &serde_json::Value) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(input.to_string().as_bytes());
+    hex::encode(hasher.finalize())
+}
+
+#[derive(Debug)]
+pub struct Bound {
+    actor: String,
+    inner: Arc<dyn Approver>,
+    granted: Mutex<HashSet<ApprovalKey>>,
+}
+
+impl Bound {
+    #[must_use]
+    pub fn new(actor: impl Into<String>, inner: Arc<dyn Approver>) -> Self {
+        Self {
+            actor: actor.into(),
+            inner,
+            granted: Mutex::new(HashSet::new()),
+        }
+    }
+
+    fn already(&self, key: &ApprovalKey) -> bool {
+        self.granted
+            .lock()
+            .is_ok_and(|granted| granted.contains(key))
+    }
+
+    fn remember(&self, key: ApprovalKey) {
+        if let Ok(mut granted) = self.granted.lock() {
+            granted.insert(key);
+        }
+    }
+}
+
+#[async_trait]
+impl Approver for Bound {
+    async fn approve(&self, call: &ToolCall) -> bool {
+        let Some(key) = ApprovalKey::of(&self.actor, call) else {
+            return false;
+        };
+        if self.already(&key) {
+            return true;
+        }
+        if !self.inner.approve(call).await {
+            return false;
+        }
+        self.remember(key);
+        true
     }
 }
 
@@ -226,5 +352,133 @@ mod tests {
         });
 
         assert!(!approver.approve(&call("bash")).await);
+    }
+
+    fn write_to(path: &str, content: &str) -> ToolCall {
+        ToolCall {
+            id: "t1".to_owned(),
+            name: "write".to_owned(),
+            input: serde_json::json!({ "path": path, "content": content }),
+        }
+    }
+
+    #[derive(Debug)]
+    struct CountAlways {
+        hits: std::sync::atomic::AtomicUsize,
+    }
+
+    #[async_trait]
+    impl Approver for CountAlways {
+        async fn approve(&self, _call: &ToolCall) -> bool {
+            self.hits.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            true
+        }
+    }
+
+    #[tokio::test]
+    async fn a_session_grant_for_one_path_does_not_approve_a_different_path() {
+        let (asking, mut inbox) = Asking::channel();
+        let bound = Bound::new("session-1", Arc::new(asking));
+        let attendant = tokio::spawn(async move {
+            let request = inbox.recv().await.expect("primeiro");
+            assert_eq!(request.call.input["path"], "a.txt");
+            request.answer(true);
+            let request = inbox.recv().await.expect("segundo");
+            assert_eq!(request.call.input["path"], "b.txt");
+            request.answer(false);
+        });
+
+        assert!(bound.approve(&write_to("a.txt", "x")).await);
+        assert!(!bound.approve(&write_to("b.txt", "x")).await);
+        attendant.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn the_same_path_with_different_params_does_not_reuse_the_grant() {
+        let inner = Arc::new(CountAlways {
+            hits: std::sync::atomic::AtomicUsize::new(0),
+        });
+        let bound = Bound::new("session-1", inner.clone());
+        assert!(bound.approve(&write_to("a.txt", "x")).await);
+        assert!(bound.approve(&write_to("a.txt", "y")).await);
+        assert_eq!(inner.hits.load(std::sync::atomic::Ordering::Relaxed), 2);
+    }
+
+    #[tokio::test]
+    async fn a_child_actor_does_not_reuse_the_parent_grant() {
+        let parent = Bound::new("parent", Arc::new(Always));
+        assert!(parent.approve(&write_to("a.txt", "x")).await);
+        let child = Bound::new("child", Arc::new(Never));
+        assert!(!child.approve(&write_to("a.txt", "x")).await);
+    }
+
+    #[tokio::test]
+    async fn an_unlinkable_call_is_refused_and_not_cached() {
+        let inner = Arc::new(CountAlways {
+            hits: std::sync::atomic::AtomicUsize::new(0),
+        });
+        let bound = Bound::new("session-1", inner.clone());
+        assert!(!bound.approve(&call("write")).await);
+        assert_eq!(inner.hits.load(std::sync::atomic::Ordering::Relaxed), 0);
+    }
+
+    #[tokio::test]
+    async fn bound_covers_cache_file_shell_and_name() {
+        let inner = Arc::new(CountAlways {
+            hits: std::sync::atomic::AtomicUsize::new(0),
+        });
+        let bound = Bound::new("s", inner.clone());
+        let same = write_to("a.txt", "x");
+        assert!(bound.approve(&same).await);
+        assert!(bound.approve(&same).await);
+        assert_eq!(inner.hits.load(std::sync::atomic::Ordering::Relaxed), 1);
+        let always = Bound::new("s", Arc::new(Always));
+        assert!(
+            always
+                .approve(&ToolCall {
+                    id: "t1".to_owned(),
+                    name: "edit".to_owned(),
+                    input: serde_json::json!({ "file": "a.rs" }),
+                })
+                .await
+        );
+        assert!(
+            always
+                .approve(&ToolCall {
+                    id: "t1".to_owned(),
+                    name: "bash".to_owned(),
+                    input: serde_json::json!({ "argv": ["echo", "a"] }),
+                })
+                .await
+        );
+        assert!(always.approve(&call("ls")).await);
+        assert!(
+            always
+                .approve(&ToolCall {
+                    id: "t1".to_owned(),
+                    name: "task".to_owned(),
+                    input: serde_json::json!({ "description": "x" }),
+                })
+                .await
+        );
+        assert!(!always.approve(&call("bash")).await);
+        assert!(
+            !always
+                .approve(&ToolCall {
+                    id: "t1".to_owned(),
+                    name: "write".to_owned(),
+                    input: serde_json::json!({ "path": "  " }),
+                })
+                .await
+        );
+        assert!(
+            !always
+                .approve(&ToolCall {
+                    id: "t1".to_owned(),
+                    name: "bash".to_owned(),
+                    input: serde_json::json!({ "argv": [] }),
+                })
+                .await
+        );
     }
 }

@@ -9,7 +9,6 @@ GATE-16 | GATE-16 | 2027-02-14 | marcioazam | hook pre-commit e squash-merge del
 GATE-17 | GATE-17 | 2027-02-18 | marcioazam | CODEOWNERS mais CI exigido, sem auto-aprovacao | docs/architecture/decisions/0037-gate-17-fica-em-waiver-enquanto-o-dono-humano-for-unico.md
 AI-03 | AI-03 | 2027-02-18 | marcioazam | CODEOWNERS mais CI exigido, sem auto-aprovacao | docs/architecture/decisions/0037-gate-17-fica-em-waiver-enquanto-o-dono-humano-for-unico.md
 AGT-04 | AGT-04 | 2027-02-18 | marcioazam | gate de permissao e aprovacao por chamada | docs/architecture/decisions/0038-agt-04-a-agt-08-ficam-em-waiver-ate-o-instrumento-por-id.md
-AGT-05 | AGT-05 | 2027-02-18 | marcioazam | gate de permissao e aprovacao por chamada | docs/architecture/decisions/0038-agt-04-a-agt-08-ficam-em-waiver-ate-o-instrumento-por-id.md
 AGT-06 | AGT-06 | 2027-02-18 | marcioazam | gate de permissao e aprovacao por chamada | docs/architecture/decisions/0038-agt-04-a-agt-08-ficam-em-waiver-ate-o-instrumento-por-id.md
 AGT-07 | AGT-07 | 2027-02-18 | marcioazam | gate de permissao e aprovacao por chamada | docs/architecture/decisions/0038-agt-04-a-agt-08-ficam-em-waiver-ate-o-instrumento-por-id.md
 AGT-08 | AGT-08 | 2027-02-18 | marcioazam | gate de permissao e aprovacao por chamada | docs/architecture/decisions/0038-agt-04-a-agt-08-ficam-em-waiver-ate-o-instrumento-por-id.md
