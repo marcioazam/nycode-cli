@@ -196,8 +196,7 @@ impl Bound {
     fn already(&self, key: &ApprovalKey) -> bool {
         self.granted
             .lock()
-            .map(|granted| granted.contains(key))
-            .unwrap_or(false)
+            .is_ok_and(|granted| granted.contains(key))
     }
 
     fn remember(&self, key: ApprovalKey) {
