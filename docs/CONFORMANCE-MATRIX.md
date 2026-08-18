@@ -50,5 +50,5 @@ em data — waiver honesto não é omissão, mas também não é 100% instrument
 | FR-31 | Produto | `AGT-05` | instrumentado | `Bound` + `ApprovalKey`; grant de path A não aprova path B |
 | FR-32 | Produto | `AGT-06` | instrumentado | `tool/redact.rs`; segredo plantado ausente do ContentBlock |
 | FR-33 | Produto | `AGT-07` | instrumentado | `session/store/mac.rs`; linha sem MAC/expirada/estrangeira não entra em `load` |
-| FR-34 | Produto | `AGT-08` | waiver | ADR-0038 |
+| FR-34 | Produto | `AGT-08` | instrumentado | `tools/task.rs`; spawn sem envelope, MAC forjado ou expirado recusa |
 | FR-35 | Núcleo | `GATE-16` | waiver | ADR-0033 |
