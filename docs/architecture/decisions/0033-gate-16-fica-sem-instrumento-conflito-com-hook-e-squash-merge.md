@@ -3,6 +3,8 @@
 - **Status:** aceito
 - **Data:** 2026-08-14
 - **Contexto relacionado:** [ADR-0032](0032-adota-padrao-externo-sota-2026-nivel-l2.md), `GATE-16`
+- **Waiver:** GATE-16
+- **Expira:** 2027-02-14
 
 ## Contexto
 
