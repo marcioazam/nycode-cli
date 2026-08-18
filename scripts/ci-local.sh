@@ -128,6 +128,8 @@ fast() {
   step "actions fixadas por SHA" pinact run --check
   require_tool gitleaks "brew install gitleaks (ou: veja https://github.com/gitleaks/gitleaks#installing)"
   step "segredo commitado" gitleaks detect --no-banner --redact --exit-code 1
+  step "auto-teste de assercao vacua" scripts/vacuous-assert/gate-test.sh
+  step "asserção vacua" scripts/vacuous-assert/gate.sh
 }
 
 full() {
@@ -156,6 +158,8 @@ full() {
   step "auto-teste de atribuicao" scripts/attribution/gate-test.sh
   step "atribuicao" scripts/attribution/gate.sh
   step "auto-teste do gate de artefato" scripts/artifact/gate-test.sh
+  step "auto-teste de assercao vacua" scripts/vacuous-assert/gate-test.sh
+  step "asserção vacua" scripts/vacuous-assert/gate.sh
 
   # Os auto-testes dos gates vem antes dos gates: um gate quebrado que aprova e
   # pior que um gate que reprova, porque nao deixa rastro.
