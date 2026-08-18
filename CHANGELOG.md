@@ -9,7 +9,7 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 ### Adicionado
 
 - **Sessão nomeada, com id escolhido, fork e import.** `--name`,
-  `--session-id`, `--fork`, `--import` (B27, FR-22).
+  `--session-id`, `--fork`, `--import`; `/session`, `/copy`, `/new`, `/reload` (B27, B28, FR-22).
 
 - **`--system` e `--append-system` substituem ou acrescentam o prompt de
   sistema.** Arquivos `.nycode/SYSTEM.md` / `APPEND_SYSTEM.md` e os
