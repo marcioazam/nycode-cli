@@ -15,6 +15,7 @@ Testes inline (#[cfg(test)] dentro do proprio arquivo):
   crates/nycode-agent/src/agent/adapt.rs
   crates/nycode-agent/src/agent/dispatch.rs
   crates/nycode-agent/src/agent/occupancy.rs
+  crates/nycode-agent/src/agent/pin.rs
   crates/nycode-agent/src/agent/shrink.rs
   crates/nycode-agent/src/agent/transform.rs
   crates/nycode-agent/src/backend.rs
@@ -44,6 +45,7 @@ Testes inline (#[cfg(test)] dentro do proprio arquivo):
   crates/nycode-agent/src/tool/coerce.rs
   crates/nycode-agent/src/tool/contain.rs
   crates/nycode-agent/src/tool/mod.rs
+  crates/nycode-agent/src/tool/pin.rs
   crates/nycode-agent/src/tool/repair.rs
   crates/nycode-agent/src/tool/sanitize.rs
   crates/nycode-agent/src/tools/bash.rs
