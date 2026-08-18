@@ -6,7 +6,31 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ## [Não lançado]
 
+### Adicionado
+
+- **Sessão nomeada, com id escolhido, fork e import.** `--name`,
+  `--session-id`, `--fork`, `--import` (B27, FR-22).
+
+- **`--system` e `--append-system` substituem ou acrescentam o prompt de
+  sistema.** Arquivos `.nycode/SYSTEM.md` / `APPEND_SYSTEM.md` e os
+  equivalentes na config do usuário entram quando a flag falta. Instruções
+  e skills continuam anexadas (B26, FR-21).
+
+- **`--tools` e `--no-tools` restringem o catálogo enviado ao modelo.**
+  Pedido sem ferramentas declara `tool_choice: none`. A allowlist não é
+  permissão; nome desconhecido recusa a sessão (B8, B25, FR-18).
+
 ### Alterado
+
+- **O consentimento MCP fixa também a definição que o servidor declara.**
+  Depois do handshake o conjunto é pinado; troca pede de novo (C6,
+  ADR-0028). Nome com `__` ou o separador do registro é recusado.
+
+- **Instruções vêm também dos ancestrais e da config do usuário, e uma
+  skill pode se recusar ao modelo.** `AGENTS.override.md` substitui os
+  outros arquivos de instrução só naquele diretório (B23). O catálogo
+  declara os campos da spec Agent Skills; `disable-model-invocation`
+  tira a skill do prompt e a mantém carregada (B24).
 
 - **Alt+Enter durante o turno enfileira o próximo pedido, sem
   direcionar o corrente.** Enter continua injetando no turno

@@ -106,6 +106,22 @@ pub struct Cli {
     #[arg(long, value_name = "ID")]
     pub resume: Option<String>,
 
+    /// Identificador exato; cria a sessao se ainda nao existir.
+    #[arg(long = "session-id", value_name = "ID", conflicts_with_all = ["resume", "continue_session"])]
+    pub session_id: Option<String>,
+
+    /// Nome de exibicao da sessao.
+    #[arg(short = 'n', long = "name", value_name = "NOME")]
+    pub name: Option<String>,
+
+    /// Copia uma sessao (caminho ou id) para um arquivo novo.
+    #[arg(long, value_name = "CAMINHO|ID", conflicts_with_all = ["resume", "continue_session"])]
+    pub fork: Option<String>,
+
+    /// Importa um JSONL de sessao para este workspace.
+    #[arg(long, value_name = "ARQUIVO", conflicts_with_all = ["resume", "continue_session", "fork"])]
+    pub import: Option<std::path::PathBuf>,
+
     /// Permite que o agente escreva, edite e execute comandos.
     ///
     /// Sem esta flag a sessao e somente-leitura. Em modo headless nao ha a quem
@@ -119,6 +135,22 @@ pub struct Cli {
     /// separada porque um shell alcanca tudo que as outras alcancam e mais.
     #[arg(long)]
     pub allow_all: bool,
+
+    /// Restringe o catalogo enviado ao modelo. Nomes separados por virgula.
+    #[arg(long, value_name = "NOMES", value_delimiter = ',', num_args = 1)]
+    pub tools: Vec<String>,
+
+    /// Nao oferece ferramenta nenhuma ao modelo.
+    #[arg(long, conflicts_with = "tools")]
+    pub no_tools: bool,
+
+    /// Substitui o prompt de sistema embutido. Instrucoes e skills continuam.
+    #[arg(long, value_name = "TEXTO")]
+    pub system: Option<String>,
+
+    /// Acrescenta ao prompt de sistema, depois da base e antes das instrucoes.
+    #[arg(long, value_name = "TEXTO")]
+    pub append_system: Option<String>,
 
     /// Monta a sessao, mantem-na ociosa por MS milissegundos e sai.
     ///
@@ -224,5 +256,33 @@ mod tests {
             Some(std::path::Path::new("/dev/stdin"))
         );
         assert!(cli.api_key.is_none());
+    }
+
+    #[test]
+    fn tools_flags_restrict_the_catalog_and_exclude_each_other() {
+        let listed = Cli::try_parse_from(["nycode", "--tools", "read,grep,find"]).unwrap();
+        assert_eq!(listed.tools, vec!["read", "grep", "find"]);
+        assert!(!listed.no_tools);
+        let none = Cli::try_parse_from(["nycode", "--no-tools"]).unwrap();
+        assert!(none.no_tools);
+        assert!(none.tools.is_empty());
+        let err = Cli::try_parse_from(["nycode", "--tools", "read", "--no-tools"])
+            .expect_err("as duas flags se excluem");
+        assert_eq!(err.kind(), clap::error::ErrorKind::ArgumentConflict);
+    }
+
+    #[test]
+    fn system_flags_replace_or_append_the_base_prompt() {
+        let replaced = Cli::try_parse_from(["nycode", "--system", "base"]).unwrap();
+        assert_eq!(replaced.system.as_deref(), Some("base"));
+        assert!(replaced.append_system.is_none());
+        let appended = Cli::try_parse_from(["nycode", "--append-system", "extra"]).unwrap();
+        assert_eq!(appended.append_system.as_deref(), Some("extra"));
+    }
+
+    #[test]
+    fn fork_conflicts_with_continue() {
+        let err = Cli::try_parse_from(["nycode", "--fork", "s", "--continue"]).unwrap_err();
+        assert_eq!(err.kind(), clap::error::ErrorKind::ArgumentConflict);
     }
 }

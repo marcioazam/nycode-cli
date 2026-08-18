@@ -33,6 +33,7 @@ Testes inline (#[cfg(test)] dentro do proprio arquivo):
   crates/nycode-agent/src/policy/confinement/environment.rs
   crates/nycode-agent/src/policy/confinement/sandbox.rs
   crates/nycode-agent/src/policy/confinement/sandbox/profile.rs
+  crates/nycode-agent/src/policy/definition.rs
   crates/nycode-agent/src/policy/hooks.rs
   crates/nycode-agent/src/policy/permission.rs
   crates/nycode-agent/src/policy/trust.rs
@@ -126,8 +127,10 @@ Testes inline (#[cfg(test)] dentro do proprio arquivo):
   crates/nycode-cli/src/interactive/approval.rs
   crates/nycode-cli/src/interactive/builtin.rs
   crates/nycode-cli/src/interactive/panel.rs
+  crates/nycode-cli/src/invocation/catalog.rs
   crates/nycode-cli/src/invocation/cli.rs
   crates/nycode-cli/src/invocation/grant.rs
+  crates/nycode-cli/src/invocation/prompt.rs
   crates/nycode-cli/src/invocation/route.rs
   crates/nycode-cli/src/main.rs
   crates/nycode-cli/src/output/events.rs
@@ -138,6 +141,7 @@ Testes inline (#[cfg(test)] dentro do proprio arquivo):
   crates/nycode-cli/src/screen/raw.rs
   crates/nycode-cli/src/session/consent.rs
   crates/nycode-cli/src/session/mod.rs
+  crates/nycode-cli/src/session/open.rs
   crates/nycode-cli/src/session/paths.rs
   crates/nycode-cli/src/session/phases.rs
   crates/nycode-cli/src/session/provider/catalog.rs

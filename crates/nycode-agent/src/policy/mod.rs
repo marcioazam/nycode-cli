@@ -14,6 +14,7 @@
 
 pub mod approval;
 pub mod confinement;
+pub mod definition;
 pub mod hooks;
 pub mod permission;
 pub mod trust;

@@ -25,11 +25,27 @@ pub struct Context {
 }
 
 impl Context {
-    /// Varre o workspace.
+    /// Varre o workspace e as camadas fora dele (config do usuário e ancestrais).
     #[must_use]
     pub fn discover(root: &Path) -> Self {
+        Self::from_sources(
+            root,
+            crate::policy::config_dir(
+                std::env::var_os("XDG_CONFIG_HOME")
+                    .as_deref()
+                    .map(Path::new),
+                std::env::var_os("HOME").as_deref().map(Path::new),
+            )
+            .as_deref(),
+            None,
+        )
+    }
+
+    /// `ceiling` corta a subida ancestral; sem ele, sobe até a raiz do disco.
+    #[must_use]
+    pub fn from_sources(root: &Path, user: Option<&Path>, ceiling: Option<&Path>) -> Self {
         Self {
-            instructions: instructions::discover(root),
+            instructions: instructions::from_sources(root, user, ceiling),
             skills: skills::discover(root),
             commands: commands::discover(root),
         }
@@ -65,7 +81,7 @@ mod tests {
     #[test]
     fn an_empty_workspace_leaves_the_base_prompt_untouched() {
         let dir = tempfile::tempdir().unwrap();
-        let context = Context::discover(dir.path());
+        let context = Context::from_sources(dir.path(), None, Some(dir.path()));
 
         assert!(context.is_empty());
         assert_eq!(context.system_prompt("base", dir.path()), "base");
@@ -78,7 +94,8 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         std::fs::write(dir.path().join("AGENTS.md"), "rode os testes").unwrap();
 
-        let prompt = Context::discover(dir.path()).system_prompt("Voce e o nycode.", dir.path());
+        let prompt = Context::from_sources(dir.path(), None, Some(dir.path()))
+            .system_prompt("Voce e o nycode.", dir.path());
         assert!(prompt.starts_with("Voce e o nycode."));
         assert!(prompt.contains("rode os testes"));
     }
@@ -95,7 +112,8 @@ mod tests {
         )
         .unwrap();
 
-        let prompt = Context::discover(dir.path()).system_prompt("base", dir.path());
+        let prompt = Context::from_sources(dir.path(), None, Some(dir.path()))
+            .system_prompt("base", dir.path());
         let conventions = prompt.find("Convencoes").unwrap();
         let skills = prompt.find("Skills").unwrap();
         assert!(conventions < skills);

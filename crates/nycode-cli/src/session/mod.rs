@@ -6,29 +6,22 @@
 //! sejam só a diferença entre elas.
 
 mod consent;
+mod open;
 pub mod paths;
 pub mod phases;
 pub mod provider;
 mod warnings;
 
+pub use open::resolve;
 pub use phases::Phases;
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use nycode_agent::{Agent, Cancel, Context, Store, ToolContext};
-use nycode_ai::anthropic::Message;
 use nycode_ai::{Client, Config};
 
 use crate::Cli;
-
-/// Prompt de sistema mínimo.
-///
-/// Modelos de fronteira já são treinados para o formato de agente de codificação;
-/// prompt longo aqui gasta contexto sem ganho proporcional.
-const SYSTEM_PROMPT: &str = "Voce e o NyCode CLI, um agente de codificacao que opera \
-     no terminal dentro do repositorio do usuario. Use as ferramentas disponiveis para \
-     inspecionar arquivos antes de afirmar qualquer coisa sobre o codigo. Seja direto.";
 
 /// Como construir o backend de outro modelo.
 ///
@@ -152,7 +145,7 @@ pub async fn prepare(cli: &Cli) -> anyhow::Result<Prepared> {
     // As convencoes do repositorio especializam o prompt base. Um AGENTS.md
     // existente passa a valer sem nenhuma configuracao.
     let context = Context::discover(&root);
-    let system = context.system_prompt(SYSTEM_PROMPT, &root);
+    let system = context.system_prompt(&crate::invocation::prompt::resolve(cli, &root)?, &root);
     phases.mark("workspace");
 
     let store = Store::open(root.join(".nycode/sessions"))?;
@@ -191,16 +184,12 @@ pub async fn prepare(cli: &Cli) -> anyhow::Result<Prepared> {
     for message in history {
         agent = agent.with_message(message);
     }
-    for tool in nycode_agent::tools::all_within(settings.command_timeout) {
-        agent = agent.with_tool(tool);
-    }
 
     // O subagente herda a concessão do pai: um filho que pudesse mais que quem
     // o chamou seria uma escada de privilégio (FR-15).
     let grant = crate::invocation::grant::Grant::from_flags(cli.allow_writes, cli.allow_all);
-    agent = agent.with_tool(Arc::new(
-        nycode_agent::tools::Task::new(backend).with_gate(move || grant.gate()),
-    ));
+    agent = crate::invocation::catalog::add_natives(agent, cli, settings.command_timeout);
+    agent = crate::invocation::catalog::add_task(agent, cli, backend, grant);
 
     for warning in
         warnings::startup_warnings(warnings::bash_is_reachable(grant, cli.prompt.is_none()))
@@ -215,9 +204,8 @@ pub async fn prepare(cli: &Cli) -> anyhow::Result<Prepared> {
     phases.mark("agente");
 
     let (mcp, extra) = attach_mcp(&root, cli.prompt.is_none()).await;
-    for tool in extra {
-        agent = agent.with_tool(tool);
-    }
+    crate::invocation::catalog::check_requested(cli, &extra)?;
+    agent = crate::invocation::catalog::add_extensions(agent, cli, extra);
     phases.mark("mcp");
 
     agent = agent.with_gate(grant.gate());
@@ -296,26 +284,7 @@ async fn attach_mcp(
     }
 
     let (sessions, tools, failures) = nycode_mcp::connect_all(&servers, root).await;
-    for failure in failures {
-        eprintln!("nycode: {failure}");
-    }
-    (sessions, tools)
-}
-
-/// Decide qual sessão usar e carrega o histórico dela.
-pub fn resolve(store: &Store, cli: &Cli) -> anyhow::Result<(String, Vec<Message>)> {
-    if let Some(id) = &cli.resume {
-        return Ok((id.clone(), store.load(id)?));
-    }
-    if cli.continue_session {
-        // Sem sessao anterior, `--continue` comeca uma nova em vez de falhar:
-        // e o comportamento que o usuario espera no primeiro uso.
-        if let Some(info) = store.latest()? {
-            let history = store.load(&info.id)?;
-            return Ok((info.id, history));
-        }
-    }
-    Ok((Store::new_id(), Vec::new()))
+    consent::keep_declared(root, interactive, sessions, tools, failures)
 }
 
 /// Instala o observador de `Ctrl+C` e devolve o sinal que ele dispara.
@@ -357,6 +326,7 @@ mod tests {
     use super::*;
     use clap::Parser as _;
     use nycode_ai::StopReason;
+    use nycode_ai::anthropic::Message;
 
     fn store() -> (tempfile::TempDir, Store) {
         let dir = tempfile::tempdir().unwrap();
