@@ -2,7 +2,9 @@
 
 use std::sync::Arc;
 
+use clap::Parser as _;
 use crossterm::event::KeyCode;
+use nycode_agent::Context;
 use nycode_ai::anthropic::ContentBlock;
 
 use super::fakes::{Recording, Scripted, ctrl, delivered, key, typing};
@@ -250,9 +252,11 @@ async fn the_header_names_what_the_session_loaded_before_the_first_prompt() {
         prices: std::collections::BTreeMap::new(),
         windows: std::collections::BTreeMap::new(),
         rebuild: Box::new(|_| anyhow::bail!("sem troca de modelo neste teste")),
+        sampling: Arc::new(std::sync::Mutex::new(nycode_ai::Sampling::default())),
     };
 
-    let mut session = Session::open(prepared, "nylla-sonnet-4.5".to_owned(), false, true, 80);
+    let cli = crate::Cli::try_parse_from(["nycode", "--quiet"]).unwrap();
+    let mut session = Session::open(prepared, "nylla-sonnet-4.5".to_owned(), false, &cli, 80);
     let mut surface = Recording::new();
     session
         .run(&mut surface, &mut delivered(vec![]))
