@@ -128,7 +128,7 @@ where
         .decides_everything();
 
     let model = prepared.model.clone();
-    interactive::Session::open(prepared, model, decided, cli.quiet, width)
+    interactive::Session::open(prepared, model, decided, cli, width)
         .run(surface, events)
         .await
         .map(|()| ExitCode::SUCCESS)
@@ -231,6 +231,7 @@ mod tests {
             prices: std::collections::BTreeMap::new(),
             windows: std::collections::BTreeMap::new(),
             rebuild: Box::new(|_| anyhow::bail!("sem troca de modelo aqui")),
+            sampling: std::sync::Arc::new(std::sync::Mutex::new(nycode_ai::Sampling::default())),
         };
 
         let code = headless(&cli, prepared, "oi").await.unwrap();
@@ -267,6 +268,7 @@ mod tests {
             prices: std::collections::BTreeMap::new(),
             windows: std::collections::BTreeMap::new(),
             rebuild: Box::new(|_| anyhow::bail!("sem troca de modelo aqui")),
+            sampling: std::sync::Arc::new(std::sync::Mutex::new(nycode_ai::Sampling::default())),
         };
 
         let mut surface = crate::interactive::fakes::Recording::new();

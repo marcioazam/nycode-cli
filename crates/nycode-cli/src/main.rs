@@ -278,6 +278,7 @@ mod tests {
             prices: std::collections::BTreeMap::new(),
             windows: std::collections::BTreeMap::new(),
             rebuild: Box::new(|_| anyhow::bail!("sem troca de modelo aqui")),
+            sampling: std::sync::Arc::new(std::sync::Mutex::new(nycode_ai::Sampling::default())),
         }
     }
 
