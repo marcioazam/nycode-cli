@@ -1,0 +1,5 @@
+crates/nycode-ai/src/anthropic/types.rs
+crates/nycode-ai/src/openai/chat.rs
+crates/nycode-ai/src/openai/responses.rs
+crates/nycode-cli/src/output/events.rs
+crates/nycode-agent/src/tool/coerce.rs
