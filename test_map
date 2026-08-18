@@ -152,6 +152,7 @@ Testes inline (#[cfg(test)] dentro do proprio arquivo):
 Arquivos de teste dedicados (mod *_test;):
   crates/nycode-cli/src/interactive/builtin_test.rs
   crates/nycode-cli/src/interactive/panel_test.rs
+  crates/nycode-cli/src/interactive/session_ops_test.rs
   crates/nycode-cli/src/screen/screen_test.rs
 
 Testes de integracao:
