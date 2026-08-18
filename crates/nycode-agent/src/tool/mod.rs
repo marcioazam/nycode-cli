@@ -12,6 +12,7 @@
 pub mod coerce;
 pub mod contain;
 pub mod pin;
+pub mod redact;
 pub mod repair;
 pub mod sanitize;
 
