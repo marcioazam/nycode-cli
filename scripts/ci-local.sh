@@ -130,6 +130,8 @@ fast() {
   step "segredo commitado" gitleaks detect --no-banner --redact --exit-code 1
   step "auto-teste de assercao vacua" scripts/vacuous-assert/gate-test.sh
   step "asserção vacua" scripts/vacuous-assert/gate.sh
+  step "auto-teste de contrato CLI" scripts/contract/gate-test.sh
+  step "contrato CLI" scripts/contract/gate.sh
 }
 
 full() {
@@ -160,6 +162,8 @@ full() {
   step "auto-teste do gate de artefato" scripts/artifact/gate-test.sh
   step "auto-teste de assercao vacua" scripts/vacuous-assert/gate-test.sh
   step "asserção vacua" scripts/vacuous-assert/gate.sh
+  step "auto-teste de contrato CLI" scripts/contract/gate-test.sh
+  step "contrato CLI" scripts/contract/gate.sh
 
   # Os auto-testes dos gates vem antes dos gates: um gate quebrado que aprova e
   # pior que um gate que reprova, porque nao deixa rastro.
