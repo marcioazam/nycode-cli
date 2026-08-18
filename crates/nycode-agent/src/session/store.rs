@@ -78,7 +78,7 @@ impl Store {
         let dir = dir.into();
         std::fs::create_dir_all(&dir)
             .map_err(|err| Error::Workspace(format!("sessoes em {}: {err}", dir.display())))?;
-        let mac = std::sync::Arc::new(mac::Context::open(&dir)?);
+        let mac = std::sync::Arc::new(mac::Context::open(&dir));
         Ok(Self {
             dir,
             tips: std::sync::Arc::default(),
