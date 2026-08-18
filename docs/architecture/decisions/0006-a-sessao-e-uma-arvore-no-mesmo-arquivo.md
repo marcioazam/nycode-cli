@@ -75,3 +75,10 @@ Reabrir se o custo de montar o índice no startup aparecer na mediana do
 formato linear. Reabrir também se arquivos de sessão crescerem a ponto de
 incomodar em uso real, caso em que a resposta é poda explícita por comando, e
 nunca automática.
+
+## Emenda (2026-08-18)
+
+Cada linha passa a carregar MAC HMAC-SHA256 e TTL (`AGT-07`). O arquivo
+continua append-only; linha sem MAC, expirada ou de outro workspace não
+entra no contexto do modelo. Isso não muda a árvore da ADR.
+
