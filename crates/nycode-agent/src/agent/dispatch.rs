@@ -2,9 +2,8 @@
 //!
 //! Separado do laço porque muda por outros motivos: o laço muda quando a forma
 //! de um turno muda, isto muda quando as camadas de decisão mudam. São três,
-//! nesta ordem: o hook do repositório, o gate da sessão, e o aprovador. A
-//! ordem importa — uma política que só roda depois de o gate aprovar não
-//! consegue proibir nada que o gate permita.
+//! nesta ordem: o hook do repositório, o gate da sessão, e o aprovador.
+//! A ordem importa: política depois do gate não proíbe o que o gate permitiu.
 
 use nycode_ai::anthropic::{ContentBlock, Message, ToolSpec};
 
@@ -27,6 +26,7 @@ impl Agent {
         // Estaveis primeiro, extensoes depois: uma ferramenta de servidor no
         // meio do prefixo deslocaria o ponto de corte do cache (NFR-7).
         specs.sort_by(|a, b| a.extension.cmp(&b.extension).then(a.name.cmp(&b.name)));
+        self.remember_presented(&specs);
         specs
     }
 
@@ -207,6 +207,10 @@ impl Agent {
                     .join(", ")
             ));
         };
+
+        if let Some(denied) = self.pin_denied(tool.as_ref()) {
+            return denied;
+        }
 
         if input.is_null() {
             return ToolOutput::error(format!(
