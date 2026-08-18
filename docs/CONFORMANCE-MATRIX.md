@@ -24,7 +24,7 @@ em data — waiver honesto não é omissão, mas também não é 100% instrument
 | FR-5 | Núcleo | `GATE-01`–`03`, `CI-06` | instrumentado | `coverage-gate.sh`, `diff-coverage-gate.sh` (PR) |
 | FR-6 | Núcleo | `GATE-04`, `CI-07` | instrumentado | `mutation-gate.sh`: 0 sobreviventes no diff (mais estrito que 80% por crate; sem `RAT-01` de pacote) |
 | FR-7 | Núcleo | `SEC-11` | instrumentado | rustc `unused_must_use` deny; `let _ =` em Result ainda existe e fica para PR própria |
-| FR-8 | Núcleo | `SDD-13`, `ADV-05` | waiver | [ADR-0039](architecture/decisions/0039-fr-17-fr-18-fr-8-e-fr-24-ficam-em-waiver-ate-instrumento-proprio.md) |
+| FR-8 | Núcleo | `SDD-13`, `ADV-05` | instrumentado | `scripts/vacuous-assert/gate.sh` (diff); auto-teste `gate-test.sh` |
 | FR-9 | Núcleo | `CI-14`, `GATE-14` | instrumentado | `scripts/flake-quarantine.txt` lido por `scripts/waiver/gate.sh`; vazio = zero quarentenas |
 | FR-10 | Núcleo | `GATE-13`, `AI-11`, `SEC-09` | instrumentado | `cargo deny`, `dependency-age-gate.sh` |
 | FR-11 | Núcleo | `GATE-10` | instrumentado | `scripts/artifact/gate.sh` (Trivy) |
