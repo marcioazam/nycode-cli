@@ -6,18 +6,19 @@
 //! sejam só a diferença entre elas.
 
 mod consent;
+mod open;
 pub mod paths;
 pub mod phases;
 pub mod provider;
 mod warnings;
 
+pub use open::resolve;
 pub use phases::Phases;
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use nycode_agent::{Agent, Cancel, Context, Store, ToolContext};
-use nycode_ai::anthropic::Message;
 use nycode_ai::{Client, Config};
 
 use crate::Cli;
@@ -286,22 +287,6 @@ async fn attach_mcp(
     consent::keep_declared(root, interactive, sessions, tools, failures)
 }
 
-/// Decide qual sessão usar e carrega o histórico dela.
-pub fn resolve(store: &Store, cli: &Cli) -> anyhow::Result<(String, Vec<Message>)> {
-    if let Some(id) = &cli.resume {
-        return Ok((id.clone(), store.load(id)?));
-    }
-    if cli.continue_session {
-        // Sem sessao anterior, `--continue` comeca uma nova em vez de falhar:
-        // e o comportamento que o usuario espera no primeiro uso.
-        if let Some(info) = store.latest()? {
-            let history = store.load(&info.id)?;
-            return Ok((info.id, history));
-        }
-    }
-    Ok((Store::new_id(), Vec::new()))
-}
-
 /// Instala o observador de `Ctrl+C` e devolve o sinal que ele dispara.
 ///
 /// Só em modo headless: numa sessão interativa o terminal está em modo bruto e
@@ -341,6 +326,7 @@ mod tests {
     use super::*;
     use clap::Parser as _;
     use nycode_ai::StopReason;
+    use nycode_ai::anthropic::Message;
 
     fn store() -> (tempfile::TempDir, Store) {
         let dir = tempfile::tempdir().unwrap();

@@ -141,6 +141,7 @@ Testes inline (#[cfg(test)] dentro do proprio arquivo):
   crates/nycode-cli/src/screen/raw.rs
   crates/nycode-cli/src/session/consent.rs
   crates/nycode-cli/src/session/mod.rs
+  crates/nycode-cli/src/session/open.rs
   crates/nycode-cli/src/session/paths.rs
   crates/nycode-cli/src/session/phases.rs
   crates/nycode-cli/src/session/provider/catalog.rs
