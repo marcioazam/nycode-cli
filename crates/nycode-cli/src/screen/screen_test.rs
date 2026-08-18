@@ -302,16 +302,18 @@ fn replacing_the_history_does_not_make_the_fork_rewrite_the_whole_path() {
 fn switching_the_model_keeps_the_conversation() {
     // Recomecar ja dava para fazer abrindo outra sessao; o ponto e
     // continuar a mesma conversa com outro modelo.
+    let sampling = Arc::new(std::sync::Mutex::new(nycode_ai::Sampling::default()));
     let (_dir, turns) = agentic(plain_turn("x", nycode_ai::Usage::default()), 0);
-    let mut turns = turns.rebuilding(|_| {
+    let mut turns = turns.with_sampling(Arc::clone(&sampling)).rebuilding(|_| {
         Ok(std::sync::Arc::new(Canned {
             events: std::sync::Mutex::new(Vec::new()),
         }) as Arc<dyn nycode_agent::Backend>)
     });
     turns.replace_history(vec![Message::user("um")]);
-
-    turns.switch_model("nylla-opus-4").unwrap();
+    turns.set_system("so isto".into());
+    turns.retarget_backend("nova", "nylla-opus-4").unwrap();
     assert_eq!(turns.history().len(), 1, "o historico precisa sobreviver");
+    assert_eq!(sampling.lock().unwrap().cache_key.as_deref(), Some("nova"));
 }
 
 #[test]
