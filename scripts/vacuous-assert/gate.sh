@@ -40,6 +40,14 @@ if scan_dir:
     files = list(Path(scan_dir).rglob("*.rs"))
 else:
     base = os.environ.get("VACUOUS_BASE", "origin/main")
+    probed = subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", base],
+        capture_output=True,
+        check=False,
+    )
+    if probed.returncode != 0:
+        print(f"vacuous-assert-gate: base ausente: {base}", file=sys.stderr)
+        sys.exit(2)
     try:
         out = subprocess.check_output(
             ["git", "diff", "--name-only", f"{base}...HEAD", "--", "*.rs"],
