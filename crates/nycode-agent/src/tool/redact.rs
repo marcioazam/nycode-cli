@@ -2,6 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use super::ToolOutput;
 
+#[cfg(test)]
 const PLANTED: &str = "sk-test-agt06-secret";
 
 #[must_use]
