@@ -12,17 +12,17 @@ pub(super) struct Context {
 }
 
 impl Context {
-    pub(super) fn open(dir: &std::path::Path) -> crate::error::Result<Self> {
+    pub(super) fn open(dir: &std::path::Path) -> Self {
         let workspace = dir
             .canonicalize()
             .unwrap_or_else(|_| dir.to_path_buf())
             .display()
             .to_string();
-        Ok(Self {
+        Self {
             dir: dir.to_path_buf(),
             workspace,
             key: std::sync::OnceLock::new(),
-        })
+        }
     }
 
     fn secret(&self) -> &[u8] {
