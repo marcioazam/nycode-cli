@@ -14,6 +14,11 @@ fn workspace() -> (tempfile::TempDir, ToolContext) {
     (dir, ctx)
 }
 
+async fn run(task: &Task, description: &str, ctx: &ToolContext) -> ToolOutput {
+    task.execute(task.prepare(json!({ "description": description })), ctx)
+        .await
+}
+
 fn tool_turn(id: &str, name: &str, args: &str) -> Vec<StreamEvent> {
     vec![
         StreamEvent::MessageStart { id: "m".into() },
@@ -39,9 +44,8 @@ async fn the_child_answers_and_only_the_answer_comes_back() {
     let (_dir, ctx) = workspace();
     let backend = Arc::new(FakeBackend::new(vec![text_turn("esta em src/main.rs")]));
 
-    let out = Task::new(backend)
-        .execute(json!({ "description": "onde fica o main" }), &ctx)
-        .await;
+    let task = Task::new(backend);
+    let out = run(&task, "onde fica o main", &ctx).await;
 
     assert!(!out.is_error);
     assert_eq!(out.content, "esta em src/main.rs");
@@ -54,9 +58,8 @@ async fn the_child_does_not_see_the_conversation_of_the_parent() {
     let (_dir, ctx) = workspace();
     let backend = Arc::new(FakeBackend::new(vec![text_turn("pronto")]));
 
-    Task::new(backend.clone())
-        .execute(json!({ "description": "faca algo" }), &ctx)
-        .await;
+    let task = Task::new(backend.clone());
+    run(&task, "faca algo", &ctx).await;
 
     let sent = backend.last_messages();
     assert_eq!(sent.len(), 1, "so a descricao da tarefa: {sent:?}");
@@ -67,9 +70,8 @@ async fn the_child_gets_its_own_instruction() {
     let (_dir, ctx) = workspace();
     let backend = Arc::new(FakeBackend::new(vec![text_turn("pronto")]));
 
-    Task::new(backend.clone())
-        .execute(json!({ "description": "faca algo" }), &ctx)
-        .await;
+    let task = Task::new(backend.clone());
+    run(&task, "faca algo", &ctx).await;
 
     let system = backend.last_system().unwrap_or_default();
     assert!(system.contains("subagente"), "{system}");
@@ -85,9 +87,8 @@ async fn the_child_can_use_the_tools_it_needs() {
         text_turn("achei: conteudo procurado"),
     ]));
 
-    let out = Task::new(backend)
-        .execute(json!({ "description": "leia alvo.txt" }), &ctx)
-        .await;
+    let task = Task::new(backend);
+    let out = run(&task, "leia alvo.txt", &ctx).await;
 
     assert!(!out.is_error, "{}", out.content);
     assert!(out.content.contains("conteudo procurado"));
@@ -100,9 +101,8 @@ async fn a_child_cannot_spawn_another_child() {
     let (_dir, ctx) = workspace();
     let backend = Arc::new(FakeBackend::new(vec![text_turn("pronto")]));
 
-    Task::new(backend.clone())
-        .execute(json!({ "description": "delegue de novo" }), &ctx)
-        .await;
+    let task = Task::new(backend.clone());
+    run(&task, "delegue de novo", &ctx).await;
 
     let offered = format!("{:?}", backend.last_tools());
     assert!(
@@ -121,9 +121,8 @@ async fn the_child_inherits_the_permission_of_the_parent() {
         text_turn("terminei"),
     ]));
 
-    Task::new(backend)
-        .execute(json!({ "description": "crie um arquivo" }), &ctx)
-        .await;
+    let task = Task::new(backend);
+    run(&task, "crie um arquivo", &ctx).await;
 
     assert!(
         !ctx.root().join("novo.txt").exists(),
@@ -139,10 +138,8 @@ async fn a_child_with_write_permission_can_write() {
         text_turn("terminei"),
     ]));
 
-    Task::new(backend)
-        .with_gate(|| Box::new(crate::policy::AllowAll))
-        .execute(json!({ "description": "crie um arquivo" }), &ctx)
-        .await;
+    let task = Task::new(backend).with_gate(|| Box::new(crate::policy::AllowAll));
+    run(&task, "crie um arquivo", &ctx).await;
 
     assert!(ctx.root().join("novo.txt").exists());
 }
@@ -154,9 +151,8 @@ async fn a_child_that_answers_nothing_is_reported_as_a_failure() {
     let (_dir, ctx) = workspace();
     let backend = Arc::new(FakeBackend::new(vec![text_turn("   ")]));
 
-    let out = Task::new(backend)
-        .execute(json!({ "description": "faca algo" }), &ctx)
-        .await;
+    let task = Task::new(backend);
+    let out = run(&task, "faca algo", &ctx).await;
 
     assert!(out.is_error);
     assert!(
@@ -173,9 +169,8 @@ async fn a_child_that_fails_says_so_instead_of_answering_empty() {
         bytes: 3,
     }));
 
-    let out = Task::new(backend)
-        .execute(json!({ "description": "faca algo" }), &ctx)
-        .await;
+    let task = Task::new(backend);
+    let out = run(&task, "faca algo", &ctx).await;
 
     assert!(out.is_error);
     assert!(out.content.contains("subagente falhou"), "{}", out.content);
@@ -203,6 +198,7 @@ fn the_schema_and_the_description_tell_the_model_how_to_use_it() {
 
     assert_eq!(task.name(), "task");
     assert_eq!(task.input_schema()["required"][0], "description");
+    assert!(task.input_schema()["properties"].get("envelope").is_none());
     // Sem isto o modelo escreveria uma descricao que so faz sentido no
     // contexto da conversa, e o filho nao a entenderia.
     assert!(task.description().contains("nao ve esta conversa"));
@@ -213,4 +209,58 @@ fn the_debug_view_does_not_dump_the_backend() {
     let backend = Arc::new(FakeBackend::new(vec![]));
     let rendered = format!("{:?}", Task::new(backend));
     assert!(rendered.starts_with("Task"), "{rendered}");
+}
+
+#[tokio::test]
+async fn a_spawn_without_envelope_is_refused() {
+    let (_dir, ctx) = workspace();
+    let backend = Arc::new(FakeBackend::new(vec![text_turn("nao deveria rodar")]));
+    let task = Task::new(backend.clone());
+
+    let out = task
+        .execute(json!({ "description": "faca algo" }), &ctx)
+        .await;
+
+    assert!(out.is_error, "{}", out.content);
+    assert!(out.content.contains("envelope ausente"), "{}", out.content);
+    assert_eq!(backend.call_count(), 0);
+}
+
+#[tokio::test]
+async fn a_forged_or_expired_envelope_is_refused() {
+    let (_dir, ctx) = workspace();
+    let backend = Arc::new(FakeBackend::new(vec![text_turn("nao deveria rodar")]));
+    let task = Task::new(backend.clone());
+    let sibling = Task::new(backend.clone());
+
+    let mut forged = task.prepare(json!({ "description": "faca algo" }));
+    forged["envelope"]["mac"] = json!("00deadbeef");
+    let out = task.execute(forged, &ctx).await;
+    assert!(out.is_error, "{}", out.content);
+    assert!(
+        out.content.contains("envelope rejeitado"),
+        "{}",
+        out.content
+    );
+
+    let mut expired = task.prepare(json!({ "description": "faca algo" }));
+    expired["envelope"]["exp"] = json!(1);
+    let out = task.execute(expired, &ctx).await;
+    assert!(out.is_error, "{}", out.content);
+    assert!(
+        out.content.contains("envelope rejeitado"),
+        "{}",
+        out.content
+    );
+
+    let foreign = sibling.prepare(json!({ "description": "faca algo" }));
+    let out = task.execute(foreign, &ctx).await;
+    assert!(out.is_error, "{}", out.content);
+    assert!(
+        out.content.contains("envelope rejeitado"),
+        "{}",
+        out.content
+    );
+
+    assert_eq!(backend.call_count(), 0);
 }

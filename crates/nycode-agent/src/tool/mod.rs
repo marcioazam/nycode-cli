@@ -261,6 +261,10 @@ pub trait Tool: Send + Sync {
 
     fn input_schema(&self) -> Value;
 
+    fn prepare(&self, input: Value) -> Value {
+        input
+    }
+
     /// Executa a chamada.
     ///
     /// Retorna [`ToolOutput`] mesmo em falha: um erro de ferramenta é dado para
