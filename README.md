@@ -3,8 +3,10 @@
 </p>
 
 Harness de coding agent em terminal, escrito em Rust do zero — não um fork,
-não um wrapper. Conformidade: SOTA-2026 v1.1.0, nível L2 (standard) — ver
-[ADR-0032](docs/architecture/decisions/0032-adota-padrao-externo-sota-2026-nivel-l2.md).
+não um wrapper. Conformidade: SOTA-2026 v1.4.0, nível L2, perfis Núcleo,
+Autoria por agente e Produto agente — ver
+[ADR-0036](docs/architecture/decisions/0036-o-pin-sota-2026-sobe-para-v1-4-0-com-tres-perfis.md)
+e a [matriz](docs/CONFORMANCE-MATRIX.md).
 
 ```bash
 export NYCODE_BASE_URL=https://seu-gateway/v1

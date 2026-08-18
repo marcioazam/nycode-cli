@@ -21,9 +21,10 @@ Um clone sem isso não tem gate nenhum e parece ter —
 3. `scripts/ci-local.sh --fast` a cada commit (o `pre-commit` já roda),
    `scripts/ci-local.sh --full` antes do push (os hooks `pre-merge-commit` e
    `pre-push` já rodam).
-4. Abra o PR. Caminhos críticos listados em
-   [`.github/CODEOWNERS`](.github/CODEOWNERS) exigem aprovação do dono
-   nomeado.
+4. Abra o PR. [`.github/CODEOWNERS`](.github/CODEOWNERS) lista caminhos
+   críticos e o dono humano. A proteção de `main` exige os checks verdes,
+   não review de CODEOWNERS ([ADR-0034](docs/architecture/decisions/0034-protecao-de-branch-exige-ci-verde-sem-aprovacao-separada.md);
+   `GATE-17` em waiver, [ADR-0037](docs/architecture/decisions/0037-gate-17-fica-em-waiver-enquanto-o-dono-humano-for-unico.md)).
 
 ## Commits
 

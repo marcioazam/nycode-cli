@@ -22,6 +22,9 @@ uma diferença tolerada.
 | [`specs/001-fronteira-de-confianca/`](specs/001-fronteira-de-confianca/spec.md) | Fronteira de confiança do agente: consentimento de extensão, confinamento e contenção de caminho |
 | [`specs/002-paridade-e-sota-2026/`](specs/002-paridade-e-sota-2026/spec.md) | Paridade com a referência e elevação a SOTA 2026: o inventário de sessenta deltas, triado, com o que se adota, o que se recusa e o que fica adiado |
 | [`../CHANGELOG.md`](../CHANGELOG.md) | Histórico de mudanças |
+| [`CONFORMANCE-MATRIX.md`](CONFORMANCE-MATRIX.md) | FRs SOTA-2026 v1.4.0 → instrumento ou waiver ([ADR-0036](architecture/decisions/0036-o-pin-sota-2026-sobe-para-v1-4-0-com-tres-perfis.md)) |
+| [`how-to/github-agent-workflow.md`](how-to/github-agent-workflow.md) | Ledger GitHub: Issue → spec → sub-issue → PR |
+| [`how-to/agent-runtime.md`](how-to/agent-runtime.md) | Deny no cliente (Cursor/Claude); prova `AI-04` |
 | [`../README.md`](../README.md) | Porta de entrada: instalação, uso, números medidos |
 | [`../NOTICE`](../NOTICE) | Atribuições de terceiros e aviso de risco |
 | [`../CLAUDE.md`](../CLAUDE.md) | Ponte para `AGENTS.md`, sem conteúdo normativo próprio |
@@ -71,7 +74,7 @@ Não são aspirações; o build quebra quando qualquer um deles regride.
 | Nenhum mutante sobrevivente nas linhas tocadas (`GATE-04`), só no job `mutation` em PR | 0 mutantes | [`scripts/mutation-gate.sh`](../scripts/mutation-gate.sh) |
 | [`test_map`](../test_map) em dia (`AI-10`) | obrigatório | [`scripts/gen-test-map.sh --check`](../scripts/gen-test-map.sh) |
 | Grafo de dependência entre crates bate com a allowlist (`GATE-15`) | 0 arestas não declaradas | [`scripts/architecture-boundary-gate.sh`](../scripts/architecture-boundary-gate.sh) |
-| Complexidade cognitiva/ciclomática por função, com ratchet (`GATE-05`/`GATE-06`) | 15 / 15, ou o baseline registrado | [`scripts/complexity-gate.sh`](../scripts/complexity-gate.sh) |
+| Complexidade cognitiva/ciclomática por função, com ratchet (`GATE-05`/`GATE-06`) | tetos em `scripts/complexity-gate.sh` + baseline | [`scripts/complexity-gate.sh`](../scripts/complexity-gate.sh) |
 | Duplicação de código (`GATE-08`) | 5% de linhas | [`scripts/duplication-gate.sh`](../scripts/duplication-gate.sh) |
 | Startup da sessão montada (NFR-1) | 15.000 µs | [`scripts/perf-gate.sh`](../scripts/perf-gate.sh) |
 | Startup de chegada do processo (NFR-1) | 3.000 µs, ou baseline ÷ 3 | [`scripts/perf-gate.sh`](../scripts/perf-gate.sh) |
