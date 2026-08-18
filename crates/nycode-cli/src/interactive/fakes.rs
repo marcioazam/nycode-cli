@@ -64,6 +64,8 @@ pub struct Scripted {
     pub pending: Vec<Message>,
     pub planning: bool,
     pub model: String,
+    pub last_system: Arc<Mutex<Option<String>>>,
+    pub retargets: Arc<Mutex<Vec<(String, String)>>>,
 }
 
 #[async_trait::async_trait]
@@ -90,6 +92,16 @@ impl Turns for Scripted {
     }
     fn switch_model(&mut self, model: &str) -> anyhow::Result<()> {
         self.model = model.to_owned();
+        Ok(())
+    }
+    fn set_system(&mut self, system: String) {
+        *self.last_system.lock().unwrap() = Some(system);
+    }
+    fn retarget_backend(&mut self, session_id: &str, model: &str) -> anyhow::Result<()> {
+        self.retargets
+            .lock()
+            .unwrap()
+            .push((session_id.to_owned(), model.to_owned()));
         Ok(())
     }
     async fn compact(&mut self) -> usize {
@@ -144,6 +156,10 @@ impl Turns for CancelAware {
     fn replace_history(&mut self, _messages: Vec<Message>) {}
     fn set_planning(&mut self, _planning: bool) {}
     fn switch_model(&mut self, _model: &str) -> anyhow::Result<()> {
+        Ok(())
+    }
+    fn set_system(&mut self, _system: String) {}
+    fn retarget_backend(&mut self, _session_id: &str, _model: &str) -> anyhow::Result<()> {
         Ok(())
     }
     async fn compact(&mut self) -> usize {
