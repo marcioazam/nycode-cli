@@ -3,7 +3,7 @@
 - **Status:** aceito
 - **Data:** 2026-08-18
 - **Contexto relacionado:** [ADR-0036](0036-o-pin-sota-2026-sobe-para-v1-4-0-com-tres-perfis.md), `CI-16`, `SDD-17`, `ADV-05`, `AI-13`
-- **Waiver:** CI-16, SDD-17, ADV-05, AI-13
+- **Waiver:** CI-16, SDD-17, AI-13
 - **Expira:** 2027-02-18
 
 ## Contexto
@@ -17,7 +17,8 @@ backstop, não esses IDs.
 
 ## Decisão
 
-Essas quatro FRs ficam em waiver. Controle compensatório: mutation `--in-diff`
+FR-8 saiu deste waiver quando `scripts/vacuous-assert/gate.sh` foi visto
+recusar `assert!(true)` de propósito. As outras três FRs ficam em waiver. Controle compensatório: mutation `--in-diff`
 com zero sobreviventes, cobertura 95%/90%/80%, `nycode-parity` como paridade
 de harness (não contrato de consumidor). **Owner:** marcioazam.
 
