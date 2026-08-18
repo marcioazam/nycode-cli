@@ -22,6 +22,13 @@ const RULE_DIRS: &[&str] = &[".claude/rules", ".nycode/rules"];
 pub struct Instruction {
     pub path: PathBuf,
     pub contents: String,
+    source: Source,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Source {
+    User,
+    Workspace,
 }
 
 /// Teto de bytes por arquivo.
@@ -54,10 +61,10 @@ pub(crate) fn from_sources(
 ) -> Vec<Instruction> {
     let mut found = Vec::new();
     if let Some(dir) = user {
-        found.extend(layer(dir));
+        found.extend(layer(dir, Source::User));
     }
     for dir in chain(root, ceiling) {
-        found.extend(layer(&dir));
+        found.extend(layer(&dir, Source::Workspace));
     }
     found
 }
@@ -82,13 +89,13 @@ fn chain(root: &Path, ceiling: Option<&Path>) -> Vec<PathBuf> {
     dirs
 }
 
-fn layer(dir: &Path) -> Vec<Instruction> {
+fn layer(dir: &Path, source: Source) -> Vec<Instruction> {
     let mut found = Vec::new();
-    if let Some(over) = read(dir, &dir.join(OVERRIDE)) {
+    if let Some(over) = read(dir, &dir.join(OVERRIDE), source) {
         found.push(over);
     } else {
         for name in INSTRUCTION_FILES {
-            if let Some(instruction) = read(dir, &dir.join(name)) {
+            if let Some(instruction) = read(dir, &dir.join(name), source) {
                 found.push(instruction);
             }
         }
@@ -103,7 +110,7 @@ fn layer(dir: &Path) -> Vec<Instruction> {
             .filter(|p| p.extension().is_some_and(|ext| ext == "md"))
             .collect();
         rules.sort();
-        found.extend(rules.iter().filter_map(|p| read(dir, p)));
+        found.extend(rules.iter().filter_map(|p| read(dir, p, source)));
     }
     found
 }
@@ -113,7 +120,7 @@ fn layer(dir: &Path) -> Vec<Instruction> {
 /// A checagem de link é aqui e não no chamador porque todo caminho de leitura
 /// passa por esta função, e uma que escapasse dela bastaria para reabrir o
 /// vazamento.
-fn read(root: &Path, path: &Path) -> Option<Instruction> {
+fn read(root: &Path, path: &Path, source: Source) -> Option<Instruction> {
     if !crate::tool::stays_within(root, path) {
         tracing::warn!(
             path = %path.display(),
@@ -134,17 +141,22 @@ fn read(root: &Path, path: &Path) -> Option<Instruction> {
     Some(Instruction {
         path: path.to_path_buf(),
         contents,
+        source,
     })
 }
 
 /// Concatena as instruções num bloco anexável ao prompt de sistema.
 #[must_use]
-pub fn render(root: &Path, instructions: &[Instruction]) -> Option<String> {
-    if instructions.is_empty() {
+pub fn render(root: &Path, instructions: &[Instruction], trust_workspace: bool) -> Option<String> {
+    let visible: Vec<_> = instructions
+        .iter()
+        .filter(|instruction| trust_workspace || instruction.source == Source::User)
+        .collect();
+    if visible.is_empty() {
         return None;
     }
     let mut out = String::from("# Convencoes do projeto\n\n");
-    for instruction in instructions {
+    for instruction in visible {
         let label = instruction
             .path
             .strip_prefix(root)
@@ -270,7 +282,7 @@ mod tests {
     fn a_workspace_without_conventions_renders_nothing() {
         let dir = tempfile::tempdir().unwrap();
         assert!(from_sources(dir.path(), None, Some(dir.path())).is_empty());
-        assert!(render(dir.path(), &[]).is_none());
+        assert!(render(dir.path(), &[], false).is_none());
     }
 
     #[test]
@@ -283,6 +295,7 @@ mod tests {
         let rendered = render(
             dir.path(),
             &from_sources(dir.path(), None, Some(dir.path())),
+            true,
         )
         .unwrap();
         assert!(rendered.contains("## AGENTS.md"));
