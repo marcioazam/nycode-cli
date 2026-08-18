@@ -40,7 +40,7 @@ em data — waiver honesto não é omissão, mas também não é 100% instrument
 | FR-21 | Autoria | `AI-03` | waiver | ADR-0037 (mesmo buraco de dono único; agente não tem identidade de merge) |
 | FR-22 | Autoria | `AI-06` | instrumentado | pr-size + attribution + waiver-gate no pipeline |
 | FR-23 | Autoria | `AI-10` | instrumentado | `test_map` gerado |
-| FR-24 | Autoria | `AI-13`–`15` | waiver | ADR-0039 |
+| FR-24 | Autoria | `AI-13`–`15` | instrumentado | `scripts/metrics/gate.sh`; sem split ou loc/commit como produtividade recusa |
 | FR-25 | Autoria | `AI-12`, `SDD-16` | instrumentado | contrato em `AGENTS.md`: colar saída de `scripts/verify-all --full` |
 | FR-26 | Autoria | `GATE-17`, `AI-02` | waiver | ADR-0037 |
 | FR-27 | Produto | `AGT-01` | instrumentado | `sanitize::as_model_data` |
