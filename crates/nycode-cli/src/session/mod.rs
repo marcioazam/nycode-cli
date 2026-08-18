@@ -142,10 +142,12 @@ pub async fn prepare(cli: &Cli) -> anyhow::Result<Prepared> {
     let root = ctx.root().to_path_buf();
     phases.mark("credencial");
 
-    // As convencoes do repositorio especializam o prompt base. Um AGENTS.md
-    // existente passa a valer sem nenhuma configuracao.
     let context = Context::discover(&root);
-    let system = context.system_prompt(&crate::invocation::prompt::resolve(cli, &root)?, &root);
+    let system = context.system_prompt(
+        &crate::invocation::prompt::resolve(cli, &root)?,
+        &root,
+        cli.trust_workspace_instructions,
+    );
     phases.mark("workspace");
 
     let store = Store::open(root.join(".nycode/sessions"))?;

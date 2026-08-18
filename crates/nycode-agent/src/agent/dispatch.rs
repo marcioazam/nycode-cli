@@ -183,7 +183,7 @@ impl Agent {
         match self.gate.check(call) {
             Decision::Allow => {}
             Decision::Deny(reason) => return ToolOutput::error(reason),
-            Decision::Ask if self.approver.approve(call).await => {}
+            Decision::Ask if self.approver.approve(call).await.authorizes(call) => {}
             Decision::Ask => {
                 // A recusa volta ao modelo como resultado corrigível, e não
                 // como aborto: ele pode propor outro caminho em vez de o turno

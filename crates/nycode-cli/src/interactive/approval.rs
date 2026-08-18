@@ -235,6 +235,7 @@ mod tests {
     /// Pergunta e devolve o que a interface teria escrito, com a resposta.
     async fn answered(events: Vec<Event>, call: ToolCall) -> (bool, String) {
         let (approver, mut inbox) = Asking::channel();
+        let expected = call.clone();
         let asked = tokio::spawn(async move { approver.approve(&call).await });
 
         let request = inbox.recv().await.expect("um pedido");
@@ -243,7 +244,10 @@ mod tests {
             .await
             .unwrap();
 
-        (asked.await.unwrap(), surface.scrollback)
+        (
+            asked.await.unwrap().authorizes(&expected),
+            surface.scrollback,
+        )
     }
 
     #[tokio::test]
