@@ -216,11 +216,10 @@ impl Agent {
             ));
         }
 
-        // O evento é `post-tool-use`, e só dispara depois de a ferramenta ter
-        // rodado de fato. Um veto, uma recusa do gate ou um nome desconhecido
-        // saem acima sem passar por aqui: anunciar uso de ferramenta onde não
-        // houve uso faria um hook de auditoria registrar o que não aconteceu.
-        let mut output = crate::tool::redact::apply(tool.execute(input, &self.ctx).await);
+        // post-tool-use só depois de a ferramenta rodar. Veto, recusa do gate
+        // ou nome desconhecido saem acima: o hook não registra o que não houve.
+        let mut output =
+            crate::tool::redact::apply(tool.execute(tool.prepare(input), &self.ctx).await);
         self.observed(call, &mut output).await;
         output
     }
