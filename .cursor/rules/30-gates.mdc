@@ -1,0 +1,6 @@
+---
+description: O que bloqueia o merge
+alwaysApply: true
+---
+Verde = `scripts/verify-all --full`. Números vivem nos `scripts/*-gate.sh`, não aqui.
+Matriz: `docs/CONFORMANCE-MATRIX.md`. Deny de cliente: `docs/how-to/agent-runtime.md`.

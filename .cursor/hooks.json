@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeShellExecution": [
+      {
+        "command": "bash .cursor/hooks/deny-destructive.sh",
+        "failClosed": true,
+        "timeout": 10
+      }
+    ],
+    "beforeReadFile": [
+      {
+        "command": "bash .cursor/hooks/deny-secrets.sh",
+        "failClosed": true,
+        "timeout": 10
+      }
+    ]
+  }
+}
