@@ -132,6 +132,8 @@ fast() {
   step "asserção vacua" scripts/vacuous-assert/gate.sh
   step "auto-teste de contrato CLI" scripts/contract/gate-test.sh
   step "contrato CLI" scripts/contract/gate.sh
+  step "auto-teste de invariantes de parser" scripts/parser-invariants/gate-test.sh
+  step "invariantes de parser" scripts/parser-invariants/gate.sh
 }
 
 full() {
@@ -164,6 +166,8 @@ full() {
   step "asserção vacua" scripts/vacuous-assert/gate.sh
   step "auto-teste de contrato CLI" scripts/contract/gate-test.sh
   step "contrato CLI" scripts/contract/gate.sh
+  step "auto-teste de invariantes de parser" scripts/parser-invariants/gate-test.sh
+  step "invariantes de parser" scripts/parser-invariants/gate.sh
 
   # Os auto-testes dos gates vem antes dos gates: um gate quebrado que aprova e
   # pior que um gate que reprova, porque nao deixa rastro.
