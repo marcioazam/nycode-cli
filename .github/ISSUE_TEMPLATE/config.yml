@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: How-to GitHub
+    url: https://github.com/marcioazam/nycode-cli/blob/main/docs/how-to/github-agent-workflow.md
+    about: Issue coordena; spec é o aceite
