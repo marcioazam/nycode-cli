@@ -5,9 +5,10 @@
 //! Superfície e turnos entram por trait. Em modo bruto o `Ctrl+C` chega como
 //! tecla, e o laço continua lendo enquanto o turno corre.
 
+use clap::Parser as _;
 use crossterm::event::Event;
 use futures_util::{Stream, StreamExt};
-use nycode_agent::{Cancel, Context, Invocation, Store};
+use nycode_agent::{Cancel, Invocation, Store};
 use nycode_ai::Usage;
 use nycode_ai::anthropic::Message;
 use nycode_tui::Key;
@@ -47,6 +48,8 @@ pub trait Turns: Send {
     fn set_planning(&mut self, planning: bool);
     /// Troca o modelo, mantendo a conversa.
     fn switch_model(&mut self, model: &str) -> anyhow::Result<()>;
+    fn set_system(&mut self, system: String);
+    fn retarget_backend(&mut self, session_id: &str, model: &str) -> anyhow::Result<()>;
 }
 
 /// Em plan mode o gate já impede mutação; isto explica o porquê ao modelo.
@@ -70,6 +73,7 @@ pub struct Session {
     cancel: Cancel,
     store: Store,
     id: String,
+    root: std::path::PathBuf,
     header: Vec<String>,
     commands: Vec<nycode_agent::Command>,
     /// Fila de pedidos de aprovação, quando a sessão pergunta.
@@ -91,6 +95,8 @@ pub struct Session {
     /// Pedidos para depois deste turno, sem injetar no turno corrente.
     later: Option<tokio::sync::mpsc::Sender<String>>,
     follow_up: Option<tokio::sync::mpsc::Receiver<String>>,
+    system: Option<String>,
+    append_system: Option<String>,
 }
 
 impl std::fmt::Debug for Session {
@@ -109,7 +115,7 @@ impl Session {
         prepared: crate::session::Prepared,
         model: String,
         writable: bool,
-        quiet: bool,
+        cli: &crate::Cli,
         width: usize,
     ) -> Self {
         let crate::session::Prepared {
@@ -125,6 +131,7 @@ impl Session {
             prices,
             windows,
             rebuild,
+            sampling,
             // As fases interessam a quem mede o arranque, não a quem conversa.
             phases: _,
             lifecycle: _,
@@ -160,8 +167,9 @@ impl Session {
                 price,
             ),
             turns: Box::new(
-                crate::screen::Agentic::new(agent, persisted, quiet)
+                crate::screen::Agentic::new(agent, persisted, cli.quiet)
                     .rebuilding(rebuild)
+                    .with_sampling(sampling)
                     .with_windows(windows)
                     .restoring(move || {
                         // `--allow-writes` devolve AllowAll; senão volta a perguntar.
@@ -175,6 +183,7 @@ impl Session {
             cancel,
             store,
             id: session_id,
+            root,
             header: nycode_tui::header(env!("CARGO_PKG_VERSION"), &files, &skills, width),
             commands: context.commands,
             models,
@@ -187,6 +196,8 @@ impl Session {
             quitting: false,
             planning: false,
             _mcp: mcp,
+            system: cli.system.clone(),
+            append_system: cli.append_system.clone(),
         }
     }
 
@@ -205,6 +216,7 @@ impl Session {
             cancel: Cancel::new(),
             store,
             id: id.to_owned(),
+            root: std::path::PathBuf::new(),
             header: vec!["nycode".to_owned()],
             commands: Vec::new(),
             models: Vec::new(),
@@ -217,6 +229,8 @@ impl Session {
             quitting: false,
             planning: false,
             _mcp: Vec::new(),
+            system: None,
+            append_system: None,
         }
     }
 
@@ -300,6 +314,7 @@ impl Session {
         E: Stream<Item = std::io::Result<Event>> + Unpin,
     {
         surface.emit(&format!("\n{PROMPT}{typed}\n\n"))?;
+        self.apply_if_session_op(&typed, surface.width())?;
 
         let names: Vec<String> = self.commands.iter().map(|c| c.name.clone()).collect();
         let available = builtin::Available {
@@ -336,9 +351,6 @@ impl Session {
             }
             builtin::Effect::SwitchModel(model) => {
                 self.turns.switch_model(&model)?;
-                // O preço acompanha o modelo: cobrar os turnos novos à tarifa
-                // do modelo antigo daria um número errado com a mesma cara de
-                // um certo.
                 let price = self.prices.get(&model).cloned();
                 self.panel.set_model(model.clone(), price);
                 surface.emit(&format!("\nmodelo agora: {model}\n\n"))?;
@@ -360,8 +372,6 @@ impl Session {
             Invocation::NotACommand => typed,
             Invocation::Expanded(prompt) => prompt,
             Invocation::Unknown { name, available } => {
-                // Mandar `/revisr` ao modelo gastaria um turno para descobrir
-                // o erro de digitação.
                 surface.emit(&unknown_command(&name, &available))?;
                 surface.draw(&self.panel.frame(surface.width()))?;
                 return Ok(());
@@ -383,8 +393,6 @@ impl Session {
         .await;
 
         for message in self.turns.drain() {
-            // Depois de um `/fork`, o primeiro registro pendura no ponto
-            // escolhido; os seguintes seguem a ponta normalmente.
             match self.branch.take() {
                 Some(parent) => {
                     self.branch =
@@ -393,7 +401,6 @@ impl Session {
                 None => self.store.append(&self.id, &message)?,
             }
         }
-        // A partir daqui a ponta do arquivo é o caminho ativo de novo.
         self.branch = None;
 
         match outcome {
@@ -409,7 +416,27 @@ impl Session {
         self.follow_up.as_mut()?.try_recv().ok()
     }
 
-    /// Grava a partir de outro ponto e registra o que o ramo abandonado fez.
+    fn apply_if_session_op(&mut self, typed: &str, width: usize) -> anyhow::Result<()> {
+        let name = typed.trim().strip_prefix('/').map(|rest| {
+            rest.split_once(char::is_whitespace)
+                .map_or(rest, |(n, _)| n)
+        });
+        match name {
+            Some("new") => {
+                self.id = Store::new_id();
+                self.branch = None;
+                self.turns.replace_history(Vec::new());
+                self.panel.retarget(self.id.clone());
+                self.panel.editor_mut().clear_history();
+                let model = self.panel.model().to_owned();
+                self.turns.retarget_backend(&self.id, &model)?;
+            }
+            Some("reload") => self.reload_resources(width)?,
+            _ => {}
+        }
+        Ok(())
+    }
+
     fn resume_from(&mut self, record_id: String) -> anyhow::Result<()> {
         let next = self.store.path_to(&self.id, &record_id)?;
         let note = nycode_agent::session::compaction::notice(
@@ -428,21 +455,26 @@ impl Session {
         self.branch = Some(branch);
         Ok(())
     }
-}
 
-/// Mensagem para um comando que não existe.
-fn unknown_command(name: &str, available: &[String]) -> String {
-    if available.is_empty() {
-        return format!("\n/{name} nao existe, e este workspace nao declara nenhum comando.\n\n");
+    fn reload_resources(&mut self, width: usize) -> anyhow::Result<()> {
+        let context = nycode_agent::Context::discover(&self.root);
+        let mut cli =
+            crate::Cli::try_parse_from(["nycode"]).map_err(|err| anyhow::anyhow!("{err}"))?;
+        cli.system.clone_from(&self.system);
+        cli.append_system.clone_from(&self.append_system);
+        let system = context.system_prompt(
+            &crate::invocation::prompt::resolve(&cli, &self.root)?,
+            &self.root,
+        );
+        self.turns.set_system(system);
+        if self.planning {
+            self.turns.set_planning(true);
+        }
+        let (files, skills) = loaded(&context, &self.root);
+        self.commands = context.commands;
+        self.header = nycode_tui::header(env!("CARGO_PKG_VERSION"), &files, &skills, width);
+        Ok(())
     }
-    format!(
-        "\n/{name} nao existe. Disponiveis: {}\n\n",
-        available
-            .iter()
-            .map(|c| format!("/{c}"))
-            .collect::<Vec<_>>()
-            .join(", ")
-    )
 }
 
 /// Se o evento é o pedido de interrupção.
@@ -450,38 +482,9 @@ pub fn interrupts(event: &Event) -> bool {
     matches!(event, Event::Key(key) if nycode_tui::translate(*key) == Key::Interrupt)
 }
 
-/// Extrai os prompts do usuário de um histórico retomado.
-pub fn previous_prompts(history: &[Message]) -> Vec<String> {
-    use nycode_ai::anthropic::{ContentBlock, Role};
-
-    history
-        .iter()
-        .filter(|message| message.role == Role::User)
-        .filter_map(|message| {
-            let texts: Vec<&str> = message
-                .content
-                .iter()
-                .filter_map(|block| match block {
-                    ContentBlock::Text { text } => Some(text.as_str()),
-                    _ => None,
-                })
-                .collect();
-            (!texts.is_empty()).then(|| texts.join("\n"))
-        })
-        .collect()
-}
-
-/// Nomes dos arquivos de contexto e das skills que a sessão carregou.
-#[must_use]
-pub fn loaded(context: &Context, root: &std::path::Path) -> (Vec<String>, Vec<String>) {
-    let files = context
-        .instructions
-        .iter()
-        .map(|instruction| crate::session::paths::display_relative(&instruction.path, root))
-        .collect();
-    let skills = context.skills.iter().map(|s| s.name.clone()).collect();
-    (files, skills)
-}
+mod text;
+use text::unknown_command;
+pub use text::{loaded, previous_prompts};
 
 pub mod approval;
 pub mod builtin;
@@ -489,6 +492,9 @@ pub mod builtin;
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::panic)]
 pub(crate) mod fakes;
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::panic)]
+mod session_ops_test;
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::panic)]
 mod tests;
