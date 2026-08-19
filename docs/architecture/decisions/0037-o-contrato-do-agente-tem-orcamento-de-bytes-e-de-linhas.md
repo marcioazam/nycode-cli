@@ -22,16 +22,18 @@ teto vira licença para crescer — e a queda de adesão continua.
 
 ## Decisão
 
-Dois tetos, os dois no gate [`scripts/agent-harness/gate.sh`](../../../scripts/agent-harness/gate.sh):
+Dois tetos. O instrumento fica em `scripts/agent-harness/gate.sh` quando essa onda o publicar; nesta árvore o caminho ainda não existe — a decisão é o número, não a afirmação de que o ficheiro já está mergeado:
 
 | Grandeza | Teto | Por quê |
 |---|---:|---|
 | Bytes de `AGENTS.md` | **28672** (28 KiB) | 4096 de folga contra o default 32768 do Codex |
 | Linhas de `AGENTS.md` | **200** | alvo documentado do Claude Code |
 
-`.codex/config.toml` fixa `project_doc_max_bytes = 65536` só para o
-arquivo atual não ser truncado se o gate falhar aberto num clone sem
-hooks. O número que autoriza crescimento é o do gate, não o do Codex.
+Quando o adaptador Codex desta onda existir, `.codex/config.toml` fixa
+`project_doc_max_bytes = 65536` só para o arquivo atual não ser truncado
+se o gate falhar aberto num clone sem hooks. O número que autoriza
+crescimento é o do gate, não o do Codex. Nesta árvore `.codex/` ainda
+não existe.
 
 O gate também recusa `CLAUDE.md` sem `@AGENTS.md` e caminho relativo
 citado no contrato que não existe na árvore.
@@ -42,8 +44,8 @@ Positivas: truncagem silenciosa deixa de apagar a sequência de
 verificação; o tamanho do contrato passa a falhar fechado.
 
 Negativas: compressão do `AGENTS.md` (imperativo + ID + caminho de
-gate) é obrigatória para o gate passar. Racional vive em ADR e em
-`docs/INDEX.md`.
+gate) é obrigatória para o gate passar. Racional vive neste ADR; `docs/INDEX.md` ganha a linha no PR que
+publicar a spec ou o how-to correspondente.
 
 Descartadas: fatiar `AGENTS.md` por crate (o Codex funde raiz→cwd;
 sessão na raiz veria *menos* regra). Confiar só no teto elevado do

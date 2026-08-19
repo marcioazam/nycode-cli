@@ -23,18 +23,23 @@ deste repositório. Cursor só re-injeta em `sessionStart`, mais fraco que
 
 ## Decisão
 
-1. Um registro só: [`scripts/agent-harness/forbidden.txt`](../../../scripts/agent-harness/forbidden.txt).
+Os caminhos abaixo são o desenho desta onda. Nesta árvore eles ainda não
+existem; os PRs que os publicarem não mudam o contrato, só materializam
+o ficheiro.
+
+1. Um registro só: `scripts/agent-harness/forbidden.txt`.
    Não se parseia prosa do `AGENTS.md`.
-2. [`scripts/agent-harness/gen-adapters.sh`](../../../scripts/agent-harness/gen-adapters.sh)
+2. `scripts/agent-harness/gen-adapters.sh`
    gera `.claude/settings.json` `permissions.deny`, `opencode.json`
    `permission` e `.codex/rules/nycode.rules`. `--check` no gate.
-3. [`scripts/agent-harness/veto.sh`](../../../scripts/agent-harness/veto.sh)
+3. `scripts/agent-harness/veto.sh`
    no PreToolUse / beforeShellExecution / beforeMCPExecution. Exit **2**,
    nunca 1. Cursor com `failClosed: true`.
-4. [`scripts/agent-harness/remind.sh`](../../../scripts/agent-harness/remind.sh)
+4. `scripts/agent-harness/remind.sh`
    em `UserPromptSubmit` (Claude, Codex) e `sessionStart` (Cursor). A
    assimetria do Cursor é declarada: não há paridade fingida.
-5. Stop continua em [`scripts/agent-stop/verify.sh`](../../../scripts/agent-stop/verify.sh).
+5. Stop fica em `scripts/agent-stop/verify.sh` no PR que o publicar —
+   não é um ficheiro que já exista nesta árvore.
 
 ## Consequências
 

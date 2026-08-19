@@ -2,7 +2,7 @@
 
 - **Status:** aceito
 - **Data:** 2026-08-17
-- **Contexto relacionado:** [ADR-0032](0032-adota-padrao-externo-sota-2026-nivel-l2.md), [ADR-0034](0034-protecao-de-branch-exige-ci-verde-sem-aprovacao-separada.md), `GATE-17`/`AI-02`, FR-26 da spec 003
+- **Contexto relacionado:** [ADR-0032](0032-adota-padrao-externo-sota-2026-nivel-l2.md), [ADR-0034](0034-protecao-de-branch-exige-ci-verde-sem-aprovacao-separada.md), `GATE-17`/`AI-02`. O FR-26 da spec de harness (003) nomeia este waiver quando essa spec estiver na árvore; neste PR ela ainda não está.
 - **Waiver:** GATE-17
 - **Expira:** 2027-02-17
 
@@ -18,7 +18,7 @@ em todas as linhas é `@marcioazam`.
 já recusou `required_pull_request_reviews` nesse cenário: com mantenedor
 único, a aprovação exigida seria auto-aprovação — teatro de processo, não
 uma segunda perspectiva. Ligar essa trava agora para marcar `GATE-17` como
-satisfeito seria exatamente o que a spec 003 proíbe.
+satisfeito seria exatamente o auto-aprovação que o padrão pede para não fingir.
 
 O que falta, e este ADR registra, é o waiver honesto: não fingir o gate, e
 nomear o controle que cobre o buraco enquanto só existe um humano.
@@ -34,16 +34,17 @@ Controle compensatório, os dois juntos:
 1. **Lista de caminhos críticos** — o próprio `CODEOWNERS`, já existente.
    Caminho novo de confiança (credencial, workflow, política de
    dependência, ADR) entra nessa lista no mesmo PR, não depois.
-2. **Review automatizado independente** — os jobs exigidos em `main`
-   (ADR-0034): lint, layout, tamanho, waiver, harness de agente, mutation,
-   cobertura, supply-chain, performance, paridade, docker. Não é segundo
-   humano. É o relatório que um revisor em contexto limpo já produziria
-   de forma determinística, e é o que a spec 003 pede enquanto o dono é
-   único.
+2. **Review automatizado independente** — os 12 jobs que o ADR-0034
+   já exige em `main`: lint, layout, pr-size, workflows, test,
+   default-build-has-no-subscription-oauth, mutation, coverage, perf,
+   supply-chain, parity, docker. Não é segundo humano. Gates de waiver e
+   de harness de agente, quando existirem, entram nessa lista no mesmo PR
+   em que o job passar a ser exigido — não nesta frase, à frente do
+   instrumento.
 
 ## Consequências
 
-Positivas: a matriz da spec 003 pode dizer `waiver` em `FR-26` sem
+Positivas: a matriz de conformidade pode dizer `waiver` em `GATE-17`/`FR-26` sem
 inventar um clique de auto-aprovação. O `CODEOWNERS` continua sendo a
 lista, não um enfeite.
 
