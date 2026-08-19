@@ -1,37 +1,37 @@
 # gerado por scripts/agent-harness/gen-adapters.sh; nao edite
 
 prefix_rule(
-  pattern = ["git", "commit", "--no-verify"],
+  pattern = ["git commit *--no-verify*"],
   decision = "forbidden",
   justification = "bypass do hook versionado (AGENTS.md CI local)",
 )
 
 prefix_rule(
-  pattern = ["git", "push", "--force"],
+  pattern = ["git push *--force*"],
   decision = "forbidden",
   justification = "force-push (ADR-0034)",
 )
 
 prefix_rule(
-  pattern = ["git", "push", "-f"],
+  pattern = ["git push -f *"],
   decision = "forbidden",
   justification = "force-push curto (ADR-0034)",
 )
 
 prefix_rule(
-  pattern = ["git", "push", "-f"],
+  pattern = ["git push * -f"],
   decision = "forbidden",
   justification = "force-push curto no fim (ADR-0034)",
 )
 
 prefix_rule(
-  pattern = ["curl", "bash"],
+  pattern = ["curl *bash*"],
   decision = "forbidden",
   justification = "pipeline sem digest (NFR-8)",
 )
 
 prefix_rule(
-  pattern = ["wget", "bash"],
+  pattern = ["wget *bash*"],
   decision = "forbidden",
   justification = "pipeline sem digest (NFR-8)",
 )

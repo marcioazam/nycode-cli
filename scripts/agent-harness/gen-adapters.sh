@@ -11,15 +11,24 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 readonly ROOT
 readonly REG="${ROOT}/scripts/agent-harness/forbidden.txt"
-readonly CHECK="${1:-}"
+readonly MODE="${1:-}"
+
+if [[ -n "${MODE}" && "${MODE}" != "--check" ]]; then
+  echo "gen-adapters: argumento desconhecido: ${MODE} (use --check ou nenhum)" >&2
+  exit 2
+fi
 
 if [[ ! -f "${REG}" ]]; then
   echo "gen-adapters: registro nao encontrado: ${REG}" >&2
   exit 2
 fi
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "gen-adapters: python3 e obrigatorio" >&2
+  exit 2
+fi
 
-python3 - "${ROOT}" "${REG}" "${CHECK}" <<'PY'
-import json, pathlib, re, sys, tempfile, os
+python3 - "${ROOT}" "${REG}" "${MODE}" <<'PY'
+import json, pathlib, sys
 
 root = pathlib.Path(sys.argv[1])
 reg = pathlib.Path(sys.argv[2])
@@ -92,13 +101,10 @@ for r in rows:
     if r["tool"] != "bash":
         rules.append(f"# {r['id']}: {r['tool']} {r['pattern']} — so veto.sh (nao e argv)")
         continue
-    tokens = [t for t in r["pattern"].replace("*", " ").split() if t]
-    if not tokens:
-        continue
-    pat = ", ".join(starlark_string(t) for t in tokens)
+    # Um unico glob, sem quebrar em tokens: "curl *bash*" nao vira ["curl","bash"].
     just = starlark_string(r["reason"] + " (" + r["rule"] + ")")
     rules.append("prefix_rule(")
-    rules.append(f"  pattern = [{pat}],")
+    rules.append(f"  pattern = [{starlark_string(r['pattern'])}],")
     rules.append('  decision = "forbidden",')
     rules.append(f"  justification = {just},")
     rules.append(")")
