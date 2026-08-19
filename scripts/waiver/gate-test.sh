@@ -112,8 +112,8 @@ check 2 "raiz inexistente e erro de uso" "${WORK}/nao/existe" "${reg}" "nao enco
 box="$(tree registro_ausente)"
 check 2 "registro inexistente e erro de uso" "${box}" "${WORK}/nao-existe.txt" "nao encontrado"
 
-# A arvore real deste PR: um waiver GATE-16 cujo ADR tem Waiver/Expira.
-check 0 "arvore real com GATE-16 vigente passa" "${ROOT}" "${ROOT}/scripts/waiver/registry.txt"
+# A arvore real deste PR: GATE-16 e GATE-17 vigentes, ADRs casados.
+check 0 "arvore real com GATE-16 e GATE-17 vigentes passa" "${ROOT}" "${ROOT}/scripts/waiver/registry.txt"
 
 echo ""
 if [[ "${failed}" -gt 0 ]]; then
