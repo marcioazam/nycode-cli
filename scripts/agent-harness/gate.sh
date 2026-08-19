@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Gate do harness de agente (ADR-0037).
+# Gate do harness de agente (orcamento do contrato).
 #
 # Reprova quando AGENTS.md passa do orcamento de bytes (com folga contra o
-# teto default do Codex, 32768) ou do teto de linhas (alvo da doc do
-# Claude Code), quando CLAUDE.md deixa de importar @AGENTS.md, ou quando
-# o contrato cita um caminho relativo que nao existe na arvore.
+# teto default do Codex, 32768) ou do teto de linhas, quando CLAUDE.md
+# deixa de importar @AGENTS.md, ou quando o contrato cita um caminho
+# relativo que nao existe na arvore.
 #
 # Uso:
 #   scripts/agent-harness/gate.sh            # repositorio real
@@ -15,7 +15,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 readonly ROOT
 
-# ADR-0037: 28 KiB (4096 de folga contra 32768) e 200 linhas.
+# 28 KiB (4096 de folga contra 32768) e 200 linhas.
 readonly MAX_BYTES=28672
 readonly MAX_LINES=200
 
@@ -23,6 +23,11 @@ TARGET="${1:-${ROOT}}"
 
 if [[ ! -d "${TARGET}" ]]; then
   echo "agent-harness-gate: raiz nao encontrada: ${TARGET}" >&2
+  exit 2
+fi
+
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "agent-harness-gate: python3 e obrigatorio" >&2
   exit 2
 fi
 
@@ -50,12 +55,11 @@ fi
 if [[ ! -f "${claude}" ]]; then
   echo "  FALHA: CLAUDE.md ausente em ${TARGET}" >&2
   failures=$((failures + 1))
-elif ! grep -q '@AGENTS.md' "${claude}"; then
+elif ! grep -qE '(^|[[:space:]])@AGENTS\.md([[:space:]]|$)' "${claude}"; then
   echo "  FALHA: CLAUDE.md nao importa @AGENTS.md" >&2
   failures=$((failures + 1))
 fi
 
-# Links markdown relativos e caminhos entre backticks com barra.
 cited_paths() {
   local file="$1"
   [[ -f "${file}" ]] || return 0
@@ -79,19 +83,32 @@ for m in re.finditer(r"`(\.?[A-Za-z0-9_./-]+/[A-Za-z0-9_./-]*)`", text):
 PY
 }
 
+cited_tmp="$(mktemp)"
+cited_rc=0
+{
+  cited_paths "${agents}"
+  cited_paths "${claude}"
+} >"${cited_tmp}" || cited_rc=$?
+if ((cited_rc != 0)); then
+  rm -f -- "${cited_tmp}"
+  echo "agent-harness-gate: nao deu para extrair caminhos citados." >&2
+  exit 2
+fi
+
 declare -A visto=()
 while IFS= read -r rel || [[ -n "${rel}" ]]; do
   [[ -z "${rel}" ]] && continue
   [[ -n "${visto[${rel}]+x}" ]] && continue
   visto["${rel}"]=1
+  case "${rel}" in
+  *://* | /*) continue ;;
+  esac
   if [[ ! -e "${TARGET}/${rel}" ]]; then
     echo "  FALHA: contrato cita ${rel}, que nao existe" >&2
     failures=$((failures + 1))
   fi
-done < <(
-  cited_paths "${agents}"
-  cited_paths "${claude}"
-)
+done <"${cited_tmp}"
+rm -f -- "${cited_tmp}"
 
 adapters="${ROOT}/scripts/agent-harness/gen-adapters.sh"
 if [[ "${TARGET}" == "${ROOT}" && -f "${adapters}" ]]; then
