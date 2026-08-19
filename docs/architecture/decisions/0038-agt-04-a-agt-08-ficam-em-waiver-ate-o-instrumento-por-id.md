@@ -1,10 +1,8 @@
 # ADR-0038: AGT-04 a AGT-08 ficam em waiver até o instrumento por ID
 
-- **Status:** aceito
+- **Status:** superseded
 - **Data:** 2026-08-18
 - **Contexto relacionado:** [ADR-0036](0036-o-pin-sota-2026-sobe-para-v1-4-0-com-tres-perfis.md), `AGT-04`–`AGT-08`, FR-30–FR-34
-- **Waiver:** AGT-04
-- **Expira:** 2027-02-18
 
 ## Contexto
 
@@ -24,6 +22,9 @@ AGT-05 saiu deste waiver quando `Bound` recusou reusar grant de um path noutro.
 AGT-06 saiu quando `redact::apply` tirou o segredo plantado do `ContentBlock`.
 AGT-07 saiu quando `store/mac.rs` recusou linha sem MAC, expirada ou estrangeira.
 AGT-08 saiu quando `task` recusou spawn sem envelope, com MAC forjado ou expirado.
+AGT-04 saiu quando `bash` recusou `command` e interpretador+`-c`, e um slot com
+metacaractere chegou literal ao stdout. Sem IDs restantes, este ADR fica
+superseded.
 Controle compensatório enquanto isso: gate de permissão (AGT-02),
 aprovação por chamada (`Approver::Never` por omissão), isolamento de env do
 filho, pin MCP no consentimento (ADR-0028), envelope HMAC do filho (ADR-0007).
