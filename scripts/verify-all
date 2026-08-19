@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Entrada canonica da verificacao local e remota. `ci-local.sh` fica como
+# compatibilidade para hooks e clones que ainda chamam o nome anterior.
+
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+readonly ROOT
+
+exec "${ROOT}/scripts/ci-local.sh" "$@"
