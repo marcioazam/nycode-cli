@@ -4,6 +4,6 @@
 # Comentario e linha vazia sao ignorados. Data que passou, campo ausente,
 # ADR apontado inexistente, ou ADR com `Waiver:` sem linha aqui (e o
 # inverso) reprovam o merge.
+# GATE-17 entra neste registro no PR que publicar o ADR-0036.
 
 GATE-16 | GATE-16 | 2027-02-14 | marcioazam | hook pre-commit e squash-merge deliberados | docs/architecture/decisions/0033-gate-16-fica-sem-instrumento-conflito-com-hook-e-squash-merge.md
-GATE-17 | GATE-17 | 2027-02-17 | marcioazam | CODEOWNERS mais CI exigido, sem auto-aprovacao | docs/architecture/decisions/0036-gate-17-fica-em-waiver-enquanto-o-dono-humano-for-unico.md
