@@ -5,7 +5,7 @@
 # de `let _ =` legados, muitos em `fmt::Write`. O que este gate recusa e um
 # descarte NOVO no diff, visto pelo clippy (`let_underscore_must_use` e
 # `unused_must_use`) na intersecao com linhas adicionadas. Excecao so com
-# `mascarado-porque:` na linha ou na anterior.
+# `mascarado-porque:` na linha ou num comentario na anterior.
 #
 # Uso:
 #   scripts/error-masking/gate.sh                      # origin/main..HEAD
@@ -17,26 +17,36 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 readonly ROOT
 
-added_lines() {
+is_file_header() {
+  [[ "$1" == +++[[:space:]]b/* || "$1" == +++[[:space:]]/dev/null ]]
+}
+
+walk_added() {
   local file="" new=0
-  local line
+  local line plus
   while IFS= read -r line || [[ -n "${line}" ]]; do
-    if [[ "${line}" == +++[[:space:]]* ]]; then
+    if [[ "${line}" == '\\ No newline at end of file' ]]; then
+      continue
+    fi
+    if is_file_header "${line}"; then
       file="${line#+++ }"
       file="${file#b/}"
       continue
     fi
     if [[ "${line}" =~ ^@@[[:space:]] ]]; then
-      local plus
-      plus="$(sed -n 's/^@@ [^@]*+\([0-9]*\)[^@]*@@.*/\1/p' <<<"${line}")"
-      new="${plus:-0}"
+      plus="$(sed -n 's/^@@ [^@]*+\([0-9][0-9]*\)[^@]*@@.*/\1/p' <<<"${line}")"
+      if [[ -z "${plus}" ]]; then
+        echo "error-masking-gate: hunk ilegivel: ${line}" >&2
+        return 2
+      fi
+      new="${plus}"
       continue
     fi
     [[ -z "${file}" || "${file}" == /dev/null ]] && continue
     if [[ "${line}" == +* && "${line}" != +++* ]]; then
       printf '%s:%s\n' "${file}" "${new}"
       new=$((new + 1))
-    elif [[ "${line}" != -* ]]; then
+    elif [[ "${line}" == ' '* ]]; then
       new=$((new + 1))
     fi
   done
@@ -55,12 +65,18 @@ normalize_path() {
 
 diagnostics() {
   local json="$1"
+  local raw hit path n
   if ! command -v jq >/dev/null 2>&1; then
     echo "error-masking-gate: jq e obrigatorio" >&2
     return 2
   fi
+  if [[ ! -f "${json}" ]]; then
+    echo "error-masking-gate: json ausente: ${json}" >&2
+    return 2
+  fi
   [[ -s "${json}" ]] || return 0
-  jq -r '
+  raw="$(mktemp)"
+  if ! jq -r '
     select(.reason == "compiler-message")
     | .message
     | select(.code != null)
@@ -68,12 +84,18 @@ diagnostics() {
     | .spans[]?
     | select(.is_primary == true)
     | "\(.file_name):\(.line_start)"
-  ' "${json}" | while IFS= read -r hit; do
+  ' "${json}" >"${raw}"; then
+    rm -f -- "${raw}"
+    echo "error-masking-gate: jq nao parseou o JSON do clippy." >&2
+    return 2
+  fi
+  while IFS= read -r hit || [[ -n "${hit}" ]]; do
     [[ -z "${hit}" ]] && continue
-    local path="${hit%:*}"
-    local n="${hit##*:}"
+    path="${hit%:*}"
+    n="${hit##*:}"
     printf '%s:%s\n' "$(normalize_path "${path}")" "${n}"
-  done
+  done <"${raw}"
+  rm -f -- "${raw}"
 }
 
 annotated() {
@@ -86,30 +108,43 @@ annotated() {
   if ((prev >= 1)); then
     prev_txt="$(sed -n "${prev}p" "${src}")"
   fi
-  [[ "${cur}" == *"mascarado-porque:"* || "${prev_txt}" == *"mascarado-porque:"* ]]
+  [[ "${cur}" == *"mascarado-porque:"* ]] && return 0
+  [[ "${prev_txt}" == *"mascarado-porque:"* && "${prev_txt}" == *"//"* ]]
+}
+
+is_must_use_allow() {
+  local line="$1"
+  [[ "${line}" == *"unused_must_use"* || "${line}" == *"let_underscore_must_use"* ]] || return 1
+  [[ "${line}" == *"allow("* || "${line}" == *"expect("* ]]
 }
 
 allow_in_diff() {
-  local file="" new=0 line
+  local file="" new=0 line plus
   while IFS= read -r line || [[ -n "${line}" ]]; do
-    if [[ "${line}" == +++[[:space:]]* ]]; then
+    if [[ "${line}" == '\\ No newline at end of file' ]]; then
+      continue
+    fi
+    if is_file_header "${line}"; then
       file="${line#+++ }"
       file="${file#b/}"
       continue
     fi
     if [[ "${line}" =~ ^@@[[:space:]] ]]; then
-      local plus
-      plus="$(sed -n 's/^@@ [^@]*+\([0-9]*\)[^@]*@@.*/\1/p' <<<"${line}")"
-      new="${plus:-0}"
+      plus="$(sed -n 's/^@@ [^@]*+\([0-9][0-9]*\)[^@]*@@.*/\1/p' <<<"${line}")"
+      if [[ -z "${plus}" ]]; then
+        echo "error-masking-gate: hunk ilegivel: ${line}" >&2
+        return 2
+      fi
+      new="${plus}"
       continue
     fi
     [[ -z "${file}" || "${file}" == /dev/null ]] && continue
     if [[ "${line}" == +* && "${line}" != +++* ]]; then
-      if [[ "${line}" == *"allow(unused_must_use)"* || "${line}" == *"allow(clippy::let_underscore_must_use)"* ]]; then
+      if is_must_use_allow "${line}"; then
         printf '%s:%s\n' "${file}" "${new}"
       fi
       new=$((new + 1))
-    elif [[ "${line}" != -* ]]; then
+    elif [[ "${line}" == ' '* ]]; then
       new=$((new + 1))
     fi
   done
@@ -119,33 +154,52 @@ run_from() {
   local diff_file="$1" json_file="$2" raiz="$3"
   local failures=0
   declare -A added
-  local hit
+  local hit rel n
+  local added_tmp diag_tmp allow_tmp
+  added_tmp="$(mktemp)"
+  diag_tmp="$(mktemp)"
+  allow_tmp="$(mktemp)"
 
-  while IFS= read -r hit; do
+  if ! walk_added <"${diff_file}" >"${added_tmp}"; then
+    rm -f -- "${added_tmp}" "${diag_tmp}" "${allow_tmp}"
+    return 2
+  fi
+  if ! diagnostics "${json_file}" >"${diag_tmp}"; then
+    rm -f -- "${added_tmp}" "${diag_tmp}" "${allow_tmp}"
+    return 2
+  fi
+  if ! allow_in_diff <"${diff_file}" >"${allow_tmp}"; then
+    rm -f -- "${added_tmp}" "${diag_tmp}" "${allow_tmp}"
+    return 2
+  fi
+
+  while IFS= read -r hit || [[ -n "${hit}" ]]; do
     [[ -z "${hit}" ]] && continue
     added["${hit}"]=1
-  done < <(added_lines <"${diff_file}")
+  done <"${added_tmp}"
 
-  while IFS= read -r hit; do
+  while IFS= read -r hit || [[ -n "${hit}" ]]; do
     [[ -z "${hit}" ]] && continue
     [[ -n "${added[${hit}]+x}" ]] || continue
-    local rel="${hit%:*}" n="${hit##*:}"
+    rel="${hit%:*}" n="${hit##*:}"
     if annotated "${raiz}" "${rel}" "${n}"; then
       continue
     fi
     echo "  FALHA: ${rel}:${n} descarta falha sem mascarado-porque:" >&2
     failures=$((failures + 1))
-  done < <(diagnostics "${json_file}")
+  done <"${diag_tmp}"
 
-  while IFS= read -r hit; do
+  while IFS= read -r hit || [[ -n "${hit}" ]]; do
     [[ -z "${hit}" ]] && continue
-    local rel="${hit%:*}" n="${hit##*:}"
+    rel="${hit%:*}" n="${hit##*:}"
     if annotated "${raiz}" "${rel}" "${n}"; then
       continue
     fi
     echo "  FALHA: ${rel}:${n} adiciona allow(unused_must_use) sem mascarado-porque:" >&2
     failures=$((failures + 1))
-  done < <(allow_in_diff <"${diff_file}")
+  done <"${allow_tmp}"
+
+  rm -f -- "${added_tmp}" "${diag_tmp}" "${allow_tmp}"
 
   if ((failures > 0)); then
     echo >&2
@@ -157,7 +211,11 @@ run_from() {
 }
 
 if [[ "${1:-}" == "--from" ]]; then
-  run_from "${2:?}" "${3:?}" "${4:?}"
+  if [[ -z "${2:-}" || -z "${3:-}" || -z "${4:-}" ]]; then
+    echo "error-masking-gate: --from exige <diff> <json> <raiz>" >&2
+    exit 2
+  fi
+  run_from "$2" "$3" "$4"
   exit $?
 fi
 
@@ -186,27 +244,33 @@ if ! command -v jq >/dev/null 2>&1; then
   exit 2
 fi
 
-diff_file="$(mktemp)"
-json_file="$(mktemp)"
+tmp_dir="$(mktemp -d)"
+diff_file="${tmp_dir}/diff"
+json_file="${tmp_dir}/clippy.json"
+clippy_err="${tmp_dir}/clippy.err"
 cleanup_tmp() {
-  python3 -c 'import os, sys
-for p in sys.argv[1:]:
-    try:
-        os.remove(p)
-    except FileNotFoundError:
-        pass
-' "${diff_file}" "${json_file}"
+  rm -rf -- "${tmp_dir}"
 }
 trap cleanup_tmp EXIT
 
-git -C "${ROOT}" diff "${BASE}" "${HEAD}" -- '*.rs' >"${diff_file}"
+git -C "${ROOT}" diff "${BASE}" "${HEAD}" -- '*.rs' >"${diff_file}" ||
+  {
+    echo "error-masking-gate: git diff falhou." >&2
+    exit 2
+  }
 if [[ ! -s "${diff_file}" ]]; then
-  echo "error-masking-gate: nenhuma mudanca em .rs; nada para checar."
+  echo "error-masking-gate: nenhuma mudanca em .rs; nada para checar." >&2
   exit 0
 fi
 
 declare -A pkgs
-while IFS= read -r hit; do
+added_for_pkgs="$(mktemp)"
+if ! walk_added <"${diff_file}" >"${added_for_pkgs}"; then
+  rm -f -- "${added_for_pkgs}"
+  echo "error-masking-gate: nao deu para parsear o diff." >&2
+  exit 2
+fi
+while IFS= read -r hit || [[ -n "${hit}" ]]; do
   [[ -z "${hit}" ]] && continue
   rel="${hit%:*}"
   case "${rel}" in
@@ -215,10 +279,11 @@ while IFS= read -r hit; do
     pkgs["${rest%%/*}"]=1
     ;;
   esac
-done < <(added_lines <"${diff_file}")
+done <"${added_for_pkgs}"
+rm -f -- "${added_for_pkgs}"
 
 if [[ ${#pkgs[@]} -eq 0 ]]; then
-  echo "error-masking-gate: nenhuma linha adicionada em crates/; nada para checar."
+  echo "error-masking-gate: nenhuma linha adicionada em crates/; nada para checar." >&2
   exit 0
 fi
 
@@ -230,11 +295,10 @@ done
 if ! cargo clippy --manifest-path "${ROOT}/Cargo.toml" "${args[@]}" \
   --all-targets --all-features --message-format=json \
   -- -W clippy::let_underscore_must_use -W unused_must_use \
-  >"${json_file}" 2>/dev/null; then
-  if [[ ! -s "${json_file}" ]]; then
-    echo "error-masking-gate: cargo clippy nao produziu JSON." >&2
-    exit 2
-  fi
+  >"${json_file}" 2>"${clippy_err}"; then
+  cat "${clippy_err}" >&2
+  echo "error-masking-gate: cargo clippy falhou; medicao incompleta." >&2
+  exit 2
 fi
 
 run_from "${diff_file}" "${json_file}" "${ROOT}"
