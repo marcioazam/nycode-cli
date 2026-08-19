@@ -7,7 +7,7 @@ members = [
     "crates/nycode-tui",
     "crates/nycode-auth",
     "crates/nycode-cli",
-    "crates/nycode-parity",
+    "crates/nycode-parity", "test_must_use_crate",
 ]
 
 [workspace.package]
