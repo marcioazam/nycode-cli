@@ -13,6 +13,11 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 readonly ROOT
 readonly GATE="${ROOT}/scripts/error-masking/gate.sh"
 
+if [[ ! -f "${GATE}" ]]; then
+  echo "error-masking-test: ${GATE} ainda nao esta nesta arvore; este PR so publica o teste." >&2
+  exit 2
+fi
+
 WORK="$(mktemp -d)"
 readonly WORK
 cleanup_work() {
