@@ -21,6 +21,7 @@ uma diferença tolerada.
 | [`specs/SPEC_TEMPLATE.md`](specs/SPEC_TEMPLATE.md) | Modelo para a spec de uma feature nova |
 | [`specs/001-fronteira-de-confianca/`](specs/001-fronteira-de-confianca/spec.md) | Fronteira de confiança do agente: consentimento de extensão, confinamento e contenção de caminho |
 | [`specs/002-paridade-e-sota-2026/`](specs/002-paridade-e-sota-2026/spec.md) | Paridade com a referência e elevação a SOTA 2026: o inventário de sessenta deltas, triado, com o que se adota, o que se recusa e o que fica adiado |
+| [`specs/003-sota-2026-dev-harness/`](specs/003-sota-2026-dev-harness/spec.md) | Harness SOTA-2026 portátil: FRs, perfis e matriz de conformidade deste repositório |
 | [`../CHANGELOG.md`](../CHANGELOG.md) | Histórico de mudanças |
 | [`../README.md`](../README.md) | Porta de entrada: instalação, uso, números medidos |
 | [`../NOTICE`](../NOTICE) | Atribuições de terceiros e aviso de risco |
@@ -37,8 +38,7 @@ uma diferença tolerada.
 | [`SLO.md`](SLO.md) | Os indicadores de nível deste CLI (não há serviço no ar, então não há burn-rate) |
 | [`CONVENTIONS.md`](CONVENTIONS.md) | Nomenclatura e organização de arquivo/pasta/documento já praticadas, escritas em vez de tribal |
 
-A spec vive em `.specs/nycode-rs/` e não em `docs/specs/`. Os ADRs a referenciam
-por caminho relativo; mover o arquivo quebraria esses links.
+A spec de produto vive em `.specs/nycode-rs/`. Specs de feature e o harness SOTA-2026 ficam em `docs/specs/`. Os ADRs da spec de produto a referenciam por caminho relativo; mover esse arquivo quebraria esses links.
 
 ## Onde cada coisa é decidida
 
