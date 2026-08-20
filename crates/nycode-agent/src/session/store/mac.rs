@@ -8,7 +8,6 @@ pub const TTL_MS: u64 = 2_592_000_000;
 pub(super) struct Context {
     dir: std::path::PathBuf,
     workspace: String,
-    key: std::sync::OnceLock<Vec<u8>>,
 }
 
 impl Context {
@@ -21,20 +20,18 @@ impl Context {
         Self {
             dir: dir.to_path_buf(),
             workspace,
-            key: std::sync::OnceLock::new(),
         }
     }
 
-    fn secret(&self) -> &[u8] {
-        self.key
-            .get_or_init(|| load_or_create_key(&self.dir).unwrap_or_else(|_| vec![0; 32]))
+    fn secret(&self) -> crate::error::Result<Vec<u8>> {
+        load_or_create_key(&self.dir)
     }
 
-    pub(super) fn sign(&self, record: &Record) -> String {
-        hex::encode(hmac_sha256(
-            self.secret(),
+    pub(super) fn sign(&self, record: &Record) -> crate::error::Result<String> {
+        Ok(hex::encode(hmac_sha256(
+            &self.secret()?,
             &payload(&self.workspace, record),
-        ))
+        )))
     }
 
     pub(super) fn admit(&self, records: Vec<Record>) -> Vec<Record> {
@@ -49,13 +46,14 @@ impl Context {
         let Some(mac) = record.mac.as_deref() else {
             return false;
         };
-        if now.saturating_sub(record.ts) > TTL_MS {
+        if record.ts > now || now.saturating_sub(record.ts) > TTL_MS {
             return false;
         }
-        mac == self.sign(&Record {
+        self.sign(&Record {
             mac: None,
             ..record.clone()
         })
+        .is_ok_and(|expected| mac == expected)
     }
 }
 
@@ -126,6 +124,7 @@ fn hmac_sha256(key: &[u8], msg: &[u8]) -> [u8; 32] {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::session::store::Store;
     use nycode_ai::anthropic::Message;
 
@@ -162,5 +161,37 @@ mod tests {
             store_b.load("s1").unwrap().is_empty(),
             "linha de outro workspace entrou no contexto"
         );
+    }
+
+    #[test]
+    fn a_signed_future_session_record_is_not_loaded_into_model_context() {
+        let (_dir, store) = store();
+        let mut record = Record {
+            v: 2,
+            ts: now_millis().saturating_add(TTL_MS),
+            id: Some("future".to_owned()),
+            parent_id: None,
+            message: Message::user("injetado"),
+            mac: None,
+        };
+        record.mac = Some(store.mac.sign(&record).unwrap());
+        std::fs::write(
+            store.path_for("future"),
+            serde_json::to_string(&record).unwrap(),
+        )
+        .unwrap();
+
+        assert!(
+            store.load("future").unwrap().is_empty(),
+            "linha futura entrou no contexto"
+        );
+    }
+
+    #[test]
+    fn a_session_is_not_written_when_its_mac_key_cannot_be_created() {
+        let (dir, store) = store();
+        std::fs::create_dir(dir.path().join("sessoes").join(".mac-key")).unwrap();
+
+        assert!(store.append("s1", &Message::user("segredo")).is_err());
     }
 }

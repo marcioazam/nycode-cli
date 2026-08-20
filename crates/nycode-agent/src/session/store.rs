@@ -140,7 +140,7 @@ impl Store {
             message: message.clone(),
             mac: None,
         };
-        record.mac = Some(self.mac.sign(&record));
+        record.mac = Some(self.mac.sign(&record)?);
         let line = serde_json::to_string(&record)
             .map_err(|err| Error::Workspace(format!("serializar registro: {err}")))?;
 
