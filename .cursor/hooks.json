@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeShellExecution": [
+      {
+        "command": "bash ./scripts/agent-harness/veto.sh",
+        "failClosed": true
+      }
+    ],
+    "beforeMCPExecution": [
+      {
+        "command": "bash ./scripts/agent-harness/veto.sh",
+        "failClosed": true
+      }
+    ],
+    "sessionStart": [
+      {
+        "command": "bash ./scripts/agent-harness/remind.sh"
+      }
+    ],
+    "stop": [
+      {
+        "command": "bash ./scripts/agent-stop/verify.sh",
+        "timeout": 180,
+        "loop_limit": 5,
+        "failClosed": true
+      }
+    ]
+  }
+}
