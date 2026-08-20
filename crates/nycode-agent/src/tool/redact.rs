@@ -13,8 +13,10 @@ pub fn apply(mut output: ToolOutput) -> ToolOutput {
 
 #[must_use]
 pub fn secrets(text: &str) -> String {
-    let mut out = redact_prefixed(text, "sk-");
-    out = redact_prefixed(&out, "ghp_");
+    let mut out = text.to_owned();
+    for prefix in ["sk-", "ghp_", "github_pat_", "gho_", "ghs_", "ghu_", "ghr_"] {
+        out = redact_prefixed(&out, prefix);
+    }
     out
 }
 
@@ -79,6 +81,21 @@ mod tests {
         let redacted = secrets("auth ghp_abcdefghijklmnopqrstuvwxyz012345");
         assert!(!redacted.contains("ghp_abcdefghijklmnopqrstuvwxyz012345"));
         assert!(redacted.contains("[redacted]"));
+    }
+
+    #[test]
+    fn current_github_token_prefixes_are_redacted() {
+        for token in [
+            "github_pat_abcdefghijklmnopqrstuvwxyz012345",
+            "gho_abcdefghijklmnopqrstuvwxyz012345",
+            "ghs_abcdefghijklmnopqrstuvwxyz012345",
+            "ghu_abcdefghijklmnopqrstuvwxyz012345",
+            "ghr_abcdefghijklmnopqrstuvwxyz012345",
+        ] {
+            let redacted = secrets(token);
+            assert!(!redacted.contains(token), "{token}");
+            assert!(redacted.contains("[redacted]"), "{token}");
+        }
     }
 
     #[test]
