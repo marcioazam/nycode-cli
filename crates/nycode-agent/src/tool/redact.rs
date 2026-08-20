@@ -84,6 +84,18 @@ mod tests {
     }
 
     #[test]
+    fn redaction_keeps_text_and_the_token_delimiter() {
+        assert_eq!(
+            secrets("before ghp_token-with_underscore!after"),
+            "before [redacted]!after"
+        );
+        assert_eq!(
+            secrets("0123456789ghp_a!after"),
+            "0123456789[redacted]!after"
+        );
+    }
+
+    #[test]
     fn current_github_token_prefixes_are_redacted() {
         for token in [
             "github_pat_abcdefghijklmnopqrstuvwxyz012345",
