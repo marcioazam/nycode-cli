@@ -110,11 +110,6 @@ impl Tool for Bash {
     }
 }
 
-const INTERPRETERS: &[&str] = &[
-    "bash", "sh", "dash", "zsh", "ksh", "fish", "python", "python3", "python2", "perl", "ruby",
-    "node", "nodejs", "lua", "php",
-];
-
 fn argv_from(input: &Value) -> Result<Vec<String>, String> {
     if input.get("command").is_some() {
         return Err("campo `command` recusado; use `argv`".to_owned());
@@ -150,17 +145,35 @@ fn slot(item: &Value) -> Result<String, String> {
 }
 
 fn interprets_script(argv: &[String]) -> bool {
-    let Some(bin) = argv.first() else {
+    let Some((bin, rest)) = argv.split_first() else {
         return false;
     };
-    let name = Path::new(bin)
+    let name = program_name(bin);
+    if name == "env" {
+        return rest
+            .windows(2)
+            .any(|pair| interpreter_accepts_script(program_name(&pair[0]), &pair[1]));
+    }
+    rest.iter().any(|arg| interpreter_accepts_script(name, arg))
+}
+
+fn program_name(bin: &str) -> &str {
+    Path::new(bin)
         .file_name()
         .and_then(|s| s.to_str())
-        .unwrap_or(bin);
-    if !INTERPRETERS.contains(&name) {
-        return false;
+        .unwrap_or(bin)
+}
+
+fn interpreter_accepts_script(program: &str, arg: &str) -> bool {
+    match program {
+        "bash" | "sh" | "dash" | "zsh" | "ksh" | "fish" | "python" | "python3" | "python2" => {
+            arg == "-c" || arg == "-lc"
+        }
+        "node" | "nodejs" => arg == "-e" || arg == "--eval",
+        "perl" | "ruby" | "lua" => arg == "-e",
+        "php" => arg == "-r",
+        _ => false,
     }
-    argv.iter().skip(1).any(|s| s == "-c" || s == "-lc")
 }
 
 #[cfg(test)]
@@ -439,6 +452,25 @@ mod tests {
             .await;
         assert!(out.is_error);
         assert!(out.content.contains("-c"), "{}", out.content);
+        assert!(!out.content.contains("spawned"), "{}", out.content);
+
+        let out = bare()
+            .execute(
+                json!({ "argv": ["env", "bash", "-c", "echo spawned"] }),
+                &ctx,
+            )
+            .await;
+        assert!(out.is_error, "{}", out.content);
+        assert!(out.content.contains("-c"), "{}", out.content);
+        assert!(!out.content.contains("spawned"), "{}", out.content);
+
+        let out = bare()
+            .execute(
+                json!({ "argv": ["node", "-e", "console.log('spawned')"] }),
+                &ctx,
+            )
+            .await;
+        assert!(out.is_error, "{}", out.content);
         assert!(!out.content.contains("spawned"), "{}", out.content);
     }
 }
