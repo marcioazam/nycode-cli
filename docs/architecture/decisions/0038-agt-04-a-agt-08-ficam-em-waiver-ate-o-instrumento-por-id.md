@@ -3,7 +3,7 @@
 - **Status:** aceito
 - **Data:** 2026-08-18
 - **Contexto relacionado:** [ADR-0036](0036-o-pin-sota-2026-sobe-para-v1-4-0-com-tres-perfis.md), `AGT-04`–`AGT-08`, FR-30–FR-34
-- **Waiver:** AGT-04, AGT-06, AGT-07, AGT-08
+- **Waiver:** AGT-04, AGT-07, AGT-08
 - **Expira:** 2027-02-18
 
 ## Contexto
@@ -18,16 +18,17 @@ sessão. AGT-08 exige autenticação do envelope de subagente. Cada um estoura
 
 ## Decisão
 
-`AGT-04`, `AGT-06`, `AGT-07` e `AGT-08` ficam em waiver até cada um ganhar
+`AGT-04`, `AGT-07` e `AGT-08` ficam em waiver até cada um ganhar
 instrumento próprio (TDD, falha fechada vista uma vez) numa PR separada.
 AGT-05 saiu deste waiver quando `Bound` recusou reusar grant de um path noutro.
+AGT-06 saiu quando `redact::apply` tirou o segredo plantado do `ContentBlock`.
 Controle compensatório enquanto isso: gate de permissão (AGT-02),
 aprovação por chamada (`Approver::Never` por omissão), isolamento de env do
 filho, pin MCP no consentimento (ADR-0028), subagente in-process sem
 escalonamento de grant (ADR-0007). Isso **não** satisfaz os IDs restantes; só
 cobre parte do risco.
 
-**Rule:** `AGT-04`, `AGT-06`–`AGT-08`. **Scope:** runtime NyCode (`bash`,
+**Rule:** `AGT-04`, `AGT-07`, `AGT-08`. **Scope:** runtime NyCode (`bash`,
 sessão, subagente). **Owner:** marcioazam.
 
 ## Consequências
