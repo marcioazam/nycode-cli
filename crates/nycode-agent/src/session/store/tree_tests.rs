@@ -262,7 +262,7 @@ fn a_parent_that_does_not_exist_stops_the_walk_instead_of_hanging() {
         message: Message::user("sozinho"),
         mac: None,
     };
-    record.mac = Some(store.mac.sign(&record));
+    record.mac = Some(store.mac.sign(&record).unwrap());
     std::fs::write(&path, serde_json::to_string(&record).unwrap()).unwrap();
 
     assert_eq!(texts(&store.load("orfa").unwrap()), vec!["sozinho"]);
@@ -285,7 +285,7 @@ fn a_cycle_in_the_parents_does_not_hang_the_read() {
                 message: Message::user(*id),
                 mac: None,
             };
-            record.mac = Some(store.mac.sign(&record));
+            record.mac = Some(store.mac.sign(&record).unwrap());
             serde_json::to_string(&record).unwrap()
         })
         .collect();
