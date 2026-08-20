@@ -8,6 +8,12 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Adicionado
 
+- **Fronteira de confiança do prompt reforçada.** Arquivos de sistema, append,
+  instruções e skills do workspace não entram no system prompt sem
+  `--trust-workspace-instructions`; marcadores textuais não são tratados como
+  fronteira de segurança. A matriz de migração para SOTA-2026 v1.4.0 também foi registrada em
+  [`docs/CONFORMANCE-MATRIX.md`](docs/CONFORMANCE-MATRIX.md) (AGT-01, ADR-0032).
+
 - **Sessão nomeada, com id escolhido, fork e import.** `--name`,
   `--session-id`, `--fork`, `--import`; `/session`, `/copy`, `/new`, `/reload` (B27, B28, FR-22).
 
