@@ -1,0 +1,26 @@
+{
+  "$comment": "gerado por scripts/agent-harness/gen-adapters.sh; nao edite",
+  "permission": {
+    "bash": {
+      "*": "allow",
+      "git commit *--no-verify*": "deny",
+      "git push *--force*": "deny",
+      "git push -f *": "deny",
+      "git push * -f": "deny",
+      "curl *bash*": "deny",
+      "wget *bash*": "deny"
+    },
+    "edit": {
+      "test_map": "deny",
+      "scripts/perf-baseline.txt": "deny",
+      "scripts/complexity-baseline.txt": "deny",
+      "scripts/file-length-baseline.txt": "deny",
+      "scripts/coverage-exemptions.txt": "deny",
+      "scripts/waiver/registry.txt": "deny"
+    },
+    "read": {
+      ".env": "deny",
+      ".env.*": "deny"
+    }
+  }
+}
