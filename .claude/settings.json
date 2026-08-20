@@ -1,0 +1,53 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(git commit *--no-verify*)",
+      "Bash(git push *--force*)",
+      "Bash(git push -f *)",
+      "Bash(git push * -f)",
+      "Bash(curl *bash*)",
+      "Bash(wget *bash*)",
+      "Write(test_map)",
+      "Write(scripts/perf-baseline.txt)",
+      "Write(scripts/complexity-baseline.txt)",
+      "Write(scripts/file-length-baseline.txt)",
+      "Write(scripts/coverage-exemptions.txt)",
+      "Write(scripts/waiver/registry.txt)",
+      "Read(.env)",
+      "Read(.env.*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/scripts/agent-harness/veto.sh"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/scripts/agent-harness/remind.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/scripts/agent-stop/verify.sh",
+            "timeout": 180
+          }
+        ]
+      }
+    ]
+  }
+}
