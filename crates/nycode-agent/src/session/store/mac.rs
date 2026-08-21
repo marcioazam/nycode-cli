@@ -88,7 +88,9 @@ fn read_key(path: &std::path::Path) -> std::io::Result<(Vec<u8>, std::fs::Metada
         let descriptor = rustix::fs::openat(
             &dir,
             name,
-            OFlags::RDONLY | OFlags::NOFOLLOW | OFlags::CLOEXEC,
+            OFlags::RDONLY
+                .union(OFlags::NOFOLLOW)
+                .union(OFlags::CLOEXEC),
             Mode::empty(),
         )
         .map_err(std::io::Error::from)?;
