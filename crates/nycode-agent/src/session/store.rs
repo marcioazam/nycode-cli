@@ -60,7 +60,7 @@ pub struct Store {
     /// cada mensagem, e uma sessão de N mensagens custa O(N²) em leitura e em
     /// parse. Compartilhado entre clones de propósito: dois `Store` do mesmo
     /// diretório precisam concordar sobre onde está a ponta.
-    tips: std::sync::Arc<std::sync::Mutex<std::collections::HashMap<String, String>>>,
+    tips: std::sync::Arc<std::sync::Mutex<std::collections::HashMap<String, Tip>>>,
     /// Quantas vezes o arquivo foi lido por inteiro.
     ///
     /// Existe só no teste, porque é a única forma de assertar sobre o custo em
@@ -69,6 +69,12 @@ pub struct Store {
     #[cfg(test)]
     reads: std::sync::Arc<std::sync::atomic::AtomicUsize>,
     mac: std::sync::Arc<mac::Context>,
+}
+
+#[derive(Debug, Clone)]
+struct Tip {
+    id: String,
+    file_len: u64,
 }
 
 impl Store {
@@ -89,7 +95,10 @@ impl Store {
 
     /// A ponta conhecida sem tocar o disco.
     fn remembered_tip(&self, id: &str) -> Option<String> {
-        self.tips.lock().ok()?.get(id).cloned()
+        let path = self.path_for(id).ok()?;
+        let file_len = std::fs::metadata(path).ok()?.len();
+        let tip = self.tips.lock().ok()?.get(id)?.clone();
+        (tip.file_len == file_len).then_some(tip.id)
     }
 
     /// Anota a ponta nova.
@@ -97,8 +106,20 @@ impl Store {
     /// Um cadeado envenenado não é motivo para falhar a gravação: o efeito de
     /// perder a anotação é reler o arquivo, que é o comportamento antigo.
     fn remember_tip(&self, id: &str, record_id: &str) {
+        let Ok(path) = self.path_for(id) else {
+            return;
+        };
+        let Ok(file_len) = std::fs::metadata(path).map(|metadata| metadata.len()) else {
+            return;
+        };
         if let Ok(mut tips) = self.tips.lock() {
-            tips.insert(id.to_owned(), record_id.to_owned());
+            tips.insert(
+                id.to_owned(),
+                Tip {
+                    id: record_id.to_owned(),
+                    file_len,
+                },
+            );
         }
     }
 
@@ -107,15 +128,17 @@ impl Store {
         self.reads.load(std::sync::atomic::Ordering::Relaxed)
     }
 
-    #[must_use]
-    pub fn path_for(&self, id: &str) -> PathBuf {
-        self.dir.join(format!("{id}.jsonl"))
+    pub fn path_for(&self, id: &str) -> Result<PathBuf> {
+        validate_id(id)?;
+        Ok(self.dir.join(format!("{id}.jsonl")))
     }
 
     /// Acrescenta uma mensagem ao fim do caminho ativo.
     pub fn append(&self, id: &str, message: &Message) -> Result<()> {
+        let path = self.path_for(id)?;
+        let _lock = SessionLock::acquire(&path)?;
         let parent = self.tip(id);
-        self.append_child(id, parent.as_deref(), message)?;
+        self.append_child_locked(id, parent.as_deref(), message)?;
         Ok(())
     }
 
@@ -125,6 +148,17 @@ impl Store {
     /// reescrito: o arquivo continua append-only, e a ramificação existe porque
     /// dois registros passam a compartilhar o mesmo pai.
     pub fn append_child(
+        &self,
+        id: &str,
+        parent_id: Option<&str>,
+        message: &Message,
+    ) -> Result<String> {
+        let path = self.path_for(id)?;
+        let _lock = SessionLock::acquire(&path)?;
+        self.append_child_locked(id, parent_id, message)
+    }
+
+    fn append_child_locked(
         &self,
         id: &str,
         parent_id: Option<&str>,
@@ -146,7 +180,7 @@ impl Store {
         let mut file = std::fs::OpenOptions::new()
             .create(true)
             .append(true)
-            .open(self.path_for(id))
+            .open(self.path_for(id)?)
             .map_err(|err| Error::Workspace(format!("abrir sessao {id}: {err}")))?;
 
         writeln!(file, "{line}")
@@ -183,7 +217,7 @@ impl Store {
         self.reads
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
-        let path = self.path_for(id);
+        let path = self.path_for(id)?;
         let Ok(contents) = std::fs::read_to_string(&path) else {
             return Err(Error::Workspace(format!("sessao `{id}` nao encontrada")));
         };
@@ -276,6 +310,41 @@ impl Store {
     }
 }
 
+struct SessionLock {
+    _file: std::fs::File,
+}
+
+impl SessionLock {
+    fn acquire(path: &Path) -> Result<Self> {
+        let lock_path = path.with_extension("lock");
+        let file = std::fs::OpenOptions::new()
+            .create(true)
+            .truncate(false)
+            .read(true)
+            .write(true)
+            .open(&lock_path)
+            .map_err(|err| Error::Workspace(format!("abrir lock de sessao: {err}")))?;
+        #[cfg(unix)]
+        rustix::fs::flock(&file, rustix::fs::FlockOperation::LockExclusive)
+            .map_err(|err| Error::Workspace(format!("bloquear sessao: {err}")))?;
+        Ok(Self { _file: file })
+    }
+}
+
+fn validate_id(id: &str) -> Result<()> {
+    if id.is_empty()
+        || id.len() > 128
+        || !id
+            .chars()
+            .all(|character| character.is_ascii_alphanumeric() || matches!(character, '-' | '_'))
+    {
+        return Err(Error::Workspace(format!(
+            "identificador de sessao `{id}` recusado"
+        )));
+    }
+    Ok(())
+}
+
 /// Identificador de registro, único dentro de um arquivo.
 ///
 /// O relógio sozinho colide quando dois registros caem no mesmo milissegundo,
@@ -361,10 +430,10 @@ mod tests {
         // Se o append virar reescrita, um crash no meio deixa a sessao truncada.
         let (_dir, store) = store();
         store.append("s1", &Message::user("um")).unwrap();
-        let after_first = std::fs::read_to_string(store.path_for("s1")).unwrap();
+        let after_first = std::fs::read_to_string(store.path_for("s1").unwrap()).unwrap();
 
         store.append("s1", &Message::user("dois")).unwrap();
-        let after_second = std::fs::read_to_string(store.path_for("s1")).unwrap();
+        let after_second = std::fs::read_to_string(store.path_for("s1").unwrap()).unwrap();
 
         assert!(
             after_second.starts_with(&after_first),
@@ -380,7 +449,7 @@ mod tests {
         {
             let mut file = std::fs::OpenOptions::new()
                 .append(true)
-                .open(store.path_for("s1"))
+                .open(store.path_for("s1").unwrap())
                 .unwrap();
             writeln!(file, "{{isto nao e json").unwrap();
         }
@@ -397,7 +466,7 @@ mod tests {
     fn a_record_from_an_unknown_format_version_is_skipped() {
         let (_dir, store) = store();
         std::fs::write(
-            store.path_for("s1"),
+            store.path_for("s1").unwrap(),
             r#"{"v":999,"ts":0,"message":{"role":"user","content":[{"type":"text","text":"futuro"}]}}"#,
         )
         .unwrap();
@@ -412,7 +481,7 @@ mod tests {
         let (_dir, store) = store();
         store.append("s1", &Message::user("x")).unwrap();
 
-        let line = std::fs::read_to_string(store.path_for("s1")).unwrap();
+        let line = std::fs::read_to_string(store.path_for("s1").unwrap()).unwrap();
         let record: serde_json::Value = serde_json::from_str(line.trim()).unwrap();
         assert_eq!(record["v"], FORMAT_VERSION);
         assert!(record["ts"].as_u64().unwrap() > 0);
