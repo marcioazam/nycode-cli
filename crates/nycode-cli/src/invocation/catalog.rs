@@ -82,19 +82,19 @@ pub(crate) fn add_natives(agent: Agent, cli: &Cli, timeout: Duration) -> Agent {
     )
 }
 
-#[must_use]
+#[must_use = "use o agente ou trate o erro de inicializacao da tarefa"]
 pub(crate) fn add_task(
     agent: Agent,
     cli: &Cli,
     backend: Arc<dyn nycode_agent::Backend>,
     grant: Grant,
-) -> Agent {
+) -> anyhow::Result<Agent> {
     if Catalog::from_cli(cli).allows("task") {
-        agent.with_tool(Arc::new(
-            nycode_agent::tools::Task::new(backend).with_gate(move || grant.gate()),
-        ))
+        Ok(agent.with_tool(Arc::new(
+            nycode_agent::tools::Task::new(backend)?.with_gate(move || grant.gate()),
+        )))
     } else {
-        agent
+        Ok(agent)
     }
 }
 
@@ -237,6 +237,7 @@ mod tests {
                     Arc::new(Mute),
                     Grant::ReadOnly
                 )
+                .unwrap()
             )
             .contains("task")
         );
@@ -249,6 +250,7 @@ mod tests {
                     Arc::new(Mute),
                     Grant::ReadOnly
                 )
+                .unwrap()
             )
             .contains("task")
         );
