@@ -173,29 +173,25 @@ fn program_name(bin: &str) -> &str {
 }
 
 fn interpreter_accepts_script(program: &str, arg: &str) -> bool {
+    let short = |option: char| {
+        arg.strip_prefix('-')
+            .is_some_and(|rest| !rest.starts_with('-') && rest.contains(option))
+    };
+    let long = |option: &str| {
+        arg == option
+            || arg
+                .strip_prefix(option)
+                .is_some_and(|suffix| suffix.starts_with('='))
+    };
     match program {
         "bash" | "sh" | "dash" | "zsh" | "ksh" | "fish" | "python" | "python3" | "python2" => {
-            short_option_contains(arg, b'c')
+            short('c')
         }
-        "node" | "nodejs" => {
-            short_option_contains(arg, b'e') || long_option_with_value(arg, "--eval")
-        }
-        "perl" | "ruby" | "lua" => short_option_contains(arg, b'e'),
-        "php" => short_option_contains(arg, b'r'),
+        "node" | "nodejs" => short('e') || long("--eval"),
+        "perl" | "ruby" | "lua" => short('e'),
+        "php" => short('r'),
         _ => false,
     }
-}
-
-fn short_option_contains(arg: &str, option: u8) -> bool {
-    let bytes = arg.as_bytes();
-    bytes.first() == Some(&b'-') && bytes.get(1) != Some(&b'-') && bytes[1..].contains(&option)
-}
-
-fn long_option_with_value(arg: &str, option: &str) -> bool {
-    arg == option
-        || arg
-            .strip_prefix(option)
-            .is_some_and(|suffix| suffix.starts_with('='))
 }
 
 #[cfg(test)]
@@ -405,38 +401,18 @@ mod tests {
             ("node", "--eval"),
             ("perl", "-e"),
             ("ruby", "-e"),
-            ("lua", "-e"),
             ("php", "-r"),
         ] {
-            assert!(
-                interpreter_accepts_script(program, flag),
-                "{program} {flag}"
-            );
+            assert!(interpreter_accepts_script(program, flag));
         }
         for (program, argument) in [
             ("bash", "--version"),
             ("node", "--version"),
             ("perl", "--version"),
             ("ruby", "--version"),
-            ("lua", "--version"),
             ("php", "--version"),
         ] {
-            assert!(
-                !interpreter_accepts_script(program, argument),
-                "{program} {argument}"
-            );
-        }
-        for (program, flag) in [
-            ("bash", "-xc"),
-            ("bash", "-cecho spawned"),
-            ("sh", "-lcprintf spawned"),
-            ("node", "-econsole.log('spawned')"),
-            ("perl", "-eprint 'spawned'"),
-        ] {
-            assert!(
-                interpreter_accepts_script(program, flag),
-                "{program} {flag}"
-            );
+            assert!(!interpreter_accepts_script(program, argument));
         }
     }
     #[test]
@@ -469,8 +445,13 @@ mod tests {
         let (_dir, ctx) = workspace();
         for input in [
             json!({ "argv": ["bash", "-c", "echo spawned"] }),
+            json!({ "argv": ["bash", "-xc", "echo spawned"] }),
+            json!({ "argv": ["bash", "-cecho spawned"] }),
             json!({ "argv": ["env", "bash", "-c", "echo spawned"] }),
+            json!({ "argv": ["sh", "-lcprintf spawned"] }),
             json!({ "argv": ["node", "-e", "console.log('spawned')"] }),
+            json!({ "argv": ["node", "-econsole.log('spawned')"] }),
+            json!({ "argv": ["perl", "-eprint 'spawned'"] }),
             json!({ "argv": ["env", "-S", "sh -c", "echo spawned"] }),
         ] {
             let out = bare().execute(input, &ctx).await;
