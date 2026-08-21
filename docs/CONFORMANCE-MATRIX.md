@@ -34,7 +34,7 @@ em data — waiver honesto não é omissão, mas também não é 100% instrument
 | FR-15 | Núcleo | `CI-05` | instrumentado | branch protection `strict`; `enforce_admins` off (documentado); fila N/A (conta pessoal) |
 | FR-16 | Núcleo | `CI-11`, `SP-06` | instrumentado | pinact, ADR-0030 |
 | FR-17 | Núcleo | `CI-16` | instrumentado | `scripts/contract/gate.sh`; schema recusa campo required ausente; campo opcional extra passa |
-| FR-18 | Núcleo | `SDD-17` | waiver | ADR-0039; aplica no diff que tocar parser |
+| FR-18 | Núcleo | `SDD-17` | instrumentado | `scripts/parser-invariants/gate.sh`; diff de parser do registro sem `proptest!` recusa |
 | FR-19 | Autoria | `GATE-11`, `AI-01` | instrumentado | `agent-pr-size-gate.sh` |
 | FR-20 | Autoria | `AI-07`–`09` | instrumentado | `.githooks/commit-msg` + `scripts/attribution/gate.sh` |
 | FR-21 | Autoria | `AI-03` | waiver | ADR-0037 (mesmo buraco de dono único; agente não tem identidade de merge) |
