@@ -480,6 +480,19 @@ mod tests {
         }
     }
 
+    #[test]
+    fn env_split_string_forms_are_rejected() {
+        assert!(interprets_script(&[
+            "env".to_owned(),
+            "--split-string".to_owned(),
+            "bash -c".to_owned(),
+        ]));
+        assert!(interprets_script(&[
+            "env".to_owned(),
+            "--split-string=bash -c".to_owned(),
+        ]));
+    }
+
     #[tokio::test]
     async fn a_command_string_is_rejected_and_metacharacters_are_data() {
         let (_dir, ctx) = workspace();
