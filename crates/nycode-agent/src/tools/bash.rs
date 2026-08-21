@@ -128,6 +128,9 @@ fn slots_from(items: &[Value]) -> Result<Vec<String>, String> {
     for item in items {
         argv.push(slot(item)?);
     }
+    if argv[0].trim().is_empty() {
+        return Err("programa de `argv` vazio".to_owned());
+    }
     if interprets_script(&argv) {
         return Err("interpretador com `-c` recusado".to_owned());
     }
@@ -138,8 +141,8 @@ fn slot(item: &Value) -> Result<String, String> {
     let Some(text) = item.as_str() else {
         return Err("cada item de `argv` precisa ser string".to_owned());
     };
-    if text.is_empty() || text.contains('\0') {
-        return Err("item de `argv` vazio ou com NUL".to_owned());
+    if text.contains('\0') {
+        return Err("item de `argv` com NUL".to_owned());
     }
     Ok(text.to_owned())
 }
@@ -150,6 +153,12 @@ fn interprets_script(argv: &[String]) -> bool {
     };
     let name = program_name(bin);
     if name == "env" {
+        if rest
+            .iter()
+            .any(|arg| arg == "-S" || arg == "--split-string" || arg.starts_with("--split-string="))
+        {
+            return true;
+        }
         return rest
             .windows(2)
             .any(|pair| interpreter_accepts_script(program_name(&pair[0]), &pair[1]));
@@ -429,6 +438,22 @@ mod tests {
         assert_eq!(Bash::default().name(), "bash");
     }
 
+    #[test]
+    fn an_empty_argument_after_the_program_is_preserved() {
+        let parsed = argv_from(&json!({ "argv": ["printf", "", "x"] })).unwrap();
+
+        assert_eq!(parsed, vec!["printf", "", "x"]);
+    }
+
+    #[test]
+    fn env_split_string_is_rejected_before_launch() {
+        let result = argv_from(&json!({
+            "argv": ["env", "-S", "sh -c", "echo spawned"]
+        }));
+
+        assert_eq!(result, Err("interpretador com `-c` recusado".to_owned()));
+    }
+
     #[tokio::test]
     async fn a_command_string_is_rejected_and_metacharacters_are_data() {
         let (_dir, ctx) = workspace();
@@ -467,6 +492,15 @@ mod tests {
         let out = bare()
             .execute(
                 json!({ "argv": ["node", "-e", "console.log('spawned')"] }),
+                &ctx,
+            )
+            .await;
+        assert!(out.is_error, "{}", out.content);
+        assert!(!out.content.contains("spawned"), "{}", out.content);
+
+        let out = bare()
+            .execute(
+                json!({ "argv": ["env", "-S", "sh -c", "echo spawned"] }),
                 &ctx,
             )
             .await;
