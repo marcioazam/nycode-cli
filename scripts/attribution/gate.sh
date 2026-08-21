@@ -14,6 +14,10 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 readonly ROOT
 
+# O hook do Git exporta GIT_DIR; o gate tambem roda em sandboxes dos testes.
+# Remover o contexto herdado faz cada `git -C` operar na raiz pretendida.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
+
 BASE="${1:-}"
 HEAD="${2:-HEAD}"
 

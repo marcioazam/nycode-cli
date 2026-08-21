@@ -6,6 +6,10 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 readonly ROOT
 readonly GATE="${ROOT}/scripts/attribution/gate.sh"
 
+# O teste e chamado pelo pre-push, que exporta GIT_DIR para o clone principal.
+# Os repositorios sinteticos precisam permanecer isolados desse contexto.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
+
 WORK="$(mktemp -d)"
 readonly WORK
 trap 'rm -rf "${WORK}"' EXIT
