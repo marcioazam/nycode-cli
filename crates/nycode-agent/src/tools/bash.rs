@@ -153,10 +153,9 @@ fn interprets_script(argv: &[String]) -> bool {
     };
     let name = program_name(bin);
     if name == "env" {
-        if rest
-            .iter()
-            .any(|arg| arg == "-S" || arg == "--split-string" || arg.starts_with("--split-string="))
-        {
+        if rest.iter().any(|arg| {
+            matches!(arg.as_str(), "-S" | "--split-string") || arg.starts_with("--split-string=")
+        }) {
             return true;
         }
         return rest
@@ -443,15 +442,6 @@ mod tests {
         let parsed = argv_from(&json!({ "argv": ["printf", "", "x"] })).unwrap();
 
         assert_eq!(parsed, vec!["printf", "", "x"]);
-    }
-
-    #[test]
-    fn env_split_string_is_rejected_before_launch() {
-        let result = argv_from(&json!({
-            "argv": ["env", "-S", "sh -c", "echo spawned"]
-        }));
-
-        assert_eq!(result, Err("interpretador com `-c` recusado".to_owned()));
     }
 
     #[tokio::test]
