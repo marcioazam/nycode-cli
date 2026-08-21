@@ -195,7 +195,7 @@ mod tests {
         let (_dir, store) = store();
         let (id, history) = resolve(&store, &parse(&["--session-id", "minha"])).unwrap();
         assert_eq!(id, "minha");
-        assert!(history.is_empty());
+        assert_eq!(history, Vec::<Message>::new());
         store.append("minha", &Message::user("oi")).unwrap();
         assert_eq!(
             resolve(&store, &parse(&["--session-id", "minha"]))
