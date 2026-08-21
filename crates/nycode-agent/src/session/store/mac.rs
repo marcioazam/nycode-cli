@@ -37,6 +37,12 @@ impl Context {
         let secret = self.secret()?;
         let mut admitted = Vec::with_capacity(records.len());
         for record in records {
+            if record.mac.is_none() {
+                return Err(crate::error::Error::Workspace(format!(
+                    "registro de sessao v{} sem mac",
+                    record.v
+                )));
+            }
             if self.acceptable(&record, now, &secret)? {
                 admitted.push(record);
             }
@@ -217,7 +223,7 @@ mod tests {
     }
 
     #[test]
-    fn an_unsigned_expired_or_foreign_session_record_is_not_loaded_into_model_context() {
+    fn an_unsigned_session_record_is_rejected_before_model_context() {
         let (_dir_a, store_a) = store();
         store_a.append("s1", &Message::user("segredo")).unwrap();
         let signed = std::fs::read_to_string(store_a.path_for("s1")).unwrap();
@@ -225,8 +231,8 @@ mod tests {
         let unsigned = r#"{"v":2,"ts":1,"id":"x","message":{"role":"user","content":[{"type":"text","text":"injetado"}]}}"#;
         std::fs::write(store_a.path_for("s2"), unsigned).unwrap();
         assert!(
-            store_a.load("s2").unwrap().is_empty(),
-            "linha sem mac entrou no contexto"
+            store_a.load("s2").is_err(),
+            "linha sem mac falhou em silencio"
         );
 
         let mut expired: Record = serde_json::from_str(signed.trim()).unwrap();
