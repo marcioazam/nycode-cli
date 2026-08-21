@@ -264,3 +264,51 @@ async fn a_forged_or_expired_envelope_is_refused() {
 
     assert_eq!(backend.call_count(), 0);
 }
+
+#[test]
+fn valid_envelopes_are_checked_against_the_current_time_and_ttl() {
+    let backend = Arc::new(FakeBackend::new(vec![]));
+    let task = Task::new(backend);
+    let description = "faca algo";
+
+    let expired = 1;
+    assert!(!task.envelope_ok(
+        description,
+        &json!({ "exp": expired, "mac": task.mac(description, expired) })
+    ));
+
+    let far_future = now_millis().saturating_add(ENVELOPE_TTL_MS + 1);
+    assert!(!task.envelope_ok(
+        description,
+        &json!({
+            "exp": far_future,
+            "mac": task.mac(description, far_future)
+        })
+    ));
+
+    let old_epoch_expiry = ENVELOPE_TTL_MS;
+    assert!(!task.envelope_ok(
+        description,
+        &json!({
+            "exp": old_epoch_expiry,
+            "mac": task.mac(description, old_epoch_expiry)
+        })
+    ));
+}
+
+#[test]
+fn hmac_sha256_matches_vectors_inside_and_outside_the_block_size() {
+    let short_key = b"Jefe";
+    let short_message = b"what do ya want for nothing?";
+    assert_eq!(
+        hex::encode(hmac_sha256(short_key, short_message)),
+        "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843"
+    );
+
+    let long_key = vec![0xaa; 131];
+    let long_message = b"Test Using Larger Than Block-Size Key - Hash Key First";
+    assert_eq!(
+        hex::encode(hmac_sha256(&long_key, long_message)),
+        "60e431591ee0b67f0d8a26aacbf5b77f8e0bc6213728c5140546040f0ee37f54"
+    );
+}
