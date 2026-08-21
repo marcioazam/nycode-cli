@@ -362,8 +362,8 @@ mod tests {
 
         let (sessions, tools) = attach_mcp(root.path(), false).await;
 
-        assert!(sessions.is_empty());
-        assert!(tools.is_empty());
+        assert_eq!(sessions.len(), 0);
+        assert_eq!(tools.len(), 0);
     }
 
     #[test]
@@ -372,7 +372,7 @@ mod tests {
         let (id, history) = resolve(&store, &cli(&[])).unwrap();
 
         assert!(!id.is_empty());
-        assert!(history.is_empty());
+        assert_eq!(history.len(), 0);
     }
 
     #[test]
@@ -406,7 +406,7 @@ mod tests {
         let (id, history) = resolve(&store, &cli(&["--continue"])).unwrap();
 
         assert!(!id.is_empty());
-        assert!(history.is_empty());
+        assert_eq!(history.len(), 0);
     }
 
     #[test]
@@ -455,8 +455,8 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let (sessions, tools) = attach_mcp(dir.path(), false).await;
 
-        assert!(sessions.is_empty());
-        assert!(tools.is_empty());
+        assert_eq!(sessions.len(), 0);
+        assert_eq!(tools.len(), 0);
     }
 
     #[tokio::test]
@@ -473,8 +473,8 @@ mod tests {
 
         let (sessions, tools) = attach_mcp(dir.path(), false).await;
 
-        assert!(sessions.is_empty(), "nada foi autorizado a subir");
-        assert!(tools.is_empty());
+        assert_eq!(sessions.len(), 0, "nada foi autorizado a subir");
+        assert_eq!(tools.len(), 0);
     }
 
     #[tokio::test]
