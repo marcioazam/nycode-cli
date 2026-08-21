@@ -257,7 +257,7 @@ mod tests {
         let now = now_millis();
         let mut record = Record {
             v: 2,
-            ts: now.saturating_sub(TTL_MS),
+            ts: now,
             id: Some("boundary".to_owned()),
             parent_id: None,
             message: Message::user("segredo"),
@@ -265,6 +265,15 @@ mod tests {
         };
         record.mac = Some(store.mac.sign(&record).unwrap());
 
+        assert!(
+            store
+                .mac
+                .acceptable(&record, now, &store.mac.secret().unwrap())
+                .unwrap()
+        );
+
+        record.ts = now.saturating_sub(TTL_MS);
+        record.mac = Some(store.mac.sign(&record).unwrap());
         assert!(
             store
                 .mac
@@ -285,6 +294,12 @@ mod tests {
                 .trim(),
         )
         .unwrap();
+        assert!(
+            store
+                .mac
+                .acceptable(&record, now_millis(), &store.mac.secret().unwrap())
+                .unwrap()
+        );
         record.message = Message::user("adulterado");
         std::fs::write(
             store.path_for("s2"),
