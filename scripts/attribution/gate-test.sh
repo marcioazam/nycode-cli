@@ -2,6 +2,11 @@
 # Bateria do gate de atribuicao (AI-07..09).
 set -euo pipefail
 
+# Hooks recebem GIT_DIR do repositorio que os chamou. O teste cria repositorios
+# temporarios e precisa deixar o git -C escolher o sandbox, nao o repositorio do
+# hook.
+unset GIT_DIR GIT_WORK_TREE GIT_COMMON_DIR GIT_INDEX_FILE
+
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 readonly ROOT
 readonly GATE="${ROOT}/scripts/attribution/gate.sh"

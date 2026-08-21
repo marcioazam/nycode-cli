@@ -46,7 +46,7 @@ em data — waiver honesto não é omissão, mas também não é 100% instrument
 | FR-27 | Produto | `AGT-01` | instrumentado | `sanitize::as_model_data` |
 | FR-28 | Produto | `AGT-02` | instrumentado | `permission.rs` recusa ferramenta desconhecida |
 | FR-29 | Produto | `AGT-03` | instrumentado | `tool::pin` no execute |
-| FR-30 | Produto | `AGT-04` | waiver | ADR-0038 |
+| FR-30 | Produto | `AGT-04` | instrumentado | `tools/bash.rs`; `command` e interpretador+`-c` recusam; metacaractere no slot é dado |
 | FR-31 | Produto | `AGT-05` | instrumentado | `Bound` + `ApprovalKey`; grant de path A não aprova path B |
 | FR-32 | Produto | `AGT-06` | instrumentado | `tool/redact.rs`; segredo plantado ausente do ContentBlock |
 | FR-33 | Produto | `AGT-07` | instrumentado | `session/store/mac.rs`; linha sem MAC/expirada/estrangeira não entra em `load` |

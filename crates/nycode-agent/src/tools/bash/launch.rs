@@ -93,10 +93,8 @@ impl Launch {
     ///
     /// O erro é a mensagem que vai ao modelo: quem chama não tem o que decidir
     /// sobre uma falha de arranque além de contá-la.
-    pub async fn run(&self, root: &Path, command: &str) -> Result<Finished, String> {
-        // O confinamento envolve o comando; sem ele o `argv` é o `bash -lc` de
-        // sempre, e o aviso na abertura da sessão é o que diz isso ao usuário.
-        let argv = sandbox::wrap(&self.confinement, root, command);
+    pub async fn run(&self, root: &Path, argv: &[String]) -> Result<Finished, String> {
+        let argv = sandbox::wrap(&self.confinement, root, argv);
         let Some((program, rest)) = argv.split_first() else {
             return Err("confinamento produziu uma linha de comando vazia".to_owned());
         };
@@ -192,8 +190,12 @@ mod tests {
         tempfile::tempdir().unwrap()
     }
 
+    fn sh(command: &str) -> Vec<String> {
+        vec!["bash".to_owned(), "-c".to_owned(), command.to_owned()]
+    }
+
     async fn saida(launch: &Launch, root: &Path, command: &str) -> String {
-        let out = launch.run(root, command).await.unwrap();
+        let out = launch.run(root, &sh(command)).await.unwrap();
         out.stdout.text().into_owned()
     }
 
@@ -251,7 +253,7 @@ mod tests {
             .with_cap(CAP)
             .run(
                 dir.path(),
-                "head -c 1048576 /dev/zero | tr '\\0' 'x'; echo; echo FIM",
+                &sh("head -c 1048576 /dev/zero | tr '\\0' 'x'; echo; echo FIM"),
             )
             .await
             .unwrap();
@@ -287,7 +289,7 @@ mod tests {
         let out = launch
             .run(
                 dir.path(),
-                "head -c 262144 /dev/zero | tr '\\0' 'e' >&2; echo pronto",
+                &sh("head -c 262144 /dev/zero | tr '\\0' 'e' >&2; echo pronto"),
             )
             .await
             .unwrap();
@@ -307,7 +309,7 @@ mod tests {
             },
         );
 
-        let err = launch.run(dir.path(), "sleep 30").await.unwrap_err();
+        let err = launch.run(dir.path(), &sh("sleep 30")).await.unwrap_err();
         assert!(err.contains("excedeu"), "{err}");
     }
 
@@ -327,7 +329,7 @@ mod tests {
 
         let started = std::time::Instant::now();
         let out = launch
-            .run(dir.path(), "sleep 30 & echo pronto")
+            .run(dir.path(), &sh("sleep 30 & echo pronto"))
             .await
             .expect("o comando terminou com sucesso e nao deveria virar estouro de prazo");
         let elapsed = started.elapsed();
@@ -349,7 +351,7 @@ mod tests {
     async fn stdin_is_closed_so_interactive_commands_do_not_block() {
         let dir = workspace();
         // `cat` sem argumento leria stdin para sempre se ele nao estivesse fechado.
-        let out = bare().run(dir.path(), "cat").await.unwrap();
+        let out = bare().run(dir.path(), &sh("cat")).await.unwrap();
         assert!(out.status.success(), "stdin fechado deveria encerrar o cat");
     }
 
@@ -373,10 +375,8 @@ mod tests {
         );
         // `Box::pin`, e nao `tokio::pin!`: o segundo produz um `Pin<&mut F>`, e
         // largar a referencia nao larga o future nem o processo que ele segura.
-        let mut running = Box::pin(launch.run(
-            dir.path(),
-            "while true; do echo . >> sentinela.txt; sleep 0.02; done",
-        ));
+        let argv = sh("while true; do echo . >> sentinela.txt; sleep 0.02; done");
+        let mut running = Box::pin(launch.run(dir.path(), &argv));
 
         // Esperar o primeiro sinal de vida e o que remove a corrida: so faz
         // sentido largar um comando que ja comecou a escrever.
@@ -426,10 +426,8 @@ mod tests {
         );
         // O lider inicia o neto e fica esperando: quem escreve na sentinela e o
         // processo de dentro, nunca o que o `kill_on_drop` alcanca.
-        let mut running = Box::pin(launch.run(
-            dir.path(),
-            "(while true; do echo . >> neto.txt; sleep 0.02; done) & wait",
-        ));
+        let argv = sh("(while true; do echo . >> neto.txt; sleep 0.02; done) & wait");
+        let mut running = Box::pin(launch.run(dir.path(), &argv));
 
         let alive = async {
             let deadline = std::time::Instant::now() + Duration::from_secs(30);

@@ -4,6 +4,7 @@
 //! que volta. Como o comando sobe e o que o contém é de [`launch`]; de um
 //! processo terminado ao texto que chega ao modelo é de [`output`].
 
+use std::path::Path;
 use std::time::Duration;
 
 use async_trait::async_trait;
@@ -65,32 +66,34 @@ impl Tool for Bash {
     }
 
     fn description(&self) -> &str {
-        "Executa um comando de shell na raiz do workspace e devolve stdout, \
-         stderr e o codigo de saida. Comandos interativos nao funcionam: passe \
-         todos os argumentos na linha de comando."
+        "Executa um argv na raiz do workspace e devolve stdout, \
+         stderr e o codigo de saida. Cada item e um argumento, nao um shell."
     }
 
     fn input_schema(&self) -> Value {
         json!({
             "type": "object",
             "properties": {
-                "command": { "type": "string", "description": "Comando a executar" },
+                "argv": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": { "type": "string" },
+                    "description": "Programa e argumentos, sem interpolacao"
+                },
                 "timeout": {
                     "type": "integer",
                     "description": "Prazo em segundos desta chamada; omitido usa o padrao da sessao"
                 }
             },
-            "required": ["command"]
+            "required": ["argv"]
         })
     }
 
     async fn execute(&self, input: Value, ctx: &ToolContext) -> ToolOutput {
-        let Some(command) = input.get("command").and_then(Value::as_str) else {
-            return ToolOutput::error("argumento obrigatorio ausente: `command`");
+        let argv = match argv_from(&input) {
+            Ok(argv) => argv,
+            Err(message) => return ToolOutput::error(message),
         };
-        if command.trim().is_empty() {
-            return ToolOutput::error("`command` vazio");
-        }
         let launch = if let Some(value) = input.get("timeout") {
             let Some(secs) = value.as_u64().filter(|secs| *secs > 0) else {
                 return ToolOutput::error("`timeout` precisa ser um inteiro positivo de segundos");
@@ -100,10 +103,94 @@ impl Tool for Bash {
             self.launch.clone()
         };
 
-        match launch.run(ctx.root(), command).await {
+        match launch.run(ctx.root(), &argv).await {
             Ok(output) => output::render(&output, self.confinement().strength()),
             Err(message) => ToolOutput::error(message),
         }
+    }
+}
+
+fn argv_from(input: &Value) -> Result<Vec<String>, String> {
+    if input.get("command").is_some() {
+        return Err("campo `command` recusado; use `argv`".to_owned());
+    }
+    let Some(items) = input.get("argv").and_then(Value::as_array) else {
+        return Err("argumento obrigatorio ausente: `argv`".to_owned());
+    };
+    slots_from(items)
+}
+
+fn slots_from(items: &[Value]) -> Result<Vec<String>, String> {
+    if items.is_empty() {
+        return Err("`argv` vazio".to_owned());
+    }
+    let mut argv = Vec::with_capacity(items.len());
+    for item in items {
+        argv.push(slot(item)?);
+    }
+    if argv[0].trim().is_empty() {
+        return Err("programa de `argv` vazio".to_owned());
+    }
+    if interprets_script(&argv) {
+        return Err("interpretador com `-c` recusado".to_owned());
+    }
+    Ok(argv)
+}
+
+fn slot(item: &Value) -> Result<String, String> {
+    let Some(text) = item.as_str() else {
+        return Err("cada item de `argv` precisa ser string".to_owned());
+    };
+    if text.contains('\0') {
+        return Err("item de `argv` com NUL".to_owned());
+    }
+    Ok(text.to_owned())
+}
+
+fn interprets_script(argv: &[String]) -> bool {
+    let Some((bin, rest)) = argv.split_first() else {
+        return false;
+    };
+    let name = program_name(bin);
+    if name == "env" {
+        if rest.iter().any(|arg| {
+            matches!(arg.as_str(), "-S" | "--split-string") || arg.starts_with("--split-string=")
+        }) {
+            return true;
+        }
+        return rest
+            .windows(2)
+            .any(|pair| interpreter_accepts_script(program_name(&pair[0]), &pair[1]));
+    }
+    rest.iter().any(|arg| interpreter_accepts_script(name, arg))
+}
+
+fn program_name(bin: &str) -> &str {
+    Path::new(bin)
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or(bin)
+}
+
+fn interpreter_accepts_script(program: &str, arg: &str) -> bool {
+    let short = |option: char| {
+        arg.strip_prefix('-')
+            .is_some_and(|rest| !rest.starts_with('-') && rest.contains(option))
+    };
+    let long = |option: &str| {
+        arg == option
+            || arg
+                .strip_prefix(option)
+                .is_some_and(|suffix| suffix.starts_with('='))
+    };
+    match program {
+        "bash" | "sh" | "dash" | "zsh" | "ksh" | "fish" | "python" | "python3" | "python2" => {
+            short('c')
+        }
+        "node" | "nodejs" => short('e') || long("--eval"),
+        "perl" | "ruby" | "lua" => short('e'),
+        "php" => short('r'),
+        _ => false,
     }
 }
 
@@ -112,18 +199,18 @@ impl Tool for Bash {
 mod tests {
     use super::*;
     use crate::policy::confinement::sandbox;
-
     fn workspace() -> (tempfile::TempDir, ToolContext) {
         let dir = tempfile::tempdir().unwrap();
         let ctx = ToolContext::new(dir.path()).unwrap();
         (dir, ctx)
     }
-
-    /// A ferramenta sem confinamento e com o ambiente no mínimo.
-    ///
-    /// Os testes de comportamento da ferramenta — captura de saida, codigo de
-    /// erro — sao sobre a ferramenta, nao sobre o sandbox nem sobre a
-    /// configuracao de quem roda a suite.
+    fn call(parts: &[&str]) -> Value {
+        json!({ "argv": parts })
+    }
+    fn script(dir: &tempfile::TempDir, body: &str) -> Value {
+        std::fs::write(dir.path().join("t.sh"), body).unwrap();
+        json!({ "argv": ["bash", "t.sh"] })
+    }
     fn bare() -> Bash {
         Bash::default()
             .with_confinement(Confinement::Unavailable {
@@ -131,65 +218,50 @@ mod tests {
             })
             .with_environment(Allowlist::default())
     }
-
     #[tokio::test]
     async fn captures_stdout_of_a_successful_command() {
         let (_dir, ctx) = workspace();
-        let out = bare().execute(json!({ "command": "echo ola" }), &ctx).await;
-
+        let out = bare().execute(call(&["echo", "ola"]), &ctx).await;
         assert!(!out.is_error);
         assert!(out.content.contains("ola"));
         assert!(out.content.contains("stdout"));
     }
-
     #[tokio::test]
     async fn a_nonzero_exit_is_marked_as_an_error() {
-        // Sem a marcacao o modelo seguiria como se o teste tivesse passado.
-        let (_dir, ctx) = workspace();
-        let out = bare().execute(json!({ "command": "exit 3" }), &ctx).await;
-
+        let (dir, ctx) = workspace();
+        let out = bare().execute(script(&dir, "exit 3"), &ctx).await;
         assert!(out.is_error);
         assert!(out.content.contains("codigo de saida 3"));
     }
-
     #[tokio::test]
     async fn stderr_is_captured_alongside_stdout() {
-        let (_dir, ctx) = workspace();
+        let (dir, ctx) = workspace();
         let out = bare()
-            .execute(json!({ "command": "echo saida; echo erro >&2" }), &ctx)
+            .execute(script(&dir, "echo saida; echo erro >&2"), &ctx)
             .await;
-
         assert!(out.content.contains("saida"));
         assert!(out.content.contains("erro"));
         assert!(out.content.contains("--- stderr ---"));
     }
-
     #[tokio::test]
     async fn the_command_runs_in_the_workspace_root() {
         let (dir, ctx) = workspace();
         std::fs::write(dir.path().join("marcador.txt"), "x").unwrap();
-
-        let out = bare().execute(json!({ "command": "ls" }), &ctx).await;
+        let out = bare().execute(call(&["ls"]), &ctx).await;
         assert!(out.content.contains("marcador.txt"));
     }
-
     #[tokio::test]
     async fn a_timeout_reaches_the_model_as_a_failure() {
-        // O texto da mensagem e do `launch`; o que se protege aqui e que ela
-        // chega marcada como erro, e nao como saida normal de um comando.
         let (_dir, ctx) = workspace();
         let bash = Bash::with_timeout(Duration::from_millis(200))
             .with_confinement(Confinement::Unavailable {
                 reason: "teste".to_owned(),
             })
             .with_environment(Allowlist::default());
-
-        let out = bash.execute(json!({ "command": "sleep 30" }), &ctx).await;
-
+        let out = bash.execute(call(&["sleep", "30"]), &ctx).await;
         assert!(out.is_error);
         assert!(out.content.contains("excedeu"), "{}", out.content);
     }
-
     #[tokio::test]
     async fn a_per_call_timeout_overrides_the_construction_deadline() {
         let (_dir, ctx) = workspace();
@@ -198,111 +270,84 @@ mod tests {
                 reason: "teste".to_owned(),
             })
             .with_environment(Allowlist::default());
-
         let out = bash
-            .execute(json!({ "command": "sleep 30", "timeout": 1 }), &ctx)
+            .execute(json!({ "argv": ["sleep", "30"], "timeout": 1 }), &ctx)
             .await;
         assert!(out.is_error, "{}", out.content);
         assert!(out.content.contains("1s"), "{}", out.content);
     }
-
     #[tokio::test]
     async fn a_zero_timeout_is_refused_before_running() {
         let (_dir, ctx) = workspace();
         let out = bare()
-            .execute(json!({ "command": "true", "timeout": 0 }), &ctx)
+            .execute(json!({ "argv": ["true"], "timeout": 0 }), &ctx)
             .await;
         assert!(out.is_error);
         assert!(out.content.contains("timeout"), "{}", out.content);
     }
-
     #[tokio::test]
     async fn oversized_output_is_truncated_and_says_so() {
-        let (_dir, ctx) = workspace();
+        let (dir, ctx) = workspace();
         let out = bare()
             .execute(
-                json!({ "command": "head -c 200000 /dev/zero | tr '\\0' 'x'" }),
+                script(&dir, "head -c 200000 /dev/zero | tr '\\0' 'x'"),
                 &ctx,
             )
             .await;
-
         assert!(out.content.contains("[truncado"));
     }
-
     #[tokio::test]
     async fn an_empty_or_missing_command_is_reported() {
         let (_dir, ctx) = workspace();
         assert!(bare().execute(json!({}), &ctx).await.is_error);
         assert!(
             bare()
-                .execute(json!({ "command": "   " }), &ctx)
+                .execute(json!({ "argv": ["   "] }), &ctx)
                 .await
                 .is_error
         );
     }
-
     #[tokio::test]
     async fn a_silent_successful_command_says_it_produced_nothing() {
-        // String vazia faria o modelo achar que a ferramenta falhou. O `bare()`
-        // roda sem confinamento, entao a resposta tambem carrega esse fato —
-        // que e o que a ADR-0005 exige e o que o `output` monta.
         let (_dir, ctx) = workspace();
-        let out = bare().execute(json!({ "command": "true" }), &ctx).await;
-
+        let out = bare().execute(call(&["true"]), &ctx).await;
         assert!(!out.is_error);
         assert!(out.content.ends_with("(sem saida)"), "{}", out.content);
     }
-
     #[tokio::test]
     async fn an_unconfined_command_carries_the_fact_into_the_model_answer() {
-        // A outra metade do nao negociavel da ADR-0005: o aviso em `stderr`
-        // fala com o usuario, isto fala com o modelo.
         let (_dir, ctx) = workspace();
-        let out = bare().execute(json!({ "command": "echo oi" }), &ctx).await;
-
+        let out = bare().execute(call(&["echo", "oi"]), &ctx).await;
         assert!(
             out.content.starts_with(output::UNCONFINED),
             "{}",
             out.content
         );
     }
-
     #[tokio::test]
     async fn a_write_outside_the_workspace_is_stopped_by_the_operating_system() {
-        // E o criterio de aceite do FR-11: barrado pelo sistema, nao pela
-        // politica do harness — que um `cd ..` contornaria.
-        //
-        // O alvo precisa ser um lugar onde o usuario normalmente escreve, senao
-        // a permissao do proprio sistema de arquivos barraria de qualquer jeito
-        // e o teste nao distinguiria nada. `/tmp` nao serve: a politica o monta
-        // gravavel de proposito, porque todo build precisa dele.
         let Some(home) = std::env::var_os("HOME").map(std::path::PathBuf::from) else {
             return;
         };
         let alvo = home.join(format!(".nycode-sonda-{}.tmp", std::process::id()));
         let _ = std::fs::remove_file(&alvo);
-
-        let (_dir, ctx) = workspace();
-        let command = format!("echo invadi > {}", alvo.display());
-
+        let (dir, ctx) = workspace();
         let confinement = sandbox::detect_from_path();
         if !confinement.is_enforced() {
-            // Sem confinamento o teste ainda afirma algo: que o usuario foi
-            // avisado. Pular deixaria o comportamento sem protecao justamente
-            // na maquina que nao o tem.
             assert!(confinement.warning().is_some());
             return;
         }
-
         let out = Bash::default()
-            .execute(json!({ "command": command }), &ctx)
+            .execute(
+                script(&dir, &format!("echo invadi > {}", alvo.display())),
+                &ctx,
+            )
             .await;
         let escaped = alvo.exists();
         let _ = std::fs::remove_file(&alvo);
-
         assert!(
             !escaped,
-            "a escrita fora da raiz precisa ser barrada pelo sistema: {}",
+            "a escrita fora da raiz precisa ser barrada: {}",
             out.content
         );
         assert!(
@@ -311,49 +356,107 @@ mod tests {
             out.content
         );
     }
-
     #[tokio::test]
     async fn the_network_is_out_of_reach_under_confinement() {
-        // Um comando que baixa codigo sai do que o usuario revisou. E a
-        // dimensao mais limpa de verificar: nao depende de permissao de
-        // arquivo nenhuma.
-        let (_dir, ctx) = workspace();
+        let (dir, ctx) = workspace();
         if !matches!(sandbox::detect_from_path(), Confinement::Bubblewrap { .. }) {
             return;
         }
-
         let out = Bash::default()
-            // `/dev/tcp` e do proprio bash: nao exige curl instalado.
-            .execute(json!({ "command": "exec 3<>/dev/tcp/1.1.1.1/80" }), &ctx)
+            .execute(script(&dir, "exec 3<>/dev/tcp/1.1.1.1/80"), &ctx)
             .await;
-
         assert!(
             out.is_error,
             "a rede precisa estar fora de alcance: {}",
             out.content
         );
     }
-
     #[tokio::test]
     async fn a_write_inside_the_workspace_still_works_under_confinement() {
-        // Confinar nao pode significar impedir o trabalho: a raiz e escrevivel.
         let (dir, ctx) = workspace();
-        let confinement = sandbox::detect_from_path();
-        if !confinement.is_enforced() {
+        if !sandbox::detect_from_path().is_enforced() {
             return;
         }
-
         let out = Bash::default()
-            .execute(json!({ "command": "echo dentro > criado.txt" }), &ctx)
+            .execute(script(&dir, "echo dentro > criado.txt"), &ctx)
             .await;
-
         assert!(!out.is_error, "{}", out.content);
         assert!(dir.path().join("criado.txt").exists());
     }
-
     #[test]
-    fn the_schema_requires_a_command() {
-        assert_eq!(Bash::default().input_schema()["required"][0], "command");
+    fn the_schema_requires_argv_and_preserves_empty_slots() {
+        assert_eq!(Bash::default().input_schema()["required"][0], "argv");
         assert_eq!(Bash::default().name(), "bash");
+        assert!(Bash::default().description().contains("argv"));
+        assert_eq!(
+            argv_from(&json!({ "argv": ["printf", "", "x"] })).unwrap(),
+            ["printf", "", "x"]
+        );
+    }
+    #[test]
+    fn supported_interpreter_flags_are_rejected_and_other_arguments_are_allowed() {
+        for (program, flag) in [
+            ("bash", "-c"),
+            ("sh", "-lc"),
+            ("node", "--eval"),
+            ("perl", "-e"),
+            ("ruby", "-e"),
+            ("php", "-r"),
+        ] {
+            assert!(interpreter_accepts_script(program, flag));
+        }
+        for (program, argument) in [
+            ("bash", "--version"),
+            ("node", "--version"),
+            ("perl", "--version"),
+            ("ruby", "--version"),
+            ("php", "--version"),
+        ] {
+            assert!(!interpreter_accepts_script(program, argument));
+        }
+    }
+    #[test]
+    fn env_split_string_forms_are_rejected() {
+        assert!(interprets_script(&[
+            "env".to_owned(),
+            "--split-string".to_owned(),
+            "bash -c".to_owned()
+        ]));
+        assert!(interprets_script(&[
+            "env".to_owned(),
+            "--split-string=bash -c".to_owned()
+        ]));
+    }
+    #[tokio::test]
+    async fn a_command_string_is_rejected_and_metacharacters_are_data() {
+        let (_dir, ctx) = workspace();
+        let refused = bare()
+            .execute(json!({ "command": "echo spawned" }), &ctx)
+            .await;
+        assert!(refused.is_error);
+        assert!(refused.content.contains("command"), "{}", refused.content);
+        assert!(!refused.content.contains("spawned"), "{}", refused.content);
+        let out = bare().execute(call(&["echo", "$(whoami)"]), &ctx).await;
+        assert!(!out.is_error, "{}", out.content);
+        assert!(out.content.contains("$(whoami)"), "{}", out.content);
+    }
+    #[tokio::test]
+    async fn interpreter_script_flags_are_refused() {
+        let (_dir, ctx) = workspace();
+        for input in [
+            json!({ "argv": ["bash", "-c", "echo spawned"] }),
+            json!({ "argv": ["bash", "-xc", "echo spawned"] }),
+            json!({ "argv": ["bash", "-cecho spawned"] }),
+            json!({ "argv": ["env", "bash", "-c", "echo spawned"] }),
+            json!({ "argv": ["sh", "-lcprintf spawned"] }),
+            json!({ "argv": ["node", "-e", "console.log('spawned')"] }),
+            json!({ "argv": ["node", "-econsole.log('spawned')"] }),
+            json!({ "argv": ["perl", "-eprint 'spawned'"] }),
+            json!({ "argv": ["env", "-S", "sh -c", "echo spawned"] }),
+        ] {
+            let out = bare().execute(input, &ctx).await;
+            assert!(out.is_error, "{}", out.content);
+            assert!(!out.content.contains("spawned"), "{}", out.content);
+        }
     }
 }
