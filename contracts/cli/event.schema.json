@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nycode.dev/contracts/cli/event.schema.json",
+  "title": "NyCode CLI NDJSON Event",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": ["type", "text"],
+      "properties": {
+        "type": { "const": "text" },
+        "text": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "required": ["type", "text"],
+      "properties": {
+        "type": { "const": "reasoning" },
+        "text": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "required": ["type", "name", "input"],
+      "properties": {
+        "type": { "const": "tool_start" },
+        "name": { "type": "string" },
+        "input": {}
+      },
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "required": ["type", "name", "is_error", "output"],
+      "properties": {
+        "type": { "const": "tool_end" },
+        "name": { "type": "string" },
+        "is_error": { "type": "boolean" },
+        "output": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "required": ["type", "text"],
+      "properties": {
+        "type": { "const": "notice" },
+        "text": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "required": ["type", "stop_reason", "usage", "tool_rounds"],
+      "properties": {
+        "type": { "const": "result" },
+        "stop_reason": { "type": "string" },
+        "usage": { "type": "object" },
+        "tool_rounds": { "type": "integer" }
+      },
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "required": ["type", "message"],
+      "properties": {
+        "type": { "const": "error" },
+        "message": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  ]
+}

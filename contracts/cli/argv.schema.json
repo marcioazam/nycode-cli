@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nycode.dev/contracts/cli/argv.schema.json",
+  "title": "NyCode CLI invocation (consumer view)",
+  "type": "object",
+  "required": ["bin"],
+  "properties": {
+    "bin": { "const": "nycode" },
+    "prompt": { "type": "string" },
+    "cwd": { "type": "string" },
+    "output_format": { "enum": ["text", "json"] },
+    "quiet": { "type": "boolean" },
+    "allow_writes": { "type": "boolean" },
+    "allow_all": { "type": "boolean" }
+  },
+  "additionalProperties": true
+}
