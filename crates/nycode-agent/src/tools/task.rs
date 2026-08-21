@@ -46,11 +46,14 @@ impl std::fmt::Debug for Task {
 
 impl Task {
     #[must_use = "use a tarefa ou trate o erro de inicializacao"]
-    pub fn new(backend: Arc<dyn Backend>) -> Result<Self> {
+    pub async fn new(backend: Arc<dyn Backend>) -> Result<Self> {
+        let mac_key = tokio::task::spawn_blocking(new_key)
+            .await
+            .map_err(|err| Error::Randomness(format!("gerar chave em worker: {err}")))??;
         Ok(Self {
             backend,
             gate: Arc::new(|| Box::new(crate::policy::ReadOnly)),
-            mac_key: new_key()?,
+            mac_key,
         })
     }
 
