@@ -1,10 +1,8 @@
 # ADR-0039: FR-17, FR-18, FR-8 e FR-24 ficam em waiver até instrumento próprio
 
-- **Status:** aceito
+- **Status:** superseded
 - **Data:** 2026-08-18
 - **Contexto relacionado:** [ADR-0036](0036-o-pin-sota-2026-sobe-para-v1-4-0-com-tres-perfis.md), `CI-16`, `SDD-17`, `ADV-05`, `AI-13`
-- **Waiver:** AI-13
-- **Expira:** 2027-02-18
 
 ## Contexto
 
@@ -50,3 +48,7 @@ recusar fixture sem campo required e aceitar campo opcional extra.
 
 `SDD-17`/`FR-18` saiu deste waiver quando `scripts/parser-invariants/gate.sh`
 foi visto recusar parser do registro no diff sem `proptest!`.
+
+`AI-13`/`FR-24` saiu deste waiver quando `scripts/metrics/gate.sh` foi visto
+recusar relatório sem split humano/agente e relatório com loc/commit como
+produtividade. Sem IDs restantes, este ADR fica superseded.
