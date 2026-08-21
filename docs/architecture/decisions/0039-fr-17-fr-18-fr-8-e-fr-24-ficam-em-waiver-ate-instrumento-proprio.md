@@ -3,7 +3,7 @@
 - **Status:** aceito
 - **Data:** 2026-08-18
 - **Contexto relacionado:** [ADR-0036](0036-o-pin-sota-2026-sobe-para-v1-4-0-com-tres-perfis.md), `CI-16`, `SDD-17`, `ADV-05`, `AI-13`
-- **Waiver:** SDD-17, AI-13
+- **Waiver:** AI-13
 - **Expira:** 2027-02-18
 
 ## Contexto
@@ -47,3 +47,6 @@ Expira **2027-02-18**. Cai por ID quando o instrumento mergear.
 
 `CI-16`/`FR-17` saiu deste waiver quando `scripts/contract/gate.sh` foi visto
 recusar fixture sem campo required e aceitar campo opcional extra.
+
+`SDD-17`/`FR-18` saiu deste waiver quando `scripts/parser-invariants/gate.sh`
+foi visto recusar parser do registro no diff sem `proptest!`.
