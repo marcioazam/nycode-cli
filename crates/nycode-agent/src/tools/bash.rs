@@ -435,6 +435,7 @@ mod tests {
     fn the_schema_requires_argv() {
         assert_eq!(Bash::default().input_schema()["required"][0], "argv");
         assert_eq!(Bash::default().name(), "bash");
+        assert!(Bash::default().description().contains("argv"));
     }
 
     #[test]
@@ -442,6 +443,41 @@ mod tests {
         let parsed = argv_from(&json!({ "argv": ["printf", "", "x"] })).unwrap();
 
         assert_eq!(parsed, vec!["printf", "", "x"]);
+    }
+
+    #[test]
+    fn every_supported_script_interpreter_flag_is_rejected() {
+        for (program, flag) in [
+            ("bash", "-c"),
+            ("sh", "-lc"),
+            ("node", "--eval"),
+            ("perl", "-e"),
+            ("ruby", "-e"),
+            ("lua", "-e"),
+            ("php", "-r"),
+        ] {
+            assert!(
+                interpreter_accepts_script(program, flag),
+                "{program} {flag}"
+            );
+        }
+    }
+
+    #[test]
+    fn script_interpreter_flags_do_not_reject_other_arguments() {
+        for (program, argument) in [
+            ("bash", "--version"),
+            ("node", "--version"),
+            ("perl", "--version"),
+            ("ruby", "--version"),
+            ("lua", "--version"),
+            ("php", "--version"),
+        ] {
+            assert!(
+                !interpreter_accepts_script(program, argument),
+                "{program} {argument}"
+            );
+        }
     }
 
     #[tokio::test]

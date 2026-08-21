@@ -2,3 +2,4 @@
 #
 # Formato: CVE-ID | expira(YYYY-MM-DD) | motivo
 # HIGH/CRITICAL sem linha vigente aqui reprovam. Vazio = nenhuma excecao.
+CVE-2026-14456 | 2026-09-30 | falso positivo do Trivy: a imagem usa libssl3 3.0.20; o CVE afeta OpenSSL 3.5+ e o binario nao habilita servidor QUIC
