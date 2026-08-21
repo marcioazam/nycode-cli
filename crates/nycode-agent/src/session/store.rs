@@ -11,7 +11,7 @@ use nycode_ai::anthropic::Message;
 use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, Result};
-use guard::{SessionLock, validate_id};
+use guard::{SessionLock, open_session_for_append, validate_id};
 
 mod guard;
 mod mac;
@@ -179,10 +179,7 @@ impl Store {
         let line = serde_json::to_string(&record)
             .map_err(|err| Error::Workspace(format!("serializar registro: {err}")))?;
 
-        let mut file = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(self.path_for(id)?)
+        let mut file = open_session_for_append(&self.path_for(id)?)
             .map_err(|err| Error::Workspace(format!("abrir sessao {id}: {err}")))?;
 
         writeln!(file, "{line}")
