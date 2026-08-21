@@ -372,7 +372,7 @@ async fn a_gate_refusal_explains_the_policy_to_the_model() {
     // tenta de novo em loop ate bater no teto de iteracoes.
     let (_dir, ctx) = workspace();
     let backend = Arc::new(FakeBackend::new(vec![
-        tool_turn("t1", "bash", r#"{"argv":["rm","-rf","/"]}"#),
+        tool_turn("t1", "bash", r#"{"command":"rm -rf /"}"#),
         text_turn("entendi"),
     ]));
     let mut agent =

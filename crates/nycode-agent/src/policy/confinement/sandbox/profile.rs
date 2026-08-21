@@ -41,11 +41,21 @@ impl Policy {
     }
 }
 
+/// Monta a linha de comando confinada de um comando de shell.
+///
+/// Atalho para [`prefix`] com a política do shell, que é o caso de longe mais
+/// comum e o único que precisa de um shell.
+///
+/// `-c` e não `-lc`: um shell de login carrega `/etc/profile` e o perfil do
+/// usuário, o que traz para dentro do confinamento variáveis e funções que a
+/// allowlist de ambiente acabou de tirar — e faz cada comando pagar o arranque
+/// do perfil. O que o `-l` dava de útil, um `PATH` completo, a allowlist já
+/// entrega.
 #[must_use]
-pub fn wrap(confinement: &Confinement, root: &Path, argv: &[String]) -> Vec<String> {
-    let mut out = prefix(confinement, Policy::WorkspaceWrite, root);
-    out.extend(argv.iter().cloned());
-    out
+pub fn wrap(confinement: &Confinement, root: &Path, command: &str) -> Vec<String> {
+    let mut argv = prefix(confinement, Policy::WorkspaceWrite, root);
+    argv.extend(["bash".to_owned(), "-c".to_owned(), command.to_owned()]);
+    argv
 }
 
 /// O prefixo de confinamento, ao qual o chamador anexa o próprio `argv`.
@@ -169,10 +179,6 @@ mod tests {
         }
     }
 
-    fn args(parts: &[&str]) -> Vec<String> {
-        parts.iter().map(|p| (*p).to_owned()).collect()
-    }
-
     #[test]
     fn without_confinement_the_command_runs_as_it_always_did() {
         // Degradar precisa ser degradar, nao quebrar: o comando ainda roda, e o
@@ -181,8 +187,8 @@ mod tests {
             reason: "teste".to_owned(),
         };
         assert_eq!(
-            wrap(&ausente, Path::new("/w"), &args(&["echo", "oi"])),
-            vec!["echo", "oi"]
+            wrap(&ausente, Path::new("/w"), "echo oi"),
+            vec!["bash", "-c", "echo oi"]
         );
     }
 
@@ -200,15 +206,12 @@ mod tests {
                 reason: "teste".to_owned(),
             },
         ] {
-            let argv = wrap(&confinement, Path::new("/w"), &args(&["echo", "oi"]));
+            let argv = wrap(&confinement, Path::new("/w"), "echo oi");
             assert!(
                 !argv.contains(&"-lc".to_owned()) && !argv.contains(&"-l".to_owned()),
                 "{confinement:?} ainda usa shell de login: {argv:?}"
             );
-            assert!(
-                !argv.contains(&"-c".to_owned()),
-                "{confinement:?} ainda envolve `-c`: {argv:?}"
-            );
+            assert!(argv.contains(&"-c".to_owned()), "{argv:?}");
         }
     }
 
@@ -223,7 +226,7 @@ mod tests {
 
     #[test]
     fn bubblewrap_mounts_the_system_read_only_and_the_workspace_writable() {
-        let argv = wrap(&bwrap(), Path::new("/w/proj"), &args(&["cargo", "test"])).join(" ");
+        let argv = wrap(&bwrap(), Path::new("/w/proj"), "cargo test").join(" ");
 
         assert!(argv.contains("--ro-bind / /"), "{argv}");
         assert!(argv.contains("--bind /w/proj /w/proj"), "{argv}");
@@ -233,13 +236,13 @@ mod tests {
     #[test]
     fn bubblewrap_denies_the_network_to_a_shell_command() {
         // Um comando que baixa codigo sai do que o usuario revisou.
-        let argv = wrap(&bwrap(), Path::new("/w"), &args(&["curl", "exemplo.com"]));
+        let argv = wrap(&bwrap(), Path::new("/w"), "curl exemplo.com");
         assert!(argv.contains(&"--unshare-net".to_owned()), "{argv:?}");
     }
 
     #[test]
     fn bubblewrap_does_not_leave_orphans_behind() {
-        let argv = wrap(&bwrap(), Path::new("/w"), &args(&["sleep", "999"]));
+        let argv = wrap(&bwrap(), Path::new("/w"), "sleep 999");
         assert!(argv.contains(&"--die-with-parent".to_owned()), "{argv:?}");
     }
 
@@ -247,7 +250,7 @@ mod tests {
     fn bubblewrap_puts_the_command_in_its_own_pid_namespace() {
         // Sem isto, matar o `bash` no estouro de prazo deixaria os netos
         // rodando, ainda escrevendo no workspace.
-        let argv = wrap(&bwrap(), Path::new("/w"), &args(&["sleep", "999"]));
+        let argv = wrap(&bwrap(), Path::new("/w"), "sleep 999");
         assert!(argv.contains(&"--unshare-pid".to_owned()), "{argv:?}");
     }
 
@@ -303,7 +306,7 @@ mod tests {
         let seatbelt = Confinement::Seatbelt {
             program: "sandbox-exec".to_owned(),
         };
-        let argv = wrap(&seatbelt, Path::new("/w"), &args(&["ls"]));
+        let argv = wrap(&seatbelt, Path::new("/w"), "ls");
 
         assert_eq!(argv[1], "-p");
         assert!(argv[2].contains("(version 1)"), "{argv:?}");
@@ -346,7 +349,7 @@ mod tests {
                 reason: "x".to_owned(),
             },
         ] {
-            let argv = wrap(&confinement, Path::new("/w"), &args(&[tricky]));
+            let argv = wrap(&confinement, Path::new("/w"), tricky);
             assert_eq!(
                 argv.last().map(String::as_str),
                 Some(tricky),
