@@ -175,13 +175,27 @@ fn program_name(bin: &str) -> &str {
 fn interpreter_accepts_script(program: &str, arg: &str) -> bool {
     match program {
         "bash" | "sh" | "dash" | "zsh" | "ksh" | "fish" | "python" | "python3" | "python2" => {
-            arg == "-c" || arg == "-lc"
+            short_option_contains(arg, b'c')
         }
-        "node" | "nodejs" => arg == "-e" || arg == "--eval",
-        "perl" | "ruby" | "lua" => arg == "-e",
-        "php" => arg == "-r",
+        "node" | "nodejs" => {
+            short_option_contains(arg, b'e') || long_option_with_value(arg, "--eval")
+        }
+        "perl" | "ruby" | "lua" => short_option_contains(arg, b'e'),
+        "php" => short_option_contains(arg, b'r'),
         _ => false,
     }
+}
+
+fn short_option_contains(arg: &str, option: u8) -> bool {
+    let bytes = arg.as_bytes();
+    bytes.first() == Some(&b'-') && bytes.get(1) != Some(&b'-') && bytes[1..].contains(&option)
+}
+
+fn long_option_with_value(arg: &str, option: &str) -> bool {
+    arg == option
+        || arg
+            .strip_prefix(option)
+            .is_some_and(|suffix| suffix.starts_with('='))
 }
 
 #[cfg(test)]
@@ -410,6 +424,18 @@ mod tests {
             assert!(
                 !interpreter_accepts_script(program, argument),
                 "{program} {argument}"
+            );
+        }
+        for (program, flag) in [
+            ("bash", "-xc"),
+            ("bash", "-cecho spawned"),
+            ("sh", "-lcprintf spawned"),
+            ("node", "-econsole.log('spawned')"),
+            ("perl", "-eprint 'spawned'"),
+        ] {
+            assert!(
+                interpreter_accepts_script(program, flag),
+                "{program} {flag}"
             );
         }
     }
