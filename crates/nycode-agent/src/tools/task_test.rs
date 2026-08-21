@@ -312,3 +312,21 @@ fn hmac_sha256_matches_vectors_inside_and_outside_the_block_size() {
         "60e431591ee0b67f0d8a26aacbf5b77f8e0bc6213728c5140546040f0ee37f54"
     );
 }
+
+#[test]
+fn envelope_payload_starts_with_little_endian_expiry() {
+    assert_eq!(
+        envelope_payload("abc", 0x0102_0304_0506_0708),
+        vec![8, 7, 6, 5, 4, 3, 2, 1, b'a', b'b', b'c']
+    );
+}
+
+#[test]
+fn hmac_sha256_handles_a_key_that_fills_the_block() {
+    let key = vec![0x11; 64];
+
+    assert_eq!(
+        hex::encode(hmac_sha256(&key, b"block boundary message")),
+        "80752bcda6c0a0e0d3d26930496c8d4b84e3c66a4574422f37ad6d6ceb93c8c9"
+    );
+}
