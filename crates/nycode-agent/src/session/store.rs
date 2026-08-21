@@ -210,7 +210,7 @@ impl Store {
                 }
             }
         }
-        Ok(self.mac.admit(records))
+        self.mac.admit(records)
     }
 
     /// O caminho da raiz até um registro, seguindo os pais.
