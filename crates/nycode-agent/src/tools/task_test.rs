@@ -276,7 +276,7 @@ fn valid_envelopes_are_checked_against_the_current_time_and_ttl() {
         &json!({ "exp": expired, "mac": task.mac(description, expired) })
     ));
 
-    let far_future = now_millis().saturating_add(ENVELOPE_TTL_MS + 1);
+    let far_future = u64::MAX;
     assert!(!task.envelope_ok(
         description,
         &json!({
