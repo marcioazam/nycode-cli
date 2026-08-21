@@ -185,7 +185,7 @@ fn a_branch_continues_from_where_it_was_resumed() {
 }
 
 #[test]
-fn a_v1_file_without_identifiers_still_reads_as_a_conversation() {
+fn a_v1_file_without_identifiers_is_rejected_explicitly() {
     let (_dir, store) = store();
     let path = store.path_for("antiga");
     let lines = [
@@ -195,13 +195,13 @@ fn a_v1_file_without_identifiers_still_reads_as_a_conversation() {
     std::fs::write(&path, lines.join("\n")).unwrap();
 
     assert!(
-        store.load("antiga").unwrap().is_empty(),
-        "v1 sem mac nao pode entrar no contexto do modelo"
+        store.load("antiga").is_err(),
+        "v1 sem mac deve falhar explicitamente"
     );
 }
 
 #[test]
-fn appending_to_a_v1_session_does_not_orphan_its_history() {
+fn appending_to_a_v1_session_keeps_the_legacy_error_explicit() {
     let (_dir, store) = store();
     let path = store.path_for("antiga");
     let lines = [
@@ -214,11 +214,11 @@ fn appending_to_a_v1_session_does_not_orphan_its_history() {
         .append("antiga", &Message::user("tres"))
         .expect("acrescentar a uma sessao v1");
 
-    assert_eq!(texts(&store.load("antiga").unwrap()), vec!["tres"]);
+    assert!(store.load("antiga").is_err());
 }
 
 #[test]
-fn a_v1_session_keeps_growing_across_several_appends() {
+fn appending_repeatedly_to_a_v1_session_keeps_the_legacy_error_explicit() {
     let (_dir, store) = store();
     let path = store.path_for("antiga");
     std::fs::write(
@@ -231,7 +231,7 @@ fn a_v1_session_keeps_growing_across_several_appends() {
         store.append("antiga", &Message::user(texto)).unwrap();
     }
 
-    assert_eq!(texts(&store.load("antiga").unwrap()), vec!["dois", "tres"]);
+    assert!(store.load("antiga").is_err());
 }
 
 #[test]
