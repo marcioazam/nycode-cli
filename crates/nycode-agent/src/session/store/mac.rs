@@ -66,11 +66,13 @@ fn load_or_create_key(dir: &std::path::Path) -> crate::error::Result<Vec<u8>> {
     let path = dir.join(".mac-key");
     match std::fs::read(&path) {
         Ok(key) => validate_key(&path, key),
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => create_key(dir, getrandom::fill),
-        Err(err) => Err(crate::error::Error::Workspace(format!(
-            "ler chave mac em {}: {err}",
-            path.display()
-        ))),
+        Err(err) => match err.kind() {
+            std::io::ErrorKind::NotFound => create_key(dir, getrandom::fill),
+            _ => Err(crate::error::Error::Workspace(format!(
+                "ler chave mac em {}: {err}",
+                path.display()
+            ))),
+        },
     }
 }
 
@@ -269,6 +271,28 @@ mod tests {
                 .acceptable(&record, now, &store.mac.secret().unwrap())
                 .unwrap()
         );
+    }
+
+    #[test]
+    fn an_untampered_session_record_is_loaded_but_a_changed_payload_is_refused() {
+        let (_dir, store) = store();
+        store.append("s1", &Message::user("segredo")).unwrap();
+        assert_eq!(store.load("s1").unwrap().len(), 1);
+
+        let mut record: Record = serde_json::from_str(
+            std::fs::read_to_string(store.path_for("s1"))
+                .unwrap()
+                .trim(),
+        )
+        .unwrap();
+        record.message = Message::user("adulterado");
+        std::fs::write(
+            store.path_for("s2"),
+            serde_json::to_string(&record).unwrap(),
+        )
+        .unwrap();
+
+        assert!(store.load("s2").unwrap().is_empty());
     }
 
     #[test]
