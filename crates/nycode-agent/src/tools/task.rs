@@ -26,7 +26,6 @@ use crate::tool::{Tool, ToolContext, ToolOutput};
 
 const CHILD_TOOL_LIMIT: usize = 12;
 const ENVELOPE_TTL_MS: u64 = 300_000;
-
 const CHILD_SYSTEM: &str = "Voce e um subagente do nycode, chamado para uma tarefa \
      delimitada. Trabalhe de forma autonoma: nao ha usuario para perguntar. \
      Responda com o resultado, nao com a narracao do que voce fez — quem chamou \
@@ -171,13 +170,11 @@ impl Tool for Task {
         }
     }
 }
-
 fn new_key() -> Result<[u8; 32]> {
     let file = std::fs::File::open("/dev/urandom")
         .map_err(|err| Error::Randomness(format!("/dev/urandom: {err}")))?;
     key_from(file)
 }
-
 fn key_from(mut source: impl std::io::Read) -> Result<[u8; 32]> {
     let mut key = [0u8; 32];
     source
@@ -185,20 +182,17 @@ fn key_from(mut source: impl std::io::Read) -> Result<[u8; 32]> {
         .map_err(|err| Error::Randomness(format!("fonte de entropia: {err}")))?;
     Ok(key)
 }
-
 fn now_millis() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(0, |d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX))
 }
-
 fn envelope_payload(description: &str, exp: u64) -> Vec<u8> {
     let mut msg = Vec::new();
     msg.extend_from_slice(&exp.to_le_bytes());
     msg.extend_from_slice(description.as_bytes());
     msg
 }
-
 fn hmac_sha256(key: &[u8], msg: &[u8]) -> [u8; 32] {
     const BLK: usize = 64;
     let mut key_block = [0u8; BLK];
