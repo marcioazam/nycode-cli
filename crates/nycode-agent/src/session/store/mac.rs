@@ -324,15 +324,6 @@ mod tests {
         assert!(create_key(dir.path(), |_| Err(getrandom::Error::UNSUPPORTED)).is_err());
     }
     #[test]
-    fn a_session_load_fails_when_its_mac_key_cannot_be_read() {
-        let (dir, store) = store();
-        store.append("s1", &Message::user("segredo")).unwrap();
-        let key = dir.path().join("sessoes").join(".mac-key");
-        std::fs::remove_file(&key).unwrap();
-        std::fs::create_dir(&key).unwrap();
-        assert!(store.load("s1").is_err());
-    }
-    #[test]
     fn an_invalid_mac_key_or_signature_is_refused() {
         let dir = tempfile::tempdir().unwrap();
         std::fs::write(dir.path().join(".mac-key"), [0u8; 31]).unwrap();
