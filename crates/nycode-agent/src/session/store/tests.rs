@@ -91,6 +91,7 @@ fn session_ids_reject_path_syntax_and_unbounded_lengths() {
 
     assert!(store.path_for("").is_err());
     assert!(store.path_for("../outside").is_err());
+    assert!(store.path_for(&"x".repeat(128)).is_ok());
     assert!(store.path_for(&"x".repeat(129)).is_err());
 }
 
