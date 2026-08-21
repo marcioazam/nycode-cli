@@ -60,8 +60,8 @@ impl Context {
 
 fn load_or_create_key(dir: &std::path::Path) -> crate::error::Result<Vec<u8>> {
     let path = dir.join(".mac-key");
-    match std::fs::read(&path) {
-        Ok(key) => validate_key(&path, key),
+    match read_key(&path) {
+        Ok((key, metadata)) => validate_key(&path, key, &metadata),
         Err(err) => match err.kind() {
             std::io::ErrorKind::NotFound => create_key(dir, getrandom::fill),
             _ => Err(crate::error::Error::Workspace(format!(
@@ -72,7 +72,48 @@ fn load_or_create_key(dir: &std::path::Path) -> crate::error::Result<Vec<u8>> {
     }
 }
 
-fn validate_key(path: &std::path::Path, key: Vec<u8>) -> crate::error::Result<Vec<u8>> {
+fn read_key(path: &std::path::Path) -> std::io::Result<(Vec<u8>, std::fs::Metadata)> {
+    use std::io::Read as _;
+
+    #[cfg(unix)]
+    let mut key_file = {
+        use rustix::fs::{Mode, OFlags};
+
+        let dir = std::fs::File::open(path.parent().ok_or_else(|| {
+            std::io::Error::new(std::io::ErrorKind::InvalidInput, "chave mac sem diretorio")
+        })?)?;
+        let name = path.file_name().ok_or_else(|| {
+            std::io::Error::new(std::io::ErrorKind::InvalidInput, "chave mac sem nome")
+        })?;
+        let descriptor = rustix::fs::openat(
+            &dir,
+            name,
+            OFlags::RDONLY | OFlags::NOFOLLOW | OFlags::CLOEXEC,
+            Mode::empty(),
+        )
+        .map_err(std::io::Error::from)?;
+        std::fs::File::from(descriptor)
+    };
+    #[cfg(not(unix))]
+    let mut key_file = std::fs::File::open(path)?;
+
+    let metadata = key_file.metadata()?;
+    if !metadata.file_type().is_file() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "chave mac nao e arquivo regular",
+        ));
+    }
+    let mut key = Vec::new();
+    key_file.read_to_end(&mut key)?;
+    Ok((key, metadata))
+}
+
+fn validate_key(
+    path: &std::path::Path,
+    key: Vec<u8>,
+    metadata: &std::fs::Metadata,
+) -> crate::error::Result<Vec<u8>> {
     if key.len() != 32 {
         return Err(crate::error::Error::Workspace(format!(
             "chave mac invalida em {}",
@@ -83,15 +124,7 @@ fn validate_key(path: &std::path::Path, key: Vec<u8>) -> crate::error::Result<Ve
     {
         use std::os::unix::fs::PermissionsExt as _;
 
-        let mode = std::fs::metadata(path)
-            .map_err(|err| {
-                crate::error::Error::Workspace(format!(
-                    "inspecionar chave mac em {}: {err}",
-                    path.display()
-                ))
-            })?
-            .permissions()
-            .mode();
+        let mode = metadata.permissions().mode();
         if mode & 0o077 != 0 {
             return Err(crate::error::Error::Workspace(format!(
                 "chave mac em {} tem permissoes inseguras",
@@ -385,6 +418,20 @@ mod tests {
         let path = dir.path().join(".mac-key");
         std::fs::write(&path, [0u8; 32]).unwrap();
         std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o644)).unwrap();
+
+        assert!(load_or_create_key(dir.path()).is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_mac_key_symlink_is_refused() {
+        use std::os::unix::fs::{PermissionsExt as _, symlink};
+
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("known-key");
+        std::fs::write(&target, [7u8; 32]).unwrap();
+        std::fs::set_permissions(&target, std::fs::Permissions::from_mode(0o600)).unwrap();
+        symlink(&target, dir.path().join(".mac-key")).unwrap();
 
         assert!(load_or_create_key(dir.path()).is_err());
     }
