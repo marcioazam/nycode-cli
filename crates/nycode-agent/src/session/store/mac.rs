@@ -106,11 +106,13 @@ fn validate_key(path: &std::path::Path, key: Vec<u8>) -> crate::error::Result<Ve
 
 fn create_key(
     dir: &std::path::Path,
-    fill: impl FnOnce(&mut [u8]) -> std::result::Result<(), getrandom::Error>,
+    entropy: impl FnOnce(&mut [u8]) -> std::result::Result<(), getrandom::Error>,
 ) -> crate::error::Result<Vec<u8>> {
+    use std::io::Write as _;
+
     let path = dir.join(".mac-key");
     let mut key = [0u8; 32];
-    fill(&mut key).map_err(|err| {
+    entropy(&mut key).map_err(|err| {
         crate::error::Error::Workspace(format!("gerar chave mac em {}: {err}", path.display()))
     })?;
     let mut options = std::fs::OpenOptions::new();
@@ -121,12 +123,12 @@ fn create_key(
 
         options.mode(0o600);
     }
-    let mut file = options.open(&path).map_err(|err| {
+    let mut key_file = options.open(&path).map_err(|err| {
         crate::error::Error::Workspace(format!("criar chave mac em {}: {err}", path.display()))
     })?;
-    use std::io::Write as _;
-    file.write_all(&key)
-        .and_then(|()| file.sync_all())
+    key_file
+        .write_all(&key)
+        .and_then(|()| key_file.sync_all())
         .map_err(|err| {
             crate::error::Error::Workspace(format!("gravar chave mac em {}: {err}", path.display()))
         })?;
@@ -244,6 +246,28 @@ mod tests {
         assert!(
             store.load("future").unwrap().is_empty(),
             "linha futura entrou no contexto"
+        );
+    }
+
+    #[test]
+    fn a_session_record_at_the_ttl_boundary_is_loaded_when_its_mac_is_valid() {
+        let (_dir, store) = store();
+        let now = now_millis();
+        let mut record = Record {
+            v: 2,
+            ts: now.saturating_sub(TTL_MS),
+            id: Some("boundary".to_owned()),
+            parent_id: None,
+            message: Message::user("segredo"),
+            mac: None,
+        };
+        record.mac = Some(store.mac.sign(&record).unwrap());
+
+        assert!(
+            store
+                .mac
+                .acceptable(&record, now, &store.mac.secret().unwrap())
+                .unwrap()
         );
     }
 
