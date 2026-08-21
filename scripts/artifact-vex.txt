@@ -2,3 +2,7 @@
 #
 # Formato: CVE-ID | expira(YYYY-MM-DD) | motivo
 # HIGH/CRITICAL sem linha vigente aqui reprovam. Vazio = nenhuma excecao.
+
+# OpenSSL so e afetado quando opera um listener QUIC. O nycode usa rustls como
+# cliente HTTPS e nao abre listener QUIC; revalidar quando a imagem base mudar.
+CVE-2026-14456 | 2026-09-20 | requer listener QUIC OpenSSL; nycode e cliente rustls sem listener
