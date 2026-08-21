@@ -42,7 +42,7 @@ fn open(store: &Store, cli: &Cli) -> anyhow::Result<(String, Vec<Message>)> {
     }
     if let Some(id) = &cli.session_id {
         validate_id(id)?;
-        return if store.path_for(id).is_file() {
+        return if store.path_for(id)?.is_file() {
             Ok((id.clone(), store.load(id)?))
         } else {
             Ok((id.clone(), Vec::new()))
@@ -65,15 +65,22 @@ fn open(store: &Store, cli: &Cli) -> anyhow::Result<(String, Vec<Message>)> {
 /// Arquivo solto sem registros não pode virar `latest()`.
 fn fork_src(store: &Store, src: &str) -> anyhow::Result<(PathBuf, CopyKind)> {
     let path = Path::new(src);
-    let as_session = validate_id(src).is_ok() && store.path_for(src).is_file();
+    let as_session = validate_id(src).is_ok()
+        && store
+            .path_for(src)
+            .map(|path| path.is_file())
+            .unwrap_or(false);
     if as_session {
-        return Ok((store.path_for(src), CopyKind::Session));
+        return Ok((store.path_for(src)?, CopyKind::Session));
     }
     if path.is_file() {
         return Ok((path.to_path_buf(), CopyKind::File));
     }
     validate_id(src)?;
-    anyhow::bail!("arquivo `{}` nao encontrado", store.path_for(src).display())
+    anyhow::bail!(
+        "arquivo `{}` nao encontrado",
+        store.path_for(src)?.display()
+    )
 }
 
 #[derive(Clone, Copy)]
@@ -96,7 +103,7 @@ fn copy_into(
         }
         None => Store::new_id(),
     };
-    let dest_path = store.path_for(&id);
+    let dest_path = store.path_for(&id)?;
     let mut dest_file = OpenOptions::new()
         .write(true)
         .create_new(true)
@@ -217,7 +224,7 @@ mod tests {
         let (dir, store) = store();
         store.append("origem", &Message::user("base")).unwrap();
         let exported = dir.path().join("exported.jsonl");
-        std::fs::copy(store.path_for("origem"), &exported).unwrap();
+        std::fs::copy(store.path_for("origem").unwrap(), &exported).unwrap();
         let (_id, history) =
             resolve(&store, &parse(&["--import", exported.to_str().unwrap()])).unwrap();
         assert_eq!(history, vec![Message::user("base")]);
@@ -250,7 +257,7 @@ mod tests {
                 .as_nanos()
         );
         let path = std::env::current_dir().unwrap().join(&src);
-        std::fs::copy(store.path_for("origem"), &path).unwrap();
+        std::fs::copy(store.path_for("origem").unwrap(), &path).unwrap();
         let _clean = CwdFile(path);
         let (_id, history) = resolve(&store, &parse(&["--fork", &src])).unwrap();
         assert_eq!(history, vec![Message::user("base")]);

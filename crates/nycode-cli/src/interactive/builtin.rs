@@ -172,7 +172,9 @@ fn fork(store: &Store, id: &str, argument: &str) -> Effect {
 }
 
 fn stats(store: &Store, id: &str) -> String {
-    let path = store.path_for(id);
+    let Ok(path) = store.path_for(id) else {
+        return format!("\nsessao: {id}\nerro: identificador de sessao recusado\n\n");
+    };
     let messages = store.load(id).map_or(0, |m| m.len());
     let bytes = std::fs::metadata(&path).map_or(0, |m| m.len());
     let nome = crate::session::name_of(store, id).unwrap_or_else(|| "(sem nome)".to_owned());
