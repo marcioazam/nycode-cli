@@ -170,7 +170,6 @@ impl Tool for Task {
         }
     }
 }
-
 fn new_key() -> Result<[u8; 32]> {
     let file = std::fs::File::open("/dev/urandom")
         .map_err(|err| Error::Randomness(format!("/dev/urandom: {err}")))?;
@@ -194,7 +193,6 @@ fn envelope_payload(description: &str, exp: u64) -> Vec<u8> {
     msg.extend_from_slice(description.as_bytes());
     msg
 }
-
 fn hmac_sha256(key: &[u8], msg: &[u8]) -> [u8; 32] {
     const BLK: usize = 64;
     let mut key_block = [0u8; BLK];
