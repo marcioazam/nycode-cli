@@ -83,7 +83,7 @@ pub(crate) fn add_natives(agent: Agent, cli: &Cli, timeout: Duration) -> Agent {
 }
 
 #[must_use = "use o agente ou trate o erro de inicializacao da tarefa"]
-pub(crate) fn add_task(
+pub(crate) async fn add_task(
     agent: Agent,
     cli: &Cli,
     backend: Arc<dyn nycode_agent::Backend>,
@@ -91,7 +91,9 @@ pub(crate) fn add_task(
 ) -> anyhow::Result<Agent> {
     if Catalog::from_cli(cli).allows("task") {
         Ok(agent.with_tool(Arc::new(
-            nycode_agent::tools::Task::new(backend)?.with_gate(move || grant.gate()),
+            nycode_agent::tools::Task::new(backend)
+                .await?
+                .with_gate(move || grant.gate()),
         )))
     } else {
         Ok(agent)
@@ -219,8 +221,8 @@ mod tests {
         )
     }
 
-    #[test]
-    fn the_session_helpers_offer_only_what_the_catalog_allows() {
+    #[tokio::test]
+    async fn the_session_helpers_offer_only_what_the_catalog_allows() {
         let none = add_natives(agent(), &cli_with(&[], true), Duration::from_secs(1));
         assert!(!format!("{none:?}").contains("read"));
         let read = format!(
@@ -237,6 +239,7 @@ mod tests {
                     Arc::new(Mute),
                     Grant::ReadOnly
                 )
+                .await
                 .unwrap()
             )
             .contains("task")
@@ -250,6 +253,7 @@ mod tests {
                     Arc::new(Mute),
                     Grant::ReadOnly
                 )
+                .await
                 .unwrap()
             )
             .contains("task")

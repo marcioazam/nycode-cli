@@ -191,7 +191,7 @@ pub async fn prepare(cli: &Cli) -> anyhow::Result<Prepared> {
     // o chamou seria uma escada de privilégio (FR-15).
     let grant = crate::invocation::grant::Grant::from_flags(cli.allow_writes, cli.allow_all);
     agent = crate::invocation::catalog::add_natives(agent, cli, settings.command_timeout);
-    agent = crate::invocation::catalog::add_task(agent, cli, backend, grant)?;
+    agent = crate::invocation::catalog::add_task(agent, cli, backend, grant).await?;
 
     for warning in
         warnings::startup_warnings(warnings::bash_is_reachable(grant, cli.prompt.is_none()))

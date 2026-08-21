@@ -44,7 +44,7 @@ async fn the_child_answers_and_only_the_answer_comes_back() {
     let (_dir, ctx) = workspace();
     let backend = Arc::new(FakeBackend::new(vec![text_turn("esta em src/main.rs")]));
 
-    let task = Task::new(backend).unwrap();
+    let task = Task::new(backend).await.unwrap();
     let out = run(&task, "onde fica o main", &ctx).await;
 
     assert!(!out.is_error);
@@ -58,7 +58,7 @@ async fn the_child_does_not_see_the_conversation_of_the_parent() {
     let (_dir, ctx) = workspace();
     let backend = Arc::new(FakeBackend::new(vec![text_turn("pronto")]));
 
-    let task = Task::new(backend.clone()).unwrap();
+    let task = Task::new(backend.clone()).await.unwrap();
     run(&task, "faca algo", &ctx).await;
 
     let sent = backend.last_messages();
@@ -70,7 +70,7 @@ async fn the_child_gets_its_own_instruction() {
     let (_dir, ctx) = workspace();
     let backend = Arc::new(FakeBackend::new(vec![text_turn("pronto")]));
 
-    let task = Task::new(backend.clone()).unwrap();
+    let task = Task::new(backend.clone()).await.unwrap();
     run(&task, "faca algo", &ctx).await;
 
     let system = backend.last_system().unwrap_or_default();
@@ -87,7 +87,7 @@ async fn the_child_can_use_the_tools_it_needs() {
         text_turn("achei: conteudo procurado"),
     ]));
 
-    let task = Task::new(backend).unwrap();
+    let task = Task::new(backend).await.unwrap();
     let out = run(&task, "leia alvo.txt", &ctx).await;
 
     assert!(!out.is_error, "{}", out.content);
@@ -101,7 +101,7 @@ async fn a_child_cannot_spawn_another_child() {
     let (_dir, ctx) = workspace();
     let backend = Arc::new(FakeBackend::new(vec![text_turn("pronto")]));
 
-    let task = Task::new(backend.clone()).unwrap();
+    let task = Task::new(backend.clone()).await.unwrap();
     run(&task, "delegue de novo", &ctx).await;
 
     let offered = format!("{:?}", backend.last_tools());
@@ -121,7 +121,7 @@ async fn the_child_inherits_the_permission_of_the_parent() {
         text_turn("terminei"),
     ]));
 
-    let task = Task::new(backend).unwrap();
+    let task = Task::new(backend).await.unwrap();
     run(&task, "crie um arquivo", &ctx).await;
 
     assert!(
@@ -139,6 +139,7 @@ async fn a_child_with_write_permission_can_write() {
     ]));
 
     let task = Task::new(backend)
+        .await
         .unwrap()
         .with_gate(|| Box::new(crate::policy::AllowAll));
     run(&task, "crie um arquivo", &ctx).await;
@@ -153,7 +154,7 @@ async fn a_child_that_answers_nothing_is_reported_as_a_failure() {
     let (_dir, ctx) = workspace();
     let backend = Arc::new(FakeBackend::new(vec![text_turn("   ")]));
 
-    let task = Task::new(backend).unwrap();
+    let task = Task::new(backend).await.unwrap();
     let out = run(&task, "faca algo", &ctx).await;
 
     assert!(out.is_error);
@@ -171,7 +172,7 @@ async fn a_child_that_fails_says_so_instead_of_answering_empty() {
         bytes: 3,
     }));
 
-    let task = Task::new(backend).unwrap();
+    let task = Task::new(backend).await.unwrap();
     let out = run(&task, "faca algo", &ctx).await;
 
     assert!(out.is_error);
@@ -182,7 +183,7 @@ async fn a_child_that_fails_says_so_instead_of_answering_empty() {
 async fn an_empty_or_missing_description_is_refused() {
     let (_dir, ctx) = workspace();
     let backend = Arc::new(FakeBackend::new(vec![text_turn("nao deveria rodar")]));
-    let task = Task::new(backend.clone()).unwrap();
+    let task = Task::new(backend.clone()).await.unwrap();
 
     assert!(task.execute(json!({}), &ctx).await.is_error);
     assert!(
@@ -193,10 +194,10 @@ async fn an_empty_or_missing_description_is_refused() {
     assert_eq!(backend.call_count(), 0, "nao pode gastar um turno");
 }
 
-#[test]
-fn the_schema_and_the_description_tell_the_model_how_to_use_it() {
+#[tokio::test]
+async fn the_schema_and_the_description_tell_the_model_how_to_use_it() {
     let backend = Arc::new(FakeBackend::new(vec![]));
-    let task = Task::new(backend).unwrap();
+    let task = Task::new(backend).await.unwrap();
 
     assert_eq!(task.name(), "task");
     assert_eq!(task.input_schema()["required"][0], "description");
@@ -206,10 +207,10 @@ fn the_schema_and_the_description_tell_the_model_how_to_use_it() {
     assert!(task.description().contains("nao ve esta conversa"));
 }
 
-#[test]
-fn the_debug_view_does_not_dump_the_backend() {
+#[tokio::test]
+async fn the_debug_view_does_not_dump_the_backend() {
     let backend = Arc::new(FakeBackend::new(vec![]));
-    let rendered = format!("{:?}", Task::new(backend).unwrap());
+    let rendered = format!("{:?}", Task::new(backend).await.unwrap());
     assert!(rendered.starts_with("Task"), "{rendered}");
 }
 
@@ -217,7 +218,7 @@ fn the_debug_view_does_not_dump_the_backend() {
 async fn a_spawn_without_envelope_is_refused() {
     let (_dir, ctx) = workspace();
     let backend = Arc::new(FakeBackend::new(vec![text_turn("nao deveria rodar")]));
-    let task = Task::new(backend.clone()).unwrap();
+    let task = Task::new(backend.clone()).await.unwrap();
 
     let out = task
         .execute(json!({ "description": "faca algo" }), &ctx)
@@ -232,8 +233,8 @@ async fn a_spawn_without_envelope_is_refused() {
 async fn a_forged_or_expired_envelope_is_refused() {
     let (_dir, ctx) = workspace();
     let backend = Arc::new(FakeBackend::new(vec![text_turn("nao deveria rodar")]));
-    let task = Task::new(backend.clone()).unwrap();
-    let sibling = Task::new(backend.clone()).unwrap();
+    let task = Task::new(backend.clone()).await.unwrap();
+    let sibling = Task::new(backend.clone()).await.unwrap();
 
     let mut forged = task.prepare(json!({ "description": "faca algo" }));
     forged["envelope"]["mac"] = json!("00deadbeef");
@@ -267,10 +268,10 @@ async fn a_forged_or_expired_envelope_is_refused() {
     assert_eq!(backend.call_count(), 0);
 }
 
-#[test]
-fn valid_envelopes_are_checked_against_the_current_time_and_ttl() {
+#[tokio::test]
+async fn valid_envelopes_are_checked_against_the_current_time_and_ttl() {
     let backend = Arc::new(FakeBackend::new(vec![]));
-    let task = Task::new(backend).unwrap();
+    let task = Task::new(backend).await.unwrap();
     let description = "faca algo";
 
     let expired = 1;
