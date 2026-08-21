@@ -25,6 +25,7 @@ uma diferença tolerada.
 | [`CONFORMANCE-MATRIX.md`](CONFORMANCE-MATRIX.md) | FRs SOTA-2026 v1.4.0 → instrumento ou waiver ([ADR-0036](architecture/decisions/0036-o-pin-sota-2026-sobe-para-v1-4-0-com-tres-perfis.md)) |
 | [`how-to/github-agent-workflow.md`](how-to/github-agent-workflow.md) | Ledger GitHub: Issue → spec → sub-issue → PR |
 | [`how-to/agent-runtime.md`](how-to/agent-runtime.md) | Deny no cliente (Cursor/Claude); prova `AI-04` |
+| [`how-to/policies.md`](how-to/policies.md) | Políticas de tamanho, waiver e merge (`GATE-11`, `GATE-14`, `AI-03`) |
 | [`../README.md`](../README.md) | Porta de entrada: instalação, uso, números medidos |
 | [`../NOTICE`](../NOTICE) | Atribuições de terceiros e aviso de risco |
 | [`../CLAUDE.md`](../CLAUDE.md) | Ponte para `AGENTS.md`, sem conteúdo normativo próprio |
