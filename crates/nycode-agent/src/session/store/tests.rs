@@ -90,3 +90,10 @@ fn a_corrupted_line_costs_one_turn_not_the_conversation() {
         vec![Message::user("antes"), Message::user("depois")]
     );
 }
+
+#[test]
+fn session_ids_enforce_the_length_and_character_boundaries() {
+    assert!(validate_id(&"a".repeat(128)).is_ok());
+    assert!(validate_id(&"a".repeat(129)).is_err());
+    assert!(validate_id("bad!").is_err());
+}
