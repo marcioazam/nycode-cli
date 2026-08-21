@@ -251,4 +251,159 @@ mod tests {
             "linha de outro workspace entrou no contexto"
         );
     }
+    #[test]
+    fn a_signed_future_session_record_is_not_loaded_into_model_context() {
+        let (_dir, store) = store();
+        let mut record = Record {
+            v: 2,
+            ts: now_millis().saturating_add(TTL_MS),
+            id: Some("future".to_owned()),
+            parent_id: None,
+            message: Message::user("injetado"),
+            mac: None,
+        };
+        record.mac = Some(store.mac.sign(&record).unwrap());
+        std::fs::write(
+            store.path_for("future"),
+            serde_json::to_string(&record).unwrap(),
+        )
+        .unwrap();
+        assert!(
+            store.load("future").unwrap().is_empty(),
+            "linha futura entrou no contexto"
+        );
+    }
+    #[test]
+    fn a_session_record_at_the_ttl_boundary_is_loaded_when_its_mac_is_valid() {
+        let (_dir, store) = store();
+        let now = now_millis();
+        let mut record = Record {
+            v: 2,
+            ts: now,
+            id: Some("boundary".to_owned()),
+            parent_id: None,
+            message: Message::user("segredo"),
+            mac: None,
+        };
+        record.mac = Some(store.mac.sign(&record).unwrap());
+        assert!(
+            store
+                .mac
+                .acceptable(&record, now, &store.mac.secret().unwrap())
+                .unwrap()
+        );
+        record.ts = now.saturating_sub(TTL_MS);
+        record.mac = Some(store.mac.sign(&record).unwrap());
+        assert!(
+            store
+                .mac
+                .acceptable(&record, now, &store.mac.secret().unwrap())
+                .unwrap()
+        );
+    }
+    #[test]
+    fn an_untampered_session_record_is_loaded_but_a_changed_payload_is_refused() {
+        let (_dir, store) = store();
+        store.append("s1", &Message::user("segredo")).unwrap();
+        assert_eq!(store.load("s1").unwrap().len(), 1);
+        let mut record: Record = serde_json::from_str(
+            std::fs::read_to_string(store.path_for("s1"))
+                .unwrap()
+                .trim(),
+        )
+        .unwrap();
+        assert!(
+            store
+                .mac
+                .acceptable(&record, now_millis(), &store.mac.secret().unwrap())
+                .unwrap()
+        );
+        record.message = Message::user("adulterado");
+        std::fs::write(
+            store.path_for("s2"),
+            serde_json::to_string(&record).unwrap(),
+        )
+        .unwrap();
+        assert!(store.load("s2").unwrap().is_empty());
+    }
+    #[test]
+    fn a_session_is_not_written_when_its_mac_key_cannot_be_created() {
+        let (dir, store) = store();
+        std::fs::create_dir(dir.path().join("sessoes").join(".mac-key")).unwrap();
+        assert!(store.append("s1", &Message::user("segredo")).is_err());
+    }
+    #[test]
+    fn a_session_load_fails_when_its_mac_key_cannot_be_read() {
+        let (dir, store) = store();
+        store.append("s1", &Message::user("segredo")).unwrap();
+        let key = dir.path().join("sessoes").join(".mac-key");
+        std::fs::remove_file(&key).unwrap();
+        std::fs::create_dir(&key).unwrap();
+        assert!(store.load("s1").is_err());
+    }
+    #[test]
+    fn an_invalid_mac_key_or_signature_is_refused() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join(".mac-key"), [0u8; 31]).unwrap();
+        assert!(load_or_create_key(dir.path()).is_err());
+        let (_dir, store) = store();
+        store.append("s1", &Message::user("segredo")).unwrap();
+        let mut record: Record = serde_json::from_str(
+            std::fs::read_to_string(store.path_for("s1"))
+                .unwrap()
+                .trim(),
+        )
+        .unwrap();
+        record.mac = Some("not-hex".to_owned());
+        std::fs::write(
+            store.path_for("s2"),
+            serde_json::to_string(&record).unwrap(),
+        )
+        .unwrap();
+        assert!(store.load("s2").unwrap().is_empty());
+        assert!(!verify_bytes(
+            &[0u8; 32],
+            b"payload",
+            &hex::encode([0u8; 32])
+        ));
+    }
+    #[test]
+    fn a_mac_key_is_not_created_without_os_entropy() {
+        let dir = tempfile::tempdir().unwrap();
+        assert!(create_key(dir.path(), |_| Err(getrandom::Error::UNSUPPORTED)).is_err());
+        assert!(!dir.path().join(".mac-key").exists());
+    }
+    #[test]
+    fn a_mac_key_is_persisted_after_entropy_is_available() {
+        let dir = tempfile::tempdir().unwrap();
+        let key = create_key(dir.path(), |bytes| {
+            bytes.fill(7);
+            Ok(())
+        })
+        .unwrap();
+
+        assert_eq!(key, vec![7; 32]);
+        assert_eq!(std::fs::read(dir.path().join(".mac-key")).unwrap(), key);
+    }
+    #[cfg(unix)]
+    #[test]
+    fn a_mac_key_readable_by_other_users_is_refused() {
+        use std::os::unix::fs::PermissionsExt as _;
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(".mac-key");
+        std::fs::write(&path, [0u8; 32]).unwrap();
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o644)).unwrap();
+        assert!(load_or_create_key(dir.path()).is_err());
+    }
+    #[cfg(unix)]
+    #[test]
+    fn a_mac_key_symlink_is_refused() {
+        use std::os::unix::fs::{PermissionsExt as _, symlink};
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("known-key");
+        std::fs::write(&target, [7u8; 32]).unwrap();
+        std::fs::set_permissions(&target, std::fs::Permissions::from_mode(0o600)).unwrap();
+        symlink(&target, dir.path().join(".mac-key")).unwrap();
+        assert!(load_or_create_key(dir.path()).is_err());
+    }
 }
