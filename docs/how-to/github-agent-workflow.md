@@ -26,7 +26,7 @@ coordena dono, estado e links. Project é vista, não fonte.
   público de **organização**. Este repo é `marcioazam/nycode-cli`. Substituto
   local: 12 checks obrigatórios + `strict` (ADR-0034). O workflow já escuta
   `merge_group` para o dia em que o repo migrar.
-- Project “NyCode harness”: criar exige `gh auth refresh -s project`. Sem
+- Project “NyCode harness”: criar exige `gh auth` com scope `project`. Sem
   esse scope, a Issue basta.
 
 ## Issue antes de `/plan`
