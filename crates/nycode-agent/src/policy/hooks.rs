@@ -278,19 +278,16 @@ async fn start_with(
     cwd: &Path,
     confinement: &crate::policy::confinement::sandbox::Confinement,
 ) -> Option<tokio::process::Child> {
-    /// Quanto esperar antes da segunda tentativa.
-    const SETTLE: Duration = Duration::from_millis(50);
-
-    // O hook roda sob a mesma política do comando de shell (ADR-0009,
-    // ADR-0017): é política local, precisa escrever no workspace e não tem por
-    // que alcançar a rede.
     let argv = crate::policy::confinement::sandbox::prefix(
         confinement,
         crate::policy::confinement::sandbox::Policy::WorkspaceWrite,
         cwd,
     );
 
-    for attempt in 0..2 {
+    match retry_after_text_busy(|| {
+        // O hook roda sob a mesma política do comando de shell (ADR-0009,
+        // ADR-0017): é política local, precisa escrever no workspace e não tem por
+        // que alcançar a rede.
         let mut command = match argv.split_first() {
             Some((wrapper, rest)) => {
                 let mut command = tokio::process::Command::new(wrapper);
@@ -319,20 +316,32 @@ async fn start_with(
         // namespace de PID; o teste da sentinela prova a propriedade que
         // importa, em vez de inferi-la da topologia dos namespaces.
         crate::policy::confinement::process::detach(&mut command);
-        let started = command.spawn();
-
-        match started {
-            Ok(child) => return Some(child),
-            Err(err) if err.raw_os_error() == Some(libc_etxtbsy()) && attempt == 0 => {
-                tokio::time::sleep(SETTLE).await;
-            }
-            Err(err) => {
-                tracing::warn!(hook = %program.display(), %err, "hook nao pode ser executado");
-                return None;
-            }
+        command.spawn()
+    })
+    .await
+    {
+        Ok(child) => Some(child),
+        Err(err) => {
+            tracing::warn!(hook = %program.display(), %err, "hook nao pode ser executado");
+            None
         }
     }
-    None
+}
+
+async fn retry_after_text_busy<T>(
+    mut start: impl FnMut() -> std::io::Result<T>,
+) -> std::io::Result<T> {
+    /// Quanto esperar antes da segunda tentativa.
+    const SETTLE: Duration = Duration::from_millis(50);
+
+    match start() {
+        Ok(child) => Ok(child),
+        Err(err) if err.raw_os_error() == Some(libc_etxtbsy()) => {
+            tokio::time::sleep(SETTLE).await;
+            start()
+        }
+        Err(err) => Err(err),
+    }
 }
 
 /// `ETXTBSY`, sem depender de uma crate de constantes de libc.

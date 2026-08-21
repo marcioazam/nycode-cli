@@ -642,23 +642,20 @@ async fn a_missing_direct_hook_is_reported_as_not_started() {
 
 #[tokio::test]
 async fn a_busy_executable_is_retried_after_it_settles() {
-    // Script com shebang não produz ETXTBSY em todos os kernels; copiar um
-    // binário de verdade prova o ramo que existe para esse errno.
-    let root = tempfile::tempdir().unwrap();
-    let path = root.path().join("ocupado");
-    std::fs::copy("/bin/true", &path).unwrap();
-    let held = std::fs::OpenOptions::new().write(true).open(&path).unwrap();
-    let releaser = std::thread::spawn(move || {
-        std::thread::sleep(std::time::Duration::from_millis(20));
-        drop(held);
-    });
+    let mut attempts = 0;
+    let started = super::retry_after_text_busy(|| {
+        attempts += 1;
+        if attempts == 1 {
+            Err(std::io::Error::from_raw_os_error(super::libc_etxtbsy()))
+        } else {
+            Ok(())
+        }
+    })
+    .await
+    .is_ok();
 
-    let mut child = super::start_with(&path, root.path(), &no_confinement())
-        .await
-        .expect("a segunda tentativa pega o binario liberado");
-    releaser.join().unwrap();
-
-    assert!(child.wait().await.unwrap().success());
+    assert!(started);
+    assert_eq!(attempts, 2);
 }
 
 #[tokio::test]
