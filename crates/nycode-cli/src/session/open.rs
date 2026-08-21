@@ -65,11 +65,8 @@ fn open(store: &Store, cli: &Cli) -> anyhow::Result<(String, Vec<Message>)> {
 /// Arquivo solto sem registros não pode virar `latest()`.
 fn fork_src(store: &Store, src: &str) -> anyhow::Result<(PathBuf, CopyKind)> {
     let path = Path::new(src);
-    let as_session = validate_id(src).is_ok()
-        && store
-            .path_for(src)
-            .map(|path| path.is_file())
-            .unwrap_or(false);
+    let as_session =
+        validate_id(src).is_ok() && store.path_for(src).is_ok_and(|path| path.is_file());
     if as_session {
         return Ok((store.path_for(src)?, CopyKind::Session));
     }
