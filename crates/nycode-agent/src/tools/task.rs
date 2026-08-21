@@ -20,6 +20,7 @@ use sha2::{Digest as _, Sha256};
 
 use crate::agent::{Agent, Silent};
 use crate::backend::Backend;
+use crate::error::{Error, Result};
 use crate::policy::Gate;
 use crate::tool::{Tool, ToolContext, ToolOutput};
 
@@ -44,13 +45,13 @@ impl std::fmt::Debug for Task {
 }
 
 impl Task {
-    #[must_use]
-    pub fn new(backend: Arc<dyn Backend>) -> Self {
-        Self {
+    #[must_use = "use a tarefa ou trate o erro de inicializacao"]
+    pub fn new(backend: Arc<dyn Backend>) -> Result<Self> {
+        Ok(Self {
             backend,
             gate: Arc::new(|| Box::new(crate::policy::ReadOnly)),
-            mac_key: new_key(),
-        }
+            mac_key: new_key()?,
+        })
     }
 
     /// Define como o filho é permissionado.
@@ -168,19 +169,18 @@ impl Tool for Task {
     }
 }
 
-fn new_key() -> [u8; 32] {
+fn new_key() -> Result<[u8; 32]> {
+    let file = std::fs::File::open("/dev/urandom")
+        .map_err(|err| Error::Randomness(format!("/dev/urandom: {err}")))?;
+    key_from(file)
+}
+
+fn key_from(mut source: impl std::io::Read) -> Result<[u8; 32]> {
     let mut key = [0u8; 32];
-    let from_urandom = std::fs::File::open("/dev/urandom")
-        .ok()
-        .is_some_and(|mut file| {
-            use std::io::Read as _;
-            file.read_exact(&mut key).is_ok()
-        });
-    if !from_urandom {
-        let digest = Sha256::digest(format!("{}{}", std::process::id(), now_millis()).as_bytes());
-        key.copy_from_slice(&digest);
-    }
-    key
+    source
+        .read_exact(&mut key)
+        .map_err(|err| Error::Randomness(format!("fonte de entropia: {err}")))?;
+    Ok(key)
 }
 
 fn now_millis() -> u64 {
