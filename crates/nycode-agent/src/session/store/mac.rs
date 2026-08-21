@@ -51,13 +51,9 @@ impl Context {
         if record.ts > now || now.saturating_sub(record.ts) > TTL_MS {
             return Ok(false);
         }
-        let message = payload(
-            &self.workspace,
-            &Record {
-                mac: None,
-                ..record.clone()
-            },
-        )?;
+        let mut unsigned = record.clone();
+        unsigned.mac = None;
+        let message = payload(&self.workspace, &unsigned)?;
         Ok(verify_bytes(secret, &message, mac))
     }
 }
