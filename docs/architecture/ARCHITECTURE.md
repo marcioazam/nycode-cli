@@ -127,9 +127,8 @@ Três propriedades desse fluxo não são acidentais:
 - **A sessão é persistida depois do turno,** nunca antes: gravar antes
   registraria uma conversa que não aconteceu se o backend recusasse o pedido.
 - **Um erro de ferramenta volta como resultado de erro,** não como abort. Abortar
-  desperdiçaria o turno inteiro; devolver deixa o modelo se corrigir. O limite
-  agregado de chamadas (`tool_limit`) impede um modelo em laço ou uma resposta
-  com várias ferramentas de queimar cota.
+  desperdiçaria o turno inteiro; devolver deixa o modelo se corrigir. O limite de
+  rodadas (`tool_limit`) é o que impede um modelo em laço de queimar cota.
 
 ## 7. Visão de implantação
 

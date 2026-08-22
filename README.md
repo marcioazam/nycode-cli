@@ -141,9 +141,6 @@ padrão, então um arquivo que ajusta uma coisa não repete as outras:
 }
 ```
 
-`tool_limit` limita o total agregado de chamadas de ferramenta por pedido, mesmo
-quando o modelo pede várias ferramentas na mesma resposta.
-
 O bloco `provider` é o FR-9: apontar o binário para outro gateway, incluindo
 qualquer endpoint OpenAI-compatível, sem repetir três flags a cada invocação. A
 escolha é por campo — trocar só o `base_url` mantém o diálogo e o modelo
