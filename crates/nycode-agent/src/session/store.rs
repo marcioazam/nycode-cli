@@ -75,9 +75,18 @@ impl Store {
     /// Abre o diretório de sessões, criando-o se necessário.
     pub fn open(dir: impl Into<PathBuf>) -> Result<Self> {
         let dir = dir.into();
+        Self::open_for_workspace(dir.clone(), &dir)
+    }
+
+    /// Abre sessões e vincula a admissão criptográfica ao workspace informado.
+    pub fn open_for_workspace(
+        dir: impl Into<PathBuf>,
+        workspace: impl AsRef<Path>,
+    ) -> Result<Self> {
+        let dir = dir.into();
         std::fs::create_dir_all(&dir)
             .map_err(|err| Error::Workspace(format!("sessoes em {}: {err}", dir.display())))?;
-        let mac = std::sync::Arc::new(mac::Context::open(&dir));
+        let mac = std::sync::Arc::new(mac::Context::open(&dir, workspace.as_ref()));
         Ok(Self {
             dir,
             tips: std::sync::Arc::default(),
