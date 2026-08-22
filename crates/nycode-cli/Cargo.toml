@@ -30,6 +30,7 @@ nycode-mcp = { version = "0.1.0", path = "../nycode-mcp" }
 nycode-tui = { version = "0.1.0", path = "../nycode-tui" }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
+rustix = { version = "1.1.4", default-features = false, features = ["fs", "std"] }
 tokio = { version = "1.53.1", features = ["rt-multi-thread", "macros", "signal"] }
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
