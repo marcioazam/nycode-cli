@@ -258,9 +258,30 @@ mod tests {
 
         assert!(
             !context
-                .acceptable(&record, now_millis(), &[0u8; 32])
+                .acceptable(&record, now_millis(), &context.secret().unwrap())
                 .unwrap()
         );
+    }
+
+    #[test]
+    fn the_ttl_boundary_is_accepted_but_an_older_record_is_rejected() {
+        let dir = tempfile::tempdir().unwrap();
+        let sessions = dir.path().join("sessions");
+        std::fs::create_dir_all(&sessions).unwrap();
+        let context = Context::open(&sessions).unwrap();
+        let now = now_millis();
+
+        for (age, accepted) in [(TTL_MS, true), (TTL_MS + 1, false)] {
+            let mut record = record();
+            record.ts = now.saturating_sub(age);
+            record.mac = Some(context.sign(&record).unwrap());
+            assert_eq!(
+                context
+                    .acceptable(&record, now, &context.secret().unwrap())
+                    .unwrap(),
+                accepted
+            );
+        }
     }
 
     #[test]
