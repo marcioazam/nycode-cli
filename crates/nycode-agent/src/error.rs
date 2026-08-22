@@ -28,10 +28,10 @@ pub enum Error {
     #[error("argumentos invalidos para `{tool}`: {reason}")]
     InvalidToolInput { tool: String, reason: String },
 
-    /// O pedido excedeu o teto agregado de chamadas de ferramenta.
+    /// O turno excedeu o teto de iterações de ferramenta.
     ///
     /// Sem este teto um modelo em loop consome a cota inteira sem produzir nada.
-    #[error("pedido excedeu {limit} chamadas de ferramenta sem concluir")]
+    #[error("turno excedeu {limit} iteracoes de ferramenta sem concluir")]
     ToolLoopLimit { limit: usize },
 
     #[error("cancelado")]
