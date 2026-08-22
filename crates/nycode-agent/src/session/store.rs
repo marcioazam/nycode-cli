@@ -192,10 +192,6 @@ impl Store {
     }
 
     /// O último registro do caminho ativo, se houver.
-    ///
-    /// Consulta o cursor antes do disco. Quem grava é este mesmo `Store`, então
-    /// depois da primeira gravação ele já sabe onde está a ponta e não precisa
-    /// reler o arquivo para redescobri-la.
     #[must_use]
     pub fn tip(&self, id: &str) -> Option<String> {
         if let Some(known) = self.remembered_tip(id) {
@@ -339,7 +335,11 @@ fn open_session_for_append(path: &Path) -> Result<std::fs::File> {
         let descriptor = rustix::fs::openat(
             &dir,
             name,
-            OFlags::WRONLY | OFlags::CREATE | OFlags::APPEND | OFlags::NOFOLLOW | OFlags::CLOEXEC,
+            OFlags::WRONLY
+                .union(OFlags::CREATE)
+                .union(OFlags::APPEND)
+                .union(OFlags::NOFOLLOW)
+                .union(OFlags::CLOEXEC),
             Mode::from_raw_mode(0o600),
         )
         .map_err(|err| Error::Workspace(format!("abrir sessao sem symlink: {err}")))?;
