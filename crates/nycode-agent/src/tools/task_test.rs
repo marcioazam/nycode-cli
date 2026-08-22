@@ -277,7 +277,7 @@ async fn valid_envelopes_are_checked_against_the_current_time_and_ttl() {
     let expired = 1;
     assert!(!task.envelope_ok(
         description,
-        &json!({ "exp": expired, "mac": task.mac(description, expired) })
+        &json!({ "exp": expired, "mac": task.mac(description, expired).unwrap() })
     ));
 
     let far_future = u64::MAX;
@@ -285,7 +285,7 @@ async fn valid_envelopes_are_checked_against_the_current_time_and_ttl() {
         description,
         &json!({
             "exp": far_future,
-            "mac": task.mac(description, far_future)
+            "mac": task.mac(description, far_future).unwrap()
         })
     ));
 
@@ -294,7 +294,7 @@ async fn valid_envelopes_are_checked_against_the_current_time_and_ttl() {
         description,
         &json!({
             "exp": old_epoch_expiry,
-            "mac": task.mac(description, old_epoch_expiry)
+            "mac": task.mac(description, old_epoch_expiry).unwrap()
         })
     ));
 }
@@ -304,14 +304,14 @@ fn hmac_sha256_matches_vectors_inside_and_outside_the_block_size() {
     let short_key = b"Jefe";
     let short_message = b"what do ya want for nothing?";
     assert_eq!(
-        hex::encode(hmac_sha256(short_key, short_message)),
+        sign_bytes(short_key, short_message).unwrap(),
         "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843"
     );
 
     let long_key = vec![0xaa; 131];
     let long_message = b"Test Using Larger Than Block-Size Key - Hash Key First";
     assert_eq!(
-        hex::encode(hmac_sha256(&long_key, long_message)),
+        sign_bytes(&long_key, long_message).unwrap(),
         "60e431591ee0b67f0d8a26aacbf5b77f8e0bc6213728c5140546040f0ee37f54"
     );
 }
@@ -329,7 +329,7 @@ fn hmac_sha256_handles_a_key_that_fills_the_block() {
     let key = vec![0x11; 64];
 
     assert_eq!(
-        hex::encode(hmac_sha256(&key, b"block boundary message")),
+        sign_bytes(&key, b"block boundary message").unwrap(),
         "80752bcda6c0a0e0d3d26930496c8d4b84e3c66a4574422f37ad6d6ceb93c8c9"
     );
 }
@@ -338,4 +338,9 @@ fn hmac_sha256_handles_a_key_that_fills_the_block() {
 fn an_incomplete_entropy_source_is_rejected_instead_of_hashed() {
     let err = key_from(std::io::empty()).expect_err("entropia incompleta");
     assert!(matches!(err, crate::Error::Randomness(_)), "{err}");
+}
+
+#[test]
+fn a_malformed_mac_is_rejected_without_panicking() {
+    assert!(!verify_bytes(&[0u8; 32], b"payload", "not-hex"));
 }
