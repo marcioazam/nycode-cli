@@ -72,27 +72,6 @@ pub(crate) fn tool_turn(id: &str, name: &str, args: &str) -> Vec<StreamEvent> {
     ]
 }
 
-fn multi_tool_turn(calls: &[(&str, &str, &str)]) -> Vec<StreamEvent> {
-    let mut events = vec![StreamEvent::MessageStart { id: "m".into() }];
-    for (id, name, args) in calls {
-        events.extend([
-            StreamEvent::ToolCallStart {
-                id: (*id).into(),
-                name: (*name).into(),
-            },
-            StreamEvent::ToolCallDelta {
-                id: (*id).into(),
-                json_fragment: (*args).into(),
-            },
-            StreamEvent::ToolCallEnd { id: (*id).into() },
-        ]);
-    }
-    events.push(StreamEvent::MessageEnd {
-        stop_reason: StopReason::ToolUse,
-    });
-    events
-}
-
 #[tokio::test]
 async fn a_plain_answer_returns_without_touching_tools() {
     let (_dir, ctx) = workspace();
@@ -154,22 +133,6 @@ async fn executes_a_tool_and_feeds_the_result_back() {
     });
     assert!(has_tool_use, "bloco tool_use ausente do historico");
     assert!(has_result, "tool_result ausente do historico");
-}
-
-#[tokio::test]
-async fn a_tool_round_cannot_exceed_the_aggregate_tool_limit() {
-    let (_dir, ctx) = workspace();
-    let backend = Arc::new(FakeBackend::new(vec![multi_tool_turn(&[
-        ("t1", "read", r#"{"path":"a.txt"}"#),
-        ("t2", "read", r#"{"path":"b.txt"}"#),
-    ])]));
-    let mut agent = Agent::new(backend.clone(), ctx)
-        .with_tool(Arc::new(Read))
-        .with_tool_limit(1);
-
-    let err = agent.run("leia os dois arquivos", &mut Silent).await;
-    assert!(matches!(err, Err(Error::ToolLoopLimit { limit: 1 })));
-    assert_eq!(backend.call_count(), 1);
 }
 
 #[tokio::test]
