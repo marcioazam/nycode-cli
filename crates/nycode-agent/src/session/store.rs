@@ -76,7 +76,6 @@ struct Tip {
     id: String,
     file_len: u64,
 }
-
 impl Store {
     /// Abre o diretório de sessões, criando-o se necessário.
     pub fn open(dir: impl Into<PathBuf>) -> Result<Self> {
@@ -186,11 +185,17 @@ impl Store {
         file.sync_all()
             .map_err(|err| Error::Workspace(format!("sincronizar sessao {id}: {err}")))?;
 
+        // A ponta é o último registro gravado, inclusive quando este append
+        // ramificou a partir do meio da árvore.
         self.remember_tip(id, &record_id);
         Ok(record_id)
     }
 
     /// O último registro do caminho ativo, se houver.
+    ///
+    /// Consulta o cursor antes do disco. Quem grava é este mesmo `Store`, então
+    /// depois da primeira gravação ele já sabe onde está a ponta e não precisa
+    /// reler o arquivo para redescobri-la.
     #[must_use]
     pub fn tip(&self, id: &str) -> Option<String> {
         if let Some(known) = self.remembered_tip(id) {
@@ -219,6 +224,8 @@ impl Store {
                 continue;
             }
             match serde_json::from_str::<Record>(line) {
+                // O parser reconhece v1 sem `id`; a admissão abaixo ainda exige
+                // MAC antes de qualquer registro chegar ao contexto do modelo.
                 Ok(record) if record.v <= FORMAT_VERSION => records.push(record),
                 Ok(record) => {
                     tracing::warn!(
@@ -247,6 +254,11 @@ impl Store {
     pub fn load(&self, id: &str) -> Result<Vec<Message>> {
         let records = self.records(id)?;
 
+        // O caminho ativo é o que leva ao último registro gravado. Devolver o
+        // arquivo inteiro mandaria ramos abandonados ao modelo como se fossem
+        // parte da conversa.
+        // Anotar a ponta aqui é o que faz o primeiro append depois do resume
+        // não reler o arquivo.
         if let Some(tip) = records.last().and_then(|r| r.id.as_deref()) {
             self.remember_tip(id, tip);
         }
@@ -293,11 +305,9 @@ impl Store {
         &self.dir
     }
 }
-
 struct SessionLock {
     _file: std::fs::File,
 }
-
 impl SessionLock {
     fn acquire(path: &Path) -> Result<Self> {
         let lock_path = path.with_extension("lock");
@@ -314,12 +324,10 @@ impl SessionLock {
         Ok(Self { _file: file })
     }
 }
-
 fn open_session_for_append(path: &Path) -> Result<std::fs::File> {
     #[cfg(unix)]
     {
         use rustix::fs::{Mode, OFlags};
-
         let dir = std::fs::File::open(
             path.parent()
                 .ok_or_else(|| Error::Workspace("sessao sem diretorio pai".to_owned()))?,
@@ -331,17 +339,12 @@ fn open_session_for_append(path: &Path) -> Result<std::fs::File> {
         let descriptor = rustix::fs::openat(
             &dir,
             name,
-            OFlags::WRONLY
-                .union(OFlags::CREATE)
-                .union(OFlags::APPEND)
-                .union(OFlags::NOFOLLOW)
-                .union(OFlags::CLOEXEC),
+            OFlags::WRONLY | OFlags::CREATE | OFlags::APPEND | OFlags::NOFOLLOW | OFlags::CLOEXEC,
             Mode::from_raw_mode(0o600),
         )
         .map_err(|err| Error::Workspace(format!("abrir sessao sem symlink: {err}")))?;
         Ok(std::fs::File::from(descriptor))
     }
-
     #[cfg(not(unix))]
     std::fs::OpenOptions::new()
         .create(true)
