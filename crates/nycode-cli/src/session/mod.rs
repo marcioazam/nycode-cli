@@ -150,7 +150,7 @@ pub async fn prepare(cli: &Cli) -> anyhow::Result<Prepared> {
     let system = context.system_prompt(&crate::invocation::prompt::resolve(cli, &root)?, &root);
     phases.mark("workspace");
 
-    let store = Store::open_for_workspace(root.join(".nycode/sessions"), &root)?;
+    let store = Store::open(root.join(".nycode/sessions"))?;
     let (session_id, history) = resolve(&store, cli)?;
     let persisted = history.len();
     phases.mark("sessao");

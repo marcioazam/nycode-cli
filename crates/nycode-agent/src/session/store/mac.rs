@@ -12,10 +12,13 @@ pub(super) struct Context {
 }
 
 impl Context {
-    pub(super) fn open(dir: &std::path::Path, workspace: &std::path::Path) -> Self {
-        let workspace = workspace
+    pub(super) fn open(dir: &std::path::Path) -> Self {
+        let workspace = dir
+            .parent()
+            .and_then(std::path::Path::parent)
+            .unwrap_or(dir)
             .canonicalize()
-            .unwrap_or_else(|_| workspace.to_path_buf())
+            .unwrap_or_else(|_| dir.to_path_buf())
             .display()
             .to_string();
         Self {
@@ -274,12 +277,12 @@ mod tests {
         let workspace_b = tempfile::tempdir().unwrap();
         let sessions_a = workspace_a.path().join(".nycode/sessions");
         let sessions_b = workspace_b.path().join(".nycode/sessions");
-        let store_a = Store::open_for_workspace(&sessions_a, workspace_a.path()).unwrap();
+        let store_a = Store::open(&sessions_a).unwrap();
         store_a.append("s1", &Message::user("segredo")).unwrap();
         std::fs::create_dir_all(sessions_b.parent().unwrap()).unwrap();
         symlink(&sessions_a, &sessions_b).unwrap();
 
-        let store_b = Store::open_for_workspace(&sessions_b, workspace_b.path()).unwrap();
+        let store_b = Store::open(&sessions_b).unwrap();
         assert!(store_b.load("s1").unwrap().is_empty());
     }
 
