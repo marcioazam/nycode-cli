@@ -86,9 +86,10 @@ Descartadas: **prazo total no turno**, rejeitado porque não distingue gateway
 morto de resposta longa e o valor que protege é o mesmo que mata o caso bom.
 **Seguir sem prazo**, rejeitado porque é o defeito que este ADR corrige.
 **Circuit breaker e retry budget**, rejeitados por não haver o que proteger: o
-`nycode` é um processo por usuário com um turno de cada vez, sem fan-out e sem
-vazão que possa amplificar uma falha do backend — os padrões que valem para um
-serviço multi-inquilino aqui só acrescentariam estado.
+`nycode` é um processo por usuário com um turno de cada vez. A ferramenta `task`
+pode iniciar filhos sequencialmente, mas o orçamento agregado de chamadas limita
+o fan-out e a vazão que poderia amplificar uma falha do backend — os padrões que
+valem para um serviço multi-inquilino aqui só acrescentariam estado.
 
 ## Revisão
 
