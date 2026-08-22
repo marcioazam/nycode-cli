@@ -267,7 +267,6 @@ async fn a_forged_or_expired_envelope_is_refused() {
 
     assert_eq!(backend.call_count(), 0);
 }
-
 #[tokio::test]
 async fn valid_envelopes_are_checked_against_the_current_time_and_ttl() {
     let backend = Arc::new(FakeBackend::new(vec![]));
