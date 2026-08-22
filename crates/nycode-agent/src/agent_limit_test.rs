@@ -49,3 +49,25 @@ async fn a_tool_round_cannot_exceed_the_aggregate_tool_limit() {
     assert!(matches!(err, Err(Error::ToolLoopLimit { limit: 1 })));
     assert_eq!(backend.call_count(), 1);
 }
+
+#[tokio::test]
+async fn a_tool_round_that_exactly_reaches_the_aggregate_limit_is_allowed() {
+    let dir = tempfile::tempdir().unwrap();
+    let ctx = ToolContext::new(dir.path()).unwrap();
+    let backend = Arc::new(FakeBackend::new(vec![
+        multi_tool_turn(&[("t1", "read", r#"{"path":"a.txt"}"#)]),
+        vec![
+            StreamEvent::TextDelta("pronto".into()),
+            StreamEvent::MessageEnd {
+                stop_reason: StopReason::EndTurn,
+            },
+        ],
+    ]));
+    let mut agent = Agent::new(backend.clone(), ctx)
+        .with_tool(Arc::new(Read))
+        .with_tool_limit(1);
+
+    let outcome = agent.run("leia o arquivo", &mut Silent).await.unwrap();
+    assert_eq!(outcome.text, "pronto");
+    assert_eq!(backend.call_count(), 2);
+}
