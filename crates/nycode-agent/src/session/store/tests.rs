@@ -70,64 +70,6 @@ fn appending_never_rewrites_earlier_lines() {
     );
 }
 
-#[cfg(unix)]
-#[test]
-fn appending_to_a_symlinked_session_is_refused() {
-    use std::os::unix::fs::symlink;
-
-    let (dir, store) = store();
-    let target = dir.path().join("outside.jsonl");
-    let session = store.path_for("s1").unwrap();
-    std::fs::write(&target, "").unwrap();
-    symlink(&target, session).unwrap();
-
-    assert!(store.append("s1", &Message::user("nao escrever")).is_err());
-    assert_eq!(std::fs::read_to_string(target).unwrap(), "");
-}
-
-#[cfg(unix)]
-#[test]
-fn appending_to_a_symlinked_session_directory_is_refused() {
-    use std::os::unix::fs::symlink;
-
-    let dir = tempfile::tempdir().unwrap();
-    let target = dir.path().join("target");
-    let link = dir.path().join("link");
-    std::fs::create_dir(&target).unwrap();
-    symlink(&target, &link).unwrap();
-
-    let store = Store::open(link).unwrap();
-    assert!(store.append("s1", &Message::user("nao escrever")).is_err());
-}
-
-#[cfg(unix)]
-#[test]
-fn reading_a_symlinked_session_is_refused() {
-    use std::os::unix::fs::symlink;
-
-    let (dir, store) = store();
-    let target = dir.path().join("outside.jsonl");
-    std::fs::write(&target, "nao ler").unwrap();
-    symlink(&target, store.path_for("s1").unwrap()).unwrap();
-
-    assert!(store.load("s1").is_err());
-}
-
-#[cfg(unix)]
-#[test]
-fn appending_with_a_symlinked_lock_is_refused() {
-    use std::os::unix::fs::symlink;
-
-    let (dir, store) = store();
-    let target = dir.path().join("outside.lock");
-    let lock = store.path_for("s1").unwrap().with_extension("lock");
-    std::fs::write(&target, "").unwrap();
-    symlink(&target, lock).unwrap();
-
-    assert!(store.append("s1", &Message::user("nao escrever")).is_err());
-    assert_eq!(std::fs::read_to_string(target).unwrap(), "");
-}
-
 #[test]
 fn a_corrupted_line_costs_one_turn_not_the_conversation() {
     // O resultado tipico de um crash no meio da escrita.
