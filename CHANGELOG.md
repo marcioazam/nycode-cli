@@ -8,6 +8,14 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Adicionado
 
+- **Registros de sessão passam a exigir MAC válido e TTL.** Linhas sem MAC,
+  expiradas, futuras ou de outro workspace não entram no contexto do modelo;
+  linhas sem MAC produzem erro explícito (AGT-07).
+
+- **O session store recusa ids inseguros e symlinks, e serializa append
+  concorrente por sessão.** A ponta em cache é invalidada quando outra
+  instância altera o arquivo (AGT-07).
+
 - **Sessão nomeada, com id escolhido, fork e import.** `--name`,
   `--session-id`, `--fork`, `--import`; `/session`, `/copy`, `/new`, `/reload` (B27, B28, FR-22).
 

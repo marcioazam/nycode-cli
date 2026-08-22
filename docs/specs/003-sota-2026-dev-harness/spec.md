@@ -369,7 +369,7 @@ tabela diverge de `ROADMAP.md` e do `AGENTS.md` enquanto houver `aberto`.
 | FR-30 | Produto agente | aberto | a ferramenta `bash` ainda exige `command` string; `profile.rs` só recusa `-lc` e exige `-c` |
 | FR-31 | Produto agente | aberto | `policy::approval` pergunta ou nega; grant amarrado a ator + ferramenta + alvo + parâmetros exatos ainda não recusa ASI09 |
 | FR-32 | Produto agente | aberto | resolver de chave longa e `sanitize` ANSI não são credencial curta nem recusa de segredo em memória ou log |
-| FR-33 | Produto agente | aberto | sessão em arquivo da árvore, escopada ao workspace; sem expiração |
+| FR-33 | Produto agente | instrumentado | `Store` assina registros novos com HMAC-SHA256 por workspace; `load` recusa MAC ausente, valida MAC, exclui registros futuros/expirados/de outro workspace; testes em `session/store/{mac,tests,tree_tests}.rs` |
 | FR-34 | Produto agente | não se aplica | subagente in-process, mesma fronteira de confiança ([ADR-0007](../../architecture/decisions/0007-subagentes-sao-in-process-divergindo-da-referencia.md)); sem canal entre agentes |
 | FR-35 | Núcleo | aberto | [ADR-0033](../../architecture/decisions/0033-gate-16-fica-sem-instrumento-conflito-com-hook-e-squash-merge.md) existe e expira 2027-02-14; faltam dono nomeado e controle compensatório |
 
@@ -385,8 +385,8 @@ tabela diverge de `ROADMAP.md` e do `AGENTS.md` enquanto houver `aberto`.
 - [NEEDS CLARIFICATION] `FR-21`: nenhum cheque recusa merge ou auto-aprovação de agente.
 - [NEEDS CLARIFICATION] `FR-25`: cheque de Stop de agente ainda não está nesta árvore.
 - [NEEDS CLARIFICATION] `FR-26`/`GATE-17`: waiver com caminhos críticos, review independente e expiração ainda não está nesta árvore.
-- [NEEDS CLARIFICATION] `FR-27`/`FR-30`/`FR-31`/`FR-32`/`FR-33`: produto ainda não recusa sobreposição, `command` string no bash, grant de parâmetros exatos, credencial curta nem expiração de sessão.
+- [NEEDS CLARIFICATION] `FR-27`/`FR-30`/`FR-31`/`FR-32`: produto ainda não recusa sobreposição, `command` string no bash, grant de parâmetros exatos nem credencial curta.
 
 ---
 Autor: agente (pesquisa 2026-08-17, adoção 2026-08-17; matriz honesta 2026-08-19) · Status: adoção em curso · Data: 2026-08-19
-Open: 27 (FR-1, FR-2, FR-3, FR-4, FR-5, FR-6, FR-7, FR-8, FR-9, FR-10, FR-14, FR-15, FR-17, FR-18, FR-19, FR-20, FR-21, FR-22, FR-24, FR-25, FR-26, FR-27, FR-30, FR-31, FR-32, FR-33, FR-35) | Resolved: 0
+Open: 26 (FR-1, FR-2, FR-3, FR-4, FR-5, FR-6, FR-7, FR-8, FR-9, FR-10, FR-14, FR-15, FR-17, FR-18, FR-19, FR-20, FR-21, FR-22, FR-24, FR-25, FR-26, FR-27, FR-30, FR-31, FR-32, FR-35) | Resolved: 0
