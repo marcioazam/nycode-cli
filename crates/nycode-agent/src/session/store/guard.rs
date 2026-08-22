@@ -40,6 +40,13 @@ fn open_named(path: &Path, mode: OpenMode) -> Result<std::fs::File> {
     let parent = path
         .parent()
         .ok_or_else(|| Error::Workspace("sessao sem diretorio pai".to_owned()))?;
+    if !matches!(mode, OpenMode::Read)
+        && std::fs::symlink_metadata(parent).is_ok_and(|metadata| metadata.file_type().is_symlink())
+    {
+        return Err(Error::Workspace(
+            "escrita em diretorio de sessoes symlinkado recusada".to_owned(),
+        ));
+    }
     let dir = std::fs::File::open(parent)
         .map_err(|err| Error::Workspace(format!("abrir diretorio de sessao: {err}")))?;
     let name = path

@@ -85,13 +85,8 @@ impl Store {
         let dir = dir.into();
         std::fs::create_dir_all(&dir)
             .map_err(|err| Error::Workspace(format!("sessoes em {}: {err}", dir.display())))?;
-        if std::fs::symlink_metadata(&dir).is_ok_and(|metadata| metadata.file_type().is_symlink()) {
-            return Err(Error::Workspace(format!(
-                "diretorio de sessoes symlinkado: {}",
-                dir.display()
-            )));
-        }
         #[cfg(unix)]
+        if !std::fs::symlink_metadata(&dir).is_ok_and(|metadata| metadata.file_type().is_symlink())
         {
             use std::os::unix::fs::PermissionsExt as _;
             std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700))

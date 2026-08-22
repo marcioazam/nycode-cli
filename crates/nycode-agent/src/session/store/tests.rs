@@ -87,7 +87,7 @@ fn appending_to_a_symlinked_session_is_refused() {
 
 #[cfg(unix)]
 #[test]
-fn opening_a_symlinked_session_directory_is_refused() {
+fn appending_to_a_symlinked_session_directory_is_refused() {
     use std::os::unix::fs::symlink;
 
     let dir = tempfile::tempdir().unwrap();
@@ -96,7 +96,8 @@ fn opening_a_symlinked_session_directory_is_refused() {
     std::fs::create_dir(&target).unwrap();
     symlink(&target, &link).unwrap();
 
-    assert!(Store::open(link).is_err());
+    let store = Store::open(link).unwrap();
+    assert!(store.append("s1", &Message::user("nao escrever")).is_err());
 }
 
 #[cfg(unix)]
