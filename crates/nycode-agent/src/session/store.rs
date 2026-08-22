@@ -470,7 +470,6 @@ mod tests {
         }
         assert_eq!(store.latest().unwrap().unwrap().id, "0000000002");
     }
-
     #[test]
     fn an_empty_store_has_no_latest_session() {
         let (_dir, store) = store();
