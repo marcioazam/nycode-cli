@@ -344,3 +344,27 @@ fn an_incomplete_entropy_source_is_rejected_instead_of_hashed() {
 fn a_malformed_mac_is_rejected_without_panicking() {
     assert!(!verify_bytes(&[0u8; 32], b"payload", "not-hex"));
 }
+
+#[tokio::test]
+async fn valid_hex_macs_with_wrong_length_or_content_are_rejected() {
+    let (_dir, ctx) = workspace();
+    let backend = Arc::new(FakeBackend::new(vec![text_turn("nao deveria rodar")]));
+    let task = Task::new(backend.clone()).await.unwrap();
+    let exp = now_millis().saturating_add(1_000);
+
+    for mac in ["00".repeat(31), "00".repeat(32)] {
+        let input = json!({
+            "description": "faca algo",
+            "envelope": { "exp": exp, "mac": mac }
+        });
+        let out = task.execute(input, &ctx).await;
+        assert!(out.is_error, "{mac}: {}", out.content);
+        assert!(
+            out.content.contains("envelope rejeitado"),
+            "{}",
+            out.content
+        );
+    }
+
+    assert_eq!(backend.call_count(), 0);
+}
