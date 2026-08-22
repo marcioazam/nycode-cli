@@ -30,10 +30,6 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Alterado
 
-- **`tool_limit` limita chamadas de ferramenta agregadas por pedido, inclusive
-  várias chamadas na mesma resposta do modelo**, evitando que o fan-out de
-  subagentes multiplique a cota sem limite.
-
 - **O consentimento MCP fixa também a definição que o servidor declara.**
   Depois do handshake o conjunto é pinado; troca pede de novo (C6,
   ADR-0028). Nome com `__` ou o separador do registro é recusado.
