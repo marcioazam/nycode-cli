@@ -58,9 +58,9 @@ deste repositório — reporte lá, com o envelope de erro estruturado que o
 
 **Detecção.** `scripts/ci-local.sh --full` passa na máquina de quem
 desenvolveu, mas o mesmo commit falha no job correspondente do GitHub
-Actions — ou o oposto. Isto **nunca** deveria acontecer, porque
-"CI local — a definição única de verde" é o princípio central deste
-repositório; quando acontece, é sempre um defeito real, não ruído do runner.
+Actions — ou o oposto. O baseline local não substitui os gates remotos que
+dependem da base real do PR, da imagem ou da referência de paridade; compare
+apenas etapas equivalentes antes de concluir que há divergência.
 
 **Confirmação.** As duas causas raiz já observadas neste repositório:
 
@@ -90,3 +90,27 @@ tomar o lado da branch em todo conflito).
 antes de mergear — um CI remoto que diverge do local e ninguém entende por
 quê é exatamente o cenário que este princípio existe para nunca deixar
 acontecer sem investigação.
+
+## 4. GitHub Actions indisponível ou sem billing
+
+**Detecção.** Jobs permanecem pendentes por indisponibilidade do GitHub-hosted,
+ou o runner `nycode-trusted` está offline. Não altere a proteção de `main` nem
+publique status de check com token local para aparentar que o CI rodou.
+
+**Mitigação.** Em branch confiável, execute no SHA exato da PR:
+
+```sh
+git rev-parse HEAD
+scripts/verify-all --full
+git diff --check "origin/<base>...HEAD"
+```
+
+Registre um comentário na PR com o SHA, data e hora, os comandos acima, o
+resultado, o motivo da indisponibilidade e a autorização humana para override.
+O `--full` local é evidência válida; o merge continua sendo uma ação
+administrativa explícita, nunca automática.
+
+**Recuperação.** Quando o runner ou GitHub Actions voltar, permita que os
+checks normais concluam novamente. Investigue o runner antes de recolocá-lo em
+serviço; ele deve usar a label `nycode-trusted`, ficar isolado e não conter
+credenciais desnecessárias.

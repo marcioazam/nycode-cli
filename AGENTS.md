@@ -27,7 +27,7 @@ humano ler (`SEC-16`).
 
 | Purpose | Command |
 |---|---|
-| Verde local (= CI) | `scripts/verify-all --fast` ou `--full` |
+| Baseline local | `scripts/verify-all --fast` ou `--full` |
 | Testes | `cargo test --workspace --all-features` |
 | Um teste | `cargo test -p <crate> <nome>` |
 | Fmt + clippy | `cargo fmt --all --check` · `cargo clippy --workspace --all-targets --all-features` |
@@ -36,8 +36,16 @@ humano ler (`SEC-16`).
 | Release local | `cargo build --release` + `scripts/perf-gate.sh` |
 | Mapa de testes | `test_map` (gerado; `scripts/gen-test-map.sh --check`) |
 
-`scripts/ci-local.sh` é alias de `verify-all`. Merge sem `--full` verde é
-proibido. Hooks em `.githooks/` executam o CI; `core.hooksPath=.githooks`.
+`scripts/ci-local.sh` é alias de `verify-all`. `--full` é a verificação local
+ampliada; CI remoto ainda avalia gates dependentes da base do PR, da imagem e
+da referência de paridade. Hooks em `.githooks/` executam `--fast` no push;
+`core.hooksPath=.githooks`.
+
+Branches confiáveis usam o runner self-hosted `nycode-trusted`; forks usam
+GitHub-hosted. Se GitHub Actions estiver indisponível ou sem billing, siga a
+contingência em `docs/RUNBOOK.md`: `--full` local no SHA exato e override
+administrativo explicitamente registrado. Nunca publique um status de check
+local via token para simular CI.
 
 ## 1. Caminhos frágeis
 
@@ -86,8 +94,10 @@ Prosa neste arquivo não recusa (`AI-04`).
 
 ## 5. Antes de dizer que terminou
 
-Rode `scripts/verify-all --full` e **cole a saída real**. Sem isso não
-reivindique sucesso. Diga o que não foi verificado e o risco residual.
+Rode `scripts/verify-all --full` quando a mudança justificar e **cole a saída
+real**. Sem isso, não reivindique que o baseline local ampliado passou. Diga o
+que não foi verificado e o risco residual; o CI remoto continua obrigatório
+para merge.
 
 Português em comentário, docs e mensagem ao usuário. Nome de teste em
 inglês, descrevendo o comportamento (`a_tool_failure_is_marked_as_an_error_for_the_model`).
