@@ -14,6 +14,9 @@ pub enum Error {
     #[error("workspace: {0}")]
     Workspace(String),
 
+    #[error("aleatoriedade criptografica indisponivel: {0}")]
+    Randomness(String),
+
     /// O modelo pediu uma ferramenta que não existe.
     ///
     /// Isto não aborta o turno — vira resultado de erro para o modelo corrigir.
@@ -25,10 +28,10 @@ pub enum Error {
     #[error("argumentos invalidos para `{tool}`: {reason}")]
     InvalidToolInput { tool: String, reason: String },
 
-    /// O turno excedeu o teto de iterações de ferramenta.
+    /// O pedido excedeu o teto agregado de chamadas de ferramenta.
     ///
     /// Sem este teto um modelo em loop consome a cota inteira sem produzir nada.
-    #[error("turno excedeu {limit} iteracoes de ferramenta sem concluir")]
+    #[error("pedido excedeu {limit} chamadas de ferramenta sem concluir")]
     ToolLoopLimit { limit: usize },
 
     #[error("cancelado")]

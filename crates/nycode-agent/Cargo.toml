@@ -18,6 +18,7 @@ globset = "0.4.20"
 grep-regex = "0.1.14"
 grep-searcher = "0.1.17"
 hex = "0.4.3"
+hmac = "0.13.0"
 ignore = "0.4.33"
 nycode-ai = { version = "0.1.0", path = "../nycode-ai" }
 rustix = { version = "1.1.4", default-features = false, features = ["fs", "process", "std"] }

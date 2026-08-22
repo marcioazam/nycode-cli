@@ -2,3 +2,4 @@
 #
 # Formato: CVE-ID | expira(YYYY-MM-DD) | motivo
 # HIGH/CRITICAL sem linha vigente aqui reprovam. Vazio = nenhuma excecao.
+CVE-2026-14456 | 2026-11-19 | OpenSSL 3.0 nao e afetado pelo advisory upstream; Debian ainda nao fornece correcao para bookworm.

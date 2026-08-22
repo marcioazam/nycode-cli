@@ -108,6 +108,59 @@ check_verify_all() { # check_verify_all <exit esperado> <descricao> <raiz> <trec
 	passed=$((passed + 1))
 }
 
+check_source_contains() { # check_source_contains <descricao> <arquivo> <trecho>
+	local desc="$1" file="$2" needle="$3"
+	if grep -Fq -- "${needle}" "${file}"; then
+		printf 'ok      %s\n' "${desc}"
+		passed=$((passed + 1))
+		return
+	fi
+	printf 'FALHOU  %s\n        "%s" nao encontrado em %s\n' \
+		"${desc}" "${needle}" "${file}"
+	failed=$((failed + 1))
+}
+
+check_source_absent() { # check_source_absent <descricao> <arquivo> <trecho>
+	local desc="$1" file="$2" needle="$3"
+	if ! grep -Fq -- "${needle}" "${file}"; then
+		printf 'ok      %s\n' "${desc}"
+		passed=$((passed + 1))
+		return
+	fi
+	printf 'FALHOU  %s\n        "%s" ainda esta em %s\n' \
+		"${desc}" "${needle}" "${file}"
+	failed=$((failed + 1))
+}
+
+check_full_does_not_repeat() { # check_full_does_not_repeat <descricao> <trecho>
+	local desc="$1" needle="$2" body
+	body="$(awk '/^full\(\) \{/ { inside = 1 } /^case / { inside = 0 } inside' \
+		"${ROOT}/scripts/ci-local.sh")"
+	if [[ "${body}" != *"${needle}"* ]]; then
+		printf 'ok      %s\n' "${desc}"
+		passed=$((passed + 1))
+		return
+	fi
+	printf 'FALHOU  %s\n        full() repete "%s", que fast() ja executa\n' \
+		"${desc}" "${needle}"
+	failed=$((failed + 1))
+}
+
+# --- Contrato de custo: push verifica apenas o diff publicado ------------------
+
+check_source_contains "pre-push verifica whitespace do diff publicado" \
+	"${ROOT}/.githooks/pre-push" 'git diff --check'
+check_source_absent "pre-push nao repete o baseline rapido" \
+	"${ROOT}/.githooks/pre-push" 'scripts/ci-local.sh'
+check_full_does_not_repeat "full() nao repete o gate de assercao vacua" \
+	'scripts/vacuous-assert/gate-test.sh'
+check_full_does_not_repeat "full() nao repete o gate de contrato CLI" \
+	'scripts/contract/gate-test.sh'
+check_full_does_not_repeat "full() nao repete o gate de invariantes de parser" \
+	'scripts/parser-invariants/gate-test.sh'
+check_full_does_not_repeat "full() nao repete o gate de metricas" \
+	'scripts/metrics/gate-test.sh'
+
 # --- full() recusa antes de qualquer trabalho real, sem hooks ativos ------------
 
 box="$(sandbox sem_git)"
