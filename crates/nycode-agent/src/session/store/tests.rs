@@ -70,6 +70,31 @@ fn appending_never_rewrites_earlier_lines() {
     );
 }
 
+#[cfg(unix)]
+#[test]
+fn appending_to_a_symlinked_session_is_refused() {
+    use std::os::unix::fs::symlink;
+
+    let (dir, store) = store();
+    let target = dir.path().join("outside.jsonl");
+    let session = store.path_for("s1").unwrap();
+    std::fs::write(&target, "").unwrap();
+    symlink(&target, session).unwrap();
+
+    assert!(store.append("s1", &Message::user("nao escrever")).is_err());
+    assert_eq!(std::fs::read_to_string(target).unwrap(), "");
+}
+
+#[test]
+fn session_ids_reject_path_syntax_and_unbounded_lengths() {
+    let (_dir, store) = store();
+
+    assert!(store.path_for("").is_err());
+    assert!(store.path_for("../outside").is_err());
+    assert!(store.path_for(&"x".repeat(128)).is_ok());
+    assert!(store.path_for(&"x".repeat(129)).is_err());
+}
+
 #[test]
 fn a_corrupted_line_costs_one_turn_not_the_conversation() {
     // O resultado tipico de um crash no meio da escrita.

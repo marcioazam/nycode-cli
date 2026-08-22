@@ -11,7 +11,9 @@ use nycode_ai::anthropic::Message;
 use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, Result};
+use guard::{SessionLock, open_session_for_append, validate_id};
 
+mod guard;
 mod mac;
 mod tree;
 
@@ -76,6 +78,7 @@ struct Tip {
     id: String,
     file_len: u64,
 }
+
 impl Store {
     /// Abre o diretório de sessões, criando-o se necessário.
     pub fn open(dir: impl Into<PathBuf>) -> Result<Self> {
@@ -192,6 +195,10 @@ impl Store {
     }
 
     /// O último registro do caminho ativo, se houver.
+    ///
+    /// Consulta o cursor antes do disco. Quem grava é este mesmo `Store`, então
+    /// depois da primeira gravação ele já sabe onde está a ponta e não precisa
+    /// reler o arquivo para redescobri-la.
     #[must_use]
     pub fn tip(&self, id: &str) -> Option<String> {
         if let Some(known) = self.remembered_tip(id) {
@@ -300,71 +307,6 @@ impl Store {
     pub fn dir(&self) -> &Path {
         &self.dir
     }
-}
-struct SessionLock {
-    _file: std::fs::File,
-}
-impl SessionLock {
-    fn acquire(path: &Path) -> Result<Self> {
-        let lock_path = path.with_extension("lock");
-        let file = std::fs::OpenOptions::new()
-            .create(true)
-            .truncate(false)
-            .read(true)
-            .write(true)
-            .open(&lock_path)
-            .map_err(|err| Error::Workspace(format!("abrir lock de sessao: {err}")))?;
-        #[cfg(unix)]
-        rustix::fs::flock(&file, rustix::fs::FlockOperation::LockExclusive)
-            .map_err(|err| Error::Workspace(format!("bloquear sessao: {err}")))?;
-        Ok(Self { _file: file })
-    }
-}
-fn open_session_for_append(path: &Path) -> Result<std::fs::File> {
-    #[cfg(unix)]
-    {
-        use rustix::fs::{Mode, OFlags};
-        let dir = std::fs::File::open(
-            path.parent()
-                .ok_or_else(|| Error::Workspace("sessao sem diretorio pai".to_owned()))?,
-        )
-        .map_err(|err| Error::Workspace(format!("abrir diretorio de sessao: {err}")))?;
-        let name = path
-            .file_name()
-            .ok_or_else(|| Error::Workspace("sessao sem nome de arquivo".to_owned()))?;
-        let descriptor = rustix::fs::openat(
-            &dir,
-            name,
-            OFlags::WRONLY
-                .union(OFlags::CREATE)
-                .union(OFlags::APPEND)
-                .union(OFlags::NOFOLLOW)
-                .union(OFlags::CLOEXEC),
-            Mode::from_raw_mode(0o600),
-        )
-        .map_err(|err| Error::Workspace(format!("abrir sessao sem symlink: {err}")))?;
-        Ok(std::fs::File::from(descriptor))
-    }
-    #[cfg(not(unix))]
-    std::fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(path)
-        .map_err(|err| Error::Workspace(format!("abrir sessao: {err}")))
-}
-
-fn validate_id(id: &str) -> Result<()> {
-    if id.is_empty()
-        || id.len() > 128
-        || !id
-            .chars()
-            .all(|character| character.is_ascii_alphanumeric() || matches!(character, '-' | '_'))
-    {
-        return Err(Error::Workspace(format!(
-            "identificador de sessao `{id}` recusado"
-        )));
-    }
-    Ok(())
 }
 
 /// Identificador de registro, único dentro de um arquivo.
