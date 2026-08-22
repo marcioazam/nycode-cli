@@ -272,7 +272,6 @@ mod tests {
     #[test]
     fn a_session_directory_shared_by_another_workspace_does_not_admit_its_records() {
         use std::os::unix::fs::symlink;
-
         let workspace_a = tempfile::tempdir().unwrap();
         let workspace_b = tempfile::tempdir().unwrap();
         let sessions_a = workspace_a.path().join(".nycode/sessions");
