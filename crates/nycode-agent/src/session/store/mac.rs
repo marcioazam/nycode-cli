@@ -14,6 +14,9 @@ pub(super) struct Context {
 impl Context {
     pub(super) fn open(dir: &std::path::Path) -> Self {
         let workspace = dir
+            .parent()
+            .and_then(std::path::Path::parent)
+            .unwrap_or(dir)
             .canonicalize()
             .unwrap_or_else(|_| dir.to_path_buf())
             .display()
@@ -274,6 +277,23 @@ mod tests {
             "linha de outro workspace entrou no contexto"
         );
     }
+    #[cfg(unix)]
+    #[test]
+    fn a_session_directory_shared_by_another_workspace_does_not_admit_its_records() {
+        use std::os::unix::fs::symlink;
+        let workspace_a = tempfile::tempdir().unwrap();
+        let workspace_b = tempfile::tempdir().unwrap();
+        let sessions_a = workspace_a.path().join(".nycode/sessions");
+        let sessions_b = workspace_b.path().join(".nycode/sessions");
+        let store_a = Store::open(&sessions_a).unwrap();
+        store_a.append("s1", &Message::user("segredo")).unwrap();
+        std::fs::create_dir_all(sessions_b.parent().unwrap()).unwrap();
+        symlink(&sessions_a, &sessions_b).unwrap();
+
+        let store_b = Store::open(&sessions_b).unwrap();
+        assert!(store_b.load("s1").unwrap().is_empty());
+    }
+
     #[test]
     fn a_signed_future_session_record_is_not_loaded_into_model_context() {
         let (_dir, store) = store();
