@@ -1,10 +1,23 @@
 #!/usr/bin/env bash
-# CI local completo antes de publicar.
+# Verificacao estrutural do intervalo publicado.
 #
-# Empurrar e a outra fronteira onde o erro deixa de ser barato: o que sai daqui
-# alcanca quem nao viu o que foi feito. Mesma sequencia do merge, pela mesma
-# razao.
+# O pre-commit ja executa o baseline rapido. Aqui verificamos apenas whitespace
+# no intervalo que sera publicado; o CI remoto continua a autoridade de merge.
 #
 # Ativado por `git config core.hooksPath .githooks`.
 set -euo pipefail
-exec "$(git rev-parse --show-toplevel)/scripts/ci-local.sh" --full
+
+readonly ZERO_SHA="0000000000000000000000000000000000000000"
+EMPTY_TREE="$(git hash-object -t tree /dev/null)"
+readonly EMPTY_TREE
+
+while read -r _local_ref local_sha _remote_ref remote_sha; do
+	if [[ "${local_sha}" == "${ZERO_SHA}" ]]; then
+		continue
+	fi
+	base="${remote_sha}"
+	if [[ "${base}" == "${ZERO_SHA}" ]]; then
+		base="${EMPTY_TREE}"
+	fi
+	git diff --check "${base}" "${local_sha}" >&2
+done
