@@ -15,36 +15,27 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use hmac::{Hmac, KeyInit, Mac};
 use serde_json::{Value, json};
+use sha2::Sha256;
 
 use crate::agent::{Agent, Silent};
 use crate::backend::Backend;
+use crate::error::{Error, Result};
 use crate::policy::Gate;
 use crate::tool::{Tool, ToolContext, ToolOutput};
 
-/// Teto de rodadas de ferramenta de um filho.
-///
-/// Menor que o do pai: um filho que precisa de mais que isto está fazendo um
-/// trabalho que deveria ser do pai, com a diferença de que o pai consegue pedir
-/// ajuda ao usuário e o filho não.
 const CHILD_TOOL_LIMIT: usize = 12;
-
-/// Instrução do filho.
-///
-/// Diz explicitamente para responder com o resultado e não com o processo: o
-/// pai recebe só o texto final, e uma narração do caminho gastaria a janela que
-/// a delegação existe para poupar.
+const ENVELOPE_TTL_MS: u64 = 300_000;
 const CHILD_SYSTEM: &str = "Voce e um subagente do nycode, chamado para uma tarefa \
      delimitada. Trabalhe de forma autonoma: nao ha usuario para perguntar. \
      Responda com o resultado, nao com a narracao do que voce fez — quem chamou \
      recebe apenas o seu texto final e precisa que ele seja suficiente.";
 
-/// Delega um trabalho a um agente filho.
 pub struct Task {
     backend: Arc<dyn Backend>,
-    /// Como o filho é permissionado. Herda do pai: um subagente que pudesse
-    /// mais que quem o chamou seria uma escada de privilégio.
     gate: Arc<dyn Fn() -> Box<dyn Gate> + Send + Sync>,
+    mac_key: [u8; 32],
 }
 
 impl std::fmt::Debug for Task {
@@ -54,12 +45,16 @@ impl std::fmt::Debug for Task {
 }
 
 impl Task {
-    #[must_use]
-    pub fn new(backend: Arc<dyn Backend>) -> Self {
-        Self {
+    #[must_use = "use a tarefa ou trate o erro de inicializacao"]
+    pub async fn new(backend: Arc<dyn Backend>) -> Result<Self> {
+        let mac_key = tokio::task::spawn_blocking(new_key)
+            .await
+            .map_err(|err| Error::Randomness(format!("gerar chave em worker: {err}")))??;
+        Ok(Self {
             backend,
             gate: Arc::new(|| Box::new(crate::policy::ReadOnly)),
-        }
+            mac_key,
+        })
     }
 
     /// Define como o filho é permissionado.
@@ -82,6 +77,24 @@ impl Task {
             agent = agent.with_tool(tool);
         }
         agent
+    }
+
+    fn mac(&self, description: &str, exp: u64) -> Result<String> {
+        sign_bytes(&self.mac_key, &envelope_payload(description, exp))
+    }
+
+    fn envelope_ok(&self, description: &str, envelope: &Value) -> bool {
+        let Some(mac) = envelope.get("mac").and_then(Value::as_str) else {
+            return false;
+        };
+        let Some(exp) = envelope.get("exp").and_then(Value::as_u64) else {
+            return false;
+        };
+        let now = now_millis();
+        if exp <= now || exp.saturating_sub(now) > ENVELOPE_TTL_MS {
+            return false;
+        }
+        verify_bytes(&self.mac_key, &envelope_payload(description, exp), mac)
     }
 }
 
@@ -113,12 +126,36 @@ impl Tool for Task {
         })
     }
 
+    fn prepare(&self, mut input: Value) -> Value {
+        if input.get("envelope").is_some() {
+            return input;
+        }
+        let Some(description) = input.get("description").and_then(Value::as_str) else {
+            return input;
+        };
+        let description = description.to_owned();
+        let exp = now_millis().saturating_add(ENVELOPE_TTL_MS);
+        let Ok(mac) = self.mac(&description, exp) else {
+            return input;
+        };
+        if let Some(obj) = input.as_object_mut() {
+            obj.insert("envelope".into(), json!({ "exp": exp, "mac": mac }));
+        }
+        input
+    }
+
     async fn execute(&self, input: Value, ctx: &ToolContext) -> ToolOutput {
         let Some(description) = input.get("description").and_then(Value::as_str) else {
             return ToolOutput::error("argumento obrigatorio ausente: `description`");
         };
         if description.trim().is_empty() {
             return ToolOutput::error("`description` vazia nao e uma tarefa");
+        }
+        let Some(envelope) = input.get("envelope") else {
+            return ToolOutput::error("envelope ausente");
+        };
+        if !self.envelope_ok(description, envelope) {
+            return ToolOutput::error("envelope rejeitado");
         }
 
         let mut child = self.child(ctx);
@@ -132,6 +169,46 @@ impl Tool for Task {
             Err(err) => ToolOutput::error(format!("o subagente falhou: {err}")),
         }
     }
+}
+fn new_key() -> Result<[u8; 32]> {
+    let file = std::fs::File::open("/dev/urandom")
+        .map_err(|err| Error::Randomness(format!("/dev/urandom: {err}")))?;
+    key_from(file)
+}
+fn key_from(mut source: impl std::io::Read) -> Result<[u8; 32]> {
+    let mut key = [0u8; 32];
+    source
+        .read_exact(&mut key)
+        .map_err(|err| Error::Randomness(format!("fonte de entropia: {err}")))?;
+    Ok(key)
+}
+fn now_millis() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX))
+}
+fn envelope_payload(description: &str, exp: u64) -> Vec<u8> {
+    let mut msg = Vec::new();
+    msg.extend_from_slice(&exp.to_le_bytes());
+    msg.extend_from_slice(description.as_bytes());
+    msg
+}
+fn sign_bytes(key: &[u8], message: &[u8]) -> Result<String> {
+    let mut signer = Hmac::<Sha256>::new_from_slice(key)
+        .map_err(|err| Error::Workspace(format!("iniciar mac: {err}")))?;
+    signer.update(message);
+    Ok(hex::encode(signer.finalize().into_bytes()))
+}
+
+fn verify_bytes(key: &[u8], message: &[u8], mac: &str) -> bool {
+    let Ok(signature) = hex::decode(mac) else {
+        return false;
+    };
+    let Ok(mut verifier) = Hmac::<Sha256>::new_from_slice(key) else {
+        return false;
+    };
+    verifier.update(message);
+    verifier.verify_slice(&signature).is_ok()
 }
 
 #[cfg(test)]
