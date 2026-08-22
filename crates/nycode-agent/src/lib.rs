@@ -23,6 +23,8 @@ pub mod tools;
 pub mod turn;
 
 #[cfg(test)]
+mod agent_limit_test;
+#[cfg(test)]
 mod agent_test;
 #[cfg(test)]
 mod compaction_test;
