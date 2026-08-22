@@ -186,17 +186,11 @@ impl Store {
         file.sync_all()
             .map_err(|err| Error::Workspace(format!("sincronizar sessao {id}: {err}")))?;
 
-        // A ponta é o último registro gravado, inclusive quando este append
-        // ramificou a partir do meio da árvore.
         self.remember_tip(id, &record_id);
         Ok(record_id)
     }
 
     /// O último registro do caminho ativo, se houver.
-    ///
-    /// Consulta o cursor antes do disco. Quem grava é este mesmo `Store`, então
-    /// depois da primeira gravação ele já sabe onde está a ponta e não precisa
-    /// reler o arquivo para redescobri-la.
     #[must_use]
     pub fn tip(&self, id: &str) -> Option<String> {
         if let Some(known) = self.remembered_tip(id) {
@@ -225,8 +219,6 @@ impl Store {
                 continue;
             }
             match serde_json::from_str::<Record>(line) {
-                // O parser reconhece v1 sem `id`; a admissão abaixo ainda exige
-                // MAC antes de qualquer registro chegar ao contexto do modelo.
                 Ok(record) if record.v <= FORMAT_VERSION => records.push(record),
                 Ok(record) => {
                     tracing::warn!(
@@ -255,11 +247,6 @@ impl Store {
     pub fn load(&self, id: &str) -> Result<Vec<Message>> {
         let records = self.records(id)?;
 
-        // O caminho ativo é o que leva ao último registro gravado. Devolver o
-        // arquivo inteiro mandaria ramos abandonados ao modelo como se fossem
-        // parte da conversa.
-        // Anotar a ponta aqui é o que faz o primeiro append depois do resume
-        // não reler o arquivo.
         if let Some(tip) = records.last().and_then(|r| r.id.as_deref()) {
             self.remember_tip(id, tip);
         }
