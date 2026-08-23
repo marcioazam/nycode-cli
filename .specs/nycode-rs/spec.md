@@ -35,7 +35,10 @@ credencial ou catálogo de modelos.
 - **FR-7** Capacidades adicionais chegam por servidores MCP, hooks de ciclo de vida
   e arquivos de skill, sem recompilar o binário.
 - **FR-8** As convenções de instrução que a organização já usa — `AGENTS.md`,
-  `SKILL.md`, regras de projeto — são lidas sem configuração adicional.
+  `SKILL.md`, regras de projeto — são descobertas sem configuração adicional,
+  mas só entram no prompt quando o operador escolhe
+  `--trust-workspace-instructions`; descobrir conteúdo não lhe concede
+  autoridade automaticamente.
 - **FR-9** Um provider alternativo pode ser configurado por arquivo, incluindo
   endpoints OpenAI-compatíveis arbitrários.
 - **FR-10** Credenciais são armazenadas no cofre de credenciais do sistema

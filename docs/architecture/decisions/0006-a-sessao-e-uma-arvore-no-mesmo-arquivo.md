@@ -2,7 +2,7 @@
 
 - **Status:** aceito
 - **Data:** 2026-08-13
-- **Contexto relacionado:** [`spec.md`](../../../.specs/nycode-rs/spec.md) FR-5, FR-14
+- **Contexto relacionado:** [`spec.md`](../../../.specs/nycode-rs/spec.md) FR-5, FR-14, FR-33
 
 ## Contexto
 
@@ -34,6 +34,18 @@ de 1 para 2 e o `Record` ganha dois campos:
 Ramificar é acrescentar uma entrada cujo `parent_id` aponta para um ponto que
 não é o fim do arquivo. Nada é reescrito, nada é apagado, e o pior caso de um
 crash continua sendo a última linha.
+
+Para cumprir FR-33, cada registro novo recebe um MAC HMAC-SHA256 antes do
+append. A chave de 32 bytes vive em `.mac-key` no diretório de sessões, e o
+payload assinado inclui o workspace canônico, a versão, o tempo, a linhagem e
+a mensagem. Na leitura, uma linha sem MAC falha explicitamente; uma linha com
+MAC inválido, futura, expirada após 30 dias ou de outro workspace não entra no
+contexto do modelo. A sessão não migra silenciosamente: registros legados sem
+MAC continuam sendo reconhecidos e recusados.
+
+Se o workspace não puder ser canonicalizado, a abertura falha fechada. A
+proteção contra concorrência de append e os guards completos contra caminhos e
+symlinks do arquivo de sessão permanecem decisões de slices posteriores.
 
 O caminho ativo é derivado na leitura: a partir da folha mais recente, subir por
 `parent_id` até a raiz e inverter. `Store::load` devolve o caminho ativo, que é

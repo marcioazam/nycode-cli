@@ -1,0 +1,8 @@
+# Registro de waivers (GATE-14). Uma linha por desvio de MUST.
+#
+# Formato: id | regra | expira(YYYY-MM-DD) | dono | controle | adr
+# Comentario e linha vazia sao ignorados. Data que passou, campo ausente,
+# ADR apontado inexistente, ou ADR com `Waiver:` sem linha aqui (e o
+# inverso) reprovam o merge.
+GATE-16 | GATE-16 | 2027-02-14 | marcioazam | hook pre-commit e squash-merge deliberados | docs/architecture/decisions/0033-gate-16-fica-sem-instrumento-conflito-com-hook-e-squash-merge.md
+GATE-17 | GATE-17 | 2027-02-17 | marcioazam | CODEOWNERS e os 12 jobs do ADR-0034 | docs/architecture/decisions/0036-gate-17-fica-em-waiver-enquanto-o-dono-humano-for-unico.md

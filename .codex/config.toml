@@ -1,0 +1,4 @@
+# Elevar o teto remove a truncagem silenciosa do AGENTS.md (default 32768).
+# Nao autoriza o arquivo a crescer: o orcamento e o gate
+# scripts/agent-harness/gate.sh (ADR-0037).
+project_doc_max_bytes = 65536
