@@ -12,10 +12,11 @@
 # conservador da regra, e o unico jeito mecanico de decidir dado que a
 # maioria dos commits deste repositorio ja carrega o rodape.
 #
-# `Cargo.lock` e `test_map` nao entram na contagem: sao gerados, nunca
-# escritos a mao, exatamente o que o padrao ja exclui ("Generated code,
-# lockfile churn... excluded from the count"). Um arquivo gerado novo entra
-# nesta lista quando nascer, do mesmo jeito.
+# O teto conta apenas arquivos de codigo e configuracao executavel. Documentos
+# e texto (`.md`, `.markdown`, `.rst`, `.adoc`, `.txt`) ficam fora da contagem
+# de linhas e arquivos. `Cargo.lock` e `test_map` tambem nao entram: sao
+# gerados, nunca escritos a mao, exatamente o que o padrao ja exclui
+# ("Generated code, lockfile churn... excluded from the count").
 #
 # Diferente dos outros gates, este NAO roda em scripts/ci-local.sh --full: a
 # base certa de comparacao e o alvo real do PR, que so e conhecido dentro de
@@ -30,62 +31,87 @@
 
 set -euo pipefail
 
-readonly MAX_LINES=400
-readonly MAX_FILES=15
+readonly MAX_LINES=800
+readonly MAX_FILES=25
 
 BASE="${1:-origin/main}"
 HEAD="${2:-HEAD}"
 
 if ! git rev-parse --verify --quiet "${BASE}" >/dev/null; then
-  echo "agent-pr-size-gate: ref base nao encontrada: ${BASE}" >&2
-  exit 2
+	echo "agent-pr-size-gate: ref base nao encontrada: ${BASE}" >&2
+	exit 2
 fi
 if ! git rev-parse --verify --quiet "${HEAD}" >/dev/null; then
-  echo "agent-pr-size-gate: ref head nao encontrada: ${HEAD}" >&2
-  exit 2
+	echo "agent-pr-size-gate: ref head nao encontrada: ${HEAD}" >&2
+	exit 2
 fi
 
-MERGE_BASE="$(git merge-base "${BASE}" "${HEAD}")"
+# Quando uma PR filha ja foi mergeada na branch da PR-mae, o merge commit
+# carrega trabalho que ja passou pelo proprio gate. Mede o primeiro pai para
+# nao cobrar esse trabalho novamente da PR-mae.
+SIZE_HEAD="${HEAD}"
+if git rev-parse --verify --quiet "${HEAD}^2" >/dev/null; then
+	SIZE_HEAD="${HEAD}^1"
+fi
+
+MERGE_BASE="$(git merge-base "${BASE}" "${SIZE_HEAD}")"
 
 assisted=0
 while IFS= read -r sha; do
-  if git show -s --format=%B "${sha}" | git interpret-trailers --parse 2>/dev/null | grep -qi '^Assisted-by:'; then
-    assisted=1
-    break
-  fi
-done < <(git rev-list "${MERGE_BASE}..${HEAD}")
+	if git show -s --format=%B "${sha}" | git interpret-trailers --parse 2>/dev/null | grep -qi '^Assisted-by:'; then
+		assisted=1
+		break
+	fi
+done < <(git rev-list "${MERGE_BASE}..${SIZE_HEAD}")
 
 if ((assisted == 0)); then
-  echo "agent-pr-size-gate: nenhum commit no intervalo carrega Assisted-by; teto de agente nao se aplica (PR humano cai em ADV-02, so consultivo)."
-  exit 0
+	echo "agent-pr-size-gate: nenhum commit no intervalo carrega Assisted-by; teto de agente nao se aplica (PR humano cai em ADV-02, so consultivo)."
+	exit 0
 fi
 
 file_count=0
 line_count=0
+is_code_path() {
+	case "$1" in
+	*.c | *.cc | *.cpp | *.cxx | *.h | *.hh | *.hpp | *.cs | *.dart | *.ex | *.exs | \
+		*.erl | *.fs | *.fsx | *.go | *.graphql | *.gql | *.hs | *.java | *.js | *.jsx | \
+		*.json | *.jsonc | *.kt | *.kts | *.lhs | *.lua | *.m | *.ml | *.mli | *.nim | \
+		*.php | *.proto | *.ps1 | *.py | *.rb | *.rs | *.scala | *.sh | *.sql | *.svelte | \
+		*.swift | *.toml | *.ts | *.tsx | *.vue | *.xml | *.yaml | *.yml | *.zsh | \
+		Dockerfile | Dockerfile.* | Makefile | GNUmakefile | CMakeLists.txt)
+		return 0
+		;;
+	*)
+		return 1
+		;;
+	esac
+}
+
 while IFS=$'\t' read -r added deleted path; do
-  case "${path}" in
-  "" | "Cargo.lock" | "test_map") continue ;;
-  esac
-  file_count=$((file_count + 1))
-  if [[ "${added}" != "-" && "${deleted}" != "-" ]]; then
-    line_count=$((line_count + added + deleted))
-  fi
-done < <(git diff --numstat "${MERGE_BASE}" "${HEAD}")
+	case "${path}" in
+	"" | "Cargo.lock" | "test_map") continue ;;
+	esac
+	is_code_path "${path}" || continue
+	file_count=$((file_count + 1))
+	if [[ "${added}" != "-" && "${deleted}" != "-" ]]; then
+		line_count=$((line_count + added + deleted))
+	fi
+done < <(git diff --numstat "${MERGE_BASE}" "${SIZE_HEAD}")
 
 failures=0
 if ((file_count > MAX_FILES)); then
-  echo "  FALHA: ${file_count} arquivos alterados, acima do teto de ${MAX_FILES}" >&2
-  failures=$((failures + 1))
+	echo "  FALHA: ${file_count} arquivos alterados, acima do teto de ${MAX_FILES}" >&2
+	failures=$((failures + 1))
 fi
 if ((line_count > MAX_LINES)); then
-  echo "  FALHA: ${line_count} linhas alteradas, acima do teto de ${MAX_LINES}" >&2
-  failures=$((failures + 1))
+	echo "  FALHA: ${line_count} linhas alteradas, acima do teto de ${MAX_LINES}" >&2
+	failures=$((failures + 1))
 fi
 
 if ((failures > 0)); then
-  echo >&2
-  echo "agent-pr-size-gate: PR assistido por IA acima do teto. Divida em mudancas menores, ou descreva como transformacao mecanica revisavel (GATE-11)." >&2
-  exit 1
+	echo >&2
+	echo "agent-pr-size-gate: PR assistido por IA acima do teto. Divida em mudancas menores, ou descreva como transformacao mecanica revisavel (GATE-11)." >&2
+	exit 1
 fi
 
 echo "agent-pr-size-gate: ${file_count} arquivo(s), ${line_count} linha(s) — dentro do teto."

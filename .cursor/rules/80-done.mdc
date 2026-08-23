@@ -1,0 +1,6 @@
+---
+description: Como o trabalho termina
+alwaysApply: true
+---
+Cole a saída real de `scripts/verify-all --full`. Sem isso não reivindique sucesso.
+Diga o que não foi verificado e o risco residual (`AI-12`).

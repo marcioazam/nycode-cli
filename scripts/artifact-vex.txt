@@ -1,0 +1,4 @@
+# VEX local para GATE-10. Uma linha por CVE aceita com expiracao.
+#
+# Formato: CVE-ID | expira(YYYY-MM-DD) | motivo
+# HIGH/CRITICAL sem linha vigente aqui reprovam. Vazio = nenhuma excecao.

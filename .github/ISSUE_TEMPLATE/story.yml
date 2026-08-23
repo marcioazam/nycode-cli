@@ -1,0 +1,51 @@
+name: História
+description: Trabalho não trivial — intake antes de spec ou código
+title: "[história] "
+labels: ["historia"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Intake snapshot. O aceite mora no arquivo de spec depois da aprovação.
+        Não copie requirements para cá. Ver docs/how-to/github-agent-workflow.md.
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Outcome
+      description: Resultado observável
+    validations:
+      required: true
+  - type: textarea
+    id: story
+    attributes:
+      label: Story
+      description: Como <ator>, quero <capacidade>, para <valor>.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance
+      description: Given/When/Then e um failure path. Some depois que o requirements.md for aprovado.
+    validations:
+      required: true
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: Non-goals
+    validations:
+      required: true
+  - type: input
+    id: owner
+    attributes:
+      label: Owner
+      placeholder: "@marcioazam"
+    validations:
+      required: true
+  - type: dropdown
+    id: critical
+    attributes:
+      label: Critical path
+      options: ["não", "sim"]
+    validations:
+      required: true
