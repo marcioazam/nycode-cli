@@ -152,6 +152,13 @@ pub struct Cli {
     #[arg(long, value_name = "TEXTO")]
     pub append_system: Option<String>,
 
+    /// Permite que arquivos de instrucao e skills do workspace entrem no prompt.
+    ///
+    /// O workspace pode vir de um clone de terceiro. Sem esta escolha explicita,
+    /// esses arquivos nao recebem autoridade para orientar o modelo.
+    #[arg(long)]
+    pub trust_workspace_instructions: bool,
+
     /// Monta a sessao, mantem-na ociosa por MS milissegundos e sai.
     ///
     /// O NFR-1 e o NFR-2 orcam a sessao montada, e nenhuma outra superficie
@@ -278,6 +285,9 @@ mod tests {
         assert!(replaced.append_system.is_none());
         let appended = Cli::try_parse_from(["nycode", "--append-system", "extra"]).unwrap();
         assert_eq!(appended.append_system.as_deref(), Some("extra"));
+        let trusted = Cli::try_parse_from(["nycode", "--trust-workspace-instructions"]).unwrap();
+        assert!(trusted.trust_workspace_instructions);
+        assert!(!replaced.trust_workspace_instructions);
     }
 
     #[test]

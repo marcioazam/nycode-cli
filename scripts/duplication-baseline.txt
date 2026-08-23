@@ -1,0 +1,3 @@
+# Baseline medido por scripts/duplication-gate.sh em 2026-08-23, depois da
+# integracao das alteracoes que ja estavam em main.
+percentage = 2.28

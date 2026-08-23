@@ -8,6 +8,8 @@
 //! omissão daria a um pipeline de CI a permissão que ninguém concedeu.
 
 use async_trait::async_trait;
+use sha2::{Digest, Sha256};
+use std::time::{Duration, SystemTime};
 
 use crate::tool::ToolCall;
 
@@ -15,7 +17,85 @@ use crate::tool::ToolCall;
 #[async_trait]
 pub trait Approver: Send + Sync + std::fmt::Debug {
     /// Se esta chamada pode rodar.
-    async fn approve(&self, call: &ToolCall) -> bool;
+    async fn approve(&self, call: &ToolCall) -> Decision;
+}
+
+/// Resultado de uma decisão de aprovação.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Decision {
+    pub approved: bool,
+    pub receipt: Option<Receipt>,
+}
+
+impl Decision {
+    #[must_use]
+    pub const fn denied() -> Self {
+        Self {
+            approved: false,
+            receipt: None,
+        }
+    }
+
+    #[must_use]
+    pub fn approved(call: &ToolCall, actor: &str) -> Self {
+        Self {
+            approved: true,
+            receipt: Some(Receipt::new(call, actor)),
+        }
+    }
+
+    #[must_use]
+    pub fn authorizes(&self, call: &ToolCall) -> bool {
+        self.approved
+            && self
+                .receipt
+                .as_ref()
+                .is_some_and(|receipt| receipt.matches(call) && receipt.not_expired())
+    }
+}
+
+/// Recibo de uma decisão, amarrado à chamada exata e com validade curta.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Receipt {
+    pub actor: String,
+    pub call_id: String,
+    pub tool: String,
+    pub input_digest: String,
+    pub expires_at: SystemTime,
+}
+
+impl Receipt {
+    fn new(call: &ToolCall, actor: &str) -> Self {
+        Self {
+            actor: actor.to_owned(),
+            call_id: call.id.clone(),
+            tool: call.name.clone(),
+            input_digest: digest(call),
+            expires_at: SystemTime::now() + Duration::from_mins(5),
+        }
+    }
+
+    fn matches(&self, call: &ToolCall) -> bool {
+        self.call_id == call.id && self.tool == call.name && self.input_digest == digest(call)
+    }
+
+    fn not_expired(&self) -> bool {
+        self.not_expired_at(SystemTime::now())
+    }
+
+    fn not_expired_at(&self, now: SystemTime) -> bool {
+        now <= self.expires_at
+    }
+}
+
+fn digest(call: &ToolCall) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(call.id.as_bytes());
+    hasher.update([0]);
+    hasher.update(call.name.as_bytes());
+    hasher.update([0]);
+    hasher.update(call.input.to_string().as_bytes());
+    hex::encode(hasher.finalize())
 }
 
 /// Nega tudo que chegar. É o padrão.
@@ -27,8 +107,8 @@ pub struct Never;
 
 #[async_trait]
 impl Approver for Never {
-    async fn approve(&self, _call: &ToolCall) -> bool {
-        false
+    async fn approve(&self, _call: &ToolCall) -> Decision {
+        Decision::denied()
     }
 }
 
@@ -38,8 +118,8 @@ pub struct Always;
 
 #[async_trait]
 impl Approver for Always {
-    async fn approve(&self, _call: &ToolCall) -> bool {
-        true
+    async fn approve(&self, call: &ToolCall) -> Decision {
+        Decision::approved(call, "pre-authorized")
     }
 }
 
@@ -47,7 +127,7 @@ impl Approver for Always {
 #[derive(Debug)]
 pub struct Request {
     pub call: ToolCall,
-    answer: tokio::sync::oneshot::Sender<bool>,
+    answer: tokio::sync::oneshot::Sender<Decision>,
 }
 
 impl Request {
@@ -56,7 +136,17 @@ impl Request {
     /// Uma resposta perdida — porque a interface caiu, por exemplo — deixa o
     /// lado que pergunta com a resposta negativa, que é a segura.
     pub fn answer(self, approved: bool) {
-        let _ = self.answer.send(approved);
+        self.answer_as("interactive-user", approved);
+    }
+
+    /// Responde nomeando o ator que tomou a decisão.
+    pub fn answer_as(self, actor: &str, approved: bool) {
+        let decision = if approved {
+            Decision::approved(&self.call, actor)
+        } else {
+            Decision::denied()
+        };
+        let _ = self.answer.send(decision);
     }
 }
 
@@ -81,7 +171,7 @@ impl Asking {
 
 #[async_trait]
 impl Approver for Asking {
-    async fn approve(&self, call: &ToolCall) -> bool {
+    async fn approve(&self, call: &ToolCall) -> Decision {
         let (answer, response) = tokio::sync::oneshot::channel();
         let request = Request {
             call: call.clone(),
@@ -91,9 +181,9 @@ impl Approver for Asking {
         // Ninguém atendendo é o mesmo que ninguém tendo aprovado. Bloquear
         // aqui penduraria o turno esperando uma resposta que não vem.
         if self.requests.send(request).await.is_err() {
-            return false;
+            return Decision::denied();
         }
-        response.await.unwrap_or(false)
+        response.await.unwrap_or_else(|_| Decision::denied())
     }
 }
 
@@ -113,12 +203,56 @@ mod tests {
     async fn the_default_answer_is_no() {
         // Aprovar por omissao daria a um pipeline de CI a permissao que
         // ninguem concedeu.
-        assert!(!Never.approve(&call("bash")).await);
+        assert!(!Never.approve(&call("bash")).await.authorizes(&call("bash")));
     }
 
     #[tokio::test]
     async fn always_approves_for_whoever_already_decided() {
-        assert!(Always.approve(&call("bash")).await);
+        let call = call("bash");
+        assert!(Always.approve(&call).await.authorizes(&call));
+    }
+
+    #[tokio::test]
+    async fn an_approval_receipt_does_not_authorize_another_call() {
+        let original = call("bash");
+        let mut changed = original.clone();
+        changed.input = serde_json::json!({"command": "rm -rf /"});
+
+        let decision = Always.approve(&original).await;
+
+        assert!(!decision.authorizes(&changed));
+    }
+
+    #[test]
+    fn an_expired_receipt_is_refused() {
+        let call = call("bash");
+        let receipt = Receipt {
+            actor: "tester".to_owned(),
+            call_id: call.id.clone(),
+            tool: call.name.clone(),
+            input_digest: digest(&call),
+            expires_at: SystemTime::UNIX_EPOCH,
+        };
+
+        assert!(
+            !Decision {
+                approved: true,
+                receipt: Some(receipt),
+            }
+            .authorizes(&call)
+        );
+    }
+
+    #[test]
+    fn a_receipt_is_valid_at_its_expiry_instant() {
+        let expires_at = SystemTime::UNIX_EPOCH + Duration::from_secs(5);
+        assert!(
+            Receipt {
+                expires_at,
+                ..Receipt::new(&call("bash"), "tester")
+            }
+            .not_expired_at(expires_at)
+        );
     }
 
     #[tokio::test]
@@ -193,7 +327,8 @@ mod tests {
             request.answer(true);
         });
 
-        assert!(approver.approve(&call("bash")).await);
+        let call = call("bash");
+        assert!(approver.approve(&call).await.authorizes(&call));
         attendant.await.unwrap();
     }
 
@@ -204,7 +339,8 @@ mod tests {
             inbox.recv().await.expect("um pedido").answer(false);
         });
 
-        assert!(!approver.approve(&call("write")).await);
+        let call = call("write");
+        assert!(!approver.approve(&call).await.authorizes(&call));
     }
 
     #[tokio::test]
@@ -213,7 +349,8 @@ mod tests {
         let (approver, inbox) = Asking::channel();
         drop(inbox);
 
-        assert!(!approver.approve(&call("bash")).await);
+        let call = call("bash");
+        assert!(!approver.approve(&call).await.authorizes(&call));
     }
 
     #[tokio::test]
@@ -225,6 +362,7 @@ mod tests {
             drop(request);
         });
 
-        assert!(!approver.approve(&call("bash")).await);
+        let call = call("bash");
+        assert!(!approver.approve(&call).await.authorizes(&call));
     }
 }

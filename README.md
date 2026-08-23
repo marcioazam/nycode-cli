@@ -94,7 +94,7 @@ compartilhado a mediana mede a contenção e o mínimo mede o programa.
 | Ferramentas nativas | Mutação: `write`, `edit`, `bash`. Somente-leitura: `read`, `grep`, `find`, `ls`. |
 | Permissões | Sessão interativa pergunta antes de cada mutação; headless nega sem `--allow-writes`. O shell roda confinado pelo SO — escrita restrita à raiz, rede negada —, e a ausência de confinamento é avisada. |
 | Sessões | JSONL append-only, `--continue` e `--resume`. Em árvore: `/tree` lista os pontos de retomada e `/fork` ramifica sem reescrever nada. |
-| Contexto | `AGENTS.md`, `CLAUDE.md`, `.claude/rules/`, `SKILL.md` |
+| Contexto | descoberta de `AGENTS.md`, `CLAUDE.md`, `.claude/rules/`, `SKILL.md`; carregamento exige `--trust-workspace-instructions` |
 | Extensões | Os três mecanismos do ADR-0002: skills, servidores MCP via `.mcp.json` (stdio ou Streamable HTTP) e hooks executáveis em `.nycode/hooks/`, onde `pre-tool-use` pode vetar uma chamada. |
 | Catálogo | Descoberto do endpoint e cacheado por 6h em `.nycode/catalog.json`; um modelo que o endpoint não serve é recusado com a lista do que existe. |
 | Interface | Sessão interativa com editor multilinha, histórico e rodapé de custo; headless com `-p`; eventos NDJSON com `--output-format json`. |

@@ -49,7 +49,7 @@ o padrão externo existir.
 | Idade mínima de dependência nova (seção acima) | `SP-04` | Satisfeito desde 2026-08-14; só no CI, mesma exceção do teto de PR |
 | Cobertura de diff (seção acima) | `GATE-01` | Satisfeito desde 2026-08-14; só no CI, piso de 80% |
 | Mutation testing por diff (seção acima) | `GATE-04` | Satisfeito desde 2026-08-14; só no CI, escopo `--in-diff` |
-| Complexidade cognitiva e ciclomática por função, com ratchet (seção acima) | `GATE-05` / `GATE-06` | Satisfeito desde 2026-08-14; roda em `ci-local.sh --full`, não é exceção só-CI |
+| Complexidade cognitiva e ciclomática por função, com ratchet (seção acima) | `GATE-05` / `GATE-06` | Em migração para os tetos do padrão; roda em `ci-local.sh --full` |
 | Duplicação de código (seção acima) | `GATE-08` | Satisfeito desde 2026-08-14; roda em `ci-local.sh --full`, teto de 5%, sem ratchet — medição no dia em que o gate nasceu já ficava abaixo do teto |
 
 ### O que ainda não tem instrumento
