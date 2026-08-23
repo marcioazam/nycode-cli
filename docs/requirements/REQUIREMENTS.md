@@ -15,7 +15,7 @@
 | FR-5 | Sessões são persistidas e podem ser continuadas ou retomadas | entregue |
 | FR-6 | O catálogo de modelos é descoberto, não hardcoded | entregue |
 | FR-7 | Capacidades adicionais chegam por MCP, hooks e skills, sem recompilar | entregue (os três ligados; os quatro eventos de hook do ADR-0009 disparam e aparecem no cabeçalho da sessão) |
-| FR-8 | `AGENTS.md`, `SKILL.md` e regras de projeto são lidos sem configuração | entregue |
+| FR-8 | `AGENTS.md`, `SKILL.md` e regras de projeto são descobertos; o prompt exige `--trust-workspace-instructions` | entregue |
 | FR-9 | Um provider alternativo pode ser configurado por arquivo, incluindo endpoints OpenAI-compatíveis | entregue (bloco `provider` de `~/.config/nycode/settings.json`; flag vence o arquivo) |
 | FR-10 | Credenciais ficam no cofre do sistema operacional, não em texto plano | entregue |
 | FR-11 | O comando de shell roda sob sandbox do sistema operacional | entregue (bubblewrap no Linux, Seatbelt no macOS; ausência é avisada) |
