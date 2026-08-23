@@ -1,4 +1,5 @@
-use sha2::{Digest as _, Sha256};
+use hmac::{Hmac, KeyInit as _, Mac as _};
+use sha2::Sha256;
 
 use super::{Record, now_millis};
 
@@ -31,7 +32,7 @@ impl Context {
         Ok(hex::encode(hmac_sha256(
             &self.secret()?,
             &payload(&self.workspace, record),
-        )))
+        )?))
     }
 
     pub(super) fn admit(&self, records: Vec<Record>) -> Vec<Record> {
@@ -65,16 +66,12 @@ fn load_or_create_key(dir: &std::path::Path) -> crate::error::Result<Vec<u8>> {
         return Ok(bytes);
     }
     let mut key = vec![0u8; 32];
-    let from_urandom = std::fs::File::open("/dev/urandom")
-        .ok()
-        .is_some_and(|mut file| {
-            use std::io::Read as _;
-            file.read_exact(&mut key).is_ok()
-        });
-    if !from_urandom {
-        let digest = Sha256::digest(format!("{}{}", dir.display(), now_millis()).as_bytes());
-        key.copy_from_slice(&digest);
-    }
+    getrandom::fill(&mut key).map_err(|err| {
+        crate::error::Error::Workspace(format!(
+            "entropia para chave mac em {}: {err}",
+            path.display()
+        ))
+    })?;
     std::fs::write(&path, &key).map_err(|err| {
         crate::error::Error::Workspace(format!("chave mac em {}: {err}", path.display()))
     })?;
@@ -97,29 +94,11 @@ fn payload(workspace: &str, record: &Record) -> Vec<u8> {
     msg
 }
 
-fn hmac_sha256(key: &[u8], msg: &[u8]) -> [u8; 32] {
-    const BLK: usize = 64;
-    let mut key_block = [0u8; BLK];
-    if key.len() > BLK {
-        let digested = Sha256::digest(key);
-        key_block[..32].copy_from_slice(&digested);
-    } else {
-        key_block[..key.len()].copy_from_slice(key);
-    }
-    let mut ipad = [0x36u8; BLK];
-    let mut opad = [0x5cu8; BLK];
-    for (i, byte) in key_block.iter().enumerate() {
-        ipad[i] ^= byte;
-        opad[i] ^= byte;
-    }
-    let mut inner = Sha256::new();
-    inner.update(ipad);
-    inner.update(msg);
-    let inner_hash = inner.finalize();
-    let mut outer = Sha256::new();
-    outer.update(opad);
-    outer.update(inner_hash);
-    outer.finalize().into()
+fn hmac_sha256(key: &[u8], msg: &[u8]) -> crate::error::Result<[u8; 32]> {
+    let mut mac = Hmac::<Sha256>::new_from_slice(key)
+        .map_err(|err| crate::error::Error::Workspace(format!("iniciar hmac: {err}")))?;
+    mac.update(msg);
+    Ok(mac.finalize().into_bytes().into())
 }
 
 #[cfg(test)]
@@ -185,6 +164,28 @@ mod tests {
             store.load("future").unwrap().is_empty(),
             "linha futura entrou no contexto"
         );
+    }
+
+    #[test]
+    fn a_current_signed_record_is_admitted_but_a_future_record_is_not() {
+        let dir = tempfile::tempdir().unwrap();
+        let context = Context::open(dir.path());
+        let mut record = Record {
+            v: 2,
+            ts: 1_000,
+            id: Some("current".to_owned()),
+            parent_id: None,
+            message: Message::user("valido"),
+            mac: None,
+        };
+        record.mac = Some(context.sign(&record).unwrap());
+
+        assert!(context.acceptable(&record, 1_000));
+
+        let mut future = record.clone();
+        future.ts = 1_001;
+        future.mac = Some(context.sign(&future).unwrap());
+        assert!(!context.acceptable(&future, 1_000));
     }
 
     #[test]
