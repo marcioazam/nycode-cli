@@ -146,8 +146,10 @@ sem arquivos irmãos obrigatórios. Configuração por ambiente
   consultado antes de a ferramenta tocar o disco, não depois.
 - **Sessões.** JSONL append-only sob `.nycode/sessions`, com `--continue` e
   `--resume`. Sem sessão anterior, `--continue` começa uma nova em vez de falhar.
-- **Contexto.** `AGENTS.md`, `CLAUDE.md`, `.claude/rules/` e `SKILL.md` são lidos
-  sem configuração: as convenções que a organização já usa passam a valer.
+- **Contexto.** `AGENTS.md`, `CLAUDE.md`, `.claude/rules/` e `SKILL.md` são
+  descobertos para inventário, mas só entram no prompt com
+  `--trust-workspace-instructions`; conteúdo de clone não ganha autoridade por
+  ser encontrado.
 - **Credenciais.** Cofre do sistema operacional, com variáveis de ambiente como
   alternativa. Nunca texto plano no repositório.
 - **Erros.** Cada crate tem seu tipo de erro; nada é engolido em silêncio, o que
