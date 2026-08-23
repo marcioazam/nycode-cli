@@ -658,6 +658,20 @@ async fn a_busy_executable_is_retried_after_it_settles() {
 }
 
 #[tokio::test]
+async fn a_non_busy_spawn_error_is_returned_without_retrying() {
+    let mut attempts = 0;
+    let error = super::retry_after_text_busy(|| {
+        attempts += 1;
+        Err::<(), _>(std::io::Error::from_raw_os_error(2))
+    })
+    .await
+    .expect_err("erro diferente de ETXTBSY deve ser propagado");
+
+    assert_eq!(attempts, 1);
+    assert_eq!(error.raw_os_error(), Some(2));
+}
+
+#[tokio::test]
 async fn an_executable_that_stays_busy_is_abandoned_after_the_retry() {
     // Tentar para sempre penduraria toda chamada de ferramenta. O binário real
     // garante ETXTBSY; script com shebang varia por kernel.
