@@ -55,6 +55,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
       - run: scripts/layout-gate-test.sh
       - run: scripts/layout-gate.sh
       - run: scripts/file-length-gate-test.sh
@@ -105,6 +106,10 @@ jobs:
       - run: scripts/attribution/gate-test.sh
       - run: scripts/attribution/gate.sh
       - run: scripts/artifact/gate-test.sh
+      - run: scripts/vacuous-assert/gate-test.sh
+      - run: scripts/vacuous-assert/gate.sh
+        env:
+          VACUOUS_BASE: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || github.event.pull_request.base.sha || 'origin/main' }}
 
   # Teto de PR assistido por IA (GATE-11/AI-01) e idade minima de dependencia
   # nova (SP-04). So aqui, e nao em scripts/ci-local.sh --full: a base certa
