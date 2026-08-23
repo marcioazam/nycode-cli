@@ -225,6 +225,18 @@ mod tests {
     }
 
     #[test]
+    fn an_explicit_append_flag_wins_over_a_trusted_append_file() {
+        let dir = tempfile::tempdir().unwrap();
+        write(dir.path(), ".nycode/APPEND_SYSTEM.md", "arquivo");
+        let cli = trusted_cli(None, Some("pela flag"));
+
+        assert_eq!(
+            from_sources(&cli, dir.path(), None).unwrap(),
+            format!("{BUILTIN}\n\npela flag")
+        );
+    }
+
+    #[test]
     fn replace_and_append_flags_compose() {
         let dir = tempfile::tempdir().unwrap();
         assert_eq!(

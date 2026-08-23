@@ -477,7 +477,6 @@ impl Session {
         Ok(())
     }
 }
-
 /// Se o evento é o pedido de interrupção.
 pub fn interrupts(event: &Event) -> bool {
     matches!(event, Event::Key(key) if nycode_tui::translate(*key) == Key::Interrupt)
@@ -489,7 +488,6 @@ pub use text::{loaded, previous_prompts};
 
 pub mod approval;
 pub mod builtin;
-
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::panic)]
 pub(crate) mod fakes;
