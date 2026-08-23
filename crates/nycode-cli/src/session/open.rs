@@ -15,8 +15,8 @@ pub fn resolve(store: &Store, cli: &Cli) -> anyhow::Result<(String, Vec<Message>
     if let Some(name) = cli.name.as_deref() {
         let name = name.trim();
         anyhow::ensure!(!name.is_empty(), "nome de sessao vazio");
-        std::fs::write(store.dir().join(format!("{id}.name")), name)
-            .with_context(|| format!("gravar nome da sessao `{id}`"))?;
+        let path = name_path(store, &id)?;
+        write_name(&path, name).with_context(|| format!("gravar nome da sessao `{id}`"))?;
         anyhow::ensure!(
             name_of(store, &id).as_deref() == Some(name),
             "nome de sessao `{id}` nao persistiu"
@@ -27,9 +27,82 @@ pub fn resolve(store: &Store, cli: &Cli) -> anyhow::Result<(String, Vec<Message>
 
 #[must_use]
 pub(crate) fn name_of(store: &Store, id: &str) -> Option<String> {
-    let text = std::fs::read_to_string(store.dir().join(format!("{id}.name"))).ok()?;
+    let path = name_path(store, id).ok()?;
+    let text = read_name(&path).ok()?;
     let trimmed = text.trim();
     (!trimmed.is_empty()).then(|| trimmed.to_owned())
+}
+
+fn name_path(store: &Store, id: &str) -> anyhow::Result<PathBuf> {
+    validate_id(id)?;
+    Ok(store.dir().join(format!("{id}.name")))
+}
+
+fn write_name(path: &Path, value: &str) -> io::Result<()> {
+    use std::io::Write as _;
+
+    #[cfg(unix)]
+    {
+        use rustix::fs::{Mode, OFlags};
+
+        let parent = File::open(path.parent().ok_or_else(|| {
+            io::Error::new(io::ErrorKind::InvalidInput, "nome sem diretorio pai")
+        })?)?;
+        let name = path
+            .file_name()
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "nome sem arquivo"))?;
+        let descriptor = rustix::fs::openat(
+            &parent,
+            name,
+            OFlags::WRONLY
+                .union(OFlags::CREATE)
+                .union(OFlags::TRUNC)
+                .union(OFlags::NOFOLLOW)
+                .union(OFlags::CLOEXEC),
+            Mode::from_raw_mode(0o600),
+        )
+        .map_err(io::Error::from)?;
+        let mut file = File::from(descriptor);
+        file.write_all(value.as_bytes())?;
+        file.sync_all()?;
+    }
+
+    #[cfg(not(unix))]
+    std::fs::write(path, value)?;
+
+    Ok(())
+}
+
+fn read_name(path: &Path) -> io::Result<String> {
+    use std::io::Read as _;
+
+    #[cfg(unix)]
+    let mut file = {
+        use rustix::fs::OFlags;
+
+        let parent = File::open(path.parent().ok_or_else(|| {
+            io::Error::new(io::ErrorKind::InvalidInput, "nome sem diretorio pai")
+        })?)?;
+        let name = path
+            .file_name()
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "nome sem arquivo"))?;
+        let descriptor = rustix::fs::openat(
+            &parent,
+            name,
+            OFlags::RDONLY
+                .union(OFlags::NOFOLLOW)
+                .union(OFlags::CLOEXEC),
+            rustix::fs::Mode::empty(),
+        )
+        .map_err(io::Error::from)?;
+        File::from(descriptor)
+    };
+    #[cfg(not(unix))]
+    let mut file = File::open(path)?;
+
+    let mut text = String::new();
+    file.read_to_string(&mut text)?;
+    Ok(text)
 }
 
 fn open(store: &Store, cli: &Cli) -> anyhow::Result<(String, Vec<Message>)> {
@@ -42,7 +115,10 @@ fn open(store: &Store, cli: &Cli) -> anyhow::Result<(String, Vec<Message>)> {
     }
     if let Some(id) = &cli.session_id {
         validate_id(id)?;
-        return if store.path_for(id).is_file() {
+        let path = store.path_for(id)?;
+        return if std::fs::symlink_metadata(path)
+            .is_ok_and(|metadata| metadata.file_type().is_file())
+        {
             Ok((id.clone(), store.load(id)?))
         } else {
             Ok((id.clone(), Vec::new()))
@@ -65,15 +141,25 @@ fn open(store: &Store, cli: &Cli) -> anyhow::Result<(String, Vec<Message>)> {
 /// Arquivo solto sem registros não pode virar `latest()`.
 fn fork_src(store: &Store, src: &str) -> anyhow::Result<(PathBuf, CopyKind)> {
     let path = Path::new(src);
-    let as_session = validate_id(src).is_ok() && store.path_for(src).is_file();
-    if as_session {
-        return Ok((store.path_for(src), CopyKind::Session));
+    if validate_id(src).is_ok() {
+        let session_path = store.path_for(src)?;
+        if let Ok(metadata) = std::fs::symlink_metadata(&session_path) {
+            if metadata.file_type().is_symlink() {
+                anyhow::bail!("arquivo `{}` nao encontrado", session_path.display());
+            }
+            if metadata.file_type().is_file() {
+                return Ok((session_path, CopyKind::Session));
+            }
+        }
     }
     if path.is_file() {
         return Ok((path.to_path_buf(), CopyKind::File));
     }
     validate_id(src)?;
-    anyhow::bail!("arquivo `{}` nao encontrado", store.path_for(src).display())
+    anyhow::bail!(
+        "arquivo `{}` nao encontrado",
+        store.path_for(src)?.display()
+    )
 }
 
 #[derive(Clone, Copy)]
@@ -96,7 +182,7 @@ fn copy_into(
         }
         None => Store::new_id(),
     };
-    let dest_path = store.path_for(&id);
+    let dest_path = store.path_for(&id)?;
     let mut dest_file = OpenOptions::new()
         .write(true)
         .create_new(true)
@@ -217,7 +303,7 @@ mod tests {
         let (dir, store) = store();
         store.append("origem", &Message::user("base")).unwrap();
         let exported = dir.path().join("exported.jsonl");
-        std::fs::copy(store.path_for("origem"), &exported).unwrap();
+        std::fs::copy(store.path_for("origem").unwrap(), &exported).unwrap();
         let (_id, history) =
             resolve(&store, &parse(&["--import", exported.to_str().unwrap()])).unwrap();
         assert_eq!(history, vec![Message::user("base")]);
@@ -250,7 +336,7 @@ mod tests {
                 .as_nanos()
         );
         let path = std::env::current_dir().unwrap().join(&src);
-        std::fs::copy(store.path_for("origem"), &path).unwrap();
+        std::fs::copy(store.path_for("origem").unwrap(), &path).unwrap();
         let _clean = CwdFile(path);
         let (_id, history) = resolve(&store, &parse(&["--fork", &src])).unwrap();
         assert_eq!(history, vec![Message::user("base")]);
