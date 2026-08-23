@@ -465,6 +465,7 @@ impl Session {
         let system = context.system_prompt(
             &crate::invocation::prompt::resolve(&cli, &self.root)?,
             &self.root,
+            cli.trust_workspace_instructions,
         );
         self.turns.set_system(system);
         if self.planning {

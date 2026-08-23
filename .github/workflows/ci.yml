@@ -347,7 +347,7 @@ jobs:
       # minutos, e porque um gate que perdeu a capacidade de falhar aprova
       # qualquer regressao em silencio.
       - run: scripts/perf-gate-test.sh
-      - run: cargo build --release
+      - run: cargo build --release --locked
       # A sonda de startup resolve credencial, e em CI nao ha cofre do sistema.
       # Sem isto o gate mediria o custo de desistir, nao o de montar a sessao.
       - run: scripts/perf-gate.sh
@@ -428,7 +428,7 @@ jobs:
           chmod +x "${PREFIX}/pi"
           test -x "${PREFIX}/src/packages/coding-agent/dist/cli.js"
           echo "referencia ${commit} em ${PREFIX}/pi"
-      - run: cargo build -p nycode-cli -p nycode-parity
+      - run: cargo build --locked -p nycode-cli -p nycode-parity
       - name: o harness ainda acusa divergencia
         run: cargo test -p nycode-parity
         env:

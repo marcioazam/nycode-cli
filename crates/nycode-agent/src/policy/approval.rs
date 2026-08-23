@@ -71,7 +71,7 @@ impl Receipt {
             call_id: call.id.clone(),
             tool: call.name.clone(),
             input_digest: digest(call),
-            expires_at: SystemTime::now() + Duration::from_secs(300),
+            expires_at: SystemTime::now() + Duration::from_mins(5),
         }
     }
 
