@@ -12,8 +12,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, Result};
 
+mod guard;
 mod mac;
 mod tree;
+
+use guard::{SessionLock, open_session_for_append, read_session, validate_id};
 
 /// Versão do formato de registro.
 ///
@@ -61,7 +64,7 @@ pub struct Store {
     /// cada mensagem, e uma sessão de N mensagens custa O(N²) em leitura e em
     /// parse. Compartilhado entre clones de propósito: dois `Store` do mesmo
     /// diretório precisam concordar sobre onde está a ponta.
-    tips: std::sync::Arc<std::sync::Mutex<std::collections::HashMap<String, String>>>,
+    tips: std::sync::Arc<std::sync::Mutex<std::collections::HashMap<String, Tip>>>,
     /// Quantas vezes o arquivo foi lido por inteiro.
     ///
     /// Existe só no teste, porque é a única forma de assertar sobre o custo em
@@ -72,12 +75,26 @@ pub struct Store {
     mac: std::sync::Arc<mac::Context>,
 }
 
+#[derive(Debug, Clone)]
+struct Tip {
+    id: String,
+    file_len: u64,
+}
+
 impl Store {
     /// Abre o diretório de sessões, criando-o se necessário.
     pub fn open(dir: impl Into<PathBuf>) -> Result<Self> {
         let dir = dir.into();
         std::fs::create_dir_all(&dir)
             .map_err(|err| Error::Workspace(format!("sessoes em {}: {err}", dir.display())))?;
+        let metadata = std::fs::symlink_metadata(&dir)
+            .map_err(|err| Error::Workspace(format!("verificar sessoes: {err}")))?;
+        if !metadata.file_type().is_dir() {
+            return Err(Error::Workspace(format!(
+                "diretorio de sessoes nao e um diretorio regular: {}",
+                dir.display()
+            )));
+        }
         let mac = std::sync::Arc::new(mac::Context::open(&dir)?);
         Ok(Self {
             dir,
@@ -90,7 +107,10 @@ impl Store {
 
     /// A ponta conhecida sem tocar o disco.
     fn remembered_tip(&self, id: &str) -> Option<String> {
-        self.tips.lock().ok()?.get(id).cloned()
+        let path = self.path_for(id).ok()?;
+        let file_len = std::fs::symlink_metadata(path).ok()?.len();
+        let tip = self.tips.lock().ok()?.get(id)?.clone();
+        (tip.file_len == file_len).then_some(tip.id)
     }
 
     /// Anota a ponta nova.
@@ -98,8 +118,20 @@ impl Store {
     /// Um cadeado envenenado não é motivo para falhar a gravação: o efeito de
     /// perder a anotação é reler o arquivo, que é o comportamento antigo.
     fn remember_tip(&self, id: &str, record_id: &str) {
+        let Ok(path) = self.path_for(id) else {
+            return;
+        };
+        let Ok(file_len) = std::fs::symlink_metadata(path).map(|metadata| metadata.len()) else {
+            return;
+        };
         if let Ok(mut tips) = self.tips.lock() {
-            tips.insert(id.to_owned(), record_id.to_owned());
+            tips.insert(
+                id.to_owned(),
+                Tip {
+                    id: record_id.to_owned(),
+                    file_len,
+                },
+            );
         }
     }
 
@@ -108,15 +140,18 @@ impl Store {
         self.reads.load(std::sync::atomic::Ordering::Relaxed)
     }
 
-    #[must_use]
-    pub fn path_for(&self, id: &str) -> PathBuf {
-        self.dir.join(format!("{id}.jsonl"))
+    #[must_use = "trate ids de sessao invalidos antes de usar o caminho"]
+    pub fn path_for(&self, id: &str) -> Result<PathBuf> {
+        validate_id(id)?;
+        Ok(self.dir.join(format!("{id}.jsonl")))
     }
 
     /// Acrescenta uma mensagem ao fim do caminho ativo.
     pub fn append(&self, id: &str, message: &Message) -> Result<()> {
+        let path = self.path_for(id)?;
+        let _lock = SessionLock::acquire(&path)?;
         let parent = self.tip(id);
-        self.append_child(id, parent.as_deref(), message)?;
+        self.append_child_locked(id, parent.as_deref(), message)?;
         Ok(())
     }
 
@@ -126,6 +161,17 @@ impl Store {
     /// reescrito: o arquivo continua append-only, e a ramificação existe porque
     /// dois registros passam a compartilhar o mesmo pai.
     pub fn append_child(
+        &self,
+        id: &str,
+        parent_id: Option<&str>,
+        message: &Message,
+    ) -> Result<String> {
+        let path = self.path_for(id)?;
+        let _lock = SessionLock::acquire(&path)?;
+        self.append_child_locked(id, parent_id, message)
+    }
+
+    fn append_child_locked(
         &self,
         id: &str,
         parent_id: Option<&str>,
@@ -144,10 +190,7 @@ impl Store {
         let line = serde_json::to_string(&record)
             .map_err(|err| Error::Workspace(format!("serializar registro: {err}")))?;
 
-        let mut file = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(self.path_for(id))
+        let mut file = open_session_for_append(&self.path_for(id)?)
             .map_err(|err| Error::Workspace(format!("abrir sessao {id}: {err}")))?;
 
         writeln!(file, "{line}")
@@ -189,8 +232,8 @@ impl Store {
         self.reads
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
-        let path = self.path_for(id);
-        let Ok(contents) = std::fs::read_to_string(&path) else {
+        let path = self.path_for(id)?;
+        let Ok(contents) = read_session(&path) else {
             return Err(Error::Workspace(format!("sessao `{id}` nao encontrada")));
         };
 
@@ -257,9 +300,15 @@ impl Store {
                 if path.extension()? != "jsonl" {
                     return None;
                 }
+                let metadata = std::fs::symlink_metadata(&path).ok()?;
+                if !metadata.file_type().is_file() {
+                    return None;
+                }
+                let id = path.file_stem()?.to_string_lossy().into_owned();
+                validate_id(&id).ok()?;
                 Some(SessionInfo {
-                    id: path.file_stem()?.to_string_lossy().into_owned(),
-                    modified: entry.metadata().ok()?.modified().ok()?,
+                    id,
+                    modified: metadata.modified().ok()?,
                     path,
                 })
             })
@@ -310,8 +359,13 @@ mod tree_tests;
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::panic)]
+
+    use std::io::Write as _;
+
+    use nycode_ai::anthropic::{ContentBlock, Message};
+
     use super::*;
-    use nycode_ai::anthropic::ContentBlock;
 
     fn store() -> (tempfile::TempDir, Store) {
         let dir = tempfile::tempdir().unwrap();
@@ -335,9 +389,6 @@ mod tests {
 
     #[test]
     fn appending_does_not_reread_the_whole_session() {
-        // Reler o arquivo so para achar o pai faz uma sessao de N mensagens
-        // custar O(N²) em leitura e em parse, e o append acontece por mensagem
-        // e nao por turno.
         let (_dir, store) = store();
         for n in 0..20 {
             store.append("s1", &Message::user(format!("m{n}"))).unwrap();
@@ -352,8 +403,6 @@ mod tests {
 
     #[test]
     fn resuming_reads_the_file_once() {
-        // `load` lia tudo para achar a ponta e relia tudo para montar o
-        // caminho ate ela.
         let (_dir, store) = store();
         for n in 0..5 {
             store.append("s1", &Message::user(format!("m{n}"))).unwrap();
@@ -368,13 +417,12 @@ mod tests {
 
     #[test]
     fn appending_never_rewrites_earlier_lines() {
-        // Se o append virar reescrita, um crash no meio deixa a sessao truncada.
         let (_dir, store) = store();
         store.append("s1", &Message::user("um")).unwrap();
-        let after_first = std::fs::read_to_string(store.path_for("s1")).unwrap();
+        let after_first = std::fs::read_to_string(store.path_for("s1").unwrap()).unwrap();
 
         store.append("s1", &Message::user("dois")).unwrap();
-        let after_second = std::fs::read_to_string(store.path_for("s1")).unwrap();
+        let after_second = std::fs::read_to_string(store.path_for("s1").unwrap()).unwrap();
 
         assert!(
             after_second.starts_with(&after_first),
@@ -384,21 +432,19 @@ mod tests {
 
     #[test]
     fn a_corrupted_line_costs_one_turn_not_the_conversation() {
-        // O resultado tipico de um crash no meio da escrita.
         let (_dir, store) = store();
         store.append("s1", &Message::user("antes")).unwrap();
         {
             let mut file = std::fs::OpenOptions::new()
                 .append(true)
-                .open(store.path_for("s1"))
+                .open(store.path_for("s1").unwrap())
                 .unwrap();
             writeln!(file, "{{isto nao e json").unwrap();
         }
         store.append("s1", &Message::user("depois")).unwrap();
 
-        let loaded = store.load("s1").unwrap();
         assert_eq!(
-            loaded,
+            store.load("s1").unwrap(),
             vec![Message::user("antes"), Message::user("depois")]
         );
     }
@@ -407,14 +453,11 @@ mod tests {
     fn a_record_from_an_unknown_format_version_is_skipped() {
         let (_dir, store) = store();
         std::fs::write(
-            store.path_for("s1"),
+            store.path_for("s1").unwrap(),
             r#"{"v":999,"ts":0,"message":{"role":"user","content":[{"type":"text","text":"futuro"}]}}"#,
         )
         .unwrap();
-        assert!(
-            store.load("s1").unwrap().is_empty(),
-            "versao desconhecida foi interpretada"
-        );
+        assert!(store.load("s1").unwrap().is_empty());
     }
 
     #[test]
@@ -422,7 +465,7 @@ mod tests {
         let (_dir, store) = store();
         store.append("s1", &Message::user("x")).unwrap();
 
-        let line = std::fs::read_to_string(store.path_for("s1")).unwrap();
+        let line = std::fs::read_to_string(store.path_for("s1").unwrap()).unwrap();
         let record: serde_json::Value = serde_json::from_str(line.trim()).unwrap();
         assert_eq!(record["v"], FORMAT_VERSION);
         assert!(record["ts"].as_u64().unwrap() > 0);
@@ -430,10 +473,138 @@ mod tests {
 
     #[test]
     fn loading_an_unknown_session_is_an_error_not_an_empty_conversation() {
-        // Devolver vazio faria o usuario achar que retomou uma sessao e comecar
-        // do zero sem perceber.
         let (_dir, store) = store();
         assert!(store.load("nao-existe").is_err());
+    }
+
+    #[test]
+    fn an_invalid_session_id_is_rejected_before_path_access() {
+        let (_dir, store) = store();
+        for id in ["../fora", "com.ponto", &"x".repeat(129)] {
+            let error = store.records(id).unwrap_err().to_string();
+            assert!(error.contains("recusado"), "{id}: {error}");
+        }
+    }
+
+    #[test]
+    fn malformed_guard_paths_fail_without_io_side_effects() {
+        let path = std::path::Path::new("/");
+        assert!(super::guard::read_session(path).is_err());
+        assert!(super::guard::open_session_for_append(path).is_err());
+        assert!(super::guard::SessionLock::acquire(path).is_err());
+    }
+
+    #[test]
+    fn missing_guard_parents_are_reported() {
+        let path = std::path::Path::new("/definitely-missing-nycode/session.jsonl");
+        assert!(super::guard::read_session(path).is_err());
+        assert!(super::guard::open_session_for_append(path).is_err());
+        assert!(super::guard::SessionLock::acquire(path).is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_symlinked_lock_is_rejected() {
+        use std::os::unix::fs::symlink;
+
+        let (dir, store) = store();
+        let outside = dir.path().join("outside.lock");
+        std::fs::write(&outside, "original").unwrap();
+        symlink(&outside, store.dir().join("victim.lock")).unwrap();
+
+        let path = store.path_for("victim").unwrap();
+        assert!(super::guard::SessionLock::acquire(&path).is_err());
+        assert_eq!(std::fs::read_to_string(outside).unwrap(), "original");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn opening_a_symlinked_session_directory_is_rejected() {
+        use std::os::unix::fs::symlink;
+
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("target");
+        let link = dir.path().join("sessions");
+        std::fs::create_dir(&target).unwrap();
+        symlink(&target, &link).unwrap();
+
+        let error = Store::open(&link).unwrap_err().to_string();
+        assert!(error.contains("diretorio regular"), "{error}");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn appending_to_a_symlinked_session_is_rejected_without_touching_target() {
+        use std::os::unix::fs::symlink;
+
+        let (dir, store) = store();
+        let outside = dir.path().join("outside.jsonl");
+        std::fs::write(&outside, "original\n").unwrap();
+        symlink(&outside, store.dir().join("victim.jsonl")).unwrap();
+
+        assert!(store.append("victim", &Message::user("nao")).is_err());
+        assert_eq!(std::fs::read_to_string(outside).unwrap(), "original\n");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn listing_ignores_symlinked_session_files() {
+        use std::os::unix::fs::symlink;
+
+        let (dir, store) = store();
+        let outside = dir.path().join("outside.jsonl");
+        std::fs::write(&outside, "nao e sessao\n").unwrap();
+        symlink(&outside, store.dir().join("victim.jsonl")).unwrap();
+
+        assert!(
+            store
+                .list()
+                .unwrap()
+                .iter()
+                .all(|session| session.id != "victim")
+        );
+    }
+
+    #[test]
+    fn an_external_append_invalidates_a_cached_tip() {
+        let (_dir, first) = store();
+        let second = Store::open(first.dir()).unwrap();
+        first.append("s1", &Message::user("um")).unwrap();
+        let first_tip = first.tip("s1").unwrap();
+        second.append("s1", &Message::user("dois")).unwrap();
+        first.append("s1", &Message::user("tres")).unwrap();
+
+        let records = first.records("s1").unwrap();
+        assert_eq!(records[1].parent_id.as_deref(), Some(first_tip.as_str()));
+        assert_eq!(records[2].parent_id, records[1].id);
+    }
+
+    #[test]
+    fn an_append_waits_for_the_session_lock() {
+        let (_dir, first) = store();
+        let second = Store::open(first.dir()).unwrap();
+        let path = first.path_for("s1").unwrap();
+        let lock = super::guard::SessionLock::acquire(&path).unwrap();
+        let (started_tx, started_rx) = std::sync::mpsc::channel();
+        let (done_tx, done_rx) = std::sync::mpsc::channel();
+
+        let thread = std::thread::spawn(move || {
+            started_tx.send(()).unwrap();
+            second.append("s1", &Message::user("bloqueado")).unwrap();
+            done_tx.send(()).unwrap();
+        });
+
+        started_rx.recv().unwrap();
+        assert!(
+            done_rx
+                .recv_timeout(std::time::Duration::from_millis(50))
+                .is_err()
+        );
+        drop(lock);
+        done_rx
+            .recv_timeout(std::time::Duration::from_secs(1))
+            .unwrap();
+        thread.join().unwrap();
     }
 
     #[test]
@@ -450,9 +621,6 @@ mod tests {
 
     #[test]
     fn listing_breaks_a_mtime_tie_with_the_newer_id() {
-        // `--continue` escolhe `latest()`. No runner do CI os dois appends
-        // caem no mesmo segundo e a ordem de `readdir` vence — a sessão
-        // antiga volta como se fosse a recente.
         let (_dir, store) = store();
         store
             .append("0000000002", &Message::user("recente"))
@@ -470,6 +638,7 @@ mod tests {
         }
         assert_eq!(store.latest().unwrap().unwrap().id, "0000000002");
     }
+
     #[test]
     fn an_empty_store_has_no_latest_session() {
         let (_dir, store) = store();
