@@ -36,7 +36,11 @@ pub fn resolve(cli: &Cli, root: &Path) -> anyhow::Result<String> {
 
 /// `user` é a pasta de config; sem ela, só o projeto e as flags entram.
 pub fn from_sources(cli: &Cli, root: &Path, user: Option<&Path>) -> anyhow::Result<String> {
-    let project_system = workspace_file(cli, root, ".nycode/SYSTEM.md", cli.system.is_none())?;
+    let project_system = if cli.trust_workspace_instructions && cli.system.is_none() {
+        load(root, ".nycode/SYSTEM.md")?
+    } else {
+        None
+    };
     let base = base_prompt(cli, user)?;
     let user_extra = append_prompt(cli, user)?;
 
@@ -47,29 +51,15 @@ pub fn from_sources(cli: &Cli, root: &Path, user: Option<&Path>) -> anyhow::Resu
     if let Some(project_system) = project_system.filter(|text| !text.is_empty()) {
         append_project_prompt(&mut prompt, &project_system);
     }
-    let project_extra = workspace_file(
-        cli,
-        root,
-        ".nycode/APPEND_SYSTEM.md",
-        cli.append_system.is_none(),
-    )?;
+    let project_extra = if cli.trust_workspace_instructions && cli.append_system.is_none() {
+        load(root, ".nycode/APPEND_SYSTEM.md")?
+    } else {
+        None
+    };
     if let Some(project_extra) = project_extra.filter(|text| !text.is_empty()) {
         append_project_prompt(&mut prompt, &project_extra);
     }
     Ok(prompt)
-}
-
-fn workspace_file(
-    cli: &Cli,
-    root: &Path,
-    relative: &str,
-    enabled: bool,
-) -> anyhow::Result<Option<String>> {
-    if cli.trust_workspace_instructions && enabled {
-        load(root, relative)
-    } else {
-        Ok(None)
-    }
 }
 
 fn base_prompt(cli: &Cli, user: Option<&Path>) -> anyhow::Result<String> {
@@ -91,7 +81,6 @@ fn append_prompt(cli: &Cli, user: Option<&Path>) -> anyhow::Result<Option<String
         None => Ok(None),
     }
 }
-
 fn append_project_prompt(prompt: &mut String, contents: &str) {
     prompt.push_str("\n\n");
     prompt.push_str(contents);
@@ -236,19 +225,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         write(dir.path(), ".nycode/APPEND_SYSTEM.md", "arquivo");
         assert_eq!(
-            from_sources(&cli_with(None, Some("pela flag")), dir.path(), None).unwrap(),
-            format!("{BUILTIN}\n\npela flag")
-        );
-    }
-
-    #[test]
-    fn an_explicit_append_flag_wins_over_a_trusted_append_file() {
-        let dir = tempfile::tempdir().unwrap();
-        write(dir.path(), ".nycode/APPEND_SYSTEM.md", "arquivo");
-        let cli = trusted_cli(None, Some("pela flag"));
-
-        assert_eq!(
-            from_sources(&cli, dir.path(), None).unwrap(),
+            from_sources(&trusted_cli(None, Some("pela flag")), dir.path(), None).unwrap(),
             format!("{BUILTIN}\n\npela flag")
         );
     }

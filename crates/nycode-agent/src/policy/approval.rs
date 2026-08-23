@@ -246,15 +246,13 @@ mod tests {
     #[test]
     fn a_receipt_is_valid_at_its_expiry_instant() {
         let expires_at = SystemTime::UNIX_EPOCH + Duration::from_secs(5);
-        let receipt = Receipt {
-            actor: "tester".to_owned(),
-            call_id: "t1".to_owned(),
-            tool: "bash".to_owned(),
-            input_digest: String::new(),
-            expires_at,
-        };
-
-        assert!(receipt.not_expired_at(expires_at));
+        assert!(
+            Receipt {
+                expires_at,
+                ..Receipt::new(&call("bash"), "tester")
+            }
+            .not_expired_at(expires_at)
+        );
     }
 
     #[tokio::test]
