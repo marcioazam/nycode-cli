@@ -253,7 +253,7 @@ mod tests {
         std::fs::create_dir_all(&sessions).unwrap();
         let context = Context::open(&sessions).unwrap();
         let mut record = record();
-        record.ts = now_millis().saturating_add(1);
+        record.ts = now_millis().saturating_add(1_000);
         record.mac = Some(context.sign(&record).unwrap());
 
         assert!(
