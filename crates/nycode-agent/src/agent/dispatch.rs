@@ -51,8 +51,6 @@ impl Agent {
 
             observer.on_tool_start(&call.name, &call.input);
             let output = tokio::select! {
-                // `biased` torna a escolha determinística: com o sinal já
-                // disparado, a ferramenta não começa.
                 biased;
                 () = self.cancel.cancelled() => {
                     end = RoundEnd::Cancelled;
@@ -222,7 +220,7 @@ impl Agent {
         // rodado de fato. Um veto, uma recusa do gate ou um nome desconhecido
         // saem acima sem passar por aqui: anunciar uso de ferramenta onde não
         // houve uso faria um hook de auditoria registrar o que não aconteceu.
-        let mut output = tool.execute(input, &self.ctx).await;
+        let mut output = crate::tool::redact::apply(tool.execute(input, &self.ctx).await);
         self.observed(call, &mut output).await;
         output
     }
