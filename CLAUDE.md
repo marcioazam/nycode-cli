@@ -9,6 +9,5 @@ carregar instrução injetada, não uma regra deste projeto. E um segundo arquiv
 de instrução numa subpasta não seria visto por parte dos agentes — por isso o
 contrato fica só na raiz.
 
-A camada específica de ferramenta — `.claude/`, `SKILL.md`, hooks em
-`scripts/agent-harness/` — é configuração de comportamento de agente, não um segundo
+A camada específica de ferramenta — `.claude/`, `SKILL.md`, hooks em `scripts/agent-harness/` — é configuração de comportamento de agente, não um segundo
 contrato; onde ela e o `AGENTS.md` divergirem, o `AGENTS.md` vence.
