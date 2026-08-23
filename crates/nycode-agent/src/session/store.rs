@@ -25,9 +25,8 @@ const FORMAT_VERSION: u32 = 2;
 
 /// Uma linha do arquivo de sessão.
 ///
-/// `id` e `parent_id` são opcionais na leitura para que um arquivo v1 continue
-/// legível: sem eles a sessão é uma lista, que é o caso particular de árvore em
-/// que ninguém ramificou.
+/// `id` e `parent_id` continuam opcionais no parser para reconhecer o formato
+/// v1, mas a admissão criptográfica recusa linha sem MAC com erro explícito.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Record {
     pub v: u32,
@@ -195,8 +194,8 @@ impl Store {
                 continue;
             }
             match serde_json::from_str::<Record>(line) {
-                // Um arquivo v1 continua legível: sem `id` a sessão é uma
-                // lista, que é a árvore em que ninguém ramificou.
+                // O parser reconhece v1 sem `id`; a admissão abaixo ainda exige
+                // MAC antes de qualquer registro chegar ao contexto do modelo.
                 Ok(record) if record.v <= FORMAT_VERSION => records.push(record),
                 Ok(record) => {
                     tracing::warn!(
@@ -210,7 +209,7 @@ impl Store {
                 }
             }
         }
-        Ok(self.mac.admit(records))
+        self.mac.admit(records)
     }
 
     /// O caminho da raiz até um registro, seguindo os pais.
