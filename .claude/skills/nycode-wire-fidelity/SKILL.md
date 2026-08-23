@@ -2,14 +2,11 @@
 name: nycode-wire-fidelity
 description: "Preserva fidelidade de wire ao gateway (NFR-4): erro in-band, stop_reason e usage estimado chegam como o gateway os emitiu. Use when changing nycode-ai transport, dialects, streaming, or timeouts. Triggers: \"NFR-4\", \"stop_reason\", \"fidelidade\", \"wire\", \"degradar em silencio\". Not for REST/OpenAPI breaking-change review (use api-contract-compat-reviewer)."
 ---
-
 # Fidelidade de wire
-
 Nada se degrada em silêncio (NFR-4). Um erro in-band, um `stop_reason` fora
 do vocabulário, ou um usage estimado chega ao usuário **como o gateway o
 emitiu**. Traduzir para um enum "amigo" que descarta o desconhecido é o
 defeito que esta skill existe para impedir.
-
 ## Onde costuma partir
 
 - Dialetos Anthropic / OpenAI em `crates/nycode-ai`: mapeamento de
@@ -20,7 +17,6 @@ defeito que esta skill existe para impedir.
   Um teto de duração mata resposta longa e saudável; um gateway mudo distingue-se
   por deixar de mandar bytes.
 - `stdout` leva só a resposta; progresso vai para `stderr`.
-
 ## O que não fazer
 
 - Normalizar um `stop_reason` desconhecido para `end_turn` (ou equivalente)

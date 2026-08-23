@@ -2,7 +2,6 @@
 name: nycode-rust-perf
 description: "Mede e otimiza o binário nycode contra o gate de sessão montada (NFR-1/2/3) com NFR-8 ativo. Use when the change touches startup, RSS, binary size, --probe-startup, or a Rust hot path on the mounted session. Triggers: \"perf-gate\", \"NFR-1\", \"RSS\", \"probe-startup\", \"otimizar rust\". Not for generic backend profiling (use performance-engineer), a diff perf review (use perf-review), or agent-loop token cost (use agent-loop-finops-auditor)."
 ---
-
 # Performance crítica do nycode
 
 Os pisos, as duas cargas e o comando do gate estão no `AGENTS.md` e em
