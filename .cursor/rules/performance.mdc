@@ -1,0 +1,28 @@
+---
+globs: "**/*.rs,Cargo.toml,**/Cargo.toml,scripts/perf-*"
+alwaysApply: false
+---
+
+# Performance deste binário
+
+Os pisos e as duas cargas vivem no [`AGENTS.md`](../../AGENTS.md) (seção
+Performance) e nos ADR-0011, ADR-0012, ADR-0013 e ADR-0031. Esta regra **cita**,
+não copia números.
+
+## O que medir
+
+- A carga que NFR-1 e NFR-2 descrevem é a **sessão montada**
+  (`--probe-startup`), não `--version` no lugar dela (ADR-0013). `--version` é
+  a chegada do processo, com par no concorrente.
+- Medir o **build padrão de release**, com todo controle de segurança ligado
+  (NFR-8 / ADR-0011). Comando: `cargo build --release` e `scripts/perf-gate.sh`.
+- Não adiar FR-11 (detecção de confinamento) nem a resolução de credencial
+  (FR-10) para caber no startup.
+
+## O que é proibido
+
+- Editar `scripts/perf-baseline.txt` à mão para passar no gate.
+- Afrouxar LTO, `strip`, `panic = "abort"` ou `codegen-units` do perfil release
+  para "passar" o orçamento.
+- Tratar Callgrind/iai como substituto do gate: a sessão montada inclui disco,
+  credencial e MCP, que contagem de instruções não vê.

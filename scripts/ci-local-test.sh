@@ -27,12 +27,14 @@ trap 'rm -rf "${WORK}"' EXIT
 passed=0
 failed=0
 
-sandbox() { # sandbox <nome> -> raiz sintetica com scripts/ci-local.sh copiado
-  local box="${WORK}/$1"
-  mkdir -p "${box}/scripts"
-  cp "${ROOT}/scripts/ci-local.sh" "${box}/scripts/ci-local.sh"
-  chmod +x "${box}/scripts/ci-local.sh"
-  printf '%s' "${box}"
+sandbox() { # sandbox <nome> -> raiz sintetica com os entry points copiados
+	local box="${WORK}/$1"
+	mkdir -p "${box}/scripts"
+	cp "${ROOT}/scripts/ci-local.sh" "${box}/scripts/ci-local.sh"
+	cp "${ROOT}/scripts/verify-all" "${box}/scripts/verify-all"
+	chmod +x "${box}/scripts/ci-local.sh"
+	chmod +x "${box}/scripts/verify-all"
+	printf '%s' "${box}"
 }
 
 # Isola a leitura de core.hooksPath da maquina que roda o teste, ou um
@@ -44,45 +46,66 @@ sandbox() { # sandbox <nome> -> raiz sintetica com scripts/ci-local.sh copiado
 # XDG_CONFIG_HOME, HOME isolado sozinho ainda vazava (2 dos 5 casos abaixo
 # viravam falso-positivo), e as duas variaveis juntas fecham o vazamento.
 run_isolated() { # run_isolated <raiz>
-  local box="$1"
-  GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 HOME="$(mktemp -d)" \
-    bash "${box}/scripts/ci-local.sh" --full 2>&1
+	local box="$1"
+	GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 HOME="$(mktemp -d)" \
+		bash "${box}/scripts/ci-local.sh" --full 2>&1
+}
+
+run_verify_all_isolated() { # run_verify_all_isolated <raiz>
+	local box="$1"
+	GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 HOME="$(mktemp -d)" \
+		bash "${box}/scripts/verify-all" --full 2>&1
 }
 
 check() { # check <exit esperado> <descricao> <raiz> [<trecho exigido>]
-  local want="$1" desc="$2" box="$3" needle="${4:-}"
-  local output status=0
-  output="$(run_isolated "${box}")" || status=$?
+	local want="$1" desc="$2" box="$3" needle="${4:-}"
+	local output status=0
+	output="$(run_isolated "${box}")" || status=$?
 
-  if [[ "${status}" -ne "${want}" ]]; then
-    printf 'FALHOU  %s\n        esperava exit %s, veio %s:\n%s\n' \
-      "${desc}" "${want}" "${status}" "${output}"
-    failed=$((failed + 1))
-    return
-  fi
-  if [[ -n "${needle}" && "${output}" != *"${needle}"* ]]; then
-    printf 'FALHOU  %s\n        exit %s correto, mas a saida nao diz "%s":\n%s\n' \
-      "${desc}" "${status}" "${needle}" "${output}"
-    failed=$((failed + 1))
-    return
-  fi
-  printf 'ok      %s\n' "${desc}"
-  passed=$((passed + 1))
+	if [[ "${status}" -ne "${want}" ]]; then
+		printf 'FALHOU  %s\n        esperava exit %s, veio %s:\n%s\n' \
+			"${desc}" "${want}" "${status}" "${output}"
+		failed=$((failed + 1))
+		return
+	fi
+	if [[ -n "${needle}" && "${output}" != *"${needle}"* ]]; then
+		printf 'FALHOU  %s\n        exit %s correto, mas a saida nao diz "%s":\n%s\n' \
+			"${desc}" "${status}" "${needle}" "${output}"
+		failed=$((failed + 1))
+		return
+	fi
+	printf 'ok      %s\n' "${desc}"
+	passed=$((passed + 1))
 }
 
 check_not() { # check_not <descricao> <raiz> <trecho proibido>
-  local desc="$1" box="$2" needle="$3"
-  local output status=0
-  output="$(run_isolated "${box}")" || status=$?
+	local desc="$1" box="$2" needle="$3"
+	local output status=0
+	output="$(run_isolated "${box}")" || status=$?
 
-  if [[ "${output}" == *"${needle}"* ]]; then
-    printf 'FALHOU  %s\n        a saida nao deveria conter "%s":\n%s\n' \
-      "${desc}" "${needle}" "${output}"
-    failed=$((failed + 1))
-    return
-  fi
-  printf 'ok      %s\n' "${desc}"
-  passed=$((passed + 1))
+	if [[ "${output}" == *"${needle}"* ]]; then
+		printf 'FALHOU  %s\n        a saida nao deveria conter "%s":\n%s\n' \
+			"${desc}" "${needle}" "${output}"
+		failed=$((failed + 1))
+		return
+	fi
+	printf 'ok      %s\n' "${desc}"
+	passed=$((passed + 1))
+}
+
+check_verify_all() { # check_verify_all <exit esperado> <descricao> <raiz> <trecho exigido>
+	local want="$1" desc="$2" box="$3" needle="$4"
+	local output status=0
+	output="$(run_verify_all_isolated "${box}")" || status=$?
+
+	if [[ "${status}" -ne "${want}" || "${output}" != *"${needle}"* ]]; then
+		printf 'FALHOU  %s\n        esperava exit %s e "%s", veio exit %s:\n%s\n' \
+			"${desc}" "${want}" "${needle}" "${status}" "${output}"
+		failed=$((failed + 1))
+		return
+	fi
+	printf 'ok      %s\n' "${desc}"
+	passed=$((passed + 1))
 }
 
 # --- full() recusa antes de qualquer trabalho real, sem hooks ativos ------------
@@ -90,6 +113,7 @@ check_not() { # check_not <descricao> <raiz> <trecho proibido>
 box="$(sandbox sem_git)"
 check 1 "sem repositorio git nenhum, full() recusa" "${box}" "hooks versionados nao estao ativos"
 check_not "sem repositorio git nenhum, nenhum passo real chega a rodar" "${box}" "=== formatacao"
+check_verify_all 1 "verify-all preserva a recusa sem hooks ativos" "${box}" "hooks versionados nao estao ativos"
 
 box="$(sandbox git_sem_hookspath)"
 (cd "${box}" && git init --quiet)
@@ -106,9 +130,9 @@ check_not "core.hooksPath errado, nenhum passo real chega a rodar" "${box}" "===
 box="$(sandbox hookspath_absoluto)"
 (cd "${box}" && git init --quiet && git config core.hooksPath "${box}/.githooks")
 check 1 "core.hooksPath absoluto apontando para .githooks, full() passa do check_hooks" \
-  "${box}" "=== formatacao"
+	"${box}" "=== formatacao"
 check_not "core.hooksPath absoluto correto, a mensagem de hooks inativos nao aparece" \
-  "${box}" "hooks versionados nao estao ativos"
+	"${box}" "hooks versionados nao estao ativos"
 
 # --- com os hooks ativos (caminho relativo), full() passa do check_hooks --------
 
@@ -120,13 +144,13 @@ box="$(sandbox hookspath_certo)"
 # outro motivo.
 check 1 "core.hooksPath certo, full() chega ate o primeiro passo real" "${box}" "=== formatacao"
 check_not "core.hooksPath certo, a mensagem de hooks inativos nao aparece" \
-  "${box}" "hooks versionados nao estao ativos"
+	"${box}" "hooks versionados nao estao ativos"
 
 # --- Resultado --------------------------------------------------------------
 
 echo ""
 if [[ "${failed}" -gt 0 ]]; then
-  echo "ci-local-test: ${passed} passaram, ${failed} falharam." >&2
-  exit 1
+	echo "ci-local-test: ${passed} passaram, ${failed} falharam." >&2
+	exit 1
 fi
 echo "ci-local-test: ${passed} casos, todos passaram."

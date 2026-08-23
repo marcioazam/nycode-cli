@@ -1,0 +1,23 @@
+# Registro de proibicoes do harness de agente (ADR-0038).
+# Geradores leem este arquivo. Nao parsear prosa do AGENTS.md.
+#
+# Formato: id | ferramenta | padrao | razao curta | regra
+# Separador e " | " (espaco-pipe-espaco). Padrao nao pode conter essa sequencia.
+# ferramenta: bash | write | read
+# padrao: glob fnmatch contra comando ou caminho. "curl *bash*" casa
+# "curl … | bash" sem usar pipe no campo (o pipe quebraria o registro).
+
+no-verify | bash | git commit *--no-verify* | bypass do hook versionado | AGENTS.md CI local
+force-push | bash | git push *--force* | force-push | ADR-0034
+force-push-f | bash | git push -f * | force-push curto | ADR-0034
+force-push-f-end | bash | git push * -f | force-push curto no fim | ADR-0034
+curl-bash | bash | curl *bash* | pipeline sem digest | NFR-8
+wget-bash | bash | wget *bash* | pipeline sem digest | NFR-8
+test-map | write | test_map | gerado, nao editar a mao | AI-10
+perf-baseline | write | scripts/perf-baseline.txt | so o workflow remede | NFR-1
+complexity-baseline | write | scripts/complexity-baseline.txt | ratchet | GATE-05
+file-length-baseline | write | scripts/file-length-baseline.txt | ratchet | GATE-07
+coverage-exemptions | write | scripts/coverage-exemptions.txt | sem below-floor | NFR-5
+waiver-registry | write | scripts/waiver/registry.txt | so com ADR | GATE-14
+read-env | read | .env | segredo | GATE-12
+read-env-star | read | .env.* | segredo | GATE-12

@@ -41,6 +41,9 @@ questionar em seis meses, vira um ADR — para que a discussão aconteça uma ve
 | [0033](0033-gate-16-fica-sem-instrumento-conflito-com-hook-e-squash-merge.md) | GATE-16 (trilha test-first) fica sem instrumento — conflita com o hook de commit e com squash-merge | aceito | 2026-08-14 |
 | [0034](0034-protecao-de-branch-exige-ci-verde-sem-aprovacao-separada.md) | Proteção de branch em `main` exige CI verde, sem aprovação humana separada | aceito | 2026-08-14 |
 | [0035](0035-a-referencia-de-paridade-e-apontada-por-models-json.md) | A referência de paridade é apontada por `models.json` num diretório efêmero | aceito | 2026-08-16 |
+| [0036](0036-gate-17-fica-em-waiver-enquanto-o-dono-humano-for-unico.md) | GATE-17 fica em waiver enquanto o dono humano for único | aceito | 2026-08-17 |
+| [0037](0037-o-contrato-do-agente-tem-orcamento-de-bytes-e-de-linhas.md) | O contrato do agente tem orçamento de bytes e de linhas | aceito | 2026-08-17 |
+| [0038](0038-proibicao-do-agente-e-mecanica-e-portatil.md) | A proibição do agente é mecânica e portátil | aceito | 2026-08-17 |
 
 Os ADRs [0005](0005-sandbox-de-so-por-processo-auxiliar.md),
 [0009](0009-hooks-sao-executaveis-com-contrato-json.md) e
