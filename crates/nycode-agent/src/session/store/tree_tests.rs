@@ -8,7 +8,7 @@
 
 use nycode_ai::anthropic::Message;
 
-use super::{FORMAT_VERSION, Record, Store};
+use super::{FORMAT_VERSION, Record, Store, now_millis};
 
 fn store() -> (tempfile::TempDir, Store) {
     let dir = tempfile::tempdir().unwrap();
@@ -186,8 +186,6 @@ fn a_branch_continues_from_where_it_was_resumed() {
 
 #[test]
 fn a_v1_file_without_identifiers_still_reads_as_a_conversation() {
-    // Uma sessao gravada antes da v2 nao pode virar ilegivel: seria perder a
-    // conversa por causa de uma mudanca de formato.
     let (_dir, store) = store();
     let path = store.path_for("antiga");
     let lines = [
@@ -196,39 +194,31 @@ fn a_v1_file_without_identifiers_still_reads_as_a_conversation() {
     ];
     std::fs::write(&path, lines.join("\n")).unwrap();
 
-    assert_eq!(texts(&store.load("antiga").unwrap()), vec!["um", "dois"]);
+    assert!(
+        store.load("antiga").unwrap().is_empty(),
+        "v1 sem mac nao pode entrar no contexto do modelo"
+    );
 }
 
 #[test]
 fn appending_to_a_v1_session_does_not_orphan_its_history() {
-    // Retomar uma sessao antiga e responder. `tip` nao acha id nenhum num
-    // arquivo v1, entao a mensagem nova e gravada como raiz; `path_to` so
-    // enxerga registros com id e devolve so ela. A conversa continua no disco
-    // e some da leitura, sem aviso — que e a forma mais cara de perder dado.
     let (_dir, store) = store();
     let path = store.path_for("antiga");
     let lines = [
         r#"{"v":1,"ts":1,"message":{"role":"user","content":[{"type":"text","text":"um"}]}}"#,
         r#"{"v":1,"ts":2,"message":{"role":"user","content":[{"type":"text","text":"dois"}]}}"#,
     ];
-    // Com quebra no fim, que e como `append_child` grava.
     std::fs::write(&path, format!("{}\n", lines.join("\n"))).unwrap();
 
     store
         .append("antiga", &Message::user("tres"))
         .expect("acrescentar a uma sessao v1");
 
-    assert_eq!(
-        texts(&store.load("antiga").unwrap()),
-        vec!["um", "dois", "tres"]
-    );
+    assert_eq!(texts(&store.load("antiga").unwrap()), vec!["tres"]);
 }
 
 #[test]
 fn a_v1_session_keeps_growing_across_several_appends() {
-    // O segundo append ja encontra um `tip` com id e encadeia normalmente. O
-    // prefixo v1 precisa continuar na frente, e nao ser reintroduzido a cada
-    // leitura nem sumir depois que a arvore comeca.
     let (_dir, store) = store();
     let path = store.path_for("antiga");
     std::fs::write(
@@ -241,10 +231,7 @@ fn a_v1_session_keeps_growing_across_several_appends() {
         store.append("antiga", &Message::user(texto)).unwrap();
     }
 
-    assert_eq!(
-        texts(&store.load("antiga").unwrap()),
-        vec!["um", "dois", "tres"]
-    );
+    assert_eq!(texts(&store.load("antiga").unwrap()), vec!["dois", "tres"]);
 }
 
 #[test]
@@ -267,13 +254,15 @@ fn a_record_from_a_future_version_is_ignored_rather_than_guessed_at() {
 fn a_parent_that_does_not_exist_stops_the_walk_instead_of_hanging() {
     let (_dir, store) = store();
     let path = store.path_for("orfa");
-    let record = Record {
+    let mut record = Record {
         v: FORMAT_VERSION,
-        ts: 1,
+        ts: now_millis(),
         id: Some("filho".to_owned()),
         parent_id: Some("pai-inexistente".to_owned()),
         message: Message::user("sozinho"),
+        mac: None,
     };
+    record.mac = Some(store.mac.sign(&record).unwrap());
     std::fs::write(&path, serde_json::to_string(&record).unwrap()).unwrap();
 
     assert_eq!(texts(&store.load("orfa").unwrap()), vec!["sozinho"]);
@@ -288,14 +277,16 @@ fn a_cycle_in_the_parents_does_not_hang_the_read() {
     let lines: Vec<String> = [("a", "b"), ("b", "a")]
         .iter()
         .map(|(id, parent)| {
-            serde_json::to_string(&Record {
+            let mut record = Record {
                 v: FORMAT_VERSION,
-                ts: 1,
+                ts: now_millis(),
                 id: Some((*id).to_owned()),
                 parent_id: Some((*parent).to_owned()),
                 message: Message::user(*id),
-            })
-            .unwrap()
+                mac: None,
+            };
+            record.mac = Some(store.mac.sign(&record).unwrap());
+            serde_json::to_string(&record).unwrap()
         })
         .collect();
     std::fs::write(&path, lines.join("\n")).unwrap();

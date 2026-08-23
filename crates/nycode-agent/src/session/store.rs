@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, Result};
 
+mod mac;
 mod tree;
 
 /// Versão do formato de registro.
@@ -38,6 +39,8 @@ pub struct Record {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parent_id: Option<String>,
     pub message: Message,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mac: Option<String>,
 }
 
 /// Uma sessão no disco.
@@ -66,6 +69,7 @@ pub struct Store {
     /// de o cursor existir.
     #[cfg(test)]
     reads: std::sync::Arc<std::sync::atomic::AtomicUsize>,
+    mac: std::sync::Arc<mac::Context>,
 }
 
 impl Store {
@@ -74,11 +78,13 @@ impl Store {
         let dir = dir.into();
         std::fs::create_dir_all(&dir)
             .map_err(|err| Error::Workspace(format!("sessoes em {}: {err}", dir.display())))?;
+        let mac = std::sync::Arc::new(mac::Context::open(&dir));
         Ok(Self {
             dir,
             tips: std::sync::Arc::default(),
             #[cfg(test)]
             reads: std::sync::Arc::default(),
+            mac,
         })
     }
 
@@ -126,13 +132,15 @@ impl Store {
         message: &Message,
     ) -> Result<String> {
         let record_id = new_id();
-        let record = Record {
+        let mut record = Record {
             v: FORMAT_VERSION,
             ts: now_millis(),
             id: Some(record_id.clone()),
             parent_id: parent_id.map(ToOwned::to_owned),
             message: message.clone(),
+            mac: None,
         };
+        record.mac = Some(self.mac.sign(&record)?);
         let line = serde_json::to_string(&record)
             .map_err(|err| Error::Workspace(format!("serializar registro: {err}")))?;
 
@@ -145,11 +153,6 @@ impl Store {
         writeln!(file, "{line}")
             .map_err(|err| Error::Workspace(format!("gravar sessao {id}: {err}")))?;
 
-        // O `write` volta quando o núcleo aceitou os bytes, não quando o disco
-        // os tem. Uma queda de energia entre uma coisa e outra deixa a sessão
-        // com uma linha pela metade, e a linha pela metade não termina em
-        // newline — então o próximo append cola o registro seguinte no
-        // fragmento e perde dois em vez de um.
         file.sync_all()
             .map_err(|err| Error::Workspace(format!("sincronizar sessao {id}: {err}")))?;
 
@@ -207,7 +210,7 @@ impl Store {
                 }
             }
         }
-        Ok(records)
+        Ok(self.mac.admit(records))
     }
 
     /// O caminho da raiz até um registro, seguindo os pais.
@@ -218,11 +221,7 @@ impl Store {
         Ok(tree::chain_to(&self.records(id)?, record_id))
     }
 
-    /// Lê as mensagens de uma sessão.
-    ///
-    /// Uma linha corrompida — o resultado típico de um crash no meio da escrita —
-    /// é descartada com aviso em vez de invalidar a sessão inteira. Perder o
-    /// último turno é recuperável; perder a conversa não é.
+    /// Lê as mensagens de uma sessão. Linha corrompida custa um turno, não a conversa.
     pub fn load(&self, id: &str) -> Result<Vec<Message>> {
         let records = self.records(id)?;
 
@@ -291,7 +290,7 @@ fn new_id() -> String {
     format!("{:x}-{seq:x}", now_millis())
 }
 
-fn now_millis() -> u64 {
+pub(super) fn now_millis() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(0, |d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX))
