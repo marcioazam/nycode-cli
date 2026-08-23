@@ -46,7 +46,15 @@ if ! git rev-parse --verify --quiet "${HEAD}" >/dev/null; then
 	exit 2
 fi
 
-MERGE_BASE="$(git merge-base "${BASE}" "${HEAD}")"
+# Quando uma PR filha ja foi mergeada na branch da PR-mae, o merge commit
+# carrega trabalho que ja passou pelo proprio gate. Mede o primeiro pai para
+# nao cobrar esse trabalho novamente da PR-mae.
+SIZE_HEAD="${HEAD}"
+if git rev-parse --verify --quiet "${HEAD}^2" >/dev/null; then
+	SIZE_HEAD="${HEAD}^1"
+fi
+
+MERGE_BASE="$(git merge-base "${BASE}" "${SIZE_HEAD}")"
 
 assisted=0
 while IFS= read -r sha; do
@@ -54,7 +62,7 @@ while IFS= read -r sha; do
 		assisted=1
 		break
 	fi
-done < <(git rev-list "${MERGE_BASE}..${HEAD}")
+done < <(git rev-list "${MERGE_BASE}..${SIZE_HEAD}")
 
 if ((assisted == 0)); then
 	echo "agent-pr-size-gate: nenhum commit no intervalo carrega Assisted-by; teto de agente nao se aplica (PR humano cai em ADV-02, so consultivo)."
@@ -88,7 +96,7 @@ while IFS=$'\t' read -r added deleted path; do
 	if [[ "${added}" != "-" && "${deleted}" != "-" ]]; then
 		line_count=$((line_count + added + deleted))
 	fi
-done < <(git diff --numstat "${MERGE_BASE}" "${HEAD}")
+done < <(git diff --numstat "${MERGE_BASE}" "${SIZE_HEAD}")
 
 failures=0
 if ((file_count > MAX_FILES)); then

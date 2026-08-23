@@ -123,6 +123,22 @@ Assisted-by: Claude Code:claude-sonnet-5"
 )
 check 1 "vinte e seis arquivos de codigo reprova" "${box}" main feature "arquivos"
 
+# --- Merge de uma PR filha nao infla o tamanho da PR-mae -----------------------
+
+box="$(repo merge_de_pr_filha_nao_infla_a_mae)"
+commit "${box}" parent.rs 100 "Claude Code:claude-sonnet-5"
+(
+	cd "${box}"
+	git_ checkout --quiet -b child
+	: >child.rs
+	for i in $(seq 1 900); do printf 'x\n' >>child.rs; done
+	git_ add child.rs
+	git_ commit --quiet -m "mudanca grande da filha"
+	git_ checkout --quiet feature
+	git_ merge --no-ff --quiet child -m "Merge pull request #999 from child"
+)
+check 0 "merge de uma PR filha nao entra no teto da PR-mae" "${box}"
+
 # --- Texto e documentacao nao contam -----------------------------------------
 
 box="$(repo texto_e_documentacao_excluidos)"
