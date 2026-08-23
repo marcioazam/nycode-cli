@@ -100,6 +100,11 @@ jobs:
           sudo mv jscpd /usr/local/bin/jscpd
       - run: scripts/duplication-gate-test.sh
       - run: scripts/duplication-gate.sh
+      - run: scripts/waiver/gate-test.sh
+      - run: scripts/waiver/gate.sh
+      - run: scripts/attribution/gate-test.sh
+      - run: scripts/attribution/gate.sh
+      - run: scripts/artifact/gate-test.sh
 
   # Teto de PR assistido por IA (GATE-11/AI-01) e idade minima de dependencia
   # nova (SP-04). So aqui, e nao em scripts/ci-local.sh --full: a base certa
@@ -110,7 +115,7 @@ jobs:
   # nenhum. `fetch-depth: 0` porque os dois gates precisam do historico
   # completo para achar o merge-base.
   pr-size:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -119,19 +124,20 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
       - run: scripts/agent-pr-size-gate-test.sh
-      - run: scripts/agent-pr-size-gate.sh "origin/${BASE_REF}" "HEAD"
+      - run: scripts/agent-pr-size-gate.sh "${BASE}" "HEAD"
         env:
           # Nunca interpolar github.base_ref direto no run: -- e' controlado
           # por quem abre o PR (nome de branch), e um valor assim direto no
           # shell e' injecao de template (zizmor, template-injection). Via
-          # env, o bash trata como dado.
-          BASE_REF: ${{ github.base_ref }}
+          # env, o bash trata como dado. Em merge_group a base e o SHA do
+          # alvo da fila, nao um nome de branch.
+          BASE: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || format('origin/{0}', github.base_ref) }}
       # Idade minima de dependencia nova (SP-04). Mesmo job: ja tem o
       # fetch-depth 0 e a base real do PR que o gate tambem precisa.
       - run: scripts/dependency-age-gate-test.sh
-      - run: scripts/dependency-age-gate.sh "origin/${BASE_REF}" "HEAD"
+      - run: scripts/dependency-age-gate.sh "${BASE}" "HEAD"
         env:
-          BASE_REF: ${{ github.base_ref }}
+          BASE: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || format('origin/{0}', github.base_ref) }}
 
   # Lint do proprio workflow: sem toolchain, sem cache, reprova em segundos.
   # Fecha o mesmo argumento que `layout` ja fecha, aplicado aos workflows.
@@ -265,7 +271,7 @@ jobs:
   # em que este gate foi desenhado, cada um exigindo rebuild e retest
   # completo -- entao `cargo mutants --in-diff` restringe ao que o PR tocou.
   mutation:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -277,9 +283,9 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6  # v2.9.2
       - uses: taiki-e/install-action@77ef4f772e4d87962d8178aaa1b3a4aa037b94c3  # cargo-mutants
       - run: scripts/mutation-gate-test.sh
-      - run: scripts/mutation-gate.sh "origin/${BASE_REF}" "HEAD"
+      - run: scripts/mutation-gate.sh "${BASE}" "HEAD"
         env:
-          BASE_REF: ${{ github.base_ref }}
+          BASE: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || format('origin/{0}', github.base_ref) }}
 
   coverage:
     runs-on: ubuntu-latest
@@ -314,14 +320,14 @@ jobs:
       # Cobertura de diff (GATE-01), so em pull_request: precisa da base real
       # do PR, que so o evento conhece. `cargo llvm-cov report` reaproveita os
       # dados de perfil do passo acima -- nao roda os testes de novo.
-      - if: github.event_name == 'pull_request'
+      - if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
         run: scripts/diff-coverage-gate-test.sh
-      - if: github.event_name == 'pull_request'
+      - if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
         run: cargo llvm-cov report --lcov --output-path lcov.info
-      - if: github.event_name == 'pull_request'
-        run: scripts/diff-coverage-gate.sh lcov.info "origin/${BASE_REF}" "HEAD"
+      - if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
+        run: scripts/diff-coverage-gate.sh lcov.info "${BASE}" "HEAD"
         env:
-          BASE_REF: ${{ github.base_ref }}
+          BASE: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || format('origin/{0}', github.base_ref) }}
 
   perf:
     runs-on: ubuntu-latest
@@ -470,3 +476,16 @@ jobs:
           version_output="$(docker run --rm nycode:ci --version)"
           echo "${version_output}"
           [[ -n "${version_output}" ]]
+      - name: instala trivy (digest conferido contra checksums.txt do release)
+        env:
+          TRIVY_VERSION: "0.74.0"
+          TRIVY_SHA256: 2ae6fe3ee734b7fdf11335663e18c75ea12dccc76062f09f164a3b0f8be4371a
+        run: |
+          curl -fsSL -o trivy.tar.gz             "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          echo "${TRIVY_SHA256}  trivy.tar.gz" | sha256sum -c -
+          tar xzf trivy.tar.gz trivy
+          sudo mv trivy /usr/local/bin/trivy
+      - name: GATE-10 -- HIGH/CRITICAL na imagem recusam sem VEX vigente
+        run: |
+          trivy image --scanners vuln --format json --quiet nycode:ci > /tmp/trivy.json
+          scripts/artifact/gate.sh --json /tmp/trivy.json

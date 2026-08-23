@@ -149,6 +149,14 @@ full() {
   # antes de qualquer numero de velocidade ser produzido.
   step "politica de dependencias" cargo deny check
 
+  # GATE-14 depois de cargo deny: waiver e flake nao substituem a politica de
+  # dependencia, e nao atrasam o deny.
+  step "auto-teste do gate de waiver" scripts/waiver/gate-test.sh
+  step "waiver e quarentena" scripts/waiver/gate.sh
+  step "auto-teste de atribuicao" scripts/attribution/gate-test.sh
+  step "atribuicao" scripts/attribution/gate.sh
+  step "auto-teste do gate de artefato" scripts/artifact/gate-test.sh
+
   # Os auto-testes dos gates vem antes dos gates: um gate quebrado que aprova e
   # pior que um gate que reprova, porque nao deixa rastro.
   step "auto-teste do gate de cobertura" scripts/coverage-gate-test.sh
@@ -171,6 +179,7 @@ full() {
   step "gate de cobertura" scripts/coverage-gate.sh coverage.json
 
   step "build de release" cargo build --release
+  step "gate de artefato" scripts/artifact/gate.sh --scan target/release/nycode
   step "gate de performance" scripts/perf-gate.sh
 
   # A paridade fecha a sequencia porque e a unica que depende de binario de

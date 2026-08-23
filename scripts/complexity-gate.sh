@@ -31,7 +31,7 @@
 set -euo pipefail
 
 readonly MAX_COGNITIVE=15
-readonly MAX_CYCLOMATIC=15
+readonly MAX_CYCLOMATIC=10
 
 # --- Funcoes puras, sem o binario codemetrics ---------------------------------
 
