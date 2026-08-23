@@ -47,7 +47,7 @@ em data — waiver honesto não é omissão, mas também não é 100% instrument
 | FR-28 | Produto | `AGT-02` | instrumentado | `permission.rs` recusa ferramenta desconhecida |
 | FR-29 | Produto | `AGT-03` | instrumentado | `tool::pin` no execute |
 | FR-30 | Produto | `AGT-04` | waiver | ADR-0038 |
-| FR-31 | Produto | `AGT-05` | waiver | ADR-0038 |
+| FR-31 | Produto | `AGT-05` | instrumentado | `Bound` + `ApprovalKey`; grant de path A não aprova path B |
 | FR-32 | Produto | `AGT-06` | waiver | ADR-0038 |
 | FR-33 | Produto | `AGT-07` | waiver | ADR-0038 |
 | FR-34 | Produto | `AGT-08` | waiver | ADR-0038 |
