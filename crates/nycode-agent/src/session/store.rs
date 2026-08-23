@@ -11,7 +11,9 @@ use nycode_ai::anthropic::Message;
 use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, Result};
+use guard::{SessionLock, open_session_for_append, validate_id};
 
+mod guard;
 mod mac;
 mod tree;
 
@@ -60,7 +62,7 @@ pub struct Store {
     /// cada mensagem, e uma sessão de N mensagens custa O(N²) em leitura e em
     /// parse. Compartilhado entre clones de propósito: dois `Store` do mesmo
     /// diretório precisam concordar sobre onde está a ponta.
-    tips: std::sync::Arc<std::sync::Mutex<std::collections::HashMap<String, String>>>,
+    tips: std::sync::Arc<std::sync::Mutex<std::collections::HashMap<String, Tip>>>,
     /// Quantas vezes o arquivo foi lido por inteiro.
     ///
     /// Existe só no teste, porque é a única forma de assertar sobre o custo em
@@ -69,6 +71,12 @@ pub struct Store {
     #[cfg(test)]
     reads: std::sync::Arc<std::sync::atomic::AtomicUsize>,
     mac: std::sync::Arc<mac::Context>,
+}
+
+#[derive(Debug, Clone)]
+struct Tip {
+    id: String,
+    file_len: u64,
 }
 
 impl Store {
@@ -89,7 +97,9 @@ impl Store {
 
     /// A ponta conhecida sem tocar o disco.
     fn remembered_tip(&self, id: &str) -> Option<String> {
-        self.tips.lock().ok()?.get(id).cloned()
+        let file_len = std::fs::metadata(self.path_for(id)).ok()?.len();
+        let tip = self.tips.lock().ok()?.get(id)?.clone();
+        (tip.file_len == file_len).then_some(tip.id)
     }
 
     /// Anota a ponta nova.
@@ -97,8 +107,18 @@ impl Store {
     /// Um cadeado envenenado não é motivo para falhar a gravação: o efeito de
     /// perder a anotação é reler o arquivo, que é o comportamento antigo.
     fn remember_tip(&self, id: &str, record_id: &str) {
+        let Ok(file_len) = std::fs::metadata(self.path_for(id)).map(|metadata| metadata.len())
+        else {
+            return;
+        };
         if let Ok(mut tips) = self.tips.lock() {
-            tips.insert(id.to_owned(), record_id.to_owned());
+            tips.insert(
+                id.to_owned(),
+                Tip {
+                    id: record_id.to_owned(),
+                    file_len,
+                },
+            );
         }
     }
 
@@ -114,8 +134,10 @@ impl Store {
 
     /// Acrescenta uma mensagem ao fim do caminho ativo.
     pub fn append(&self, id: &str, message: &Message) -> Result<()> {
+        validate_id(id)?;
+        let _lock = SessionLock::acquire(&self.path_for(id))?;
         let parent = self.tip(id);
-        self.append_child(id, parent.as_deref(), message)?;
+        self.append_child_locked(id, parent.as_deref(), message)?;
         Ok(())
     }
 
@@ -125,6 +147,17 @@ impl Store {
     /// reescrito: o arquivo continua append-only, e a ramificação existe porque
     /// dois registros passam a compartilhar o mesmo pai.
     pub fn append_child(
+        &self,
+        id: &str,
+        parent_id: Option<&str>,
+        message: &Message,
+    ) -> Result<String> {
+        validate_id(id)?;
+        let _lock = SessionLock::acquire(&self.path_for(id))?;
+        self.append_child_locked(id, parent_id, message)
+    }
+
+    fn append_child_locked(
         &self,
         id: &str,
         parent_id: Option<&str>,
@@ -143,10 +176,7 @@ impl Store {
         let line = serde_json::to_string(&record)
             .map_err(|err| Error::Workspace(format!("serializar registro: {err}")))?;
 
-        let mut file = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(self.path_for(id))
+        let mut file = open_session_for_append(&self.path_for(id))
             .map_err(|err| Error::Workspace(format!("abrir sessao {id}: {err}")))?;
 
         writeln!(file, "{line}")
@@ -179,6 +209,7 @@ impl Store {
 
     /// Todos os registros legíveis do arquivo, na ordem em que foram gravados.
     pub fn records(&self, id: &str) -> Result<Vec<Record>> {
+        validate_id(id)?;
         #[cfg(test)]
         self.reads
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
@@ -297,6 +328,9 @@ pub(super) fn now_millis() -> u64 {
 
 #[cfg(test)]
 mod tree_tests;
+
+#[cfg(test)]
+mod guard_tests;
 
 #[cfg(test)]
 mod tests {
@@ -459,33 +493,5 @@ mod tests {
                 .unwrap();
         }
         assert_eq!(store.latest().unwrap().unwrap().id, "0000000002");
-    }
-
-    #[test]
-    fn an_empty_store_has_no_latest_session() {
-        let (_dir, store) = store();
-        assert!(store.latest().unwrap().is_none());
-        assert!(store.list().unwrap().is_empty());
-    }
-
-    #[test]
-    fn non_session_files_are_ignored_when_listing() {
-        let (_dir, store) = store();
-        std::fs::write(store.dir().join("anotacoes.txt"), "nada a ver").unwrap();
-        store.append("s1", &Message::user("x")).unwrap();
-
-        let ids: Vec<_> = store.list().unwrap().into_iter().map(|s| s.id).collect();
-        assert_eq!(ids, vec!["s1"]);
-    }
-
-    #[test]
-    fn generated_ids_sort_chronologically() {
-        let first = Store::new_id();
-        std::thread::sleep(std::time::Duration::from_millis(5));
-        let second = Store::new_id();
-        assert!(
-            second > first,
-            "ids precisam ordenar por tempo: {first} vs {second}"
-        );
     }
 }

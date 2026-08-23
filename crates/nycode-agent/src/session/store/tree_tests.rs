@@ -36,6 +36,37 @@ fn a_linear_session_reads_back_in_order() {
 }
 
 #[test]
+fn a_session_id_cannot_escape_the_store_directory() {
+    let (dir, store) = store();
+
+    assert!(store.append("../escape", &Message::user("nao")).is_err());
+    assert!(!dir.path().join("escape.jsonl").exists());
+}
+
+#[test]
+fn session_ids_accept_the_boundary_and_reject_invalid_values() {
+    assert!(super::guard::validate_id(&"a".repeat(128)).is_ok());
+    assert!(super::guard::validate_id(&"a".repeat(129)).is_err());
+    assert!(super::guard::validate_id("a/b").is_err());
+    assert!(super::guard::validate_id("").is_err());
+}
+
+#[test]
+fn independent_store_instances_keep_the_append_chain_consistent() {
+    let (_dir, store_a) = store();
+    let store_b = Store::open(store_a.dir()).unwrap();
+
+    store_a.append("s", &Message::user("raiz")).unwrap();
+    store_b.append("s", &Message::user("b")).unwrap();
+    store_a.append("s", &Message::user("a")).unwrap();
+
+    let records = store_a.records("s").unwrap();
+    assert_eq!(records.len(), 3);
+    assert_eq!(records[1].parent_id, records[0].id);
+    assert_eq!(records[2].parent_id, records[1].id);
+}
+
+#[test]
 fn every_record_gets_an_identifier_of_its_own() {
     // Sem identificador nao ha o que apontar, e a arvore vira lista.
     let (_dir, store) = store();
