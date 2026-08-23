@@ -40,9 +40,7 @@ check 2 "Claude PreToolUse recusa --no-verify" \
 	'{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"git commit --no-verify -m x"}}' \
 	"no-verify"
 
-check 2 "Claude PreToolUse recusa --no-verify com opcao antes do subcomando" \
-	'{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"git -C . commit --no-verify -m x"}}' \
-	"no-verify"
+check 2 "Claude PreToolUse recusa --no-verify com opcao antes do subcomando" '{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"git -C . commit --no-verify -m x"}}' "no-verify"
 
 check 2 "Codex PreToolUse recusa escrita em test_map" \
 	'{"hook_event_name":"PreToolUse","tool_name":"Write","tool_input":{"file_path":"/tmp/ws/test_map"}}' \
