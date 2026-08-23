@@ -287,6 +287,21 @@ mod tests {
         assert_eq!(super::name_of(&store, &named.0).as_deref(), Some("auth"));
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn naming_a_symlinked_session_is_refused_without_touching_target() {
+        use std::os::unix::fs::symlink;
+
+        let (dir, store) = store();
+        let outside = dir.path().join("outside.txt");
+        std::fs::write(&outside, "original\n").unwrap();
+        symlink(&outside, store.dir().join("s1.name")).unwrap();
+
+        let err = err_of(&store, &["--session-id", "s1", "--name", "novo"]);
+        assert!(err.contains("gravar nome da sessao"), "{err}");
+        assert_eq!(std::fs::read_to_string(outside).unwrap(), "original\n");
+    }
+
     #[test]
     fn fork_copies_history_into_a_new_id() {
         let (_dir, store) = store();
@@ -296,6 +311,25 @@ mod tests {
         assert_eq!(history, vec![Message::user("base")]);
         let err = err_of(&store, &["--fork", "origem", "--session-id", "origem"]);
         assert!(err.contains("ja existe"), "{err}");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn forking_a_symlinked_session_is_refused() {
+        use std::os::unix::fs::symlink;
+
+        let (_dir, store) = store();
+        store
+            .append("outside", &Message::user("nao copiar"))
+            .unwrap();
+        symlink(
+            store.path_for("outside").unwrap(),
+            store.path_for("victim").unwrap(),
+        )
+        .unwrap();
+
+        let err = err_of(&store, &["--fork", "victim"]);
+        assert!(err.contains("nao encontrado"), "{err}");
     }
 
     #[test]
