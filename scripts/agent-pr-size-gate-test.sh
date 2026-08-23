@@ -25,58 +25,58 @@ git_() { git -c user.email=test@test -c user.name=test -c commit.gpgsign=false "
 # repo <nome> -> caminho do repositorio sintetico, ja com um commit base na
 # branch "main" e uma branch "feature" apontando para o mesmo commit.
 repo() {
-  local box="${WORK}/$1"
-  mkdir -p "${box}"
-  (
-    cd "${box}"
-    git_ init --quiet --initial-branch=main
-    printf 'base\n' >base.txt
-    git_ add base.txt
-    git_ commit --quiet -m "commit base"
-    git_ checkout --quiet -b feature
-  )
-  printf '%s' "${box}"
+	local box="${WORK}/$1"
+	mkdir -p "${box}"
+	(
+		cd "${box}"
+		git_ init --quiet --initial-branch=main
+		printf 'base\n' >base.txt
+		git_ add base.txt
+		git_ commit --quiet -m "commit base"
+		git_ checkout --quiet -b feature
+	)
+	printf '%s' "${box}"
 }
 
 # commit <repo> <arquivo> <linhas> <rodape|-->
 # Escreve <linhas> linhas em <arquivo> (sobrescrevendo) e commita. Rodape
 # "Assisted-by: agente:modelo" quando <rodape> != "--".
 commit() {
-  local box="$1" arquivo="$2" linhas="$3" rodape="$4" i msg
-  (
-    cd "${box}"
-    : >"${arquivo}"
-    for ((i = 0; i < linhas; i++)); do printf 'x\n' >>"${arquivo}"; done
-    git_ add "${arquivo}"
-    msg="muda ${arquivo}"
-    if [[ "${rodape}" != "--" ]]; then
-      msg="${msg}
+	local box="$1" arquivo="$2" linhas="$3" rodape="$4" i msg
+	(
+		cd "${box}"
+		: >"${arquivo}"
+		for ((i = 0; i < linhas; i++)); do printf 'x\n' >>"${arquivo}"; done
+		git_ add "${arquivo}"
+		msg="muda ${arquivo}"
+		if [[ "${rodape}" != "--" ]]; then
+			msg="${msg}
 
 Assisted-by: ${rodape}"
-    fi
-    git_ commit --quiet -m "${msg}"
-  )
+		fi
+		git_ commit --quiet -m "${msg}"
+	)
 }
 
 check() { # check <exit esperado> <descricao> <repo> [<base> <head>] [<trecho exigido>]
-  local want="$1" desc="$2" box="$3" base="${4:-main}" head="${5:-feature}" needle="${6:-}"
-  local output status=0
-  output="$(cd "${box}" && bash "${GATE}" "${base}" "${head}" 2>&1)" || status=$?
+	local want="$1" desc="$2" box="$3" base="${4:-main}" head="${5:-feature}" needle="${6:-}"
+	local output status=0
+	output="$(cd "${box}" && bash "${GATE}" "${base}" "${head}" 2>&1)" || status=$?
 
-  if [[ "${status}" -ne "${want}" ]]; then
-    printf 'FALHOU  %s\n        esperava exit %s, veio %s:\n%s\n' \
-      "${desc}" "${want}" "${status}" "${output}"
-    failed=$((failed + 1))
-    return
-  fi
-  if [[ -n "${needle}" && "${output}" != *"${needle}"* ]]; then
-    printf 'FALHOU  %s\n        exit %s correto, mas a saida nao diz "%s":\n%s\n' \
-      "${desc}" "${status}" "${needle}" "${output}"
-    failed=$((failed + 1))
-    return
-  fi
-  printf 'ok      %s\n' "${desc}"
-  passed=$((passed + 1))
+	if [[ "${status}" -ne "${want}" ]]; then
+		printf 'FALHOU  %s\n        esperava exit %s, veio %s:\n%s\n' \
+			"${desc}" "${want}" "${status}" "${output}"
+		failed=$((failed + 1))
+		return
+	fi
+	if [[ -n "${needle}" && "${output}" != *"${needle}"* ]]; then
+		printf 'FALHOU  %s\n        exit %s correto, mas a saida nao diz "%s":\n%s\n' \
+			"${desc}" "${status}" "${needle}" "${output}"
+		failed=$((failed + 1))
+		return
+	fi
+	printf 'ok      %s\n' "${desc}"
+	passed=$((passed + 1))
 }
 
 # --- O teto so vale para commit assistido -----------------------------------
@@ -92,36 +92,65 @@ check 0 "commit assistido dentro do teto passa" "${box}"
 # --- Linhas ------------------------------------------------------------------
 
 box="$(repo exatamente_no_teto_de_linhas)"
-commit "${box}" f.txt 400 "Claude Code:claude-sonnet-5"
-check 0 "400 linhas alteradas passa; o teto e inclusivo" "${box}"
+commit "${box}" f.rs 800 "Claude Code:claude-sonnet-5"
+check 0 "800 linhas de codigo alteradas passa; o teto e inclusivo" "${box}"
 
 box="$(repo acima_do_teto_de_linhas)"
-commit "${box}" f.txt 401 "Claude Code:claude-sonnet-5"
-check 1 "401 linhas alteradas reprova" "${box}" main feature "linhas"
+commit "${box}" f.rs 801 "Claude Code:claude-sonnet-5"
+check 1 "801 linhas de codigo alteradas reprova" "${box}" main feature "linhas"
 
 # --- Arquivos ------------------------------------------------------------------
 
 box="$(repo quinze_arquivos)"
 (
-  cd "${box}"
-  for i in $(seq 1 15); do printf 'x\n' >"a${i}.txt"; done
-  git_ add .
-  git_ commit --quiet -m "quinze arquivos
+	cd "${box}"
+	for i in $(seq 1 25); do printf 'x\n' >"a${i}.rs"; done
+	git_ add .
+	git_ commit --quiet -m "vinte e cinco arquivos
 
 Assisted-by: Claude Code:claude-sonnet-5"
 )
-check 0 "quinze arquivos passa; o teto e inclusivo" "${box}"
+check 0 "vinte e cinco arquivos de codigo passa; o teto e inclusivo" "${box}"
 
 box="$(repo dezesseis_arquivos)"
 (
-  cd "${box}"
-  for i in $(seq 1 16); do printf 'x\n' >"a${i}.txt"; done
-  git_ add .
-  git_ commit --quiet -m "dezesseis arquivos
+	cd "${box}"
+	for i in $(seq 1 26); do printf 'x\n' >"a${i}.rs"; done
+	git_ add .
+	git_ commit --quiet -m "vinte e seis arquivos
 
 Assisted-by: Claude Code:claude-sonnet-5"
 )
-check 1 "dezesseis arquivos reprova" "${box}" main feature "arquivos"
+check 1 "vinte e seis arquivos de codigo reprova" "${box}" main feature "arquivos"
+
+# --- Merge de uma PR filha nao infla o tamanho da PR-mae -----------------------
+
+box="$(repo merge_de_pr_filha_nao_infla_a_mae)"
+commit "${box}" parent.rs 100 "Claude Code:claude-sonnet-5"
+(
+	cd "${box}"
+	git_ checkout --quiet -b child
+	: >child.rs
+	for i in $(seq 1 900); do printf 'x\n' >>child.rs; done
+	git_ add child.rs
+	git_ commit --quiet -m "mudanca grande da filha"
+	git_ checkout --quiet feature
+	git_ merge --no-ff --quiet child -m "Merge pull request #999 from child"
+)
+check 0 "merge de uma PR filha nao entra no teto da PR-mae" "${box}"
+
+# --- Texto e documentacao nao contam -----------------------------------------
+
+box="$(repo texto_e_documentacao_excluidos)"
+commit "${box}" notes.md 1000 "Claude Code:claude-sonnet-5"
+commit "${box}" notes.markdown 1000 "Claude Code:claude-sonnet-5"
+commit "${box}" notes.txt 1000 "Claude Code:claude-sonnet-5"
+commit "${box}" notes.rst 1000 "Claude Code:claude-sonnet-5"
+mkdir -p "${box}/scripts"
+printf 'texto\n' >"${box}/scripts/registry.txt"
+git_ -C "${box}" add scripts/registry.txt
+git_ -C "${box}" commit --quiet -m "texto em scripts"
+check 0 "texto e documentacao ficam fora das linhas e arquivos" "${box}"
 
 # --- Deteccao do rodape em qualquer commit do intervalo -----------------------
 
@@ -155,7 +184,7 @@ check 2 "ref head inexistente e erro de uso" "${box}" main "nao-existe" "nao enc
 
 echo ""
 if [[ "${failed}" -gt 0 ]]; then
-  echo "agent-pr-size-gate-test: ${passed} passaram, ${failed} falharam." >&2
-  exit 1
+	echo "agent-pr-size-gate-test: ${passed} passaram, ${failed} falharam." >&2
+	exit 1
 fi
 echo "agent-pr-size-gate-test: ${passed} casos, todos passaram."
