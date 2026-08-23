@@ -23,4 +23,4 @@ tolerada.
 | **Ratchet** | Um valor que só pode melhorar, nunca piorar — uma entrada obsoleta (arquivo que sumiu, condição que deixou de valer) reprova o gate em vez de ficar inerte |
 | **Baseline** | Um valor medido, versionado com a origem da medição (versão, data, digest do artefato) — nunca editado à mão para passar num gate; quem o atualiza é o processo que remede |
 | **Achado** | Um item específico de uma auditoria de segurança ou de conformidade, citado por identificador nos ADRs e checklists (ex.: achado A2, achado C3) |
-| **Padrão externo** | O `base-software-rules` (SOTA-2026), adotado no nível L2 — ver [ADR-0032](architecture/decisions/0032-adota-padrao-externo-sota-2026-nivel-l2.md) e a seção correspondente do [`AGENTS.md`](../AGENTS.md) |
+| **Padrão externo** | O `base-software-rules` (SOTA-2026 v1.4.0), L2, perfis Núcleo + Autoria por agente + Produto agente — [ADR-0036](architecture/decisions/0036-o-pin-sota-2026-sobe-para-v1-4-0-com-tres-perfis.md), [matriz](CONFORMANCE-MATRIX.md) |

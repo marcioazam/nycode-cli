@@ -8,6 +8,14 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Adicionado
 
+- **Pin SOTA-2026 v1.4.0, três perfis e matriz de conformidade**
+  ([ADR-0036](docs/architecture/decisions/0036-o-pin-sota-2026-sobe-para-v1-4-0-com-tres-perfis.md),
+  [#70](https://github.com/marcioazam/nycode-cli/issues/70)). How-to GitHub e
+  runtime; Issue Form; template de PR com evidência. Scanner `GATE-14`,
+  waiver honesto de `GATE-17` (ADR-0037), pin de schema de ferramenta no
+  execute (`AGT-03`) e envelopamento de saída de ferramenta como dado
+  (`AGT-01`).
+
 - **Sessão nomeada, com id escolhido, fork e import.** `--name`,
   `--session-id`, `--fork`, `--import`; `/session`, `/copy`, `/new`, `/reload` (B27, B28, FR-22).
 

@@ -41,6 +41,10 @@ questionar em seis meses, vira um ADR — para que a discussão aconteça uma ve
 | [0033](0033-gate-16-fica-sem-instrumento-conflito-com-hook-e-squash-merge.md) | GATE-16 (trilha test-first) fica sem instrumento — conflita com o hook de commit e com squash-merge | aceito | 2026-08-14 |
 | [0034](0034-protecao-de-branch-exige-ci-verde-sem-aprovacao-separada.md) | Proteção de branch em `main` exige CI verde, sem aprovação humana separada | aceito | 2026-08-14 |
 | [0035](0035-a-referencia-de-paridade-e-apontada-por-models-json.md) | A referência de paridade é apontada por `models.json` num diretório efêmero | aceito | 2026-08-16 |
+| [0036](0036-o-pin-sota-2026-sobe-para-v1-4-0-com-tres-perfis.md) | O pin SOTA-2026 sobe para v1.4.0 com três perfis | aceito | 2026-08-18 |
+| [0037](0037-gate-17-fica-em-waiver-enquanto-o-dono-humano-for-unico.md) | GATE-17 fica em waiver enquanto o dono humano for único | aceito | 2026-08-18 |
+| [0038](0038-agt-04-a-agt-08-ficam-em-waiver-ate-o-instrumento-por-id.md) | AGT-04 a AGT-08 ficam em waiver até o instrumento por ID | aceito | 2026-08-18 |
+| [0039](0039-fr-17-fr-18-fr-8-e-fr-24-ficam-em-waiver-ate-instrumento-proprio.md) | FR-17/18/8/24 ficam em waiver até instrumento próprio | aceito | 2026-08-18 |
 
 Os ADRs [0005](0005-sandbox-de-so-por-processo-auxiliar.md),
 [0009](0009-hooks-sao-executaveis-com-contrato-json.md) e
