@@ -33,7 +33,7 @@ fn payload(tool: &str) -> Payload {
 
 #[tokio::test]
 async fn a_pre_tool_hook_can_veto_a_call() {
-    // E o que permite escrever politica como codigo sem recompilar o binario.
+    // Permite escrever politica como codigo sem recompilar o binario.
     let root = hook(
         ".nycode/hooks",
         Event::PreToolUse,
@@ -101,7 +101,7 @@ async fn a_hook_still_finds_its_own_interpreter() {
 
 #[tokio::test]
 async fn a_hook_that_says_nothing_lets_the_call_through() {
-    // Silencio e o caso comum: a maioria dos hooks so observa.
+    // Silencio e o caso comum.
     let root = hook(".nycode/hooks", Event::PreToolUse, "exit 0");
     let hooks = Hooks::discover(root.path());
 
@@ -131,7 +131,7 @@ async fn a_response_that_is_not_a_denial_lets_the_call_through() {
 
 #[tokio::test]
 async fn the_hook_receives_the_tool_and_the_arguments() {
-    // Sem isso o hook nao tem como decidir: `bash` sozinho nao diz nada.
+    // Sem isso `bash` sozinho nao diz nada.
     let root = hook(
         ".nycode/hooks",
         Event::PreToolUse,
@@ -309,7 +309,7 @@ async fn a_hook_that_floods_stdout_is_not_buffered_whole() {
 
 #[tokio::test]
 async fn a_file_without_the_execute_bit_is_a_draft_and_not_a_hook() {
-    // Executa-lo produziria um erro a cada chamada de ferramenta.
+    // Executa-lo produziria erro a cada chamada.
     let root = tempfile::tempdir().unwrap();
     let path = root.path().join(".nycode/hooks/pre-tool-use");
     std::fs::create_dir_all(path.parent().unwrap()).unwrap();
@@ -483,9 +483,7 @@ async fn a_post_tool_hook_reads_the_result_the_tool_produced() {
 
 #[test]
 fn a_result_bigger_than_the_ceiling_arrives_cut_and_says_how_big_it_was() {
-    // As duas metades do contrato. Sem o corte o payload tem o tamanho da saida
-    // de uma ferramenta, que ninguem limita; sem o tamanho o hook decide sobre
-    // um pedaco acreditando ter lido tudo.
+    // O corte limita a saida e informa ao hook se ele leu tudo.
     let enorme = "x".repeat(super::contract::MAX_TOOL_OUTPUT + 5_000);
     let payload = Payload::for_result(
         "bash",
@@ -505,8 +503,7 @@ fn a_result_bigger_than_the_ceiling_arrives_cut_and_says_how_big_it_was() {
 
 #[test]
 fn a_failed_tool_reaches_the_hook_marked_as_failed() {
-    // Achatar a marca de erro deixaria um hook de auditoria adivinhando pelo
-    // texto se o comando funcionou.
+    // A marca de erro evita que auditoria adivinhe pelo texto.
     let falhou = Payload::for_result(
         "bash",
         &serde_json::Value::Null,
@@ -526,10 +523,7 @@ fn a_failed_tool_reaches_the_hook_marked_as_failed() {
 
 #[tokio::test]
 async fn a_payload_bigger_than_the_pipe_buffer_does_not_hang_the_call() {
-    // O buffer do cano no Linux e de 64 KiB, e o payload de `post-tool-use`
-    // passa disso. Com a escrita fora do prazo, um hook que nao le o stdin
-    // deixava `write_all` esperando para sempre — o hook viraria um caminho de
-    // trava da ferramenta, que e o oposto de falhar aberto.
+    // O payload pode exceder o pipe; a escrita fora do prazo evita travar a ferramenta.
     let root = hook(".nycode/hooks", Event::PostToolUse, "sleep 60");
     let hooks = Hooks::discover(root.path()).with_timeout(std::time::Duration::from_millis(300));
     let payload = Payload::for_result(
@@ -615,8 +609,7 @@ fn no_confinement() -> crate::policy::confinement::sandbox::Confinement {
 
 #[tokio::test]
 async fn starting_without_a_wrapper_executes_the_hook_directly() {
-    // A máquina da suíte tem bwrap, então sem a costura este ramo nunca seria
-    // exercitado — e é justamente o fallback de quem não tem confinamento.
+    // A máquina tem bwrap; este ramo cobre o fallback sem confinamento.
     let root = hook(".nycode/hooks", Event::PreToolUse, "exit 0");
     let path = root.path().join(".nycode/hooks/pre-tool-use");
 
@@ -666,15 +659,11 @@ async fn a_non_busy_spawn_error_is_returned_without_retrying() {
     })
     .await
     .expect_err("erro diferente de ETXTBSY deve ser propagado");
-
-    assert_eq!(attempts, 1);
-    assert_eq!(error.raw_os_error(), Some(2));
+    assert_eq!((attempts, error.raw_os_error()), (1, Some(2)));
 }
 
 #[tokio::test]
 async fn an_executable_that_stays_busy_is_abandoned_after_the_retry() {
-    // Tentar para sempre penduraria toda chamada de ferramenta. O binário real
-    // garante ETXTBSY; script com shebang varia por kernel.
     let root = tempfile::tempdir().unwrap();
     let path = root.path().join("ocupado");
     std::fs::copy("/bin/true", &path).unwrap();
@@ -683,8 +672,6 @@ async fn an_executable_that_stays_busy_is_abandoned_after_the_retry() {
     let started = std::time::Instant::now();
     let child = super::start_with(&path, root.path(), &no_confinement()).await;
 
-    // O gate de asserções recusa `is_none`; esta forma mantém o valor esperado
-    // explícito sem esconder a condição em uma comparação booleana.
     #[allow(clippy::redundant_pattern_matching)]
     let is_missing = matches!(child, None);
     assert!(is_missing);
@@ -696,8 +683,7 @@ async fn an_executable_that_stays_busy_is_abandoned_after_the_retry() {
 
 #[test]
 fn the_event_names_are_the_ones_the_documentation_promises() {
-    // Renomear um arquivo aqui faria hooks existentes pararem de disparar em
-    // silencio.
+    // Renomear um arquivo faria hooks existentes pararem em silencio.
     assert_eq!(Event::SessionStart.filename(), "session-start");
     assert_eq!(Event::PreToolUse.filename(), "pre-tool-use");
     assert_eq!(Event::PostToolUse.filename(), "post-tool-use");
@@ -706,8 +692,7 @@ fn the_event_names_are_the_ones_the_documentation_promises() {
 
 #[test]
 fn the_payload_serializes_without_the_fields_that_do_not_apply() {
-    // `post-tool-use` tem saida e `session-start` nao tem ferramenta; mandar
-    // `null` obrigaria todo hook a tratar o caso.
+    // `post-tool-use` tem saida; `session-start` nao tem ferramenta.
     let payload = Payload::for_session(Event::SessionStart, std::path::Path::new("/w"));
     let rendered = serde_json::to_value(&payload).unwrap();
 
