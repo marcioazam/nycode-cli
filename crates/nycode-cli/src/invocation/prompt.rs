@@ -36,26 +36,9 @@ pub fn resolve(cli: &Cli, root: &Path) -> anyhow::Result<String> {
 
 /// `user` é a pasta de config; sem ela, só o projeto e as flags entram.
 pub fn from_sources(cli: &Cli, root: &Path, user: Option<&Path>) -> anyhow::Result<String> {
-    let project_system = if cli.trust_workspace_instructions && cli.system.is_none() {
-        load(root, ".nycode/SYSTEM.md")?
-    } else {
-        None
-    };
-    let base = if let Some(text) = cli.system.as_deref() {
-        text.to_owned()
-    } else if let Some(dir) = user {
-        load(dir, "SYSTEM.md")?.unwrap_or_else(|| BUILTIN.to_owned())
-    } else {
-        BUILTIN.to_owned()
-    };
-
-    let user_extra = if let Some(text) = cli.append_system.as_deref() {
-        Some(text.to_owned())
-    } else if let Some(dir) = user {
-        load(dir, "APPEND_SYSTEM.md")?
-    } else {
-        None
-    };
+    let project_system = workspace_file(cli, root, ".nycode/SYSTEM.md", cli.system.is_none())?;
+    let base = base_prompt(cli, user)?;
+    let user_extra = append_prompt(cli, user)?;
 
     let mut prompt = match user_extra {
         Some(extra) if !extra.is_empty() => format!("{base}\n\n{extra}"),
@@ -64,15 +47,49 @@ pub fn from_sources(cli: &Cli, root: &Path, user: Option<&Path>) -> anyhow::Resu
     if let Some(project_system) = project_system.filter(|text| !text.is_empty()) {
         append_project_prompt(&mut prompt, &project_system);
     }
-    let project_extra = if cli.trust_workspace_instructions && cli.append_system.is_none() {
-        load(root, ".nycode/APPEND_SYSTEM.md")?
-    } else {
-        None
-    };
+    let project_extra = workspace_file(
+        cli,
+        root,
+        ".nycode/APPEND_SYSTEM.md",
+        cli.append_system.is_none(),
+    )?;
     if let Some(project_extra) = project_extra.filter(|text| !text.is_empty()) {
         append_project_prompt(&mut prompt, &project_extra);
     }
     Ok(prompt)
+}
+
+fn workspace_file(
+    cli: &Cli,
+    root: &Path,
+    relative: &str,
+    enabled: bool,
+) -> anyhow::Result<Option<String>> {
+    if cli.trust_workspace_instructions && enabled {
+        load(root, relative)
+    } else {
+        Ok(None)
+    }
+}
+
+fn base_prompt(cli: &Cli, user: Option<&Path>) -> anyhow::Result<String> {
+    if let Some(text) = cli.system.as_deref() {
+        return Ok(text.to_owned());
+    }
+    match user {
+        Some(dir) => Ok(load(dir, "SYSTEM.md")?.unwrap_or_else(|| BUILTIN.to_owned())),
+        None => Ok(BUILTIN.to_owned()),
+    }
+}
+
+fn append_prompt(cli: &Cli, user: Option<&Path>) -> anyhow::Result<Option<String>> {
+    if let Some(text) = cli.append_system.as_deref() {
+        return Ok(Some(text.to_owned()));
+    }
+    match user {
+        Some(dir) => load(dir, "APPEND_SYSTEM.md"),
+        None => Ok(None),
+    }
 }
 
 fn append_project_prompt(prompt: &mut String, contents: &str) {
