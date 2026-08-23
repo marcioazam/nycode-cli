@@ -2,3 +2,4 @@
 #
 # Formato: CVE-ID | expira(YYYY-MM-DD) | motivo
 # HIGH/CRITICAL sem linha vigente aqui reprovam. Vazio = nenhuma excecao.
+CVE-2026-14456 | 2026-09-30 | A imagem usa Debian 12 libssl3 3.0.20-1~deb12u2; o advisory afeta OpenSSL 3.5.x ou superior e o recurso QUIC server afetado nao existe nesta versao.
