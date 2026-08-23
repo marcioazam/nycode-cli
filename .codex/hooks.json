@@ -1,0 +1,38 @@
+{
+  "description": "Veto PreToolUse, re-injecao UserPromptSubmit, Stop verifica crates sujos.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/agent-harness/veto.sh",
+            "statusMessage": "Veto do harness"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/agent-harness/remind.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/agent-stop/verify.sh",
+            "timeout": 180,
+            "statusMessage": "Verificando crates sujos"
+          }
+        ]
+      }
+    ]
+  }
+}
