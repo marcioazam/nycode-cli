@@ -132,8 +132,8 @@ commit "${box}" notes.txt 1000 "Claude Code:claude-sonnet-5"
 commit "${box}" notes.rst 1000 "Claude Code:claude-sonnet-5"
 mkdir -p "${box}/scripts"
 printf 'texto\n' >"${box}/scripts/registry.txt"
-git -C "${box}" add scripts/registry.txt
-git -C "${box}" commit --quiet -m "texto em scripts"
+git_ -C "${box}" add scripts/registry.txt
+git_ -C "${box}" commit --quiet -m "texto em scripts"
 check 0 "texto e documentacao ficam fora das linhas e arquivos" "${box}"
 
 # --- Deteccao do rodape em qualquer commit do intervalo -----------------------
