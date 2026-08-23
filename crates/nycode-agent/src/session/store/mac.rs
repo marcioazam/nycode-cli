@@ -50,11 +50,7 @@ impl Context {
         if record.ts > now || now.saturating_sub(record.ts) > TTL_MS {
             return false;
         }
-        self.sign(&Record {
-            mac: None,
-            ..record.clone()
-        })
-        .is_ok_and(|expected| mac == expected)
+        self.sign(record).is_ok_and(|expected| mac == expected)
     }
 }
 
@@ -170,9 +166,10 @@ mod tests {
     fn a_current_signed_record_is_admitted_but_a_future_record_is_not() {
         let dir = tempfile::tempdir().unwrap();
         let context = Context::open(dir.path());
+        let now = TTL_MS + 1_000;
         let mut record = Record {
             v: 2,
-            ts: 1_000,
+            ts: now,
             id: Some("current".to_owned()),
             parent_id: None,
             message: Message::user("valido"),
@@ -180,12 +177,26 @@ mod tests {
         };
         record.mac = Some(context.sign(&record).unwrap());
 
-        assert!(context.acceptable(&record, 1_000));
+        assert!(context.acceptable(&record, now));
 
         let mut future = record.clone();
-        future.ts = 1_001;
+        future.ts = now + 1;
         future.mac = Some(context.sign(&future).unwrap());
-        assert!(!context.acceptable(&future, 1_000));
+        assert!(!context.acceptable(&future, now));
+
+        let mut boundary = record.clone();
+        boundary.ts = 1_000;
+        boundary.mac = Some(context.sign(&boundary).unwrap());
+        assert!(context.acceptable(&boundary, now));
+
+        let mut expired = boundary.clone();
+        expired.ts -= 1;
+        expired.mac = Some(context.sign(&expired).unwrap());
+        assert!(!context.acceptable(&expired, now));
+
+        let mut altered = record;
+        altered.message = Message::user("adulterado");
+        assert!(!context.acceptable(&altered, now));
     }
 
     #[test]
