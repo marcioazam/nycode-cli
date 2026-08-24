@@ -117,6 +117,18 @@ fn every_line_carries_the_format_version() {
 }
 
 #[test]
+fn a_record_copied_to_another_session_is_rejected() {
+    let (_dir, store) = store();
+    store
+        .append("source", &Message::user("nao reutilizar"))
+        .unwrap();
+    let source = std::fs::read_to_string(store.path_for("source").unwrap()).unwrap();
+    std::fs::write(store.path_for("target").unwrap(), source).unwrap();
+
+    assert!(store.records("target").unwrap().is_empty());
+}
+
+#[test]
 fn loading_an_unknown_session_is_an_error_not_an_empty_conversation() {
     // Devolver vazio faria o usuario achar que retomou uma sessao e comecar
     // do zero sem perceber.
@@ -239,6 +251,23 @@ fn opening_a_symlinked_session_directory_is_rejected() {
 
     let error = Store::open(&link).unwrap_err().to_string();
     assert!(error.contains("diretorio regular"), "{error}");
+}
+
+#[cfg(unix)]
+#[test]
+fn replacing_a_session_directory_with_a_symlink_is_rejected() {
+    use std::os::unix::fs::symlink;
+
+    let dir = tempfile::tempdir().unwrap();
+    let sessions = dir.path().join("sessions");
+    let target = dir.path().join("target");
+    std::fs::create_dir(&target).unwrap();
+    let store = Store::open(&sessions).unwrap();
+    std::fs::rename(&sessions, dir.path().join("sessions-real")).unwrap();
+    symlink(&target, &sessions).unwrap();
+
+    assert!(store.append("victim", &Message::user("nao")).is_err());
+    assert!(!target.join("victim.jsonl").exists());
 }
 
 #[cfg(unix)]

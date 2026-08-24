@@ -16,7 +16,9 @@ mod guard;
 mod mac;
 mod tree;
 
-use guard::{SessionLock, open_session_for_append, read_session, validate_id};
+use guard::{
+    SessionLock, open_session_for_append, open_session_for_rewrite, read_session, validate_id,
+};
 
 /// Versão do formato de registro.
 ///
@@ -186,7 +188,7 @@ impl Store {
             message: message.clone(),
             mac: None,
         };
-        record.mac = Some(self.mac.sign(&record)?);
+        record.mac = Some(self.mac.sign(id, &record)?);
         let line = serde_json::to_string(&record)
             .map_err(|err| Error::Workspace(format!("serializar registro: {err}")))?;
 
@@ -258,7 +260,50 @@ impl Store {
                 }
             }
         }
-        self.mac.admit(records)
+        self.mac.admit(id, records)
+    }
+
+    /// Re-assina uma cópia explícita no ID de destino.
+    pub fn rekey(&self, id: &str) -> Result<()> {
+        let path = self.path_for(id)?;
+        let contents = read_session(&path)
+            .map_err(|err| Error::Workspace(format!("ler sessao {id} para re-assinar: {err}")))?;
+        let mut lines = Vec::new();
+        for (number, line) in contents.lines().enumerate() {
+            if line.trim().is_empty() {
+                continue;
+            }
+            match serde_json::from_str::<Record>(line) {
+                Ok(mut record) if record.v <= FORMAT_VERSION => {
+                    record.mac = Some(self.mac.sign(id, &record)?);
+                    lines.push(serde_json::to_string(&record).map_err(|err| {
+                        Error::Workspace(format!("serializar registro {id}: {err}"))
+                    })?);
+                }
+                Ok(record) => tracing::warn!(
+                    line = number + 1,
+                    version = record.v,
+                    "registro importado de versao futura, ignorado"
+                ),
+                Err(err) => tracing::warn!(
+                    line = number + 1,
+                    %err,
+                    "linha importada corrompida, ignorada"
+                ),
+            }
+        }
+
+        let mut file = open_session_for_rewrite(&path)?;
+        if !lines.is_empty() {
+            file.write_all(lines.join("\n").as_bytes()).map_err(|err| {
+                Error::Workspace(format!("gravar sessao {id} re-assinada: {err}"))
+            })?;
+            file.write_all(b"\n").map_err(|err| {
+                Error::Workspace(format!("terminar sessao {id} re-assinada: {err}"))
+            })?;
+        }
+        file.sync_all()
+            .map_err(|err| Error::Workspace(format!("sincronizar sessao {id}: {err}")))
     }
 
     /// O caminho da raiz até um registro, seguindo os pais.
