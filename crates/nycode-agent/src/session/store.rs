@@ -249,9 +249,10 @@ impl Store {
                 // lista, que é a árvore em que ninguém ramificou.
                 Ok(record) if record.v <= FORMAT_VERSION => records.push(record),
                 Ok(record) => {
+                    let (line_number, version) = (number + 1, record.v);
                     tracing::warn!(
-                        line = number + 1,
-                        version = record.v,
+                        line = line_number,
+                        version,
                         "registro de versao futura, ignorado"
                     );
                 }
