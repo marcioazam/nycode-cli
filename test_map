@@ -42,6 +42,7 @@ Testes inline (#[cfg(test)] dentro do proprio arquivo):
   crates/nycode-agent/src/session/compaction/marker.rs
   crates/nycode-agent/src/session/compaction/mod.rs
   crates/nycode-agent/src/session/store.rs
+  crates/nycode-agent/src/session/store/guard.rs
   crates/nycode-agent/src/session/store/mac.rs
   crates/nycode-agent/src/tool/coerce.rs
   crates/nycode-agent/src/tool/contain.rs
