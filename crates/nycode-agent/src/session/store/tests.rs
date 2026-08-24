@@ -1,6 +1,5 @@
 use super::*;
 use nycode_ai::anthropic::ContentBlock;
-use std::io::Write as _;
 
 fn store() -> (tempfile::TempDir, Store) {
     let dir = tempfile::tempdir().unwrap();
