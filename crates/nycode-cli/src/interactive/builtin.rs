@@ -174,11 +174,19 @@ fn fork(store: &Store, id: &str, argument: &str) -> Effect {
 fn stats(store: &Store, id: &str) -> String {
     let path = store.path_for(id);
     let messages = store.load(id).map_or(0, |m| m.len());
-    let bytes = std::fs::metadata(&path).map_or(0, |m| m.len());
+    let bytes = path
+        .as_ref()
+        .ok()
+        .and_then(|path| std::fs::symlink_metadata(path).ok())
+        .filter(|metadata| metadata.file_type().is_file())
+        .map_or(0, |metadata| metadata.len());
     let nome = crate::session::name_of(store, id).unwrap_or_else(|| "(sem nome)".to_owned());
+    let shown_path = path.map_or_else(
+        |_| "(id invalido)".to_owned(),
+        |path| path.display().to_string(),
+    );
     format!(
-        "\nsessao: {id}\nnome: {nome}\narquivo: {}\nmensagens: {messages}\nbytes: {bytes}\n\n",
-        path.display()
+        "\nsessao: {id}\nnome: {nome}\narquivo: {shown_path}\nmensagens: {messages}\nbytes: {bytes}\n\n"
     )
 }
 

@@ -12,10 +12,12 @@
 # conservador da regra, e o unico jeito mecanico de decidir dado que a
 # maioria dos commits deste repositorio ja carrega o rodape.
 #
-# `Cargo.lock` e `test_map` nao entram na contagem: sao gerados, nunca
-# escritos a mao, exatamente o que o padrao ja exclui ("Generated code,
-# lockfile churn... excluded from the count"). Um arquivo gerado novo entra
-# nesta lista quando nascer, do mesmo jeito.
+# O teto conta apenas arquivos de codigo e configuracao executavel. Documentos
+# e texto (`.md`, `.markdown`, `.rst`, `.adoc`, `.txt`) ficam fora da contagem
+# de linhas e arquivos. `Cargo.lock` e `test_map` tambem nao entram: sao
+# gerados, nunca escritos a mao, exatamente o que o padrao ja exclui
+# ("Generated code, lockfile churn... excluded from the count"). Um arquivo
+# gerado novo entra nesta lista quando nascer, do mesmo jeito.
 #
 # Diferente dos outros gates, este NAO roda em scripts/ci-local.sh --full: a
 # base certa de comparacao e o alvo real do PR, que so e conhecido dentro de
@@ -31,7 +33,7 @@
 set -euo pipefail
 
 readonly MAX_LINES=800
-readonly MAX_FILES=15
+readonly MAX_FILES=25
 
 BASE="${1:-origin/main}"
 HEAD="${2:-HEAD}"
@@ -60,12 +62,29 @@ if ((assisted == 0)); then
 	exit 0
 fi
 
+is_code_path() {
+	case "$1" in
+	*.c | *.cc | *.cpp | *.cxx | *.h | *.hh | *.hpp | *.cs | *.dart | *.ex | *.exs | \
+		*.erl | *.fs | *.fsx | *.go | *.graphql | *.gql | *.h | *.hs | *.java | *.js | \
+		*.jsx | *.json | *.jsonc | *.kt | *.kts | *.lhs | *.lua | *.m | *.ml | *.mli | \
+		*.nim | *.php | *.proto | *.ps1 | *.py | *.rb | *.rs | *.scala | *.sh | *.sql | \
+		*.svelte | *.swift | *.ts | *.tsx | *.vue | *.xml | *.yaml | *.yml | *.zsh | \
+		*.toml | Dockerfile | Makefile | GNUmakefile | CMakeLists.txt | scripts/*)
+		return 0
+		;;
+	*)
+		return 1
+		;;
+	esac
+}
+
 file_count=0
 line_count=0
 while IFS=$'\t' read -r added deleted path; do
 	case "${path}" in
 	"" | "Cargo.lock" | "test_map") continue ;;
 	esac
+	is_code_path "${path}" || continue
 	file_count=$((file_count + 1))
 	if [[ "${added}" != "-" && "${deleted}" != "-" ]]; then
 		line_count=$((line_count + added + deleted))

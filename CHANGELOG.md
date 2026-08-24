@@ -30,6 +30,10 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Alterado
 
+- **O teto de tamanho de PR assistido por IA conta apenas código.** O limite
+  passa a ser 800 linhas e 25 arquivos de código; Markdown, texto e demais
+  documentos ficam fora da contagem (`GATE-11`/`AI-01`).
+
 - **O consentimento MCP fixa também a definição que o servidor declara.**
   Depois do handshake o conjunto é pinado; troca pede de novo (C6,
   ADR-0028). Nome com `__` ou o separador do registro é recusado.

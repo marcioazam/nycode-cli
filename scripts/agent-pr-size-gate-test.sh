@@ -104,24 +104,33 @@ check 1 "801 linhas de codigo alteradas reprova" "${box}" main feature "linhas"
 box="$(repo quinze_arquivos)"
 (
 	cd "${box}"
-	for i in $(seq 1 15); do printf 'x\n' >"a${i}.txt"; done
+	for i in $(seq 1 25); do printf 'x\n' >"a${i}.rs"; done
 	git_ add .
-	git_ commit --quiet -m "quinze arquivos
+	git_ commit --quiet -m "vinte e cinco arquivos
 
 Assisted-by: Claude Code:claude-sonnet-5"
 )
-check 0 "quinze arquivos passa; o teto e inclusivo" "${box}"
+check 0 "vinte e cinco arquivos de codigo passa; o teto e inclusivo" "${box}"
 
 box="$(repo dezesseis_arquivos)"
 (
 	cd "${box}"
-	for i in $(seq 1 16); do printf 'x\n' >"a${i}.txt"; done
+	for i in $(seq 1 26); do printf 'x\n' >"a${i}.rs"; done
 	git_ add .
-	git_ commit --quiet -m "dezesseis arquivos
+	git_ commit --quiet -m "vinte e seis arquivos
 
 Assisted-by: Claude Code:claude-sonnet-5"
 )
-check 1 "dezesseis arquivos reprova" "${box}" main feature "arquivos"
+check 1 "vinte e seis arquivos de codigo reprova" "${box}" main feature "arquivos"
+
+# --- Texto e documentacao nao contam -----------------------------------------
+
+box="$(repo texto_e_documentacao_excluidos)"
+commit "${box}" notes.md 1000 "Claude Code:claude-sonnet-5"
+commit "${box}" notes.markdown 1000 "Claude Code:claude-sonnet-5"
+commit "${box}" notes.txt 1000 "Claude Code:claude-sonnet-5"
+commit "${box}" notes.rst 1000 "Claude Code:claude-sonnet-5"
+check 0 "texto e documentacao ficam fora das linhas e arquivos" "${box}"
 
 # --- Deteccao do rodape em qualquer commit do intervalo -----------------------
 

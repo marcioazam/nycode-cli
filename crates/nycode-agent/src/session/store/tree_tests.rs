@@ -75,11 +75,11 @@ fn branching_from_the_middle_does_not_rewrite_anything() {
     let fork_point = store.tip("s").unwrap();
     store.append("s", &Message::user("ramo A")).unwrap();
 
-    let before = std::fs::read_to_string(store.path_for("s")).unwrap();
+    let before = std::fs::read_to_string(store.path_for("s").unwrap()).unwrap();
     store
         .append_child("s", Some(&fork_point), &Message::user("ramo B"))
         .unwrap();
-    let after = std::fs::read_to_string(store.path_for("s")).unwrap();
+    let after = std::fs::read_to_string(store.path_for("s").unwrap()).unwrap();
 
     assert!(after.starts_with(&before), "nada foi reescrito");
 }
@@ -187,7 +187,7 @@ fn a_branch_continues_from_where_it_was_resumed() {
 #[test]
 fn a_v1_file_without_identifiers_is_rejected_explicitly() {
     let (_dir, store) = store();
-    let path = store.path_for("antiga");
+    let path = store.path_for("antiga").unwrap();
     let lines = [
         r#"{"v":1,"ts":1,"message":{"role":"user","content":[{"type":"text","text":"um"}]}}"#,
         r#"{"v":1,"ts":2,"message":{"role":"user","content":[{"type":"text","text":"dois"}]}}"#,
@@ -200,7 +200,7 @@ fn a_v1_file_without_identifiers_is_rejected_explicitly() {
 #[test]
 fn appending_to_a_v1_session_keeps_the_legacy_error_explicit() {
     let (_dir, store) = store();
-    let path = store.path_for("antiga");
+    let path = store.path_for("antiga").unwrap();
     let lines = [
         r#"{"v":1,"ts":1,"message":{"role":"user","content":[{"type":"text","text":"um"}]}}"#,
         r#"{"v":1,"ts":2,"message":{"role":"user","content":[{"type":"text","text":"dois"}]}}"#,
@@ -218,7 +218,7 @@ fn appending_to_a_v1_session_keeps_the_legacy_error_explicit() {
 #[test]
 fn appending_repeatedly_to_a_v1_session_keeps_the_legacy_error_explicit() {
     let (_dir, store) = store();
-    let path = store.path_for("antiga");
+    let path = store.path_for("antiga").unwrap();
     std::fs::write(
         &path,
         "{\"v\":1,\"ts\":1,\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"um\"}]}}\n",
@@ -235,7 +235,7 @@ fn appending_repeatedly_to_a_v1_session_keeps_the_legacy_error_explicit() {
 #[test]
 fn a_record_from_a_future_version_is_ignored_rather_than_guessed_at() {
     let (_dir, store) = store();
-    let path = store.path_for("futura");
+    let path = store.path_for("futura").unwrap();
     std::fs::write(
         &path,
         format!(
@@ -251,7 +251,7 @@ fn a_record_from_a_future_version_is_ignored_rather_than_guessed_at() {
 #[test]
 fn a_parent_that_does_not_exist_stops_the_walk_instead_of_hanging() {
     let (_dir, store) = store();
-    let path = store.path_for("orfa");
+    let path = store.path_for("orfa").unwrap();
     let mut record = Record {
         v: FORMAT_VERSION,
         ts: now_millis(),
@@ -271,7 +271,7 @@ fn a_cycle_in_the_parents_does_not_hang_the_read() {
     // Um arquivo editado a mao pode fechar um ciclo; ler ate o fim do arquivo
     // e melhor que pendurar o processo.
     let (_dir, store) = store();
-    let path = store.path_for("ciclo");
+    let path = store.path_for("ciclo").unwrap();
     let lines: Vec<String> = [("a", "b"), ("b", "a")]
         .iter()
         .map(|(id, parent)| {
