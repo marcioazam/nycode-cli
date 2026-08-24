@@ -1,3 +1,4 @@
+use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
 use crate::error::{Error, Result};
@@ -7,9 +8,10 @@ pub(super) struct SessionLock {
 }
 
 impl SessionLock {
-    pub(super) fn acquire(path: &Path) -> Result<Self> {
-        let lock_path = path.with_extension("lock");
-        let file = open_no_follow(&lock_path, OpenMode::Lock)
+    pub(super) fn acquire(directory: &std::fs::File, id: &str) -> Result<Self> {
+        validate_id(id)?;
+        let lock_name = format!("{id}.lock");
+        let file = open_no_follow(directory, OsStr::new(&lock_name), OpenMode::Lock)
             .map_err(|err| Error::Workspace(format!("abrir lock de sessao: {err}")))?;
         #[cfg(unix)]
         rustix::fs::flock(&file, rustix::fs::FlockOperation::LockExclusive)
@@ -18,9 +20,76 @@ impl SessionLock {
     }
 }
 
-pub(super) fn open_session_for_append(path: &Path) -> Result<std::fs::File> {
-    open_no_follow(path, OpenMode::Append)
+pub(super) fn open_session_for_append(
+    directory: &std::fs::File,
+    id: &str,
+) -> Result<std::fs::File> {
+    validate_id(id)?;
+    let name = format!("{id}.jsonl");
+    open_no_follow(directory, OsStr::new(&name), OpenMode::Append)
         .map_err(|err| Error::Workspace(format!("abrir sessao sem symlink: {err}")))
+}
+
+pub(super) fn open_directory_without_symlinks(path: &Path) -> Result<std::fs::File> {
+    create_directory_without_symlinks(path)?;
+    #[cfg(target_os = "linux")]
+    {
+        use rustix::fs::{Mode, OFlags, ResolveFlags};
+        let descriptor = rustix::fs::openat2(
+            rustix::fs::CWD,
+            path,
+            OFlags::RDONLY
+                .union(OFlags::DIRECTORY)
+                .union(OFlags::CLOEXEC),
+            Mode::empty(),
+            ResolveFlags::NO_SYMLINKS,
+        )
+        .map_err(|err| Error::Workspace(format!("abrir diretorio de sessoes: {err}")))?;
+        Ok(std::fs::File::from(descriptor))
+    }
+    #[cfg(all(unix, not(target_os = "linux")))]
+    {
+        use rustix::fs::{Mode, OFlags};
+        let descriptor = rustix::fs::open(
+            path,
+            OFlags::RDONLY
+                .union(OFlags::DIRECTORY)
+                .union(OFlags::NOFOLLOW)
+                .union(OFlags::CLOEXEC),
+            Mode::empty(),
+        )
+        .map_err(|err| Error::Workspace(format!("abrir diretorio de sessoes: {err}")))?;
+        Ok(std::fs::File::from(descriptor))
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = path;
+        Err(Error::Workspace(
+            "diretorio de sessoes sem symlink nao e suportado nesta plataforma".to_owned(),
+        ))
+    }
+}
+
+pub(super) fn open_session_for_read(directory: &std::fs::File, id: &str) -> Result<std::fs::File> {
+    validate_id(id)?;
+    let name = format!("{id}.jsonl");
+    open_no_follow(directory, OsStr::new(&name), OpenMode::Read)
+        .map_err(|err| Error::Workspace(format!("abrir sessao sem symlink: {err}")))
+}
+
+pub(super) fn remove_session(directory: &std::fs::File, id: &str) -> Result<()> {
+    let name = format!("{id}.jsonl");
+    #[cfg(unix)]
+    rustix::fs::unlinkat(directory, OsStr::new(&name), rustix::fs::AtFlags::empty())
+        .map_err(|err| Error::Workspace(format!("remover sessao: {err}")))?;
+    #[cfg(not(unix))]
+    {
+        let _ = (directory, name);
+        return Err(Error::Workspace(
+            "remocao segura de sessao nao e suportada nesta plataforma".to_owned(),
+        ));
+    }
+    Ok(())
 }
 
 pub(super) fn create_directory_without_symlinks(path: &Path) -> Result<()> {
@@ -75,37 +144,40 @@ pub(super) fn validate_id(id: &str) -> Result<()> {
 }
 
 #[derive(Clone, Copy)]
-enum OpenMode {
+pub(super) enum OpenMode {
+    Read,
+    Write,
+    CreateNew,
     Append,
     Lock,
 }
 
-fn open_no_follow(path: &Path, mode: OpenMode) -> std::io::Result<std::fs::File> {
+pub(super) fn open_no_follow(
+    directory: &std::fs::File,
+    name: &OsStr,
+    mode: OpenMode,
+) -> std::io::Result<std::fs::File> {
     #[cfg(unix)]
     {
         use rustix::fs::{Mode, OFlags};
 
-        let parent = path.parent().ok_or_else(|| {
-            std::io::Error::new(std::io::ErrorKind::InvalidInput, "sessao sem diretorio pai")
-        })?;
-        let directory = std::fs::File::open(parent)?;
-        let name = path.file_name().ok_or_else(|| {
-            std::io::Error::new(std::io::ErrorKind::InvalidInput, "sessao sem nome")
-        })?;
         let flags = match mode {
+            OpenMode::Read => OFlags::RDONLY,
+            OpenMode::Write => OFlags::WRONLY.union(OFlags::CREATE).union(OFlags::TRUNC),
+            OpenMode::CreateNew => OFlags::WRONLY.union(OFlags::CREATE).union(OFlags::EXCL),
             OpenMode::Append => OFlags::WRONLY.union(OFlags::CREATE).union(OFlags::APPEND),
             OpenMode::Lock => OFlags::RDWR.union(OFlags::CREATE),
         }
         .union(OFlags::NOFOLLOW)
         .union(OFlags::CLOEXEC);
-        let descriptor = rustix::fs::openat(&directory, name, flags, Mode::from_raw_mode(0o600))
+        let descriptor = rustix::fs::openat(directory, name, flags, Mode::from_raw_mode(0o600))
             .map_err(std::io::Error::from)?;
         Ok(std::fs::File::from(descriptor))
     }
 
     #[cfg(not(unix))]
     {
-        let _ = (path, mode);
+        let _ = (directory, name, mode);
         Err(std::io::Error::new(
             std::io::ErrorKind::Unsupported,
             "abertura de sessao sem symlink nao e suportada nesta plataforma",
@@ -119,18 +191,9 @@ mod tests {
 
     #[test]
     fn malformed_session_paths_are_rejected_before_opening() {
-        assert!(open_no_follow(Path::new(""), OpenMode::Append).is_err());
-        assert!(open_no_follow(Path::new("/"), OpenMode::Append).is_err());
-
         let dir = tempfile::tempdir().unwrap();
-        let directory_with_trailing_separator = format!("{}/", dir.path().display());
-        assert!(
-            open_no_follow(
-                Path::new(&directory_with_trailing_separator),
-                OpenMode::Append
-            )
-            .is_err()
-        );
+        let directory = std::fs::File::open(dir.path()).unwrap();
+        assert!(open_no_follow(&directory, OsStr::new(""), OpenMode::Append).is_err());
     }
 
     #[test]
@@ -148,13 +211,13 @@ mod tests {
         use std::os::unix::fs::symlink;
 
         let dir = tempfile::tempdir().unwrap();
-        let session = dir.path().join("s1.jsonl");
-        let lock = session.with_extension("lock");
+        let directory = std::fs::File::open(dir.path()).unwrap();
+        let lock = dir.path().join("s1.lock");
         let target = dir.path().join("outside.lock");
         std::fs::write(&target, "").unwrap();
         symlink(&target, &lock).unwrap();
 
-        assert!(SessionLock::acquire(&session).is_err());
+        assert!(SessionLock::acquire(&directory, "s1").is_err());
     }
 
     #[test]
