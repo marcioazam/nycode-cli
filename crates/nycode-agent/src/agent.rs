@@ -17,11 +17,11 @@ use crate::session::compaction::DEFAULT_KEEP_RECENT;
 use crate::tool::{Tool, ToolContext, ToolOutput};
 use crate::turn::Turn;
 
-/// Teto de chamadas de ferramenta num único pedido do usuário.
+/// Teto de idas e voltas de ferramenta num único pedido do usuário.
 ///
-/// Um modelo em loop — lendo o mesmo arquivo repetidamente, por exemplo — ou
-/// pedindo várias ferramentas na mesma resposta consome a cota inteira sem
-/// produzir nada. O teto transforma isso num erro visível em vez de uma fatura.
+/// Um modelo em loop — lendo o mesmo arquivo repetidamente, por exemplo —
+/// consome a cota inteira sem produzir nada. O teto transforma isso num erro
+/// visível em vez de uma fatura.
 pub const DEFAULT_TOOL_LIMIT: usize = 50;
 
 /// Resultado que uma ferramenta não executada por cancelamento devolve ao modelo.
@@ -265,7 +265,7 @@ impl Agent {
         self.journal.clear();
         self.record(Message::user_blocks(content));
 
-        let (mut rounds, mut tool_calls) = (0, 0);
+        let mut rounds = 0;
         let mut usage = Usage::default();
         let mut compactions = 0;
         loop {
@@ -358,15 +358,16 @@ impl Agent {
                 });
             }
 
-            if calls.len() > self.tool_limit.saturating_sub(tool_calls) {
-                // Fechar as chamadas mantém a sessão retomável após o estouro.
+            rounds += 1;
+            if rounds > self.tool_limit {
+                // O teto estourado deixa `tool_use` sem par, pela mesma razão
+                // que o cancelamento deixaria. Fechar aqui mantém a sessão
+                // retomável mesmo depois de um turno abortado.
                 self.close_pending_calls(&calls);
                 return Err(Error::ToolLoopLimit {
                     limit: self.tool_limit,
                 });
             }
-            tool_calls += calls.len();
-            rounds += 1;
 
             if let Some(outcome) = self
                 .after_round(&calls, observer, &turn, stop_reason, rounds, usage)
