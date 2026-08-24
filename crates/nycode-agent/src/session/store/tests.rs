@@ -1,7 +1,6 @@
-use std::io::Write as _;
-
 use super::*;
 use nycode_ai::anthropic::ContentBlock;
+use std::io::Write as _;
 
 fn store() -> (tempfile::TempDir, Store) {
     let dir = tempfile::tempdir().unwrap();
@@ -15,16 +14,12 @@ fn file_operations_stay_relative_to_the_open_store_directory() {
     assert!(!store.session_exists("s1").unwrap());
     assert!(store.open_session("s1").is_err());
     assert!(store.name("s1").unwrap().is_none());
-
     let mut file = store.create_session_file("s1").unwrap();
     file.write_all(b"conteudo\n").unwrap();
     file.sync_all().unwrap();
     assert!(store.session_exists("s1").unwrap());
-    assert_eq!(
-        store.create_session_file("s1").unwrap_err().to_string(),
-        "workspace: sessao `s1` ja existe"
-    );
-
+    let error = store.create_session_file("s1").unwrap_err();
+    assert_eq!(error.to_string(), "workspace: sessao `s1` ja existe");
     store.write_name("s1", "uma sessao").unwrap();
     assert_eq!(store.name("s1").unwrap().as_deref(), Some("uma sessao"));
     store.remove_session("s1").unwrap();
@@ -35,7 +30,6 @@ fn file_operations_stay_relative_to_the_open_store_directory() {
 #[test]
 fn file_operations_refuse_symlinked_metadata() {
     use std::os::unix::fs::symlink;
-
     let (dir, store) = store();
     let outside = dir.path().join("outside");
     std::fs::write(&outside, "nao tocar").unwrap();
@@ -44,17 +38,14 @@ fn file_operations_refuse_symlinked_metadata() {
     assert!(store.write_name("s1", "nao").is_err());
     assert_eq!(std::fs::read_to_string(outside).unwrap(), "nao tocar");
 }
-
 #[cfg(unix)]
 #[test]
 fn session_exists_refuses_a_symlinked_session() {
     use std::os::unix::fs::symlink;
-
     let (dir, store) = store();
     let outside = dir.path().join("outside.jsonl");
     std::fs::write(&outside, "").unwrap();
     symlink(&outside, store.path_for("s1").unwrap()).unwrap();
-
     assert!(store.session_exists("s1").is_err());
 }
 

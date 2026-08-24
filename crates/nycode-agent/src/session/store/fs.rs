@@ -4,13 +4,11 @@ use crate::error::{Error, Result};
 
 use super::Store;
 use super::guard::{OpenMode, open_no_follow, open_session_for_read, remove_session, validate_id};
-
 impl Store {
     pub fn open_session(&self, id: &str) -> Result<std::fs::File> {
         validate_id(id)?;
         open_session_for_read(&self.directory, id)
     }
-
     pub fn session_exists(&self, id: &str) -> Result<bool> {
         validate_id(id)?;
         let name = format!("{id}.jsonl");
@@ -22,7 +20,6 @@ impl Store {
             ))),
         }
     }
-
     pub fn create_session_file(&self, id: &str) -> Result<std::fs::File> {
         validate_id(id)?;
         let name = format!("{id}.jsonl");
@@ -39,12 +36,10 @@ impl Store {
             }
         })
     }
-
     pub fn remove_session(&self, id: &str) -> Result<()> {
         validate_id(id)?;
         remove_session(&self.directory, id)
     }
-
     pub fn write_name(&self, id: &str, name: &str) -> Result<()> {
         validate_id(id)?;
         let file_name = format!("{id}.name");
@@ -58,7 +53,6 @@ impl Store {
             .and_then(|()| file.sync_all())
             .map_err(|err| Error::Workspace(format!("gravar nome da sessao `{id}`: {err}")))
     }
-
     pub fn name(&self, id: &str) -> Result<Option<String>> {
         validate_id(id)?;
         let file_name = format!("{id}.name");
