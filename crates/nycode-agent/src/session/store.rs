@@ -132,6 +132,12 @@ impl Store {
         self.dir.join(format!("{id}.jsonl"))
     }
 
+    /// Retorna o caminho somente depois de validar o identificador externo.
+    pub fn checked_path_for(&self, id: &str) -> Result<PathBuf> {
+        validate_id(id)?;
+        Ok(self.path_for(id))
+    }
+
     /// Acrescenta uma mensagem ao fim do caminho ativo.
     pub fn append(&self, id: &str, message: &Message) -> Result<()> {
         validate_id(id)?;
