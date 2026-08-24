@@ -1,6 +1,6 @@
 //! Qual arquivo de sessão esta invocação abre.
 
-use std::fs::{File, OpenOptions};
+use std::fs::File;
 use std::io;
 use std::path::{Path, PathBuf};
 
@@ -15,21 +15,20 @@ pub fn resolve(store: &Store, cli: &Cli) -> anyhow::Result<(String, Vec<Message>
     if let Some(name) = cli.name.as_deref() {
         let name = name.trim();
         anyhow::ensure!(!name.is_empty(), "nome de sessao vazio");
-        std::fs::write(store.dir().join(format!("{id}.name")), name)
+        store
+            .write_name(&id, name)
+            .map_err(anyhow::Error::msg)
             .with_context(|| format!("gravar nome da sessao `{id}`"))?;
         anyhow::ensure!(
-            name_of(store, &id).as_deref() == Some(name),
+            name_of(store, &id)?.as_deref() == Some(name),
             "nome de sessao `{id}` nao persistiu"
         );
     }
     Ok((id, history))
 }
 
-#[must_use]
-pub(crate) fn name_of(store: &Store, id: &str) -> Option<String> {
-    let text = std::fs::read_to_string(store.dir().join(format!("{id}.name"))).ok()?;
-    let trimmed = text.trim();
-    (!trimmed.is_empty()).then(|| trimmed.to_owned())
+pub(crate) fn name_of(store: &Store, id: &str) -> anyhow::Result<Option<String>> {
+    store.name(id).map_err(anyhow::Error::msg)
 }
 
 fn open(store: &Store, cli: &Cli) -> anyhow::Result<(String, Vec<Message>)> {
@@ -65,10 +64,9 @@ fn open(store: &Store, cli: &Cli) -> anyhow::Result<(String, Vec<Message>)> {
 /// Arquivo solto sem registros não pode virar `latest()`.
 fn fork_src(store: &Store, src: &str) -> anyhow::Result<(PathBuf, CopyKind)> {
     let path = Path::new(src);
-    let as_session =
-        validate_id(src).is_ok() && store.path_for(src).is_ok_and(|path| path.is_file());
+    let as_session = validate_id(src).is_ok() && store.open_session(src).is_ok();
     if as_session {
-        return Ok((store.path_for(src)?, CopyKind::Session));
+        return Ok((PathBuf::from(src), CopyKind::Session));
     }
     if path.is_file() {
         return Ok((path.to_path_buf(), CopyKind::File));
@@ -92,45 +90,25 @@ fn copy_into(
     dest: Option<&str>,
     kind: CopyKind,
 ) -> anyhow::Result<(String, Vec<Message>)> {
-    anyhow::ensure!(src.is_file(), "arquivo `{}` nao encontrado", src.display());
-    let id = match dest {
-        Some(id) => {
-            validate_id(id)?;
-            id.to_owned()
-        }
-        None => Store::new_id(),
-    };
-    let dest_path = store.path_for(&id)?;
-    let mut dest_file = OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(&dest_path)
-        .map_err(|err| {
-            if err.kind() == io::ErrorKind::AlreadyExists {
-                anyhow::anyhow!("sessao `{id}` ja existe")
-            } else {
-                anyhow::Error::from(err).context(format!("criar sessao `{id}`"))
-            }
-        })?;
-    let copied = (|| -> anyhow::Result<Vec<Message>> {
-        let mut from = File::open(src).with_context(|| format!("abrir `{}`", src.display()))?;
-        io::copy(&mut from, &mut dest_file)
-            .with_context(|| format!("copiar `{}`", src.display()))?;
-        dest_file
-            .sync_all()
-            .with_context(|| format!("gravar sessao `{id}`"))?;
-        drop(dest_file);
-        Ok(store.load(&id)?)
-    })();
+    if matches!(kind, CopyKind::File) {
+        anyhow::ensure!(src.is_file(), "arquivo `{}` nao encontrado", src.display());
+    }
+    let id = destination_id(dest)?;
+    let dest_file = store
+        .create_session_file(&id)
+        .map_err(|err| anyhow::anyhow!("criar sessao `{id}`: {err}"))?;
+    let copied = copy_contents(store, src, &id, kind, dest_file);
     match copied {
         Ok(history) if matches!(kind, CopyKind::File) && history.is_empty() => {
-            std::fs::remove_file(&dest_path)
+            store
+                .remove_session(&id)
+                .map_err(anyhow::Error::msg)
                 .with_context(|| format!("remover copia vazia `{id}`"))?;
-            anyhow::bail!("arquivo nao contem registros de sessao");
+            anyhow::bail!("arquivo nao contem registros de sessao validos para este workspace");
         }
         Ok(history) => Ok((id, history)),
         Err(err) => {
-            if let Err(cleanse) = std::fs::remove_file(&dest_path) {
+            if let Err(cleanse) = store.remove_session(&id) {
                 return Err(err.context(format!(
                     "nao foi possivel remover a copia `{id}`: {cleanse}"
                 )));
@@ -138,6 +116,42 @@ fn copy_into(
             Err(err)
         }
     }
+}
+
+fn destination_id(dest: Option<&str>) -> anyhow::Result<String> {
+    match dest {
+        Some(id) => {
+            validate_id(id)?;
+            Ok(id.to_owned())
+        }
+        None => Ok(Store::new_id()),
+    }
+}
+
+fn copy_contents(
+    store: &Store,
+    src: &Path,
+    id: &str,
+    kind: CopyKind,
+    mut dest_file: File,
+) -> anyhow::Result<Vec<Message>> {
+    let mut from = match kind {
+        CopyKind::Session => {
+            let source_id = src
+                .to_str()
+                .ok_or_else(|| anyhow::anyhow!("identificador de sessao invalido"))?;
+            store
+                .open_session(source_id)
+                .map_err(|err| anyhow::anyhow!("abrir sessao `{source_id}`: {err}"))?
+        }
+        CopyKind::File => File::open(src).with_context(|| format!("abrir `{}`", src.display()))?,
+    };
+    io::copy(&mut from, &mut dest_file).with_context(|| format!("copiar `{}`", src.display()))?;
+    dest_file
+        .sync_all()
+        .with_context(|| format!("gravar sessao `{id}`"))?;
+    drop(dest_file);
+    Ok(store.load(id)?)
 }
 
 fn validate_id(id: &str) -> anyhow::Result<()> {
@@ -202,7 +216,10 @@ mod tests {
             1
         );
         let named = resolve(&store, &parse(&["--session-id", "s1", "--name", "auth"])).unwrap();
-        assert_eq!(super::name_of(&store, &named.0).as_deref(), Some("auth"));
+        assert_eq!(
+            super::name_of(&store, &named.0).unwrap().as_deref(),
+            Some("auth")
+        );
     }
 
     #[test]
@@ -214,6 +231,7 @@ mod tests {
         assert_eq!(history, vec![Message::user("base")]);
         let err = err_of(&store, &["--fork", "origem", "--session-id", "origem"]);
         assert!(err.contains("ja existe"), "{err}");
+        assert_eq!(store.load("origem").unwrap(), vec![Message::user("base")]);
     }
 
     #[test]
@@ -225,6 +243,19 @@ mod tests {
         let (_id, history) =
             resolve(&store, &parse(&["--import", exported.to_str().unwrap()])).unwrap();
         assert_eq!(history, vec![Message::user("base")]);
+    }
+
+    #[test]
+    fn import_rejects_records_signed_for_another_workspace() {
+        let (source_dir, source) = store();
+        source.append("origem", &Message::user("base")).unwrap();
+        let exported = source_dir.path().join("exported.jsonl");
+        std::fs::copy(source.path_for("origem").unwrap(), &exported).unwrap();
+        let (_target_dir, target) = store();
+
+        let err = err_of(&target, &["--import", exported.to_str().unwrap()]);
+        assert!(err.contains("validos para este workspace"), "{err}");
+        assert!(target.latest().unwrap().is_none());
     }
 
     #[test]

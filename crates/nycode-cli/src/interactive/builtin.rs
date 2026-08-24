@@ -177,7 +177,11 @@ fn stats(store: &Store, id: &str) -> String {
     };
     let messages = store.load(id).map_or(0, |m| m.len());
     let bytes = std::fs::metadata(&path).map_or(0, |m| m.len());
-    let nome = crate::session::name_of(store, id).unwrap_or_else(|| "(sem nome)".to_owned());
+    let nome = match crate::session::name_of(store, id) {
+        Ok(Some(nome)) => nome,
+        Ok(None) => "(sem nome)".to_owned(),
+        Err(error) => format!("(erro: {error})"),
+    };
     format!(
         "\nsessao: {id}\nnome: {nome}\narquivo: {}\nmensagens: {messages}\nbytes: {bytes}\n\n",
         path.display()

@@ -4,7 +4,7 @@
 //! que um crash deixa a sessão truncada ou vazia. Acrescentar uma linha por vez
 //! significa que o pior caso é perder o último turno, não a conversa inteira.
 
-use std::io::Write as _;
+use std::io::{Read as _, Write as _};
 use std::path::{Path, PathBuf};
 
 use nycode_ai::anthropic::Message;
@@ -12,8 +12,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, Result};
 
-use guard::{SessionLock, create_directory_without_symlinks, open_session_for_append, validate_id};
+use guard::{
+    SessionLock, open_directory_without_symlinks, open_session_for_append, open_session_for_read,
+    validate_id,
+};
 
+mod fs;
 mod guard;
 mod mac;
 mod tree;
@@ -57,6 +61,7 @@ pub struct SessionInfo {
 #[derive(Debug, Clone)]
 pub struct Store {
     dir: PathBuf,
+    directory: std::sync::Arc<std::fs::File>,
     /// Último registro gravado, por sessão.
     ///
     /// Sem isto, descobrir o pai custa reler e reparsear o arquivo inteiro a
@@ -84,10 +89,11 @@ impl Store {
     /// Abre o diretório de sessões, criando-o se necessário.
     pub fn open(dir: impl Into<PathBuf>) -> Result<Self> {
         let dir = dir.into();
-        create_directory_without_symlinks(&dir)?;
-        let mac = std::sync::Arc::new(mac::Context::open(&dir));
+        let directory = std::sync::Arc::new(open_directory_without_symlinks(&dir)?);
+        let mac = std::sync::Arc::new(mac::Context::open(&dir, std::sync::Arc::clone(&directory)));
         Ok(Self {
             dir,
+            directory,
             tips: std::sync::Arc::default(),
             #[cfg(test)]
             reads: std::sync::Arc::default(),
@@ -137,8 +143,7 @@ impl Store {
 
     /// Acrescenta uma mensagem ao fim do caminho ativo.
     pub fn append(&self, id: &str, message: &Message) -> Result<()> {
-        let path = self.path_for(id)?;
-        let _lock = SessionLock::acquire(&path)?;
+        let _lock = SessionLock::acquire(&self.directory, id)?;
         let parent = self.tip(id)?;
         self.append_child_locked(id, parent.as_deref(), message)?;
         Ok(())
@@ -155,8 +160,7 @@ impl Store {
         parent_id: Option<&str>,
         message: &Message,
     ) -> Result<String> {
-        let path = self.path_for(id)?;
-        let _lock = SessionLock::acquire(&path)?;
+        let _lock = SessionLock::acquire(&self.directory, id)?;
         self.append_child_locked(id, parent_id, message)
     }
 
@@ -179,7 +183,7 @@ impl Store {
         let line = serde_json::to_string(&record)
             .map_err(|err| Error::Workspace(format!("serializar registro: {err}")))?;
 
-        let mut file = open_session_for_append(&self.path_for(id)?)
+        let mut file = open_session_for_append(&self.directory, id)
             .map_err(|err| Error::Workspace(format!("abrir sessao {id}: {err}")))?;
 
         writeln!(file, "{line}")
@@ -235,10 +239,10 @@ impl Store {
         self.reads
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
-        let path = self.path_for(id)?;
-        let Ok(contents) = std::fs::read_to_string(&path) else {
-            return Err(Error::Workspace(format!("sessao `{id}` nao encontrada")));
-        };
+        let mut contents = String::new();
+        open_session_for_read(&self.directory, id)?
+            .read_to_string(&mut contents)
+            .map_err(|err| Error::Workspace(format!("ler sessao `{id}`: {err}")))?;
 
         let mut records = Vec::new();
         for (number, line) in contents.lines().enumerate() {
