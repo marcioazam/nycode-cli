@@ -8,6 +8,7 @@
 # "curl … | bash" sem usar pipe no campo (o pipe quebraria o registro).
 
 no-verify | bash | git commit *--no-verify* | bypass do hook versionado | AGENTS.md CI local
+no-verify-options | bash | git * commit *--no-verify* | bypass do hook versionado | AGENTS.md CI local
 force-push | bash | git push *--force* | force-push | ADR-0034
 force-push-f | bash | git push -f * | force-push curto | ADR-0034
 force-push-f-end | bash | git push * -f | force-push curto no fim | ADR-0034
