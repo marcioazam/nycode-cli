@@ -28,16 +28,20 @@ set -euo pipefail
 # --- Funcoes puras, sem cargo -------------------------------------------------
 
 missed_is_empty() { # missed_is_empty <missed.txt> -> 0 se vazio (gate passa)
-  [[ ! -s "$1" ]]
+	[[ ! -s "$1" ]]
+}
+
+no_mutation_targets() { # no_mutation_targets <cargo-mutants output> -> 0 sem alvos
+	[[ "$1" == *"No mutants to filter"* ]]
 }
 
 rust_diff() { # rust_diff <base> <head> -> diff unificado de .rs, no cwd atual
-  git diff "${1}" "${2}" -- '*.rs'
+	git diff "${1}" "${2}" -- '*.rs'
 }
 
 # Sourced pelo teste para reusar as funcoes puras acima.
 if [[ "${1:-}" == "--source-only" ]]; then
-  return 0 2>/dev/null || exit 0
+	return 0 2>/dev/null || exit 0
 fi
 
 # --- Execucao real ------------------------------------------------------------
@@ -46,17 +50,17 @@ BASE="${1:-origin/main}"
 HEAD="${2:-HEAD}"
 
 if ! git rev-parse --verify --quiet "${BASE}" >/dev/null; then
-  echo "mutation-gate: ref base nao encontrada: ${BASE}" >&2
-  exit 2
+	echo "mutation-gate: ref base nao encontrada: ${BASE}" >&2
+	exit 2
 fi
 if ! git rev-parse --verify --quiet "${HEAD}" >/dev/null; then
-  echo "mutation-gate: ref head nao encontrada: ${HEAD}" >&2
-  exit 2
+	echo "mutation-gate: ref head nao encontrada: ${HEAD}" >&2
+	exit 2
 fi
 if ! command -v cargo-mutants >/dev/null 2>&1 && ! cargo mutants --version >/dev/null 2>&1; then
-  echo "mutation-gate: \`cargo-mutants\` nao encontrado." >&2
-  echo "  instale: cargo install cargo-mutants --locked" >&2
-  exit 1
+	echo "mutation-gate: \`cargo-mutants\` nao encontrado." >&2
+	echo "  instale: cargo install cargo-mutants --locked" >&2
+	exit 1
 fi
 
 diff_file="$(mktemp)"
@@ -64,26 +68,31 @@ trap 'rm -f "${diff_file}"' EXIT
 rust_diff "${BASE}" "${HEAD}" >"${diff_file}"
 
 if [[ ! -s "${diff_file}" ]]; then
-  echo "mutation-gate: nenhuma mudanca em .rs; nada para mutar."
-  exit 0
+	echo "mutation-gate: nenhuma mudanca em .rs; nada para mutar."
+	exit 0
 fi
 
 # --no-shuffle: ordem deterministica, o log fica igual entre execucoes do
 # mesmo diff. mutants.out/ fica no cwd -- limpo pelo proprio cargo-mutants
 # a cada execucao.
-cargo mutants --in-diff "${diff_file}" --no-shuffle || true
+mutation_output="$(cargo mutants --in-diff "${diff_file}" --no-shuffle 2>&1)" || true
 
 if [[ ! -f mutants.out/missed.txt ]]; then
-  echo "mutation-gate: mutants.out/missed.txt nao apareceu; a execucao do cargo-mutants falhou antes de terminar." >&2
-  exit 1
+	if no_mutation_targets "${mutation_output}"; then
+		echo "mutation-gate: nenhum alvo mutavel; nada para mutar."
+		exit 0
+	fi
+	printf '%s\n' "${mutation_output}" >&2
+	echo "mutation-gate: mutants.out/missed.txt nao apareceu; a execucao do cargo-mutants falhou antes de terminar." >&2
+	exit 1
 fi
 
 if ! missed_is_empty mutants.out/missed.txt; then
-  echo "  FALHA: mutante(s) sobrevivente(s) nas linhas que este PR tocou (GATE-04):" >&2
-  sed 's/^/    /' mutants.out/missed.txt >&2
-  echo >&2
-  echo "mutation-gate: reprovado." >&2
-  exit 1
+	echo "  FALHA: mutante(s) sobrevivente(s) nas linhas que este PR tocou (GATE-04):" >&2
+	sed 's/^/    /' mutants.out/missed.txt >&2
+	echo >&2
+	echo "mutation-gate: reprovado." >&2
+	exit 1
 fi
 
 echo "mutation-gate: nenhum mutante sobrevivente nas linhas tocadas por este PR."
