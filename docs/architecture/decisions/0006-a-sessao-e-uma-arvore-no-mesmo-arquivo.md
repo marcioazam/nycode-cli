@@ -81,4 +81,3 @@ nunca automática.
 Cada linha passa a carregar MAC HMAC-SHA256 e TTL (`AGT-07`). O arquivo
 continua append-only; linha sem MAC, expirada ou de outro workspace não
 entra no contexto do modelo. Isso não muda a árvore da ADR.
-
