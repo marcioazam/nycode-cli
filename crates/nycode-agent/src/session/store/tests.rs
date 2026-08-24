@@ -20,7 +20,10 @@ fn file_operations_stay_relative_to_the_open_store_directory() {
     file.write_all(b"conteudo\n").unwrap();
     file.sync_all().unwrap();
     assert!(store.session_exists("s1").unwrap());
-    assert!(store.create_session_file("s1").is_err());
+    assert_eq!(
+        store.create_session_file("s1").unwrap_err().to_string(),
+        "workspace: sessao `s1` ja existe"
+    );
 
     store.write_name("s1", "uma sessao").unwrap();
     assert_eq!(store.name("s1").unwrap().as_deref(), Some("uma sessao"));
@@ -39,6 +42,19 @@ fn file_operations_refuse_symlinked_metadata() {
     symlink(&outside, dir.path().join("sessoes").join("s1.name")).unwrap();
     assert!(store.name("s1").is_err());
     assert!(store.write_name("s1", "nao").is_err());
+}
+
+#[cfg(unix)]
+#[test]
+fn session_exists_refuses_a_symlinked_session() {
+    use std::os::unix::fs::symlink;
+
+    let (dir, store) = store();
+    let outside = dir.path().join("outside.jsonl");
+    std::fs::write(&outside, "").unwrap();
+    symlink(&outside, store.path_for("s1").unwrap()).unwrap();
+
+    assert!(store.session_exists("s1").is_err());
 }
 
 #[test]
