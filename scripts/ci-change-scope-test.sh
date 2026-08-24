@@ -25,8 +25,11 @@ assert_scope true parity $'crates/nycode-cli/src/main.rs'
 assert_scope true docker $'Dockerfile'
 assert_scope true dependency-age $'Cargo.lock'
 assert_scope true dependency-age $'Cargo.toml'
+assert_scope true dependency-age $'crates/nycode-cli/Cargo.toml'
 assert_scope true rust $'crates/nycode-agent/src/lib.rs'
 assert_scope true supply-chain $'Cargo.toml'
+assert_scope true supply-chain $'crates/nycode-cli/Cargo.toml'
+assert_scope true supply-chain $'deny.toml'
 assert_scope true layout $'.githooks/pre-push'
 assert_scope true layout $'.github/workflows/ci.yml'
 assert_scope true default-build $'crates/nycode-auth/src/subscription.rs'
@@ -48,6 +51,18 @@ if ! {
 	} | scope_needs_run perf
 }; then
 	echo "ci-change-scope-test: um diff grande nao pode falhar por SIGPIPE." >&2
+	exit 1
+fi
+
+invalid_status=0
+if scripts/ci-change-scope.sh ci-change-scope-ref-does-not-exist HEAD perf >/dev/null 2>&1; then
+	echo "ci-change-scope-test: uma base invalida nao pode passar." >&2
+	exit 1
+else
+	invalid_status=$?
+fi
+if ((invalid_status < 2)); then
+	echo "ci-change-scope-test: falha operacional precisa ser distinta de escopo ausente." >&2
 	exit 1
 fi
 

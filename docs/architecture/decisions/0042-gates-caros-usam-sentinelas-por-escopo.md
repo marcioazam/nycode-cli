@@ -14,8 +14,11 @@ eram executados em toda PR, aumentando custo e tempo de fila.
 O job `changes` classifica o diff contra a base real. Os jobs `perf`, `parity`
 e `docker` continuam sempre presentes, mas executam a medição completa apenas
 quando seu escopo muda; caso contrário, concluem como sentinela explícita.
-`push` e `merge_group` sempre executam os gates completos. O gate de idade de
-dependência só consulta crates.io quando `Cargo.toml` ou `Cargo.lock` muda.
+`push` e `merge_group` executam todos os gates aplicáveis ao evento; gates que
+dependem de uma base de PR, como mutation e cobertura de diff, permanecem
+restritos a `pull_request` e `merge_group`. O gate de idade de dependência só
+consulta crates.io quando um manifesto (`Cargo.toml` ou `crates/*/Cargo.toml`)
+ou `Cargo.lock` muda.
 
 ## Consequências
 

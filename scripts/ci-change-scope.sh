@@ -17,13 +17,13 @@ scope_needs_run() { # scope_needs_run <escopo>, caminhos via stdin
 		docker:Dockerfile | docker:.dockerignore | docker:Cargo.toml | docker:Cargo.lock | docker:crates/* | docker:scripts/artifact/* | docker:scripts/artifact-vex.txt)
 			matched=true
 			;;
-		dependency-age:Cargo.toml | dependency-age:Cargo.lock)
+		dependency-age:Cargo.toml | dependency-age:crates/*/Cargo.toml | dependency-age:Cargo.lock)
 			matched=true
 			;;
 		rust:crates/* | rust:Cargo.toml | rust:Cargo.lock)
 			matched=true
 			;;
-		supply-chain:Cargo.toml | supply-chain:Cargo.lock)
+		supply-chain:Cargo.toml | supply-chain:crates/*/Cargo.toml | supply-chain:Cargo.lock | supply-chain:deny.toml)
 			matched=true
 			;;
 		layout:crates/* | layout:Cargo.toml | layout:Cargo.lock | layout:scripts/* | layout:.githooks/* | layout:.github/* | layout:test_map)
@@ -43,8 +43,12 @@ main() {
 		exit 2
 	fi
 
-	local base="$1" head="$2" scope="$3"
-	git diff --name-only "${base}" "${head}" | scope_needs_run "${scope}"
+	local base="$1" head="$2" scope="$3" paths
+	if ! paths="$(git diff --name-only "${base}" "${head}")"; then
+		echo "ci-change-scope: nao foi possivel comparar ${base} com ${head}." >&2
+		return 2
+	fi
+	scope_needs_run "${scope}" <<<"${paths}"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
