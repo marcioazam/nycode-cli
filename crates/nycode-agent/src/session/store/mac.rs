@@ -7,25 +7,25 @@ pub const TTL_MS: u64 = 2_592_000_000;
 
 #[derive(Debug)]
 pub(super) struct Context {
-    dir: std::path::PathBuf,
+    directory: std::sync::Arc<std::fs::File>,
     workspace: String,
 }
 
 impl Context {
-    pub(super) fn open(dir: &std::path::Path) -> Self {
+    pub(super) fn open(dir: &std::path::Path, directory: std::sync::Arc<std::fs::File>) -> Self {
         let workspace = dir
             .canonicalize()
             .unwrap_or_else(|_| dir.to_path_buf())
             .display()
             .to_string();
         Self {
-            dir: dir.to_path_buf(),
+            directory,
             workspace,
         }
     }
 
     fn secret(&self) -> crate::error::Result<Vec<u8>> {
-        load_or_create_key(&self.dir)
+        load_or_create_key(&self.directory)
     }
 
     pub(super) fn sign(&self, record: &Record) -> crate::error::Result<String> {
@@ -64,33 +64,25 @@ impl Context {
     }
 }
 
-fn load_or_create_key(dir: &std::path::Path) -> crate::error::Result<Vec<u8>> {
-    let path = dir.join(".mac-key");
-    match read_key(&path) {
-        Ok((key, metadata)) => validate_key(&path, key, &metadata),
+fn load_or_create_key(directory: &std::fs::File) -> crate::error::Result<Vec<u8>> {
+    match read_key(directory) {
+        Ok((key, metadata)) => validate_key(key, &metadata),
         Err(err) => match err.kind() {
-            std::io::ErrorKind::NotFound => create_key(dir, getrandom::fill),
+            std::io::ErrorKind::NotFound => create_key(directory, getrandom::fill),
             _ => Err(crate::error::Error::Workspace(format!(
-                "ler chave mac em {}: {err}",
-                path.display()
+                "ler chave mac: {err}"
             ))),
         },
     }
 }
-fn read_key(path: &std::path::Path) -> std::io::Result<(Vec<u8>, std::fs::Metadata)> {
+fn read_key(directory: &std::fs::File) -> std::io::Result<(Vec<u8>, std::fs::Metadata)> {
     use std::io::Read as _;
     #[cfg(unix)]
     let mut key_file = {
         use rustix::fs::{Mode, OFlags};
-        let dir = std::fs::File::open(path.parent().ok_or_else(|| {
-            std::io::Error::new(std::io::ErrorKind::InvalidInput, "chave mac sem diretorio")
-        })?)?;
-        let name = path.file_name().ok_or_else(|| {
-            std::io::Error::new(std::io::ErrorKind::InvalidInput, "chave mac sem nome")
-        })?;
         let descriptor = rustix::fs::openat(
-            &dir,
-            name,
+            directory,
+            std::ffi::OsStr::new(".mac-key"),
             OFlags::RDONLY
                 .union(OFlags::NOFOLLOW)
                 .union(OFlags::CLOEXEC),
@@ -100,7 +92,10 @@ fn read_key(path: &std::path::Path) -> std::io::Result<(Vec<u8>, std::fs::Metada
         std::fs::File::from(descriptor)
     };
     #[cfg(not(unix))]
-    let mut key_file = std::fs::File::open(path)?;
+    return Err(std::io::Error::new(
+        std::io::ErrorKind::Unsupported,
+        "chave mac relativa ao diretorio nao e suportada nesta plataforma",
+    ));
 
     let metadata = key_file.metadata()?;
     if !metadata.file_type().is_file() {
@@ -114,56 +109,57 @@ fn read_key(path: &std::path::Path) -> std::io::Result<(Vec<u8>, std::fs::Metada
     Ok((key, metadata))
 }
 
-fn validate_key(
-    path: &std::path::Path,
-    key: Vec<u8>,
-    metadata: &std::fs::Metadata,
-) -> crate::error::Result<Vec<u8>> {
+fn validate_key(key: Vec<u8>, metadata: &std::fs::Metadata) -> crate::error::Result<Vec<u8>> {
     if key.len() != 32 {
-        return Err(crate::error::Error::Workspace(format!(
-            "chave mac invalida em {}",
-            path.display()
-        )));
+        return Err(crate::error::Error::Workspace(
+            "chave mac invalida".to_owned(),
+        ));
     }
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt as _;
         let mode = metadata.permissions().mode();
         if mode & 0o077 != 0 {
-            return Err(crate::error::Error::Workspace(format!(
-                "chave mac em {} tem permissoes inseguras",
-                path.display()
-            )));
+            return Err(crate::error::Error::Workspace(
+                "chave mac tem permissoes inseguras".to_owned(),
+            ));
         }
     }
     Ok(key)
 }
 fn create_key(
-    dir: &std::path::Path,
+    directory: &std::fs::File,
     entropy: impl FnOnce(&mut [u8]) -> std::result::Result<(), getrandom::Error>,
 ) -> crate::error::Result<Vec<u8>> {
     use std::io::Write as _;
-    let path = dir.join(".mac-key");
     let mut key = [0u8; 32];
-    entropy(&mut key).map_err(|err| {
-        crate::error::Error::Workspace(format!("gerar chave mac em {}: {err}", path.display()))
-    })?;
-    let mut options = std::fs::OpenOptions::new();
-    options.write(true).create_new(true);
+    entropy(&mut key)
+        .map_err(|err| crate::error::Error::Workspace(format!("gerar chave mac: {err}")))?;
     #[cfg(unix)]
-    {
-        use std::os::unix::fs::OpenOptionsExt as _;
-        options.mode(0o600);
-    }
-    let mut key_file = options.open(&path).map_err(|err| {
-        crate::error::Error::Workspace(format!("criar chave mac em {}: {err}", path.display()))
-    })?;
+    let mut key_file = {
+        use rustix::fs::{Mode, OFlags};
+        let descriptor = rustix::fs::openat(
+            directory,
+            std::ffi::OsStr::new(".mac-key"),
+            OFlags::WRONLY
+                .union(OFlags::CREATE)
+                .union(OFlags::EXCL)
+                .union(OFlags::NOFOLLOW)
+                .union(OFlags::CLOEXEC),
+            Mode::from_raw_mode(0o600),
+        )
+        .map_err(std::io::Error::from)
+        .map_err(|err| crate::error::Error::Workspace(format!("criar chave mac: {err}")))?;
+        std::fs::File::from(descriptor)
+    };
+    #[cfg(not(unix))]
+    return Err(crate::error::Error::Workspace(
+        "criar chave mac relativa ao diretorio nao e suportada nesta plataforma".to_owned(),
+    ));
     key_file
         .write_all(&key)
         .and_then(|()| key_file.sync_all())
-        .map_err(|err| {
-            crate::error::Error::Workspace(format!("gravar chave mac em {}: {err}", path.display()))
-        })?;
+        .map_err(|err| crate::error::Error::Workspace(format!("gravar chave mac: {err}")))?;
     Ok(key.to_vec())
 }
 fn sign_bytes(key: &[u8], message: &[u8]) -> crate::error::Result<String> {
@@ -328,15 +324,17 @@ mod tests {
     #[test]
     fn a_session_is_not_written_when_its_mac_key_cannot_be_created() {
         let (dir, store) = store();
+        let directory = std::fs::File::open(dir.path().join("sessoes")).unwrap();
         std::fs::create_dir(dir.path().join("sessoes").join(".mac-key")).unwrap();
         assert!(store.append("s1", &Message::user("segredo")).is_err());
-        assert!(create_key(dir.path(), |_| Err(getrandom::Error::UNSUPPORTED)).is_err());
+        assert!(create_key(&directory, |_| Err(getrandom::Error::UNSUPPORTED)).is_err());
     }
     #[test]
     fn an_invalid_mac_key_or_signature_is_refused() {
         let dir = tempfile::tempdir().unwrap();
         std::fs::write(dir.path().join(".mac-key"), [0u8; 31]).unwrap();
-        assert!(load_or_create_key(dir.path()).is_err());
+        let directory = std::fs::File::open(dir.path()).unwrap();
+        assert!(load_or_create_key(&directory).is_err());
         let (_dir, store) = store();
         store.append("s1", &Message::user("segredo")).unwrap();
         let mut record = read_record(&store, "s1");
@@ -357,7 +355,8 @@ mod tests {
         let path = dir.path().join(".mac-key");
         std::fs::write(&path, [0u8; 32]).unwrap();
         std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o644)).unwrap();
-        assert!(load_or_create_key(dir.path()).is_err());
+        let directory = std::fs::File::open(dir.path()).unwrap();
+        assert!(load_or_create_key(&directory).is_err());
     }
     #[cfg(unix)]
     #[test]
@@ -368,6 +367,7 @@ mod tests {
         std::fs::write(&target, [7u8; 32]).unwrap();
         std::fs::set_permissions(&target, std::fs::Permissions::from_mode(0o600)).unwrap();
         symlink(&target, dir.path().join(".mac-key")).unwrap();
-        assert!(load_or_create_key(dir.path()).is_err());
+        let directory = std::fs::File::open(dir.path()).unwrap();
+        assert!(load_or_create_key(&directory).is_err());
     }
 }
