@@ -105,9 +105,11 @@ ficou de fora da primeira fatia, cada item já citando o ID de regra que fecha:
 reconciliação do [`AGENTS.md`](../../AGENTS.md) — não repetido aqui para não
 divergir. Esta lista é só o que falta.)*
 
-Todo gate do padrão já tem instrumento ou waiver formal, e a proteção de
-branch já está configurada — nada pendente de ferramenta nem de
-infraestrutura abaixo desta linha.
+Esta migração ainda não declara conformidade v1.4.0: a matriz em
+[`docs/CONFORMANCE-MATRIX.md`](../CONFORMANCE-MATRIX.md) lista os instrumentos,
+waivers e pendências verificáveis. A proteção de branch e o estado remoto do
+GitHub precisam ser confirmados novamente antes de qualquer alteração de
+infraestrutura.
 
 - **Trilha test-first automatizada** — commit RED só toca teste, commit
   GREEN não toca teste. `GATE-16`. **Não é mais um "falta fazer": é um

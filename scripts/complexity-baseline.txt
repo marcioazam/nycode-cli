@@ -23,3 +23,16 @@ crates/nycode-agent/src/tool/repair.rs of 16 13
 crates/nycode-cli/src/interactive.rs take_turn 8 17
 crates/nycode-cli/src/interactive/panel.rs step 11 17
 crates/nycode-tui/src/keys.rs translate 3 25
+
+# Funcoes existentes na arvore integrada quando o gate foi atualizado.
+crates/nycode-agent/src/tool/sanitize.rs skip_escape 15 11
+crates/nycode-agent/src/tools/search/grep.rs execute 13 15
+crates/nycode-ai/src/openai/chat.rs convert 13 14
+crates/nycode-ai/src/openai/chat_stream.rs decode 12 11
+crates/nycode-agent/src/tools/read.rs execute 11 13
+crates/nycode-agent/src/tools/search/find.rs execute 10 14
+crates/nycode-parity/src/transcript.rs diff 10 11
+crates/nycode-parity/src/main.rs parse 8 13
+crates/nycode-ai/src/transport/retry.rs parse_imf_fixdate 6 13
+crates/nycode-cli/src/interactive/builtin.rs resolve 1 14
+crates/nycode-tui/src/editor.rs apply 1 14

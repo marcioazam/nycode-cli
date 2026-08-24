@@ -18,14 +18,14 @@
 # introduziu -- roda contra crates/ inteiro, em scripts/ci-local.sh --full,
 # nao e' uma excecao so-CI.
 #
-# Sem ratchet: a duplicacao medida no dia em que este gate nasceu (1,95% de
-# linhas) ja fica abaixo do teto de 5% sem precisar de baseline nenhum --
-# diferente do teto de 500 linhas e do de complexidade, que nasceram sobre
-# codigo que ja excedia o proprio teto.
+# A duplicacao tem ratchet: o percentual medido fica em
+# `scripts/duplication-baseline.txt` e nao pode subir. O teto do padrao continua
+# sendo a segunda barreira; o baseline impede que a divida cresca mesmo quando
+# ainda esta abaixo dele.
 #
 # Uso:
 #   scripts/duplication-gate.sh                  # crates/ real, teto 5%
-#   scripts/duplication-gate.sh <raiz> [<teto>]   # para o auto-teste
+#   scripts/duplication-gate.sh <raiz> [<teto>] [<baseline>] # para o auto-teste
 
 set -euo pipefail
 
@@ -34,15 +34,20 @@ readonly ROOT
 
 TARGET="${1:-${ROOT}}"
 THRESHOLD="${2:-5}"
+BASELINE="${3:-${ROOT}/scripts/duplication-baseline.txt}"
 
 if [[ ! -d "${TARGET}/crates" ]]; then
-  echo "duplication-gate: raiz nao encontrada: ${TARGET}" >&2
-  exit 2
+	echo "duplication-gate: raiz nao encontrada: ${TARGET}" >&2
+	exit 2
 fi
 if ! command -v jscpd >/dev/null 2>&1; then
-  echo "duplication-gate: \`jscpd\` nao encontrado." >&2
-  echo "  instale: cargo install jscpd --locked" >&2
-  exit 1
+	echo "duplication-gate: \`jscpd\` nao encontrado." >&2
+	echo "  instale: cargo install jscpd --locked" >&2
+	exit 1
+fi
+if [[ "${BASELINE}" != "-" && ! -f "${BASELINE}" ]]; then
+	echo "duplication-gate: baseline nao encontrado: ${BASELINE}" >&2
+	exit 2
 fi
 
 report_dir="$(mktemp -d)"
@@ -50,22 +55,34 @@ console_out="$(mktemp)"
 trap 'rm -rf "${report_dir}"; rm -f "${console_out}"' EXIT
 
 jscpd "${TARGET}/crates" -f rust --reporters console,json -o "${report_dir}" \
-  >"${console_out}" 2>&1 || true
+	>"${console_out}" 2>&1 || true
 
 report="${report_dir}/jscpd-report.json"
 if [[ ! -f "${report}" ]]; then
-  cat "${console_out}" >&2
-  echo "duplication-gate: jscpd nao produziu jscpd-report.json; saida acima." >&2
-  exit 1
+	cat "${console_out}" >&2
+	echo "duplication-gate: jscpd nao produziu jscpd-report.json; saida acima." >&2
+	exit 1
 fi
 
 percentage="$(jq -r '.statistics.total.percentage * 100 | round / 100' "${report}")"
 
+if [[ "${BASELINE}" != "-" ]]; then
+	baseline_percentage="$(sed -n 's/^percentage[[:space:]]*=[[:space:]]*//p' "${BASELINE}" | head -n1)"
+	[[ "${baseline_percentage}" =~ ^[0-9]+([.][0-9]+)?$ ]] || {
+		echo "duplication-gate: baseline invalido: ${BASELINE}" >&2
+		exit 2
+	}
+	if jq -e --argjson b "${baseline_percentage}" '.statistics.total.percentage > $b' "${report}" >/dev/null; then
+		echo "duplication-gate: reprovado — ${percentage}% acima do baseline ${baseline_percentage}% ratcheted." >&2
+		exit 1
+	fi
+fi
+
 if jq -e --argjson t "${THRESHOLD}" '.statistics.total.percentage > $t' "${report}" >/dev/null; then
-  cat "${console_out}" >&2
-  echo >&2
-  echo "duplication-gate: reprovado — ${percentage}% de linhas duplicadas, acima do teto de ${THRESHOLD}%." >&2
-  exit 1
+	cat "${console_out}" >&2
+	echo >&2
+	echo "duplication-gate: reprovado — ${percentage}% de linhas duplicadas, acima do teto de ${THRESHOLD}%." >&2
+	exit 1
 fi
 
 echo "duplication-gate: duplicacao dentro do teto (${percentage}% <= ${THRESHOLD}%)."

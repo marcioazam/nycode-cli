@@ -2,7 +2,6 @@
 name: nycode-confinement
 description: "Aplica o contrato de confinamento de SO deste repo (FR-11, duas políticas). Use when changing bash sandbox, MCP child process, hooks, or confinement detection. Triggers: \"confinamento\", \"FR-11\", \"workspace-write\", \"network-client\", \"sandbox\". Not for a generic OWASP audit (use security-auditor)."
 ---
-
 # Confinamento de SO
 
 A detecção de confinamento (FR-11) **não** se adia para o primeiro uso da

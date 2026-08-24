@@ -1,0 +1,27 @@
+name: Proposta
+description: Proponha uma mudanca de comportamento ou produto.
+title: "feat: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema
+      description: Qual necessidade observavel esta sem solucao?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Criterios de aceite
+      description: Como provar que a mudanca esta correta?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Fora de escopo
+      description: O que esta proposta deliberadamente nao muda?
+    validations:
+      required: true
