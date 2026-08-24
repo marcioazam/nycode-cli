@@ -38,4 +38,17 @@ assert_scope false supply-chain $'crates/nycode-agent/src/lib.rs'
 assert_scope false layout $'docs/RUNBOOK.md'
 assert_scope false default-build $'docs/architecture/decisions/0042.md'
 
+if ! {
+	set -o pipefail
+	{
+		printf '%s\n' 'crates/nycode-agent/src/lib.rs'
+		for ((i = 0; i < 20000; i += 1)); do
+			printf '%s\n' 'README.md'
+		done
+	} | scope_needs_run perf
+}; then
+	echo "ci-change-scope-test: um diff grande nao pode falhar por SIGPIPE." >&2
+	exit 1
+fi
+
 echo "ci-change-scope-test: todos os escopos passaram."
