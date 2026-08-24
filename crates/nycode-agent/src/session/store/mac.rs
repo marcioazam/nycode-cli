@@ -271,6 +271,18 @@ mod tests {
     }
 
     #[test]
+    fn a_context_persists_a_32_byte_secret() {
+        let dir = tempfile::tempdir().unwrap();
+        let sessions = dir.path().join("sessions");
+        std::fs::create_dir_all(&sessions).unwrap();
+        let first = Context::open(&sessions).unwrap().secret().unwrap();
+        let second = Context::open(&sessions).unwrap().secret().unwrap();
+
+        assert_eq!(first.len(), 32);
+        assert_eq!(second, first);
+    }
+
+    #[test]
     fn a_record_from_the_future_is_not_acceptable() {
         let dir = tempfile::tempdir().unwrap();
         let sessions = dir.path().join("sessions");
@@ -336,6 +348,20 @@ mod tests {
         std::fs::create_dir(dir.path().join(".mac-key")).unwrap();
 
         assert!(load_or_create_key(dir.path()).is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_non_missing_key_error_is_not_treated_as_an_absent_key() {
+        use std::os::unix::fs::symlink;
+
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("real-key");
+        std::fs::write(&target, [0u8; 32]).unwrap();
+        symlink(target, dir.path().join(".mac-key")).unwrap();
+
+        let error = load_or_create_key(dir.path()).unwrap_err().to_string();
+        assert!(error.contains("ler chave mac"), "{error}");
     }
 
     #[test]
