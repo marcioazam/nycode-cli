@@ -306,11 +306,9 @@ Gate: [`scripts/file-length-gate.sh`](scripts/file-length-gate.sh).
 
 ## Teto de PR assistido por IA — `GATE-11`/`AI-01`
 
-Um PR assistido por IA comporta no máximo **800 linhas alteradas** e **25
-arquivos de código**. Documentação e texto (`.md`, `.markdown`, `.rst`,
-`.adoc`, `.txt`) não entram na contagem de linhas nem de arquivos. `Cargo.lock`
-e `test_map` também não entram — são churn mecânico gerado, nunca escrito à
-mão.
+Um PR assistido por IA comporta no máximo **400 linhas alteradas** e **15
+arquivos**. `Cargo.lock` não entra na contagem — é churn mecânico do `cargo`,
+nunca escrito à mão.
 
 Detecção mecânica de "assistido por IA": qualquer commit no intervalo com
 rodapé `Assisted-by:` (ver "Estilo" abaixo) põe o intervalo inteiro sob o

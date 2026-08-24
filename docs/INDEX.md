@@ -65,7 +65,7 @@ Não são aspirações; o build quebra quando qualquer um deles regride.
 | O gate de cobertura continua capaz de reprovar | obrigatório | [`scripts/coverage-gate-test.sh`](../scripts/coverage-gate-test.sh) |
 | Teto de 500 linhas por arquivo, com ratchet para o legado (`GATE-07`/`RAT-04`) | 500, ou o baseline registrado | [`scripts/file-length-gate.sh`](../scripts/file-length-gate.sh) |
 | O gate de tamanho de arquivo continua capaz de reprovar | obrigatório | [`scripts/file-length-gate-test.sh`](../scripts/file-length-gate-test.sh) |
-| Teto de PR assistido por IA (`GATE-11`/`AI-01`), só no job `pr-size` do CI | 800 linhas / 25 arquivos de código; texto e documentação excluídos | [`scripts/agent-pr-size-gate.sh`](../scripts/agent-pr-size-gate.sh) |
+| Teto de PR assistido por IA (`GATE-11`/`AI-01`), só no job `pr-size` do CI | 400 linhas / 15 arquivos | [`scripts/agent-pr-size-gate.sh`](../scripts/agent-pr-size-gate.sh) |
 | Idade mínima de dependência nova (`SP-04`), só no job `pr-size` do CI | 30 dias | [`scripts/dependency-age-gate.sh`](../scripts/dependency-age-gate.sh) |
 | Cobertura de diff (`GATE-01`), só no job `coverage` em PR | 80% | [`scripts/diff-coverage-gate.sh`](../scripts/diff-coverage-gate.sh) |
 | Nenhum mutante sobrevivente nas linhas tocadas (`GATE-04`), só no job `mutation` em PR | 0 mutantes | [`scripts/mutation-gate.sh`](../scripts/mutation-gate.sh) |

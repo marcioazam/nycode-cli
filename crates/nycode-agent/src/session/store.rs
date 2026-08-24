@@ -12,11 +12,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, Result};
 
-mod guard;
 mod mac;
 mod tree;
-
-use guard::{SessionLock, open_session_for_append, read_session, validate_id};
 
 /// Versão do formato de registro.
 ///
@@ -64,7 +61,7 @@ pub struct Store {
     /// cada mensagem, e uma sessão de N mensagens custa O(N²) em leitura e em
     /// parse. Compartilhado entre clones de propósito: dois `Store` do mesmo
     /// diretório precisam concordar sobre onde está a ponta.
-    tips: std::sync::Arc<std::sync::Mutex<std::collections::HashMap<String, Tip>>>,
+    tips: std::sync::Arc<std::sync::Mutex<std::collections::HashMap<String, String>>>,
     /// Quantas vezes o arquivo foi lido por inteiro.
     ///
     /// Existe só no teste, porque é a única forma de assertar sobre o custo em
@@ -75,26 +72,12 @@ pub struct Store {
     mac: std::sync::Arc<mac::Context>,
 }
 
-#[derive(Debug, Clone)]
-struct Tip {
-    id: String,
-    file_len: u64,
-}
-
 impl Store {
     /// Abre o diretório de sessões, criando-o se necessário.
     pub fn open(dir: impl Into<PathBuf>) -> Result<Self> {
         let dir = dir.into();
         std::fs::create_dir_all(&dir)
             .map_err(|err| Error::Workspace(format!("sessoes em {}: {err}", dir.display())))?;
-        let metadata = std::fs::symlink_metadata(&dir)
-            .map_err(|err| Error::Workspace(format!("verificar sessoes: {err}")))?;
-        if !metadata.file_type().is_dir() {
-            return Err(Error::Workspace(format!(
-                "diretorio de sessoes nao e um diretorio regular: {}",
-                dir.display()
-            )));
-        }
         let mac = std::sync::Arc::new(mac::Context::open(&dir)?);
         Ok(Self {
             dir,
@@ -107,10 +90,7 @@ impl Store {
 
     /// A ponta conhecida sem tocar o disco.
     fn remembered_tip(&self, id: &str) -> Option<String> {
-        let path = self.path_for(id).ok()?;
-        let file_len = std::fs::symlink_metadata(path).ok()?.len();
-        let tip = self.tips.lock().ok()?.get(id)?.clone();
-        (tip.file_len == file_len).then_some(tip.id)
+        self.tips.lock().ok()?.get(id).cloned()
     }
 
     /// Anota a ponta nova.
@@ -118,20 +98,8 @@ impl Store {
     /// Um cadeado envenenado não é motivo para falhar a gravação: o efeito de
     /// perder a anotação é reler o arquivo, que é o comportamento antigo.
     fn remember_tip(&self, id: &str, record_id: &str) {
-        let Ok(path) = self.path_for(id) else {
-            return;
-        };
-        let Ok(file_len) = std::fs::symlink_metadata(path).map(|metadata| metadata.len()) else {
-            return;
-        };
         if let Ok(mut tips) = self.tips.lock() {
-            tips.insert(
-                id.to_owned(),
-                Tip {
-                    id: record_id.to_owned(),
-                    file_len,
-                },
-            );
+            tips.insert(id.to_owned(), record_id.to_owned());
         }
     }
 
@@ -140,18 +108,15 @@ impl Store {
         self.reads.load(std::sync::atomic::Ordering::Relaxed)
     }
 
-    #[must_use = "trate ids de sessao invalidos antes de usar o caminho"]
-    pub fn path_for(&self, id: &str) -> Result<PathBuf> {
-        validate_id(id)?;
-        Ok(self.dir.join(format!("{id}.jsonl")))
+    #[must_use]
+    pub fn path_for(&self, id: &str) -> PathBuf {
+        self.dir.join(format!("{id}.jsonl"))
     }
 
     /// Acrescenta uma mensagem ao fim do caminho ativo.
     pub fn append(&self, id: &str, message: &Message) -> Result<()> {
-        let path = self.path_for(id)?;
-        let _lock = SessionLock::acquire(&path)?;
         let parent = self.tip(id);
-        self.append_child_locked(id, parent.as_deref(), message)?;
+        self.append_child(id, parent.as_deref(), message)?;
         Ok(())
     }
 
@@ -161,17 +126,6 @@ impl Store {
     /// reescrito: o arquivo continua append-only, e a ramificação existe porque
     /// dois registros passam a compartilhar o mesmo pai.
     pub fn append_child(
-        &self,
-        id: &str,
-        parent_id: Option<&str>,
-        message: &Message,
-    ) -> Result<String> {
-        let path = self.path_for(id)?;
-        let _lock = SessionLock::acquire(&path)?;
-        self.append_child_locked(id, parent_id, message)
-    }
-
-    fn append_child_locked(
         &self,
         id: &str,
         parent_id: Option<&str>,
@@ -190,7 +144,10 @@ impl Store {
         let line = serde_json::to_string(&record)
             .map_err(|err| Error::Workspace(format!("serializar registro: {err}")))?;
 
-        let mut file = open_session_for_append(&self.path_for(id)?)
+        let mut file = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(self.path_for(id))
             .map_err(|err| Error::Workspace(format!("abrir sessao {id}: {err}")))?;
 
         writeln!(file, "{line}")
@@ -232,8 +189,8 @@ impl Store {
         self.reads
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
-        let path = self.path_for(id)?;
-        let Ok(contents) = read_session(&path) else {
+        let path = self.path_for(id);
+        let Ok(contents) = std::fs::read_to_string(&path) else {
             return Err(Error::Workspace(format!("sessao `{id}` nao encontrada")));
         };
 
@@ -300,15 +257,9 @@ impl Store {
                 if path.extension()? != "jsonl" {
                     return None;
                 }
-                let metadata = std::fs::symlink_metadata(&path).ok()?;
-                if !metadata.file_type().is_file() {
-                    return None;
-                }
-                let id = path.file_stem()?.to_string_lossy().into_owned();
-                validate_id(&id).ok()?;
                 Some(SessionInfo {
-                    id,
-                    modified: metadata.modified().ok()?,
+                    id: path.file_stem()?.to_string_lossy().into_owned(),
+                    modified: entry.metadata().ok()?.modified().ok()?,
                     path,
                 })
             })
