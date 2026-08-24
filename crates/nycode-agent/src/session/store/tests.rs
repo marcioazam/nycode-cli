@@ -70,21 +70,6 @@ fn appending_never_rewrites_earlier_lines() {
     );
 }
 
-#[cfg(unix)]
-#[test]
-fn appending_to_a_symlinked_session_is_refused() {
-    use std::os::unix::fs::symlink;
-
-    let (dir, store) = store();
-    let target = dir.path().join("outside.jsonl");
-    let session = store.path_for("s1").unwrap();
-    std::fs::write(&target, "").unwrap();
-    symlink(&target, session).unwrap();
-
-    assert!(store.append("s1", &Message::user("nao escrever")).is_err());
-    assert_eq!(std::fs::read_to_string(target).unwrap(), "");
-}
-
 #[test]
 fn session_ids_reject_path_syntax_and_unbounded_lengths() {
     let (_dir, store) = store();
@@ -114,4 +99,74 @@ fn a_corrupted_line_costs_one_turn_not_the_conversation() {
         loaded,
         vec![Message::user("antes"), Message::user("depois")]
     );
+}
+#[test]
+fn appending_to_a_session_that_fails_admission_does_not_create_a_new_root() {
+    let (_dir, store) = store();
+    store.append("s1", &Message::user("antes")).unwrap();
+    let path = store.path_for("s1").unwrap();
+    let mut record: serde_json::Value =
+        serde_json::from_str(std::fs::read_to_string(&path).unwrap().trim()).unwrap();
+    record.as_object_mut().unwrap().remove("mac");
+    std::fs::write(
+        &path,
+        format!("{}\n", serde_json::to_string(&record).unwrap()),
+    )
+    .unwrap();
+
+    assert!(store.append("s1", &Message::user("nao escrever")).is_err());
+    assert_eq!(
+        store.records("s1").unwrap_err().to_string(),
+        "workspace: registro de sessao v2 sem mac"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn appending_to_a_symlinked_session_is_refused() {
+    use std::os::unix::fs::symlink;
+
+    let (dir, store) = store();
+    let target = dir.path().join("outside.jsonl");
+    let session = store.path_for("s1").unwrap();
+    std::fs::write(&target, "").unwrap();
+    symlink(&target, session).unwrap();
+
+    assert!(store.append("s1", &Message::user("nao escrever")).is_err());
+    assert_eq!(std::fs::read_to_string(target).unwrap(), "");
+}
+
+#[cfg(unix)]
+#[test]
+fn opening_a_symlinked_session_directory_is_refused() {
+    use std::os::unix::fs::symlink;
+
+    let dir = tempfile::tempdir().unwrap();
+    let target = dir.path().join("outside");
+    let sessions = dir.path().join("sessoes");
+    std::fs::create_dir(&target).unwrap();
+    symlink(&target, &sessions).unwrap();
+
+    assert!(Store::open(sessions).is_err());
+}
+
+#[cfg(unix)]
+#[test]
+fn opening_a_session_directory_below_a_symlink_is_refused() {
+    use std::os::unix::fs::symlink;
+
+    let dir = tempfile::tempdir().unwrap();
+    let target = dir.path().join("outside");
+    let link = dir.path().join("link");
+    std::fs::create_dir(&target).unwrap();
+    symlink(&target, &link).unwrap();
+
+    assert!(Store::open(link.join("sessoes")).is_err());
+}
+
+#[test]
+fn session_ids_enforce_the_length_and_character_boundaries() {
+    assert!(validate_id(&"a".repeat(128)).is_ok());
+    assert!(validate_id(&"a".repeat(129)).is_err());
+    assert!(validate_id("bad!").is_err());
 }
