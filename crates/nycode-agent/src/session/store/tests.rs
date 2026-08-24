@@ -196,6 +196,12 @@ fn an_invalid_session_id_is_rejected_before_path_access() {
 }
 
 #[test]
+fn the_longest_valid_session_id_is_accepted() {
+    let (_dir, store) = store();
+    assert!(store.path_for(&"x".repeat(128)).is_ok());
+}
+
+#[test]
 fn malformed_guard_paths_fail_without_io_side_effects() {
     let path = std::path::Path::new("/");
     assert!(super::guard::read_session(path).is_err());
