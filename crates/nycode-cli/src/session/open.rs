@@ -202,6 +202,7 @@ fn copy_into(
             .sync_all()
             .with_context(|| format!("gravar sessao `{id}`"))?;
         drop(dest_file);
+        store.rekey(&id)?;
         Ok(store.load(&id)?)
     })();
     match copied {

@@ -117,6 +117,64 @@ fn every_line_carries_the_format_version() {
 }
 
 #[test]
+fn a_record_copied_to_another_session_is_rejected() {
+    let (_dir, store) = store();
+    store
+        .append("source", &Message::user("nao reutilizar"))
+        .unwrap();
+    let source = std::fs::read_to_string(store.path_for("source").unwrap()).unwrap();
+    std::fs::write(store.path_for("target").unwrap(), source).unwrap();
+
+    assert!(store.records("target").unwrap().is_empty());
+}
+
+#[test]
+fn rekey_discards_blank_future_and_corrupted_lines() {
+    let (_dir, store) = store();
+    store.append("source", &Message::user("preservar")).unwrap();
+    let valid = std::fs::read_to_string(store.path_for("source").unwrap()).unwrap();
+    let future = format!(
+        r#"{{"v":{},"ts":0,"message":{{"role":"user","content":[{{"type":"text","text":"futuro"}}]}}}}"#,
+        FORMAT_VERSION + 1
+    );
+    std::fs::write(
+        store.path_for("target").unwrap(),
+        format!("{valid}\n{future}\n{{nao e json\n"),
+    )
+    .unwrap();
+
+    store.rekey("target").unwrap();
+
+    let rewritten = std::fs::read_to_string(store.path_for("target").unwrap()).unwrap();
+    assert_eq!(rewritten.lines().count(), 1);
+    assert_eq!(
+        store.load("target").unwrap(),
+        vec![Message::user("preservar")]
+    );
+}
+
+#[test]
+fn rekeying_a_missing_session_is_an_error() {
+    let (_dir, store) = store();
+    assert!(store.rekey("nao-existe").is_err());
+}
+
+#[test]
+fn remembering_a_tip_ignores_invalid_and_missing_sessions() {
+    let (_dir, store) = store();
+    store.remember_tip("../fora", "registro");
+    store.remember_tip("ausente", "registro");
+    assert_eq!(store.tip("ausente"), None);
+}
+
+#[test]
+fn blank_session_lines_are_ignored() {
+    let (_dir, store) = store();
+    std::fs::write(store.path_for("vazia").unwrap(), "\n").unwrap();
+    assert!(store.records("vazia").unwrap().is_empty());
+}
+
+#[test]
 fn loading_an_unknown_session_is_an_error_not_an_empty_conversation() {
     // Devolver vazio faria o usuario achar que retomou uma sessao e comecar
     // do zero sem perceber.
@@ -198,7 +256,9 @@ fn an_invalid_session_id_is_rejected_before_path_access() {
 #[test]
 fn the_longest_valid_session_id_is_accepted() {
     let (_dir, store) = store();
-    assert!(store.path_for(&"x".repeat(128)).is_ok());
+    let id = "x".repeat(128);
+    store.append(&id, &Message::user("limite")).unwrap();
+    assert_eq!(store.load(&id).unwrap(), vec![Message::user("limite")]);
 }
 
 #[test]
@@ -245,6 +305,23 @@ fn opening_a_symlinked_session_directory_is_rejected() {
 
     let error = Store::open(&link).unwrap_err().to_string();
     assert!(error.contains("diretorio regular"), "{error}");
+}
+
+#[cfg(unix)]
+#[test]
+fn replacing_a_session_directory_with_a_symlink_is_rejected() {
+    use std::os::unix::fs::symlink;
+
+    let dir = tempfile::tempdir().unwrap();
+    let sessions = dir.path().join("sessions");
+    let target = dir.path().join("target");
+    std::fs::create_dir(&target).unwrap();
+    let store = Store::open(&sessions).unwrap();
+    std::fs::rename(&sessions, dir.path().join("sessions-real")).unwrap();
+    symlink(&target, &sessions).unwrap();
+
+    assert!(store.append("victim", &Message::user("nao")).is_err());
+    assert!(!target.join("victim.jsonl").exists());
 }
 
 #[cfg(unix)]

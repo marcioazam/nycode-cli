@@ -24,11 +24,38 @@ pub(super) fn open_session_for_append(path: &Path) -> Result<std::fs::File> {
         .map_err(|err| Error::Workspace(format!("abrir sessao sem symlink: {err}")))
 }
 
+pub(super) fn open_session_for_rewrite(path: &Path) -> Result<std::fs::File> {
+    open_file(path, &FileMode::Rewrite)
+        .map_err(|err| Error::Workspace(format!("reescrever sessao sem symlink: {err}")))
+}
+
 pub(super) fn read_session(path: &Path) -> io::Result<String> {
     let mut file = open_file(path, &FileMode::Read)?;
     let mut contents = String::new();
     std::io::Read::read_to_string(&mut file, &mut contents)?;
     Ok(contents)
+}
+
+pub(super) fn open_directory(path: &Path) -> io::Result<std::fs::File> {
+    #[cfg(unix)]
+    {
+        use rustix::fs::{Mode, OFlags};
+
+        let descriptor = rustix::fs::open(
+            path,
+            OFlags::RDONLY
+                .union(OFlags::DIRECTORY)
+                .union(OFlags::NOFOLLOW)
+                .union(OFlags::CLOEXEC),
+            Mode::empty(),
+        )
+        .map_err(io::Error::from)?;
+        Ok(std::fs::File::from(descriptor))
+    }
+    #[cfg(not(unix))]
+    {
+        std::fs::File::open(path)
+    }
 }
 
 pub(super) fn validate_id(id: &str) -> Result<()> {
@@ -48,6 +75,7 @@ pub(super) fn validate_id(id: &str) -> Result<()> {
 enum FileMode {
     Read,
     Append,
+    Rewrite,
 }
 
 fn open_file(path: &Path, mode: &FileMode) -> io::Result<std::fs::File> {
@@ -58,13 +86,14 @@ fn open_file(path: &Path, mode: &FileMode) -> io::Result<std::fs::File> {
         let parent = path.parent().ok_or_else(|| {
             io::Error::new(io::ErrorKind::InvalidInput, "sessao sem diretorio pai")
         })?;
-        let directory = std::fs::File::open(parent)?;
+        let directory = open_directory(parent)?;
         let name = path
             .file_name()
             .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "sessao sem nome"))?;
         let flags = match mode {
             FileMode::Read => OFlags::RDONLY,
             FileMode::Append => OFlags::WRONLY.union(OFlags::CREATE).union(OFlags::APPEND),
+            FileMode::Rewrite => OFlags::WRONLY.union(OFlags::TRUNC),
         }
         .union(OFlags::NOFOLLOW)
         .union(OFlags::CLOEXEC);
@@ -83,6 +112,9 @@ fn open_file(path: &Path, mode: &FileMode) -> io::Result<std::fs::File> {
             FileMode::Append => {
                 options.write(true).create(true).append(true);
             }
+            FileMode::Rewrite => {
+                options.write(true).truncate(true);
+            }
         }
         options.open(path)
     }
@@ -96,7 +128,7 @@ fn open_lock(path: &Path) -> io::Result<std::fs::File> {
         let parent = path
             .parent()
             .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "lock sem diretorio pai"))?;
-        let directory = std::fs::File::open(parent)?;
+        let directory = open_directory(parent)?;
         let name = path
             .file_name()
             .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "lock sem nome"))?;

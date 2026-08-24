@@ -36,11 +36,18 @@ impl Context {
         load_or_create_key(&self.dir)
     }
 
-    pub(super) fn sign(&self, record: &Record) -> crate::error::Result<String> {
-        sign_bytes(&self.secret()?, &payload(&self.workspace, record)?)
+    pub(super) fn sign(&self, session_id: &str, record: &Record) -> crate::error::Result<String> {
+        sign_bytes(
+            &self.secret()?,
+            &payload(&self.workspace, session_id, record)?,
+        )
     }
 
-    pub(super) fn admit(&self, records: Vec<Record>) -> crate::error::Result<Vec<Record>> {
+    pub(super) fn admit(
+        &self,
+        session_id: &str,
+        records: Vec<Record>,
+    ) -> crate::error::Result<Vec<Record>> {
         let now = now_millis();
         let secret = self.secret()?;
         let mut admitted = Vec::with_capacity(records.len());
@@ -51,14 +58,20 @@ impl Context {
                     record.v
                 )));
             }
-            if self.acceptable(&record, now, &secret)? {
+            if self.acceptable(session_id, &record, now, &secret)? {
                 admitted.push(record);
             }
         }
         Ok(admitted)
     }
 
-    fn acceptable(&self, record: &Record, now: u64, secret: &[u8]) -> crate::error::Result<bool> {
+    fn acceptable(
+        &self,
+        session_id: &str,
+        record: &Record,
+        now: u64,
+        secret: &[u8],
+    ) -> crate::error::Result<bool> {
         let Some(mac) = record.mac.as_deref() else {
             return Ok(false);
         };
@@ -67,7 +80,7 @@ impl Context {
         }
         let mut unsigned = record.clone();
         unsigned.mac = None;
-        let message = payload(&self.workspace, &unsigned)?;
+        let message = payload(&self.workspace, session_id, &unsigned)?;
         Ok(verify_bytes(secret, &message, mac))
     }
 }
@@ -76,7 +89,16 @@ fn load_or_create_key(dir: &std::path::Path) -> crate::error::Result<Vec<u8>> {
     let path = dir.join(".mac-key");
     match read_key(&path) {
         Ok((key, metadata)) => validate_key(&path, key, &metadata),
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => create_key(dir, getrandom::fill),
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
+            match create_key(dir, getrandom::fill) {
+                Ok(key) => Ok(key),
+                Err(create_err) => match read_key(&path) {
+                    // Outro processo pode ter criado a chave entre as duas leituras.
+                    Ok((key, metadata)) => validate_key(&path, key, &metadata),
+                    Err(_) => Err(create_err),
+                },
+            }
+        }
         Err(err) => Err(crate::error::Error::Workspace(format!(
             "ler chave mac em {}: {err}",
             path.display()
@@ -91,7 +113,7 @@ fn read_key(path: &std::path::Path) -> std::io::Result<(Vec<u8>, std::fs::Metada
     let mut key_file = {
         use rustix::fs::{Mode, OFlags};
 
-        let dir = std::fs::File::open(path.parent().ok_or_else(|| {
+        let dir = super::guard::open_directory(path.parent().ok_or_else(|| {
             std::io::Error::new(std::io::ErrorKind::InvalidInput, "chave mac sem diretorio")
         })?)?;
         let name = path.file_name().ok_or_else(|| {
@@ -195,9 +217,11 @@ fn verify_bytes(key: &[u8], message: &[u8], mac: &str) -> bool {
     verifier.verify_slice(&signature).is_ok()
 }
 
-fn payload(workspace: &str, record: &Record) -> crate::error::Result<Vec<u8>> {
+fn payload(workspace: &str, session_id: &str, record: &Record) -> crate::error::Result<Vec<u8>> {
     let mut message = Vec::new();
     message.extend_from_slice(workspace.as_bytes());
+    message.push(0);
+    message.extend_from_slice(session_id.as_bytes());
     message.push(0);
     message.extend_from_slice(&record.v.to_le_bytes());
     message.extend_from_slice(&record.ts.to_le_bytes());
@@ -241,9 +265,21 @@ mod tests {
 
         assert!(
             !context
-                .acceptable(&record(), now_millis(), &[0u8; 32])
+                .acceptable("s1", &record(), now_millis(), &[0u8; 32])
                 .unwrap()
         );
+    }
+
+    #[test]
+    fn a_context_persists_a_32_byte_secret() {
+        let dir = tempfile::tempdir().unwrap();
+        let sessions = dir.path().join("sessions");
+        std::fs::create_dir_all(&sessions).unwrap();
+        let first = Context::open(&sessions).unwrap().secret().unwrap();
+        let second = Context::open(&sessions).unwrap().secret().unwrap();
+
+        assert_eq!(first.len(), 32);
+        assert_eq!(second, first);
     }
 
     #[test]
@@ -254,11 +290,11 @@ mod tests {
         let context = Context::open(&sessions).unwrap();
         let mut record = record();
         record.ts = now_millis().saturating_add(1_000);
-        record.mac = Some(context.sign(&record).unwrap());
+        record.mac = Some(context.sign("s1", &record).unwrap());
 
         assert!(
             !context
-                .acceptable(&record, now_millis(), &context.secret().unwrap())
+                .acceptable("s1", &record, now_millis(), &context.secret().unwrap())
                 .unwrap()
         );
     }
@@ -274,10 +310,10 @@ mod tests {
         for (age, accepted) in [(TTL_MS, true), (TTL_MS + 1, false)] {
             let mut record = record();
             record.ts = now.saturating_sub(age);
-            record.mac = Some(context.sign(&record).unwrap());
+            record.mac = Some(context.sign("s1", &record).unwrap());
             assert_eq!(
                 context
-                    .acceptable(&record, now, &context.secret().unwrap())
+                    .acceptable("s1", &record, now, &context.secret().unwrap())
                     .unwrap(),
                 accepted
             );
@@ -312,6 +348,20 @@ mod tests {
         std::fs::create_dir(dir.path().join(".mac-key")).unwrap();
 
         assert!(load_or_create_key(dir.path()).is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_non_missing_key_error_is_not_treated_as_an_absent_key() {
+        use std::os::unix::fs::symlink;
+
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("real-key");
+        std::fs::write(&target, [0u8; 32]).unwrap();
+        symlink(target, dir.path().join(".mac-key")).unwrap();
+
+        let error = load_or_create_key(dir.path()).unwrap_err().to_string();
+        assert!(error.contains("ler chave mac"), "{error}");
     }
 
     #[test]
