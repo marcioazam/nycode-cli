@@ -39,6 +39,7 @@ fn file_operations_refuse_symlinked_metadata() {
     symlink(&outside, dir.path().join("sessoes").join("s1.name")).unwrap();
     assert!(store.name("s1").is_err());
     assert!(store.write_name("s1", "nao").is_err());
+    assert_eq!(std::fs::read_to_string(outside).unwrap(), "nao tocar");
 }
 
 #[test]
@@ -138,8 +139,10 @@ fn appending_to_a_session_that_fails_admission_does_not_create_a_new_root() {
         format!("{}\n", serde_json::to_string(&record).unwrap()),
     )
     .unwrap();
+    let before = std::fs::read_to_string(&path).unwrap();
 
     assert!(store.append("s1", &Message::user("nao escrever")).is_err());
+    assert_eq!(std::fs::read_to_string(&path).unwrap(), before);
     assert_eq!(
         store.records("s1").unwrap_err().to_string(),
         "workspace: registro de sessao v2 sem mac"
