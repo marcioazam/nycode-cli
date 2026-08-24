@@ -145,6 +145,8 @@ fn rekey_discards_blank_future_and_corrupted_lines() {
 
     store.rekey("target").unwrap();
 
+    let rewritten = std::fs::read_to_string(store.path_for("target").unwrap()).unwrap();
+    assert_eq!(rewritten.lines().count(), 1);
     assert_eq!(
         store.load("target").unwrap(),
         vec![Message::user("preservar")]
@@ -249,6 +251,14 @@ fn an_invalid_session_id_is_rejected_before_path_access() {
         let error = store.records(id).unwrap_err().to_string();
         assert!(error.contains("recusado"), "{id}: {error}");
     }
+}
+
+#[test]
+fn the_longest_valid_session_id_is_accepted() {
+    let (_dir, store) = store();
+    let id = "x".repeat(128);
+    store.append(&id, &Message::user("limite")).unwrap();
+    assert_eq!(store.load(&id).unwrap(), vec![Message::user("limite")]);
 }
 
 #[test]
