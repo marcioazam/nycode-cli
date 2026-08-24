@@ -15,9 +15,8 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use hmac::{Hmac, KeyInit, Mac};
 use serde_json::{Value, json};
-use sha2::Sha256;
+use sha2::{Digest as _, Sha256};
 
 use crate::agent::{Agent, Silent};
 use crate::backend::Backend;
@@ -79,8 +78,11 @@ impl Task {
         agent
     }
 
-    fn mac(&self, description: &str, exp: u64) -> Result<String> {
-        sign_bytes(&self.mac_key, &envelope_payload(description, exp))
+    fn mac(&self, description: &str, exp: u64) -> String {
+        hex::encode(hmac_sha256(
+            &self.mac_key,
+            &envelope_payload(description, exp),
+        ))
     }
 
     fn envelope_ok(&self, description: &str, envelope: &Value) -> bool {
@@ -94,7 +96,7 @@ impl Task {
         if exp <= now || exp.saturating_sub(now) > ENVELOPE_TTL_MS {
             return false;
         }
-        verify_bytes(&self.mac_key, &envelope_payload(description, exp), mac)
+        mac == self.mac(description, exp)
     }
 }
 
@@ -135,9 +137,7 @@ impl Tool for Task {
         };
         let description = description.to_owned();
         let exp = now_millis().saturating_add(ENVELOPE_TTL_MS);
-        let Ok(mac) = self.mac(&description, exp) else {
-            return input;
-        };
+        let mac = self.mac(&description, exp);
         if let Some(obj) = input.as_object_mut() {
             obj.insert("envelope".into(), json!({ "exp": exp, "mac": mac }));
         }
@@ -193,22 +193,29 @@ fn envelope_payload(description: &str, exp: u64) -> Vec<u8> {
     msg.extend_from_slice(description.as_bytes());
     msg
 }
-fn sign_bytes(key: &[u8], message: &[u8]) -> Result<String> {
-    let mut signer = Hmac::<Sha256>::new_from_slice(key)
-        .map_err(|err| Error::Workspace(format!("iniciar mac: {err}")))?;
-    signer.update(message);
-    Ok(hex::encode(signer.finalize().into_bytes()))
-}
-
-fn verify_bytes(key: &[u8], message: &[u8], mac: &str) -> bool {
-    let Ok(signature) = hex::decode(mac) else {
-        return false;
-    };
-    let Ok(mut verifier) = Hmac::<Sha256>::new_from_slice(key) else {
-        return false;
-    };
-    verifier.update(message);
-    verifier.verify_slice(&signature).is_ok()
+fn hmac_sha256(key: &[u8], msg: &[u8]) -> [u8; 32] {
+    const BLK: usize = 64;
+    let mut key_block = [0u8; BLK];
+    if key.len() > BLK {
+        let digested = Sha256::digest(key);
+        key_block[..32].copy_from_slice(&digested);
+    } else {
+        key_block[..key.len()].copy_from_slice(key);
+    }
+    let mut ipad = [0x36u8; BLK];
+    let mut opad = [0x5cu8; BLK];
+    for (i, byte) in key_block.iter().enumerate() {
+        ipad[i] ^= byte;
+        opad[i] ^= byte;
+    }
+    let mut inner = Sha256::new();
+    inner.update(ipad);
+    inner.update(msg);
+    let inner_hash = inner.finalize();
+    let mut outer = Sha256::new();
+    outer.update(opad);
+    outer.update(inner_hash);
+    outer.finalize().into()
 }
 
 #[cfg(test)]
