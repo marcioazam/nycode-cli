@@ -12,6 +12,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, Result};
 
+use guard::{SessionLock, create_directory_without_symlinks, open_session_for_append, validate_id};
+
+mod guard;
 mod mac;
 mod tree;
 
@@ -81,8 +84,7 @@ impl Store {
     /// Abre o diretório de sessões, criando-o se necessário.
     pub fn open(dir: impl Into<PathBuf>) -> Result<Self> {
         let dir = dir.into();
-        std::fs::create_dir_all(&dir)
-            .map_err(|err| Error::Workspace(format!("sessoes em {}: {err}", dir.display())))?;
+        create_directory_without_symlinks(&dir)?;
         let mac = std::sync::Arc::new(mac::Context::open(&dir));
         Ok(Self {
             dir,
@@ -137,7 +139,7 @@ impl Store {
     pub fn append(&self, id: &str, message: &Message) -> Result<()> {
         let path = self.path_for(id)?;
         let _lock = SessionLock::acquire(&path)?;
-        let parent = self.tip(id);
+        let parent = self.tip(id)?;
         self.append_child_locked(id, parent.as_deref(), message)?;
         Ok(())
     }
@@ -177,10 +179,7 @@ impl Store {
         let line = serde_json::to_string(&record)
             .map_err(|err| Error::Workspace(format!("serializar registro: {err}")))?;
 
-        let mut file = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(self.path_for(id)?)
+        let mut file = open_session_for_append(&self.path_for(id)?)
             .map_err(|err| Error::Workspace(format!("abrir sessao {id}: {err}")))?;
 
         writeln!(file, "{line}")
@@ -200,15 +199,34 @@ impl Store {
     /// Consulta o cursor antes do disco. Quem grava é este mesmo `Store`, então
     /// depois da primeira gravação ele já sabe onde está a ponta e não precisa
     /// reler o arquivo para redescobri-la.
-    #[must_use]
-    pub fn tip(&self, id: &str) -> Option<String> {
+    pub fn tip(&self, id: &str) -> Result<Option<String>> {
         if let Some(known) = self.remembered_tip(id) {
-            return Some(known);
+            return Ok(Some(known));
         }
 
-        let tip = self.records(id).ok()?.last()?.id.clone()?;
+        let path = self.path_for(id)?;
+        match std::fs::symlink_metadata(&path) {
+            Ok(metadata) if metadata.file_type().is_symlink() => {
+                return Err(Error::Workspace(format!(
+                    "sessao `{id}` nao e um arquivo regular"
+                )));
+            }
+            Ok(_) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+            Err(error) => {
+                return Err(Error::Workspace(format!("verificar sessao {id}: {error}")));
+            }
+        }
+
+        let Some(tip) = self
+            .records(id)?
+            .last()
+            .and_then(|record| record.id.clone())
+        else {
+            return Ok(None);
+        };
         self.remember_tip(id, &tip);
-        Some(tip)
+        Ok(Some(tip))
     }
 
     /// Todos os registros legíveis do arquivo, na ordem em que foram gravados.
@@ -308,41 +326,6 @@ impl Store {
     pub fn dir(&self) -> &Path {
         &self.dir
     }
-}
-
-struct SessionLock {
-    _file: std::fs::File,
-}
-
-impl SessionLock {
-    fn acquire(path: &Path) -> Result<Self> {
-        let lock_path = path.with_extension("lock");
-        let file = std::fs::OpenOptions::new()
-            .create(true)
-            .truncate(false)
-            .read(true)
-            .write(true)
-            .open(&lock_path)
-            .map_err(|err| Error::Workspace(format!("abrir lock de sessao: {err}")))?;
-        #[cfg(unix)]
-        rustix::fs::flock(&file, rustix::fs::FlockOperation::LockExclusive)
-            .map_err(|err| Error::Workspace(format!("bloquear sessao: {err}")))?;
-        Ok(Self { _file: file })
-    }
-}
-
-fn validate_id(id: &str) -> Result<()> {
-    if id.is_empty()
-        || id.len() > 128
-        || !id
-            .chars()
-            .all(|character| character.is_ascii_alphanumeric() || matches!(character, '-' | '_'))
-    {
-        return Err(Error::Workspace(format!(
-            "identificador de sessao `{id}` recusado"
-        )));
-    }
-    Ok(())
 }
 
 /// Identificador de registro, único dentro de um arquivo.

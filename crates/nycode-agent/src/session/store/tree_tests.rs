@@ -95,7 +95,7 @@ fn branching_from_the_middle_does_not_rewrite_anything() {
     // registros passam a compartilhar o mesmo pai.
     let (_dir, store) = store();
     store.append("s", &Message::user("comum")).unwrap();
-    let fork_point = store.tip("s").unwrap();
+    let fork_point = store.tip("s").unwrap().unwrap();
     store.append("s", &Message::user("ramo A")).unwrap();
 
     let before = std::fs::read_to_string(store.path_for("s").unwrap()).unwrap();
@@ -113,7 +113,7 @@ fn the_active_path_is_the_one_that_leads_to_the_last_record() {
     // fossem parte da conversa.
     let (_dir, store) = store();
     store.append("s", &Message::user("comum")).unwrap();
-    let fork_point = store.tip("s").unwrap();
+    let fork_point = store.tip("s").unwrap().unwrap();
     store.append("s", &Message::user("ramo A")).unwrap();
     store
         .append_child("s", Some(&fork_point), &Message::user("ramo B"))
@@ -127,9 +127,9 @@ fn an_abandoned_branch_is_still_readable_by_its_own_tip() {
     // E o que torna a ramificacao util: o ramo antigo nao se perde.
     let (_dir, store) = store();
     store.append("s", &Message::user("comum")).unwrap();
-    let fork_point = store.tip("s").unwrap();
+    let fork_point = store.tip("s").unwrap().unwrap();
     store.append("s", &Message::user("ramo A")).unwrap();
-    let branch_a = store.tip("s").unwrap();
+    let branch_a = store.tip("s").unwrap().unwrap();
     store
         .append_child("s", Some(&fork_point), &Message::user("ramo B"))
         .unwrap();
@@ -164,7 +164,7 @@ fn a_branch_notice_does_not_drop_the_shared_prefix() {
     // caminho. Parar a reconstrução nele apagaria a tarefa original.
     let (_dir, store) = store();
     store.append("s", &Message::user("comum")).unwrap();
-    let fork = store.tip("s").unwrap();
+    let fork = store.tip("s").unwrap().unwrap();
     store.append("s", &Message::user("exploracao")).unwrap();
     store
         .append_child(
@@ -194,7 +194,7 @@ fn a_branch_notice_does_not_drop_the_shared_prefix() {
 fn a_branch_continues_from_where_it_was_resumed() {
     let (_dir, store) = store();
     store.append("s", &Message::user("comum")).unwrap();
-    let fork_point = store.tip("s").unwrap();
+    let fork_point = store.tip("s").unwrap().unwrap();
     store.append("s", &Message::user("ramo A")).unwrap();
     store
         .append_child("s", Some(&fork_point), &Message::user("ramo B"))
@@ -233,9 +233,13 @@ fn appending_to_a_v1_session_keeps_the_legacy_error_explicit() {
     ];
     std::fs::write(&path, format!("{}\n", lines.join("\n"))).unwrap();
 
-    store
-        .append("antiga", &Message::user("tres"))
-        .expect("acrescentar a uma sessao v1");
+    assert_eq!(
+        store
+            .append("antiga", &Message::user("tres"))
+            .unwrap_err()
+            .to_string(),
+        "workspace: registro de sessao v1 sem mac"
+    );
 
     assert!(store.load("antiga").is_err());
 }
@@ -251,7 +255,13 @@ fn appending_repeatedly_to_a_v1_session_keeps_the_legacy_error_explicit() {
     .unwrap();
 
     for texto in ["dois", "tres"] {
-        store.append("antiga", &Message::user(texto)).unwrap();
+        assert_eq!(
+            store
+                .append("antiga", &Message::user(texto))
+                .unwrap_err()
+                .to_string(),
+            "workspace: registro de sessao v1 sem mac"
+        );
     }
 
     assert!(store.load("antiga").is_err());
@@ -321,7 +331,7 @@ fn a_cycle_in_the_parents_does_not_hang_the_read() {
 #[test]
 fn the_tip_of_a_session_that_does_not_exist_is_nothing() {
     let (_dir, store) = store();
-    assert_eq!(store.tip("nao-existe"), None);
+    assert_eq!(store.tip("nao-existe").unwrap(), None);
 }
 
 #[test]
