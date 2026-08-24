@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, Result};
 
+mod mac;
 mod tree;
 
 /// Versão do formato de registro.
@@ -38,6 +39,8 @@ pub struct Record {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parent_id: Option<String>,
     pub message: Message,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mac: Option<String>,
 }
 
 /// Uma sessão no disco.
@@ -66,6 +69,7 @@ pub struct Store {
     /// de o cursor existir.
     #[cfg(test)]
     reads: std::sync::Arc<std::sync::atomic::AtomicUsize>,
+    mac: std::sync::Arc<mac::Context>,
 }
 
 impl Store {
@@ -74,11 +78,13 @@ impl Store {
         let dir = dir.into();
         std::fs::create_dir_all(&dir)
             .map_err(|err| Error::Workspace(format!("sessoes em {}: {err}", dir.display())))?;
+        let mac = std::sync::Arc::new(mac::Context::open(&dir)?);
         Ok(Self {
             dir,
             tips: std::sync::Arc::default(),
             #[cfg(test)]
             reads: std::sync::Arc::default(),
+            mac,
         })
     }
 
@@ -126,13 +132,15 @@ impl Store {
         message: &Message,
     ) -> Result<String> {
         let record_id = new_id();
-        let record = Record {
+        let mut record = Record {
             v: FORMAT_VERSION,
             ts: now_millis(),
             id: Some(record_id.clone()),
             parent_id: parent_id.map(ToOwned::to_owned),
             message: message.clone(),
+            mac: None,
         };
+        record.mac = Some(self.mac.sign(&record)?);
         let line = serde_json::to_string(&record)
             .map_err(|err| Error::Workspace(format!("serializar registro: {err}")))?;
 
@@ -207,7 +215,7 @@ impl Store {
                 }
             }
         }
-        Ok(records)
+        self.mac.admit(records)
     }
 
     /// O caminho da raiz até um registro, seguindo os pais.
@@ -462,7 +470,6 @@ mod tests {
         }
         assert_eq!(store.latest().unwrap().unwrap().id, "0000000002");
     }
-
     #[test]
     fn an_empty_store_has_no_latest_session() {
         let (_dir, store) = store();
