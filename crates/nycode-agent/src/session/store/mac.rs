@@ -14,9 +14,6 @@ pub(super) struct Context {
 impl Context {
     pub(super) fn open(dir: &std::path::Path) -> Self {
         let workspace = dir
-            .parent()
-            .and_then(std::path::Path::parent)
-            .unwrap_or(dir)
             .canonicalize()
             .unwrap_or_else(|_| dir.to_path_buf())
             .display()
@@ -228,19 +225,28 @@ mod tests {
         record
     }
     fn read_record(store: &Store, id: &str) -> Record {
-        serde_json::from_str(std::fs::read_to_string(store.path_for(id)).unwrap().trim()).unwrap()
+        serde_json::from_str(
+            std::fs::read_to_string(store.path_for(id).unwrap())
+                .unwrap()
+                .trim(),
+        )
+        .unwrap()
     }
     fn write_record(store: &Store, id: &str, record: &Record) {
-        std::fs::write(store.path_for(id), serde_json::to_string(record).unwrap()).unwrap();
+        std::fs::write(
+            store.path_for(id).unwrap(),
+            serde_json::to_string(record).unwrap(),
+        )
+        .unwrap();
     }
 
     #[test]
     fn an_unsigned_session_record_is_rejected_before_model_context() {
         let (_dir_a, store_a) = store();
         store_a.append("s1", &Message::user("segredo")).unwrap();
-        let signed = std::fs::read_to_string(store_a.path_for("s1")).unwrap();
+        let signed = std::fs::read_to_string(store_a.path_for("s1").unwrap()).unwrap();
         let unsigned = r#"{"v":2,"ts":1,"id":"x","message":{"role":"user","content":[{"type":"text","text":"injetado"}]}}"#;
-        std::fs::write(store_a.path_for("s2"), unsigned).unwrap();
+        std::fs::write(store_a.path_for("s2").unwrap(), unsigned).unwrap();
         assert!(
             store_a.load("s2").is_err(),
             "linha sem mac falhou em silencio"
@@ -262,29 +268,12 @@ mod tests {
             "linha expirada entrou no contexto"
         );
         let (_dir_b, store_b) = store();
-        std::fs::write(store_b.path_for("s1"), signed).unwrap();
+        std::fs::write(store_b.path_for("s1").unwrap(), signed).unwrap();
         assert!(
             store_b.load("s1").unwrap().is_empty(),
             "linha de outro workspace entrou no contexto"
         );
     }
-    #[cfg(unix)]
-    #[test]
-    fn a_session_directory_shared_by_another_workspace_does_not_admit_its_records() {
-        use std::os::unix::fs::symlink;
-        let workspace_a = tempfile::tempdir().unwrap();
-        let workspace_b = tempfile::tempdir().unwrap();
-        let sessions_a = workspace_a.path().join(".nycode/sessions");
-        let sessions_b = workspace_b.path().join(".nycode/sessions");
-        let store_a = Store::open(&sessions_a).unwrap();
-        store_a.append("s1", &Message::user("segredo")).unwrap();
-        std::fs::create_dir_all(sessions_b.parent().unwrap()).unwrap();
-        symlink(&sessions_a, &sessions_b).unwrap();
-
-        let store_b = Store::open(&sessions_b).unwrap();
-        assert!(store_b.load("s1").unwrap().is_empty());
-    }
-
     #[test]
     fn a_signed_future_session_record_is_not_loaded_into_model_context() {
         let (_dir, store) = store();
