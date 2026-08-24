@@ -90,9 +90,10 @@ fale o protocolo que os editores de 2026 já falam.
   cancelamento, bloco de raciocínio assinado por outro modelo, chamada de
   ferramenta sem resposta, ou imagem para um modelo sem visão.
 - **FR-11** Abandonar um ramo da árvore de sessão registra o que aconteceu nele.
-- **FR-12** As instruções de projeto são lidas também dos diretórios ancestrais e
-  do diretório de configuração do usuário, e um arquivo de override substitui as
-  demais camadas naquele diretório sem afetar as outras.
+- **FR-12** As instruções de projeto são descobertas também dos diretórios
+  ancestrais e do diretório de configuração do usuário, e um arquivo de override
+  substitui as demais camadas naquele diretório sem afetar as outras. Conteúdo do
+  workspace só entra no prompt após `--trust-workspace-instructions`.
 
 ### Ferramentas
 

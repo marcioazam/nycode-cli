@@ -1,0 +1,34 @@
+name: Bug
+description: Relate um comportamento reproduzivel do nycode.
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Comportamento observado
+      description: O que aconteceu e qual era o resultado esperado?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproducao minima
+      description: Comando, entrada e ambiente sem credenciais ou dados privados.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Versao
+      placeholder: v0.1.0 ou commit
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Seguranca
+      options:
+        - label: Removi tokens, chaves, sessoes e dados privados.
+          required: true

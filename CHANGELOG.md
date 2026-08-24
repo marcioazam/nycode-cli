@@ -8,6 +8,20 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ### Adicionado
 
+- **Fronteira de confiança do prompt reforçada.** Arquivos de sistema, append,
+  instruções e skills do workspace não entram no system prompt sem
+  `--trust-workspace-instructions`; marcadores textuais não são tratados como
+  fronteira de segurança. A matriz de migração para SOTA-2026 v1.4.0 também foi registrada em
+  [`docs/CONFORMANCE-MATRIX.md`](docs/CONFORMANCE-MATRIX.md) (AGT-01, ADR-0032).
+
+- **Registros de sessão passam a exigir MAC válido e TTL.** Linhas sem MAC,
+  expiradas, futuras ou de outro workspace não entram no contexto do modelo;
+  linhas sem MAC produzem erro explícito (AGT-07).
+
+- **O session store recusa ids inseguros e symlinks, e serializa append
+  concorrente por sessão.** A ponta em cache é invalidada quando outra
+  instância altera o arquivo (AGT-07).
+
 - **Sessão nomeada, com id escolhido, fork e import.** `--name`,
   `--session-id`, `--fork`, `--import`; `/session`, `/copy`, `/new`, `/reload` (B27, B28, FR-22).
 

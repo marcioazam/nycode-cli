@@ -31,58 +31,58 @@
 set -euo pipefail
 
 readonly MAX_COGNITIVE=15
-readonly MAX_CYCLOMATIC=15
+readonly MAX_CYCLOMATIC=10
 
 # --- Funcoes puras, sem o binario codemetrics ---------------------------------
 
 read_baseline() { # read_baseline <arquivo> -> preenche baseline_cognitive/baseline_cyclomatic (globais)
-  local file="$1" path func cog cyc
-  while IFS=' ' read -r path func cog cyc; do
-    [[ -z "${path}" || "${path}" == \#* ]] && continue
-    baseline_cognitive["${path}"$'\t'"${func}"]="${cog}"
-    baseline_cyclomatic["${path}"$'\t'"${func}"]="${cyc}"
-  done <"${file}"
+	local file="$1" path func cog cyc
+	while IFS=' ' read -r path func cog cyc; do
+		[[ -z "${path}" || "${path}" == \#* ]] && continue
+		baseline_cognitive["${path}"$'\t'"${func}"]="${cog}"
+		baseline_cyclomatic["${path}"$'\t'"${func}"]="${cyc}"
+	done <"${file}"
 }
 
 evaluate() { # evaluate <json-de-metricas-codemetrics> -> imprime falhas em stderr, ecoa a contagem no stdout
-  local json="$1"
-  local failures=0
-  local -A seen_baseline
-  local file func cog cyc key
+	local json="$1"
+	local failures=0
+	local -A seen_baseline
+	local file func cog cyc key
 
-  while IFS=$'\t' read -r file func cog cyc; do
-    key="${file}"$'\t'"${func}"
-    if [[ -n "${baseline_cognitive[${key}]+x}" ]]; then
-      seen_baseline["${key}"]=1
-      local base_cog="${baseline_cognitive[${key}]}" base_cyc="${baseline_cyclomatic[${key}]}"
-      if ((cog <= MAX_COGNITIVE && cyc <= MAX_CYCLOMATIC)); then
-        echo "  FALHA: baseline cita ${file}::${func}, que caiu para dentro do teto — remova a linha" >&2
-        failures=$((failures + 1))
-      elif ((cog > base_cog || cyc > base_cyc)); then
-        echo "  FALHA: ${file}::${func} cresceu (cognitiva ${cog}/${base_cog}, ciclomatica ${cyc}/${base_cyc}) acima do baseline registrado" >&2
-        failures=$((failures + 1))
-      fi
-    elif ((cog > MAX_COGNITIVE || cyc > MAX_CYCLOMATIC)); then
-      echo "  FALHA: ${file}::${func} tem complexidade cognitiva ${cog} / ciclomatica ${cyc}, acima do teto (${MAX_COGNITIVE}/${MAX_CYCLOMATIC}), sem entrada no baseline" >&2
-      failures=$((failures + 1))
-    fi
-  done < <(jq -r '.[] | [.file, .function, .cognitive, .cyclomatic] | @tsv' "${json}")
+	while IFS=$'\t' read -r file func cog cyc; do
+		key="${file}"$'\t'"${func}"
+		if [[ -n "${baseline_cognitive[${key}]+x}" ]]; then
+			seen_baseline["${key}"]=1
+			local base_cog="${baseline_cognitive[${key}]}" base_cyc="${baseline_cyclomatic[${key}]}"
+			if ((cog <= MAX_COGNITIVE && cyc <= MAX_CYCLOMATIC)); then
+				echo "  FALHA: baseline cita ${file}::${func}, que caiu para dentro do teto — remova a linha" >&2
+				failures=$((failures + 1))
+			elif ((cog > base_cog || cyc > base_cyc)); then
+				echo "  FALHA: ${file}::${func} cresceu (cognitiva ${cog}/${base_cog}, ciclomatica ${cyc}/${base_cyc}) acima do baseline registrado" >&2
+				failures=$((failures + 1))
+			fi
+		elif ((cog > MAX_COGNITIVE || cyc > MAX_CYCLOMATIC)); then
+			echo "  FALHA: ${file}::${func} tem complexidade cognitiva ${cog} / ciclomatica ${cyc}, acima do teto (${MAX_COGNITIVE}/${MAX_CYCLOMATIC}), sem entrada no baseline" >&2
+			failures=$((failures + 1))
+		fi
+	done < <(jq -r '.[] | [.file, .function, .cognitive, .cyclomatic] | @tsv' "${json}")
 
-  for key in "${!baseline_cognitive[@]}"; do
-    [[ -n "${seen_baseline[${key}]+x}" ]] && continue
-    IFS=$'\t' read -r file func <<<"${key}"
-    echo "  FALHA: baseline cita ${file}::${func}, que sumiu — remova a linha" >&2
-    failures=$((failures + 1))
-  done
+	for key in "${!baseline_cognitive[@]}"; do
+		[[ -n "${seen_baseline[${key}]+x}" ]] && continue
+		IFS=$'\t' read -r file func <<<"${key}"
+		echo "  FALHA: baseline cita ${file}::${func}, que sumiu — remova a linha" >&2
+		failures=$((failures + 1))
+	done
 
-  echo "${failures}"
+	echo "${failures}"
 }
 
 declare -gA baseline_cognitive baseline_cyclomatic
 
 # Sourced pelo teste para reusar read_baseline/evaluate contra JSON sintetico.
 if [[ "${1:-}" == "--source-only" ]]; then
-  return 0 2>/dev/null || exit 0
+	return 0 2>/dev/null || exit 0
 fi
 
 # --- Execucao real ------------------------------------------------------------
@@ -94,17 +94,17 @@ TARGET="${1:-${ROOT}}"
 BASELINE="${2:-${ROOT}/scripts/complexity-baseline.txt}"
 
 if [[ ! -d "${TARGET}/crates" ]]; then
-  echo "complexity-gate: raiz nao encontrada: ${TARGET}" >&2
-  exit 2
+	echo "complexity-gate: raiz nao encontrada: ${TARGET}" >&2
+	exit 2
 fi
 if [[ ! -f "${BASELINE}" ]]; then
-  echo "complexity-gate: baseline nao encontrado: ${BASELINE}" >&2
-  exit 2
+	echo "complexity-gate: baseline nao encontrado: ${BASELINE}" >&2
+	exit 2
 fi
 if ! command -v codemetrics >/dev/null 2>&1; then
-  echo "complexity-gate: \`codemetrics\` nao encontrado." >&2
-  echo "  instale: https://github.com/richardwooding/codemetrics/releases" >&2
-  exit 1
+	echo "complexity-gate: \`codemetrics\` nao encontrado." >&2
+	echo "  instale: https://github.com/richardwooding/codemetrics/releases" >&2
+	exit 1
 fi
 
 read_baseline "${BASELINE}"
@@ -116,9 +116,9 @@ trap 'rm -f "${json_tmp}"' EXIT
 failures="$(evaluate "${json_tmp}")"
 
 if ((failures > 0)); then
-  echo >&2
-  echo "complexity-gate: ${failures} problema(s). Gate fecha." >&2
-  exit 1
+	echo >&2
+	echo "complexity-gate: ${failures} problema(s). Gate fecha." >&2
+	exit 1
 fi
 
 echo "complexity-gate: nenhuma funcao acima do teto sem baseline valido."

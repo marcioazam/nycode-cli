@@ -1,0 +1,18 @@
+---
+paths:
+  - "crates/**"
+  - "scripts/coverage*"
+  - "scripts/coverage-exemptions.txt"
+---
+
+# Cobertura (NFR-5)
+
+Pisos, relatório fresco e a proibição de `below-floor` vivem no
+[`AGENTS.md`](../../AGENTS.md) e nos ADR-0003/ADR-0010. Esta regra **cita**,
+não copia números.
+
+- Meça de novo depois de editar código. Ausência do relatório não é aprovação.
+- `no-statements` não dispensa arquivo que ganhou linha instrumentada.
+- Código intestável é costura (injetar destino/relógio), não exemption.
+- Cubra o comportamento, não a linha.
+- Não edite `scripts/coverage-exemptions.txt` para passar no gate.
