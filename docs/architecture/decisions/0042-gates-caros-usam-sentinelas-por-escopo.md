@@ -15,7 +15,7 @@ O job `changes` classifica o diff contra a base real. Os jobs `perf`, `parity`
 e `docker` continuam sempre presentes, mas executam a medição completa apenas
 quando seu escopo muda; caso contrário, concluem como sentinela explícita.
 `push` e `merge_group` sempre executam os gates completos. O gate de idade de
-dependência só consulta crates.io quando `Cargo.lock` muda.
+dependência só consulta crates.io quando `Cargo.toml` ou `Cargo.lock` muda.
 
 ## Consequências
 

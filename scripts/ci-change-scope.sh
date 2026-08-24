@@ -17,7 +17,7 @@ scope_needs_run() { # scope_needs_run <escopo>, caminhos via stdin
 		docker:Dockerfile | docker:.dockerignore | docker:Cargo.toml | docker:Cargo.lock | docker:crates/* | docker:scripts/artifact/* | docker:scripts/artifact-vex.txt)
 			matched=true
 			;;
-		dependency-age:Cargo.lock)
+		dependency-age:Cargo.toml | dependency-age:Cargo.lock)
 			matched=true
 			;;
 		rust:crates/* | rust:Cargo.toml | rust:Cargo.lock)
