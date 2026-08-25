@@ -315,7 +315,12 @@ mod tests {
 
     #[test]
     fn the_schema_requires_a_command() {
-        assert_eq!(Bash::default().input_schema()["required"][0], "command");
-        assert_eq!(Bash::default().name(), "bash");
+        let bash = Bash::default();
+        let schema = bash.input_schema();
+
+        assert_eq!(schema["required"][0], "command");
+        assert_eq!(bash.name(), "bash");
+        assert!(bash.description().contains("shell"));
+        assert_eq!(schema["properties"]["command"]["type"], "string");
     }
 }
