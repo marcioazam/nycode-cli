@@ -385,6 +385,26 @@ fn a_declaration_names_the_hook_and_is_identified_by_its_content() {
     );
 }
 
+#[tokio::test]
+async fn a_hook_changed_after_discovery_is_not_executed() {
+    let root = hook(".nycode/hooks", Event::PreToolUse, "echo antes");
+    let hooks = Hooks::discover(root.path());
+
+    write_hook(
+        root.path(),
+        ".nycode/hooks",
+        Event::PreToolUse,
+        "echo depois",
+    );
+
+    assert!(
+        hooks
+            .fire(Event::PreToolUse, &payload("bash"))
+            .await
+            .is_none()
+    );
+}
+
 #[test]
 fn a_workspace_without_hooks_declares_nothing_to_consent_to() {
     let root = tempfile::tempdir().unwrap();
