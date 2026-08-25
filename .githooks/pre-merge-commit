@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# CI local completo antes de um merge.
+#
+# Merge e a fronteira depois da qual o erro deixa de ser barato: o que entra na
+# linha principal passa a ser o que todo mundo — humano e agente — assume como
+# base. Por isso aqui e a sequencia inteira, e nao o nivel rapido.
+#
+# O hook RODA o CI; ele nao confia em resultado anterior. Um verde de dez
+# minutos atras pode ser de outra arvore, e um selo que ninguem confere e a
+# forma mais educada de nao ter gate nenhum.
+#
+# Nota sobre alcance: o `pre-merge-commit` nao dispara em merge fast-forward,
+# porque ali nao ha commit de merge a criar. E aceitavel: um fast-forward move a
+# referencia para commits que ja passaram pelo `pre-commit`, e o `pre-push`
+# fecha o caso quando houver remote.
+#
+# Ativado por `git config core.hooksPath .githooks`.
+set -euo pipefail
+exec "$(git rev-parse --show-toplevel)/scripts/ci-local.sh" --full

@@ -15,8 +15,8 @@ use std::process::Stdio;
 use std::time::Duration;
 
 use super::capture::Finished;
-use crate::policy::environment::Allowlist;
-use crate::policy::sandbox::{self, Confinement};
+use crate::policy::confinement::environment::Allowlist;
+use crate::policy::confinement::sandbox::{self, Confinement};
 
 /// Teto de tempo de um comando.
 ///
@@ -115,7 +115,7 @@ impl Launch {
         self.environment.apply(&mut command);
         // Líder de um grupo próprio: terminar o comando é terminar o que ele
         // iniciou, e não só o processo direto.
-        crate::policy::process::detach(&mut command);
+        crate::policy::confinement::process::detach(&mut command);
 
         // A ligação é deliberada: o `Timeout` é largado ao fim desta instrução,
         // e é esse drop que termina o comando. Deixá-lo dentro do `match`

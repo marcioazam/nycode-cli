@@ -9,8 +9,8 @@ use std::time::Duration;
 use async_trait::async_trait;
 use serde_json::{Value, json};
 
-use crate::policy::environment::Allowlist;
-use crate::policy::sandbox::Confinement;
+use crate::policy::confinement::environment::Allowlist;
+use crate::policy::confinement::sandbox::Confinement;
 use crate::tool::{Tool, ToolContext, ToolOutput};
 
 mod capture;
@@ -99,7 +99,7 @@ impl Tool for Bash {
 #[allow(clippy::unwrap_used, clippy::panic)]
 mod tests {
     use super::*;
-    use crate::policy::sandbox;
+    use crate::policy::confinement::sandbox;
 
     fn workspace() -> (tempfile::TempDir, ToolContext) {
         let dir = tempfile::tempdir().unwrap();
@@ -315,7 +315,12 @@ mod tests {
 
     #[test]
     fn the_schema_requires_a_command() {
-        assert_eq!(Bash::default().input_schema()["required"][0], "command");
-        assert_eq!(Bash::default().name(), "bash");
+        let bash = Bash::default();
+        let schema = bash.input_schema();
+
+        assert_eq!(schema["required"][0], "command");
+        assert_eq!(bash.name(), "bash");
+        assert!(bash.description().contains("shell"));
+        assert_eq!(schema["properties"]["command"]["type"], "string");
     }
 }
