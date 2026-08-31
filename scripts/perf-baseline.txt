@@ -35,7 +35,7 @@
 
 competitor       = codex-cli
 version          = 0.147.0
-measured_at      = 2026-08-17
+measured_at      = 2026-08-31
 source_url       = https://github.com/openai/codex/releases/download/rust-v0.147.0/codex-x86_64-unknown-linux-musl.tar.gz
 artifact_sha256  = 0246e2e773834e07f0fb5249ed6ebad12e4591e608f8c7bb97dd6a9690544c36
 
@@ -56,6 +56,6 @@ artifact_sha256  = 0246e2e773834e07f0fb5249ed6ebad12e4591e608f8c7bb97dd6a9690544
 # As outras duas metricas nao dependem de estimador. RSS variou 21892 a 22212 KB
 # e o tamanho do binario e exato.
 
-startup_fastest_us = 7086
+startup_fastest_us = 6829
 peak_rss_kb        = 22212
 binary_bytes       = 258278208
