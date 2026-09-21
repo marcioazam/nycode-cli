@@ -6,6 +6,13 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 
 ## [Não lançado]
 
+### Alterado
+
+- **O ROADMAP deixa de tratar a paridade real como bloqueada.** A Frente 0
+  fechou o instrumento em modo completo no CI; o que resta das Ondas 2 a 5
+  da spec 002 é produto. `ARCHITECTURE.md` deixa de chamar a TUI de FR-1
+  pendente — o renderizador já está no binário desde a Onda A.
+
 ### Adicionado
 
 - **Fronteira de confiança do prompt reforçada.** Arquivos de sistema, append,
@@ -35,6 +42,10 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
   permissão; nome desconhecido recusa a sessão (B8, B25, FR-18).
 
 ### Alterado
+
+- **O teto de tamanho de PR assistido por IA conta apenas código.** O limite
+  passa a ser 800 linhas e 25 arquivos de código; Markdown, texto e demais
+  documentos ficam fora da contagem (`GATE-11`/`AI-01`).
 
 - **O consentimento MCP fixa também a definição que o servidor declara.**
   Depois do handshake o conjunto é pinado; troca pede de novo (C6,
