@@ -402,3 +402,6 @@ fn now_millis() -> u64 {
 
 #[cfg(test)]
 mod tree_tests;
+
+#[cfg(test)]
+mod tests;
