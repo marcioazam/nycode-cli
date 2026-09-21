@@ -5,13 +5,13 @@
 use super::{Event, Hooks, Payload};
 
 /// Escreve um hook executável e devolve a raiz do workspace.
-fn hook(dir: &str, event: Event, body: &str) -> tempfile::TempDir {
+pub(super) fn hook(dir: &str, event: Event, body: &str) -> tempfile::TempDir {
     let root = tempfile::tempdir().unwrap();
     write_hook(root.path(), dir, event, body);
     root
 }
 
-fn write_hook(root: &std::path::Path, dir: &str, event: Event, body: &str) {
+pub(super) fn write_hook(root: &std::path::Path, dir: &str, event: Event, body: &str) {
     let path = root.join(dir).join(event.filename());
     std::fs::create_dir_all(path.parent().unwrap()).unwrap();
     std::fs::write(&path, format!("#!/bin/sh\n{body}\n")).unwrap();
@@ -23,7 +23,7 @@ fn write_hook(root: &std::path::Path, dir: &str, event: Event, body: &str) {
     }
 }
 
-fn payload(tool: &str) -> Payload {
+pub(super) fn payload(tool: &str) -> Payload {
     Payload::for_call(
         tool,
         &serde_json::json!({ "command": "git push" }),

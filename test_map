@@ -71,6 +71,7 @@ Arquivos de teste dedicados (mod *_test;):
   crates/nycode-agent/src/compaction_test.rs
   crates/nycode-agent/src/outcome_test.rs
   crates/nycode-agent/src/policy/hooks/hooks_test.rs
+  crates/nycode-agent/src/policy/hooks/toctou_test.rs
   crates/nycode-agent/src/tools/task_test.rs
 
 Testes de integracao:

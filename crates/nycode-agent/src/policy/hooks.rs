@@ -59,6 +59,8 @@ const FIRED: &[Event] = &[
 pub struct Hooks {
     /// Executável por evento. O escopo mais específico vence.
     scripts: std::collections::BTreeMap<&'static str, PathBuf>,
+    /// Impressão aprovada no momento da descoberta, para fechar o rug pull.
+    fingerprints: std::collections::BTreeMap<&'static str, String>,
     root: PathBuf,
     timeout: Duration,
 }
@@ -78,9 +80,14 @@ impl Hooks {
                 }
             }
         }
+        let fingerprints = scripts
+            .iter()
+            .map(|(event, path)| (*event, fingerprint(event, path)))
+            .collect();
 
         Self {
             scripts,
+            fingerprints,
             root: root.to_path_buf(),
             timeout: TIMEOUT,
         }
@@ -154,11 +161,26 @@ impl Hooks {
     /// bloqueia: falhar aberto é a decisão do ADR-0009.
     pub async fn fire(&self, event: Event, payload: &Payload) -> Option<Response> {
         let program = self.scripts.get(event.filename())?;
+        let expected = self.fingerprints.get(event.filename())?;
+        if fingerprint(event.filename(), program) != *expected {
+            tracing::warn!(hook = %program.display(), "hook mudou depois da autorizacao");
+            return None;
+        }
 
         let body = serde_json::to_string(payload).ok()?;
         let stdout = spawn(program, &self.root, body, self.timeout).await?;
         parse(&stdout, program)
     }
+}
+
+fn fingerprint(event: &str, path: &Path) -> String {
+    let content = std::fs::read(path).unwrap_or_default();
+    crate::policy::trust::Declaration::covering(
+        event,
+        path.display().to_string(),
+        String::from_utf8_lossy(&content),
+    )
+    .fingerprint()
 }
 
 /// Executa o hook e devolve o stdout, cortando no prazo.
@@ -384,3 +406,5 @@ fn is_executable(path: &Path) -> bool {
 
 #[cfg(test)]
 mod hooks_test;
+#[cfg(test)]
+mod toctou_test;
