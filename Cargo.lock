@@ -1794,6 +1794,7 @@ dependencies = [
  "nycode-auth",
  "nycode-mcp",
  "nycode-tui",
+ "rustix",
  "serde",
  "serde_json",
  "tempfile",
