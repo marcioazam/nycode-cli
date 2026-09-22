@@ -418,3 +418,53 @@ fn an_append_waits_for_the_session_lock() {
         .unwrap();
     thread.join().unwrap();
 }
+
+#[test]
+fn opening_a_session_directory_under_a_file_is_rejected() {
+    let dir = tempfile::tempdir().unwrap();
+    let file = dir.path().join("arquivo");
+    std::fs::write(&file, "x").unwrap();
+    let error = Store::open(file.join("sessoes")).unwrap_err().to_string();
+    assert!(error.contains("sessoes em"), "{error}");
+}
+
+#[test]
+fn a_store_debug_names_the_held_directory() {
+    let (_dir, store) = store();
+    assert!(format!("{store:?}").contains("held directory"));
+}
+
+#[cfg(unix)]
+#[test]
+fn opening_a_symlinked_directory_path_is_rejected() {
+    use std::os::unix::fs::symlink;
+
+    let root = tempfile::tempdir().unwrap();
+    let real = root.path().join("real");
+    std::fs::create_dir(&real).unwrap();
+    let link = root.path().join("link");
+    symlink(&real, &link).unwrap();
+
+    let error = Store::open(&link).unwrap_err().to_string();
+    assert!(error.contains("nao e um diretorio regular"), "{error}");
+}
+
+#[cfg(unix)]
+#[test]
+fn path_guards_round_trip_a_real_session_file() {
+    use std::io::Write as _;
+
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("s1.jsonl");
+    {
+        let mut file = super::guard::open_session_for_append(&path).unwrap();
+        writeln!(file, "linha").unwrap();
+    }
+    let text = super::guard::read_session(&path).unwrap();
+    assert!(text.contains("linha"), "{text}");
+    let _lock = super::guard::SessionLock::acquire(&path).unwrap();
+    let mut rewritten = super::guard::open_session_for_rewrite(&path).unwrap();
+    writeln!(rewritten, "nova").unwrap();
+    let text = super::guard::read_session(&path).unwrap();
+    assert!(text.contains("nova"), "{text}");
+}
