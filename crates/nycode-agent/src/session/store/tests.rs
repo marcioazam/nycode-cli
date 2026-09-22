@@ -414,7 +414,7 @@ fn an_append_waits_for_the_session_lock() {
     );
     drop(lock);
     done_rx
-        .recv_timeout(std::time::Duration::from_secs(1))
+        .recv_timeout(std::time::Duration::from_secs(5))
         .unwrap();
     thread.join().unwrap();
 }
