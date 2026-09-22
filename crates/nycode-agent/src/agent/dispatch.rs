@@ -27,6 +27,7 @@ impl Agent {
         // Estaveis primeiro, extensoes depois: uma ferramenta de servidor no
         // meio do prefixo deslocaria o ponto de corte do cache (NFR-7).
         specs.sort_by(|a, b| a.extension.cmp(&b.extension).then(a.name.cmp(&b.name)));
+        self.remember_presented(&specs);
         specs
     }
 
@@ -208,17 +209,19 @@ impl Agent {
             ));
         };
 
+        if let Some(denied) = self.pin_denied(tool.as_ref()) {
+            return denied;
+        }
+
         if input.is_null() {
             return ToolOutput::error(format!(
                 "argumentos de `{name}` nao formam JSON valido; reemita a chamada"
             ));
         }
 
-        // O evento é `post-tool-use`, e só dispara depois de a ferramenta ter
-        // rodado de fato. Um veto, uma recusa do gate ou um nome desconhecido
-        // saem acima sem passar por aqui: anunciar uso de ferramenta onde não
-        // houve uso faria um hook de auditoria registrar o que não aconteceu.
-        let mut output = tool.execute(input, &self.ctx).await;
+        // post-tool-use só depois da execução: veto e nome desconhecido não são uso.
+        let mut output =
+            crate::tool::redact::apply(tool.execute(tool.prepare(input), &self.ctx).await);
         self.observed(call, &mut output).await;
         output
     }

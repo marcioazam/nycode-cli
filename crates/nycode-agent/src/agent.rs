@@ -1,7 +1,7 @@
 //! O loop de agente.
 
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use futures_util::StreamExt;
 use nycode_ai::anthropic::{ContentBlock, Message};
@@ -109,6 +109,8 @@ pub struct Agent {
     /// Mensagens que o usuário digitou enquanto o turno corria.
     steering: Option<tokio::sync::mpsc::Receiver<String>>,
     hooks: crate::policy::Hooks,
+    /// Pin do schema apresentado em `specs` (AGT-03).
+    presented_pins: Mutex<HashMap<String, String>>,
     /// O que este pedido acrescentou à conversa, na ordem em que aconteceu.
     ///
     /// Separado de `messages` porque os dois respondem a perguntas diferentes:
@@ -134,6 +136,7 @@ impl std::fmt::Debug for Agent {
 mod adapt;
 mod dispatch;
 mod occupancy;
+mod pin;
 mod shrink;
 pub mod transform;
 
@@ -160,6 +163,7 @@ impl Agent {
             approver: Arc::new(crate::policy::Never),
             steering: None,
             hooks: crate::policy::Hooks::default(),
+            presented_pins: Mutex::new(HashMap::new()),
             journal: Vec::new(),
         }
     }

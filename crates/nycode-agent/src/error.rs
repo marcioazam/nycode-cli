@@ -14,6 +14,9 @@ pub enum Error {
     #[error("workspace: {0}")]
     Workspace(String),
 
+    #[error("aleatoriedade criptografica indisponivel: {0}")]
+    Randomness(String),
+
     /// O modelo pediu uma ferramenta que não existe.
     ///
     /// Isto não aborta o turno — vira resultado de erro para o modelo corrigir.
