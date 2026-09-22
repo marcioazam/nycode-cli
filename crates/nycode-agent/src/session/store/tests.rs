@@ -266,6 +266,7 @@ fn malformed_guard_paths_fail_without_io_side_effects() {
     let path = std::path::Path::new("/");
     assert!(super::guard::read_session(path).is_err());
     assert!(super::guard::open_session_for_append(path).is_err());
+    assert!(super::guard::open_session_for_rewrite(path).is_err());
     assert!(super::guard::SessionLock::acquire(path).is_err());
 }
 
@@ -274,6 +275,7 @@ fn missing_guard_parents_are_reported() {
     let path = std::path::Path::new("/definitely-missing-nycode/session.jsonl");
     assert!(super::guard::read_session(path).is_err());
     assert!(super::guard::open_session_for_append(path).is_err());
+    assert!(super::guard::open_session_for_rewrite(path).is_err());
     assert!(super::guard::SessionLock::acquire(path).is_err());
 }
 
@@ -322,6 +324,24 @@ fn replacing_a_session_directory_with_a_symlink_is_rejected() {
 
     assert!(store.append("victim", &Message::user("nao")).is_err());
     assert!(!target.join("victim.jsonl").exists());
+}
+
+#[cfg(unix)]
+#[test]
+fn an_append_stays_in_the_directory_opened_with_the_store() {
+    let root = tempfile::tempdir().unwrap();
+    let original = root.path().join("sessoes");
+    let store = Store::open(&original).unwrap();
+    let parked = root.path().join("estacionado");
+    std::fs::rename(&original, &parked).unwrap();
+    std::fs::create_dir(&original).unwrap();
+
+    store
+        .append("s1", &Message::user("fica no diretorio aberto"))
+        .unwrap();
+
+    assert!(parked.join("s1.jsonl").is_file());
+    assert!(!original.join("s1.jsonl").exists());
 }
 
 #[cfg(unix)]

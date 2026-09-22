@@ -17,7 +17,7 @@ mod mac;
 mod tree;
 
 use guard::{
-    SessionLock, open_session_for_append, open_session_for_rewrite, read_session, validate_id,
+    SessionLock, open_directory, open_session_in, read_session_in, rewrite_session_in, validate_id,
 };
 
 /// Versão do formato de registro.
@@ -60,6 +60,11 @@ pub struct SessionInfo {
 #[derive(Debug, Clone)]
 pub struct Store {
     dir: PathBuf,
+    /// Descritor aberto na criação.
+    ///
+    /// As gravações seguintes usam `openat` nele. Trocar o caminho por um
+    /// symlink depois do `open` não redireciona a sessão.
+    directory: HeldDir,
     /// Último registro gravado, por sessão.
     ///
     /// Sem isto, descobrir o pai custa reler e reparsear o arquivo inteiro a
@@ -75,6 +80,23 @@ pub struct Store {
     #[cfg(test)]
     reads: std::sync::Arc<std::sync::atomic::AtomicUsize>,
     mac: std::sync::Arc<mac::Context>,
+}
+
+#[derive(Clone)]
+struct HeldDir(std::sync::Arc<std::fs::File>);
+
+impl std::fmt::Debug for HeldDir {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("held directory")
+    }
+}
+
+impl std::ops::Deref for HeldDir {
+    type Target = std::fs::File;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -97,9 +119,13 @@ impl Store {
                 dir.display()
             )));
         }
+        let directory = HeldDir(std::sync::Arc::new(open_directory(&dir).map_err(
+            |err| Error::Workspace(format!("abrir diretorio de sessoes: {err}")),
+        )?));
         let mac = std::sync::Arc::new(mac::Context::open(&dir)?);
         Ok(Self {
             dir,
+            directory,
             tips: std::sync::Arc::default(),
             #[cfg(test)]
             reads: std::sync::Arc::default(),
@@ -150,8 +176,8 @@ impl Store {
 
     /// Acrescenta uma mensagem ao fim do caminho ativo.
     pub fn append(&self, id: &str, message: &Message) -> Result<()> {
-        let path = self.path_for(id)?;
-        let _lock = SessionLock::acquire(&path)?;
+        validate_id(id)?;
+        let _lock = SessionLock::acquire_in(&self.directory, id)?;
         let parent = self.tip(id);
         self.append_child_locked(id, parent.as_deref(), message)?;
         Ok(())
@@ -168,8 +194,8 @@ impl Store {
         parent_id: Option<&str>,
         message: &Message,
     ) -> Result<String> {
-        let path = self.path_for(id)?;
-        let _lock = SessionLock::acquire(&path)?;
+        validate_id(id)?;
+        let _lock = SessionLock::acquire_in(&self.directory, id)?;
         self.append_child_locked(id, parent_id, message)
     }
 
@@ -192,8 +218,7 @@ impl Store {
         let line = serde_json::to_string(&record)
             .map_err(|err| Error::Workspace(format!("serializar registro: {err}")))?;
 
-        let mut file = open_session_for_append(&self.path_for(id)?)
-            .map_err(|err| Error::Workspace(format!("abrir sessao {id}: {err}")))?;
+        let mut file = open_session_in(&self.directory, id)?;
 
         writeln!(file, "{line}")
             .map_err(|err| Error::Workspace(format!("gravar sessao {id}: {err}")))?;
@@ -230,12 +255,12 @@ impl Store {
 
     /// Todos os registros legíveis do arquivo, na ordem em que foram gravados.
     pub fn records(&self, id: &str) -> Result<Vec<Record>> {
+        validate_id(id)?;
         #[cfg(test)]
         self.reads
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
-        let path = self.path_for(id)?;
-        let Ok(contents) = read_session(&path) else {
+        let Ok(contents) = read_session_in(&self.directory, id) else {
             return Err(Error::Workspace(format!("sessao `{id}` nao encontrada")));
         };
 
@@ -266,8 +291,8 @@ impl Store {
 
     /// Re-assina uma cópia explícita no ID de destino.
     pub fn rekey(&self, id: &str) -> Result<()> {
-        let path = self.path_for(id)?;
-        let contents = read_session(&path)
+        validate_id(id)?;
+        let contents = read_session_in(&self.directory, id)
             .map_err(|err| Error::Workspace(format!("ler sessao {id} para re-assinar: {err}")))?;
         let mut lines = Vec::new();
         for (number, line) in contents.lines().enumerate() {
@@ -294,7 +319,7 @@ impl Store {
             }
         }
 
-        let mut file = open_session_for_rewrite(&path)?;
+        let mut file = rewrite_session_in(&self.directory, id)?;
         if !lines.is_empty() {
             file.write_all(lines.join("\n").as_bytes()).map_err(|err| {
                 Error::Workspace(format!("gravar sessao {id} re-assinada: {err}"))
