@@ -34,6 +34,7 @@ mutants.out.old/
 
 # Estado local de ferramenta de agente, por maquina.
 .omc/
+.claude/settings.local.json
 
 # Editores
 .idea/

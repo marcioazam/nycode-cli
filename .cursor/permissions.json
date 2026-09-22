@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "deny": [
+      "Shell(rm)",
+      "Shell(git push --force)",
+      "Shell(git push -f)",
+      "Read(.env)",
+      "Read(.env.*)",
+      "Write(.env)",
+      "Write(.env.*)"
+    ]
+  }
+}

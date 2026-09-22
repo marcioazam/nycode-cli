@@ -1,0 +1,6 @@
+# Quarentena de flake (GATE-14 / CI-14).
+#
+# Formato: id | teste | expira(YYYY-MM-DD) | dono | controle | razao
+# Comentario e linha vazia sao ignorados. Data no passado, campo ausente
+# ou teste sem dono/prazo reprovam o merge. Vazio (so comentarios) = zero
+# quarentenas, que e o estado honesto deste repositorio hoje.

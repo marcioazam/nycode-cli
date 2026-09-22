@@ -215,13 +215,12 @@ async fn a_refusal_is_reported_as_a_refusal_not_as_an_answer() {
 async fn a_looping_model_hits_the_tool_limit_instead_of_burning_quota() {
     let (dir, ctx) = workspace();
     std::fs::write(dir.path().join("a.txt"), "x").unwrap();
-
     // Sempre pede a mesma ferramenta, nunca conclui.
     let turns = (0..10)
         .map(|_| tool_turn("t1", "read", r#"{"path":"a.txt"}"#))
         .collect();
     let backend = Arc::new(FakeBackend::new(turns));
-    let mut agent = Agent::new(backend, ctx)
+    let mut agent = Agent::new(backend.clone(), ctx)
         .with_tool(Arc::new(Read))
         .with_tool_limit(3);
 
@@ -229,7 +228,7 @@ async fn a_looping_model_hits_the_tool_limit_instead_of_burning_quota() {
         .run("leia", &mut Silent)
         .await
         .expect_err("deveria bater no teto");
-    assert!(matches!(err, Error::ToolLoopLimit { limit: 3 }));
+    assert!(matches!(err, Error::ToolLoopLimit { limit: 3 }) && backend.call_count() == 4);
 }
 
 #[tokio::test]

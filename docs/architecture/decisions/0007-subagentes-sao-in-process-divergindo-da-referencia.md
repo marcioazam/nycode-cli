@@ -44,10 +44,14 @@ Quatro restrições:
   por agente, e o pai contabiliza a chamada como uma rodada sua.
 - **O gate de permissão é herdado, nunca ampliado.** Um filho não pode escrever
   onde o pai não pode. Delegar não é escalar privilégio.
+- **O spawn carrega um envelope HMAC.** `execute` recusa envelope ausente, MAC
+  forjado, expirado ou assinado com chave de outro `Task`. O schema exposto ao
+  modelo continua só `description`; o harness sela em `prepare` (AGT-08).
 
 O ADR-0002 não é contrariado: ele fala de *extensões*, código de terceiros que
 o usuário instala. Um subagente é o mesmo binário rodando o mesmo loop com outro
-contexto, e não há fronteira de confiança entre pai e filho a defender.
+contexto. A fronteira que existe é a do envelope: o filho só nasce de um spawn
+que este processo selou.
 
 ## Consequências
 

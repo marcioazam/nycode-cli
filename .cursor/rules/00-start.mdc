@@ -1,0 +1,7 @@
+---
+description: Como o trabalho começa
+alwaysApply: true
+---
+Issue de intake antes de spec ou código. Ver `docs/how-to/github-agent-workflow.md`.
+STOP após requirements e após design até LGTM humano (`SDD-02`, `SDD-04`).
+`AGENTS.md` vence qualquer rule.
