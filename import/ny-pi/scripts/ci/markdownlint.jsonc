@@ -1,0 +1,15 @@
+{
+  // Permissive on purpose: long lines, tables and inline HTML are normal in these docs.
+  "config": {
+    "default": true,
+    "MD013": false,
+    "MD024": false,
+    "MD032": false,
+    "MD033": false,
+    "MD036": false,
+    "MD041": false,
+    "MD060": false
+  },
+  "gitignore": false,
+  "noProgress": true
+}

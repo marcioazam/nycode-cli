@@ -1,0 +1,6 @@
+# zizmor 1.32.0 policy. The gate runs with --min-severity medium (see scripts/ci/run-security.sh).
+rules:
+  unpinned-uses:
+    config:
+      policies:
+        "*": hash-pin

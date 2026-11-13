@@ -1,0 +1,13 @@
+# Direct pins for the CI gates; requirements-ci.txt is generated from this file:
+#   uv pip compile --generate-hashes --python-version 3.12 --python-platform x86_64-unknown-linux-gnu \
+#     scripts/ci/requirements-ci.in -o scripts/ci/requirements-ci.txt
+ruff==0.17.5
+mypy==2.4.1
+semgrep==1.185.0
+zizmor==1.32.0
+diff-cover==11.0.1
+mutmut==3.8.1
+coverage==7.*
+pytest==9.*
+pyyaml==6.*
+types-PyYAML

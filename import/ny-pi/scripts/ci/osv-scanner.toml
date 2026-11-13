@@ -1,0 +1,6 @@
+# osv-scanner exceptions: each needs an owner, a reason and an expiry (the scan fails again after it).
+# owner: repository owner
+[[IgnoredVulns]]
+id = "GHSA-84m7-p3x7-pcfv"
+effectiveUntil = 2026-12-13
+reason = "mcp 1.29.0 is pinned exactly by semgrep 1.185.0 (a CI-only tool, never shipped); fix is mcp 1.30.0. Drop this entry when semgrep is bumped."
