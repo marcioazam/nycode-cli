@@ -1,0 +1,2 @@
+#!/bin/sh
+exec python3 -I "${CLAUDE_CONFIG_DIR:-$HOME/.pi/agent/claude-home}/skills/atualizador/scripts/git_deliver.py" "$@"

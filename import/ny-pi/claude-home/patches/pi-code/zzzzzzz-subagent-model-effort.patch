@@ -1,0 +1,328 @@
+--- a/subagent/fleet/types.ts
++++ b/subagent/fleet/types.ts
+@@ -47,7 +47,15 @@
+   agent: string
+   /** First 300 characters of the task, whitespace collapsed to single spaces. */
+   task: string
++  /** Model of the run: the argv-resolved one until the child reports, then the physical id it used. */
+   model?: string
++  /** Physical provider, once the child's assistant messages report it. */
++  provider?: string
++  /** Thinking level: configured (argv) until observed; absent = unknown (never guessed). */
++  effort?: string
++  /** The child confirmed the model / the effort (assistant message or thinking_level_changed). */
++  modelSeen?: true
++  effortSeen?: true
+   /** Started with background: true, or moved to the background by the user (Ctrl+B). */
+   background: boolean
+   state: RunState
+--- a/subagent/fleet/tracker.ts
++++ b/subagent/fleet/tracker.ts
+@@ -41,11 +41,38 @@
+   agent: string
+   task: string
+   model?: string
++  effort?: string
+   background: boolean
+ }
+ 
+ type Json = Record<string, any>
+ 
++const LEVELS = new Set(['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'])
++const META_MAX = 120
++
++/** The model and thinking level the child is launched with, read from its argv (`--model id[:level]`,
++ * `--thinking level`); absent fields are unknown, never defaulted. */
++export function configuredRuntime(args: readonly string[]): { model?: string; effort?: string } {
++  const out: { model?: string; effort?: string } = {}
++  const value = (flag: string): string | undefined => {
++    const i = args.indexOf(flag)
++    return i >= 0 && i + 1 < args.length ? args[i + 1] : undefined
++  }
++  const model = value('--model')
++  if (model) {
++    const colon = model.lastIndexOf(':')
++    if (colon > 0 && LEVELS.has(model.slice(colon + 1))) {
++      out.model = model.slice(0, colon)
++      out.effort = model.slice(colon + 1)
++    } else out.model = model
++  }
++  const thinking = value('--thinking')
++  if (out.effort === undefined && thinking && LEVELS.has(thinking)) out.effort = thinking
++  return out
++}
++
++const cleanMeta = (v: unknown): string | undefined => (typeof v === 'string' && v.trim() ? v.replace(CONTROL_RE, ' ').replace(/ +/g, ' ').trim().slice(0, META_MAX) || undefined : undefined)
++
+ const collapse = (text: string): string => text.replace(/\s+/g, ' ').trim()
+ const cleanActivity = (text: string): string => text.replace(CONTROL_RE, ' ').replace(/ +/g, ' ').trim().slice(0, ACTIVITY_MAX)
+ 
+@@ -82,6 +109,7 @@
+     agent: o.agent,
+     task: collapse(o.task).slice(0, 300),
+     ...(o.model ? { model: o.model } : {}),
++    ...(o.effort ? { effort: o.effort } : {}),
+     background,
+     state: 'running',
+     startedAt: now,
+@@ -147,8 +175,12 @@
+     if (!ev || typeof ev !== 'object' || this.finished) return
+     switch (ev.type) {
+       case 'message_start':
++        if (ev.message?.role === 'assistant') this.observeRuntime(ev.message)
+         if (ev.message?.role === 'assistant' && this.inFlight === 0) this.setActivity('thinking…')
+         break
++      case 'thinking_level_changed':
++        this.observeEffort(ev.level)
++        break
+       case 'message_end':
+         this.onMessageEnd(ev.message ?? {})
+         break
+@@ -190,6 +222,7 @@
+       return
+     }
+     if (msg.role !== 'assistant') return
++    this.observeRuntime(msg)
+     this.rec.turns++
+     const u = msg.usage
+     if (u && typeof u === 'object') {
+@@ -210,6 +243,25 @@
+     if (msg.stopReason === 'error' && msg.errorMessage) this.rec.error = String(msg.errorMessage).slice(0, 300)
+   }
+ 
++  /** The physical provider/model/level of an assistant message replace what the argv configured. */
++  private observeRuntime(msg: Json): void {
++    const model = cleanMeta(msg.model)
++    if (model) {
++      this.rec.model = model
++      this.rec.modelSeen = true
++      const provider = cleanMeta(msg.provider)
++      if (provider) this.rec.provider = provider
++      else delete this.rec.provider
++    }
++    this.observeEffort(msg.thinkingLevel)
++  }
++
++  private observeEffort(level: unknown): void {
++    if (typeof level !== 'string' || !/^[a-z]{1,16}$/.test(level)) return
++    this.rec.effort = level
++    this.rec.effortSeen = true
++  }
++
+   private onToolStart(ev: Json): void {
+     this.rec.toolCalls++
+     this.inFlight++
+--- a/subagent/run.ts
++++ b/subagent/run.ts
+@@ -20,7 +20,7 @@
+ import { cliSettings } from '../internal/cli-settings.ts'
+ import { killProcessTree } from '../internal/process-tree.ts'
+ import { currentFleetDir, fleetChildEnv, stopOrigin } from './fleet/store.ts'
+-import { finishExitCode, startTracking, stopNote } from './fleet/tracker.ts'
++import { configuredRuntime, finishExitCode, startTracking, stopNote } from './fleet/tracker.ts'
+ import { runSubagentStartHooks } from '../internal/subagent-hooks.ts'
+ import { type AgentConfig, resolveModelAlias } from './agents.ts'
+ import { agentHooksEnv, agentInvocationArgs, agentMemoryPromptSection, childPromptBody, taskWithStartContext, unresolvedToolsError, withMemoryTools } from './child.ts'
+@@ -346,7 +346,7 @@
+       }
+       const proc = spawned.proc
+       // Um tracker por execução, reaproveitado nos respawns: a linha do painel não fica em 'failed' durante a espera.
+-      tracker ??= startTracking({ id: options.agentId ?? '', agent: agentName, task, model: agent.model, background: false })
++      tracker ??= startTracking({ id: options.agentId ?? '', agent: agentName, task, ...configuredRuntime(args), background: false })
+       tracker?.setPid(proc.pid)
+       let buffer = ''
+       let assistantTurns = 0
+--- a/subagent/background.ts
++++ b/subagent/background.ts
+@@ -16,7 +16,7 @@
+ import { errorMessage } from '../internal/values.ts'
+ import { taskWithStartContext } from './child.ts'
+ import { fleetChildEnv, currentFleetDir, stopOrigin } from './fleet/store.ts'
+-import { startTracking, stopNote } from './fleet/tracker.ts'
++import { configuredRuntime, startTracking, stopNote } from './fleet/tracker.ts'
+ import { spawnChild, utf8Chunks } from './run.ts'
+ 
+ export interface BackgroundRun {
+@@ -343,7 +343,7 @@
+     return
+   }
+   const proc = spawned.proc
+-  const tracker = startTracking({ id: run.id, agent: run.agent, task: run.task, background: true })
++  const tracker = startTracking({ id: run.id, agent: run.agent, task: run.task, ...configuredRuntime(invocation.args), background: true })
+   tracker?.setPid(proc.pid)
+   run.live = true
+   const killGroup = (signal: NodeJS.Signals): void => killProcessTree(proc, signal)
+--- a/subagent/fleet-ui/view-model.ts
++++ b/subagent/fleet-ui/view-model.ts
+@@ -4,6 +4,7 @@
+  * Record: docs/pi-agent-fleet-2026-11-12.md (A1, A7).
+  */
+ import type { RunRecord, RunState } from '../fleet/types.ts'
++import { listMeta } from './runtime-label.ts'
+ 
+ export const FINISHED_TTL_MS = 30_000
+ 
+@@ -13,6 +14,8 @@
+   /** Tree depth: 1 = hangs from main (a missing parent counts as main). */
+   depth: number
+   agent: string
++  /** `[model · effort]` candidates, widest first; `?` where unknown. */
++  meta?: string[]
+   /** First line of the run's task, whitespace collapsed. */
+   task: string
+   /** 1-based start order among visible rows of the same agent type; 0 when the type is unique. */
+@@ -114,6 +117,7 @@
+       parentId: node.depth === 1 ? null : rec.parentId,
+       depth: node.depth,
+       agent: rec.agent,
++      meta: listMeta(rec),
+       task: firstLine(rec.task),
+       nth: 0,
+       state: rec.state,
+--- a/subagent/fleet-ui/panel.ts
++++ b/subagent/fleet-ui/panel.ts
+@@ -125,6 +125,8 @@
+ 
+ const MIN_ACTIVITY = 12
+ const MIN_TASK = 12
++/** Fewest task columns a row gives up for the full model label before it settles for less. */
++const MIN_TASK_LAST = 6
+ const TASK_SEP = ' · '
+ const ELLIPSIS = '…'
+ 
+@@ -154,24 +156,49 @@
+     (row.hiddenDescendants > 0 ? theme.fg('dim', ` (+${row.hiddenDescendants})`) : '')
+   const act = activityOf(row, style)
+   const variants = statVariants(formatStats(row), theme)
+-  const headW = visibleWidth(head)
+   const taskW = visibleWidth(row.task)
+   const actW = visibleWidth(act.text)
+   const finish = (left: string, v: { w: number; text: string }): string => left + ' '.repeat(Math.max(1, width - visibleWidth(left) - v.w)) + v.text
+-  // Body room beside the head: one space before it and at least one before the stats.
+-  const room = (v: { w: number }): number => width - headW - 1 - v.w - 1
+-  // Task rows keep the task, then the activity; stats drop cost, then tokens, before the activity goes.
+-  const need = taskW > 0 ? Math.min(taskW, MIN_TASK) + (actW > 0 ? TASK_SEP.length + Math.min(actW, MIN_ACTIVITY) : 0) : Math.min(actW, MIN_ACTIVITY)
+-  for (const v of variants.slice(0, 2)) {
+-    const avail = room(v)
+-    if (need === 0 && width - headW - v.w >= 1) return finish(head, v)
+-    if (need === 0 || avail < need) continue
+-    return finish(head + ' ' + body(row.task, act, avail, theme), v)
++  // Body room beside a head: one space before it and at least one before the stats.
++  type Mode = 'strict' | 'last' | 'bare'
++  const place = (h: string, mode: Mode, minLast = 1, labelled = false): string | undefined => {
++    const headW = visibleWidth(h)
++    const room = (v: { w: number }): number => width - headW - 1 - v.w - 1
++    // Task rows keep the task, then the activity; stats drop cost, then tokens, before the activity goes.
++    const need = taskW > 0 ? Math.min(taskW, MIN_TASK) + (actW > 0 ? TASK_SEP.length + Math.min(actW, MIN_ACTIVITY) : 0) : Math.min(actW, MIN_ACTIVITY)
++    // With the model label the activity gives way before the label does: the task alone is enough room.
++    const floor = labelled && taskW > 0 ? Math.min(taskW, MIN_TASK) : need
++    if (mode === 'strict') {
++      // Labelled tier: the cost is nonessential, so it never takes the room the task still needs.
++      for (const v of labelled ? variants.slice(1, 2) : variants.slice(0, 2)) {
++        const avail = room(v)
++        if (need === 0 && width - headW - v.w >= 1) return finish(h, v)
++        if (need === 0 || avail < floor) continue
++        return finish(h + ' ' + (avail >= need ? body(row.task, act, avail, theme) : theme.fg('task', truncateToWidth(row.task, avail, ELLIPSIS))), v)
++      }
++      return undefined
++    }
++    const last = variants[2]!
++    if (mode === 'last') return taskW > 0 && room(last) >= minLast ? finish(h + ' ' + theme.fg('task', truncateToWidth(row.task, room(last), ELLIPSIS)), last) : undefined
++    return width - headW - last.w >= 1 ? finish(h, last) : undefined
+   }
+-  const last = variants[2]!
+-  if (taskW > 0 && room(last) >= 1) return finish(head + ' ' + theme.fg('task', truncateToWidth(row.task, room(last), ELLIPSIS)), last)
+-  if (width - headW - last.w >= 1) return finish(head, last)
+-  return truncateToWidth(head, width)
++  // Model and effort sit in the head, before the task, so a long task cannot swallow them. Priority: the label
++  // (any candidate, widest first), then the task, then the stats. Tiers, each tried over every candidate:
++  // 1. task and activity at their minimums, stats dropping cost then tokens (the layout without a label);
++  // 2. task alone at its minimum, activity gone, tokens kept but no cost;
++  // 3. elapsed only, task truncated; 4. elapsed only, no task. Only then is the label itself dropped.
++  const heads = (row.meta ?? []).map((m) => head + ' ' + theme.fg('dim', m))
++  const first = (mode: Mode, minLast = 1, labelled = false): string | undefined => heads.map((h) => place(h, mode, minLast, labelled)).find((l) => l !== undefined)
++  return (
++    first('strict') ??
++    first('strict', 1, true) ??
++    first('last', Math.min(taskW, MIN_TASK_LAST)) ??
++    first('bare') ??
++    place(head, 'strict') ??
++    place(head, 'last') ??
++    place(head, 'bare') ??
++    truncateToWidth(head, width)
++  )
+ }
+ 
+ /** Task (priority) and activity within `avail` columns, activity truncated first. */
+--- a/subagent/fleet-ui/viewer.ts
++++ b/subagent/fleet-ui/viewer.ts
+@@ -12,6 +12,7 @@
+ import type { UiTheme } from './panel.ts'
+ import { hudTheme, motionEnabled, spinnerAt } from './palette.ts'
+ import { conversationItems } from '../team/ui.ts'
++import { viewerLines } from './runtime-label.ts'
+ import { buildRows, chainOf, neighbours } from './view-model.ts'
+ 
+ /** Count of our open overlays; the panel passes all input through while it is above 0. */
+@@ -20,8 +21,8 @@
+ export const MAX_ITEMS = 2000
+ export const POLL_MS = 500
+ const RESULT_LINES = 3
+-/** Rows of chrome around the body: breadcrumb, status, nav, outcome, input, footer. */
+-const CHROME_ROWS = 7
++/** Rows of chrome around the body: breadcrumb, status, nav, model/effort, outcome, input, footer. */
++const CHROME_ROWS = 9
+ 
+ /** Top edge of both overlays: they draw over the chat, so they need a visible boundary. */
+ const rule = (theme: UiTheme, width: number): string => theme.fg('borderAccent', '─'.repeat(Math.max(0, width)))
+@@ -206,6 +207,7 @@
+       fit(theme.bold(theme.fg('accent', crumb))),
+       fit(theme.fg('muted', status)),
+       fit(theme.fg('dim', navBar(records, this.id))),
++      ...(rec ? viewerLines(rec) : ['', '']).map((l) => fit(theme.fg('muted', l))),
+       ...body.map(fit),
+       fit(theme.fg('dim', outcome)),
+       fit(`${theme.fg('accent', '> ')}${this.input}`),
+--- a/subagent/fleet-ui/runtime-label.ts	1969-12-31 21:00:00.000000000 -0300
++++ b/subagent/fleet-ui/runtime-label.ts
+@@ -0,0 +1,40 @@
++/**
++ * Model and thinking level of a run, as the list row and the viewer show them.
++ * Pure. Unknown stays unknown (`?` in the list, `unknown` in the viewer): an absent effort is
++ * never rendered as a default and never inherited from the parent. Record: docs/subagent-model-effort.md.
++ */
++import type { RunRecord } from '../fleet/types.ts'
++
++export type RuntimeMeta = Pick<RunRecord, 'model' | 'provider' | 'effort' | 'modelSeen' | 'effortSeen'>
++
++const UNKNOWN = '?'
++const COMPACT_MODEL = 12
++
++/** Provider/model and the bare model; the provider can already be in the id (argv `anthropic/x`). */
++function names(m: RuntimeMeta): { full?: string; bare?: string } {
++  if (!m.model) return {}
++  if (m.provider) {
++    const bare = m.model.startsWith(`${m.provider}/`) ? m.model.slice(m.provider.length + 1) : m.model
++    return { full: `${m.provider}/${bare}`, bare }
++  }
++  const slash = m.model.indexOf('/')
++  return { full: m.model, bare: slash > 0 ? m.model.slice(slash + 1) : m.model }
++}
++
++/** List candidates, widest first: `[provider/model · effort]`, `[model · effort]`, `[model·effort]`, `[model…·effort]`. */
++export function listMeta(m: RuntimeMeta): string[] {
++  const { full, bare } = names(m)
++  const effort = m.effort ?? UNKNOWN
++  const out = [`[${full ?? UNKNOWN} · ${effort}]`, `[${bare ?? UNKNOWN} · ${effort}]`, `[${bare ?? UNKNOWN}·${effort}]`]
++  const short = bare && bare.length > COMPACT_MODEL ? `${bare.slice(0, COMPACT_MODEL - 1)}…` : (bare ?? UNKNOWN)
++  out.push(`[${short}·${effort}]`)
++  return out.filter((s, i) => out.indexOf(s) === i)
++}
++
++/** Viewer lines (one each, so a long model cannot hide the effort): full labels with where each value comes from. */
++export function viewerLines(m: RuntimeMeta): [string, string] {
++  const { full } = names(m)
++  const model = full ? `${full} (${m.modelSeen ? 'observed' : 'configured'})` : 'unknown (not reported yet)'
++  const effort = m.effort ? `${m.effort} (${m.effortSeen ? 'observed' : 'configured'})` : 'unknown (not set, child default; not reported yet)'
++  return [`Model: ${model}`, `Effort: ${effort}`]
++}

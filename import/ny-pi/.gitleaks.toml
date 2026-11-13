@@ -1,0 +1,15 @@
+# Default gitleaks rules plus the narrowest allowlist for known fakes.
+title = "pi-harness"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Known fake AWS key in the atualizador unit test"
+condition = "AND"
+paths = ['''claude-home/skills/atualizador/scripts/tests/test_core\.py$''']
+regexes = ['''AKIAQYLPMN5HHHFPZAM2''']
+
+[[allowlists]]
+description = "Selftest fixtures for the leak scanner"
+paths = ['''scripts/fixtures/leak/''']

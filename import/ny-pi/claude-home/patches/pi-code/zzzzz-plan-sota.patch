@@ -1,0 +1,410 @@
+--- a/plan-mode/index.ts
++++ b/plan-mode/index.ts
+@@ -12,6 +12,9 @@
+  * - Progress tracking widget during execution
+  */
+ 
++import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
++import { dirname, join } from 'node:path'
++
+ import type { AgentMessage } from '@earendil-works/pi-agent-core'
+ import type { AssistantMessage, TextContent } from '@earendil-works/pi-ai'
+ import type { ExtensionAPI, ExtensionContext, SessionEntry } from '@earendil-works/pi-coding-agent'
+@@ -19,10 +22,14 @@
+ import { Type } from 'typebox'
+ 
+ import { PLAN_MODE_CHANNEL } from '../internal/plan-mode-state.ts'
+-import { extractTodoItems, isSafeCommand, markCompletedSteps, planToTodos, restoredPlanState, type TodoItem } from './utils.ts'
++import { extractTodoItems, isPlanModeToolAllowed, isSafeCommand, lintPlan, plansDir, markCompletedSteps, planToTodos, restoredPlanState, type TodoItem } from './utils.ts'
+ 
+ // Tools
+-const PLAN_MODE_TOOLS = ['read', 'bash', 'grep', 'find', 'ls', 'question', 'plan_mode_complete']
++const PLAN_MODE_TOOLS = [
++  'read', 'bash', 'grep', 'find', 'ls', 'question', 'plan_mode_complete',
++  'tool_search', 'web_fetch', 'mcp__keenable__search_web_pages', 'lsp_diagnostics', 'lsp_hover', 'lsp_definition', 'lsp_references', 'lsp_symbols',
++  'todo', 'subagent', 'write', 'edit', // subagent, write and edit are narrowed by isPlanModeToolAllowed
++]
+ 
+ /** Agent runs in execution mode with no [DONE:n] progress before execution ends on
+  * its own. Kept small: each stalled run re-injects the stale plan into the turn. */
+@@ -83,6 +90,17 @@
+   let toolsAtSave = new Set<string>()
+   let stalledRuns = 0
+   let runProgress = false
++  /** Plan file of this session, fixed when plan mode is entered. */
++  let planFile = ''
++  /** Lint rejections since the last accepted plan or the last entry into plan mode. */
++  let lintRejections = 0
++
++  function ensurePlanFile(ctx: ExtensionContext): void {
++    if (planFile) return
++    const sid = (ctx.sessionManager as { getSessionId?: () => string }).getSessionId?.()
++    const id = sid ? sid.slice(0, 8) : `plan-${Date.now()}`
++    planFile = join(plansDir(), `${new Date().toISOString().slice(0, 10)}-${id}.md`)
++  }
+ 
+   const registeredTools = (): Set<string> => new Set((pi.getAllTools?.() ?? []).map((tool) => tool.name))
+ 
+@@ -143,10 +161,12 @@
+     executionMode = false
+     todoItems = []
+     planFromTool = false
++    lintRejections = 0
+     stalledRuns = 0
+     runProgress = false
+ 
+     if (planModeEnabled) {
++      ensurePlanFile(ctx)
+       enterPlanTools()
+       ctx.ui.notify(`Plan mode enabled. Tools: ${pi.getActiveTools().join(', ')}`)
+     } else {
+@@ -222,7 +242,7 @@
+     // Persist before the turn: a crash before the first turn_end must resume into
+     // execution, not back into plan mode.
+     persistState()
+-    const execMessage = todoItems.length > 0 ? `Execute the plan. Start with: ${todoItems[0].text}\n${DONE_RULE}` : 'Execute the plan you just created.'
++    const execMessage = todoItems.length > 0 ? `Execute the plan. Start with: ${todoItems[0].text}\n${DONE_RULE}\nFirst materialize the plan file ${planFile} into the repository's /docs record (or the task's existing record) before changing code.` : 'Execute the plan you just created.'
+     pi.sendMessage({ customType: 'plan-mode-execute', content: execMessage, display: true }, { triggerTurn: true })
+   }
+ 
+@@ -287,16 +307,41 @@
+   pi.registerTool({
+     name: 'plan_mode_complete',
+     label: 'Plan complete',
+-    description: 'Submit the finished plan for user review while in plan mode. Pass the full plan as numbered steps (1. ... 2. ...). Call this exactly once, when the plan is ready.',
++    description: 'Submit the finished plan for user review while in plan mode. Pass the full plan as numbered steps (1. ... 2. ...). Call this exactly once, when the plan is ready. The first line states the tier ("Tier: Tn (signals)"); the plan is linted and saved to the plan file. Pass "@file" to submit the plan file as it is.',
+     parameters: Type.Object({ plan: Type.String({ description: 'The complete numbered plan' }) }),
+-    async execute(_id, params) /* NOSONAR typescript:S7503 - pi types a tool execute as returning a Promise */ {
++    async execute(_id, params, _signal, _onUpdate, ctx) /* NOSONAR typescript:S7503 - pi types a tool execute as returning a Promise */ {
+       if (!planModeEnabled) {
+         return { content: [{ type: 'text', text: 'Not in plan mode; tool ignored.' }], details: {} }
+       }
+-      todoItems = planToTodos(params.plan)
++      if (!planFile) ensurePlanFile(ctx)
++      const fromFile = params.plan.trim() === '@file'
++      let plan = params.plan
++      if (fromFile) {
++        try { plan = readFileSync(planFile, 'utf8') } catch { plan = '' }
++        if (plan.trim() === '') {
++          return { content: [{ type: 'text', text: 'No plan file to submit; pass the plan text.' }], details: {} }
++        }
++      }
++      const problems = lintPlan(plan)
++      const save = (): void => {
++        try {
++          mkdirSync(dirname(planFile), { recursive: true })
++          writeFileSync(planFile, plan)
++        } catch { /* a failed save must not fail the tool */ }
++      }
++      if (problems.length > 0 && lintRejections < 2) {
++        lintRejections++
++        if (!fromFile) save()
++        const list = problems.map((p) => `- ${p}`).join('\n')
++        return { content: [{ type: 'text', text: `Plan not accepted. It was saved to ${planFile}. Fix these there with the edit tool, then call plan_mode_complete with plan "@file" (do not resend the plan):\n${list}` }], details: {} }
++      }
++      if (!fromFile) save()
++      lintRejections = 0
++      todoItems = planToTodos(plan)
+       planFromTool = true
+       persistState()
+-      return { content: [{ type: 'text', text: 'Plan submitted. The user will now review it.' }], details: {}, terminate: true }
++      const unresolved = problems.length > 0 ? ` Unresolved lint: ${problems.join('; ')}` : ''
++      return { content: [{ type: 'text', text: `Plan submitted and saved to ${planFile}. The user will now review it.${unresolved}` }], details: {}, terminate: true }
+     },
+   })
+ 
+@@ -321,14 +366,20 @@
+   // activates tools registered after the restriction was applied (an MCP server
+   // connecting during session_start, or a mid-session list_changed refresh), so the
+   // set alone leaks write-capable tools into plan mode.
+-  pi.on('tool_call', (event) => {
++  pi.on('tool_call', (event, _ctx) => {
+     if (!planModeEnabled) return
+-    if (!PLAN_MODE_TOOLS.includes(event.toolName)) {
++    if (!PLAN_MODE_TOOLS.includes(event.toolName) && !event.toolName.startsWith('mcp__')) {
+       return {
+         block: true,
+         reason: `Plan mode: tool blocked (read-only mode). Press Ctrl+Shift+P to leave plan mode first.\nTool: ${event.toolName}`,
+       }
+     }
++    const verdict = isPlanModeToolAllowed(event.toolName, event.input)
++    if (!verdict.ok) {
++      return { block: true, reason: `Plan mode: ${event.toolName} blocked (${verdict.reason}). Plan file: ${planFile}` }
++    }
++    // Only the user's agent files: a project agent with an allowlisted name could carry write tools.
++    if (event.toolName === 'subagent' && !event.input.status && event.input.cancel === undefined) event.input.agentScope = 'user'
+     if (event.toolName !== 'bash') return
+ 
+     const command = event.input.command as string
+@@ -357,29 +408,19 @@
+   })
+ 
+   // Inject plan/execution context before agent starts
+-  pi.on('before_agent_start', () => {
++  pi.on('before_agent_start', (_event, ctx) => {
+     if (planModeEnabled) {
++      ensurePlanFile(ctx)
+       return {
+         message: {
+           customType: 'plan-mode-context',
+           content: `[PLAN MODE ACTIVE]
+-You are in plan mode - a read-only exploration mode for safe code analysis.
+-
+-Restrictions:
+-- You can only use: read, bash, grep, find, ls, question
+-- You CANNOT use: edit, write (file modifications are disabled)
+-- Bash is limited to an allowlist of read-only commands, checked per subcommand. Treat it
+-  as a reminder of intent, not a sandbox: do not look for ways around it
+-
+-Ask clarifying questions using the question tool.
+-
+-When your plan is ready, call the plan_mode_complete tool with the full plan as numbered steps:
+-
+-1. First step description
+-2. Second step description
+-...
+-
+-Do NOT attempt to make changes - just describe what you would do.`,
++Read-only planning mode. Allowed: read, bash (allowlisted), lsp_*, tool_search with read-only MCP (search, docs, codegraph), web_fetch, subagent with read-only agents only, question, todo. Use write/edit (bash cannot write) ONLY on the plan file ${planFile}, and only for draft notes in a long session.
++Triage first. T0 = a mechanical edit with no behavior change (typo, rename, comment) and nothing ambiguous: skip the skill, verify with one lookup, submit 1-3 tasks. Anything else: read ~/.pi/agent/claude-home/skills/plan-workflow/SKILL.md and follow it (tier, questions, decomposition, checklists).
++Submit the full plan once with plan_mode_complete, which lints it and saves it to the plan file. Lint: first line "Tier: Tn (signals)"; task titles ≤50 chars; every A# line has a %; T1+ has "AC1: WHEN … THE SYSTEM SHALL …" lines, each AC cited by a task, and a "check:" per task; T2+ a risks line; T3 a rollback line.
++Only tracked tasks are numbered (1., 2., … globally); phases are headings, steps and checklists are '-' bullets, never numbered.
++Never settle these yourself, ask with the question tool: a contradiction in the request; a choice of data format, public contract, security or deletion.
++Make no other changes.`,
+           display: false,
+         },
+       }
+@@ -453,11 +494,13 @@
+     // one across sessions, so clear prior state first there too: a fresh
+     // session (/new, no plan entry) must not inherit the last session's plan or execution.
+     planModeEnabled = false
++    lintRejections = 0
+     executionMode = false
+     todoItems = []
+     planFromTool = false
+     stalledRuns = 0
+     runProgress = false
++    planFile = ''
+ 
+     if (pi.getFlag('plan') === true) {
+       planModeEnabled = true
+@@ -485,6 +528,7 @@
+     }
+ 
+     if (planModeEnabled) {
++      ensurePlanFile(ctx)
+       // Restoring into plan mode is the only case the recorded snapshot is for.
+       // Re-reading the active set here would capture the restriction pi carried
+       // across /reload and cost the session edit and write for good; applying the
+--- a/plan-mode/utils.ts
++++ b/plan-mode/utils.ts
+@@ -3,6 +3,10 @@
+  * Extracted for testability.
+  */
+ 
++import { lstatSync, mkdirSync, realpathSync } from 'node:fs'
++import { homedir } from 'node:os'
++import { dirname, isAbsolute, join, resolve, sep } from 'node:path'
++
+ import { hasAnsiCNumericEscape, hasSubstitution, type Quote, quoteCloser, quoteEscapes, quoteOpensAt, shellWords, splitSegments } from '../internal/shell-split.ts'
+ 
+ // Destructive commands blocked in plan mode. Tested against the segment's command word,
+@@ -101,6 +105,8 @@
+   /^\s*jq\b/,
+   /^\s*rg\b/,
+   /^\s*fd\b/,
++  /^\s*fdfind\b/,
++  /^\s*python3\s+\S*\/skills\/obsidian-cli\/scripts\/kb\.py\s+(search|section|outline)\b/,
+   /^\s*bat\b/,
+   /^\s*eza\b/,
+ ]
+@@ -118,7 +124,7 @@
+   [/^\s*git\s/, /\s--output(=|\s|$)/],
+   // -x/--exec runs a command per result, -X/--exec-batch once for all; it may end a cluster
+   // of value-less flags (-Hx), while in -tx or -etsx the x is the value of -t or -e.
+-  [/^\s*fd\b/, /\s(-[HIusigFaLlpq0]*[xX](?=\s|$)|--exec(-batch)?(?==|\s|$))/],
++  [/^\s*(fd|fdfind)\b/, /\s(-[HIusigFaLlpq0]*[xX](?=\s|$)|--exec(-batch)?(?==|\s|$))/],
+   // --pager names the program bat runs when it pages.
+   [/^\s*bat\b/, /\s--pager(?==|\s|$)/],
+ ]
+@@ -260,7 +266,7 @@
+   return state
+ }
+ 
+-function cleanStepText(text: string): string {
++function cleanStepText(text: string, cut = true): string {
+   let cleaned = text
+     .replace(/\*{1,2}([^*]+)\*{1,2}/g, '$1') // Remove bold/italic
+     .replace(/`([^`]+)`/g, '$1') // Remove code
+@@ -271,7 +277,7 @@
+   if (cleaned.length > 0) {
+     cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1)
+   }
+-  if (cleaned.length > 50) {
++  if (cut && cleaned.length > 50) {
+     cleaned = `${cleaned.slice(0, 47)}...`
+   }
+   return cleaned
+@@ -293,13 +299,14 @@
+  * pattern needs adjacent quantifiers over overlapping classes, which backtracks
+  * super-linearly on a long line that turns out not to be a step.
+  */
+-function numberedStepText(line: string): string | undefined {
++function numberedMarker(line: string): { num: string; start: number } | undefined {
+   let i = 0
+   while (isBlank(line[i])) i++
+ 
+   const digitsStart = i
+   while (line[i] >= '0' && line[i] <= '9') i++
+   if (i === digitsStart) return undefined
++  const num = line.slice(digitsStart, i)
+ 
+   if (line[i] !== '.' && line[i] !== ')') return undefined
+   i++
+@@ -307,6 +314,13 @@
+   const spaceStart = i
+   while (isBlank(line[i])) i++
+   if (i === spaceStart) return undefined // the marker must be followed by whitespace
++  return { num, start: i }
++}
++
++function numberedStepText(line: string): string | undefined {
++  const marker = numberedMarker(line)
++  if (!marker) return undefined
++  let i = marker.start
+ 
+   for (let stars = 0; stars < 2 && line[i] === '*'; stars++) i++
+   const first = line[i]
+@@ -368,3 +382,132 @@
+   const withHeader = PLAN_HEADER.test(plan) ? plan : `Plan:\n${plan}`
+   return extractTodoItems(withHeader)
+ }
++
++const LINT_LINE_MAX = 1000
++const LINT_TIER = /Tier:\s*T([0-3])\b/i
++const LINT_ASSUMPTION = /^\s*[-*]?\s*A(\d+)\b/
++const LINT_PERCENT = /(?<!\d)\d{1,3}%/
++const LINT_AC_DEF = /^\s*[-*]?\s*AC(\d+)\s*[:(]/
++const LINT_EARS_TRIGGER = /\b(WHEN|IF|WHILE|WHERE|QUANDO|SE|ENQUANTO)\b/i
++const LINT_EARS_RESPONSE = /\b(SHALL|DEVE)\b/i
++
++/**
++ * Check the shape of a submitted plan: tier line, tasks, assumption confidence, EARS
++ * acceptance criteria, their coverage, a check command, risks and rollback.
++ * One message per failed rule; lines are cut at LINT_LINE_MAX so no regex runs long.
++ */
++export function lintPlan(plan: string): string[] {
++  const lines = plan.split('\n').map((l) => l.slice(0, LINT_LINE_MAX))
++  const problems: string[] = []
++  let tier = -1
++  for (const l of lines) {
++    const m = LINT_TIER.exec(l)
++    if (m) { tier = Number(m[1]); break }
++  }
++  if (tier < 0) problems.push('missing "Tier: Tn (signals)" line')
++  if (planToTodos(plan).length === 0) problems.push('no numbered tasks')
++  for (const l of lines) {
++    const m = LINT_ASSUMPTION.exec(l)
++    if (m && !LINT_PERCENT.test(l)) problems.push(`assumption A${m[1]} has no confidence %`)
++  }
++  for (const l of lines) {
++    const marker = numberedMarker(l)
++    const step = marker ? numberedStepText(l) : undefined
++    if (!marker || step === undefined) continue
++    // Measured as the todo list shows it (markdown stripped, before its 47+... cut).
++    const shown = cleanStepText(step, false)
++    if (shown.length > 50) problems.push(`task ${marker.num} title is ${shown.length} characters (max 50, as shown): "${shown}"`)
++  }
++  if (tier < 0) return problems
++  const any = (re: RegExp): boolean => lines.some((l) => re.test(l))
++  if (tier >= 1) {
++    const defs = new Map<string, number>()
++    let ears = false
++    lines.forEach((l, i) => {
++      const m = LINT_AC_DEF.exec(l)
++      if (!m) return
++      if (!defs.has(m[1])) defs.set(m[1], i)
++      const shall = LINT_EARS_RESPONSE.exec(l)
++      if (shall && LINT_EARS_TRIGGER.test(l.slice(0, shall.index))) ears = true
++    })
++    if (!ears) problems.push('no EARS acceptance criterion (AC1: WHEN … THE SYSTEM SHALL …)')
++    // Ids a line cites, a range such as AC1–AC4 included (bounded: at most 200 ids per range).
++    const cited = lines.map((l) => {
++      const ids = new Set<string>()
++      for (const m of l.matchAll(/\bAC(\d{1,3})(?:\s?[–—-]\s?(?:AC)?(\d{1,3})\b)?/g)) {
++        const from = Number(m[1])
++        const to = m[2] === undefined ? from : Math.min(Number(m[2]), from + 200)
++        for (let n = from; n <= to; n++) ids.add(String(n))
++        ids.add(m[1])
++      }
++      return ids
++    })
++    for (const [id, defLine] of defs) {
++      if (!cited.some((ids, i) => i !== defLine && ids.has(String(Number(id))))) problems.push(`AC${id} is not covered by any task`)
++    }
++    if (!any(/check:|verific/i)) problems.push('no check command in any task')
++  }
++  if (tier >= 2 && !any(/rollback|revers|risco|risk/i)) problems.push('no risks/rollback section')
++  if (tier === 3 && !any(/rollback|revers/i)) problems.push('T3 plan without rollback')
++  return problems
++}
++
++const READ_ONLY_MCP = /^mcp__(keenable|perplexity|exa|brave_search|octen|parallel|youcom|context7|codegraph|paper_search|package_version_check|fetch|firecrawl|nimble)__/
++
++const READ_ONLY_AGENTS = new Set([
++  'Explore', 'code-mapper', 'Plan', 'perplexity-scout', 'web-scout', 'research-scout', 'scholar-scout', 'claim-verifier',
++  'code-reviewer', 'security-reviewer', 'test-reviewer', 'reliability-reviewer', 'contract-migration-reviewer', 'agent-systems-auditor',
++])
++
++/** Directory where plan mode may write its plan files. */
++export function plansDir(): string {
++  return process.env.PI_PLANS_DIR || join(homedir(), '.pi', 'agent', 'plans')
++}
++
++export interface ToolVerdict {
++  ok: boolean
++  reason?: string
++}
++
++function planFilePathVerdict(input: Record<string, unknown>, dir: string): ToolVerdict {
++  const raw = input.path
++  if (typeof raw !== 'string' || raw === '') return { ok: false, reason: 'missing path' }
++  const expanded = raw === '~' || raw.startsWith('~/') ? join(homedir(), raw.slice(1)) : raw
++  const abs = isAbsolute(expanded) ? resolve(expanded) : resolve(process.cwd(), expanded)
++  if (!abs.endsWith('.md')) return { ok: false, reason: 'only .md plan files' }
++  try {
++    mkdirSync(dir, { recursive: true })
++    const root = realpathSync(dir)
++    let real: string
++    try {
++      real = realpathSync(abs) // follows a symlink at the leaf
++    } catch {
++      // A dangling symlink would let write create its target outside the plans dir.
++      if (lstatSync(abs, { throwIfNoEntry: false })?.isSymbolicLink()) return { ok: false, reason: 'dangling symlink' }
++      real = join(realpathSync(dirname(abs)), abs.slice(dirname(abs).length + 1))
++    }
++    if (real.startsWith(root + sep)) return { ok: true }
++  } catch {
++    // unresolvable parent or unwritable plans dir: refuse below
++  }
++  return { ok: false, reason: `only .md files inside ${dir}` }
++}
++
++function subagentVerdict(input: Record<string, unknown>): ToolVerdict {
++  const items = (v: unknown): unknown[] => (Array.isArray(v) ? v : [])
++  const names = [input.agent, ...items(input.tasks).map((t) => (t as { agent?: unknown })?.agent), ...items(input.chain).map((t) => (t as { agent?: unknown })?.agent)].filter((n) => n !== undefined)
++  // resume reopens any earlier run, a writer included; a project scope lets a local agent shadow an allowlisted name.
++  if (input.resume !== undefined) return { ok: false, reason: 'resume is not allowed in plan mode' }
++  if (input.agentScope !== undefined && input.agentScope !== 'user') return { ok: false, reason: 'only agentScope user' }
++  if (names.length === 0) return { ok: true }
++  const bad = names.filter((n) => typeof n !== 'string' || !READ_ONLY_AGENTS.has(n))
++  return bad.length === 0 ? { ok: true } : { ok: false, reason: `non-read-only agent: ${bad.join(', ')}` }
++}
++
++/** Plan-mode rules for tools beyond the fixed list: MCP servers, subagent agents, write/edit paths. */
++export function isPlanModeToolAllowed(toolName: string, input: Record<string, unknown>, dir: string = plansDir()): ToolVerdict {
++  if (toolName.startsWith('mcp__')) return READ_ONLY_MCP.test(toolName) ? { ok: true } : { ok: false, reason: 'MCP server is not read-only' }
++  if (toolName === 'subagent') return subagentVerdict(input ?? {})
++  if (toolName === 'write' || toolName === 'edit') return planFilePathVerdict(input ?? {}, dir)
++  return { ok: true }
++}

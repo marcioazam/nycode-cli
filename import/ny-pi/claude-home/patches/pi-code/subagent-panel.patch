@@ -1,0 +1,2547 @@
+diff -ruN a/subagent/background.ts b/subagent/background.ts
+--- a/subagent/background.ts	2026-11-13 12:52:40.284523004 -0300
++++ b/subagent/background.ts	2026-11-13 12:52:40.291664479 -0300
+@@ -15,6 +15,8 @@
+ import { sharedSlot } from '../internal/shared-slot.ts'
+ import { errorMessage } from '../internal/values.ts'
+ import { taskWithStartContext } from './child.ts'
++import { fleetChildEnv, currentFleetDir, stopOrigin } from './fleet/store.ts'
++import { startTracking, stopNote } from './fleet/tracker.ts'
+ import { spawnChild, utf8Chunks } from './run.ts'
+ 
+ export interface BackgroundRun {
+@@ -331,7 +333,7 @@
+   // already registered as running by the caller, so a spawn that throws synchronously
+   // (see spawnChild) must settle the record here: left as it was, the phantom held a cap
+   // slot with no kill and no eviction for the life of the process.
+-  const spawned = spawnChild(invocation.command, invocation.args, { cwd: invocation.cwd, env: { ...process.env, ...childNestingEnv(), ...invocation.env } })
++  const spawned = spawnChild(invocation.command, invocation.args, { cwd: invocation.cwd, env: { ...process.env, ...childNestingEnv(), ...invocation.env, ...fleetChildEnv(run.id) } })
+   if ('error' in spawned) {
+     run.live = false
+     run.state = 'failed'
+@@ -341,6 +343,8 @@
+     return
+   }
+   const proc = spawned.proc
++  const tracker = startTracking({ id: run.id, agent: run.agent, task: run.task, background: true })
++  tracker?.setPid(proc.pid)
+   run.live = true
+   const killGroup = (signal: NodeJS.Signals): void => killProcessTree(proc, signal)
+   run.kill = () => {
+@@ -371,7 +375,16 @@
+   let stderrTail = ''
+   const decodeStdout = utf8Chunks()
+   const decodeStderr = utf8Chunks()
+-  proc.stdout.on('data', (data) => parser.push(decodeStdout(data)))
++  // A second, independent line splitter feeds the fleet tracker; the parser stays untouched.
++  let trackerBuffer = ''
++  proc.stdout.on('data', (data) => {
++    const text = decodeStdout(data)
++    parser.push(text)
++    if (!tracker) return
++    const lines = (trackerBuffer + text).split('\n')
++    trackerBuffer = lines.pop() ?? ''
++    for (const line of lines) tracker.onLine(line)
++  })
+   // An 'error' on a stream with no listener is rethrown by EventEmitter, and this one
+   // belongs to a detached child, so a pipe read failure would exit pi the same way an
+   // unguarded completion would. The foreground runner guards its streams the same way.
+@@ -393,6 +406,14 @@
+     run.output = text
+     run.turns = turns
+     run.stderr = stderrTail.trim() || undefined
++    // The fleet's stop marker: how a parent process learns its child was stopped, and by whom.
++    const stopBy = stopOrigin(currentFleetDir(), run.id)
++    if (stopBy) {
++      run.state = 'cancelled'
++      run.output = `${run.output ?? ''}\n[${stopNote(stopBy)}]`.trim()
++    }
++    if (trackerBuffer.trim()) tracker?.onLine(trackerBuffer)
++    tracker?.finish({ exitCode: run.exitCode, cancelled: run.state === 'cancelled', error: run.state === 'failed' ? (run.stderr || '').slice(-300) : undefined })
+     complete()
+   })
+   proc.on('error', (error) => {
+diff -ruN a/subagent/fleet/detach.ts b/subagent/fleet/detach.ts
+--- a/subagent/fleet/detach.ts	1969-12-31 21:00:00.000000000 -0300
++++ b/subagent/fleet/detach.ts	2026-11-13 12:52:40.291711459 -0300
+@@ -0,0 +1,92 @@
++/**
++ * Ctrl+B for foreground subagent calls (main session only). A call runs inside an
++ * AsyncLocalStorage store so trackers started deep in run.ts find their call and can be
++ * flipped to background when the user detaches it.
++ */
++import { AsyncLocalStorage } from 'node:async_hooks'
++
++export interface ForegroundCall {
++  readonly isDetached: boolean
++  readonly detached: Promise<void>
++  trackers: Set<{ markBackground(): void }>
++}
++
++interface CallInternal extends ForegroundCall {
++  isDetached: boolean
++  resolveDetached: () => void
++}
++
++// One slot on globalThis: the fleet source is memoised by the first module instance, so after
++// /reload a second instance of this file must see the same calls (Ctrl+B).
++const SLOT = Symbol.for('pi-code.fleet.detach')
++interface DetachState {
++  als: AsyncLocalStorage<ForegroundCall>
++  inFlight: Set<CallInternal>
++}
++function state(): DetachState {
++  const holder = globalThis as Record<symbol, DetachState | undefined>
++  return (holder[SLOT] ??= { als: new AsyncLocalStorage<ForegroundCall>(), inFlight: new Set() })
++}
++
++export function runDetachable<T>(work: (call: ForegroundCall) => Promise<T>): { call: ForegroundCall; result: Promise<T> } {
++  let resolveDetached: () => void = () => {}
++  const detached = new Promise<void>((resolve) => {
++    resolveDetached = resolve
++  })
++  const call: CallInternal = { isDetached: false, detached, trackers: new Set(), resolveDetached }
++  const { als, inFlight } = state()
++  inFlight.add(call)
++  return { call, result: als.run(call, () => work(call)) }
++}
++
++export function currentForegroundCall(): ForegroundCall | undefined {
++  return state().als.getStore()
++}
++
++export function finishForeground(call: ForegroundCall): void {
++  state().inFlight.delete(call as CallInternal)
++}
++
++export function hasForeground(): boolean {
++  return state().inFlight.size > 0
++}
++
++export function detachAll(): number {
++  let moved = 0
++  const { inFlight } = state()
++  for (const call of [...inFlight]) {
++    if (call.isDetached) continue
++    call.isDetached = true
++    for (const tracker of call.trackers) tracker.markBackground()
++    call.resolveDetached()
++    inFlight.delete(call)
++    moved++
++  }
++  return moved
++}
++
++/**
++ * Runs `work` as a detachable call tied to the turn's signal. Before a detach the turn's abort
++ * reaches the work and takes the call out of the detachable set at once, so a Ctrl+B pressed while
++ * the abort settles cannot revive it; after a detach the turn's abort no longer reaches it.
++ */
++export async function raceDetach<T>(outer: AbortSignal | undefined, work: (signal: AbortSignal, call: ForegroundCall) => Promise<T>): Promise<{ done: T } | { detached: Promise<T> }> {
++  const ctl = new AbortController()
++  if (outer?.aborted) ctl.abort()
++  const { call, result } = runDetachable((c) => work(ctl.signal, c))
++  const onAbort = (): void => {
++    if (call.isDetached) return
++    finishForeground(call)
++    ctl.abort()
++  }
++  if (outer?.aborted) onAbort()
++  else outer?.addEventListener('abort', onAbort, { once: true })
++  const winner = result.then((done) => ({ done }))
++  winner.catch(() => {})
++  try {
++    return (await Promise.race([winner, call.detached.then(() => undefined)])) ?? { detached: result }
++  } finally {
++    finishForeground(call)
++    outer?.removeEventListener('abort', onAbort)
++  }
++}
+diff -ruN a/subagent/fleet/inbox.ts b/subagent/fleet/inbox.ts
+--- a/subagent/fleet/inbox.ts	1969-12-31 21:00:00.000000000 -0300
++++ b/subagent/fleet/inbox.ts	2026-11-13 12:52:40.291729459 -0300
+@@ -0,0 +1,49 @@
++/**
++ * Child side of the user's messages: a subagent process polls its own inbox file and
++ * steers each message into its running turn. Only depth >= 1 with a valid fleet env.
++ */
++import { subagentDepth } from '../nesting/index.ts'
++import { appendAck, currentFleetDir, readInbox, validRunId } from './store.ts'
++import { FLEET_ENV } from './types.ts'
++
++const SLOT = Symbol.for('pi-code.fleet.inbox')
++const POLL_MS = 1000
++
++export interface InboxTarget {
++  sendUserMessage(text: string, options?: { deliverAs?: 'steer' | 'followUp' }): unknown
++}
++
++/** One poll: deliver every complete new message, ack each; returns the next offset. */
++export function pollInboxOnce(pi: InboxTarget, dir: string, id: string, from: number): number {
++  const { items, next } = readInbox(dir, id, from)
++  for (const msg of items) {
++    let outcome: 'steered' | 'too-late' = 'steered'
++    try {
++      pi.sendUserMessage(msg.text, { deliverAs: 'steer' })
++    } catch {
++      outcome = 'too-late'
++    }
++    appendAck(dir, id, { id: msg.id, t: Date.now(), outcome })
++  }
++  return next
++}
++
++export function stopInboxWatcher(): void {
++  const holder = globalThis as Record<symbol, unknown>
++  const handle = holder[SLOT] as ReturnType<typeof setInterval> | undefined
++  if (handle) clearInterval(handle)
++  holder[SLOT] = undefined
++}
++
++export function startInboxWatcher(pi: InboxTarget): void {
++  stopInboxWatcher()
++  const dir = currentFleetDir()
++  const id = process.env[FLEET_ENV.runId]
++  if (subagentDepth() < 1 || !dir || !validRunId(id)) return
++  let offset = 0
++  const handle = setInterval(() => {
++    offset = pollInboxOnce(pi, dir, id, offset)
++  }, POLL_MS)
++  handle.unref()
++  ;(globalThis as Record<symbol, unknown>)[SLOT] = handle
++}
+diff -ruN a/subagent/fleet/source.ts b/subagent/fleet/source.ts
+--- a/subagent/fleet/source.ts	1969-12-31 21:00:00.000000000 -0300
++++ b/subagent/fleet/source.ts	2026-11-13 12:52:40.291755749 -0300
+@@ -0,0 +1,199 @@
++/**
++ * The FleetSource the panel and viewer read (contract: types.ts): runs from disk,
++ * stop and send for any depth, Ctrl+B detach, and a debounced change feed.
++ */
++import { randomUUID } from 'node:crypto'
++import * as fs from 'node:fs'
++import { backgroundRun, cancelBackgroundRun } from '../background.ts'
++import { detachAll, hasForeground } from './detach.ts'
++import { appendInbox, currentFleetDir, readRecord, readRecords, readTranscript, requestStop } from './store.ts'
++import { FLEET_ENV, type FleetSource, type RunRecord, type SendOutcome, type StopOrigin, type StopOutcome } from './types.ts'
++
++const SOURCE_SLOT = Symbol.for('pi-code.fleet.source')
++const KILL_GRACE_MS = 5000
++const POLL_MS = 1000
++const DEBOUNCE_MS = 100
++
++export interface FleetSourceDeps {
++  resume(id: string, text: string): boolean
++}
++
++/** The pid must still belong to this run: pids are reused, and the child env carries the id. */
++function pidOwnsRun(pid: number, id: string): boolean {
++  if (process.platform !== 'linux') return true
++  try {
++    return fs.readFileSync(`/proc/${pid}/environ`, 'utf8').split('\0').includes(`${FLEET_ENV.runId}=${id}`)
++  } catch {
++    return false
++  }
++}
++
++function killGroup(pid: number, signal: NodeJS.Signals): 'ok' | 'gone' {
++  try {
++    process.kill(-pid, signal)
++    return 'ok'
++  } catch (error) {
++    return (error as NodeJS.ErrnoException).code === 'ESRCH' ? 'gone' : 'ok'
++  }
++}
++
++export function stopRun(id: string, by: StopOrigin = 'user'): StopOutcome {
++  const dir = currentFleetDir()
++  const rec = dir ? readRecord(dir, id) : undefined
++  if (!dir || !rec) return 'unknown'
++  if (rec.state !== 'running') return 'not-running'
++  if (backgroundRun(id)?.state === 'running') {
++    requestStop(dir, id, by)
++    cancelBackgroundRun(id)
++    return 'stopping'
++  }
++  if (!rec.pid || !pidOwnsRun(rec.pid, id)) return 'refused'
++  requestStop(dir, id, by)
++  const pid = rec.pid
++  if (killGroup(pid, 'SIGTERM') === 'gone') return 'not-running'
++  setTimeout(() => sigkillIfStillOwned(dir, id, pid), KILL_GRACE_MS).unref()
++  return 'stopping'
++}
++
++/** The delayed SIGKILL re-checks: the run may have ended and its pid been reused during the grace. */
++export function sigkillIfStillOwned(dir: string, id: string, pid: number): boolean {
++  if (readRecord(dir, id)?.state !== 'running' || !pidOwnsRun(pid, id)) return false
++  killGroup(pid, 'SIGKILL')
++  return true
++}
++
++/** The model-facing stop: only runs this process started; the panel keeps the unrestricted stopRun. */
++export function stopOwnRun(id: string): StopOutcome | 'not-owned' {
++  const dir = currentFleetDir()
++  const rec = dir ? readRecord(dir, id) : undefined
++  if (!rec || rec.ownerPid !== process.pid) return rec ? 'not-owned' : 'unknown'
++  return stopRun(id, 'agent')
++}
++
++function sendToRun(id: string, text: string, deps: FleetSourceDeps): SendOutcome {
++  const dir = currentFleetDir()
++  const rec = dir ? readRecord(dir, id) : undefined
++  if (!dir || !rec) return 'unknown'
++  const body = text.trim()
++  if (!body) return 'not-running'
++  if (rec.state === 'running') {
++    appendInbox(dir, id, { id: randomUUID().slice(0, 8), t: Date.now(), text })
++    return 'queued'
++  }
++  return rec.depth === 1 && rec.background && deps.resume(id, text) ? 'resumed' : 'not-running'
++}
++
++const listeners = new Set<() => void>()
++let watcher: fs.FSWatcher | undefined
++let ticker: ReturnType<typeof setInterval> | undefined
++let debounce: ReturnType<typeof setTimeout> | undefined
++
++function fire(): void {
++  if (debounce) return
++  debounce = setTimeout(() => {
++    debounce = undefined
++    for (const listener of [...listeners]) {
++      try {
++        listener()
++      } catch {
++        /* a listener must not break the feed */
++      }
++    }
++  }, DEBOUNCE_MS)
++  debounce.unref()
++}
++
++function tryWatch(): void {
++  const dir = currentFleetDir()
++  if (watcher || !dir) return
++  try {
++    const w = fs.watch(dir, fire)
++    w.on('error', () => {
++      w.close()
++      if (watcher === w) watcher = undefined
++    })
++    watcher = w
++  } catch {
++    /* the poll still runs */
++  }
++}
++
++function subscribe(listener: () => void): () => void {
++  listeners.add(listener)
++  if (listeners.size === 1) {
++    tryWatch()
++    ticker = setInterval(() => {
++      tryWatch()
++      fire()
++    }, POLL_MS)
++    ticker.unref()
++  }
++  return () => {
++    if (!listeners.delete(listener) || listeners.size > 0) return
++    watcher?.close()
++    watcher = undefined
++    if (ticker) clearInterval(ticker)
++    ticker = undefined
++    if (debounce) clearTimeout(debounce)
++    debounce = undefined
++  }
++}
++
++export function createFleetSource(deps: FleetSourceDeps): FleetSource {
++  return {
++    list: () => {
++      const dir = currentFleetDir()
++      return dir ? readRecords(dir) : []
++    },
++    readTranscript: (id, from) => {
++      const dir = currentFleetDir()
++      return dir ? readTranscript(dir, id, from) : { items: [], next: from }
++    },
++    stop: stopRun,
++    send: (id, text) => sendToRun(id, text, deps),
++    hasForeground,
++    detachForeground: detachAll,
++    onChange: subscribe,
++  }
++}
++
++/** Memoised on globalThis so /reload keeps one source; the newest deps win. */
++export function getFleetSource(deps: FleetSourceDeps): FleetSource {
++  const holder = globalThis as Record<symbol, { deps: FleetSourceDeps; source: FleetSource } | undefined>
++  const existing = holder[SOURCE_SLOT]
++  if (existing) {
++    existing.deps = deps
++    return existing.source
++  }
++  const box = { deps, source: undefined as unknown as FleetSource }
++  box.source = createFleetSource({ resume: (id, text) => box.deps.resume(id, text) })
++  holder[SOURCE_SLOT] = box
++  return box.source
++}
++
++export function fleetSourceForUi(): FleetSource {
++  const box = (globalThis as Record<symbol, { source: FleetSource } | undefined>)[SOURCE_SLOT]
++  if (!box) throw new Error('fleet source not created yet (session_start at depth 0 creates it)')
++  return box.source
++}
++
++function isDetachedRunning(rec: RunRecord): boolean {
++  return rec.depth === 1 && rec.state === 'running' && rec.background && rec.ownerPid === process.pid && !backgroundRun(rec.id)
++}
++
++export function fleetStatusLines(): string[] {
++  const dir = currentFleetDir()
++  if (!dir) return []
++  return readRecords(dir)
++    .filter(isDetachedRunning)
++    .map((rec) => `${rec.id} (${rec.agent}) running — moved to the background (Ctrl+B)`)
++}
++
++/** Quit at depth 0: stop this process's foreground and detached children (background runs are the registry's job). */
++export function stopOwnForegroundRuns(): void {
++  const dir = currentFleetDir()
++  if (!dir) return
++  for (const rec of readRecords(dir)) {
++    if (rec.depth === 1 && rec.state === 'running' && rec.ownerPid === process.pid && !backgroundRun(rec.id)) stopRun(rec.id)
++  }
++}
+diff -ruN a/subagent/fleet/store.ts b/subagent/fleet/store.ts
+--- a/subagent/fleet/store.ts	1969-12-31 21:00:00.000000000 -0300
++++ b/subagent/fleet/store.ts	2026-11-13 12:52:40.291791539 -0300
+@@ -0,0 +1,287 @@
++/**
++ * Fleet file layer (contract: types.ts). Every write swallows errors: the fleet is
++ * observability and must never fail the run it describes. Only ensureFleetDir creates
++ * a directory; a write into a vanished dir just fails quietly.
++ */
++import { randomUUID } from 'node:crypto'
++import * as fs from 'node:fs'
++import * as os from 'node:os'
++import * as path from 'node:path'
++import { subagentDepth } from '../nesting/index.ts'
++import { FLEET_ENV, type InboxAck, type InboxMessage, type RunRecord, type StopOrigin, type TranscriptItem } from './types.ts'
++
++export const RUN_ID_RE = /^[a-z]{2}-[0-9a-f]{8}$/
++const DIR_SLOT = Symbol.for('pi-code.fleet.dir')
++const TRANSCRIPT_CAP = 4 * 1024 * 1024
++const TRUNCATED_NOTE = '[transcript truncated at 4 MB]'
++
++const slot = globalThis as Record<symbol, unknown>
++
++export const fleetRoot = (): string => path.join(os.tmpdir(), `pi-code-fleet-${process.getuid?.() ?? 'u'}`)
++
++export const validRunId = (id: unknown): id is string => typeof id === 'string' && RUN_ID_RE.test(id)
++
++/** Depth 0 only: one dir per process, reused across /reload through globalThis. */
++/** A shared /tmp root is trusted only when it is our own real directory, closed to group and others. */
++export function checkRootSafe(root: string): boolean {
++  try {
++    const st = fs.lstatSync(root)
++    return st.isDirectory() && st.uid === process.getuid?.() && (st.mode & 0o077) === 0
++  } catch {
++    return false
++  }
++}
++
++/** Undefined disables the fleet (unsafe root or any error): session_start must never throw. */
++export function ensureFleetDir(): string | undefined {
++  try {
++    const existing = slot[DIR_SLOT] as string | undefined
++    if (existing) return existing
++    const root = fleetRoot()
++    fs.mkdirSync(root, { recursive: true, mode: 0o700 })
++    if (!checkRootSafe(root)) return undefined
++    const dir = path.join(root, `${process.pid}-${randomUUID().slice(0, 8)}`)
++    fs.mkdirSync(dir, { mode: 0o700 })
++    slot[DIR_SLOT] = dir
++    return dir
++  } catch {
++    return undefined
++  }
++}
++
++/** Depth 0 ignores an inherited PI_CODE_FLEET_DIR: a pi launched from a bash tool must not join its parent's fleet. */
++export function currentFleetDir(): string | undefined {
++  if (subagentDepth() === 0) return slot[DIR_SLOT] as string | undefined
++  const dir = process.env[FLEET_ENV.dir]
++  return dir && path.isAbsolute(dir) && path.dirname(dir) === fleetRoot() ? dir : undefined
++}
++
++export function fleetChildEnv(id: string): Record<string, string> {
++  const dir = currentFleetDir()
++  if (!dir || !validRunId(id)) return {}
++  return { [FLEET_ENV.dir]: dir, [FLEET_ENV.runId]: id }
++}
++
++export function pidAlive(pid: number): boolean {
++  try {
++    process.kill(pid, 0)
++    return true
++  } catch (error) {
++    return (error as NodeJS.ErrnoException).code === 'EPERM'
++  }
++}
++
++export function sweepOrphanFleetDirs(): void {
++  const root = fleetRoot()
++  const own = slot[DIR_SLOT] as string | undefined
++  // Only a process that created its own dir (root checked safe) sweeps: never a root someone else planted.
++  if (!own) return
++  let names: string[]
++  try {
++    names = fs.readdirSync(root)
++  } catch {
++    return
++  }
++  for (const name of names) {
++    const m = /^(\d+)-[0-9a-f]{8}$/.exec(name)
++    const full = path.join(root, name)
++    if (!m || full === own || pidAlive(Number(m[1]))) continue
++    try {
++      fs.rmSync(full, { recursive: true })
++    } catch {
++      /* best effort */
++    }
++  }
++}
++
++export function removeFleetDir(): void {
++  const dir = slot[DIR_SLOT] as string | undefined
++  slot[DIR_SLOT] = undefined
++  if (!dir) return
++  try {
++    fs.rmSync(dir, { recursive: true })
++  } catch {
++    /* best effort */
++  }
++}
++
++export function writeRecord(dir: string, rec: RunRecord): void {
++  if (!validRunId(rec.id)) return
++  const final = path.join(dir, `${rec.id}.json`)
++  const tmp = `${final}.tmp-${process.pid}`
++  try {
++    fs.writeFileSync(tmp, JSON.stringify(rec))
++    fs.renameSync(tmp, final)
++  } catch {
++    /* best effort */
++  }
++}
++
++export function readRecord(dir: string, id: string): RunRecord | undefined {
++  if (!validRunId(id)) return undefined
++  try {
++    return mapOrphan(JSON.parse(fs.readFileSync(path.join(dir, `${id}.json`), 'utf8')))
++  } catch {
++    return undefined
++  }
++}
++
++function mapOrphan(raw: unknown): RunRecord | undefined {
++  const rec = raw as RunRecord | null
++  if (!rec || typeof rec !== 'object' || rec.v !== 1 || !validRunId(rec.id)) return undefined
++  if (rec.state === 'running' && !(typeof rec.ownerPid === 'number' && pidAlive(rec.ownerPid))) return { ...rec, state: 'failed', error: 'orphaned' }
++  return rec
++}
++
++export function readRecords(dir: string): RunRecord[] {
++  let names: string[]
++  try {
++    names = fs.readdirSync(dir)
++  } catch {
++    return []
++  }
++  const out: RunRecord[] = []
++  for (const name of names) {
++    if (!name.endsWith('.json')) continue
++    try {
++      const rec = mapOrphan(JSON.parse(fs.readFileSync(path.join(dir, name), 'utf8')))
++      if (rec) out.push(rec)
++    } catch {
++      /* bad JSON skipped */
++    }
++  }
++  return out
++}
++
++export function appendJsonl(file: string, obj: unknown): void {
++  try {
++    fs.appendFileSync(file, `${JSON.stringify(obj)}\n`)
++  } catch {
++    /* best effort */
++  }
++}
++
++/** Reads whole lines in [from, from+maxBytes); `next` advances only past a newline, so a half-written line is retried. */
++export function readJsonl<T>(file: string, from: number, maxBytes = 1024 * 1024): { items: T[]; next: number } {
++  const empty = { items: [] as T[], next: from }
++  let fd: number | undefined
++  try {
++    fd = fs.openSync(file, 'r')
++    const size = fs.fstatSync(fd).size
++    if (size <= from) return empty
++    const len = Math.min(size, from + maxBytes) - from
++    const buf = Buffer.alloc(len)
++    const n = fs.readSync(fd, buf, 0, len, from)
++    const cut = buf.subarray(0, n).lastIndexOf(0x0a)
++    if (cut < 0) return empty
++    const items: T[] = []
++    for (const line of buf.subarray(0, cut).toString('utf8').split('\n')) {
++      if (!line) continue
++      try {
++        items.push(JSON.parse(line) as T)
++      } catch {
++        /* bad line skipped */
++      }
++    }
++    return { items, next: from + cut + 1 }
++  } catch {
++    return empty
++  } finally {
++    if (fd !== undefined) fs.closeSync(fd)
++  }
++}
++
++const transcriptFile = (dir: string, id: string): string => path.join(dir, `${id}.transcript.jsonl`)
++const transcriptBytes = new Map<string, { bytes: number; capped: boolean }>()
++
++export function appendTranscript(dir: string, id: string, item: TranscriptItem): void {
++  if (!validRunId(id)) return
++  const file = transcriptFile(dir, id)
++  const key = file
++  let state = transcriptBytes.get(key)
++  if (!state) {
++    let bytes = 0
++    try {
++      bytes = fs.statSync(file).size
++    } catch {
++      /* new file */
++    }
++    state = { bytes, capped: false }
++    transcriptBytes.set(key, state)
++  }
++  if (state.capped) return
++  const line = `${JSON.stringify(item)}\n`
++  if (state.bytes + Buffer.byteLength(line) > TRANSCRIPT_CAP) {
++    state.capped = true
++    appendJsonl(file, { t: Date.now(), kind: 'note', text: TRUNCATED_NOTE })
++    return
++  }
++  state.bytes += Buffer.byteLength(line)
++  appendJsonl(file, item)
++}
++
++export function readTranscript(dir: string, id: string, from: number): { items: TranscriptItem[]; next: number } {
++  if (!validRunId(id)) return { items: [], next: from }
++  return readJsonl<TranscriptItem>(transcriptFile(dir, id), from)
++}
++
++const inboxFile = (dir: string, id: string): string => path.join(dir, `${id}.inbox.jsonl`)
++const ackFile = (dir: string, id: string): string => path.join(dir, `${id}.inbox-ack.jsonl`)
++
++/** A resumed run reuses its id: the new child's watcher starts at offset 0 and must not replay old steers. */
++export function resetInbox(dir: string, id: string): void {
++  if (!validRunId(id)) return
++  for (const file of [inboxFile(dir, id), ackFile(dir, id)]) {
++    try {
++      if (fs.existsSync(file)) fs.writeFileSync(file, '')
++    } catch {
++      /* best effort */
++    }
++  }
++}
++
++export function appendInbox(dir: string, id: string, msg: InboxMessage): void {
++  if (validRunId(id)) appendJsonl(inboxFile(dir, id), msg)
++}
++
++export function readInbox(dir: string, id: string, from: number): { items: InboxMessage[]; next: number } {
++  return validRunId(id) ? readJsonl<InboxMessage>(inboxFile(dir, id), from) : { items: [], next: from }
++}
++
++export function appendAck(dir: string, id: string, ack: InboxAck): void {
++  if (validRunId(id)) appendJsonl(ackFile(dir, id), ack)
++}
++
++export function readAcks(dir: string, id: string, from: number): { items: InboxAck[]; next: number } {
++  return validRunId(id) ? readJsonl<InboxAck>(ackFile(dir, id), from) : { items: [], next: from }
++}
++
++/** The marker holds who stopped the run, so the parent's note and the record name the right actor. */
++export function requestStop(dir: string, id: string, by: StopOrigin = 'user'): void {
++  if (!validRunId(id)) return
++  try {
++    fs.writeFileSync(path.join(dir, `${id}.stop`), by)
++  } catch {
++    /* best effort */
++  }
++}
++
++/** An empty marker (older build) reads as the user. */
++export function stopOrigin(dir: string | undefined, id: string): StopOrigin | undefined {
++  if (!dir || !validRunId(id)) return undefined
++  try {
++    return fs.readFileSync(path.join(dir, `${id}.stop`), 'utf8').trim() === 'agent' ? 'agent' : 'user'
++  } catch {
++    return undefined
++  }
++}
++
++/** A resumed run starts clean: the previous stop must not cancel it again. */
++export function clearStop(dir: string, id: string): void {
++  if (!validRunId(id)) return
++  try {
++    fs.rmSync(path.join(dir, `${id}.stop`))
++  } catch {
++    /* none */
++  }
++}
+diff -ruN a/subagent/fleet/tracker.ts b/subagent/fleet/tracker.ts
+--- a/subagent/fleet/tracker.ts	1969-12-31 21:00:00.000000000 -0300
++++ b/subagent/fleet/tracker.ts	2026-11-13 12:52:40.291825259 -0300
+@@ -0,0 +1,253 @@
++/**
++ * Per-run tracker: turns a child's JSON event stream into the fleet's RunRecord and
++ * transcript. One tracker per spawned child, owned by the spawner. Record writes are
++ * throttled (<= 1 per 250 ms); message_update deltas are ignored so there is no
++ * per-token I/O.
++ */
++import { subagentDepth } from '../nesting/index.ts'
++import { currentForegroundCall } from './detach.ts'
++import { appendTranscript, clearStop, currentFleetDir, readRecord, resetInbox, stopOrigin, validRunId, writeRecord } from './store.ts'
++import { FLEET_ENV, type RunRecord, type StopOrigin, type TranscriptItem } from './types.ts'
++
++export const USER_STOP_NOTE = 'Stopped by the user from the agent panel.'
++export const AGENT_STOP_NOTE = 'Cancelled by its parent agent (subagent cancel).'
++export const stopNote = (by: StopOrigin): string => (by === 'agent' ? AGENT_STOP_NOTE : USER_STOP_NOTE)
++
++const WRITE_INTERVAL_MS = 250
++const ACTIVITY_MAX = 120
++// CSI sequences first: matched by the control-char class alone, ESC would go and leave `[31m` behind.
++const CONTROL_RE = /\u001b\[[0-9;?]*[ -/]*[@-~]|[\u0000-\u001f\u007f]/g
++
++export interface FinishOptions {
++  exitCode?: number
++  error?: string
++  aborted?: boolean
++  cancelled?: boolean
++}
++
++/** A maxTurns cap ends with our own SIGTERM (exit 143): that is a clean finish, as run.ts resolves it. */
++export const finishExitCode = (partial: boolean, code: number | null): number | undefined => (partial ? 0 : (code ?? undefined))
++
++export interface RunTracker {
++  setPid(pid: number | undefined): void
++  onLine(line: string): void
++  markBackground(): void
++  finish(o: FinishOptions): void
++  flush(): void
++}
++
++export interface TrackOptions {
++  id: string
++  agent: string
++  task: string
++  model?: string
++  background: boolean
++}
++
++type Json = Record<string, any>
++
++const collapse = (text: string): string => text.replace(/\s+/g, ' ').trim()
++const cleanActivity = (text: string): string => text.replace(CONTROL_RE, ' ').replace(/ +/g, ' ').trim().slice(0, ACTIVITY_MAX)
++
++function textOf(content: unknown, join: string): string {
++  if (typeof content === 'string') return content
++  if (!Array.isArray(content)) return ''
++  return content
++    .filter((b: Json) => b?.type === 'text' && typeof b.text === 'string')
++    .map((b: Json) => b.text)
++    .join(join)
++}
++
++function argPreview(args: unknown): string {
++  const a = (args ?? {}) as Json
++  for (const key of ['command', 'path', 'file_path', 'pattern', 'query', 'url', 'agent', 'task']) {
++    if (typeof a[key] === 'string') return collapse(a[key])
++  }
++  return collapse(JSON.stringify(args) ?? '')
++}
++
++function parentRunId(): string | null {
++  if (subagentDepth() < 1) return null
++  const id = process.env[FLEET_ENV.runId]
++  return validRunId(id) ? id : null
++}
++
++function freshRecord(o: TrackOptions, background: boolean): RunRecord {
++  const now = Date.now()
++  return {
++    v: 1,
++    id: o.id,
++    parentId: parentRunId(),
++    depth: subagentDepth() + 1,
++    agent: o.agent,
++    task: collapse(o.task).slice(0, 300),
++    ...(o.model ? { model: o.model } : {}),
++    background,
++    state: 'running',
++    startedAt: now,
++    updatedAt: now,
++    turns: 0,
++    toolCalls: 0,
++    tokens: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, context: 0 },
++    cost: 0,
++    ownerPid: process.pid,
++  }
++}
++
++export function startTracking(o: TrackOptions): RunTracker | undefined {
++  const dir = currentFleetDir()
++  if (!dir || !validRunId(o.id)) return undefined
++  const call = currentForegroundCall()
++  const prior = readRecord(dir, o.id)
++  const rec = freshRecord(o, o.background || (call?.isDetached ?? false))
++  if (prior) {
++    Object.assign(rec, { startedAt: prior.startedAt, turns: prior.turns, toolCalls: prior.toolCalls, tokens: prior.tokens, cost: prior.cost })
++    clearStop(dir, o.id)
++    resetInbox(dir, o.id)
++    appendTranscript(dir, o.id, { t: Date.now(), kind: 'note', text: '— resumed —' })
++  }
++  const tracker = new Tracker(dir, rec)
++  call?.trackers.add(tracker)
++  tracker.flush(true)
++  return tracker
++}
++
++class Tracker implements RunTracker {
++  private inFlight = 0
++  private finished = false
++  private dirty = false
++  private lastWrite = 0
++  private timer: ReturnType<typeof setTimeout> | undefined
++
++  private readonly dir: string
++  private readonly rec: RunRecord
++
++  constructor(dir: string, rec: RunRecord) {
++    this.dir = dir
++    this.rec = rec
++  }
++
++  setPid(pid: number | undefined): void {
++    this.rec.pid = pid
++    this.schedule()
++  }
++
++  markBackground(): void {
++    this.rec.background = true
++    this.write()
++  }
++
++  onLine(line: string): void {
++    let ev: Json
++    try {
++      ev = JSON.parse(line)
++    } catch {
++      return
++    }
++    if (!ev || typeof ev !== 'object' || this.finished) return
++    switch (ev.type) {
++      case 'message_start':
++        if (ev.message?.role === 'assistant' && this.inFlight === 0) this.setActivity('thinking…')
++        break
++      case 'message_end':
++        this.onMessageEnd(ev.message ?? {})
++        break
++      case 'tool_execution_start':
++        this.onToolStart(ev)
++        break
++      case 'tool_execution_end':
++        this.inFlight = Math.max(0, this.inFlight - 1)
++        this.note({ kind: 'tool_result', tool: ev.toolName, isError: Boolean(ev.isError), text: textOf(ev.result?.content, '\n').slice(0, 2000) })
++        break
++      default:
++        return
++    }
++    this.schedule()
++  }
++
++  finish(o: FinishOptions): void {
++    if (this.finished) return
++    this.finished = true
++    if (this.timer) clearTimeout(this.timer)
++    this.timer = undefined
++    const by = stopOrigin(this.dir, this.rec.id)
++    const stopped = by !== undefined
++    if (by) this.rec.stoppedBy = by
++    this.rec.state = stopped || o.cancelled || o.aborted ? 'cancelled' : (o.exitCode ?? 0) === 0 && !o.error ? 'done' : 'failed'
++    this.rec.endedAt = Date.now()
++    this.rec.exitCode = o.exitCode
++    if (o.error) this.rec.error = o.error.slice(0, 300)
++    this.write()
++  }
++
++  flush(force = false): void {
++    if (this.dirty || force) this.write()
++  }
++
++  private onMessageEnd(msg: Json): void {
++    if (msg.role === 'user') {
++      this.note({ kind: 'user', text: textOf(msg.content, '\n').slice(0, 4000) })
++      return
++    }
++    if (msg.role !== 'assistant') return
++    this.rec.turns++
++    const u = msg.usage
++    if (u && typeof u === 'object') {
++      const t = this.rec.tokens
++      t.input += Number(u.input) || 0
++      t.output += Number(u.output) || 0
++      t.cacheRead += Number(u.cacheRead) || 0
++      t.cacheWrite += Number(u.cacheWrite) || 0
++      if (typeof u.totalTokens === 'number') t.context = u.totalTokens
++      if (typeof u.cost?.total === 'number') this.rec.cost += u.cost.total
++    }
++    const text = textOf(msg.content, '\n')
++    if (text.trim()) {
++      this.note({ kind: 'assistant', text: text.slice(0, 20000) })
++      const last = text.split('\n').reverse().find((l) => l.trim())
++      if (last && this.inFlight === 0) this.setActivity(last)
++    }
++    if (msg.stopReason === 'error' && msg.errorMessage) this.rec.error = String(msg.errorMessage).slice(0, 300)
++  }
++
++  private onToolStart(ev: Json): void {
++    this.rec.toolCalls++
++    this.inFlight++
++    const preview = collapse(`${ev.toolName} ${argPreview(ev.args)}`)
++    this.note({ kind: 'tool_call', tool: ev.toolName, text: preview.slice(0, 300) })
++    this.setActivity(preview.slice(0, 120))
++  }
++
++  private setActivity(text: string): void {
++    this.rec.activity = cleanActivity(text)
++  }
++
++  private note(item: Omit<TranscriptItem, 't'>): void {
++    appendTranscript(this.dir, this.rec.id, { t: Date.now(), ...item })
++  }
++
++  private schedule(): void {
++    if (this.finished) return
++    this.dirty = true
++    const wait = this.lastWrite + WRITE_INTERVAL_MS - Date.now()
++    if (wait <= 0) {
++      this.write()
++      return
++    }
++    if (this.timer) return
++    this.timer = setTimeout(() => {
++      this.timer = undefined
++      this.write()
++    }, wait)
++    this.timer.unref()
++  }
++
++  private write(): void {
++    if (this.timer) clearTimeout(this.timer)
++    this.timer = undefined
++    this.dirty = false
++    this.lastWrite = Date.now()
++    this.rec.updatedAt = this.lastWrite
++    writeRecord(this.dir, this.rec)
++  }
++}
+diff -ruN a/subagent/fleet/types.ts b/subagent/fleet/types.ts
+--- a/subagent/fleet/types.ts	1969-12-31 21:00:00.000000000 -0300
++++ b/subagent/fleet/types.ts	2026-11-13 12:52:40.291852329 -0300
+@@ -0,0 +1,129 @@
++/**
++ * Agent fleet contract (local patch, claude-home/patches/pi-code/subagent-panel.patch).
++ *
++ * Every pi process that spawns a subagent (the main session at depth 0 and any writer
++ * child below it) records that run in one shared directory per main session, the fleet
++ * dir. The spawner is the only writer of a run's files; the main session's panel reads
++ * the whole tree from disk, so runs at depth 2 and 3, which live in other processes, show
++ * up the same way as its own children. Record: docs/pi-agent-fleet-2026-11-12.md.
++ *
++ * Files in the fleet dir (mode 0700, under os.tmpdir()/pi-code-fleet-<uid>/):
++ *   <id>.json               RunRecord, rewritten atomically (tmp file + rename)
++ *   <id>.transcript.jsonl   TranscriptItem per line, appended by the spawner, size-capped
++ *   <id>.inbox.jsonl        InboxMessage per line, appended by the main session's panel
++ *   <id>.inbox-ack.jsonl    InboxAck per line, appended by the child that consumed the inbox
++ *   <id>.stop               marker written before the panel stops a run: the spawner then
++ *                           reports the run as stopped by the user, not as a crash
++ */
++
++/** Environment a spawned child inherits (set by the spawner, read by the child). */
++export const FLEET_ENV = {
++  /** The main session's fleet dir; created once at depth 0, inherited unchanged below. */
++  dir: 'PI_CODE_FLEET_DIR',
++  /** The run id of this process itself, so its own children record it as their parent
++   * and its inbox watcher knows which inbox is its own. Unset in the main session. */
++  runId: 'PI_CODE_FLEET_RUN_ID',
++} as const
++
++export type RunState = 'running' | 'done' | 'failed' | 'cancelled'
++
++export interface RunTokens {
++  input: number
++  output: number
++  cacheRead: number
++  cacheWrite: number
++  /** Context window in use after the latest assistant message (its totalTokens). */
++  context: number
++}
++
++export interface RunRecord {
++  v: 1
++  /** pi-code's run id: `fg-xxxxxxxx` (foreground) or `bg-xxxxxxxx` (background). */
++  id: string
++  /** Run id of the run whose process spawned this one; null when the main session did. */
++  parentId: string | null
++  /** 1 = child of the main session, 2 = grandchild, 3 = great-grandchild. */
++  depth: number
++  agent: string
++  /** First 300 characters of the task, whitespace collapsed to single spaces. */
++  task: string
++  model?: string
++  /** Started with background: true, or moved to the background by the user (Ctrl+B). */
++  background: boolean
++  state: RunState
++  startedAt: number
++  updatedAt: number
++  endedAt?: number
++  /** Plain text, no ANSI, at most 120 characters: the tool call in flight, else the
++   * latest assistant text line. */
++  activity?: string
++  turns: number
++  toolCalls: number
++  tokens: RunTokens
++  /** USD spent by this run itself, descendants excluded. */
++  cost: number
++  /** The child's pid; it leads its own process group (spawned detached). */
++  pid?: number
++  /** The process that spawned the run and is the only writer of its files. */
++  ownerPid: number
++  exitCode?: number
++  /** At most 300 characters. */
++  error?: string
++  /** Who stopped the run: the user (panel `x x`) or the parent agent (`subagent {cancel}`, registry or fleet path). */
++  stoppedBy?: StopOrigin
++}
++
++export type TranscriptKind = 'user' | 'assistant' | 'tool_call' | 'tool_result' | 'note'
++
++export interface TranscriptItem {
++  /** Epoch ms. */
++  t: number
++  kind: TranscriptKind
++  /** Plain text, no ANSI. assistant: up to 20,000 chars; tool_call: a one-line
++   * `tool args` preview up to 300; tool_result: up to 2,000; user and note: up to 4,000. */
++  text: string
++  tool?: string
++  isError?: boolean
++}
++
++export interface InboxMessage {
++  id: string
++  t: number
++  text: string
++}
++
++export interface InboxAck {
++  id: string
++  t: number
++  /** steered: queued into the running agent; too-late: the agent had already finished. */
++  outcome: 'steered' | 'too-late'
++}
++
++export type StopOutcome = 'stopping' | 'not-running' | 'unknown' | 'refused'
++/** queued: written to a running run's inbox; resumed: a finished background run of the
++ * main session continued with the message as its new task (pi-code's resume). */
++export type SendOutcome = 'queued' | 'resumed' | 'not-running' | 'unknown'
++
++/** What the panel and the viewer need from the data plane; injected so the UI can be
++ * tested against an in-memory fake. */
++export interface FleetSource {
++  /** Every run of this main session's tree, any state. A `running` record whose owner
++   * process is gone is returned as `failed` with error `orphaned`. */
++  list(): RunRecord[]
++  /** Transcript items appended since byte offset `from`; `next` is the offset to pass next time. */
++  readTranscript(id: string, from: number): { items: TranscriptItem[]; next: number }
++  /** Stop a running run of any depth (marker, then SIGTERM to its process group, SIGKILL
++   * after 5 s). `refused` when the pid no longer belongs to that run. */
++  stop(id: string): StopOutcome
++  /** Send the user's message to a run (see SendOutcome). */
++  send(id: string, text: string): SendOutcome
++  /** True while the main session has a foreground subagent tool call in flight. */
++  hasForeground(): boolean
++  /** Ctrl+B: move every foreground subagent call in flight to the background; returns how
++   * many calls moved (0 when none). */
++  detachForeground(): number
++  /** Called (debounced) whenever the fleet dir changes; returns the unsubscribe. */
++  onChange(listener: () => void): () => void
++}
++
++export type StopOrigin = 'user' | 'agent'
+diff -ruN a/subagent/fleet-ui/index.ts b/subagent/fleet-ui/index.ts
+--- a/subagent/fleet-ui/index.ts	1969-12-31 21:00:00.000000000 -0300
++++ b/subagent/fleet-ui/index.ts	2026-11-13 12:52:40.291877399 -0300
+@@ -0,0 +1,111 @@
++/**
++ * Entry of the agent-fleet UI (local patch): the panel below the prompt, its key
++ * handling, the live viewer and the /tasks browser. Wired by ../index.ts.
++ * Record: docs/pi-agent-fleet-2026-11-12.md.
++ */
++import type { ExtensionAPI, ExtensionCommandContext } from '@earendil-works/pi-coding-agent'
++
++import type { FleetSource } from '../fleet/types.ts'
++import { hudTheme } from './palette.ts'
++import { executeAction, PanelController, renderPanel } from './panel.ts'
++import type { PanelView } from './panel.ts'
++import { openTasksBrowser, openViewer, overlays } from './viewer.ts'
++
++const WIDGET_KEY = 'pi-code-fleet'
++const TICK_MS = 250 // spinner pace; idle ticks render once per second (IDLE_EVERY)
++const IDLE_EVERY = 4
++
++/** pi's TUI keeps the focused component private: treat the editor (getText + setText) as the
++ * owner; unknown focus counts as the editor so activation keeps working. */
++function editorOwnsFocus(tui: unknown): boolean {
++  const focused = (tui as { focusedComponent?: unknown } | undefined)?.focusedComponent
++  if (focused == null) return true
++  const c = focused as { getText?: unknown; setText?: unknown }
++  return typeof c.getText === 'function' && typeof c.setText === 'function'
++}
++
++export function registerFleetUi(pi: ExtensionAPI, getSource: () => FleetSource | undefined): { openTasks(ctx: ExtensionCommandContext): Promise<void> } {
++  const controller = new PanelController({ getSource, now: Date.now })
++  let cleanup: (() => void) | undefined
++
++  pi.on('session_start', (_event, ctx) => {
++    cleanup?.()
++    cleanup = undefined
++    if (!ctx.hasUI || process.env.PI_CODE_SUBAGENT) return
++    let tui: { requestRender(): void } | undefined
++    let lastView: PanelView | undefined
++    let ticks = 0
++    ctx.ui.setWidget(
++      WIDGET_KEY,
++      (t, theme) => {
++        tui = t
++        const hud = hudTheme(theme)
++        return {
++          render: (width: number) => {
++            lastView = controller.view()
++            return renderPanel(lastView, hud, width)
++          },
++          invalidate: () => {},
++        }
++      },
++      { placement: 'belowEditor' },
++    )
++    const render = (): void => tui?.requestRender()
++    const offInput = ctx.ui.onTerminalInput((data) => {
++      const source = getSource()
++      const result = controller.handleKey(data, {
++        editorText: ctx.ui.getEditorText(),
++        editorFocused: editorOwnsFocus(tui),
++        overlayOpen: overlays.open > 0,
++      })
++      if (result.action && source) {
++        executeAction(result.action, { source, notify: (m, type) => ctx.ui.notify(m, type), open: (id) => void openViewer(ctx, source, id) })
++      }
++      render()
++      return result.consume ? { consume: true } : undefined
++    })
++    let offChange: (() => void) | undefined
++    let subscribedTo: FleetSource | undefined
++    const subscribe = (): void => {
++      const source = getSource()
++      if (!source || source === subscribedTo) return
++      offChange?.()
++      subscribedTo = source
++      offChange = source.onChange(render)
++    }
++    subscribe()
++    const timer = setInterval(() => {
++      subscribe() // getSource() may only start answering after session_start
++      ticks += 1
++      // Animation frames re-render without reading the fleet again; idle ticks keep the old 1 s cadence.
++      if (lastView?.frame !== undefined && lastView.running > 0) return render()
++      if (ticks % IDLE_EVERY !== 0) return
++      const view = controller.view()
++      if (view.rows.some((r) => r.state === 'running') || view.rows.length > 0 || view.finished > 0) render()
++    }, TICK_MS)
++    timer.unref?.()
++    cleanup = () => {
++      offInput()
++      offChange?.()
++      clearInterval(timer)
++      ctx.ui.setWidget(WIDGET_KEY, undefined)
++    }
++  })
++
++  pi.on('session_shutdown', () => {
++    cleanup?.()
++    cleanup = undefined
++  })
++
++  return {
++    async openTasks(ctx) {
++      if (!ctx.hasUI) return
++      const source = getSource()
++      if (!source) {
++        ctx.ui.notify('No subagent runs in this session.', 'info')
++        return
++      }
++      await openTasksBrowser(ctx, source)
++    },
++  }
++}
+diff -ruN a/subagent/fleet-ui/palette.ts b/subagent/fleet-ui/palette.ts
+--- a/subagent/fleet-ui/palette.ts	1969-12-31 21:00:00.000000000 -0300
++++ b/subagent/fleet-ui/palette.ts	2026-11-13 12:52:40.291896319 -0300
+@@ -0,0 +1,91 @@
++/**
++ * HUD palette for the agent panel, viewer and /tasks browser: reads `colors` from the claude-hud
++ * config once and maps the UI's color roles to them with truecolor ANSI. Falls back to the pi
++ * theme when the file or a field is missing; NO_COLOR emits no color codes.
++ * Record: docs/pi-agents-ui-teams-sota-2026-11-13.md (A4).
++ */
++import { readFileSync } from 'node:fs'
++import { homedir } from 'node:os'
++import { join } from 'node:path'
++
++import type { UiTheme } from './panel.ts'
++
++export type Colors = Record<string, [number, number, number]>
++
++/** UI color role (pi theme token, plus `task` and `cost`) → HUD `colors` key. */
++const ROLE_TO_HUD: Record<string, string> = {
++  text: 'model',
++  muted: 'context',
++  success: 'context',
++  dim: 'label',
++  borderAccent: 'label',
++  accent: 'git',
++  warning: 'warning',
++  error: 'critical',
++  task: 'project',
++  cost: 'custom',
++}
++/** Roles the pi theme does not know: the token to use when the HUD palette is unavailable. */
++const BASE_ROLE: Record<string, string> = { task: 'accent', cost: 'dim' }
++
++export const SPINNER = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
++export const SPINNER_MS = 200
++
++const CONFIG = join(homedir(), '.pi', 'agent', 'claude-home', 'plugins', 'claude-hud', 'config.json')
++const A11Y = join(homedir(), '.pi', 'agent', 'extensions', 'ui', 'a11y.ts')
++
++type A11y = { noColor(): boolean; reducedMotion(): boolean }
++let a11y: A11y | undefined
++/** Resolves once the shared a11y helpers are loaded (or known missing); the env check covers the gap. */
++export const ready: Promise<void> = import(A11Y).then(
++  (m: A11y) => {
++    a11y = m
++  },
++  () => undefined,
++)
++
++export const noColor = (): boolean => (a11y ? a11y.noColor() : (process.env.NO_COLOR ?? '') !== '')
++export const motionEnabled = (): boolean => !noColor() && !(a11y ? a11y.reducedMotion() : process.env.PI_REDUCED_MOTION === '1')
++export const spinnerAt = (now: number): number => Math.floor(now / SPINNER_MS) % SPINNER.length
++
++/** Valid `#rrggbb` entries of the config's `colors`; anything else is ignored. */
++export function parseColors(text: string): Colors {
++  const out: Colors = {}
++  try {
++    const colors = (JSON.parse(text) as { colors?: Record<string, unknown> } | null)?.colors
++    if (!colors || typeof colors !== 'object') return out
++    for (const [key, value] of Object.entries(colors)) {
++      const m = typeof value === 'string' ? /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(value) : null
++      if (m) out[key] = [parseInt(m[1]!, 16), parseInt(m[2]!, 16), parseInt(m[3]!, 16)]
++    }
++  } catch {
++    // missing or invalid config: no HUD colors
++  }
++  return out
++}
++
++let cached: Colors | undefined
++/** HUD colors, read once per process. */
++export function hudColors(): Colors {
++  if (!cached) {
++    try {
++      cached = parseColors(readFileSync(CONFIG, 'utf8'))
++    } catch {
++      cached = {}
++    }
++  }
++  return cached
++}
++
++/** Theme that paints the UI roles with the HUD palette, else with `base`. */
++export function hudTheme(base: UiTheme, colors: Colors = hudColors()): UiTheme {
++  return {
++    bold: (text) => (noColor() ? text : base.bold(text)),
++    fg(role, text) {
++      if (noColor()) return text
++      const rgb = colors[ROLE_TO_HUD[role] ?? '']
++      if (!rgb) return base.fg(BASE_ROLE[role] ?? role, text)
++      return `\x1b[38;2;${rgb[0]};${rgb[1]};${rgb[2]}m${text}\x1b[39m`
++    },
++  }
++}
+diff -ruN a/subagent/fleet-ui/panel.ts b/subagent/fleet-ui/panel.ts
+--- a/subagent/fleet-ui/panel.ts	1969-12-31 21:00:00.000000000 -0300
++++ b/subagent/fleet-ui/panel.ts	2026-11-13 12:52:40.291944279 -0300
+@@ -0,0 +1,368 @@
++/**
++ * Agent panel below the prompt: row renderer (shared with the /tasks browser), the
++ * render function of the panel and `PanelController`, the testable key state machine.
++ * Record: docs/pi-agent-fleet-2026-11-12.md (A1, A2, A4, A7).
++ */
++import { isKeyRelease, matchesKey, truncateToWidth, visibleWidth } from '@earendil-works/pi-tui'
++
++import { formatDuration, formatTokens } from '../../internal/goal-evaluator.ts'
++import type { FleetSource, StopOutcome } from '../fleet/types.ts'
++import { buildRows, finishedCount, runningCount } from './view-model.ts'
++import type { FleetRow } from './view-model.ts'
++import { motionEnabled, SPINNER, spinnerAt } from './palette.ts'
++
++/** The part of pi's Theme the fleet UI uses. */
++export interface UiTheme {
++  fg(color: string, text: string): string
++  bold(text: string): string
++}
++
++export const MAX_ROWS = 10
++export const ARM_MS = 2_000
++
++const SUPERSCRIPT = ['⁰', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹']
++export function superscript(n: number): string {
++  return String(n)
++    .split('')
++    .map((d) => SUPERSCRIPT[Number(d)] ?? d)
++    .join('')
++}
++
++export function formatCost(cost: number): string {
++  return cost < 0.01 ? '<$0.01' : `$${cost.toFixed(2)}`
++}
++
++/** Stats columns: fixed widths, right-aligned inside each, so values do not shift between ticks. */
++const COL_ELAPSED = 7
++const COL_TOKENS = 10
++const COL_COST = 7
++const STAT_SEP = ' | '
++
++export function formatStats(row: Pick<FleetRow, 'elapsedMs' | 'contextTokens' | 'cost'>): { elapsed: string; tokens: string; cost: string } {
++  return {
++    elapsed: formatDuration(row.elapsedMs).padStart(COL_ELAPSED),
++    tokens: `${formatTokens(row.contextTokens)} tok`.padStart(COL_TOKENS),
++    cost: formatCost(row.cost).padStart(COL_COST),
++  }
++}
++
++interface DegreeStyle {
++  glyph: string
++  name: string
++  activity: string
++  badge: string
++}
++
++export function degreeStyle(depth: number): DegreeStyle {
++  if (depth <= 1) return { glyph: '○', name: 'text', activity: 'muted', badge: '' }
++  if (depth === 2) return { glyph: '◦', name: 'muted', activity: 'dim', badge: '²' }
++  return { glyph: '·', name: 'dim', activity: 'dim', badge: superscript(depth) }
++}
++
++/** Activity text and color: the run's state overrides the activity once it finished. */
++export function activityOf(row: FleetRow, style: DegreeStyle): { text: string; color: string } {
++  if (row.state === 'done') return { text: '✓ done', color: 'success' }
++  if (row.state === 'failed') return { text: `✗ ${row.error || 'failed'}`, color: 'error' }
++  if (row.state === 'cancelled') return { text: '■ stopped', color: 'warning' }
++  return { text: row.activity, color: style.activity }
++}
++
++const MIN_ACTIVITY = 12
++const MIN_TASK = 12
++const TASK_SEP = ' · '
++const ELLIPSIS = '…'
++
++/** One agent row, never wider than `width` (themes may add visible characters the layout cannot see).
++ * `frame` (spinner index) animates running rows; without it they keep the static degree glyph. */
++export function renderRow(row: FleetRow, selected: boolean, theme: UiTheme, width: number, frame?: number): string {
++  return truncateToWidth(layoutRow(row, selected, theme, width, frame), width)
++}
++
++function layoutRow(row: FleetRow, selected: boolean, theme: UiTheme, width: number, frame?: number): string {
++  const style = degreeStyle(row.depth)
++  const finished = row.state !== 'running'
++  const nameColor = selected ? 'accent' : finished ? 'dim' : style.name
++  const spinning = !finished && frame !== undefined
++  // Column 0 like the status line below: the selection shows as ❯ in the glyph slot, not as a gutter.
++  const glyph = selected ? '❯' : spinning ? SPINNER[frame % SPINNER.length]! : style.glyph
++  const glyphColor = selected ? 'accent' : spinning ? 'success' : nameColor
++  const name = row.depth === 1 && !finished ? theme.bold(theme.fg(nameColor, row.agent)) : theme.fg(nameColor, row.agent)
++  const head =
++    (row.guides ? theme.fg('dim', row.guides) : '') +
++    theme.fg(glyphColor, glyph) +
++    ' ' +
++    name +
++    (row.nth > 0 ? theme.fg('dim', `#${row.nth}`) : '') +
++    (style.badge ? theme.fg('dim', style.badge) : '') +
++    (row.hiddenDescendants > 0 ? theme.fg('dim', ` (+${row.hiddenDescendants})`) : '')
++  const act = activityOf(row, style)
++  const st = formatStats(row)
++  const sep = theme.fg('dim', STAT_SEP)
++  const variants = [
++    { w: COL_ELAPSED + COL_TOKENS + COL_COST + 2 * STAT_SEP.length, text: theme.fg('dim', st.elapsed) + sep + theme.fg('dim', st.tokens) + sep + theme.fg('cost', st.cost) },
++    { w: COL_ELAPSED + COL_TOKENS + STAT_SEP.length, text: theme.fg('dim', st.elapsed) + sep + theme.fg('dim', st.tokens) },
++    { w: visibleWidth(st.elapsed), text: theme.fg('dim', st.elapsed) },
++  ]
++  const headW = visibleWidth(head)
++  const taskW = visibleWidth(row.task)
++  const actW = visibleWidth(act.text)
++  const finish = (left: string, v: { w: number; text: string }): string => left + ' '.repeat(Math.max(1, width - visibleWidth(left) - v.w)) + v.text
++  // Body room beside the head: one space before it and at least one before the stats.
++  const room = (v: { w: number }): number => width - headW - 1 - v.w - 1
++  // Task rows keep the task, then the activity; stats drop cost, then tokens, before the activity goes.
++  const need = taskW > 0 ? Math.min(taskW, MIN_TASK) + (actW > 0 ? TASK_SEP.length + Math.min(actW, MIN_ACTIVITY) : 0) : Math.min(actW, MIN_ACTIVITY)
++  for (const v of variants.slice(0, 2)) {
++    const avail = room(v)
++    if (need === 0 && width - headW - v.w >= 1) return finish(head, v)
++    if (need === 0 || avail < need) continue
++    return finish(head + ' ' + body(row.task, act, avail, theme), v)
++  }
++  const last = variants[2]!
++  if (taskW > 0 && room(last) >= 1) return finish(head + ' ' + theme.fg('task', truncateToWidth(row.task, room(last), ELLIPSIS)), last)
++  if (width - headW - last.w >= 1) return finish(head, last)
++  return truncateToWidth(head, width)
++}
++
++/** Task (priority) and activity within `avail` columns, activity truncated first. */
++function body(task: string, act: { text: string; color: string }, avail: number, theme: UiTheme): string {
++  const taskW = visibleWidth(task)
++  const actW = visibleWidth(act.text)
++  if (taskW === 0) return theme.fg(act.color, truncateToWidth(act.text, avail, ELLIPSIS))
++  if (actW === 0) return theme.fg('task', truncateToWidth(task, avail, ELLIPSIS))
++  if (taskW + TASK_SEP.length + actW <= avail) return theme.fg('task', task) + theme.fg('dim', TASK_SEP) + theme.fg(act.color, act.text)
++  const taskShown = truncateToWidth(task, avail - TASK_SEP.length - Math.min(actW, MIN_ACTIVITY), ELLIPSIS)
++  const left = avail - visibleWidth(taskShown) - TASK_SEP.length
++  return theme.fg('task', taskShown) + theme.fg('dim', TASK_SEP) + theme.fg(act.color, truncateToWidth(act.text, left, ELLIPSIS))
++}
++
++export interface PanelView {
++  rows: FleetRow[]
++  focused: boolean
++  selectedId: string | null
++  /** Text shown on the right of the main row. */
++  hint: string
++  hintColor: 'muted' | 'dim' | 'warning'
++  running: number
++  finished: number
++  /** Spinner frame for running rows; undefined = static glyphs (reduced motion, NO_COLOR). */
++  frame?: number
++}
++
++export function renderPanel(view: PanelView, theme: UiTheme, width: number): string[] {
++  const hintLine = view.finished > 0 ? [truncateToWidth(theme.fg('success', `  ✓ ${view.finished} finished`) + theme.fg('dim', ' · /tasks'), width)] : []
++  if (view.rows.length === 0) return hintLine.length > 0 ? [...hintLine, ''] : []
++  const mainSelected = view.focused && view.selectedId === null
++  const mainLeft = `  ${view.focused && !mainSelected ? '○' : '●'} main`
++  // Focused: the key hint gets its own line under main; otherwise it shares the main row.
++  const room = width - visibleWidth(mainLeft) - 2
++  const hintText = !view.focused && room > 0 ? truncateToWidth(view.hint, room) : ''
++  const mainPad = Math.max(1, width - visibleWidth(mainLeft) - visibleWidth(hintText))
++  const lines = [truncateToWidth(theme.fg(mainSelected ? 'accent' : 'text', mainLeft) + ' '.repeat(mainPad) + theme.fg(view.hintColor, hintText), width)]
++  if (view.focused) lines.push(truncateToWidth(theme.fg(view.hintColor, `    ${view.hint}`), width))
++  const selIdx = view.rows.findIndex((r) => r.id === view.selectedId)
++  let start = selIdx < MAX_ROWS ? 0 : selIdx - (MAX_ROWS - 1)
++  start = Math.max(0, Math.min(start, view.rows.length - MAX_ROWS))
++  const shown = view.rows.slice(start, start + MAX_ROWS)
++  for (const row of shown) lines.push(renderRow(row, view.focused && row.id === view.selectedId, theme, width, view.frame))
++  const more = view.rows.length - shown.length
++  if (more > 0) lines.push(truncateToWidth(theme.fg('dim', `  … ${more} more`), width))
++  // One blank line separates the panel from the status line widget below it.
++  return [...lines, ...hintLine, '']
++}
++
++// ---- controller -------------------------------------------------------------------
++
++export type Action = { type: 'open'; id: string } | { type: 'stop'; id: string } | { type: 'detach' } | { type: 'dismiss'; id: string }
++
++export interface KeyEnv {
++  editorText: string
++  editorFocused: boolean
++  overlayOpen: boolean
++}
++
++export interface ControllerDeps {
++  getSource: () => FleetSource | undefined
++  now: () => number
++}
++
++export class PanelController {
++  focused = false
++  selectedId: string | null = null
++  readonly collapsed = new Set<string>()
++  readonly dismissed = new Set<string>()
++  private armed: { id: string; until: number } | undefined
++  private lastIndex = 0
++  private readonly deps: ControllerDeps
++
++  constructor(deps: ControllerDeps) {
++    this.deps = deps
++  }
++
++  rows(): FleetRow[] {
++    const source = this.deps.getSource()
++    if (!source) return []
++    return buildRows(source.list(), { now: this.deps.now(), collapsed: this.collapsed, dismissed: this.dismissed, panel: true })
++  }
++
++  view(): PanelView {
++    const source = this.deps.getSource()
++    const now = this.deps.now()
++    const rows = this.rows()
++    this.repair(rows)
++    const running = runningCount(rows)
++    let hint: string
++    let hintColor: PanelView['hintColor'] = 'muted'
++    const armedRow = this.armed && now < this.armed.until ? rows.find((r) => r.id === this.armed?.id) : undefined
++    if (armedRow) {
++      hint = `press x again to stop ${armedRow.agent}`
++      hintColor = 'warning'
++    } else if (this.focused) {
++      hint = '↑↓ select · enter open · →← fold · x stop · esc back'
++      hintColor = 'dim'
++    } else {
++      hint = `${running} running · ↓ to manage`
++    }
++    return {
++      rows,
++      focused: this.focused,
++      selectedId: this.selectedId,
++      hint,
++      hintColor,
++      running,
++      finished: source ? finishedCount(source.list(), now) : 0,
++      frame: motionEnabled() ? spinnerAt(now) : undefined,
++    }
++  }
++
++  /** Keep the selection on a visible row: nearest remaining row, else main; unfocus when empty. */
++  repair(rows: FleetRow[]): void {
++    if (!this.focused) return
++    if (rows.length === 0) return this.unfocus()
++    if (this.selectedId === null) return
++    const idx = rows.findIndex((r) => r.id === this.selectedId)
++    if (idx >= 0) {
++      this.lastIndex = idx
++      return
++    }
++    this.selectedId = rows[Math.min(this.lastIndex, rows.length - 1)]?.id ?? null
++  }
++
++  private unfocus(): void {
++    this.focused = false
++    this.selectedId = null
++    this.armed = undefined
++  }
++
++  private select(rows: FleetRow[], id: string | null): void {
++    this.selectedId = id
++    this.armed = undefined
++    if (id !== null) this.lastIndex = Math.max(0, rows.findIndex((r) => r.id === id))
++  }
++
++  handleKey(data: string, env: KeyEnv): { consume: boolean; action?: Action } {
++    if (isKeyRelease(data)) return { consume: false }
++    if (env.overlayOpen || !env.editorFocused) {
++      if (this.focused) this.unfocus()
++      return { consume: false }
++    }
++    if (matchesKey(data, 'ctrl+b')) {
++      const source = this.deps.getSource()
++      return source?.hasForeground() ? { consume: true, action: { type: 'detach' } } : { consume: false }
++    }
++    const rows = this.rows()
++    if (!this.focused) {
++      if (matchesKey(data, 'down') && env.editorText === '' && rows.length >= 1) {
++        this.focused = true
++        this.select(rows, rows[0]!.id)
++        return { consume: true }
++      }
++      return { consume: false }
++    }
++    this.repair(rows)
++    if (!this.focused) return { consume: false }
++    const ids: Array<string | null> = [null, ...rows.map((r) => r.id)]
++    const pos = Math.max(0, ids.indexOf(this.selectedId))
++    const row = this.selectedId === null ? undefined : rows[pos - 1]
++    if (matchesKey(data, 'down')) {
++      this.select(rows, ids[Math.min(ids.length - 1, pos + 1)] ?? null)
++      return { consume: true }
++    }
++    if (matchesKey(data, 'up')) {
++      if (pos === 0) this.unfocus()
++      else this.select(rows, ids[pos - 1] ?? null)
++      return { consume: true }
++    }
++    if (matchesKey(data, 'enter')) {
++      if (!row) {
++        this.unfocus()
++        return { consume: true }
++      }
++      return { consume: true, action: { type: 'open', id: row.id } }
++    }
++    if (matchesKey(data, 'right') && row) {
++      if (row.collapsed) this.collapsed.delete(row.id)
++      else if (row.childCount > 0) this.select(rows, ids[pos + 1] ?? null)
++      return { consume: true }
++    }
++    if (matchesKey(data, 'left') && row) {
++      if (row.childCount > 0 && !row.collapsed) this.collapsed.add(row.id)
++      else this.select(rows, row.parentId !== null && ids.includes(row.parentId) ? row.parentId : null)
++      return { consume: true }
++    }
++    if (matchesKey(data, 'x') && row) {
++      if (row.state !== 'running') {
++        this.dismissed.add(row.id)
++        this.armed = undefined
++        this.repair(this.rows())
++        return { consume: true, action: { type: 'dismiss', id: row.id } }
++      }
++      const now = this.deps.now()
++      if (this.armed?.id === row.id && now < this.armed.until) {
++        this.armed = undefined
++        return { consume: true, action: { type: 'stop', id: row.id } }
++      }
++      this.armed = { id: row.id, until: now + ARM_MS }
++      return { consume: true }
++    }
++    if (matchesKey(data, 'escape')) {
++      this.unfocus()
++      return { consume: true }
++    }
++    this.unfocus()
++    return { consume: false }
++  }
++}
++
++export function stopMessage(outcome: StopOutcome, agent: string): { text: string; level: 'info' | 'warning' } {
++  switch (outcome) {
++    case 'stopping':
++      return { text: `Stopping ${agent}…`, level: 'info' }
++    case 'not-running':
++      return { text: `${agent} is not running`, level: 'info' }
++    case 'refused':
++      return { text: `Could not stop ${agent}: the process no longer matches the run`, level: 'warning' }
++    default:
++      return { text: `${agent}: run not found`, level: 'warning' }
++  }
++}
++
++export interface ActionEnv {
++  source: FleetSource
++  notify: (message: string, type?: 'info' | 'warning' | 'error') => void
++  open: (id: string) => void
++}
++
++/** Runs the side effect of an action the controller returned. */
++export function executeAction(action: Action, env: ActionEnv): void {
++  if (action.type === 'open') return env.open(action.id)
++  if (action.type === 'detach') {
++    const n = env.source.detachForeground()
++    if (n > 0) env.notify(`Moved ${n} subagent call(s) to the background`, 'info')
++    return
++  }
++  if (action.type === 'stop') {
++    const agent = env.source.list().find((r) => r.id === action.id)?.agent ?? action.id
++    const msg = stopMessage(env.source.stop(action.id), agent)
++    env.notify(msg.text, msg.level)
++  }
++}
+diff -ruN a/subagent/fleet-ui/viewer.ts b/subagent/fleet-ui/viewer.ts
+--- a/subagent/fleet-ui/viewer.ts	1969-12-31 21:00:00.000000000 -0300
++++ b/subagent/fleet-ui/viewer.ts	2026-11-13 12:52:40.292010179 -0300
+@@ -0,0 +1,392 @@
++/**
++ * Live transcript viewer of one run (any depth) and the /tasks browser, both overlays.
++ * Record: docs/pi-agent-fleet-2026-11-12.md (A3, A5, A8).
++ */
++import { decodeKittyPrintable, isKeyRelease, matchesKey, truncateToWidth, wrapTextWithAnsi } from '@earendil-works/pi-tui'
++import type { Component } from '@earendil-works/pi-tui'
++import type { ExtensionContext } from '@earendil-works/pi-coding-agent'
++
++import { formatDuration, formatTokens } from '../../internal/goal-evaluator.ts'
++import type { FleetSource, RunRecord, SendOutcome, TranscriptItem } from '../fleet/types.ts'
++import { ARM_MS, formatCost, renderRow, stopMessage, superscript } from './panel.ts'
++import type { UiTheme } from './panel.ts'
++import { hudTheme, motionEnabled, spinnerAt } from './palette.ts'
++import { buildRows, chainOf, neighbours } from './view-model.ts'
++
++/** Count of our open overlays; the panel passes all input through while it is above 0. */
++export const overlays = { open: 0 }
++
++export const MAX_ITEMS = 2000
++export const POLL_MS = 500
++const RESULT_LINES = 3
++/** Rows of chrome around the body: breadcrumb, status, nav, outcome, input, footer. */
++const CHROME_ROWS = 7
++
++/** Top edge of both overlays: they draw over the chat, so they need a visible boundary. */
++const rule = (theme: UiTheme, width: number): string => theme.fg('borderAccent', '─'.repeat(Math.max(0, width)))
++
++export const FOOTER_HINT = '↑↓ scroll · ←→ siblings · tab child · ⇧tab parent · x x stop · enter send · esc close'
++
++// ---- pure formatters ---------------------------------------------------------------
++
++export function sendOutcomeText(outcome: SendOutcome): string {
++  switch (outcome) {
++    case 'queued':
++      return '↪ sent; the agent reads it after its current tool step'
++    case 'resumed':
++      return '↪ resumed with your message'
++    case 'not-running':
++      return 'run finished; message not sent'
++    default:
++      return 'run not found'
++  }
++}
++
++export function formatItem(item: TranscriptItem, theme: UiTheme, width: number): string[] {
++  const fit = (lines: string[], color: string, indent = ''): string[] => lines.map((l) => truncateToWidth(indent + theme.fg(color, l), width))
++  const wrap = (text: string): string[] => {
++    const lines = wrapTextWithAnsi(text, Math.max(1, width))
++    return lines.length > 0 ? lines : ['']
++  }
++  switch (item.kind) {
++    case 'user':
++      return fit(wrap(`› ${item.text}`), 'accent')
++    case 'assistant':
++      return fit(wrap(item.text), 'text')
++    case 'tool_call':
++      return fit([`⏺ ${item.text.replace(/\s+/g, ' ')}`], 'muted')
++    case 'tool_result': {
++      const all = item.text.split('\n')
++      const color = item.isError ? 'error' : 'dim'
++      const shown = all.slice(0, RESULT_LINES)
++      const out = shown.map((l, i) => truncateToWidth(theme.fg(color, (i === 0 ? '  ⎿ ' : '    ') + l), width))
++      if (all.length > RESULT_LINES) out.push(truncateToWidth(theme.fg('dim', `  … ${all.length - RESULT_LINES} more lines`), width))
++      return out
++    }
++    default:
++      return fit(wrap(item.text), 'dim')
++  }
++}
++
++export function stateLabel(state: RunRecord['state']): string {
++  return state === 'running' ? '● running' : state === 'done' ? '✓ done' : state === 'failed' ? '✗ failed' : '■ stopped'
++}
++
++export function breadcrumb(records: readonly RunRecord[], id: string): string {
++  const chain = chainOf(records, id)
++  const parts = chain.map((r, i) => (i === 0 ? r.agent : `${r.agent}${superscript(i + 1)}`))
++  return ['main', ...parts].join(' › ')
++}
++
++export function navBar(records: readonly RunRecord[], id: string): string {
++  const { siblings, children } = neighbours(records, id)
++  const sib = siblings.map((r) => (r.id === id ? `[${r.agent}]` : r.agent)).join(' ')
++  const kids = children.map((r) => r.agent).join(' ')
++  return `siblings: ${sib || '-'}   children: ${kids || '-'}`
++}
++
++function printable(data: string): string | undefined {
++  const k = decodeKittyPrintable(data)
++  if (k !== undefined) return k
++  return /^[^\x00-\x1f\x7f]+$/u.test(data) ? data : undefined
++}
++
++// ---- viewer ------------------------------------------------------------------------
++
++export interface ViewerDeps {
++  source: FleetSource
++  theme: UiTheme
++  id: string
++  done: () => void
++  requestRender: () => void
++  /** Terminal rows, for the body height. */
++  rows: () => number
++  now: () => number
++  /** false in tests: no timers. */
++  poll?: boolean
++}
++
++export class ViewerComponent implements Component {
++  id: string
++  items: TranscriptItem[] = []
++  input = ''
++  outcome = ''
++  private fromBottom = 0
++  private offset = 0
++  private armedUntil = 0
++  private lines: string[] | undefined
++  private lastWidth = 0
++  private timer: ReturnType<typeof setInterval> | undefined
++  private unsubscribe: (() => void) | undefined
++  private readonly deps: ViewerDeps
++
++  constructor(deps: ViewerDeps) {
++    this.deps = deps
++    this.id = deps.id
++    this.refresh()
++    if (deps.poll !== false) {
++      this.timer = setInterval(() => this.refresh(), POLL_MS)
++      this.timer.unref?.()
++      this.unsubscribe = deps.source.onChange(() => this.refresh())
++    }
++  }
++
++  dispose(): void {
++    if (this.timer) clearInterval(this.timer)
++    this.timer = undefined
++    this.unsubscribe?.()
++    this.unsubscribe = undefined
++  }
++
++  /** Reads the transcript increment and asks for a render when it changed anything. */
++  refresh(): void {
++    const { items, next } = this.deps.source.readTranscript(this.id, this.offset)
++    this.offset = next
++    if (items.length > 0) {
++      this.items = [...this.items, ...items].slice(-MAX_ITEMS)
++      this.lines = undefined
++    }
++    this.deps.requestRender()
++  }
++
++  invalidate(): void {
++    this.lines = undefined
++  }
++
++  private switchTo(id: string | undefined): void {
++    if (!id || id === this.id) return
++    this.id = id
++    this.items = []
++    this.offset = 0
++    this.fromBottom = 0
++    this.input = ''
++    this.outcome = ''
++    this.armedUntil = 0
++    this.lines = undefined
++    this.refresh()
++  }
++
++  private bodyHeight(): number {
++    return Math.max(3, Math.floor(this.deps.rows() * 0.85) - CHROME_ROWS)
++  }
++
++  private bodyLines(width: number): string[] {
++    if (!this.lines || this.lastWidth !== width) {
++      this.lines = this.items.flatMap((item) => formatItem(item, this.deps.theme, width))
++      this.lastWidth = width
++    }
++    return this.lines
++  }
++
++  render(width: number): string[] {
++    const { theme } = this.deps
++    const fit = (s: string): string => truncateToWidth(s, width)
++    const records = this.deps.source.list()
++    const rec = records.find((r) => r.id === this.id)
++    const crumb = rec ? breadcrumb(records, this.id) : 'main › (run not found)'
++    const status = rec
++      ? `${stateLabel(rec.state)} · ${formatDuration((rec.endedAt ?? this.deps.now()) - rec.startedAt)} · ${formatTokens(rec.tokens.context)} tok · ${formatCost(rec.cost)}`
++      : ''
++    const all = this.bodyLines(width)
++    const h = this.bodyHeight()
++    this.fromBottom = Math.max(0, Math.min(this.fromBottom, all.length - h))
++    const end = all.length - this.fromBottom
++    const body = all.slice(Math.max(0, end - h), end)
++    while (body.length < h) body.push('')
++    const readOnly = rec !== undefined && rec.state !== 'running' && !(rec.depth === 1 && rec.background)
++    const outcome = this.outcome || (readOnly ? 'read-only: run finished' : '')
++    return [
++      rule(theme, width),
++      fit(theme.bold(theme.fg('accent', crumb))),
++      fit(theme.fg('muted', status)),
++      fit(theme.fg('dim', navBar(records, this.id))),
++      ...body.map(fit),
++      fit(theme.fg('dim', outcome)),
++      fit(`${theme.fg('accent', '> ')}${this.input}`),
++      fit(theme.fg('dim', FOOTER_HINT)),
++    ]
++  }
++
++  private scroll(delta: number): void {
++    this.fromBottom = Math.max(0, this.fromBottom - delta)
++  }
++
++  handleInput(data: string): void {
++    if (isKeyRelease(data)) return
++    const { source } = this.deps
++    const empty = this.input === ''
++    const records = source.list()
++    const nb = neighbours(records, this.id)
++    const body = this.bodyHeight()
++    if (matchesKey(data, 'escape')) {
++      if (!empty) this.input = ''
++      else this.deps.done()
++    } else if (matchesKey(data, 'up')) this.scroll(-1)
++    else if (matchesKey(data, 'down')) this.scroll(1)
++    else if (matchesKey(data, 'pageUp')) this.scroll(-body)
++    else if (matchesKey(data, 'pageDown')) this.scroll(body)
++    else if (matchesKey(data, 'home')) this.fromBottom = Number.MAX_SAFE_INTEGER
++    else if (matchesKey(data, 'end')) this.fromBottom = 0
++    else if ((matchesKey(data, 'left') || matchesKey(data, 'right')) && empty) {
++      const i = nb.siblings.findIndex((r) => r.id === this.id)
++      this.switchTo(nb.siblings[i + (matchesKey(data, 'left') ? -1 : 1)]?.id)
++    } else if (matchesKey(data, 'tab')) this.switchTo(nb.children[0]?.id)
++    else if (matchesKey(data, 'shift+tab')) {
++      if (nb.parent) this.switchTo(nb.parent.id)
++      else this.deps.done()
++    } else if (matchesKey(data, 'backspace')) this.input = Array.from(this.input).slice(0, -1).join('')
++    else if (matchesKey(data, 'enter')) {
++      const text = this.input.trim()
++      if (text) {
++        this.outcome = sendOutcomeText(source.send(this.id, text))
++        this.input = ''
++        this.fromBottom = 0
++        this.refresh()
++      }
++    } else if (empty && matchesKey(data, 'x')) this.pressStop(records)
++    else {
++      const ch = printable(data)
++      if (ch) this.input += ch
++    }
++    this.deps.requestRender()
++  }
++
++  private pressStop(records: RunRecord[]): void {
++    const rec = records.find((r) => r.id === this.id)
++    if (!rec || rec.state !== 'running') {
++      this.outcome = rec ? 'run finished; nothing to stop' : 'run not found'
++      return
++    }
++    const now = this.deps.now()
++    if (now < this.armedUntil) {
++      this.armedUntil = 0
++      this.outcome = stopMessage(this.deps.source.stop(this.id), rec.agent).text
++    } else {
++      this.armedUntil = now + ARM_MS
++      this.outcome = `press x again to stop ${rec.agent}`
++    }
++  }
++}
++
++// ---- /tasks browser ----------------------------------------------------------------
++
++export interface TasksDeps {
++  source: FleetSource
++  theme: UiTheme
++  done: (id: string | undefined) => void
++  requestRender: () => void
++  rows: () => number
++  now: () => number
++  selectedId?: string
++  poll?: boolean
++}
++
++export class TasksComponent implements Component {
++  selectedId: string | undefined
++  private timer: ReturnType<typeof setInterval> | undefined
++  private unsubscribe: (() => void) | undefined
++  private readonly deps: TasksDeps
++
++  constructor(deps: TasksDeps) {
++    this.deps = deps
++    this.selectedId = deps.selectedId
++    if (deps.poll !== false) {
++      this.timer = setInterval(() => deps.requestRender(), 1000)
++      this.timer.unref?.()
++      this.unsubscribe = deps.source.onChange(() => deps.requestRender())
++    }
++  }
++
++  dispose(): void {
++    if (this.timer) clearInterval(this.timer)
++    this.timer = undefined
++    this.unsubscribe?.()
++    this.unsubscribe = undefined
++  }
++
++  invalidate(): void {}
++
++  private list() {
++    return buildRows(this.deps.source.list(), { now: this.deps.now(), panel: false, newestRootFirst: true })
++  }
++
++  render(width: number): string[] {
++    const { theme } = this.deps
++    const rows = this.list()
++    const h = Math.max(3, Math.floor(this.deps.rows() * 0.85) - 5)
++    const idx = Math.max(0, rows.findIndex((r) => r.id === this.selectedId))
++    const start = Math.max(0, Math.min(idx - Math.floor(h / 2), rows.length - h))
++    const out = [rule(theme, width), truncateToWidth(theme.bold(theme.fg('accent', `Subagent runs (${rows.length})`)), width)]
++    rows.slice(start, start + h).forEach((r, i) => out.push(renderRow(r, start + i === idx, theme, width, motionEnabled() ? spinnerAt(this.deps.now()) : undefined)))
++    out.push(truncateToWidth(theme.fg('dim', '↑↓ select · enter open · esc close'), width))
++    return out
++  }
++
++  handleInput(data: string): void {
++    if (isKeyRelease(data)) return
++    const rows = this.list()
++    const idx = Math.max(0, rows.findIndex((r) => r.id === this.selectedId))
++    if (matchesKey(data, 'escape')) return this.deps.done(undefined)
++    if (matchesKey(data, 'enter')) return this.deps.done(rows[idx]?.id)
++    const step = matchesKey(data, 'up') ? -1 : matchesKey(data, 'down') ? 1 : 0
++    if (step) this.selectedId = rows[Math.max(0, Math.min(rows.length - 1, idx + step))]?.id
++    this.deps.requestRender()
++  }
++}
++
++// ---- entry points ------------------------------------------------------------------
++
++/** Only what the overlays need from a pi context (command and event contexts both fit). */
++export type UiCtx = Pick<ExtensionContext, 'ui' | 'hasUI'>
++
++// Anchored at the bottom, over the editor and the panel the user came from (centered, a short list floated mid-chat).
++export const OVERLAY_OPTIONS = { anchor: 'bottom-center', width: '100%', maxHeight: '85%', margin: 0 } as const
++
++function termRows(tui: { terminal?: { rows?: number } }): number {
++  return tui.terminal?.rows ?? 40
++}
++
++export async function openViewer(ctx: UiCtx, source: FleetSource, id: string): Promise<void> {
++  overlays.open += 1
++  try {
++    await ctx.ui.custom<void>(
++      (tui, theme, _kb, done) =>
++        new ViewerComponent({
++          source,
++          theme: hudTheme(theme),
++          id,
++          done: () => done(),
++          requestRender: () => tui.requestRender(),
++          rows: () => termRows(tui),
++          now: Date.now,
++        }),
++      { overlay: true, overlayOptions: { ...OVERLAY_OPTIONS } },
++    )
++  } finally {
++    overlays.open -= 1
++  }
++}
++
++export async function openTasksBrowser(ctx: UiCtx, source: FleetSource): Promise<void> {
++  if (source.list().length === 0) {
++    ctx.ui.notify('No subagent runs in this session.', 'info')
++    return
++  }
++  let selectedId: string | undefined
++  for (;;) {
++    overlays.open += 1
++    let picked: string | undefined
++    try {
++      picked = await ctx.ui.custom<string | undefined>(
++        (tui, theme, _kb, done) =>
++          new TasksComponent({ source, theme: hudTheme(theme), done, requestRender: () => tui.requestRender(), rows: () => termRows(tui), now: Date.now, selectedId }),
++        { overlay: true, overlayOptions: { ...OVERLAY_OPTIONS } },
++      )
++    } finally {
++      overlays.open -= 1
++    }
++    if (!picked) return
++    selectedId = picked
++    await openViewer(ctx, source, picked)
++  }
++}
+diff -ruN a/subagent/fleet-ui/view-model.ts b/subagent/fleet-ui/view-model.ts
+--- a/subagent/fleet-ui/view-model.ts	1969-12-31 21:00:00.000000000 -0300
++++ b/subagent/fleet-ui/view-model.ts	2026-11-13 12:52:40.292046529 -0300
+@@ -0,0 +1,189 @@
++/**
++ * Pure view model of the agent fleet panel and the /tasks browser: tree, visibility,
++ * collapse and the row data. No I/O, no clock (callers pass `now`).
++ * Record: docs/pi-agent-fleet-2026-11-12.md (A1, A7).
++ */
++import type { RunRecord, RunState } from '../fleet/types.ts'
++
++export const FINISHED_TTL_MS = 30_000
++
++export interface FleetRow {
++  id: string
++  parentId: string | null
++  /** Tree depth: 1 = hangs from main (a missing parent counts as main). */
++  depth: number
++  agent: string
++  /** First line of the run's task, whitespace collapsed. */
++  task: string
++  /** 1-based start order among visible rows of the same agent type; 0 when the type is unique. */
++  nth: number
++  state: RunState
++  activity: string
++  error?: string
++  elapsedMs: number
++  contextTokens: number
++  cost: number
++  /** Visible descendants hidden by a collapse. */
++  hiddenDescendants: number
++  /** Visible direct children, whether or not collapsed. */
++  childCount: number
++  collapsed: boolean
++  guides: string
++}
++
++export interface RowOptions {
++  now: number
++  collapsed?: ReadonlySet<string>
++  dismissed?: ReadonlySet<string>
++  /** true: apply the panel's hiding rules; false: the /tasks browser shows everything. */
++  panel: boolean
++  /** /tasks lists the newest root first. */
++  newestRootFirst?: boolean
++}
++
++interface Node {
++  rec: RunRecord
++  depth: number
++  children: Node[]
++  visible: boolean
++}
++
++function byStart(a: Node, b: Node): number {
++  return a.rec.startedAt - b.rec.startedAt || (a.rec.id < b.rec.id ? -1 : 1)
++}
++
++export function buildTree(records: readonly RunRecord[]): Node[] {
++  const nodes = new Map<string, Node>()
++  for (const rec of records) nodes.set(rec.id, { rec, depth: 1, children: [], visible: true })
++  const roots: Node[] = []
++  for (const node of nodes.values()) {
++    const parent = node.rec.parentId === null || node.rec.parentId === node.rec.id ? undefined : nodes.get(node.rec.parentId)
++    if (parent) parent.children.push(node)
++    else roots.push(node)
++  }
++  const setDepth = (node: Node, depth: number): void => {
++    node.depth = depth
++    node.children.sort(byStart)
++    for (const child of node.children) setDepth(child, depth + 1)
++  }
++  roots.sort(byStart)
++  for (const root of roots) setDepth(root, 1)
++  return roots
++}
++
++function ownVisible(node: Node, parent: Node | undefined, opts: RowOptions): boolean {
++  const { rec } = node
++  if (opts.dismissed?.has(rec.id)) return false
++  if (rec.state === 'running') return true
++  if (!parent) {
++    if (rec.state === 'done') return false
++    return opts.now < (rec.endedAt ?? rec.updatedAt) + FINISHED_TTL_MS
++  }
++  return parent.rec.state === 'running'
++}
++
++function markVisible(node: Node, parent: Node | undefined, parentVisible: boolean, opts: RowOptions): void {
++  node.visible = parentVisible && (!opts.panel ? true : ownVisible(node, parent, opts))
++  for (const child of node.children) markVisible(child, node, node.visible, opts)
++}
++
++function countVisible(node: Node): number {
++  let n = 0
++  for (const child of node.children) if (child.visible) n += 1 + countVisible(child)
++  return n
++}
++
++export function buildRows(records: readonly RunRecord[], opts: RowOptions): FleetRow[] {
++  const roots = buildTree(records)
++  for (const root of roots) markVisible(root, undefined, true, opts)
++  if (opts.newestRootFirst) roots.reverse()
++  const rows: FleetRow[] = []
++  const emit = (node: Node, ancestors: string, isLast: boolean): void => {
++    const { rec } = node
++    const visibleChildren = node.children.filter((c) => c.visible)
++    const isCollapsed = opts.collapsed?.has(rec.id) === true && visibleChildren.length > 0
++    const guides = node.depth === 1 ? '' : ancestors + (isLast ? '└─ ' : '├─ ')
++    rows.push({
++      id: rec.id,
++      parentId: node.depth === 1 ? null : rec.parentId,
++      depth: node.depth,
++      agent: rec.agent,
++      task: firstLine(rec.task),
++      nth: 0,
++      state: rec.state,
++      activity: rec.activity ?? '',
++      error: rec.error,
++      elapsedMs: Math.max(0, (rec.endedAt ?? opts.now) - rec.startedAt),
++      contextTokens: rec.tokens.context,
++      cost: rec.cost,
++      hiddenDescendants: isCollapsed ? countVisible(node) : 0,
++      childCount: visibleChildren.length,
++      collapsed: isCollapsed,
++      guides,
++    })
++    if (isCollapsed) return
++    // Depth 1 has no guide column of its own; deeper levels carry '│  ' or blanks forward.
++    const next = node.depth === 1 ? '' : ancestors + (isLast ? '   ' : '│  ')
++    visibleChildren.forEach((child, i) => emit(child, next, i === visibleChildren.length - 1))
++  }
++  const top = roots.filter((r) => r.visible)
++  top.forEach((root) => emit(root, '', false))
++  numberRepeats(rows, records)
++  return rows
++}
++
++function firstLine(text: string | undefined): string {
++  return (text ?? '').split(/\r?\n/, 1)[0]!.replace(/\s+/g, ' ').trim()
++}
++
++/** Repeated agent types among the visible rows get `nth` 1, 2, … in start order. */
++function numberRepeats(rows: FleetRow[], records: readonly RunRecord[]): void {
++  const started = new Map(records.map((r) => [r.id, r.startedAt]))
++  const groups = new Map<string, FleetRow[]>()
++  for (const row of rows) groups.set(row.agent, [...(groups.get(row.agent) ?? []), row])
++  for (const group of groups.values()) {
++    if (group.length < 2) continue
++    group.sort((a, b) => (started.get(a.id) ?? 0) - (started.get(b.id) ?? 0) || (a.id < b.id ? -1 : 1))
++    group.forEach((row, i) => (row.nth = i + 1))
++  }
++}
++
++/** Depth-1 runs that reached 'done' within the last 30 s (the `✓ N finished · /tasks` hint). */
++export function finishedCount(records: readonly RunRecord[], now: number): number {
++  const ids = new Set(records.map((r) => r.id))
++  return records.filter((r) => {
++    const top = r.parentId === null || !ids.has(r.parentId)
++    return top && r.state === 'done' && now < (r.endedAt ?? r.updatedAt) + FINISHED_TTL_MS
++  }).length
++}
++
++export function runningCount(rows: readonly FleetRow[]): number {
++  return rows.filter((r) => r.state === 'running').length
++}
++
++/** Ancestor chain of a record, root first, the record itself last. Cycle-safe. */
++export function chainOf(records: readonly RunRecord[], id: string): RunRecord[] {
++  const byId = new Map(records.map((r) => [r.id, r]))
++  const chain: RunRecord[] = []
++  const seen = new Set<string>()
++  for (let cur = byId.get(id); cur && !seen.has(cur.id); cur = cur.parentId ? byId.get(cur.parentId) : undefined) {
++    seen.add(cur.id)
++    chain.unshift(cur)
++  }
++  return chain
++}
++
++/** Records with the same parent as `id` (siblings, itself included) and its direct children, by start time. */
++export function neighbours(records: readonly RunRecord[], id: string): { siblings: RunRecord[]; children: RunRecord[]; parent?: RunRecord } {
++  const byId = new Map(records.map((r) => [r.id, r]))
++  const me = byId.get(id)
++  if (!me) return { siblings: [], children: [] }
++  const parent = me.parentId ? byId.get(me.parentId) : undefined
++  const sameParent = (r: RunRecord): boolean => (parent ? r.parentId === parent.id : r.parentId === null || !byId.has(r.parentId))
++  const sort = (list: RunRecord[]): RunRecord[] => list.sort((a, b) => a.startedAt - b.startedAt || (a.id < b.id ? -1 : 1))
++  return {
++    siblings: sort(records.filter(sameParent)),
++    children: sort(records.filter((r) => r.parentId === id)),
++    parent,
++  }
++}
+diff -ruN a/subagent/index.ts b/subagent/index.ts
+--- a/subagent/index.ts	2026-11-13 12:52:40.284575104 -0300
++++ b/subagent/index.ts	2026-11-13 12:52:40.292078998 -0300
+@@ -27,15 +27,21 @@
+ import { isProjectApprovedSilently } from '../internal/project-approval.ts'
+ import { addPromptSection } from '../internal/prompt-options.ts'
+ import { sessionHasTurns, sessionMailbox } from '../internal/session-mailbox.ts'
++import { errorMessage } from '../internal/values.ts'
+ import { SUBAGENT_CHANNEL } from '../internal/subagent-events.ts'
+ import { skillDirs } from '../skills.ts'
+ import { type AgentConfig, type AgentScope, discoverAgents } from './agents.ts'
+-import { activeBackgroundRuns, allBackgroundRuns, backgroundStatusText, cancelAllBackgroundRuns } from './background.ts'
++import { activeBackgroundRuns, allBackgroundRuns, cancelAllBackgroundRuns, resumeBackgroundRun } from './background.ts'
+ import { buildHookAgent, forkAgent, setKnownMcpAliases } from './child.ts'
++import { raceDetach } from './fleet/detach.ts'
++import { startInboxWatcher, stopInboxWatcher } from './fleet/inbox.ts'
++import { fleetSourceForUi, getFleetSource, stopOwnForegroundRuns } from './fleet/source.ts'
++import { registerFleetUi } from './fleet-ui/index.ts'
++import { ensureFleetDir, removeFleetDir, sweepOrphanFleetDirs } from './fleet/store.ts'
+ import { canSpawnSubagents, claimSpawns, maxSubagentDepth, subagentDepth } from './nesting/index.ts'
+ import { checkProjectAgentGate, type ModeContext, runBackgroundMode, runChainMode, runParallelMode, runSingleMode, wantsBackground } from './modes.ts'
+ import { type MakeDetails, type SubagentMode, SubagentParams, type SubagentParamsStatic, type ToolResult } from './params.ts'
+-import { agentsListText, backgroundCompletionText, cancelResultText, resumeResultText, tasksStatusText } from './registry-text.ts'
++import { agentsListText, backgroundCompletionText, cancelResultText, resumeResultText, statusWithFleet, tasksStatusText } from './registry-text.ts'
+ import { getFinalOutput } from './render.ts'
+ import { renderChainCall, renderChainResult, renderParallelCall, renderParallelResult, renderSingleCall, renderSingleResult } from './render-result.ts'
+ import { runSingleAgent } from './run.ts'
+@@ -50,6 +56,10 @@
+ export { formatTokens, formatToolCall, formatUsageStats, getDisplayItems, getFinalOutput } from './render.ts'
+ export { getPiInvocation } from './run.ts'
+ 
++const DETACHED_TEXT = 'The user moved this subagent call to the background (Ctrl+B). It keeps running; its result arrives as a message when it finishes. Do not wait or poll for it: continue with other work or end your turn.'
++
++const FLEET_SWEPT = Symbol.for('pi-code.fleet.swept')
++
+ type CompletionSink = Parameters<typeof resumeResultText>[2]
+ 
+ /** The answer to a resume, cancel or status request, which manage background runs
+@@ -67,7 +77,7 @@
+   }
+ 
+   if (params.status) {
+-    return { content: [{ type: 'text', text: backgroundStatusText() }], details: makeDetails('single')([]) }
++    return { content: [{ type: 'text', text: statusWithFleet() }], details: makeDetails('single')([]) }
+   }
+   return undefined
+ }
+@@ -112,7 +122,34 @@
+   throw new Error('subagent: exactly one mode must be set here; the mode guard should have returned')
+ }
+ 
++/** Main session only: the call can be moved to the background (Ctrl+B) while it runs. On detach the
++ * tool returns at once and the finished result reaches the model as one completion message. */
++async function runDetachableForeground(params: SubagentParamsStatic, mode: ModeContext, deliver: (text: string) => void, detachedDetails: SubagentDetails): Promise<ToolResult> {
++  const out = await raceDetach(mode.signal, (signal, c) =>
++    runForegroundMode(params, {
++      ...mode,
++      signal,
++      onUpdate: mode.onUpdate && ((partial) => { if (!c.isDetached) mode.onUpdate?.(partial) }),
++    }),
++  )
++  if ('done' in out) return out.done
++  const deliverResult = (r: ToolResult): void => {
++    const first = r.content.find((part) => part.type === 'text')
++    deliver(`Background subagent call finished (moved to the background by the user with Ctrl+B):\n\n${first?.type === 'text' ? first.text : '(no output)'}`)
++  }
++  void out.detached.then(deliverResult, (e) => deliverResult({ content: [{ type: 'text', text: `Subagent call failed: ${errorMessage(e)}` }], details: detachedDetails }))
++  return { content: [{ type: 'text', text: DETACHED_TEXT }], details: detachedDetails }
++}
++
+ export default function subagentExtension(pi: ExtensionAPI) {
++  // Agent panel below the editor, transcript viewer and /tasks browser (main session only).
++  const fleetUi = registerFleetUi(pi, () => {
++    try {
++      return fleetSourceForUi()
++    } catch {
++      return undefined
++    }
++  })
+   // Claude's mcp__<server> tool patterns translate against the parent's MCP roster,
+   // published by the mcp extension on the shared bus. Optional-chained so a minimal
+   // test stub without an event bus can still register the extension.
+@@ -126,14 +163,14 @@
+   // session is replaced; completions go to whichever instance's session is current.
+   const results = sessionMailbox('subagent-results')
+ 
+-  const notifyBackgroundCompletion = (run: { id: string; agent: string; state: string; turns: number; output?: string; stderr?: string }): void => {
++  const notifyBackgroundCompletion = (run: { id: string; agent: string; state: string; turns: number; output?: string; stderr?: string }, userResume?: string): void => {
+     // Runs through driveRun's guard, same as the background-mode callback above.
+     // The stop event fires here too, so SubagentStop hooks see resumed runs end, and it
+     // carries the run's final assistant text: docs/subagents.md states SubagentStop
+     // receives last_assistant_message unconditionally, and a resumed run is no exception.
+     results.deliver((current, startsTurn) => {
+       current.events.emit(SUBAGENT_CHANNEL, { phase: 'stop', agentType: run.agent, agentId: run.id, lastAssistantMessage: run.output })
+-      current.sendMessage({ customType: 'subagent-background', content: backgroundCompletionText(run), display: true }, { triggerTurn: startsTurn })
++      current.sendMessage({ customType: 'subagent-background', content: backgroundCompletionText(run, userResume), display: true }, { triggerTurn: startsTurn })
+     })
+   }
+ 
+@@ -192,12 +229,26 @@
+       return getFinalOutput(result.messages)
+     })
+     results.attach(pi, sessionHasTurns(ctx))
++    // The fleet (panel data) exists only for an interactive main session: a headless `pi -p` at
++    // depth 0 (scripts, hooks) has nobody to show it to, so it writes nothing.
++    if (subagentDepth() === 0 && ctx.hasUI) {
++      ensureFleetDir() // undefined (unsafe root) disables the fleet: currentFleetDir stays unset
++      const holder = globalThis as Record<symbol, boolean>
++      if (!holder[FLEET_SWEPT]) {
++        holder[FLEET_SWEPT] = true
++        sweepOrphanFleetDirs()
++      }
++      getFleetSource({ resume: (id, text) => resumeBackgroundRun(id, text, (run) => notifyBackgroundCompletion(run, text)) === 'resumed' })
++    } else if (subagentDepth() > 0) {
++      startInboxWatcher(pi)
++    }
+   })
+ 
+   pi.on('agent_start', () => results.markPrompted(pi))
+ 
+   pi.on('session_shutdown', (event, ctx) => {
+     results.detach(pi)
++    stopInboxWatcher()
+     // On quit pi is exiting, so a detached background child would keep running (and
+     // spending tokens) with its completion swallowed: SIGTERM every live run, killing the
+     // process group the way a cancel does. On a same-process session switch
+@@ -207,6 +258,10 @@
+     // cancellable and it neither kills nor warns.
+     if (event.reason === 'quit') {
+       cancelAllBackgroundRuns()
++      if (subagentDepth() === 0) {
++        stopOwnForegroundRuns()
++        removeFleetDir()
++      }
+       return
+     }
+     if (event.reason === 'new' || event.reason === 'resume' || event.reason === 'fork') {
+@@ -311,6 +366,16 @@
+         onPhase: (phase, agentType, agentId, lastAssistantMessage) => pi.events.emit(SUBAGENT_CHANNEL, { phase, agentType, agentId, ...(lastAssistantMessage === undefined ? {} : { lastAssistantMessage }) }),
+       }
+ 
++      if (subagentDepth() === 0 && ctx.hasUI) {
++        const deliver = (text: string): void => {
++          try {
++            results.deliver((current) => current.sendMessage({ customType: 'subagent-background', content: text, display: true }, { triggerTurn: true }))
++          } catch {
++            // The current session refused it; nothing else can take it.
++          }
++        }
++        return runDetachableForeground(params, mode, deliver, makeDetails(gateModeOf(hasChain, hasTasks))([]))
++      }
+       return runForegroundMode(params, mode)
+     },
+ 
+@@ -346,6 +411,8 @@
+   pi.registerCommand('tasks', {
+     description: 'Show background subagent runs',
+     handler: async (_args, ctx) => /* NOSONAR typescript:S7503 - pi types a command handler as returning Promise<void> */ {
++      // Interactive main session: the browser of every run in the tree (any depth, any state).
++      if (ctx.hasUI && subagentDepth() === 0) return fleetUi.openTasks(ctx)
+       ctx.ui.notify(tasksStatusText(allBackgroundRuns()), 'info')
+     },
+   })
+diff -ruN a/subagent/registry-text.ts b/subagent/registry-text.ts
+--- a/subagent/registry-text.ts	1985-10-26 05:15:00.000000000 -0300
++++ b/subagent/registry-text.ts	2026-11-13 12:52:40.292126868 -0300
+@@ -6,10 +6,12 @@
+ 
+ import { capForContext } from '../internal/output-guard.ts'
+ import type { AgentConfig, AgentSource } from './agents.ts'
++import { stopOwnRun, fleetStatusLines } from './fleet/source.ts'
++import { currentFleetDir, requestStop } from './fleet/store.ts'
+ import { type BackgroundRun, backgroundRun, backgroundStatusText, cancelBackgroundRun, MAX_BACKGROUND_RUNS, resumeBackgroundRun } from './background.ts'
+ 
+ /** The completion notice a background run sends when it finishes. */
+-export function backgroundCompletionText(run: { id: string; agent: string; state: string; turns: number; output?: string; stderr?: string; partial?: boolean }): string {
++export function backgroundCompletionText(run: { id: string; agent: string; state: string; turns: number; output?: string; stderr?: string; partial?: boolean }, userResume?: string): string {
+   const output = capForContext(run.output ?? '') || '(no output)'
+   // A child that dies at boot writes its reason only to stderr; without this the
+   // notice reads "failed after 0 turns ... (no output)" with nothing to act on.
+@@ -17,7 +19,13 @@
+   // Claude marks maxTurns-capped output as partial and notes the run can be
+   // resumed to continue from where it stopped.
+   const partialNote = run.partial ? `\n\n[Output is partial: the run stopped at its maxTurns limit. Resume it with {resume: "${run.id}", task: "..."} to continue.]` : ''
+-  return `Background subagent run ${run.id} (${run.agent}) ${run.state} after ${run.turns} turns.\n\n${output}${diagnostics}${partialNote}`
++  // A resume the user sent from the agent panel. Unexplained, the model distrusts a run it never resumed;
++  // worded as the user's message alone, it repeats the work (seen live with Haiku): say it is a done report.
++  const origin =
++    userResume === undefined
++      ? ''
++      : `Report only, no action needed: the user messaged this run from the agent panel, which resumed it, and that resumed run has finished. Do not resume or repeat it. The user's message to the run was: "${userResume.length > 500 ? `${userResume.slice(0, 500)}…` : userResume}"\n\n`
++  return `${origin}Background subagent run ${run.id} (${run.agent}) ${run.state} after ${run.turns} turns.\n\n${output}${diagnostics}${partialNote}`
+ }
+ 
+ /** What to tell the model about a resume request. */
+@@ -37,10 +45,22 @@
+ 
+ /** What to tell the model about a cancel request. */
+ export function cancelResultText(id: string): string {
++  // The model's cancel records its origin like the fleet path does (stoppedBy 'agent', note to the run's output).
++  const dir = currentFleetDir()
++  if (dir && backgroundRun(id)?.state === 'running') requestStop(dir, id, 'agent')
+   const outcome = cancelBackgroundRun(id)
+   if (outcome === 'cancelled') return `Cancelled background run ${id}.`
+   if (outcome === 'not-running') return `Background run ${id} already finished; nothing to cancel.`
+-  return `Unknown background run: ${id}.\n\n${backgroundStatusText()}`
++  const fleet = stopOwnRun(id)
++  if (fleet === 'stopping') return `Stopped run ${id}.`
++  if (fleet === 'not-running') return `Run ${id} already finished; nothing to cancel.`
++  return `Unknown background run: ${id}.\n\n${statusWithFleet()}`
++}
++
++/** The registry status plus the calls the user moved to the background (Ctrl+B), which live outside the registry. */
++export function statusWithFleet(): string {
++  const moved = fleetStatusLines()
++  return moved.length > 0 ? `${backgroundStatusText()}\n\nMoved to the background:\n${moved.join('\n')}` : backgroundStatusText()
+ }
+ 
+ /** The registry fields the /tasks listing prints. */
+diff -ruN a/subagent/run.ts b/subagent/run.ts
+--- a/subagent/run.ts	2026-11-13 12:52:40.284671954 -0300
++++ b/subagent/run.ts	2026-11-13 12:52:40.292152088 -0300
+@@ -19,6 +19,8 @@
+ import { withFileMutationQueue } from '@earendil-works/pi-coding-agent'
+ import { cliSettings } from '../internal/cli-settings.ts'
+ import { killProcessTree } from '../internal/process-tree.ts'
++import { currentFleetDir, fleetChildEnv, stopOrigin } from './fleet/store.ts'
++import { finishExitCode, startTracking, stopNote } from './fleet/tracker.ts'
+ import { runSubagentStartHooks } from '../internal/subagent-hooks.ts'
+ import { type AgentConfig, resolveModelAlias } from './agents.ts'
+ import { agentHooksEnv, agentInvocationArgs, agentMemoryPromptSection, childPromptBody, taskWithStartContext, unresolvedToolsError, withMemoryTools } from './child.ts'
+@@ -324,7 +326,7 @@
+       const spawned = spawnChild(invocation.command, invocation.args, {
+         cwd: worktree?.dir ?? runCwd,
+         // The marker and depth let the child's subagent tool enforce the nesting cap.
+-        env: { ...process.env, ...childNestingEnv(), ...agentHooksEnv(agent, options.agentId ?? '') },
++        env: { ...process.env, ...childNestingEnv(), ...agentHooksEnv(agent, options.agentId ?? ''), ...fleetChildEnv(options.agentId ?? '') },
+       })
+       if ('error' in spawned) {
+         if (!currentResult.stderr) currentResult.stderr = spawned.error.message
+@@ -332,6 +334,8 @@
+         return
+       }
+       const proc = spawned.proc
++      const tracker = startTracking({ id: options.agentId ?? '', agent: agentName, task, model: agent.model, background: false })
++      tracker?.setPid(proc.pid)
+       let buffer = ''
+       let assistantTurns = 0
+ 
+@@ -375,7 +379,10 @@
+         buffer += decodeStdout(data)
+         const lines = buffer.split('\n')
+         buffer = lines.pop() || ''
+-        for (const line of lines) processLine(line)
++        for (const line of lines) {
++          tracker?.onLine(line)
++          processLine(line)
++        }
+       })
+       proc.stdout.on('error', () => {})
+ 
+@@ -386,7 +393,17 @@
+ 
+       proc.on('close', (code) => {
+         cleanup()
+-        if (buffer.trim()) processLine(buffer)
++        if (buffer.trim()) {
++          tracker?.onLine(buffer)
++          processLine(buffer)
++        }
++        // The fleet's stop marker (panel or {cancel}) tells a stop from a crash; callers report the note.
++        const stopBy = stopOrigin(currentFleetDir(), options.agentId ?? '')
++        if (stopBy) {
++          currentResult.stopReason = 'aborted'
++          currentResult.errorMessage = stopNote(stopBy)
++        }
++        tracker?.finish({ exitCode: finishExitCode(Boolean(currentResult.partial), code), aborted: wasAborted, error: currentResult.errorMessage })
+         // A capped run was stopped by this module's own SIGTERM, which pi's print mode
+         // answers with exit 143: that is not the agent failing, as background.ts also holds.
+         resolve(currentResult.partial ? 0 : (code ?? 0))

@@ -1,0 +1,40 @@
+# Tool routing and delegation (pi)
+
+Providers, MCP servers, codegraph and the knowledge vault are optional: use what is configured (`mcp.json`, `tool_search`)
+and say when a route is unavailable. Skills named here exist only if installed; otherwise follow the stated procedure by hand.
+
+## Web search (every search)
+- Use the search providers configured in `mcp.json`. When more than one is configured, run at least two independent ones in the same turn (a page fetch or API read is a reader, not the second provider). Latest versions, prices, dates and news always need a search, never memory.
+- Optional: the skill `deep-search` keeps a provider table (`references/providers.md`) with per-task rows, fallback order, readers and limits; when present it is the only provider list. The skill `perplexity-urls` (optional) holds the contract for Perplexity-first routing.
+- Read the source text, not the snippet, with `web_fetch` or a configured reader. Record the provider per claim.
+- A provider fails (login, 429, empty answer, `tool_search` finds nothing, out of credits): take the next configured one and say so.
+- Delegate multi-question research to `perplexity-scout` or `web-scout` (use the one whose provider is configured) and version or dataset checks to `research-scout`; for a cross-check, run both scouts in one parallel `subagent` call. Multi-angle, report-length research: skill `deep-search` (optional).
+- Not a web search: local code (codegraph, `rg`) and facts that need no source.
+
+## MCP routing
+- Code structure, callers and impact (optional, when a `codegraph` MCP is configured and the repository has a `.codegraph` index): `mcp__codegraph__codegraph_status` → `_explore` → `_callers`/`_impact` → `_node`, `projectPath` = the `Graph:` root. The SessionStart/SubagentStart `Graph:` line (`$CLAUDE_CONFIG_DIR/hooks/graph_context.py`) names the index root and its freshness; treat a stale or unknown index as possibly outdated. Literals, config and unindexed code: `rg` and `fdfind` through `bash`. Check `codegraph_status` before a negative or exhaustive claim.
+- Indexing only happens where the user authorized it; never index home, `/tmp`, worktrees, secret directories or from a subagent. The MCP watcher keeps indexes fresh; `codegraph sync` is only for scripts outside a session.
+- Docs ↔ code (optional, `PI_GRAPHS_VAULT` set): the graphs vault lists per file its symbols, cross-file uses and the docs that cite it, and per doc the code it cites. Refresh it with `codegraph-obsidian <repo>` after a large docs change.
+- Library, framework, SDK and CLI docs: a docs MCP (for example context7: `resolve_library_id` then `query_docs`) when configured, else the official documentation through a reader. pi itself: its local docs (path in the system prompt) and its upstream repository. Docs that drive a version or compatibility decision: confirm with a web search.
+- Academic papers: a paper-search MCP when configured, plus one web provider.
+- Large command output, logs, data or page analysis: filter in `bash` (`rg`, `jq`, `head`, `wc`), cap reader size (`max_chars` and similar), or save to `/tmp` and `read` with `offset`/`limit`.
+- Browser (optional): a playwright MCP (Chrome on a local CDP port) for automation, DevTools-level emulation, traces and heap (skill `browser-testing-with-devtools` (optional)). Native desktop windows: a computer-use MCP or the `cua-driver` skill when installed. One owner per page or window.
+- Linear issues, projects and cycles (optional): the `linear` MCP server through the `linear` skill; bulk triage or plan-to-issues work goes to `linear-operator`.
+- Past-session recall: `rg` over pi sessions (`~/.pi/agent/sessions/`; the current one is `$PI_SESSION_FILE`). Contracts and decisions stay in `/docs`, reusable learning in the knowledge vault when configured.
+- Another model's opinion: `pi -p --no-session --model <provider/id>`, only when the user authorized sending that data and the cost.
+
+## Local execution (Linux)
+- Fan out independent work over the available threads: `xargs -P "$(nproc)"`, `cargo nextest run`, `pytest -n auto` (when pytest-xdist is installed), `go test ./...`, Vitest's default pool.
+- Heavy builds or suites (Go, bundlers, `docker build`, browser suites): run them under a memory-capped scope when the machine has one (`systemd-run --user --scope --slice=<slice> --quiet --collect -- <cmd>`). Never raise a cap or clear caches to pass.
+- `bash` has no background mode: start long jobs with `nohup <cmd> >/tmp/<name>.log 2>&1 &`, record the PID, and poll the log with a bounded loop; stop only the PIDs you started.
+- Throwaway test state on tmpfs (`/tmp`, `/dev/shm`, `docker run --tmpfs <datadir>`; PostgreSQL `fsync=off`, `synchronous_commit=off`), local tests only.
+- Speed claims: `hyperfine` before and after, mean ± σ.
+
+## Delegation
+- `subagent` modes: single `{agent, task}`, parallel `{tasks: [...]}` (at most 8 per call, 4 at once from the main session, 2 from a child), chain `{chain: [...]}` with `{previous}`, `background: true` (a notification arrives; never poll it). A child cannot ask the user; writer agents may nest under the depth cap (skill `swarm-orchestration`, Nesting). Give every brief the files it owns, the acceptance, the constraints verbatim and the expected handback (agent contract: `$CLAUDE_CONFIG_DIR/docs/agent-contract.md`).
+- Isolation: read-only discovery runs in the current tree (a worktree would lack the uncommitted diff). Parallel writers either own disjoint files in one tree, checked with `git status --porcelain` after the run, or get a worktree you create after `git -C <cwd> rev-parse --is-inside-work-tree` prints `true` (`git worktree add`, passed as the task's `cwd`). Outside Git, run writers sequentially. A deterministic precondition failure requires changing the failing input, not the prompt or agent; never repeat it unchanged.
+- Default: the main session orchestrates and workers implement on the cheapest tier that holds quality (Tiers table of skill `swarm-orchestration`). The tier is chosen by choosing the agent, because model pins live in the agent files: only the session model the user chose orchestrates; read-only search, mapping, lookup and mechanical-run agents (`Explore`, `gate-runner`, `git-delivery`, `research-scout`, …) carry a cheap pin, every other agent a mid pin. High-risk review or design that needs the session model runs in the main thread. Never edit a pin mid-task.
+- Shape and writer choice: skill `swarm-orchestration` ("Choose the shape", "Brief"). Coupled work split across agents measured worse on sequential planning than one agent.
+- Graph and loops (skills `graph-engineering`, `loop-engineering`; context: `context-economy`): derive unit dependencies once in the main thread (code graph when available, else `rg`; `python3 $CLAUDE_CONFIG_DIR/skills/graph-engineering/scripts/unit_graph.py suggest` and `check`) and hand workers `file:line` slices; the deterministic gate checks run before any LLM review and the maker never grades itself; every loop stops on a machine-checkable condition (acceptance, gate, one escalation per lane, two fix rounds, no progress, the user's token target, `needs_decision`); work beyond one call keeps the unit graph and its status in the task's `/docs` record.
+- Multi-agent procedures (impact analysis, implement, cross-check research, SOTA audit) are skill steps: on the user's ask, run them with `subagent` calls and say they ran by hand. `/swarm` runs `swarm-orchestration` ("Run a multi-lane task"); three or more independent units also run that way unasked (standing opt-in, CLAUDE.md). Lanes on separate branches or worktrees are combined by `lane-integrator`; one controller per browser page or window.
+- Review: a direct review (`pr-review` (optional), or delegated to `code-reviewer`; on a high-risk flow review in the main thread or keep the session on its strongest model) is the default. A fan-out of several reviewers only on request: on Claude Code one benchmark scored it below direct review at ~4× the cost (its LLM judge is not validated against human labels, so treat the gap as a signal).

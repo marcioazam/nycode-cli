@@ -1,0 +1,161 @@
+--- a/todo.ts	2026-11-13 13:33:37.532809635 -0300
++++ b/todo.ts	2026-11-13 13:33:37.533307845 -0300
+@@ -18,7 +18,7 @@
+  */
+ 
+ import type { ExtensionAPI, ExtensionContext, ExtensionUIContext, SessionEntry, Theme } from '@earendil-works/pi-coding-agent'
+-import { matchesKey, Text, type TUI, truncateToWidth } from '@earendil-works/pi-tui'
++import { Key, matchesKey, Text, type TUI, truncateToWidth } from '@earendil-works/pi-tui'
+ import { type Static, Type } from 'typebox'
+ 
+ import { stringEnum } from './internal/string-enum.ts'
+@@ -135,6 +135,26 @@
+   }
+ }
+ 
++/** One-line widget used while collapsed (ctrl+shift+t): counts and the in_progress todo. */
++export const collapsedLine = (todos: Todo[], theme: Theme): string => {
++  const completed = todos.filter((t) => t.status === 'completed').length
++  const active = todos.find((t) => t.status === 'in_progress')
++  const current = active ? ` · ${statusGlyph('in_progress', theme)} ${active.activeForm ?? active.text}` : ''
++  if (completed === todos.length) return `${theme.fg('success', '✓')} ${theme.fg('dim', `Todos ${completed}/${todos.length}`)}`
++  return theme.fg('accent', `Todos ${completed}/${todos.length}`) + current
++}
++
++export const allDone = (todos: Todo[]): boolean => todos.length > 0 && todos.every((t) => t.status === 'completed')
++
++/** Linhas visíveis a partir de `offset`, com indicadores de quanto ficou acima e abaixo. */
++export const scrollWindow = <T>(items: T[], budget: number, offset: number): { visible: T[]; above: number; below: number; offset: number } => {
++  if (items.length <= budget) return { visible: items, above: 0, below: 0, offset: 0 }
++  const inner = budget - 1 // uma linha para o rodapé "+N"
++  const max = items.length - inner
++  const start = Math.min(Math.max(0, offset), max)
++  return { visible: items.slice(start, start + inner), above: start, below: max - start, offset: start }
++}
++
+ /**
+  * Persistent widget above the editor. Factory-form setWidget registration,
+  * register-once + requestRender() refresh, auto-hide when the list is empty.
+@@ -144,6 +164,11 @@
+   private uiCtx?: ExtensionUIContext
+   private widgetRegistered = false
+   private tui?: TUI
++  // Per process, not persisted: ctrl+shift+t folds the list into collapsedLine.
++  private collapsed = false
++  // Lista concluída recolhe sozinha; expandir manualmente (clique ou ctrl+shift+t) vence até a próxima lista.
++  private expandedByUser = false
++  private scroll = 0
+   private readonly getTodos: () => Todo[]
+ 
+   constructor(getTodos: () => Todo[]) {
+@@ -160,9 +185,15 @@
+     }
+   }
+ 
++  private lastCount = 0
++
+   update(): void {
+     if (!this.uiCtx) return
+-    if (this.getTodos().length === 0) {
++    const count = this.getTodos().length
++    if (count > this.lastCount) this.resetView() // lista nova ou item adicionado: volta ao automático
++    this.lastCount = count
++    if (count === 0) {
++      this.resetView()
+       this.hide()
+       return
+     }
+@@ -176,6 +207,18 @@
+         this.tui = tui
+         return {
+           render: (width: number) => this.renderWidget(theme, width),
++          // Mouse chega aqui em tuiMode fullscreen (padrão): clique alterna, roda rola a lista.
++          handleMouse: (event: { type?: string; wheelDelta?: number }) => {
++            if (event.type === 'click') {
++              this.toggleCollapsed()
++              return { render: true }
++            }
++            if (event.type === 'wheel' && event.wheelDelta) {
++              const moved = this.scrollBy(event.wheelDelta > 0 ? 1 : -1)
++              return moved ? { render: true } : undefined
++            }
++            return undefined
++          },
+           invalidate: () => {
+             this.widgetRegistered = false
+             this.tui = undefined
+@@ -187,6 +230,34 @@
+     this.widgetRegistered = true
+   }
+ 
++  toggleCollapsed(): void {
++    const todos = this.getTodos()
++    if (todos.length === 0) return
++    const showingCollapsed = this.collapsed || (allDone(todos) && !this.expandedByUser)
++    this.collapsed = !showingCollapsed
++    this.expandedByUser = !this.collapsed
++    this.scroll = 0
++    this.update()
++  }
++
++  /** Rola a lista expandida; devolve true quando o offset mudou. */
++  scrollBy(delta: number): boolean {
++    const todos = this.getTodos()
++    if (this.collapsed || todos.length <= MAX_WIDGET_LINES - 1) return false
++    const before = this.scroll
++    this.scroll = Math.min(Math.max(0, this.scroll + delta), todos.length - (MAX_WIDGET_LINES - 2))
++    if (this.scroll === before) return false
++    this.update()
++    return true
++  }
++
++  /** Nova lista (ou lista esvaziada) volta ao comportamento automático. */
++  resetView(): void {
++    this.collapsed = false
++    this.expandedByUser = false
++    this.scroll = 0
++  }
++
+   dispose(): void {
+     this.hide()
+     this.uiCtx = undefined
+@@ -203,6 +274,8 @@
+     const todos = this.getTodos()
+     if (todos.length === 0) return []
+     const truncate = (line: string): string => truncateToWidth(line, width, '…')
++    // Lista inteira concluída: uma linha só, até o usuário expandir (clique ou ctrl+shift+t).
++    if (this.collapsed || (allDone(todos) && !this.expandedByUser)) return [truncate(collapsedLine(todos, theme)), '']
+ 
+     const completed = todos.filter((t) => t.status === 'completed').length
+     const hasActive = completed < todos.length
+@@ -210,11 +283,21 @@
+     const headingIcon = hasActive ? '●' : '○'
+     const lines = [truncate(theme.fg(headingColor, `${headingIcon} Todos (${completed}/${todos.length})`))]
+ 
+-    const layout = layoutOverlay(todos, MAX_WIDGET_LINES - 1)
++    const scrolled = this.scroll > 0
++    const window = scrolled ? scrollWindow(todos, MAX_WIDGET_LINES - 1, this.scroll) : undefined
++    const layout = window
++      ? { visible: window.visible, hiddenCompleted: 0, truncatedTail: 0 }
++      : layoutOverlay(todos, MAX_WIDGET_LINES - 1)
+     for (const todo of layout.visible) {
+       lines.push(truncate(`${theme.fg('dim', '├─')} ${statusGlyph(todo.status, theme)} ${overlayLabel(todo, theme)}`))
+     }
+ 
++    if (window) {
++      lines.push(truncate(theme.fg('dim', `└─ ↑${window.above} ↓${window.below} (roda do mouse)`)))
++      lines.push('')
++      return lines
++    }
++
+     const totalHidden = layout.hiddenCompleted + layout.truncatedTail
+     if (totalHidden === 0) {
+       const last = lines.length - 1
+@@ -387,6 +470,7 @@
+     if (ctx.hasUI) overlay.setUICtx(ctx.ui)
+     overlay.update()
+   })
++  pi.registerShortcut(Key.ctrlShift('t'), { description: 'Collapse or expand the todo list', handler: () => overlay.toggleCollapsed() })
+   pi.on('session_tree', (_event, ctx) => replayAndRefresh(ctx))
+   pi.on('session_compact', (_event, ctx) => replayAndRefresh(ctx))
+   pi.on('session_shutdown', () => overlay.dispose())

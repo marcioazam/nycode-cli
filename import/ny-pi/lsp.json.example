@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "servers": [
+    {
+      "id": "typescript",
+      "include": ["**/*.ts", "**/*.tsx", "**/*.mts", "**/*.cts", "**/*.js", "**/*.jsx", "**/*.mjs", "**/*.cjs"],
+      "exclude": ["**/node_modules/**", "**/dist/**", "**/build/**", "**/.next/**"],
+      "rootMarkers": ["tsconfig.json", "jsconfig.json", "package.json"],
+      "bin": "typescript-language-server",
+      "args": ["--stdio"],
+      "cwd": "{root}",
+      "languageIdByExtension": {
+        ".ts": "typescript", ".mts": "typescript", ".cts": "typescript", ".tsx": "typescriptreact",
+        ".js": "javascript", ".mjs": "javascript", ".cjs": "javascript", ".jsx": "javascriptreact"
+      },
+      "startupTimeoutMs": 45000,
+      "diagnosticsWaitMs": 2500
+    },
+    {
+      "id": "pyright",
+      "include": ["**/*.py", "**/*.pyi"],
+      "exclude": ["**/.venv/**", "**/venv/**", "**/__pycache__/**"],
+      "rootMarkers": ["pyproject.toml", "pyrightconfig.json", "setup.py", "setup.cfg", "requirements.txt", ".git"],
+      "bin": "pyright-langserver",
+      "args": ["--stdio"],
+      "cwd": "{root}",
+      "languageIdByExtension": { ".py": "python", ".pyi": "python" },
+      "startupTimeoutMs": 45000,
+      "diagnosticsWaitMs": 2500
+    },
+    {
+      "id": "ruff",
+      "include": ["**/*.py", "**/*.pyi"],
+      "exclude": ["**/.venv/**", "**/venv/**", "**/__pycache__/**"],
+      "rootMarkers": ["pyproject.toml", "ruff.toml", ".ruff.toml", "setup.py", "requirements.txt", ".git"],
+      "bin": "ruff",
+      "args": ["server"],
+      "cwd": "{root}",
+      "languageIdByExtension": { ".py": "python", ".pyi": "python" },
+      "startupTimeoutMs": 20000,
+      "diagnosticsWaitMs": 1000
+    },
+    {
+      "id": "gopls",
+      "include": ["**/*.go"],
+      "exclude": ["**/vendor/**"],
+      "rootMarkers": ["go.work", "go.mod"],
+      "bin": "gopls",
+      "args": [],
+      "cwd": "{root}",
+      "languageIdByExtension": { ".go": "go" },
+      "startupTimeoutMs": 45000,
+      "diagnosticsWaitMs": 2500
+    },
+    {
+      "id": "rust-analyzer",
+      "include": ["**/*.rs"],
+      "exclude": ["**/target/**"],
+      "rootMarkers": ["Cargo.toml"],
+      "bin": "rust-analyzer",
+      "args": [],
+      "cwd": "{root}",
+      "languageIdByExtension": { ".rs": "rust" },
+      "startupTimeoutMs": 90000,
+      "diagnosticsWaitMs": 6000
+    }
+  ]
+}

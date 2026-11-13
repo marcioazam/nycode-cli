@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+# pi-doctor — valida a config do pi deste harness antes que o erro apareça como aviso silencioso no startup.
+#
+# Checa, nesta ordem:
+#   1. JSON válido em settings.json, mcp.json e keybindings.json (um deles quebrado derruba a feature inteira);
+#   2. todo caminho local de packages/extensions/skills/prompts/themes do settings.json, resolvido como o pi faz
+#      (`~` via HOME, o resto contra ~/.pi/agent, prefixos +/!/- ignorados);
+#   3. diretórios de extensão em ~/.pi/agent/extensions sem index.ts/index.js (não carregam);
+#   4. patches em claude-home/patches/pi-code que não revertem na árvore instalada (pilha fora de sincronia).
+# Sai 1 se algo falhar. Somente leitura.
+#
+# Origem: auditoria 2026-11-13, nicknisi/dotfiles bin/pi-doctor (itens 1 e 2); 3 e 4 são deste harness.
+set -uo pipefail
+
+AGENT="${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}"
+fail=0
+note() { printf '%s\n' "$*"; }
+bad() { printf 'FALHA  %s\n' "$*"; fail=1; }
+
+# 1. JSON válido
+for f in settings.json mcp.json keybindings.json; do
+  p="$AGENT/$f"
+  [ -f "$p" ] || { note "ausente (ok)  $f"; continue; }
+  if python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$p" 2>/dev/null; then
+    note "json ok       $f"
+  else
+    bad "json inválido: $p"
+  fi
+done
+
+# 2. caminhos locais do settings.json
+settings="$AGENT/settings.json"
+if [ -f "$settings" ]; then
+  missing=$(AGENT="$AGENT" python3 - "$settings" <<'PY'
+import json, os, sys
+agent = os.environ["AGENT"]
+home = os.path.expanduser("~")
+data = json.load(open(sys.argv[1]))
+def entries():
+    for p in data.get("packages", []) or []:
+        yield "packages", (p.get("source") if isinstance(p, dict) else p)
+    for key in ("extensions", "skills", "prompts", "themes"):
+        for v in data.get(key, []) or []:
+            yield key, v
+missing = 0
+total = 0
+for kind, raw in entries():
+    if not isinstance(raw, str) or raw.startswith(("npm:", "git:", "http://", "https://")):
+        continue
+    total += 1
+    p = raw.lstrip("+!-")
+    p = os.path.join(home, p[1:].lstrip("/")) if p.startswith("~") else os.path.normpath(os.path.join(agent, p))
+    if any(ch in p for ch in "*?["):  # glob: o pi expande, não é caminho literal
+        continue
+    if not os.path.exists(p):
+        missing += 1
+        print(f"{kind}: {raw} -> {p}")
+print(f"__TOTAL__ {total}")
+PY
+)
+  total=$(printf '%s\n' "$missing" | sed -n 's/^__TOTAL__ //p')
+  rest=$(printf '%s\n' "$missing" | grep -v '^__TOTAL__' || true)
+  if [ -n "$rest" ]; then
+    while IFS= read -r line; do bad "caminho inexistente: $line"; done <<<"$rest"
+  else
+    note "paths ok      ${total:-0} caminhos locais do settings.json"
+  fi
+fi
+
+# 3. extensões sem ponto de entrada
+if [ -d "$AGENT/extensions" ]; then
+  n=0
+  for d in "$AGENT"/extensions/*/; do
+    [ -d "$d" ] || continue
+    n=$((n + 1))
+    [ -f "$d/index.ts" ] || [ -f "$d/index.js" ] || bad "extensão sem index.ts/js: $d"
+  done
+  note "extensões ok  $n diretórios"
+fi
+
+# 4. pilha de patches do pi-code
+P="$(dirname "$(realpath "$0")")/../../patches/pi-code"  # bin/doctor -> claude-home
+E="$AGENT/npm/node_modules/pi-code/extensions"
+if [ ! -d "$P" ] || [ ! -d "$E" ]; then
+  bad "patches ou árvore instalada não encontrados: $P / $E"
+else
+  tmp=$(mktemp -d)
+  cp -r "$E" "$tmp/e"
+  patchfail=0
+  for p in $(ls -r "$P"/*.patch); do
+    patch -d "$tmp/e" -p1 -R -s -f -i "$p" >/dev/null 2>&1 || { bad "patch não reverte na árvore instalada: $(basename "$p")"; patchfail=1; }
+  done
+  rm -r "$tmp"
+  [ "$patchfail" -eq 0 ] && note "patches ok    $(ls "$P"/*.patch | wc -l) patches revertem"
+fi
+
+exit "$fail"

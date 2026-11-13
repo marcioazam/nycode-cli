@@ -1,0 +1,62 @@
+diff -ruN a/notify.ts b/notify.ts
+--- a/notify.ts	2026-11-12 20:14:53.181754093 -0300
++++ b/notify.ts	2026-11-12 20:14:53.182131262 -0300
+@@ -10,9 +10,10 @@
+  * Honors Claude Code's `preferredNotifChannel` (user settings): `terminal_bell`
+  * rings the bell, `notifications_disabled` stays silent, `iterm2_with_bell` does
+  * both, anything else sends the desktop notification. Like Claude, a notification
+- * fires only when you "appear to be away": pi exposes no terminal-focus signal, so
+- * a turn is treated as away when it ran at least AWAY_AFTER_MS, or when no prompt
+- * was submitted since session start.
++ * fires only when you "appear to be away". With a real focus signal (the
++ * `pi-ui:terminal-focus` event the ui extension emits from DEC 1004) that means the
++ * terminal is unfocused; without one (no event yet) a turn is treated as away when
++ * it ran at least AWAY_AFTER_MS, or when no prompt was submitted since session start.
+  */
+ 
+ import { execFile } from 'node:child_process'
+@@ -40,8 +41,8 @@
+ }
+ 
+ /** How long a turn must run before its end is worth a notification. Claude only
+- * notifies when you "appear to be away"; pi exposes no terminal-focus signal, so a
+- * turn that ran at least this long is the best available proxy for having stepped
++ * notifies when you "appear to be away"; when no terminal-focus event has arrived,
++ * a turn that ran at least this long is the best available proxy for having stepped
+  * away. A turn with no recorded start (none since session start) always notifies. */
+ export const AWAY_AFTER_MS = 30_000
+ 
+@@ -50,6 +51,11 @@
+   return now - lastInputAt >= thresholdMs
+ }
+ 
++/** Whether to notify: a known focus state decides alone; unknown falls back to isAway. */
++export function shouldNotify(focused: boolean | undefined, lastInputAt: number | undefined, now: number, thresholdMs: number): boolean {
++  return focused === undefined ? isAway(lastInputAt, now, thresholdMs) : !focused
++}
++
+ /** The `preferredNotifChannel` from the user's settings. This is a personal terminal
+  * preference, so only the user-level files are read (the user file and the `--settings`
+  * flag); a checked-out repo does not get to silence or change your notifications. */
+@@ -116,6 +122,12 @@
+   // the user pressed Esc: they are at the keyboard by definition, whatever isAway's
+   // timer-based guess would otherwise say.
+   let lastAborted = false
++  // Terminal focus from the 'pi-ui:terminal-focus' bus event; undefined until the first one.
++  // Optional-chained so a host or test stub without an event bus still loads.
++  let focused: boolean | undefined
++  pi.events?.on('pi-ui:terminal-focus', (data) => {
++    focused = (data as { focused: boolean }).focused
++  })
+ 
+   pi.on('session_start', (_event, _ctx) => {
+     channel = resolveNotifChannel(readPreferredNotifChannel(os.homedir()))
+@@ -140,7 +152,7 @@
+     if (!pending) return
+     pending = false
+     if (lastAborted) return
+-    if (!isAway(lastInputAt, Date.now(), AWAY_AFTER_MS)) return
++    if (!shouldNotify(focused, lastInputAt, Date.now(), AWAY_AFTER_MS)) return
+     if (channel === 'bell') {
+       process.stdout.write('\x07')
+       return

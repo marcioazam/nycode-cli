@@ -1,0 +1,175 @@
+#!/bin/sh
+# pi wrapper: isolates pi from ~/.claude (pi-code reads Claude config from CLAUDE_CONFIG_DIR),
+# loads an optional local.env, and keeps the harness patches applied.
+# Tests: PI_WRAPPER_TEST=1 sourcing defines the functions and returns before any side effect.
+
+# pi_load_local_env FILE: load whitelisted KEY=VALUE lines from FILE into the environment.
+# Never sourced or evaluated: values are literal. The file must be owned by the user with
+# mode 0600 or 0400, else nothing is loaded. Variables already set by the caller win.
+pi_load_local_env() {
+  f=$1
+  [ -f "$f" ] || return 0
+  mode=$(stat -c %a "$f" 2>/dev/null || stat -f %Lp "$f" 2>/dev/null)
+  case "$mode" in
+    600|400) [ -O "$f" ] || { echo "pi: $f is not owned by you, ignoring local.env" >&2; return 0; } ;;
+    *) echo "pi: $f must have mode 0600 (found ${mode:-unknown}), ignoring local.env" >&2; return 0 ;;
+  esac
+  lineno=0
+  while IFS= read -r line || [ -n "$line" ]; do
+    lineno=$((lineno + 1))
+    line=${line%"$(printf '\r')"}
+    case "$line" in ''|'#'*) continue ;; esac
+    case "$line" in
+      *=*) ;;
+      *) echo "pi: local.env:$lineno ignored" >&2; continue ;;
+    esac
+    key=${line%%=*}
+    val=${line#*=}
+    case "$key" in
+      PI_BYPASS_PERMISSIONS|PI_COMPACT_AT|PONYTAIL_QUIET_STARTUP|PI_KNOWLEDGE_VAULT|PI_GRAPHS_VAULT|CODEGRAPH_AUTO_ROOT|PI_SUBAGENT_RESPAWN) ;;
+      *) echo "pi: local.env:$lineno ignored" >&2; continue ;;
+    esac
+    # key is allowlisted above, so this eval only tests whether it is already set.
+    if eval "[ -n \"\${$key+x}\" ]"; then continue; fi
+    case "$val" in
+      \"?*\") val=${val#\"}; val=${val%\"} ;;
+      \'?*\') val=${val#\'}; val=${val%\'} ;;
+    esac
+    export "$key=$val"
+  done < "$f"
+}
+
+[ -n "${PI_WRAPPER_TEST:-}" ] && return 0
+
+pi_load_local_env "${PI_LOCAL_ENV:-$HOME/.pi/agent/local.env}"
+
+CLAUDE_CONFIG_DIR="$HOME/.pi/agent/claude-home"
+export CLAUDE_CONFIG_DIR
+# Quiet startup: settings.json quietStartup="header" hides [Skills]/[Extensions]; this hides "Ponytail loaded".
+PONYTAIL_QUIET_STARTUP="${PONYTAIL_QUIET_STARTUP:-1}"
+export PONYTAIL_QUIET_STARTUP
+
+# Compaction threshold in tokens; the settings.json modelOverrides come from
+# scripts/compaction-400k.py with the same value.
+: "${PI_COMPACT_AT:=250000}"
+export PI_COMPACT_AT
+
+# Bypass permissions: OFF by default. The guard (claude-home/hooks/guard.py) auto-approves its
+# "ask" list when ON; the catastrophic "deny" rules always stay.
+# Turn on: PI_BYPASS_PERMISSIONS=1 in local.env, or pi --bypass for one run.
+# Turn off for one run: pi --safe. In a session: /bypass or Ctrl+Shift+B.
+: "${PI_BYPASS_PERMISSIONS:=0}"
+n=$#
+while [ "$n" -gt 0 ]; do
+  a=$1; shift; n=$((n - 1))
+  case "$a" in
+    --dangerously-skip-permissions|--bypass) PI_BYPASS_PERMISSIONS=1 ;;
+    --safe|--no-bypass) PI_BYPASS_PERMISSIONS=0 ;;
+    *) set -- "$@" "$a" ;;
+  esac
+done
+export PI_BYPASS_PERMISSIONS
+
+# Subcommands (pi install/list/mcp/...) pass straight through: session flags before them
+# would make pi treat the subcommand as a prompt.
+case "${1:-}" in
+  install|remove|uninstall|update|list|config|auth|mcp) exec "$HOME/.pi/agent/bin/pi" "$@" ;;
+esac
+
+# No project .claude (nor ~/.claude, which becomes a "project" in ~): only CLAUDE_CONFIG_DIR.
+# --no-approve unless the call has an explicit `pi --approve` / `-a`.
+case " $* " in
+  *" --approve "*|*" -a "*) ;;
+  *) set -- --no-approve "$@" ;;
+esac
+
+# Patches are pinned to exact versions and fail closed: on any other version they are skipped
+# with one warning and pi still starts. Override the pins with PI_HARNESS_PI_CODE_VERSION / PI_HARNESS_PI_VERSION.
+pi_json_version() { sed -n 's/^[[:space:]]*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$1" 2>/dev/null | head -n 1; }
+
+# pi-code patches (claude-home/patches/pi-code/*.patch; docs in claude-home/docs/goal.md and
+# claude-home/docs/pi-commands.md). They enable /goal without project trust, subagent nesting and
+# panel, commands in print mode, plan-mode rules and UI tweaks. Applied in name order; "already
+# applied" means the reverse applies cleanly; one that does not apply warns and is skipped.
+goal_ext="$HOME/.pi/agent/npm/node_modules/pi-code/extensions"
+goal_ts="$goal_ext/goal.ts"
+patches="$HOME/.pi/agent/claude-home/patches"
+if [ -d "$goal_ext" ]; then
+  code_ver=$(pi_json_version "$goal_ext/../package.json")
+  if [ "$code_ver" != "${PI_HARNESS_PI_CODE_VERSION:-1.7.0}" ]; then
+    echo "pi: pi-code ${code_ver:-unknown} is not ${PI_HARNESS_PI_CODE_VERSION:-1.7.0}, skipping harness patches" >&2
+  else
+    if [ -w "$goal_ts" ]; then
+      # Without goal.patch the trust sed below may have commented the line out; restore it so the patch matches.
+      if ! patch -d "$goal_ext" -p1 -R -s -f --dry-run < "$patches/pi-code/goal.patch" >/dev/null 2>&1; then
+        sed -i 's|^  // if (!trusted) return TRUST_GATE  // desligado por ~/.local/bin/pi$|  if (!trusted) return TRUST_GATE|' "$goal_ts"
+      fi
+      # Overlapping patches fail the per-patch reverse test once applied; undoing the whole stack
+      # in reverse order on a copy proves it is fully applied (else every start would warn).
+      pi_patch_stack_applied() {
+        t=$(mktemp -d) || return 1
+        ok=0
+        cp -r "$goal_ext" "$t/e" || ok=1
+        for p in $(ls -r "$patches/pi-code/"*.patch 2>/dev/null); do
+          [ "$ok" = 0 ] || break
+          patch -d "$t/e" -p1 -R -s -f < "$p" >/dev/null 2>&1 || ok=1
+        done
+        rm -r "$t"
+        return "$ok"
+      }
+      pi_patch_stack_applied || for p in "$patches/pi-code/"*.patch; do
+        [ -f "$p" ] || continue
+        patch -d "$goal_ext" -p1 -R -s -f --dry-run < "$p" >/dev/null 2>&1 && continue
+        if patch -d "$goal_ext" -p1 -N -s -f --dry-run < "$p" >/dev/null 2>&1; then
+          patch -d "$goal_ext" -p1 -N -s -f --no-backup-if-mismatch < "$p" >/dev/null 2>&1
+        else
+          echo "pi: $p does not apply to this pi-code (redo the patch)" >&2
+        fi
+      done
+    fi
+    # Warn at every start if a fix that several patch rounds regenerate has gone missing.
+    pi_fix_check() {
+      e=$1
+      grep -q 'Partial<MainStats>' "$e/subagent/fleet-ui/panel.ts" 2>/dev/null || echo "pi: fix lost: Partial<MainStats> in subagent/fleet-ui/panel.ts (TS2339)" >&2
+      [ -f "$e/subagent/respawn/index.ts" ] && [ ! -e "$e/subagent/respawn.ts" ] || echo "pi: fix lost: respawn must live in subagent/respawn/index.ts" >&2
+      grep -q 'DONE_RULE' "$e/plan-mode/index.ts" 2>/dev/null || echo "pi: fix lost: DONE_RULE in plan-mode/index.ts (the plan progress marker stalls)" >&2
+      grep -q 'plan-workflow/SKILL.md' "$e/plan-mode/index.ts" 2>/dev/null || echo "pi: fix lost: plan-sota in plan-mode/index.ts" >&2
+    }
+    pi_fix_check "$goal_ext"
+    # Disable only the /goal trust check (idempotent); if upstream changes the line nothing happens and /goal asks for trust (use `pi -a`).
+    if [ -w "$goal_ts" ] && grep -q '^  if (!trusted) return TRUST_GATE$' "$goal_ts"; then
+      sed -i 's|^  if (!trusted) return TRUST_GATE$|  // if (!trusted) return TRUST_GATE  // desligado por ~/.local/bin/pi|' "$goal_ts"
+    fi
+  fi
+fi
+
+# (optional) pi-antigravity-bridge patches: only when that package is installed.
+agy_ext="$HOME/.pi/agent/npm/node_modules/@3d24rd0/pi-antigravity-bridge"
+if [ -w "$agy_ext/src" ]; then
+  for p in "$patches/antigravity-bridge/"*.patch; do
+    [ -f "$p" ] || continue
+    patch -d "$agy_ext" -p1 -R -s -f --dry-run < "$p" >/dev/null 2>&1 && continue
+    if patch -d "$agy_ext" -p1 -N -s -f --dry-run < "$p" >/dev/null 2>&1; then
+      patch -d "$agy_ext" -p1 -N -s -f --no-backup-if-mismatch < "$p" >/dev/null 2>&1
+    else
+      echo "pi: $p does not apply to this antigravity-bridge (redo the patch)" >&2
+    fi
+  done
+fi
+
+# pi core cache-warm fix (claude-home/patches/pi-core/cache-warm-identity.mjs), only on the pinned pi version.
+# The grep avoids starting node when it is already applied.
+pi_cur=$(cat "$HOME/.pi/agent/install/current-version" 2>/dev/null)
+pi_dist="$HOME/.pi/agent/install/releases/$pi_cur/node_modules/@earendil-works/pi-coding-agent/dist"
+if [ -n "$pi_cur" ] && [ -d "$pi_dist" ]; then
+  if [ "$pi_cur" != "${PI_HARNESS_PI_VERSION:-1.5.2}" ]; then
+    echo "pi: pi $pi_cur is not ${PI_HARNESS_PI_VERSION:-1.5.2}, skipping core patch" >&2
+  elif [ -w "$pi_dist/core/sdk.js" ] && ! grep -q piSameContextMessage "$pi_dist/core/sdk.js"; then
+    node "$HOME/.pi/agent/claude-home/patches/pi-core/cache-warm-identity.mjs" "$pi_dist" || true
+  fi
+fi
+
+# Hide pi-code's web_search (scrapes DuckDuckGo, fails often); search goes through the
+# perplexity-urls contract (MCP tools deferred via tool_search).
+set -- --exclude-tools web_search "$@"
+exec "$HOME/.pi/agent/bin/pi" "$@"

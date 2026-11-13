@@ -1,0 +1,23 @@
+{
+ "session_id": "01a1cbdf-c71a-75fe-8856-1b1956fdda28",
+ "cwd": "/tmp/pi-capture/repo",
+ "permission_mode": "default",
+ "transcript_path": "/tmp/pihome/.pi/agent/sessions/--tmp-pi-capture-repo--/2026-11-11T18-30-02-779Z_01a1cbdf-c71a-75fe-8856-1b1956fdda28.jsonl",
+ "effort": {
+  "level": "medium"
+ },
+ "tool_use_id": "toolu_0174da2YchJkgmLbv1uruBB1",
+ "hook_event_name": "PostToolUse",
+ "tool_name": "Bash",
+ "tool_input": {
+  "command": "python3 -m pytest -q tests/test_x.py",
+  "timeout": 60000
+ },
+ "tool_response": {
+  "stdout": ".                                                                        [100%]\n1 passed in 0.00s\n",
+  "stderr": "",
+  "interrupted": false,
+  "isImage": false
+ },
+ "duration_ms": 159
+}

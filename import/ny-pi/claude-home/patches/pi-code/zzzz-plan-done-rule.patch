@@ -1,0 +1,30 @@
+--- a/plan-mode/index.ts
++++ b/plan-mode/index.ts
+@@ -28,6 +28,9 @@
+  * its own. Kept small: each stalled run re-injects the stale plan into the turn. */
+ const STALLED_RUN_LIMIT = 2
+ 
++/** The tracker reads only this literal tag from the reply text; prose or ☑ checkboxes do not count. */
++const DONE_RULE = 'When you finish step n, write the literal tag [DONE:n] (for example [DONE:1]) in your reply text; the progress tracker reads only this tag, not prose or checkboxes.'
++
+ // Type guard for assistant messages
+ function isAssistantMessage(m: AgentMessage): m is AssistantMessage {
+   return m.role === 'assistant' && Array.isArray(m.content)
+@@ -219,7 +222,7 @@
+     // Persist before the turn: a crash before the first turn_end must resume into
+     // execution, not back into plan mode.
+     persistState()
+-    const execMessage = todoItems.length > 0 ? `Execute the plan. Start with: ${todoItems[0].text}` : 'Execute the plan you just created.'
++    const execMessage = todoItems.length > 0 ? `Execute the plan. Start with: ${todoItems[0].text}\n${DONE_RULE}` : 'Execute the plan you just created.'
+     pi.sendMessage({ customType: 'plan-mode-execute', content: execMessage, display: true }, { triggerTurn: true })
+   }
+ 
+@@ -394,7 +397,7 @@
+ ${todoList}
+ 
+ Execute each step in order.
+-After completing a step, include a [DONE:n] tag in your response.`,
++${DONE_RULE}`,
+           display: false,
+         },
+       }

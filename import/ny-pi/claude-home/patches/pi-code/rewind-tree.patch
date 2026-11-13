@@ -1,0 +1,87 @@
+diff -ruN a/git-checkpoint.ts b/git-checkpoint.ts
+--- a/git-checkpoint.ts	2026-11-12 20:14:53.177448810 -0300
++++ b/git-checkpoint.ts	2026-11-12 20:14:53.178009269 -0300
+@@ -37,7 +37,7 @@
+  * pre-edit baseline into that run's checkpoint by moving the ref. */
+ const CHECKPOINT_REF_PREFIX = 'refs/pi-code/checkpoints'
+ const PROMPT_SNIPPET_LENGTH = 60
+-const RESTORE_MODES = ['Code and conversation', 'Conversation only', 'Code only']
++const RESTORE_MODES = ['Code and conversation', 'Conversation only', 'Code only', 'Summarize from here']
+ 
+ interface Checkpoint {
+   entryId: string
+@@ -187,10 +187,10 @@
+   return `${index + 1}. ${time}  ${checkpoint.prompt || '(empty prompt)'}${marker}`
+ }
+ 
+-async function restoreConversation(ctx: ExtensionCommandContext, entryId: string): Promise<boolean> {
++async function restoreConversation(ctx: ExtensionCommandContext, entryId: string, summarize = false): Promise<boolean> {
+   try {
+     // navigateTree's published type omits editorText, but it is present at runtime (docs/extensions.md)
+-    const result = (await ctx.navigateTree(entryId, { summarize: false })) as { cancelled: boolean; editorText?: string }
++    const result = (await ctx.navigateTree(entryId, { summarize })) as { cancelled: boolean; editorText?: string }
+     if (result.cancelled) return false
+     if (typeof result.editorText === 'string') ctx.ui.setEditorText(result.editorText)
+     return true
+@@ -222,6 +222,9 @@
+   // The ref holding the in-flight run's checkpoint, moved as later baselines arrive.
+   let runRef: string | undefined
+   let refSeq = 0
++  // True while /rewind drives navigateTree itself, so session_before_tree does not ask the
++  // code question a second time (the rewind mode already answered it).
++  let rewinding = false
+ 
+   function gitShadow(args: string[]): ReturnType<ExtensionAPI['exec']> {
+     if (!shadowDir || !workTree) return Promise.resolve({ stdout: '', stderr: 'shadow repo not initialized', code: 1, killed: false, truncated: false })
+@@ -491,7 +494,7 @@
+     }
+   }
+ 
+-  async function restoreCode(ctx: ExtensionCommandContext, checkpoint: Checkpoint): Promise<boolean> {
++  async function restoreCode(ctx: Pick<ExtensionContext, 'ui'>, checkpoint: Checkpoint): Promise<boolean> {
+     if (!checkpoint.ref) {
+       ctx.ui.notify('Checkpoint has no code snapshot; code left untouched', 'warning')
+       return true
+@@ -512,8 +515,15 @@
+   async function runRestoreMode(ctx: ExtensionCommandContext, checkpoint: Checkpoint): Promise<void> {
+     const mode = await ctx.ui.select('Restore mode:', [...RESTORE_MODES])
+     if (!mode) return
+-    if (mode !== 'Conversation only' && !(await restoreCode(ctx, checkpoint))) return
+-    if (mode !== 'Code only' && !(await restoreConversation(ctx, checkpoint.entryId))) return
++    if (mode !== 'Conversation only' && mode !== 'Summarize from here' && !(await restoreCode(ctx, checkpoint))) return
++    if (mode !== 'Code only') {
++      rewinding = true
++      try {
++        if (!(await restoreConversation(ctx, checkpoint.entryId, mode === 'Summarize from here'))) return
++      } finally {
++        rewinding = false
++      }
++    }
+     ctx.ui.notify('Rewind complete', 'info')
+   }
+ 
+@@ -656,6 +666,24 @@
+     },
+   })
+ 
++  // /tree (Esc Esc with doubleEscapeAction 'tree') is the unified rewind. A checkpoint is keyed
++  // by the user message entry that started its run, which is exactly what /tree selects when
++  // rewinding to a prompt; any other target (an assistant reply, a tool result) has no snapshot
++  // of its own state, so only an exact match asks. Declining or cancelling keeps the code and
++  // never blocks the navigation.
++  pi.on('session_before_tree', async (event, ctx) => {
++    if (rewinding || !ctx.hasUI) return
++    const checkpoint = checkpoints.get(event.preparation.targetId)
++    if (!checkpoint?.ref) return
++    const choice = await ctx.ui.select('Restore code to that point?', ['Yes, restore code', 'No, keep current code'])
++    if (!choice?.startsWith('Yes')) return
++    try {
++      if (await restoreCode(ctx, checkpoint)) ctx.ui.notify('Code restored to checkpoint', 'info')
++    } catch (error) {
++      ctx.ui.notify(`Code restore failed: ${errorMessage(error)}`, 'warning')
++    }
++  })
++
+   pi.on('session_before_fork', async (event, ctx) => {
+     const checkpoint = checkpoints.get(event.entryId)
+     if (!checkpoint?.ref || !ctx.hasUI) return

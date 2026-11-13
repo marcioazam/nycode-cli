@@ -1,0 +1,27 @@
+{
+ "session_id": "01a1cbdf-c71a-75fe-8856-1b1956fdda28",
+ "cwd": "/tmp/pi-capture/repo",
+ "permission_mode": "default",
+ "transcript_path": "/tmp/pihome/.pi/agent/sessions/--tmp-pi-capture-repo--/2026-11-11T18-30-02-779Z_01a1cbdf-c71a-75fe-8856-1b1956fdda28.jsonl",
+ "effort": {
+  "level": "medium"
+ },
+ "tool_use_id": "toolu_01Q9WRqEadhtnkyob51ypyEV",
+ "hook_event_name": "PostToolUse",
+ "tool_name": "Read",
+ "tool_input": {
+  "file_path": "/tmp/pihome/.pi/agent/claude-home/skills/tdd/SKILL.md",
+  "offset": 1,
+  "limit": 3
+ },
+ "tool_response": {
+  "content": [
+   {
+    "type": "text",
+    "text": "---\nname: tdd\ndescription: Required for bug fixes and critical executable flows, or when the repository requires TDD. Use voluntarily for other behavior changes; implement test-first with red, green and refactor evidence.\n\n[23 more lines in file. Use offset=4 to continue.]"
+   }
+  ],
+  "isError": false
+ },
+ "duration_ms": 9
+}

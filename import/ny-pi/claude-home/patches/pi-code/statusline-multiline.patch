@@ -1,0 +1,168 @@
+diff -ruN a/status-line.ts b/status-line.ts
+--- a/status-line.ts	1985-10-26 05:15:00.000000000 -0300
++++ b/status-line.ts	2026-11-13 12:14:07.458949570 -0300
+@@ -21,8 +21,9 @@
+  * session start, accumulated per message_end, and reseeded when compaction or
+  * /tree navigation reshapes the branch, so it stays correct across navigation
+  * and forks without re-walking the branch on every render. The built-in segment is also
+- * the fallback while a configured command produces no output. Multi-line output is
+- * joined into the one footer row pi gives the segment.
++ * the fallback while a configured command produces no output. Output of 2+ rows
++ * renders as one row each in a widget below the editor (the footer keeps the built-in
++ * segment); a single row stays in the footer.
+  *
+  * Docs: https://code.claude.com/docs/en/statusline.md
+  */
+@@ -31,6 +32,7 @@
+ import * as os from 'node:os'
+ import * as path from 'node:path'
+ import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent'
++import { truncateToWidth } from '@earendil-works/pi-tui'
+ import { hookFiles, readSettingsDisableAllHooks, runHookCommand } from './hooks/index.ts'
+ import { addDirFlagValue } from './internal/add-dir-flag.ts'
+ import { claudeEffortLevel } from './internal/effort.ts'
+@@ -45,6 +47,61 @@
+ 
+ const COMMAND_TIMEOUT_MS = 5_000
+ const DEBOUNCE_MS = 300
++const WIDGET_KEY = 'pi-code-statusline'
++
++/** stdout split into non-empty trimmed rows: one row goes to the footer segment, 2+ to the
++ * widget (left-padded). Nothing lands in both. */
++export function statusRows(stdout: string, padding: number): { footer: string | undefined; rows: string[] } {
++  const rows = stdout
++    .split('\n')
++    .map((line) => line.trim())
++    .filter(Boolean)
++  const pad = ' '.repeat(padding)
++  if (rows.length === 0) return { footer: undefined, rows: [] }
++  if (rows.length === 1) return { footer: `${pad}${rows[0]}${pad}`, rows: [] }
++  return { footer: undefined, rows: rows.map((row) => pad + row) }
++}
++
++/** Each row cut to the render width (ANSI-aware); a string[] widget would wrap instead. Absorbed
++ * extension statuses (the plan's 📋 n/m) close the last row, the tools one, with the HUD's separator. */
++export function renderStatusRows(rows: string[], width: number, trailers: Array<string | undefined> = []): string[] {
++  const tail = trailers.filter((t): t is string => !!t).join(' | ')
++  const all = tail && rows.length > 0 ? [...rows.slice(0, -1), `${rows.at(-1)} | ${tail}`] : rows
++  return all.map((row) => truncateToWidth(row, width))
++}
++
++/** Extension statuses the HUD shows on its tools row instead of the footer (user request 2026-11-13). */
++const ABSORBED = ['plan-mode']
++/** The footer extension (~/.pi/agent/extensions/footer-no-stats.ts) publishes its provider here once. */
++export const FOOTER_BRIDGE_CHANNEL = 'pi-code:footer-bridge'
++interface FooterBridge {
++  footerData: { getExtensionStatuses(): ReadonlyMap<string, string> }
++  absorbed: Set<string>
++}
++
++/** Live view of the footer's statuses: read at render time, and the keys it shows are claimed so the
++ * footer drops them while the widget is up (and shows them again when it goes). */
++export function hudFooterBridge() {
++  let bridge: FooterBridge | undefined
++  let claimed = false
++  const apply = (): void => {
++    for (const k of ABSORBED) claimed ? bridge?.absorbed.add(k) : bridge?.absorbed.delete(k)
++  }
++  return {
++    /** A footer built after the widget gets the current claim too. */
++    attach(data: unknown): void {
++      const b = data as FooterBridge | null
++      if (typeof b?.footerData?.getExtensionStatuses !== 'function' || !(b.absorbed instanceof Set)) return
++      bridge = b
++      apply()
++    },
++    trailers: (): Array<string | undefined> => (bridge ? ABSORBED.map((k) => bridge!.footerData.getExtensionStatuses().get(k)) : []),
++    claim(shown: boolean): void {
++      claimed = shown
++      apply()
++    },
++  }
++}
+ 
+ /** Whether cwd sits in a git worktree: `.git` is a file pointing at the main
+  * checkout there, and a directory in an ordinary clone. */
+@@ -226,6 +283,7 @@
+   let config: StatusLineConfig | undefined
+   let sessionCtx: ExtensionContext | undefined
+   let commandLine: string | undefined
++  let widgetShown = false
+   let permissionMode = 'default'
+   let sessionStartMs = Date.now()
+   // Running session cost; seeded and reseeded by sessionCost(), see below.
+@@ -269,6 +327,18 @@
+     return symbol + turnText + costText
+   }
+ 
++  /** Sets or clears the rows widget; ctx may be disposed, which is not worth surfacing. */
++  function setRows(ctx: ExtensionContext, rows: string[]): void {
++    if (rows.length === 0 && !widgetShown) return
++    try {
++      ctx.ui.setWidget(WIDGET_KEY, rows.length === 0 ? undefined : () => ({ render: (width: number) => renderStatusRows(rows, width, footer.trailers()), invalidate() {} }), { placement: 'belowEditor' })
++      widgetShown = rows.length > 0
++      footer.claim(widgetShown)
++    } catch {
++      // Session gone: the widget went with it.
++    }
++  }
++
+   function show(ctx: ExtensionContext, builtIn: string): void {
+     ctx.ui.setStatus('pi-code-status', commandLine ?? builtIn)
+   }
+@@ -388,16 +458,11 @@
+       // rerun finished. Claude cancels the in-flight script and shows nothing for it.
+       if (rerunQueued) return
+       // Claude: "Your script can output multiple lines to create a richer display."
+-      // pi has one row for every extension status and replaces newlines with spaces
+-      // before rendering it (footer.js sanitizeStatusText), so the rows are joined
+-      // here rather than dropped; taking only the first silently lost the rest.
+-      const rows = result.stdout
+-        .split('\n')
+-        .map((line) => line.trim())
+-        .filter(Boolean)
+-        .join(' ')
+-      const pad = ' '.repeat(config.padding)
+-      commandLine = rows ? `${pad}${rows}${pad}` : undefined
++      // A footer status is one row (footer.js sanitizeStatusText joins newlines), so 2+ rows
++      // go to a widget below the editor instead; the footer then keeps the built-in segment.
++      const parsed = statusRows(result.stdout, config.padding)
++      commandLine = parsed.footer
++      setRows(ctx, parsed.rows)
+       show(ctx, segmentText(ctx, ctx.ui.theme.fg('dim', '○')))
+     } catch {
+       // A replaced or reloaded session invalidates ctx while the command is in
+@@ -434,6 +499,9 @@
+     }, DEBOUNCE_MS)
+   }
+ 
++  const footer = hudFooterBridge()
++  pi.events.on(FOOTER_BRIDGE_CHANNEL, (data) => footer.attach(data))
++
+   pi.events.on(PLAN_MODE_CHANNEL, (data) => {
+     if (!isPlanModeState(data)) return
+     permissionMode = data.active ? 'plan' : 'default'
+@@ -498,6 +566,7 @@
+     turnCount = 0
+     commandLine = undefined
+     sessionCtx = ctx
++    widgetShown = false
+     sessionStartMs = Date.now()
+     linesAdded = 0
+     linesRemoved = 0
+@@ -549,6 +618,7 @@
+       if (!config) {
+         if (previousCommand === undefined) return
+         commandLine = undefined
++        setRows(ctx, [])
+         show(ctx, segmentText(ctx, ctx.ui.theme.fg('dim', '○')))
+         return
+       }
+@@ -604,6 +674,7 @@
+   })
+ 
+   pi.on('session_shutdown', () => {
++    if (sessionCtx) setRows(sessionCtx, [])
+     clearInterval(refreshTimer)
+     clearTimeout(debounceTimer)
+     clearTimeout(expiryTimer)

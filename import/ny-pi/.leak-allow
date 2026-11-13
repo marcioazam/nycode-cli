@@ -1,0 +1,5 @@
+# Benign identifier hits ignored by check-leaks.sh. One entry per line: path:regex
+# `path` is repo-relative and exact; `regex` (ERE) is matched against the hit line.
+# Keep empty unless the hit is verified benign.
+# check-leaks.sh --selftest builds its own fake home path fixture (matches the local identifier list by shape only)
+scripts/check-leaks.sh:/home/someuser

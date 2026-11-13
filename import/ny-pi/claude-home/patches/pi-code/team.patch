@@ -1,0 +1,808 @@
+diff -ruN a/subagent/fleet-ui/panel.ts b/subagent/fleet-ui/panel.ts
+--- a/subagent/fleet-ui/panel.ts	2026-11-13 11:06:01.148775307 -0300
++++ b/subagent/fleet-ui/panel.ts	2026-11-13 11:16:14.164853717 -0300
+@@ -10,6 +10,7 @@
+ import { buildRows, finishedCount, runningCount } from './view-model.ts'
+ import type { FleetRow } from './view-model.ts'
+ import { motionEnabled, SPINNER, spinnerAt } from './palette.ts'
++import { unreadCounts } from '../team/ui.ts'
+ 
+ /** The part of pi's Theme the fleet UI uses. */
+ export interface UiTheme {
+@@ -94,6 +95,7 @@
+     name +
+     (row.nth > 0 ? theme.fg('dim', `#${row.nth}`) : '') +
+     (style.badge ? theme.fg('dim', style.badge) : '') +
++    (row.unread ? theme.fg('warning', ` ✉${row.unread}`) : '') +
+     (row.hiddenDescendants > 0 ? theme.fg('dim', ` (+${row.hiddenDescendants})`) : '')
+   const act = activityOf(row, style)
+   const st = formatStats(row)
+@@ -201,7 +203,7 @@
+   rows(): FleetRow[] {
+     const source = this.deps.getSource()
+     if (!source) return []
+-    return buildRows(source.list(), { now: this.deps.now(), collapsed: this.collapsed, dismissed: this.dismissed, panel: true })
++    return buildRows(source.list(), { now: this.deps.now(), collapsed: this.collapsed, dismissed: this.dismissed, panel: true, unread: unreadCounts() })
+   }
+ 
+   view(): PanelView {
+diff -ruN a/subagent/fleet-ui/viewer.ts b/subagent/fleet-ui/viewer.ts
+--- a/subagent/fleet-ui/viewer.ts	2026-11-13 11:06:01.148848197 -0300
++++ b/subagent/fleet-ui/viewer.ts	2026-11-13 11:16:14.164907627 -0300
+@@ -11,6 +11,7 @@
+ import { ARM_MS, formatCost, renderRow, stopMessage, superscript } from './panel.ts'
+ import type { UiTheme } from './panel.ts'
+ import { hudTheme, motionEnabled, spinnerAt } from './palette.ts'
++import { conversationItems } from '../team/ui.ts'
+ import { buildRows, chainOf, neighbours } from './view-model.ts'
+ 
+ /** Count of our open overlays; the panel passes all input through while it is above 0. */
+@@ -64,7 +65,7 @@
+       return out
+     }
+     default:
+-      return fit(wrap(item.text), 'dim')
++      return fit(wrap(item.text), item.tool === 'team' ? 'warning' : 'dim')
+   }
+ }
+ 
+@@ -113,6 +114,7 @@
+   outcome = ''
+   private fromBottom = 0
+   private offset = 0
++  private teamOffset = 0
+   private armedUntil = 0
+   private lines: string[] | undefined
+   private lastWidth = 0
+@@ -142,8 +144,11 @@
+   refresh(): void {
+     const { items, next } = this.deps.source.readTranscript(this.id, this.offset)
+     this.offset = next
+-    if (items.length > 0) {
+-      this.items = [...this.items, ...items].slice(-MAX_ITEMS)
++    const talk = conversationItems(this.id, this.teamOffset)
++    this.teamOffset = talk.next
++    if (items.length > 0 || talk.items.length > 0) {
++      const merged = [...this.items, ...items, ...talk.items]
++      this.items = (talk.items.length > 0 ? merged.sort((a, b) => a.t - b.t) : merged).slice(-MAX_ITEMS)
+       this.lines = undefined
+     }
+     this.deps.requestRender()
+@@ -158,6 +163,7 @@
+     this.id = id
+     this.items = []
+     this.offset = 0
++    this.teamOffset = 0
+     this.fromBottom = 0
+     this.input = ''
+     this.outcome = ''
+diff -ruN a/subagent/fleet-ui/view-model.ts b/subagent/fleet-ui/view-model.ts
+--- a/subagent/fleet-ui/view-model.ts	2026-11-13 11:06:01.148900967 -0300
++++ b/subagent/fleet-ui/view-model.ts	2026-11-13 11:16:14.164938327 -0300
+@@ -29,6 +29,8 @@
+   childCount: number
+   collapsed: boolean
+   guides: string
++  /** Team messages received by this run; absent when none or team mode is off. */
++  unread?: number
+ }
+ 
+ export interface RowOptions {
+@@ -39,6 +41,8 @@
+   panel: boolean
+   /** /tasks lists the newest root first. */
+   newestRootFirst?: boolean
++  /** Team mode: messages received per run id (the ✉n badge). */
++  unread?: ReadonlyMap<string, number>
+ }
+ 
+ interface Node {
+@@ -120,6 +124,7 @@
+       childCount: visibleChildren.length,
+       collapsed: isCollapsed,
+       guides,
++      ...(opts.unread?.get(rec.id) ? { unread: opts.unread.get(rec.id) } : {}),
+     })
+     if (isCollapsed) return
+     // Depth 1 has no guide column of its own; deeper levels carry '│  ' or blanks forward.
+diff -ruN a/subagent/index.ts b/subagent/index.ts
+--- a/subagent/index.ts	2026-11-13 11:06:01.148969517 -0300
++++ b/subagent/index.ts	2026-11-13 11:16:14.164969227 -0300
+@@ -36,6 +36,8 @@
+ import { startInboxWatcher, stopInboxWatcher } from './fleet/inbox.ts'
+ import { fleetSourceForUi, getFleetSource, stopOwnForegroundRuns } from './fleet/source.ts'
+ import { registerFleetUi } from './fleet-ui/index.ts'
++import { registerTeam } from './team/index.ts'
++import { teamEnabled, withTeamTool } from './team/types.ts'
+ import { ensureFleetDir, removeFleetDir, sweepOrphanFleetDirs } from './fleet/store.ts'
+ import { canSpawnSubagents, claimSpawns, maxSubagentDepth, subagentDepth } from './nesting/index.ts'
+ import { checkProjectAgentGate, type ModeContext, runBackgroundMode, runChainMode, runParallelMode, runSingleMode, wantsBackground } from './modes.ts'
+@@ -149,6 +151,8 @@
+       return undefined
+     }
+   })
++  // Opt-in agent team (PI_CODE_TEAMS=1 or /team on): inert and silent otherwise.
++  registerTeam(pi)
+   // Claude's mcp__<server> tool patterns translate against the parent's MCP roster,
+   // published by the mcp extension on the shared bus. Optional-chained so a minimal
+   // test stub without an event bus can still register the extension.
+@@ -229,8 +233,9 @@
+     })
+     results.attach(pi, sessionHasTurns(ctx))
+     // The fleet (panel data) exists only for an interactive main session: a headless `pi -p` at
+-    // depth 0 (scripts, hooks) has nobody to show it to, so it writes nothing.
+-    if (subagentDepth() === 0 && ctx.hasUI) {
++    // depth 0 (scripts, hooks) has nobody to show it to, so it writes nothing, unless team mode
++    // (PI_CODE_TEAMS=1) needs the dir for the roster, the peer messages and the lead inbox.
++    if (subagentDepth() === 0 && (ctx.hasUI || teamEnabled())) {
+       ensureFleetDir() // undefined (unsafe root) disables the fleet: currentFleetDir stays unset
+       const holder = globalThis as Record<symbol, boolean>
+       if (!holder[FLEET_SWEPT]) {
+@@ -351,7 +356,7 @@
+       // unavailable tier still falls back to the session model.
+       const availableModels = ctx.modelRegistry?.getAvailable?.() ?? []
+ 
+-      if (wantsBackground(params, agents)) return runBackgroundMode(params, { agents, defaultCwd: ctx.cwd, pi, deliver: results.deliver, makeDetails, skillRoots, availableModels, projectApproved })
++      if (wantsBackground(params, agents)) return runBackgroundMode(params, { agents: agents.map(withTeamTool), defaultCwd: ctx.cwd, pi, deliver: results.deliver, makeDetails, skillRoots, availableModels, projectApproved })
+ 
+       const mode: ModeContext = {
+         agents,
+diff -ruN a/subagent/run.ts b/subagent/run.ts
+--- a/subagent/run.ts	2026-11-13 11:06:01.149091077 -0300
++++ b/subagent/run.ts	2026-11-13 11:16:14.165007767 -0300
+@@ -27,6 +27,7 @@
+ import { getFinalOutput } from './render.ts'
+ import type { SingleResult, SubagentDetails } from './types.ts'
+ import { childNestingEnv, recordSpawnCost } from './nesting/index.ts'
++import { withTeamTool } from './team/types.ts'
+ import { type AgentWorktree, cleanupAgentWorktree, createAgentWorktree } from './worktree.ts'
+ export async function writePromptToTempFile(agentName: string, prompt: string): Promise<{ dir: string; filePath: string }> {
+   const tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'pi-subagent-'))
+@@ -280,7 +281,7 @@
+   const memorySection = agentMemoryPromptSection(agent, defaultCwd, options.projectApproved ?? false)
+   // A memory-enabled child must be able to manage its store files even when the
+   // agent pins a tools allowlist.
+-  const invocationAgent = memorySection ? { ...agent, tools: withMemoryTools(agent.tools) } : agent
++  const invocationAgent = withTeamTool(memorySection ? { ...agent, tools: withMemoryTools(agent.tools) } : agent)
+   const args = agentInvocationArgs(invocationAgent, resolveModelAlias(agent.modelAlias, options.availableModels ?? []))
+   // Claude's subagents run in-process and see the parent's --settings and
+   // --setting-sources; a child pi process has to be handed them.
+diff -ruN a/subagent/team/feed.ts b/subagent/team/feed.ts
+--- a/subagent/team/feed.ts	1969-12-31 21:00:00.000000000 -0300
++++ b/subagent/team/feed.ts	2026-11-13 11:16:14.165046097 -0300
+@@ -0,0 +1,36 @@
++/** Peer action feed: a short digest of what the other members edited, wrote or ran. Contract: types.ts. */
++import { readRecords, readTranscript } from '../fleet/store.ts'
++import { LIMITS } from './types.ts'
++
++const ACTIONS = new Set(['edit', 'write', 'bash'])
++
++export interface FeedState {
++  last: number
++  offsets: Map<string, number>
++}
++
++export const newFeedState = (): FeedState => ({ last: 0, offsets: new Map() })
++
++/** At most one digest per LIMITS.feedMs, never about `selfId`; undefined when nothing new. Newest lines win the cap. */
++export function digest(dir: string, selfId: string, state: FeedState, now: number): string | undefined {
++  if (now - state.last < LIMITS.feedMs) return undefined
++  state.last = now
++  const lines: string[] = []
++  for (const rec of readRecords(dir)) {
++    if (rec.id === selfId) continue
++    const { items, next } = readTranscript(dir, rec.id, state.offsets.get(rec.id) ?? 0)
++    state.offsets.set(rec.id, next)
++    for (const item of items) if (item.kind === 'tool_call' && item.tool && ACTIONS.has(item.tool)) lines.push(`${rec.agent}: ${item.text.replace(/\s+/g, ' ').slice(0, 80)}`)
++  }
++  if (lines.length === 0) return undefined
++  const head = "[team feed] others' recent actions:"
++  let out = head
++  const kept: string[] = []
++  for (let i = lines.length - 1; i >= 0; i--) {
++    if (head.length + kept.reduce((n, l) => n + l.length + 1, 0) + lines[i]!.length + 1 > LIMITS.digest) break
++    kept.unshift(lines[i]!)
++  }
++  if (kept.length === 0) kept.push(lines[lines.length - 1]!.slice(0, LIMITS.digest - head.length - 1))
++  out += `\n${kept.join('\n')}`
++  return out
++}
+diff -ruN a/subagent/team/index.ts b/subagent/team/index.ts
+--- a/subagent/team/index.ts	1969-12-31 21:00:00.000000000 -0300
++++ b/subagent/team/index.ts	2026-11-13 11:16:14.165078788 -0300
+@@ -0,0 +1,183 @@
++/**
++ * Agent team entry (local patch, team.patch): the `team` tool, the /team command, the
++ * lead's inbox and the peer feed. Everything is inert unless PI_CODE_TEAMS=1 (or /team on):
++ * no tool, no prompt section, no timer. Contract: types.ts.
++ */
++import type { ExtensionAPI } from '@earendil-works/pi-coding-agent'
++import { type Static, Type } from 'typebox'
++import { addPromptSection } from '../../internal/prompt-options.ts'
++import { stringEnum } from '../../internal/string-enum.ts'
++import { currentFleetDir, readJsonl } from '../fleet/store.ts'
++import { subagentDepth } from '../nesting/index.ts'
++import { digest, type FeedState, newFeedState } from './feed.ts'
++import { sendMessage } from './route.ts'
++import { mainInboxFile, selfOf } from './store.ts'
++import { addTask, appendBoard, claimTask, doneTask, listTasks, readBoard, roster } from './tasks.ts'
++import { KINDS, BOARD_KINDS, teamEnabled, type Result } from './types.ts'
++
++const TICK_MS = 1000
++const SLOT = Symbol.for('pi-code.team.state')
++
++interface Slot {
++  timer?: ReturnType<typeof setInterval>
++  mainOffset: number
++  feed: FeedState
++}
++const slot = (): Slot => {
++  const holder = globalThis as Record<symbol, Slot | undefined>
++  return (holder[SLOT] ??= { mainOffset: 0, feed: newFeedState() })
++}
++
++interface Sink {
++  sendUserMessage(text: string, options?: { deliverAs?: 'steer' | 'followUp' }): unknown
++}
++
++/** The lead's inbox: every pending message in ONE followUp, so a batch costs one main turn. Returns the next offset. */
++export function pollMainInbox(pi: Sink, fleetDir: string, from: number): number {
++  const { items, next } = readJsonl<{ text: string }>(mainInboxFile(fleetDir), from)
++  if (items.length > 0) {
++    try {
++      pi.sendUserMessage(items.map((m) => m.text).join('\n\n'), { deliverAs: 'followUp' })
++    } catch {
++      /* the session is switching: the batch is lost like an unacked steer */
++    }
++  }
++  return next
++}
++
++/** A member's peer feed: one steer when the digest is due and not empty. */
++export function pollFeed(pi: Sink, fleetDir: string, selfId: string, state: FeedState, now: number): void {
++  const text = digest(fleetDir, selfId, state, now)
++  if (!text) return
++  try {
++    pi.sendUserMessage(text, { deliverAs: 'steer' })
++  } catch {
++    /* run is finishing */
++  }
++}
++
++function tick(pi: Sink): void {
++  const dir = currentFleetDir()
++  if (!teamEnabled() || !dir) return
++  const s = slot()
++  if (subagentDepth() === 0) s.mainOffset = pollMainInbox(pi, dir, s.mainOffset)
++  else pollFeed(pi, dir, selfOf(dir).id, s.feed, Date.now())
++}
++
++export function stopTeamTimer(): void {
++  const s = slot()
++  if (s.timer) clearInterval(s.timer)
++  s.timer = undefined
++}
++
++function startTeamTimer(pi: Sink): void {
++  stopTeamTimer()
++  if (!teamEnabled()) return
++  const timer = setInterval(() => tick(pi), TICK_MS)
++  timer.unref()
++  slot().timer = timer
++}
++
++const Params = Type.Object({
++  action: stringEnum(['send', 'roster', 'board', 'tasks'] as const, { description: 'send a message, list the roster, use the board, or use the task queue' }),
++  to: Type.Optional(Type.String({ description: 'send: run id, agent name (unique in the tree), parent, lead or all' })),
++  kind: Type.Optional(stringEnum(KINDS, { description: 'send: message kind' })),
++  text: Type.Optional(Type.String({ description: 'send: message, at most 2000 chars' })),
++  append: Type.Optional(Type.Object({ kind: stringEnum(BOARD_KINDS), text: Type.String({ description: 'at most 1000 chars' }) }, { description: 'board: add an entry' })),
++  since: Type.Optional(Type.Number({ description: 'board: entries after this cursor (the `next` of the last read)' })),
++  add: Type.Optional(Type.Object({ title: Type.String(), files: Type.Optional(Type.Array(Type.String())) }, { description: 'tasks: add a task' })),
++  claim: Type.Optional(Type.Object({ id: Type.String() }, { description: 'tasks: claim a task exclusively (one open claim per agent)' })),
++  done: Type.Optional(Type.Object({ id: Type.String(), note: Type.Optional(Type.String()) }, { description: 'tasks: finish your claimed task' })),
++  list: Type.Optional(Type.Boolean({ description: 'tasks: list tasks' })),
++})
++type Args = Static<typeof Params>
++
++const reply = (text: string) => ({ content: [{ type: 'text' as const, text }], details: {} })
++const show = (r: Result<Record<string, unknown>>, ok: (r: Record<string, unknown>) => string): string => (r.ok ? ok(r) : r.error)
++
++/** Runs one tool call against the fleet dir; pure of pi so the tests drive it directly. */
++export function runTeamTool(dir: string, args: Args): string {
++  const self = selfOf(dir)
++  switch (args.action) {
++    case 'send': {
++      const r = sendMessage(dir, self, { to: args.to ?? '', kind: args.kind as never, text: args.text ?? '' })
++      return r.ok ? `sent to ${r.delivered.map((t) => `${t.agent} (${t.id})`).join(', ')}` : r.error
++    }
++    case 'roster':
++      return JSON.stringify(roster(dir))
++    case 'board': {
++      if (args.append) return show(appendBoard(dir, self, args.append.kind, args.append.text), () => 'board entry added')
++      return JSON.stringify(readBoard(dir, args.since))
++    }
++    default: {
++      if (args.add) return show(addTask(dir, self, args.add.title, args.add.files), (r) => `added ${String(r.id)}`)
++      if (args.claim) return show(claimTask(dir, self, args.claim.id), (r) => `claimed ${args.claim?.id}; files reserved: ${JSON.stringify((r.task as { files: string[] }).files)}`)
++      if (args.done) return show(doneTask(dir, self, args.done.id, args.done.note ?? ''), () => `${args.done?.id} done`)
++      return JSON.stringify(listTasks(dir))
++    }
++  }
++}
++
++const GUIDE = 'Team mode is on: other agents of this tree are running. Use the `team` tool (send, roster, board, tasks) for short typed messages, shared facts and exclusive task claims; replies reach the recipient at its next turn. Keep messages short; claim a task before editing its files.'
++
++export function registerTeam(pi: ExtensionAPI): void {
++  let registered = false
++  const registerTool = (): void => {
++    if (registered) return
++    registered = true
++    pi.registerTool({
++      name: 'team',
++      label: 'Team',
++      description: 'Talk to the other agents of this run tree: send short typed messages (to a run id, agent name, parent, lead or all), read the roster, append to or read the shared board, and add, claim or finish tasks with exclusive claims.',
++      parameters: Params,
++      async execute(_id, params) {
++        if (!teamEnabled()) return reply('team mode is off')
++        const dir = currentFleetDir()
++        if (!dir) return reply('team: no fleet directory (team mode needs PI_CODE_TEAMS=1 in the main session)')
++        return reply(runTeamTool(dir, params))
++      },
++    })
++  }
++  const setTool = (on: boolean): void => {
++    const active = pi.getActiveTools?.() ?? []
++    if (on && !active.includes('team')) pi.setActiveTools?.([...active, 'team'])
++    if (!on && active.includes('team')) pi.setActiveTools?.(active.filter((n) => n !== 'team'))
++  }
++
++  if (teamEnabled()) {
++    registerTool()
++    startTeamTimer(pi)
++  }
++
++  pi.on('before_agent_start', (event) => {
++    if (!teamEnabled() || !pi.getActiveTools().includes('team')) return
++    if (addPromptSection(event, 'team', GUIDE)) return
++    return { systemPrompt: `${event.systemPrompt}\n\n## Team\n\n${GUIDE}` }
++  })
++  pi.on('session_shutdown', () => stopTeamTimer())
++
++  if (subagentDepth() > 0) return
++  pi.registerCommand('team', {
++    description: 'Agent team mode: /team on|off|status',
++    handler: async (args, ctx) => /* NOSONAR typescript:S7503 - handler type is Promise<void> */ {
++      const word = args.trim().toLowerCase()
++      if (word === 'on' || word === 'off') {
++        if (word === 'on') {
++          process.env.PI_CODE_TEAMS = '1'
++          registerTool()
++          setTool(true)
++          startTeamTimer(pi)
++        } else {
++          process.env.PI_CODE_TEAMS = '0'
++          stopTeamTimer()
++          setTool(false)
++        }
++        ctx.ui.notify(`team mode ${word}${word === 'on' ? ' (agents started from now on join it)' : ''}`, 'info')
++        return
++      }
++      const dir = currentFleetDir()
++      const live = dir ? roster(dir).filter((r) => r.state === 'running').length : 0
++      ctx.ui.notify(`team mode ${teamEnabled() ? 'on' : 'off'}; ${live} running member${live === 1 ? '' : 's'}`, 'info')
++    },
++  })
++}
+diff -ruN a/subagent/team/route.ts b/subagent/team/route.ts
+--- a/subagent/team/route.ts	1969-12-31 21:00:00.000000000 -0300
++++ b/subagent/team/route.ts	2026-11-13 11:16:14.165805179 -0300
+@@ -0,0 +1,73 @@
++/** Addressing and delivery of team messages. Contract: types.ts. */
++import { randomUUID } from 'node:crypto'
++import { appendInbox, appendJsonl, readRecord, readRecords, validRunId } from '../fleet/store.ts'
++import type { RunRecord } from '../fleet/types.ts'
++import { logMessage, mainInboxFile, spendSend } from './store.ts'
++import { KINDS, LEAD_ID, LIMITS, type MessageKind, type Result, type Self, type TeamMessage } from './types.ts'
++
++export interface Target {
++  id: string
++  agent: string
++}
++
++const running = (dir: string): RunRecord[] => readRecords(dir).filter((r) => r.state === 'running')
++
++/** The recipients of `to` for `self`, or why there are none. */
++export function resolveTargets(dir: string, self: Self, to: string): Result<{ targets: Target[] }> {
++  const live = running(dir)
++  const fail = (error: string): Result<{ targets: Target[] }> => ({ ok: false, error })
++  const lead: Target = { id: LEAD_ID, agent: 'lead' }
++  const one = (t: Target): Result<{ targets: Target[] }> => (t.id === self.id ? fail('team: cannot send to yourself') : { ok: true, targets: [t] })
++  if (to === 'lead') return one(lead)
++  if (to === 'all') {
++    // The lead coordinates, so a broadcast from any member reaches it too.
++    const targets = [...live.filter((r) => r.id !== self.id).map((r) => ({ id: r.id, agent: r.agent })), ...(self.id === LEAD_ID ? [] : [lead])]
++    return targets.length > 0 ? { ok: true, targets } : fail('team: nobody else is running')
++  }
++  if (to === 'parent') {
++    const parentId = self.id === LEAD_ID ? undefined : (readRecord(dir, self.id)?.parentId ?? null)
++    if (parentId === undefined) return fail('team: the lead has no parent')
++    if (parentId === null) return one(lead)
++    const parent = live.find((r) => r.id === parentId)
++    return parent ? one({ id: parent.id, agent: parent.agent }) : fail(`team: parent ${parentId} is not running`)
++  }
++  if (validRunId(to)) {
++    const rec = readRecord(dir, to)
++    if (!rec) return fail(`team: no run ${to}`)
++    return rec.state === 'running' ? one({ id: rec.id, agent: rec.agent }) : fail(`team: run ${to} is not running (${rec.state})`)
++  }
++  const named = live.filter((r) => r.agent === to && r.id !== self.id)
++  if (named.length === 1) return one({ id: named[0]!.id, agent: named[0]!.agent })
++  if (named.length > 1) return fail(`team: "${to}" is ambiguous, use a run id: ${named.map((r) => r.id).join(', ')}`)
++  return fail(`team: no running agent named "${to}"; use roster`)
++}
++
++export function renderMessage(msg: TeamMessage): string {
++  return `[team message from ${msg.fromAgent} (${msg.from}) → you, ${msg.kind}]: ${msg.text}\nreply with team send`
++}
++
++export interface SendArgs {
++  to: string
++  kind: MessageKind
++  text: string
++}
++
++/** Validates, charges the budgets, writes one inbox entry per recipient and logs it. */
++export function sendMessage(dir: string, self: Self, args: SendArgs): Result<{ delivered: Target[] }> {
++  if (!KINDS.includes(args.kind)) return { ok: false, error: `team: kind must be one of ${KINDS.join(', ')}` }
++  if (typeof args.text !== 'string' || args.text.trim() === '') return { ok: false, error: 'team: text is empty' }
++  if (args.text.length > LIMITS.text) return { ok: false, error: `team: text is ${args.text.length} chars, the limit is ${LIMITS.text}` }
++  const resolved = resolveTargets(dir, self, String(args.to))
++  if (!resolved.ok) return resolved
++  const budget = spendSend(dir, self.id)
++  if (budget) return { ok: false, error: budget }
++  const t = Date.now()
++  for (const target of resolved.targets) {
++    const msg: TeamMessage = { id: randomUUID().slice(0, 8), t, from: self.id, fromAgent: self.agent, to: target.id, toAgent: target.agent, kind: args.kind, text: args.text }
++    const entry = { id: msg.id, t, text: renderMessage(msg) }
++    if (target.id === LEAD_ID) appendJsonl(mainInboxFile(dir), entry)
++    else appendInbox(dir, target.id, entry)
++    logMessage(dir, msg)
++  }
++  return { ok: true, delivered: resolved.targets }
++}
+diff -ruN a/subagent/team/store.ts b/subagent/team/store.ts
+--- a/subagent/team/store.ts	1969-12-31 21:00:00.000000000 -0300
++++ b/subagent/team/store.ts	2026-11-13 11:16:14.165121418 -0300
+@@ -0,0 +1,68 @@
++/** Team file layer: identity, budgets and the message log. Contract: types.ts. */
++import * as fs from 'node:fs'
++import * as path from 'node:path'
++import { subagentDepth } from '../nesting/index.ts'
++import { appendJsonl, currentFleetDir, readJsonl, readRecord } from '../fleet/store.ts'
++import { FLEET_ENV } from '../fleet/types.ts'
++import { LEAD_ID, LIMITS, type Self, type TeamMessage } from './types.ts'
++
++/** The team dir, created on demand; undefined when there is no fleet dir. */
++export function teamDir(fleetDir: string | undefined = currentFleetDir()): string | undefined {
++  if (!fleetDir) return undefined
++  const dir = path.join(fleetDir, 'team')
++  try {
++    fs.mkdirSync(dir, { recursive: true, mode: 0o700 })
++    return dir
++  } catch {
++    return undefined
++  }
++}
++
++export const mainInboxFile = (fleetDir: string): string => path.join(fleetDir, 'main.inbox.jsonl')
++
++export function selfOf(fleetDir: string): Self {
++  const depth = subagentDepth()
++  const id = process.env[FLEET_ENV.runId]
++  if (depth === 0 || !id) return { id: LEAD_ID, agent: 'lead', depth: 0 }
++  return { id, agent: readRecord(fleetDir, id)?.agent ?? 'agent', depth }
++}
++
++/** Appends one byte and returns the file size: an O_APPEND write is atomic, so concurrent senders get distinct sizes. */
++function bump(file: string): number {
++  const fd = fs.openSync(file, 'a', 0o600)
++  try {
++    fs.writeSync(fd, 'x')
++    return fs.fstatSync(fd).size
++  } finally {
++    fs.closeSync(fd)
++  }
++}
++
++const sizeOf = (file: string): number => {
++  try {
++    return fs.statSync(file).size
++  } catch {
++    return 0
++  }
++}
++
++/** Charges one send to the run and to the tree; an error string when either budget is spent. */
++export function spendSend(fleetDir: string, selfId: string): string | undefined {
++  const dir = teamDir(fleetDir)
++  if (!dir) return 'team: no fleet directory'
++  const own = path.join(dir, `sends.${selfId}`)
++  if (sizeOf(own) >= LIMITS.perRun) return `team: send budget spent (${LIMITS.perRun} per run)`
++  bump(own)
++  if (bump(path.join(dir, 'sends.tree')) > LIMITS.perTree) return `team: send budget spent (${LIMITS.perTree} per tree)`
++  return undefined
++}
++
++const messagesFile = (fleetDir: string): string => path.join(fleetDir, 'team', 'messages.jsonl')
++
++export function logMessage(fleetDir: string, msg: TeamMessage): void {
++  if (teamDir(fleetDir)) appendJsonl(messagesFile(fleetDir), msg)
++}
++
++export function readMessages(fleetDir: string, from: number): { items: TeamMessage[]; next: number } {
++  return readJsonl<TeamMessage>(messagesFile(fleetDir), from)
++}
+diff -ruN a/subagent/team/tasks.ts b/subagent/team/tasks.ts
+--- a/subagent/team/tasks.ts	1969-12-31 21:00:00.000000000 -0300
++++ b/subagent/team/tasks.ts	2026-11-13 11:16:14.165148698 -0300
+@@ -0,0 +1,141 @@
++/** Board, task queue (exclusive claims) and roster. Contract: types.ts. */
++import * as fs from 'node:fs'
++import * as path from 'node:path'
++import { appendJsonl, readJsonl, readRecords } from '../fleet/store.ts'
++import { teamDir } from './store.ts'
++import { BOARD_KINDS, LIMITS, type BoardEntry, type BoardKind, type Result, type RosterEntry, type Self, type TeamTask } from './types.ts'
++
++const NO_DIR = { ok: false, error: 'team: no fleet directory' } as const
++
++// ---- board -------------------------------------------------------------------------
++
++export function appendBoard(dir: string, self: Self, kind: BoardKind, text: string): Result<{ index: number }> {
++  const td = teamDir(dir)
++  if (!td) return NO_DIR
++  if (!BOARD_KINDS.includes(kind)) return { ok: false, error: `team: board kind must be one of ${BOARD_KINDS.join(', ')}` }
++  if (typeof text !== 'string' || text.trim() === '') return { ok: false, error: 'team: text is empty' }
++  if (text.length > LIMITS.board) return { ok: false, error: `team: board text is ${text.length} chars, the limit is ${LIMITS.board}` }
++  const file = path.join(td, 'board.jsonl')
++  appendJsonl(file, { t: Date.now(), by: self.id, agent: self.agent, kind, text } satisfies BoardEntry)
++  return { ok: true, index: readJsonl<BoardEntry>(file, 0).items.length }
++}
++
++/** Entries after the first `since` ones; `next` is the cursor to pass back. */
++export function readBoard(dir: string, since = 0): { entries: BoardEntry[]; next: number } {
++  const td = teamDir(dir)
++  const all = td ? readJsonl<BoardEntry>(path.join(td, 'board.jsonl'), 0, 8 * 1024 * 1024).items : []
++  const from = Math.max(0, Math.floor(Number.isFinite(since) ? since : 0))
++  return { entries: all.slice(from), next: all.length }
++}
++
++// ---- tasks -------------------------------------------------------------------------
++
++const TASK_FILE = /^task-(\d+)\.json$/
++const readJson = <T>(file: string): T | undefined => {
++  try {
++    return JSON.parse(fs.readFileSync(file, 'utf8')) as T
++  } catch {
++    return undefined // missing, or half-written: the next read sees it whole
++  }
++}
++
++export function listTasks(dir: string): TeamTask[] {
++  const td = teamDir(dir)
++  if (!td) return []
++  const out: TeamTask[] = []
++  for (const name of fs.readdirSync(td)) {
++    const m = TASK_FILE.exec(name)
++    if (!m) continue
++    const task = readJson<TeamTask>(path.join(td, name))
++    if (!task) continue
++    const claim = readJson<{ by: string; agent: string }>(path.join(td, `claim-${m[1]}.json`))
++    const done = readJson<{ by: string; note: string }>(path.join(td, `done-${m[1]}.json`))
++    out.push({ ...task, claimedBy: claim?.by, claimedAgent: claim?.agent, done })
++  }
++  return out.sort((a, b) => Number(a.id.slice(1)) - Number(b.id.slice(1)))
++}
++
++const exclusive = (file: string, data: unknown): boolean => {
++  try {
++    fs.writeFileSync(file, JSON.stringify(data), { flag: 'wx', mode: 0o600 })
++    return true
++  } catch (error) {
++    if ((error as NodeJS.ErrnoException).code === 'EEXIST') return false
++    throw error
++  }
++}
++
++/** The id is the first free task-N.json, taken with O_EXCL, so concurrent adders never share one. */
++export function addTask(dir: string, self: Self, title: string, files: string[] = []): Result<{ id: string }> {
++  const td = teamDir(dir)
++  if (!td) return NO_DIR
++  if (typeof title !== 'string' || title.trim() === '') return { ok: false, error: 'team: title is empty' }
++  const clean = (Array.isArray(files) ? files : []).filter((f) => typeof f === 'string' && f !== '').slice(0, 50)
++  for (let n = listTasks(dir).length + 1; n < 10_000; n++) {
++    if (exclusive(path.join(td, `task-${n}.json`), { id: `t${n}`, title: title.slice(0, 200), files: clean, by: self.id, t: Date.now() })) return { ok: true, id: `t${n}` }
++  }
++  return { ok: false, error: 'team: too many tasks' }
++}
++
++const overlaps = (a: string, b: string): boolean => a === b || a.startsWith(`${b}/`) || b.startsWith(`${a}/`)
++const open = (t: TeamTask): boolean => t.claimedBy !== undefined && !t.done
++const numberOf = (id: unknown): string | undefined => (typeof id === 'string' && /^t[1-9]\d*$/.test(id) ? id.slice(1) : undefined)
++
++/** One winner per task (O_EXCL), one open claim per agent, and a claim is refused while another open claim reserves the same files. */
++export function claimTask(dir: string, self: Self, id: string): Result<{ task: TeamTask }> {
++  const td = teamDir(dir)
++  const n = numberOf(id)
++  if (!td || !n) return { ok: false, error: `team: bad task id ${String(id)}` }
++  const tasks = listTasks(dir)
++  const task = tasks.find((t) => t.id === id)
++  if (!task) return { ok: false, error: `team: no task ${id}` }
++  const mine = tasks.find((t) => open(t) && t.claimedBy === self.id)
++  if (mine) return { ok: false, error: `team: you already hold ${mine.id}; finish it with tasks done first` }
++  if (task.claimedBy) return { ok: false, error: `team: ${id} is already claimed by ${task.claimedAgent} (${task.claimedBy})` }
++  const pre = fileConflict(tasks, task, () => true)
++  if (pre) return pre
++  const claim = path.join(td, `claim-${n}.json`)
++  if (!exclusive(claim, { by: self.id, agent: self.agent, t: Date.now() })) return { ok: false, error: `team: ${id} was just claimed by another agent` }
++  // Check-then-write race: a concurrent claim on overlapping files may have landed meanwhile. The lower task number
++  // keeps its claim and the other rolls back, so exactly one survives and nobody livelocks.
++  const post = fileConflict(listTasks(dir), task, (other) => Number(numberOf(other.id)) < Number(n))
++  if (post) { fs.rmSync(claim, { force: true }); return post }
++  return { ok: true, task: { ...task, claimedBy: self.id, claimedAgent: self.agent } }
++}
++
++function fileConflict(tasks: TeamTask[], task: TeamTask, wins: (other: TeamTask) => boolean): { ok: false; error: string } | undefined {
++  for (const other of tasks) {
++    if (!open(other) || other.id === task.id || !wins(other)) continue
++    const hit = task.files.find((f) => other.files.some((g) => overlaps(f, g)))
++    if (hit) return { ok: false, error: `team: file conflict on ${hit}: reserved by ${other.id} (${other.claimedAgent}, ${other.claimedBy})` }
++  }
++  return undefined
++}
++
++export function doneTask(dir: string, self: Self, id: string, note: string): Result<{ id: string }> {
++  const td = teamDir(dir)
++  const n = numberOf(id)
++  if (!td || !n) return { ok: false, error: `team: bad task id ${String(id)}` }
++  const task = listTasks(dir).find((t) => t.id === id)
++  if (!task) return { ok: false, error: `team: no task ${id}` }
++  if (task.claimedBy !== self.id) return { ok: false, error: `team: only the claimer can finish ${id}${task.claimedBy ? ` (held by ${task.claimedBy})` : ' (not claimed)'}` }
++  if (!exclusive(path.join(td, `done-${n}.json`), { by: self.id, note: String(note ?? '').slice(0, LIMITS.board) })) return { ok: false, error: `team: ${id} is already done` }
++  return { ok: true, id }
++}
++
++// ---- roster ------------------------------------------------------------------------
++
++export function roster(dir: string): RosterEntry[] {
++  const tasks = listTasks(dir)
++  return readRecords(dir)
++    .sort((a, b) => a.startedAt - b.startedAt)
++    .map((r) => ({
++      id: r.id,
++      agent: r.agent,
++      depth: r.depth,
++      parent: r.parentId ?? 'main',
++      state: r.state,
++      task: r.task.slice(0, 120),
++      claimed: tasks.find((t) => open(t) && t.claimedBy === r.id)?.id,
++    }))
++}
+diff -ruN a/subagent/team/types.ts b/subagent/team/types.ts
+--- a/subagent/team/types.ts	1969-12-31 21:00:00.000000000 -0300
++++ b/subagent/team/types.ts	2026-11-13 11:16:14.165172468 -0300
+@@ -0,0 +1,80 @@
++/**
++ * Agent team contract (local patch, claude-home/patches/pi-code/team.patch). Opt-in
++ * (PI_CODE_TEAMS=1 or /team on): every run of the fleet tree can message any other run,
++ * share a board and claim tasks, all through files under the fleet dir (fleet/types.ts):
++ *   <id>.inbox.jsonl         team messages, delivered by the fleet inbox watcher (steer)
++ *   main.inbox.jsonl         messages to the lead (main session), delivered as one followUp
++ *   team/messages.jsonl      log of every message (UI: ✉n badge, viewer conversation)
++ *   team/board.jsonl         append-only board entries
++ *   team/task-N.json         a task (created with O_EXCL so ids are unique)
++ *   team/claim-N.json        exclusive claim of task N (O_EXCL: one winner)
++ *   team/done-N.json         completion of task N
++ *   team/sends.<id|tree>     one byte per send: the file size is the budget counter
++ * Record: docs/pi-agents-ui-teams-sota-2026-11-13.md (Time).
++ */
++export const KINDS = ['question', 'answer', 'info', 'blocker', 'handoff'] as const
++export type MessageKind = (typeof KINDS)[number]
++
++export const BOARD_KINDS = ['fact', 'fail', 'done'] as const
++export type BoardKind = (typeof BOARD_KINDS)[number]
++
++export const LIMITS = { text: 2000, board: 1000, perRun: 30, perTree: 300, feedMs: 20_000, digest: 600 } as const
++
++/** The main session's id in team addressing (it has no run id). */
++export const LEAD_ID = 'main'
++
++export const teamEnabled = (): boolean => process.env.PI_CODE_TEAMS === '1'
++
++/** Team mode: a tools allowlist must not hide the team tool (it grants messaging, not write access). No allowlist = all tools. */
++export const withTeamTool = <T extends { tools?: string[] }>(agent: T): T =>
++  teamEnabled() && agent.tools && agent.tools.length > 0 ? { ...agent, tools: [...agent.tools, 'team'] } : agent
++
++export interface Self {
++  /** Run id, or LEAD_ID for the main session. */
++  id: string
++  /** Agent name, `lead` for the main session. */
++  agent: string
++  depth: number
++}
++
++export interface TeamMessage {
++  id: string
++  t: number
++  from: string
++  fromAgent: string
++  to: string
++  toAgent: string
++  kind: MessageKind
++  text: string
++}
++
++export interface BoardEntry {
++  t: number
++  by: string
++  agent: string
++  kind: BoardKind
++  text: string
++}
++
++export interface TeamTask {
++  id: string
++  title: string
++  files: string[]
++  by: string
++  t: number
++  claimedBy?: string
++  claimedAgent?: string
++  done?: { by: string; note: string }
++}
++
++export interface RosterEntry {
++  id: string
++  agent: string
++  depth: number
++  parent: string
++  state: string
++  task: string
++  claimed?: string
++}
++
++export type Result<T> = ({ ok: true } & T) | { ok: false; error: string }
+diff -ruN a/subagent/team/ui.ts b/subagent/team/ui.ts
+--- a/subagent/team/ui.ts	1969-12-31 21:00:00.000000000 -0300
++++ b/subagent/team/ui.ts	2026-11-13 11:16:14.165188748 -0300
+@@ -0,0 +1,30 @@
++/** What the fleet panel and viewer read from the team: the ✉n counts and a run's conversation. Contract: types.ts. */
++import { currentFleetDir } from '../fleet/store.ts'
++import type { TranscriptItem } from '../fleet/types.ts'
++import { readMessages } from './store.ts'
++import { teamEnabled } from './types.ts'
++
++const counts = new Map<string, { next: number; byRun: Map<string, number> }>()
++
++/** Messages received per run, read incrementally; undefined when team mode is off. */
++export function unreadCounts(): ReadonlyMap<string, number> | undefined {
++  const dir = teamEnabled() ? currentFleetDir() : undefined
++  if (!dir) return undefined
++  const state = counts.get(dir) ?? { next: 0, byRun: new Map<string, number>() }
++  const { items, next } = readMessages(dir, state.next)
++  state.next = next
++  for (const m of items) state.byRun.set(m.to, (state.byRun.get(m.to) ?? 0) + 1)
++  counts.set(dir, state)
++  return state.byRun
++}
++
++/** The messages a run sent or received as viewer items (`tool: 'team'` marks them), from byte offset `from`. */
++export function conversationItems(id: string, from: number): { items: TranscriptItem[]; next: number } {
++  const dir = teamEnabled() ? currentFleetDir() : undefined
++  if (!dir) return { items: [], next: from }
++  const { items, next } = readMessages(dir, from)
++  return {
++    items: items.filter((m) => m.from === id || m.to === id).map((m) => ({ t: m.t, kind: 'note' as const, tool: 'team', text: `✉ ${m.fromAgent} → ${m.toAgent} [${m.kind}]: ${m.text}` })),
++    next,
++  }
++}

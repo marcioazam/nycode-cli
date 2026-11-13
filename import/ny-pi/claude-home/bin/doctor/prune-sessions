@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# prune-sessions — política de retenção dos transcritos JSONL do pi (nada no pi os remove).
+#
+#   prune-sessions                 # dry-run, 90 dias
+#   prune-sessions --apply         # remove, com backup .tar.gz ao lado
+#   prune-sessions --days=30 --apply --no-backup
+#
+# Nunca toca na sessão ativa ($PI_SESSION_FILE). Dry-run por padrão; umask 077 (os arquivos contêm os prompts).
+# Origem: auditoria 2026-11-13, cskwork/pi-setup-public scripts/prune-sessions.sh (reescrito para este harness).
+set -euo pipefail
+umask 077
+
+DAYS="${DAYS:-90}"
+SESSIONS="${PI_SESSIONS_DIR:-${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}/sessions}"
+APPLY=0
+BACKUP=1
+
+for arg in "$@"; do
+  case "$arg" in
+    --apply) APPLY=1 ;;
+    --no-backup) BACKUP=0 ;;
+    --days=*) DAYS="${arg#--days=}" ;;
+    -h | --help) sed -n '2,9p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    *) echo "argumento desconhecido: $arg (--help)" >&2; exit 2 ;;
+  esac
+done
+
+[ -d "$SESSIONS" ] || { echo "sem diretório de sessões em $SESSIONS"; exit 0; }
+
+active="${PI_SESSION_FILE:-}"
+olds() { find "$SESSIONS" -type f -mtime +"$DAYS" ${active:+! -path "$active"} "$@"; }
+
+total=$(find "$SESSIONS" -type f | wc -l | tr -d ' ')
+count=$(olds | wc -l | tr -d ' ')
+size=$(olds -print0 | xargs -0 -r stat -c%s 2>/dev/null | awk '{s+=$1} END{printf "%.1f", s/1048576}')
+
+echo "sessões   : $SESSIONS"
+echo "retenção  : $DAYS dias"
+echo "arquivos  : $total"
+echo "a remover : $count (${size:-0} MB)"
+
+[ "$count" -eq 0 ] && { echo "nada a podar"; exit 0; }
+
+if [ "$APPLY" -eq 0 ]; then
+  olds -printf '  %TY-%Tm-%Td %p\n' | sort | sed -n '1p;$p'
+  echo "dry-run — rode com --apply para remover"
+  exit 0
+fi
+
+if [ "$BACKUP" -eq 1 ]; then
+  archive="$SESSIONS.prune-backup-$(date +%Y%m%d-%H%M%S).tar.gz"
+  olds -print0 | tar -czf "$archive" --null -T -
+  echo "backup    : $archive ($(du -h "$archive" | cut -f1))"
+fi
+
+olds -delete
+find "$SESSIONS" -mindepth 1 -type d -empty -delete 2>/dev/null || true
+echo "removidos : $count"
+echo "restam    : $(find "$SESSIONS" -type f | wc -l | tr -d ' ') ($(du -sh "$SESSIONS" | cut -f1))"

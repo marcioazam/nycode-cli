@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Blocks paths outside publish.list/meta allowlist, then scans staged files.
+set -eu
+ROOT=$(git rev-parse --show-toplevel)
+cd "$ROOT"
+mapfile -t staged < <(git diff --cached --name-only --diff-filter=ACMR)
+[ "${#staged[@]}" -eq 0 ] && exit 0
+bad=0
+for f in "${staged[@]}"; do
+  if awk -F'\t' -v p="$f" '$2==p{f=1} END{exit !f}' publish.list; then continue; fi
+  case "$f" in
+    publish.list|scripts/*|.githooks/*|.gitignore|.leak-allow|.gitleaks.toml|docs/*|README.md|LICENSE|NOTICE|CONTRIBUTING.md|install.sh|third-party.json|npm/*|patches/third-party/*|*.example|bin/pi|bin/test_pi_env.sh) ;;
+    *) echo "pre-commit: BLOCKED path not in publish.list or meta allowlist: $f" >&2; bad=1 ;;
+  esac
+done
+[ "$bad" -eq 0 ] || exit 1
+exec scripts/check-leaks.sh --staged "${staged[@]}"

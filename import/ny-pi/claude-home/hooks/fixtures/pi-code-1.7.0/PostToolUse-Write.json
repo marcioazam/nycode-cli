@@ -1,0 +1,21 @@
+{
+ "session_id": "01a1cbdf-c71a-75fe-8856-1b1956fdda28",
+ "cwd": "/tmp/pi-capture/repo",
+ "permission_mode": "default",
+ "transcript_path": "/tmp/pihome/.pi/agent/sessions/--tmp-pi-capture-repo--/2026-11-11T18-30-02-779Z_01a1cbdf-c71a-75fe-8856-1b1956fdda28.jsonl",
+ "effort": {
+  "level": "medium"
+ },
+ "tool_use_id": "toolu_01EVPHDzr1H9kNhPM8pVngDp",
+ "hook_event_name": "PostToolUse",
+ "tool_name": "Write",
+ "tool_input": {
+  "file_path": "/tmp/pi-capture/repo/tests/test_x.py",
+  "content": "def test_x():\n    assert 1 == 1\n"
+ },
+ "tool_response": {
+  "filePath": "/tmp/pi-capture/repo/tests/test_x.py",
+  "success": true
+ },
+ "duration_ms": 2
+}

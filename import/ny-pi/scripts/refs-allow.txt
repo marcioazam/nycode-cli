@@ -1,0 +1,16 @@
+# One entry per line: name  # reason. A trailing "/" covers the directory and everything below. Max 15 entries.
+sessions/  # runtime: pi session logs
+plans/  # runtime: plan-mode files
+npm/  # runtime: install.sh npm prefix
+vendor/  # runtime: third-party clones from the install manifest
+claude-home/vendor/  # runtime: third-party clones from the install manifest
+install/  # runtime: pi self-install state
+claude-home/plugins/claude-hud/  # runtime: claude-hud config and transcripts
+settings.json  # runtime: owner settings, never shipped
+claude-home/settings.json  # runtime: owner settings, never shipped
+mcp.json  # runtime: owner MCP config, never shipped
+local.env  # runtime: owner overlay (AC7)
+auth.json  # runtime: credentials, never shipped
+ui-state.json  # runtime: UI state written by extensions
+claude-home/claude-hud.json  # runtime: claude-hud state
+claude-home/.credentials.json  # runtime: credentials, never shipped

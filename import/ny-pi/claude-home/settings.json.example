@@ -1,0 +1,96 @@
+{
+  "env": {
+    "PONYTAIL_SUBAGENT_MATCHER": "^(swarm-worker|go-service-engineer|gateway-engineer|web-platform-engineer|terraform-specialist|zero-legado-builder|dependency-remediator|contract-engineer|test-author|docs-architect|lane-integrator|general-purpose)$",
+    "EIO_BACKEND": "posix"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Edit|Write|Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $HOME/.pi/agent/claude-home/hooks/guard.py",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $HOME/.pi/agent/claude-home/hooks/graph_context.py",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "bash $HOME/.pi/agent/claude-home/hooks/dispatch/hook-dispatch.sh",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "sh $HOME/.pi/agent/claude-home/hooks/impeccable_gate.sh hook",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $HOME/.pi/agent/claude-home/hooks/graph_context.py",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $HOME/.pi/agent/claude-home/hooks/dispatch/hook-dispatch.sh",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh $HOME/.pi/agent/claude-home/hooks/impeccable_gate.sh hook",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $HOME/.pi/agent/claude-home/vendor/ralph-loop/hooks/stop-hook.sh",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "sh $HOME/.pi/agent/claude-home/hooks/impeccable_gate.sh hook",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "$HOME/.local/share/mise/installs/node/24/bin/node $HOME/.pi/agent/claude-home/plugins/claude-hud/statusline.mjs"
+  }
+}

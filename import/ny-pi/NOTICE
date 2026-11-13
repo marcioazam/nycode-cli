@@ -1,0 +1,22 @@
+pi-harness
+Copyright (c) 2026 pi-harness contributors, MIT (see LICENSE).
+
+This repository does not redistribute third-party code, except the unified-diff patches in
+patches/third-party/, which modify the components below and are licensed under each component's
+own license. The components are downloaded at install time, pinned in third-party.json
+(commit or tarball integrity, LICENSE hash verified), and keep their own licenses and notices.
+
+| Component | Source | License | Role |
+|---|---|---|---|
+| pi (@earendil-works/pi-coding-agent 1.5.2) | https://github.com/earendil-works/pi | MIT | agent core (installed from the official release API) |
+| pi-code 1.7.0 | https://github.com/ilovepixelart/pi-code | MIT | pi extension pack (npm, exact pin) |
+| ponytail 4.10.3 | https://github.com/DietrichGebert/ponytail | MIT | required; patched by patches/third-party/ponytail.patch |
+| pi-lsp 0.1.7 | https://www.npmjs.com/package/pi-lsp | MIT | required; patched by patches/third-party/pi-lsp.patch |
+| ralph-loop | https://github.com/anthropics/claude-plugins-official (plugins/ralph-loop) | Apache-2.0 | required by /ralph-loop; patch adds scripts/pi-ralph-start.sh |
+| pr-review-toolkit | https://github.com/anthropics/claude-plugins-official (plugins/pr-review-toolkit) | Apache-2.0 | required by /review-pr |
+| Claude-Red | https://github.com/SnailSploit/Claude-Red | MIT | optional (--with-optional) |
+
+Apache-2.0 components: the full license text is the LICENSE file inside each fetched directory.
+Changes made to them are the patches listed above.
+
+claude-home/patches/pi-code/orig/ — unmodified files from pi-code 1.7.0 (npm), MIT License, copyright its authors; used only as patch-test baselines.

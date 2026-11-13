@@ -1,0 +1,563 @@
+diff -ruN a/subagent/index.ts b/subagent/index.ts
+--- a/subagent/index.ts	2026-11-13 11:46:27.318782721 -0300
++++ b/subagent/index.ts	2026-11-13 11:50:08.473063969 -0300
+@@ -13,14 +13,13 @@
+  *   params.ts        the tool schema and the types derived from it
+  *   registry-text.ts the text /tasks, /agents and completion notices read out
+  *   render.ts        transcript formatting shared with the parent
+- *   render-result.ts how a call and its results are drawn
++ *   transcript/      how a call and its results are drawn (call box, state, tree)
+  *
+  * Names the tests reach for are re-exported below, so the public surface is this file
+  * regardless of which module owns them.
+  */
+ import * as os from 'node:os'
+-import { type ExtensionAPI, getMarkdownTheme } from '@earendil-works/pi-coding-agent'
+-import { Text } from '@earendil-works/pi-tui'
++import type { ExtensionAPI } from '@earendil-works/pi-coding-agent'
+ import { setAgentRunner } from '../internal/agent-run.ts'
+ import { setBackgroundAgentCounter } from '../internal/background-agents.ts'
+ import { isMcpToolAliases, MCP_TOOLS_CHANNEL } from '../internal/mcp-alias.ts'
+@@ -43,8 +42,8 @@
+ import { type MakeDetails, type SubagentMode, SubagentParams, type SubagentParamsStatic, type ToolResult } from './params.ts'
+ import { agentsListText, backgroundCompletionText, cancelResultText, resumeResultText, statusWithFleet, tasksStatusText } from './registry-text.ts'
+ import { getFinalOutput } from './render.ts'
+-import { renderChainCall, renderChainResult, renderParallelCall, renderParallelResult, renderSingleCall, renderSingleResult } from './render-result.ts'
+ import { runSingleAgent } from './run.ts'
++import { renderSubagentCall, renderSubagentResult } from './transcript/index.ts'
+ import type { SingleResult, SubagentDetails } from './types.ts'
+ 
+ export { AGENT_HOOK_SYSTEM, agentMemoryDir, agentMemorySection, buildHookAgent, setKnownMcpAliases, withMemoryTools } from './child.ts'
+@@ -379,31 +378,9 @@
+       return runForegroundMode(params, mode)
+     },
+ 
+-    renderCall(args, theme, _context) {
+-      // No tag when the call left the scope to the contextual default: the label
+-      // cannot know here whether that resolved to user or both.
+-      const scope = args.agentScope
+-      if (args.chain && args.chain.length > 0) return renderChainCall(args.chain, scope, theme)
+-      if (args.tasks && args.tasks.length > 0) return renderParallelCall(args.tasks, scope, theme)
+-      return renderSingleCall(args.agent, args.task, scope, theme)
+-    },
+-
+-    renderResult(result, { expanded }, theme, _context) {
+-      const details = result.details as SubagentDetails | undefined
+-      if (!details || details.results.length === 0) {
+-        const text = result.content[0]
+-        return new Text(text?.type === 'text' ? text.text : '(no output)', 0, 0)
+-      }
++    renderCall: (args, theme) => renderSubagentCall(args, theme),
+ 
+-      const mdTheme = getMarkdownTheme()
+-
+-      if (details.mode === 'single' && details.results.length === 1) return renderSingleResult(details.results[0], expanded, theme, mdTheme)
+-      if (details.mode === 'chain') return renderChainResult(details.results, expanded, theme, mdTheme)
+-      if (details.mode === 'parallel') return renderParallelResult(details.results, expanded, theme, mdTheme)
+-
+-      const text = result.content[0]
+-      return new Text(text?.type === 'text' ? text.text : '(no output)', 0, 0)
+-    },
++    renderResult: (result, { expanded, isPartial }, theme, context) => renderSubagentResult(result, { expanded, isPartial }, theme, context.args),
+   })
+ 
+   // Claude's /tasks: background-run status at a glance, returning immediately without
+diff -ruN a/subagent/transcript/call.ts b/subagent/transcript/call.ts
+--- a/subagent/transcript/call.ts	1969-12-31 21:00:00.000000000 -0300
++++ b/subagent/transcript/call.ts	2026-11-13 11:50:08.473119629 -0300
+@@ -0,0 +1,38 @@
++/**
++ * The call box of a subagent tool call. It is drawn once, before anything runs, so it cannot know
++ * the state and carries no state glyph: the result below it shows ●, ✓, ✗ or ◐.
++ */
++
++import type { Theme } from '@earendil-works/pi-coding-agent'
++import { Text } from '@earendil-works/pi-tui'
++
++import type { AgentScope } from '../agents.ts'
++import { TITLE_MAX, taskTitle } from './format.ts'
++import { plural, type T, themed } from './layout.ts'
++
++export interface CallItem {
++  agent: string
++  task: string
++}
++
++export interface CallArgs {
++  agent?: string
++  task?: string
++  tasks?: CallItem[]
++  chain?: CallItem[]
++  agentScope?: AgentScope
++}
++
++const scopeTag = (scope: AgentScope | undefined, t: T): string => (scope ? t.fg('muted', ` [${scope}]`) : '')
++
++const header = (mode: string, count: string, scope: AgentScope | undefined, t: T): Text =>
++  new Text(`${t.fg('toolTitle', t.bold(mode))}${t.fg('dim', ` · ${count}`)}${scopeTag(scope, t)}`, 0, 0)
++
++export function renderSubagentCall(args: CallArgs, theme: Theme): Text {
++  const t = themed(theme)
++  const scope = args.agentScope
++  if (args.chain && args.chain.length > 0) return header('chain', plural(args.chain.length, 'step'), scope, t)
++  if (args.tasks && args.tasks.length > 0) return header('parallel', plural(args.tasks.length, 'agent'), scope, t)
++  const title = args.task ? taskTitle(args.task, '', TITLE_MAX) : ''
++  return new Text(`${t.fg('toolTitle', t.bold(args.agent || '…'))}${title ? `  ${title}` : ''}${scopeTag(scope, t)}`, 0, 0)
++}
+diff -ruN a/subagent/transcript/format.ts b/subagent/transcript/format.ts
+--- a/subagent/transcript/format.ts	1969-12-31 21:00:00.000000000 -0300
++++ b/subagent/transcript/format.ts	2026-11-13 11:50:08.473145849 -0300
+@@ -0,0 +1,132 @@
++/**
++ * One-line formatters for the transcript rendering of subagent calls: task titles, Claude-style
++ * tool lines, output previews and run stats. Pure strings; the pristine ../render.ts keeps the
++ * usage, final-output and display-item helpers that the dispatch code shares.
++ */
++
++import * as os from 'node:os'
++import type { Message } from '@earendil-works/pi-ai'
++import type { Theme } from '@earendil-works/pi-coding-agent'
++
++import { getDisplayItems } from '../render.ts'
++
++const ELLIPSIS = '…'
++export const LINE_MAX = 72
++export const TITLE_MAX = 48
++const SENTENCE_MIN = 12
++
++export const clip = (text: string, max: number): string => (text.length > max ? `${text.slice(0, max - 1).trimEnd()}${ELLIPSIS}` : text)
++
++/** Cut at the last word boundary that keeps the result (ellipsis included) within max. */
++function clipWords(text: string, max: number): string {
++  if (text.length <= max) return text
++  let head = text.slice(0, max - 1)
++  if (text[max - 1] !== ' ') {
++    const space = head.lastIndexOf(' ')
++    if (space > 0) head = head.slice(0, space)
++  }
++  return `${head.trimEnd()}${ELLIPSIS}`
++}
++
++/**
++ * A one-line label for a task: its first non-empty line, cut at a sentence end ('. ' or the end)
++ * only when at least 12 characters precede it, then shortened at a word boundary. Never cut at ':'
++ * ("Run: sleep 15" must not become "Run"). '{previous}' is dropped, so a chain template reads clean.
++ */
++export function taskTitle(task: string, fallback: string, max = TITLE_MAX): string {
++  const line = task.replaceAll('{previous}', '').split('\n').map((l) => l.replace(/\s+/g, ' ').trim()).find(Boolean) ?? ''
++  const sentence = line.search(/\.(\s|$)/)
++  const title = sentence >= SENTENCE_MIN ? line.slice(0, sentence) : line
++  return title ? clipWords(title, max) : fallback
++}
++
++/** The first non-empty line of an output without markdown emphasis, code ticks or heading marks. */
++export function previewLine(output: string, max = LINE_MAX): string {
++  const lines = output.split('\n').filter((l) => l.trim())
++  // Agent handbacks open with `status: complete` / `block_kind: none` headers; preview the first real line.
++  const line = lines.find((l) => !/^[a-z_]+: \S+$/.test(l.trim())) ?? lines[0] ?? ''
++  return clip(line.replace(/^[#>*\-\s]+/, '').replace(/\*+|__|`+/g, '').trim(), max)
++}
++
++function shortenPath(p: string): string {
++  const home = os.homedir()
++  return p === home || p.startsWith(`${home}/`) ? `~${p.slice(home.length)}` : p
++}
++
++const str = (v: unknown, fallback: string): string => (typeof v === 'string' && v ? v : fallback)
++const pathOf = (a: Record<string, unknown>, fallback: string): string => shortenPath(str(a.file_path ?? a.path, fallback))
++
++/** A range only when pi was asked for one: both offset and limit, or an open-ended offset. */
++function readArg(a: Record<string, unknown>): string {
++  const offset = typeof a.offset === 'number' ? a.offset : undefined
++  const limit = typeof a.limit === 'number' && a.limit > 0 ? a.limit : undefined
++  const path = pathOf(a, ELLIPSIS)
++  if (offset === undefined) return path
++  return `${path}:${offset}-${limit === undefined ? '' : offset + limit - 1}`
++}
++
++// A Map, not an object literal: a tool named after an Object.prototype key (constructor,
++// toString) must fall through to the generic preview.
++const TOOLS = new Map<string, [verb: string, arg: (a: Record<string, unknown>) => string]>([
++  ['bash', ['Bash', (a) => clip(str(a.command, ELLIPSIS).split('\n')[0], 60)]],
++  ['read', ['Read', readArg]],
++  ['write', ['Write', (a) => `${pathOf(a, ELLIPSIS)}${typeof a.content === 'string' && a.content.includes('\n') ? ` (${a.content.split('\n').length} lines)` : ''}`]],
++  ['edit', ['Edit', (a) => pathOf(a, ELLIPSIS)]],
++  ['ls', ['Ls', (a) => pathOf(a, '.')]],
++  ['find', ['Find', (a) => `${str(a.pattern, '*')} in ${pathOf(a, '.')}`]],
++  ['grep', ['Grep', (a) => `/${str(a.pattern, '')}/ in ${pathOf(a, '.')}`]],
++])
++
++export function toolParts(name: string, args: Record<string, unknown>): { verb: string; arg: string } {
++  const tool = TOOLS.get(name)
++  if (tool) return { verb: tool[0], arg: tool[1](args) }
++  return { verb: name, arg: clip(JSON.stringify(args), 50) }
++}
++
++export const toolLine = (name: string, args: Record<string, unknown>, max = LINE_MAX): string => {
++  const { verb, arg } = toolParts(name, args)
++  return clip(`${verb} ${arg}`, max)
++}
++
++export function formatToolCall(toolName: string, args: Record<string, unknown>, themeFg: Theme['fg']): string {
++  const { verb, arg } = toolParts(toolName, args)
++  return themeFg('accent', verb) + themeFg('dim', ` ${arg}`)
++}
++
++export interface RunStats {
++  tools: number
++  tokens: number
++  cost: number
++  /** Span between the first and last message timestamp; undefined when the messages do not carry two distinct ones. */
++  elapsedMs: number | undefined
++}
++
++export function resultStats(r: { messages: Message[]; usage: { input: number; output: number; cost: number; contextTokens?: number } }): RunStats {
++  const stamps = r.messages.map((m) => (m as { timestamp?: unknown }).timestamp).filter((t): t is number => typeof t === 'number')
++  const span = stamps.length > 1 ? Math.max(...stamps) - Math.min(...stamps) : 0
++  return {
++    tools: getDisplayItems(r.messages).filter((i) => i.type === 'toolCall').length,
++    tokens: r.usage.contextTokens || r.usage.input + r.usage.output,
++    cost: r.usage.cost,
++    elapsedMs: span > 0 ? span : undefined,
++  }
++}
++
++const tokText = (n: number): string => (n < 1000 ? `${n}` : n < 1e6 ? `${(n / 1000).toFixed(1)}k` : `${(n / 1e6).toFixed(1)}M`)
++
++function elapsedText(ms: number): string {
++  const s = Math.max(1, Math.round(ms / 1000))
++  if (s < 60) return `${s}s`
++  if (s < 3600) return `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`
++  return `${Math.floor(s / 3600)}h ${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}m`
++}
++
++/** "9 tools · 41.0k tok · $0.12 · 1m 15s"; empty when nothing was measured. */
++export function statsText(s: RunStats): string {
++  if (!s.tools && !s.tokens && !s.cost && s.elapsedMs === undefined) return ''
++  const parts = [`${s.tools} tool${s.tools === 1 ? '' : 's'}`]
++  if (s.tokens) parts.push(`${tokText(s.tokens)} tok`)
++  if (s.cost > 0) parts.push(s.cost < 0.01 ? '<$0.01' : `$${s.cost.toFixed(2)}`)
++  if (s.elapsedMs !== undefined) parts.push(elapsedText(s.elapsedMs))
++  return parts.join(' · ')
++}
+diff -ruN a/subagent/transcript/index.ts b/subagent/transcript/index.ts
+--- a/subagent/transcript/index.ts	1969-12-31 21:00:00.000000000 -0300
++++ b/subagent/transcript/index.ts	2026-11-13 11:50:08.473780159 -0300
+@@ -0,0 +1,68 @@
++/**
++ * Entry points of the subagent transcript rendering, called from the tool definition in ../index.ts:
++ * the call box (no state) and the result (state, placeholders while the run starts, partial updates).
++ */
++
++import { getMarkdownTheme, type Theme } from '@earendil-works/pi-coding-agent'
++import { Text } from '@earendil-works/pi-tui'
++
++import { noColor } from '../fleet-ui/palette.ts'
++import { getFinalOutput } from '../render.ts'
++import type { SingleResult, SubagentDetails } from '../types.ts'
++import { type CallArgs, type CallItem, renderSubagentCall } from './call.ts'
++import { taskTitle, TITLE_MAX } from './format.ts'
++import { type Entry, renderSingle, renderTree, stateOf } from './result.ts'
++
++export { renderSubagentCall }
++
++interface ResultLike {
++  content: Array<{ type: string; text?: string }>
++  details?: unknown
++}
++
++/** A child that has not reported yet, drawn from the call args so the block is never empty. */
++function placeholder(item: CallItem, step?: number): SingleResult {
++  return { agent: item.agent, agentSource: 'unknown', task: item.task, exitCode: -1, messages: [], stderr: '', usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, contextTokens: 0, turns: 0 }, ...(step === undefined ? {} : { step }) }
++}
++
++/**
++ * The results to draw. A partial update is live: single and the last chain step are still running
++ * whatever exitCode says; a parallel child is running until it has output. Mid-run, children that have
++ * not reported yet come from the call args (chain steps use the template task, not the substituted text).
++ */
++function entriesOf(details: SubagentDetails, args: CallArgs, isPartial: boolean): Entry[] {
++  const { mode, results } = details
++  const templates = mode === 'chain' ? args.chain : mode === 'parallel' ? args.tasks : undefined
++  const live = (r: SingleResult, i: number): boolean => isPartial && (mode === 'single' || (mode === 'chain' ? i === results.length - 1 : !getFinalOutput(r.messages)))
++  const entries: Entry[] = results.map((r, i) => ({
++    r,
++    state: stateOf(r, live(r, i)),
++    title: taskTitle(mode === 'chain' ? (templates?.[(r.step ?? i + 1) - 1]?.task ?? r.task) : r.task, r.agent, TITLE_MAX),
++    step: r.step,
++  }))
++  if (!isPartial) return entries
++  const pending = mode === 'single' ? (results.length === 0 && args.agent ? [{ agent: args.agent, task: args.task ?? '' }] : []) : (templates ?? []).slice(results.length)
++  pending.forEach((item, i) => {
++    const step = mode === 'chain' ? results.length + i + 1 : undefined
++    entries.push({ r: placeholder(item, step), state: 'running', title: taskTitle(item.task, item.agent, TITLE_MAX), step })
++  })
++  return entries
++}
++
++/** NO_COLOR: every markdown style is the identity and code is not highlighted, so no escape reaches the output. */
++const plainMarkdown = (md: ReturnType<typeof getMarkdownTheme>): ReturnType<typeof getMarkdownTheme> => {
++  const id = (t: string): string => t
++  return { heading: id, link: id, linkUrl: id, code: id, codeBlock: id, codeBlockBorder: id, quote: id, quoteBorder: id, hr: id, listBullet: id, bold: id, italic: id, strikethrough: id, underline: id, codeBlockIndent: md.codeBlockIndent }
++}
++
++export function renderSubagentResult(result: ResultLike, options: { expanded: boolean; isPartial: boolean }, theme: Theme, args: CallArgs | undefined, mdTheme = getMarkdownTheme()) {
++  const text = result.content[0]
++  const fallback = new Text(text?.type === 'text' ? (text.text ?? '(no output)') : '(no output)', 0, 0)
++  const details = result.details as SubagentDetails | undefined
++  if (!details) return fallback
++  const entries = entriesOf(details, args ?? {}, options.isPartial)
++  if (noColor()) mdTheme = plainMarkdown(mdTheme)
++  if (details.mode === 'single' && entries.length === 1) return renderSingle(entries[0], options.expanded, theme, mdTheme)
++  if ((details.mode === 'chain' || details.mode === 'parallel') && entries.length > 0) return renderTree(details.mode, entries, options.expanded, theme, mdTheme)
++  return fallback
++}
+diff -ruN a/subagent/transcript/layout.ts b/subagent/transcript/layout.ts
+--- a/subagent/transcript/layout.ts	1969-12-31 21:00:00.000000000 -0300
++++ b/subagent/transcript/layout.ts	2026-11-13 11:50:08.473191809 -0300
+@@ -0,0 +1,63 @@
++/** Theme plumbing and the two small tui components the transcript needs: an indented child and a capped, wrapped line. */
++
++import type { Theme } from '@earendil-works/pi-coding-agent'
++import { type Component, Text, truncateToWidth, visibleWidth } from '@earendil-works/pi-tui'
++
++import { noColor } from '../fleet-ui/palette.ts'
++
++export type T = Pick<Theme, 'fg' | 'bold'>
++
++const PLAIN = { fg: (_role: string, text: string) => text, bold: (text: string) => text } as T
++// NO_COLOR is read per render, so a toggle takes effect on the next redraw.
++export const themed = (theme: Theme): T => (noColor() ? PLAIN : theme)
++
++export const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`
++
++/** Renders a child narrower by the prefix width and puts the prefix before each line (the tree's vertical bar). */
++export class Indent implements Component {
++  private readonly child: Component
++  private readonly prefix: string
++
++  constructor(child: Component, prefix: string) {
++    this.child = child
++    this.prefix = prefix
++  }
++
++  render(width: number): string[] {
++    const inner = Math.max(1, width - visibleWidth(this.prefix))
++    return this.child.render(inner).map((line) => this.prefix + line)
++  }
++
++  invalidate(): void {
++    this.child.invalidate()
++  }
++}
++
++/** Text wrapped to the width after a prefix and capped at `cap` lines; the cut ends in an ellipsis. */
++export class Wrapped implements Component {
++  private readonly first: string
++  private readonly rest: string
++  private readonly text: string
++  private readonly cap: number
++  private readonly ellipsis: string
++
++  constructor(first: string, rest: string, text: string, cap: number, ellipsis: string) {
++    this.first = first
++    this.rest = rest
++    this.text = text
++    this.cap = cap
++    this.ellipsis = ellipsis
++  }
++
++  render(width: number): string[] {
++    const inner = Math.max(2, width - visibleWidth(this.first))
++    const lines = new Text(this.text, 0, 0).render(inner).map((l) => l.trimEnd())
++    if (lines.length > this.cap) {
++      lines.length = this.cap
++      lines[this.cap - 1] = truncateToWidth(lines[this.cap - 1], inner - 1, '', false) + this.ellipsis
++    }
++    return lines.map((line, i) => (i === 0 ? this.first : this.rest) + line)
++  }
++
++  invalidate(): void {}
++}
+diff -ruN a/subagent/transcript/result.ts b/subagent/transcript/result.ts
+--- a/subagent/transcript/result.ts	1969-12-31 21:00:00.000000000 -0300
++++ b/subagent/transcript/result.ts	2026-11-13 11:50:08.473219499 -0300
+@@ -0,0 +1,178 @@
++/**
++ * How the results of a subagent call are drawn. Collapsed (default) is a Claude Code style tree:
++ * one row per agent (state glyph, name, task title, stats) and one detail line under it (the latest
++ * tool while running, the error or the first output line after), then a footer that opens with the
++ * aggregate glyph. Expanded (ctrl+o) keeps the same tree and adds task, tool list, output and usage
++ * under each row. The state lives here, not in the call box above.
++ */
++
++import type { getMarkdownTheme, Theme } from '@earendil-works/pi-coding-agent'
++import { Container, Markdown, Spacer, Text } from '@earendil-works/pi-tui'
++
++import { formatUsageStats, getDisplayItems, getFinalOutput } from '../render.ts'
++import type { SingleResult } from '../types.ts'
++import { clip, formatToolCall, LINE_MAX, previewLine, resultStats, statsText, toolParts } from './format.ts'
++import { Indent, type T, themed, Wrapped } from './layout.ts'
++
++type MarkdownTheme = ReturnType<typeof getMarkdownTheme>
++export type State = 'running' | 'done' | 'failed' | 'partial'
++
++/** A result as drawn: the state already decided (a partial update is running) and the title chosen. */
++export interface Entry {
++  r: SingleResult
++  state: State
++  title: string
++  step?: number
++}
++
++const EXPAND_HINT = 'ctrl+o expand'
++const ERROR_LINES = 3
++
++const STATE_STYLE: Record<State, { glyph: string; role: 'warning' | 'success' | 'error'; label: string }> = {
++  running: { glyph: '●', role: 'warning', label: '' },
++  done: { glyph: '✓', role: 'success', label: 'Done' },
++  failed: { glyph: '✗', role: 'error', label: 'Failed' },
++  partial: { glyph: '◐', role: 'warning', label: 'Partial' },
++}
++
++const glyph = (t: T, state: State): string => t.fg(STATE_STYLE[state].role, STATE_STYLE[state].glyph)
++
++/** `live`: this result comes from a partial update, so exitCode 0 means "nothing final yet", not "done". */
++export function stateOf(r: SingleResult, live: boolean): State {
++  if (r.exitCode === -1) return 'running'
++  if (r.exitCode !== 0 || r.stopReason === 'error' || r.stopReason === 'aborted') return 'failed'
++  if (r.partial) return 'partial'
++  return live ? 'running' : 'done'
++}
++
++// ---- pieces ----
++
++function runningDetail(t: T, r: SingleResult): string {
++  const items = getDisplayItems(r.messages)
++  const last = items.findLast((i) => i.type === 'toolCall')
++  if (!last) return t.fg('muted', items.length ? 'working…' : 'starting…')
++  const { verb, arg } = toolParts(last.name, last.args)
++  return t.fg('accent', verb) + t.fg('dim', clip(` ${arg}`, LINE_MAX - verb.length))
++}
++
++/** The whole error, one line of words (Wrapped folds and caps it at the width it gets). */
++function errorText(r: SingleResult): string {
++  const err = r.errorMessage || r.stderr || getFinalOutput(r.messages) || r.stopReason || ''
++  return err.replace(/\s+/g, ' ').trim() || '(no output)'
++}
++
++/** The line(s) under a row: the latest tool while running, the error in full after a failure, the output preview after a finish. */
++function detail(t: T, r: SingleResult, state: State, first: string, rest: string): Wrapped | Text {
++  if (state === 'running') return new Text(`${first}${runningDetail(t, r)}`, 0, 0)
++  if (state === 'failed') return new Wrapped(first, rest, t.fg('error', errorText(r)), ERROR_LINES, t.fg('error', '…'))
++  const out = previewLine(getFinalOutput(r.messages))
++  return new Text(`${first}${out ? t.fg('toolOutput', out) : t.fg('muted', '(no output)')}`, 0, 0)
++}
++
++function addToolList(container: Container, r: SingleResult, t: T): void {
++  for (const item of getDisplayItems(r.messages)) {
++    if (item.type === 'toolCall') container.addChild(new Text(`${t.fg('muted', '⎿')} ${formatToolCall(item.name, item.args, t.fg.bind(t))}`, 0, 0))
++  }
++}
++
++function addOutput(container: Container, r: SingleResult, t: T, mdTheme: MarkdownTheme): void {
++  const finalOutput = getFinalOutput(r.messages)
++  if (finalOutput) {
++    container.addChild(new Spacer(1))
++    container.addChild(new Markdown(finalOutput.trim(), 0, 0, mdTheme))
++  } else if (getDisplayItems(r.messages).length === 0) container.addChild(new Text(t.fg('muted', '(no output)'), 0, 0))
++  const usageStr = formatUsageStats(r.usage, r.model)
++  if (usageStr) {
++    container.addChild(new Spacer(1))
++    container.addChild(new Text(t.fg('dim', usageStr), 0, 0))
++  }
++}
++
++/** Task, tool list, output and usage of one result: the part expanded adds to the collapsed row. */
++function body(r: SingleResult, t: T, mdTheme: MarkdownTheme): Container {
++  const container = new Container()
++  container.addChild(new Text(t.fg('muted', 'Task: ') + t.fg('dim', r.task), 0, 0))
++  addToolList(container, r, t)
++  addOutput(container, r, t, mdTheme)
++  return container
++}
++
++// ---- single ----
++
++export function renderSingle(e: Entry, expanded: boolean, theme: Theme, mdTheme: MarkdownTheme): Container {
++  const t = themed(theme)
++  const { r, state } = e
++  const container = new Container()
++  if (expanded) {
++    let header = `${glyph(t, state)} ${t.fg('toolTitle', t.bold(r.agent))}${t.fg('muted', ` (${r.agentSource})`)}`
++    if (state === 'failed' && r.stopReason) header += ` ${t.fg('error', `[${r.stopReason}]`)}`
++    container.addChild(new Text(header, 0, 0))
++    if (state === 'failed' && r.errorMessage) container.addChild(new Text(t.fg('error', `Error: ${r.errorMessage}`), 0, 0))
++    container.addChild(body(r, t, mdTheme))
++    return container
++  }
++  const lead = `  ${t.fg('muted', '⎿')} ${glyph(t, state)} `
++  if (state === 'running') container.addChild(new Text(`${lead}${runningDetail(t, r)}`, 0, 0))
++  else {
++    const stats = statsText(resultStats(r))
++    container.addChild(new Text(`${lead}${t.fg(STATE_STYLE[state].role, STATE_STYLE[state].label)}${stats ? t.fg('dim', ` (${stats})`) : ''}`, 0, 0))
++    container.addChild(detail(t, r, state, '    ', '    '))
++  }
++  container.addChild(new Text(t.fg('muted', `  ${EXPAND_HINT}`), 0, 0))
++  return container
++}
++
++// ---- chain and parallel: one tree, steps numbered for the chain ----
++
++/** "Done · 9 tools · …" for a finished run; just the stats while running (elapsed would be a stale partial span). */
++function rowStats(r: SingleResult, state: State): string {
++  const s = resultStats(r)
++  const stats = statsText(state === 'running' ? { ...s, elapsedMs: undefined } : s)
++  return [STATE_STYLE[state].label, stats].filter(Boolean).join(' · ')
++}
++
++function row(t: T, e: Entry, prefix: string, numbered: boolean, index: number): string {
++  const num = numbered ? `${e.step ?? index + 1}. ` : ''
++  const stats = rowStats(e.r, e.state)
++  return `${prefix}${glyph(t, e.state)} ${num}${t.fg('toolTitle', t.bold(e.r.agent))}  ${e.title}${stats ? `   ${t.fg('dim', stats)}` : ''}`
++}
++
++function counts(entries: Entry[]): { text: string; running: number } {
++  const running = entries.filter((e) => e.state === 'running').length
++  const failed = entries.filter((e) => e.state === 'failed').length
++  return { text: `${entries.length - running}/${entries.length} done${failed ? `, ${failed} failed` : ''}`, running }
++}
++
++function aggregate(entries: Entry[], failedState: State): State {
++  if (entries.some((e) => e.state === 'running')) return 'running'
++  return entries.some((e) => e.state === 'failed') ? failedState : 'done'
++}
++
++function totals(entries: Entry[]): string {
++  const all = entries.map((e) => resultStats(e.r))
++  return statsText({ tools: all.reduce((n, s) => n + s.tools, 0), tokens: all.reduce((n, s) => n + s.tokens, 0), cost: all.reduce((n, s) => n + s.cost, 0), elapsedMs: undefined })
++}
++
++function totalUsage(entries: Entry[]): string {
++  const sum = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, turns: 0 }
++  for (const { r } of entries) for (const k of Object.keys(sum) as (keyof typeof sum)[]) sum[k] += r.usage[k]
++  return formatUsageStats(sum)
++}
++
++export function renderTree(mode: 'chain' | 'parallel', entries: Entry[], expanded: boolean, theme: Theme, mdTheme: MarkdownTheme): Container {
++  const t = themed(theme)
++  const container = new Container()
++  const numbered = mode === 'chain'
++  entries.forEach((e, i) => {
++    const last = i === entries.length - 1
++    container.addChild(new Text(row(t, e, `  ${t.fg('muted', last ? '└─' : '├─')} `, numbered, i), 0, 0))
++    const bar = t.fg('muted', last ? ' ' : '│')
++    container.addChild(detail(t, e.r, e.state, `  ${bar}  ${t.fg('muted', '⎿')} `, `  ${bar}    `))
++    if (expanded) container.addChild(new Indent(body(e.r, t, mdTheme), `  ${bar}  `))
++  })
++  const { text, running } = counts(entries)
++  const mark = glyph(t, aggregate(entries, mode === 'chain' ? 'failed' : 'partial'))
++  const tail = expanded ? [text, ...(totalUsage(entries) ? [`Total: ${totalUsage(entries)}`] : [])] : [text, running ? '' : totals(entries), EXPAND_HINT]
++  container.addChild(new Text(`  ${mark} ${t.fg('muted', tail.filter(Boolean).join(' · '))}`, 0, 0))
++  return container
++}
