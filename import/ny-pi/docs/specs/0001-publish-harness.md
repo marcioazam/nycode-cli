@@ -126,6 +126,7 @@ Fork do código-fonte do pi; publicar o overlay pessoal, as sessões e a memóri
 - Gate final (9), plan-reviewer (10), entrega privada (10). knowledge vault: capturar o padrão "publicar harness por allowlist + overlay" após a revisão.
 ## Progress
 - [DONE:1] Backup: `~/.pi-backup/20261113T173319/full.tar` (0600, dir 0700, 46839 entradas, 471M) + `pre-migration.sha256` (35746 arquivos). Restauro: `tar -xpf ~/.pi-backup/20261113T173319/full.tar -C /`.
+- [DONE:10] Commit `d87ff63` (pre-commit verde; `check-leaks --history` exit 0) publicado em GitHub privado `<owner>/pi-harness` (visibility PRIVATE; remote main = HEAD). Secret scanning/push protection indisponíveis no plano privado (HTTP 422) → cobertura de segredos = gitleaks + trufflehog + identificadores locais na árvore e no histórico. Ajustes de entrega: allowlist do hook incluiu `bin/test_pi_env.sh`; `--staged` passou a filtrar `.leak-allow`/fixtures (rg ignora globs em caminhos explícitos). plan-reviewer: rodada 1 = gaps (registro da tarefa 10, captura, re-scan após commit de docs) → corrigidos neste commit.
 
 ## Surprises
 
@@ -133,6 +134,14 @@ Fork do código-fonte do pi; publicar o overlay pessoal, as sessões e a memóri
 - D1–D10 e A1–A4 conforme acima (sessão de plano 2026-11-13).
 
 ## Outcomes
+- Harness publicado privado; o `~/.pi` do dono roda pelos symlinks do repo, com overlay `rules/personal.md` + `local.env`. Rollback: `./install.sh --restore 20261113T181618 && ./install.sh --restore 20261113T181250` ou `tar -xpf ~/.pi-backup/20261113T173319/full.tar -C /`.
+- Conhecimento capturado: vault `Resources/Engineering/pi-harness-publish.md`.
+
+### Checklist do dono antes de tornar público
+- Ler `README.md`, `CONTRIBUTING.md`, `NOTICE` e `claude-home/CLAUDE.md` (contrato neutro).
+- `scripts/check-leaks.sh --tree && scripts/check-leaks.sh --history` (exit 0).
+- `git log --stat` e uma busca por nomes de projetos/clientes privados que a lista de identificadores não cobre.
+- Então: `gh repo edit <owner>/pi-harness --visibility public --accept-visibility-change-consequences`.
 - [DONE:2] `publish.list` (324 arquivos) + `scripts/export.sh`. Ajustes: `test_core.py` mantido (AWS key falsa de fixture → allowlist do gitleaks na tarefa 3); HUD antigravity mantido (import estático em `claude-hud-usage.mjs`; suporte a provider, sem conta). Check de paths: 2 falsos positivos aceitos (`test-author.md`, fixture `PostToolUse-mcp.json`).
 - [DONE:3] `scripts/check-leaks.sh` (gitleaks 8.30.1 + trufflehog 3.99.9 pinado com sha256 + identificadores locais), `.githooks/pre-commit`, `.gitignore`, `.gitleaks.toml`, `.leak-allow`. Selftest verde. trufflehog exclui por path `test_core.py` (fixture AWS falsa; gitleaks cobre com allowlist exata).
 - [DONE:4] Sanitização: 0 hits fora de CLAUDE.md/rules-ref (tarefa 5). Novas envs: `PI_KNOWLEDGE_VAULT`, `PI_GRAPHS_VAULT` (sem default; substituem `IA_BRAIN_ROOT`/`IA_GRAPHS_ROOT`), `CLAUDE_SRC_DIR` (port-agents). git-deliver em `claude-home/bin/git-deliver`. Fixtures em `/tmp/pihome`. Testes: hooks 62 ok, telemetry+checks 13 ok.
