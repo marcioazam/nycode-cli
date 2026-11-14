@@ -116,8 +116,10 @@ def test_old_rounds_without_the_new_records_still_load(
 ) -> None:
     monkeypatch.setattr(bg, "changed_paths", lambda *_: [])
     monkeypatch.setattr(ev, "S1_RESULTS", [tmp_path / "none"])
+    old = SONNET / "ny-pi"  # frozen round recorded before tokens/turns existed
+    assert "tokens" not in bg.load_round(old)[0][0]
+    assert bg.gate(old, old)[2] == 0
     main = BENCH.parent / "docs/bench/baseline-main"
-    assert "tokens" not in bg.load_round(main)[0][0]
     assert bg.gate(main, main)[2] == 0
     dirs = [SONNET / "ny-pi", SONNET / "pi-vanilla"]
     assert "| ny-pi |" in rp.render(dirs)

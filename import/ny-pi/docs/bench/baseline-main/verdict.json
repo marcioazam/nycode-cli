@@ -6,7 +6,7 @@
     "wall": "PASS",
     "security": "PASS"
   },
-  "n": 42,
+  "n": 41,
   "ci": [
     0.0,
     0.0
@@ -15,5 +15,5 @@
   "wall_ratio": 1.0,
   "security_regressions": [],
   "score": 100.0,
-  "excluded": 0
+  "excluded": 1
 }

@@ -192,5 +192,5 @@ Suíte `s6`: 6 tarefas de CPU do `terminal-bench/terminal-bench@4.1.0`, k1, Sonn
 
 - **Rodadas brutas:** `docs/bench/baseline-vanilla-2026-11/<sonnet|opus|tb41>/<braço>/{runs.jsonl,meta.json}`.
 - **Agregados:** `docs/bench/BASELINE-VANILLA-2026-11.json`.
-- **Baseline do gate de PR:** `docs/bench/baseline-main/` (ny-pi, Sonnet, as mesmas unidades do tier `pr`).
+- **Baseline do gate de PR:** `docs/bench/baseline-main/` (ny-pi, Sonnet, tier `baseline`: 12 repetições; S2 com 4; `jobs` 6), regravado em 2026-11-14 no commit `faf2268`, depois das correções das execuções sem interface. Resultado: 398 de 428 execuções passaram (S1 146/148, S2 16/16, S4 133/144, S5 103/120), custo US$ 16,38, 67 minutos. Uma execução de `regex-chess` estourou o tempo do agente e essa tarefa fica fora do pareamento. A tabela do ny-pi acima é a rodada anterior (2 repetições, antes das correções).
 - **Evidências por execução:** ver `docs/bench/RUNBOOK.md`, seção "Evidências por execução".
