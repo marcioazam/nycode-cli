@@ -1,11 +1,12 @@
 # Benchmark suites and tiers (plan D10/D14, record docs/bench/pi-harness-ci-2026-11-13.md).
 # est_cost_usd is a per-run Sonnet estimate used only by `bench run --dry-run` and the pre-run budget check.
+# Calibrated 2026-11-14 from the my-pi pilot means (s1 0.071, s2 0.186, s4 0.090, s5 0.095) + 25% headroom (s2 rounded up: skewed); s3 not piloted yet.
 # Held-out (D14): S1/S4 carry `split` in their own data; S2/S3 take the split from the `heldout` list in their tasks file (frozen, authority);
 # sha256(seed:task) in bench/run.py is only the fallback for a task file without one.
 
 [suite.s1]
 kind = "internal"            # ~/.claude/evals/run.py (cc) or pelo-em-ovo/scripts/run_pi.py (pi arms)
-est_cost_usd = 0.07
+est_cost_usd = 0.09
 cases = [
   "out-review-adjacent",
   "out-review-uncommitted",
@@ -62,7 +63,7 @@ pr_cases = [
 [suite.s2]
 kind = "harbor"
 dataset = "terminal-bench@2.0"
-est_cost_usd = 0.60
+est_cost_usd = 0.30
 seed = 20261113
 heldout_pct = 30
 tasks_file = "tasks/tb2.json"      # {"dataset","version","tasks","heldout"} (a plain list also loads)
@@ -80,38 +81,38 @@ excluded_file = "tasks/swebenchpro.excluded.json"
 [suite.s4]
 kind = "case"
 dir = "suites/plan"
-est_cost_usd = 0.35
+est_cost_usd = 0.12
 
 [suite.s5]
 kind = "case"
 dir = "suites/multi"
-est_cost_usd = 0.60
+est_cost_usd = 0.12
 
 # Tiers: list of steps. `subset` picks s1.pr_cases; `n` samples n tasks of a harbor suite by seed;
 # `splits` filters case suites. `k` = repetitions.
 [tier.pr]
 steps = [
   { suite = "s1", subset = "pr", k = 2 },
-  { suite = "s4", splits = ["dev", "heldout"], k = 1 },
-  { suite = "s5", splits = ["dev", "heldout"], k = 1 },
-  { suite = "s2", n = 4, k = 1 },
+  { suite = "s4", splits = ["dev", "heldout"], k = 2 },
+  { suite = "s5", splits = ["dev", "heldout"], k = 2 },
+  { suite = "s2", n = 4, k = 1 },  # Harbor tasks are slow (up to 28 min); k1 keeps the PR under ~1 h
 ]
 
 [tier.full]
 steps = [
   { suite = "s1", k = 3 },
-  { suite = "s2", k = 3 },
-  { suite = "s3", n = 50, k = 3 },
   { suite = "s4", splits = ["dev", "heldout"], k = 3 },
   { suite = "s5", splits = ["dev", "heldout"], k = 3 },
+  { suite = "s2", k = 1 },  # 77 Harbor tasks: k1 keeps 3 arms inside the US$ 250 baseline (task 13 allocation)
+  { suite = "s3", n = 50, k = 1 },
 ]
 
 # vanilla baseline: everything (run for the vanilla arms; same steps as full).
 [tier.vanilla]
 steps = [
   { suite = "s1", k = 3 },
-  { suite = "s2", k = 3 },
-  { suite = "s3", n = 50, k = 3 },
   { suite = "s4", splits = ["dev", "heldout"], k = 3 },
   { suite = "s5", splits = ["dev", "heldout"], k = 3 },
+  { suite = "s2", k = 1 },  # 77 Harbor tasks: k1 keeps 3 arms inside the US$ 250 baseline (task 13 allocation)
+  { suite = "s3", n = 50, k = 1 },
 ]

@@ -9,8 +9,9 @@ repo=$(cd "$here/../.." && pwd)
 # shellcheck source=bench/arms/oauth-token.sh
 . "$here/oauth-token.sh"
 real=${BENCH_REAL_HOME:-$HOME}
-stage=${BENCH_STAGE:-${TMPDIR:-/tmp}/bench-mypi-$(git -C "$repo" rev-parse --short=12 HEAD)$(git -C "$repo" diff --quiet HEAD || echo -dirty)}
+stage=${BENCH_STAGE:-${BENCH_STAGE_ROOT:-$real/.cache/bench}/bench-mypi-$(git -C "$repo" rev-parse --short=12 HEAD)$(git -C "$repo" diff --quiet HEAD || echo -dirty)}
 if [ ! -f "$stage/.ready" ]; then
+  mkdir -p "$(dirname "$stage")"
   mkdir -p "$stage/.pi/agent/claude-home/rules" "$stage/.local/bin"
   ln -sfn "$real/.pi/agent/install" "$stage/.pi/agent/install"
   ln -sfn "$real/.pi/agent/bin" "$stage/.pi/agent/bin"

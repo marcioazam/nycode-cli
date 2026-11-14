@@ -448,6 +448,13 @@ def _git(wd: Path, *a: str) -> subprocess.CompletedProcess[str]:
         capture_output=True, text=True, check=False)  # fmt: skip
 
 
+def _save(d: Path | None, name: str, text: str) -> None:
+    """Keep agent/test output per run for audit (agent stdout carries no token)."""
+    if d is not None:
+        d.mkdir(parents=True, exist_ok=True)
+        (d / name).write_text(text)
+
+
 def run_case(
     case: dict[str, Any],
     suite: str,
@@ -457,6 +464,7 @@ def run_case(
     model: str,
     env: dict[str, str],
     budget_usd: float | None = None,
+    artifacts: Path | None = None,
 ) -> Run:
     cdir = Path(case["_dir"])
     wd = Path(tempfile.mkdtemp(prefix=f"bench-{case['id']}-"))
@@ -489,6 +497,8 @@ def run_case(
                 None,
             )
         wall = round(time.monotonic() - t0, 2)
+        stem = f"{suite}-{case['id']}-{rep}"
+        _save(artifacts, f"{stem}.agent.out", out)
         ev = parse_events(out, kind)
         common = base | {
             "cost_usd": ev["cost"],
@@ -506,11 +516,12 @@ def run_case(
             passed = clean and "?" in ev["final"] and all(t in low for t in terms)
         else:
             if (cdir / "hidden").is_dir():
-                shutil.copytree(cdir / "hidden", wd, dirs_exist_ok=True)
+                shutil.copytree(cdir / "hidden", wd / "hidden", dirs_exist_ok=True)
             try:
                 t = subprocess.run(
                     ["bash", "-c", case["test_cmd"]], cwd=wd, capture_output=True, text=True, timeout=600, check=False)  # fmt: skip
                 passed = t.returncode == 0
+                _save(artifacts, f"{stem}.test.out", t.stdout + t.stderr)
             except subprocess.TimeoutExpired:
                 err = err or "test timeout"
         return make_run(suite, case["id"], rep, passed, error=err, **common)

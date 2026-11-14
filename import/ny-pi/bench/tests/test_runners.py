@@ -314,3 +314,12 @@ def test_parse_events_variants() -> None:
     assert rn.parse_events("[1]\n3", "cc")["cost"] == 0.0
     assert rn.arm_cmd("cc", Path("a"), "m", "p", 0.5)[-1] == "p"
     assert rn.arm_cmd("pi", Path("a"), "m", "-p", 0.5)[-2:] == ["--", "-p"]
+
+
+def test_case_saves_agent_and_test_output(tmp_path: Path) -> None:
+    arm = script(tmp_path / "arm", CC_ARM)
+    case = make_case(tmp_path / "cases", "c1")
+    art = tmp_path / "art"
+    rn.run_case(case, "s4", 0, "cc", arm, "m", {}, None, art)
+    assert (art / "s4-c1-0.agent.out").read_text().strip()
+    assert (art / "s4-c1-0.test.out").exists()

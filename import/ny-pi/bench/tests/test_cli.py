@@ -157,7 +157,7 @@ def test_arm_info_and_overlay_sha(tmp_path: Path, monkeypatch: MP) -> None:
     stage = tmp_path / "bench-mypi-abc123-dirty"
     stage.mkdir()
     (stage / ".overlay-sha").write_text("deadbeef\n")
-    monkeypatch.setenv("TMPDIR", str(tmp_path))
+    monkeypatch.setenv("BENCH_STAGE_ROOT", str(tmp_path))
     assert rb.overlay_sha("abc123") == "deadbeef"
     assert rb.overlay_sha("zzz") is None
     monkeypatch.setenv("BENCH_STAGE", str(stage))
@@ -423,3 +423,10 @@ def test_suites_toml_tiers_are_consistent() -> None:
     )
     assert set(cfg["tier"]) == {"pr", "full", "vanilla"}
     assert os.access(BENCH / "tools/micro.sh", os.X_OK)
+
+
+def test_my_pi_stage_default_is_outside_tmp() -> None:
+    """The eval sandbox mounts a private tmpfs on /tmp: a stage there is invisible and is rebuilt per session."""
+    arm = (BENCH / "arms/my-pi").read_text()
+    assert "/tmp" not in next(ln for ln in arm.splitlines() if ln.startswith("stage="))
+    assert "BENCH_STAGE_ROOT" in arm

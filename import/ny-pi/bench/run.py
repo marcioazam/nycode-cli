@@ -169,12 +169,15 @@ def arm_meta(
     return meta
 
 
+def stage_root() -> Path:
+    """Where arms/my-pi builds its stage; never /tmp (the eval sandbox hides it behind a private tmpfs)."""
+    return Path(os.environ.get("BENCH_STAGE_ROOT", Path.home() / ".cache/bench"))
+
+
 def overlay_sha(short: str) -> str | None:
     stage = os.environ.get("BENCH_STAGE")
     cands = (
-        [Path(stage)]
-        if stage
-        else sorted(Path(os.environ.get("TMPDIR", "/tmp")).glob(f"bench-mypi-{short}*"))
+        [Path(stage)] if stage else sorted(stage_root().glob(f"bench-mypi-{short}*"))
     )
     for c in reversed(cands):
         f = c / ".overlay-sha"
@@ -280,6 +283,7 @@ def execute(
                         model,
                         {},
                         budget - spent - runners.run_cost(rs),
+                        out / "artifacts",
                     )
                     rs.append(r)
                     save([r])

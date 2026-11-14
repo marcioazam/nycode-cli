@@ -207,7 +207,8 @@ step "ruff check (changed)" each ruff check --isolated --no-cache -- "${PY[@]}"
 step "ruff format (changed)" each ruff format --isolated --check --no-cache -- "${PY[@]}"
 step "mypy --strict (changed)" mypy_changed
 step "biome (changed extensions ts)" each biome check --config-path="$CIDIR" --no-errors-on-unmatched -- "${TS[@]}"
-step "shellcheck (changed)" each shellcheck -- "${SH[@]}"
+# -x: follow `# shellcheck source=` directives, so a changed script that sources an unchanged one is still checked.
+step "shellcheck (changed)" each shellcheck -x -- "${SH[@]}"
 step "shfmt -d (changed)" each shfmt -i 2 -d -- "${SH[@]}"
 step "markdownlint (changed)" each markdownlint -- "${MD[@]}"
 step "structure (changed)" structure_changed

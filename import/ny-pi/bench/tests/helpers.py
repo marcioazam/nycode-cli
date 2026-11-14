@@ -51,7 +51,7 @@ def make_case(root: Path, cid: str, **kw: Any) -> dict[str, Any]:
     case = {
         "id": cid, "suite": "plan", "kind": "outcome", "prompt": "do it", "timeout_s": 3,
         "budget_usd": 1.0, "split": "dev", "security": False,
-        "test_cmd": "test -f hidden.txt && test -f out.txt", "ask_terms": ["file"],
+        "test_cmd": "test -f hidden/hidden.txt && test -f out.txt", "ask_terms": ["file"],
     } | kw  # fmt: skip
     (d / "case.json").write_text(json.dumps(case))
     return case | {"_dir": str(d)}
