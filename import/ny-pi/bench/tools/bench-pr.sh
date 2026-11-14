@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Local poster of the required `bench-pr` commit status (L1: no self-hosted runner).
 # usage: bench-pr.sh --poll | --pr N
-# Runs the my-pi PR tier in a throwaway worktree of the PR head, gates it against the main baseline and posts
+# Runs the ny-pi PR tier in a throwaway worktree of the PR head, gates it against the main baseline and posts
 # pending -> success|failure|error through `bench/run.py post-status`. Fail closed: anything unverifiable is `error`.
 set -euo pipefail
 
 # Public repo: no owner literal in the source; the env file names it (RUNBOOK).
-REPO=${BENCH_REPO:?set BENCH_REPO=owner/name (~/.config/pi-harness/bench.env)}
+REPO=${BENCH_REPO:?set BENCH_REPO=owner/name (~/.config/ny-pi/bench.env)}
 URL=${BENCH_REPO_URL:-https://github.com/$REPO.git}
 STATE=${BENCH_STATE:-$HOME/.local/state/bench}
 MODEL=${BENCH_MODEL:-claude-sonnet-5-5}
@@ -76,7 +76,7 @@ run_pr() {
 
   rm -rf "$out"
   mkdir -p "$out"
-  (cd "$wt" && python3 bench/run.py run --arm my-pi --tier pr --model "$MODEL" --budget-usd "$BUDGET" --out "$out") || rc=$?
+  (cd "$wt" && python3 bench/run.py run --arm ny-pi --tier pr --model "$MODEL" --budget-usd "$BUDGET" --out "$out") || rc=$?
   if [[ $rc -ne 0 && $rc -ne 5 ]]; then
     post error "run falhou (exit $rc)" || true
     cleanup

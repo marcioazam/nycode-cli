@@ -1,5 +1,5 @@
 # Default gitleaks rules plus the narrowest allowlist for known fakes.
-title = "pi-harness"
+title = "ny-pi"
 
 [extend]
 useDefault = true

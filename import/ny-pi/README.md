@@ -1,4 +1,7 @@
-# pi-harness
+# ny-pi
+
+Formerly `pi-harness` (renamed 2026-11-14). Runtime identifiers keep their names for compatibility: the
+`PI_HARNESS_*` variables, `pi_harness_*.py` modules, the Harbor bundle `/tmp/pi-harness-bundle.tgz` and `~/.config/pi-harness/identifiers`.
 
 A reusable harness for the [pi](https://github.com/earendil-works/pi) coding agent: wrapper (`bin/pi`), pi-code
 patches, extensions, hooks, `claude-home/` (agents, skills, commands, generic contract) and an installer.

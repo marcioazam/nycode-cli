@@ -1,6 +1,6 @@
 # Benchmark suites and tiers (plan D10/D14, record docs/bench/pi-harness-ci-2026-11-13.md).
 # est_cost_usd is a per-run Sonnet estimate used only by `bench run --dry-run` and the pre-run budget check.
-# Calibrated 2026-11-14 from the my-pi pilot means (s1 0.071, s2 0.186, s4 0.090, s5 0.095) + 25% headroom (s2 rounded up: skewed); s3 not piloted yet.
+# Calibrated 2026-11-14 from the ny-pi pilot means (s1 0.071, s2 0.186, s4 0.090, s5 0.095) + 25% headroom (s2 rounded up: skewed); s3 not piloted yet.
 # Held-out (D14): S1/S4 carry `split` in their own data; S2/S3 take the split from the `heldout` list in their tasks file (frozen, authority);
 # sha256(seed:task) in bench/run.py is only the fallback for a task file without one.
 

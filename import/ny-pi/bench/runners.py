@@ -222,7 +222,7 @@ def harbor_agent(
             {},
             "ANTHROPIC_OAUTH_TOKEN",
         )
-    # my-pi: custom agent shipped in claude-home/bin/evals/harbor (bundle.sh builds the bundle first)
+    # ny-pi: custom agent shipped in claude-home/bin/evals/harbor (bundle.sh builds the bundle first)
     return (
         ["-a", "pi_harness_agent:PiHarnessAgent", "-m", m],
         {"PYTHONPATH": str(harbor_dir)},

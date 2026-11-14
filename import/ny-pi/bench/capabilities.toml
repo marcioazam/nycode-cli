@@ -1,102 +1,102 @@
 # S6: capability matrix, feature x arm. value = what the arm offers; url/doc = official source.
 # CC urls: code.claude.com. pi docs: local ~/.pi/agent/install/releases/1.5.2/node_modules/@earendil-works/pi-coding-agent/docs/<doc>,
 # upstream https://github.com/earendil-works/pi. `flag` = offline probe: `<arm> --help` must list it (`bench probe`).
-# my-pi probes run against the pi-vanilla binary (same pi 1.5.2 core; avoids building the stage for --help).
+# ny-pi probes run against the pi-vanilla binary (same pi 1.5.2 core; avoids building the stage for --help).
 # Values are from the docs/help of CC 2.1.323 and pi 1.5.2 and were not run as paid probes: treat "partial" and
-# harness rows of my-pi as the owner's description until a task exercises them (S4/S5 do for plan_mode, subagents).
+# harness rows of ny-pi as the owner's description until a task exercises them (S4/S5 do for plan_mode, subagents).
 
 [headless_json]
 desc = "Headless run with machine-readable output"
 cc-vanilla = { value = "yes: -p --output-format json|stream-json", url = "https://code.claude.com/docs/en/headless", flag = "--output-format" }
 pi-vanilla = { value = "yes: -p --mode json", url = "https://github.com/earendil-works/pi", doc = "pi-docs/json.md", flag = "--mode" }
-my-pi = { value = "yes: same as pi + claude_pi.py CC-compatible adapter in evals", url = "https://github.com/earendil-works/pi", doc = "pi-docs/json.md", flag = "--mode" }
+ny-pi = { value = "yes: same as pi + claude_pi.py CC-compatible adapter in evals", url = "https://github.com/earendil-works/pi", doc = "pi-docs/json.md", flag = "--mode" }
 
 [budget_cap]
 desc = "Hard spend cap per run"
 cc-vanilla = { value = "yes: --max-budget-usd", url = "https://code.claude.com/docs/en/cli-reference", flag = "--max-budget-usd" }
 pi-vanilla = { value = "no flag; only a harness-side cap", url = "https://github.com/earendil-works/pi", doc = "pi-docs/usage.md" }
-my-pi = { value = "partial: cap enforced by the eval adapter, not by pi", url = "https://github.com/earendil-works/pi", doc = "pi-docs/usage.md" }
+ny-pi = { value = "partial: cap enforced by the eval adapter, not by pi", url = "https://github.com/earendil-works/pi", doc = "pi-docs/usage.md" }
 
 [hooks]
 desc = "Lifecycle hooks (pre/post tool use, session events)"
 cc-vanilla = { value = "yes: settings hooks", url = "https://code.claude.com/docs/en/hooks" }
 pi-vanilla = { value = "partial: extension events, no settings hooks", url = "https://github.com/earendil-works/pi", doc = "pi-docs/extensions.md" }
-my-pi = { value = "yes: claude-home/hooks (guard.py etc.) through the harness", url = "https://github.com/earendil-works/pi", doc = "pi-docs/extensions.md" }
+ny-pi = { value = "yes: claude-home/hooks (guard.py etc.) through the harness", url = "https://github.com/earendil-works/pi", doc = "pi-docs/extensions.md" }
 
 [skills]
 desc = "Skills (SKILL.md) loaded on demand"
 cc-vanilla = { value = "yes", url = "https://code.claude.com/docs/en/skills" }
 pi-vanilla = { value = "yes: --skill", url = "https://github.com/earendil-works/pi", doc = "pi-docs/skills.md", flag = "--skill" }
-my-pi = { value = "yes: claude-home/skills", url = "https://github.com/earendil-works/pi", doc = "pi-docs/skills.md", flag = "--skill" }
+ny-pi = { value = "yes: claude-home/skills", url = "https://github.com/earendil-works/pi", doc = "pi-docs/skills.md", flag = "--skill" }
 
 [mcp]
 desc = "MCP servers"
 cc-vanilla = { value = "yes: --mcp-config", url = "https://code.claude.com/docs/en/mcp", flag = "--mcp-config" }
 pi-vanilla = { value = "yes: --mcp-config", url = "https://github.com/earendil-works/pi", doc = "pi-docs/mcp.md", flag = "--mcp-config" }
-my-pi = { value = "yes: mcp.json + deferred tool_search", url = "https://github.com/earendil-works/pi", doc = "pi-docs/mcp.md", flag = "--mcp-config" }
+ny-pi = { value = "yes: mcp.json + deferred tool_search", url = "https://github.com/earendil-works/pi", doc = "pi-docs/mcp.md", flag = "--mcp-config" }
 
 [subagents]
 desc = "Delegating to isolated subagents"
 cc-vanilla = { value = "yes: Task/Agent tool, --agents", url = "https://code.claude.com/docs/en/sub-agents", flag = "--agents" }
 pi-vanilla = { value = "no (no built-in subagent tool)", url = "https://github.com/earendil-works/pi", doc = "pi-docs/how-pi-works.md" }
-my-pi = { value = "yes: subagent tool, depth 3, parallel/chain", url = "https://github.com/earendil-works/pi", doc = "pi-docs/extensions.md" }
+ny-pi = { value = "yes: subagent tool, depth 3, parallel/chain", url = "https://github.com/earendil-works/pi", doc = "pi-docs/extensions.md" }
 
 [teams]
 desc = "Parallel multi-agent teams"
 cc-vanilla = { value = "experimental: agent teams", url = "https://code.claude.com/docs/en/agent-teams" }
 pi-vanilla = { value = "no", url = "https://github.com/earendil-works/pi", doc = "pi-docs/how-pi-works.md" }
-my-pi = { value = "partial: parallel subagent lanes (swarm-orchestration)", url = "https://github.com/earendil-works/pi", doc = "pi-docs/extensions.md" }
+ny-pi = { value = "partial: parallel subagent lanes (swarm-orchestration)", url = "https://github.com/earendil-works/pi", doc = "pi-docs/extensions.md" }
 
 [plan_mode]
 desc = "Plan mode before editing"
 cc-vanilla = { value = "yes: --permission-mode plan", url = "https://code.claude.com/docs/en/permission-modes", flag = "--permission-mode" }
 pi-vanilla = { value = "no (prompt-only)", url = "https://github.com/earendil-works/pi", doc = "pi-docs/slash-commands.md" }
-my-pi = { value = "yes: /plan + plan-gate extension", url = "https://github.com/earendil-works/pi", doc = "pi-docs/extensions.md" }
+ny-pi = { value = "yes: /plan + plan-gate extension", url = "https://github.com/earendil-works/pi", doc = "pi-docs/extensions.md" }
 
 [sessions_resume]
 desc = "Session persistence and resume"
 cc-vanilla = { value = "yes: --continue/--resume", url = "https://code.claude.com/docs/en/cli-reference", flag = "--resume" }
 pi-vanilla = { value = "yes: --continue/--resume/--fork", url = "https://github.com/earendil-works/pi", doc = "pi-docs/sessions.md", flag = "--resume" }
-my-pi = { value = "yes", url = "https://github.com/earendil-works/pi", doc = "pi-docs/sessions.md", flag = "--resume" }
+ny-pi = { value = "yes", url = "https://github.com/earendil-works/pi", doc = "pi-docs/sessions.md", flag = "--resume" }
 
 [compaction]
 desc = "Context compaction"
 cc-vanilla = { value = "yes: auto + /compact", url = "https://code.claude.com/docs/en/how-claude-code-works" }
 pi-vanilla = { value = "yes", url = "https://github.com/earendil-works/pi", doc = "pi-docs/compaction.md" }
-my-pi = { value = "yes: + compact-at-400k extension", url = "https://github.com/earendil-works/pi", doc = "pi-docs/compaction.md" }
+ny-pi = { value = "yes: + compact-at-400k extension", url = "https://github.com/earendil-works/pi", doc = "pi-docs/compaction.md" }
 
 [permission_modes]
 desc = "Permission / approval modes"
 cc-vanilla = { value = "yes: default, acceptEdits, plan, auto, bypass", url = "https://code.claude.com/docs/en/permission-modes", flag = "--permission-mode" }
 pi-vanilla = { value = "partial: --approve/--no-approve", url = "https://github.com/earendil-works/pi", doc = "pi-docs/security.md", flag = "--approve" }
-my-pi = { value = "yes: bypass-permissions extension + guard hook", url = "https://github.com/earendil-works/pi", doc = "pi-docs/security.md", flag = "--approve" }
+ny-pi = { value = "yes: bypass-permissions extension + guard hook", url = "https://github.com/earendil-works/pi", doc = "pi-docs/security.md", flag = "--approve" }
 
 [rewind]
 desc = "Rewind / checkpoints"
 cc-vanilla = { value = "yes: /rewind checkpoints", url = "https://code.claude.com/docs/en/checkpointing" }
 pi-vanilla = { value = "partial: session tree and --fork", url = "https://github.com/earendil-works/pi", doc = "pi-docs/sessions.md", flag = "--fork" }
-my-pi = { value = "partial: session tree and --fork + checkpoints dir", url = "https://github.com/earendil-works/pi", doc = "pi-docs/sessions.md", flag = "--fork" }
+ny-pi = { value = "partial: session tree and --fork + checkpoints dir", url = "https://github.com/earendil-works/pi", doc = "pi-docs/sessions.md", flag = "--fork" }
 
 [output_styles]
 desc = "Output styles"
 cc-vanilla = { value = "yes", url = "https://code.claude.com/docs/en/output-styles" }
 pi-vanilla = { value = "no (themes are visual only)", url = "https://github.com/earendil-works/pi", doc = "pi-docs/themes.md" }
-my-pi = { value = "no", url = "https://github.com/earendil-works/pi", doc = "pi-docs/themes.md" }
+ny-pi = { value = "no", url = "https://github.com/earendil-works/pi", doc = "pi-docs/themes.md" }
 
 [extensions]
 desc = "Extensions / plugins"
 cc-vanilla = { value = "yes: plugins, --plugin-dir", url = "https://code.claude.com/docs/en/plugins", flag = "--plugin-dir" }
 pi-vanilla = { value = "yes: --extension, packages", url = "https://github.com/earendil-works/pi", doc = "pi-docs/extensions.md", flag = "--extension" }
-my-pi = { value = "yes: extensions/ of this repo", url = "https://github.com/earendil-works/pi", doc = "pi-docs/extensions.md", flag = "--extension" }
+ny-pi = { value = "yes: extensions/ of this repo", url = "https://github.com/earendil-works/pi", doc = "pi-docs/extensions.md", flag = "--extension" }
 
 [lsp]
 desc = "Language-server diagnostics tools"
 cc-vanilla = { value = "yes: via plugins", url = "https://code.claude.com/docs/en/plugins-reference" }
 pi-vanilla = { value = "no", url = "https://github.com/earendil-works/pi", doc = "pi-docs/extensions.md" }
-my-pi = { value = "yes: vendor pi-lsp (lsp_* tools)", url = "https://github.com/earendil-works/pi", doc = "pi-docs/extensions.md" }
+ny-pi = { value = "yes: vendor pi-lsp (lsp_* tools)", url = "https://github.com/earendil-works/pi", doc = "pi-docs/extensions.md" }
 
 [codemode]
 desc = "Code-mode tool orchestration"
 cc-vanilla = { value = "no", url = "https://code.claude.com/docs/en/overview" }
 pi-vanilla = { value = "yes", url = "https://github.com/earendil-works/pi", doc = "pi-docs/codemode.md" }
-my-pi = { value = "yes", url = "https://github.com/earendil-works/pi", doc = "pi-docs/codemode.md" }
+ny-pi = { value = "yes", url = "https://github.com/earendil-works/pi", doc = "pi-docs/codemode.md" }

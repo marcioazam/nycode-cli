@@ -52,7 +52,7 @@ esac
 STUB
 chmod +x "$T/bin/gh" "$T/bin/python3"
 
-export STUB_DIR=$T PATH="$T/bin:$PATH" BENCH_REPO=repo-owner/pi-harness BENCH_REPO_URL="$T/origin.git" BENCH_STATE="$T/state" BENCH_CC_CREDENTIALS=/dev/null
+export STUB_DIR=$T PATH="$T/bin:$PATH" BENCH_REPO=repo-owner/ny-pi BENCH_REPO_URL="$T/origin.git" BENCH_STATE="$T/state" BENCH_CC_CREDENTIALS=/dev/null
 unset BENCH_BASELINE_MAIN
 
 prs() { # extra jq-ish entries appended to a single eligible PR
@@ -72,7 +72,7 @@ reset
 prs
 bash "$here/bench-pr.sh" --poll >/dev/null 2>&1
 check "elegibilidade: só o PR do dono, mesmo repo" test "$(runs)" = 1
-check "run no worktree do head, braço my-pi tier pr" grep -q "/wt/$SHA :: bench/run.py run --arm my-pi --tier pr --model claude-sonnet-5-5 --budget-usd 12 --out $T/state/runs/$SHA" "$T/calls"
+check "run no worktree do head, braço ny-pi tier pr" grep -q "/wt/$SHA :: bench/run.py run --arm ny-pi --tier pr --model claude-sonnet-5-5 --budget-usd 12 --out $T/state/runs/$SHA" "$T/calls"
 check "gate contra baseline da main" grep -q "gate --base $T/state/base-main/docs/bench/baseline-main --cand $T/state/runs/$SHA" "$T/calls"
 check "pending depois success" bash -c "sed -n 1p '$T/posts' | grep -q '^pending|' && sed -n 2p '$T/posts' | grep -q '^success|PASS'"
 check "worktree removido" test -z "$(ls -A "$T/state/wt")"

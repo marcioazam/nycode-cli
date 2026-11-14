@@ -164,27 +164,27 @@ def arm_meta(
         "arm": arm, "arm_version": ver, "model": model, "git_sha": sha,
         "started": datetime.now(UTC).isoformat(timespec="seconds"), "budget_usd": budget,
     }  # fmt: skip
-    if arm == "my-pi":
+    if arm == "ny-pi":
         meta["overlay_sha"] = overlay_sha(sha[:12])
     return meta
 
 
 def stage_root() -> Path:
-    """Where arms/my-pi builds its stage; never /tmp (the eval sandbox hides it behind a private tmpfs)."""
+    """Where arms/ny-pi builds its stage; never /tmp (the eval sandbox hides it behind a private tmpfs)."""
     return Path(os.environ.get("BENCH_STAGE_ROOT", Path.home() / ".cache/bench"))
 
 
-def mypi_stage(short: str) -> Path | None:
-    """The my-pi stage built from this checkout (arms/my-pi), identified by its .overlay-sha."""
+def nypi_stage(short: str) -> Path | None:
+    """The ny-pi stage built from this checkout (arms/ny-pi), identified by its .overlay-sha."""
     stage = os.environ.get("BENCH_STAGE")
     cands = (
-        [Path(stage)] if stage else sorted(stage_root().glob(f"bench-mypi-{short}*"))
+        [Path(stage)] if stage else sorted(stage_root().glob(f"bench-nypi-{short}*"))
     )
     return next((c for c in reversed(cands) if (c / ".overlay-sha").exists()), None)
 
 
 def overlay_sha(short: str) -> str | None:
-    stage = mypi_stage(short)
+    stage = nypi_stage(short)
     return (stage / ".overlay-sha").read_text().strip() if stage else None
 
 
@@ -194,15 +194,15 @@ def _harbor_step(
     cfg = s["cfg"]
     agent_args, extra, tok_name = runners.harbor_agent(arm, model, HARBOR_DIR)
     env = {tok_name: oauth_token(), **extra}
-    if arm == "my-pi":
+    if arm == "ny-pi":
         # Bundle the stage of THIS checkout, never the live ~/.pi (2026-11-14: Harbor measured the local harness).
         short = subprocess.run(
             ["git", "-C", str(REPO), "rev-parse", "--short=12", "HEAD"],
             capture_output=True, text=True, check=True,
         ).stdout.strip()  # fmt: skip
-        stage = mypi_stage(short)
+        stage = nypi_stage(short)
         if stage is None:
-            raise RuntimeError(f"my-pi stage for {short} not built; run the arm first")
+            raise RuntimeError(f"ny-pi stage for {short} not built; run the arm first")
         subprocess.run(
             ["bash", str(HARBOR_DIR / "bundle.sh")],
             check=True, capture_output=True, env={**os.environ, "HOME": str(stage)},
@@ -504,7 +504,7 @@ def post_status(
 def probe(
     arms: dict[str, Any], caps: dict[str, Any], env: dict[str, str] | None = None
 ) -> str:
-    """S6: offline flag probes via `--help`; my-pi uses the pi-vanilla binary (same pi core)."""
+    """S6: offline flag probes via `--help`; ny-pi uses the pi-vanilla binary (same pi core)."""
     helps: dict[str, str | None] = {}
     for arm in ("cc-vanilla", "pi-vanilla"):
         try:
@@ -514,11 +514,11 @@ def probe(
             helps[arm] = p.stdout + p.stderr if p.returncode == 0 else None
         except (OSError, subprocess.TimeoutExpired):
             helps[arm] = None
-    helps["my-pi"] = helps["pi-vanilla"]
-    lines = ["| recurso | cc-vanilla | pi-vanilla | my-pi |", "|---|---|---|---|"]
+    helps["ny-pi"] = helps["pi-vanilla"]
+    lines = ["| recurso | cc-vanilla | pi-vanilla | ny-pi |", "|---|---|---|---|"]
     for name, row in caps.items():
         cells = []
-        for arm in ("cc-vanilla", "pi-vanilla", "my-pi"):
+        for arm in ("cc-vanilla", "pi-vanilla", "ny-pi"):
             e = row[arm]
             mark = ""
             if e.get("flag"):

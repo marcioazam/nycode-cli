@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Arm my-pi: the harness of THIS checkout (PR head or main) in a throwaway HOME, so a run never reads or
+# Arm ny-pi: the harness of THIS checkout (PR head or main) in a throwaway HOME, so a run never reads or
 # patches the live ~/.pi. Stage = install.sh --link --apply from this tree + the owner's overlay
 # (settings.json, local.env, rules/personal.md) + a pristine pi-code npm tree (bin/pi patches it in place).
 # The pi release is symlinked read-only in practice (its core patch is already applied upstream of the stage).
@@ -9,7 +9,7 @@ repo=$(cd "$here/../.." && pwd)
 # shellcheck source=bench/arms/oauth-token.sh
 . "$here/oauth-token.sh"
 real=${BENCH_REAL_HOME:-$HOME}
-stage=${BENCH_STAGE:-${BENCH_STAGE_ROOT:-$real/.cache/bench}/bench-mypi-$(git -C "$repo" rev-parse --short=12 HEAD)$(git -C "$repo" diff --quiet HEAD || echo -dirty)}
+stage=${BENCH_STAGE:-${BENCH_STAGE_ROOT:-$real/.cache/bench}/bench-nypi-$(git -C "$repo" rev-parse --short=12 HEAD)$(git -C "$repo" diff --quiet HEAD || echo -dirty)}
 if [ ! -f "$stage/.ready" ]; then
   mkdir -p "$(dirname "$stage")"
   mkdir -p "$stage/.pi/agent/claude-home/rules" "$stage/.local/bin"

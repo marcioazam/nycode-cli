@@ -1,5 +1,5 @@
-pi-harness
-Copyright (c) 2026 pi-harness contributors, MIT (see LICENSE).
+ny-pi
+Copyright (c) 2026 ny-pi contributors, MIT (see LICENSE).
 
 This repository does not redistribute third-party code, except the unified-diff patches in
 patches/third-party/, which modify the components below and are licensed under each component's

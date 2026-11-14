@@ -202,7 +202,7 @@ def test_harbor_cmd_and_agents(monkeypatch: MP) -> None:
         and cc[1]["CLAUDE_FORCE_OAUTH"]
     )
     assert "version=1.5.2" in rn.harbor_agent("pi-vanilla", "m", Path("/hd"))[0]
-    mp = rn.harbor_agent("my-pi", "m", Path("/hd"))
+    mp = rn.harbor_agent("ny-pi", "m", Path("/hd"))
     assert "pi_harness_agent:PiHarnessAgent" in mp[0] and mp[1] == {"PYTHONPATH": "/hd"}
     monkeypatch.delenv("BENCH_HARBOR")
     monkeypatch.setattr(shutil, "which", lambda _: None)

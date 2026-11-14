@@ -18,7 +18,7 @@ from statistics import NormalDist
 from typing import Any, Literal, TypedDict
 
 ND = NormalDist()
-# Non-inferiority margin: −6 pp (was −5 pp, D6). Measured my-pi×my-pi noise (42 tasks, sd 0.305 of the paired
+# Non-inferiority margin: −6 pp (was −5 pp, D6). Measured ny-pi×ny-pi noise (42 tasks, sd 0.305 of the paired
 # difference) puts ±5 pp at ~US$ 15–17 per PR; the US$ 12 cap reaches ~±6 pp with k2 + one extension.
 # Record: docs/bench/pi-harness-ci-2026-11-13.md (A5, 2026-11-14).
 MARGIN = -0.06

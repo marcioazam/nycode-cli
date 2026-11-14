@@ -28,7 +28,7 @@ def cfg_with(case_dir: Path) -> dict[str, Any]:
 
 
 def test_dry_run_all_arms_and_tiers(capsys: CF) -> None:
-    for arm in ("cc-vanilla", "pi-vanilla", "my-pi"):
+    for arm in ("cc-vanilla", "pi-vanilla", "ny-pi"):
         for tier in ("pr", "vanilla", "full"):
             assert rb.main(RA(arm, "--dry-run", tier=tier, budget="12")) == 0
     out = capsys.readouterr().out
@@ -44,7 +44,7 @@ def test_dry_run_counts_cases_and_suite_filter(tmp_path: Path) -> None:
     steps = rb.build_plan("pr", cfg_with(tmp_path), ["s4", "s1"], k=2)
     assert {s["suite"]: s["units"] for s in steps} == {"s1": 16, "s4": 2}
     assert all(s["k"] == 2 for s in steps)
-    assert "units=  2" in rb.render_plan("my-pi", "pr", "m", 12.0, steps)
+    assert "units=  2" in rb.render_plan("ny-pi", "pr", "m", 12.0, steps)
 
 
 def test_harbor_plan_uses_task_file(tmp_path: Path, monkeypatch: MP) -> None:
@@ -129,7 +129,7 @@ echo '{{"task_name":"tb","verifier_result":{{"rewards":{{"reward":1.0}}}},"agent
     assert suites == {"s1", "s2"}
 
 
-def test_my_pi_harbor_bundles_the_checkout_stage(
+def test_ny_pi_harbor_bundles_the_checkout_stage(
     tmp_path: Path, monkeypatch: MP
 ) -> None:
     """Harbor must ship the stage of this checkout, never the live ~/.pi (bug found 2026-11-14)."""
@@ -145,23 +145,23 @@ def test_my_pi_harbor_bundles_the_checkout_stage(
     monkeypatch.setattr(rb, "HARBOR_DIR", hd)
     monkeypatch.setattr(rb, "oauth_token", lambda: "tok")
     steps = rb.build_plan("pr", rb.load_toml(BENCH / "suites.toml"), ["s2"], k=1)
-    rb._harbor_step(steps[0], "my-pi", "m", tmp_path / "o", 5.0)
+    rb._harbor_step(steps[0], "ny-pi", "m", tmp_path / "o", 5.0)
     assert (tmp_path / "bundled_home").read_text().strip() == str(stage)
 
 
-def test_my_pi_harbor_refuses_without_stage(tmp_path: Path, monkeypatch: MP) -> None:
+def test_ny_pi_harbor_refuses_without_stage(tmp_path: Path, monkeypatch: MP) -> None:
     monkeypatch.delenv("BENCH_STAGE", raising=False)
     monkeypatch.setenv("BENCH_STAGE_ROOT", str(tmp_path / "none"))
     monkeypatch.setattr(rb, "oauth_token", lambda: "tok")
     steps = rb.build_plan("pr", rb.load_toml(BENCH / "suites.toml"), ["s2"], k=1)
     with pytest.raises(RuntimeError, match="stage"):
-        rb._harbor_step(steps[0], "my-pi", "m", tmp_path / "o", 5.0)
+        rb._harbor_step(steps[0], "ny-pi", "m", tmp_path / "o", 5.0)
 
 
 def test_main_run_requires_credentials(monkeypatch: MP) -> None:
     monkeypatch.delenv("BENCH_CC_CREDENTIALS", raising=False)
     with pytest.raises(SystemExit) as e:
-        rb.main(RA("my-pi"))
+        rb.main(RA("ny-pi"))
     assert e.value.code == 2
     with pytest.raises(SystemExit):
         rb.main(RA("nope"))
@@ -183,7 +183,7 @@ def test_main_run_refuses_expiring_token_before_any_run(
     monkeypatch.setenv("BENCH_CC_CREDENTIALS", creds(tmp_path, 10))
     monkeypatch.setattr(rb, "execute", lambda *a: pytest.fail("ran with a dying token"))
     with pytest.raises(SystemExit) as e:
-        rb.main(RA("my-pi", "--out", str(tmp_path / "o")))
+        rb.main(RA("ny-pi", "--out", str(tmp_path / "o")))
     assert e.value.code == 2
 
 
@@ -204,19 +204,19 @@ def test_main_real_run_dispatches_execute(tmp_path: Path, monkeypatch: MP) -> No
     monkeypatch.setenv("BENCH_CC_CREDENTIALS", creds(tmp_path, 120))
     seen: dict[str, Any] = {}
     monkeypatch.setattr(rb, "execute", lambda *a: seen.update(a=a) or 0)
-    assert rb.main(RA("my-pi", "--out", str(tmp_path))) == 0
-    assert seen["a"][0] == "my-pi" and seen["a"][6] == tmp_path
-    rb.main(RA("my-pi"))
-    assert str(seen["a"][6]).startswith("/tmp/bench-my-pi-pr-")
+    assert rb.main(RA("ny-pi", "--out", str(tmp_path))) == 0
+    assert seen["a"][0] == "ny-pi" and seen["a"][6] == tmp_path
+    rb.main(RA("ny-pi"))
+    assert str(seen["a"][6]).startswith("/tmp/bench-ny-pi-pr-")
 
 
 def test_arm_info_and_overlay_sha(tmp_path: Path, monkeypatch: MP) -> None:
     arms = rb.load_toml(BENCH / "arms.toml")
     assert (
         rb.arm_info("cc-vanilla", arms)[0] == "cc"
-        and rb.arm_info("my-pi", arms)[0] == "pi"
+        and rb.arm_info("ny-pi", arms)[0] == "pi"
     )
-    stage = tmp_path / "bench-mypi-abc123-dirty"
+    stage = tmp_path / "bench-nypi-abc123-dirty"
     stage.mkdir()
     (stage / ".overlay-sha").write_text("deadbeef\n")
     monkeypatch.setenv("BENCH_STAGE_ROOT", str(tmp_path))
@@ -225,7 +225,7 @@ def test_arm_info_and_overlay_sha(tmp_path: Path, monkeypatch: MP) -> None:
     monkeypatch.setenv("BENCH_STAGE", str(stage))
     assert rb.overlay_sha("zzz") == "deadbeef"
     sha = rb.arm_meta(
-        "my-pi", {"my-pi": {"version": "v"}}, "pi", Path("/nonexistent/bin"), "m", 1.0
+        "ny-pi", {"ny-pi": {"version": "v"}}, "pi", Path("/nonexistent/bin"), "m", 1.0
     )
     assert (
         sha["arm_version"] == "v"
@@ -246,7 +246,7 @@ def write_round(d: Path, runs: list[dict[str, Any]], **meta: Any) -> Path:
     d.mkdir(parents=True, exist_ok=True)
     (d / "runs.jsonl").write_text("".join(json.dumps(r) + "\n" for r in runs))
     m = {
-        "arm": "my-pi",
+        "arm": "ny-pi",
         "model": "m",
         "arm_version": "v",
         "overlay_sha": "o",
@@ -397,7 +397,7 @@ def test_post_status_owner_only() -> None:
             calls.append(args)
             if args[:2] == ["repo", "view"]:
                 return json.dumps(
-                    {"nameWithOwner": "me/pi-harness", "owner": {"login": "me"}}
+                    {"nameWithOwner": "me/ny-pi", "owner": {"login": "me"}}
                 )
             if args[:2] == ["pr", "view"]:
                 return json.dumps({"author": {"login": owner}, "headRefOid": "a" * 40})
@@ -407,10 +407,7 @@ def test_post_status_owner_only() -> None:
 
     assert rb.post_status(7, "success", "ok " * 100, gh("me")) == 0
     api = calls[-1]
-    assert (
-        api[1] == f"repos/me/pi-harness/statuses/{'a' * 40}"
-        and "context=bench-pr" in api
-    )
+    assert api[1] == f"repos/me/ny-pi/statuses/{'a' * 40}" and "context=bench-pr" in api
     assert (
         len(next(a for a in api if a.startswith("description=")))
         == len("description=") + 140
@@ -429,14 +426,14 @@ def test_report_tables(tmp_path: Path, capsys: CF) -> None:
     b = write_round(
         tmp_path / "r2",
         tasks(4, fail={0}) + [mk("e", 0, False, error="boom", suite="s4")],
-        arm="my-pi",
+        arm="ny-pi",
         not_verified=True,
     )
     out = tmp_path / "rep.md"
     assert rb.main(["report", "--runs", str(tmp_path / "r*"), "--out", str(out)]) == 0
     text = out.read_text()
     assert (
-        "## s1" in text and "## s4" in text and "cc-vanilla" in text and "my-pi" in text
+        "## s1" in text and "## s4" in text and "cc-vanilla" in text and "ny-pi" in text
     )
     assert "| 1/1 |" in text  # security cell
     x = rp.suite_row([mk("t", 0, True)])
@@ -468,7 +465,7 @@ def test_capabilities_schema_and_docs_urls() -> None:
     caps = rb.load_toml(BENCH / "capabilities.toml")
     assert len(caps) >= 16
     for name, row in caps.items():
-        for arm in ("cc-vanilla", "pi-vanilla", "my-pi"):
+        for arm in ("cc-vanilla", "pi-vanilla", "ny-pi"):
             assert row[arm]["value"] and row[arm]["url"].startswith("https://"), (
                 name,
                 arm,
@@ -487,8 +484,8 @@ def test_suites_toml_tiers_are_consistent() -> None:
     assert os.access(BENCH / "tools/micro.sh", os.X_OK)
 
 
-def test_my_pi_stage_default_is_outside_tmp() -> None:
+def test_ny_pi_stage_default_is_outside_tmp() -> None:
     """The eval sandbox mounts a private tmpfs on /tmp: a stage there is invisible and is rebuilt per session."""
-    arm = (BENCH / "arms/my-pi").read_text()
+    arm = (BENCH / "arms/ny-pi").read_text()
     assert "/tmp" not in next(ln for ln in arm.splitlines() if ln.startswith("stage="))
     assert "BENCH_STAGE_ROOT" in arm

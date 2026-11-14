@@ -1,6 +1,11 @@
 # Runbook do benchmark (bench-pr, nightly, re-teste vanilla)
 
-O gate de benchmark não usa runner self-hosted (L1). Um poster local, na máquina do dono, roda o my-pi no head de cada
+O que se mede: o benchmark e a eval **deste repositório, o ny-pi** (antes chamado `pi-harness`). O braço `ny-pi`
+monta o harness a partir do checkout avaliado (head da PR ou main) num HOME descartável. Só a camada pessoal, não
+rastreada e listada em `bench/arms/overlay.list`, vem da máquina do dono. O `~/.pi` local nunca é medido. Os
+braços `pi-vanilla` e `cc-vanilla` (Claude Code) são as referências fixas.
+
+O gate de benchmark não usa runner self-hosted (L1). Um poster local, na máquina do dono, roda o ny-pi no head de cada
 PR e publica o commit status obrigatório `bench-pr`. Regra do gate: D6 em
 o registro local do plano `pi-harness-ci-2026-11-13` (fora deste repositório).
 
@@ -10,7 +15,7 @@ Os units ficam em `bench/tools/systemd/` e só valem depois de instalados por vo
 
 ```bash
 install -m 755 bench/tools/bench-pr.sh bench/tools/bench-nightly.sh bench/tools/vanilla-retest.sh ~/.local/bin/
-mkdir -p ~/.config/systemd/user ~/.config/pi-harness
+mkdir -p ~/.config/systemd/user ~/.config/ny-pi
 cp bench/tools/systemd/bench-pr.{service,timer} bench/tools/systemd/bench-nightly.{service,timer} ~/.config/systemd/user/
 systemctl --user daemon-reload
 systemctl --user enable --now bench-pr.timer bench-nightly.timer
@@ -21,13 +26,13 @@ Pré-requisitos no PATH: `gh` autenticado como o dono do repositório, `git`, `j
 
 ## Env file
 
-`~/.config/pi-harness/bench.env` (modo 0600, nunca versionado, formato `CHAVE=valor`):
+`~/.config/ny-pi/bench.env` (modo 0600, nunca versionado, formato `CHAVE=valor`):
 
 | Chave | Obrigatória | Significado |
 | --- | --- | --- |
 | `BENCH_REPO` | sim | `dono/nome` do repositório no GitHub (nunca fica no código: o repo é público) |
 | `BENCH_CC_CREDENTIALS` | sim | caminho do arquivo de credenciais da conta Claude (o token é lido em tempo de execução e nunca é logado) |
-| `BENCH_BASELINE_MAIN` | não | diretório do baseline do my-pi na main; sem ele o poster extrai `docs/bench/baseline-main/` da `origin/main` |
+| `BENCH_BASELINE_MAIN` | não | diretório do baseline do ny-pi na main; sem ele o poster extrai `docs/bench/baseline-main/` da `origin/main` |
 | `BENCH_STATE` | não | estado e clone (default `~/.local/state/bench`) |
 | `BENCH_NIGHTLY_BUDGET` | não | teto em US$ do nightly (default 30) |
 | `BENCH_MODEL` | não | modelo fixo da rodada (default `claude-sonnet-5-5`) |
@@ -37,7 +42,7 @@ Pré-requisitos no PATH: `gh` autenticado como o dono do repositório, `git`, `j
 1. A cada 10 min `bench-pr.timer` chama `bench-pr.sh --poll`. Só entram PRs abertos do mesmo repositório e do dono;
    forks e outros autores são ignorados, assim como heads que já têm `bench-pr` final (`success` ou `failure`).
 2. Para cada PR elegível: status `pending`; worktree descartável do head em `$BENCH_STATE/wt/<sha>` (clone próprio em
-   `$BENCH_STATE/repo`); `bench run --arm my-pi --tier pr --budget-usd 12` dentro dela; `bench gate` contra o baseline
+   `$BENCH_STATE/repo`); `bench run --arm ny-pi --tier pr --budget-usd 12` dentro dela; `bench gate` contra o baseline
    main; status final; worktree removida. O resumo completo fica em `$BENCH_STATE/runs/<sha>/summary.md`.
 3. Um lock (`$BENCH_STATE/lock`) impede duas execuções simultâneas (PR, nightly e vanilla).
 4. Rodar um PR à mão: `bench-pr.sh --pr N` (ignora o status final e reroda).
@@ -68,7 +73,7 @@ Faça isso só depois do primeiro `bench-pr` verde e do baseline main commitado;
 
 ## Nightly
 
-`bench-nightly.timer` roda às 03:30 `bench-nightly.sh`: tier full do my-pi na `origin/main` atual, teto
+`bench-nightly.timer` roda às 03:30 `bench-nightly.sh`: tier full do ny-pi na `origin/main` atual, teto
 `BENCH_NIGHTLY_BUDGET`, saída em `$BENCH_STATE/nightly/<data>`. Ele não atualiza o baseline: ao terminar com sucesso
 imprime os comandos para preparar o PR de atualização de `docs/bench/baseline-main/` (veja `journalctl --user -u
 bench-nightly`). Revise o veredito antes de abrir esse PR.
@@ -89,7 +94,7 @@ existente nunca é sobrescrito (outra data ou sufixo de hora). Quando um PR toca
 ## NOT_COMPARABLE
 
 O overlay, o modelo ou a versão do braço mudou entre o baseline e o PR. Rode o baseline main de novo com o novo
-contexto: `bench-nightly.sh` (ou `bench run --arm my-pi --tier full` na main), proponha o novo
+contexto: `bench-nightly.sh` (ou `bench run --arm ny-pi --tier full` na main), proponha o novo
 `docs/bench/baseline-main/` por PR, e só então reroda o PR com `bench-pr.sh --pr N`.
 
 ## Diagnóstico

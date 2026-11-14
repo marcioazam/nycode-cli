@@ -16,8 +16,8 @@ version = "pi 1.5.2"
 effort = "medium"            # --thinking medium
 profile = "empty PI_CODING_AGENT_DIR (no packages/extensions/skills); eval-only flags dropped"
 
-[my-pi]
-bin = "arms/my-pi"
+[ny-pi]
+bin = "arms/ny-pi"
 runner = "run_pi.py"
 version = "pi 1.5.2 + pi-code 1.7.0 + this checkout"
 effort = "settings.json"     # from the owner overlay

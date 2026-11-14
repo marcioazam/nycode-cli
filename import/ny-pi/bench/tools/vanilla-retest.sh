@@ -4,7 +4,7 @@
 set -euo pipefail
 
 # Public repo: no owner literal in the source; the env file names it (RUNBOOK).
-REPO=${BENCH_REPO:?set BENCH_REPO=owner/name (~/.config/pi-harness/bench.env)}
+REPO=${BENCH_REPO:?set BENCH_REPO=owner/name (~/.config/ny-pi/bench.env)}
 URL=${BENCH_REPO_URL:-https://github.com/$REPO.git}
 STATE=${BENCH_STATE:-$HOME/.local/state/bench}
 MODEL=${BENCH_MODEL:-claude-sonnet-5-5}

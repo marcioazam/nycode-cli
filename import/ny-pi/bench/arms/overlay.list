@@ -1,4 +1,4 @@
-# Owner overlay copied into the my-pi stage (paths relative to ~/.pi/agent). Untracked by design (personal or
+# Owner overlay copied into the ny-pi stage (paths relative to ~/.pi/agent). Untracked by design (personal or
 # vendored); everything else comes from this checkout via install.sh --link --apply.
 settings.json
 local.env

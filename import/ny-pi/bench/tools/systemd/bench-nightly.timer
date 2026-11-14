@@ -1,5 +1,5 @@
 [Unit]
-Description=Nightly my-pi full benchmark
+Description=Nightly ny-pi full benchmark
 
 [Timer]
 OnCalendar=*-*-* 03:30:00

@@ -1,11 +1,11 @@
 [Unit]
-Description=Nightly full-tier benchmark of my-pi on main
+Description=Nightly full-tier benchmark of ny-pi on main
 
 [Service]
 Type=oneshot
 # Keys (no secrets here): BENCH_CC_CREDENTIALS (path of the Claude credentials file),
 # BENCH_BASELINE_MAIN (dir of the main baseline run). Optional: BENCH_STATE, BENCH_NIGHTLY_BUDGET, BENCH_MODEL.
-EnvironmentFile=%h/.config/pi-harness/bench.env
+EnvironmentFile=%h/.config/ny-pi/bench.env
 Environment=PATH=%h/.local/bin:%h/.local/share/mise/shims:/usr/local/bin:/usr/bin:/bin
 Slice=build.slice
 TimeoutStartSec=6h
