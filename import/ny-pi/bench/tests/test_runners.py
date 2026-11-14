@@ -240,6 +240,34 @@ done
     assert rs[0]["error"].startswith("harbor exit") and not rs[0]["passed"]
 
 
+def test_run_harbor_never_reuses_an_existing_job(
+    tmp_path: Path, monkeypatch: MP
+) -> None:
+    """--resume on 2026-11-14 reused job s2-0: harbor replayed its old 429 trials instead of running again."""
+    fake = script(
+        tmp_path / "harbor",
+        f"""
+job=""; while [ $# -gt 0 ]; do case "$1" in --job-name) job=$2; shift;; esac; shift; done
+[ -d {tmp_path}/jobs/$job ] && exit 0  # harbor resumes an existing job: nothing new runs
+d={tmp_path}/jobs/$job/a__x; mkdir -p "$d"
+echo '{{"task_name":"a","verifier_result":{{"rewards":{{"reward":1.0}}}},"agent_result":{{"cost_usd":0.2}}}}' > "$d/result.json"
+""",
+    )
+    monkeypatch.setenv("BENCH_HARBOR", str(fake))
+    jobs = tmp_path / "jobs"
+    old = jobs / "s2-0" / "a__old"
+    old.mkdir(parents=True)
+    (old / "result.json").write_text(
+        '{"task_name":"a","verifier_result":{"rewards":{"reward":0.0}},"agent_result":{"cost_usd":0}}'
+    )
+
+    def make(chunk: list[str], job: str) -> list[str]:
+        return rn.harbor_cmd("ds", [], job, jobs, chunk, k=1)
+
+    rs, _ = rn.run_harbor([], jobs, "s2", {}, [["a"]], 5.0, make)
+    assert len(rs) == 1 and rs[0]["passed"] and not rs[0].get("error")
+
+
 def test_outcome_case_passes_and_detects_subagent(tmp_path: Path) -> None:
     arm = script(tmp_path / "arm", CC_ARM)
     case = make_case(tmp_path / "cases", "c1", security=True, split="heldout")

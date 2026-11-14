@@ -354,7 +354,12 @@ def run_harbor(
     for i, chunk in enumerate(chunks):
         if run_cost(runs) >= budget_usd:
             return runs, True
-        job = f"{suite}-{i}"
+        job, n = f"{suite}-{i}", 0
+        while (
+            job_root / job
+        ).exists():  # an existing job name makes harbor replay old trials (resume)
+            n += 1
+            job = f"{suite}-{i}-r{n}"
         p = subprocess.run(
             make_cmd(chunk, job), env=penv, capture_output=True, text=True, check=False
         )
