@@ -445,6 +445,8 @@ $HOME/.pi/agent/extensions/dev-commands/keybindings.ts	extensions/dev-commands/k
 $HOME/.pi/agent/extensions/dev-commands/test/copy-code.test.ts	extensions/dev-commands/test/copy-code.test.ts
 $HOME/.pi/agent/extensions/dev-commands/test/keybindings.test.ts	extensions/dev-commands/test/keybindings.test.ts
 $HOME/.pi/agent/extensions/footer-no-stats.ts	extensions/footer-no-stats.ts
+$HOME/.pi/agent/extensions/headless-lean/index.test.ts	extensions/headless-lean/index.test.ts
+$HOME/.pi/agent/extensions/headless-lean/index.ts	extensions/headless-lean/index.ts
 $HOME/.pi/agent/extensions/no-context-files-covers-claude-md.ts	extensions/no-context-files-covers-claude-md.ts
 $HOME/.pi/agent/extensions/no-web-search.ts	extensions/no-web-search.ts
 $HOME/.pi/agent/extensions/pi-docs/index.test.ts	extensions/pi-docs/index.test.ts

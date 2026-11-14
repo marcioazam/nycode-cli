@@ -53,9 +53,9 @@ Cuidado: no texto (fora de código) qualquer `@palavra` vira tentativa de import
 
 ## Fontes consultadas (2026-11-11)
 
-- https://code.claude.com/docs/en/memory: CLAUDE.md abaixo de 200 linhas; instruções específicas e verificáveis;
+- <https://code.claude.com/docs/en/memory>: CLAUDE.md abaixo de 200 linhas; instruções específicas e verificáveis;
   rules sem `paths` carregam sempre; regras do usuário em `~/.claude/rules`; imports não reduzem contexto.
-- https://code.claude.com/docs/en/best-practices: o que deve ficar sempre carregado; requisito sem exceção vai para
+- <https://code.claude.com/docs/en/best-practices>: o que deve ficar sempre carregado; requisito sem exceção vai para
   hook ou deny.
 - Docs locais do pi (`docs/configuration.md`, `security.md`): context files carregam sem trust; `AGENTS.md`
   global do pi existe, mas o caminho escolhido é o do pi-code para manter a estrutura do Claude (CLAUDE.md + rules).
@@ -124,6 +124,10 @@ Critério (terceira rodada): entra no pi só o que paga o próprio custo; observ
   `ttl: 1h` no cache de tools e system, só com UI e fora de subagente; `PI_PREFIX_CACHE_1H=0` desliga. Replay
   ≈ US$ 4,45/dia líquidos; A/B e testes em `pi-claude-harness-transfer-2026-11-12.md` ("Fechamento, rodada 2");
   teste `bin/tests/prefix-cache-1h.test.ts`.
+- **headless-lean** (`extensions/headless-lean/index.ts`, 2026-11-14): sem UI (`pi -p`, JSON) `question` e
+  `plan_mode_complete` ficam inativas (`--plan` ou prompt `/plan` mantêm a segunda) e o título de sessão não é
+  gerado; em toda sessão Anthropic o `<cwd>` vira bloco de sistema final sem `cache_control`. `PI_HEADLESS_LEAN=0`
+  desliga. Contrato e medição: `docs/specs/0002-headless-lean.md` do repositório.
 - **Relatórios**: `python3 ~/.pi/agent/claude-home/bin/telemetry/pi_telemetry.py [tools|subagents|audit|claims|plan-gate|cost|all]
   [--since DIAS] [--json]`. `claims` usa `hooks/claims/claims.py` e `patterns.ere`, cópias literais das do Claude
   (vigiadas pelo manifesto). Só metadados; o alvo da auditoria sai mascarado.
