@@ -138,8 +138,41 @@ def test_main_run_requires_credentials(monkeypatch: MP) -> None:
         rb.main(RA("nope"))
 
 
+def creds(tmp_path: Path, minutes: float) -> str:
+    import time
+
+    f = tmp_path / "creds.json"
+    exp = (time.time() + minutes * 60) * 1000
+    f.write_text(json.dumps({"claudeAiOauth": {"accessToken": "t", "expiresAt": exp}}))
+    return str(f)
+
+
+def test_main_run_refuses_expiring_token_before_any_run(
+    tmp_path: Path, monkeypatch: MP
+) -> None:
+    """Baseline 2026-11-14: a token near expiry made every arm fail silently (cost 0, passed False)."""
+    monkeypatch.setenv("BENCH_CC_CREDENTIALS", creds(tmp_path, 10))
+    monkeypatch.setattr(rb, "execute", lambda *a: pytest.fail("ran with a dying token"))
+    with pytest.raises(SystemExit) as e:
+        rb.main(RA("my-pi", "--out", str(tmp_path / "o")))
+    assert e.value.code == 2
+
+
+def test_execute_flags_all_zero_cost_step_as_infra(tmp_path: Path) -> None:
+    """A step whose every run failed at cost 0 is an infra failure, never a measured score."""
+    make_case(tmp_path / "cases", "a")
+    make_case(tmp_path / "cases", "b")
+    steps = rb.build_plan("pr", cfg_with(tmp_path / "cases"), ["s4"], k=1)
+    dead = '[ "$1" = "--version" ] && { echo "fake 1.0"; exit 0; }\nexit 1\n'
+    out = tmp_path / "o"
+    code = rb.execute("fake", "pr", "m", 5.0, steps, make_arms(tmp_path, dead), out)
+    meta = json.loads((out / "meta.json").read_text())
+    assert code == rb.NOT_VERIFIED_EXIT and meta["not_verified"]
+    assert any("infra" in e for e in meta["errors"])
+
+
 def test_main_real_run_dispatches_execute(tmp_path: Path, monkeypatch: MP) -> None:
-    monkeypatch.setenv("BENCH_CC_CREDENTIALS", "/x")
+    monkeypatch.setenv("BENCH_CC_CREDENTIALS", creds(tmp_path, 120))
     seen: dict[str, Any] = {}
     monkeypatch.setattr(rb, "execute", lambda *a: seen.update(a=a) or 0)
     assert rb.main(RA("my-pi", "--out", str(tmp_path))) == 0

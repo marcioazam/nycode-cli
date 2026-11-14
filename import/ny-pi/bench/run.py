@@ -288,6 +288,12 @@ def execute(
                     rs.append(r)
                     save([r])
         spent += runners.run_cost(rs)
+        if rs and not any(r["passed"] or (r.get("cost_usd") or 0) > 0 for r in rs):
+            # every run failed at zero cost: the arm never reached the model (auth, install, sandbox)
+            meta["errors"].append(
+                f"{s['suite']}: infra, all {len(rs)} runs failed at cost 0"
+            )
+            meta["not_verified"] = True
         if spent >= budget:
             meta["not_verified"] = True
         if meta["not_verified"]:
@@ -564,6 +570,10 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if "BENCH_CC_CREDENTIALS" not in os.environ:
             p.error("BENCH_CC_CREDENTIALS is required for a real run")
+        try:  # preflight: a dying token fails every run silently (baseline 2026-11-14)
+            oauth_token()
+        except subprocess.CalledProcessError as e:
+            p.error(f"OAuth preflight failed: {(e.stderr or '').strip()[-300:]}")
         out = (
             a.out
             or Path(os.environ.get("BENCH_OUT", "/tmp"))
