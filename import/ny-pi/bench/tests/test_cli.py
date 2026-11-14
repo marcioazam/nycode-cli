@@ -129,6 +129,35 @@ echo '{{"task_name":"tb","verifier_result":{{"rewards":{{"reward":1.0}}}},"agent
     assert suites == {"s1", "s2"}
 
 
+def test_my_pi_harbor_bundles_the_checkout_stage(
+    tmp_path: Path, monkeypatch: MP
+) -> None:
+    """Harbor must ship the stage of this checkout, never the live ~/.pi (bug found 2026-11-14)."""
+    stage = tmp_path / "stage"
+    stage.mkdir()
+    (stage / ".overlay-sha").write_text("abc")
+    hd = tmp_path / "hd"
+    hd.mkdir()
+    script(hd / "bundle.sh", f'echo "$HOME" > {tmp_path}/bundled_home\n')
+    harbor = script(tmp_path / "harbor", "exit 0\n")
+    monkeypatch.setenv("BENCH_HARBOR", str(harbor))
+    monkeypatch.setenv("BENCH_STAGE", str(stage))
+    monkeypatch.setattr(rb, "HARBOR_DIR", hd)
+    monkeypatch.setattr(rb, "oauth_token", lambda: "tok")
+    steps = rb.build_plan("pr", rb.load_toml(BENCH / "suites.toml"), ["s2"], k=1)
+    rb._harbor_step(steps[0], "my-pi", "m", tmp_path / "o", 5.0)
+    assert (tmp_path / "bundled_home").read_text().strip() == str(stage)
+
+
+def test_my_pi_harbor_refuses_without_stage(tmp_path: Path, monkeypatch: MP) -> None:
+    monkeypatch.delenv("BENCH_STAGE", raising=False)
+    monkeypatch.setenv("BENCH_STAGE_ROOT", str(tmp_path / "none"))
+    monkeypatch.setattr(rb, "oauth_token", lambda: "tok")
+    steps = rb.build_plan("pr", rb.load_toml(BENCH / "suites.toml"), ["s2"], k=1)
+    with pytest.raises(RuntimeError, match="stage"):
+        rb._harbor_step(steps[0], "my-pi", "m", tmp_path / "o", 5.0)
+
+
 def test_main_run_requires_credentials(monkeypatch: MP) -> None:
     monkeypatch.delenv("BENCH_CC_CREDENTIALS", raising=False)
     with pytest.raises(SystemExit) as e:

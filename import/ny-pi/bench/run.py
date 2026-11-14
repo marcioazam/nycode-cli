@@ -174,16 +174,18 @@ def stage_root() -> Path:
     return Path(os.environ.get("BENCH_STAGE_ROOT", Path.home() / ".cache/bench"))
 
 
-def overlay_sha(short: str) -> str | None:
+def mypi_stage(short: str) -> Path | None:
+    """The my-pi stage built from this checkout (arms/my-pi), identified by its .overlay-sha."""
     stage = os.environ.get("BENCH_STAGE")
     cands = (
         [Path(stage)] if stage else sorted(stage_root().glob(f"bench-mypi-{short}*"))
     )
-    for c in reversed(cands):
-        f = c / ".overlay-sha"
-        if f.exists():
-            return f.read_text().strip()
-    return None
+    return next((c for c in reversed(cands) if (c / ".overlay-sha").exists()), None)
+
+
+def overlay_sha(short: str) -> str | None:
+    stage = mypi_stage(short)
+    return (stage / ".overlay-sha").read_text().strip() if stage else None
 
 
 def _harbor_step(
@@ -193,9 +195,18 @@ def _harbor_step(
     agent_args, extra, tok_name = runners.harbor_agent(arm, model, HARBOR_DIR)
     env = {tok_name: oauth_token(), **extra}
     if arm == "my-pi":
+        # Bundle the stage of THIS checkout, never the live ~/.pi (2026-11-14: Harbor measured the local harness).
+        short = subprocess.run(
+            ["git", "-C", str(REPO), "rev-parse", "--short=12", "HEAD"],
+            capture_output=True, text=True, check=True,
+        ).stdout.strip()  # fmt: skip
+        stage = mypi_stage(short)
+        if stage is None:
+            raise RuntimeError(f"my-pi stage for {short} not built; run the arm first")
         subprocess.run(
-            ["bash", str(HARBOR_DIR / "bundle.sh")], check=True, capture_output=True
-        )
+            ["bash", str(HARBOR_DIR / "bundle.sh")],
+            check=True, capture_output=True, env={**os.environ, "HOME": str(stage)},
+        )  # fmt: skip
     excl = (
         runners.load_excluded(BENCH / cfg["excluded_file"])
         if cfg.get("excluded_file")
