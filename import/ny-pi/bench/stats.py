@@ -18,12 +18,15 @@ from statistics import NormalDist
 from typing import Any, Literal, TypedDict
 
 ND = NormalDist()
-# Non-inferiority margin: −6 pp (was −5 pp, D6). Measured ny-pi×ny-pi noise (42 tasks, sd 0.305 of the paired
-# difference) puts ±5 pp at ~US$ 15–17 per PR; the US$ 12 cap reaches ~±6 pp with k2 + one extension.
-# Record: docs/bench/pi-harness-ci-2026-11-13.md (A5, 2026-11-14).
-MARGIN = -0.06
+# "Precise" gate (owner decision, replaces the D6 accuracy rule): non-inferiority margin −10 pp on a two-sided
+# 90% interval, base k12 (tier baseline), candidate k3 plus one +3 extension when inconclusive.
+# Simulated on the real ny-pi round (42 tasks): the old rule (base k2, cand k2+2, −6 pp, CI95) approves an
+# unchanged PR 41% of the time and blocks a real 10 pp drop 97%; the new rule approves 98%, blocks −10 pp 96%
+# and −15 pp 100%, at ~146 runs per PR.
+MARGIN = -0.10
 COST_MAX, WALL_MAX = 1.10, 1.20
-N_BOOT, SEED, ALPHA = 10_000, 20261113, 0.05
+N_BOOT, SEED, ALPHA = 10_000, 20261113, 0.10
+Z = NormalDist().inv_cdf(1 - ALPHA / 2)  # normal quantile of the two-sided interval
 META_KEYS = ("model", "arm_version", "overlay_sha")
 EXIT = {"PASS": 0, "FAIL": 1, "INCONCLUSIVE": 3, "NOT_COMPARABLE": 4, "NOT_VERIFIED": 5}
 MAX_EXCLUDED = 0.10  # tasks with an errored run (infra, refusal) are dropped from pairing; above this share nothing is verified
@@ -68,7 +71,9 @@ def _per_task(runs: Iterable[Run]) -> dict[str, TaskStat]:
 def paired_ci(
     diffs: list[float], alpha: float = ALPHA, n_boot: int = N_BOOT, seed: int = SEED
 ) -> tuple[float, float]:
-    """IC BCa da média das diferenças por tarefa (cluster = tarefa)."""
+    """IC BCa da média das diferenças por tarefa (cluster = tarefa).
+
+    Cada diferença é taxa do candidato − taxa da base na tarefa, então k pode diferir entre os lados."""
     n = len(diffs)
     theta = sum(diffs) / n
     if max(diffs) == min(diffs):
@@ -229,7 +234,7 @@ def _var_diff(k: float, sd_task: float) -> float:
     return sd_task**2 + 0.5 / k
 
 
-def halfwidth(n_tasks: float, k: float, sd_task: float, z: float = 1.96) -> float:
+def halfwidth(n_tasks: float, k: float, sd_task: float, z: float = Z) -> float:
     return z * math.sqrt(_var_diff(k, sd_task) / n_tasks)
 
 
@@ -240,13 +245,13 @@ def power(
     effect: float = 0.0,
     margin: float = -MARGIN,
 ) -> float:
-    """P(limite inferior do IC95 > −margin) se a diferença verdadeira = effect (normal)."""
+    """P(limite inferior do IC > −margin) se a diferença verdadeira = effect (normal)."""
     se = math.sqrt(_var_diff(k, sd_task) / n_tasks)
-    return ND.cdf((effect + margin) / se - 1.96)
+    return ND.cdf((effect + margin) / se - Z)
 
 
 def required_tasks(
-    halfwidth_target: float, k: float, sd_task: float, z: float = 1.96
+    halfwidth_target: float, k: float, sd_task: float, z: float = Z
 ) -> int:
     """Menor N com meia-largura do IC ≤ alvo."""
     return math.ceil(_var_diff(k, sd_task) * (z / halfwidth_target) ** 2)

@@ -6,8 +6,8 @@ rastreada e listada em `bench/arms/overlay.list`, vem da máquina do dono. O `~/
 braços `pi-vanilla` e `cc-vanilla` (Claude Code) são as referências fixas.
 
 O gate de benchmark não usa runner self-hosted (L1). Um poster local, na máquina do dono, roda o ny-pi no head de cada
-PR e publica o commit status obrigatório `bench-pr`. Regra do gate: D6 em
-o registro local do plano `pi-harness-ci-2026-11-13` (fora deste repositório).
+PR e publica o commit status obrigatório `bench-pr`. A regra do gate está em "Regra do gate (Precisa)", abaixo; ela
+substitui a regra de acerto D6 do plano `pi-harness-ci-2026-11-13` (registro local, fora deste repositório).
 
 ## Instalação (uma vez)
 
@@ -49,13 +49,61 @@ Pré-requisitos no PATH: `gh` autenticado como o dono do repositório, `git`, `j
 
 | Exit do gate | Status | Significado |
 | --- | --- | --- |
-| 0 PASS | `success` | D6 satisfeita |
-| 1 FAIL | `failure` | alguma regra de D6 falhou |
+| 0 PASS | `success` | todas as regras do gate satisfeitas |
+| 1 FAIL | `failure` | alguma regra do gate falhou |
 | 3 INCONCLUSIVE | `failure` | continua inconclusivo após a extensão única |
 | 4 NOT_COMPARABLE | `error` | metadados do baseline e do PR diferem |
 | 5 NOT_VERIFIED | `error` | orçamento esgotado antes de terminar (nunca aprovado) |
 
 Sem baseline main, run que falha ou exit inesperado também viram `error` (fail closed): o merge fica bloqueado.
+
+## Regra do gate (Precisa)
+
+Decisão do dono; substitui a regra de acerto D6. Constantes em `bench/stats.py`, extensão em `bench/gate.py`.
+
+- Acerto: diferença pareada por tarefa (taxa do PR menos taxa da base), intervalo bilateral de 90% (bootstrap BCa).
+- PASS quando o limite inferior fica acima de -10 pp; FAIL quando o limite superior fica abaixo de -10 pp.
+- Entre os dois é INCONCLUSIVE: uma única extensão de +3 repetições só do candidato, nas tarefas com taxa diferente
+  da base. Se continuar inconclusivo, vira FAIL.
+- A extensão só roda com `gate --extend-with-cmd`; o `bench-pr.sh` não passa essa opção, então lá INCONCLUSIVE é final.
+- Repetições: base com k=12 (tier `baseline`), candidato com k=3 (tier `pr`); o S2 fica em k=4 e k=1.
+- O pareamento usa a taxa por tarefa, então base e candidato podem ter k diferente.
+- Custo (razão das medianas até 1,10), tempo (até 1,20) e segurança não mudaram.
+
+Medição que justificou a troca (simulação sobre a rodada real do ny-pi, 42 tarefas):
+
+| regra | aprova PR sem mudança | barra queda de 10 pp | barra queda de 15 pp |
+| --- | --- | --- | --- |
+| antiga: base k2, candidato k2+2, -6 pp, IC95 | 41% | 97% | não medido |
+| nova: base k12, candidato k3+3, -10 pp, IC90 | 98% | 96% | 100% |
+
+A regra nova custa cerca de 146 execuções por PR.
+
+## Tier baseline
+
+- `bench/suites.toml` tem o tier `baseline`: as mesmas unidades do tier `pr`, com S1, S4 e S5 em k=12 e S2 em k=4.
+- O `docs/bench/baseline-main/` passa a ser gravado com ele:
+  `python3 bench/run.py run --arm ny-pi --tier baseline --model <modelo> --budget-usd <teto> --out <dir>` na main.
+- O `bench-nightly.sh` continua rodando o tier `full`; ele não grava o baseline do gate.
+- Um baseline antigo (k=2) ainda carrega no gate, mas o intervalo fica mais largo e a taxa de aprovação medida acima
+  não vale para ele.
+
+## Placar do objetivo
+
+`python3 bench/run.py scoreboard --ny <rodada ny-pi> --refs <rodada> [<rodada> ...] [--out arquivo.md]` imprime o
+placar das três regras do objetivo, em Markdown. É informativo: sai sempre com 0.
+
+- Entram as tarefas em comum com cada referência, sem execução com erro.
+- R1 acerto: taxa pontual do ny-pi maior ou igual à do `pi-vanilla`. A tabela traz também a diferença pareada e o
+  IC90 contra cada referência.
+- R2 teto de custo: custo do ny-pi menor ou igual ao de cada referência que não seja o `pi-vanilla` (este aparece só
+  como informação). Custo = soma do custo médio por tarefa, para comparar rodadas com k diferente.
+- R3 exceção: tarefas exclusivas, com taxa do ny-pi acima de 0,5 e taxa 0 em todas as referências. O placar lista
+  também o inverso (todas as referências acima de 0,5 e ny-pi em 0).
+- Veredito: `OBJETIVO: cumprido` quando R1 e (R2 ou pelo menos uma tarefa exclusiva); senão `não cumprido`, com as
+  regras que falharam.
+- Sem rodada do `pi-vanilla`, a R1 não é avaliada e conta como não cumprida; o mesmo vale para a R2 sem outra
+  referência.
 
 ## Tornar `bench-pr` obrigatório
 
@@ -94,7 +142,7 @@ existente nunca é sobrescrito (outra data ou sufixo de hora). Quando um PR toca
 ## NOT_COMPARABLE
 
 O overlay, o modelo ou a versão do braço mudou entre o baseline e o PR. Rode o baseline main de novo com o novo
-contexto: `bench-nightly.sh` (ou `bench run --arm ny-pi --tier full` na main), proponha o novo
+contexto: `bench run --arm ny-pi --tier baseline` na main (veja "Tier baseline"), proponha o novo
 `docs/bench/baseline-main/` por PR, e só então reroda o PR com `bench-pr.sh --pr N`.
 
 ## Diagnóstico
@@ -123,3 +171,32 @@ contexto: `bench-nightly.sh` (ou `bench run --arm ny-pi --tier full` na main), p
 | S4, S5 | `<round>/artifacts/<suíte>-<tarefa>-<rep>.agent.out` (stream JSON) | `.test.out` ao lado |
 
 Rodadas do eval com prefixo `bench-` não entram na rotação: só os rounds `sched-` são apagados.
+
+## Registros por execução
+
+Cada linha de `runs.jsonl` das suítes S4 e S5 traz quatro campos opcionais, lidos do transcrito do agente
+(`message_end` com `usage` no pi e no omp, stream-json com `usage` no Claude Code):
+
+| campo | conteúdo |
+| --- | --- |
+| `tokens` | `{input, output, cache_read, cache_write}` da execução |
+| `turns` | mensagens do assistente |
+| `tool_errors` | resultados de ferramenta com erro |
+| `first_request_tokens` | `input + cache_read + cache_write` da primeira resposta do assistente (o contexto fixo do braço) |
+
+- O valor é `null` quando o transcrito não traz o dado; S1 e Harbor gravam `null`.
+- Rodadas antigas, sem os campos, continuam carregando em `gate`, `report`, `scoreboard` e `evidence`.
+- O `evidence` preenche o que falta a partir do transcrito em disco e mostra as médias por braço em
+  "Tokens and turns per arm".
+
+O `evidence` também classifica cada falha por assinatura (primeira regra que casar) e conta as assinaturas por braço:
+
+| assinatura | regra |
+| --- | --- |
+| `timeout` | o erro da execução cita timeout |
+| `infra-error` | a execução tem outro erro |
+| `plan-tool-then-stop` | falhou e a última ferramenta foi `plan_mode_complete` |
+| `question-tool-error` | chamou `question` e o veredito traz `asked_question` falso |
+| `no-change` | caso `outcome` que falhou sem ferramenta de edição, escrita, bash ou subagente |
+| `tests-failed` | caso `outcome` que alterou algo e os testes ocultos falharam |
+| `unclassified` | o resto (inclui S1 e Harbor, que não têm `verdict.json`) |

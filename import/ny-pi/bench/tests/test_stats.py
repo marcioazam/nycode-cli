@@ -53,9 +53,10 @@ def test_fail_accuracy() -> None:
 
 
 def test_inconclusive_extend_then_fail() -> None:
-    cand = dict(list(T.items())[:4])  # small N, one regress
+    cand = dict(list(T.items())[:4])  # small N, one task loses a rep
     base = dict(cand)
-    cand["t0"] = 0
+    # −8 pp on 4 tasks straddles the −10 pp margin; a whole lost task (−25 pp) is now a plain FAIL at 90%
+    cand["t0"] = 2
     b, c = mk(base), mk(cand)
     v = stats.verdict(b, c, META, META)
     assert v["verdict"] == "INCONCLUSIVE"
@@ -193,3 +194,29 @@ def test_too_many_excluded_is_not_verified() -> None:
     v = stats.verdict(mk(T), cand, META, META)
     assert v["excluded"] == 3 and v["verdict"] == "NOT_VERIFIED"
     assert stats.EXIT["NOT_VERIFIED"] == 5
+
+
+def test_precise_rule_constants() -> None:
+    """Owner decision: −10 pp on a two-sided 90% interval (replaces −6 pp / 95%)."""
+    assert stats.MARGIN == -0.10 and stats.ALPHA == 0.10
+    assert stats.Z == pytest.approx(1.6449, abs=1e-4)
+
+
+def test_paired_diff_uses_per_task_rate_with_k12_base_and_k3_candidate() -> None:
+    names = [f"t{i}" for i in range(20)]
+    base = mk({t: 12 for t in names} | {"t0": 6, "t1": 9}, reps=12)
+    cand = mk({t: 3 for t in names} | {"t0": 1, "t1": 3}, reps=3)
+    b, c = stats._per_task(base), stats._per_task(cand)
+    assert (b["t0"]["rate"], c["t0"]["rate"]) == (0.5, 1 / 3)
+    diffs = [c[t]["rate"] - b[t]["rate"] for t in names]
+    assert sum(diffs) == pytest.approx(1 / 3 - 0.5 + 1 - 0.75)
+    v = stats.verdict(base, cand, META, META)
+    assert v["n"] == 20 and v["ci"] == list(stats.paired_ci(diffs))
+    assert v["ci"][0] <= sum(diffs) / 20 <= v["ci"][1] and v["verdict"] == "PASS"
+    # the interval is 90%: narrower than the 95% one on the same differences
+    lo95, hi95 = stats.paired_ci(diffs, alpha=0.05)
+    assert lo95 <= v["ci"][0] and v["ci"][1] <= hi95
+    # every task at 2/3 against a 12/12 base is a real −33 pp drop
+    drop = stats.verdict(mk(dict.fromkeys(names, 12), reps=12), mk(dict.fromkeys(names, 2), reps=3), META, META)  # fmt: skip
+    assert drop["rules"]["accuracy"] == "FAIL" and drop["ci"][1] < stats.MARGIN
+    assert stats.tasks_to_extend(base, cand) == ["t0", "t1"]

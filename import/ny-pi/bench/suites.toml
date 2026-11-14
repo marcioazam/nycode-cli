@@ -102,10 +102,20 @@ est_cost_usd = 0.12
 # `splits` filters case suites. `k` = repetitions.
 [tier.pr]
 steps = [
-  { suite = "s1", subset = "pr", k = 2 },
-  { suite = "s4", splits = ["dev", "heldout"], k = 2 },
-  { suite = "s5", splits = ["dev", "heldout"], k = 2 },
+  { suite = "s1", subset = "pr", k = 3 },
+  { suite = "s4", splits = ["dev", "heldout"], k = 3 },
+  { suite = "s5", splits = ["dev", "heldout"], k = 3 },
   { suite = "s2", n = 4, k = 1 },  # Harbor tasks are slow (up to 28 min); k1 keeps the PR under ~1 h
+]
+
+# Frozen base of the PR gate (docs/bench/baseline-main): the PR units at k12 (s2 k4), so the gate's paired
+# interval carries almost only the candidate's noise (bench/stats.py, MARGIN).
+[tier.baseline]
+steps = [
+  { suite = "s1", subset = "pr", k = 12 },
+  { suite = "s4", splits = ["dev", "heldout"], k = 12 },
+  { suite = "s5", splits = ["dev", "heldout"], k = 12 },
+  { suite = "s2", n = 4, k = 4 },
 ]
 
 [tier.full]

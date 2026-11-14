@@ -1,4 +1,5 @@
-"""Offline tests of the bench CLI (dry-run, gate, report, evidence, status, coverage map): no network, no spend."""
+"""Offline tests of the bench CLI (dry-run, run, probe, tiers): no network, no spend. Gate, report and evidence
+are in test_rounds.py."""
 
 import json
 import os
@@ -8,8 +9,7 @@ from typing import Any
 
 import pytest
 
-from bench import evidence as ev
-from bench import report as rp
+from bench import gate as bg
 from bench import run as rb
 from bench import runners as rn
 from bench.tests.helpers import (
@@ -31,7 +31,7 @@ def cfg_with(case_dir: Path) -> dict[str, Any]:
 
 def test_dry_run_all_arms_and_tiers(capsys: CF) -> None:
     for arm in ("cc-vanilla", "pi-vanilla", "ny-pi"):
-        for tier in ("pr", "vanilla", "full"):
+        for tier in ("pr", "baseline", "vanilla", "full"):
             assert rb.main(RA(arm, "--dry-run", tier=tier, budget="12")) == 0
     out = capsys.readouterr().out
     assert "estimated total" in out and "nothing was executed" in out
@@ -236,314 +236,6 @@ def test_arm_info_and_overlay_sha(tmp_path: Path, monkeypatch: MP) -> None:
     )
 
 
-def mk(
-    task: str,
-    rep: int,
-    passed: bool,
-    cost: float | None = 1.0,
-    wall: float = 10.0,
-    **kw: Any,
-) -> dict[str, Any]:
-    return rn.make_run(
-        kw.pop("suite", "s1"), task, rep, passed, cost_usd=cost, wall_s=wall, **kw
-    )
-
-
-def write_round(d: Path, runs: list[dict[str, Any]], **meta: Any) -> Path:
-    d.mkdir(parents=True, exist_ok=True)
-    (d / "runs.jsonl").write_text("".join(json.dumps(r) + "\n" for r in runs))
-    m = {
-        "arm": "ny-pi",
-        "model": "m",
-        "arm_version": "v",
-        "overlay_sha": "o",
-        "git_sha": "abc",
-        "budget_usd": 12,
-    } | meta
-    (d / "meta.json").write_text(json.dumps(m))
-    return d
-
-
-def tasks(n: int, fail: set[int] = frozenset(), **kw: Any) -> list[dict[str, Any]]:  # type: ignore[assignment]
-    return [mk(f"t{i}", r, i not in fail, **kw) for i in range(n) for r in range(2)]
-
-
-def test_gate_pass_and_summary(tmp_path: Path, monkeypatch: MP) -> None:
-    base = write_round(
-        tmp_path / "b", tasks(10) + [mk("h", 0, True, suite="s4", split="heldout")]
-    )
-    cand = write_round(
-        tmp_path / "c", tasks(10) + [mk("h", 0, True, suite="s4", split="heldout")]
-    )
-    summary = tmp_path / "sum.md"
-    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary))
-    monkeypatch.setattr(rb, "changed_paths", lambda *_: [])
-    assert rb.main(["gate", "--base", str(base), "--cand", str(cand)]) == 0
-    text = summary.read_text()
-    assert (
-        "## bench-pr: PASS" in text
-        and "Held-out (separado" in text
-        and "Pontuação D7" in text
-    )
-    assert json.loads((cand / "verdict.json").read_text())["verdict"] == "PASS"
-
-
-def test_gate_fail_on_security_regression(tmp_path: Path, monkeypatch: MP) -> None:
-    monkeypatch.setattr(rb, "changed_paths", lambda *_: [])
-    b = [mk("sec1", r, True, security=True, suite="s1") for r in range(2)] + tasks(8)
-    c = [mk("sec1", r, False, security=True, suite="s1") for r in range(2)] + tasks(8)
-    v, md, code = rb.gate(
-        write_round(tmp_path / "b", b), write_round(tmp_path / "c", c)
-    )
-    assert v["verdict"] == "FAIL" and code == 1 and "REGRESSÃO em sec1" in md
-    assert v["score"] == 0.0
-
-
-def test_gate_inconclusive_extends_once_then_fails(
-    tmp_path: Path, monkeypatch: MP
-) -> None:
-    monkeypatch.setattr(rb, "changed_paths", lambda *_: [])
-    base = write_round(tmp_path / "b", tasks(10))
-    cand = write_round(tmp_path / "c", tasks(10, fail={0}))
-    v, md, code = rb.gate(base, cand)
-    assert v["verdict"] == "INCONCLUSIVE" and code == 3 and "estendido" not in md
-    cmd = 'echo "$BENCH_EXTEND_SIDE:$BENCH_EXTEND_REPS:$BENCH_EXTEND_TASKS" >> "$BENCH_EXTEND_DIR/ext.log"; : > "$BENCH_EXTEND_OUT"'
-    v, md, code = rb.gate(base, cand, cmd)
-    assert v["verdict"] == "FAIL" and code == 1 and "estendido +2 reps" in md
-    assert (base / "ext.log").read_text().strip() == "base:2:t0"
-    assert (cand / "ext.log").read_text().strip() == "cand:2:t0"
-
-
-def test_gate_extension_adds_data(tmp_path: Path, monkeypatch: MP) -> None:
-    monkeypatch.setattr(rb, "changed_paths", lambda *_: [])
-    base = write_round(tmp_path / "b", tasks(10))
-    cand = write_round(tmp_path / "c", tasks(10, fail={0}))
-    line = json.dumps(mk("t0", 2, True))
-    v, _, _ = rb.gate(base, cand, f"echo '{line}' >> \"$BENCH_EXTEND_OUT\"")
-    assert sum(1 for _ in (cand / "runs.ext.jsonl").read_text().splitlines()) == 1
-    assert v["verdict"] in {"PASS", "FAIL"}
-
-
-def test_gate_not_comparable_and_not_verified_and_refusals(
-    tmp_path: Path, monkeypatch: MP
-) -> None:
-    monkeypatch.setattr(rb, "changed_paths", lambda *_: [])
-    base = write_round(tmp_path / "b", tasks(6))
-    v, md, code = rb.gate(base, write_round(tmp_path / "c1", tasks(6), model="other"))
-    assert v["verdict"] == "NOT_COMPARABLE" and code == 4 and "Metadados diferem" in md
-    v, md, code = rb.gate(
-        base, write_round(tmp_path / "c2", tasks(6), not_verified=True)
-    )
-    assert v["verdict"] == "NOT_VERIFIED" and code == 5 and "nunca aprovado" in md
-    refused = tasks(6) + [mk("ref", 0, False, error="refusal")]
-    v, md, _ = rb.gate(
-        write_round(tmp_path / "b3", refused), write_round(tmp_path / "c3", refused)
-    )
-    assert v["n"] == 6 and "Excluídas por recusa do provedor: ref" in md
-
-
-def test_suite_ratio_for_plan_and_multi() -> None:
-    b = [mk("p", 0, True, suite="s4"), mk("q", 0, True, suite="s4")]
-    c = [mk("p", 0, True, suite="s4"), mk("q", 0, False, suite="s4")]
-    assert rb.suite_ratio(b, c, "s4") == 0.5
-    assert rb.suite_ratio(b, c, "s5") == 1.0
-    assert rb.suite_ratio(c, b, "s4") == 1.0
-
-
-def test_coverage_map_suggestions_ac8() -> None:
-    cmap = json.loads((BENCH.parent / "docs/bench/coverage-map.json").read_text())
-    assert rb.suggestions(["claude-home/hooks/guard.py"], cmap) == [
-        "sugestão: re-testar vanilla para hooks"
-    ]
-    assert rb.suggestions(["extensions/plan-gate.ts"], cmap) == [
-        "sugestão: re-testar vanilla para extensions"
-    ]  # plan_mode is covered by S4; the generic extensions glob still matches
-    assert rb.suggestions(["README.md"], cmap) == []
-    assert (
-        rb.suggestions(["claude-home/agents/x.md"], cmap) == []
-    )  # subagents covered by S5
-    assert rb.suggestions([], {}) == []
-
-
-def test_gate_appends_suggestion_from_diff(tmp_path: Path, monkeypatch: MP) -> None:
-    monkeypatch.setattr(
-        rb, "changed_paths", lambda *_: ["claude-home/skills/x/SKILL.md"]
-    )
-    cmap = json.loads((BENCH.parent / "docs/bench/coverage-map.json").read_text())
-    base = write_round(tmp_path / "b", tasks(6))
-    _, md, _ = rb.gate(base, write_round(tmp_path / "c", tasks(6)), cmap=cmap)
-    assert "sugestão: re-testar vanilla para skills" in md
-
-
-def test_changed_paths_uses_git(tmp_path: Path) -> None:
-    import subprocess
-
-    def g(*a: str) -> str:
-        return subprocess.run(
-            ["git", "-C", str(tmp_path), "-c", "user.email=a@b", "-c", "user.name=n", *a],
-            capture_output=True, text=True, check=True,
-        ).stdout.strip()  # fmt: skip
-
-    g("init", "-q", "-b", "main")
-    (tmp_path / "a").write_text("1")
-    g("add", "-A")
-    g("commit", "-qm", "1")
-    base = g("rev-parse", "HEAD")
-    (tmp_path / "b").write_text("2")
-    g("add", "-A")
-    g("commit", "-qm", "2")
-    assert rb.changed_paths(base, tmp_path) == ["b"]
-    assert rb.changed_paths(None, tmp_path) == []
-
-
-def test_post_status_owner_only() -> None:
-    calls: list[list[str]] = []
-
-    def gh(owner: str) -> Any:
-        def f(args: list[str]) -> str:
-            calls.append(args)
-            if args[:2] == ["repo", "view"]:
-                return json.dumps(
-                    {"nameWithOwner": "me/ny-pi", "owner": {"login": "me"}}
-                )
-            if args[:2] == ["pr", "view"]:
-                return json.dumps({"author": {"login": owner}, "headRefOid": "a" * 40})
-            return ""
-
-        return f
-
-    assert rb.post_status(7, "success", "ok " * 100, gh("me")) == 0
-    api = calls[-1]
-    assert api[1] == f"repos/me/ny-pi/statuses/{'a' * 40}" and "context=bench-pr" in api
-    assert (
-        len(next(a for a in api if a.startswith("description=")))
-        == len("description=") + 140
-    )
-    calls.clear()
-    assert rb.post_status(7, "success", "ok", gh("stranger")) == 3
-    assert not any(c[0] == "api" for c in calls)
-
-
-def test_evidence_index(tmp_path: Path, monkeypatch: MP) -> None:
-    pi_ev = '{"type":"tool_execution_start","toolName":"bash"}\n'
-    cc_ev = '{"type":"tool_use","id":"t1","name":"Bash","input":{}}\n'
-    a = write_round(
-        tmp_path / "a",
-        [mk("x", 0, True, suite="s4"), mk("tb", 0, True, suite="s2"), mk("c", 0, True)],
-        arm="cc-vanilla",
-    )
-    b = write_round(
-        tmp_path / "b",
-        [
-            mk("x", 0, False, suite="s4"),
-            mk("tb", 0, False, suite="s2", error="boom"),
-            mk("c", 0, False, cost=None),
-        ],
-        arm="ny-pi",
-    )
-    (a / "artifacts").mkdir()
-    (a / "artifacts/s4-x-0.agent.out").write_text(cc_ev * 2)
-    (a / "artifacts/s4-x-0.test.out").write_text("ok")
-    for d, ev_text, log in ((a, cc_ev, "claude-code.txt"), (b, pi_ev, "pi.txt")):
-        t = d / "harbor/s2-0/tb__abc"
-        (t / "agent").mkdir(parents=True)
-        (t / "verifier").mkdir()
-        (t / "agent" / log).write_text(ev_text)
-        (t / "verifier/reward.txt").write_text("1")
-        (t / "result.json").write_text(json.dumps({"task_name": "terminal-bench/tb"}))
-    (a / "harbor/s2-0/broken__z").mkdir()
-    (a / "harbor/s2-0/broken__z/result.json").write_text("")  # an interrupted trial
-    s1 = tmp_path / "evals/bench-ny-pi-vanilla-1"
-    (s1 / "raw").mkdir(parents=True)
-    (s1 / "unit/c-0").mkdir(parents=True)
-    (s1 / "raw/c-0.jsonl").write_text(pi_ev * 3)
-    monkeypatch.setattr(ev, "S1_RESULTS", [tmp_path / "evals"])
-    out = tmp_path / "ev.md"
-    args = ["evidence", "--runs", str(tmp_path / "[ab]"), "--out", str(out)]
-    assert rb.main(args) == 0
-    text = out.read_text()
-    assert "### s4 x rep 0: pass cc-vanilla@m; fail ny-pi@m" in text
-    assert "tools (2): Bash×2" in text and "s4-x-0.test.out" in text
-    assert "### s2 tb rep 0" in text and "ERR" in text and "error: boom" in text
-    assert "tb__abc/agent/pi.txt" in text and "reward.txt" in text
-    assert "raw/c-0.jsonl" in text and "unit/c-0" in text and "bash×3" in text
-    assert "| ny-pi@m | 3 | 4 | bash×4 |" in text
-    assert ev.tool_seq(None) == [] and ev.tool_seq(tmp_path / "nope") == []
-    # traceability: runs without a transcript are listed, and --strict turns them into a failure
-    assert "- agent transcript on disk: 4/6 runs" in text
-    assert "- NO TRANSCRIPT: s4 x rep 0 ny-pi@m" in text
-    assert "- NO TRANSCRIPT: s1 c rep 0 cc-vanilla@m" in text
-    assert rb.main([*args, "--strict"]) == 1
-    # gaps of the focus arm, with the reference arm that passed
-    assert "## Gaps of ny-pi@m" in text
-    assert "| Failed where another arm passed | 1 |" in text
-    assert (
-        "| Infrastructure or agent error | 2 |" in text
-    )  # a failure with no spend is infra
-    assert "### Infrastructure or agent error: s2 tb rep 0" in text
-    assert "- reference (cheapest passing arm):" in text
-    assert "## Gaps of" not in ev.render(ev.collect([a, b]), None)
-
-
-def test_evidence_explains_a_failed_run(tmp_path: Path, monkeypatch: MP) -> None:
-    monkeypatch.setattr(ev, "S1_RESULTS", [tmp_path / "evals"])
-    pi_ev = '{"type":"tool_execution_start","toolName":"%s"}\n'
-    fin = json.dumps({"type": "message_end", "message": {"role": "assistant", "content": [
-        {"type": "text", "text": "Here is the plan."}], "usage": {"cost": {"total": 0.3}}}})  # fmt: skip
-    a = write_round(tmp_path / "a", [mk("x", 0, True, cost=0.1, suite="s4"), mk("y", 0, True, cost=0.1, suite="s4"),
-                                     mk("z", 0, False, suite="s4"), mk("c", 0, True, cost=0.05)], arm="pi-vanilla")  # fmt: skip
-    b = write_round(tmp_path / "b", [mk("x", 0, False, cost=0.3, suite="s4"), mk("y", 0, True, cost=0.4, suite="s4"),
-                                     mk("z", 0, False, suite="s4"), mk("c", 0, True, cost=0.05)], arm="ny-pi")  # fmt: skip
-    art = b / "artifacts"
-    art.mkdir()
-    (art / "s4-x-0.agent.out").write_text(pi_ev % "bash" + pi_ev % "bash" + pi_ev % "plan_mode_complete" + fin)  # fmt: skip
-    (art / "s4-x-0.test.out").write_text("FAILED test_x - assert 1 == 2\n")
-    (art / "s4-x-0.verdict.json").write_text(json.dumps({"check": "pytest -q", "test_exit": 1, "exit_code": 0}))  # fmt: skip
-    (art / "s4-x-0.diff").write_text("")
-    # two eval rounds hold the same case: the recorded cost picks the right transcript
-    for arm, cost in (("pi-vanilla", 0.01), ("ny-pi", 0.05)):
-        for i, c in enumerate((cost, 0.05)):
-            raw = tmp_path / f"evals/bench-{arm}-vanilla-{i}/raw"
-            raw.mkdir(parents=True)
-            (raw / "c-0.jsonl").write_text(json.dumps({"type": "result", "total_cost_usd": c, "result": "r"}))  # fmt: skip
-    text = ev.render(ev.collect([a, b]), "ny-pi")
-    assert "### Failed where another arm passed: s4 x rep 0" in text
-    assert "verdict: check=pytest -q, test_exit=1, exit_code=0" in text
-    assert "tools (3): bash×2 → plan_mode_complete" in text
-    assert "final message: Here is the plan." in text
-    assert "FAILED test_x - assert 1 == 2" in text and "s4-x-0.diff" in text
-    assert "### Failed in every arm: s4 z rep 0" in text
-    assert "### Passed, but over 1.5x the cheapest passing arm: s4 y rep 0" in text
-    assert "bench-pi-vanilla-vanilla-1/raw/c-0.jsonl" in text
-    assert "bench-ny-pi-vanilla-1/raw/c-0.jsonl" in text
-    assert "- no verifier output: s4 y rep 0 ny-pi@m" in text
-
-
-def test_report_tables(tmp_path: Path, capsys: CF) -> None:
-    a = write_round(
-        tmp_path / "r1",
-        tasks(4) + [mk("sec", 0, True, security=True, subagents_used=True)],
-        arm="cc-vanilla",
-    )
-    b = write_round(
-        tmp_path / "r2",
-        tasks(4, fail={0}) + [mk("e", 0, False, error="boom", suite="s4")],
-        arm="ny-pi",
-        not_verified=True,
-    )
-    out = tmp_path / "rep.md"
-    assert rb.main(["report", "--runs", str(tmp_path / "r*"), "--out", str(out)]) == 0
-    text = out.read_text()
-    assert (
-        "## s1" in text and "## s4" in text and "cc-vanilla" in text and "ny-pi" in text
-    )
-    assert "| 1/1 |" in text  # security cell
-    x = rp.suite_row([mk("t", 0, True)])
-    assert x["rate"] == 1.0 and x["sec"] == "-" and x["errors"] == 0
-    assert rp.suite_row([])["rate"] is None and rp._f(None, 2) == "n/a"
-    assert a.exists() and b.exists()
-
-
 def test_probe_flags(tmp_path: Path, capsys: CF) -> None:
     script(
         tmp_path / "cc",
@@ -582,7 +274,18 @@ def test_suites_toml_tiers_are_consistent() -> None:
     assert sum(c.startswith("sec-") for c in s1["pr_cases"]) == sum(
         c.startswith("sec-") for c in s1["cases"]
     )
-    assert set(cfg["tier"]) == {"pr", "full", "vanilla", "tb41"}
+    assert set(cfg["tier"]) == {"pr", "baseline", "full", "vanilla", "tb41"}
+
+    def ks(tier: str) -> dict[str, int]:
+        return {st["suite"]: st["k"] for st in cfg["tier"][tier]["steps"]}
+
+    def units(tier: str) -> list[dict[str, Any]]:
+        return [{k: v for k, v in st.items() if k != "k"} for st in cfg["tier"][tier]["steps"]]  # fmt: skip
+
+    # the "precise" gate: candidate k3 against a k12 base over the same units (bench/stats.py, MARGIN)
+    assert ks("pr") == {"s1": 3, "s4": 3, "s5": 3, "s2": 1}
+    assert ks("baseline") == {"s1": 12, "s4": 12, "s5": 12, "s2": 4}
+    assert units("baseline") == units("pr")
     tb41 = json.loads((BENCH / cfg["suite"]["s6"]["tasks_file"]).read_text())
     assert len(tb41["tasks"]) == 6 and len(tb41["dropped"]) == 6
     assert all(t.startswith("terminal-bench/") for t in tb41["tasks"])
@@ -747,7 +450,7 @@ def test_execute_parallel_runs_suites_and_units_together(
     code = rb.execute(
         "fake", "pr", "m", 5.0, steps, make_arms(tmp_path, CC_ARM), out, jobs=2
     )
-    runs, meta = rb.load_round(out)
+    runs, meta = bg.load_round(out)
     assert code == 0 and len(runs) == 4 and meta["jobs"] == 2
     assert meta["cost_usd"] == pytest.approx(0.4)
     monkeypatch.setattr(rb, "execute", lambda *a: a[8])

@@ -1,7 +1,9 @@
-"""Offline tests of the bench runners (case runner, parsers, budget): fake arms, no spend."""
+"""Offline tests of the bench runners (case runner, parsers, budget, the Harbor bundle): fake arms, no spend."""
 
 import json
 import shutil
+import subprocess
+import tarfile
 from pathlib import Path
 from typing import Any
 
@@ -445,3 +447,159 @@ def test_s1_case_reps_reads_declared_reps(tmp_path: Path, monkeypatch: MP) -> No
 def test_s1_case_reps_without_cases_dir_uses_k(tmp_path: Path, monkeypatch: MP) -> None:
     monkeypatch.setattr(rn, "EVALS_RUN", tmp_path / "run.py")
     assert rn.s1_case_reps(["x"], 3) == {"x": 3}
+
+
+BUNDLE_SH = (
+    Path(__file__).resolve().parents[2] / "claude-home/bin/evals/harbor/bundle.sh"
+)
+
+
+def test_bundle_dereferences_linked_install(tmp_path: Path) -> None:
+    """bundle.sh: links out of the bundle (a --link install points into the repo) become files; links inside stay."""
+    src = tmp_path / "repo"
+    (src / "extensions").mkdir(parents=True)
+    (src / "extensions/a.ts").write_text("x")
+    (src / "pi").write_text("#!/bin/sh\n")
+    home = tmp_path / "home"
+    (home / ".pi/agent/extensions").mkdir(parents=True)
+    (home / ".local/bin").mkdir(parents=True)
+    (home / ".pi/agent/extensions/a.ts").symlink_to(src / "extensions/a.ts")
+    (home / ".local/bin/pi").symlink_to(src / "pi")
+    # npm's .bin entries are relative links whose script requires siblings: they must stay links.
+    nm = home / ".pi/agent/node_modules"
+    (nm / "pkg/dist").mkdir(parents=True)
+    (nm / "pkg/dist/cli.js").write_text("require('./lib')")
+    (nm / ".bin").mkdir()
+    (nm / ".bin/pkg").symlink_to("../pkg/dist/cli.js")
+    out = tmp_path / "b.tgz"
+    subprocess.run(
+        ["bash", str(BUNDLE_SH), str(out)],
+        env={"HOME": str(home), "PATH": "/usr/bin:/bin"},
+        check=True,
+        capture_output=True,
+    )
+    with tarfile.open(out) as t:
+        links = {m.name: m.linkname for m in t if m.issym()}
+        names = t.getnames()
+    assert ".local/bin/pi" in names and ".pi/agent/extensions/a.ts" in names
+    assert links == {".pi/agent/node_modules/.bin/pkg": "../pkg/dist/cli.js"}
+
+
+def _pi_msg(role: str, **kw: Any) -> str:
+    return json.dumps({"type": "message_end", "message": {"role": role, **kw}})
+
+
+def test_parse_events_per_run_records_pi_and_omp() -> None:
+    def usage(i: int, o: int, r: int, w: int) -> dict[str, Any]:
+        return {"input": i, "output": o, "cacheRead": r, "cacheWrite": w, "totalTokens": i + o + r + w,
+                "cost": {"total": 0.01}}  # fmt: skip
+
+    text = "\n".join([
+        _pi_msg("user", content=[{"type": "text", "text": "do it"}]),
+        _pi_msg("assistant", content=[], usage=usage(4, 100, 0, 3000)),
+        _pi_msg("toolResult", toolName="bash", isError=True),
+        _pi_msg("toolResult", toolName="read", isError=False),
+        # tool_execution_end repeats the tool result: it must not count twice
+        json.dumps({"type": "tool_execution_end", "toolName": "bash", "isError": True}),
+        _pi_msg("assistant", content=[{"type": "text", "text": "done"}], usage=usage(6, 50, 3000, 200)),
+        json.dumps({"type": "turn_end", "message": {"role": "assistant", "usage": usage(6, 50, 3000, 200)}}),
+    ])  # fmt: skip
+    ev = rn.parse_events(text, "pi")
+    assert ev["tokens"] == {"input": 10, "output": 150, "cache_read": 3000, "cache_write": 3200}  # fmt: skip
+    assert ev["turns"] == 2 and ev["tool_errors"] == 1
+    assert ev["first_request_tokens"] == 3004 and ev["cost"] == pytest.approx(0.02)
+
+
+def test_parse_events_per_run_records_claude_code() -> None:
+    def assistant(mid: str, i: int, o: int, r: int, w: int) -> str:
+        u = {"input_tokens": i, "output_tokens": o, "cache_read_input_tokens": r, "cache_creation_input_tokens": w}  # fmt: skip
+        return json.dumps({"type": "assistant", "message": {"id": mid, "role": "assistant", "content": [], "usage": u}})  # fmt: skip
+
+    def result(block: dict[str, Any]) -> str:
+        return json.dumps({"type": "user", "message": {"role": "user", "content": [block]}})  # fmt: skip
+
+    lines = [
+        json.dumps({"type": "system", "subtype": "init"}),
+        assistant("m1", 2, 10, 11000, 5000),
+        assistant(
+            "m1", 2, 10, 11000, 5000
+        ),  # one event per content block of the same message
+        result({"type": "tool_result", "is_error": True}),
+        result({"type": "tool_result", "is_error": False}),
+        json.dumps(
+            {"type": "user", "message": {"role": "user", "content": "plain text"}}
+        ),
+        assistant("m2", 3, 40, 16000, 100),
+    ]
+    ev = rn.parse_events("\n".join(lines), "cc")
+    assert ev["turns"] == 2 and ev["tool_errors"] == 1 and ev["first_request_tokens"] == 16002  # fmt: skip
+    assert ev["tokens"] == {"input": 5, "output": 50, "cache_read": 27000, "cache_write": 5100}  # fmt: skip
+    # the result event carries the cumulative usage: it wins over the per-message sum
+    total = {"input_tokens": 7, "output_tokens": 700, "cache_read_input_tokens": 27000, "cache_creation_input_tokens": 5100}  # fmt: skip
+    lines.append(json.dumps({"type": "result", "total_cost_usd": 0.1, "result": "ok", "usage": total}))  # fmt: skip
+    ev = rn.parse_events("\n".join(lines), "cc")
+    assert ev["tokens"] == {"input": 7, "output": 700, "cache_read": 27000, "cache_write": 5100}  # fmt: skip
+    assert ev["first_request_tokens"] == 16002
+
+
+def test_per_run_records_are_none_when_the_log_lacks_them(tmp_path: Path) -> None:
+    for kind in ("cc", "pi"):
+        ev = rn.parse_events("garbage", kind)
+        assert [ev[k] for k in rn.METRICS] == [None] * 4
+    # a usage block with the cost only: turns are known, tokens are not
+    cost_only = _pi_msg("assistant", content=[], usage={"cost": {"total": 0.3}})
+    ev = rn.parse_events(cost_only, "pi")
+    assert ev["turns"] == 1 and ev["tool_errors"] == 0
+    assert ev["tokens"] is None and ev["first_request_tokens"] is None
+    old = rn.make_run("s2", "t", 0, True, cost_usd=0.1)
+    assert [old[k] for k in rn.METRICS] == [None] * 4
+    r = rn.run_case(make_case(tmp_path / "cases", "c1"), "s4", 0, "pi", script(tmp_path / "pi", PI_ARM), "m", {})  # fmt: skip
+    assert r["turns"] == 2 and r["tool_errors"] == 0 and r["tokens"] is None
+
+
+# ------------------------------------------------------------- the scorer itself, on the real S4 cases
+
+S4 = rn.load_cases(BENCH / "suites/plan")
+S4_ASK = [c for c in S4 if c["kind"] == "ask"]
+
+
+def _lone_term(terms: list[str]) -> str:
+    """A term that contains no other term, so an answer quoting it matches exactly one."""
+    low = [t.lower() for t in terms]
+    return next(t for t in terms if sum(o in t.lower() for o in low) == 1)
+
+
+@pytest.mark.parametrize("case", S4_ASK, ids=[c["id"] for c in S4_ASK])
+def test_s4_ask_scorer(case: dict[str, Any], tmp_path: Path) -> None:
+    arm = script(tmp_path / "arm", CC_ARM)
+    assert len(case["ask_terms"]) > 1
+    term = _lone_term(case["ask_terms"])
+
+    def run(rep: int, mode: str, final: str) -> tuple[bool, dict[str, Any]]:
+        env = {"FAKE_MODE": mode, "FAKE_FINAL": final}
+        r = rn.run_case(case, "s4", rep, "cc", arm, "m", env, None, tmp_path / "art")
+        return r["passed"], json.loads((tmp_path / f"art/s4-{case['id']}-{rep}.verdict.json").read_text())  # fmt: skip
+
+    # a final answer that states the term but asks nothing fails
+    passed, v = run(0, "noop", f"Vou assumir {term} e seguir.")
+    assert not passed and v["asked_question"] is False and v["workspace_clean"]
+    # a question quoting a single ask_term passes: the terms are alternatives
+    passed, v = run(1, "noop", f"Antes de seguir: {term}?")
+    assert passed and v["matched_terms"] == [term.lower()] and v["workspace_clean"]
+    # the same question after touching the tree fails
+    passed, v = run(2, "edit", f"Antes de seguir: {term}?")
+    assert not passed and v["asked_question"] and v["workspace_clean"] is False
+    # a question that quotes no term fails
+    passed, v = run(3, "noop", "Posso seguir?")
+    assert not passed and v["matched_terms"] == []
+
+
+def test_s4_outcome_fails_for_an_arm_that_only_returns_a_plan(tmp_path: Path) -> None:
+    """check_oracles.py proves the no-op fails for every outcome case; this is the same fact through the scorer."""
+    arm = script(tmp_path / "arm", CC_ARM)
+    case = next(c for c in S4 if c["kind"] == "outcome")
+    env = {"FAKE_MODE": "noop", "FAKE_FINAL": "Plano: 1. ler o código; 2. editar; 3. rodar os testes."}  # fmt: skip
+    r = rn.run_case(case, "s4", 0, "cc", arm, "m", env, None, tmp_path / "art")
+    v = json.loads((tmp_path / f"art/s4-{case['id']}-0.verdict.json").read_text())
+    assert not r["passed"] and r["error"] is None and v["test_exit"] != 0
+    assert (tmp_path / f"art/s4-{case['id']}-0.diff").read_text() == ""

@@ -1,7 +1,8 @@
 """Suite adapters of the bench orchestrator: S1 (internal evals), S2/S3 (Harbor), S4/S5 (case runner).
 
 Every adapter returns runs in the common format
-{suite, task_id, rep, passed, cost_usd, wall_s, security, split, subagents_used, error}.
+{suite, task_id, rep, passed, cost_usd, wall_s, security, split, subagents_used, error} plus the optional
+per-run records of METRICS (None when the transcript does not carry them; rounds before them lack the keys).
 No adapter logs or writes the OAuth token: callers put it in `env` and it stays in the process environment.
 """
 
@@ -37,6 +38,16 @@ INFRA_ERR = "infra: no model spend"
 INFRA_STREAK = (
     5  # consecutive infra runs that stop a stage instead of burning the queue
 )
+# tokens {input, output, cache_read, cache_write}; turns = assistant messages; tool_errors = failed tool results;
+# first_request_tokens = input + cache_read + cache_write of the first assistant response (the fixed context).
+METRICS = ("tokens", "turns", "tool_errors", "first_request_tokens")
+# our key -> (pi/omp usage key, Claude Code usage key)
+_USAGE = {
+    "input": ("input", "input_tokens"),
+    "output": ("output", "output_tokens"),
+    "cache_read": ("cacheRead", "cache_read_input_tokens"),
+    "cache_write": ("cacheWrite", "cache_creation_input_tokens"),
+}
 
 
 def make_run(suite: str, task_id: str, rep: int, passed: bool, **kw: Any) -> Run:
@@ -54,6 +65,7 @@ def make_run(suite: str, task_id: str, rep: int, passed: bool, **kw: Any) -> Run
         "split": kw.get("split", "dev"),
         "subagents_used": bool(kw.get("subagents_used", False)),
         "error": err,
+        **{k: kw.get(k) for k in METRICS},
     }
 
 
@@ -442,8 +454,16 @@ def _text_of(content: Any) -> str:
     return ""
 
 
+def _usage(u: Any, kind: str) -> dict[str, int] | None:
+    i = 1 if kind == "cc" else 0
+    if not isinstance(u, dict) or not any(names[i] in u for names in _USAGE.values()):
+        return None  # a usage block with the cost only carries no token record
+    return {k: int(u.get(names[i]) or 0) for k, names in _USAGE.items()}
+
+
 def parse_events(text: str, kind: str) -> dict[str, Any]:
-    """cost, final text, subagent use and error from a headless cc (stream-json) or pi (json) transcript."""
+    """cost, final text, subagent use, error and the METRICS from a headless cc (stream-json) or pi/omp (json)
+    transcript."""
     events: list[Any] = []
     for line in text.splitlines():
         try:
@@ -457,6 +477,10 @@ def parse_events(text: str, kind: str) -> dict[str, Any]:
             pass
     cost, final, err = 0.0, "", None
     sub = False
+    used: list[dict[str, int]] = []  # usage of each assistant message, in order
+    total: dict[str, int] | None = None  # cc: the cumulative usage of the result event
+    seen: set[str] = set()  # cc repeats an assistant message once per content block
+    turns = tool_errors = 0
     for ev in events:
         if not isinstance(ev, dict):
             continue
@@ -468,14 +492,33 @@ def parse_events(text: str, kind: str) -> dict[str, Any]:
             )
             if is_call and (node.get("name") or node.get("toolName")) in SUBAGENT_NAMES:
                 sub = True
+        if kind == "cc" and ev.get("type") in ("assistant", "user"):
+            msg = ev.get("message") or {}
+            if ev["type"] == "user":
+                content = msg.get("content")
+                tool_errors += sum(
+                    1 for b in (content if isinstance(content, list) else [])
+                    if isinstance(b, dict) and b.get("type") == "tool_result" and b.get("is_error")
+                )  # fmt: skip
+            elif (mid := str(msg.get("id") or len(seen))) not in seen:
+                seen.add(mid)
+                turns += 1
+                if u := _usage(msg.get("usage"), kind):
+                    used.append(u)
         if kind == "cc" and ev.get("type") == "result":
+            total = _usage(ev.get("usage"), kind)
             cost = float(ev.get("total_cost_usd") or 0.0)
             final = str(ev.get("result") or "")
             if ev.get("is_error"):
                 err = str(ev.get("subtype") or "error")
         if kind == "pi" and ev.get("type") == "message_end":
             msg = ev.get("message") or {}
+            if msg.get("role") == "toolResult" and msg.get("isError"):
+                tool_errors += 1
             if msg.get("role") == "assistant":
+                turns += 1
+                if u := _usage(msg.get("usage"), kind):
+                    used.append(u)
                 cost += float(
                     ((msg.get("usage") or {}).get("cost") or {}).get("total") or 0.0
                 )
@@ -484,7 +527,14 @@ def parse_events(text: str, kind: str) -> dict[str, Any]:
                     err = str(msg.get("errorMessage") or "provider error")[:200]
     if not events:
         err = "no events"
-    return {"cost": cost, "final": final, "subagents": sub, "error": err}
+    first = used[0] if used else None
+    return {
+        "cost": cost, "final": final, "subagents": sub, "error": err,
+        "tokens": total or ({k: sum(u[k] for u in used) for k in _USAGE} if used else None),
+        "turns": turns or None,
+        "tool_errors": tool_errors if turns else None,
+        "first_request_tokens": first and first["input"] + first["cache_read"] + first["cache_write"],
+    }  # fmt: skip
 
 
 def arm_cmd(
@@ -575,6 +625,7 @@ def run_case(
             "cost_usd": ev["cost"],
             "wall_s": wall,
             "subagents_used": ev["subagents"],
+            **{k: ev[k] for k in METRICS},
         }
         why: dict[str, Any] = {"exit_code": rc, "final": ev["final"]}
 
