@@ -86,6 +86,15 @@ def test_not_comparable() -> None:
     for k in META:
         v = stats.verdict(mk(T), mk(T), META, dict(META, **{k: "x"}))
         assert v["verdict"] == "NOT_COMPARABLE"
+    # a different parallelism is another wall-time measurement; rounds without the key ran with 1
+    assert (
+        stats.verdict(mk(T), mk(T), META, dict(META, jobs=4))["verdict"]
+        == "NOT_COMPARABLE"
+    )
+    assert (
+        stats.verdict(mk(T), mk(T), META, dict(META, jobs=1))["verdict"]
+        != "NOT_COMPARABLE"
+    )
 
 
 def test_none_cost_wall() -> None:

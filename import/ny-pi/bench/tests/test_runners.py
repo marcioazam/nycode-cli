@@ -204,6 +204,14 @@ def test_harbor_cmd_and_agents(monkeypatch: MP) -> None:
     assert "version=1.5.2" in rn.harbor_agent("pi-vanilla", "m", Path("/hd"))[0]
     mp = rn.harbor_agent("ny-pi", "m", Path("/hd"))
     assert "pi_harness_agent:PiHarnessAgent" in mp[0] and mp[1] == {"PYTHONPATH": "/hd"}
+    capped = rn.harbor_cmd("ds", [], "j", Path("/o"), ["t"], timeout_mult=0.125)
+    assert capped[capped.index("--agent-timeout-multiplier") + 1] == "0.125"
+    assert "--agent-timeout-multiplier" not in rn.harbor_cmd(
+        "ds", [], "j", Path("/o"), ["t"]
+    )
+    om = rn.harbor_agent("omp", "m", Path("/hd"))
+    assert om[0][:2] == ["-a", "omp_agent:OmpAgent"] and "thinking=medium" in om[0]
+    assert om[1] == {"PYTHONPATH": "/hd"} and om[2] == "ANTHROPIC_OAUTH_TOKEN"
     monkeypatch.delenv("BENCH_HARBOR")
     monkeypatch.setattr(shutil, "which", lambda _: None)
     assert rn.harbor_bin()[0] == "uvx"
@@ -234,8 +242,13 @@ done
         "a",
         "b",
     ] and exhausted  # 0.6 + 0.6 >= 1.0: third chunk never starts
-    rs, exhausted = rn.run_harbor([], jobs, "s2", {}, [["a"]], 5.0, make)
-    assert len(rs) == 1 and not exhausted
+    seen: list[list[str]] = []
+    rs, exhausted = rn.run_harbor(
+        [], jobs, "s2", {}, [["a"], ["b"]], 5.0, make, None,
+        lambda got: seen.append([r["task_id"] for r in got]),
+    )  # fmt: skip
+    assert len(rs) == 2 and not exhausted
+    assert seen == [["a"], ["b"]]  # each chunk reaches the sink as it ends
     rs, _ = rn.run_harbor([], tmp_path / "empty", "s9", {}, [["q"]], 5.0, make)
     assert rs[0]["error"].startswith("harbor exit") and not rs[0]["passed"]
 
@@ -315,6 +328,16 @@ def test_ask_case_fails_when_tree_dirty_or_no_question(tmp_path: Path) -> None:
     assert q["passed"]
 
 
+def test_ask_terms_are_alternatives(tmp_path: Path) -> None:
+    """Baseline 2026-11-14: the scorer demanded every term, so spelling variants ("período", "periodo") made the
+    ask cases unpassable for all arms; the suite contract is one term (bench/suites/README.md)."""
+    pi = script(tmp_path / "pi", PI_ARM)  # final: "Which file do you mean?"
+    one = make_case(tmp_path / "cases", "a1", kind="ask", ask_terms=["database", "file"])  # fmt: skip
+    assert rn.run_case(one, "s4", 0, "pi", pi, "m", {})["passed"]
+    none = make_case(tmp_path / "cases", "a2", kind="ask", ask_terms=["database", "table"])  # fmt: skip
+    assert not rn.run_case(none, "s4", 0, "pi", pi, "m", {})["passed"]
+
+
 def test_parse_events_variants() -> None:
     single = json.dumps(
         {
@@ -351,6 +374,29 @@ def test_case_saves_agent_and_test_output(tmp_path: Path) -> None:
     rn.run_case(case, "s4", 0, "cc", arm, "m", {}, None, art)
     assert (art / "s4-c1-0.agent.out").read_text().strip()
     assert (art / "s4-c1-0.test.out").exists()
+    # the workspace diff (before the hidden tests land) and why the verdict is what it is
+    diff = (art / "s4-c1-0.diff").read_text()
+    assert "out.txt" in diff and "+changed" in diff and "hidden" not in diff
+    v = json.loads((art / "s4-c1-0.verdict.json").read_text())
+    assert v["passed"] and v["test_exit"] == 0 and v["exit_code"] == 0
+    assert v["final"] == "done" and "out.txt" in v["check"]
+
+
+def test_case_verdict_explains_ask_and_timeout(tmp_path: Path) -> None:
+    art = tmp_path / "art"
+    pi = script(tmp_path / "pi", PI_ARM + "echo oops >&2\n")
+    bad = make_case(tmp_path / "cases", "ask2", kind="ask", ask_terms=["database"])
+    assert not rn.run_case(bad, "s4", 0, "pi", pi, "m", {}, None, art)["passed"]
+    v = json.loads((art / "s4-ask2-0.verdict.json").read_text())
+    assert v["check"] == "ask" and v["matched_terms"] == []
+    assert v["workspace_clean"] and v["asked_question"]
+    assert (art / "s4-ask2-0.agent.err").read_text() == "oops\n"
+    assert (art / "s4-ask2-0.diff").read_text() == ""
+    cc = script(tmp_path / "arm", CC_ARM)
+    slow = make_case(tmp_path / "cases", "slow", timeout_s=1)
+    rn.run_case(slow, "s4", 1, "cc", cc, "m", {"FAKE_MODE": "sleep"}, None, art)
+    v = json.loads((art / "s4-slow-1.verdict.json").read_text())
+    assert v["error"] == "timeout" and v["exit_code"] is None and not v["passed"]
 
 
 def test_make_run_flags_no_spend_failures_as_infra() -> None:

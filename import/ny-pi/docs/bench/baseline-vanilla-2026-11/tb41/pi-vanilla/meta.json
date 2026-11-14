@@ -1,0 +1,12 @@
+{
+  "arm": "pi-vanilla",
+  "arm_version": "1.5.2",
+  "model": "claude-sonnet-5-5",
+  "git_sha": "6d2e408ed390ea7cecdca000e263196d87a09e50",
+  "started": "2026-11-14T20:27:19+00:00",
+  "budget_usd": 40.0,
+  "tier": "tb41",
+  "not_verified": false,
+  "errors": [],
+  "cost_usd": 2.0535
+}

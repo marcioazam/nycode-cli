@@ -22,3 +22,10 @@ runner = "run_pi.py"
 version = "pi 1.5.2 + pi-code 1.7.0 + this checkout"
 effort = "settings.json"     # from the owner overlay
 profile = "throwaway HOME: install.sh --link --apply of this tree + overlay.list; hash in .overlay-sha"
+
+[omp]
+bin = "arms/omp"
+runner = "run_pi.py"         # same JSON event stream as pi (-p --mode json)
+version = "omp 18.20.0"
+effort = "medium"            # --thinking medium
+profile = "Oh My Pi defaults, throwaway HOME per call, Auto QA off; binary from the reviewed GitHub release"

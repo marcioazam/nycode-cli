@@ -5,6 +5,7 @@
   gate         paired verdict (D6) of a candidate round against the frozen base round + summary (AC5, AC8)
   post-status  publish the `bench-pr` commit status of a PR (L1: owner-authored PRs only)
   report       tables per suite and arm from rounds, used for the BASELINE
+  evidence     per-run log paths, tool usage and cross-arm divergences (local only)
   probe        S6 offline capability probes (`<arm> --help` contains the flag)
 
 A round directory holds meta.json {arm, arm_version, model, overlay_sha, git_sha, started, budget_usd, ...}
@@ -20,8 +21,10 @@ import shutil
 import statistics
 import subprocess
 import sys
+import threading
 import tomllib
 from collections.abc import Callable, Collection
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -29,7 +32,7 @@ from typing import Any
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from bench import report, runners, stats
+from bench import evidence, report, runners, stats
 
 BENCH = Path(__file__).resolve().parent
 REPO = BENCH.parent
@@ -194,7 +197,14 @@ def overlay_sha(short: str) -> str | None:
 
 
 def _harbor_step(
-    s: Step, arm: str, model: str, out: Path, left: float, done: Collection[Key] = ()
+    s: Step,
+    arm: str,
+    model: str,
+    out: Path,
+    left: float,
+    done: Collection[Key] = (),
+    sink: Callable[[list[dict[str, Any]]], None] | None = None,
+    jobs_n: int = 4,
 ) -> tuple[list[dict[str, Any]], bool]:
     cfg = s["cfg"]
     agent_args, extra, tok_name = runners.harbor_agent(arm, model, HARBOR_DIR)
@@ -212,6 +222,14 @@ def _harbor_step(
             ["bash", str(HARBOR_DIR / "bundle.sh")],
             check=True, capture_output=True, env={**os.environ, "HOME": str(stage)},
         )  # fmt: skip
+    if (
+        arm == "omp"
+    ):  # fetch and checksum the pinned binaries the agent uploads (idempotent)
+        subprocess.run(
+            ["bash", str(HARBOR_DIR / "omp-release.sh")],
+            check=True,
+            capture_output=True,
+        )
     excl = (
         runners.load_excluded(BENCH / cfg["excluded_file"])
         if cfg.get("excluded_file")
@@ -233,7 +251,10 @@ def _harbor_step(
         t: runners.split_of(t, cfg["seed"], cfg["heldout_pct"], heldout)
         for t in tasks or []
     }
-    chunks = [tasks[i : i + 4] for i in range(0, len(tasks), 4)] if tasks else [[]]
+    n = max(
+        4, jobs_n
+    )  # trials in parallel = chunk size; a chunk is the unit saved and budget-checked
+    chunks = [tasks[i : i + n] for i in range(0, len(tasks), n)] if tasks else [[]]
 
     def make(chunk: list[str], job: str) -> list[str]:
         return runners.harbor_cmd(
@@ -245,9 +266,13 @@ def _harbor_step(
             s["st"].get("n"),
             excl,
             s["k"],
+            concurrent=n,
+            timeout_mult=cfg.get("agent_timeout_multiplier"),
         )
 
-    return runners.run_harbor([], jobs, s["suite"], env, chunks, left, make, splits)
+    return runners.run_harbor(
+        [], jobs, s["suite"], env, chunks, left, make, splits, sink
+    )
 
 
 def _kept_runs(runs_f: Path) -> list[dict[str, Any]]:
@@ -267,11 +292,15 @@ def execute(
     arms: dict[str, Any],
     out: Path,
     resume: bool = False,
+    jobs: int = 1,
 ) -> int:
+    """Run the steps. jobs > 1: suites run side by side and each runs `jobs` units at once. Wall time is then only
+    comparable between rounds with the same `jobs` (recorded in meta, checked by the gate)."""
     kind, bin_ = arm_info(arm, arms)
     out.mkdir(parents=True, exist_ok=True)
     meta = arm_meta(arm, arms, kind, bin_, model, budget) | {
         "tier": tier,
+        "jobs": jobs,
         "not_verified": False,
         "errors": [],
     }
@@ -279,18 +308,27 @@ def execute(
     kept = _kept_runs(runs_f) if resume else []
     runs_f.write_text("".join(json.dumps(r) + "\n" for r in kept))
     done: set[Key] = {(r["suite"], r["task_id"], r["rep"]) for r in kept}
-    spent = runners.run_cost(kept)
+    spent = [runners.run_cost(kept)]  # shared by the step threads, guarded by `lock`
+    lock = threading.Lock()
 
     def save(rs: list[dict[str, Any]]) -> None:
-        with runs_f.open("a") as f:
+        with lock, runs_f.open("a") as f:
             for r in rs:
                 f.write(json.dumps(r) + "\n")
+            spent[0] += runners.run_cost(rs)
 
-    for s in steps:
-        left = budget - spent
+    def fresh(rs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        return [r for r in rs if (r["suite"], r["task_id"], r["rep"]) not in done]
+
+    def step(s: Step) -> None:
+        # ponytail: S1 and Harbor get the remaining budget up front, so parallel suites can overshoot the cap by
+        # at most one stage each; the round still ends not_verified. Per-stage allocation if that ever bites.
+        left = budget - spent[0]
+        if meta["not_verified"]:
+            return  # an earlier stage stopped the round (sequential mode)
         if left <= 0:
             meta["not_verified"] = True
-            break
+            return
         rs: list[dict[str, Any]] = []
         if s["kind"] == "internal":
             reps = runners.s1_case_reps(s["tasks"], s["k"])
@@ -300,44 +338,45 @@ def execute(
             ]  # fmt: skip
             if todo:
                 rs, err = runners.run_s1(
-                    kind, bin_, todo, s["k"], model, left, f"bench-{arm}-{tier}", {}
-                )
+                    kind, bin_, todo, s["k"], model, left, f"bench-{arm}-{tier}", {},
+                    max(2, jobs),
+                )  # fmt: skip
                 if err:
                     meta["errors"].append(f"s1: {err}")
-                rs = [r for r in rs if (r["suite"], r["task_id"], r["rep"]) not in done]
+                rs = fresh(rs)
             save(rs)
         elif s["kind"] == "harbor":
-            rs, exhausted = _harbor_step(s, arm, model, out, left, done)
-            rs = [r for r in rs if (r["suite"], r["task_id"], r["rep"]) not in done]
-            save(rs)
+            # Each chunk is recorded as it ends: a killed round keeps its finished trials.
+            rs, exhausted = _harbor_step(
+                s, arm, model, out, left, done, lambda got: save(fresh(got)), jobs
+            )
+            rs = fresh(rs)
             meta["not_verified"] |= exhausted
         else:
-            for case in s["cases"]:
-                if runners.infra_streak(rs) >= runners.INFRA_STREAK:
+            units = [
+                (c, rep) for c in s["cases"] for rep in range(s["k"])
+                if (s["suite"], c["id"], rep) not in done
+            ]  # fmt: skip
+
+            def one(u: tuple[dict[str, Any], int]) -> dict[str, Any]:
+                r = runners.run_case(
+                    u[0], s["suite"], u[1], kind, bin_, model, {},
+                    budget - spent[0], out / "artifacts",
+                )  # fmt: skip
+                save([r])
+                return r
+
+            for i in range(
+                0, len(units), jobs
+            ):  # a batch is the unit checked for budget and infra failures
+                if (
+                    runners.infra_streak(rs) >= runners.INFRA_STREAK
+                    or budget - spent[0] <= 0
+                ):
                     meta["not_verified"] = True
                     break
-                for rep in range(s["k"]):
-                    if (s["suite"], case["id"], rep) in done:
-                        continue
-                    if runners.infra_streak(rs) >= runners.INFRA_STREAK:
-                        break
-                    if budget - spent - runners.run_cost(rs) <= 0:
-                        meta["not_verified"] = True
-                        break
-                    r = runners.run_case(
-                        case,
-                        s["suite"],
-                        rep,
-                        kind,
-                        bin_,
-                        model,
-                        {},
-                        budget - spent - runners.run_cost(rs),
-                        out / "artifacts",
-                    )
-                    rs.append(r)
-                    save([r])
-        spent += runners.run_cost(rs)
+                with ThreadPoolExecutor(jobs) as ex:
+                    rs += list(ex.map(one, units[i : i + jobs]))
         bad = sum(1 for r in rs if r.get("error"))
         if rs and bad / len(rs) > MAX_ERROR_SHARE:
             # quota (429), auth, disk or sandbox failures are no score: stop before the next stage
@@ -345,13 +384,16 @@ def execute(
                 f"{s['suite']}: {bad}/{len(rs)} runs with error (> {MAX_ERROR_SHARE:.0%}), infra suspected"
             )
             meta["not_verified"] = True
-        if spent >= budget:
+        if spent[0] >= budget:
             meta["not_verified"] = True
-        if meta["not_verified"]:
-            break
-    meta["cost_usd"] = round(spent, 4)
+
+    with ThreadPoolExecutor(len(steps) if jobs > 1 and steps else 1) as ex:
+        list(
+            ex.map(step, steps)
+        )  # list(): a stage's exception fails the round, as before
+    meta["cost_usd"] = round(spent[0], 4)
     (out / "meta.json").write_text(json.dumps(meta, indent=2) + "\n")
-    print(f"round: {out} cost=US${spent:.4f} not_verified={meta['not_verified']}")
+    print(f"round: {out} cost=US${spent[0]:.4f} not_verified={meta['not_verified']}")
     return NOT_VERIFIED_EXIT if meta["not_verified"] else 0
 
 
@@ -589,12 +631,18 @@ def main(argv: list[str] | None = None) -> int:
     sub = p.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run")
     r.add_argument("--arm", required=True)
-    r.add_argument("--tier", required=True, choices=["pr", "full", "vanilla"])
+    r.add_argument("--tier", required=True, choices=["pr", "full", "vanilla", "tb41"])
     r.add_argument("--model", required=True)
     r.add_argument("--budget-usd", type=float, required=True)
     r.add_argument("--suites", nargs="*")
     r.add_argument("--k", type=int)
     r.add_argument("--dry-run", action="store_true")
+    r.add_argument(
+        "--jobs",
+        type=int,
+        default=int(os.environ.get("BENCH_JOBS", "4")),
+        help="units in parallel per suite; above 1 the suites also run side by side (1 = fully sequential)",
+    )
     r.add_argument(
         "--resume",
         action="store_true",
@@ -614,6 +662,13 @@ def main(argv: list[str] | None = None) -> int:
     rp = sub.add_parser("report")
     rp.add_argument("--runs", nargs="+", type=Path, required=True)
     rp.add_argument("--out", type=Path, required=True)
+    ev = sub.add_parser("evidence")
+    ev.add_argument("--runs", nargs="+", type=Path, required=True)
+    ev.add_argument("--out", type=Path, required=True)
+    ev.add_argument("--focus", default="ny-pi", help="arm whose gaps are detailed")
+    ev.add_argument(
+        "--strict", action="store_true", help="exit 1 when a run has no transcript"
+    )
     sub.add_parser("probe")
     a = p.parse_args(argv)
 
@@ -649,7 +704,17 @@ def main(argv: list[str] | None = None) -> int:
             or Path(os.environ.get("BENCH_OUT", "/tmp"))
             / f"bench-{a.arm}-{a.tier}-{datetime.now(UTC):%Y%m%dT%H%M%S}"
         )
-        return execute(a.arm, a.tier, a.model, a.budget_usd, steps, arms, out, a.resume)
+        return execute(
+            a.arm,
+            a.tier,
+            a.model,
+            a.budget_usd,
+            steps,
+            arms,
+            out,
+            a.resume,
+            max(1, a.jobs),
+        )
     if a.cmd == "gate":
         cmf = REPO / "docs/bench/coverage-map.json"
         v, md, code = gate(
@@ -671,6 +736,13 @@ def main(argv: list[str] | None = None) -> int:
         a.out.write_text(report.render(dirs))
         print(f"report: {a.out}")
         return 0
+    if a.cmd == "evidence":
+        dirs = [Path(x) for pat in a.runs for x in (glob.glob(str(pat)) or [str(pat)])]
+        rows = evidence.collect(dirs)
+        a.out.write_text(evidence.render(rows, a.focus))
+        lost = len(evidence.missing(rows))
+        print(f"evidence: {a.out} ({len(rows)} runs, {lost} without a transcript)")
+        return 1 if a.strict and lost else 0
     print(probe(load_toml(BENCH / "arms.toml"), load_toml(BENCH / "capabilities.toml")))
     return 0
 

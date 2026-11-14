@@ -163,7 +163,10 @@ def verdict(
         "score": None,
         "excluded": 0,
     }
-    if any(meta_base.get(k) != meta_cand.get(k) for k in META_KEYS):
+    # `jobs`: wall time under a different parallelism is another measurement (rounds before 2026-11-14 ran with 1)
+    if any(meta_base.get(k) != meta_cand.get(k) for k in META_KEYS) or meta_base.get(
+        "jobs", 1
+    ) != meta_cand.get("jobs", 1):
         out["verdict"] = "NOT_COMPARABLE"
         return out
     base_l, cand_l = list(base_runs), list(cand_runs)

@@ -69,6 +69,16 @@ heldout_pct = 30
 tasks_file = "tasks/tb2.json"      # {"dataset","version","tasks","heldout"} (a plain list also loads)
 excluded_file = "tasks/tb2.excluded.json"
 
+[suite.s6]
+kind = "harbor"
+dataset = "terminal-bench/terminal-bench@4.1.0"   # released 2026-11-09 (66 tasks; verifier hardening of 4.0)
+est_cost_usd = 3.00                # not piloted: TB 4.1 tasks are long (8 h agent timeout upstream)
+seed = 20261114
+heldout_pct = 0
+tasks_file = "tasks/tb41.json"     # 6 CPU tasks, seeded draw from the 12 stratified ones (owner cut 2026-11-14)
+excluded_file = "tasks/tb41.excluded.json"
+agent_timeout_multiplier = 0.125   # 8 h -> 1 h per task: bounds wall and spend; not leaderboard-comparable
+
 [suite.s3]
 kind = "harbor"
 dataset = "swebenchpro"                      # L2; network lock (D13) is not expressible in `harbor run` flags: gap
@@ -105,6 +115,13 @@ steps = [
   { suite = "s5", splits = ["dev", "heldout"], k = 3 },
   { suite = "s2", k = 1 },  # 77 Harbor tasks: k1 keeps 3 arms inside the US$ 250 baseline (task 13 allocation)
   { suite = "s3", n = 50, k = 1 },
+  { suite = "s6", k = 1 },
+]
+
+# Terminal-Bench 4.1 comparison (owner request 2026-11-14): the 6-task s6 subset, all arms, on demand.
+[tier.tb41]
+steps = [
+  { suite = "s6", k = 1 },
 ]
 
 # vanilla baseline: everything (run for the vanilla arms; same steps as full).

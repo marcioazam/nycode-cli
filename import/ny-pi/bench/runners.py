@@ -14,7 +14,7 @@ import shutil
 import subprocess
 import tempfile
 import time
-from collections.abc import Collection, Iterable
+from collections.abc import Callable, Collection, Iterable
 from pathlib import Path
 from typing import Any
 
@@ -259,6 +259,14 @@ def harbor_agent(
             {},
             "ANTHROPIC_OAUTH_TOKEN",
         )
+    if (
+        arm == "omp"
+    ):  # reviewed release binary (omp-release.sh); medium = pi's default thinking
+        return (
+            ["-a", "omp_agent:OmpAgent", "--ak", "thinking=medium", "-m", m],
+            {"PYTHONPATH": str(harbor_dir)},
+            "ANTHROPIC_OAUTH_TOKEN",
+        )
     # ny-pi: custom agent shipped in claude-home/bin/evals/harbor (bundle.sh builds the bundle first)
     return (
         ["-a", "pi_harness_agent:PiHarnessAgent", "-m", m],
@@ -277,6 +285,7 @@ def harbor_cmd(
     exclude: Iterable[str] = (),
     k: int = 1,
     concurrent: int = 4,
+    timeout_mult: float | None = None,
 ) -> list[str]:
     cmd = [
         *harbor_bin(),
@@ -289,6 +298,10 @@ def harbor_cmd(
         "-k",
         str(k),
     ]
+    if (
+        timeout_mult
+    ):  # TB 4.1 tasks allow 8 h each; the suite caps them (wall and spend)
+        cmd += ["--agent-timeout-multiplier", str(timeout_mult)]
     cmd += ["--job-name", job, "-o", str(out)]
     for t in tasks or []:
         cmd += ["-i", t]
@@ -359,8 +372,10 @@ def run_harbor(
     budget_usd: float,
     make_cmd: Any,
     splits: dict[str, str] | None = None,
+    sink: Callable[[list[Run]], None] | None = None,
 ) -> tuple[list[Run], bool]:
-    """Run chunks of tasks one `harbor run` each, stop when the budget is gone. Returns (runs, exhausted)."""
+    """Run chunks of tasks one `harbor run` each, stop when the budget is gone. Returns (runs, exhausted).
+    `sink` gets each chunk's runs as soon as it ends, so a killed round keeps what it finished."""
     runs: list[Run] = []
     penv = {**os.environ, **env}
     for i, chunk in enumerate(chunks):
@@ -382,6 +397,8 @@ def run_harbor(
                 for t in chunk
             ]
         runs += got
+        if sink:
+            sink(got)
         if infra_streak(runs) >= INFRA_STREAK:
             return (
                 runs,
@@ -536,31 +553,53 @@ def run_case(
             p = subprocess.run(
                 cmd, cwd=wd, env={**os.environ, **env}, capture_output=True, text=True,
                 timeout=case.get("timeout_s", 600), check=False)  # fmt: skip
-            out, rc = p.stdout, p.returncode
+            out, rc, stderr = p.stdout, p.returncode, p.stderr
         except subprocess.TimeoutExpired as e:
             raw = e.stdout or b""
-            out, rc = (
+            out, rc, stderr = (
                 (raw if isinstance(raw, str) else raw.decode(errors="replace")),
                 None,
+                "",
             )
         wall = round(time.monotonic() - t0, 2)
         stem = f"{suite}-{case['id']}-{rep}"
         _save(artifacts, f"{stem}.agent.out", out)
+        if stderr:
+            _save(artifacts, f"{stem}.agent.err", stderr)
+        status = _git(wd, "status", "--porcelain").stdout
+        _git(wd, "add", "-A")  # what the agent left behind, untracked files included
+        _save(artifacts, f"{stem}.diff", _git(wd, "diff", "--cached", "HEAD").stdout)
+        _git(wd, "reset", "-q")
         ev = parse_events(out, kind)
         common = base | {
             "cost_usd": ev["cost"],
             "wall_s": wall,
             "subagents_used": ev["subagents"],
         }
+        why: dict[str, Any] = {"exit_code": rc, "final": ev["final"]}
+
+        def done(passed: bool, err: str | None) -> Run:
+            r = make_run(suite, case["id"], rep, passed, error=err, **common)
+            _save(artifacts, f"{stem}.verdict.json", json.dumps(r | why, indent=1))
+            return r
+
         if rc is None:
-            return make_run(suite, case["id"], rep, False, error="timeout", **common)
+            return done(False, "timeout")
         err = ev["error"] or (f"exit {rc}" if rc else None)
         passed = False
         if case.get("kind", "outcome") == "ask":
             terms = [t.lower() for t in case.get("ask_terms", [])]
             low = ev["final"].lower()
-            clean = not _git(wd, "status", "--porcelain").stdout.strip()
-            passed = clean and "?" in ev["final"] and all(t in low for t in terms)
+            clean = not status.strip()
+            # Terms are alternatives (spelling variants, synonyms): one is enough (bench/suites/README.md).
+            hit = [t for t in terms if t in low]
+            passed = clean and "?" in ev["final"] and (bool(hit) or not terms)
+            why |= {
+                "check": "ask",
+                "workspace_clean": clean,
+                "asked_question": "?" in ev["final"],
+                "matched_terms": hit,
+            }
         else:
             if (cdir / "hidden").is_dir():
                 shutil.copytree(cdir / "hidden", wd / "hidden", dirs_exist_ok=True)
@@ -569,8 +608,9 @@ def run_case(
                     ["bash", "-c", case["test_cmd"]], cwd=wd, capture_output=True, text=True, timeout=600, check=False)  # fmt: skip
                 passed = t.returncode == 0
                 _save(artifacts, f"{stem}.test.out", t.stdout + t.stderr)
+                why |= {"check": case["test_cmd"], "test_exit": t.returncode}
             except subprocess.TimeoutExpired:
                 err = err or "test timeout"
-        return make_run(suite, case["id"], rep, passed, error=err, **common)
+        return done(passed, err)
     finally:
         shutil.rmtree(wd, ignore_errors=True)

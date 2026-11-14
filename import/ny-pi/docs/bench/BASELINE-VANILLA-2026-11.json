@@ -1,63 +1,376 @@
 {
   "date": "2026-11-14",
-  "bench_git": "b346aceb1bf9",
-  "tier": "vanilla (= pr units)",
+  "bench_git": "6d2e408ed390",
+  "tier": "vanilla (= pr units) + tb41",
+  "scorer_note": "S4 ask cases re-run after the ask_terms fix (at least one term, as documented)",
   "versions": {
     "cc-vanilla": "2.1.323",
     "pi-vanilla": "1.5.2",
-    "ny-pi": "1.5.2 + overlay 83d8038f5782c040"
+    "omp": "18.20.0",
+    "ny-pi": "1.5.2 + overlay 83d8038f5782c040 (ask re-run and tb41: 00cb354716d14d16)"
   },
   "results": {
     "sonnet": {
       "cc-vanilla": {
         "runs": 76,
-        "passed": 65,
-        "pass_rate": 0.855,
-        "cost_usd": 5.55,
+        "passed": 73,
+        "pass_rate": 0.961,
+        "cost_usd": 5.57,
         "cost_median_usd": 0.0645,
-        "wall_p50_s": 17.1
+        "wall_p50_s": 17.6,
+        "by_suite": {
+          "s1": {
+            "runs": 28,
+            "passed": 27,
+            "pass_rate": 0.964,
+            "cost_usd": 1.86,
+            "cost_median_usd": 0.0645,
+            "wall_p50_s": 9.6
+          },
+          "s2": {
+            "runs": 4,
+            "passed": 4,
+            "pass_rate": 1.0,
+            "cost_usd": 0.92,
+            "cost_median_usd": 0.1545,
+            "wall_p50_s": 113.0
+          },
+          "s4": {
+            "runs": 24,
+            "passed": 24,
+            "pass_rate": 1.0,
+            "cost_usd": 1.31,
+            "cost_median_usd": 0.0546,
+            "wall_p50_s": 20.1
+          },
+          "s5": {
+            "runs": 20,
+            "passed": 18,
+            "pass_rate": 0.9,
+            "cost_usd": 1.48,
+            "cost_median_usd": 0.0683,
+            "wall_p50_s": 22.5
+          }
+        }
       },
       "pi-vanilla": {
         "runs": 76,
-        "passed": 67,
-        "pass_rate": 0.882,
-        "cost_usd": 2.11,
+        "passed": 74,
+        "pass_rate": 0.974,
+        "cost_usd": 2.1,
         "cost_median_usd": 0.0231,
-        "wall_p50_s": 13.5
+        "wall_p50_s": 13.6,
+        "by_suite": {
+          "s1": {
+            "runs": 28,
+            "passed": 26,
+            "pass_rate": 0.929,
+            "cost_usd": 0.29,
+            "cost_median_usd": 0.0085,
+            "wall_p50_s": 7.2
+          },
+          "s2": {
+            "runs": 4,
+            "passed": 4,
+            "pass_rate": 1.0,
+            "cost_usd": 0.49,
+            "cost_median_usd": 0.0897,
+            "wall_p50_s": 68.1
+          },
+          "s4": {
+            "runs": 24,
+            "passed": 24,
+            "pass_rate": 1.0,
+            "cost_usd": 0.6,
+            "cost_median_usd": 0.0234,
+            "wall_p50_s": 13.6
+          },
+          "s5": {
+            "runs": 20,
+            "passed": 20,
+            "pass_rate": 1.0,
+            "cost_usd": 0.73,
+            "cost_median_usd": 0.0351,
+            "wall_p50_s": 17.1
+          }
+        }
+      },
+      "omp": {
+        "runs": 76,
+        "passed": 69,
+        "pass_rate": 0.908,
+        "cost_usd": 7.54,
+        "cost_median_usd": 0.0931,
+        "wall_p50_s": 17.2,
+        "by_suite": {
+          "s1": {
+            "runs": 28,
+            "passed": 25,
+            "pass_rate": 0.893,
+            "cost_usd": 2.18,
+            "cost_median_usd": 0.0718,
+            "wall_p50_s": 9.7
+          },
+          "s2": {
+            "runs": 4,
+            "passed": 3,
+            "pass_rate": 0.75,
+            "cost_usd": 1.0,
+            "cost_median_usd": 0.1571,
+            "wall_p50_s": 97.3
+          },
+          "s4": {
+            "runs": 24,
+            "passed": 21,
+            "pass_rate": 0.875,
+            "cost_usd": 2.23,
+            "cost_median_usd": 0.0926,
+            "wall_p50_s": 17.7
+          },
+          "s5": {
+            "runs": 20,
+            "passed": 20,
+            "pass_rate": 1.0,
+            "cost_usd": 2.13,
+            "cost_median_usd": 0.105,
+            "wall_p50_s": 19.3
+          }
+        }
       },
       "ny-pi": {
         "runs": 76,
-        "passed": 58,
-        "pass_rate": 0.763,
-        "cost_usd": 7.03,
-        "cost_median_usd": 0.0854,
-        "wall_p50_s": 18.5
+        "passed": 62,
+        "pass_rate": 0.816,
+        "cost_usd": 7.06,
+        "cost_median_usd": 0.0861,
+        "wall_p50_s": 18.8,
+        "by_suite": {
+          "s1": {
+            "runs": 28,
+            "passed": 27,
+            "pass_rate": 0.964,
+            "cost_usd": 1.95,
+            "cost_median_usd": 0.0672,
+            "wall_p50_s": 13.0
+          },
+          "s2": {
+            "runs": 4,
+            "passed": 4,
+            "pass_rate": 1.0,
+            "cost_usd": 1.06,
+            "cost_median_usd": 0.2206,
+            "wall_p50_s": 134.2
+          },
+          "s4": {
+            "runs": 24,
+            "passed": 14,
+            "pass_rate": 0.583,
+            "cost_usd": 2.14,
+            "cost_median_usd": 0.088,
+            "wall_p50_s": 20.1
+          },
+          "s5": {
+            "runs": 20,
+            "passed": 17,
+            "pass_rate": 0.85,
+            "cost_usd": 1.9,
+            "cost_median_usd": 0.0932,
+            "wall_p50_s": 21.8
+          }
+        }
       }
     },
     "opus": {
       "cc-vanilla": {
         "runs": 22,
-        "passed": 16,
-        "pass_rate": 0.727,
+        "passed": 20,
+        "pass_rate": 0.909,
         "cost_usd": 3.36,
         "cost_median_usd": 0.1585,
-        "wall_p50_s": 34.3
+        "wall_p50_s": 34.3,
+        "by_suite": {
+          "s4": {
+            "runs": 12,
+            "passed": 11,
+            "pass_rate": 0.917,
+            "cost_usd": 1.51,
+            "cost_median_usd": 0.1283,
+            "wall_p50_s": 25.8
+          },
+          "s5": {
+            "runs": 10,
+            "passed": 9,
+            "pass_rate": 0.9,
+            "cost_usd": 1.85,
+            "cost_median_usd": 0.1729,
+            "wall_p50_s": 38.6
+          }
+        }
       },
       "pi-vanilla": {
         "runs": 22,
-        "passed": 18,
-        "pass_rate": 0.818,
+        "passed": 22,
+        "pass_rate": 1.0,
         "cost_usd": 1.74,
         "cost_median_usd": 0.078,
-        "wall_p50_s": 27.6
+        "wall_p50_s": 27.9,
+        "by_suite": {
+          "s4": {
+            "runs": 12,
+            "passed": 12,
+            "pass_rate": 1.0,
+            "cost_usd": 0.87,
+            "cost_median_usd": 0.0693,
+            "wall_p50_s": 27.6
+          },
+          "s5": {
+            "runs": 10,
+            "passed": 10,
+            "pass_rate": 1.0,
+            "cost_usd": 0.87,
+            "cost_median_usd": 0.0828,
+            "wall_p50_s": 28.2
+          }
+        }
+      },
+      "omp": {
+        "runs": 22,
+        "passed": 21,
+        "pass_rate": 0.955,
+        "cost_usd": 6.63,
+        "cost_median_usd": 0.2831,
+        "wall_p50_s": 43.4,
+        "by_suite": {
+          "s4": {
+            "runs": 12,
+            "passed": 12,
+            "pass_rate": 1.0,
+            "cost_usd": 3.44,
+            "cost_median_usd": 0.2831,
+            "wall_p50_s": 37.9
+          },
+          "s5": {
+            "runs": 10,
+            "passed": 9,
+            "pass_rate": 0.9,
+            "cost_usd": 3.19,
+            "cost_median_usd": 0.2972,
+            "wall_p50_s": 45.7
+          }
+        }
       },
       "ny-pi": {
         "runs": 22,
-        "passed": 17,
-        "pass_rate": 0.773,
-        "cost_usd": 5.42,
+        "passed": 20,
+        "pass_rate": 0.909,
+        "cost_usd": 5.43,
         "cost_median_usd": 0.2462,
-        "wall_p50_s": 52.2
+        "wall_p50_s": 52.2,
+        "by_suite": {
+          "s4": {
+            "runs": 12,
+            "passed": 10,
+            "pass_rate": 0.833,
+            "cost_usd": 3.06,
+            "cost_median_usd": 0.2567,
+            "wall_p50_s": 49.6
+          },
+          "s5": {
+            "runs": 10,
+            "passed": 10,
+            "pass_rate": 1.0,
+            "cost_usd": 2.37,
+            "cost_median_usd": 0.2418,
+            "wall_p50_s": 53.4
+          }
+        }
+      }
+    },
+    "tb41": {
+      "cc-vanilla": {
+        "runs": 6,
+        "passed": 1,
+        "pass_rate": 0.167,
+        "cost_usd": 3.15,
+        "cost_median_usd": 0.2757,
+        "wall_p50_s": 184.8,
+        "by_suite": {
+          "s6": {
+            "runs": 6,
+            "passed": 1,
+            "pass_rate": 0.167,
+            "cost_usd": 3.15,
+            "cost_median_usd": 0.2757,
+            "wall_p50_s": 184.8
+          }
+        },
+        "solved": [
+          "risk-scorer-replay"
+        ]
+      },
+      "pi-vanilla": {
+        "runs": 6,
+        "passed": 1,
+        "pass_rate": 0.167,
+        "cost_usd": 2.05,
+        "cost_median_usd": 0.1602,
+        "wall_p50_s": 114.3,
+        "by_suite": {
+          "s6": {
+            "runs": 6,
+            "passed": 1,
+            "pass_rate": 0.167,
+            "cost_usd": 2.05,
+            "cost_median_usd": 0.1602,
+            "wall_p50_s": 114.3
+          }
+        },
+        "solved": [
+          "risk-scorer-replay"
+        ]
+      },
+      "omp": {
+        "runs": 6,
+        "passed": 1,
+        "pass_rate": 0.167,
+        "cost_usd": 1.83,
+        "cost_median_usd": 0.2002,
+        "wall_p50_s": 142.1,
+        "by_suite": {
+          "s6": {
+            "runs": 6,
+            "passed": 1,
+            "pass_rate": 0.167,
+            "cost_usd": 1.83,
+            "cost_median_usd": 0.2002,
+            "wall_p50_s": 142.1
+          }
+        },
+        "solved": [
+          "risk-scorer-replay"
+        ]
+      },
+      "ny-pi": {
+        "runs": 6,
+        "passed": 2,
+        "pass_rate": 0.333,
+        "cost_usd": 2.79,
+        "cost_median_usd": 0.2129,
+        "wall_p50_s": 160.3,
+        "by_suite": {
+          "s6": {
+            "runs": 6,
+            "passed": 2,
+            "pass_rate": 0.333,
+            "cost_usd": 2.79,
+            "cost_median_usd": 0.2129,
+            "wall_p50_s": 160.3
+          }
+        },
+        "solved": [
+          "fin-saccr-rwa",
+          "risk-scorer-replay"
+        ]
       }
     }
   }

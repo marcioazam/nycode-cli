@@ -101,3 +101,25 @@ contexto: `bench-nightly.sh` (ou `bench run --arm ny-pi --tier full` na main), p
 
 `systemctl --user list-timers 'bench-*'`, `journalctl --user -u bench-pr`. Um `pending` preso (queda no meio da rodada)
 é reprocessado no próximo ciclo, porque só `success` e `failure` são considerados finais.
+
+## Paralelismo
+
+`bench run` aceita `--jobs N` (padrão: `BENCH_JOBS`, ou 4):
+
+- Com N maior que 1, as suítes rodam ao mesmo tempo e cada uma roda N unidades em paralelo.
+- Com `--jobs 1`, tudo roda em sequência.
+- O valor fica em `meta.json` (`jobs`). O gate devolve `NOT_COMPARABLE` quando o `jobs` do baseline e o do candidato diferem, porque o tempo medido muda com o paralelismo. Rodadas sem a chave contam como 1.
+- Em paralelo, o S1 e o Harbor recebem o saldo do teto no início. A rodada pode passar do teto em até uma etapa de cada; nesse caso ela termina `not_verified`.
+- Medição de referência (pi vanilla, S4 e S5, 22 execuções, `--jobs 6`): 47 s contra 355 s em sequência, com o mesmo custo e o mesmo tempo mediano por execução.
+
+## Evidências por execução (engenharia reversa)
+
+`python3 bench/run.py evidence --runs "<rodadas>/*" --out <rodadas>/EVIDENCE.md` gera um índice por execução: resultado, custo e tempo de cada braço, as tarefas em que um braço passou e outro falhou, as ferramentas usadas por braço e os caminhos absolutos dos logs. O arquivo contém caminhos locais e nomes de ferramentas dos transcritos; fica junto das rodadas e nunca vai para o repositório.
+
+| suíte | transcrito do agente | resultado do verificador |
+|---|---|---|
+| S1 | `raw/<caso>-<rep>.jsonl` e `unit/<caso>-<rep>/` (`pi-events.jsonl`, workspace) em `~/.local/state/pelo-em-ovo/results/bench-<braço>-*` (braços da família pi) ou `~/.claude/evals/results/bench-cc-*` | `runs.jsonl` do round |
+| S2, S3, S6 (Harbor) | `<round>/harbor/<job>/<tarefa>__<id>/agent/{pi.txt,claude-code.txt,trajectory.json}` | `verifier/{test-stdout.txt,reward.txt,ctrf.json}`, `result.json`, `trial.log` |
+| S4, S5 | `<round>/artifacts/<suíte>-<tarefa>-<rep>.agent.out` (stream JSON) | `.test.out` ao lado |
+
+Rodadas do eval com prefixo `bench-` não entram na rotação: só os rounds `sched-` são apagados.

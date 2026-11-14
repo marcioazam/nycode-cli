@@ -1,7 +1,3 @@
-{"suite": "s4", "task_id": "plan-ask-contradiction", "rep": 0, "passed": false, "cost_usd": 0.08932920000000001, "wall_s": 17.7, "security": false, "split": "heldout", "subagents_used": false, "error": null}
-{"suite": "s4", "task_id": "plan-ask-date-format", "rep": 0, "passed": false, "cost_usd": 0.0718592, "wall_s": 10.52, "security": false, "split": "dev", "subagents_used": false, "error": null}
-{"suite": "s4", "task_id": "plan-ask-merge-payments", "rep": 0, "passed": false, "cost_usd": 0.08796019999999999, "wall_s": 20.6, "security": false, "split": "heldout", "subagents_used": false, "error": null}
-{"suite": "s4", "task_id": "plan-ask-purge-scope", "rep": 0, "passed": false, "cost_usd": 0.0873416, "wall_s": 17.77, "security": false, "split": "dev", "subagents_used": false, "error": null}
 {"suite": "s4", "task_id": "plan-cache-stale", "rep": 0, "passed": true, "cost_usd": 0.1516048, "wall_s": 36.75, "security": false, "split": "dev", "subagents_used": false, "error": null}
 {"suite": "s4", "task_id": "plan-config-json", "rep": 0, "passed": true, "cost_usd": 0.1675558, "wall_s": 38.21, "security": false, "split": "heldout", "subagents_used": false, "error": null}
 {"suite": "s4", "task_id": "plan-discount-bug", "rep": 0, "passed": true, "cost_usd": 0.117114, "wall_s": 23.08, "security": false, "split": "dev", "subagents_used": false, "error": null}
@@ -20,3 +16,7 @@
 {"suite": "s5", "task_id": "multi-textkit", "rep": 0, "passed": true, "cost_usd": 0.173427, "wall_s": 40.36, "security": false, "split": "dev", "subagents_used": false, "error": null}
 {"suite": "s5", "task_id": "multi-timekit", "rep": 0, "passed": true, "cost_usd": 0.15517140000000001, "wall_s": 32.19, "security": false, "split": "dev", "subagents_used": false, "error": null}
 {"suite": "s5", "task_id": "multi-validkit", "rep": 0, "passed": true, "cost_usd": 0.2409148, "wall_s": 59.93, "security": false, "split": "heldout", "subagents_used": false, "error": null}
+{"suite": "s4", "task_id": "plan-ask-contradiction", "rep": 0, "passed": true, "cost_usd": 0.0781482, "wall_s": 13.66, "security": false, "split": "heldout", "subagents_used": false, "error": null}
+{"suite": "s4", "task_id": "plan-ask-date-format", "rep": 0, "passed": true, "cost_usd": 0.0816714, "wall_s": 13.1, "security": false, "split": "dev", "subagents_used": false, "error": null}
+{"suite": "s4", "task_id": "plan-ask-merge-payments", "rep": 0, "passed": true, "cost_usd": 0.0867362, "wall_s": 18.35, "security": false, "split": "heldout", "subagents_used": false, "error": null}
+{"suite": "s4", "task_id": "plan-ask-purge-scope", "rep": 0, "passed": true, "cost_usd": 0.08648940000000001, "wall_s": 16.43, "security": false, "split": "dev", "subagents_used": false, "error": null}

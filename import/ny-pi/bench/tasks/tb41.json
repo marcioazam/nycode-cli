@@ -1,0 +1,23 @@
+{
+  "dataset": "terminal-bench/terminal-bench",
+  "version": "4.1.0",
+  "seed": 20261114,
+  "note": "6 CPU tasks: random.Random(20261114).sample(6) over the sorted 12-task stratified draw (owner cut 2026-11-14, wall and spend); `dropped` lists the other 6 of that draw; the 3 GPU tasks are excluded; names carry the registry prefix Harbor matches with -i",
+  "tasks": [
+    "terminal-bench/cad-model",
+    "terminal-bench/fin-saccr-rwa",
+    "terminal-bench/ks-solver-cpp",
+    "terminal-bench/production-planning",
+    "terminal-bench/risk-scorer-replay",
+    "terminal-bench/session-window-debug"
+  ],
+  "heldout": [],
+  "dropped": [
+    "terminal-bench/atrx-vep-crispr",
+    "terminal-bench/kv-live-surgery",
+    "terminal-bench/nextjs-performance",
+    "terminal-bench/pretrain-shard-corruption",
+    "terminal-bench/satb-audio-transcription",
+    "terminal-bench/shadow-relay"
+  ]
+}
