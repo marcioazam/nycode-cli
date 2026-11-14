@@ -1,0 +1,64 @@
+{
+  "date": "2026-11-14",
+  "bench_git": "b346aceb1bf9",
+  "tier": "vanilla (= pr units)",
+  "versions": {
+    "cc-vanilla": "2.1.323",
+    "pi-vanilla": "1.5.2",
+    "ny-pi": "1.5.2 + overlay 83d8038f5782c040"
+  },
+  "results": {
+    "sonnet": {
+      "cc-vanilla": {
+        "runs": 76,
+        "passed": 65,
+        "pass_rate": 0.855,
+        "cost_usd": 5.55,
+        "cost_median_usd": 0.0645,
+        "wall_p50_s": 17.1
+      },
+      "pi-vanilla": {
+        "runs": 76,
+        "passed": 67,
+        "pass_rate": 0.882,
+        "cost_usd": 2.11,
+        "cost_median_usd": 0.0231,
+        "wall_p50_s": 13.5
+      },
+      "ny-pi": {
+        "runs": 76,
+        "passed": 58,
+        "pass_rate": 0.763,
+        "cost_usd": 7.03,
+        "cost_median_usd": 0.0854,
+        "wall_p50_s": 18.5
+      }
+    },
+    "opus": {
+      "cc-vanilla": {
+        "runs": 22,
+        "passed": 16,
+        "pass_rate": 0.727,
+        "cost_usd": 3.36,
+        "cost_median_usd": 0.1585,
+        "wall_p50_s": 34.3
+      },
+      "pi-vanilla": {
+        "runs": 22,
+        "passed": 18,
+        "pass_rate": 0.818,
+        "cost_usd": 1.74,
+        "cost_median_usd": 0.078,
+        "wall_p50_s": 27.6
+      },
+      "ny-pi": {
+        "runs": 22,
+        "passed": 17,
+        "pass_rate": 0.773,
+        "cost_usd": 5.42,
+        "cost_median_usd": 0.2462,
+        "wall_p50_s": 52.2
+      }
+    }
+  }
+}

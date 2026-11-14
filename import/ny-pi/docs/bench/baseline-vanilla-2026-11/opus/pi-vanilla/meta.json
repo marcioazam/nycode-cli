@@ -1,0 +1,12 @@
+{
+  "arm": "pi-vanilla",
+  "arm_version": "1.5.2",
+  "model": "claude-opus-5-5",
+  "git_sha": "b346aceb1bf9e933b3b959199a32552dbf93d431",
+  "started": "2026-11-14T15:42:59+00:00",
+  "budget_usd": 11.0,
+  "tier": "vanilla",
+  "not_verified": false,
+  "errors": [],
+  "cost_usd": 1.7411
+}

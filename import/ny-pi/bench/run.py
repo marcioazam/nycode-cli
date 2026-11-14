@@ -293,9 +293,10 @@ def execute(
             break
         rs: list[dict[str, Any]] = []
         if s["kind"] == "internal":
+            reps = runners.s1_case_reps(s["tasks"], s["k"])
             todo = [
                 t for t in s["tasks"]
-                if not all((s["suite"], t, i) in done for i in range(s["k"]))
+                if not all((s["suite"], t, i) in done for i in range(reps[t]))
             ]  # fmt: skip
             if todo:
                 rs, err = runners.run_s1(

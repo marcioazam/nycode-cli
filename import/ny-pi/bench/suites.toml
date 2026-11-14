@@ -109,10 +109,11 @@ steps = [
 
 # vanilla baseline: everything (run for the vanilla arms; same steps as full).
 [tier.vanilla]
+# Same units as the PR tier (owner decision 2026-11-14: the k3/77+50-task baseline took >12 h). The frozen vanilla
+# baseline is thus directly comparable with every PR round; the exhaustive sweep stays in tier.full (on demand).
 steps = [
-  { suite = "s1", k = 3 },
-  { suite = "s4", splits = ["dev", "heldout"], k = 3 },
-  { suite = "s5", splits = ["dev", "heldout"], k = 3 },
-  { suite = "s2", k = 1 },  # 77 Harbor tasks: k1 keeps 3 arms inside the US$ 250 baseline (task 13 allocation)
-  { suite = "s3", n = 50, k = 1 },
+  { suite = "s1", subset = "pr", k = 2 },
+  { suite = "s4", splits = ["dev", "heldout"], k = 2 },
+  { suite = "s5", splits = ["dev", "heldout"], k = 2 },
+  { suite = "s2", n = 4, k = 1 },
 ]

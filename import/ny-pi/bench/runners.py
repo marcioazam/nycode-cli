@@ -157,6 +157,18 @@ def run_s1(
     return _read_s1(rdir), None if p.returncode == 0 else f"exit {p.returncode}"
 
 
+def s1_case_reps(cases: list[str], k: int) -> dict[str, int]:
+    """Reps each S1 case actually runs: min(k, its declared `reps`), as run.py does (both arms share its cases)."""
+    declared: dict[str, int] = {}
+    for f in sorted((EVALS_RUN.parent / "cases").glob("*.jsonl")):
+        for line in f.read_text().splitlines():
+            if line.strip():
+                c = json.loads(line)
+                if "reps" in c:
+                    declared[c["id"]] = int(c["reps"])
+    return {c: min(k, declared.get(c, k)) for c in cases}
+
+
 def _read_s1(rdir: Path | None) -> list[Run]:
     f = rdir / "runs.jsonl" if rdir else None
     return parse_s1_runs(f) if f and f.exists() else []

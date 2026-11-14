@@ -1,0 +1,19 @@
+{
+  "verdict": "PASS",
+  "rules": {
+    "accuracy": "PASS",
+    "cost": "PASS",
+    "wall": "PASS",
+    "security": "PASS"
+  },
+  "n": 42,
+  "ci": [
+    0.0,
+    0.0
+  ],
+  "cost_ratio": 1.0,
+  "wall_ratio": 1.0,
+  "security_regressions": [],
+  "score": 100.0,
+  "excluded": 0
+}

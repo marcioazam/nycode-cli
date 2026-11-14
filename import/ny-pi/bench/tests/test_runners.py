@@ -382,3 +382,20 @@ def test_run_harbor_stops_after_five_infra_in_a_row(
     chunks = [[f"t{i}"] for i in range(9)]
     rs, stopped = rn.run_harbor([], jobs, "s2", {}, chunks, 99.0, make)
     assert len(rs) == 5 and stopped
+
+
+def test_s1_case_reps_reads_declared_reps(tmp_path: Path, monkeypatch: MP) -> None:
+    # Cases declaring `reps: 1` run once whatever k is; --resume must not see rep 1 as missing.
+    (tmp_path / "cases").mkdir()
+    (tmp_path / "cases" / "a.jsonl").write_text(
+        '{"id": "once", "reps": 1}\n{"id": "free"}\n\n'
+    )
+    monkeypatch.setattr(rn, "EVALS_RUN", tmp_path / "run.py")
+    assert rn.s1_case_reps(["once", "free", "gone"], 2) == {
+        "once": 1, "free": 2, "gone": 2,
+    }  # fmt: skip
+
+
+def test_s1_case_reps_without_cases_dir_uses_k(tmp_path: Path, monkeypatch: MP) -> None:
+    monkeypatch.setattr(rn, "EVALS_RUN", tmp_path / "run.py")
+    assert rn.s1_case_reps(["x"], 3) == {"x": 3}

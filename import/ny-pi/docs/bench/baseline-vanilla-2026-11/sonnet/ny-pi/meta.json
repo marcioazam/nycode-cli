@@ -1,0 +1,13 @@
+{
+  "arm": "ny-pi",
+  "arm_version": "1.5.2",
+  "model": "claude-sonnet-5-5",
+  "git_sha": "b346aceb1bf9e933b3b959199a32552dbf93d431",
+  "started": "2026-11-14T15:15:16+00:00",
+  "budget_usd": 12.0,
+  "overlay_sha": "83d8038f5782c040",
+  "tier": "vanilla",
+  "not_verified": false,
+  "errors": [],
+  "cost_usd": 7.0332
+}

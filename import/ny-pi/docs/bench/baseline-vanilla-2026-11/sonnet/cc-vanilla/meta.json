@@ -1,0 +1,12 @@
+{
+  "arm": "cc-vanilla",
+  "arm_version": "2.1.323 (Claude Code)",
+  "model": "claude-sonnet-5-5",
+  "git_sha": "b346aceb1bf9e933b3b959199a32552dbf93d431",
+  "started": "2026-11-14T15:10:45+00:00",
+  "budget_usd": 12.0,
+  "tier": "vanilla",
+  "not_verified": false,
+  "errors": [],
+  "cost_usd": 5.5529
+}
