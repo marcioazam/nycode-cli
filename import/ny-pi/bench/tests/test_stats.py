@@ -164,3 +164,23 @@ def test_cli(tmp_path: Path) -> None:
         text=True,
     )
     assert r.returncode == 4
+
+
+def test_errored_tasks_are_excluded_from_pairing_and_counted() -> None:
+    base, cand = mk(T), mk(T)
+    for r in cand:
+        if r["task_id"] == "t0":
+            r["passed"], r["error"] = False, "infra: no model spend"
+    v = stats.verdict(base, cand, META, META)
+    assert v["n"] == 19 and v["excluded"] == 1 and v["verdict"] == "PASS"
+    base_bad = [r | {"error": "x"} if r["task_id"] == "t1" else r for r in mk(T)]
+    assert stats.verdict(base_bad, mk(T), META, META)["excluded"] == 1
+
+
+def test_too_many_excluded_is_not_verified() -> None:
+    cand = [
+        r | {"error": "x"} if r["task_id"] in ("t0", "t1", "t2") else r for r in mk(T)
+    ]
+    v = stats.verdict(mk(T), cand, META, META)
+    assert v["excluded"] == 3 and v["verdict"] == "NOT_VERIFIED"
+    assert stats.EXIT["NOT_VERIFIED"] == 5

@@ -2,6 +2,7 @@
 
 import json
 import os
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -489,3 +490,109 @@ def test_ny_pi_stage_default_is_outside_tmp() -> None:
     arm = (BENCH / "arms/ny-pi").read_text()
     assert "/tmp" not in next(ln for ln in arm.splitlines() if ln.startswith("stage="))
     assert "BENCH_STAGE_ROOT" in arm
+
+
+def two_suite_cfg(tmp_path: Path, n: int, k: int = 1) -> list[rb.Step]:
+    for i in range(n):
+        make_case(tmp_path / "s4", f"a{i}")
+    make_case(tmp_path / "s5", "z")
+    cfg = cfg_with(tmp_path / "s4")
+    cfg["suite"]["s5"]["dir"] = str(tmp_path / "s5")
+    return rb.build_plan("full", cfg, ["s4", "s5"], k=k)
+
+
+DEAD = '[ "$1" = "--version" ] && { echo "fake 1.0"; exit 0; }\nexit 1\n'
+
+
+def read_runs(out: Path) -> list[dict[str, Any]]:
+    return [json.loads(x) for x in (out / "runs.jsonl").read_text().splitlines()]
+
+
+def test_execute_stops_run_after_stage_over_ten_percent_errors(tmp_path: Path) -> None:
+    steps = two_suite_cfg(tmp_path, 2)
+    out = tmp_path / "o"
+    code = rb.execute("fake", "full", "m", 9.0, steps, make_arms(tmp_path, DEAD), out)
+    meta = json.loads((out / "meta.json").read_text())
+    assert code == rb.NOT_VERIFIED_EXIT and meta["not_verified"]
+    assert {r["suite"] for r in read_runs(out)} == {"s4"}  # s5 never started
+    assert any("s4" in e and "error" in e for e in meta["errors"])
+
+
+def test_execute_case_stage_stops_after_five_infra_in_a_row(tmp_path: Path) -> None:
+    steps = two_suite_cfg(tmp_path, 8)
+    out = tmp_path / "o"
+    rb.execute("fake", "full", "m", 9.0, steps, make_arms(tmp_path, DEAD), out)
+    assert len(read_runs(out)) == 5
+
+
+def test_execute_resume_keeps_valid_runs_and_reruns_errors(tmp_path: Path) -> None:
+    steps = two_suite_cfg(tmp_path, 2)
+    out = tmp_path / "o"
+    out.mkdir()
+    ok = rn.make_run("s4", "a0", 0, True, cost_usd=0.4)
+    bad = rn.make_run("s4", "a1", 0, False)
+    (out / "runs.jsonl").write_text("".join(json.dumps(r) + "\n" for r in (ok, bad)))
+    arms = make_arms(tmp_path, CC_ARM)
+    code = rb.execute("fake", "full", "m", 9.0, steps, arms, out, resume=True)
+    runs = read_runs(out)
+    assert code == 0 and not any(r["error"] for r in runs)
+    assert sorted((r["suite"], r["task_id"]) for r in runs) == [
+        ("s4", "a0"), ("s4", "a1"), ("s5", "z"),
+    ]  # fmt: skip
+    assert json.loads((out / "meta.json").read_text())["cost_usd"] == pytest.approx(1.2)
+
+
+def test_execute_without_resume_truncates(tmp_path: Path) -> None:
+    steps = two_suite_cfg(tmp_path, 1)
+    out = tmp_path / "o"
+    out.mkdir()
+    (out / "runs.jsonl").write_text(
+        json.dumps(rn.make_run("s4", "old", 0, True)) + "\n"
+    )
+    rb.execute("fake", "full", "m", 9.0, steps, make_arms(tmp_path, CC_ARM), out)
+    assert "old" not in {r["task_id"] for r in read_runs(out)}
+
+
+def test_harbor_step_skips_done_units(tmp_path: Path, monkeypatch: MP) -> None:
+    rec = tmp_path / "argv"
+    monkeypatch.setenv(
+        "BENCH_HARBOR", str(script(tmp_path / "h", f'echo "$@" >> {rec}\n'))
+    )
+    monkeypatch.setattr(rb, "oauth_token", lambda: "tok")
+    s: rb.Step = {
+        "suite": "s2", "k": 1, "st": {}, "tasks": ["a", "b"],
+        "cfg": {"dataset": "ds", "seed": 1, "heldout_pct": 10},
+    }  # fmt: skip
+    rb._harbor_step(s, "pi-vanilla", "m", tmp_path / "o", 5.0, {("s2", "a", 0)})
+    argv = rec.read_text()
+    assert "-i b" in argv and "-i a" not in argv
+    rec.unlink()
+    assert rb._harbor_step(
+        s, "pi-vanilla", "m", tmp_path / "o", 5.0, {("s2", "a", 0), ("s2", "b", 0)}
+    ) == ([], False)
+    assert not rec.exists()  # nothing left: no `harbor run` over the whole dataset
+
+
+def test_main_run_refuses_low_disk(monkeypatch: MP, capsys: CF) -> None:
+    monkeypatch.setenv("BENCH_MIN_FREE_GB", "30")
+    monkeypatch.setattr(
+        shutil,
+        "disk_usage",
+        lambda p: shutil._ntuple_diskusage(100 * 2**30, 99 * 2**30, 5 * 2**30),
+    )
+    with pytest.raises(SystemExit) as e:
+        rb.main(RA("ny-pi"))
+    assert e.value.code == 2
+    err = capsys.readouterr().err
+    assert "BENCH_MIN_FREE_GB" in err and "5.0" in err
+    rb.main(RA("ny-pi", "--dry-run"))  # dry-run never checks the disk
+
+
+def test_main_run_passes_resume_flag(tmp_path: Path, monkeypatch: MP) -> None:
+    monkeypatch.setenv("BENCH_CC_CREDENTIALS", creds(tmp_path, 120))
+    seen: dict[str, Any] = {}
+    monkeypatch.setattr(rb, "execute", lambda *a: seen.update(a=a) or 0)
+    rb.main(RA("ny-pi", "--out", str(tmp_path), "--resume"))
+    assert seen["a"][7] is True
+    with pytest.raises(SystemExit):
+        rb.main(RA("ny-pi", "--resume"))  # nothing to resume without --out

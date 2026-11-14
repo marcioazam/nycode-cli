@@ -34,3 +34,9 @@ def fake_evals(tmp_path: Path, monkeypatch: MP) -> Path:
     monkeypatch.setenv("FAKE_STATE", str(state))
     monkeypatch.delenv("FAKE_DRIFT", raising=False)
     return state
+
+
+@pytest.fixture(autouse=True)
+def _no_disk_floor(monkeypatch: MP) -> None:
+    """The disk preflight of `bench run` depends on the host; tests opt in explicitly."""
+    monkeypatch.setenv("BENCH_MIN_FREE_GB", "0")

@@ -32,9 +32,17 @@ HARBOR_VERSION = "0.25.0"
 # S1 of the record: run_pi.py stops the round when the live harness changes; staged arms see this as noise.
 DRIFT_MARK = "harness changed"
 SUBAGENT_NAMES = {"Task", "Agent", "subagent"}
+# A run that reached the model always has cost > 0; none means auth, quota (429), disk or sandbox died first.
+INFRA_ERR = "infra: no model spend"
+INFRA_STREAK = (
+    5  # consecutive infra runs that stop a stage instead of burning the queue
+)
 
 
 def make_run(suite: str, task_id: str, rep: int, passed: bool, **kw: Any) -> Run:
+    err = kw.get("error")
+    if not err and not passed and not kw.get("cost_usd"):
+        err = INFRA_ERR
     return {
         "suite": suite,
         "task_id": task_id,
@@ -45,8 +53,25 @@ def make_run(suite: str, task_id: str, rep: int, passed: bool, **kw: Any) -> Run
         "security": bool(kw.get("security", False)),
         "split": kw.get("split", "dev"),
         "subagents_used": bool(kw.get("subagents_used", False)),
-        "error": kw.get("error"),
+        "error": err,
     }
+
+
+def is_infra(r: Run) -> bool:
+    e = str(r.get("error") or "")
+    if not e or e == "refusal":
+        return False
+    return e.startswith(("infra", "harbor exit")) or not r.get("cost_usd")
+
+
+def infra_streak(runs: Iterable[Run]) -> int:
+    """Length of the trailing run of infra failures."""
+    n = 0
+    for r in reversed(list(runs)):
+        if not is_infra(r):
+            break
+        n += 1
+    return n
 
 
 def run_cost(runs: Iterable[Run]) -> float:
@@ -340,6 +365,11 @@ def run_harbor(
                 for t in chunk
             ]
         runs += got
+        if infra_streak(runs) >= INFRA_STREAK:
+            return (
+                runs,
+                True,
+            )  # quota/disk/auth is down: stop, never burn the whole queue
     return runs, run_cost(runs) >= budget_usd
 
 

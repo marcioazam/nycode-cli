@@ -323,3 +323,34 @@ def test_case_saves_agent_and_test_output(tmp_path: Path) -> None:
     rn.run_case(case, "s4", 0, "cc", arm, "m", {}, None, art)
     assert (art / "s4-c1-0.agent.out").read_text().strip()
     assert (art / "s4-c1-0.test.out").exists()
+
+
+def test_make_run_flags_no_spend_failures_as_infra() -> None:
+    """Baseline 2026-11-14: 429 runs ended at cost 0/None, passed False and counted as real failures."""
+    for cost in (0, 0.0, None):
+        assert rn.make_run("s2", "t", 0, False, cost_usd=cost)["error"] == rn.INFRA_ERR
+    assert rn.make_run("s2", "t", 0, False, cost_usd=0.2)["error"] is None
+    assert rn.make_run("s2", "t", 0, True, cost_usd=0)["error"] is None
+    assert rn.make_run("s2", "t", 0, False, error="timeout")["error"] == "timeout"
+
+
+def test_parse_harbor_job_flags_zero_cost_failure(tmp_path: Path) -> None:
+    write_job(tmp_path / "j", [trial("a", 0.0, 0.0), trial("b", 0.0, 0.3)])
+    a, b = rn.parse_harbor_job(tmp_path / "j", "s2")
+    assert a["error"] == rn.INFRA_ERR and b["error"] is None
+
+
+def test_run_harbor_stops_after_five_infra_in_a_row(
+    tmp_path: Path, monkeypatch: MP
+) -> None:
+    monkeypatch.setenv(
+        "BENCH_HARBOR", "/bin/true"
+    )  # produces no trials: every chunk is infra
+    jobs = tmp_path / "jobs"
+
+    def make(chunk: list[str], job: str) -> list[str]:
+        return rn.harbor_cmd("ds", [], job, jobs, chunk, k=1)
+
+    chunks = [[f"t{i}"] for i in range(9)]
+    rs, stopped = rn.run_harbor([], jobs, "s2", {}, chunks, 99.0, make)
+    assert len(rs) == 5 and stopped

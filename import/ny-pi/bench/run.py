@@ -16,11 +16,12 @@ import fnmatch
 import glob
 import json
 import os
+import shutil
 import statistics
 import subprocess
 import sys
 import tomllib
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -34,6 +35,10 @@ BENCH = Path(__file__).resolve().parent
 REPO = BENCH.parent
 HARBOR_DIR = REPO / "claude-home/bin/evals/harbor"
 NOT_VERIFIED_EXIT = 5
+MAX_ERROR_SHARE = (
+    0.10  # a stage with more errored runs than this ends the round (infra, not a score)
+)
+Key = tuple[str, str, int]  # (suite, task_id, rep)
 Step = dict[str, Any]
 
 
@@ -189,7 +194,7 @@ def overlay_sha(short: str) -> str | None:
 
 
 def _harbor_step(
-    s: Step, arm: str, model: str, out: Path, left: float
+    s: Step, arm: str, model: str, out: Path, left: float, done: Collection[Key] = ()
 ) -> tuple[list[dict[str, Any]], bool]:
     cfg = s["cfg"]
     agent_args, extra, tok_name = runners.harbor_agent(arm, model, HARBOR_DIR)
@@ -213,6 +218,14 @@ def _harbor_step(
         else {}
     )
     tasks = s["tasks"]
+    if tasks and done:  # resume: a task is finished once every rep is valid
+        tasks = [
+            t
+            for t in tasks
+            if not all((s["suite"], t, i) in done for i in range(s["k"]))
+        ]
+        if not tasks:
+            return [], False  # [] would make harbor run the whole dataset
     jobs = out / "harbor"
     tf = BENCH / cfg["tasks_file"] if cfg.get("tasks_file") else None
     heldout = runners.load_tasks(tf)[1] if tf and tf.exists() else None
@@ -237,6 +250,14 @@ def _harbor_step(
     return runners.run_harbor([], jobs, s["suite"], env, chunks, left, make, splits)
 
 
+def _kept_runs(runs_f: Path) -> list[dict[str, Any]]:
+    """--resume: the valid (error-free) runs of an earlier attempt of this round."""
+    if not runs_f.exists():
+        return []
+    rs = [json.loads(x) for x in runs_f.read_text().splitlines() if x.strip()]
+    return [r for r in rs if not r.get("error")]
+
+
 def execute(
     arm: str,
     tier: str,
@@ -245,6 +266,7 @@ def execute(
     steps: list[Step],
     arms: dict[str, Any],
     out: Path,
+    resume: bool = False,
 ) -> int:
     kind, bin_ = arm_info(arm, arms)
     out.mkdir(parents=True, exist_ok=True)
@@ -253,9 +275,11 @@ def execute(
         "not_verified": False,
         "errors": [],
     }
-    spent = 0.0
     runs_f = out / "runs.jsonl"
-    runs_f.write_text("")
+    kept = _kept_runs(runs_f) if resume else []
+    runs_f.write_text("".join(json.dumps(r) + "\n" for r in kept))
+    done: set[Key] = {(r["suite"], r["task_id"], r["rep"]) for r in kept}
+    spent = runners.run_cost(kept)
 
     def save(rs: list[dict[str, Any]]) -> None:
         with runs_f.open("a") as f:
@@ -269,19 +293,33 @@ def execute(
             break
         rs: list[dict[str, Any]] = []
         if s["kind"] == "internal":
-            rs, err = runners.run_s1(
-                kind, bin_, s["tasks"], s["k"], model, left, f"bench-{arm}-{tier}", {}
-            )
-            if err:
-                meta["errors"].append(f"s1: {err}")
+            todo = [
+                t for t in s["tasks"]
+                if not all((s["suite"], t, i) in done for i in range(s["k"]))
+            ]  # fmt: skip
+            if todo:
+                rs, err = runners.run_s1(
+                    kind, bin_, todo, s["k"], model, left, f"bench-{arm}-{tier}", {}
+                )
+                if err:
+                    meta["errors"].append(f"s1: {err}")
+                rs = [r for r in rs if (r["suite"], r["task_id"], r["rep"]) not in done]
             save(rs)
         elif s["kind"] == "harbor":
-            rs, exhausted = _harbor_step(s, arm, model, out, left)
+            rs, exhausted = _harbor_step(s, arm, model, out, left, done)
+            rs = [r for r in rs if (r["suite"], r["task_id"], r["rep"]) not in done]
             save(rs)
             meta["not_verified"] |= exhausted
         else:
             for case in s["cases"]:
+                if runners.infra_streak(rs) >= runners.INFRA_STREAK:
+                    meta["not_verified"] = True
+                    break
                 for rep in range(s["k"]):
+                    if (s["suite"], case["id"], rep) in done:
+                        continue
+                    if runners.infra_streak(rs) >= runners.INFRA_STREAK:
+                        break
                     if budget - spent - runners.run_cost(rs) <= 0:
                         meta["not_verified"] = True
                         break
@@ -299,10 +337,11 @@ def execute(
                     rs.append(r)
                     save([r])
         spent += runners.run_cost(rs)
-        if rs and not any(r["passed"] or (r.get("cost_usd") or 0) > 0 for r in rs):
-            # every run failed at zero cost: the arm never reached the model (auth, install, sandbox)
+        bad = sum(1 for r in rs if r.get("error"))
+        if rs and bad / len(rs) > MAX_ERROR_SHARE:
+            # quota (429), auth, disk or sandbox failures are no score: stop before the next stage
             meta["errors"].append(
-                f"{s['suite']}: infra, all {len(rs)} runs failed at cost 0"
+                f"{s['suite']}: {bad}/{len(rs)} runs with error (> {MAX_ERROR_SHARE:.0%}), infra suspected"
             )
             meta["not_verified"] = True
         if spent >= budget:
@@ -463,6 +502,10 @@ def render_summary(
         L.append(
             "- Orçamento esgotado antes de terminar: não verificado, nunca aprovado (AC6)"
         )
+    if v.get("excluded"):
+        L.append(
+            f"- Tarefas excluídas do pareamento por execução com erro: {v['excluded']}"
+        )
     if refused:
         L.append(f"- Excluídas por recusa do provedor: {', '.join(refused)}")
     L += [f"- {s}" for s in sugg]
@@ -551,6 +594,11 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--suites", nargs="*")
     r.add_argument("--k", type=int)
     r.add_argument("--dry-run", action="store_true")
+    r.add_argument(
+        "--resume",
+        action="store_true",
+        help="keep valid runs in <out>/runs.jsonl, redo the rest",
+    )
     r.add_argument("--out", type=Path)
     g = sub.add_parser("gate")
     g.add_argument("--base", type=Path, required=True)
@@ -579,6 +627,16 @@ def main(argv: list[str] | None = None) -> int:
         if a.dry_run:
             print(render_plan(a.arm, a.tier, a.model, a.budget_usd, steps))
             return 0
+        floor = float(os.environ.get("BENCH_MIN_FREE_GB", "30"))
+        free = shutil.disk_usage(Path.home()).free / 2**30
+        if (
+            free < floor
+        ):  # a full disk killed python (exit 120) with empty logs (baseline 2026-11-14)
+            p.error(
+                f"only {free:.1f} GB free in $HOME, below {floor:g} GB (BENCH_MIN_FREE_GB): free space first"
+            )
+        if a.resume and not a.out:
+            p.error("--resume needs --out (the round directory to continue)")
         if "BENCH_CC_CREDENTIALS" not in os.environ:
             p.error("BENCH_CC_CREDENTIALS is required for a real run")
         try:  # preflight: a dying token fails every run silently (baseline 2026-11-14)
@@ -590,7 +648,7 @@ def main(argv: list[str] | None = None) -> int:
             or Path(os.environ.get("BENCH_OUT", "/tmp"))
             / f"bench-{a.arm}-{a.tier}-{datetime.now(UTC):%Y%m%dT%H%M%S}"
         )
-        return execute(a.arm, a.tier, a.model, a.budget_usd, steps, arms, out)
+        return execute(a.arm, a.tier, a.model, a.budget_usd, steps, arms, out, a.resume)
     if a.cmd == "gate":
         cmf = REPO / "docs/bench/coverage-map.json"
         v, md, code = gate(

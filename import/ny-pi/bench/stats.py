@@ -25,7 +25,8 @@ MARGIN = -0.06
 COST_MAX, WALL_MAX = 1.10, 1.20
 N_BOOT, SEED, ALPHA = 10_000, 20261113, 0.05
 META_KEYS = ("model", "arm_version", "overlay_sha")
-EXIT = {"PASS": 0, "FAIL": 1, "INCONCLUSIVE": 3, "NOT_COMPARABLE": 4}
+EXIT = {"PASS": 0, "FAIL": 1, "INCONCLUSIVE": 3, "NOT_COMPARABLE": 4, "NOT_VERIFIED": 5}
+MAX_EXCLUDED = 0.10  # tasks with an errored run (infra, refusal) are dropped from pairing; above this share nothing is verified
 
 Run = dict[
     str, Any
@@ -160,11 +161,17 @@ def verdict(
         "wall_ratio": None,
         "security_regressions": [],
         "score": None,
+        "excluded": 0,
     }
     if any(meta_base.get(k) != meta_cand.get(k) for k in META_KEYS):
         out["verdict"] = "NOT_COMPARABLE"
         return out
-    b, c = _per_task(base_runs), _per_task(cand_runs)
+    base_l, cand_l = list(base_runs), list(cand_runs)
+    errored = {r["task_id"] for r in base_l + cand_l if r.get("error")}
+    seen = {r["task_id"] for r in base_l + cand_l}
+    out["excluded"] = len(errored)
+    b = _per_task(r for r in base_l if r["task_id"] not in errored)
+    c = _per_task(r for r in cand_l if r["task_id"] not in errored)
     tasks = sorted(b.keys() & c.keys())
     out["n"] = len(tasks)
     diffs = [c[t]["rate"] - b[t]["rate"] for t in tasks]
@@ -197,6 +204,8 @@ def verdict(
         v = "FAIL" if extended else "INCONCLUSIVE"
     else:
         v = "PASS"
+    if seen and len(errored) / len(seen) > MAX_EXCLUDED:
+        v = "NOT_VERIFIED"
     out["verdict"] = v
     mb = statistics.mean(x["rate"] for x in b.values()) if b else 0
     mc = statistics.mean(x["rate"] for x in c.values()) if c else 0
