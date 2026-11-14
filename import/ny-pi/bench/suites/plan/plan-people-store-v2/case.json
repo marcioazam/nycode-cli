@@ -1,0 +1,11 @@
+{
+  "id": "plan-people-store-v2",
+  "suite": "plan",
+  "kind": "outcome",
+  "prompt": "Planeje antes de implementar. Objetivo: o cadastro (pacote people/) guarda pessoas como {\"name\", \"age\"} num JSON {\"people\": [...]} (formato v1). Quero o formato v2 {\"version\": 2, \"people\": [{\"first\", \"last\", \"age\"}]}: store.load lê v1 e v2 (no v1 o nome é dividido no último espaço: 'Jean Claude Van Damme' -> first 'Jean Claude Van', last 'Damme'; nome de uma palavra -> last ''), store.save sempre grava v2, versão desconhecida -> ValueError, e store.migrate(path) -> bool regrava um arquivo v1 como v2 (True) ou não faz nada se já é v2 (False). Person passa a ter (first, last, age) e mantém a propriedade .name ('first last' sem espaço sobrando). O CLI aceita `add NOME_COMPLETO IDADE` (como hoje) e `add FIRST LAST IDADE`; argumentos inválidos (inclusive idade não numérica) -> código 1 sem alterar o arquivo.",
+  "timeout_s": 600,
+  "budget_usd": 1.0,
+  "split": "dev",
+  "security": false,
+  "test_cmd": "python3 -m pytest -q -p no:cacheprovider hidden"
+}

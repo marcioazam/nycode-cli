@@ -1,0 +1,9 @@
+# Owner overlay copied into the my-pi stage (paths relative to ~/.pi/agent). Untracked by design (personal or
+# vendored); everything else comes from this checkout via install.sh --link --apply.
+settings.json
+local.env
+claude-home/rules/personal.md
+vendor/pi-lsp
+vendor/ponytail
+claude-home/patches/antigravity-bridge
+antigravity-bridge/config.json

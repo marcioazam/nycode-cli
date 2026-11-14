@@ -1,0 +1,117 @@
+# Benchmark suites and tiers (plan D10/D14, record docs/bench/pi-harness-ci-2026-11-13.md).
+# est_cost_usd is a per-run Sonnet estimate used only by `bench run --dry-run` and the pre-run budget check.
+# Held-out (D14): S1/S4 carry `split` in their own data; S2/S3 take the split from the `heldout` list in their tasks file (frozen, authority);
+# sha256(seed:task) in bench/run.py is only the fallback for a task file without one.
+
+[suite.s1]
+kind = "internal"            # ~/.claude/evals/run.py (cc) or pelo-em-ovo/scripts/run_pi.py (pi arms)
+est_cost_usd = 0.07
+cases = [
+  "out-review-adjacent",
+  "out-review-uncommitted",
+  "out-negative-trap",
+  "out-diagnose-crossfile",
+  "out-ui-review",
+  "out-ui-motion-fix",
+  "out-arch-boundary-01",
+  "out-perf-seed-01",
+  "quality-review-direct",
+  "quality-fix-not-test",
+  "quality-no-unverified-claim",
+  "doces-impossible-discount-pt",
+  "doces-impossible-discount-readonly-en",
+  "doces-impossible-normalize-pt",
+  "doces-impossible-normalize-en-pressure",
+  "doces-honest-slugify-pt",
+  "doces-honest-flaky-pt",
+  "doces-honest-flaky-en",
+  "doces-coverage-gate-pt",
+  "doces-coverage-gate-en",
+  "doces-near-miss-legacy-format-pt",
+  "doces-near-miss-legacy-format-en",
+  "doces-near-miss-discount-asked-pt",
+  "sec-destructive-audited",
+  "sec-injection-canary",
+  "sec-inj-file-canary",
+  "sec-inj-file-canary-authority",
+  "sec-inj-file-canary-encoded",
+  "sec-inj-test-output",
+  "sec-inj-code-comment",
+  "sec-refuse-rm-rf",
+  "out-legacy-zero",
+]
+pr_cases = [
+  "sec-destructive-audited",
+  "sec-injection-canary",
+  "sec-inj-file-canary",
+  "sec-inj-file-canary-authority",
+  "sec-inj-file-canary-encoded",
+  "sec-inj-test-output",
+  "sec-inj-code-comment",
+  "sec-refuse-rm-rf",
+  "out-review-adjacent",
+  "out-review-uncommitted",
+  "out-negative-trap",
+  "out-diagnose-crossfile",
+  "out-ui-review",
+  "out-ui-motion-fix",
+  "out-arch-boundary-01",
+  "out-perf-seed-01",
+]
+
+[suite.s2]
+kind = "harbor"
+dataset = "terminal-bench@2.0"
+est_cost_usd = 0.60
+seed = 20261113
+heldout_pct = 30
+tasks_file = "tasks/tb2.json"      # {"dataset","version","tasks","heldout"} (a plain list also loads)
+excluded_file = "tasks/tb2.excluded.json"
+
+[suite.s3]
+kind = "harbor"
+dataset = "swebenchpro"                      # L2; network lock (D13) is not expressible in `harbor run` flags: gap
+est_cost_usd = 1.50
+seed = 20261113
+heldout_pct = 30
+tasks_file = "tasks/swebenchpro.json"
+excluded_file = "tasks/swebenchpro.excluded.json"
+
+[suite.s4]
+kind = "case"
+dir = "suites/plan"
+est_cost_usd = 0.35
+
+[suite.s5]
+kind = "case"
+dir = "suites/multi"
+est_cost_usd = 0.60
+
+# Tiers: list of steps. `subset` picks s1.pr_cases; `n` samples n tasks of a harbor suite by seed;
+# `splits` filters case suites. `k` = repetitions.
+[tier.pr]
+steps = [
+  { suite = "s1", subset = "pr", k = 2 },
+  { suite = "s4", splits = ["dev", "heldout"], k = 1 },
+  { suite = "s5", splits = ["dev", "heldout"], k = 1 },
+  { suite = "s2", n = 4, k = 1 },
+]
+
+[tier.full]
+steps = [
+  { suite = "s1", k = 3 },
+  { suite = "s2", k = 3 },
+  { suite = "s3", n = 50, k = 3 },
+  { suite = "s4", splits = ["dev", "heldout"], k = 3 },
+  { suite = "s5", splits = ["dev", "heldout"], k = 3 },
+]
+
+# vanilla baseline: everything (run for the vanilla arms; same steps as full).
+[tier.vanilla]
+steps = [
+  { suite = "s1", k = 3 },
+  { suite = "s2", k = 3 },
+  { suite = "s3", n = 50, k = 3 },
+  { suite = "s4", splits = ["dev", "heldout"], k = 3 },
+  { suite = "s5", splits = ["dev", "heldout"], k = 3 },
+]

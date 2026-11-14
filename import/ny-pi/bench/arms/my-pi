@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Arm my-pi: the harness of THIS checkout (PR head or main) in a throwaway HOME, so a run never reads or
+# patches the live ~/.pi. Stage = install.sh --link --apply from this tree + the owner's overlay
+# (settings.json, local.env, rules/personal.md) + a pristine pi-code npm tree (bin/pi patches it in place).
+# The pi release is symlinked read-only in practice (its core patch is already applied upstream of the stage).
+set -euo pipefail
+here=$(dirname "$(readlink -f "$0")")
+repo=$(cd "$here/../.." && pwd)
+# shellcheck source=bench/arms/oauth-token.sh
+. "$here/oauth-token.sh"
+real=${BENCH_REAL_HOME:-$HOME}
+stage=${BENCH_STAGE:-${TMPDIR:-/tmp}/bench-mypi-$(git -C "$repo" rev-parse --short=12 HEAD)$(git -C "$repo" diff --quiet HEAD || echo -dirty)}
+if [ ! -f "$stage/.ready" ]; then
+  mkdir -p "$stage/.pi/agent/claude-home/rules" "$stage/.local/bin"
+  ln -sfn "$real/.pi/agent/install" "$stage/.pi/agent/install"
+  ln -sfn "$real/.pi/agent/bin" "$stage/.pi/agent/bin"
+  # Pristine pi-code from this tree's lockfile (never a copy of the live npm, which carries local patches).
+  mkdir -p "$stage/.pi/agent/npm" && cp "$repo/npm/package.json" "$repo/npm/package-lock.json" "$stage/.pi/agent/npm/"
+  (cd "$stage/.pi/agent/npm" && npm ci --ignore-scripts --no-audit --no-fund --prefer-offline --loglevel=error </dev/null) >&2
+  # Overlay = the owner's untracked layer, listed in overlay.list (paths under ~/.pi/agent). Its hash goes
+  # into .overlay-sha so the gate can refuse a comparison against a baseline taken with another overlay.
+  while read -r rel; do
+    case "$rel" in '' | '#'*) continue ;; esac
+    [ -e "$real/.pi/agent/$rel" ] || continue
+    mkdir -p "$(dirname "$stage/.pi/agent/$rel")" && cp -a "$real/.pi/agent/$rel" "$stage/.pi/agent/$rel"
+  done <"$here/overlay.list"
+  (cd "$stage/.pi/agent" && grep -v -e '^#' -e '^$' "$here/overlay.list" | while read -r rel; do [ -e "$rel" ] && find -L "$rel" -type f -print0; done |
+    sort -z | xargs -0 -r sha256sum | sha256sum | cut -c1-16) >"$stage/.overlay-sha"
+  HOME=$stage bash "$repo/install.sh" --link --apply >/dev/null
+  # Warm-up: bin/pi applies its patches at start; a first real run on an unpatched tree crashed at exit (2026-11-13).
+  HOME=$stage "$stage/.local/bin/pi" --version >/dev/null
+  touch "$stage/.ready"
+fi
+export ANTHROPIC_OAUTH_TOKEN
+ANTHROPIC_OAUTH_TOKEN=$(bench_oauth_token)
+unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
+HOME=$stage exec "$stage/.local/bin/pi" "$@"

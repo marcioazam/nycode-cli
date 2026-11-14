@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Arm pi-vanilla: upstream pi with an empty agent dir (no packages, extensions, skills or context files
+# beyond pi's defaults), thinking medium. Drops the eval-only flags that only pi-code understands.
+set -euo pipefail
+# shellcheck source=bench/arms/oauth-token.sh
+. "$(dirname "$(readlink -f "$0")")/oauth-token.sh"
+export PI_CODING_AGENT_DIR="${BENCH_PI_VANILLA_DIR:-$HOME/.pi/vanilla}" PI_SKIP_VERSION_CHECK=1
+export ANTHROPIC_OAUTH_TOKEN
+ANTHROPIC_OAUTH_TOKEN=$(bench_oauth_token)
+unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
+mkdir -p "$PI_CODING_AGENT_DIR"
+args=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+  --settings | --mcp-config | --setting-sources | --add-dir) shift 2 ;;
+  --settings=* | --mcp-config=* | --setting-sources=* | --add-dir=* | --strict-mcp-config) shift ;;
+  *)
+    args+=("$1")
+    shift
+    ;;
+  esac
+done
+exec "${BENCH_PI_BIN:-$HOME/.pi/agent/bin/pi}" --thinking medium "${args[@]}"

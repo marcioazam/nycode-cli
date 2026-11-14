@@ -42,6 +42,12 @@ pick_shell() {
   done
 }
 mapfile -t PY < <(pick '\.py$')
+# Benchmark task fixtures (repo/ stubs, hidden/ tests, oracle/ solutions) are agent inputs run in throwaway
+# dirs and validated by bench/suites/check_oracles.py (no-op fails, oracle passes); ruff still lints them,
+# but typing, coverage and mutation apply to first-party code only.
+FIXTURE_RE='^bench/suites/[^/]+/[^/]+/(repo|hidden|oracle)/'
+PY_CODE=()
+for f in "${PY[@]}"; do [[ $f =~ $FIXTURE_RE ]] || PY_CODE+=("$f"); done
 mapfile -t SH < <(pick_shell)
 mapfile -t MD < <(pick '\.md$')
 mapfile -t TS < <(pick '^extensions/.*\.m?ts$')
@@ -74,11 +80,11 @@ each() { # cmd... -- files...: run cmd once with all files, skip when none
 
 mypy_changed() {
   local f rc=0
-  [ "${#PY[@]}" -gt 0 ] || {
+  [ "${#PY_CODE[@]}" -gt 0 ] || {
     echo "(no changed .py)"
     return 0
   }
-  for f in "${PY[@]}"; do
+  for f in "${PY_CODE[@]}"; do
     MYPYPATH=$(dirname "$f") mypy --strict --explicit-package-bases --follow-imports=silent \
       --cache-dir="$TMP/mypy" "$f" || rc=1
   done
@@ -87,16 +93,17 @@ mypy_changed() {
 
 pytest_cov() {
   # source=. + include_namespace_packages: unimported files count as 0% (no per-file exemption)
-  printf '[run]\nrelative_files = True\nsource = .\n[report]\ninclude_namespace_packages = True\nomit =\n  */node_modules/*\n  */.git/*\n' >"$TMP/coveragerc"
+  printf '[run]\nrelative_files = True\nsource = .\n[report]\ninclude_namespace_packages = True\nomit =\n  */node_modules/*\n  */.git/*\n  bench/suites/*/*/repo/*\n  bench/suites/*/*/hidden/*\n  bench/suites/*/*/oracle/*\n' >"$TMP/coveragerc"
   export COVERAGE_FILE="$TMP/.coverage"
-  COVERAGE_RCFILE="$TMP/coveragerc" coverage run -m pytest scripts/ claude-home/hooks claude-home/bin \
+  COVERAGE_RCFILE="$TMP/coveragerc" coverage run -m pytest scripts/ claude-home/hooks claude-home/bin bench \
     -q -p no:cacheprovider && COVERAGE_RCFILE="$TMP/coveragerc" coverage xml -o "$TMP/coverage.xml"
 }
 
 diff_cover() {
   local base=${BASE_SHA:-}
   case $base in '' | 0000000000000000000000000000000000000000) base=$(git merge-base origin/main HEAD 2>/dev/null || git rev-parse HEAD~1) ;; esac
-  diff-cover "$TMP/coverage.xml" --compare-branch="$base" --fail-under 80
+  diff-cover "$TMP/coverage.xml" --compare-branch="$base" --fail-under 80 \
+    --exclude 'bench/suites/*/*/repo/*' 'bench/suites/*/*/hidden/*' 'bench/suites/*/*/oracle/*'
 }
 
 node_tests() {
@@ -137,7 +144,7 @@ harness_checks_info() {
 
 mutation() {
   local baseline="$CIDIR/mutmut-baseline.json" f stem dir t scratch score killed total base
-  for f in "${PY[@]}"; do
+  for f in "${PY_CODE[@]}"; do
     stem=$(basename "$f" .py)
     case $stem in test_* | *_test | conftest) continue ;; esac
     dir=$(dirname "$f")
@@ -206,6 +213,7 @@ step "markdownlint (changed)" each markdownlint -- "${MD[@]}"
 step "structure (changed)" structure_changed
 step "install tests (offline)" bash scripts/test_install.sh
 step "check-refs" python3 scripts/check-refs.py
+step "bench oracles (no-op fails, oracle passes)" python3 bench/suites/check_oracles.py
 step "pytest + coverage" pytest_cov
 step "diff-cover >= 80" diff_cover
 step "node tests" node_tests

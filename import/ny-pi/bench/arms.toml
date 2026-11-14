@@ -1,0 +1,24 @@
+# Benchmark arms (docs/bench/README.md). Every arm uses the same Claude account: the OAuth access token is read
+# at run time from $BENCH_CC_CREDENTIALS (bench/arms/oauth-token.sh) and never written anywhere.
+# Model and effort are fixed per round by `bench run --model`; thinking/effort below is the arm default.
+
+[cc-vanilla]
+bin = "arms/claude-vanilla"
+runner = "run.py"            # ~/.claude/evals/run.py --claude-bin
+version = "claude-code 2.1.323"
+effort = "medium"
+profile = "isolated CLAUDE_CONFIG_DIR, auto permission mode, autoupdater off"
+
+[pi-vanilla]
+bin = "arms/pi-vanilla"
+runner = "run_pi.py"         # PELO_PI_BIN
+version = "pi 1.5.2"
+effort = "medium"            # --thinking medium
+profile = "empty PI_CODING_AGENT_DIR (no packages/extensions/skills); eval-only flags dropped"
+
+[my-pi]
+bin = "arms/my-pi"
+runner = "run_pi.py"
+version = "pi 1.5.2 + pi-code 1.7.0 + this checkout"
+effort = "settings.json"     # from the owner overlay
+profile = "throwaway HOME: install.sh --link --apply of this tree + overlay.list; hash in .overlay-sha"

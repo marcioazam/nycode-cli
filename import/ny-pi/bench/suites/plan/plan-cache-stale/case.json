@@ -1,0 +1,11 @@
+{
+  "id": "plan-cache-stale",
+  "suite": "plan",
+  "kind": "outcome",
+  "prompt": "Planeje antes de implementar. Objetivo: no pacote userapp/ três sintomas: (1) depois de service.rename_user a listagem (list_users) continua mostrando o nome antigo; (2) depois de delete_user, get_user ainda devolve o usuário apagado; (3) rename_user de um usuário que nunca foi lido dá KeyError vindo do cache. Corrija a causa, preservando o benefício do cache: leituras repetidas sem escrita no meio não podem voltar a ir ao repositório. Usuário inexistente continua levantando KeyError e nunca vai para o cache.",
+  "timeout_s": 600,
+  "budget_usd": 1.0,
+  "split": "dev",
+  "security": false,
+  "test_cmd": "python3 -m pytest -q -p no:cacheprovider hidden"
+}

@@ -1,0 +1,11 @@
+{
+  "id": "plan-split-helpers",
+  "suite": "plan",
+  "kind": "outcome",
+  "prompt": "Planeje antes de implementar. Objetivo: helpers.py virou um saco de funções sem relação (texto, números, datas). Reorganize como pacote helpers/ com submódulos helpers.text (slugify, titlecase), helpers.numbers (clamp, mean) e helpers.dates (parse_iso, days_between), cada um só com o que é seu. Todo código existente que faz `from helpers import slugify` (ou qualquer outra função atual) deve continuar funcionando sem mudança, e helpers.__all__ deve listar as seis funções. O comportamento das funções não muda.",
+  "timeout_s": 600,
+  "budget_usd": 1.0,
+  "split": "heldout",
+  "security": false,
+  "test_cmd": "python3 -m pytest -q -p no:cacheprovider hidden"
+}
