@@ -27,7 +27,8 @@
         "required_status_checks": [
           { "context": "ci-static", "integration_id": 15368 },
           { "context": "ci-security", "integration_id": 15368 },
-          { "context": "instruction-budget", "integration_id": 15368 }
+          { "context": "instruction-budget", "integration_id": 15368 },
+          { "context": "bench-pr" }
         ]
       }
     }

@@ -11,6 +11,7 @@ URL=${BENCH_REPO_URL:-https://github.com/$REPO.git}
 STATE=${BENCH_STATE:-$HOME/.local/state/bench}
 MODEL=${BENCH_MODEL:-claude-sonnet-5-5}
 BUDGET=${BENCH_PR_BUDGET:-12}
+EXT_BUDGET=${BENCH_PR_EXT_BUDGET:-6}
 
 mode=${1:-}
 pr_arg=${2:-}
@@ -84,7 +85,9 @@ run_pr() {
   fi
 
   rc=0
-  (cd "$wt" && python3 bench/run.py gate --base "$base" --cand "$out") >"$out/summary.md" || rc=$?
+  # One extension (+3 candidate reps): accuracy in doubt, or a single failed rep of a security task.
+  ext="python3 bench/run.py run --extension --arm ny-pi --tier pr --model '$MODEL' --budget-usd '$EXT_BUDGET' >&2"
+  (cd "$wt" && python3 bench/run.py gate --base "$base" --cand "$out" --extend-with-cmd "$ext") >"$out/summary.md" || rc=$?
   case $rc in
   0) state=success desc=PASS ;;
   1) state=failure desc=FAIL ;;

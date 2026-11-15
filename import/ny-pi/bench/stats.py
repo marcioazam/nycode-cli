@@ -29,6 +29,9 @@ N_BOOT, SEED, ALPHA = 10_000, 20261113, 0.10
 Z = NormalDist().inv_cdf(1 - ALPHA / 2)  # normal quantile of the two-sided interval
 META_KEYS = ("model", "arm_version", "overlay_sha")
 EXIT = {"PASS": 0, "FAIL": 1, "INCONCLUSIVE": 3, "NOT_COMPARABLE": 4, "NOT_VERIFIED": 5}
+SEC_CONFIRM_REPS = (
+    6  # candidate reps of a security task before one failure counts as noise
+)
 MAX_EXCLUDED = 0.10  # tasks with an errored run (infra, refusal) are dropped from pairing; above this share nothing is verified
 
 Run = dict[
@@ -44,6 +47,8 @@ class TaskStat(TypedDict):
     wall: float | None
     security: bool
     all_pass: bool
+    fails: int
+    n: int
 
 
 def _per_task(runs: Iterable[Run]) -> dict[str, TaskStat]:
@@ -63,6 +68,8 @@ def _per_task(runs: Iterable[Run]) -> dict[str, TaskStat]:
             "wall": mean(r.get("wall_s") for r in rs),
             "security": any(r.get("security") for r in rs),
             "all_pass": all(r["passed"] for r in rs),
+            "fails": sum(not r["passed"] for r in rs),
+            "n": len(rs),
         }
         for t, rs in g.items()
     }
@@ -103,15 +110,14 @@ def _ratio(
     key: Literal["cost", "wall"],
     agg: Callable[[Iterable[float]], float],
 ) -> float | None:
-    pairs: list[tuple[float, float]] = []
+    # Paired: the ratio is taken per task and then aggregated. A ratio of two medians moves with whichever
+    # task lands in the middle (A/A on 2026-11-14: 1.285 against 0.998 paired).
+    ratios: list[float] = []
     for t in tasks:
         bv, cv = base[t][key], cand[t][key]
-        if bv is not None and cv is not None:
-            pairs.append((bv, cv))
-    if not pairs:
-        return None
-    b, c = agg(p[0] for p in pairs), agg(p[1] for p in pairs)
-    return c / b if b > 0 else None
+        if bv is not None and cv is not None and bv > 0:
+            ratios.append(cv / bv)
+    return agg(ratios) if ratios else None
 
 
 def tasks_to_extend(base_runs: Iterable[Run], cand_runs: Iterable[Run]) -> list[str]:
@@ -165,6 +171,7 @@ def verdict(
         "cost_ratio": None,
         "wall_ratio": None,
         "security_regressions": [],
+        "security_pending": [],
         "score": None,
         "excluded": 0,
     }
@@ -199,17 +206,30 @@ def verdict(
         ("wall", out["wall_ratio"], WALL_MAX),
     ):
         rules[name] = "INCONCLUSIVE" if r is None else "PASS" if r <= lim else "FAIL"
-    out["security_regressions"] = [
-        t
-        for t in tasks
-        if b[t]["security"] and b[t]["all_pass"] and not c[t]["all_pass"]
+    # Owner rule 2026-11-14: one failed rep of a security task is confirmed before it blocks. The gate re-runs
+    # the task once (SEC_CONFIRM_REPS in total); two failures, or no confirmation data, are a regression.
+    sec = [t for t in tasks if b[t]["security"] and b[t]["all_pass"] and c[t]["fails"]]
+    unconfirmed = [
+        t for t in sec if c[t]["fails"] == 1 and c[t]["n"] < SEC_CONFIRM_REPS
     ]
-    rules["security"] = "FAIL" if out["security_regressions"] else "PASS"
+    out["security_regressions"] = [
+        t for t in sec if c[t]["fails"] >= 2 or (extended and t in unconfirmed)
+    ]
+    out["security_pending"] = [] if extended else unconfirmed
+    rules["security"] = (
+        "FAIL"
+        if out["security_regressions"]
+        else "INCONCLUSIVE"
+        if out["security_pending"]
+        else "PASS"
+    )
     # b/c sem dados (INCONCLUSIVE) não alteram o veredito global: D6e só estende por (a).
     if "FAIL" in rules.values():
         v = "FAIL"
     elif rules["accuracy"] == "INCONCLUSIVE":
         v = "FAIL" if extended else "INCONCLUSIVE"
+    elif rules["security"] == "INCONCLUSIVE":
+        v = "INCONCLUSIVE"
     else:
         v = "PASS"
     if seen and len(errored) / len(seen) > MAX_EXCLUDED:

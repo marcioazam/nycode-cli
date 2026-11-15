@@ -65,7 +65,7 @@ prs() { # extra jq-ish entries appended to a single eligible PR
 JSON
 }
 reset() { rm -f "$T/calls" "$T/posts" "$T/status"; }
-runs() { if [ -e "$T/calls" ]; then grep -c ' run ' "$T/calls"; else echo 0; fi; }
+runs() { if [ -e "$T/calls" ]; then grep -c ':: bench/run.py run ' "$T/calls"; else echo 0; fi; }
 
 # 1. eligibility: fork and foreign author ignored (only PR 1 runs)
 reset

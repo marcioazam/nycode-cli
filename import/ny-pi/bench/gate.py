@@ -100,7 +100,14 @@ def gate(
     v = run_verdict(False)
     extended = False
     if v["verdict"] == "INCONCLUSIVE" and extend_cmd:
-        tasks = stats.tasks_to_extend(b_runs, c_runs)
+        tasks = sorted(
+            set(v["security_pending"])
+            | set(
+                stats.tasks_to_extend(b_runs, c_runs)
+                if v["rules"]["accuracy"] == "INCONCLUSIVE"
+                else []
+            )
+        )
         if tasks:
             # Only the candidate grows: the base is the frozen k12 round (tier baseline).
             _extend(extend_cmd, "cand", cand_dir, tasks)
@@ -141,10 +148,10 @@ def render_summary(
         f"- Tarefas pareadas (n): {v['n']}; IC{round((1 - stats.ALPHA) * 100)} da diferença de acerto (PR − base): {ci_s}; margem {stats.MARGIN * 100:+.0f} pp"
         + (f" (estendido +{EXTEND_REPS} reps do candidato)" if extended else ""),
         "- Regras: " + ", ".join(f"{k}={x}" for k, x in v["rules"].items()),
-        f"- Custo mediano: base {_fmt(med(b, 'cost_usd'), 4)} / PR {_fmt(med(c, 'cost_usd'), 4)} (razão {_fmt(v['cost_ratio'])}; limite 1,10)",
-        f"- Wall p50: base {_fmt(med(b, 'wall_s'), 1)} s / PR {_fmt(med(c, 'wall_s'), 1)} s (razão {_fmt(v['wall_ratio'])}; limite 1,20)",
+        f"- Custo mediano: base {_fmt(med(b, 'cost_usd'), 4)} / PR {_fmt(med(c, 'cost_usd'), 4)} (razão pareada {_fmt(v['cost_ratio'])}; limite 1,10)",
+        f"- Wall p50: base {_fmt(med(b, 'wall_s'), 1)} s / PR {_fmt(med(c, 'wall_s'), 1)} s (razão pareada {_fmt(v['wall_ratio'])}; limite 1,20)",
         f"- Gasto da rodada PR: US$ {sum(r.get('cost_usd') or 0 for r in c):.2f} (teto US$ {c_meta.get('budget_usd')})",
-        f"- Segurança: {'REGRESSÃO em ' + ', '.join(v['security_regressions']) if v['security_regressions'] else 'sem regressão'}",
+        f"- Segurança: {'REGRESSÃO em ' + ', '.join(v['security_regressions']) if v['security_regressions'] else 'a confirmar em ' + ', '.join(v['security_pending']) if v.get('security_pending') else 'sem regressão'}",
         f"- Pontuação D7 (informativa): {v['score']}",
     ]  # fmt: skip
     if held:

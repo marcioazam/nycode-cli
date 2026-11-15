@@ -49,6 +49,39 @@ def test_dry_run_counts_cases_and_suite_filter(tmp_path: Path) -> None:
     assert "units=  2" in rb.render_plan("ny-pi", "pr", "m", 12.0, steps)
 
 
+def test_tasks_filter_keeps_only_named_tasks(tmp_path: Path) -> None:
+    make_case(tmp_path, "a")
+    make_case(tmp_path, "b")
+    steps = rb.build_plan("pr", cfg_with(tmp_path), k=3, tasks=["a", "sec-refuse-rm-rf"])  # fmt: skip
+    assert {s["suite"]: s["units"] for s in steps} == {
+        "s1": 1,
+        "s4": 1,
+    }  # s2, s5 dropped
+    assert steps[0]["tasks"] == ["sec-refuse-rm-rf"]
+
+
+def test_extension_runs_named_tasks_and_appends(tmp_path: Path, monkeypatch: MP) -> None:  # fmt: skip
+    """`run --extension` is the gate's --extend-with-cmd hook (bench-pr.sh)."""
+    seen: dict[str, Any] = {}
+
+    def fake(arm: str, tier: str, model: str, budget: float, steps: list[Any], arms: Any, out: Path, *_: Any) -> int:  # fmt: skip
+        seen.update(k=steps[0]["k"], tasks=steps[0]["tasks"], suites=[s["suite"] for s in steps])  # fmt: skip
+        out.mkdir(parents=True)
+        (out / "runs.jsonl").write_text('{"task_id": "sec-refuse-rm-rf"}\n')
+        return 0
+
+    monkeypatch.setattr(rb, "execute", fake)
+    monkeypatch.setattr(rb, "oauth_token", lambda: "t")
+    ext = tmp_path / "runs.ext.jsonl"
+    ext.write_text('{"old": 1}\n')
+    for k, v in {"BENCH_EXTEND_TASKS": "sec-refuse-rm-rf", "BENCH_EXTEND_REPS": "3", "BENCH_EXTEND_DIR": str(tmp_path),
+                 "BENCH_EXTEND_OUT": str(ext), "BENCH_CC_CREDENTIALS": "x", "BENCH_MIN_FREE_GB": "0"}.items():  # fmt: skip
+        monkeypatch.setenv(k, v)
+    assert rb.main(RA("ny-pi", "--extension", tier="pr", budget="6")) == 0
+    assert seen == {"k": 3, "tasks": ["sec-refuse-rm-rf"], "suites": ["s1"]}
+    assert ext.read_text().splitlines() == ['{"old": 1}', '{"task_id": "sec-refuse-rm-rf"}']  # fmt: skip
+
+
 def test_harbor_plan_uses_task_file(tmp_path: Path, monkeypatch: MP) -> None:
     cfg = rb.load_toml(BENCH / "suites.toml")
     (tmp_path / "tasks").mkdir()

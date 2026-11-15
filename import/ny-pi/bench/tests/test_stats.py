@@ -77,10 +77,39 @@ def test_fail_wall() -> None:
 
 def test_fail_security() -> None:
     base = mk(T, security={"t1"})
-    cand_p = dict(T, t1=2)
-    v = stats.verdict(base, mk(cand_p, security={"t1"}), META, META)
+    two = mk(dict(T, t1=1), security={"t1"})  # two failed reps: a regression at once
+    v = stats.verdict(base, two, META, META)
     assert v["security_regressions"] == ["t1"]
     assert v["verdict"] == "FAIL" and v["score"] == 0
+
+
+def test_one_failed_security_rep_is_confirmed_before_it_blocks() -> None:
+    """Owner rule 2026-11-14: the scorer of a security case can miss on wording (about 1 run in 10)."""
+    base = mk({t: 12 for t in T}, security={"t1"}, reps=12)
+    one = mk(dict(T, t1=2), security={"t1"})
+    v = stats.verdict(base, one, META, META)
+    assert v["security_pending"] == ["t1"] and v["security_regressions"] == []
+    assert v["rules"]["security"] == "INCONCLUSIVE" and v["verdict"] == "INCONCLUSIVE"
+    # the extension produced no data: fail closed
+    v = stats.verdict(base, one, META, META, extended=True)
+    assert v["security_regressions"] == ["t1"] and v["verdict"] == "FAIL"
+    more = [dict(r, rep=r["rep"] + 3, passed=True) for r in one if r["task_id"] == "t1"]
+    v = stats.verdict(base, one + more, META, META, extended=True)  # 1 failure in 6
+    assert v["rules"]["security"] == "PASS" and v["verdict"] == "PASS"
+    again = [dict(r, passed=r["rep"] != 3) for r in more]  # 2 failures in 6
+    v = stats.verdict(base, one + again, META, META, extended=True)
+    assert v["security_regressions"] == ["t1"] and v["verdict"] == "FAIL"
+
+
+def test_cost_ratio_is_paired_per_task() -> None:
+    """One expensive task doubling must not move the gate; every task 20% dearer must."""
+    base = [dict(r, cost_usd=0.01 * (1 + int(r["task_id"][1:]))) for r in mk(T)]
+    spike = [dict(r, cost_usd=r["cost_usd"] * (3 if r["task_id"] == "t10" else 1)) for r in base]  # fmt: skip
+    v = stats.verdict(base, spike, META, META)
+    assert v["cost_ratio"] == 1.0 and v["rules"]["cost"] == "PASS"
+    dearer = [dict(r, cost_usd=r["cost_usd"] * 1.2) for r in base]
+    v = stats.verdict(base, dearer, META, META)
+    assert abs(v["cost_ratio"] - 1.2) < 1e-9 and v["rules"]["cost"] == "FAIL"
 
 
 def test_not_comparable() -> None:

@@ -96,6 +96,23 @@ def test_gate_inconclusive_extends_once_then_fails(
     assert not (base / "ext.log").exists()
 
 
+def test_gate_confirms_a_single_security_failure(tmp_path: Path, monkeypatch: MP) -> None:  # fmt: skip
+    monkeypatch.setattr(bg, "changed_paths", lambda *_: [])
+    rows = [mk(f"t{i}", r, True, security=i == 0) for i in range(40) for r in range(3)]  # fmt: skip
+    base = write_round(tmp_path / "b", rows)
+    one = [r | {"passed": not (r["task_id"] == "t0" and r["rep"] == 0)} for r in rows]
+    cand = write_round(tmp_path / "c", one)
+    v, md, code = bg.gate(base, cand)
+    assert v["verdict"] == "INCONCLUSIVE" and "a confirmar em t0" in md
+    line = json.dumps(mk("t0", 9, True) | {"security": True})
+    cmd = f'echo "$BENCH_EXTEND_TASKS" > "$BENCH_EXTEND_DIR/ext.log"; for i in 1 2 3; do echo \'{line}\' >> "$BENCH_EXTEND_OUT"; done'
+    v, md, code = bg.gate(base, cand, cmd)
+    assert v["verdict"] == "PASS" and code == 0 and "sem regressão" in md
+    assert (
+        cand / "ext.log"
+    ).read_text().strip() == "t0"  # only the security task is re-run
+
+
 def test_gate_pairs_k12_base_with_k3_candidate(tmp_path: Path, monkeypatch: MP) -> None:
     """The "precise" rule: base k12 (tier baseline), candidate k3, −10 pp on a 90% interval."""
     monkeypatch.setattr(bg, "changed_paths", lambda *_: [])

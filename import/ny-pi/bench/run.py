@@ -79,6 +79,7 @@ def build_plan(
     suites_cfg: dict[str, Any],
     only: list[str] | None = None,
     k: int | None = None,
+    tasks: list[str] | None = None,
 ) -> list[Step]:
     steps: list[Step] = []
     for st in suites_cfg["tier"][tier]["steps"]:
@@ -104,6 +105,17 @@ def build_plan(
         else:
             step["cases"] = runners.load_cases(BENCH / s["dir"], st.get("splits"))
             step["units"] = len(step["cases"])
+        if (
+            tasks is not None
+        ):  # gate extension: only the named tasks, steps left empty are dropped
+            if "cases" in step:
+                step["cases"] = [c for c in step["cases"] if c["id"] in tasks]
+                step["units"] = len(step["cases"])
+            else:
+                step["tasks"] = [t for t in step["tasks"] or [] if t in tasks]
+                step["units"] = len(step["tasks"])
+            if not step["units"]:
+                continue
         step.setdefault("units", len(step.get("tasks") or []))
         step["est_total"] = round(step["units"] * kk * step["est"], 2)
         steps.append(step)
@@ -450,6 +462,16 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--budget-usd", type=float, required=True)
     r.add_argument("--suites", nargs="*")
     r.add_argument("--k", type=int)
+    r.add_argument(
+        "--tasks",
+        type=lambda s: [t for t in s.split(",") if t],
+        help="comma-separated task ids; default BENCH_EXTEND_TASKS when --extension",
+    )
+    r.add_argument(
+        "--extension",
+        action="store_true",
+        help="gate --extend-with-cmd hook: run BENCH_EXTEND_TASKS x BENCH_EXTEND_REPS and append to BENCH_EXTEND_OUT",
+    )
     r.add_argument("--dry-run", action="store_true")
     r.add_argument(
         "--jobs",
@@ -497,7 +519,11 @@ def main(argv: list[str] | None = None) -> int:
         )
         if a.arm not in arms:
             p.error(f"unknown arm {a.arm}; known: {', '.join(arms)}")
-        steps = build_plan(a.tier, suites_cfg, a.suites, a.k)
+        if a.extension:
+            a.tasks = [t for t in os.environ["BENCH_EXTEND_TASKS"].split(",") if t]
+            a.k = int(os.environ["BENCH_EXTEND_REPS"])
+            a.out = Path(os.environ["BENCH_EXTEND_DIR"]) / "ext"
+        steps = build_plan(a.tier, suites_cfg, a.suites, a.k, a.tasks)
         if a.dry_run:
             print(render_plan(a.arm, a.tier, a.model, a.budget_usd, steps))
             return 0
@@ -522,7 +548,7 @@ def main(argv: list[str] | None = None) -> int:
             or Path(os.environ.get("BENCH_OUT", "/tmp"))
             / f"bench-{a.arm}-{a.tier}-{datetime.now(UTC):%Y%m%dT%H%M%S}"
         )
-        return execute(
+        rc = execute(
             a.arm,
             a.tier,
             a.model,
@@ -533,6 +559,10 @@ def main(argv: list[str] | None = None) -> int:
             a.resume,
             max(1, a.jobs),
         )
+        if a.extension and (out / "runs.jsonl").exists():
+            with open(os.environ["BENCH_EXTEND_OUT"], "a") as f:
+                f.write((out / "runs.jsonl").read_text())
+        return rc
     if a.cmd == "gate":
         cmf = REPO / "docs/bench/coverage-map.json"
         v, md, code = gate.gate(
