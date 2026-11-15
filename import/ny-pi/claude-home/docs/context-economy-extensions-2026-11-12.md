@@ -7,7 +7,8 @@ próprias, sem trocar ferramenta nenhuma. Pedido do usuário: "execute estes" (i
 
 ## Objetivo e aceitação
 
-1. `extensions/bash-clamp/`: no `tool_result` do `bash`, saída acima de 100 linhas, 20 KB ou com linha acima de 300
+1. **Removida em 2026-11-15** (ver "bash-clamp removida" no fim). Texto original: `extensions/bash-clamp/`: no
+   `tool_result` do `bash`, saída acima de 100 linhas, 20 KB ou com linha acima de 300
    caracteres vira cabeça + cauda (em erro: cauda maior e janela em volta da primeira linha de diagnóstico), linhas
    longas cortadas, rodapé com o caminho do log completo e a chamada `read` com offset/limit. O status
    (`Command exited with code N`, timeout, abort) continua no fim. Saída pequena passa intacta. Quando o pi já cortou
@@ -89,3 +90,32 @@ de `session._modelRegistry` que mudaram. Último release 2026-05-22. Caminho nat
 `@earendil-works/pi-ai/compat` + `createAgentSession`) carrega a extensão, mas a auth do provider faux não fecha via
 `auth.json` nem `modelRuntime.setRuntimeApiKey`; parado no limite de tentativas. Mantido: testes unitários +
 E2E `pi -p` com Haiku.
+
+## bash-clamp removida (2026-11-15)
+
+Contrato antigo: saída do `bash` acima de 100 linhas, 20 KB ou com linha acima de 300 caracteres virava cabeça +
+cauda, com o log completo em arquivo. Contrato novo: a extensão não existe; vale o corte do próprio pi (2000 linhas
+ou 50 KB, cauda, log completo em arquivo temporário), que está na faixa dos outros harnesses (30 a 50 mil
+caracteres, 500 a 2000 linhas). O risco anotado acima ("o modelo ler o log mais vezes") foi o que a medição achou.
+
+Medição (suíte `hard`, 12 tarefas em repositórios de 20 a 40 arquivos, 3 repetições, Sonnet 5.5, mesmo commit e
+mesmo overlay; custo sem a gravação de cache do primeiro turno, pareado por tarefa):
+
+| Braço | Acerto | Custo | Turnos | Chamadas de ferramenta | Saídas cortadas |
+| --- | --- | --- | --- | --- | --- |
+| corte em 100 linhas / 20 KB | 36/36 | US$ 6,90 | 10,1 | 10,8 | 198 |
+| corte em 500 linhas / 30 KB | 36/36 | US$ 6,04 | 7,0 | 6,1 | 31 |
+| sem a extensão | 36/36 | US$ 5,78 | 6,2 | 5,3 | 0 |
+
+- Sem a extensão contra 100 linhas: custo 0,85 vez (IC90 da razão por tarefa [0,81, 0,89]), mais barato em 12 de
+  12 tarefas, mesmo acerto. O efeito apareceu nas 8 tarefas em que foi achado e se repetiu nas 4 escritas depois.
+- 500 linhas contra sem a extensão: 1,06 vez (IC90 [1,02, 1,10]). Os 31 cortes que sobraram eram leituras de 505 a
+  793 linhas e linhas longas; cada corte vira releitura em pedaços.
+- Causa: as saídas cortadas eram leituras de arquivo (mediana 204 linhas). Cada chamada a mais relê o contexto
+  inteiro; o texto da saída é uma parcela pequena da conta.
+- Pesquisa (99 buscas e leituras, 20 de 20 citações conferidas): nenhum harness lido corta em 100 linhas; estudos
+  de 2026 medem que apagar ou cortar saída de ferramenta vira novas chamadas antes de virar economia, e que o
+  número de turnos explica o custo muito mais que o tamanho da observação.
+- O que não foi medido: sessões com logs de teste ou de build de milhares de linhas. Ali vale o corte do pi e a
+  regra do contrato de filtrar saída grande no próprio comando.
+- Reverter: `git revert` do commit que removeu `extensions/bash-clamp/`.

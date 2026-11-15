@@ -428,8 +428,6 @@ $HOME/.pi/agent/claude-home/skills/variant-analysis/resources/semgrep/python.yam
 $HOME/.pi/agent/claude-home/skills/variant-analysis/resources/variant-report-template.md	claude-home/skills/variant-analysis/resources/variant-report-template.md
 $HOME/.pi/agent/extensions/auto-resume/index.test.ts	extensions/auto-resume/index.test.ts
 $HOME/.pi/agent/extensions/auto-resume/index.ts	extensions/auto-resume/index.ts
-$HOME/.pi/agent/extensions/bash-clamp/index.test.ts	extensions/bash-clamp/index.test.ts
-$HOME/.pi/agent/extensions/bash-clamp/index.ts	extensions/bash-clamp/index.ts
 $HOME/.pi/agent/extensions/bash-timeout/index.test.ts	extensions/bash-timeout/index.test.ts
 $HOME/.pi/agent/extensions/bash-timeout/index.ts	extensions/bash-timeout/index.ts
 $HOME/.pi/agent/extensions/bypass-permissions/index.ts	extensions/bypass-permissions/index.ts
