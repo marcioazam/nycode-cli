@@ -3,3 +3,6 @@
 # Keep empty unless the hit is verified benign.
 # check-leaks.sh --selftest builds its own fake home path fixture (matches the local identifier list by shape only)
 scripts/check-leaks.sh:/home/someuser
+README.md:securityscorecards\.dev/projects/github\.com/
+.github/CODEOWNERS:^\* @
+.github/ISSUE_TEMPLATE/config.yml:github\.com/
