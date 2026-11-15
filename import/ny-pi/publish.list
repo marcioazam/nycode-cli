@@ -36,6 +36,7 @@ $HOME/.pi/agent/claude-home/bin/evals/harbor/omp_agent.py	claude-home/bin/evals/
 $HOME/.pi/agent/claude-home/bin/evals/harbor/pi_harness_agent.py	claude-home/bin/evals/harbor/pi_harness_agent.py
 $HOME/.pi/agent/claude-home/bin/evals/harbor/run.sh	claude-home/bin/evals/harbor/run.sh
 $HOME/.pi/agent/claude-home/bin/evals/harbor/test_omp_agent.py	claude-home/bin/evals/harbor/test_omp_agent.py
+$HOME/.pi/agent/claude-home/bin/evals/harbor/test_pi_harness_agent.py	claude-home/bin/evals/harbor/test_pi_harness_agent.py
 $HOME/.pi/agent/claude-home/bin/evals/plan_ab.py	claude-home/bin/evals/plan_ab.py
 $HOME/.pi/agent/claude-home/bin/evals/plan_ab_cases.jsonl	claude-home/bin/evals/plan_ab_cases.jsonl
 $HOME/.pi/agent/claude-home/bin/evals/test_plan_ab.py	claude-home/bin/evals/test_plan_ab.py

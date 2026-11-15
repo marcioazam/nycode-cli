@@ -10,9 +10,9 @@ import shlex
 from pathlib import Path
 from typing import Any, override
 
-from harbor.agents.installed.node_install import nvm_node_install_snippet
-from harbor.agents.installed.pi import Pi
-from harbor.environments.base import BaseEnvironment
+from harbor.agents.installed.node_install import nvm_node_install_snippet  # type: ignore[import-not-found]
+from harbor.agents.installed.pi import Pi  # type: ignore[import-not-found]
+from harbor.environments.base import BaseEnvironment  # type: ignore[import-not-found]
 
 _HOME = "/opt/pi-home"  # fixed in-container home; independent of the host user
 _WRAPPER = f"{_HOME}/.local/bin/pi"
@@ -33,8 +33,15 @@ else echo "no supported package manager to install:$need" >&2; exit 1; fi
 command -v python3 >/dev/null 2>&1 || { echo "python3 missing after install" >&2; exit 1; }
 """
 
+# install() leaves local.env world-writable and root-owned; the wrapper loads it only at mode 0600 owned by the
+# running user. Re-create it as the agent (cp -> owner, chmod 600, mv over the original).
+_LOCAL_ENV_FIX = (
+    f'f="{_HOME}/.pi/agent/local.env"; '
+    'if [ -f "$f" ]; then t=$(mktemp "$f.XXXXXX") && cp "$f" "$t" && chmod 600 "$t" && mv -f "$t" "$f"; fi'
+)
 
-class PiHarnessAgent(Pi):
+
+class PiHarnessAgent(Pi):  # type: ignore[misc]
     @staticmethod
     @override
     def name() -> str:
@@ -61,6 +68,7 @@ class PiHarnessAgent(Pi):
             environment,
             command=(
                 "set -euo pipefail; "
+                f"{_LOCAL_ENV_FIX}; "
                 f"{nvm_node_install_snippet()} && "
                 f"{_WRAPPER} --version"
             ),
@@ -68,7 +76,9 @@ class PiHarnessAgent(Pi):
         )
 
     @override
-    async def run(self, instruction: str, environment: BaseEnvironment, context: Any) -> None:
+    async def run(
+        self, instruction: str, environment: BaseEnvironment, context: Any
+    ) -> None:
         self._quoted_instruction = shlex.quote(instruction)
         await super().run(instruction, environment, context)
 
@@ -83,7 +93,11 @@ class PiHarnessAgent(Pi):
     ) -> Any:
         # The base run() builds `... pi --print --mode json ...`; point it at the wrapper under HOME=/opt/pi-home.
         if "pi --print --mode json" in command:
-            command = command.replace("pi --print --mode json", f"{shlex.quote(_WRAPPER)} --print --mode json", 1)
+            command = command.replace(
+                "pi --print --mode json",
+                f"{shlex.quote(_WRAPPER)} --print --mode json",
+                1,
+            )
             # An instruction starting with "-" (pytorch-model-recovery) is parsed as a pi option: end options first.
             quoted = getattr(self, "_quoted_instruction", None)
             if quoted and f" {quoted} " in command:

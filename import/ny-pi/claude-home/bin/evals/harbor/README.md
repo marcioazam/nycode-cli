@@ -40,6 +40,7 @@ The token is read at runtime from `~/.claude-2/.credentials.json` with `jq` into
 
 - 2026-11-13 pilot (10 tasks, Opus 5.5): `claude-home/docs/external-eval-terminal-bench-2026-11-13.md`.
 - Instructions that start with `-` are passed after `--` (pi would parse them as options).
+- `install()` re-creates `local.env` as the agent user with mode 0600, since the wrapper ignores it otherwise (the bundle extract is root-owned and world-writable).
 - Arm `pi-vanilla` runs Harbor's built-in pi 1.5.2 without the harness.
 - Some security tasks (`break-filter-js-from-html`, `crack-7z-hash`) are refused by the API's cyber safeguards for pi
   (with or without the harness) but not for Claude Code; count them separately.
