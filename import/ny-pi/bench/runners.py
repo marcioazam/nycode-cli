@@ -114,6 +114,8 @@ def parse_s1_runs(path: Path) -> list[Run]:
                 split=r.get("split", "dev"),
                 subagents_used=bool(score.get("delegated")),
                 error=r.get("error"),
+                turns=result.get("turns"),
+                tokens=result.get("tokens"),
             )
         )
     return out

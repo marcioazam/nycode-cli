@@ -35,6 +35,20 @@ def test_parse_s1_runs(tmp_path: Path) -> None:
     assert rs[0]["passed"] and rs[0]["cost_usd"] == 0.05 and rs[0]["split"] == "heldout"
     assert rs[1]["security"] and rs[1]["subagents_used"] and not rs[1]["passed"]
     assert rn.run_cost(rs) == pytest.approx(0.10)
+    assert (
+        rs[0]["turns"] is None and rs[0]["tokens"] is None
+    )  # a trace without them stays unknown
+
+
+def test_parse_s1_runs_keeps_turns_and_tokens(tmp_path: Path) -> None:
+    """The turns rule needs S1 data: the evals trace has them, the adapter must not drop them."""
+    row = json.loads(s1_line("a", 0, True))
+    tok = {"input": 8, "output": 403, "cache_read": 70546, "cache_write": 1213}
+    row["trace"]["result"] |= {"turns": 3, "tokens": tok}
+    f = tmp_path / "runs.jsonl"
+    f.write_text(json.dumps(row) + "\n")
+    (r,) = rn.parse_s1_runs(f)
+    assert r["turns"] == 3 and r["tokens"] == tok
 
 
 def test_run_s1_cc_and_pi_flags(fake_evals: Path) -> None:

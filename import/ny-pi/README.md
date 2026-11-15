@@ -131,7 +131,7 @@ Every pull request must pass four required checks before merge:
 | `ci-static` | Lint, format and types (ruff, mypy strict, shellcheck, shfmt, biome, markdownlint), unit tests, 80% coverage on changed lines, file and directory size limits |
 | `ci-security` | Secrets (gitleaks), static analysis (semgrep), dependency advisories (osv-scanner), unpinned GitHub Actions |
 | `instruction-budget` | Growth of the always-loaded prompt beyond the recorded token budget |
-| `bench-pr` | The benchmark: the pull request head is run and compared with the frozen round of `main`; a drop in tasks solved beyond the margin, a cost or time increase beyond 10% / 20%, or a security regression fails it |
+| `bench-pr` | The benchmark: the pull request head is run and compared with the frozen round of `main`; the gate fails a drop in tasks solved beyond the margin, a cost increase above 10%, an increase in model round trips (turns) above 10%, or a security regression; wall-clock time is published for information only |
 
 The same checks run locally with `bash scripts/ci/local.sh` (under 15 minutes; [details](docs/ci-local.md)).
 The benchmark gate rule, its statistics and the evidence kept for each run are in the

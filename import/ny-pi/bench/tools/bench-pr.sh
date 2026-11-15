@@ -117,8 +117,10 @@ fi
 while read -r n sha; do
   [[ -n $n ]] || continue
   if [[ $mode == --poll ]]; then
-    last=$(gh api "repos/$REPO/commits/$sha/statuses" -q '[.[] | select(.context=="bench-pr")][0].state // empty')
-    if [[ $last == success || $last == failure ]]; then continue; fi
+    last=$(gh api "repos/$REPO/commits/$sha/statuses" -q '[.[] | select(.context=="bench-pr")][0] | "\(.state // "") \(.description // "")"')
+    # NOT_COMPARABLE and NOT_VERIFIED spent a round and need a person (new baseline, infra): retrying them every
+    # poll would spend the budget again each time. Rerun by hand with --pr N. Other errors spent nothing and retry.
+    case $last in success* | failure* | "error NOT_"*) continue ;; esac
     # The list was read before earlier PRs of this pass ran: a PR closed meanwhile must not spend quota.
     [[ $(gh pr view "$n" --repo "$REPO" --json state -q .state) == OPEN ]] || continue
   fi

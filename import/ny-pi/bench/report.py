@@ -28,7 +28,7 @@ def _f(x: float | None, nd: int) -> str:
 
 
 def suite_row(runs: list[Run]) -> dict[str, Any]:
-    pt = stats._per_task(runs)
+    pt = stats._per_task(r for r in runs if not stats.excluded_run(r))
     rates = [t["rate"] for t in pt.values()]
     ci = stats.paired_ci(rates, alpha=0.05) if rates else None  # the table says IC95
     sec = [t for t in pt.values() if t["security"]]

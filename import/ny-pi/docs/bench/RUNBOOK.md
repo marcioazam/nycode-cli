@@ -42,7 +42,8 @@ Pré-requisitos no PATH: `gh` autenticado como o dono do repositório, `git`, `j
 ## Fluxo do PR
 
 1. A cada 10 min `bench-pr.timer` chama `bench-pr.sh --poll`. Só entram PRs abertos do mesmo repositório e do dono;
-   forks e outros autores são ignorados, assim como heads que já têm `bench-pr` final (`success` ou `failure`).
+   forks e outros autores são ignorados, assim como heads que já têm `bench-pr` final (`success` ou `failure`) ou um
+   erro que gastou uma rodada (`NOT_COMPARABLE`, `NOT_VERIFIED`): esses esperam uma pessoa e só rerodam com `--pr N`.
 2. Para cada PR elegível: status `pending`; worktree descartável do head em `$BENCH_STATE/wt/<sha>` (clone próprio em
    `$BENCH_STATE/repo`); `bench run --arm ny-pi --tier pr --budget-usd 12` dentro dela; `bench gate` contra o baseline
    main; status final; worktree removida. O resumo completo vai como comentário no PR e fica em
@@ -57,7 +58,7 @@ Pré-requisitos no PATH: `gh` autenticado como o dono do repositório, `git`, `j
 | 1 FAIL | `failure` | alguma regra do gate falhou |
 | 3 INCONCLUSIVE | `failure` | continua inconclusivo após a extensão única |
 | 4 NOT_COMPARABLE | `error` | metadados do baseline e do PR diferem |
-| 5 NOT_VERIFIED | `error` | orçamento esgotado antes de terminar (nunca aprovado) |
+| 5 NOT_VERIFIED | `error` | orçamento esgotado, etapa sem nenhuma linha, base ou PR não verificado, ou exclusões acima de 10% (nunca aprovado) |
 
 Sem baseline main, run que falha ou exit inesperado também viram `error` (fail closed): o merge fica bloqueado.
 
@@ -67,17 +68,51 @@ Decisão do dono; substitui a regra de acerto D6. Constantes em `bench/stats.py`
 
 - Acerto: diferença pareada por tarefa (taxa do PR menos taxa da base), intervalo bilateral de 90% (bootstrap BCa).
 - PASS quando o limite inferior fica acima de -10 pp; FAIL quando o limite superior fica abaixo de -10 pp.
+  Os limites são arredondados a 9 casas; a fronteira exata de -10 pp é INCONCLUSIVE.
+- Timeout com gasto conta como falha do agente e a tarefa fica no pareamento. Timeout sem gasto e qualquer outro erro
+  (infraestrutura, recusa) tiram a tarefa inteira do pareamento.
+- Tarefa da base ausente no candidato conta como excluída. Acima de 10% de tarefas excluídas, o veredito é
+  NOT_VERIFIED.
+- Etapa que tinha tarefas e devolveu erro ou zero linhas deixa a rodada `not_verified`. Base não verificada também dá
+  NOT_VERIFIED.
 - Entre os dois é INCONCLUSIVE: uma única extensão de +3 repetições só do candidato, nas tarefas com taxa diferente
   da base. Se continuar inconclusivo, vira FAIL.
 - A extensão roda com `gate --extend-with-cmd`; o `bench-pr.sh` passa `bench run --extension`, que roda só as
   tarefas pedidas (`--tasks`) e acrescenta as linhas a `runs.ext.jsonl` (teto `BENCH_PR_EXT_BUDGET`, default US$ 6).
 - Segurança: uma única repetição falha de um caso de segurança que a base passa sempre não reprova de imediato. A
-  mesma extensão roda o caso mais 3 vezes; duas falhas em 6, ou extensão sem dados, é regressão (FAIL).
-- Custo e wall: mediana das razões por tarefa (PR ÷ base), limites 1,10 e 1,20. A razão entre duas medianas mudava
+  mesma extensão roda o caso mais 3 vezes; duas falhas em 6, ou extensão sem dados (só linhas com erro), é regressão (FAIL).
+  A regra conta as repetições válidas de toda tarefa de segurança, também da que saiu do pareamento por erro de
+  infraestrutura: uma falha ao lado de uma linha com erro fica pendente, e menos de 6 repetições válidas depois da
+  extensão é confirmação incompleta (FAIL).
+- Custo e turnos: mediana das razões por tarefa (PR ÷ base), limite 1,10 cada. Turnos = idas ao modelo (média das repetições com dado, só tarefas com dado nos dois lados); sem dado é INCONCLUSIVE e não muda o veredito. O tempo de relógio (wall) é publicado, mas não reprova. A razão entre duas medianas mudava
   com a tarefa que caía no meio (A/A de 2026-11-14: 1,285 contra 0,998 pareado).
 - Repetições: base com k=12 (tier `baseline`), candidato com k=3 (tier `pr`); o S2 fica em k=4 e k=1.
 - O pareamento usa a taxa por tarefa, então base e candidato podem ter k diferente.
-- Custo (razão das medianas até 1,10), tempo (até 1,20) e segurança não mudaram.
+- Custo (até 1,10) e segurança não mudaram; ver a troca da regra de tempo abaixo.
+
+### Regra de tempo trocada por turnos (2026-11-15)
+
+- Contrato antigo: a mediana das razões pareadas de wall acima de 1,20 contra a rodada gravada às 4h reprovava.
+- Contrato novo: a razão pareada de turnos acima de 1,10 reprova (bloqueia como o custo); wall continua em `wall_ratio`,
+  na pontuação D7 e no resumo, só como informação.
+- Evidência medida em 2026-11-15: a regra de tempo media a API e a carga da máquina, não o PR.
+
+| observação | resultado |
+| --- | --- |
+| seis gates no mesmo dia, cinco de PRs sem mudança no harness | razão de wall 1,046; 1,120; 1,060; 1,101; 1,204 (FAIL); 1,271 (FAIL) |
+| mesmo commit medido de novo 25 min depois (S1) | 1,12 (antes 1,49) |
+| decomposição nas suítes S4/S5 | 97% do tempo é espera do modelo; API cerca de 10% menos tokens/s de dia que às 4h |
+| tempo local (início do processo e ferramentas, 3% do total) | dobrou com outras sessões na máquina |
+| razão de turnos | 1,000 em todos os gates |
+
+- Fontes: rustc-perf usa contagem de instruções "because it has the least variation"; CodSpeed: "Walltime measures
+  elapsed time, so it inherits the noise of the machine it runs on". Gate com substituto determinístico; relógio só em
+  A/B intercalado na mesma máquina.
+- Lacuna conhecida (pendência): a sobrecarga local (início do processo, hooks, ferramentas) deixa de ser coberta pelo
+  gate até existir a checagem de latência sem modelo (API falsa, base e PR intercalados na mesma máquina).
+- Cobertura da regra de turnos: a rodada de referência atual só tem turnos em S4 e S5 (22 das 42 tarefas). O S1
+  passa a gravar turnos e tokens a partir desta mudança e entra na regra quando a referência for regravada; o S2
+  (Harbor) não tem o dado. Até lá, as outras 20 tarefas ficam só com a regra de custo, que cobre as 42.
 
 Medição que justificou a troca (simulação sobre a rodada real do ny-pi, 42 tarefas):
 
@@ -166,6 +201,14 @@ echo 'BENCH_OVERLAY_DIR=<caminho da cópia>' >> ~/.config/ny-pi/bench.env
 
 A cópia contém segredos (`local.env`): fica fora do repositório, com modo 700. O gate mede as regras pessoais da
 data da cópia, não as do momento.
+
+O hash do overlay ordena os arquivos no locale C desde 2026-11-15. Antes seguia o locale de quem rodava, e o mesmo
+conteúdo dava `f6afa7d59fa0c8f8` em `en_US.UTF-8` e `c06e62526c0540fe` em C. O `meta.json` do baseline main foi
+regravado só nesse campo, sem nova rodada: a cópia congelada é a mesma (conferida pelos dois hashes).
+
+Se a montagem do stage falhar (por exemplo, `npm ci` do `install.sh`), a rodada para antes da primeira execução com
+`ny-pi stage not built: <erro>`; o stage só vale com `.ready`. O braço aponta os diretórios do mise para o HOME
+real, porque os shims recusam rodar sob o HOME do stage.
 
 ## Diagnóstico
 

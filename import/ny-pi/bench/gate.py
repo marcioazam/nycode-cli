@@ -115,7 +115,7 @@ def gate(
             c_runs = [r for r in c_runs if r["task_id"] not in refused]
         extended = True
         v = run_verdict(True)
-    if c_meta.get("not_verified"):
+    if b_meta.get("not_verified") or c_meta.get("not_verified"):
         v["verdict"] = "NOT_VERIFIED"  # AC6: budget stop is never a pass
     held_b = [r for r in b_runs if r.get("split") == "heldout"]
     held_c = [r for r in c_runs if r.get("split") == "heldout"]
@@ -149,7 +149,8 @@ def render_summary(
         + (f" (estendido +{EXTEND_REPS} reps do candidato)" if extended else ""),
         "- Regras: " + ", ".join(f"{k}={x}" for k, x in v["rules"].items()),
         f"- Custo mediano: base {_fmt(med(b, 'cost_usd'), 4)} / PR {_fmt(med(c, 'cost_usd'), 4)} (razão pareada {_fmt(v['cost_ratio'])}; limite 1,10)",
-        f"- Wall p50: base {_fmt(med(b, 'wall_s'), 1)} s / PR {_fmt(med(c, 'wall_s'), 1)} s (razão pareada {_fmt(v['wall_ratio'])}; limite 1,20)",
+        f"- Turnos (média por tarefa, mediana das razões pareadas): razão {_fmt(v['turns_ratio'])}; limite 1,10; {v['turns_n']} tarefas com dado",
+        f"- Wall p50: base {_fmt(med(b, 'wall_s'), 1)} s / PR {_fmt(med(c, 'wall_s'), 1)} s (razão pareada {_fmt(v['wall_ratio'])}; informativo, não reprova: depende da API e da carga da máquina)",
         f"- Gasto da rodada PR: US$ {sum(r.get('cost_usd') or 0 for r in c):.2f} (teto US$ {c_meta.get('budget_usd')})",
         f"- Segurança: {'REGRESSÃO em ' + ', '.join(v['security_regressions']) if v['security_regressions'] else 'a confirmar em ' + ', '.join(v['security_pending']) if v.get('security_pending') else 'sem regressão'}",
         f"- Pontuação D7 (informativa): {v['score']}",

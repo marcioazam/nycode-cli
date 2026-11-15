@@ -98,6 +98,17 @@ reset
 echo pending >"$T/status"
 bash "$here/bench-pr.sh" --poll >/dev/null 2>&1
 check "status pending reprocessa" test "$(runs)" = 1
+# an error that spent a round (NOT_COMPARABLE, NOT_VERIFIED) waits for a person; a cheap one retries
+for d in "NOT_VERIFIED: orçamento esgotado" "NOT_COMPARABLE: re-rodar baseline main"; do
+  reset
+  echo "error $d" >"$T/status"
+  bash "$here/bench-pr.sh" --poll >/dev/null 2>&1
+  check "error '${d%%:*}' não reroda sozinho" test "$(runs)" = 0
+done
+reset
+echo "error run falhou (exit 2)" >"$T/status"
+bash "$here/bench-pr.sh" --poll >/dev/null 2>&1
+check "error sem gasto reprocessa" test "$(runs)" = 1
 
 # 3. gate exit -> state
 for pair in 0:success 1:failure 3:failure 4:error 5:error; do
@@ -140,6 +151,13 @@ sha() { bash -c "set -euo pipefail; . '$here/../arms/overlay-sha.sh'; overlay_sh
 check "overlay: caminho ausente no fim da lista não derruba" sha "$T/ov.list" >/dev/null
 check "overlay: caminho ausente não muda o hash" test "$(sha "$T/ov.list")" = "$(sha "$T/ov2.list")"
 
+# --- overlay hash does not follow the caller's locale (en_US sorts a before B, C sorts B before a)
+mkdir -p "$T/loc" && echo 1 >"$T/loc/B.txt" && echo 2 >"$T/loc/a.txt"
+printf 'B.txt\na.txt\n' >"$T/loc.list"
+lsha() { LC_ALL=$1 bash -c ". '$here/../arms/overlay-sha.sh'; overlay_sha '$T/loc' '$T/loc.list'" 2>/dev/null; }
+check "overlay: hash igual em C e en_US.UTF-8" test "$(lsha C)" = "$(lsha en_US.UTF-8)"
+check "overlay: hash fixo para conteúdo fixo" test "$(lsha en_US.UTF-8)" = 85e7eb513cb87bce
+
 # --- frozen overlay: same hash as the source, and an edit to the source afterwards does not reach the copy
 frz() { bash -c "set -euo pipefail; . '$here/../arms/overlay-sha.sh'; overlay_freeze '$T/ov' '$T/frozen' '$T/ov.list'"; }
 h=$(frz)
@@ -147,6 +165,14 @@ check "overlay congelado: mesmo hash da origem" test "$h" = "$(sha "$T/ov.list")
 echo b >"$T/ov/settings.json"
 check "overlay congelado: edição na origem não muda a cópia" test "$(bash -c ". '$here/../arms/overlay-sha.sh'; overlay_sha '$T/frozen' '$T/ov.list'")" = "$h"
 check "overlay congelado: não sobrescreve cópia existente" bash -c "! (. '$here/../arms/overlay-sha.sh'; overlay_freeze '$T/ov' '$T/frozen' '$T/ov.list') 2>/dev/null"
+
+# --- overlay copy onto an existing stage (rebuild after a failed build): same paths, same hash, no dir/dir
+mkdir -p "$T/ov/vendor/pkg" && echo x >"$T/ov/vendor/pkg/f"
+printf 'settings.json\nvendor/pkg\n' >"$T/ov3.list"
+cpy() { bash -c "set -euo pipefail; . '$here/../arms/overlay-sha.sh'; overlay_copy '$T/ov' '$T/stage' '$T/ov3.list'; overlay_sha '$T/stage' '$T/ov3.list'"; }
+h=$(cpy)
+check "overlay: cópia repetida mantém o hash" test -n "$h" -a "$(cpy)" = "$h"
+check "overlay: cópia repetida não aninha diretório" test ! -e "$T/stage/vendor/pkg/pkg"
 
 echo "falhas: $fails"
 exit $((fails > 0))

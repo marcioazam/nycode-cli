@@ -171,6 +171,7 @@ def test_ny_pi_harbor_bundles_the_checkout_stage(
     stage = tmp_path / "stage"
     stage.mkdir()
     (stage / ".overlay-sha").write_text("abc")
+    (stage / ".ready").touch()
     hd = tmp_path / "hd"
     hd.mkdir()
     script(hd / "bundle.sh", f'echo "$HOME" > {tmp_path}/bundled_home\n')
@@ -255,6 +256,17 @@ def test_arm_info_and_overlay_sha(tmp_path: Path, monkeypatch: MP) -> None:
     stage.mkdir()
     (stage / ".overlay-sha").write_text("deadbeef\n")
     monkeypatch.setenv("BENCH_STAGE_ROOT", str(tmp_path))
+    # A build that failed halfway leaves .overlay-sha but no .ready: not a stage, and the round stops before any
+    # run (timer gate of 2026-11-15: 52 runs raced to rebuild it; NOT_VERIFIED came 20 minutes later).
+    assert rb.overlay_sha("abc123") is None
+    monkeypatch.setenv("BENCH_STAGE", str(stage))
+    arm = script(tmp_path / "arm", "echo 'install: ERROR: npm ci failed' >&2\nexit 1\n")
+    with pytest.raises(
+        RuntimeError, match="stage not built: install: ERROR: npm ci failed"
+    ):
+        rb.arm_meta("ny-pi", {"ny-pi": {}}, "pi", arm, "m", 1.0)
+    monkeypatch.delenv("BENCH_STAGE")
+    (stage / ".ready").touch()
     assert rb.overlay_sha("abc123") == "deadbeef"
     assert rb.overlay_sha("zzz") is None
     monkeypatch.setenv("BENCH_STAGE", str(stage))
@@ -331,6 +343,8 @@ def test_ny_pi_stage_default_is_outside_tmp() -> None:
     arm = (BENCH / "arms/ny-pi").read_text()
     assert "/tmp" not in next(ln for ln in arm.splitlines() if ln.startswith("stage="))
     assert "BENCH_STAGE_ROOT" in arm
+    # Version-manager shims resolve through $HOME; the arm pins them to the real HOME before staging one.
+    assert arm.index("MISE_DATA_DIR") < arm.index('if [ ! -f "$stage/.ready" ]')
 
 
 def two_suite_cfg(tmp_path: Path, n: int, k: int = 1) -> list[rb.Step]:
@@ -489,3 +503,20 @@ def test_execute_parallel_runs_suites_and_units_together(
     monkeypatch.setattr(rb, "execute", lambda *a: a[8])
     monkeypatch.setenv("BENCH_CC_CREDENTIALS", creds(tmp_path, 120))
     assert rb.main(RA("ny-pi", "--out", str(out), "--jobs", "6")) == 6
+
+
+def test_execute_stage_with_no_rows_is_not_verified(
+    tmp_path: Path, monkeypatch: MP
+) -> None:
+    """D4: S1 returning ([], error) used to leave meta not_verified=False and exit 0."""
+    monkeypatch.setattr(
+        rn, "run_s1", lambda *a, **k: ([], "infra: no results dir (exit 1)")
+    )
+    monkeypatch.setattr(rn, "s1_case_reps", lambda cases, k: {c: k for c in cases})
+    steps: list[rb.Step] = [
+        {"suite": "s1", "kind": "internal", "k": 3, "tasks": ["a", "b"]}
+    ]
+    out = tmp_path / "o"
+    code = rb.execute("fake", "pr", "m", 5.0, steps, make_arms(tmp_path, DEAD), out)
+    meta = json.loads((out / "meta.json").read_text())
+    assert code == rb.NOT_VERIFIED_EXIT and meta["not_verified"]

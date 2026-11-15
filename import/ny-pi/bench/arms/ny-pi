@@ -11,6 +11,11 @@ repo=$(cd "$here/../.." && pwd)
 # shellcheck source=bench/arms/overlay-sha.sh
 . "$here/overlay-sha.sh"
 real=${BENCH_REAL_HOME:-$HOME}
+# mise shims (node, npm, jq, ...) find their config, installs and trust list through $HOME; under the staged
+# HOME they refuse to run ("config files are not trusted"), which failed the stage build of the timer gate on
+# 2026-11-15. Pinned to the real HOME, every tool resolves as it does outside the stage. Unused without mise.
+export MISE_CONFIG_DIR="${MISE_CONFIG_DIR:-$real/.config/mise}" MISE_DATA_DIR="${MISE_DATA_DIR:-$real/.local/share/mise}"
+export MISE_STATE_DIR="${MISE_STATE_DIR:-$real/.local/state/mise}" MISE_CACHE_DIR="${MISE_CACHE_DIR:-$real/.cache/mise}"
 stage=${BENCH_STAGE:-${BENCH_STAGE_ROOT:-$real/.cache/bench}/bench-nypi-$(git -C "$repo" rev-parse --short=12 HEAD)$(git -C "$repo" diff --quiet HEAD || echo -dirty)}
 if [ ! -f "$stage/.ready" ]; then
   mkdir -p "$(dirname "$stage")"
@@ -29,11 +34,7 @@ if [ ! -f "$stage/.ready" ]; then
     echo "bench: overlay dir missing: $overlay" >&2
     exit 2
   }
-  while read -r rel; do
-    case "$rel" in '' | '#'*) continue ;; esac
-    [ -e "$overlay/$rel" ] || continue
-    mkdir -p "$(dirname "$stage/.pi/agent/$rel")" && cp -a "$overlay/$rel" "$stage/.pi/agent/$rel"
-  done <"$here/overlay.list"
+  overlay_copy "$overlay" "$stage/.pi/agent" "$here/overlay.list"
   overlay_sha "$stage/.pi/agent" "$here/overlay.list" >"$stage/.overlay-sha"
   HOME=$stage bash "$repo/install.sh" --link --apply >/dev/null
   # Warm-up: bin/pi applies its patches at start; a first real run on an unpatched tree crashed at exit (2026-11-13).

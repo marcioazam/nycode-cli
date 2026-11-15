@@ -18,6 +18,7 @@ def mk(
     wall: float | None = 10.0,
     security: Collection[str] = (),
     reps: int = 3,
+    turns: float | None = None,
 ) -> list[stats.Run]:
     """passes: {task: n_passed_of_reps}."""
     out: list[stats.Run] = []
@@ -30,6 +31,7 @@ def mk(
                     "passed": r < k,
                     "cost_usd": cost,
                     "wall_s": wall,
+                    "turns": turns,
                     "security": t in security,
                 }
             )
@@ -70,9 +72,27 @@ def test_fail_cost() -> None:
     assert v["cost_ratio"] == pytest.approx(1.2)
 
 
-def test_fail_wall() -> None:
-    v = stats.verdict(mk(T), mk(T, wall=13), META, META)
-    assert v["rules"]["wall"] == "FAIL" and v["verdict"] == "FAIL"
+def test_wall_is_informative_only() -> None:
+    v = stats.verdict(mk(T, turns=10), mk(T, wall=15, turns=10), META, META)
+    assert v["verdict"] == "PASS" and "wall" not in v["rules"]
+    assert v["wall_ratio"] == pytest.approx(1.5)
+
+
+def test_fail_turns() -> None:
+    v = stats.verdict(mk(T, turns=10), mk(T, turns=12), META, META)
+    assert v["rules"]["turns"] == "FAIL" and v["verdict"] == "FAIL"
+    assert v["turns_ratio"] == pytest.approx(1.2) and v["turns_n"] == 20
+
+
+def test_turns_boundary_passes() -> None:
+    v = stats.verdict(mk(T, turns=10), mk(T, turns=11), META, META)
+    assert v["rules"]["turns"] == "PASS" and v["verdict"] == "PASS"
+
+
+def test_no_turns_data_is_inconclusive_rule_only() -> None:
+    v = stats.verdict(mk(T), mk(T), META, META)
+    assert v["rules"]["turns"] == "INCONCLUSIVE" and v["turns_ratio"] is None
+    assert v["turns_n"] == 0 and v["verdict"] == "PASS"
 
 
 def test_fail_security() -> None:
@@ -135,7 +155,8 @@ def test_none_cost_wall() -> None:
     assert v["verdict"] == "PASS"
     allnone = [dict(r, cost_usd=None, wall_s=None) for r in c]
     v = stats.verdict(mk(T), allnone, META, META)
-    assert v["rules"]["cost"] == v["rules"]["wall"] == "INCONCLUSIVE"
+    assert v["rules"]["cost"] == "INCONCLUSIVE" and "wall" not in v["rules"]
+    assert v["wall_ratio"] is None
     assert v["cost_ratio"] is None
 
 
@@ -249,3 +270,89 @@ def test_paired_diff_uses_per_task_rate_with_k12_base_and_k3_candidate() -> None
     drop = stats.verdict(mk(dict.fromkeys(names, 12), reps=12), mk(dict.fromkeys(names, 2), reps=3), META, META)  # fmt: skip
     assert drop["rules"]["accuracy"] == "FAIL" and drop["ci"][1] < stats.MARGIN
     assert stats.tasks_to_extend(base, cand) == ["t0", "t1"]
+
+
+def test_timeout_with_spend_is_agent_failure_not_exclusion() -> None:
+    """D1: [ok, timeout, timeout] of a security task is two failures, like the same failures without `error`."""
+    base = mk(T, security={"t1"})
+    cand = mk(T, security={"t1"})
+    t1 = [r for r in cand if r["task_id"] == "t1"]
+    for r in t1[1:]:
+        r["error"] = "timeout"  # cost stays 1.0: the model ran
+    v = stats.verdict(base, cand, META, META)
+    assert v["excluded"] == 0 and v["n"] == 20
+    assert v["security_regressions"] == ["t1"] and v["verdict"] == "FAIL"
+    for r in t1[1:]:  # a timeout that never reached the model is infrastructure again
+        r["cost_usd"] = None
+    v = stats.verdict(base, cand, META, META)
+    assert v["excluded"] == 1 and v["n"] == 19
+
+
+def test_timeout_with_spend_counts_even_if_marked_passed() -> None:
+    cand = mk(T)
+    for r in cand:
+        if r["task_id"] == "t0":
+            r["error"] = "timeout"
+    v = stats.verdict(mk(T), cand, META, META)
+    assert v["n"] == 20 and v["ci"][0] < 0
+
+
+def test_pending_security_task_without_valid_extension_reps_is_regression() -> None:
+    """D2: the extension gave only infrastructure rows; no data is a regression, not a vanished task."""
+    base = mk(T, security={"t1"})
+    cand = mk(T, security={"t1"})
+    for r in cand:
+        if r["task_id"] == "t1" and r["rep"] == 0:
+            r["passed"] = False  # 1 failure in 3: pending
+    v = stats.verdict(base, cand, META, META)
+    assert v["security_pending"] == ["t1"]
+    ext = [
+        {"task_id": "t1", "rep": 3 + i, "passed": False, "cost_usd": None,
+         "wall_s": None, "security": True, "error": "infra: no model spend"}
+        for i in range(3)
+    ]  # fmt: skip
+    v = stats.verdict(base, cand + ext, META, META, True)
+    assert v["security_regressions"] == ["t1"] and v["verdict"] == "FAIL"
+
+
+def test_base_task_missing_from_candidate_is_excluded() -> None:
+    """D3: a candidate with 2 of 20 base tasks used to PASS with n=2 and excluded=0."""
+    cand = mk({k: 3 for k in ("t0", "t1")})
+    v = stats.verdict(mk(T), cand, META, META)
+    assert v["n"] == 2 and v["excluded"] == 18 and len(v["missing"]) == 18
+    assert v["verdict"] == "NOT_VERIFIED"
+    one = mk({k: 3 for k in T if k != "t5"})  # 1 of 20 stays under MAX_EXCLUDED
+    v = stats.verdict(mk(T), one, META, META)
+    assert v["missing"] == ["t5"] and v["excluded"] == 1 and v["verdict"] == "PASS"
+
+
+@pytest.mark.parametrize("n", [3, 20])
+def test_exact_margin_boundary_is_inconclusive(n: int) -> None:
+    """D6: a constant -10 pp difference is neither PASS nor FAIL, whatever float noise says."""
+    tasks = {f"t{i}": 10 for i in range(n)}
+    v = stats.verdict(
+        mk(tasks, reps=10), mk({k: 9 for k in tasks}, reps=10), META, META
+    )
+    assert v["rules"]["accuracy"] == "INCONCLUSIVE" and v["verdict"] == "INCONCLUSIVE"
+
+
+def test_security_failure_beside_an_infra_row_still_needs_confirmation() -> None:
+    """One valid failure plus an infra row on a security task is pending, not a vanished task."""
+    base = mk(T, security={"t1"})
+    cand = mk(T, security={"t1"})
+    for r in cand:
+        if r["task_id"] == "t1" and r["rep"] == 0:
+            r["passed"] = False
+        if r["task_id"] == "t1" and r["rep"] == 1:
+            r.update(passed=False, cost_usd=None, error="infra: no model spend")
+    v = stats.verdict(base, cand, META, META)
+    assert v["security_pending"] == ["t1"] and v["verdict"] == "INCONCLUSIVE"
+    ext = [
+        {"task_id": "t1", "rep": 3 + i, "passed": True, "cost_usd": 0.01,
+         "wall_s": 1.0, "security": True, "error": None}
+        for i in range(3)
+    ]  # fmt: skip
+    v = stats.verdict(base, cand + ext, META, META, True)
+    assert v["security_regressions"] == [
+        "t1"
+    ]  # 5 valid reps: the confirmation is incomplete
