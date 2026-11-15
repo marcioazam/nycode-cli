@@ -459,6 +459,8 @@ $HOME/.pi/agent/extensions/syntax-check/index.test.ts	extensions/syntax-check/in
 $HOME/.pi/agent/extensions/syntax-check/index.ts	extensions/syntax-check/index.ts
 $HOME/.pi/agent/extensions/syntax-check/package-lock.json	extensions/syntax-check/package-lock.json
 $HOME/.pi/agent/extensions/syntax-check/package.json	extensions/syntax-check/package.json
+$HOME/.pi/agent/extensions/todo-sync/index.test.ts	extensions/todo-sync/index.test.ts
+$HOME/.pi/agent/extensions/todo-sync/index.ts	extensions/todo-sync/index.ts
 $HOME/.pi/agent/extensions/ui-visual/header.ts	extensions/ui-visual/header.ts
 $HOME/.pi/agent/extensions/ui-visual/icons.ts	extensions/ui-visual/icons.ts
 $HOME/.pi/agent/extensions/ui-visual/index.ts	extensions/ui-visual/index.ts
