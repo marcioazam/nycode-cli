@@ -276,10 +276,8 @@ def _harbor_step(
         t: runners.split_of(t, cfg["seed"], cfg["heldout_pct"], heldout)
         for t in tasks or []
     }
-    n = max(
-        4, jobs_n
-    )  # trials in parallel = chunk size; a chunk is the unit saved and budget-checked
-    chunks = [tasks[i : i + n] for i in range(0, len(tasks), n)] if tasks else [[]]
+    n = max(4, jobs_n)  # sliding window: n single-task `harbor run` at once
+    chunks = [[t] for t in tasks] if tasks else [[]]  # [[]]: harbor picks the dataset
 
     def make(chunk: list[str], job: str) -> list[str]:
         return runners.harbor_cmd(
@@ -291,12 +289,14 @@ def _harbor_step(
             s["st"].get("n"),
             excl,
             s["k"],
-            concurrent=n,
+            concurrent=1
+            if chunk
+            else n,  # one trial per process; no list = whole dataset
             timeout_mult=cfg.get("agent_timeout_multiplier"),
         )
 
     return runners.run_harbor(
-        [], jobs, s["suite"], env, chunks, left, make, splits, sink
+        [], jobs, s["suite"], env, chunks, left, make, splits, sink, workers=n
     )
 
 

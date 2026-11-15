@@ -189,6 +189,8 @@ $HOME/.pi/agent/claude-home/patches/pi-code/zzzzz-plan-sota.patch	claude-home/pa
 $HOME/.pi/agent/claude-home/patches/pi-code/zzzzz-plan-sota/plan-sota.test.ts	claude-home/patches/pi-code/zzzzz-plan-sota/plan-sota.test.ts
 $HOME/.pi/agent/claude-home/patches/pi-code/zzzzzz-subagent-send.patch	claude-home/patches/pi-code/zzzzzz-subagent-send.patch
 $HOME/.pi/agent/claude-home/patches/pi-code/zzzzzz-subagent-send/send.test.ts	claude-home/patches/pi-code/zzzzzz-subagent-send/send.test.ts
+$HOME/.pi/agent/claude-home/patches/pi-code/zzzzzz-todo-active.patch	claude-home/patches/pi-code/zzzzzz-todo-active.patch
+$HOME/.pi/agent/claude-home/patches/pi-code/zzzzzz-todo-active/todo-active.test.ts	claude-home/patches/pi-code/zzzzzz-todo-active/todo-active.test.ts
 $HOME/.pi/agent/claude-home/patches/pi-code/zzzzzzz-subagent-model-effort.patch	claude-home/patches/pi-code/zzzzzzz-subagent-model-effort.patch
 $HOME/.pi/agent/claude-home/patches/pi-code/zzzzzzz-subagent-model-effort/render.test.ts	claude-home/patches/pi-code/zzzzzzz-subagent-model-effort/render.test.ts
 $HOME/.pi/agent/claude-home/patches/pi-code/zzzzzzz-subagent-model-effort/replay.test.ts	claude-home/patches/pi-code/zzzzzzz-subagent-model-effort/replay.test.ts

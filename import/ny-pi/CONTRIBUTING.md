@@ -12,3 +12,8 @@
 - Installer changes: `bash scripts/test_install.sh` (offline cases) and `PI_HARNESS_E2E_NET=1 bash scripts/test_install.sh`.
 - First-party code files stay under 800 lines, at most 7 code files per directory.
 - Bumping pi or pi-code means updating the pins in `scripts/install-lib.sh`, `npm/`, `bin/pi` and re-verifying the patches.
+- Claims in the README and in pull request descriptions follow the honesty rule of the README ("How to read this
+  README"): every number points to a measurement in this repository with its sample size and interval; a loss is
+  written next to the win it offsets; an interval that crosses zero is "not shown", never a win; what was not
+  measured is called unmeasured; a newer measurement replaces the old number. A change that makes ny-pi worse
+  somewhere updates "Where ny-pi wins and where it loses" in the same pull request.

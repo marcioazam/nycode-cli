@@ -238,3 +238,7 @@ A razão de custo depende do estado do cache. A frio fica entre 1,39 e 1,48; com
 ### Gate
 
 34 checagens, todas `EXIT=0` (`/tmp/plan-sota-gate3.log`). sha256: patch `6c2a6e35acbac286`, `index.ts` `5af9f1fcc8f6ee5e`, `utils.ts` `5297266319d2047c`. Testes: `plan-sota.test.ts` 26/26, `test_plan_ab` 25/25.
+
+## Modo todo: item em andamento
+
+No modo todo, `zzzzzz-todo-active.patch` faz a seção mostrar "fazendo" no todo com status `in_progress` (numerado pelo id da ferramenta `todo`), com relógio iniciado quando ele entra em andamento; o modo plano não muda.

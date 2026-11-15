@@ -14,8 +14,10 @@ import re
 import shutil
 import subprocess
 import tempfile
+import threading
 import time
 from collections.abc import Callable, Collection, Iterable
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
@@ -391,20 +393,29 @@ def run_harbor(
     make_cmd: Any,
     splits: dict[str, str] | None = None,
     sink: Callable[[list[Run]], None] | None = None,
+    workers: int = 1,
 ) -> tuple[list[Run], bool]:
-    """Run chunks of tasks one `harbor run` each, stop when the budget is gone. Returns (runs, exhausted).
-    `sink` gets each chunk's runs as soon as it ends, so a killed round keeps what it finished."""
+    """Sliding window: up to `workers` `harbor run` at once, one per chunk; a finished one frees its slot.
+    Before starting a chunk, stop if the budget is gone or infra is down (running ones finish).
+    `sink` gets each chunk's runs as soon as it ends. Returns (runs in chunk order, exhausted)."""
+    done: list[tuple[int, list[Run]]] = []
     runs: list[Run] = []
+    lock = threading.Lock()
+    stopped = False
     penv = {**os.environ, **env}
-    for i, chunk in enumerate(chunks):
-        if run_cost(runs) >= budget_usd:
-            return runs, True
-        job, n = f"{suite}-{i}", 0
-        while (
-            job_root / job
-        ).exists():  # an existing job name makes harbor replay old trials (resume)
-            n += 1
-            job = f"{suite}-{i}-r{n}"
+
+    def one(i: int, chunk: list[str]) -> None:
+        nonlocal stopped
+        with lock:
+            if stopped or run_cost(runs) >= budget_usd:
+                stopped = True
+                return
+            job, n = f"{suite}-{i}", 0
+            while (
+                job_root / job
+            ).exists():  # an existing job name makes harbor replay old trials (resume)
+                n += 1
+                job = f"{suite}-{i}-r{n}"
         p = subprocess.run(
             make_cmd(chunk, job), env=penv, capture_output=True, text=True, check=False
         )
@@ -414,15 +425,19 @@ def run_harbor(
                 make_run(suite, t, 0, False, error=f"harbor exit {p.returncode}")
                 for t in chunk
             ]
-        runs += got
-        if sink:
-            sink(got)
-        if infra_streak(runs) >= INFRA_STREAK:
-            return (
-                runs,
-                True,
-            )  # quota/disk/auth is down: stop, never burn the whole queue
-    return runs, run_cost(runs) >= budget_usd
+        with lock:
+            done.append((i, got))
+            runs.extend(got)
+            if sink:
+                sink(got)
+            if infra_streak(runs) >= INFRA_STREAK:
+                stopped = True  # quota/disk/auth is down: never burn the whole queue
+
+    with ThreadPoolExecutor(max_workers=max(1, workers)) as ex:
+        for f in [ex.submit(one, i, c) for i, c in enumerate(chunks)]:
+            f.result()
+    ordered = [r for _, g in sorted(done, key=lambda d: d[0]) for r in g]
+    return ordered, stopped or run_cost(ordered) >= budget_usd
 
 
 # ------------------------------------------------------------------------------------ S4/S5 cases

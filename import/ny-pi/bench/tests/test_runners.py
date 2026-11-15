@@ -269,6 +269,80 @@ done
     assert rs[0]["error"].startswith("harbor exit") and not rs[0]["passed"]
 
 
+def _sleepy_make(tmp_path: Path, secs: dict[str, float], cost: float = 0.0) -> Any:
+    """make_cmd fake: one bash per task that sleeps, logs its start, writes a trial."""
+    jobs = tmp_path / "jobs"
+
+    def make(chunk: list[str], job: str) -> list[str]:
+        t = chunk[0]
+        body = (
+            f'echo {t} >> {tmp_path}/started; sleep {secs[t]}; d={jobs}/{job}/{t}__x; mkdir -p "$d"; '
+            f'echo \'{{"task_name":"{t}","verifier_result":{{"rewards":{{"reward":1.0}}}},'
+            f'"agent_result":{{"cost_usd":{cost}}}}}\' > "$d/result.json"'
+        )
+        return ["bash", "-c", body]
+
+    return make
+
+
+def test_run_harbor_sliding_window_order_and_sink(tmp_path: Path) -> None:
+    secs = {"a": 0.6, "b": 0.1, "c": 0.1, "d": 0.1}
+    seen: list[list[str]] = []
+    rs, exhausted = rn.run_harbor(
+        [], tmp_path / "jobs", "s2", {}, [[t] for t in secs], 99.0,
+        _sleepy_make(tmp_path, secs), None,
+        lambda got: seen.append([r["task_id"] for r in got]), workers=2,
+    )  # fmt: skip
+    assert not exhausted
+    assert [r["task_id"] for r in rs] == [
+        "a",
+        "b",
+        "c",
+        "d",
+    ]  # input order, not finish order
+    assert sorted(x for g in seen for x in g) == ["a", "b", "c", "d"] and len(seen) == 4
+    # c and d started in the slot b freed and ended while a (0.6 s) still ran: no wait for the slowest of a block
+    assert seen[-1] == ["a"]
+
+
+def test_run_harbor_budget_stops_new_starts(tmp_path: Path) -> None:
+    secs = {t: 0.05 for t in "abcdefgh"}
+    rs, exhausted = rn.run_harbor(
+        [], tmp_path / "jobs", "s2", {}, [[t] for t in secs], 1.0,
+        _sleepy_make(tmp_path, secs, cost=0.6), workers=2,
+    )  # fmt: skip
+    started = (tmp_path / "started").read_text().split()
+    assert exhausted and 2 <= len(started) <= 4 and len(rs) == len(started)
+
+
+def test_run_harbor_infra_streak_stops_new_starts(tmp_path: Path) -> None:
+    secs = {f"t{i}": 0.05 for i in range(12)}
+
+    def make(chunk: list[str], job: str) -> list[str]:
+        return [
+            "bash",
+            "-c",
+            f"echo {chunk[0]} >> {tmp_path}/started; sleep 0.05; exit 1",
+        ]
+
+    rs, stopped = rn.run_harbor(
+        [], tmp_path / "jobs", "s2", {}, [[t] for t in secs], 99.0, make, workers=2
+    )
+    n = len((tmp_path / "started").read_text().split())
+    assert stopped and rn.INFRA_STREAK <= n <= rn.INFRA_STREAK + 1 and len(rs) == n
+
+
+def test_run_harbor_empty_task_list_is_one_run(tmp_path: Path) -> None:
+    calls: list[list[str]] = []
+
+    def make(chunk: list[str], job: str) -> list[str]:
+        calls.append(chunk)
+        return ["bash", "-c", f"echo started >> {tmp_path}/started"]
+
+    rn.run_harbor([], tmp_path / "jobs", "s2", {}, [[]], 99.0, make, workers=4)
+    assert calls == [[]]
+
+
 def test_run_harbor_never_reuses_an_existing_job(
     tmp_path: Path, monkeypatch: MP
 ) -> None:
