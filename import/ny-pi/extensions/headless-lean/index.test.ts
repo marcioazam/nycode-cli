@@ -1,7 +1,7 @@
 // node --experimental-strip-types --test ~/.pi/agent/extensions/headless-lean/index.test.ts
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import ext, { headlessTools, NO_PLAN_MODE, NO_UI_QUESTION, rewriteResult, splitCwd } from './index.ts'
+import ext, { HEADLESS_PROMPT, headlessTools, NO_PLAN_MODE, NO_UI_QUESTION, rewriteResult, splitCwd } from './index.ts'
 
 const CC = { type: 'ephemeral' }
 const IDENTITY = "You are Claude Code, Anthropic's official CLI for Claude."
@@ -75,26 +75,21 @@ test('splitCwd com formato inesperado não faz nada e não lança', () => {
 })
 
 test('headlessTools tira question sempre e plan_mode_complete fora do modo plano', () => {
-  const active = ['read', 'question', 'plan_mode_complete', 'bash', 'lsp_hover', 'AskAntigravity']
+  const active = ['read', 'question', 'plan_mode_complete', 'bash', 'lsp_hover', 'codemode']
   assert.deepEqual(headlessTools(active, ['node', 'pi', '-p', 'Planeje antes de implementar.']), [
     'read',
     'bash',
     'lsp_hover',
-    'AskAntigravity',
+    'codemode',
   ])
   for (const argv of [
     ['-p', '--plan', 'x'],
     ['-p', '/plan fazer x'],
     ['-p', '/plan'],
   ]) {
-    assert.deepEqual(headlessTools(active, argv), ['read', 'plan_mode_complete', 'bash', 'lsp_hover', 'AskAntigravity'])
+    assert.deepEqual(headlessTools(active, argv), ['read', 'plan_mode_complete', 'bash', 'lsp_hover', 'codemode'])
   }
-  assert.deepEqual(headlessTools(active, ['-p', '/planeta', '--planner']), [
-    'read',
-    'bash',
-    'lsp_hover',
-    'AskAntigravity',
-  ])
+  assert.deepEqual(headlessTools(active, ['-p', '/planeta', '--planner']), ['read', 'bash', 'lsp_hover', 'codemode'])
 })
 
 test('rewriteResult troca só os dois becos sem saída', () => {
@@ -198,6 +193,21 @@ test('tool_result devolve o texto novo em qualquer modo; before_provider_request
     ) as Sys
     assert.equal(out.system.length, 2)
     assert.equal((handlers.before_provider_request({ payload: single('/x') }, {}) as Sys).system.length, 2)
+  } finally {
+    restore()
+  }
+})
+
+test('sem UI o prompt de sistema ganha o bloco headless uma vez; com UI fica como está', () => {
+  const { handlers, restore } = load([])
+  try {
+    const out = handlers.before_agent_start({ systemPrompt: 'base' }, { hasUI: false }) as { systemPrompt: string }
+    assert.equal(out.systemPrompt, `base\n\n${HEADLESS_PROMPT}`)
+    assert.match(HEADLESS_PROMPT, /Nobody can reply/)
+    assert.match(HEADLESS_PROMPT, /never ask for permission or confirmation to start/)
+    assert.match(HEADLESS_PROMPT, /change no file and end with your questions/)
+    assert.equal(handlers.before_agent_start({ systemPrompt: out.systemPrompt }, { hasUI: false }), undefined)
+    assert.equal(handlers.before_agent_start({ systemPrompt: 'base' }, { hasUI: true }), undefined)
   } finally {
     restore()
   }

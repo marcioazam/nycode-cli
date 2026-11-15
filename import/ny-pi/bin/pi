@@ -11,32 +11,50 @@ pi_load_local_env() {
   [ -f "$f" ] || return 0
   mode=$(stat -c %a "$f" 2>/dev/null || stat -f %Lp "$f" 2>/dev/null)
   case "$mode" in
-    600|400) [ -O "$f" ] || { echo "pi: $f is not owned by you, ignoring local.env" >&2; return 0; } ;;
-    *) echo "pi: $f must have mode 0600 (found ${mode:-unknown}), ignoring local.env" >&2; return 0 ;;
+  600 | 400) [ "$(stat -c %u "$f" 2>/dev/null || stat -f %u "$f" 2>/dev/null)" = "$(id -u)" ] || {
+    echo "pi: $f is not owned by you, ignoring local.env" >&2
+    return 0
+  } ;;
+  *)
+    echo "pi: $f must have mode 0600 (found ${mode:-unknown}), ignoring local.env" >&2
+    return 0
+    ;;
   esac
   lineno=0
   while IFS= read -r line || [ -n "$line" ]; do
     lineno=$((lineno + 1))
     line=${line%"$(printf '\r')"}
-    case "$line" in ''|'#'*) continue ;; esac
+    case "$line" in '' | '#'*) continue ;; esac
     case "$line" in
-      *=*) ;;
-      *) echo "pi: local.env:$lineno ignored" >&2; continue ;;
+    *=*) ;;
+    *)
+      echo "pi: local.env:$lineno ignored" >&2
+      continue
+      ;;
     esac
     key=${line%%=*}
     val=${line#*=}
     case "$key" in
-      PI_BYPASS_PERMISSIONS|PI_COMPACT_AT|PONYTAIL_QUIET_STARTUP|PI_KNOWLEDGE_VAULT|PI_GRAPHS_VAULT|CODEGRAPH_AUTO_ROOT|PI_SUBAGENT_RESPAWN) ;;
-      *) echo "pi: local.env:$lineno ignored" >&2; continue ;;
+    PI_BYPASS_PERMISSIONS | PI_COMPACT_AT | PONYTAIL_QUIET_STARTUP | PI_KNOWLEDGE_VAULT | PI_GRAPHS_VAULT | CODEGRAPH_AUTO_ROOT | PI_SUBAGENT_RESPAWN) ;;
+    *)
+      echo "pi: local.env:$lineno ignored" >&2
+      continue
+      ;;
     esac
     # key is allowlisted above, so this eval only tests whether it is already set.
     if eval "[ -n \"\${$key+x}\" ]"; then continue; fi
     case "$val" in
-      \"?*\") val=${val#\"}; val=${val%\"} ;;
-      \'?*\') val=${val#\'}; val=${val%\'} ;;
+    \"?*\")
+      val=${val#\"}
+      val=${val%\"}
+      ;;
+    \'?*\')
+      val=${val#\'}
+      val=${val%\'}
+      ;;
     esac
     export "$key=$val"
-  done < "$f"
+  done <"$f"
 }
 
 [ -n "${PI_WRAPPER_TEST:-}" ] && return 0
@@ -61,11 +79,13 @@ export PI_COMPACT_AT
 : "${PI_BYPASS_PERMISSIONS:=0}"
 n=$#
 while [ "$n" -gt 0 ]; do
-  a=$1; shift; n=$((n - 1))
+  a=$1
+  shift
+  n=$((n - 1))
   case "$a" in
-    --dangerously-skip-permissions|--bypass) PI_BYPASS_PERMISSIONS=1 ;;
-    --safe|--no-bypass) PI_BYPASS_PERMISSIONS=0 ;;
-    *) set -- "$@" "$a" ;;
+  --dangerously-skip-permissions | --bypass) PI_BYPASS_PERMISSIONS=1 ;;
+  --safe | --no-bypass) PI_BYPASS_PERMISSIONS=0 ;;
+  *) set -- "$@" "$a" ;;
   esac
 done
 export PI_BYPASS_PERMISSIONS
@@ -73,14 +93,14 @@ export PI_BYPASS_PERMISSIONS
 # Subcommands (pi install/list/mcp/...) pass straight through: session flags before them
 # would make pi treat the subcommand as a prompt.
 case "${1:-}" in
-  install|remove|uninstall|update|list|config|auth|mcp) exec "$HOME/.pi/agent/bin/pi" "$@" ;;
+install | remove | uninstall | update | list | config | auth | mcp) exec "$HOME/.pi/agent/bin/pi" "$@" ;;
 esac
 
 # No project .claude (nor ~/.claude, which becomes a "project" in ~): only CLAUDE_CONFIG_DIR.
 # --no-approve unless the call has an explicit `pi --approve` / `-a`.
 case " $* " in
-  *" --approve "*|*" -a "*) ;;
-  *) set -- --no-approve "$@" ;;
+*" --approve "* | *" -a "*) ;;
+*) set -- --no-approve "$@" ;;
 esac
 
 # Patches are pinned to exact versions and fail closed: on any other version they are skipped
@@ -101,7 +121,7 @@ if [ -d "$goal_ext" ]; then
   else
     if [ -w "$goal_ts" ]; then
       # Without goal.patch the trust sed below may have commented the line out; restore it so the patch matches.
-      if ! patch -d "$goal_ext" -p1 -R -s -f --dry-run < "$patches/pi-code/goal.patch" >/dev/null 2>&1; then
+      if ! patch -d "$goal_ext" -p1 -R -s -f --dry-run <"$patches/pi-code/goal.patch" >/dev/null 2>&1; then
         sed -i 's|^  // if (!trusted) return TRUST_GATE  // desligado por ~/.local/bin/pi$|  if (!trusted) return TRUST_GATE|' "$goal_ts"
       fi
       # Overlapping patches fail the per-patch reverse test once applied; undoing the whole stack
@@ -110,18 +130,23 @@ if [ -d "$goal_ext" ]; then
         t=$(mktemp -d) || return 1
         ok=0
         cp -r "$goal_ext" "$t/e" || ok=1
-        for p in $(ls -r "$patches/pi-code/"*.patch 2>/dev/null); do
-          [ "$ok" = 0 ] || break
-          patch -d "$t/e" -p1 -R -s -f < "$p" >/dev/null 2>&1 || ok=1
+        # Reverse name order; set -- is local to this function and i is always an integer.
+        set -- "$patches/pi-code/"*.patch
+        i=$#
+        while [ "$i" -gt 0 ] && [ "$ok" = 0 ]; do
+          eval "p=\${$i}"
+          i=$((i - 1))
+          [ -f "$p" ] || continue
+          patch -d "$t/e" -p1 -R -s -f <"$p" >/dev/null 2>&1 || ok=1
         done
         rm -r "$t"
         return "$ok"
       }
       pi_patch_stack_applied || for p in "$patches/pi-code/"*.patch; do
         [ -f "$p" ] || continue
-        patch -d "$goal_ext" -p1 -R -s -f --dry-run < "$p" >/dev/null 2>&1 && continue
-        if patch -d "$goal_ext" -p1 -N -s -f --dry-run < "$p" >/dev/null 2>&1; then
-          patch -d "$goal_ext" -p1 -N -s -f --no-backup-if-mismatch < "$p" >/dev/null 2>&1
+        patch -d "$goal_ext" -p1 -R -s -f --dry-run <"$p" >/dev/null 2>&1 && continue
+        if patch -d "$goal_ext" -p1 -N -s -f --dry-run <"$p" >/dev/null 2>&1; then
+          patch -d "$goal_ext" -p1 -N -s -f --no-backup-if-mismatch <"$p" >/dev/null 2>&1
         else
           echo "pi: $p does not apply to this pi-code (redo the patch)" >&2
         fi
@@ -141,20 +166,6 @@ if [ -d "$goal_ext" ]; then
       sed -i 's|^  if (!trusted) return TRUST_GATE$|  // if (!trusted) return TRUST_GATE  // desligado por ~/.local/bin/pi|' "$goal_ts"
     fi
   fi
-fi
-
-# (optional) pi-antigravity-bridge patches: only when that package is installed.
-agy_ext="$HOME/.pi/agent/npm/node_modules/@3d24rd0/pi-antigravity-bridge"
-if [ -w "$agy_ext/src" ]; then
-  for p in "$patches/antigravity-bridge/"*.patch; do
-    [ -f "$p" ] || continue
-    patch -d "$agy_ext" -p1 -R -s -f --dry-run < "$p" >/dev/null 2>&1 && continue
-    if patch -d "$agy_ext" -p1 -N -s -f --dry-run < "$p" >/dev/null 2>&1; then
-      patch -d "$agy_ext" -p1 -N -s -f --no-backup-if-mismatch < "$p" >/dev/null 2>&1
-    else
-      echo "pi: $p does not apply to this antigravity-bridge (redo the patch)" >&2
-    fi
-  done
 fi
 
 # pi core cache-warm fix (claude-home/patches/pi-core/cache-warm-identity.mjs), only on the pinned pi version.

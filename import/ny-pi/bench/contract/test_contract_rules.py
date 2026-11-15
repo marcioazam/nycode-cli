@@ -149,7 +149,7 @@ def test_plan_probe_is_safe_or_skipped(tmp_path: Path) -> None:
     for name in (
         "subagent",
         "web_fetch",
-        "AskAntigravity",
+        "AskOther",
         "mcp__x__y",
         "tool_search",
         "codemode",

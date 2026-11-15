@@ -10,6 +10,8 @@
  *    instrução do que fazer agora (executar no mesmo turno; perguntar na resposta final).
  * 4. Sem UI não há título de sessão a mostrar: a chamada extra ao modelo é desligada
  *    (CLAUDE_CODE_DISABLE_TERMINAL_TITLE, lida pelo session-title do pi-code; um valor já definido vence).
+ * 5. Sem UI, o prompt de sistema ganha o bloco `<headless>`: ninguém responde e a sessão acaba neste turno, então um
+ *    pedido de plano é plano mais execução, sem "posso implementar?". Contradição real continua virando pergunta.
  *
  * Medição e contrato: docs/specs/0002-headless-lean.md. PI_HEADLESS_LEAN=0 desliga. Reverter: apagar este diretório.
  */
@@ -28,6 +30,11 @@ export const NO_UI_QUESTION =
 const stderrDebug: Debug = (message) => {
   if (process.env.PI_HEADLESS_LEAN_DEBUG === '1') console.error(`headless-lean: ${message}`)
 }
+/** Bloco só em modo não interativo; fontes e medição em docs/specs/0002-headless-lean.md. */
+export const HEADLESS_PROMPT = `<headless>
+Nobody can reply in this run. First decide whether the request is clear. If it contradicts itself or the code, or leaves open a choice that changes the result (which behavior to keep, which data to delete, which format), change no file and end with your questions. Otherwise never ask for permission or confirmation to start: a request for a plan is fulfilled by stating the plan and implementing it in this same turn.
+Before the final reply, check the result against the request line by line: run one assertion for each rule and example it states, and for each list of accepted forms one input just outside the list, which must be rejected.
+</headless>`
 
 /** Tira `<cwd>` do bloco de sistema em cache e o põe num bloco final sem marcador; devolve o payload só se mudou. */
 export function splitCwd(payload: unknown, debug: Debug = stderrDebug): unknown {
@@ -76,6 +83,11 @@ export default function (pi: ExtensionAPI) {
     const text = rewriteResult(event.toolName, event.content)
     return text ? { content: [{ type: 'text' as const, text }] } : undefined
   })
+  pi.on('before_agent_start', (event, ctx) =>
+    ctx.hasUI || event.systemPrompt.includes('<headless>')
+      ? undefined
+      : { systemPrompt: `${event.systemPrompt}\n\n${HEADLESS_PROMPT}` },
+  )
   pi.on('session_start', (_event, ctx) => {
     if (ctx.hasUI) return
     process.env.CLAUDE_CODE_DISABLE_TERMINAL_TITLE ??= '1'

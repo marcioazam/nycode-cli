@@ -50,7 +50,7 @@ python3 bench/contract/check.py --arm ny-pi --only regras
 - Estático: `comandos`, `skills` e `mcp` leem arquivos do stage (`registerCommand('nome'` nas extensões ou
   `commands/<nome>.md`); não provam o comportamento do comando.
 - Pulado: `tools/list` dos servidores MCP (precisa de rede/login; nenhum servidor é iniciado) e as ferramentas
-  sem input comprovadamente inofensivo: `subagent`, `web_fetch`, antigravity, `codemode`, `tool_search`,
+  sem input comprovadamente inofensivo: `subagent`, `web_fetch`, `codemode`, `tool_search`,
   ferramentas `mcp__*`, de navegador ou desktop, e qualquer ferramenta desconhecida.
 - Um caso `falha` em `sem-erro-de-interface` com "sem tool_result" indica que o `pi` não devolveu a chamada
   (erro ou tempo esgotado de 90 s).

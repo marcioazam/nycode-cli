@@ -40,13 +40,10 @@ $HOME/.pi/agent/claude-home/bin/evals/plan_ab.py	claude-home/bin/evals/plan_ab.p
 $HOME/.pi/agent/claude-home/bin/evals/plan_ab_cases.jsonl	claude-home/bin/evals/plan_ab_cases.jsonl
 $HOME/.pi/agent/claude-home/bin/evals/test_plan_ab.py	claude-home/bin/evals/test_plan_ab.py
 $HOME/.pi/agent/claude-home/bin/git-deliver	claude-home/bin/git-deliver
-$HOME/.pi/agent/claude-home/bin/hud/claude-hud-antigravity.mjs	claude-home/bin/hud/claude-hud-antigravity.mjs
 $HOME/.pi/agent/claude-home/bin/hud/claude-hud-pi-transcript.mjs	claude-home/bin/hud/claude-hud-pi-transcript.mjs
 $HOME/.pi/agent/claude-home/bin/hud/claude-hud-provider.mjs	claude-home/bin/hud/claude-hud-provider.mjs
 $HOME/.pi/agent/claude-home/bin/hud/claude-hud-statusline.mjs	claude-home/bin/hud/claude-hud-statusline.mjs
 $HOME/.pi/agent/claude-home/bin/hud/claude-hud-usage.mjs	claude-home/bin/hud/claude-hud-usage.mjs
-$HOME/.pi/agent/claude-home/bin/hud/tests/claude-hud-antigravity.e2e.test.mjs	claude-home/bin/hud/tests/claude-hud-antigravity.e2e.test.mjs
-$HOME/.pi/agent/claude-home/bin/hud/tests/claude-hud-antigravity.test.mjs	claude-home/bin/hud/tests/claude-hud-antigravity.test.mjs
 $HOME/.pi/agent/claude-home/bin/hud/tests/claude-hud-pi-transcript.test.mjs	claude-home/bin/hud/tests/claude-hud-pi-transcript.test.mjs
 $HOME/.pi/agent/claude-home/bin/hud/tests/claude-hud-provider.test.mjs	claude-home/bin/hud/tests/claude-hud-provider.test.mjs
 $HOME/.pi/agent/claude-home/bin/hud/tests/claude-hud-statusline.test.mjs	claude-home/bin/hud/tests/claude-hud-statusline.test.mjs

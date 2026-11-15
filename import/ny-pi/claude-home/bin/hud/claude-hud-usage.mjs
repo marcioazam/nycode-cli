@@ -9,7 +9,6 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { antigravityLimits } from './claude-hud-antigravity.mjs';
 
 const TTL_MS = 60_000; // o status line roda a cada mensagem; um pedido por minuto basta
 const TIMEOUT_MS = 3_000;
@@ -82,18 +81,12 @@ function writeCache(file, value) {
 const accountTag = (id) => (id ? crypto.createHash('sha256').update(String(id)).digest('hex').slice(0, 16) : undefined);
 
 /** Ajusta payload.rate_limits ao provedor ativo; nunca lança. `provider` vem de activeModelProvider. */
-export async function withUsage(payload, { provider, cacheFile, authFile = path.join(os.homedir(), '.pi', 'agent', 'auth.json'), now = Date.now(), fetchImpl = fetch, spawnImpl } = {}) {
+export async function withUsage(payload, { provider, cacheFile, authFile = path.join(os.homedir(), '.pi', 'agent', 'auth.json'), now = Date.now(), fetchImpl = fetch } = {}) {
   if (!payload) return payload;
   const source = Object.hasOwn(SOURCES, provider ?? '') ? SOURCES[provider] : undefined;
   // O que o pi-code mandou é sempre Anthropic: só vale com a Anthropic confirmada como provedor.
   if (provider === 'anthropic' && payload.rate_limits) return payload;
   delete payload.rate_limits;
-  if (provider === 'antigravity') {
-    // Sem endpoint HTTP: lê o cache do helper em segundo plano (claude-hud-antigravity.mjs); nunca bloqueia.
-    const limits = antigravityLimits({ dir: path.dirname(cacheFile), now, ...(spawnImpl ? { spawnImpl } : {}) });
-    if (limits) payload.rate_limits = limits;
-    return payload;
-  }
   if (!source) return payload;
 
   const file = path.join(path.dirname(cacheFile), source.cacheName);

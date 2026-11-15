@@ -109,10 +109,10 @@ diff_cover() {
 node_tests() {
   local files
   # Excluded (not run on CI): cache-warm-identity needs the wrapper-patched pi-code install; the HUD
-  # statusline, pi-transcript and antigravity e2e tests need the Claude HUD plugin and agy, absent here.
+  # statusline and pi-transcript tests need the Claude HUD plugin, absent here.
   mapfile -t files < <(git ls-files 'extensions/*.test.ts' 'extensions/**/*.test.ts' \
     'claude-home/bin/**/*.test.ts' 'claude-home/bin/**/*.test.mjs' |
-    grep -vE '(cache-warm-identity\.test\.ts|claude-hud-statusline\.test\.mjs|claude-hud-pi-transcript\.test\.mjs|claude-hud-antigravity\.e2e\.test\.mjs)$')
+    grep -vE '(cache-warm-identity\.test\.ts|claude-hud-statusline\.test\.mjs|claude-hud-pi-transcript\.test\.mjs)$')
   [ "${#files[@]}" -gt 0 ] || {
     echo "no node tests found"
     return 1

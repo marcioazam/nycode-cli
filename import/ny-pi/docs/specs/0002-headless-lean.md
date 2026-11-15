@@ -28,13 +28,48 @@ item 3 e a rede do item 1, que valem para toda sessão.
 | 4 | Sem interface, o título de sessão não é gerado (`CLAUDE_CODE_DISABLE_TERMINAL_TITLE=1`, salvo valor já definido). | `session_start` |
 | 5 | Contrato: fora do modo plano, "planeje antes" é plano curto e implementação no mesmo turno, salvo pedido contraditório ou com escolha em aberto; sem interface, as perguntas vão na resposta final. | `claude-home/CLAUDE.md`, Delivery |
 
+### Bloco `<headless>` (2026-11-15)
+
+Sem UI, `before_agent_start` acrescenta ao prompt de sistema o bloco `HEADLESS_PROMPT` (cerca de 130 tokens, texto
+fixo, no prefixo em cache). Com UI nada muda. O bloco tem três regras, nesta ordem:
+
+1. Decidir primeiro se o pedido está claro; contradição ou escolha em aberto termina em perguntas, sem alterar arquivo.
+2. Fora disso, nunca pedir permissão para começar: um pedido de plano é plano mais execução no mesmo turno.
+3. Antes da resposta final, conferir o resultado contra o pedido linha a linha, executando uma asserção por regra e
+   por exemplo, e uma entrada logo fora de cada lista de formas aceitas.
+
+Medição (Sonnet, 8 repetições por tarefa, contra a referência k12 de `faf2268`):
+
+| Tarefa | Referência | Regra 2 antes da 1 | Regras 1 e 2 | Regras 1, 2 e 3 |
+|---|---|---|---|---|
+| plan-discount-bug | 6/12 | 8/8 | 8/8 | 8/8 |
+| plan-ask-merge-payments | 12/12 | 1/8 | 8/8 | 8/8 |
+| plan-people-store-v2 | 9/12 | 5/8 | 4/8 | 6/8 |
+| multi-timekit | 1/12 | | | 7/8 |
+| multi-validkit, multi-moneykit, multi-collkit (reservadas) | 12/12 cada | | | 8/8 cada |
+
+A ordem importa: com "implemente" antes de "pergunte", o agente passou a adivinhar num pedido vago.
+`multi-fmtkit` falhava por defeito da tarefa (o teste oculto exigia erro para chave vazia, que o enunciado não
+dizia); o enunciado foi corrigido no mesmo PR.
+
+Fontes (citações conferidas com `quote_check.py` em 2026-11-15):
+
+- Guia de prompting do Codex: "Unless asked for a plan, never end the interaction with only a plan."
+- Anthropic, prompting best practices: "By default, implement changes rather than only suggesting them."
+- arXiv:2607.02294: sob pedido subespecificado os agentes adivinham; por isso a regra 1 vem primeiro.
+- arXiv:2607.06636: testes ancorados na especificação acertam mais que "teste casos de borda"; arXiv:2604.19825:
+  a conferência só vale executada.
+
+Não adotado agora: continuação automática em `agent_before_settle` e crítico independente (arXiv:2610.34577). Custam
+um turno extra ou mais; entram só se o gate mostrar que o bloco não sustenta o ganho.
+
 ## Limites conhecidos
 
 - O modo plano é detectado pelo `argv` (`--plan`, prompt `/plan ...`): um `/plan` enviado por stdin não é visto e
   a ferramenta fica inativa nessa execução.
 - A linha `Graph: ... has no codegraph index` continua nas execuções sem interface (fora desta mudança).
 - O ganho de cache só aparece quando sessões novas começam em diretórios diferentes dentro do TTL do cache.
-- Nenhuma ferramenta foi removida (`lsp_*`, Antigravity): fica para uma ablação medida.
+- Nenhuma ferramenta foi removida (`lsp_*`, `codemode`): fica para uma ablação medida.
 
 ## Testes
 

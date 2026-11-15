@@ -245,7 +245,6 @@ _SAFE: dict[str, Callable[[Path], dict[str, object]]] = {
 _LSP: dict[str, object] = {"line": 0, "character": 0}
 _SKIPS = (
     ("subagent", "subagente: inicia outro agente"),
-    ("antigravity", "antigravity: agente externo"),
     ("web", "rede"),
     ("fetch", "rede"),
     ("search", "rede ou servidores MCP"),
