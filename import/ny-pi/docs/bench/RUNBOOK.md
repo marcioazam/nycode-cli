@@ -45,7 +45,9 @@ Pré-requisitos no PATH: `gh` autenticado como o dono do repositório, `git`, `j
    forks e outros autores são ignorados, assim como heads que já têm `bench-pr` final (`success` ou `failure`).
 2. Para cada PR elegível: status `pending`; worktree descartável do head em `$BENCH_STATE/wt/<sha>` (clone próprio em
    `$BENCH_STATE/repo`); `bench run --arm ny-pi --tier pr --budget-usd 12` dentro dela; `bench gate` contra o baseline
-   main; status final; worktree removida. O resumo completo fica em `$BENCH_STATE/runs/<sha>/summary.md`.
+   main; status final; worktree removida. O resumo completo vai como comentário no PR e fica em
+   `$BENCH_STATE/runs/<sha>/summary.md`; a descrição do status não leva caminho local. Antes de cada PR da passada o
+   estado é reconferido: PR fechado depois da listagem não roda.
 3. Um lock (`$BENCH_STATE/lock`) impede duas execuções simultâneas (PR, nightly e vanilla).
 4. Rodar um PR à mão: `bench-pr.sh --pr N` (ignora o status final e reroda).
 

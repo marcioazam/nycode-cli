@@ -188,6 +188,24 @@ Suíte `s6`: 6 tarefas de CPU do `terminal-bench/terminal-bench@4.1.0`, k1, Sonn
 | omp | 6 | 6 | 0.167 | [0.00, 0.33] | 0.2002 | 142.1 | - | 0 | 0 |
 | ny-pi | 6 | 6 | 0.333 | [0.00, 0.67] | 0.2129 | 160.3 | - | 0 | 0 |
 
+## Capacidades, micro, exclusões e pontuação D7
+
+- **Matriz de capacidades:** `bench/capabilities.toml` (16 recursos por braço, com fonte oficial). Os valores vêm da
+  documentação e do `--help`; `bench probe` confere os flags sem custo.
+- **Micro (`bench/tools/micro.sh`, sem modelo, medido em 2026-11-15, 5 partidas de `--version`):**
+
+  | braço | partida média (s) | RSS máximo (MB) | prefixo fixo (tokens da 1ª requisição) |
+  |---|---|---|---|
+  | pi-vanilla | 0,132 | 105 | não registrado nas rodadas k2 (captura sem custo: cerca de 2,7 mil) |
+  | ny-pi | 0,162 | 107 | 28 837 (mediana de 264 execuções do baseline main) |
+  | omp | 0,355 | 330 | não registrado |
+  | cc-vanilla | não medido (o braço exige credencial até para `--version`) | não medido | não registrado |
+
+- **Tarefas excluídas, com motivo:** `bench/tasks/tb2.excluded.json` (12), `tb41.excluded.json` (3) e
+  `swebenchpro.excluded.json` (1). Motivos: oráculo com recompensa 0, recusa do provedor ou exigência de GPU.
+- **Pontuação D7:** é informativa e sai em cada veredito do gate (PR contra o baseline main), no `summary.md`. Não
+  existe para uma rodada isolada dos braços vanilla.
+
 ## Dados
 
 - **Rodadas brutas:** `docs/bench/baseline-vanilla-2026-11/<sonnet|opus|tb41>/<braço>/{runs.jsonl,meta.json}`.

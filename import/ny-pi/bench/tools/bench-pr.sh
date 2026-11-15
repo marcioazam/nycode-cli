@@ -99,7 +99,9 @@ run_pr() {
   if [[ -f $out/verdict.json ]]; then
     desc="$desc $(jq -r '"n=\(.n)"' "$out/verdict.json" 2>/dev/null || true)"
   fi
-  post "$state" "$desc (detalhe: $out/summary.md)" || true
+  post "$state" "$desc" || true
+  # The full summary goes on the PR; the status description stays short and without local paths.
+  [[ -s $out/summary.md ]] && { gh pr comment "$n" --repo "$REPO" --body-file "$out/summary.md" >/dev/null || true; }
   cleanup
 }
 
@@ -117,6 +119,8 @@ while read -r n sha; do
   if [[ $mode == --poll ]]; then
     last=$(gh api "repos/$REPO/commits/$sha/statuses" -q '[.[] | select(.context=="bench-pr")][0].state // empty')
     if [[ $last == success || $last == failure ]]; then continue; fi
+    # The list was read before earlier PRs of this pass ran: a PR closed meanwhile must not spend quota.
+    [[ $(gh pr view "$n" --repo "$REPO" --json state -q .state) == OPEN ]] || continue
   fi
   echo "bench-pr: PR #$n @ ${sha:0:12}"
   run_pr "$n" "$sha" || echo "bench-pr: PR #$n failed to run" >&2

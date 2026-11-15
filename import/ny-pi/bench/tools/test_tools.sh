@@ -38,7 +38,9 @@ case "$*" in
 "api repos/"*"/commits/"*"/statuses"*) cat "$STUB_DIR/status" 2>/dev/null || true ;;
 "api repos/"*) echo repo-owner ;;
 "pr list"*) cat "$STUB_DIR/prs.json" ;;
+"pr view"*"--json state"*) cat "$STUB_DIR/prstate" 2>/dev/null || echo OPEN ;;
 "pr view"*) jq '.[0]' "$STUB_DIR/prs.json" ;;
+"pr comment"*) echo "$*" >>"$STUB_DIR/comments" ;;
 esac
 STUB
 cat >"$T/bin/python3" <<'STUB'
@@ -64,7 +66,7 @@ prs() { # extra jq-ish entries appended to a single eligible PR
 ]
 JSON
 }
-reset() { rm -f "$T/calls" "$T/posts" "$T/status"; }
+reset() { rm -f "$T/calls" "$T/posts" "$T/status" "$T/prstate" "$T/comments"; }
 runs() { if [ -e "$T/calls" ]; then grep -c ':: bench/run.py run ' "$T/calls"; else echo 0; fi; }
 
 # 1. eligibility: fork and foreign author ignored (only PR 1 runs)
@@ -76,6 +78,14 @@ check "run no worktree do head, braço ny-pi tier pr" grep -q "/wt/$SHA :: bench
 check "gate contra baseline da main" grep -q "gate --base $T/state/base-main/docs/bench/baseline-main --cand $T/state/runs/$SHA" "$T/calls"
 check "pending depois success" bash -c "sed -n 1p '$T/posts' | grep -q '^pending|' && sed -n 2p '$T/posts' | grep -q '^success|PASS'"
 check "worktree removido" test -z "$(ls -A "$T/state/wt")"
+check "resumo vai como comentário do PR" grep -q "pr comment 1 --repo repo-owner/ny-pi --body-file $T/state/runs/$SHA/summary.md" "$T/comments"
+check "descrição do status sem caminho local" bash -c "! grep -q / '$T/posts'"
+
+# 1b. a PR closed after the list was read is skipped
+reset
+echo CLOSED >"$T/prstate"
+bash "$here/bench-pr.sh" --poll >/dev/null 2>&1
+check "PR fechado durante a passada não roda" test "$(runs)" = 0
 
 # 2. final status ignored
 for s in success failure; do
