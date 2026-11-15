@@ -617,3 +617,41 @@ def test_s4_outcome_fails_for_an_arm_that_only_returns_a_plan(tmp_path: Path) ->
     v = json.loads((tmp_path / f"art/s4-{case['id']}-0.verdict.json").read_text())
     assert not r["passed"] and r["error"] is None and v["test_exit"] != 0
     assert (tmp_path / f"art/s4-{case['id']}-0.diff").read_text() == ""
+
+
+_QUOTA = (
+    "quota exceeded (account usage limit; auto-resume waits for the reset): "
+    '429 {"type":"error","error":{"type":"rate_limit_error","message":"This request would exceed your account\'s rate limit."}}'
+)
+
+
+def _pi_429_arm(tmp_path: Path, tail: str) -> Path:
+    ev = _pi_msg(
+        "assistant",
+        content=[],
+        stopReason="error",
+        errorMessage=_QUOTA,
+        usage={"cost": {"total": 0.05}},
+    )
+    return script(tmp_path / "pi", f"cat <<'EOF'\n{ev}\nEOF\n{tail}\n")
+
+
+def test_pi_account_rate_limit_is_infra_with_or_without_timeout(tmp_path: Path) -> None:
+    """Gate #28 (2026-11-15): a headless 429 left pi waiting until the timeout; that is infra, not an agent failure."""
+    from bench import stats
+
+    for tail, to in (("sleep 5", 1), ("exit 1", 3)):
+        case = make_case(tmp_path / f"c{to}", "c1", timeout_s=to)
+        r = rn.run_case(case, "s4", 0, "pi", _pi_429_arm(tmp_path, tail), "m", {})
+        assert (
+            str(r["error"]).startswith("infra:")
+            and stats.excluded_run(r)
+            and rn.is_infra(r)
+        )
+    plain = make_case(tmp_path / "plain", "c1", timeout_s=1)
+    assert (
+        rn.run_case(
+            plain, "s4", 0, "pi", script(tmp_path / "p2", "sleep 5\n"), "m", {}
+        )["error"]
+        == "timeout"
+    )

@@ -70,7 +70,9 @@ Decisão do dono; substitui a regra de acerto D6. Constantes em `bench/stats.py`
 - PASS quando o limite inferior fica acima de -10 pp; FAIL quando o limite superior fica abaixo de -10 pp.
   Os limites são arredondados a 9 casas; a fronteira exata de -10 pp é INCONCLUSIVE.
 - Timeout com gasto conta como falha do agente e a tarefa fica no pareamento. Timeout sem gasto e qualquer outro erro
-  (infraestrutura, recusa) tiram a tarefa inteira do pareamento.
+  (infraestrutura, recusa) tiram a tarefa inteira do pareamento. O limite de taxa da conta (429) é infraestrutura
+  (`infra: provider rate limit (429)`) e sai do pareamento, mesmo no timeout; em modo sem interface o pi encerra na
+  hora em vez de esperar o reset.
 - Tarefa da base ausente no candidato conta como excluída. Acima de 10% de tarefas excluídas, o veredito é
   NOT_VERIFIED.
 - Etapa que tinha tarefas e devolveu erro ou zero linhas deixa a rodada `not_verified`. Base não verificada também dá

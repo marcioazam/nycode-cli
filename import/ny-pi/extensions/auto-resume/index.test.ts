@@ -4,7 +4,10 @@ import { strict as assert } from 'node:assert'
 import { test } from 'node:test'
 import register, { decideResume, limitReset, markLimit, sleep } from './index.ts'
 
-const err = (errorMessage: string) => ({ type: 'message', message: { role: 'assistant', stopReason: 'error', errorMessage } })
+const err = (errorMessage: string) => ({
+  type: 'message',
+  message: { role: 'assistant', stopReason: 'error', errorMessage },
+})
 const ok = { type: 'message', message: { role: 'assistant', stopReason: 'stop' } }
 const resumed = { type: 'custom_message', customType: 'auto-resume', content: 'x' }
 
@@ -54,21 +57,39 @@ test('sleep abortável', async () => {
 
 test('handler: continua com a mensagem; aborto e exceção liberam', async () => {
   let handler: any
-  register({ on: (e: string, h: any) => e === 'agent_before_settle' && (handler = h) } as any, async () => true)
+  register(
+    {
+      on: (e: string, h: any) => {
+        if (e === 'agent_before_settle') handler = h
+      },
+    } as any,
+    async () => true,
+  )
   const status: any[] = []
-  const ctx = (branch: any[], wait = true) => ({ sessionManager: { getBranch: () => branch }, ui: { setStatus: (...a: any[]) => status.push(a) } })
+  const ctx = (branch: any[], wait = true) => ({
+    sessionManager: { getBranch: () => branch },
+    ui: { setStatus: (...a: any[]) => status.push(a) },
+  })
   const r = await handler({ entries: [1] }, ctx([err('503')]))
   assert.equal(r.continue, true)
   assert.equal(r.entries.at(-1).customType, 'auto-resume')
   assert.equal(status.length, 2)
   assert.equal(status[1][1], undefined)
-  register({ on: (e: string, h: any) => e === 'agent_before_settle' && (handler = h) } as any, async () => false)
+  register(
+    {
+      on: (e: string, h: any) => {
+        if (e === 'agent_before_settle') handler = h
+      },
+    } as any,
+    async () => false,
+  )
   assert.equal(await handler({ entries: [] }, ctx([err('503')])), undefined)
   assert.equal(await handler({ entries: [] }, {}), undefined)
 })
 
 // ---- limite da conta (pedido 2026-11-13): sem retry, espera o reset e retoma ----
-const LIMIT = '429 {"type":"error","error":{"type":"rate_limit_error","message":"This request would exceed your account\'s rate limit. Please try again later."}}'
+const LIMIT =
+  '429 {"type":"error","error":{"type":"rate_limit_error","message":"This request would exceed your account\'s rate limit. Please try again later."}}'
 const NOW = Date.UTC(2026, 10, 13, 15, 0, 0)
 
 test('markLimit: só o limite da conta vira não-retryável para o pi (quota exceeded), o resto fica igual', () => {
@@ -83,19 +104,56 @@ test('markLimit: só o limite da conta vira não-retryável para o pi (quota exc
 test('limitReset: headers do 429, depois retry-after, depois o cache do HUD; só horários futuros', () => {
   const s = (ms: number) => String(Math.floor(ms / 1000))
   assert.equal(limitReset({ 'anthropic-ratelimit-unified-reset': s(NOW + 3_600_000) }, undefined, NOW), NOW + 3_600_000)
-  assert.equal(limitReset({ 'anthropic-ratelimit-unified-reset': new Date(NOW + 60_000).toISOString() }, undefined, NOW), NOW + 60_000)
-  const win = { 'anthropic-ratelimit-unified-5h-status': 'rejected', 'anthropic-ratelimit-unified-5h-reset': s(NOW + 2_460_000), 'anthropic-ratelimit-unified-7d-status': 'allowed', 'anthropic-ratelimit-unified-7d-reset': s(NOW + 9e8) }
+  assert.equal(
+    limitReset({ 'anthropic-ratelimit-unified-reset': new Date(NOW + 60_000).toISOString() }, undefined, NOW),
+    NOW + 60_000,
+  )
+  const win = {
+    'anthropic-ratelimit-unified-5h-status': 'rejected',
+    'anthropic-ratelimit-unified-5h-reset': s(NOW + 2_460_000),
+    'anthropic-ratelimit-unified-7d-status': 'allowed',
+    'anthropic-ratelimit-unified-7d-reset': s(NOW + 9e8),
+  }
   assert.equal(limitReset(win, undefined, NOW), NOW + 2_460_000, 'a janela rejeitada manda')
   assert.equal(limitReset({ 'retry-after': '120' }, undefined, NOW), NOW + 120_000)
-  const cache = { rate_limits: { five_hour: { used_percentage: 99, resets_at: (NOW + 2_460_000) / 1000 }, seven_day: { used_percentage: 40, resets_at: (NOW + 9e8) / 1000 } } }
+  const cache = {
+    rate_limits: {
+      five_hour: { used_percentage: 99, resets_at: (NOW + 2_460_000) / 1000 },
+      seven_day: { used_percentage: 40, resets_at: (NOW + 9e8) / 1000 },
+    },
+  }
   assert.equal(limitReset({}, cache, NOW), NOW + 2_460_000, 'cache: a janela cheia')
-  assert.equal(limitReset({}, { rate_limits: { seven_day: { used_percentage: 10, resets_at: (NOW + 5e6) / 1000 } } }, NOW), NOW + 5e6, 'nenhuma cheia: o reset mais próximo')
-  assert.equal(limitReset({ 'anthropic-ratelimit-unified-reset': s(NOW - 1000) }, { rate_limits: { five_hour: { used_percentage: 100, resets_at: (NOW - 5) / 1000 } } }, NOW), undefined, 'passado não vale')
+  assert.equal(
+    limitReset({}, { rate_limits: { seven_day: { used_percentage: 10, resets_at: (NOW + 5e6) / 1000 } } }, NOW),
+    NOW + 5e6,
+    'nenhuma cheia: o reset mais próximo',
+  )
+  assert.equal(
+    limitReset(
+      { 'anthropic-ratelimit-unified-reset': s(NOW - 1000) },
+      { rate_limits: { five_hour: { used_percentage: 100, resets_at: (NOW - 5) / 1000 } } },
+      NOW,
+    ),
+    undefined,
+    'passado não vale',
+  )
   assert.equal(limitReset({ 'retry-after': 'x' }, { junk: 1 }, NOW), undefined)
-  assert.equal(limitReset({ 'retry-after': new Date(NOW + 300_000).toUTCString() }, undefined, NOW), NOW + 300_000, 'retry-after em HTTP-date')
+  assert.equal(
+    limitReset({ 'retry-after': new Date(NOW + 300_000).toUTCString() }, undefined, NOW),
+    NOW + 300_000,
+    'retry-after em HTTP-date',
+  )
   const nearest = { 'anthropic-ratelimit-unified-7d-reset': s(NOW + 9e7), 'retry-after': '600' }
-  assert.equal(limitReset(nearest, undefined, NOW), NOW + 600_000, 'retry-after explícito vence a janela mais próxima não rejeitada')
-  assert.equal(limitReset({ 'anthropic-ratelimit-unified-reset': s(NOW + 30 * 86_400_000) }, undefined, NOW), undefined, 'reset além de 8 dias é inválido (estouraria o setTimeout)')
+  assert.equal(
+    limitReset(nearest, undefined, NOW),
+    NOW + 600_000,
+    'retry-after explícito vence a janela mais próxima não rejeitada',
+  )
+  assert.equal(
+    limitReset({ 'anthropic-ratelimit-unified-reset': s(NOW + 30 * 86_400_000) }, undefined, NOW),
+    undefined,
+    'reset além de 8 dias é inválido (estouraria o setTimeout)',
+  )
 })
 
 test('decideResume: limite da conta espera até o reset + 1 min; desconhecido 15 min; 3 esperas e desiste; filhos não esperam', () => {
@@ -109,7 +167,11 @@ test('decideResume: limite da conta espera até o reset + 1 min; desconhecido 15
   const lim = { type: 'custom_message', customType: 'auto-resume-limit', content: 'x' }
   assert.equal((decideResume([e, lim, e, lim, e], {}, { now: NOW }) as any).attempt, 3)
   assert.equal(decideResume([e, lim, e, lim, e, lim, e], {}, { now: NOW }).action, 'give_up')
-  assert.equal(decideResume([e], { PI_CODE_SUBAGENT: '1' }, { now: NOW }).action, 'none', 'filho falha rápido; o principal espera')
+  assert.equal(
+    decideResume([e], { PI_CODE_SUBAGENT: '1' }, { now: NOW }).action,
+    'none',
+    'filho falha rápido; o principal espera',
+  )
   assert.equal(decideResume([e], { PI_AUTO_RESUME: '0' }, { now: NOW }).action, 'none')
   assert.equal((decideResume([err('503'), resumed, e], {}, { now: NOW }) as any).kind, 'limit')
 })
@@ -119,19 +181,32 @@ test('handler: message_end marca o erro, after_provider_response guarda os heade
   for (const k of ['PI_CODE_SUBAGENT', 'PI_AUTO_RESUME']) {
     const v = process.env[k]
     delete process.env[k]
-    t.after(() => { if (v !== undefined) process.env[k] = v })
+    t.after(() => {
+      if (v !== undefined) process.env[k] = v
+    })
   }
   const waits: number[] = []
-  register({ on: (e: string, f: any) => (h[e] = f) } as any, async (ms: number) => (waits.push(ms), true), () => NOW)
+  register(
+    { on: (e: string, f: any) => (h[e] = f) } as any,
+    async (ms: number) => (waits.push(ms), true),
+    () => NOW,
+  )
   const msg = { role: 'assistant', stopReason: 'error', errorMessage: LIMIT }
   const r = await h.message_end({ message: msg })
   assert.match(r.message.errorMessage, /quota exceeded/)
   assert.equal(await h.message_end({ message: { role: 'assistant', stopReason: 'stop' } }), undefined)
-  await h.after_provider_response({ status: 429, headers: { 'Anthropic-Ratelimit-Unified-Reset': String((NOW + 600_000) / 1000) } })
+  await h.after_provider_response({
+    status: 429,
+    headers: { 'Anthropic-Ratelimit-Unified-Reset': String((NOW + 600_000) / 1000) },
+  })
   await h.after_provider_response({ status: 200, headers: {} })
   const status: any[] = []
   const notes: any[] = []
-  const ctx = { sessionManager: { getBranch: () => [{ type: 'message', message: r.message }] }, ui: { setStatus: (...a: any[]) => status.push(a), notify: (...a: any[]) => notes.push(a) } }
+  const ctx = {
+    hasUI: true,
+    sessionManager: { getBranch: () => [{ type: 'message', message: r.message }] },
+    ui: { setStatus: (...a: any[]) => status.push(a), notify: (...a: any[]) => notes.push(a) },
+  }
   const out = await h.agent_before_settle({ entries: [] }, ctx)
   assert.deepEqual(waits, [660_000], 'header do 429 sobrevive a um 200 sem headers de limite')
   assert.equal(out.continue, true)
@@ -144,26 +219,44 @@ test('handler: message_end marca o erro, after_provider_response guarda os heade
 test('handler: resposta bem-sucedida descarta headers de um 429 antigo', async () => {
   const h: Record<string, any> = {}
   const waits: number[] = []
-  register({ on: (e: string, f: any) => (h[e] = f) } as any, async (ms: number) => (waits.push(ms), true), () => NOW)
-  await h.after_provider_response({ status: 429, headers: { 'anthropic-ratelimit-unified-reset': String((NOW + 3 * 3_600_000) / 1000) } })
+  register(
+    { on: (e: string, f: any) => (h[e] = f) } as any,
+    async (ms: number) => (waits.push(ms), true),
+    () => NOW,
+  )
+  await h.after_provider_response({
+    status: 429,
+    headers: { 'anthropic-ratelimit-unified-reset': String((NOW + 3 * 3_600_000) / 1000) },
+  })
   await h.message_end({ message: { role: 'assistant', stopReason: 'stop' } })
   assert.equal(await h.message_end({ message: { role: 'user' } }), undefined)
   const r = await h.message_end({ message: { role: 'assistant', stopReason: 'error', errorMessage: LIMIT } })
-  const ctx = { sessionManager: { getBranch: () => [{ type: 'message', message: r.message }] }, ui: { setStatus() {}, notify() {} } }
+  const ctx = {
+    hasUI: true,
+    sessionManager: { getBranch: () => [{ type: 'message', message: r.message }] },
+    ui: { setStatus() {}, notify() {} },
+  }
   const saved = process.env.PI_CODE_SUBAGENT
   delete process.env.PI_CODE_SUBAGENT
   const cfg = process.env.CLAUDE_CONFIG_DIR
   process.env.CLAUDE_CONFIG_DIR = '/nonexistent-auto-resume-test'
-  try { await h.agent_before_settle({ entries: [] }, ctx) } finally {
+  try {
+    await h.agent_before_settle({ entries: [] }, ctx)
+  } finally {
     if (saved !== undefined) process.env.PI_CODE_SUBAGENT = saved
-    if (cfg === undefined) delete process.env.CLAUDE_CONFIG_DIR; else process.env.CLAUDE_CONFIG_DIR = cfg
+    if (cfg === undefined) delete process.env.CLAUDE_CONFIG_DIR
+    else process.env.CLAUDE_CONFIG_DIR = cfg
   }
   assert.deepEqual(waits, [15 * 60_000], 'sem header nem cache: padrão de 15 min, não o reset de 3 h do 429 antigo')
 })
 
 test('handler: depois de 3 esperas desiste e avisa (ui ou stderr)', async () => {
   const h: Record<string, any> = {}
-  register({ on: (e: string, f: any) => (h[e] = f) } as any, async () => true, () => NOW)
+  register(
+    { on: (e: string, f: any) => (h[e] = f) } as any,
+    async () => true,
+    () => NOW,
+  )
   const r = await h.message_end({ message: { role: 'assistant', stopReason: 'error', errorMessage: LIMIT } })
   const e = { type: 'message', message: r.message }
   const lim = { type: 'custom_message', customType: 'auto-resume-limit', content: 'x' }
@@ -174,9 +267,15 @@ test('handler: depois de 3 esperas desiste e avisa (ui ou stderr)', async () => 
   const errs: string[] = []
   const write = process.stderr.write
   try {
-    assert.equal(await h.agent_before_settle({ entries: [] }, { sessionManager: { getBranch: () => branch }, ui: { notify: (...a: any[]) => notes.push(a) } }), undefined)
+    assert.equal(
+      await h.agent_before_settle(
+        { entries: [] },
+        { hasUI: true, sessionManager: { getBranch: () => branch }, ui: { notify: (...a: any[]) => notes.push(a) } },
+      ),
+      undefined,
+    )
     process.stderr.write = ((s: string) => (errs.push(s), true)) as any
-    await h.agent_before_settle({ entries: [] }, { sessionManager: { getBranch: () => branch } })
+    await h.agent_before_settle({ entries: [] }, { hasUI: true, sessionManager: { getBranch: () => branch } })
   } finally {
     process.stderr.write = write
     if (saved !== undefined) process.env.PI_CODE_SUBAGENT = saved
@@ -189,10 +288,21 @@ test('handler: depois de 3 esperas desiste e avisa (ui ou stderr)', async () => 
 test('handler: Esc durante a espera descarta os headers usados (a próxima espera não herda o reset antigo)', async () => {
   const h: Record<string, any> = {}
   const waits: number[] = []
-  register({ on: (e: string, f: any) => (h[e] = f) } as any, async (ms: number) => (waits.push(ms), false), () => NOW)
-  await h.after_provider_response({ status: 429, headers: { 'anthropic-ratelimit-unified-reset': String((NOW + 3 * 3_600_000) / 1000) } })
+  register(
+    { on: (e: string, f: any) => (h[e] = f) } as any,
+    async (ms: number) => (waits.push(ms), false),
+    () => NOW,
+  )
+  await h.after_provider_response({
+    status: 429,
+    headers: { 'anthropic-ratelimit-unified-reset': String((NOW + 3 * 3_600_000) / 1000) },
+  })
   const r = await h.message_end({ message: { role: 'assistant', stopReason: 'error', errorMessage: LIMIT } })
-  const ctx = { sessionManager: { getBranch: () => [{ type: 'message', message: r.message }] }, ui: { setStatus() {}, notify() {} } }
+  const ctx = {
+    hasUI: true,
+    sessionManager: { getBranch: () => [{ type: 'message', message: r.message }] },
+    ui: { setStatus() {}, notify() {} },
+  }
   const saved = process.env.PI_CODE_SUBAGENT
   const cfg = process.env.CLAUDE_CONFIG_DIR
   delete process.env.PI_CODE_SUBAGENT
@@ -202,7 +312,8 @@ test('handler: Esc durante a espera descarta os headers usados (a próxima esper
     await h.agent_before_settle({ entries: [] }, ctx)
   } finally {
     if (saved !== undefined) process.env.PI_CODE_SUBAGENT = saved
-    if (cfg === undefined) delete process.env.CLAUDE_CONFIG_DIR; else process.env.CLAUDE_CONFIG_DIR = cfg
+    if (cfg === undefined) delete process.env.CLAUDE_CONFIG_DIR
+    else process.env.CLAUDE_CONFIG_DIR = cfg
   }
   assert.deepEqual(waits, [3 * 3_600_000 + 60_000, 15 * 60_000])
 })
@@ -210,18 +321,78 @@ test('handler: Esc durante a espera descarta os headers usados (a próxima esper
 test('handler: erro que não é de limite descarta headers de um 429 anterior', async () => {
   const h: Record<string, any> = {}
   const waits: number[] = []
-  register({ on: (e: string, f: any) => (h[e] = f) } as any, async (ms: number) => (waits.push(ms), true), () => NOW)
-  await h.after_provider_response({ status: 429, headers: { 'anthropic-ratelimit-unified-reset': String((NOW + 3 * 3_600_000) / 1000) } })
-  assert.equal(await h.message_end({ message: { role: 'assistant', stopReason: 'error', errorMessage: '429 too many requests' } }), undefined)
+  register(
+    { on: (e: string, f: any) => (h[e] = f) } as any,
+    async (ms: number) => (waits.push(ms), true),
+    () => NOW,
+  )
+  await h.after_provider_response({
+    status: 429,
+    headers: { 'anthropic-ratelimit-unified-reset': String((NOW + 3 * 3_600_000) / 1000) },
+  })
+  assert.equal(
+    await h.message_end({ message: { role: 'assistant', stopReason: 'error', errorMessage: '429 too many requests' } }),
+    undefined,
+  )
   const r = await h.message_end({ message: { role: 'assistant', stopReason: 'error', errorMessage: LIMIT } })
-  const ctx = { sessionManager: { getBranch: () => [{ type: 'message', message: r.message }] }, ui: { setStatus() {}, notify() {} } }
+  const ctx = {
+    hasUI: true,
+    sessionManager: { getBranch: () => [{ type: 'message', message: r.message }] },
+    ui: { setStatus() {}, notify() {} },
+  }
   const saved = process.env.PI_CODE_SUBAGENT
   const cfg = process.env.CLAUDE_CONFIG_DIR
   delete process.env.PI_CODE_SUBAGENT
   process.env.CLAUDE_CONFIG_DIR = '/nonexistent-auto-resume-test'
-  try { await h.agent_before_settle({ entries: [] }, ctx) } finally {
+  try {
+    await h.agent_before_settle({ entries: [] }, ctx)
+  } finally {
     if (saved !== undefined) process.env.PI_CODE_SUBAGENT = saved
-    if (cfg === undefined) delete process.env.CLAUDE_CONFIG_DIR; else process.env.CLAUDE_CONFIG_DIR = cfg
+    if (cfg === undefined) delete process.env.CLAUDE_CONFIG_DIR
+    else process.env.CLAUDE_CONFIG_DIR = cfg
   }
-  assert.deepEqual(waits, [15 * 60_000], 'o 429 comum já foi tratado; seus headers não definem a espera do limite seguinte')
+  assert.deepEqual(
+    waits,
+    [15 * 60_000],
+    'o 429 comum já foi tratado; seus headers não definem a espera do limite seguinte',
+  )
+})
+
+test('handler: limite da conta sem UI (pi -p) desiste na hora e avisa no stderr; com UI espera', async (t) => {
+  const saved = process.env.PI_CODE_SUBAGENT
+  delete process.env.PI_CODE_SUBAGENT
+  t.after(() => {
+    if (saved !== undefined) process.env.PI_CODE_SUBAGENT = saved
+  })
+  const waits: number[] = []
+  const h: Record<string, any> = {}
+  register(
+    { on: (e: string, f: any) => (h[e] = f) } as any,
+    async (ms: number) => (waits.push(ms), true),
+    () => NOW,
+  )
+  const r = await h.message_end({ message: { role: 'assistant', stopReason: 'error', errorMessage: LIMIT } })
+  const sessionManager = { getBranch: () => [{ type: 'message', message: r.message }] }
+  const errs: string[] = []
+  const write = process.stderr.write
+  process.stderr.write = ((s: string) => (errs.push(s), true)) as any
+  try {
+    assert.equal(await h.agent_before_settle({ entries: [] }, { hasUI: false, sessionManager }), undefined)
+  } finally {
+    process.stderr.write = write
+  }
+  assert.deepEqual(waits, [], 'sem UI: nenhuma espera')
+  assert.match(errs.join(''), /without a UI/)
+  const out = await h.agent_before_settle(
+    { entries: [] },
+    { hasUI: true, sessionManager, ui: { setStatus() {}, notify() {} } },
+  )
+  assert.equal(out.continue, true)
+  assert.equal(waits.length, 1, 'com UI: espera como antes')
+})
+
+test('decideResume: limite da conta sem UI é give_up; 503 sem UI segue com retentativa', () => {
+  const d = decideResume([err(markLimit(LIMIT)!)], {}, { now: NOW, hasUI: false })
+  assert.equal(d.action, 'give_up')
+  assert.equal(decideResume([err('503')], {}, { now: NOW, hasUI: false }).action, 'resume')
 })

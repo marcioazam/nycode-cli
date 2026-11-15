@@ -16,7 +16,7 @@
  * transitório. `message_end` marca o erro com "quota exceeded" (padrão não-retryável do pi-ai), então o pi não gasta as
  * 10 retentativas; o settle espera até o reset (+1 min) e retoma sozinho. O horário vem dos headers do 429
  * (`anthropic-ratelimit-unified-*reset`, `retry-after`), senão do cache do HUD (usage-cache.json, a mesma fonte do
- * "resets in 41m"), senão 15 min. No máximo 3 esperas seguidas. Filhos (`PI_CODE_SUBAGENT`) falham rápido; o principal espera.
+ * "resets in 41m"), senão 15 min. No máximo 3 esperas seguidas. Filhos (`PI_CODE_SUBAGENT`) e sessões sem UI (`pi -p`, `ctx.hasUI` falso) falham rápido (give_up, aviso no stderr); o principal com UI espera.
  */
 import { readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
@@ -33,21 +33,48 @@ export type Decision =
 export const DELAYS_MS = [30_000, 90_000, 180_000, 300_000, 600_000]
 const MAX_ERR = 200
 
-const NON_RETRYABLE = /GoUsageLimitError|FreeUsageLimitError|Monthly usage limit reached|available balance|insufficient_quota|out of budget|quota exceeded|billing|subscription_sharing_usage_limit_exceeded|subscription_sharing_workplace_individual_usage_limit_exceeded|"code"\s*:\s*"?1308(?![0-9])/i
+const NON_RETRYABLE =
+  /GoUsageLimitError|FreeUsageLimitError|Monthly usage limit reached|available balance|insufficient_quota|out of budget|quota exceeded|billing|subscription_sharing_usage_limit_exceeded|subscription_sharing_workplace_individual_usage_limit_exceeded|"code"\s*:\s*"?1308(?![0-9])/i
 const RETRYABLE = new RegExp(
   [
-    'overloaded', 'server_busy', 'servers are currently busy', 'currently experiencing high demand', 'model is at capacity',
-    'rate.?limit', 'too many requests', '(?<![a-z0-9])(?:429|500|502|503|504|520|524)(?![a-z0-9])',
-    'service.?(?:is.?)?(?:temporarily.?)?unavailable', 'server.?error', 'internal.?error',
-    'provider.?returned.?(?:an.?)?error', 'exceeded request buffer limit while retrying upstream', 'unable to forward upstream',
-    'upstream.?request.?failed', 'upstream_stream_read_error', 'stream was interrupted', 'http/?2 stream failed',
-    'network.?error', 'connection.?error', 'connection.?refused', 'connection.?lost', 'other side closed', 'fetch failed',
-    'request to \\S+ failed, reason:', 'getaddrinfo', 'ENOTFOUND', 'EAI_AGAIN', 'upstream.?connect', 'reset before headers',
-    'socket hang up', 'socket connection was closed', 'timed? out',
+    'overloaded',
+    'server_busy',
+    'servers are currently busy',
+    'currently experiencing high demand',
+    'model is at capacity',
+    'rate.?limit',
+    'too many requests',
+    '(?<![a-z0-9])(?:429|500|502|503|504|520|524)(?![a-z0-9])',
+    'service.?(?:is.?)?(?:temporarily.?)?unavailable',
+    'server.?error',
+    'internal.?error',
+    'provider.?returned.?(?:an.?)?error',
+    'exceeded request buffer limit while retrying upstream',
+    'unable to forward upstream',
+    'upstream.?request.?failed',
+    'upstream_stream_read_error',
+    'stream was interrupted',
+    'http/?2 stream failed',
+    'network.?error',
+    'connection.?error',
+    'connection.?refused',
+    'connection.?lost',
+    'other side closed',
+    'fetch failed',
+    'request to \\S+ failed, reason:',
+    'getaddrinfo',
+    'ENOTFOUND',
+    'EAI_AGAIN',
+    'upstream.?connect',
+    'reset before headers',
+    'socket hang up',
+    'socket connection was closed',
+    'timed? out',
   ].join('|'),
   'i',
 )
-const OVERFLOW = /prompt (?:is )?too long|prompt exceeds max length|request_too_large|input is too long for requested model|exceeds the context window|maximum context length|context window exceed|input token count.*exceeds the maximum|maximum prompt length is \d+|reduce the length of the messages|exceeds (?:the )?maximum allowed input length|is longer than the model'?s context length|exceeds the limit of \d+|exceeds the available context size|greater than the context length|exceeded model token limit|too large for model|model_context_window_exceeded|range of input length should be|context[_ ]length[_ ]exceeded|too many tokens|token limit exceeded|^(?:[\w -]+ API error \(413\):|413(?:\s|:|$))/i
+const OVERFLOW =
+  /prompt (?:is )?too long|prompt exceeds max length|request_too_large|input is too long for requested model|exceeds the context window|maximum context length|context window exceed|input token count.*exceeds the maximum|maximum prompt length is \d+|reduce the length of the messages|exceeds (?:the )?maximum allowed input length|is longer than the model'?s context length|exceeds the limit of \d+|exceeds the available context size|greater than the context length|exceeded model token limit|too large for model|model_context_window_exceeded|range of input length should be|context[_ ]length[_ ]exceeded|too many tokens|token limit exceeded|^(?:[\w -]+ API error \(413\):|413(?:\s|:|$))/i
 
 export function retryable(error: string): boolean {
   return !NON_RETRYABLE.test(error) && !OVERFLOW.test(error) && RETRYABLE.test(error)
@@ -75,10 +102,14 @@ const epochMs = (v: unknown): number | undefined => {
 
 /** When the exhausted window resets (epoch ms): 429 headers first, then the HUD's usage cache; future times only. */
 export function limitReset(headers: Record<string, string>, cache: any, now: number): number | undefined {
-  const future = (xs: Array<number | undefined>) => xs.filter((x): x is number => x !== undefined && x > now && x <= now + LIMIT_MAX_AHEAD_MS)
+  const future = (xs: Array<number | undefined>) =>
+    xs.filter((x): x is number => x !== undefined && x > now && x <= now + LIMIT_MAX_AHEAD_MS)
   const retryAfter = headers['retry-after']?.trim() ?? ''
   const h = (k: string) => headers[`anthropic-ratelimit-unified-${k}`]
-  const windows = ['5h', '7d', '7d_opus', '7d_sonnet'].map((w) => ({ rejected: h(`${w}-status`) === 'rejected', at: epochMs(h(`${w}-reset`)) }))
+  const windows = ['5h', '7d', '7d_opus', '7d_sonnet'].map((w) => ({
+    rejected: h(`${w}-status`) === 'rejected',
+    at: epochMs(h(`${w}-reset`)),
+  }))
   const fromHeaders = [
     future([epochMs(h('reset'))])[0],
     Math.max(...future(windows.filter((w) => w.rejected).map((w) => w.at)), -Infinity),
@@ -95,15 +126,31 @@ export function limitReset(headers: Record<string, string>, cache: any, now: num
 
 const clock = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
-function decideLimit(branch: Entry[], last: number, error: string, env: Record<string, string | undefined>, opts: { now: number; resetAt?: number }): Decision {
+function decideLimit(
+  branch: Entry[],
+  last: number,
+  error: string,
+  env: Record<string, string | undefined>,
+  opts: { now: number; resetAt?: number; hasUI?: boolean },
+): Decision {
   if (env.PI_CODE_SUBAGENT) return { action: 'none' }
+  // No UI (pi -p): nobody can see or cancel a long wait (gate #28: 600 s lost to a headless 429); end now.
+  if (opts.hasUI === false)
+    return {
+      action: 'give_up',
+      message: `Auto-resume: account usage limit reached in a session without a UI; not waiting for the reset ("${error.slice(0, MAX_ERR)}").`,
+    }
   let prior = 0
   for (let i = last; i >= 0; i--) {
     const e = branch[i]
     if (e.type === 'message' && e.message?.role === 'assistant' && e.message.stopReason !== 'error') break
     if (e.type === 'custom_message' && e.customType === 'auto-resume-limit') prior++
   }
-  if (prior >= LIMIT_WAITS) return { action: 'give_up', message: `Auto-resume gave up after ${prior} waits for the account usage limit ("${error.slice(0, MAX_ERR)}").` }
+  if (prior >= LIMIT_WAITS)
+    return {
+      action: 'give_up',
+      message: `Auto-resume gave up after ${prior} waits for the account usage limit ("${error.slice(0, MAX_ERR)}").`,
+    }
   const until = opts.resetAt === undefined ? opts.now + LIMIT_UNKNOWN_MS : opts.resetAt + LIMIT_MARGIN_MS
   return {
     action: 'resume',
@@ -116,7 +163,11 @@ function decideLimit(branch: Entry[], last: number, error: string, env: Record<s
   }
 }
 
-export function decideResume(branch: Entry[], env: Record<string, string | undefined> = process.env, opts: { now: number; resetAt?: number } = { now: Date.now() }): Decision {
+export function decideResume(
+  branch: Entry[],
+  env: Record<string, string | undefined> = process.env,
+  opts: { now: number; resetAt?: number; hasUI?: boolean } = { now: Date.now() },
+): Decision {
   if (env.PI_AUTO_RESUME === '0') return { action: 'none' }
   let last = -1
   for (let i = branch.length - 1; i >= 0; i--) {
@@ -138,7 +189,10 @@ export function decideResume(branch: Entry[], env: Record<string, string | undef
     if (e.type === 'custom_message' && e.customType === 'auto-resume') prior++
   }
   if (prior >= DELAYS_MS.length) {
-    return { action: 'give_up', message: `Auto-resume gave up after ${prior} attempts; the provider is still failing ("${error.slice(0, MAX_ERR)}").` }
+    return {
+      action: 'give_up',
+      message: `Auto-resume gave up after ${prior} attempts; the provider is still failing ("${error.slice(0, MAX_ERR)}").`,
+    }
   }
   const attempt = prior + 1
   return {
@@ -181,19 +235,29 @@ export default function (pi: ExtensionAPI, wait: typeof sleep = sleep, now: () =
   let limitHeaders: Record<string, string> = {}
   pi.on('after_provider_response', (event: any) => {
     if (event?.status !== 429) return
-    limitHeaders = Object.fromEntries(Object.entries(event.headers ?? {}).filter(([, v]) => typeof v === 'string').map(([k, v]) => [k.toLowerCase(), v as string]))
+    limitHeaders = Object.fromEntries(
+      Object.entries(event.headers ?? {})
+        .filter(([, v]) => typeof v === 'string')
+        .map(([k, v]) => [k.toLowerCase(), v as string]),
+    )
   })
   pi.on('message_end', (event: any) => {
     const m = event?.message
     // Headers only describe the account limit: drop them on a success or on any error that is not that limit.
-    if (m?.role === 'assistant' && (m.stopReason !== 'error' || !ACCOUNT_LIMIT.test(String(m.errorMessage ?? '')))) limitHeaders = {}
-    const marked = m?.role === 'assistant' && m.stopReason === 'error' ? markLimit(String(m.errorMessage ?? '')) : undefined
+    if (m?.role === 'assistant' && (m.stopReason !== 'error' || !ACCOUNT_LIMIT.test(String(m.errorMessage ?? ''))))
+      limitHeaders = {}
+    const marked =
+      m?.role === 'assistant' && m.stopReason === 'error' ? markLimit(String(m.errorMessage ?? '')) : undefined
     return marked ? { message: { ...m, errorMessage: marked } } : undefined
   })
   pi.on('agent_before_settle', async (event: any, ctx: any) => {
     try {
       const t = now()
-      const d = decideResume(ctx.sessionManager.getBranch() as Entry[], process.env, { now: t, resetAt: limitReset(limitHeaders, hudCache(), t) })
+      const d = decideResume(ctx.sessionManager.getBranch() as Entry[], process.env, {
+        now: t,
+        resetAt: limitReset(limitHeaders, hudCache(), t),
+        hasUI: Boolean(ctx.hasUI),
+      })
       if (d.action === 'none') return
       if (d.action === 'give_up') {
         if (ctx.ui?.notify) ctx.ui.notify(d.message, 'warning')
@@ -203,9 +267,16 @@ export default function (pi: ExtensionAPI, wait: typeof sleep = sleep, now: () =
       if (d.kind === 'limit') {
         limitHeaders = {} // consumed by this wait, resumed or cancelled; a new 429 brings fresh ones
         const at = clock(t + d.delayMs)
-        ctx.ui?.notify?.(`Account usage limit reached: no retries; the chat resumes by itself at ${at} (Esc cancels).`, 'warning')
+        ctx.ui?.notify?.(
+          `Account usage limit reached: no retries; the chat resumes by itself at ${at} (Esc cancels).`,
+          'warning',
+        )
         ctx.ui?.setStatus?.('auto-resume', `⏸ usage limit · resumes ${at}`)
-      } else ctx.ui?.setStatus?.('auto-resume', `auto-resume ${d.attempt}/${DELAYS_MS.length} in ${Math.round(d.delayMs / 1000)}s`)
+      } else
+        ctx.ui?.setStatus?.(
+          'auto-resume',
+          `auto-resume ${d.attempt}/${DELAYS_MS.length} in ${Math.round(d.delayMs / 1000)}s`,
+        )
       let ok: boolean
       try {
         ok = await wait(d.delayMs, ctx.signal)
@@ -213,7 +284,15 @@ export default function (pi: ExtensionAPI, wait: typeof sleep = sleep, now: () =
         ctx.ui?.setStatus?.('auto-resume', undefined)
       }
       if (!ok) return
-      const entries = [...event.entries, { type: 'custom_message', customType: d.kind === 'limit' ? 'auto-resume-limit' : 'auto-resume', content: d.message, display: true }]
+      const entries = [
+        ...event.entries,
+        {
+          type: 'custom_message',
+          customType: d.kind === 'limit' ? 'auto-resume-limit' : 'auto-resume',
+          content: d.message,
+          display: true,
+        },
+      ]
       return { entries, continue: true }
     } catch {
       return // falha aberta: nunca prende a sessão

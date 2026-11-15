@@ -35,6 +35,10 @@ DRIFT_MARK = "harness changed"
 SUBAGENT_NAMES = {"Task", "Agent", "subagent"}
 # A run that reached the model always has cost > 0; none means auth, quota (429), disk or sandbox died first.
 INFRA_ERR = "infra: no model spend"
+RATE_LIMIT_ERR = "infra: provider rate limit (429)"
+_RATE_LIMIT = re.compile(
+    r"rate_limit_error|rate limit|quota exceeded \(account usage limit", re.IGNORECASE
+)
 INFRA_STREAK = (
     5  # consecutive infra runs that stop a stage instead of burning the queue
 )
@@ -527,6 +531,10 @@ def parse_events(text: str, kind: str) -> dict[str, Any]:
                 final = _text_of(msg.get("content")) or final
                 if msg.get("stopReason") == "error":
                     err = str(msg.get("errorMessage") or "provider error")[:200]
+                    if _RATE_LIMIT.search(str(msg.get("errorMessage"))):
+                        err = RATE_LIMIT_ERR  # pi in -p waited for the reset until the timeout (gate #28)
+                elif err == RATE_LIMIT_ERR:
+                    err = None  # a later good reply: the limit passed
     if not events:
         err = "no events"
     first = used[0] if used else None
@@ -637,7 +645,9 @@ def run_case(
             return r
 
         if rc is None:
-            return done(False, "timeout")
+            return done(
+                False, ev["error"] if ev["error"] == RATE_LIMIT_ERR else "timeout"
+            )
         err = ev["error"] or (f"exit {rc}" if rc else None)
         passed = False
         if case.get("kind", "outcome") == "ask":
