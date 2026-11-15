@@ -90,7 +90,7 @@ test('OpenAI Codex: weekly-only account yields only seven_day', async () => {
 
 test('a stale Anthropic snapshot from pi headers never survives on another provider', async () => {
   const stale = { five_hour: { used_percentage: 98 }, seven_day: { used_percentage: 53 } };
-  for (const provider of ['openai-codex', 'github-copilot', 'google', 'antigravity', 'unknown-x', undefined]) {
+  for (const provider of ['openai-codex', 'github-copilot', 'google', 'unknown-x', undefined]) {
     const f = ok(provider === 'openai-codex' ? codexWeekly : api);
     const p = await run(provider, setup(), f, {}, { rate_limits: stale });
     assert.notDeepEqual(p.rate_limits, stale, String(provider));

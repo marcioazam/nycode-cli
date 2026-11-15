@@ -5,5 +5,3 @@ local.env
 claude-home/rules/personal.md
 vendor/pi-lsp
 vendor/ponytail
-claude-home/patches/antigravity-bridge
-antigravity-bridge/config.json

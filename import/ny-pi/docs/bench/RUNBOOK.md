@@ -154,6 +154,19 @@ O overlay, o modelo ou a versão do braço mudou entre o baseline e o PR. Rode o
 contexto: `bench run --arm ny-pi --tier baseline` na main (veja "Tier baseline"), proponha o novo
 `docs/bench/baseline-main/` por PR, e só então reroda o PR com `bench-pr.sh --pr N`.
 
+Para a camada pessoal não mudar entre o baseline e os PRs, o braço `ny-pi` lê uma cópia congelada quando
+`BENCH_OVERLAY_DIR` está definido (sem a variável, lê o `~/.pi/agent` vivo, e qualquer edição ali torna as rodadas
+incomparáveis). Crie a cópia junto com cada baseline novo, antes da rodada, e use a mesma em todo PR:
+
+```bash
+. bench/arms/overlay-sha.sh
+overlay_freeze ~/.pi/agent ~/.local/state/bench/overlay/<data> "$PWD/bench/arms/overlay.list"   # imprime o hash
+echo 'BENCH_OVERLAY_DIR=<caminho da cópia>' >> ~/.config/ny-pi/bench.env
+```
+
+A cópia contém segredos (`local.env`): fica fora do repositório, com modo 700. O gate mede as regras pessoais da
+data da cópia, não as do momento.
+
 ## Diagnóstico
 
 `systemctl --user list-timers 'bench-*'`, `journalctl --user -u bench-pr`. Um `pending` preso (queda no meio da rodada)

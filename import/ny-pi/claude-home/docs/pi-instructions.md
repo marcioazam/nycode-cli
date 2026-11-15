@@ -111,7 +111,6 @@ Critério (terceira rodada): entra no pi só o que paga o próprio custo; observ
   bloqueia uma vez por turno pedindo a checagem ou a declaração de adiamento. Fora de subagentes e do plan mode;
   `PI_COMPLETION_GATE=0` desliga; falha aberta. Testes: `bin/tests/gates/completion-gate.test.ts` (11). A/B e decisão:
   `preamble-diet-completion-gate-2026-11-13.md`.
-- **google-only-agy**: extensão e antigravity-bridge removidos em 2026-11-15 (pedido do dono).
 - **skill hubs** (2026-11-13): `gsap-core` e `emil-design-eng` apontam para irmãs ocultas; registro no item 5 de
   `preamble-diet-completion-gate-2026-11-13.md`.
 - **rules-ref/** (2026-11-13): `research-and-tools`, `docs-and-knowledge` e `harness-economy` saíram do carregamento
