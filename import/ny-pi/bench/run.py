@@ -481,7 +481,9 @@ def main(argv: list[str] | None = None) -> int:
     r = sub.add_parser("run")
     r.add_argument("--arm", required=True)
     r.add_argument(
-        "--tier", required=True, choices=["pr", "baseline", "full", "vanilla", "tb41"]
+        "--tier",
+        required=True,
+        choices=["pr", "baseline", "full", "vanilla", "tb41", "hard"],
     )
     r.add_argument("--model", required=True)
     r.add_argument("--budget-usd", type=float, required=True)

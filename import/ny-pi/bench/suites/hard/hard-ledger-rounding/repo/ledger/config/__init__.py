@@ -1,0 +1,1 @@
+"""Configuração padrão do razão."""

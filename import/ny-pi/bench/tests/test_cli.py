@@ -319,7 +319,7 @@ def test_suites_toml_tiers_are_consistent() -> None:
     assert sum(c.startswith("sec-") for c in s1["pr_cases"]) == sum(
         c.startswith("sec-") for c in s1["cases"]
     )
-    assert set(cfg["tier"]) == {"pr", "baseline", "full", "vanilla", "tb41"}
+    assert set(cfg["tier"]) == {"pr", "baseline", "full", "vanilla", "tb41", "hard"}
 
     def ks(tier: str) -> dict[str, int]:
         return {st["suite"]: st["k"] for st in cfg["tier"][tier]["steps"]}
@@ -331,6 +331,9 @@ def test_suites_toml_tiers_are_consistent() -> None:
     assert ks("pr") == {"s1": 3, "s4": 3, "s5": 3, "s2": 1}
     assert ks("baseline") == {"s1": 12, "s4": 12, "s5": 12, "s2": 4}
     assert units("baseline") == units("pr")
+    # the hard suite runs on demand only: PR gate time and cost must stay flat
+    assert ks("hard") == {"s8": 3} and cfg["suite"]["s8"]["dir"] == "suites/hard"
+    assert all("s8" not in ks(t) for t in ("pr", "baseline", "vanilla"))
     tb41 = json.loads((BENCH / cfg["suite"]["s6"]["tasks_file"]).read_text())
     assert len(tb41["tasks"]) == 6 and len(tb41["dropped"]) == 6
     assert all(t.startswith("terminal-bench/") for t in tb41["tasks"])

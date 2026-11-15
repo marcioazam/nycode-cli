@@ -1,0 +1,11 @@
+{
+  "id": "hard-report-pipeline",
+  "suite": "hard",
+  "kind": "outcome",
+  "prompt": "O `reportkit` é um pipeline de relatório de vendas em cinco etapas (reader, validate, aggregate, formatting, export) ligadas por reportkit/pipeline.py e reportkit/cli.py; hoje ele só faz o relatório `summary`, descrito nas seções 1 a 8 de docs/SPEC.md. Implemente a seção 9 do docs/SPEC.md inteira (regras R1 a R16): a coluna opcional `status` (paid, refunded, cancelled) com sua validação e o efeito dela no `summary`; o modo tolerante, que descarta linhas inválidas em vez de falhar; e o novo relatório `monthly` (agrupado por mês e região, com subtotais, total geral, meses vazios intermediários, ordenação estável e `share` pelo método do maior resto) nos três formatos: text, csv e json. A API pública que será exercitada é `reportkit.pipeline.run(text, fmt=\"text\", report=\"summary\", skip_invalid=False)`, `reportkit.pipeline.run_with_warnings(...)` com os mesmos parâmetros, devolvendo `(saida, avisos)`, e `reportkit.cli.main(argv)` com as opções novas `-r/--report` e `--skip-invalid`. O trabalho atravessa todas as etapas do pipeline, então organize-se e confira cada regra numerada, inclusive as de borda e as mensagens de erro exatas; o exemplo de R16 mostra o texto esperado. Só biblioteca padrão; mantenha a organização em subpacotes e os testes visíveis (`python3 -m pytest -q tests`) passando.",
+  "timeout_s": 900,
+  "budget_usd": 1.5,
+  "split": "dev",
+  "security": false,
+  "test_cmd": "python3 -m pytest -q -p no:cacheprovider hidden"
+}

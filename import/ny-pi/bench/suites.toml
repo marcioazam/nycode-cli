@@ -98,6 +98,13 @@ kind = "case"
 dir = "suites/multi"
 est_cost_usd = 0.12
 
+# Hard tasks (2026-11-15): repositories of 20-40 files with a SPEC, hidden tests and an oracle; built because the
+# other suites are saturated (every arm above 90%). On demand only: never part of the PR tier.
+[suite.s8]
+kind = "case"
+dir = "suites/hard"
+est_cost_usd = 0.60
+
 # Tiers: list of steps. `subset` picks s1.pr_cases; `n` samples n tasks of a harbor suite by seed;
 # `splits` filters case suites. `k` = repetitions.
 [tier.pr]
@@ -143,4 +150,10 @@ steps = [
   { suite = "s4", splits = ["dev", "heldout"], k = 2 },
   { suite = "s5", splits = ["dev", "heldout"], k = 2 },
   { suite = "s2", n = 4, k = 1 },
+]
+
+# Hard suite, all arms, on demand (comparison between harnesses and ablations of harness parts).
+[tier.hard]
+steps = [
+  { suite = "s8", splits = ["dev", "heldout"], k = 3 },
 ]

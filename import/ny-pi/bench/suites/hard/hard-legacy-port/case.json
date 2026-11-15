@@ -1,0 +1,11 @@
+{
+  "id": "hard-legacy-port",
+  "suite": "hard",
+  "kind": "outcome",
+  "prompt": "Porte o motor legado de cotação de frete (legacy/frete_calc.py, legacy/frete_tab.py e legacy/frete_fmt.py) para o pacote novo `frete`, com a API definida em docs/SPEC.md (Cotador, Pedido, Item, Cotacao, exceções ErroFrete e subclasses, etiqueta, linha_csv, formata_moeda, formata_peso). Os 20 comportamentos observáveis C1–C20 listados no SPEC devem ser preservados exatamente; os detalhes e as tabelas estão no código e nos comentários do legado, então leia os três arquivos com cuidado antes de escrever. O pacote `frete` não pode importar `legacy` (ele será apagado depois). Não altere legacy/, app/ nem tests/; `python3 -m pytest -q tests` deve continuar passando.",
+  "timeout_s": 900,
+  "budget_usd": 1.5,
+  "split": "dev",
+  "security": false,
+  "test_cmd": "python3 -m pytest -q -p no:cacheprovider hidden"
+}

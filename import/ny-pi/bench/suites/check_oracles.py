@@ -1,6 +1,6 @@
 """Valida as suítes S4/S5: oráculo passa, no-op falha, campos do case.json.
 
-Uso: python3 bench/suites/check_oracles.py [--suite plan|multi] [--case ID]
+Uso: python3 bench/suites/check_oracles.py [--suite plan|multi|hard] [--case ID]
 Sai 1 com a lista de problemas.
 """
 
@@ -19,11 +19,11 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parent
-SUITES = ("plan", "multi")
+SUITES = ("plan", "multi", "hard")
 KINDS = ("outcome", "ask")
 SEED = 20261113
 HELDOUT_SHARE = 0.3
-MIN_CASES = {"plan": 12, "multi": 10}
+MIN_CASES = {"plan": 12, "multi": 10, "hard": 12}
 PLAN_PREFIX = "Planeje antes de implementar."
 RUN_TIMEOUT_S = 180
 

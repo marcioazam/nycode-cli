@@ -1,0 +1,11 @@
+{
+  "id": "hard-cache-stale",
+  "suite": "hard",
+  "kind": "outcome",
+  "prompt": "O pacote `shopcache` (serviços de preço e catálogo com cache em memória) às vezes devolve um preço antigo: depois de um reajuste (por sku ou em massa para um tenant) o preço novo é servido, mas em certas situações, mais tarde, o valor antigo volta a aparecer, mesmo sem nenhuma outra alteração. Não acontece sempre e não depende de threads (tudo é determinístico, com relógio manual); depende da ordem em que operações do cache acontecem. Encontre a causa e corrija sem quebrar as demais regras do cache. As regras estão em docs/SPEC.md. Use apenas a biblioteca padrão do Python.",
+  "timeout_s": 900,
+  "budget_usd": 1.5,
+  "split": "dev",
+  "security": false,
+  "test_cmd": "python3 -m pytest -q -p no:cacheprovider hidden"
+}

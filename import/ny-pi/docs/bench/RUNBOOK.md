@@ -134,6 +134,34 @@ A regra nova custa cerca de 146 execuções por PR.
 - Um baseline antigo (k=2) ainda carrega no gate, mas o intervalo fica mais largo e a taxa de aprovação medida acima
   não vale para ele.
 
+## Tier hard (sob demanda)
+
+- Suíte `s8` (`bench/suites/hard`, contrato em `bench/suites/README.md`): tarefas de vários arquivos, para
+  comparar harnesses e medir partes do harness (ablações). Nunca entra no tier `pr`: o tempo e o custo do gate
+  não mudam. Com Sonnet 5.5 ela saturou em acerto (2026-11-15: ny-pi e Claude Code 36 de 36, pi puro 34 de 36):
+  serve para custo, turnos e tempo; diferença de acerto pede tarefas em que o modelo erra.
+- Rodar, um braço por vez, na mesma máquina e com o mesmo `--jobs`:
+  `python3 bench/run.py run --arm <braço> --tier hard --model <modelo> --budget-usd <teto> --jobs 6 --out <dir>`.
+  Segure a trava do gate para não disputar a máquina com o `bench-pr`: prefixe com `flock "${BENCH_STATE:-$HOME/.local/state/bench}/lock"`.
+- Comparar: `python3 bench/run.py scoreboard --ny <dir do ny-pi> --refs <dir de cada referência>`.
+- Regra de leitura, fixada antes de rodar: nenhuma tarefa sai por causa do resultado (só por defeito da tarefa
+  provado sem olhar o braço); "superior em acerto" só com o limite inferior do IC90 pareado acima de zero;
+  "não inferior" com o limite acima de -10 pp; fora disso, "inconclusivo".
+- Braços comparados: `ny-pi`, `pi-vanilla` e `cc-vanilla` (decisão do dono em 2026-11-15: o `omp` saiu das
+  medições, dos placares e dos relatórios; os dados antigos dele ficam só como histórico).
+- Toda execução falha é lida (`artifacts/*.test.out`): se o teste oculto cobra algo que nem o prompt nem o SPEC
+  pedem, o defeito é da tarefa. Corrija o teste (não o SPEC, para não mudar o que o agente leu) e repontue as
+  execuções já feitas a partir do `.diff` guardado: repositório inicial + diff + testes ocultos. Confira antes que
+  o método reproduz o resultado gravado com os testes antigos. Antes de aceitar uma suíte nova, um revisor que
+  não escreveu os casos confere cada asserção oculta contra o prompt e o SPEC.
+- Custo entre braços: compare a razão por tarefa (média geométrica com intervalo), não a soma. Com `--jobs 6`
+  as seis primeiras execuções gravam o prefixo em cache ao mesmo tempo (cerca de US$ 0,3 a 0,4 por rodada do
+  ny-pi, qualquer que seja o tamanho); ao comparar rodadas de tamanhos diferentes, desconte a gravação do
+  primeiro turno.
+- Caso novo: escreva `repo/`, `hidden/`, `oracle/` e `case.json`, rode
+  `python3 bench/suites/check_oracles.py --suite hard`; ele diz quais casos passam a ser held-out (30%, semente
+  fixa) e exige que os testes ocultos falhem no estado inicial e passem com o oracle.
+
 ## Placar do objetivo
 
 `python3 bench/run.py scoreboard --ny <rodada ny-pi> --refs <rodada> [<rodada> ...] [--out arquivo.md]` imprime o
