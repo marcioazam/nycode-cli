@@ -144,7 +144,8 @@ run_all() { # mode; remaining args: targets
     fail=$((fail | rc))
     ;;
   history)
-    scan_gitleaks git "$ROOT" && rc=0 || rc=$?
+    # LEAKS_LOG_OPTS narrows the history (local CI passes HEAD: a shared clone holds other branches).
+    scan_gitleaks git ${LEAKS_LOG_OPTS:+--log-opts="$LEAKS_LOG_OPTS"} "$ROOT" && rc=0 || rc=$?
     summary gitleaks $rc
     fail=$((fail | rc))
     ;;
