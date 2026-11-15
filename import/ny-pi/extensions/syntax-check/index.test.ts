@@ -34,10 +34,20 @@ function harness() {
   return h
 }
 const ctx = (cwd: string) => ({ cwd })
-const run = async (h: ReturnType<typeof harness>, cwd: string, name: string, path: string, edit: () => void, id = 'c1') => {
+const run = async (
+  h: ReturnType<typeof harness>,
+  cwd: string,
+  name: string,
+  path: string,
+  edit: () => void,
+  id = 'c1',
+) => {
   await h.tool_call({ toolName: name, toolCallId: id, input: { path } }, ctx(cwd))
   edit()
-  return h.tool_result({ toolName: name, toolCallId: id, input: { path }, isError: false, content: [{ type: 'text', text: 'ok' }] }, ctx(cwd))
+  return h.tool_result(
+    { toolName: name, toolCallId: id, input: { path }, isError: false, content: [{ type: 'text', text: 'ok' }] },
+    ctx(cwd),
+  )
 }
 
 test('handler: arquivo limpo que quebra reporta; erro preexistente não; arquivo novo com erro reporta', async () => {
@@ -58,6 +68,19 @@ test('handler: extensão sem gramática e isError não produzem nada', async () 
   assert.equal(await run(h, cwd, 'write', 'n.md', () => writeFileSync(join(cwd, 'n.md'), '((')), undefined)
   await h.tool_call({ toolName: 'write', toolCallId: 'e', input: { path: 'b.py' } }, ctx(cwd))
   writeFileSync(join(cwd, 'b.py'), 'def (:\n')
-  const r = await h.tool_result({ toolName: 'write', toolCallId: 'e', input: { path: 'b.py' }, isError: true, content: [] }, ctx(cwd))
+  const r = await h.tool_result(
+    { toolName: 'write', toolCallId: 'e', input: { path: 'b.py' }, isError: true, content: [] },
+    ctx(cwd),
+  )
   assert.equal(r, undefined)
+})
+
+test('firstError libera árvore e parser: RSS não cresce em parses repetidos', async () => {
+  const src = 'export function f(a: number) { return a + 1 }\n'.repeat(6000) // ~280 KB
+  const mb = () => process.memoryUsage().rss / 1048576
+  await firstError(src, 'typescript')
+  const base = mb()
+  for (let i = 0; i < 40; i++) await firstError(src, 'typescript')
+  const growth = mb() - base
+  assert.ok(growth < 300, `RSS cresceu ${Math.round(growth)} MB em 40 parses`)
 })

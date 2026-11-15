@@ -61,6 +61,7 @@ $HOME/.pi/agent/claude-home/bin/telemetry/pi_telemetry.py	claude-home/bin/teleme
 $HOME/.pi/agent/claude-home/bin/telemetry/test_cache_probe_join.py	claude-home/bin/telemetry/test_cache_probe_join.py
 $HOME/.pi/agent/claude-home/bin/telemetry/test_pi_telemetry.py	claude-home/bin/telemetry/test_pi_telemetry.py
 $HOME/.pi/agent/claude-home/bin/tests/cache-warm-identity.test.ts	claude-home/bin/tests/cache-warm-identity.test.ts
+$HOME/.pi/agent/claude-home/bin/tests/compact-at-400k.test.ts	claude-home/bin/tests/compact-at-400k.test.ts
 $HOME/.pi/agent/claude-home/bin/tests/gates/completion-gate.test.ts	claude-home/bin/tests/gates/completion-gate.test.ts
 $HOME/.pi/agent/claude-home/bin/tests/no-context-files.test.ts	claude-home/bin/tests/no-context-files.test.ts
 $HOME/.pi/agent/claude-home/bin/tests/pi-ui-final-gate.sh	claude-home/bin/tests/pi-ui-final-gate.sh

@@ -98,10 +98,18 @@ esac
 
 # No project .claude (nor ~/.claude, which becomes a "project" in ~): only CLAUDE_CONFIG_DIR.
 # --no-approve unless the call has an explicit `pi --approve` / `-a`.
-case " $* " in
-*" --approve "* | *" -a "*) ;;
-*) set -- --no-approve "$@" ;;
-esac
+# Whole arguments only (never prompt text), and nothing after `--` counts.
+approved=
+for a in "$@"; do
+  case "$a" in
+  --) break ;;
+  --approve | -a)
+    approved=1
+    break
+    ;;
+  esac
+done
+[ -n "$approved" ] || set -- --no-approve "$@"
 
 # Patches are pinned to exact versions and fail closed: on any other version they are skipped
 # with one warning and pi still starts. Override the pins with PI_HARNESS_PI_CODE_VERSION / PI_HARNESS_PI_VERSION.

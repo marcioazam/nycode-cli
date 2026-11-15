@@ -5,7 +5,7 @@
  * no pi tudo já está no ramo da sessão, então o estado é derivado dele:
  * - aprovação: a última mensagem `plan-mode-execute` (pi-code plan-mode, "Execute the plan");
  * - veredito: a linha `PLAN_REVIEW: complete|incomplete` no resultado de um `subagent` que chamou `plan-reviewer`
- *   (single ou `tasks`); a posição da chamada é o início da revisão, então uma edição durante ou depois a invalida;
+ *   (single ou `tasks`); a posição da chamada é o início da revisão, então uma edição durante, depois ou na mesma mensagem a invalida;
  * - edições: chamadas `edit`/`write` depois da aprovação (como o ledger do Claude, `bash` não conta);
  * - libera sem bloquear: `PLAN CANCELLED` (encerra), `PLAN BLOCKED:`, `PLAN WAITING:` (ou `PLANO ...`) na resposta
  *   final, e plan mode ligado;
@@ -36,9 +36,10 @@ const MAX_NO_PROGRESS = 3
 const MAX_BLOCKS = 30
 const GAPS_LIMIT = 400
 const VERDICT = /^\s*PLAN_REVIEW:\s*(complete|incomplete)\b/gim
-const CANCELLED = /PLAN CANCELLED|PLANO CANCELADO/i
-const BLOCKED = /PLAN BLOCKED:|PLANO BLOQUEADO:/i
-const WAITING = /PLAN WAITING:|PLANO AGUARDANDO:/i
+// O marcador só vale no começo de uma linha (espaços e ênfase markdown antes), nunca citado no meio de uma frase.
+const CANCELLED = /^[\s*_`]*(?:PLAN CANCELLED|PLANO CANCELADO)/im
+const BLOCKED = /^[\s*_`]*(?:PLAN BLOCKED:|PLANO BLOQUEADO:)/im
+const WAITING = /^[\s*_`]*(?:PLAN WAITING:|PLANO AGUARDANDO:)/im
 const STATES: Record<string, string> = {
   no_review: 'no plan-reviewer verdict yet',
   review_incomplete: 'the last review was incomplete',
@@ -53,7 +54,12 @@ const INSTRUCTION =
 const role = (e: Entry): string | undefined => (e.type === 'message' ? e.message?.role : undefined)
 const blocks = (e: Entry): Entry[] => (Array.isArray(e.message?.content) ? e.message.content : [])
 const textOf = (e: Entry): string =>
-  typeof e.content === 'string' ? e.content : blocks(e).filter((b) => b?.type === 'text').map((b) => String(b.text ?? '')).join('\n')
+  typeof e.content === 'string'
+    ? e.content
+    : blocks(e)
+        .filter((b) => b?.type === 'text')
+        .map((b) => String(b.text ?? ''))
+        .join('\n')
 
 function callsReviewer(args: any): boolean {
   if (!args || typeof args !== 'object') return false
@@ -102,24 +108,44 @@ export function decidePlanGate(entries: Entry[], env: Record<string, string | un
         if (b.name === 'subagent' && callsReviewer(b.arguments)) reviewerCalls.set(String(b.id), i)
       }
     }
-    if (role(e) === 'toolResult' && e.message?.toolName === 'subagent' && reviewerCalls.has(String(e.message?.toolCallId))) {
+    if (
+      role(e) === 'toolResult' &&
+      e.message?.toolName === 'subagent' &&
+      reviewerCalls.has(String(e.message?.toolCallId))
+    ) {
       const text = textOf(e)
       const matches = [...text.matchAll(VERDICT)]
       const last = matches.at(-1)
       review = last
-        ? { at: reviewerCalls.get(String(e.message.toolCallId)) ?? i, verdict: last[1].toLowerCase(), gaps: gapsOf(text.slice(0, last.index)) }
-        : { at: reviewerCalls.get(String(e.message.toolCallId)) ?? i, verdict: 'incomplete', gaps: 'reviewer returned no PLAN_REVIEW line' }
+        ? {
+            at: reviewerCalls.get(String(e.message.toolCallId)) ?? i,
+            verdict: last[1].toLowerCase(),
+            gaps: gapsOf(text.slice(0, last.index)),
+          }
+        : {
+            at: reviewerCalls.get(String(e.message.toolCallId)) ?? i,
+            verdict: 'incomplete',
+            gaps: 'reviewer returned no PLAN_REVIEW line',
+          }
     }
   }
   if (lastRecord && ['completed', 'cancelled', 'gave_up'].includes(lastRecord.state)) return { action: 'none' }
 
   const prev = { blocks: lastRecord?.blocks ?? 0, noProgress: lastRecord?.noProgress ?? 0, sig: lastRecord?.sig ?? '' }
-  const keep = (state: GateRecord['state'], why: string, extra: Partial<GateRecord> = {}): GateRecord => ({ state, why, ...prev, ...extra })
+  const keep = (state: GateRecord['state'], why: string, extra: Partial<GateRecord> = {}): GateRecord => ({
+    state,
+    why,
+    ...prev,
+    ...extra,
+  })
   if (planMode) return { action: 'allow', why: 'plan_mode', record: keep('allowed', 'plan_mode') }
-  if (CANCELLED.test(lastAssistant)) return { action: 'allow', why: 'marker_cancelled', record: keep('cancelled', 'marker_cancelled') }
-  if (BLOCKED.test(lastAssistant)) return { action: 'allow', why: 'marker_blocked', record: keep('allowed', 'marker_blocked', { noProgress: 0 }) }
-  if (WAITING.test(lastAssistant)) return { action: 'allow', why: 'marker_waiting', record: keep('allowed', 'marker_waiting') }
-  if (review?.verdict === 'complete' && review.at >= lastEdit) {
+  if (CANCELLED.test(lastAssistant))
+    return { action: 'allow', why: 'marker_cancelled', record: keep('cancelled', 'marker_cancelled') }
+  if (BLOCKED.test(lastAssistant))
+    return { action: 'allow', why: 'marker_blocked', record: keep('allowed', 'marker_blocked', { noProgress: 0 }) }
+  if (WAITING.test(lastAssistant))
+    return { action: 'allow', why: 'marker_waiting', record: keep('allowed', 'marker_waiting') }
+  if (review?.verdict === 'complete' && review.at > lastEdit) {
     return { action: 'allow', why: 'review_complete', record: keep('completed', 'review_complete') }
   }
 
@@ -129,7 +155,12 @@ export function decidePlanGate(entries: Entry[], env: Record<string, string | un
     const message =
       `Plan gate stopped enforcing (${noProgress} stops without progress, ${prev.blocks} blocks). ` +
       'The plan still lacks PLAN_REVIEW: complete; run the plan-reviewer before treating the plan as done.'
-    return { action: 'give_up', why: 'gave_up', message, record: { state: 'gave_up', why: 'gave_up', blocks: prev.blocks, noProgress, sig } }
+    return {
+      action: 'give_up',
+      why: 'gave_up',
+      message,
+      record: { state: 'gave_up', why: 'gave_up', blocks: prev.blocks, noProgress, sig },
+    }
   }
   const why = !review ? 'no_review' : review.verdict !== 'complete' ? 'review_incomplete' : 'edit_after_review'
   let head = `Plan gate: ${STATES[why]}.`

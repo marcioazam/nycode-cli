@@ -12,7 +12,31 @@
 
 import type { ExtensionAPI } from '@earendil-works/pi-coding-agent'
 
-const LIMIT = Number(process.env.PI_COMPACT_AT ?? 250_000)
+const DEFAULT_LIMIT = 250_000
+
+// Só inteiro positivo vale; senão usa o padrão e avisa.
+export function compactLimit(
+  env: Record<string, string | undefined>,
+  warn: (m: string) => void = console.error,
+): number {
+  const raw = env.PI_COMPACT_AT
+  if (raw === undefined) return DEFAULT_LIMIT
+  const n = Number(raw)
+  if (raw.trim() !== '' && Number.isInteger(n) && n > 0) return n
+  warn(`PI_COMPACT_AT="${raw}" recusado (esperado inteiro positivo); usando ${DEFAULT_LIMIT}`)
+  return DEFAULT_LIMIT
+}
+
+export function reportCompactError(
+  ctx: { hasUI: boolean; ui: { notify: (m: string, t: 'error') => void } },
+  error: Error,
+  warn: (m: string) => void = console.error,
+): void {
+  if (ctx.hasUI) ctx.ui.notify(`Compactação falhou: ${error.message}`, 'error')
+  else warn(`Compactação falhou: ${error.message}`)
+}
+
+const LIMIT = compactLimit(process.env)
 
 export default function (pi: ExtensionAPI) {
   let running = false
@@ -34,7 +58,7 @@ export default function (pi: ExtensionAPI) {
         },
         onError: (error) => {
           running = false
-          if (ctx.hasUI) ctx.ui.notify(`Compactação falhou: ${error.message}`, 'error')
+          reportCompactError(ctx, error)
           resolve()
         },
       }),

@@ -16,15 +16,43 @@ import type { ExtensionAPI } from '@earendil-works/pi-coding-agent'
 
 const MAX_SIZE = 2 * 1024 * 1024
 const LANGS: Record<string, string> = {
-  '.py': 'python', '.js': 'javascript', '.mjs': 'javascript', '.cjs': 'javascript', '.jsx': 'javascript',
-  '.ts': 'typescript', '.mts': 'typescript', '.cts': 'typescript', '.tsx': 'tsx', '.rs': 'rust', '.go': 'go',
-  '.sh': 'bash', '.bash': 'bash', '.java': 'java', '.cs': 'c-sharp', '.rb': 'ruby', '.php': 'php', '.css': 'css',
-  '.cpp': 'cpp', '.cc': 'cpp', '.cxx': 'cpp', '.hpp': 'cpp', '.hh': 'cpp',
+  '.py': 'python',
+  '.js': 'javascript',
+  '.mjs': 'javascript',
+  '.cjs': 'javascript',
+  '.jsx': 'javascript',
+  '.ts': 'typescript',
+  '.mts': 'typescript',
+  '.cts': 'typescript',
+  '.tsx': 'tsx',
+  '.rs': 'rust',
+  '.go': 'go',
+  '.sh': 'bash',
+  '.bash': 'bash',
+  '.java': 'java',
+  '.cs': 'c-sharp',
+  '.rb': 'ruby',
+  '.php': 'php',
+  '.css': 'css',
+  '.cpp': 'cpp',
+  '.cc': 'cpp',
+  '.cxx': 'cpp',
+  '.hpp': 'cpp',
+  '.hh': 'cpp',
 }
 
 type Pt = { row: number; column: number }
-type TsNode = { isError: boolean; isMissing: boolean; hasError: boolean; type: string; text: string; startPosition: Pt; children: Array<TsNode | null> }
-type TsParser = { setLanguage(l: unknown): void; parse(s: string): { rootNode: TsNode } | null }
+type TsNode = {
+  isError: boolean
+  isMissing: boolean
+  hasError: boolean
+  type: string
+  text: string
+  startPosition: Pt
+  children: Array<TsNode | null>
+}
+type TsTree = { rootNode: TsNode; delete(): void }
+type TsParser = { setLanguage(l: unknown): void; parse(s: string): TsTree | null; delete(): void }
 type Ts = { Parser: { init(): Promise<void>; new (): TsParser }; Language: { load(p: string): Promise<unknown> } }
 
 let tsPromise: Promise<{ ts: Ts; dir: string }> | undefined
@@ -48,22 +76,33 @@ export type SyntaxError = { line: number; column: number; text: string }
 export async function firstError(source: string, lang: string): Promise<SyntaxError | null> {
   const { ts, dir } = await loadTs()
   let l = langs.get(lang)
-  if (!l) langs.set(lang, (l = ts.Language.load(join(dir, `tree-sitter-${lang}.wasm`))))
-  const parser = new ts.Parser()
-  parser.setLanguage(await l)
-  const root = parser.parse(source)?.rootNode
-  if (!root?.hasError) return null
-  const walk = (n: TsNode): TsNode | null => {
-    if (n.isError || n.isMissing) return n
-    for (const c of n.children) if (c && (c.hasError || c.isMissing)) return walk(c)
-    return null
+  if (!l) {
+    l = ts.Language.load(join(dir, `tree-sitter-${lang}.wasm`))
+    langs.set(lang, l)
   }
-  const n = walk(root) ?? root
-  const snippet = n.text.replace(/\s+/g, ' ').trim().slice(0, 40)
-  return {
-    line: n.startPosition.row + 1,
-    column: n.startPosition.column + 1,
-    text: n.isMissing ? `missing ${n.type}` : `unexpected ${snippet || 'token'}`,
+  const parser = new ts.Parser()
+  let tree: TsTree | null = null
+  try {
+    parser.setLanguage(await l)
+    tree = parser.parse(source)
+    const root = tree?.rootNode
+    if (!root?.hasError) return null
+    const walk = (n: TsNode): TsNode | null => {
+      if (n.isError || n.isMissing) return n
+      for (const c of n.children) if (c && (c.hasError || c.isMissing)) return walk(c)
+      return null
+    }
+    const n = walk(root) ?? root
+    const snippet = n.text.replace(/\s+/g, ' ').trim().slice(0, 40)
+    return {
+      line: n.startPosition.row + 1,
+      column: n.startPosition.column + 1,
+      text: n.isMissing ? `missing ${n.type}` : `unexpected ${snippet || 'token'}`,
+    }
+  } finally {
+    // heap wasm: sem delete() cada parse vaza a árvore e o parser até o wasm abortar
+    tree?.delete()
+    parser.delete()
   }
 }
 

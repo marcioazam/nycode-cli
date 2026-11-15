@@ -7,13 +7,26 @@ import { decidePlanGate } from '../../../extensions/plan-gate.ts'
 type Entry = Record<string, unknown>
 let n = 0
 const id = () => `e${++n}`
-const approve = (): Entry => ({ type: 'custom_message', id: id(), customType: 'plan-mode-execute', content: 'Execute the plan.' })
-const say = (text: string): Entry => ({ type: 'message', id: id(), message: { role: 'assistant', content: [{ type: 'text', text }] } })
+const approve = (): Entry => ({
+  type: 'custom_message',
+  id: id(),
+  customType: 'plan-mode-execute',
+  content: 'Execute the plan.',
+})
+const say = (text: string): Entry => ({
+  type: 'message',
+  id: id(),
+  message: { role: 'assistant', content: [{ type: 'text', text }] },
+})
 const call = (name: string, args: Record<string, unknown>, callId = `c${n + 1}`): Entry => ({
-  type: 'message', id: id(), message: { role: 'assistant', content: [{ type: 'toolCall', id: callId, name, arguments: args }] },
+  type: 'message',
+  id: id(),
+  message: { role: 'assistant', content: [{ type: 'toolCall', id: callId, name, arguments: args }] },
 })
 const result = (callId: string, toolName: string, text: string): Entry => ({
-  type: 'message', id: id(), message: { role: 'toolResult', toolCallId: callId, toolName, content: [{ type: 'text', text }] },
+  type: 'message',
+  id: id(),
+  message: { role: 'toolResult', toolCallId: callId, toolName, content: [{ type: 'text', text }] },
 })
 const review = (verdict: string, callId: string): Entry[] => [
   call('subagent', { agent: 'plan-reviewer', task: 'review' }, callId),
@@ -51,12 +64,22 @@ test('revisão incomplete: bloqueia com os gaps', () => {
 })
 
 test('revisão de outro agente não conta', () => {
-  const d = decidePlanGate([approve(), call('subagent', { agent: 'code-reviewer', task: 'x' }, 'x1'), result('x1', 'subagent', 'PLAN_REVIEW: complete'), say('ok')])
+  const d = decidePlanGate([
+    approve(),
+    call('subagent', { agent: 'code-reviewer', task: 'x' }, 'x1'),
+    result('x1', 'subagent', 'PLAN_REVIEW: complete'),
+    say('ok'),
+  ])
   assert.equal(d.why, 'no_review')
 })
 
 test('revisão em chamada paralela (tasks) conta', () => {
-  const d = decidePlanGate([approve(), call('subagent', { tasks: [{ agent: 'plan-reviewer', task: 'r' }] }, 'p1'), result('p1', 'subagent', 'PLAN_REVIEW: complete'), say('ok')])
+  const d = decidePlanGate([
+    approve(),
+    call('subagent', { tasks: [{ agent: 'plan-reviewer', task: 'r' }] }, 'p1'),
+    result('p1', 'subagent', 'PLAN_REVIEW: complete'),
+    say('ok'),
+  ])
   assert.equal(d.why, 'review_complete')
 })
 
@@ -67,7 +90,11 @@ test('marcadores: CANCELLED encerra, BLOCKED e WAITING liberam', () => {
 })
 
 test('plan mode ligado de novo: libera', () => {
-  const d = decidePlanGate([approve(), { type: 'custom', id: id(), customType: 'plan-mode', data: { enabled: true } }, say('planejando')])
+  const d = decidePlanGate([
+    approve(),
+    { type: 'custom', id: id(), customType: 'plan-mode', data: { enabled: true } },
+    say('planejando'),
+  ])
   assert.equal(d.why, 'plan_mode')
 })
 
@@ -102,4 +129,33 @@ test('progresso (edição nova) zera o contador', () => {
 
 test('PI_PLAN_GATE=0 desliga', () => {
   assert.equal(decidePlanGate([approve(), say('x')], { PI_PLAN_GATE: '0' }).action, 'none')
+})
+
+test('marcador citado no meio de uma frase não vale', () => {
+  const d = decidePlanGate([approve(), say('this is not a PLAN CANCELLED case, nem PLAN BLOCKED: aqui')])
+  assert.equal(d.why, 'no_review')
+  assert.equal(d.action, 'block')
+})
+
+test('marcador em linha própria vale, também com ênfase markdown', () => {
+  assert.equal(decidePlanGate([approve(), say('texto\nPLAN CANCELLED')]).record?.state, 'cancelled')
+  assert.equal(decidePlanGate([approve(), say('texto\n**PLAN BLOCKED:** preciso de decisão')]).why, 'marker_blocked')
+  assert.equal(decidePlanGate([approve(), say('texto\n  `PLANO AGUARDANDO: lanes`')]).why, 'marker_waiting')
+  assert.equal(decidePlanGate([approve(), say('PLANO CANCELADO')]).record?.state, 'cancelled')
+})
+
+test('edição e revisão na mesma mensagem: não completa', () => {
+  const both: Entry = {
+    type: 'message',
+    id: id(),
+    message: {
+      role: 'assistant',
+      content: [
+        { type: 'toolCall', id: 'ed', name: 'edit', arguments: { path: 'a' } },
+        { type: 'toolCall', id: 'rv', name: 'subagent', arguments: { agent: 'plan-reviewer', task: 'r' } },
+      ],
+    },
+  }
+  const d = decidePlanGate([approve(), both, result('rv', 'subagent', 'PLAN_REVIEW: complete'), say('ok')])
+  assert.equal(d.why, 'edit_after_review')
 })
