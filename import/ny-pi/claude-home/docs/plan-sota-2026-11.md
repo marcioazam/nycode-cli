@@ -241,4 +241,4 @@ A razão de custo depende do estado do cache. A frio fica entre 1,39 e 1,48; com
 
 ## Modo todo: item em andamento
 
-No modo todo, `zzzzzz-todo-active.patch` faz a seção mostrar "fazendo" no todo com status `in_progress` (numerado pelo id da ferramenta `todo`), com relógio iniciado quando ele entra em andamento; o modo plano não muda.
+A correção do modo todo (item em andamento = todo `in_progress`, número = id da ferramenta `todo`, relógio desde o início do item) depende da seção Plano/Todo dos patches de UI que este repositório não publica, então fica na instalação local. O patch publicado no #38 não aplicava sobre a pilha publicada e foi retirado. `scripts/ci/check-patch-stack.sh` aplica a pilha publicada inteira, na ordem do glob, sobre pi-code 1.7.0 limpo e desfaz em ordem reversa, para que um patch fora de ordem ou gerado sobre outra pilha reprove na CI.

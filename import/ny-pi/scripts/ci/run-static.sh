@@ -214,6 +214,7 @@ step "markdownlint (changed)" each markdownlint -- "${MD[@]}"
 step "structure (changed)" structure_changed
 step "install tests (offline)" bash scripts/test_install.sh
 step "check-refs" python3 scripts/check-refs.py
+step "pi-code patch stack (glob order, pinned 1.7.0)" bash scripts/check-patch-stack.sh
 step "bench oracles (no-op fails, oracle passes)" python3 bench/suites/check_oracles.py
 step "pytest + coverage" pytest_cov
 step "diff-cover >= 80" diff_cover
