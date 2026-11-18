@@ -43,6 +43,7 @@ O token OAuth da conta de benchmark só é renovado entre braços, nunca durante
 Braços ny-pi podem rodar em paralelo: cada rodada grava o próprio pacote em `<out>/pi-harness-bundle.tgz`.
 
 Modo chave de API (opcional, todos os braços): `BENCH_API_KEY_FILE=<arquivo com a chave>` cobra o crédito de API em vez do plano e dispensa `BENCH_CC_CREDENTIALS`.
+Vale também para as suítes locais (s1/s4/s5): os braços `ny-pi`, `pi-vanilla` e `claude-vanilla` leem a chave de `BENCH_API_KEY_FILE` (arquivo vazio ou ilegível aborta), removem os tokens OAuth do ambiente e não chamam `bench_oauth_token`; sem a variável, seguem no OAuth do plano. O workspace vai em `ANTHROPIC_CUSTOM_HEADERS` no `claude-vanilla` e em `providers.anthropic.headers` do `models.json` (mesclado a cada execução, sem tocar no resto) no `pi-vanilla` e no `ny-pi`; `models.json` não entra no `.overlay-sha`.
 Chave de usuário sem workspace exige `BENCH_ANTHROPIC_WORKSPACE_ID=<id>`, enviado como cabeçalho `anthropic-workspace-id` em toda chamada: o `ny-pi` grava-o no `models.json` do contêiner; o `cc-vanilla` usa `ANTHROPIC_API_KEY` mais `ANTHROPIC_CUSTOM_HEADERS` (via `--ae` do Harbor), sem `CLAUDE_FORCE_OAUTH`; o `pi-vanilla` roda com `pi_vanilla_api_agent.py`, que mescla o cabeçalho no `models.json` depois da instalação padrão.
 Trocar OAuth por API muda o pedido do pi (sem a identidade do Claude Code no system prompt e sem renomear ferramentas): não misture modos dentro de um braço nem de uma comparação.
 

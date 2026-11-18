@@ -41,7 +41,14 @@ if [ ! -f "$stage/.ready" ]; then
   HOME=$stage "$stage/.local/bin/pi" --version >/dev/null
   touch "$stage/.ready"
 fi
-export ANTHROPIC_OAUTH_TOKEN
-ANTHROPIC_OAUTH_TOKEN=$(bench_oauth_token)
-unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
+if [ -n "${BENCH_API_KEY_FILE:-}" ]; then
+  export ANTHROPIC_API_KEY
+  ANTHROPIC_API_KEY=$(bench_api_key)
+  unset ANTHROPIC_OAUTH_TOKEN CLAUDE_CODE_OAUTH_TOKEN ANTHROPIC_AUTH_TOKEN
+  bench_pi_workspace_header "$stage/.pi/agent/models.json"
+else
+  export ANTHROPIC_OAUTH_TOKEN
+  ANTHROPIC_OAUTH_TOKEN=$(bench_oauth_token)
+  unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
+fi
 HOME=$stage exec "$stage/.local/bin/pi" "$@"

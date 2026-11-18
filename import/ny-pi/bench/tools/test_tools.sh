@@ -194,5 +194,62 @@ h=$(cpy)
 check "overlay: cópia repetida mantém o hash" test -n "$h" -a "$(cpy)" = "$h"
 check "overlay: cópia repetida não aninha diretório" test ! -e "$T/stage/vendor/pkg/pkg"
 
+# --- API-key mode in the local arms (s1/s4/s5): key from BENCH_API_KEY_FILE, workspace header, no plan OAuth
+A="$here/../arms"
+RPY=$(PATH=${PATH#"$T/bin:"} command -v python3) # the global PATH carries a fake python3
+mkdir -p "$T/rb" && ln -s "$RPY" "$T/rb/python3"
+mkdir -p "$T/ak"
+printf 'sk-ant-fake\n' >"$T/ak/key"
+: >"$T/ak/empty"
+printf '{"claudeAiOauth":{"accessToken":"oauth-fake","expiresAt":99999999999999}}' >"$T/ak/cred.json"
+# Fake binary: prints the auth env and, when present, $PI_CODING_AGENT_DIR/models.json (or $HOME/.pi/agent).
+cat >"$T/ak/fake" <<'SH'
+#!/usr/bin/env bash
+env | grep -E '^(ANTHROPIC_|CLAUDE_CODE_OAUTH)' | sort
+for f in "${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}/models.json"; do [ -f "$f" ] && cat "$f"; done
+exit 0
+SH
+chmod +x "$T/ak/fake"
+printf '{"providers":{"anthropic":{"baseUrl":"keep","headers":{"x-a":"1"}},"other":{}}}\n' >"$T/ak/models.json"
+mkdir -p "$T/ak/stage/.local/bin" "$T/ak/stage/.pi/agent"
+cp "$T/ak/fake" "$T/ak/stage/.local/bin/pi"
+touch "$T/ak/stage/.ready"
+arm() { # arm [VAR=value...]: runs it with the fake binaries and no inherited auth
+  local a=$1
+  shift
+  env -u ANTHROPIC_API_KEY -u ANTHROPIC_OAUTH_TOKEN -u CLAUDE_CODE_OAUTH_TOKEN -u BENCH_API_KEY_FILE -u BENCH_ANTHROPIC_WORKSPACE_ID \
+    PATH="$T/rb:$PATH" BENCH_CC_CREDENTIALS="$T/ak/cred.json" BENCH_CC_BIN="$T/ak/fake" BENCH_CC_VANILLA_DIR="$T/ak/cc" \
+    BENCH_PI_BIN="$T/ak/fake" BENCH_PI_VANILLA_DIR="$T/ak/pv" BENCH_STAGE="$T/ak/stage" BENCH_REAL_HOME="$T/ak/rh" \
+    "$@" bash "$A/$a" 2>&1
+}
+cp "$T/ak/models.json" "$T/ak/pv-models.json"
+mkdir -p "$T/ak/pv" && cp "$T/ak/models.json" "$T/ak/pv/models.json"
+WS=wrkspc_fake
+out=$(arm claude-vanilla BENCH_API_KEY_FILE="$T/ak/key" BENCH_ANTHROPIC_WORKSPACE_ID=$WS CLAUDE_CODE_OAUTH_TOKEN=leak)
+check "api/cc: chave de API e cabeçalho do workspace" bash -c "grep -qx 'ANTHROPIC_API_KEY=sk-ant-fake' <<<'$out' && grep -qx 'ANTHROPIC_CUSTOM_HEADERS=anthropic-workspace-id: $WS' <<<'$out'"
+check "api/cc: sem OAuth" bash -c "! grep -q OAUTH <<<'$out'"
+out=$(arm pi-vanilla BENCH_API_KEY_FILE="$T/ak/key" BENCH_ANTHROPIC_WORKSPACE_ID=$WS ANTHROPIC_OAUTH_TOKEN=leak)
+check "api/pi-vanilla: chave de API, sem OAuth" bash -c "grep -qx 'ANTHROPIC_API_KEY=sk-ant-fake' <<<'$out' && ! grep -q OAUTH <<<'$out'"
+check "api/pi-vanilla: models.json ganha o cabeçalho e preserva o resto" "$RPY" -c "
+import json; a=json.load(open('$T/ak/pv/models.json'))['providers']
+assert a['anthropic']['headers']=={'x-a':'1','anthropic-workspace-id':'$WS'} and a['anthropic']['baseUrl']=='keep' and 'other' in a"
+out=$(arm ny-pi BENCH_API_KEY_FILE="$T/ak/key" BENCH_ANTHROPIC_WORKSPACE_ID=$WS ANTHROPIC_OAUTH_TOKEN=leak)
+check "api/ny-pi: chave de API, sem OAuth, cabeçalho no models.json do stage" bash -c "grep -qx 'ANTHROPIC_API_KEY=sk-ant-fake' <<<'$out' && ! grep -q OAUTH <<<'$out' && grep -q '$WS' $T/ak/stage/.pi/agent/models.json"
+arm ny-pi BENCH_API_KEY_FILE="$T/ak/key" BENCH_ANTHROPIC_WORKSPACE_ID=$WS >/dev/null
+check "api/ny-pi: repetir é idempotente" "$RPY" -c "
+import json; h=json.load(open('$T/ak/stage/.pi/agent/models.json'))['providers']['anthropic']['headers']
+assert h=={'anthropic-workspace-id':'$WS'}"
+out=$(arm pi-vanilla BENCH_API_KEY_FILE="$T/ak/key")
+check "api/pi-vanilla: sem workspace não é erro" bash -c "grep -qx 'ANTHROPIC_API_KEY=sk-ant-fake' <<<'$out'"
+rm -f "$T/ak/stage/.pi/agent/models.json"
+arm ny-pi BENCH_API_KEY_FILE="$T/ak/key" >/dev/null
+check "api/ny-pi: sem workspace não cria models.json" test ! -e "$T/ak/stage/.pi/agent/models.json"
+for a in claude-vanilla pi-vanilla ny-pi; do
+  out=$(arm $a)
+  check "sem chave/$a: segue no OAuth do plano" bash -c "grep -q 'OAUTH.*=oauth-fake' <<<'$out' && ! grep -q ANTHROPIC_API_KEY <<<'$out'"
+  check "chave vazia/$a: falha com mensagem" bash -c "! o=\$(env BENCH_API_KEY_FILE='$T/ak/empty' bash -c \"BENCH_CC_BIN='$T/ak/fake' BENCH_PI_BIN='$T/ak/fake' BENCH_STAGE='$T/ak/stage' BENCH_CC_VANILLA_DIR='$T/ak/cc' BENCH_PI_VANILLA_DIR='$T/ak/pv' BENCH_REAL_HOME='$T/ak/rh' bash '$A/$a'\" 2>&1) && grep -q 'bench: BENCH_API_KEY_FILE' <<<\"\$o\""
+done
+check "overlay: models.json do stage não entra no hash" bash -c "! grep -qx 'models.json' '$A/overlay.list'"
+
 echo "falhas: $fails"
 exit $((fails > 0))

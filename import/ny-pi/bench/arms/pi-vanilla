@@ -5,9 +5,16 @@ set -euo pipefail
 # shellcheck source=bench/arms/oauth-token.sh
 . "$(dirname "$(readlink -f "$0")")/oauth-token.sh"
 export PI_CODING_AGENT_DIR="${BENCH_PI_VANILLA_DIR:-$HOME/.pi/vanilla}" PI_SKIP_VERSION_CHECK=1
-export ANTHROPIC_OAUTH_TOKEN
-ANTHROPIC_OAUTH_TOKEN=$(bench_oauth_token)
-unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
+if [ -n "${BENCH_API_KEY_FILE:-}" ]; then
+  export ANTHROPIC_API_KEY
+  ANTHROPIC_API_KEY=$(bench_api_key)
+  unset ANTHROPIC_OAUTH_TOKEN CLAUDE_CODE_OAUTH_TOKEN ANTHROPIC_AUTH_TOKEN
+  bench_pi_workspace_header "$PI_CODING_AGENT_DIR/models.json"
+else
+  export ANTHROPIC_OAUTH_TOKEN
+  ANTHROPIC_OAUTH_TOKEN=$(bench_oauth_token)
+  unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
+fi
 mkdir -p "$PI_CODING_AGENT_DIR"
 args=()
 while [ $# -gt 0 ]; do

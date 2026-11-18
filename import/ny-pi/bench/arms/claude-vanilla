@@ -4,12 +4,20 @@
 set -euo pipefail
 # shellcheck source=bench/arms/oauth-token.sh
 . "$(dirname "$(readlink -f "$0")")/oauth-token.sh"
-token=$(bench_oauth_token)
 cfg="${BENCH_CC_VANILLA_DIR:-$HOME/.claude-vanilla-ab}"
 [ -f "$cfg/settings.json" ] || {
   mkdir -p "$cfg"
   printf '%s\n' '{"effortLevel":"medium","permissions":{"defaultMode":"auto"}}' >"$cfg/settings.json"
 }
-export CLAUDE_CONFIG_DIR="$cfg" CLAUDE_CODE_EFFORT_LEVEL=medium DISABLE_AUTOUPDATER=1 CLAUDE_CODE_OAUTH_TOKEN="$token"
-unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
+export CLAUDE_CONFIG_DIR="$cfg" CLAUDE_CODE_EFFORT_LEVEL=medium DISABLE_AUTOUPDATER=1
+if [ -n "${BENCH_API_KEY_FILE:-}" ]; then
+  export ANTHROPIC_API_KEY
+  ANTHROPIC_API_KEY=$(bench_api_key)
+  unset ANTHROPIC_OAUTH_TOKEN CLAUDE_CODE_OAUTH_TOKEN ANTHROPIC_AUTH_TOKEN
+  [ -z "${BENCH_ANTHROPIC_WORKSPACE_ID:-}" ] || export ANTHROPIC_CUSTOM_HEADERS="anthropic-workspace-id: $BENCH_ANTHROPIC_WORKSPACE_ID"
+else
+  export CLAUDE_CODE_OAUTH_TOKEN
+  CLAUDE_CODE_OAUTH_TOKEN=$(bench_oauth_token)
+  unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
+fi
 exec "${BENCH_CC_BIN:-$HOME/.local/share/claude/versions/2.1.323}" "$@"
