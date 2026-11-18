@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
 """Offline calibration of the sequential bench-pr gate (look 1 stricter, then the single-round rule). No model, no spend.
 
-Model (owner brief 2026-11-18): the frozen base round gives, per task, p_t = (s + 0.5) / (n + 1) (shrunk, so a 100%
-task is not deterministic) and a pool of observed runs to resample cost/turns/wall from. Each iteration draws a fresh
-base (same n_t, Bernoulli p_t) and a candidate (p_t plus the scenario effect), then runs the CURRENT rule and the NEW
-rule on the same candidate draws (common random numbers: the paired difference carries little Monte Carlo noise).
+Model A (legacy, --resample-base): per task p_t = (s + 0.5) / (n + 1), a fresh base ~ Bernoulli(p_t) every iteration.
+It overstates noise: a 12/12 task fails 4% of the time and the base is redrawn although the real gate has one frozen base.
+Model B (default, calibrated 2026-11-18 on the 8 real sequential gates, RUNBOOK "Calibração do simulador"): the base is the
+OBSERVED frozen round, as in the real gate; the true p_t is drawn per iteration from the Beta posterior of the task, with
+an empirical-Bayes prior (alpha, beta) fitted by beta-binomial maximum likelihood over the base's own tasks (`fit_prior`),
+so tasks that pass 12/12 are mostly deterministic; the candidate is Bernoulli(p_t plus the scenario effect).
+Both models resample cost/turns/wall from the observed runs of the task and run the CURRENT rule and the NEW rule on the
+same candidate draws (common random numbers: the paired difference carries little Monte Carlo noise).
 The flows are the real `bench.gate.decide`; only the extension is replaced by reps drawn from the candidate stream.
 The bootstrap inside the simulation uses --boot resamples (default 2000) for speed; the gate itself uses 10 000.
 
-  python3 bench/tools/gate_sim.py RUNS.jsonl [RUNS.jsonl ...] [--iters 2000] [--boot 2000] [--grid] [--md]
+  python3 bench/tools/gate_sim.py RUNS.jsonl [RUNS.jsonl ...] [--iters 2000] [--boot 2000] [--grid] [--resample-base]
   python3 bench/tools/gate_sim.py RUNS.jsonl --sec-grid [--iters 4000]   # security-rule designs vs the rule in main
 
 Security rules (--sec-grid): ("count", k0, N, t) or ("fisher", k0, N, alpha). A security task whose base is clean
@@ -59,9 +63,11 @@ class Task:
     suite: str
     security: bool
     n: int  # base reps observed
-    p: float  # shrunk pass rate
+    p: float  # shrunk pass rate (model A)
     pool: tuple[Run, ...]
     all_pass: bool
+    a: float = 0.5  # Beta posterior of the true pass rate (model B): prior alpha + passes, prior beta + failures
+    b: float = 0.5
 
     @property
     def stream_len(self) -> int:
@@ -77,42 +83,76 @@ class Task:
         return 3 if self.security or not sequential else 1
 
 
+def fit_prior(counts: list[tuple[int, int]]) -> tuple[float, float]:
+    """Beta(alpha, beta) prior of the per-task pass rate by beta-binomial maximum likelihood over (passes, reps) pairs.
+    Deterministic log-grid search on [0.02, 50]^2, refined twice; bounded so a base with only 12/12 tasks stays proper."""
+
+    def ll(a: float, b: float) -> float:
+        lb = math.lgamma(a + b) - math.lgamma(a) - math.lgamma(b)
+        return sum(
+            lb + math.lgamma(a + s) + math.lgamma(b + n - s) - math.lgamma(a + b + n)
+            for s, n in counts
+        )
+
+    la, lb_, span = math.log(1.0), math.log(1.0), math.log(50 / 0.02) / 2
+    for _ in range(3):
+        grid = [
+            (la + i * span / 20, lb_ + j * span / 20)
+            for i in range(-20, 21)
+            for j in range(-20, 21)
+        ]
+        la, lb_ = max(
+            (
+                (x, y)
+                for x, y in grid
+                if 0.02 <= math.exp(x) <= 50 and 0.02 <= math.exp(y) <= 50
+            ),
+            key=lambda xy: ll(math.exp(xy[0]), math.exp(xy[1])),
+        )
+        span /= 10
+    return math.exp(la), math.exp(lb_)
+
+
 def load_model(path: Path) -> list[Task]:
     g: dict[tuple[str, str], list[Run]] = defaultdict(list)
     for line in path.read_text().splitlines():
         if line.strip():
             r = json.loads(line)
             g[(r["suite"], r["task_id"])].append(r)
+    counts = {k: (sum(bool(r["passed"]) for r in rs), len(rs)) for k, rs in g.items()}
+    alpha, beta = fit_prior(list(counts.values()))
     return [
         Task(
             t, s, any(r.get("security") for r in rs), len(rs),
-            (sum(bool(r["passed"]) for r in rs) + 0.5) / (len(rs) + 1),
+            (counts[s, t][0] + 0.5) / (len(rs) + 1),
             tuple({k: v for k, v in r.items() if k != "tokens"} for r in rs),
             all(r["passed"] for r in rs),
+            alpha + counts[s, t][0], beta + len(rs) - counts[s, t][0],
         )
         for (s, t), rs in sorted(g.items())
     ]  # fmt: skip
 
 
 def scenario(
-    tasks: list[Task], name: str, rng: random.Random
+    tasks: list[Task], name: str, rng: random.Random, p0: dict[str, float] | None = None
 ) -> tuple[dict[str, float], float, float]:
-    """Candidate pass probability per task, cost multiplier, turns multiplier."""
-    p = {t.id: t.p for t in tasks}
+    """Candidate pass probability per task (effect applied to `p0`, default the shrunk rate), cost and turns multipliers."""
+    base_p = p0 or {t.id: t.p for t in tasks}
+    p = dict(base_p)
     cm = tm = 1.0
     if name in ("b10", "b15"):
         d = 0.10 if name == "b10" else 0.15
         p = {k: min(1.0, max(0.0, v - d)) for k, v in p.items()}
     elif name == "c":
         for t in rng.sample(tasks, round(0.3 * len(tasks))):
-            p[t.id] = max(0.0, t.p - 0.35)
+            p[t.id] = max(0.0, base_p[t.id] - 0.35)
     elif name == "d_cost":
         cm = 1.15
     elif name == "d_turns":
         tm = 1.15
     elif name in ("e15", "e30"):
         t = rng.choice([t for t in tasks if t.security and t.all_pass and t.n > 1])
-        p[t.id] = t.p * (1 - (0.15 if name == "e15" else 0.30))
+        p[t.id] = base_p[t.id] * (1 - (0.15 if name == "e15" else 0.30))
     return p, cm, tm
 
 
@@ -169,9 +209,17 @@ def draw(
     rng: random.Random,
     extra: int = 0,
     clean_sec: bool = False,
+    fixed: bool = False,
 ) -> Draw:
-    p, cm, tm = scenario(tasks, name, rng)
-    base = [_one(t.pool, rng, t.p, i) for t in tasks for i in range(t.n)]
+    """`fixed` = model B: observed frozen base, true p_t ~ Beta posterior; else model A (fresh base ~ Bernoulli(p_t))."""
+    if fixed:
+        p, cm, tm = scenario(
+            tasks, name, rng, {t.id: rng.betavariate(t.a, t.b) for t in tasks}
+        )
+        base = [{**r, "rep": i} for t in tasks for i, r in enumerate(t.pool)]
+    else:
+        p, cm, tm = scenario(tasks, name, rng)
+        base = [_one(t.pool, rng, t.p, i) for t in tasks for i in range(t.n)]
     if clean_sec:  # the frozen base is what was observed: a 12/12 security task stays 12/12 (same RNG use either way)
         keep = {t.id for t in tasks if t.security and t.all_pass}
         base = [{**r, "passed": True} if r["task_id"] in keep else r for r in base]
@@ -257,7 +305,7 @@ def iterate(
 ) -> dict[str, Any]:
     name, i, alphas, grid, real = job
     rng = random.Random(f"{SEED}:{name}:{i}")
-    d = draw(MODEL, name, rng, max((r[2] for r in SECRULES), default=0), CLEAN)
+    d = draw(MODEL, name, rng, max((r[2] for r in SECRULES), default=0), CLEAN, FIXED)
     cur = flow(d, False, BOOT)
     g1 = d.grower(True)
     v1 = {
@@ -281,6 +329,7 @@ MODEL: list[Task] = []
 BOOT = 2000
 SECRULES: list[SecRule] = []
 CLEAN = False
+FIXED = False
 
 
 def _init(
@@ -288,9 +337,14 @@ def _init(
     boot: int,
     secrules: list[SecRule] | None = None,
     clean: bool = False,
+    fixed: bool = False,
+    est: dict[str, float] | None = None,
 ) -> None:
-    global MODEL, BOOT, SECRULES, CLEAN
-    MODEL, BOOT, SECRULES, CLEAN = model, boot, secrules or [], clean
+    global MODEL, BOOT, SECRULES, CLEAN, FIXED
+    EST.update(
+        est or {}
+    )  # spawn/forkserver workers re-import the module: carry the CLI override
+    MODEL, BOOT, SECRULES, CLEAN, FIXED = model, boot, secrules or [], clean, fixed
 
 
 def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
@@ -303,17 +357,17 @@ def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
 def simulate(
     model: list[Task], iters: int, boot: int, alphas: list[float], grid: list[Params],
     real: Params | None = None, workers: int = 1, scenarios: tuple[str, ...] = SCENARIOS,
-    secrules: list[SecRule] | None = None, clean: bool = False,
+    secrules: list[SecRule] | None = None, clean: bool = False, fixed: bool = True,
 ) -> dict[str, list[dict[str, Any]]]:  # fmt: skip
     """scenario -> per-iteration outcomes (deterministic: each iteration seeds its own RNG)."""
     jobs = [(s, i, alphas, grid, real) for s in scenarios for i in range(iters)]
     if workers > 1:
         with multiprocessing.Pool(
-            workers, _init, (model, boot, secrules, clean)
+            workers, _init, (model, boot, secrules, clean, fixed, dict(EST))
         ) as pool:
             res = pool.map(iterate, jobs, chunksize=16)
     else:
-        _init(model, boot, secrules, clean)
+        _init(model, boot, secrules, clean, fixed)
         res = [iterate(j) for j in jobs]
     by: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for j, r in zip(jobs, res, strict=True):
@@ -353,6 +407,7 @@ def summarize(
             "n": n, "cur": sum(cur) / n, "cur_ci": wilson(sum(cur), n),
             "new": sum(b[0] for b in new) / n, "new_ci": wilson(sum(b[0] for b in new), n),
             "diff": md, "se": se,
+            "stop1": sum(r["grid"][prm][0] in ("PASS", "FAIL") for r in rs) / n,
             "runs_cur": sum(r["cur"][1] for r in rs) / n, "runs_new": sum(b[1] for b in new) / n,
             "usd_cur": sum(r["cur"][2] for r in rs) / n, "usd_new": sum(b[2] for b in new) / n,
         }  # fmt: skip
@@ -411,13 +466,13 @@ def feasible(summary: dict[str, Any]) -> bool:
 
 
 def md_table(summary: dict[str, Any]) -> str:
-    L = ["| Cenário | Taxa atual [IC95] | Taxa nova [IC95] | Δ pareado ±1,96 EP | Exec. atual | Exec. nova | US$ atual | US$ nova |", "|---|---|---|---|---|---|---|---|"]  # fmt: skip
+    L = ["| Cenário | Taxa atual [IC95] | Taxa nova [IC95] | Δ pareado ±1,96 EP | Parou no olhar 1 | Exec. atual | Exec. nova | US$ atual | US$ nova |", "|---|---|---|---|---|---|---|---|---|"]  # fmt: skip
     for scen, s in summary.items():
         what = "aprova" if scen == "a" else "bloqueia"
         L.append(
             f"| {LABEL[scen]} ({what}) | {s['cur'] * 100:.1f}% [{s['cur_ci'][0] * 100:.1f}, {s['cur_ci'][1] * 100:.1f}] "
             f"| {s['new'] * 100:.1f}% [{s['new_ci'][0] * 100:.1f}, {s['new_ci'][1] * 100:.1f}] "
-            f"| {s['diff'] * 100:+.2f} ±{1.96 * s['se'] * 100:.2f} pp | {s['runs_cur']:.1f} | {s['runs_new']:.1f} "
+            f"| {s['diff'] * 100:+.2f} ±{1.96 * s['se'] * 100:.2f} pp | {s['stop1'] * 100:.1f}% | {s['runs_cur']:.1f} | {s['runs_new']:.1f} "
             f"| {s['usd_cur']:.2f} | {s['usd_new']:.2f} |"
         )  # fmt: skip
     return "\n".join(L)
@@ -448,8 +503,20 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="--sec-grid: keep the observed all-pass base of security tasks",
     )
+    p.add_argument(
+        "--resample-base",
+        action="store_true",
+        help="legacy model A: fresh base k12 per iteration, shrunk p (the default is model B, see the module docstring)",
+    )
+    p.add_argument(
+        "--s1-usd",
+        type=float,
+        help="USD per S1 run instead of est_cost_usd of suites.toml (measured: 0.015)",
+    )
     p.add_argument("--json", action="store_true")
     a = p.parse_args(argv)
+    if a.s1_usd is not None:
+        EST["s1"] = a.s1_usd
     chosen: Params = (stats.ALPHA1, stats.COST1, stats.TURNS1)
     grid = (
         [(x, c, t) for x in a.alphas for c in a.ratios for t in a.ratios]
@@ -470,6 +537,7 @@ def main(argv: list[str] | None = None) -> int:
                 a.workers,
                 secrules=SEC_GRID,
                 clean=a.clean_base,
+                fixed=not a.resample_base,
             )
             print(
                 f"### {path.parent.name}: {len(model)} tarefas, {a.iters} iterações por cenário, seed {SEED}, boot {a.boot}"
@@ -491,6 +559,7 @@ def main(argv: list[str] | None = None) -> int:
             grid,
             None if a.grid else chosen,
             a.workers,
+            fixed=not a.resample_base,
         )
         label = path.parent.name
         rows = {prm: summarize(by, prm, real=not a.grid) for prm in grid}

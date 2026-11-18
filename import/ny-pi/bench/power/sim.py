@@ -16,8 +16,9 @@ from pathlib import Path
 from typing import Any, NamedTuple
 
 from bench import report, stats
+from bench.tools import gate_sim
 
-PRIOR = 0.5  # Beta(0.5, 0.5) (Jeffreys): rate = (passes + 0.5) / (runs + 1)
+PRIOR = 0.5  # legacy Beta(0.5, 0.5) (Jeffreys): rate = (passes + 0.5) / (runs + 1); eb=False
 DEFAULT_DELTAS, DEFAULT_KS, DEFAULT_NS = "0,0.03,0.05,0.08", "1,2,3", "24,49,73"
 N_SIMS = 2000
 SIM_BOOT = 100  # resamples per simulated round for P(ahead); noise ~0.04 around the 0.80 threshold
@@ -30,17 +31,24 @@ class Power(NamedTuple):
     effective: float = 0.0  # mean(shifted ny) - mean(ref) actually simulated
 
 
-def shrunk_rates(ny_dir: Path, ref_dir: Path) -> tuple[list[float], list[float]]:
-    """Per-task shrunk pass rates of both arms over the tasks both ran with no errored run."""
+def shrunk_rates(
+    ny_dir: Path, ref_dir: Path, eb: bool = True
+) -> tuple[list[float], list[float]]:
+    """Per-task shrunk pass rates of both arms over the tasks both ran with no errored run.
+
+    `eb` (default, RUNBOOK 2026-11-18): the Beta prior of each arm is fitted to its own observed per-task counts
+    (`gate_sim.fit_prior`, beta-binomial MLE), so an all-pass task is not pulled to the middle; `eb=False` is Beta(0.5, 0.5)."""
     _, ny = report._load(ny_dir)
     _, ref = report._load(ref_dir)
     a, b = report._clean([ny, ref])
     tasks = sorted(a)
 
-    def shrink(t: stats.TaskStat) -> float:
-        return (t["rate"] * t["n"] + PRIOR) / (t["n"] + 2 * PRIOR)
+    def shrink(arm: dict[str, stats.TaskStat]) -> list[float]:
+        counts = [(round(arm[t]["rate"] * arm[t]["n"]), arm[t]["n"]) for t in tasks]
+        pa, pb = gate_sim.fit_prior(counts) if eb else (PRIOR, PRIOR)
+        return [(s + pa) / (n + pa + pb) for s, n in counts]
 
-    return [shrink(a[t]) for t in tasks], [shrink(b[t]) for t in tasks]
+    return shrink(a), shrink(b)
 
 
 def shift(ny: list[float], ref: list[float], delta: float) -> tuple[list[float], float]:
@@ -113,7 +121,7 @@ def render(data: dict[str, Any]) -> str:
         "# Poder da afirmação \"à frente\"",
         "",
         (
-            f"{data['tasks']} tarefas observadas; taxas encolhidas Beta({PRIOR}, {PRIOR}); {data['sims']} simulações por célula; "
+            f"{data['tasks']} tarefas observadas; taxas encolhidas por prior Beta ajustado por máxima verossimilhança às tarefas de cada braço; {data['sims']} simulações por célula; "
             "semente fixa. P≥0,80: fração das simulações com P(à frente) ≥ 0,80; IC90>0: fração com limite inferior do IC90 > 0 "
             "(aproximação normal do bootstrap por tarefa)."
         ),

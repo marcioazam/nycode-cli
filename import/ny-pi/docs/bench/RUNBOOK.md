@@ -212,11 +212,114 @@ concentrada 143,8 → 121,9; segurança 15% 125,7 → 115,0; 30% 124,6 → 110,1
 Economia esperada: cerca de 10 execuções por PR sem mudança (-8%), 12 a 22 nas quedas reais (-8% a -15%). É
 menor que a esperada de início porque o k3 completo continua sendo o caminho quando o olhar 1 não decide.
 
-Leitura honesta dos números: neste modelo (base reamostrada com encolhimento, tarefas 100% não determinísticas) a regra
+Leitura honesta dos números (superada pela seção "Calibração do simulador com os gates reais", abaixo: o modelo A
+superestima o ruído): neste modelo (base reamostrada com encolhimento, tarefas 100% não determinísticas) a regra
 atual aprova um PR sem mudança em 78%, não 98%, e barra -10 pp em 88%, não 96%; a simulação anterior (citada acima)
 usava outro modelo e não é comparável. O que a calibração garante é que a regra nova não piora a atual, não que
 ambas tenham os valores antigos. Em cerca de 18% dos PRs sem mudança o olhar 1 aprova sozinho; nos cenários de queda
 ele reprova cedo em cerca de 40%.
+
+### Calibração do simulador com os gates reais (2026-11-18)
+
+Pergunta (#155): o simulador dizia que um PR sem mudança para no olhar 1 em ~18-21% das vezes e é aprovado em ~78%.
+Nos 8 gates sequenciais reais (base `docs/bench/baseline-main`, k12, 42 tarefas; `verdict.json` e `runs.jsonl` de
+cada sha) 7 pararam no olhar 1 e 1 no olhar 2, todos PASS. Medição reproduzível:
+`python3 bench/tools/gate_real.py docs/bench/baseline-main/runs.jsonl <dir do gate>...` (olhar 1 recalculado a
+α1 = 0,01, bootstrap 2 000 como no simulador).
+
+**Medido nos 8 gates.** Parada no olhar 1: 7/8 = 88%, IC95 de Wilson [53%; 98%]. Distância do critério de acerto
+(limite inferior do IC99 menos o −10 pp): +10,4; +9,8; −4,0 (`3f93d71`); +5,6; +10,4; +4,9; +5,4; +9,8 pp. Razão de
+custo 0,84 a 1,03 e de turnos 1,00 em todos (o critério é `≤ 1,05`, unilateral: PR mais barato não muda nada na
+parada). Só o acerto decidiu: o `3f93d71` ficou INCONCLUSIVE (limite inferior do IC99 abaixo de −10 pp; 6 tarefas com
+Δ ≠ 0, sd por tarefa 0,31) e foi aprovado no olhar 2; custo (0,861), turnos e segurança passavam. Os PRs não são
+"sem mudança" estritos: Δ médio de acerto −0,5 a +4,2 pp (7 de 8 positivos), 4 a 6 tarefas com Δ ≠ 0, sd por tarefa
+0,08 a 0,31 (média 0,175). Os 8 gates compartilham a mesma base congelada e há pares com Δ idêntico (`05075e4` e
+`6e34367`; `33cac6c` e `ebe76f5`): são menos de 8 amostras independentes, o IC de Wilson é otimista.
+
+**Diagnóstico.** O modelo antigo (A) tinha dois defeitos, ambos de ruído a mais:
+
+1. p por tarefa encolhido para o meio, (s + 0,5)/(n + 1): uma tarefa 12/12 falha 3,8% das vezes (31 das 42 tarefas
+   são 12/12). Nos gates reais, 0 falhas em 184 repetições de candidato nessas tarefas (IC95 de Wilson [0; 2,05%]);
+   o modelo A prevê ~7 (P(0 de 184 | 3,9%) ≈ 0,07%).
+2. A base k12 era sorteada de novo a cada iteração (ruído binomial dos dois lados); o gate real tem uma base fixa e
+   só o candidato varia.
+
+**Modelo B (padrão agora; `--resample-base` volta ao A).** Base = a rodada observada, fixa. Verdade p_t sorteada por
+iteração de um posterior Beta(α + s, β + f) por tarefa, com o prior (α, β) ajustado por máxima verossimilhança
+beta-binomial sobre as próprias tarefas da base (`fit_prior`: α = 0,554, β = 0,033, só dados da base k12, nada dos 8
+gates). Candidato ~ Bernoulli(p_t + efeito). Os 8 pontos servem só de validação, não entram no ajuste:
+
+| Estatística por PR sem mudança | Real (8 gates) | Modelo A (antes) | Modelo B (depois) |
+| --- | --- | --- | --- |
+| Parada no olhar 1 | 88% [53; 98] | 16% | 68% |
+| Distância média do IC99 ao −10 pp | +6,5 pp | −4,1 pp | +3,1 pp |
+| sd por tarefa de Δ | 0,175 | 0,290 | 0,158 |
+| Tarefas com Δ ≠ 0 | 4,9 | 19,2 | 4,5 |
+| Falha de candidato em tarefa 12/12 | 0/184 | 3,9% | 0,28% |
+
+(400 PRs simulados por modelo, `gate_real.py`.) O B cai dentro do IC dos gates reais e reproduz as variâncias; o A
+não. O B continua um pouco mais pessimista que os reais (68% contra 88%), coerente com a incerteza do posterior e com
+os PRs reais terem Δ médio levemente positivo; não foi ajustado para fechar essa diferença.
+
+**Cenários do RUNBOOK, seed 20261113, 4 000 iterações por cenário, bootstrap 2 000, regra e constantes inalteradas
+(α1 = 0,01, C1 = T1 = 1,05).** "Taxa" é aprovação sem mudança e bloqueio nos demais; IC95 de Wilson; "olhar 1" é a
+fração que o gate decide já no olhar 1:
+
+| Cenário | Antes (A): taxa [IC95] | Antes: olhar 1 | Depois (B): taxa [IC95] | Depois: olhar 1 |
+| --- | --- | --- | --- | --- |
+| sem mudança (aprova) | 79,0% [77,7; 80,2] | 20,7% | 96,9% [96,3; 97,4] | 70,1% |
+| queda difusa −10 pp (bloqueia) | 88,6% [87,6; 89,6] | 23,8% | 76,9% [75,5; 78,2] | 20,8% |
+| queda difusa −15 pp (bloqueia) | 98,5% [98,0; 98,8] | 41,9% | 97,3% [96,7; 97,7] | 42,5% |
+| queda concentrada (30% das tarefas −35 pp) | 96,3% [95,7; 96,9] | 42,8% | 97,0% [96,4; 97,5] | 52,1% |
+| custo ×1,15 (bloqueia) | 100,0% [99,9; 100,0] | 2,2% | 100,0% [99,9; 100,0] | 0,4% |
+| turnos ×1,15 (bloqueia) | 100,0% [99,9; 100,0] | 2,2% | 100,0% [99,9; 100,0] | 0,4% |
+| segurança falha 15% (bloqueia) | 32,8% [31,4; 34,3] | 21,1% | 21,2% [20,0; 22,5] | 49,0% |
+| segurança falha 30% (bloqueia) | 49,1% [47,5; 50,6] | 27,5% | 53,4% [51,8; 54,9] | 46,8% |
+
+Execuções por PR sem mudança: 126,0 → 115,2 (A, regra antiga → nova) e 110,7 → 74,3 (B). A "queda de −10 pp" fica
+exatamente na margem do critério, por isso bloqueia menos que a de −15 pp (a taxa de bloqueio sobre a margem é
+baixa por construção). A segurança com falha de 15%/30% passa a depender só de a tarefa de base 12/12 falhar no
+candidato; o item "38% das iterações" da regra de segurança (abaixo) era artefato do modelo A.
+
+**α1 continua adequado.** No modelo B, em todos os cenários a regra sequencial é igual à regra de k3 direto (Δ
+pareado entre 0,00 e −0,03 ± 0,05 pp; a grade α1 ∈ {0,02, 0,01, 0,005} × C1/T1 ∈ {1,00, 1,05} é viável inteira) e as
+execuções sem mudança ficam em 73,7 (α1 = 0,02), 74,3 (0,01) e 75,4 (0,005). Não há detecção pior que justifique
+mudar a regra: nenhuma constante do gate foi alterada.
+
+**Limites.** O `--sec-grid` foi refeito no modelo B (seção "Regra de segurança mais sensível"): a decisão não muda.
+
+#### Poder (#76), regra "empate conta 0"
+
+`python3 bench/run.py power --ny <ny-current> --ref <sonnet/cc-vanilla> --deltas 0,0.05,0.08 --ks 1,2,3 --ns
+24,49,73,100,150,200,300 --sims 2000`: 42 tarefas observadas do ny-pi (rodada `pr` de 2026-11-15) contra o Claude Code
+(`cc-vanilla`, Sonnet 5.5, k ≈ 1,8 por tarefa, rodada de 2026-11), taxas com Beta(0,5; 0,5), 2 000 simulações por
+célula, regra real `stats.prob_superior` (empate conta 0). "À frente" exige P ≥ 0,80; "forte", IC90 > 0.
+
+| Δ real | k | n | poder P ≥ 0,80 | poder IC90 > 0 |
+| --- | --- | --- | --- | --- |
+| +8 pp | 3 | 73 | 0,87 | 0,65 |
+| +8 pp | 2 | 73 | 0,80 | 0,55 |
+| +8 pp | 2 | 150 | 0,95 | 0,81 |
+| +5 pp | 3 | 73 | 0,65 | 0,34 |
+| +5 pp | 3 | 150 | 0,84 | 0,58 |
+| +5 pp | 3 | 300 | 0,95 | 0,81 |
+| 0 pp (falso positivo) | 1 a 3 | 24 a 300 | 0,17 a 0,21 | 0,04 a 0,07 |
+
+- n = 73, k = 3 detecta +8 pp com poder 0,87 pela regra P ≥ 0,80 (≥ 80%), mas só 0,65 pelo IC90 > 0; com os dois
+  critérios exigidos juntos, **não** chega a 80%.
+- O menor desenho com os dois ≥ 0,80 para +8 pp é n = 150, k = 2 (300 execuções por braço); para +5 pp, n = 300,
+  k = 3 (900). Só pela regra P ≥ 0,80: +5 pp pede n = 150 com k = 3 (0,84) ou n = 200 com k = 2 (0,81).
+- A taxa de falso positivo de "à frente" é ~0,2 (o limiar P ≥ 0,80 a admite por construção); a do IC90 > 0 é ≤ 0,07.
+- Limite: a base do Claude Code tem k ≈ 1,8 por tarefa e o encolhimento Beta(0,5; 0,5) infla a variância por
+  tarefa; esses poderes são conservadores.
+
+**Poder com o modelo B (`bench/power/sim.py`: prior Beta de cada braço por máxima verossimilhança sobre as próprias
+tarefas, `eb=True`; mesmos dados, 2 000 simulações).** O ny-pi já acerta quase tudo nas 42 tarefas e o corte em 1 impede
+subir mais: o Δ alcançável é +4,7 pp (o alvo +8 pp é inalcançável e o simulador avisa; os dois alvos simulam +4,7 pp).
+Com Δ = +4,7 pp, poder P ≥ 0,80 / IC90 > 0: n = 73, k = 3: 0,97 / 0,85; n = 73, k = 2: 0,95 / 0,86; n = 100, k = 1:
+0,94 / 0,85 (menor desenho com os dois ≥ 0,80: n = 100, k = 1, 100 execuções por braço); n = 49, k = 3:
+0,89 / 0,67. Falso positivo (Δ = 0): 0,15–0,19 / ≤ 0,07. Resposta: n = 73, k = 3 detecta +4,7 pp com poder ≥ 80% nos
+dois critérios; +8 pp não é testável com estas tarefas (precisaria de tarefas em que o ny-pi ainda erra).
 
 ### Regra de segurança mais sensível (pré-registro, 2026-11-18)
 
@@ -237,7 +340,45 @@ Critérios, fixados antes de rodar a grade (um desenho só vira regra se cumprir
 
 Se nenhum desenho cumprir, a regra não muda e a tabela fica registrada abaixo.
 
-**Resultado (4 000 iterações por cenário, seed 20261113, `baseline-main`): nenhum desenho cumpre os quatro critérios; a regra de segurança não muda.**
+**Resultado (4 000 iterações por cenário, seed 20261113, `baseline-main`): nenhum desenho cumpre os quatro critérios, nem no modelo calibrado (B, abaixo); a regra de segurança não muda.**
+
+**Modelo B (calibrado com os gates reais, 2026-11-18; padrão do `gate_sim.py`, 4 000 iterações, bootstrap 2 000).** Base
+congelada observada, p por tarefa de um Beta posterior com prior de máxima verossimilhança (seção "Calibração do
+simulador com os gates reais"). Os mesmos 21 desenhos e os mesmos critérios. Gate de `main`: e15 21,2% [20,0; 22,5],
+e30 53,4% [51,8; 54,9], aprovação sem mudança 96,9% [96,3; 97,4]. Custo extra por PR (máximo entre cenários) com
+`est_cost_usd` do S1 (US$ 0,09/execução) e com o custo real medido (US$ 0,015/execução, `--s1-usd 0.015`):
+
+| Desenho | Δ aprovação sem mudança | Bloqueio e15 [IC95] | Bloqueio e30 [IC95] | US$ extra máx. (0,09/exec.) | US$ extra máx. (0,015/exec.) | Cenário que piora |
+|---|---|---|---|---|---|---|
+| count 3 6 2 | -0.03 ±0.05 pp | 21.3% [20.1, 22.6] | 53.5% [51.9, 55.0] | +1.39 | +0.20 | — |
+| count 6 6 2 | -0.33 ±0.18 pp | 24.5% [23.2, 25.9] | 60.8% [59.2, 62.3] | +3.51 | +0.54 | sem mudança |
+| count 6 6 3 | +1.38 ±0.37 pp | 7.0% [6.3, 7.9] | 27.9% [26.5, 29.3] | +3.74 | +1.03 | queda uniforme −10 pp; queda uniforme −15 pp; 30% das tarefas −35 pp; segurança falha 15%; segurança falha 30% |
+| count 3 12 3 | +0.43 ±0.31 pp | 21.0% [19.8, 22.3] | 59.3% [57.8, 60.8] | +1.42 | +0.21 | — |
+| count 3 12 4 | +1.25 ±0.37 pp | 10.4% [9.5, 11.4] | 44.4% [42.8, 45.9] | +2.79 | +0.69 | queda uniforme −10 pp; queda uniforme −15 pp; segurança falha 15%; segurança falha 30% |
+| count 6 12 3 | -0.05 ±0.37 pp | 27.3% [26.0, 28.7] | 73.9% [72.5, 75.2] | +3.56 | +0.55 | — |
+| count 6 12 4 | +1.07 ±0.39 pp | 11.9% [10.9, 12.9] | 52.9% [51.4, 54.4] | +4.53 | +0.68 | queda uniforme −10 pp; segurança falha 15% |
+| count 3 18 4 | +0.57 ±0.34 pp | 20.4% [19.2, 21.7] | 61.7% [60.2, 63.2] | +1.47 | +0.23 | queda uniforme −10 pp |
+| count 3 18 5 | +1.23 ±0.36 pp | 11.2% [10.2, 12.2] | 53.5% [52.0, 55.0] | +3.77 | +0.80 | queda uniforme −10 pp; queda uniforme −15 pp; segurança falha 15% |
+| count 3 24 4 | +0.00 ±0.33 pp | 28.8% [27.4, 30.2] | 66.8% [65.3, 68.2] | +1.46 | +0.20 | — |
+| count 3 24 5 | +0.75 ±0.35 pp | 20.0% [18.7, 21.2] | 63.4% [61.9, 64.9] | +2.70 | +0.24 | queda uniforme −10 pp; segurança falha 15% |
+| count 6 24 5 | +0.45 ±0.39 pp | 26.9% [25.5, 28.3] | 82.5% [81.2, 83.6] | +5.17 | +0.59 | — |
+| count 6 48 5 | -1.65 ±0.50 pp | 58.5% [56.9, 60.0] | 89.6% [88.7, 90.6] | +6.63 | +0.47 | sem mudança |
+| count 6 48 6 | -0.85 ±0.46 pp | 52.3% [50.8, 53.8] | 89.5% [88.5, 90.4] | +9.08 | +0.54 | sem mudança |
+| fisher 3 12 0.05 | +1.25 ±0.37 pp | 10.4% [9.5, 11.4] | 44.4% [42.8, 45.9] | +3.05 | +0.74 | queda uniforme −10 pp; queda uniforme −15 pp; segurança falha 15%; segurança falha 30% |
+| fisher 3 12 0.1 | +1.25 ±0.37 pp | 10.4% [9.5, 11.4] | 44.4% [42.8, 45.9] | +3.05 | +0.74 | queda uniforme −10 pp; queda uniforme −15 pp; segurança falha 15%; segurança falha 30% |
+| fisher 3 24 0.1 | +1.15 ±0.37 pp | 11.9% [10.9, 12.9] | 58.0% [56.4, 59.5] | +5.31 | +1.05 | queda uniforme −10 pp; segurança falha 15% |
+| fisher 3 24 0.2 | +0.00 ±0.33 pp | 28.8% [27.4, 30.2] | 66.8% [65.3, 68.2] | +1.48 | +0.20 | — |
+| fisher 6 24 0.2 | -0.55 ±0.40 pp | 40.6% [39.1, 42.2] | 87.6% [86.5, 88.6] | +4.73 | +0.53 | sem mudança |
+| fisher 6 48 0.2 | -0.10 ±0.43 pp | 44.0% [42.4, 45.5] | 89.3% [88.3, 90.2] | +15.56 | +0.59 | — |
+| fisher 6 48 0.3 | -0.85 ±0.46 pp | 52.3% [50.8, 53.8] | 89.5% [88.5, 90.4] | +15.48 | +0.55 | sem mudança |
+
+Critérios: aprovação sem mudança não cai (Δ + 1,96 EP ≥ 0), e15 ≥ 80%, e30 ≥ 95%, extra ≤ US$ 0,30/PR. **Nenhum desenho
+cumpre.** Os melhores bloqueios são `count 6 48 5` (58,5% e 89,6%) e `count 6 48 6` (52,3% e 89,5%): ficam abaixo de
+80% e 95% e ainda reduzem a aprovação sem mudança. Só o custo muda de lado com o preço real: com US$ 0,015 vários
+desenhos cabem em US$ 0,30 (`count 3 6 2`, `3 12 3`, `3 24 4`, `fisher 3 24 0,2`: US$ 0,20 a 0,21), mas esses bloqueiam
+só 21% a 29% em e15 e 53% a 67% em e30, quase como a regra atual. Regra de segurança em `stats.py`/`gate.py` não alterada.
+
+Modelos anteriores (histórico; a lacuna que apareciam, ~66%, era em parte artefato do modelo A):
 
 Modelo A (base reamostrada a cada iteração, como na calibração acima). Gate de `main`: e15 32.8% [31.4, 34.3], e30 49.1% [47.5, 50.6]. Em 38% das
 iterações uma tarefa 100% observada recebe falha na base reamostrada e a regra de segurança nem se aplica, o que
@@ -267,7 +408,7 @@ explica o teto de ~66% mesmo com 48 repetições.
 | fisher 6 48 0.2 | +5.38 ±0.82 pp | 46.9% [45.3, 48.4] | 65.6% [64.1, 67.1] | +7.52 | — |
 | fisher 6 48 0.3 | +3.30 ±0.87 pp | 50.5% [49.0, 52.0] | 66.2% [64.7, 67.6] | +7.46 | — |
 
-Modelo B (`--clean-base`: a base congelada de cada tarefa de segurança 12/12 continua 12/12, que é o que o gate real
+Modelo A com `--clean-base` (a base congelada de cada tarefa de segurança 12/12 continua 12/12, que é o que o gate real
 vê). Gate de `main`: e15 44.6% [43.0, 46.1], e30 67.3% [65.8, 68.7] (a lacuna real é menor que os 34% e 49% do modelo A, mas continua).
 
 | Desenho | Δ aprovação sem mudança (pareado) | Bloqueio e15 [IC95] | Bloqueio e30 [IC95] | US$ extra máx. | Cenário que piora |
@@ -309,9 +450,9 @@ Leitura:
 - Limitação: as repetições de segurança extras das tarefas já estendidas pela discordância não são descontadas
   (aproximação conservadora do custo).
 
-Decisão: a regra atual fica; a lacuna de segurança em falhas raras só se fecha com ≥ 48 repetições por tarefa de
-segurança, fora do orçamento definido. Reprodução: `nice -n 10 python3 bench/tools/gate_sim.py
-docs/bench/baseline-main/runs.jsonl --sec-grid [--clean-base] --iters 4000 --workers 12`.
+Decisão: a regra atual fica; nem 48 repetições por tarefa de segurança cumprem os alvos no modelo B calibrado (melhor:
+58,5% em e15 e 89,6% em e30), e as variantes baratas mal diferem da regra atual. Decisão de mudar fica com o dono. Reprodução: `nice -n 10 python3 bench/tools/gate_sim.py
+docs/bench/baseline-main/runs.jsonl --sec-grid [--clean-base | --resample-base] [--s1-usd 0.015] --iters 4000 --workers 6` (o padrão é o modelo B).
 
 ### Pesquisa
 

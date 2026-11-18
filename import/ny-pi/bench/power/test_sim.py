@@ -6,8 +6,8 @@ from typing import Any
 
 import pytest
 
+from bench import report, stats
 from bench import run as cli
-from bench import stats
 from bench.power import sim
 
 FLAT_NY, FLAT_REF = (
@@ -98,3 +98,19 @@ def test_cli_power_table_and_json(tmp_path: Path, capsys: Any) -> None:
     data = json.loads(out.read_text())
     assert len(data["cells"]) == 4 and data["tasks"] == 6
     assert cli.main(["power", "--ny", str(ny), "--ref", str(ref), "--sims", "10"]) == 0
+
+
+def test_eb_prior_keeps_an_all_pass_task_near_one(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def rows(passes: list[int]) -> list[dict[str, Any]]:
+        return [
+            {"task_id": f"t{i}", "rep": r, "passed": r < s, "suite": "s4", "cost_usd": 1.0, "error": None, "security": False}
+            for i, s in enumerate(passes) for r in range(2)
+        ]  # fmt: skip
+
+    runs = rows([2] * 30 + [1, 0])  # k2: 30 tasks 2/2, one 1/2, one 0/2
+    monkeypatch.setattr(report, "_load", lambda _d: ({}, runs))
+    ny, _ = sim.shrunk_rates(Path("x"), Path("y"))
+    legacy, _ = sim.shrunk_rates(Path("x"), Path("y"), eb=False)
+    assert legacy[0] == pytest.approx(2.5 / 3) and ny[0] > 0.95
