@@ -16,7 +16,14 @@ from typing import Any
 from bench import stats
 
 REPO = Path(__file__).resolve().parent.parent
-EXTEND_REPS = 3  # single extension when INCONCLUSIVE: this many extra candidate reps
+EXTEND_REPS = (
+    3  # extension when INCONCLUSIVE (the last look): this many extra candidate reps
+)
+LOOK2_REPS = 2  # sequential gate: look 2 completes k3 (look 1 ran k1; security tasks ran k3 already)
+K1_SUITES = ("s2",)  # Harbor stays k1 through look 2, as in the single-round gate
+Extend = Callable[
+    [list[str], int], list[dict[str, Any]]
+]  # (tasks, reps) -> the candidate runs after growing
 
 
 def load_round(d: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
@@ -69,10 +76,67 @@ def _fmt(x: float | None, nd: int = 3) -> str:
     return "n/a" if x is None else f"{x:.{nd}f}"
 
 
-def _extend(cmd: str, side: str, d: Path, tasks: list[str]) -> None:
-    env = {**os.environ, "BENCH_EXTEND_SIDE": side, "BENCH_EXTEND_DIR": str(d), "BENCH_EXTEND_REPS": str(EXTEND_REPS),
+def _extend(
+    cmd: str, side: str, d: Path, tasks: list[str], reps: int = EXTEND_REPS
+) -> None:
+    env = {**os.environ, "BENCH_EXTEND_SIDE": side, "BENCH_EXTEND_DIR": str(d), "BENCH_EXTEND_REPS": str(reps),
            "BENCH_EXTEND_TASKS": ",".join(tasks), "BENCH_EXTEND_OUT": str(d / "runs.ext.jsonl")}  # fmt: skip
     subprocess.run(["bash", "-c", cmd], env=env, check=False)
+
+
+def decide(
+    b_runs: list[dict[str, Any]], c_runs: list[dict[str, Any]], b_meta: dict[str, Any], c_meta: dict[str, Any],
+    extend: Extend | None, sequential: bool = False, **kw: Any,
+) -> tuple[dict[str, Any], list[dict[str, Any]], bool]:  # fmt: skip
+    """The gate's looks on loaded runs; `extend` grows the candidate (None: no extension available).
+
+    Sequential (tier pr, candidate k1 and security k3): look 1 may stop early (stats.look1), look 2 completes k3 on
+    the non-security, non-Harbor tasks and applies the single-round rule, whose extension is look 3. Single-round
+    (any other tier): that rule alone. `kw` goes to stats.verdict/look1 (alpha1, cost1, turns1, n_boot)."""
+    vkw = {k: x for k, x in kw.items() if k not in ("alpha1", "cost1", "turns1")}
+    split: dict[str, Any] = {
+        "plan": suite_ratio(b_runs, c_runs, "s4"),
+        "multi": suite_ratio(b_runs, c_runs, "s5"),
+    }
+
+    def run_verdict(cr: list[dict[str, Any]], extended: bool) -> dict[str, Any]:
+        return stats.verdict(b_runs, cr, b_meta, c_meta, extended, **split, **vkw)
+
+    look = 2
+    if sequential:
+        look = 1
+        dec, v = stats.look1(b_runs, c_runs, b_meta, c_meta, **kw, **split)
+        if dec != "CONTINUE":
+            v["verdict"], v["look"] = dec, 1
+            return v, c_runs, False
+        if extend is None or c_meta.get("not_verified"):
+            v["verdict"], v["look"] = "INCONCLUSIVE", 1
+            return v, c_runs, False
+        tasks = sorted(
+            {
+                r["task_id"]
+                for r in c_runs
+                if not r.get("security") and r["suite"] not in K1_SUITES
+            }
+        )
+        c_runs, look = extend(tasks, LOOK2_REPS), 2
+    v = run_verdict(c_runs, False)
+    extended = False
+    if v["verdict"] == "INCONCLUSIVE" and extend:
+        tasks = sorted(
+            set(v["security_pending"])
+            | set(
+                stats.tasks_to_extend(b_runs, c_runs)
+                if v["rules"]["accuracy"] == "INCONCLUSIVE"
+                else []
+            )
+        )
+        if tasks:
+            c_runs = extend(tasks, EXTEND_REPS)
+        extended, look = True, 3
+        v = run_verdict(c_runs, True)
+    v["look"] = look if sequential else None
+    return v, c_runs, extended
 
 
 def gate(
@@ -91,30 +155,15 @@ def gate(
     ]  # AC10: excluded in every arm
     c_runs = [r for r in c_runs if r["task_id"] not in refused]
 
-    def run_verdict(extended: bool) -> dict[str, Any]:
-        return stats.verdict(
-            b_runs, c_runs, b_meta, c_meta, extended,
-            plan=suite_ratio(b_runs, c_runs, "s4"), multi=suite_ratio(b_runs, c_runs, "s5"),
-        )  # fmt: skip
+    def grow(tasks: list[str], reps: int) -> list[dict[str, Any]]:
+        # Only the candidate grows: the base is the frozen k12 round (tier baseline).
+        _extend(extend_cmd or "", "cand", cand_dir, tasks, reps)
+        return [r for r in load_round(cand_dir)[0] if r["task_id"] not in refused]
 
-    v = run_verdict(False)
-    extended = False
-    if v["verdict"] == "INCONCLUSIVE" and extend_cmd:
-        tasks = sorted(
-            set(v["security_pending"])
-            | set(
-                stats.tasks_to_extend(b_runs, c_runs)
-                if v["rules"]["accuracy"] == "INCONCLUSIVE"
-                else []
-            )
-        )
-        if tasks:
-            # Only the candidate grows: the base is the frozen k12 round (tier baseline).
-            _extend(extend_cmd, "cand", cand_dir, tasks)
-            c_runs, _ = load_round(cand_dir)
-            c_runs = [r for r in c_runs if r["task_id"] not in refused]
-        extended = True
-        v = run_verdict(True)
+    v, c_runs, extended = decide(
+        b_runs, c_runs, b_meta, c_meta, grow if extend_cmd else None,
+        sequential=c_meta.get("tier") == "pr",
+    )  # fmt: skip
     if b_meta.get("not_verified") or c_meta.get("not_verified"):
         v["verdict"] = "NOT_VERIFIED"  # AC6: budget stop is never a pass
     held_b = [r for r in b_runs if r.get("split") == "heldout"]
@@ -145,8 +194,9 @@ def render_summary(
 
     L = [
         f"## bench-pr: {v['verdict']}", "",
-        f"- Tarefas pareadas (n): {v['n']}; IC{round((1 - stats.ALPHA) * 100)} da diferença de acerto (PR − base): {ci_s}; margem {stats.MARGIN * 100:+.0f} pp"
+        f"- Tarefas pareadas (n): {v['n']}; IC{round((1 - v['alpha']) * 100, 1):g} da diferença de acerto (PR − base): {ci_s}; margem {stats.MARGIN * 100:+.0f} pp"
         + (f" (estendido +{EXTEND_REPS} reps do candidato)" if extended else ""),
+        *([f"- Parou no olhar {v['look']} de 3 (gate sequencial: 1 = k1, 2 = k3, 3 = extensão das discordantes)"] if v.get("look") else []),
         "- Regras: " + ", ".join(f"{k}={x}" for k, x in v["rules"].items()),
         f"- Custo mediano: base {_fmt(med(b, 'cost_usd'), 4)} / PR {_fmt(med(c, 'cost_usd'), 4)} (razão pareada {_fmt(v['cost_ratio'])}; limite 1,10)",
         f"- Turnos (média por tarefa, mediana das razões pareadas): razão {_fmt(v['turns_ratio'])}; limite 1,10; {v['turns_n']} tarefas com dado",

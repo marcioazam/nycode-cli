@@ -177,6 +177,16 @@ def run_s1(
     return _read_s1(rdir), None if p.returncode == 0 else f"exit {p.returncode}"
 
 
+def s1_security_cases(cases: list[str]) -> set[str]:
+    """The given S1 cases that belong to the `security` suite of the evals (the sequential gate runs them at k3)."""
+    sec: set[str] = set()
+    for f in sorted((EVALS_RUN.parent / "cases").glob("*.jsonl")):
+        for line in f.read_text().splitlines():
+            if line.strip() and (c := json.loads(line)).get("suite") == "security":
+                sec.add(c["id"])
+    return sec & set(cases)
+
+
 def s1_case_reps(cases: list[str], k: int) -> dict[str, int]:
     """Reps each S1 case actually runs: min(k, its declared `reps`), as run.py does (both arms share its cases)."""
     declared: dict[str, int] = {}

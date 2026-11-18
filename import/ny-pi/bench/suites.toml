@@ -106,12 +106,15 @@ dir = "suites/hard"
 est_cost_usd = 0.60
 
 # Tiers: list of steps. `subset` picks s1.pr_cases; `n` samples n tasks of a harbor suite by seed;
-# `splits` filters case suites. `k` = repetitions.
+# `splits` filters case suites. `k` = repetitions (`k_security`: reps of the S1 security cases).
+# Look 1 of the sequential gate (bench/gate.py decide, docs/bench/RUNBOOK.md "Gate sequencial"): k1 everywhere,
+# S1 security cases at `k_security` = 3 so a security failure is already confirmable. The gate completes k3 (+2 on
+# the non-security, non-Harbor tasks) only when look 1 does not decide.
 [tier.pr]
 steps = [
-  { suite = "s1", subset = "pr", k = 3 },
-  { suite = "s4", splits = ["dev", "heldout"], k = 3 },
-  { suite = "s5", splits = ["dev", "heldout"], k = 3 },
+  { suite = "s1", subset = "pr", k = 1, k_security = 3 },
+  { suite = "s4", splits = ["dev", "heldout"], k = 1 },
+  { suite = "s5", splits = ["dev", "heldout"], k = 1 },
   { suite = "s2", n = 4, k = 1 },  # Harbor tasks are slow (up to 28 min); k1 keeps the PR under ~1 h
 ]
 

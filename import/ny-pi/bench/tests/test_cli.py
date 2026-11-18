@@ -350,10 +350,10 @@ def test_suites_toml_tiers_are_consistent() -> None:
         return {st["suite"]: st["k"] for st in cfg["tier"][tier]["steps"]}
 
     def units(tier: str) -> list[dict[str, Any]]:
-        return [{k: v for k, v in st.items() if k != "k"} for st in cfg["tier"][tier]["steps"]]  # fmt: skip
+        return [{k: v for k, v in st.items() if k not in ("k", "k_security")} for st in cfg["tier"][tier]["steps"]]  # fmt: skip
 
-    # the "precise" gate: candidate k3 against a k12 base over the same units (bench/stats.py, MARGIN)
-    assert ks("pr") == {"s1": 3, "s4": 3, "s5": 3, "s2": 1}
+    # the sequential gate: look 1 at k1 (security k3) against a k12 base over the same units (bench/stats.py, MARGIN)
+    assert ks("pr") == {"s1": 1, "s4": 1, "s5": 1, "s2": 1}
     assert ks("baseline") == {"s1": 12, "s4": 12, "s5": 12, "s2": 4}
     assert units("baseline") == units("pr")
     # the hard suite runs on demand only: PR gate time and cost must stay flat

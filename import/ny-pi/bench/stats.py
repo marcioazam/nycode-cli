@@ -34,6 +34,10 @@ MARGIN = -0.10
 COST_MAX, TURNS_MAX = 1.10, 1.10
 N_BOOT, SEED, ALPHA = 10_000, 20261113, 0.10
 Z = NormalDist().inv_cdf(1 - ALPHA / 2)  # normal quantile of the two-sided interval
+# Sequential gate (owner decision 2026-11-18): look 1 stops early only on a stricter interval and stricter
+# ratios than the final rule; anything else goes on to the current rule at k3. Values: docs/bench/RUNBOOK.md
+# ("Gate sequencial"), calibrated by bench/tools/gate_sim.py.
+ALPHA1, COST1, TURNS1 = 0.01, 1.05, 1.05
 META_KEYS = ("model", "arm_version", "overlay_sha")
 EXIT = {"PASS": 0, "FAIL": 1, "INCONCLUSIVE": 3, "NOT_COMPARABLE": 4, "NOT_VERIFIED": 5}
 SEC_CONFIRM_REPS = (
@@ -181,9 +185,12 @@ def verdict(
     extended: bool = False,
     plan: float = 1.0,
     multi: float = 1.0,
+    alpha: float = ALPHA,
+    n_boot: int = N_BOOT,
 ) -> Verdict:
     out: Verdict = {
         "verdict": None,
+        "alpha": alpha,
         "rules": {},
         "n": 0,
         "ci": None,
@@ -219,7 +226,7 @@ def verdict(
     diffs = [c[t]["rate"] - b[t]["rate"] for t in tasks]
     rules: dict[str, str] = out["rules"]
     if tasks:
-        lo, hi = paired_ci(diffs)
+        lo, hi = paired_ci(diffs, alpha, n_boot)
         out["ci"] = [lo, hi]
         lo, hi = (
             round(lo, 9),
@@ -290,6 +297,35 @@ def verdict(
         bool(out["security_regressions"]),
     )
     return out
+
+
+def look1_decision(v: Verdict, cost1: float = COST1, turns1: float = TURNS1) -> str:
+    """PASS, FAIL (both final), another final verdict (NOT_*) or CONTINUE, from a verdict taken at alpha1."""
+    if v["verdict"] in ("NOT_COMPARABLE", "NOT_VERIFIED"):
+        return str(v["verdict"])
+    if v["rules"]["accuracy"] == "FAIL" or v["security_regressions"]:
+        return "FAIL"
+    cost, turns = v["cost_ratio"], v["turns_ratio"]
+    ok = (
+        v["rules"]["accuracy"] == "PASS" and v["rules"]["security"] == "PASS"
+        and cost is not None and cost <= cost1 and turns is not None and turns <= turns1
+    )  # fmt: skip
+    return "PASS" if ok else "CONTINUE"
+
+
+def look1(
+    base_runs: Iterable[Run],
+    cand_runs: Iterable[Run],
+    meta_base: Meta,
+    meta_cand: Meta,
+    alpha1: float = ALPHA1,
+    cost1: float = COST1,
+    turns1: float = TURNS1,
+    **kw: Any,
+) -> tuple[str, Verdict]:
+    """Look 1 of the sequential gate: candidate k1 (security tasks k3), interval at the stricter alpha1."""
+    v = verdict(base_runs, cand_runs, meta_base, meta_cand, alpha=alpha1, **kw)
+    return look1_decision(v, cost1, turns1), v
 
 
 def _var_diff(k: float, sd_task: float) -> float:

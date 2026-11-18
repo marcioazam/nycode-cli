@@ -109,7 +109,9 @@ run_pr() {
   fi
 
   rc=0
-  # One extension (+3 candidate reps): accuracy in doubt, or a single failed rep of a security task.
+  # Sequential gate (RUNBOOK "Gate sequencial"): the run above is look 1 (k1, security k3). When look 1 does not decide,
+  # the gate calls this command to complete k3 (+2) and, if still in doubt, +3 on the discordant tasks (or a single failed
+  # security rep); each call runs only the tasks and reps the gate names in BENCH_EXTEND_*.
   ext="python3 bench/run.py run --extension --arm ny-pi --tier pr --model '$MODEL' --budget-usd '$EXT_BUDGET' >&2"
   (cd "$wt" && python3 bench/run.py gate --base "$base" --cand "$out" --extend-with-cmd "$ext") >"$out/summary.md" || rc=$?
   case $rc in
@@ -121,7 +123,7 @@ run_pr() {
   *) state=error desc="gate exit $rc" ;;
   esac
   if [[ -f $out/verdict.json ]]; then
-    desc="$desc $(jq -r '"n=\(.n)"' "$out/verdict.json" 2>/dev/null || true)"
+    desc="$desc $(jq -r '"n=\(.n) olhar=\(.look // "-")"' "$out/verdict.json" 2>/dev/null || true)"
   fi
   post "$state" "$desc" || true
   # The full summary goes on the PR; the status description stays short and without local paths.

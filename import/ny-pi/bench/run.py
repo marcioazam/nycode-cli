@@ -93,6 +93,9 @@ def build_plan(
             "suite": st["suite"],
             "kind": s["kind"],
             "k": kk,
+            "k_security": None
+            if k
+            else st.get("k_security"),  # sequential gate: security cases run more reps
             "est": s["est_cost_usd"],
             "cfg": s,
             "st": st,
@@ -119,7 +122,11 @@ def build_plan(
             if not step["units"]:
                 continue
         step.setdefault("units", len(step.get("tasks") or []))
-        step["est_total"] = round(step["units"] * kk * step["est"], 2)
+        reps = step["units"] * kk
+        if step["k_security"] and "tasks" in step and s["kind"] == "internal":
+            n_sec = len(runners.s1_security_cases(step["tasks"]))
+            reps += n_sec * (step["k_security"] - kk)
+        step["est_total"] = round(reps * step["est"], 2)
         steps.append(step)
     return steps
 
@@ -395,21 +402,29 @@ def execute(
             None,
         )  # planned: the stage had units to run; zero rows then is no result
         if s["kind"] == "internal":
-            reps = runners.s1_case_reps(s["tasks"], s["k"])
-            todo = [
-                t for t in s["tasks"]
-                if not all((s["suite"], t, i) in done for i in range(reps[t]))
-            ]  # fmt: skip
-            planned = bool(todo)
-            if todo:
-                rs, err = runners.run_s1(
-                    kind, bin_, todo, s["k"], model, left, f"bench-{arm}-{tier}", {},
-                    max(2, jobs),
-                )  # fmt: skip
-                if err:
-                    stage_err = err
-                    meta["errors"].append(f"s1: {err}")
-                rs = fresh(rs)
+            sec = (
+                runners.s1_security_cases(s["tasks"]) if s.get("k_security") else set()
+            )
+            groups = [
+                (s["k"], [t for t in s["tasks"] if t not in sec]),
+                (s.get("k_security"), [t for t in s["tasks"] if t in sec]),
+            ]  # one S1 call per k: the evals runner takes a single --k
+            for kk, ts in groups:
+                reps = runners.s1_case_reps(ts, kk)
+                todo = [
+                    t for t in ts
+                    if not all((s["suite"], t, i) in done for i in range(reps[t]))
+                ]  # fmt: skip
+                planned = planned or bool(todo)
+                if todo:
+                    part, err = runners.run_s1(
+                        kind, bin_, todo, kk, model, left - runners.run_cost(rs),
+                        f"bench-{arm}-{tier}", {}, max(2, jobs),
+                    )  # fmt: skip
+                    if err:
+                        stage_err = err
+                        meta["errors"].append(f"s1: {err}")
+                    rs += fresh(part)
             save(rs)
         elif s["kind"] == "harbor":
             # Each chunk is recorded as it ends: a killed round keeps its finished trials.
