@@ -2,8 +2,9 @@
 
 A harness for the [pi](https://github.com/earendil-works/pi) coding agent (wrapper, extensions, hooks, skills, agents
 and an installer), measured against Claude Code and plain pi with the same model and the same tasks.
-In short: it costs less than Claude Code and solves more tasks than plain pi; it has not been shown to solve more than
-Claude Code, and it costs more than plain pi. Both sides are below.
+In short: it costs less than Claude Code (0.57x per task on the 42 tasks, 0.77x on Terminal-Bench) and solves more of
+the 42 tasks than plain pi. On Terminal-Bench 2.0 it is behind Claude Code in tasks solved (-5.5 points, not
+significant at 90%) and, against plain pi, inconclusive and more expensive (1.34x). Both sides are below.
 
 [![ci-static](../../actions/workflows/ci-static.yml/badge.svg)](../../actions/workflows/ci-static.yml)
 [![ci-security](../../actions/workflows/ci-security.yml/badge.svg)](../../actions/workflows/ci-security.yml)
@@ -38,12 +39,13 @@ Pull requests that change this README follow the same rule ([CONTRIBUTING](CONTR
 
 ## Where ny-pi wins and where it loses
 
-Same model (Claude Sonnet 5.5) for every harness, results of 2026-11-15.
+Same model (Claude Sonnet 5.5) for every harness, results of 2026-11-15; the Terminal-Bench 2.0 figures are the
+pooled sample of 2026-11-18 (73 tasks).
 
 | Against | ny-pi wins | ny-pi loses | Not shown either way |
 |---|---|---|---|
-| pi 1.5.2, no harness | Solves more of the 42 tasks: +3.8 points (90% interval +1.2 to +10.5) | Costs more: 1.23x per task on the 42 tasks, about 1.2x on the harder suite. Takes more turns on the harder suite (6.2 against 5.6 per run; no interval computed). Answers later: first reply at 2.3 to 2.6 s against 1.1 to 1.6 s in a one-turn timing of 3 runs per arm, from the larger fixed prompt (local timing, not yet in `docs/bench/`) | Harder suite accuracy: 36 of 36 against 34 of 36, too few failures to resolve; Terminal-Bench sample: +12.5 points with an interval of -8.3 to +25.0 |
-| Claude Code, no configuration | Costs less: 0.57x per task on the 42 tasks, 0.82x on the harder suite (90% interval 0.73 to 0.91). Fewer turns on the harder suite (6.2 against 6.6; no interval computed). Costs 0.71x per task on the Terminal-Bench sample | Slower on the Terminal-Bench sample: 1.39x wall per task (median, no interval computed) | Accuracy: +2.6 points on the 42 tasks with an interval of -1.4 to +9.9 (crosses zero); tie at 36 of 36 on the harder suite; -8.3 points on the Terminal-Bench sample with an interval of -29.2 to 0.0 |
+| pi 1.5.2, no harness | Solves more of the 42 tasks: +3.8 points (90% interval +1.2 to +10.5) | Costs more: 1.23x per task on the 42 tasks, about 1.2x on the harder suite, 1.34x on Terminal-Bench 2.0. Takes more turns on the harder suite (6.2 against 5.6 per run; no interval computed). Answers later: first reply at 2.3 to 2.6 s against 1.1 to 1.6 s in a one-turn timing of 3 runs per arm, from the larger fixed prompt (local timing, not yet in `docs/bench/`) | Harder suite accuracy: 36 of 36 against 34 of 36, too few failures to resolve; Terminal-Bench 2.0, 72 tasks: +2.3 points with an interval of -5.1 to +10.2 (probability of being ahead 0.68) |
+| Claude Code, no configuration | Costs less: 0.57x per task on the 42 tasks, 0.82x on the harder suite (90% interval 0.73 to 0.91). Fewer turns on the harder suite (6.2 against 6.6; no interval computed). Costs 0.77x per task on Terminal-Bench 2.0 (US$ 0.118 against 0.143 per solved task) | Behind on Terminal-Bench 2.0: -5.5 points (124 of 171 against 132 of 171), interval -11.4 to +0.5, probability of being ahead 0.06; the interval crosses zero, so not significant at 90%. Slower there: 247 s against 203 s mean wall per run (no interval computed) | Accuracy: +2.6 points on the 42 tasks with an interval of -1.4 to +9.9 (crosses zero); tie at 36 of 36 on the harder suite |
 
 Known weaknesses that are not in the tables:
 
@@ -56,13 +58,16 @@ Known weaknesses that are not in the tables:
   measured by any check yet.
 - Both task sets are close to saturated, one model and one machine were used, the tasks are mostly Python, and no
   task was solved by ny-pi alone. Claude Code has 2 repetitions on the 42 tasks against 12 for the other two.
-- On a Terminal-Bench 2.0 sample of 24 public tasks, Claude Code solved 21, ny-pi 19 and 20 in two runs, plain pi
-  16. Against Claude Code the 90% interval is -29.2 to 0.0 points: not shown worse, but leaning that way, and ny-pi
-  was slower there (1.39x wall per task). Nothing here supports "more accurate than Claude Code".
+- On the pooled Terminal-Bench 2.0 sample (73 tasks, 171 attempts), ny-pi solved 124 and Claude Code 132: -5.5
+  points, 90% interval -11.4 to +0.5, probability of ny-pi being ahead 0.06. The interval crosses zero, so it is not
+  significant at 90%, but the estimate leans against ny-pi, which also ran slower (247 s against 203 s per run).
+  Nothing here supports "more accurate than Claude Code".
+- Against plain pi on the same benchmark the result is inconclusive (+2.3 points, interval -5.1 to +10.2) and ny-pi
+  costs 1.34x per task.
 
 ## Results at a glance
 
-Same model (Claude Sonnet 5.5) for every harness, results of 2026-11-15.
+Same model (Claude Sonnet 5.5) for every harness, results of 2026-11-15 (Terminal-Bench 2.0: 2026-11-18).
 
 | Suite | **ny-pi** | pi 1.5.2, no harness | Claude Code, no configuration |
 |---|---|---|---|
@@ -70,8 +75,12 @@ Same model (Claude Sonnet 5.5) for every harness, results of 2026-11-15.
 | 42 tasks: cost per solved task | **US$ 0.047** | US$ 0.040 | US$ 0.085 |
 | 12 harder tasks (36 runs): solved | **36 of 36** | 34 of 36 | 36 of 36 |
 | 12 harder tasks: cost per solved task | **US$ 0.178** | US$ 0.156 | US$ 0.219 |
-| Terminal-Bench 2.0 sample (24 tasks): solved | **19 of 24** (first run: 20) | 16 of 24 | 21 of 24 |
-| Terminal-Bench 2.0 sample: cost per solved task | **US$ 0.073** | US$ 0.090 | US$ 0.094 |
+| Terminal-Bench 2.0 (73 tasks): solved | **124 of 171** (72.5%) | 125 of 168 (pi: 72 tasks) | 132 of 171 (77.2%) |
+| Terminal-Bench 2.0: cost per solved task | **US$ 0.118** | US$ 0.087 | US$ 0.143 |
+
+The Terminal-Bench rows are per pair of harnesses on the tasks both ran: ny-pi is 124 of 168 and US$ 0.117 in the
+pair with plain pi (which skipped the `vulnerable-secret` task). Details in the
+[pooled Terminal-Bench section](#terminal-bench-20-pooled-sample-73-tasks).
 
 ## Benchmarks
 
@@ -114,7 +123,36 @@ long and wide work), hidden tests, 3 repetitions each, same model, results of 20
 - The hidden tests were audited by reviewers who did not write the tasks; 23 demands that neither the prompt
   nor the spec stated were relaxed, and every stored run was re-scored.
 
-### Terminal-Bench 2.0 sample (24 tasks)
+### Terminal-Bench 2.0 pooled sample (73 tasks)
+
+The 24 tasks of the first sample (below) plus 49 more unseen Terminal-Bench 2.0 tasks, run on 2026-11-18 against the
+same three harnesses. Graded by Terminal-Bench's own tests; difference = mean per task, bootstrap paired by task
+(10,000 resamples, fixed seed). Plain pi ran 72 tasks (`vulnerable-secret` excluded). The per-run data of
+this pooled sample are not yet in [`docs/bench/`](docs/bench/); the numbers come from the maintainer's benchmark log.
+
+| ny-pi against | Tasks | Solved (ny-pi against other) | Difference, 90% interval | Probability ny-pi is ahead | ny-pi cost per task | US$ per solved task | Wall per run |
+|---|---|---|---|---|---|---|---|
+| Claude Code | 73 | 124 of 171 against 132 of 171 | -5.5 points (-11.4 to +0.5) | 0.06 | 0.77x | 0.118 against 0.143 | 247 s against 203 s |
+| Claude Code, without `vulnerable-secret` | 72 | 124 of 168 against 129 of 168 | -4.2 points (-10.2 to +1.4) | 0.10 | 0.79x | 0.117 against 0.144 | 252 s against 207 s |
+| Claude Code, without the tasks corrected in Terminal-Bench 2.1 | 53 | 107 of 123 against 111 of 123 | -5.0 points (-11.3 to +0.6) | 0.07 | 0.73x | 0.090 against 0.119 | 118 s against 132 s |
+| plain pi | 72 | 124 of 168 against 125 of 168 | +2.3 points (-5.1 to +10.2) | 0.68 | 1.34x | 0.117 against 0.087 | 252 s against 183 s |
+| plain pi, without the tasks corrected in Terminal-Bench 2.1 | 52 | 107 of 120 against 102 of 120 | +7.1 points (-1.3 to +16.0) | 0.91 | 1.26x | 0.090 against 0.075 | 121 s against 123 s |
+
+- Against Claude Code: behind in tasks solved on every cut (-4.2 to -5.5 points), no interval excludes zero, so the
+  difference is not significant at 90%; the probability of ny-pi being ahead is 0.06 to 0.10. ny-pi costs 23% less
+  per task (0.77x) and US$ 0.118 against 0.143 per solved task. Its lower limit (-11.4) is below the -10 point
+  margin the gate uses, so non-inferiority is not shown either.
+- Against plain pi: inconclusive on the full set (+2.3 points, interval crossing zero, probability 0.68) and ny-pi is
+  more expensive (1.34x per task, US$ 0.117 against 0.087 per solved task). Only the cut without the tasks corrected
+  in Terminal-Bench 2.1 leans ahead (+7.1, interval -1.3 to +16.0, probability 0.91), and that interval also
+  crosses zero.
+- Claude Code solves more than plain pi (+6.5 points, interval 0.0 to +13.4, probability 0.95).
+- ny-pi and Claude Code were run through a subscription login and plain pi through an API key; the modes are not
+  controlled between arms. On the 26 tasks where plain pi ran through the key, the difference to ny-pi is 0.0 points
+  (-10.3 to +11.5).
+- Still not comparable with the public Terminal-Bench leaderboard (version 4.1, maximum effort, several attempts).
+
+### Terminal-Bench 2.0 first sample (24 tasks)
 
 24 tasks drawn at random (seed fixed before any run) from the Terminal-Bench 2.0 tasks no harness here had seen; one
 attempt per task, default effort, each harness run once on 2026-11-15. Graded by Terminal-Bench's own tests.
@@ -160,11 +198,58 @@ a lower cost than Claude Code on both suites.
 - Both task sets are close to saturated (most tasks are solved by every harness), so differences under about
   6 points cannot be resolved.
 - One model, one machine, Python-heavy tasks. No task was solved by ny-pi alone.
-- 49 more unseen Terminal-Bench 2.0 tasks are registered as a second sample and have not been run yet.
+- Terminal-Bench 2.0 pooled: against Claude Code the interval (-11.4 to +0.5 points) crosses zero, so neither a
+  deficit nor equality is established; ny-pi and Claude Code ran through a subscription login and plain pi through
+  an API key.
+
+### Changes tried and rejected (Terminal-Bench 2.0 A/B, 2026-11-17)
+
+Candidate changes were measured against the same ny-pi without them on 15 confirmatory Terminal-Bench 2.0 tasks (45
+runs against 30), paired by task, 90% interval:
+
+| Candidate | Solved | Difference | Cost | Decision |
+|---|---|---|---|---|
+| R1b (`r1b-r1`) | 26 of 45 against 30 | -8.9 points (-17.8 to -2.2) | 1.00x | rejected: worse |
+| R1b (`r1b-ledger`) | 28 of 45 against 30 | -4.4 points (-8.9 to 0.0) | 1.13x | rejected |
+| R1c | 28 of 45 against 30 | -4.4 points (-8.9 to 0.0) | 1.27x | rejected |
+| Prefix floor (E1) | 31 of 45 against 30 | +2.2 points (-4.4 to +11.1) | 0.92x | not worse, 8% cheaper |
+
+On all 20 tasks the prefix floor is +3.3 points (-5.0 to +11.7) at 0.93x. The floor is not shown better, only not
+worse and cheaper; it entered `main` through the gate below. The A/B spent about US$ 63.
+
+### What entered `main` on 2026-11-18, as measured by the gate
+
+Six pull requests merged with `bench-pr` passing. Each ran the sequential gate (next section), stopped at look 1 and
+used 58 executions: 42 tasks paired against the frozen k12 round of commit `0ed4943`, the interval being the 99%
+interval of the accuracy difference (PR minus base).
+
+| PR | Change | Cost ratio against base | Accuracy difference, 99% interval |
+|---|---|---|---|
+| #41 | Boot and output | 1.03x | -4.0 to +12.7 points |
+| #40 | `CLAUDE.md` 51% smaller | 0.97x | -0.2 to +6.9 points |
+| #48 | Guard timeout of 30 s | 1.01x | +0.4 to +17.9 points |
+| #49 | Prefix floor in unattended top-level sessions | 0.91x | -4.2 to +12.2 points |
+| #50 | Shell timeout clamp | 0.86x | -5.7 to +11.9 points |
+| #51 | Refusal fallback for `claude-sonnet-5-5` | 0.84x | -0.2 to +6.9 points |
+
+- The cost ratios are one repetition of the PR against the k12 base: noisy, and **they do not add up**. #50 at
+  0.86x and #51 at 0.84x do not mean the harness became 16% cheaper in total; the gate only asks for at most 1.10x
+  (1.05x to stop at look 1). The intervals are wide: none shows a drop beyond -10 points; #48's lower bound sits just above
+  zero (+0.4), which at k1 is not claimed as a gain.
+- #49 lowered the median cache read per run from 63.6k tokens (the #48 round, same 58-run task mix) to 39.5k.
+  That is the measurement behind its 0.91x. (The frozen k12 base has a different task mix, 75.0k, and is not
+  comparable run for run.)
+- #51 (refusal fallback) is not exercised by the gate: its 0.84x is noise, not an effect, and the fallback itself
+  is untested by the 42 tasks.
+- Turns ratio was 1.000 on all six; wall time was 1.07x to 1.19x the base and is informational.
 
 ### How the gate works on every PR
 
-The `bench-pr` check runs the pull request head and compares it with the frozen round of `main`. It fails on:
+The `bench-pr` check runs the pull request head and compares it with the frozen round of `main`. Since #45 it is
+sequential: look 1 runs the candidate once per task (security cases three times) and stops early only when the 99%
+interval of the accuracy difference is above -10 points, cost and turns are at most 1.05x, and security passes (or
+fails early on a clear drop or a confirmed security regression); otherwise look 2 completes three repetitions and
+applies the rule below, and look 3 extends the disagreeing tasks. It fails on:
 
 - a drop in tasks solved beyond -10 points (paired 90% interval);
 - cost above 1.10x;
@@ -174,6 +259,21 @@ The `bench-pr` check runs the pull request head and compares it with the frozen 
 Wall-clock time is published for information only since 2026-11-15: it depended on API load and machine load, not on
 the change. The rule, the statistics and the evidence kept per run are in the
 [runbook](docs/bench/RUNBOOK.md).
+
+What the sequential gate measured (simulation of 10,000 iterations per scenario on the frozen round and on the
+`0ed4943` base, [runbook section "Gate sequencial"](docs/bench/RUNBOOK.md#gate-sequencial)):
+
+- Detection equals the previous rule: the paired difference is between +0.00 and -0.02 points (error of +-0.03) in
+  every scenario, including uniform drops of 10 and 15 points and cost or turns 15% higher.
+- Stopping at look 1 takes 58 executions against 118 for the previous fixed k3 flow, 51% fewer (118 = 58 plus two
+  more repetitions of the 30 tasks that are neither security cases nor Harbor; derived from the run counts and
+  `bench/suites.toml`, the 58 observed in the six runs above).
+- That saving applies only when look 1 decides alone, about 18% of unchanged PRs in the simulation. On average the
+  runbook expects about 10 fewer executions per unchanged PR (-8%) and 12 to 22 on real drops (-8% to -15%).
+- Known gap, evaluated and not fixed: a rare security failure (15% or 30% of repetitions on one task) is blocked in
+  only 33.7% and 49.1% of simulated PRs. Every denser design tested (up to 48 repetitions) failed at least one
+  pre-registered criterion, so the rule did not change
+  ([runbook section "Regra de segurança mais sensível"](docs/bench/RUNBOOK.md#regra-de-segurança-mais-sensível-pré-registro-2026-11-18)).
 
 ### Reproduce
 
@@ -268,7 +368,7 @@ Every pull request must pass four required checks before merge:
 | `ci-static` | Lint, format and types (ruff, mypy strict, shellcheck, shfmt, biome, markdownlint), unit tests, 80% coverage on changed lines, file and directory size limits |
 | `ci-security` | Secrets (gitleaks), static analysis (semgrep), dependency advisories (osv-scanner), unpinned GitHub Actions |
 | `instruction-budget` | Growth of the always-loaded prompt beyond the recorded token budget |
-| `bench-pr` | The benchmark: a drop in tasks solved beyond -10 points (paired 90% interval), cost above 1.10x, turns above 1.10x, or a security regression fails it; wall-clock time is informational |
+| `bench-pr` | The benchmark (sequential, stops at look 1 when clear): a drop in tasks solved beyond -10 points (paired 90% interval), cost above 1.10x, turns above 1.10x, or a security regression fails it; wall-clock time is informational |
 
 OpenSSF Scorecard and CodeQL (Python, JavaScript/TypeScript, Actions) run weekly and on pushes to `main`, never on a
 pull request, so they add no time to one.
@@ -277,7 +377,7 @@ The same checks run locally with `bash scripts/ci/local.sh` (under 15 minutes; [
 
 ## Comparison with other harnesses
 
-Only what is measured here: same model, same tasks, results of 2026-11-15.
+Only what is measured here: same model, same tasks, results of 2026-11-15 (Terminal-Bench 2.0: 2026-11-18).
 
 | | **ny-pi** | Claude Code, no configuration | pi 1.5.2, no harness |
 |---|---|---|---|
@@ -285,11 +385,12 @@ Only what is measured here: same model, same tasks, results of 2026-11-15.
 | Tasks solved (12 harder tasks, 36 runs) | **36 of 36** | 36 of 36 | 34 of 36 |
 | Cost per solved task (42 tasks) | **US$ 0.047** | US$ 0.085 | US$ 0.040 |
 | Cost per solved task (harder) | **US$ 0.178** | US$ 0.219 | US$ 0.156 |
-| Tasks solved (Terminal-Bench 2.0 sample, 24) | **19 of 24** (first run: 20) | 21 of 24 | 16 of 24 |
+| Tasks solved (Terminal-Bench 2.0, 73 tasks; pi 72) | **124 of 171** | 132 of 171 | 125 of 168 |
 | Turns per run (harder) | **6.2** | 6.6 | 5.6 |
 
-Plain pi is cheaper and takes fewer turns; ny-pi solves more than plain pi on the 42 tasks, and more than Claude Code
-has not been shown. Claude Code costs more per solved task on both suites. Features that were not measured are not
+Plain pi is cheaper and takes fewer turns; ny-pi solves more than plain pi on the 42 tasks but not shown on
+Terminal-Bench, and more than Claude Code has not been shown (on Terminal-Bench it is 5.5 points behind, not significant
+at 90%). Claude Code costs more per solved task on all three suites. Features that were not measured are not
 compared.
 
 ## Community
