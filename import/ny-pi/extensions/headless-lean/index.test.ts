@@ -5,9 +5,11 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
 import ext, {
+  dropUnused,
   HEADLESS_PROMPT,
   headlessFloor,
   headlessTools,
+  isTopLevelHeadless,
   NO_PLAN_MODE,
   NO_UI_QUESTION,
   rewriteResult,
@@ -116,6 +118,20 @@ test('headlessTools tira question sempre e plan_mode_complete fora do modo plano
   assert.deepEqual(headlessTools(active, ['-p', '/planeta', '--planner']), ['read', 'bash', 'lsp_hover', 'codemode'])
 })
 
+test('dropUnused tira as ferramentas sem uso em execução sem interface (0 de 2.091 chamadas guardadas)', () => {
+  const keep = ['read', 'bash', 'edit', 'write', 'web_fetch', 'todo', 'codemode', 'tool_search']
+  const lsp = ['lsp_diagnostics', 'lsp_hover', 'lsp_definition', 'lsp_references', 'lsp_symbols']
+  assert.deepEqual(dropUnused([...keep, 'subagent', 'memory', ...lsp]), [...keep, 'subagent'])
+  assert.deepEqual(dropUnused(keep), keep)
+})
+
+test('isTopLevelHeadless: sem UI e depth ausente ou 0', () => {
+  assert.equal(isTopLevelHeadless(false, undefined), true)
+  assert.equal(isTopLevelHeadless(false, '0'), true)
+  assert.equal(isTopLevelHeadless(false, '1'), false)
+  assert.equal(isTopLevelHeadless(true, undefined), false)
+})
+
 test('rewriteResult troca só os dois becos sem saída', () => {
   const t = (text: string) => [{ type: 'text', text }]
   assert.equal(rewriteResult('plan_mode_complete', t('Not in plan mode; tool ignored.')), NO_PLAN_MODE)
@@ -145,6 +161,7 @@ function load(active: string[], env: Record<string, string | undefined> = {}) {
   for (const k of [
     'PI_HEADLESS_LEAN',
     'PI_HEADLESS_FLOOR',
+    'PI_HEADLESS_TOOLS',
     'PI_CODE_SUBAGENT_DEPTH',
     'CLAUDE_CONFIG_DIR',
     'CLAUDE_CODE_DISABLE_TERMINAL_TITLE',
@@ -178,6 +195,39 @@ test('sem UI: session_start desativa as duas ferramentas e desliga o título', (
     assert.equal(process.env.CLAUDE_CODE_DISABLE_TERMINAL_TITLE, '1')
   } finally {
     restore()
+  }
+})
+
+test('sem UI de topo: session_start tira memory e lsp_* e mantém subagent; PI_HEADLESS_TOOLS=all mantém; com UI nada muda', () => {
+  const tools = ['read', 'bash', 'subagent', 'memory', 'lsp_hover', 'question']
+  const cut = load(tools)
+  try {
+    cut.handlers.session_start({}, { hasUI: false })
+    assert.deepEqual(cut.sets, [['read', 'bash', 'subagent']])
+  } finally {
+    cut.restore()
+  }
+  const all = load(tools, { PI_HEADLESS_TOOLS: 'all' })
+  try {
+    all.handlers.session_start({}, { hasUI: false })
+    assert.deepEqual(all.sets, [['read', 'bash', 'subagent', 'memory', 'lsp_hover']])
+  } finally {
+    all.restore()
+  }
+  const ui = load(tools)
+  try {
+    ui.handlers.session_start({}, { hasUI: true })
+    assert.deepEqual(ui.sets, [])
+  } finally {
+    ui.restore()
+  }
+  // subagente (depth >= 1) também roda sem UI (`--mode json -p`): mantém memory e lsp_*
+  const child = load(tools, { PI_CODE_SUBAGENT_DEPTH: '1' })
+  try {
+    child.handlers.session_start({}, { hasUI: false })
+    assert.deepEqual(child.sets, [['read', 'bash', 'subagent', 'memory', 'lsp_hover']])
+  } finally {
+    child.restore()
   }
 })
 

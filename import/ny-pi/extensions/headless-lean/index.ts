@@ -17,6 +17,11 @@
  *    `$CLAUDE_CONFIG_DIR/CLAUDE.headless.md` e a seção `<skills>` sai do prompt. Arquivo ausente ou formato inesperado
  *    deixa o payload como está. PI_HEADLESS_FLOOR=0 desliga só este item.
  *
+ * 7. Na sessão headless de topo (mesmo critério do item 6), `memory` e `lsp_*` ficam inativas: 0 de 2.091 chamadas em
+ *    263 sessões guardadas do ny-pi (Terminal-Bench e gates, 2026-11-16) e os esquemas pesam no prefixo fixo.
+ *    `subagent` fica ativa (usuários de `pi -p` podem orquestrar; decisão 2026-11-18). PI_HEADLESS_TOOLS=all mantém
+ *    as duas; subagentes do pi-code (depth 1 ou mais) também rodam sem UI e ficam fora do corte.
+ *
  * Medição e contrato: docs/specs/0002-headless-lean.md. PI_HEADLESS_LEAN=0 desliga. Reverter: apagar este diretório.
  */
 import { readFileSync } from 'node:fs'
@@ -114,6 +119,18 @@ export function headlessTools(active: string[], argv: string[]): string[] {
   return active.filter((t) => t !== 'question' && (plan || t !== 'plan_mode_complete'))
 }
 
+/** Ferramentas sem uso medido na sessão headless de topo (item 7); `subagent` fica de fora de propósito. */
+const UNUSED_HEADLESS = /^(memory|lsp_[a-z]+)$/
+
+/** Sessão headless de topo: sem UI e fora de subagente do pi-code (itens 6 e 7). */
+export function isTopLevelHeadless(hasUI: boolean, depth: string | undefined): boolean {
+  return !hasUI && (depth === undefined || depth === '0')
+}
+
+export function dropUnused(active: string[]): string[] {
+  return active.filter((t) => !UNUSED_HEADLESS.test(t))
+}
+
 /** Texto que substitui o resultado sem saída de `plan_mode_complete` ou `question`; undefined mantém o original. */
 export function rewriteResult(toolName: string, content: unknown): string | undefined {
   if (!Array.isArray(content)) return undefined
@@ -128,9 +145,8 @@ export default function (pi: ExtensionAPI) {
   pi.on('before_provider_request', (event, ctx) => {
     const api = ctx.model?.api
     if (api !== undefined && api !== 'anthropic-messages') return undefined
-    const depth = process.env.PI_CODE_SUBAGENT_DEPTH
     let floored: unknown
-    if (!ctx.hasUI && (depth === undefined || depth === '0') && process.env.PI_HEADLESS_FLOOR !== '0') {
+    if (isTopLevelHeadless(ctx.hasUI, process.env.PI_CODE_SUBAGENT_DEPTH) && process.env.PI_HEADLESS_FLOOR !== '0') {
       const contract = floorContract(stderrDebug)
       if (contract) floored = headlessFloor(event.payload, contract)
     }
@@ -149,7 +165,11 @@ export default function (pi: ExtensionAPI) {
     if (ctx.hasUI) return
     process.env.CLAUDE_CODE_DISABLE_TERMINAL_TITLE ??= '1'
     const active = pi.getActiveTools()
-    const next = headlessTools(active, process.argv)
+    const kept = headlessTools(active, process.argv)
+    // subagente (depth >= 1) também roda sem UI e precisa de memory/lsp_*: fica fora do corte
+    const keepAll =
+      process.env.PI_HEADLESS_TOOLS === 'all' || !isTopLevelHeadless(false, process.env.PI_CODE_SUBAGENT_DEPTH)
+    const next = keepAll ? kept : dropUnused(kept)
     if (next.length !== active.length) pi.setActiveTools(next)
   })
 }
