@@ -11,7 +11,7 @@
           {
             "type": "command",
             "command": "python3 $HOME/.pi/agent/claude-home/hooks/guard.py",
-            "timeout": 5
+            "timeout": 30
           }
         ]
       }
