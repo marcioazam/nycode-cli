@@ -225,8 +225,9 @@ a lower cost than Claude Code on both suites.
   non-inferiority is shown but a lead is not; the references were not interleaved with the re-run; ny-pi and Claude
   Code ran through a subscription login and plain pi through an API key.
 - The ny-pi arm is this repository plus the maintainer's untracked personal layer (`bench/arms/overlay.list`: personal
-  rules of about 2,500 tokens, `settings.json`, `local.env`, vendored packages), frozen by hash. A fresh install
-  without that layer has not been benchmarked; its accuracy and cost may differ.
+  rules of about 2,500 tokens, `settings.json`, `local.env`, vendored packages), frozen by hash. Without the personal
+  rules (2026-11-18, 42 tasks, one round, not interleaved): same accuracy (40 of 42 both ways) and 17% lower cost
+  (90% interval 0.69x to 1.04x). Without the rest of the layer, and on Terminal-Bench, it has not been benchmarked.
 
 ### Changes tried and rejected (Terminal-Bench 2.0 A/B, 2026-11-17)
 
