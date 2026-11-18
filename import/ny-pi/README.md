@@ -224,7 +224,7 @@ from `npm/` (extra packages you installed there are removed).
 ## Link, backup, restore
 
 `--link --apply` moves each existing non-link target to `~/.pi-backup/<timestamp>/replaced/<path>` (mode 0700)
-before creating the symlink, copies `settings.json`, `mcp.json`, `lsp.json`, `local.env` from the `*.example`
+before creating the symlink, copies `settings.json`, `mcp.json`, `lsp.json`, `models.json`, `local.env` from the `*.example`
 templates only when absent, and writes `link-manifest.tsv` (target, backup, sha256, kind).
 `./install.sh --restore [<timestamp>]` removes those links and moves the originals back after verifying sha256.
 Never touched: `auth*.json`, `mcp-auth.json`, `sessions/`, `memory/`, anything not in `publish.list`.
@@ -253,6 +253,11 @@ See `CONTRIBUTING.md` and `NOTICE` (third-party licenses).
 
 The first two and the vault variables go in `~/.pi/agent/local.env` (mode 0600), which accepts only the keys
 listed in `local.env.example`. `pi --bypass` and `pi --safe` switch the permission mode for one session.
+
+`models.json.example` (copied to `~/.pi/agent/models.json` only when absent) enables the provider's refusal
+fallback for `claude-sonnet-5-5`, matching Claude Code: when the cyber safeguards refuse a message, the
+`claude-sonnet-5` answer replaces the error. Its price applies only to fallback responses. To turn it off,
+delete the entry from `~/.pi/agent/models.json`.
 
 ## Quality gates
 
