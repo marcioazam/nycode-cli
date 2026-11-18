@@ -126,6 +126,40 @@ def paired_ci(
     return q(alpha / 2), q(1 - alpha / 2)
 
 
+AHEAD_P = 0.80  # "ahead" on a metric: P(candidate better than reference | data) >= 0.80 (owner rule)
+
+
+def prob_superior(
+    diffs: list[float],
+    lower_is_better: bool = False,
+    n_boot: int = N_BOOT,
+    seed: int = SEED,
+) -> float:
+    """P(candidato melhor que a referência | dados): bootstrap pareado agrupado por tarefa.
+
+    `diffs` = uma diferença por tarefa (taxa média das repetições; para razões, o log da razão). Reamostra tarefas
+    com semente fixa e conta só as médias ESTRITAMENTE melhores (> 0; < 0 se menor é melhor). Empate (média ≈ 0) conta 0: creditar meio
+    dava P≈0,82 a 1 vitória entre 41 zeros; empate exato total dá P = 0."""
+    if not diffs:
+        raise ValueError("no paired tasks")
+    n, sign = len(diffs), -1.0 if lower_is_better else 1.0
+    d = [sign * x for x in diffs]
+    rng = random.Random(seed)
+    return sum(sum(rng.choices(d, k=n)) / n > 1e-12 for _ in range(n_boot)) / n_boot
+
+
+# Pre-registered metrics (owner, multiplicity): primary = accuracy, co-primary = cost per task and time. Only these
+# get a yes/no "ahead"; the rest show P but are exploratory (many metrics, 80% each: some will cross by chance).
+PREREGISTERED = ("pass_rate", "cost", "wall")
+
+
+def ahead(p: float | None, preregistered: bool = True) -> str:
+    """Column "à frente (P≥0,80)?": sim / não / – (no paired data); "exploratório" off the pre-registered list."""
+    if p is None:
+        return "–"
+    return ("sim" if p >= AHEAD_P else "não") if preregistered else "exploratório"
+
+
 def _ratio(
     base: dict[str, TaskStat],
     cand: dict[str, TaskStat],

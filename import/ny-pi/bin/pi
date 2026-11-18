@@ -186,6 +186,10 @@ if [ -n "$pi_cur" ] && [ -d "$pi_dist" ]; then
   elif [ -w "$pi_dist/core/sdk.js" ] && ! grep -q piSameContextMessage "$pi_dist/core/sdk.js"; then
     node "$HOME/.pi/agent/claude-home/patches/pi-core/cache-warm-identity.mjs" "$pi_dist" || true
   fi
+  # MCP close grace 500 -> 100 ms (patches/pi-core/mcp-close-grace.mjs, docs/specs/0003-boot-exit.md); same grep shortcut.
+  if [ "$pi_cur" = "${PI_HARNESS_PI_VERSION:-1.5.2}" ] && [ -w "$pi_dist/bundle/chunks" ] && grep -qs 'STDIN_CLOSE_GRACE_MS=500' "$pi_dist"/bundle/chunks/*.js; then
+    node "$HOME/.pi/agent/claude-home/patches/pi-core/mcp-close-grace.mjs" "$pi_dist" || true
+  fi
 fi
 
 # Hide pi-code's web_search (scrapes DuckDuckGo, fails often); search goes through the

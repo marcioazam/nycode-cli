@@ -536,3 +536,43 @@ def test_suite_row_leaves_infra_rows_out_of_the_rate() -> None:
     runs = [mk("a", 0, True), mk("b", 0, True), mk("c", 0, False, cost=None)]
     x = rp.suite_row(runs)
     assert x["rate"] == 1.0 and x["errors"] == 1 and x["runs"] == 3
+
+
+def test_scoreboard_p_ahead_per_metric(tmp_path: Path) -> None:
+    ny = write_round(tmp_path / "ny", tasks(10, cost=1.0, wall=5.0), arm="ny-pi")
+    pi = write_round(tmp_path / "pi", tasks(10, {0, 1, 2}, cost=0.2), arm="pi-vanilla")
+    cc = write_round(tmp_path / "cc", tasks(10, {0, 1, 2}, cost=1.5), arm="cc-vanilla")
+    data, md = rp.scoreboard(ny, [pi, cc])
+    by = {x["arm"]: x for x in data["rows"]}
+    assert by["pi-vanilla"]["p_rate"] > 0.95  # ny solves 3 more tasks of 10
+    assert (
+        by["pi-vanilla"]["p_cost"] == 0.0 and by["cc-vanilla"]["p_cost"] == 1.0
+    )  # lower is better
+    assert by["pi-vanilla"]["p_wall"] == 1.0
+    assert "P(à frente)" in md and "à frente (P≥0,80)?" in md
+    assert "| 0.000 | não |" in md and "| 1.000 | sim |" in md
+    assert "pré-registrada" in md and "Tarefas descartadas" in md
+    tie = rp.scoreboard(ny, [write_round(tmp_path / "same", tasks(10, cost=1.0, wall=5.0), arm="same")])[0]  # fmt: skip
+    assert (
+        tie["rows"][0]["p_rate"] == tie["rows"][0]["p_cost"] == 0.0
+    )  # a tie never counts as ahead
+
+
+def test_scoreboard_counts_dropped_tasks(tmp_path: Path) -> None:
+    ny = write_round(tmp_path / "ny", tasks(10, cost=1.0, wall=5.0), arm="ny-pi")
+    ref_runs = tasks(10, cost=0.5, wall=5.0)
+    ref_runs[0] = mk("t0", 0, False, error="infra: no model spend")
+    ref_runs[2] = mk(
+        "t1", 0, True, cost=0.0
+    )  # a mean cost of 0.25 stays positive; t1 still counts
+    ref = write_round(tmp_path / "ref", ref_runs, arm="cc-vanilla")
+    data, md = rp.scoreboard(ny, [ref])
+    x = data["rows"][0]
+    assert (x["n"], x["drop_ny"], x["drop_ref"], x["drop_cost"], x["drop_wall"]) == (
+        9,
+        0,
+        1,
+        0,
+        0,
+    )
+    assert "| cc-vanilla | 0 | 1 | 0 | 0 |" in md

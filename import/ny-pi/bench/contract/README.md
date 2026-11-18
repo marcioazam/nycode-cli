@@ -57,3 +57,35 @@ python3 bench/contract/check.py --arm ny-pi --only regras
 - Os nomes das ferramentas são comparados sem diferenciar maiúsculas (`Read` e `read` são a mesma).
 - O servidor falso cobre só o que o `pi` usa: `POST` com resposta SSE (ou JSON sem `stream`), um bloco por
   turno; não valida o pedido.
+
+## Velocidade local (`speed.py`)
+
+Mede a sobrecarga do harness sem modelo e sem depender da API (o tempo de parede do gate varia com a API).
+Cada braço roda `pi -p` no servidor falso (resposta instantânea) com um roteiro fixo de 3 turnos: `bash`
+(`echo ok`), `read` de um arquivo pequeno do diretório de trabalho e texto final. Os braços se intercalam a cada
+repetição (ny-pi, pi-vanilla, ny-pi, ...), com relógio monotônico.
+
+```sh
+python3 bench/contract/speed.py --arms ny-pi,pi-vanilla --reps 7 --json /tmp/speed.json
+python3 bench/contract/speed.py --arms ny-pi,pi-vanilla --reps 5 --cold
+```
+
+- `boot_s`: início do processo até a 1ª requisição. `turn_gap_s`: mediana por execução do intervalo entre o fim
+  da resposta de um turno e a próxima requisição (ferramenta mais sobrecarga entre turnos). `exit_s`: fim da
+  última resposta até o processo terminar. `total_s`. `first_request_bytes` e `first_request_tokens_est`
+  (bytes/4) da 1ª requisição.
+- Saída: mediana e p90 por braço e por métrica; a razão pareada é a mediana das razões por repetição do 1º braço
+  sobre cada um dos outros (`boot_s`, `turn_gap_s`, `total_s`). Braço ausente ou `pi` que falha: exit 2.
+- Quente (padrão): um stage por braço, reaproveitado, com uma rodada de aquecimento não contada. `--cold`: stage
+  novo e diretório temporário novo a cada execução, sem aquecimento. O cache de transpilação das extensões (jiti)
+  fica em `<node_modules ao lado do arquivo>/.cache/jiti` ou, sem ele, em `$TMPDIR/jiti`; o medidor aponta
+  `TMPDIR` para um diretório próprio, então o frio começa sem cache e o quente reaproveita o dele. Nenhum cache
+  do pi vanilla é apagado (não tem extensões).
+- `claude-vanilla` também roda (`ANTHROPIC_BASE_URL` para o servidor falso); o token é um valor falso gravado em
+  um arquivo temporário (`BENCH_CC_CREDENTIALS`), que só alcança `127.0.0.1`: nenhum gasto de API. Ele grava a
+  sessão em `BENCH_CC_VANILLA_DIR`.
+
+Limitações: é a sobrecarga de um roteiro pequeno nesta máquina, não o tempo de uma tarefa real; o cache de
+páginas do SO não é descartado (precisa de root), então o "frio" cobre só o cache do jiti e o stage; `boot_s`
+inclui o script do braço (leitura do token, ~dezenas de ms); só a máquina parada dá números comparáveis (rode
+sob o `flock` do bench quando um gate estiver ativo); a 1ª requisição é a primeira de qualquer tipo.

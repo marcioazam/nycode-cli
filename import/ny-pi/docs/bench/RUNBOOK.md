@@ -138,6 +138,7 @@ Decisão do dono; substitui a regra de acerto D6. Constantes em `bench/stats.py`
   A/B intercalado na mesma máquina.
 - Lacuna conhecida (pendência): a sobrecarga local (início do processo, hooks, ferramentas) deixa de ser coberta pelo
   gate até existir a checagem de latência sem modelo (API falsa, base e PR intercalados na mesma máquina).
+- Medidor local de sobrecarga (sem modelo): `python3 bench/contract/speed.py --arms ny-pi,pi-vanilla --reps 7` (`--cold` para stage e cache novos); ver `bench/contract/README.md`.
 - Cobertura da regra de turnos: a rodada de referência atual só tem turnos em S4 e S5 (22 das 42 tarefas). O S1
   passa a gravar turnos e tokens a partir desta mudança e entra na regra quando a referência for regravada; o S2
   (Harbor) não tem o dado. Até lá, as outras 20 tarefas ficam só com a regra de custo, que cobre as 42.

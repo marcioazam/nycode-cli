@@ -4,35 +4,74 @@ import json
 import os
 import unittest
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
 from unittest import mock
 
-from support import Base, git, pr_json  # first: puts the scripts dir on sys.path
+if TYPE_CHECKING:
+    # support.py is untyped (CI runs mypy --strict per changed file), so the fixture API used
+    # here is declared once for the checker; at runtime the real module is imported.
+    gd_ci: Any
 
-import gd_ci
+    def git(cwd: str | Path, *args: object) -> str: ...
+    def pr_json(state: str = "OPEN", **over: Any) -> str: ...
+
+    class Base(unittest.TestCase):
+        root: Path
+        work: Path
+        origin: Path
+        stub_dir: Path
+        base_sha: str
+
+        def commit(self, repo: Path, name: str, text: str, message: str) -> str: ...
+        def feature(self, name: str = "feat", file: str = "feature.txt") -> str: ...
+        def other_clone(self) -> Path: ...
+        def move_base(self, name: str = "upstream.txt", text: str = "up\n") -> str: ...
+        def worktree(self, name: str = "feat", dirname: str = "wt") -> Path: ...
+        def gh_rules(self, *rules: dict[str, Any]) -> None: ...
+        def gh_calls(self) -> list[list[str]]: ...
+        def gh_calls_of(self, *tokens: str) -> list[list[str]]: ...
+        def gitleaks_calls(self) -> list[list[str]]: ...
+        def call(self, *argv: object) -> tuple[int, dict[str, Any]]: ...
+        def ok(self, *argv: object) -> dict[str, Any]: ...
+        def fails(
+            self, expected_code: int, reason: str, *argv: object
+        ) -> dict[str, Any]: ...
+        def gate(
+            self, repo: Path, *extra: str, check: str = "t=true"
+        ) -> tuple[int, dict[str, Any]]: ...
+        def proof(self, repo: Path, dirty: bool = False) -> dict[str, Any]: ...
+else:
+    import gd_ci
+    from support import Base, git, pr_json  # first: puts the scripts dir on sys.path
 
 CREATE_URL = "https://github.test/o/r/pull/7\n"
 BILLING = "The job was not started because recent account payments have failed or your spending limit needs to be increased."
 
 
 class Publish(Base):
-    def setUp(self):
+    def setUp(self) -> None:
         super().setUp()
         self.feature()
 
-    def proven(self):
+    def proven(self) -> None:
         self.assertEqual(self.gate(self.work)[0], 0)
 
-    def publish(self, *extra):
+    def publish(self, *extra: object) -> tuple[int, dict[str, Any]]:
         return self.call("publish", "--repo", self.work, "--base", "main", *extra)
 
-    def rules(self, listing="[]", create=None, view=None):
+    def rules(
+        self,
+        listing: str = "[]",
+        create: dict[str, Any] | None = None,
+        view: str | None = None,
+    ) -> None:
         self.gh_rules(
             {"match": ["pr", "list"], "stdout": listing},
             {"match": ["pr", "create"], **(create or {"stdout": CREATE_URL})},
             {"match": ["pr", "view"], "stdout": view or pr_json()},
         )
 
-    def test_blocks_without_a_valid_proof(self):
+    def test_blocks_without_a_valid_proof(self) -> None:
         self.fails(6, "no_proof", "publish", "--repo", self.work, "--base", "main")
         self.gate(self.work, check="bad=exit 1")
         out = self.fails(
@@ -41,14 +80,14 @@ class Publish(Base):
         self.assertEqual(out["detail"], "proof_checks_failed")
         self.assertEqual(self.gh_calls(), [])
 
-    def test_blocks_a_dirty_proof(self):
+    def test_blocks_a_dirty_proof(self) -> None:
         (self.work / "feature.txt").write_text("wip\n")
         self.assertEqual(self.gate(self.work, "--allow-dirty")[0], 0)
         git(self.work, "checkout", "--", "feature.txt")
         self.fails(6, "dirty", "publish", "--repo", self.work, "--base", "main")
         self.assertEqual(self.gh_calls(), [])
 
-    def test_refuses_the_base_branch_and_detached_head(self):
+    def test_refuses_the_base_branch_and_detached_head(self) -> None:
         git(self.work, "switch", "-q", "main")
         self.fails(
             6, "on_base_branch", "publish", "--repo", self.work, "--base", "main"
@@ -56,7 +95,7 @@ class Publish(Base):
         git(self.work, "checkout", "-q", "--detach")
         self.fails(6, "detached_head", "publish", "--repo", self.work, "--base", "main")
 
-    def test_pushes_and_creates_the_pr_with_a_generated_body(self):
+    def test_pushes_and_creates_the_pr_with_a_generated_body(self) -> None:
         self.proven()
         self.rules()
         out = self.ok(
@@ -98,7 +137,7 @@ class Publish(Base):
             ],
         )
 
-    def test_title_needs_the_llm_when_several_commits(self):
+    def test_title_needs_the_llm_when_several_commits(self) -> None:
         self.commit(self.work, "second.txt", "2\n", "feat: second")
         self.proven()
         self.rules()
@@ -118,7 +157,7 @@ class Publish(Base):
         )
         self.assertIn("--draft", create)
 
-    def test_reuses_an_open_pr(self):
+    def test_reuses_an_open_pr(self) -> None:
         self.proven()
         listing = json.dumps([json.loads(pr_json())])
         self.rules(
@@ -131,12 +170,12 @@ class Publish(Base):
             self.gitleaks_calls()[0][1], "--log-opts=--remerge-diff origin/main..HEAD"
         )
 
-    def test_open_pr_on_another_base_blocks(self):
+    def test_open_pr_on_another_base_blocks(self) -> None:
         self.proven()
         self.rules(listing=json.dumps([json.loads(pr_json(baseRefName="develop"))]))
         self.fails(6, "base_mismatch", "publish", "--repo", self.work, "--base", "main")
 
-    def test_already_merged_pr_returns_without_pushing(self):
+    def test_already_merged_pr_returns_without_pushing(self) -> None:
         self.proven()
         head = git(self.work, "rev-parse", "HEAD")
         self.rules(listing=json.dumps([json.loads(pr_json("MERGED", headRefOid=head))]))
@@ -144,14 +183,14 @@ class Publish(Base):
         self.assertEqual((out["state"], out["created"]), ("MERGED", False))
         self.assertEqual(self.gitleaks_calls(), [])
 
-    def test_secret_in_the_range_blocks_before_the_push(self):
+    def test_secret_in_the_range_blocks_before_the_push(self) -> None:
         self.proven()
         self.rules()
         with mock.patch.dict(os.environ, {"GL_RC": "77"}):
             self.fails(6, "secret", "publish", "--repo", self.work, "--base", "main")
         self.assertEqual(git(self.origin, "branch", "--list", "feat"), "")
 
-    def test_scanner_error_blocks_the_push_as_scan_failed(self):
+    def test_scanner_error_blocks_the_push_as_scan_failed(self) -> None:
         self.proven()
         self.rules()
         with mock.patch.dict(os.environ, {"GL_RC": "2"}):
@@ -161,7 +200,7 @@ class Publish(Base):
         self.assertEqual(out["scanner_rc"], 2)
         self.assertEqual(git(self.origin, "branch", "--list", "feat"), "")
 
-    def test_stderr_error_with_exit_zero_blocks_the_push_as_scan_failed(self):
+    def test_stderr_error_with_exit_zero_blocks_the_push_as_scan_failed(self) -> None:
         # gitleaks#1981: it exits 0 when the underlying git command fails
         self.proven()
         self.rules()
@@ -174,7 +213,7 @@ class Publish(Base):
         self.assertEqual(git(self.origin, "branch", "--list", "feat"), "")
         self.assertEqual(self.gh_calls_of("pr", "create"), [])
 
-    def test_missing_base_ref_blocks_the_scan(self):
+    def test_missing_base_ref_blocks_the_scan(self) -> None:
         self.proven()
         self.rules()
         git(self.work, "update-ref", "-d", "refs/remotes/origin/main")
@@ -185,7 +224,7 @@ class Publish(Base):
         self.assertEqual(self.gitleaks_calls(), [])
         self.assertEqual(git(self.origin, "branch", "--list", "feat"), "")
 
-    def test_merged_pr_on_another_base_is_not_a_shortcut(self):
+    def test_merged_pr_on_another_base_is_not_a_shortcut(self) -> None:
         self.proven()
         head = git(self.work, "rev-parse", "HEAD")
         merged = json.loads(pr_json("MERGED", headRefOid=head, baseRefName="develop"))
@@ -194,7 +233,7 @@ class Publish(Base):
         self.assertEqual((out["state"], out["created"]), ("OPEN", True))
         self.assertEqual(len(self.gitleaks_calls()), 1)
 
-    def test_rejected_push(self):
+    def test_rejected_push(self) -> None:
         self.proven()
         self.rules()
         other = self.other_clone()
@@ -203,7 +242,7 @@ class Publish(Base):
         git(other, "push", "-q", "origin", "feat")
         self.fails(6, "push_rejected", "publish", "--repo", self.work, "--base", "main")
 
-    def test_nothing_to_publish(self):
+    def test_nothing_to_publish(self) -> None:
         git(self.work, "switch", "-q", "main")
         git(self.work, "switch", "-q", "-c", "empty")
         self.proven()
@@ -212,7 +251,7 @@ class Publish(Base):
             6, "nothing_to_publish", "publish", "--repo", self.work, "--base", "main"
         )
 
-    def test_gh_failures_are_mapped(self):
+    def test_gh_failures_are_mapped(self) -> None:
         self.proven()
         self.rules(create={"rc": 1, "stderr": "gh auth login required"})
         self.fails(6, "auth", "publish", "--repo", self.work, "--base", "main")
@@ -223,7 +262,7 @@ class Publish(Base):
         self.gh_rules({"match": ["pr", "list"], "rc": 1, "stderr": "boom"})
         self.fails(6, "gh_failed", "publish", "--repo", self.work, "--base", "main")
 
-    def test_pr_head_must_match_after_creation(self):
+    def test_pr_head_must_match_after_creation(self) -> None:
         self.proven()
         self.rules(view=pr_json(headRefOid="f" * 40))
         out = self.fails(
@@ -231,18 +270,62 @@ class Publish(Base):
         )
         self.assertEqual(out["pr_head"], "f" * 40)
 
+    def stale_view(self, *heads: str) -> None:
+        self.rules()
+        self.gh_rules(
+            {"match": ["pr", "list"], "stdout": "[]"},
+            {"match": ["pr", "create"], "stdout": CREATE_URL},
+            {
+                "match": ["pr", "view"],
+                "seq": [{"stdout": pr_json(headRefOid=h)} for h in heads],
+            },
+        )
 
-def check_rows(*states):
+    def test_stale_ancestor_head_is_retried(self) -> None:
+        self.proven()
+        self.stale_view(self.base_sha, "{HEAD}")
+        with mock.patch("gd_pr.sleep") as nap:
+            out = self.ok("publish", "--repo", self.work, "--base", "main")
+        self.assertEqual(out["head"], git(self.work, "rev-parse", "HEAD"))
+        nap.assert_called_once()
+
+    def test_stale_ancestor_head_exhausts_retries(self) -> None:
+        self.proven()
+        self.stale_view(self.base_sha)
+        with mock.patch("gd_pr.sleep") as nap:
+            out = self.fails(
+                6, "head_moved", "publish", "--repo", self.work, "--base", "main"
+            )
+        self.assertEqual(out["pr_head"], self.base_sha)
+        self.assertEqual(nap.call_count, 5)
+
+    def test_non_ancestor_head_fails_without_retry(self) -> None:
+        self.proven()
+        self.stale_view("f" * 40, "{HEAD}")
+        with mock.patch("gd_pr.sleep") as nap:
+            self.fails(
+                6, "head_moved", "publish", "--repo", self.work, "--base", "main"
+            )
+        nap.assert_not_called()
+
+
+def check_rows(*states: tuple[str, str]) -> str:
     return "".join(
         f"{name}\t{state}\t1m\thttps://ci.test/{name}\t\n" for name, state in states
     )
 
 
 class Ci(Base):
-    def ci(self, *extra):
+    def ci(self, *extra: object) -> tuple[int, dict[str, Any]]:
         return self.call("ci", "--repo", self.work, "--pr", "7", *extra)
 
-    def billing_rules(self, jobs_steps=None, annotations=None, runs=None, total=None):
+    def billing_rules(
+        self,
+        jobs_steps: dict[str, Any] | None = None,
+        annotations: dict[str, Any] | None = None,
+        runs: list[dict[str, Any]] | None = None,
+        total: int | None = None,
+    ) -> None:
         runs = (
             runs
             if runs is not None
@@ -279,7 +362,7 @@ class Ci(Base):
             },
         )
 
-    def test_green_watches_with_fail_fast(self):
+    def test_green_watches_with_fail_fast(self) -> None:
         self.gh_rules(
             {
                 "match": ["pr", "checks"],
@@ -293,7 +376,7 @@ class Ci(Base):
         for token in ("--watch", "--fail-fast", "--interval", "30", "--required"):
             self.assertIn(token, call)
 
-    def test_later_rows_replace_earlier_ones(self):
+    def test_later_rows_replace_earlier_ones(self) -> None:
         self.gh_rules(
             {
                 "match": ["pr", "checks"],
@@ -306,7 +389,7 @@ class Ci(Base):
             [{"name": "build", "state": "pass", "url": "https://ci.test/build"}],
         )
 
-    def test_statuses_without_failure(self):
+    def test_statuses_without_failure(self) -> None:
         self.gh_rules(
             {
                 "match": ["pr", "checks"],
@@ -338,10 +421,10 @@ class Ci(Base):
         )
         self.fails(5, "pending_timeout", "ci", "--repo", self.work, "--pr", "7")
 
-    def workflow(self):
+    def workflow(self) -> None:
         self.commit(self.work, ".github/workflows/ci.yml", "on: push\n", "ci: add")
 
-    def test_grace_polls_without_watch_until_a_check_appears(self):
+    def test_grace_polls_without_watch_until_a_check_appears(self) -> None:
         self.workflow()
         none = {"rc": 1, "stderr": "no checks reported on the 'feat' branch"}
         rows = {"stdout": check_rows(("build", "pass"))}
@@ -355,7 +438,7 @@ class Ci(Base):
         self.assertTrue(all("--watch" not in c for c in calls[:3]))
         self.assertIn("--watch", calls[3])
 
-    def test_grace_end_without_checks_is_no_checks(self):
+    def test_grace_end_without_checks_is_no_checks(self) -> None:
         self.workflow()
         self.gh_rules(
             {"match": ["pr", "checks"], "rc": 1, "stderr": "no checks reported"}
@@ -368,7 +451,7 @@ class Ci(Base):
         self.assertEqual(len(self.gh_calls_of("pr", "checks")), 1)
         sleep.assert_not_called()
 
-    def test_no_workflow_files_means_an_immediate_no_checks(self):
+    def test_no_workflow_files_means_an_immediate_no_checks(self) -> None:
         self.gh_rules(
             {"match": ["pr", "checks"], "rc": 1, "stderr": "no checks reported"}
         )
@@ -378,12 +461,12 @@ class Ci(Base):
         self.assertEqual(len(self.gh_calls_of("pr", "checks")), 1)
         sleep.assert_not_called()
 
-    def test_gh_error_during_the_grace_poll_is_blocked(self):
+    def test_gh_error_during_the_grace_poll_is_blocked(self) -> None:
         self.workflow()
         self.gh_rules({"match": ["pr", "checks"], "rc": 1, "stderr": "HTTP 500"})
         self.fails(6, "gh_failed", "ci", "--repo", self.work, "--pr", "7")
 
-    def test_real_failure_is_red(self):
+    def test_real_failure_is_red(self) -> None:
         self.billing_rules(
             jobs_steps={"stdout": json.dumps({"steps": [{"name": "run"}]})}
         )
@@ -392,7 +475,7 @@ class Ci(Base):
             (out["status"], out["runs"]), ("red", ["https://ci.test/build"])
         )
 
-    def test_billing_failure_is_reported_not_red(self):
+    def test_billing_failure_is_reported_not_red(self) -> None:
         self.billing_rules()
         out = self.ok("ci", "--repo", self.work, "--pr", "7")
         self.assertEqual(
@@ -403,7 +486,7 @@ class Ci(Base):
         self.assertTrue(all(len(c) == 2 for c in apis))
         self.assertTrue(any("annotations" in c[1] for c in apis))
 
-    def many_failed_runs(self, count):
+    def many_failed_runs(self, count: int) -> list[dict[str, Any]]:
         return [
             {
                 "id": 100 + i,
@@ -414,24 +497,24 @@ class Ci(Base):
             for i in range(count)
         ]
 
-    def test_many_billing_failures_up_to_the_page_size_are_billing(self):
+    def test_many_billing_failures_up_to_the_page_size_are_billing(self) -> None:
         runs = self.many_failed_runs(28)
         self.billing_rules(runs=runs, total=28)
         out = self.ok("ci", "--repo", self.work, "--pr", "7")
         self.assertEqual(out["status"], "not_started_billing")
         self.assertEqual(out["runs"], [r["html_url"] for r in runs])
 
-    def test_more_failed_runs_than_a_page_is_unknown(self):
+    def test_more_failed_runs_than_a_page_is_unknown(self) -> None:
         self.billing_rules(runs=self.many_failed_runs(101))
         out = self.fails(5, "ci_unknown", "ci", "--repo", self.work, "--pr", "7")
         self.assertEqual(out["status"], "red")
 
-    def test_unseen_check_runs_beyond_the_first_page_are_unknown(self):
+    def test_unseen_check_runs_beyond_the_first_page_are_unknown(self) -> None:
         self.billing_rules(total=150)
         out = self.fails(5, "ci_unknown", "ci", "--repo", self.work, "--pr", "7")
         self.assertEqual(out["status"], "red")
 
-    def test_billing_phrase_in_the_run_output(self):
+    def test_billing_phrase_in_the_run_output(self) -> None:
         run = {
             "id": 11,
             "conclusion": "failure",
@@ -443,7 +526,7 @@ class Ci(Base):
             "not_started_billing",
         )
 
-    def test_zero_steps_without_the_phrase_is_red(self):
+    def test_zero_steps_without_the_phrase_is_red(self) -> None:
         self.billing_rules(
             annotations={
                 "stdout": json.dumps(
@@ -453,8 +536,8 @@ class Ci(Base):
         )
         self.fails(5, "ci_red", "ci", "--repo", self.work, "--pr", "7")
 
-    def test_unknown_api_answers_are_red_ci_unknown(self):
-        broken = [
+    def test_unknown_api_answers_are_red_ci_unknown(self) -> None:
+        broken: list[dict[str, Any]] = [
             {"annotations": {"rc": 1, "stderr": "HTTP 500"}},
             {"annotations": {"stdout": "not json"}},
             {"jobs_steps": {"rc": 1, "stderr": "HTTP 404"}},
@@ -484,12 +567,12 @@ class Ci(Base):
         )
         self.fails(5, "ci_unknown", "ci", "--repo", self.work, "--pr", "7")
 
-    def test_no_failed_run_in_the_api_is_plain_red(self):
+    def test_no_failed_run_in_the_api_is_plain_red(self) -> None:
         self.billing_rules(runs=[])
         out = self.fails(5, "ci_red", "ci", "--repo", self.work, "--pr", "7")
         self.assertEqual(out["status"], "red")
 
-    def test_gh_errors_are_blocked(self):
+    def test_gh_errors_are_blocked(self) -> None:
         self.gh_rules(
             {
                 "match": ["pr", "checks"],

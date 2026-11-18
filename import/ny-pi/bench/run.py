@@ -34,6 +34,8 @@ if __package__ in (None, ""):
 
 from bench import evidence, gate, report, runners
 from bench.classify import affects
+from bench.metrics import summary as metrics_summary
+from bench.power import sim as power_sim
 
 BENCH = Path(__file__).resolve().parent
 REPO = BENCH.parent
@@ -590,6 +592,30 @@ def main(argv: list[str] | None = None) -> int:
     ev.add_argument(
         "--strict", action="store_true", help="exit 1 when a run has no transcript"
     )
+    mt = sub.add_parser(
+        "metrics", help="layer-1 metrics from stored transcripts, per arm and paired"
+    )
+    mt.add_argument(
+        "--rounds", nargs="+", required=True, help="round directories (globs allowed)"
+    )
+    mt.add_argument(
+        "--focus", default="ny-pi", help="arm compared with every other arm"
+    )
+    mt.add_argument("--json", type=Path, dest="json_out")
+    pw = sub.add_parser(
+        "power", help="power of the P(ahead) claim by simulation, per (delta, k, n)"
+    )
+    pw.add_argument("--ny", type=Path, required=True)
+    pw.add_argument("--ref", type=Path, required=True)
+    pw.add_argument(
+        "--deltas", default=power_sim.DEFAULT_DELTAS, help="true pass-rate gaps"
+    )
+    pw.add_argument("--ks", default=power_sim.DEFAULT_KS, help="repetitions per task")
+    pw.add_argument("--ns", default=power_sim.DEFAULT_NS, help="number of tasks")
+    pw.add_argument(
+        "--sims", type=int, default=power_sim.N_SIMS, help="simulations per cell"
+    )
+    pw.add_argument("--json", type=Path, dest="json_out")
     sub.add_parser("probe")
     a = p.parse_args(argv)
 
@@ -684,6 +710,16 @@ def main(argv: list[str] | None = None) -> int:
         dirs = [Path(x) for pat in a.runs for x in (glob.glob(str(pat)) or [str(pat)])]
         a.out.write_text(report.render(dirs))
         print(f"report: {a.out}")
+        return 0
+    if a.cmd == "metrics":
+        dirs = [Path(x) for pat in a.rounds for x in (glob.glob(pat) or [pat])]
+        data = metrics_summary.compute(dirs, a.focus)
+        print(metrics_summary.render(data))
+        if a.json_out:
+            a.json_out.write_text(json.dumps(data, indent=1))
+        return 0
+    if a.cmd == "power":
+        print(power_sim.run(a.ny, a.ref, a.deltas, a.ks, a.ns, a.sims, a.json_out))
         return 0
     if a.cmd == "evidence":
         dirs = [Path(x) for pat in a.runs for x in (glob.glob(str(pat)) or [str(pat)])]

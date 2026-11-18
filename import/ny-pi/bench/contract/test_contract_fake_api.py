@@ -123,3 +123,21 @@ def test_route_and_record_tolerate_odd_bodies() -> None:
     assert api.record(b"not json")[:3] == ({}, "", 0)
     assert api.record(b"[1]")[3] == 1
     assert b"text_delta" in sse_events(Step(text="a"), "m", "id")
+
+
+def test_hits_carry_size_and_monotonic_times() -> None:
+    with FakeApi(SCRIPT) as api:
+        post(api.port, {"stream": True, "messages": [user("contract-case:c1")]})
+        (hit,) = api.hits
+    assert (hit.case, hit.turn) == ("c1", 0)
+    assert hit.size > 0
+    assert 0 < hit.arrived <= hit.done
+
+
+def test_done_is_stored_before_the_answer_reaches_the_client() -> None:
+    with FakeApi(SCRIPT) as api:
+        for _ in range(
+            200
+        ):  # the client reads the answer and checks at once; a later store would lose the race
+            post(api.port, {"stream": True, "messages": [user("contract-case:c1")]})
+            assert api.hits[-1].done > 0

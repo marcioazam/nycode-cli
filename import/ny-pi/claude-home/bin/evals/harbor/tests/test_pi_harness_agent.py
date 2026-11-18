@@ -85,6 +85,7 @@ def test_install_runs_fix_before_version(
     cmd = next(c for who, c in agent.calls if who == "agent")
     assert pi_harness_agent._LOCAL_ENV_FIX in cmd
     assert cmd.index(pi_harness_agent._LOCAL_ENV_FIX) < cmd.index("--version")
+    assert cmd.index("--version") < cmd.index("--help >/dev/null")
 
 
 def _install_cmd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> str:

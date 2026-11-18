@@ -94,7 +94,10 @@ class PiHarnessAgent(Pi):  # type: ignore[misc]
                 f"{_LOCAL_ENV_FIX}; "
                 f"{nvm_node_install_snippet()} && "
                 f"{merge}"
-                f"{_WRAPPER} --version"
+                f"{_WRAPPER} --version && "
+                # --help loads every extension once: jiti's transpile cache (/tmp/jiti) is then warm for the task run
+                # (cold 1.75 s vs warm 0.34 s measured); best effort, never fails the install.
+                f"({_WRAPPER} --help >/dev/null 2>&1 || true)"
             ),
             env={"HOME": _HOME},
         )

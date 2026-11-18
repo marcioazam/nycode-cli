@@ -7,6 +7,8 @@ from typing import Any
 import check
 import contract_rules as cr
 import pytest
+import speed
+from fake_api import Hit
 
 MP = pytest.MonkeyPatch
 
@@ -235,3 +237,136 @@ def test_arm_that_cannot_execute_or_times_out(tmp_path: Path, monkeypatch: MP) -
             arm, {"PATH": "/usr/bin:/bin"}, api, {}, tmp_path / "work"
         )
         assert session.run("lento") == ([], "tempo esgotado (0.2s)")
+
+
+# Fake arm for speed.py: --version makes the stage; -p sleeps BOOT, then runs the 3-turn script against the
+# stage's models.json with GAP seconds of "tool time" per tool turn, and logs "NAME STAGE TMPDIR".
+FAKE_SPEED_ARM = r"""#!/usr/bin/env bash
+set -euo pipefail
+if [ "$1" = --version ]; then mkdir -p "$BENCH_STAGE/.pi/agent" && echo 0.0.0; exit 0; fi
+echo "@NAME@ $BENCH_STAGE $TMPDIR" >> "$FAKE_LOG"
+[ "@NAME@" = broken ] && exit 3
+exec python3 - "$BENCH_STAGE/.pi/agent" "$@" <<'PY'
+import json, sys, time, urllib.request
+agent, args = sys.argv[1], sys.argv[2:]
+base = json.load(open(f"{agent}/models.json"))["providers"]["anthropic"]["baseUrl"]
+time.sleep(@BOOT@)
+messages = [{"role": "user", "content": [{"type": "text", "text": args[-1]}]}]
+for _ in range(3):
+    body = {"model": "fake", "stream": True, "messages": messages}
+    stream = urllib.request.urlopen(urllib.request.Request(base + "/v1/messages", data=json.dumps(body).encode())).read().decode()
+    events = [json.loads(l[6:]) for l in stream.splitlines() if l.startswith("data: ")]
+    block = next(e for e in events if e["type"] == "content_block_start")["content_block"]
+    if block["type"] != "tool_use":
+        break
+    time.sleep(@GAP@)
+    result = {"type": "tool_result", "tool_use_id": block["id"], "content": "ok"}
+    messages += [{"role": "assistant", "content": [block]}, {"role": "user", "content": [result]}]
+PY
+"""
+
+
+@pytest.fixture
+def speed_arms(tmp_path: Path, monkeypatch: MP) -> Path:
+    """Arms ``slow`` (boot 0.3 s, 0.1 s per tool turn), ``fast`` and ``broken``; returns the invocation log."""
+    folder = tmp_path / "arms"
+    folder.mkdir()
+    for name, boot, gap in (("slow", 0.3, 0.1), ("fast", 0.0, 0.0), ("broken", 0, 0)):
+        arm = folder / name
+        arm.write_text(
+            FAKE_SPEED_ARM.replace("@NAME@", name)
+            .replace("@BOOT@", str(boot))
+            .replace("@GAP@", str(gap))
+        )
+        arm.chmod(0o755)
+    log = tmp_path / "log.txt"
+    monkeypatch.setattr(check, "ARMS_DIR", folder)
+    monkeypatch.setenv("FAKE_LOG", str(log))
+    monkeypatch.delenv("BENCH_STAGE", raising=False)
+    return log
+
+
+def hit(seq: int, arrived: float, done: float, size: int = 400) -> Hit:
+    return Hit(seq, "speed", seq, size, arrived, done)
+
+
+def test_metrics_from_known_timestamps() -> None:
+    hits = [hit(0, 10.5, 10.6), hit(1, 11.0, 11.1), hit(2, 11.7, 11.8)]
+    got = speed.metrics(10.0, hits, 12.0)
+    assert got == pytest.approx(
+        {
+            "boot_s": 0.5,
+            "turn_gap_s": 0.5,  # median of 11.0-10.6 and 11.7-11.1
+            "exit_s": 0.2,
+            "total_s": 2.0,
+            "first_request_bytes": 400,
+            "first_request_tokens_est": 100,
+        }
+    )
+    with pytest.raises(check.EnvError, match="pedidos"):
+        speed.metrics(10.0, hits[:1], 12.0)
+
+
+def test_metrics_use_routed_hits_only() -> None:
+    aux = Hit(0, "", 0, 9999, 10.1, 10.2)
+    got = speed.metrics(
+        10.0, [aux, hit(1, 10.5, 10.6), hit(2, 11.0, 11.1), hit(3, 11.7, 11.8)], 12.0
+    )
+    assert got["boot_s"] == pytest.approx(0.5)
+    assert got["first_request_bytes"] == 400
+
+
+def test_metrics_reject_unfinished_hit() -> None:
+    hits = [hit(0, 10.5, 10.6), hit(1, 11.0, 11.1), hit(2, 11.7, 0.0)]
+    with pytest.raises(check.EnvError, match="fim de resposta"):
+        speed.metrics(10.0, hits, 12.0)
+
+
+def test_stats_and_paired_ratio() -> None:
+    assert speed.median([3.0, 1.0, 2.0]) == 2.0
+    assert speed.median([1.0, 2.0, 3.0, 10.0]) == 2.5
+    assert speed.p90([float(n) for n in range(1, 11)]) == 9.0
+    assert speed.paired_ratio([2.0, 4.0, 9.0], [1.0, 2.0, 3.0]) == 2.0
+
+
+def test_schedule_interleaves_arms() -> None:
+    assert speed.schedule(["a", "b"], 2) == [("a", 0), ("b", 0), ("a", 1), ("b", 1)]
+
+
+@pytest.mark.usefixtures("speed_arms")
+def test_missing_arm_and_failing_pi_exit_2(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    assert speed.main(["--arms", "slow,nope", "--reps", "1"]) == 2
+    assert "braço inexistente: nope" in capsys.readouterr().err
+    assert speed.main(["--arms", "broken", "--reps", "1"]) == 2
+    assert "falhou" in capsys.readouterr().err
+
+
+def test_hot_run_interleaves_and_pairs(
+    tmp_path: Path, speed_arms: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    out = tmp_path / "speed.json"
+    assert speed.main(["--arms", "slow,fast", "--reps", "2", "--json", str(out)]) == 0
+    lines = [line.split() for line in speed_arms.read_text().splitlines()]
+    # one unreported warm-up round, then the reported reps, always alternating
+    assert [line[0] for line in lines] == ["slow", "fast"] * 3
+    assert len({line[1] for line in lines if line[0] == "slow"}) == 1  # hot: same stage
+    report = json.loads(out.read_text())
+    assert len(report["runs"]["slow"]) == len(report["runs"]["fast"]) == 2
+    slow, fast = report["summary"]["slow"], report["summary"]["fast"]
+    assert slow["boot_s"]["median"] > fast["boot_s"]["median"] + 0.2
+    assert slow["turn_gap_s"]["median"] > fast["turn_gap_s"]["median"] + 0.05
+    assert report["ratio"]["fast"]["boot_s"] > 1.5
+    assert "boot_s" in capsys.readouterr().out
+
+
+def test_cold_uses_fresh_stage_and_cache_per_run(
+    tmp_path: Path, speed_arms: Path
+) -> None:
+    assert speed.main(["--arms", "fast", "--reps", "2", "--cold"]) == 0
+    lines = [line.split() for line in speed_arms.read_text().splitlines()]
+    assert len(lines) == 2  # no warm-up when cold
+    assert lines[0][1] != lines[1][1]
+    assert lines[0][2] != lines[1][2]
+    assert not Path(lines[0][1]).exists()

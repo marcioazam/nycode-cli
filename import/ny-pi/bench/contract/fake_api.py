@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import re
 import threading
+import time
 from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import TYPE_CHECKING, Any, Self
@@ -30,6 +31,18 @@ class Step:
     text: str = "ok"
     tool_name: str | None = None
     tool_input: Mapping[str, object] = field(default_factory=dict)
+
+
+@dataclass
+class Hit:
+    """One request as the server saw it: body size and ``time.monotonic()`` of arrival and of the end of the answer."""
+
+    seq: int
+    case: str
+    turn: int
+    size: int
+    arrived: float
+    done: float = 0.0
 
 
 def route(body: Mapping[str, Any]) -> tuple[str, int]:
@@ -119,6 +132,7 @@ class FakeApi:
         self._lock = threading.Lock()
         self._captured: dict[str, list[dict[str, Any]]] = {}
         self._count = 0
+        self.hits: list[Hit] = []
         self._server: ThreadingHTTPServer | None = None
         self._thread: threading.Thread | None = None
 
@@ -151,6 +165,7 @@ class FakeApi:
             seq = self._count
             self._count += 1
             self._captured.setdefault(case, []).append(body)
+            self.hits.append(Hit(seq, case, turn, len(raw), time.monotonic()))
         if self._capture_dir is not None:
             (
                 self._capture_dir / f"req-{seq:03d}-{case or 'unrouted'}.json"
@@ -195,7 +210,10 @@ class FakeApi:
                 self.send_header("content-type", ctype)
                 self.send_header("content-length", str(len(payload)))
                 self.end_headers()
+                # Before the final write: the client may read the answer and call back before a later store runs.
+                api.hits[seq].done = time.monotonic()
                 self.wfile.write(payload)
+                self.wfile.flush()
 
             def do_GET(self) -> None:
                 self.send_error(404)

@@ -198,6 +198,8 @@ $HOME/.pi/agent/claude-home/patches/pi-code/zzzzzzz-subagent-model-effort/tracke
 $HOME/.pi/agent/claude-home/patches/pi-code/zzzzzzzz-statusline-provider.patch	claude-home/patches/pi-code/zzzzzzzz-statusline-provider.patch
 $HOME/.pi/agent/claude-home/patches/pi-code/zzzzzzzz-statusline-provider/provider.test.ts	claude-home/patches/pi-code/zzzzzzzz-statusline-provider/provider.test.ts
 $HOME/.pi/agent/claude-home/patches/pi-core/cache-warm-identity.mjs	claude-home/patches/pi-core/cache-warm-identity.mjs
+$HOME/.pi/agent/claude-home/patches/pi-core/mcp-close-grace.mjs	claude-home/patches/pi-core/mcp-close-grace.mjs
+$HOME/.pi/agent/claude-home/patches/pi-core/mcp-close-grace.test.ts	claude-home/patches/pi-core/mcp-close-grace.test.ts
 $HOME/.pi/agent/claude-home/plugins/claude-hud/statusline.mjs	claude-home/plugins/claude-hud/statusline.mjs
 $HOME/.pi/agent/claude-home/rules-ref/docs-and-knowledge.md	claude-home/rules-ref/docs-and-knowledge.md
 $HOME/.pi/agent/claude-home/rules-ref/harness-economy.md	claude-home/rules-ref/harness-economy.md
