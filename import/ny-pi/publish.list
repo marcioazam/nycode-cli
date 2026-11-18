@@ -201,6 +201,7 @@ $HOME/.pi/agent/claude-home/patches/pi-core/cache-warm-identity.mjs	claude-home/
 $HOME/.pi/agent/claude-home/patches/pi-core/mcp-close-grace.mjs	claude-home/patches/pi-core/mcp-close-grace.mjs
 $HOME/.pi/agent/claude-home/patches/pi-core/mcp-close-grace.test.ts	claude-home/patches/pi-core/mcp-close-grace.test.ts
 $HOME/.pi/agent/claude-home/plugins/claude-hud/statusline.mjs	claude-home/plugins/claude-hud/statusline.mjs
+$HOME/.pi/agent/claude-home/rules-ref/delivery-and-orchestration.md	claude-home/rules-ref/delivery-and-orchestration.md
 $HOME/.pi/agent/claude-home/rules-ref/docs-and-knowledge.md	claude-home/rules-ref/docs-and-knowledge.md
 $HOME/.pi/agent/claude-home/rules-ref/harness-economy.md	claude-home/rules-ref/harness-economy.md
 $HOME/.pi/agent/claude-home/rules-ref/research-and-tools.md	claude-home/rules-ref/research-and-tools.md
