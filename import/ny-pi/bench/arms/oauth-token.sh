@@ -35,8 +35,14 @@ bench_pi_workspace_header() {
   python3 - "$1" <<'PY'
 import json, os, sys
 p = sys.argv[1]
+ws = os.environ["BENCH_ANTHROPIC_WORKSPACE_ID"]
 d = json.load(open(p)) if os.path.exists(p) else {}
-d.setdefault("providers", {}).setdefault("anthropic", {}).setdefault("headers", {})["anthropic-workspace-id"] = os.environ["BENCH_ANTHROPIC_WORKSPACE_ID"]
-json.dump(d, open(p, "w"), indent=2)
+h = d.setdefault("providers", {}).setdefault("anthropic", {}).setdefault("headers", {})
+if h.get("anthropic-workspace-id") != ws:
+    # Parallel runs share the stage: write a temp file and rename, so no reader sees a half-written file.
+    h["anthropic-workspace-id"] = ws
+    t = f"{p}.{os.getpid()}.tmp"
+    json.dump(d, open(t, "w"), indent=2)
+    os.replace(t, p)
 PY
 }

@@ -251,5 +251,20 @@ for a in claude-vanilla pi-vanilla ny-pi; do
 done
 check "overlay: models.json do stage não entra no hash" bash -c "! grep -qx 'models.json' '$A/overlay.list'"
 
+# Parallel runs share the ny-pi stage: concurrent merges never expose a half-written models.json to readers.
+# shellcheck disable=SC2329 # invoked through check
+race() {
+  local m=$T/race/models.json i
+  mkdir -p "$T/race" && printf '{"providers":{"anthropic":{"baseUrl":"keep"}}}' >"$m"
+  for i in $(seq 1 30); do
+    (PATH=$T/rb:$PATH BENCH_ANTHROPIC_WORKSPACE_ID=ws$((i % 2)) bash -c ". '$A/oauth-token.sh'; bench_pi_workspace_header '$m'") &
+    ("$RPY" -c "import json,sys
+for _ in range(300): json.load(open(sys.argv[1]))" "$m" || touch "$T/race/bad") &
+  done
+  wait
+  [ ! -e "$T/race/bad" ] && "$RPY" -c "import json,sys; json.load(open(sys.argv[1]))['providers']['anthropic']['baseUrl']" "$m"
+}
+check "api/ny-pi: merges paralelos do cabeçalho não corrompem o models.json" race
+
 echo "falhas: $fails"
 exit $((fails > 0))
