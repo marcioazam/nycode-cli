@@ -222,8 +222,11 @@ a lower cost than Claude Code on both suites.
   6 points cannot be resolved.
 - One model, one machine, Python-heavy tasks. No task was solved by ny-pi alone.
 - Terminal-Bench 2.0 re-measurement: against Claude Code the interval (-3.2 to +6.0 points) crosses zero, so
-  non-inferiority is shown but a lead is not; the references were not interleaved with the re-run; ny-pi and Claude Code ran through a subscription login and plain pi through
-  an API key.
+  non-inferiority is shown but a lead is not; the references were not interleaved with the re-run; ny-pi and Claude
+  Code ran through a subscription login and plain pi through an API key.
+- The ny-pi arm is this repository plus the maintainer's untracked personal layer (`bench/arms/overlay.list`: personal
+  rules of about 2,500 tokens, `settings.json`, `local.env`, vendored packages), frozen by hash. A fresh install
+  without that layer has not been benchmarked; its accuracy and cost may differ.
 
 ### Changes tried and rejected (Terminal-Bench 2.0 A/B, 2026-11-17)
 
