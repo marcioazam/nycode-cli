@@ -49,6 +49,7 @@ echo "$PWD :: $*" >>"$STUB_DIR/calls"
 case "$2" in
 run) exit "${STUB_RUN_RC:-0}" ;;
 gate) echo "## bench-pr"; exit "${STUB_GATE_RC:-0}" ;;
+affects) cat "$STUB_DIR/affects" 2>/dev/null || echo functional ;;
 post-status) echo "$*" | sed -n 's/.*--state \([a-z]*\) --description \(.*\)/\1|\2/p' >>"$STUB_DIR/posts" ;;
 esac
 STUB
@@ -135,7 +136,26 @@ check "lock: segunda execução não roda" bash -c "[ ! -e '$T/calls' ] && grep 
 wait
 
 # 6. credentials / vanilla
-check "sem BENCH_CC_CREDENTIALS falha" bash -c "! env -u BENCH_CC_CREDENTIALS bash '$here/bench-pr.sh' --poll >/dev/null 2>&1"
+check "sem BENCH_CC_CREDENTIALS nem BENCH_API_KEY_FILE falha" bash -c "! env -u BENCH_CC_CREDENTIALS -u BENCH_API_KEY_FILE bash '$here/bench-pr.sh' --poll >/dev/null 2>&1"
+reset
+prs
+BENCH_API_KEY_FILE=/dev/null bash -c "unset BENCH_CC_CREDENTIALS; bash '$here/bench-pr.sh' --poll" >/dev/null 2>&1
+check "modo API dispensa BENCH_CC_CREDENTIALS" test "$(runs)" = 1
+
+# 7. non-functional PR: success N/A + comment, no benchmark
+reset
+prs
+printf 'non-functional\n- docs/a.md: docs/tooling\n' >"$T/affects"
+bash "$here/bench-pr.sh" --poll >/dev/null 2>&1
+check "não funcional: não roda benchmark" test "$(runs)" = 0
+check "não funcional: success N/A sem pending" bash -c "[ \"\$(wc -l <'$T/posts')\" = 1 ] && grep -q '^success|N/A: sem mudança funcional' '$T/posts'"
+check "não funcional: comentário lista os arquivos" bash -c "grep -q 'pr comment 1 --repo repo-owner/ny-pi --body-file' '$T/comments' && grep -q 'docs/a.md' '$T/state/runs/$SHA/na.md'"
+check "não funcional: worktree removido" test -z "$(ls -A "$T/state/wt")"
+reset
+printf 'garbage\n' >"$T/affects"
+bash "$here/bench-pr.sh" --poll >/dev/null 2>&1
+check "veredito ilegível: fail closed roda" test "$(runs)" = 1
+rm -f "$T/affects"
 check "vanilla-retest sem --budget-usd falha" bash -c "! bash '$here/vanilla-retest.sh' >/dev/null 2>&1"
 reset
 out=$(bash "$here/vanilla-retest.sh" --budget-usd 10 2>&1)

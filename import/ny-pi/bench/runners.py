@@ -263,17 +263,47 @@ def harbor_bin() -> list[str]:
 
 
 def harbor_agent(
-    arm: str, model: str, harbor_dir: Path
+    arm: str,
+    model: str,
+    harbor_dir: Path,
+    api: bool = False,
+    workspace: str | None = None,
 ) -> tuple[list[str], dict[str, str], str]:
-    """(agent flags, extra env, token env var name) for an arm; the token itself is added by the caller."""
+    """(agent flags, extra env, token env var name) for an arm; the token itself is added by the caller.
+    api=True (API-key mode): cc-vanilla drops OAuth and carries the workspace header through `--ae`
+    (Harbor's claude-code agent forwards only known variables; `--ae` lands in every agent exec);
+    pi-vanilla uses the subclass that writes the header into models.json."""
     m = f"anthropic/{model}"
     if arm == "cc-vanilla":
+        if api:
+            hdr = (
+                [
+                    "--ae",
+                    f"ANTHROPIC_CUSTOM_HEADERS=anthropic-workspace-id: {workspace}",
+                ]
+                if workspace
+                else []
+            )
+            return ["-a", "claude-code", *hdr, "-m", m], {}, "ANTHROPIC_API_KEY"
         return (
             ["-a", "claude-code", "-m", m],
             {"CLAUDE_FORCE_OAUTH": "1"},
             "CLAUDE_CODE_OAUTH_TOKEN",
         )
     if arm == "pi-vanilla":
+        if api:
+            return (
+                [
+                    "-a",
+                    "pi_vanilla_api_agent:PiVanillaApiAgent",
+                    "--ak",
+                    "version=1.5.2",
+                    "-m",
+                    m,
+                ],
+                {"PYTHONPATH": str(harbor_dir)},
+                "ANTHROPIC_API_KEY",
+            )
         return (
             ["-a", "pi", "--ak", "version=1.5.2", "-m", m],
             {},

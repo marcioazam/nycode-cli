@@ -185,6 +185,31 @@ def test_ny_pi_harbor_bundles_the_checkout_stage(
     assert (tmp_path / "bundled_home").read_text().strip() == str(stage)
 
 
+def test_ny_pi_harbor_bundle_is_per_round(tmp_path: Path, monkeypatch: MP) -> None:
+    """Two arms at once must not share one bundle path: each round bundles into its own out dir."""
+    stage = tmp_path / "stage"
+    stage.mkdir()
+    (stage / ".overlay-sha").write_text("abc")
+    (stage / ".ready").touch()
+    hd = tmp_path / "hd"
+    hd.mkdir()
+    script(hd / "bundle.sh", f'echo "$1" >> {tmp_path}/bundle_args\n')
+    harbor = script(
+        tmp_path / "harbor", f'echo "$PI_HARNESS_BUNDLE" >> {tmp_path}/env_seen\n'
+    )
+    monkeypatch.setenv("BENCH_HARBOR", str(harbor))
+    monkeypatch.setenv("BENCH_STAGE", str(stage))
+    monkeypatch.setattr(rb, "HARBOR_DIR", hd)
+    monkeypatch.setattr(rb, "oauth_token", lambda: "tok")
+    steps = rb.build_plan("pr", rb.load_toml(BENCH / "suites.toml"), ["s2"], k=1)
+    outs = [tmp_path / "o1", tmp_path / "o2"]
+    for o in outs:
+        rb._harbor_step(steps[0], "ny-pi", "m", o, 5.0)
+    want = [str(o / "pi-harness-bundle.tgz") for o in outs]
+    assert (tmp_path / "bundle_args").read_text().split() == want
+    assert set((tmp_path / "env_seen").read_text().split()) == set(want)
+
+
 def test_ny_pi_harbor_refuses_without_stage(tmp_path: Path, monkeypatch: MP) -> None:
     monkeypatch.delenv("BENCH_STAGE", raising=False)
     monkeypatch.setenv("BENCH_STAGE_ROOT", str(tmp_path / "none"))

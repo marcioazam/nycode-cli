@@ -40,6 +40,24 @@ _LOCAL_ENV_FIX = (
     'if [ -f "$f" ]; then t=$(mktemp "$f.XXXXXX") && cp "$f" "$t" && chmod 600 "$t" && mv -f "$t" "$f"; fi'
 )
 
+# node, not python3: task images may lack python3, and pi needs node anyway (nvm).
+_MERGE_JS = (
+    "const fs=require('fs');const p=process.argv[1];"
+    "const d=fs.existsSync(p)?JSON.parse(fs.readFileSync(p,'utf8')):{};"
+    "d.providers=d.providers||{};d.providers.anthropic=d.providers.anthropic||{};"
+    "d.providers.anthropic.headers=d.providers.anthropic.headers||{};"
+    "d.providers.anthropic.headers['anthropic-workspace-id']=process.env.WS;"
+    "fs.writeFileSync(p,JSON.stringify(d,null,2))"
+)
+
+
+def _models_merge(path: str, workspace: str) -> str:
+    """Shell snippet: add the workspace header to pi's anthropic provider, keeping the rest of models.json."""
+    return (
+        "( [ -s ~/.nvm/nvm.sh ] && . ~/.nvm/nvm.sh; "
+        f"WS={shlex.quote(workspace)} node -e {shlex.quote(_MERGE_JS)} {shlex.quote(path)} )"
+    )
+
 
 class PiHarnessAgent(Pi):  # type: ignore[misc]
     @staticmethod
@@ -59,6 +77,11 @@ class PiHarnessAgent(Pi):  # type: ignore[misc]
         await self.exec_as_root(environment, _ROOT_DEPS)
         await environment.upload_file(bundle, _REMOTE_BUNDLE)
         # The bundle is rooted at a fixed container home, whatever user runs the task.
+        # API-key mode (bench): a user key without workspace needs the header on every call.
+        ws = os.environ.get("ANTHROPIC_WORKSPACE_ID")
+        merge = (
+            f"{_models_merge(f'{_HOME}/.pi/agent/models.json', ws)} && " if ws else ""
+        )  # runs as the agent after nvm installs node; chmod a+rwX lets it write
         await self.exec_as_root(
             environment,
             f"mkdir -p {_HOME} && tar -xzf {_REMOTE_BUNDLE} -C {_HOME} && rm {_REMOTE_BUNDLE} "
@@ -70,6 +93,7 @@ class PiHarnessAgent(Pi):  # type: ignore[misc]
                 "set -euo pipefail; "
                 f"{_LOCAL_ENV_FIX}; "
                 f"{nvm_node_install_snippet()} && "
+                f"{merge}"
                 f"{_WRAPPER} --version"
             ),
             env={"HOME": _HOME},

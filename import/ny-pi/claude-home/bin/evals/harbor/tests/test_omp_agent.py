@@ -43,8 +43,8 @@ for _n in ("harbor", "harbor.agents", "harbor.agents.installed", "harbor.environ
     _stub(_n)
 _stub("harbor.agents.installed.pi", Pi=_Pi)
 _stub("harbor.environments.base", BaseEnvironment=object)
-sys.path.insert(0, str(Path(__file__).parent))
-import omp_agent
+sys.path.insert(0, str(Path(__file__).parent.parent))
+import omp_agent  # type: ignore[import-not-found]  # CI mypy runs with MYPYPATH=tests/
 
 
 class _Env:

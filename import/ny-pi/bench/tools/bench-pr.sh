@@ -27,8 +27,9 @@ case "$mode" in
   ;;
 esac
 
-if [[ -z ${BENCH_CC_CREDENTIALS:-} ]]; then
-  echo "bench-pr: BENCH_CC_CREDENTIALS is not set (path of the Claude credentials file; see docs/bench/RUNBOOK.md)" >&2
+# API-key mode (BENCH_API_KEY_FILE, + BENCH_ANTHROPIC_WORKSPACE_ID): run.py preflights the key; no OAuth file needed.
+if [[ -z ${BENCH_API_KEY_FILE:-} && -z ${BENCH_CC_CREDENTIALS:-} ]]; then
+  echo "bench-pr: set BENCH_API_KEY_FILE (API-key mode) or BENCH_CC_CREDENTIALS (path of the Claude credentials file); see docs/bench/RUNBOOK.md" >&2
   exit 2
 fi
 
@@ -63,6 +64,29 @@ run_pr() {
   git -C "$STATE/repo" worktree add --quiet --detach "$wt" "$sha"
   post() { (cd "$wt" && python3 bench/run.py post-status --pr "$n" --state "$1" --description "$2"); }
   cleanup() { git -C "$STATE/repo" worktree remove --force "$wt" || true; }
+
+  # Declared policy (owner, 2026-11-17): the benchmark runs only for PRs that change the harness's functional behavior.
+  # Anything the classifier cannot read counts as functional (fail closed).
+  mkdir -p "$out"
+  verdict=$(cd "$wt" && python3 bench/run.py affects --base main --head "$sha" 2>/dev/null) || verdict=functional
+  if [[ $(head -n1 <<<"$verdict") == non-functional ]]; then
+    {
+      echo "## bench-pr: N/A"
+      echo
+      echo "Sem mudança funcional no harness: o benchmark não rodou (política do dono, 2026-11-17). Arquivos:"
+      echo
+      echo '```'
+      tail -n +2 <<<"$verdict"
+      echo '```'
+    } >"$out/na.md"
+    post success "N/A: sem mudança funcional" || {
+      cleanup
+      return 1
+    }
+    gh pr comment "$n" --repo "$REPO" --body-file "$out/na.md" >/dev/null || true
+    cleanup
+    return 0
+  fi
 
   post pending "bench-pr em execução" || {
     cleanup

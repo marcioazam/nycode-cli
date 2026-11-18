@@ -39,6 +39,13 @@ Pré-requisitos no PATH: `gh` autenticado como o dono do repositório, `git`, `j
 | `BENCH_JOBS` | não | paralelismo da rodada (default 4); tem de ser igual ao `jobs` do `baseline-main` (hoje 6), senão o gate dá NOT_COMPARABLE |
 | `BENCH_PR_BUDGET` | não | teto em US$ da rodada de PR (default 12) |
 
+O token OAuth da conta de benchmark só é renovado entre braços, nunca durante um braço: a renovação revoga o token que os contêineres em execução copiaram (2026-11-16: 5 execuções do braço Claude Code com 401 "OAuth token revoked").
+Braços ny-pi podem rodar em paralelo: cada rodada grava o próprio pacote em `<out>/pi-harness-bundle.tgz`.
+
+Modo chave de API (opcional, todos os braços): `BENCH_API_KEY_FILE=<arquivo com a chave>` cobra o crédito de API em vez do plano e dispensa `BENCH_CC_CREDENTIALS`.
+Chave de usuário sem workspace exige `BENCH_ANTHROPIC_WORKSPACE_ID=<id>`, enviado como cabeçalho `anthropic-workspace-id` em toda chamada: o `ny-pi` grava-o no `models.json` do contêiner; o `cc-vanilla` usa `ANTHROPIC_API_KEY` mais `ANTHROPIC_CUSTOM_HEADERS` (via `--ae` do Harbor), sem `CLAUDE_FORCE_OAUTH`; o `pi-vanilla` roda com `pi_vanilla_api_agent.py`, que mescla o cabeçalho no `models.json` depois da instalação padrão.
+Trocar OAuth por API muda o pedido do pi (sem a identidade do Claude Code no system prompt e sem renomear ferramentas): não misture modos dentro de um braço nem de uma comparação.
+
 ## Fluxo do PR
 
 1. A cada 10 min `bench-pr.timer` chama `bench-pr.sh --poll`. Só entram PRs abertos do mesmo repositório e do dono;
@@ -51,6 +58,19 @@ Pré-requisitos no PATH: `gh` autenticado como o dono do repositório, `git`, `j
    estado é reconferido: PR fechado depois da listagem não roda.
 3. Um lock (`$BENCH_STATE/lock`) impede duas execuções simultâneas (PR, nightly e vanilla).
 4. Rodar um PR à mão: `bench-pr.sh --pr N` (ignora o status final e reroda).
+5. Contrato mudou em 2026-11-17 por decisão do dono: o benchmark só roda quando o PR muda o comportamento funcional do
+   harness. Antes do `pending`, `bench run affects` (`bench/classify/affects.py`) lê `git diff base...head`: se todo arquivo for
+   documentação, teste, CI/ferramental do repositório, infra do próprio bench, licença ou só UI (temas, HUD,
+   statusline, extensões visuais, patches só de renderização), o status vira `success` com "N/A: sem mudança
+   funcional" e um comentário lista os arquivos; nada roda. Fail closed: caminho desconhecido, `*.md` instalado no
+   harness (`claude-home/**`, prompts), `publish.list` que instala ou remove algo e erro do classificador contam como funcional.
+   Refinamentos: `claude-home/docs/**` é registro (não funcional), salvo se algum `.md` de instrução instalado sob
+   `claude-home/` (fora de `docs/`) citar o caminho (`docs/...`, ou o diretório que o contém) no head; extensões só
+   interativas (`sound-notify`, `dev-commands`, `up-dequeue`, `puxar`) e `.pre-commit-config.yaml` não contam; um
+   `claude-home/patches/pi-code/*.patch` é UI só se todo arquivo que ele altera (`+++ b/...` no head) for
+   `subagent/fleet-ui/*`, `status-line.ts`, `notify.ts` ou `*.md`; patch sem alvos ou removido é funcional.
+6. Modo chave de API no `bench-pr.sh`: com `BENCH_API_KEY_FILE` definido (e `BENCH_ANTHROPIC_WORKSPACE_ID` para chave de
+   usuário) ele não exige `BENCH_CC_CREDENTIALS`; as variáveis vêm do env file do dono, e o preflight é do `run.py`.
 
 | Exit do gate | Status | Significado |
 | --- | --- | --- |

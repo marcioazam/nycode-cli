@@ -3,6 +3,7 @@
 
   run          run a tier for one arm (--dry-run prints the plan and the estimated cost, runs nothing)
   gate         paired verdict of a candidate round against the frozen base round + summary (bench/gate.py)
+  affects      functional|non-functional verdict of a PR diff (bench/classify/affects.py); bench-pr skips non-functional PRs
   post-status  publish the `bench-pr` commit status of a PR (L1: owner-authored PRs only)
   report       tables per suite and arm from rounds, used for the BASELINE
   scoreboard   the owner's three goal rules (accuracy, cost ceiling, exception) of ny-pi against reference rounds
@@ -32,6 +33,7 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from bench import evidence, gate, report, runners
+from bench.classify import affects
 
 BENCH = Path(__file__).resolve().parent
 REPO = BENCH.parent
@@ -157,6 +159,22 @@ def oauth_token() -> str:
     return p.stdout.strip()
 
 
+def api_key_file(arm: str) -> Path | None:
+    """BENCH_API_KEY_FILE: every arm bills an API key instead of the plan OAuth."""
+    f = os.environ.get("BENCH_API_KEY_FILE")
+    return Path(f) if f else None
+
+
+def read_api_key(path: Path) -> str:
+    try:
+        key = path.read_text().strip()
+    except OSError as e:
+        raise RuntimeError(f"BENCH_API_KEY_FILE unreadable: {e.strerror}") from e
+    if not key:
+        raise RuntimeError("BENCH_API_KEY_FILE is empty")
+    return key
+
+
 def arm_meta(
     arm: str, arms: dict[str, Any], kind: str, bin_: Path, model: str, budget: float
 ) -> dict[str, Any]:
@@ -232,8 +250,21 @@ def _harbor_step(
     jobs_n: int = 4,
 ) -> tuple[list[dict[str, Any]], bool]:
     cfg = s["cfg"]
-    agent_args, extra, tok_name = runners.harbor_agent(arm, model, HARBOR_DIR)
-    env = {tok_name: oauth_token(), **extra}
+    kf = api_key_file(arm)
+    ws = os.environ.get("BENCH_ANTHROPIC_WORKSPACE_ID")
+    agent_args, extra, tok_name = runners.harbor_agent(
+        arm, model, HARBOR_DIR, api=bool(kf), workspace=ws
+    )
+    if kf:
+        env = {"ANTHROPIC_API_KEY": read_api_key(kf), **extra}
+        if ws:
+            env["ANTHROPIC_WORKSPACE_ID"] = ws
+        for t in ("ANTHROPIC_OAUTH_TOKEN", "CLAUDE_CODE_OAUTH_TOKEN"):
+            os.environ.pop(
+                t, None
+            )  # run_harbor inherits os.environ: no OAuth in this mode
+    else:
+        env = {tok_name: oauth_token(), **extra}
     if arm == "ny-pi":
         # Bundle the stage of THIS checkout, never the live ~/.pi (2026-11-14: Harbor measured the local harness).
         short = subprocess.run(
@@ -243,10 +274,14 @@ def _harbor_step(
         stage = nypi_stage(short)
         if stage is None:
             raise RuntimeError(f"ny-pi stage for {short} not built; run the arm first")
+        # Per-round path: arms running side by side must not overwrite one shared bundle.
+        out.mkdir(parents=True, exist_ok=True)
+        bundle = out / "pi-harness-bundle.tgz"
         subprocess.run(
-            ["bash", str(HARBOR_DIR / "bundle.sh")],
+            ["bash", str(HARBOR_DIR / "bundle.sh"), str(bundle)],
             check=True, capture_output=True, env={**os.environ, "HOME": str(stage)},
         )  # fmt: skip
+        env["PI_HARNESS_BUNDLE"] = str(bundle)
     if (
         arm == "omp"
     ):  # fetch and checksum the pinned binaries the agent uploads (idempotent)
@@ -516,6 +551,10 @@ def main(argv: list[str] | None = None) -> int:
     g.add_argument("--base", type=Path, required=True)
     g.add_argument("--cand", type=Path, required=True)
     g.add_argument("--extend-with-cmd")
+    af = sub.add_parser("affects")
+    af.add_argument("--base", required=True)
+    af.add_argument("--head", required=True)
+    af.add_argument("--repo", type=Path, default=REPO)
     s = sub.add_parser("post-status")
     s.add_argument("--pr", type=int, required=True)
     s.add_argument(
@@ -564,12 +603,18 @@ def main(argv: list[str] | None = None) -> int:
             )
         if a.resume and not a.out:
             p.error("--resume needs --out (the round directory to continue)")
-        if "BENCH_CC_CREDENTIALS" not in os.environ:
-            p.error("BENCH_CC_CREDENTIALS is required for a real run")
-        try:  # preflight: a dying token fails every run silently (baseline 2026-11-14)
-            oauth_token()
-        except subprocess.CalledProcessError as e:
-            p.error(f"OAuth preflight failed: {(e.stderr or '').strip()[-300:]}")
+        if kf := api_key_file(a.arm):
+            try:  # never print the key
+                read_api_key(kf)
+            except RuntimeError as e:
+                p.error(str(e))
+        else:
+            if "BENCH_CC_CREDENTIALS" not in os.environ:
+                p.error("BENCH_CC_CREDENTIALS is required for a real run")
+            try:  # preflight: a dying token fails every run silently (baseline 2026-11-14)
+                oauth_token()
+            except subprocess.CalledProcessError as e:
+                p.error(f"OAuth preflight failed: {(e.stderr or '').strip()[-300:]}")
         out = (
             a.out
             or Path(os.environ.get("BENCH_OUT", "/tmp"))
@@ -604,6 +649,14 @@ def main(argv: list[str] | None = None) -> int:
                 f.write(md)
         (a.cand / "verdict.json").write_text(json.dumps(v, indent=2) + "\n")
         return code
+    if a.cmd == "affects":
+        try:
+            print(affects.render(*affects.evaluate(a.base, a.head, a.repo)))
+        except (
+            subprocess.CalledProcessError
+        ) as e:  # fail closed: unknown diff = functional
+            print(f"functional\nF (diff unreadable: git exit {e.returncode})")
+        return 0
     if a.cmd == "post-status":
         return gate.post_status(a.pr, a.state, a.description)
     if a.cmd == "scoreboard":
