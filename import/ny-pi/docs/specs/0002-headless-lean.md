@@ -63,6 +63,28 @@ Fontes (citações conferidas com `quote_check.py` em 2026-11-15):
 Não adotado agora: continuação automática em `agent_before_settle` e crítico independente (arXiv:2610.34577). Custam
 um turno extra ou mais; entram só se o gate mostrar que o bloco não sustenta o ganho.
 
+## Item 6: piso de prefixo
+
+Na sessão headless de topo (sem UI e `PI_CODE_SUBAGENT_DEPTH` ausente ou `0`) o prompt de sistema perde o contrato
+longo e a lista de skills. A extensão reescreve o payload em `before_provider_request`, como o `<cwd>`:
+
+- O bloco `<project_instructions path="...">` que começa por `# Working contract (pi)` ganha o texto de
+  `$CLAUDE_CONFIG_DIR/CLAUDE.headless.md` (`claude-home/CLAUDE.headless.md`, seis regras). Os delimitadores vêm do
+  código do pi (`renderProjectContext`): o fechamento `</project_instructions>` é fixo e o contrato não o contém.
+- A seção `<skills>` (introdução mais `<available_skills>`, de `formatSkillsForPrompt`) sai inteira. `rules/safety.md`,
+  `personal.md`, ferramentas e o resto ficam.
+- Subagentes do pi-code (`--mode json -p`, depth 1 ou mais) e sessões com UI não mudam. Arquivo ausente, vazio ou
+  formato inesperado deixa o payload como está (`PI_HEADLESS_LEAN_DEBUG=1` diz o motivo).
+- `PI_HEADLESS_FLOOR=0` desliga só este item; `PI_HEADLESS_LEAN=0` desliga tudo.
+
+Evidência: A/B do Terminal-Bench com o braço piso (contrato de 6 regras, sem skills no prompt), não inferior ao
+controle: +2,2 pp, IC90 [-4,4; +11,1], custo 0,92×. No servidor falso, o prefixo da 1ª requisição caiu de 24,0 mil
+para 9,2 mil tokens com o CLAUDE.md antigo. O CLAUDE.md atual já encolheu 51% no #40, então o ganho a medir agora é
+menor (a medir; sem número novo).
+
+Reverter: `PI_HEADLESS_FLOOR=0`, ou apagar `claude-home/CLAUDE.headless.md` (arquivo ausente = sem efeito), ou tirar o
+item 6 de `index.ts`.
+
 ## Limites conhecidos
 
 - O modo plano é detectado pelo `argv` (`--plan`, prompt `/plan ...`): um `/plan` enviado por stdin não é visto e

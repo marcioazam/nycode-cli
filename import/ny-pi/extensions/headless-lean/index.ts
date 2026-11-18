@@ -12,15 +12,27 @@
  *    (CLAUDE_CODE_DISABLE_TERMINAL_TITLE, lida pelo session-title do pi-code; um valor já definido vence).
  * 5. Sem UI, o prompt de sistema ganha o bloco `<headless>`: ninguém responde e a sessão acaba neste turno, então um
  *    pedido de plano é plano mais execução, sem "posso implementar?". Contradição real continua virando pergunta.
+ * 6. Piso de prefixo, só na sessão headless de topo (sem UI e PI_CODE_SUBAGENT_DEPTH ausente ou 0; subagentes do pi-code
+ *    precisam do contrato completo e das skills): o contrato de `$CLAUDE_CONFIG_DIR/CLAUDE.md` vira o texto de
+ *    `$CLAUDE_CONFIG_DIR/CLAUDE.headless.md` e a seção `<skills>` sai do prompt. Arquivo ausente ou formato inesperado
+ *    deixa o payload como está. PI_HEADLESS_FLOOR=0 desliga só este item.
  *
  * Medição e contrato: docs/specs/0002-headless-lean.md. PI_HEADLESS_LEAN=0 desliga. Reverter: apagar este diretório.
  */
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import type { ExtensionAPI } from '@earendil-works/pi-coding-agent'
 
 type Block = { type?: string; text?: string; cache_control?: unknown }
 type Debug = (message: string) => void
 
 const CWD = /<cwd>\n[^\n]*\n<\/cwd>\n\n?/
+// pi monta cada contrato como <project_instructions path="..."> ...conteúdo... </project_instructions> e a lista de
+// skills como seção <skills> (introdução + <available_skills>); ver system-prompt.js e skills.js do pi.
+const CONTRACT =
+  /(<project_instructions path="[^"]*">\n)# Working contract \(pi\)\n[\s\S]*?(\n<\/project_instructions>)/
+const SKILLS =
+  /<skills>\n\s*The following skills provide[\s\S]*?<available_skills>[\s\S]*?<\/available_skills>\n<\/skills>\n*/
 
 export const NO_PLAN_MODE =
   'Not in plan mode: nothing was submitted and there is no approval to wait for. Execute the plan now, in this same turn, and do not call plan_mode_complete again.'
@@ -56,6 +68,44 @@ export function splitCwd(payload: unknown, debug: Debug = stderrDebug): unknown 
   return undefined
 }
 
+/** Troca o contrato longo por `contract` e tira a seção de skills; sem os dois pontos de corte, nada muda. */
+export function headlessFloor(payload: unknown, contract: string, debug: Debug = stderrDebug): unknown {
+  if (!payload || typeof payload !== 'object' || !('system' in payload)) return undefined // continuação de thread
+  const system = (payload as { system: unknown }).system
+  if (!Array.isArray(system)) {
+    debug('floor: system is not a block list; payload left unchanged')
+    return undefined
+  }
+  const blocks = (system as Array<Block | null>).filter(
+    (b): b is Block & { text: string } => typeof b?.text === 'string',
+  )
+  const withContract = blocks.find((b) => CONTRACT.test(b.text))
+  const withSkills = blocks.find((b) => SKILLS.test(b.text))
+  if (!withContract || !withSkills) {
+    debug(`floor: ${withContract ? 'skills section' : 'contract block'} not found; payload left unchanged`)
+    return undefined
+  }
+  // função como substituto: `$&` e afins no conteúdo não são padrões
+  withContract.text = withContract.text.replace(
+    CONTRACT,
+    (_m, open: string, close: string) => `${open}${contract}${close}`,
+  )
+  withSkills.text = withSkills.text.replace(SKILLS, '')
+  return payload
+}
+
+/** Texto de CLAUDE.headless.md, ou undefined (com motivo no debug) se faltar ou estiver vazio. */
+function floorContract(debug: Debug): string | undefined {
+  const dir = process.env.CLAUDE_CONFIG_DIR
+  if (!dir) return void debug('floor: CLAUDE_CONFIG_DIR unset; payload left unchanged')
+  try {
+    const text = readFileSync(join(dir, 'CLAUDE.headless.md'), 'utf8').trim()
+    return text || void debug('floor: CLAUDE.headless.md is empty; payload left unchanged')
+  } catch {
+    return void debug('floor: CLAUDE.headless.md unreadable; payload left unchanged')
+  }
+}
+
 /** Ferramentas ativas sem as que dependem de alguém na frente do terminal. */
 export function headlessTools(active: string[], argv: string[]): string[] {
   // ponytail: o modo plano é lido do argv (a flag `plan` é do pi-code e getFlag só enxerga as da própria extensão);
@@ -77,7 +127,14 @@ export default function (pi: ExtensionAPI) {
   if (process.env.PI_HEADLESS_LEAN === '0') return
   pi.on('before_provider_request', (event, ctx) => {
     const api = ctx.model?.api
-    return api === undefined || api === 'anthropic-messages' ? splitCwd(event.payload) : undefined
+    if (api !== undefined && api !== 'anthropic-messages') return undefined
+    const depth = process.env.PI_CODE_SUBAGENT_DEPTH
+    let floored: unknown
+    if (!ctx.hasUI && (depth === undefined || depth === '0') && process.env.PI_HEADLESS_FLOOR !== '0') {
+      const contract = floorContract(stderrDebug)
+      if (contract) floored = headlessFloor(event.payload, contract)
+    }
+    return splitCwd(event.payload) ?? floored
   })
   pi.on('tool_result', (event) => {
     const text = rewriteResult(event.toolName, event.content)

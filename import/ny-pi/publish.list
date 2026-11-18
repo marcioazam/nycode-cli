@@ -1,5 +1,6 @@
 $HOME/.local/bin/pi	bin/pi
 $HOME/.pi/agent/claude-home/CLAUDE.md	claude-home/CLAUDE.md
+$HOME/.pi/agent/claude-home/CLAUDE.headless.md	claude-home/CLAUDE.headless.md
 $HOME/.pi/agent/claude-home/agents/Explore.md	claude-home/agents/Explore.md
 $HOME/.pi/agent/claude-home/agents/Plan.md	claude-home/agents/Plan.md
 $HOME/.pi/agent/claude-home/agents/claim-verifier.md	claude-home/agents/claim-verifier.md
