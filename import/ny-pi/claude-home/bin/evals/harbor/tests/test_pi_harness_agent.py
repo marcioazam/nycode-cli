@@ -153,3 +153,42 @@ def test_models_json_merge_snippet_preserves_existing(tmp_path: Path) -> None:
         "headers": {"anthropic-workspace-id": "w1"},
     }
     assert "x" in d["providers"]
+
+
+_HARBOR_NVM = (
+    "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.2/install.sh | env -u NODE_VERSION bash && "
+    'export NVM_DIR="$HOME/.nvm" && \\. "$NVM_DIR/nvm.sh" || true && '
+    "command -v nvm &>/dev/null || { echo 'Error: NVM failed to load' >&2; exit 1; } && "
+    "nvm install 22 && nvm alias default 22 && npm -v"
+)
+
+
+def test_nvm_download_retries_and_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        pi_harness_agent, "nvm_node_install_snippet", lambda: _HARBOR_NVM
+    )
+    s = pi_harness_agent._resilient_nvm_snippet()
+    assert (
+        "curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors --connect-timeout 10 --max-time 120 https://"
+        in s
+    )
+    assert "curl -o-" not in s
+    assert (
+        s.count("nvm install 22") == 3
+    )  # node download retried; last failure still propagates
+    assert (
+        "| env -u NODE_VERSION bash" in s
+    )  # pipefail (set in install) fails the pipe when curl does
+
+
+def test_nvm_snippet_retry_only_on_failure() -> None:
+    s = pi_harness_agent._retry_cmd("nvm install 22")
+    ok = subprocess.run(
+        ["bash", "-c", f"nvm() {{ echo x; }}; {s}"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert ok.stdout == "x\n"  # success runs once
+    bad = subprocess.run(["bash", "-c", f"nvm() {{ return 1; }}; {s}"], check=False)
+    assert bad.returncode != 0

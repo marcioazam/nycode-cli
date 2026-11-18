@@ -8,12 +8,20 @@ import { test } from 'node:test'
 // O Node não resolve @earendil-works a partir de extensions/: testa uma cópia com o pi ao lado.
 const tmp = mkdtempSync(join(tmpdir(), 'ui-test-'))
 mkdirSync(join(tmp, 'node_modules'))
-symlinkSync(`${homedir()}/.pi/agent/install/releases/${readFileSync(`${homedir()}/.pi/agent/install/current-version`, 'utf8').trim()}/node_modules/@earendil-works`, join(tmp, 'node_modules', '@earendil-works'))
+symlinkSync(
+  `${homedir()}/.pi/agent/install/releases/${readFileSync(`${homedir()}/.pi/agent/install/current-version`, 'utf8').trim()}/node_modules/@earendil-works`,
+  join(tmp, 'node_modules', '@earendil-works'),
+)
 const load = async (name: string) => {
   cpSync(join(import.meta.dirname, '..', name), join(tmp, name))
   return import(join(tmp, name))
 }
-const theme = { fg: (c: string, t: string) => `<${c}>${t}`, bold: (t: string) => t, bg: (c: string, t: string) => `[${c}]${t}` }
+const theme = {
+  fg: (c: string, t: string) => `<${c}>${t}`,
+  bold: (t: string) => t,
+  bg: (c: string, t: string) => `[${c}]${t}`,
+}
+
 import { execFileSync, spawnSync } from 'node:child_process'
 import { writeFileSync } from 'node:fs'
 
@@ -23,7 +31,8 @@ const exec = async (cmd: string, args: string[], o: { cwd: string }) => {
   const r = spawnSync(cmd, args, { cwd: o.cwd, encoding: 'utf8' })
   return { stdout: r.stdout, stderr: r.stderr, code: r.status ?? 1, killed: false, truncated: false }
 }
-const git = (cwd: string, ...a: string[]) => execFileSync('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', ...a], { cwd, stdio: 'pipe' })
+const git = (cwd: string, ...a: string[]) =>
+  execFileSync('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', ...a], { cwd, stdio: 'pipe' })
 
 const repo = mkdtempSync(join(tmpdir(), 'ui-diff-repo-'))
 git(repo, 'init', '-q')
@@ -83,7 +92,10 @@ test('repo sem HEAD usa o índice', async () => {
   writeFileSync(join(r, 'u.txt'), 'b\n')
   const res = await mod.collectChanges(exec, r)
   assert.equal(res.hasHead, false)
-  assert.deepEqual(res.files.map((f: any) => f.path), ['s.txt', 'u.txt'])
+  assert.deepEqual(
+    res.files.map((f: any) => f.path),
+    ['s.txt', 'u.txt'],
+  )
   assert.match(await mod.loadDiff(exec, r, false, res.files[0]), /\+a/)
 })
 
@@ -119,6 +131,13 @@ test('comando: sem mudanças, sem UI e erro', async () => {
   assert.match(notes.pop()[0], /^\/diff falhou/)
 })
 
+// Espera por condição (git real roda em subprocesso: sem duração fixa); só o prazo falha.
+const until = async (cond: () => boolean, ms = 15000) => {
+  for (const end = Date.now() + ms; !cond(); await new Promise((r) => setTimeout(r, 5))) {
+    if (Date.now() > end) throw new Error('until: prazo esgotado')
+  }
+}
+
 test('comando abre o componente e navega', async () => {
   const cmd = register()
   let comp: any
@@ -137,7 +156,7 @@ test('comando abre o componente e navega', async () => {
     },
   }
   const p = cmd.handler('', ctx)
-  await new Promise((r) => setTimeout(r, 50))
+  await until(() => comp !== undefined && comp.render(80)[0].includes('Mudanças'))
   const list = comp.render(80)
   assert.match(list[0], /Mudanças: 5 arquivos/)
   assert.match(list[1], /^<accent>|› /)
@@ -147,7 +166,7 @@ test('comando abre o componente e navega', async () => {
   assert.match(comp.render(80)[1], /^› a\.txt/)
   comp.handleInput('\r')
   assert.match(comp.render(80)[1], /Carregando/)
-  await new Promise((r) => setTimeout(r, 200))
+  await until(() => !comp.render(80).join('\n').includes('Carregando'))
   const view = comp.render(80)
   assert.ok(view.some((l: string) => l.includes('<toolDiffAdded>+DOIS')))
   assert.ok(view.some((l: string) => l.includes('<toolDiffRemoved>-dois')))
@@ -171,7 +190,14 @@ test('comando abre o componente e navega', async () => {
 test('erro ao carregar o diff aparece na visão', async () => {
   const files = [{ path: 'x', added: 0, removed: 0, binary: false, untracked: false }]
   const { DiffView } = mod
-  const v = new DiffView(files, async () => Promise.reject(new Error('boom')), theme, () => 10, () => {}, () => {})
+  const v = new DiffView(
+    files,
+    async () => Promise.reject(new Error('boom')),
+    theme,
+    () => 10,
+    () => {},
+    () => {},
+  )
   v.handleInput('\r')
   await new Promise((r) => setTimeout(r, 20))
   // largura folgada: as marcas do tema falso ocupam colunas (ANSI real tem largura zero)
@@ -179,11 +205,29 @@ test('erro ao carregar o diff aparece na visão', async () => {
 })
 
 test('lineRefs: números novo/antigo e cabeçalhos sem linha', () => {
-  const d = ['diff --git a/f b/f', '--- a/f', '+++ b/f', '@@ -10,3 +20,3 @@', ' ctx', '-velha', '+nova', ' fim', '\\ No newline', '']
+  const d = [
+    'diff --git a/f b/f',
+    '--- a/f',
+    '+++ b/f',
+    '@@ -10,3 +20,3 @@',
+    ' ctx',
+    '-velha',
+    '+nova',
+    ' fim',
+    '\\ No newline',
+    '',
+  ]
   assert.deepEqual(mod.lineRefs(d), [
-    undefined, undefined, undefined, undefined,
-    { line: 20, removed: false }, { line: 11, removed: true }, { line: 21, removed: false }, { line: 22, removed: false },
-    undefined, undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    { line: 20, removed: false },
+    { line: 11, removed: true },
+    { line: 21, removed: false },
+    { line: 22, removed: false },
+    undefined,
+    undefined,
   ])
   assert.deepEqual(mod.lineRefs(['Arquivo binário', '… truncado']), [undefined, undefined])
   // novo cabeçalho de arquivo zera o hunk: '--- ' não conta como remoção
@@ -195,7 +239,10 @@ test('formatComments', () => {
     { path: 'a.txt', line: 2, removed: false, text: 'ok?', source: '+DOIS' },
     { path: 'b.txt', line: 7, removed: true, text: 'volte', source: '-  velha ' },
   ])
-  assert.equal(out, 'Comentários da revisão (/diff):\n- `a.txt:2` — ok?\n  > +DOIS\n- `b.txt:7 (removida)` — volte\n  > -  velha')
+  assert.equal(
+    out,
+    'Comentários da revisão (/diff):\n- `a.txt:2` — ok?\n  > +DOIS\n- `b.txt:7 (removida)` — volte\n  > -  velha',
+  )
 })
 
 const files2 = [
@@ -210,8 +257,18 @@ const open = async (view: any) => {
   view.handleInput('\r')
   await new Promise((r) => setTimeout(r, 20))
 }
-const type = (view: any, s: string) => [...s].forEach((ch) => view.handleInput(ch))
-const mk = (closed: any[][] = []) => new mod.DiffView(files2, async (f: any) => diffs[f.path], theme, () => 12, () => {}, (c: any) => closed.push(c))
+const type = (view: any, s: string) => {
+  for (const ch of s) view.handleInput(ch)
+}
+const mk = (closed: any[][] = []) =>
+  new mod.DiffView(
+    files2,
+    async (f: any) => diffs[f.path],
+    theme,
+    () => 12,
+    () => {},
+    (c: any) => closed.push(c),
+  )
 
 test('comentar: marca, cursor, edição, Esc cancela e vazio apaga', async () => {
   const closed: any[][] = []
@@ -265,14 +322,24 @@ test('comentários de vários arquivos, linha removida e PgUp/PgDn', async () =>
   v.handleInput('\r')
   v.handleInput('\x1b')
   v.handleInput('\x1b')
-  assert.deepEqual(closed[0].map((c) => [c.path, c.line, c.removed, c.text, c.source]), [
-    ['a', 2, true, 'por quê?', 'dois'],
-    ['b', 1, false, 'ok', 'novo'],
-  ])
+  assert.deepEqual(
+    closed[0].map((c) => [c.path, c.line, c.removed, c.text, c.source]),
+    [
+      ['a', 2, true, 'por quê?', 'dois'],
+      ['b', 1, false, 'ok', 'novo'],
+    ],
+  )
 })
 
 test('erro ao carregar: comentar não faz nada', async () => {
-  const v = new mod.DiffView(files2, async () => Promise.reject(new Error('x')), theme, () => 12, () => {}, () => {})
+  const v = new mod.DiffView(
+    files2,
+    async () => Promise.reject(new Error('x')),
+    theme,
+    () => 12,
+    () => {},
+    () => {},
+  )
   await open(v)
   v.handleInput('c')
   assert.doesNotMatch(v.render(60).at(-1), /comentar a:/) // a dica fixa "c comentar" não conta

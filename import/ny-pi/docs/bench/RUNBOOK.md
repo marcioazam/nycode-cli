@@ -58,8 +58,10 @@ Trocar OAuth por API muda o pedido do pi (sem a identidade do Claude Code no sys
    `$BENCH_STATE/runs/<sha>/summary.md`; a descrição do status não leva caminho local. Antes de cada PR da passada o
    estado é reconferido: PR fechado depois da listagem não roda.
 3. Um lock (`$BENCH_STATE/lock`) impede duas execuções simultâneas (PR, nightly e vanilla).
-4. Rodar um PR à mão: `bench-pr.sh --pr N` (ignora o status final e reroda).
-5. Contrato mudou em 2026-11-17 por decisão do dono: o benchmark só roda quando o PR muda o comportamento funcional do
+4. Fila única (2026-11-18): integre a main e rode o gate de um PR só depois do merge do anterior. Mesclar outro
+   PR no meio faz o merge recusar (`base_moved`) e o gate precisa rodar de novo no head integrado.
+5. Rodar um PR à mão: `bench-pr.sh --pr N` (ignora o status final e reroda).
+6. Contrato mudou em 2026-11-17 por decisão do dono: o benchmark só roda quando o PR muda o comportamento funcional do
    harness. Antes do `pending`, `bench run affects` (`bench/classify/affects.py`) lê `git diff base...head`: se todo arquivo for
    documentação, teste, CI/ferramental do repositório, infra do próprio bench, licença ou só UI (temas, HUD,
    statusline, extensões visuais, patches só de renderização), o status vira `success` com "N/A: sem mudança
@@ -70,7 +72,7 @@ Trocar OAuth por API muda o pedido do pi (sem a identidade do Claude Code no sys
    interativas (`sound-notify`, `dev-commands`, `up-dequeue`, `puxar`) e `.pre-commit-config.yaml` não contam; um
    `claude-home/patches/pi-code/*.patch` é UI só se todo arquivo que ele altera (`+++ b/...` no head) for
    `subagent/fleet-ui/*`, `status-line.ts`, `notify.ts` ou `*.md`; patch sem alvos ou removido é funcional.
-6. Modo chave de API no `bench-pr.sh`: com `BENCH_API_KEY_FILE` definido (e `BENCH_ANTHROPIC_WORKSPACE_ID` para chave de
+7. Modo chave de API no `bench-pr.sh`: com `BENCH_API_KEY_FILE` definido (e `BENCH_ANTHROPIC_WORKSPACE_ID` para chave de
    usuário) ele não exige `BENCH_CC_CREDENTIALS`; as variáveis vêm do env file do dono, e o preflight é do `run.py`.
 
 | Exit do gate | Status | Significado |
@@ -216,6 +218,101 @@ usava outro modelo e não é comparável. O que a calibração garante é que a 
 ambas tenham os valores antigos. Em cerca de 18% dos PRs sem mudança o olhar 1 aprova sozinho; nos cenários de queda
 ele reprova cedo em cerca de 40%.
 
+### Regra de segurança mais sensível (pré-registro, 2026-11-18)
+
+Pergunta: dá para barrar falhas raras de segurança (15% e 30% numa tarefa) sem aprovar indevidamente nem reprovar PR
+sem mudança? A regra de `main` bloqueia a tarefa de segurança com base limpa (12/12) com duas falhas entre as
+repetições do candidato (k3, mais 3 se houver uma falha). Desenhos avaliados por `gate_sim.py --sec-grid`
+(`SEC_GRID`): `("count", k0, N, t)` roda k0 repetições, estende a N se houver falha e bloqueia com t falhas (parando
+quando decidido); `("fisher", k0, N, α)` bloqueia se o teste exato unilateral de Fisher contra a base limpa der
+p < α. O resto do fluxo é o gate sequencial real com a regra de segurança neutralizada; compara-se com o gate de
+`main` nos mesmos sorteios. Seed 20261113, ≥ 4 000 iterações por cenário, bootstrap 2 000, base `baseline-main`.
+
+Critérios, fixados antes de rodar a grade (um desenho só vira regra se cumprir todos):
+
+1. Sem mudança: a aprovação não cai além do erro de Monte Carlo (Δ pareado + 1,96 EP ≥ 0).
+2. Segurança 15%: bloqueio ≥ 80%; segurança 30%: bloqueio ≥ 95%.
+3. Nenhum outro cenário piora (Δ + 1,96 EP ≥ 0 em todos).
+4. Custo médio extra por PR ≤ US$ 0,30 em todo cenário, com `est_cost_usd` do `suites.toml` (US$ 0,09 por execução do S1).
+
+Se nenhum desenho cumprir, a regra não muda e a tabela fica registrada abaixo.
+
+**Resultado (4 000 iterações por cenário, seed 20261113, `baseline-main`): nenhum desenho cumpre os quatro critérios; a regra de segurança não muda.**
+
+Modelo A (base reamostrada a cada iteração, como na calibração acima). Gate de `main`: e15 32.8% [31.4, 34.3], e30 49.1% [47.5, 50.6]. Em 38% das
+iterações uma tarefa 100% observada recebe falha na base reamostrada e a regra de segurança nem se aplica, o que
+explica o teto de ~66% mesmo com 48 repetições.
+
+| Desenho | Δ aprovação sem mudança (pareado) | Bloqueio e15 [IC95] | Bloqueio e30 [IC95] | US$ extra máx. | Cenário que piora |
+|---|---|---|---|---|---|
+| count 3 6 2 | -0.38 ±0.26 pp | 33.1% [31.7, 34.6] | 49.6% [48.1, 51.1] | +1.15 | sem mudança |
+| count 6 6 2 | -1.65 ±0.44 pp | 36.2% [34.7, 37.7] | 54.3% [52.8, 55.8] | +2.22 | sem mudança |
+| count 6 6 3 | +5.58 ±0.78 pp | 19.8% [18.5, 21.0] | 34.4% [32.9, 35.8] | +2.90 | queda uniforme −10 pp; queda uniforme −15 pp; 30% das tarefas −35 pp; segurança falha 15%; segurança falha 30% |
+| count 3 12 3 | +3.35 ±0.75 pp | 30.9% [29.4, 32.3] | 50.8% [49.3, 52.3] | +1.76 | segurança falha 15% |
+| count 3 12 4 | +5.70 ±0.79 pp | 22.7% [21.4, 24.0] | 43.0% [41.4, 44.5] | +1.91 | queda uniforme −10 pp; segurança falha 15%; segurança falha 30% |
+| count 6 12 3 | +2.23 ±0.82 pp | 36.5% [35.0, 38.0] | 59.7% [58.1, 61.2] | +3.10 | — |
+| count 6 12 4 | +5.60 ±0.80 pp | 24.5% [23.2, 25.9] | 48.4% [46.8, 49.9] | +3.30 | queda uniforme −10 pp; segurança falha 15% |
+| count 3 18 4 | +5.00 ±0.78 pp | 29.9% [28.5, 31.3] | 51.6% [50.0, 53.1] | +2.15 | segurança falha 15% |
+| count 3 18 5 | +5.80 ±0.80 pp | 23.7% [22.4, 25.0] | 47.5% [45.9, 49.0] | +2.27 | queda uniforme −10 pp; segurança falha 15%; segurança falha 30% |
+| count 3 24 4 | +3.70 ±0.79 pp | 35.2% [33.8, 36.7] | 54.4% [52.9, 56.0] | +2.34 | — |
+| count 3 24 5 | +5.60 ±0.79 pp | 29.8% [28.4, 31.2] | 52.9% [51.4, 54.5] | +2.45 | segurança falha 15% |
+| count 6 24 5 | +5.42 ±0.80 pp | 36.8% [35.3, 38.3] | 63.6% [62.1, 65.1] | +4.38 | — |
+| count 6 48 5 | -1.98 ±1.01 pp | 54.6% [53.1, 56.1] | 67.8% [66.4, 69.3] | +6.07 | sem mudança |
+| count 6 48 6 | +3.30 ±0.87 pp | 50.5% [49.0, 52.0] | 66.2% [64.7, 67.6] | +6.51 | — |
+| fisher 3 12 0.05 | +5.70 ±0.79 pp | 22.7% [21.4, 24.0] | 43.0% [41.4, 44.5] | +2.00 | queda uniforme −10 pp; segurança falha 15%; segurança falha 30% |
+| fisher 3 12 0.1 | +5.70 ±0.79 pp | 22.7% [21.4, 24.0] | 43.0% [41.4, 44.5] | +2.00 | queda uniforme −10 pp; segurança falha 15%; segurança falha 30% |
+| fisher 3 24 0.1 | +5.90 ±0.80 pp | 24.5% [23.2, 25.9] | 50.3% [48.8, 51.9] | +3.28 | queda uniforme −10 pp; segurança falha 15% |
+| fisher 3 24 0.2 | +3.70 ±0.79 pp | 35.2% [33.8, 36.7] | 54.4% [52.9, 56.0] | +2.41 | — |
+| fisher 6 24 0.2 | +1.98 ±0.89 pp | 45.7% [44.2, 47.3] | 66.0% [64.5, 67.5] | +4.32 | — |
+| fisher 6 48 0.2 | +5.38 ±0.82 pp | 46.9% [45.3, 48.4] | 65.6% [64.1, 67.1] | +7.52 | — |
+| fisher 6 48 0.3 | +3.30 ±0.87 pp | 50.5% [49.0, 52.0] | 66.2% [64.7, 67.6] | +7.46 | — |
+
+Modelo B (`--clean-base`: a base congelada de cada tarefa de segurança 12/12 continua 12/12, que é o que o gate real
+vê). Gate de `main`: e15 44.6% [43.0, 46.1], e30 67.3% [65.8, 68.7] (a lacuna real é menor que os 34% e 49% do modelo A, mas continua).
+
+| Desenho | Δ aprovação sem mudança (pareado) | Bloqueio e15 [IC95] | Bloqueio e30 [IC95] | US$ extra máx. | Cenário que piora |
+|---|---|---|---|---|---|
+| count 3 6 2 | -0.65 ±0.30 pp | 45.3% [43.8, 46.8] | 67.8% [66.4, 69.3] | +0.99 | sem mudança |
+| count 6 6 2 | -2.65 ±0.53 pp | 50.0% [48.4, 51.5] | 74.3% [72.9, 75.6] | +2.71 | sem mudança |
+| count 6 6 3 | +8.18 ±0.94 pp | 25.6% [24.3, 27.0] | 45.3% [43.8, 46.8] | +4.29 | queda uniforme −10 pp; queda uniforme −15 pp; 30% das tarefas −35 pp; segurança falha 15%; segurança falha 30% |
+| count 3 12 3 | +4.90 ±0.89 pp | 42.1% [40.6, 43.6] | 70.6% [69.2, 72.0] | +1.96 | segurança falha 15% |
+| count 3 12 4 | +8.38 ±0.94 pp | 29.8% [28.4, 31.3] | 58.8% [57.3, 60.3] | +2.65 | queda uniforme −10 pp; segurança falha 15%; segurança falha 30% |
+| count 6 12 3 | +3.33 ±0.97 pp | 50.4% [48.9, 52.0] | 83.2% [82.0, 84.3] | +4.07 | — |
+| count 6 12 4 | +8.25 ±0.95 pp | 32.5% [31.0, 33.9] | 66.4% [64.9, 67.9] | +4.42 | queda uniforme −10 pp; segurança falha 15% |
+| count 3 18 4 | +7.35 ±0.94 pp | 41.1% [39.6, 42.6] | 72.0% [70.6, 73.4] | +2.58 | segurança falha 15% |
+| count 3 18 5 | +8.60 ±0.96 pp | 31.6% [30.2, 33.1] | 65.8% [64.3, 67.3] | +3.61 | queda uniforme −10 pp; segurança falha 15%; segurança falha 30% |
+| count 3 24 4 | +5.47 ±0.96 pp | 49.6% [48.1, 51.2] | 75.6% [74.3, 76.9] | +2.86 | — |
+| count 3 24 5 | +8.33 ±0.95 pp | 41.4% [39.9, 43.0] | 73.8% [72.4, 75.1] | +3.08 | segurança falha 15% |
+| count 6 24 5 | +8.10 ±0.96 pp | 52.0% [50.5, 53.6] | 89.7% [88.7, 90.6] | +6.12 | — |
+| count 6 48 5 | -2.77 ±1.22 pp | 78.0% [76.6, 79.2] | 94.0% [93.2, 94.7] | +8.84 | sem mudança |
+| count 6 48 6 | +4.83 ±1.06 pp | 73.2% [71.8, 74.5] | 93.3% [92.5, 94.1] | +9.50 | — |
+| fisher 3 12 0.05 | +8.38 ±0.94 pp | 29.8% [28.4, 31.3] | 58.8% [57.3, 60.3] | +2.98 | queda uniforme −10 pp; segurança falha 15%; segurança falha 30% |
+| fisher 3 12 0.1 | +8.38 ±0.94 pp | 29.8% [28.4, 31.3] | 58.8% [57.3, 60.3] | +2.98 | queda uniforme −10 pp; segurança falha 15%; segurança falha 30% |
+| fisher 3 24 0.1 | +8.70 ±0.96 pp | 33.0% [31.6, 34.5] | 69.8% [68.3, 71.2] | +5.32 | queda uniforme −10 pp; segurança falha 15% |
+| fisher 3 24 0.2 | +5.47 ±0.96 pp | 49.6% [48.1, 51.2] | 75.6% [74.3, 76.9] | +2.99 | — |
+| fisher 6 24 0.2 | +3.15 ±1.06 pp | 65.2% [63.8, 66.7] | 92.4% [91.5, 93.2] | +6.25 | — |
+| fisher 6 48 0.2 | +7.80 ±0.99 pp | 68.0% [66.6, 69.5] | 93.2% [92.3, 93.9] | +18.70 | — |
+| fisher 6 48 0.3 | +4.83 ±1.06 pp | 73.2% [71.8, 74.5] | 93.3% [92.5, 94.1] | +18.70 | — |
+
+Leitura:
+
+- Só os desenhos com 48 repetições (`count 6 48 5`, `fisher 6 48 0,2`) chegam perto dos alvos no modelo B (78% e 94%), com
+  US$ 3,5 a 6,1 extras por PR (limite 0,30) e, no `count`, queda da aprovação sem mudança. Com US$ 0,015 por execução
+  real em vez dos 0,09 de `est_cost_usd` o extra ainda seria ≥ US$ 0,58.
+- Os desenhos que cabem em US$ 0,30 (k0 = 3, N ≤ 12) não passam de 30% a 50% de bloqueio em e15: o teste exato de
+  Fisher contra uma base 12/12 tem pouco poder (p = 0,24 com 2 falhas em 12) e a taxa de falso bloqueio por tarefa
+  sobe com N.
+- Muitos desenhos aprovam mais em "sem mudança" e bloqueiam menos em e15: são menos sensíveis, não alternativas.
+- O custo extra é medido contra o gate de `main` com a confirmação de segurança feita antes do olhar 2 (um bloqueio
+  para o PR no olhar 1); `count 3 6 2`, equivalente à regra atual, mostra o crédito dessa ordem (≈ -US$ 0,2 a -4 por PR
+  conforme o cenário) e deve ser descontado ao comparar.
+- Limitação: as repetições de segurança extras das tarefas já estendidas pela discordância não são descontadas
+  (aproximação conservadora do custo).
+
+Decisão: a regra atual fica; a lacuna de segurança em falhas raras só se fecha com ≥ 48 repetições por tarefa de
+segurança, fora do orçamento definido. Reprodução: `nice -n 10 python3 bench/tools/gate_sim.py
+docs/bench/baseline-main/runs.jsonl --sec-grid [--clean-base] --iters 4000 --workers 12`.
+
 ### Pesquisa
 
 - Jennison & Turnbull, *Group Sequential Methods with Applications to Clinical Trials* (2000): olhares interinos
@@ -231,7 +328,7 @@ ele reprova cedo em cerca de 40%.
 
 - O α1 não foi derivado por uma função de gasto de alfa; é calibrado por simulação contra a regra atual. O erro tipo I
   final depende do modelo de base reamostrada, não de um limite teórico.
-- A segurança com falha de 15% é barrada em apenas 34% dos PRs (tanto na regra atual quanto na nova): a regra de
+- A segurança com falha de 15% é barrada em apenas 34% dos PRs (45% com a base 12/12 mantida; ver "Regra de segurança mais sensível"): a regra de
   segurança não mudou e continua fraca para falhas raras.
 - O olhar 1 usa o IC pareado com k1 no candidato e k12 na base; com α1 = 0,01 e 42 tarefas o IC99 é largo, por isso
   decide poucas vezes cedo.
@@ -416,7 +513,9 @@ O `evidence` também classifica cada falha por assinatura (primeira regra que ca
 Regra do dono (2026-11-15): `cc-vanilla` e `pi-vanilla` rodam uma vez em cada conjunto de tarefas que nunca rodaram,
 com tudo guardado (`runs.jsonl`, `meta.json`, jobs do Harbor ou artefatos, custo, tokens, turnos, tempo, versão do
 braço, modelo). Gates e benchmarks seguintes rodam só o `ny-pi` contra a referência guardada; refazer uma referência
-só a pedido explícito do dono. Os diretórios ficam fora do repositório, no estado local do benchmark
+só a pedido explícito do dono ou com um gatilho (2026-11-18): troca do modelo do benchmark, nova versão do
+Claude Code ou do pi nos braços, nova afirmação pública de comparação (braços intercalados nas mesmas tarefas, mesmo
+modo de conta) ou ~1 mês desde a última medição. Nunca misture OAuth e chave de API numa comparação. Os diretórios ficam fora do repositório, no estado local do benchmark
 (`$XDG_STATE_HOME/bench`, padrão `~/.local/state/bench`):
 
 | Conjunto | Referências | Diretório | Medido em |

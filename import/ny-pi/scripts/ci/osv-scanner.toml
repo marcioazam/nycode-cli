@@ -4,3 +4,28 @@
 id = "GHSA-84m7-p3x7-pcfv"
 effectiveUntil = 2026-12-13
 reason = "mcp 1.29.0 is pinned exactly by semgrep 1.185.0 (a CI-only tool, never shipped); fix is mcp 1.30.0. Drop this entry when semgrep is bumped."
+
+[[IgnoredVulns]]
+id = "GHSA-rwrf-2pqf-9j8j"
+effectiveUntil = 2026-12-13
+reason = "mcp 1.29.0 is pinned exactly by semgrep 1.185.0 (a CI-only tool, never shipped); fix is mcp 1.30.0. Drop this entry when semgrep is bumped."
+
+[[IgnoredVulns]]
+id = "GHSA-5h93-6whr-6q8j"
+effectiveUntil = 2026-12-13
+reason = "mcp 1.29.0 is pinned exactly by semgrep 1.185.0 (a CI-only tool, never shipped); fix is mcp 1.30.0. Drop this entry when semgrep is bumped."
+
+[[IgnoredVulns]]
+id = "GHSA-w4fh-qvv9-3v23"
+effectiveUntil = 2026-12-13
+reason = "mcp 1.29.0 is pinned exactly by semgrep 1.185.0 (a CI-only tool, never shipped); fix is mcp 1.30.0. Drop this entry when semgrep is bumped."
+
+[[IgnoredVulns]]
+id = "GHSA-xcq7-p3pf-p88h"
+effectiveUntil = 2026-12-13
+reason = "opentelemetry-api 1.37.x is pinned (~=1.37.0) by semgrep 1.185.0/1.186.0 (a CI-only tool, never shipped; telemetry not used in CI); fix is 1.45.2. Drop this entry when semgrep is bumped."
+
+[[IgnoredVulns]]
+id = "GHSA-mf5v-w3w3-f6cg"
+effectiveUntil = 2026-12-13
+reason = "opentelemetry-api 1.37.x is pinned (~=1.37.0) by semgrep 1.185.0/1.186.0 (a CI-only tool, never shipped; telemetry not used in CI); fix is 1.45.2. Drop this entry when semgrep is bumped."

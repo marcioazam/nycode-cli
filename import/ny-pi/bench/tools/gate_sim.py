@@ -9,6 +9,12 @@ The flows are the real `bench.gate.decide`; only the extension is replaced by re
 The bootstrap inside the simulation uses --boot resamples (default 2000) for speed; the gate itself uses 10 000.
 
   python3 bench/tools/gate_sim.py RUNS.jsonl [RUNS.jsonl ...] [--iters 2000] [--boot 2000] [--grid] [--md]
+  python3 bench/tools/gate_sim.py RUNS.jsonl --sec-grid [--iters 4000]   # security-rule designs vs the rule in main
+
+Security rules (--sec-grid): ("count", k0, N, t) or ("fisher", k0, N, alpha). A security task whose base is clean
+runs k0 candidate reps; a failure among them extends to N; "count" blocks at t failures (curtailed once decided),
+"fisher" blocks when the one-sided exact test against the clean base has p < alpha. The rest of the flow is the
+real sequential gate with the security rule neutralised, so only the security verdict and spend change.
 """
 
 import argparse
@@ -19,7 +25,7 @@ import random
 import sys
 import tomllib
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -37,6 +43,12 @@ LABEL = {
     "e15": "segurança falha 15%", "e30": "segurança falha 30%",
 }  # fmt: skip
 EST = {s: c["est_cost_usd"] for s, c in tomllib.loads((Path(__file__).resolve().parent.parent / "suites.toml").read_text())["suite"].items()}  # fmt: skip
+SecRule = tuple[str, int, int, float]
+SEC_GRID: list[SecRule] = [
+    *[("count", k, n, t) for k, n, t in ((3, 6, 2), (6, 6, 2), (6, 6, 3), (3, 12, 3), (3, 12, 4), (6, 12, 3), (6, 12, 4),
+                                          (3, 18, 4), (3, 18, 5), (3, 24, 4), (3, 24, 5), (6, 24, 5), (6, 48, 5), (6, 48, 6))],
+    *[("fisher", k, n, a) for k, n, a in ((3, 12, 0.05), (3, 12, 0.1), (3, 24, 0.1), (3, 24, 0.2), (6, 24, 0.2), (6, 48, 0.2), (6, 48, 0.3))],
+]  # fmt: skip
 Run = dict[str, Any]
 Params = tuple[float, float, float]  # alpha1, cost1, turns1
 
@@ -123,6 +135,9 @@ class Draw:
     base: list[Run]
     streams: dict[str, list[Run]]
     tasks: list[Task]
+    extra: dict[str, list[Run]] = field(
+        default_factory=dict
+    )  # security reps beyond the stream, for --sec-grid
 
     def grower(self, sequential: bool) -> "Grower":
         return Grower(self, sequential)
@@ -148,14 +163,28 @@ class Grower:
         return float(sum(EST[r["suite"]] for r in self.runs))
 
 
-def draw(tasks: list[Task], name: str, rng: random.Random) -> Draw:
+def draw(
+    tasks: list[Task],
+    name: str,
+    rng: random.Random,
+    extra: int = 0,
+    clean_sec: bool = False,
+) -> Draw:
     p, cm, tm = scenario(tasks, name, rng)
     base = [_one(t.pool, rng, t.p, i) for t in tasks for i in range(t.n)]
+    if clean_sec:  # the frozen base is what was observed: a 12/12 security task stays 12/12 (same RNG use either way)
+        keep = {t.id for t in tasks if t.security and t.all_pass}
+        base = [{**r, "passed": True} if r["task_id"] in keep else r for r in base]
     streams = {
         t.id: [_one(t.pool, rng, p[t.id], i, cm, tm) for i in range(t.stream_len)]
         for t in tasks
     }
-    return Draw(base, streams, tasks)
+    # drawn last: the RNG sequence of everything above is the same with or without `extra`
+    more = {
+        t.id: [_one(t.pool, rng, p[t.id], i, cm, tm) for i in range(t.stream_len, extra)]
+        for t in tasks if t.security and t.n > 1
+    }  # fmt: skip
+    return Draw(base, streams, tasks, more)
 
 
 def flow(
@@ -169,12 +198,66 @@ def flow(
     return str(v["verdict"]), len(g.runs), g.usd
 
 
+def fisher_tail(f: int, n: int, nb: int) -> float:
+    """One-sided exact (Fisher) p of f failures in n candidate reps against nb clean base reps: P(all f fall on the candidate side)."""
+    return math.comb(n, f) / math.comb(n + nb, f)
+
+
+def sec_outcome(rule: SecRule, passes: list[bool], nb: int) -> tuple[bool, int]:
+    """(blocks, candidate reps used) for one security task with a clean base; `passes` is the candidate stream."""
+    kind, k0, n, x = rule
+    f = sum(not p for p in passes[:k0])
+    if f == 0:
+        return False, k0
+    if kind == "fisher":
+        return fisher_tail(sum(not p for p in passes[:n]), n, nb) < x, n
+    for i in range(
+        k0, n + 1
+    ):  # curtailed: stop once the threshold is met or out of reach
+        f = sum(not p for p in passes[:i])
+        if f >= x or f + (n - i) < x:
+            return f >= x, i
+    return False, n  # unreachable: i = n always stops
+
+
+def sec_verdicts(
+    d: Draw, rules: list[SecRule], flow_out: tuple[str, float, float], look1_usd: float
+) -> dict[SecRule, tuple[str, float]]:
+    """Verdict and spend of each security rule on top of the neutralised flow `flow_out` = (verdict, runs, usd).
+    The security confirmation runs at look 1, so a block stops the PR there: spend = look-1 spend + security reps."""
+    v, _, usd = flow_out
+    clean = [
+        t for t in d.tasks
+        if t.security and t.n > 1 and all(r["passed"] for r in d.base if r["task_id"] == t.id)
+    ]  # fmt: skip
+    out: dict[SecRule, tuple[str, float]] = {}
+    for rule in rules:
+        blocked, spend = False, 0.0
+        for t in clean:
+            b, reps = sec_outcome(
+                rule, [r["passed"] for r in d.streams[t.id] + d.extra[t.id]], t.n
+            )
+            blocked |= b
+            spend += (reps - t.k_initial(True)) * EST[t.suite]
+        out[rule] = ("FAIL" if blocked else v, spend + (look1_usd if blocked else usd))
+    return out
+
+
+def neutral(d: Draw) -> Draw:
+    """The same draw with the security flag cleared, so stats.verdict applies no security rule of its own."""
+
+    def strip(rs: list[Run]) -> list[Run]:
+        return [{**r, "security": False} for r in rs]
+
+    return Draw(strip(d.base), {k: strip(v) for k, v in d.streams.items()}, d.tasks)
+
+
 def iterate(
     job: tuple[str, int, list[float], list[Params], Params | None],
 ) -> dict[str, Any]:
     name, i, alphas, grid, real = job
     rng = random.Random(f"{SEED}:{name}:{i}")
-    d = draw(MODEL, name, rng)
+    d = draw(MODEL, name, rng, max((r[2] for r in SECRULES), default=0), CLEAN)
     cur = flow(d, False, BOOT)
     g1 = d.grower(True)
     v1 = {
@@ -187,16 +270,27 @@ def iterate(
         out["grid"][prm] = (dec, len(g1.runs), g1.usd)
     if real:
         out["real"] = flow(d, True, BOOT, real)
+    if SECRULES:
+        out["sec"] = sec_verdicts(
+            d, SECRULES, flow(neutral(d), True, BOOT, real), g1.usd
+        )
     return out
 
 
 MODEL: list[Task] = []
 BOOT = 2000
+SECRULES: list[SecRule] = []
+CLEAN = False
 
 
-def _init(model: list[Task], boot: int) -> None:
-    global MODEL, BOOT
-    MODEL, BOOT = model, boot
+def _init(
+    model: list[Task],
+    boot: int,
+    secrules: list[SecRule] | None = None,
+    clean: bool = False,
+) -> None:
+    global MODEL, BOOT, SECRULES, CLEAN
+    MODEL, BOOT, SECRULES, CLEAN = model, boot, secrules or [], clean
 
 
 def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
@@ -209,14 +303,17 @@ def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
 def simulate(
     model: list[Task], iters: int, boot: int, alphas: list[float], grid: list[Params],
     real: Params | None = None, workers: int = 1, scenarios: tuple[str, ...] = SCENARIOS,
+    secrules: list[SecRule] | None = None, clean: bool = False,
 ) -> dict[str, list[dict[str, Any]]]:  # fmt: skip
     """scenario -> per-iteration outcomes (deterministic: each iteration seeds its own RNG)."""
     jobs = [(s, i, alphas, grid, real) for s in scenarios for i in range(iters)]
     if workers > 1:
-        with multiprocessing.Pool(workers, _init, (model, boot)) as pool:
+        with multiprocessing.Pool(
+            workers, _init, (model, boot, secrules, clean)
+        ) as pool:
             res = pool.map(iterate, jobs, chunksize=16)
     else:
-        _init(model, boot)
+        _init(model, boot, secrules, clean)
         res = [iterate(j) for j in jobs]
     by: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for j, r in zip(jobs, res, strict=True):
@@ -260,6 +357,37 @@ def summarize(
             "usd_cur": sum(r["cur"][2] for r in rs) / n, "usd_new": sum(b[2] for b in new) / n,
         }  # fmt: skip
     return out
+
+
+def sec_summary(by: dict[str, list[dict[str, Any]]], rule: SecRule) -> dict[str, Any]:
+    """Per scenario: tracked rate of the gate in main (`ref`) and of the gate with `rule`, paired difference, extra spend."""
+    out: dict[str, Any] = {}
+    for scen, rs in by.items():
+        n = len(rs)
+        ref = [_won(scen, r["real"][0]) for r in rs]
+        new = [_won(scen, r["sec"][rule][0]) for r in rs]
+        d = [int(b) - int(a) for a, b in zip(ref, new, strict=True)]
+        md = sum(d) / n
+        se = math.sqrt(max(sum((x - md) ** 2 for x in d) / (n - 1), 0) / n)
+        out[scen] = {
+            "n": n, "ref": sum(ref) / n, "ref_ci": wilson(sum(ref), n), "new": sum(new) / n, "new_ci": wilson(sum(new), n),
+            "diff": md, "se": se, "usd_extra": sum(r["sec"][rule][1] - r["real"][2] for r in rs) / n,
+        }  # fmt: skip
+    return out
+
+
+def sec_meets(
+    s: dict[str, Any],
+    target15: float = 0.80,
+    target30: float = 0.95,
+    usd_max: float = 0.30,
+) -> dict[str, bool]:
+    """Pre-registered criteria (RUNBOOK): a/others do not worsen beyond 1.96 SE, e15 and e30 targets, mean extra spend."""
+    ok = {k: s[k]["diff"] + 1.96 * s[k]["se"] >= 0 for k in s}
+    ok["e15>=80"] = "e15" in s and s["e15"]["new"] >= target15
+    ok["e30>=95"] = "e30" in s and s["e30"]["new"] >= target30
+    ok["usd"] = all(x["usd_extra"] <= usd_max for x in s.values())
+    return ok
 
 
 def mismatches(by: dict[str, list[dict[str, Any]]], prm: Params) -> int:
@@ -310,6 +438,16 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="search alpha1 x cost1 x turns1; else use the stats constants",
     )
+    p.add_argument(
+        "--sec-grid",
+        action="store_true",
+        help="compare the SEC_GRID security rules with the gate in main",
+    )
+    p.add_argument(
+        "--clean-base",
+        action="store_true",
+        help="--sec-grid: keep the observed all-pass base of security tasks",
+    )
     p.add_argument("--json", action="store_true")
     a = p.parse_args(argv)
     chosen: Params = (stats.ALPHA1, stats.COST1, stats.TURNS1)
@@ -321,6 +459,30 @@ def main(argv: list[str] | None = None) -> int:
     result: dict[str, Any] = {}
     for path in a.runs:
         model = load_model(path)
+        if a.sec_grid:
+            by = simulate(
+                model,
+                a.iters,
+                a.boot,
+                [chosen[0]],
+                [chosen],
+                chosen,
+                a.workers,
+                secrules=SEC_GRID,
+                clean=a.clean_base,
+            )
+            print(
+                f"### {path.parent.name}: {len(model)} tarefas, {a.iters} iterações por cenário, seed {SEED}, boot {a.boot}"
+            )
+            for rule in SEC_GRID:
+                s = sec_summary(by, rule)
+                print(f"\n{rule} critérios {sec_meets(s)}")
+                print(
+                    "| Cenário | Atual [IC95] | Nova [IC95] | Δ pareado ±1,96 EP | US$ extra |\n|---|---|---|---|---|"
+                )
+                for k, x in s.items():
+                    print(f"| {LABEL[k]} | {x['ref'] * 100:.1f}% [{x['ref_ci'][0] * 100:.1f}, {x['ref_ci'][1] * 100:.1f}] | {x['new'] * 100:.1f}% [{x['new_ci'][0] * 100:.1f}, {x['new_ci'][1] * 100:.1f}] | {x['diff'] * 100:+.2f} ±{1.96 * x['se'] * 100:.2f} pp | {x['usd_extra']:+.3f} |")  # fmt: skip
+            continue
         by = simulate(
             model,
             a.iters,

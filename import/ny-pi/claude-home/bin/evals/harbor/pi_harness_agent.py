@@ -6,6 +6,7 @@ Build the bundle first with bundle.sh. The OAuth token comes from the harbor pro
 """
 
 import os
+import re
 import shlex
 from pathlib import Path
 from typing import Any, override
@@ -59,6 +60,24 @@ def _models_merge(path: str, workspace: str) -> str:
     )
 
 
+_CURL_RETRY = "curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors --connect-timeout 10 --max-time 120"
+
+
+def _retry_cmd(cmd: str) -> str:
+    """Run cmd up to 3 times (2 s apart); the group's status is the last attempt's, so a final failure still aborts."""
+    return f"{{ {cmd} || {{ sleep 2; {cmd}; }} || {{ sleep 2; {cmd}; }}; }}"
+
+
+def _resilient_nvm_snippet() -> str:
+    """Harbor's nvm snippet with bounded retries: a transient `curl: (7)` once failed a whole gate.
+
+    The nvm installer curl gets retry/timeouts (-f: an HTTP error must not be piped into bash; the pipe still fails
+    under pipefail). `nvm install` downloads node via its own curl, so the whole command is retried instead.
+    """
+    s = nvm_node_install_snippet().replace("curl -o- ", f"{_CURL_RETRY} ", 1)
+    return re.sub(r"nvm install \d+", lambda m: _retry_cmd(m.group()), s, count=1)
+
+
 class PiHarnessAgent(Pi):  # type: ignore[misc]
     @staticmethod
     @override
@@ -92,7 +111,7 @@ class PiHarnessAgent(Pi):  # type: ignore[misc]
             command=(
                 "set -euo pipefail; "
                 f"{_LOCAL_ENV_FIX}; "
-                f"{nvm_node_install_snippet()} && "
+                f"{_resilient_nvm_snippet()} && "
                 f"{merge}"
                 f"{_WRAPPER} --version && "
                 # --help loads every extension once: jiti's transpile cache (/tmp/jiti) is then warm for the task run
