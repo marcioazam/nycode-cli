@@ -30,7 +30,7 @@ and say when a route is unavailable. Skills named here exist only if installed; 
 
 - Fan out independent work over the available threads: `xargs -P "$(nproc)"`, `cargo nextest run`, `pytest -n auto` (when pytest-xdist is installed), `go test ./...`, Vitest's default pool.
 - Heavy builds or suites (Go, bundlers, `docker build`, browser suites): run them under a memory-capped scope when the machine has one (`systemd-run --user --scope --slice=<slice> --quiet --collect -- <cmd>`). Never raise a cap or clear caches to pass.
-- `bash` has no background mode: start long jobs with `nohup <cmd> >/tmp/<name>.log 2>&1 &`, record the PID, and poll the log with a bounded loop; stop only the PIDs you started.
+- `bash` has no background mode: start long jobs with `nohup <cmd> >/tmp/<name>.log 2>&1 &`, record the PID, and wait with `while kill -0 PID 2>/dev/null; do sleep 5; done` (returns when the job ends; no fixed `sleep N`), then read the log; stop only the PIDs you started.
 - Throwaway test state on tmpfs (`/tmp`, `/dev/shm`, `docker run --tmpfs <datadir>`; PostgreSQL `fsync=off`, `synchronous_commit=off`), local tests only.
 - Speed claims: `hyperfine` before and after, mean ± σ.
 
