@@ -26,7 +26,7 @@ item 3 e a rede do item 1, que valem para toda sessão.
 | 2 | Sem interface, `question` não fica ativa. Rede: o erro de UI vira "escreva as perguntas, cada uma terminada em `?`, na resposta final e encerre o turno sem alterar arquivos". | `session_start`, `tool_result` |
 | 3 | Pedido Anthropic: a seção `<cwd>` sai do bloco de sistema em cache e vai para um bloco final sem `cache_control`. O bloco em cache fica byte-idêntico entre diretórios; nenhum ponto de cache é criado e os demais blocos mantêm a ordem. Payload em outro formato segue intacto (`PI_HEADLESS_LEAN_DEBUG=1` escreve o motivo no stderr). | `before_provider_request` |
 | 4 | Sem interface, o título de sessão não é gerado (`CLAUDE_CODE_DISABLE_TERMINAL_TITLE=1`, salvo valor já definido). | `session_start` |
-| 7 | Na sessão headless de topo (critério do item 6), `memory` e `lsp_*` não ficam ativas: 0 de 2.091 chamadas em 263 sessões guardadas do ny-pi (Terminal-Bench e gates, 2026-11-16); os esquemas pesam no prefixo fixo. `subagent` fica ativa: usuários de `pi -p` podem orquestrar (decisão 2026-11-18). `PI_HEADLESS_TOOLS=all` mantém as duas; subagentes (depth 1 ou mais, também sem interface) ficam fora do corte. Efeito em acerto, custo e tokens da 1ª requisição: a medir no gate de benchmark. | `session_start` |
+| 7 | Na sessão headless de topo (critério do item 6), `subagent`, `memory` e `lsp_*` não ficam ativas: 0 de 2.091 chamadas em 263 sessões guardadas do ny-pi (Terminal-Bench e gates, 2026-11-16) e 0 chamadas de `subagent` em 168 sessões `pi -p` de topo do Terminal-Bench (2026-11-18); os esquemas pesam no prefixo fixo (`subagent` ~800 tokens). A decisão de 2026-11-18 de manter `subagent` foi substituída em 2026-11-19 (dono: custo x benefício acima de tudo). `PI_HEADLESS_TOOLS=all` mantém as três; subagentes (depth 1 ou mais, também sem interface) ficam fora do corte. Efeito em acerto, custo e tokens da 1ª requisição: a medir no gate de benchmark. | `session_start` |
 | 8 | Na sessão headless de topo, `todo` não fica ativa e a seção `<docs>` (caminhos da documentação do pi) sai do prompt; `PI_HEADLESS_TRIM=0` desliga, `PI_HEADLESS_TOOLS=all` mantém `todo`. | `extensions/headless-lean`, `session_start`, `before_provider_request` |
 | 5 | Contrato: fora do modo plano, "planeje antes" é plano curto e implementação no mesmo turno, salvo pedido contraditório ou com escolha em aberto; sem interface, as perguntas vão na resposta final. | `claude-home/CLAUDE.md`, Delivery |
 
@@ -102,7 +102,7 @@ tokenizador local). O stage não carrega MCP, `tool_search` nem ponytail, então
 | system: contrato headless (6 regras) | 981 | 981 | repo |
 | system: Subagents (lista de 17 agentes) | ~730 | ~730 | pi-code |
 | tools: read 275, bash 220, edit 386, write 158, web_fetch 219, codemode 476, placeholder 59 | 1.793 | 1.793 | pi / pi-code |
-| tools: subagent | 914 | 914 | pi-code (fica, decisão de 2026-11-18) |
+| tools: subagent | 914 | 914 | pi-code (sai no item 7 desde 2026-11-19) |
 | tools: todo | 256 | 0 | pi-code |
 | Total do corpo | 8.933 | 8.130 | |
 
@@ -110,7 +110,7 @@ Corte: -803 tokens (-9%; 31.267 para 28.454 bytes) em todo turno. Escolhido por 
 (0 de 1.211 chamadas em 168 sessões de topo; `edit` e `write` também têm 0, mas ficam: são a via natural de edição
 fora do Terminal-Bench) e sem relação com `bash`, a dica de timeout/background ou o contrato de 6 regras. Fora do
 corte e do produto: `personal.md` (~2.500 tok) é do overlay do dono; reduzi-lo é decisão dele.
-`PI_HEADLESS_TRIM=0` desliga; `subagent` e `codemode` ficam.
+`PI_HEADLESS_TRIM=0` desliga; `codemode` fica.
 
 ## Limites conhecidos
 
@@ -119,7 +119,7 @@ corte e do produto: `personal.md` (~2.500 tok) é do overlay do dono; reduzi-lo 
 - A linha `Graph: ... has no codegraph index` continua nas execuções sem interface (fora desta mudança).
 - O ganho de cache só aparece quando sessões novas começam em diretórios diferentes dentro do TTL do cache.
 - Ferramentas removidas só na sessão `pi -p` de topo e só com uso medido zero: `memory` e `lsp_*` (item 7) e
-  `todo` (item 8); `codemode`, `edit`, `write` e `subagent` ficam.
+  `todo` (item 8); `codemode`, `edit` e `write` ficam (`subagent` sai no item 7).
 
 ## Testes
 

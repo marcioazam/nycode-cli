@@ -17,10 +17,10 @@
  *    `$CLAUDE_CONFIG_DIR/CLAUDE.headless.md` e a seção `<skills>` sai do prompt. Arquivo ausente ou formato inesperado
  *    deixa o payload como está. PI_HEADLESS_FLOOR=0 desliga só este item.
  *
- * 7. Na sessão headless de topo (mesmo critério do item 6), `memory` e `lsp_*` ficam inativas: 0 de 2.091 chamadas em
- *    263 sessões guardadas do ny-pi (Terminal-Bench e gates, 2026-11-16) e os esquemas pesam no prefixo fixo.
- *    `subagent` fica ativa (usuários de `pi -p` podem orquestrar; decisão 2026-11-18). PI_HEADLESS_TOOLS=all mantém
- *    as duas; subagentes do pi-code (depth 1 ou mais) também rodam sem UI e ficam fora do corte.
+ * 7. Na sessão headless de topo (mesmo critério do item 6), `subagent`, `memory` e `lsp_*` ficam inativas: 0 de 2.091
+ *    chamadas em 263 sessões guardadas (2026-11-16) e 0 de 168 sessões `pi -p` de topo do Terminal-Bench (2026-11-18);
+ *    o esquema de `subagent` sozinho pesa ~800 tokens do prefixo. Custo x benefício acima de tudo (dono, 2026-11-19)
+ *    substitui a decisão de 2026-11-18 de manter `subagent`. PI_HEADLESS_TOOLS=all mantém as três; subagentes do pi-code (depth 1 ou mais) também rodam sem UI e ficam fora do corte.
  *
  * 8. Na sessão headless de topo, `todo` fica inativa e a seção `<docs>` (caminhos da documentação do pi, "leia só se o
  *    usuário perguntar sobre o próprio harness") sai do prompt: 0 chamadas de `todo` em 168 sessões `pi -p` de topo
@@ -139,8 +139,8 @@ export function headlessTools(active: string[], argv: string[]): string[] {
   return active.filter((t) => t !== 'question' && (plan || t !== 'plan_mode_complete'))
 }
 
-/** Ferramentas sem uso medido na sessão headless de topo (item 7); `subagent` fica de fora de propósito. */
-const UNUSED_HEADLESS = /^(memory|lsp_[a-z]+)$/
+/** Ferramentas sem uso medido na sessão headless de topo (item 7). */
+const UNUSED_HEADLESS = /^(subagent|memory|lsp_[a-z]+)$/
 
 /** Sessão headless de topo: sem UI e fora de subagente do pi-code (itens 6 e 7). */
 export function isTopLevelHeadless(hasUI: boolean, depth: string | undefined): boolean {

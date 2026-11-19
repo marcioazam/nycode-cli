@@ -123,7 +123,7 @@ test('headlessTools tira question sempre e plan_mode_complete fora do modo plano
 test('dropUnused tira as ferramentas sem uso em execução sem interface (0 de 2.091 chamadas guardadas)', () => {
   const keep = ['read', 'bash', 'edit', 'write', 'web_fetch', 'todo', 'codemode', 'tool_search']
   const lsp = ['lsp_diagnostics', 'lsp_hover', 'lsp_definition', 'lsp_references', 'lsp_symbols']
-  assert.deepEqual(dropUnused([...keep, 'subagent', 'memory', ...lsp]), [...keep, 'subagent'])
+  assert.deepEqual(dropUnused([...keep, 'subagent', 'memory', ...lsp]), keep)
   assert.deepEqual(dropUnused(keep), keep)
 })
 
@@ -201,12 +201,12 @@ test('sem UI: session_start desativa as duas ferramentas e desliga o título', (
   }
 })
 
-test('sem UI de topo: session_start tira memory e lsp_* e mantém subagent; PI_HEADLESS_TOOLS=all mantém; com UI nada muda', () => {
+test('sem UI de topo: session_start tira subagent, memory e lsp_*; PI_HEADLESS_TOOLS=all mantém; com UI nada muda', () => {
   const tools = ['read', 'bash', 'subagent', 'memory', 'lsp_hover', 'question']
   const cut = load(tools)
   try {
     cut.handlers.session_start({}, { hasUI: false })
-    assert.deepEqual(cut.sets, [['read', 'bash', 'subagent']])
+    assert.deepEqual(cut.sets, [['read', 'bash']])
   } finally {
     cut.restore()
   }
@@ -447,8 +447,8 @@ test('handler: topo sem UI perde <docs> (com ou sem piso); subagente, UI e PI_HE
 test('session_start: topo sem UI tira todo; PI_HEADLESS_TRIM=0, PI_HEADLESS_TOOLS=all, subagente e UI mantêm', () => {
   const tools = ['read', 'bash', 'todo', 'subagent', 'memory']
   const cases: Array<[Record<string, string>, boolean, string[] | undefined]> = [
-    [{}, false, ['read', 'bash', 'subagent']],
-    [{ PI_HEADLESS_TRIM: '0' }, false, ['read', 'bash', 'todo', 'subagent']],
+    [{}, false, ['read', 'bash']],
+    [{ PI_HEADLESS_TRIM: '0' }, false, ['read', 'bash', 'todo']],
     [{ PI_HEADLESS_TOOLS: 'all' }, false, undefined],
     [{ PI_CODE_SUBAGENT_DEPTH: '1' }, false, undefined],
     [{}, true, undefined],
