@@ -449,6 +449,8 @@ $HOME/.pi/agent/extensions/dev-commands/index.ts	extensions/dev-commands/index.t
 $HOME/.pi/agent/extensions/dev-commands/keybindings.ts	extensions/dev-commands/keybindings.ts
 $HOME/.pi/agent/extensions/dev-commands/test/copy-code.test.ts	extensions/dev-commands/test/copy-code.test.ts
 $HOME/.pi/agent/extensions/dev-commands/test/keybindings.test.ts	extensions/dev-commands/test/keybindings.test.ts
+$HOME/.pi/agent/extensions/effort-sandwich/index.test.ts	extensions/effort-sandwich/index.test.ts
+$HOME/.pi/agent/extensions/effort-sandwich/index.ts	extensions/effort-sandwich/index.ts
 $HOME/.pi/agent/extensions/footer-no-stats.ts	extensions/footer-no-stats.ts
 $HOME/.pi/agent/extensions/headless-lean/index.test.ts	extensions/headless-lean/index.test.ts
 $HOME/.pi/agent/extensions/headless-lean/index.ts	extensions/headless-lean/index.ts

@@ -16,7 +16,7 @@ mk() {
   printf '%s\n' "$2" >"$d/$1"
   chmod "$3" "$d/$1"
 }
-unset PI_BYPASS_PERMISSIONS PI_KNOWLEDGE_VAULT PI_COMPACT_AT PONYTAIL_QUIET_STARTUP FOO
+unset PI_BYPASS_PERMISSIONS PI_KNOWLEDGE_VAULT PI_COMPACT_AT PONYTAIL_QUIET_STARTUP FOO PI_EFFORT_SANDWICH PI_EFFORT_SANDWICH_TURNS
 rm -f /tmp/pwned
 
 mk a 'PI_BYPASS_PERMISSIONS=1' 644
@@ -49,6 +49,11 @@ ok "$PONYTAIL_QUIET_STARTUP" 5 "caller env wins"
 mk h 'PI_BYPASS_PERMISSIONS=1' 600
 pi_load_local_env "$d/h"
 ok "$PI_BYPASS_PERMISSIONS" 1 "valid PI_BYPASS_PERMISSIONS applied"
+
+mk i 'PI_EFFORT_SANDWICH=1
+PI_EFFORT_SANDWICH_TURNS=3' 600
+pi_load_local_env "$d/i"
+ok "${PI_EFFORT_SANDWICH-unset}|${PI_EFFORT_SANDWICH_TURNS-unset}" '1|3' "effort-sandwich keys applied"
 
 # --no-approve decision: run the whole wrapper (temp HOME, fake pi printing one arg per line).
 mkdir -p "$d/home/.pi/agent/bin"

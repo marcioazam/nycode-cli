@@ -128,6 +128,7 @@ Tipos: `skill` (`claude-home/skills/<nome>/`), `agent` (`claude-home/agents/<nom
 | extension | compact-at-400k | core | Compactação de segurança |
 | extension | completion-gate | core | Verificação antes de encerrar |
 | extension | dev-commands | ui | `/copy-code` e `/keybindings` |
+| extension | effort-sandwich | optional | Raciocínio high só no 1º turno do `pi -p` de topo (opt-in, spec 0009) |
 | extension | footer-no-stats | ui | Rodapé |
 | extension | headless-lean | core | Custo sem interface |
 | extension | no-context-files-covers-claude-md | core | Contexto sem duplicata |
