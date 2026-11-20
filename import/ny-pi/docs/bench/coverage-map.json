@@ -1,0 +1,106 @@
+{
+  "_doc": "AC8: capability -> repo path globs; covered_by_vanilla = exercised by the vanilla baseline suites (S4 plan, S5 multi-agent, S1 headless). A PR touching paths of an uncovered capability gets the suggestion 'retest vanilla'.",
+  "capabilities": {
+    "headless_json": {
+      "paths": [
+        "bench/arms/**"
+      ],
+      "covered_by_vanilla": true
+    },
+    "budget_cap": {
+      "paths": [
+        "bench/**",
+        "claude-home/bin/**"
+      ],
+      "covered_by_vanilla": false
+    },
+    "hooks": {
+      "paths": [
+        "claude-home/hooks/**"
+      ],
+      "covered_by_vanilla": false
+    },
+    "skills": {
+      "paths": [
+        "claude-home/skills/**"
+      ],
+      "covered_by_vanilla": false
+    },
+    "mcp": {
+      "paths": [
+        "mcp.json.example",
+        "claude-home/rules-ref/research-and-tools.md"
+      ],
+      "covered_by_vanilla": false
+    },
+    "subagents": {
+      "paths": [
+        "claude-home/agents/**"
+      ],
+      "covered_by_vanilla": true
+    },
+    "teams": {
+      "paths": [
+        "claude-home/skills/swarm-orchestration/**"
+      ],
+      "covered_by_vanilla": true
+    },
+    "plan_mode": {
+      "paths": [
+        "extensions/plan-gate.ts",
+        "claude-home/skills/plan-workflow/**",
+        "claude-home/commands/plan*"
+      ],
+      "covered_by_vanilla": true
+    },
+    "sessions_resume": {
+      "paths": [
+        "extensions/auto-resume/**"
+      ],
+      "covered_by_vanilla": false
+    },
+    "compaction": {
+      "paths": [
+        "extensions/compact-at-400k.ts"
+      ],
+      "covered_by_vanilla": false
+    },
+    "permission_modes": {
+      "paths": [
+        "extensions/bypass-permissions/**",
+        "claude-home/rules/safety.md"
+      ],
+      "covered_by_vanilla": false
+    },
+    "rewind": {
+      "paths": [
+        "claude-home/patches/**"
+      ],
+      "covered_by_vanilla": false
+    },
+    "output_styles": {
+      "paths": [],
+      "covered_by_vanilla": false
+    },
+    "extensions": {
+      "paths": [
+        "extensions/**",
+        "npm/**",
+        "patches/**"
+      ],
+      "covered_by_vanilla": false
+    },
+    "lsp": {
+      "paths": [
+        "lsp.json.example"
+      ],
+      "covered_by_vanilla": false
+    },
+    "codemode": {
+      "paths": [
+        "extensions/**codemode**"
+      ],
+      "covered_by_vanilla": false
+    }
+  }
+}

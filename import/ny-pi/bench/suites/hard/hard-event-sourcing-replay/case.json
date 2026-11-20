@@ -1,0 +1,11 @@
+{
+  "id": "hard-event-sourcing-replay",
+  "suite": "hard",
+  "kind": "outcome",
+  "prompt": "O pacote stockflow (leia README.md) reconstrói estoque e pedidos relendo o log de eventos inteiro a cada consulta. Implemente snapshot e replay incremental seguindo à risca docs/SPEC.md: o estado obtido a partir de um snapshot tem de ser exatamente igual ao do replay completo, inclusive com eventos fora de ordem, repetidos ou atrasados, e o log passa a ser idempotente. Os nomes, as assinaturas e as exceções estão no SPEC (inclui serviço, relatórios e CLI). A suíte em tests/ deve continuar passando.",
+  "timeout_s": 900,
+  "budget_usd": 1.5,
+  "split": "heldout",
+  "security": false,
+  "test_cmd": "python3 -m pytest -q -p no:cacheprovider hidden"
+}

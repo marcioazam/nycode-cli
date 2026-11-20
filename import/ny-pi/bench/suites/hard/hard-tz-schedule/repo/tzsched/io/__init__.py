@@ -1,0 +1,1 @@
+"""Entrada de dados."""

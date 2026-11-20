@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Arm ny-pi: the harness of THIS checkout (PR head or main) in a throwaway HOME, so a run never reads or
+# patches the live ~/.pi. Stage = install.sh --link --apply from this tree + the owner's overlay
+# (settings.json, local.env, rules/personal.md) + a pristine pi-code npm tree (bin/pi patches it in place).
+# The pi release is symlinked read-only in practice (its core patch is already applied upstream of the stage).
+set -euo pipefail
+here=$(dirname "$(readlink -f "$0")")
+repo=$(cd "$here/../.." && pwd)
+# shellcheck source=bench/arms/oauth-token.sh
+. "$here/oauth-token.sh"
+# shellcheck source=bench/arms/overlay-sha.sh
+. "$here/overlay-sha.sh"
+real=${BENCH_REAL_HOME:-$HOME}
+# mise shims (node, npm, jq, ...) find their config, installs and trust list through $HOME; under the staged
+# HOME they refuse to run ("config files are not trusted"), which failed the stage build of the timer gate on
+# 2026-11-15. Pinned to the real HOME, every tool resolves as it does outside the stage. Unused without mise.
+export MISE_CONFIG_DIR="${MISE_CONFIG_DIR:-$real/.config/mise}" MISE_DATA_DIR="${MISE_DATA_DIR:-$real/.local/share/mise}"
+export MISE_STATE_DIR="${MISE_STATE_DIR:-$real/.local/state/mise}" MISE_CACHE_DIR="${MISE_CACHE_DIR:-$real/.cache/mise}"
+stage=${BENCH_STAGE:-${BENCH_STAGE_ROOT:-$real/.cache/bench}/bench-nypi-$(git -C "$repo" rev-parse --short=12 HEAD)$(git -C "$repo" diff --quiet HEAD || echo -dirty)}
+if [ ! -f "$stage/.ready" ]; then
+  mkdir -p "$(dirname "$stage")"
+  mkdir -p "$stage/.pi/agent/claude-home/rules" "$stage/.local/bin"
+  ln -sfn "$real/.pi/agent/install" "$stage/.pi/agent/install"
+  ln -sfn "$real/.pi/agent/bin" "$stage/.pi/agent/bin"
+  # Pristine pi-code from this tree's lockfile (never a copy of the live npm, which carries local patches).
+  mkdir -p "$stage/.pi/agent/npm" && cp "$repo/npm/package.json" "$repo/npm/package-lock.json" "$stage/.pi/agent/npm/"
+  (cd "$stage/.pi/agent/npm" && npm ci --ignore-scripts --no-audit --no-fund --prefer-offline --loglevel=error </dev/null) >&2
+  # Overlay = the owner's untracked layer, listed in overlay.list (paths under ~/.pi/agent). Its hash goes
+  # into .overlay-sha so the gate can refuse a comparison against a baseline taken with another overlay.
+  # BENCH_OVERLAY_DIR = a frozen copy of that layer (overlay_freeze): an edit to the live files between the
+  # baseline and a PR round then no longer makes the two rounds incomparable.
+  overlay=${BENCH_OVERLAY_DIR:-$real/.pi/agent}
+  [ -d "$overlay" ] || {
+    echo "bench: overlay dir missing: $overlay" >&2
+    exit 2
+  }
+  overlay_copy "$overlay" "$stage/.pi/agent" "$here/overlay.list"
+  overlay_sha "$stage/.pi/agent" "$here/overlay.list" >"$stage/.overlay-sha"
+  HOME=$stage bash "$repo/install.sh" --link --apply >/dev/null
+  # Warm-up: bin/pi applies its patches at start; a first real run on an unpatched tree crashed at exit (2026-11-13).
+  HOME=$stage "$stage/.local/bin/pi" --version >/dev/null
+  touch "$stage/.ready"
+fi
+if [ -n "${BENCH_API_KEY_FILE:-}" ]; then
+  export ANTHROPIC_API_KEY
+  ANTHROPIC_API_KEY=$(bench_api_key)
+  unset ANTHROPIC_OAUTH_TOKEN CLAUDE_CODE_OAUTH_TOKEN ANTHROPIC_AUTH_TOKEN
+  bench_pi_workspace_header "$stage/.pi/agent/models.json"
+else
+  export ANTHROPIC_OAUTH_TOKEN
+  ANTHROPIC_OAUTH_TOKEN=$(bench_oauth_token)
+  unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
+fi
+HOME=$stage exec "$stage/.local/bin/pi" "$@"

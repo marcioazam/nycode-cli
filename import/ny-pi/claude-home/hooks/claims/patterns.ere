@@ -1,0 +1,22 @@
+# cadê-o-print evidence patterns, shared by hooks/hook-dispatch.sh (bash =~, glibc ERE) and claims.py (Python re).
+# Keep to their common subset: no \s \d \b, no (?:), no POSIX [[:classes:]], no backslash inside brackets.
+# One name=regex per line. Subjects are normalized first: newline -> ';', tab -> ' ', plus one trailing space.
+# runner: a test runner at a command head (after ; & | ( ` or a ["' list start), behind env assignments and
+# wrappers (timeout, uv/poetry run, npx, python [flags] -m, coverage run -m, sh -c, systemd-run --); group
+# runner_group is the runner itself (count the opening parens when editing).
+runner=(^|[;&|(`]|\[ *["'])( *[A-Za-z_][A-Za-z0-9_]*=[^ ;&|]*)* *(timeout +[0-9.smhd]+ +|time +|exec +|nice +|npx +|bunx +|uvx +|(uv|poetry|pipenv|pdm|hatch|rye) +run +([^;&|]* +)?|(pnpm|yarn) +(exec|dlx) +|python[0-9.]* +([^;&|]* +)?-m +|coverage +run +([^;&|]* +)?-m +|(ba|z)?sh +-[A-Za-z]*c +["']|systemd-run +[^;&|]*-- +)*([^ ;&|`"']*/)?(pytest|py\.test|unittest|tox|nox|bats|ctest|vitest|jest|mocha|rspec|phpunit|go +test|cargo +(nextest +run|test)|(npm|pnpm|yarn|bun) +(run +)?test|deno +test|node +--test|make +([^;&|]* +)?(test|check)|flutter +test|dart +test|dotnet +test|playwright +test|mvn +([^;&|]* +)?(test|verify)|(gradle|gradlew) +([^;&|]* +)?(test|check)|(bash|sh) +([^ ;&|]*/)?tests?/[^ ;&|]*\.sh|\./([^ ;&|]*/)?tests?/[^ ;&|]*\.sh)[ ;&|)`"':]
+runner_group=12
+# report_runner: a runner named anywhere in a subagent or workflow report (prose); group 2 is the runner.
+report_runner=(^|[^A-Za-z0-9_])(pytest|unittest|tox|nox|bats|ctest|vitest|jest|mocha|rspec|phpunit|go test|cargo test|cargo nextest|npm test|pnpm test|yarn test|bun test|deno test|make test|make check|flutter test|dart test|dotnet test|mvn test|mvn verify|gradle test|gradlew test|playwright test|tests?/[^ ;&|`]*\.sh)([^A-Za-z0-9_]|$)
+# Runner outcome, read from the output tail of a test call: fail markers win, then a pass summary, then absent
+# markers; with none, the call's exit status. A summary beats the exit code because one Bash call often runs the suite and then a
+# grep, lint or coverage step that fails (replay 2026-10-31). Reports are never scored by these: they narrate
+# red-then-green, so only a failed Agent/Workflow/handback call marks a report failed.
+# fail: pytest/jest/mocha counts, FAILED/FAILURES/FAIL (pytest, unittest, cargo, go), Rust panics.
+fail=(^|[^0-9])[1-9][0-9]* (failed|failing)|(^|[^0-9])[1-9][0-9]* errors? in [0-9]|(^|[^A-Za-z_])FAIL(ED|URES)?([^A-Za-z_]|$)|panicked at
+# pass: pytest, unittest, go, cargo, jest/vitest, mocha and bats summaries.
+pass=(^|[^0-9])[0-9]+ passed|Ran [1-9][0-9]* tests? in [0-9.]+s[^A-Za-z]*OK|(^|[^A-Za-z])ok[^A-Za-z0-9]+[A-Za-z0-9._/-]+[^A-Za-z0-9]+[0-9.]+s|test result: ok|Tests:? +[0-9]+ passed|[0-9]+ passing|[0-9]+ tests?, 0 failures
+# absent: the runner never started; checked after pass, as other commands in the same call may be missing.
+absent=command not found|[Nn]o module named
+# ci: a CI status read (a source for attributed claims).
+ci=(^|[;&|(` ])gh +(pr +checks|run +(view|watch))

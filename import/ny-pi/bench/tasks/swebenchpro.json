@@ -1,0 +1,34 @@
+{
+  "dataset": "swebenchpro",
+  "version": "latest",
+  "tasks": [
+    "instance_ansible__ansible-1b70260d5aa2f6c9782fd2b848e8d16566e50d85-vba6da65a0f3baefda7a058ebbd0a8dcafb8512f5",
+    "instance_ansible__ansible-39bd8b99ec8c6624207bf3556ac7f9626dad9173-v1055803c3a812189a1133297f7f5468579283f86",
+    "instance_ansible__ansible-5e369604e1930b1a2e071fecd7ec5276ebd12cb1-v0f01c69f1e2528b935359cfe578530722bca2c59",
+    "instance_ansible__ansible-984216f52e76b904e5b0fa0fb956ab4f1e0a7751-v1055803c3a812189a1133297f7f5468579283f86",
+    "instance_ansible__ansible-a20a52701402a12f91396549df04ac55809f68e9-v1055803c3a812189a1133297f7f5468579283f86",
+    "instance_ansible__ansible-c616e54a6e23fa5616a1d56d243f69576164ef9b-v1055803c3a812189a1133297f7f5468579283f86",
+    "instance_element-hq__element-web-1216285ed2e82e62f8780b6702aa0f9abdda0b34-vnan",
+    "instance_element-hq__element-web-56c7fc1948923b4b3f3507799e725ac16bcf8018-vnan",
+    "instance_element-hq__element-web-aec454dd6feeb93000380523cbb0b3681c0275fd-vnan",
+    "instance_element-hq__element-web-b7fea97bb68c6628a644580076f840109132f074-vnan",
+    "instance_flipt-io__flipt-690672523398c2b6f6e4562f0bf9868664ab894f",
+    "instance_gravitational__teleport-10123c046e21e1826098e485a4c2212865a49d9f",
+    "instance_gravitational__teleport-288c5519ce0dec9622361a5e5d6cd36aa2d9e348",
+    "instance_gravitational__teleport-f432a71a13e698b6e1c4672a2e9e9c1f32d35c12",
+    "instance_internetarchive__openlibrary-43f9e7e0d56a4f1d487533543c17040a029ac501-v0f5aece3601a5b4419f7ccec1dbda2071be28ee4",
+    "instance_navidrome__navidrome-09ae41a2da66264c60ef307882362d2e2d8d8b89",
+    "instance_nodebb__nodebb-0c81642997ea1d827dbd02c311db9d4976112cd4-vf2cf3cbd463b7ad942381f1c6d077626485a1e9e",
+    "instance_nodebb__nodebb-f48ed3658aab7be0f1165d4c1f89af48d7865189-v0495b863a912fbff5749c67e860612b91825407c",
+    "instance_protonmail__webclients-c6f65d205c401350a226bb005f42fac1754b0b5b",
+    "instance_qutebrowser__qutebrowser-3d01c201b8aa54dd71d4f801b1dd12feb4c0a08a-v5fc38aaf22415ab0b70567368332beee7955b367"
+  ],
+  "heldout": [
+    "instance_ansible__ansible-1b70260d5aa2f6c9782fd2b848e8d16566e50d85-vba6da65a0f3baefda7a058ebbd0a8dcafb8512f5",
+    "instance_ansible__ansible-a20a52701402a12f91396549df04ac55809f68e9-v1055803c3a812189a1133297f7f5468579283f86",
+    "instance_ansible__ansible-c616e54a6e23fa5616a1d56d243f69576164ef9b-v1055803c3a812189a1133297f7f5468579283f86",
+    "instance_element-hq__element-web-56c7fc1948923b4b3f3507799e725ac16bcf8018-vnan",
+    "instance_gravitational__teleport-10123c046e21e1826098e485a4c2212865a49d9f",
+    "instance_protonmail__webclients-c6f65d205c401350a226bb005f42fac1754b0b5b"
+  ]
+}

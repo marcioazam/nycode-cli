@@ -1,0 +1,11 @@
+{
+  "id": "hard-api-v2-migration",
+  "suite": "hard",
+  "kind": "outcome",
+  "prompt": "O pacote helpdesk (leia README.md) usa a API v1: cada ticket é um dict que atravessa todas as camadas (intake, validation, routing, store, search, stats, notify, export). Migre o pacote inteiro para a API v2 tipada, seguindo à risca docs/SPEC.md: pacote helpdesk.models (Priority, Status, Tier, Customer, HistoryEntry, Ticket, Criteria, Summary), todas as funções internas recebendo e devolvendo esses tipos e recusando dict com TypeError, e as bordas (Desk.submit, Desk.search, linha de comando, canonicalize) produzindo exatamente o que produzem hoje. As regras do SPEC são numeradas e todas valem, inclusive as de ordem de verificação e de mensagens de erro. Atualize os testes de tests/ para a v2 e deixe-os passando. Só biblioteca padrão.",
+  "timeout_s": 900,
+  "budget_usd": 1.5,
+  "split": "heldout",
+  "security": false,
+  "test_cmd": "python3 -m pytest -q -p no:cacheprovider hidden"
+}

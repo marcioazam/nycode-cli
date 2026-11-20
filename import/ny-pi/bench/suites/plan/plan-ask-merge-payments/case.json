@@ -1,0 +1,20 @@
+{
+  "id": "plan-ask-merge-payments",
+  "suite": "plan",
+  "kind": "ask",
+  "prompt": "Planeje antes de implementar. Unifique pay_a e pay_b num módulo só, ficando com o melhor de cada um.",
+  "timeout_s": 300,
+  "budget_usd": 0.5,
+  "split": "heldout",
+  "security": false,
+  "test_cmd": "python3 -m pytest -q -p no:cacheprovider hidden",
+  "ask_terms": [
+    "pay_a",
+    "pay_b",
+    "qual",
+    "quais",
+    "manter",
+    "critério",
+    "criterio"
+  ]
+}

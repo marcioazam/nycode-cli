@@ -1,0 +1,21 @@
+{
+  "id": "plan-ask-purge-scope",
+  "suite": "plan",
+  "kind": "ask",
+  "prompt": "Planeje antes de implementar. Apague os dados antigos do banco.",
+  "timeout_s": 300,
+  "budget_usd": 0.5,
+  "split": "dev",
+  "security": false,
+  "test_cmd": "python3 -m pytest -q -p no:cacheprovider hidden",
+  "ask_terms": [
+    "antigos",
+    "quais",
+    "período",
+    "periodo",
+    "dias",
+    "retenção",
+    "retencao",
+    "tabela"
+  ]
+}

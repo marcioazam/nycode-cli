@@ -1,0 +1,11 @@
+{
+  "id": "hard-parser-recovery",
+  "suite": "hard",
+  "kind": "outcome",
+  "prompt": "Usamos o pacote `cfgparse` (`cfgparse.parse`, `cfgparse.load` e a CLI) para validar arquivos de configuração e mostrar todos os erros de uma vez. Quando o arquivo tem uma linha inválida, a recuperação às vezes se perde nas linhas seguintes: além do erro verdadeiro, trechos perfeitamente válidos mais abaixo (por exemplo, uma lista escrita em várias linhas) passam a ser reportados com `E_LIST`/`E_SYNTAX` e seus valores não entram na configuração; em outros arquivos, chaves válidas depois da linha ruim somem da configuração sem diagnóstico nenhum e erros reais posteriores deixam de aparecer. Vimos isso, entre outros casos, depois de uma linha com aspas não fechadas e depois de um cabeçalho de seção sem o `]`. Corrigindo a linha inválida à mão, o resto do arquivo volta a ser lido certo. Investigue, encontre a causa e corrija, sem quebrar o que já funciona. As regras estão em docs/SPEC.md. Use apenas a biblioteca padrão do Python.",
+  "timeout_s": 900,
+  "budget_usd": 1.5,
+  "split": "dev",
+  "security": false,
+  "test_cmd": "python3 -m pytest -q -p no:cacheprovider hidden"
+}

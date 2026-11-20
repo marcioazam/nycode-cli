@@ -1,0 +1,1 @@
+"""Análise sintática com recuperação."""

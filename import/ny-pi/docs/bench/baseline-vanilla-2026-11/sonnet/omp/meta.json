@@ -1,0 +1,12 @@
+{
+  "arm": "omp",
+  "arm_version": "18.20.0",
+  "model": "claude-sonnet-5-5",
+  "git_sha": "6d2e408ed390ea7cecdca000e263196d87a09e50",
+  "started": "2026-11-14T20:40:34+00:00",
+  "budget_usd": 20.0,
+  "tier": "vanilla",
+  "not_verified": false,
+  "errors": [],
+  "cost_usd": 7.5353
+}

@@ -1,0 +1,1 @@
+"""Expansão de recorrências."""

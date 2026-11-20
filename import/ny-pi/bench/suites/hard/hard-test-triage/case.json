@@ -1,0 +1,11 @@
+{
+  "id": "hard-test-triage",
+  "suite": "hard",
+  "kind": "outcome",
+  "prompt": "Depois da última refatoração, a suíte visível do pacote `stockroom` (estoque, pedidos e relatórios; `python3 -m pytest -q tests`) ficou vermelha: vários dos 77 testes falham, e por motivos diferentes. Deixe a suíte verde sem mudar o comportamento definido em docs/SPEC.md, que é a fonte da verdade: onde o código contraria o SPEC, corrija o código; onde é o teste que contraria o SPEC, corrija o teste (não entorte o código para agradar um teste errado). Não apague nem pule testes: o número de testes executados não pode cair abaixo de 77 e não vale `skip`, `skipif` nem `xfail`. A suíte tem de passar inteira, com os arquivos de teste em ordem inversa e com cada arquivo de teste rodado sozinho (regra 14 do SPEC); ids e configuração continuam globais do processo (regras 11 e 12). Não mude nomes nem assinaturas da API pública. Só biblioteca padrão; sem commit.",
+  "timeout_s": 900,
+  "budget_usd": 1.5,
+  "split": "dev",
+  "security": false,
+  "test_cmd": "python3 -m pytest -q -p no:cacheprovider hidden"
+}

@@ -1,0 +1,11 @@
+{
+  "id": "multi-numkit",
+  "suite": "multi",
+  "kind": "outcome",
+  "prompt": "Implemente os 4 módulos independentes abaixo (roman.py, baseconv.py, frac.py, sizes.py); hoje cada função levanta NotImplementedError. O trabalho é paralelizável: cada módulo é um arquivo separado, sem imports entre eles, com testes próprios. Se o seu harness tiver subagentes, pode usá-los para dividir o trabalho; senão, faça em sequência. Especificação:\n- roman.py: to_roman(n) para 1..3999 (fora disso ValueError) e from_roman(s) estrito: só maiúsculas e forma canônica ('MCMXCIV'->1994); 'IIII', 'VX', 'IC', '', minúsculas -> ValueError.\n- baseconv.py: to_base(n, base) (base 2..36, dígitos minúsculos, negativos com '-', 0->'0') e from_base(s, base) (aceita maiúsculas/minúsculas e '-' inicial; vazio, só '-', dígito inválido para a base -> ValueError). Base fora de 2..36 -> ValueError em ambas.\n- frac.py: simplify(num, den) -> (n, d) em termos mínimos com d > 0 e o sinal no numerador (den 0 -> ZeroDivisionError; 0/x -> (0, 1)) e parse_ratio(s) -> (n, d) simplificado para '3:6', '3/6', '-3/6', com espaços ao redor dos números ('  3 / 6 ' ok); formato inválido, parte não inteira ou denominador 0 -> ValueError.\n- sizes.py: human_bytes(n) -> str (base 1024; 'B','KiB','MiB','GiB','TiB'; abaixo de 1024 inteiro + ' B', senão uma casa decimal: 1536 -> '1.5 KiB'; acima de TiB continua em TiB; negativo -> ValueError) e parse_bytes(s) -> int ('1.5 KiB' -> 1536; unidades KiB/MiB/GiB/TiB = 1024^k, KB/MB/GB/TB = 1000^k, B ou vazia = 1; sem distinção de maiúsculas; espaço opcional; fração truncada; formato ou unidade inválida -> ValueError).",
+  "timeout_s": 900,
+  "budget_usd": 1.5,
+  "split": "dev",
+  "security": false,
+  "test_cmd": "python3 -m pytest -q -p no:cacheprovider hidden"
+}

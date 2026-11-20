@@ -1,0 +1,245 @@
+--- a/subagent/fleet-ui/index.ts
++++ b/subagent/fleet-ui/index.ts
+@@ -3,12 +3,12 @@
+  * handling, the live viewer and the /tasks browser. Wired by ../index.ts.
+  * Record: docs/pi-agent-fleet-2026-11-12.md.
+  */
+-import type { ExtensionAPI, ExtensionCommandContext } from '@earendil-works/pi-coding-agent'
++import type { ExtensionAPI, ExtensionCommandContext, ExtensionContext } from '@earendil-works/pi-coding-agent'
+ 
+ import type { FleetSource } from '../fleet/types.ts'
+ import { hudTheme } from './palette.ts'
+ import { executeAction, PanelController, renderPanel } from './panel.ts'
+-import type { PanelView } from './panel.ts'
++import type { MainStats, PanelView } from './panel.ts'
+ import { openTasksBrowser, openViewer, overlays } from './viewer.ts'
+ 
+ const WIDGET_KEY = 'pi-code-fleet'
+@@ -24,13 +24,58 @@
+   return typeof c.getText === 'function' && typeof c.setText === 'function'
+ }
+ 
++/** Custo da sessão: soma de usage.cost.total das mensagens do assistente no ramo atual; indisponível = undefined. */
++function branchCost(ctx: ExtensionContext): number | undefined {
++  try {
++    let total = 0
++    for (const entry of ctx.sessionManager.getBranch() as Array<{ type?: string; message?: { role?: string; usage?: { cost?: { total?: number } } } }>) {
++      if (entry.type === 'message' && entry.message?.role === 'assistant') total += entry.message.usage?.cost?.total ?? 0
++    }
++    return total
++  } catch {
++    return undefined
++  }
++}
++
+ export function registerFleetUi(pi: ExtensionAPI, getSource: () => FleetSource | undefined): { openTasks(ctx: ExtensionCommandContext): Promise<void> } {
+-  const controller = new PanelController({ getSource, now: Date.now })
++  // Estado do main só para desenhar a raiz do painel; nada aqui comanda o fluxo.
++  const main: { state: MainStats['state']; since?: number; cost?: number; ctx?: ExtensionContext } = { state: 'idle' }
++  const getMain = (now: number): MainStats | undefined => {
++    if (!main.ctx) return undefined
++    let contextTokens: number | undefined
++    try {
++      contextTokens = main.ctx.getContextUsage()?.tokens ?? undefined
++    } catch {
++      contextTokens = undefined
++    }
++    return { state: main.state, elapsedMs: main.since === undefined ? undefined : Math.max(0, now - main.since), contextTokens, cost: main.cost }
++  }
++  const controller = new PanelController({ getSource, now: Date.now, getMain })
++  pi.on('agent_start', () => {
++    main.state = 'thinking'
++    main.since = Date.now()
++  })
++  pi.on('turn_start', () => {
++    if (main.state !== 'idle') main.state = 'thinking'
++  })
++  pi.on('tool_execution_start', () => {
++    if (main.state !== 'idle') main.state = 'working'
++  })
++  pi.on('turn_end', (_event, ctx) => {
++    main.cost = branchCost(ctx)
++  })
++  pi.on('agent_settled', (_event, ctx) => {
++    main.state = 'idle'
++    main.since = undefined
++    main.cost = branchCost(ctx)
++  })
+   let cleanup: (() => void) | undefined
+ 
+   pi.on('session_start', (_event, ctx) => {
+     cleanup?.()
+     cleanup = undefined
++    main.ctx = ctx
++    main.cost = branchCost(ctx)
+     if (!ctx.hasUI || process.env.PI_CODE_SUBAGENT) return
+     let tui: { requestRender(): void } | undefined
+     let lastView: PanelView | undefined
+--- a/subagent/fleet-ui/panel.ts
++++ b/subagent/fleet-ui/panel.ts
+@@ -47,6 +47,61 @@
+   }
+ }
+ 
++/** Colunas de stats da direita, da mais larga à mais estreita (cai custo, depois tokens): linhas dos agentes e o main alinham. */
++function statVariants(st: { elapsed: string; tokens: string; cost: string }, theme: UiTheme): Array<{ w: number; text: string }> {
++  const sep = theme.fg('dim', STAT_SEP)
++  return [
++    { w: COL_ELAPSED + COL_TOKENS + COL_COST + 2 * STAT_SEP.length, text: theme.fg('dim', st.elapsed) + sep + theme.fg('dim', st.tokens) + sep + theme.fg('cost', st.cost) },
++    { w: COL_ELAPSED + COL_TOKENS + STAT_SEP.length, text: theme.fg('dim', st.elapsed) + sep + theme.fg('dim', st.tokens) },
++    { w: visibleWidth(st.elapsed), text: theme.fg('dim', st.elapsed) },
++  ]
++}
++
++/** Estado vivo da sessão principal; campo ausente = valor indisponível (coluna em branco, nunca um número errado). */
++export interface MainStats {
++  state: 'idle' | 'thinking' | 'working'
++  elapsedMs?: number
++  contextTokens?: number
++  cost?: number
++}
++
++function mainStats(main: MainStats | undefined): { elapsed: string; tokens: string; cost: string } {
++  const st: Partial<MainStats> = main ?? {}
++  const blank = (w: number): string => ' '.repeat(w)
++  return {
++    elapsed: st.elapsedMs === undefined ? blank(COL_ELAPSED) : formatDuration(st.elapsedMs).padStart(COL_ELAPSED),
++    tokens: st.contextTokens === undefined ? blank(COL_TOKENS) : `${formatTokens(st.contextTokens)} tok`.padStart(COL_TOKENS),
++    cost: st.cost === undefined ? blank(COL_COST) : formatCost(st.cost).padStart(COL_COST),
++  }
++}
++
++const MAIN_STATE: Record<MainStats['state'], { text: string; color: string }> = {
++  idle: { text: 'idle', color: 'dim' },
++  thinking: { text: 'thinking…', color: 'success' },
++  working: { text: 'working', color: 'success' },
++}
++
++/** Linha do main, raiz da árvore: estado e dica à esquerda (a dica só se couber), stats nas mesmas colunas dos agentes.
++ * Devolve a dica não encaixada para a linha própria; os stats nunca caem antes dela. */
++function layoutMain(view: PanelView, mainLeft: string, theme: UiTheme, width: number): { line: string; hintOnOwnLine: boolean } {
++  const mainSelected = view.focused && view.selectedId === null
++  const head = theme.fg(mainSelected ? 'accent' : 'text', mainLeft)
++  const v = statVariants(mainStats(view.main), theme)[0]!
++  const stats = view.main ? v : undefined
++  const statW = stats ? stats.w : 0
++  const state = view.main ? MAIN_STATE[view.main.state] : undefined
++  const room = width - visibleWidth(mainLeft) - statW - (stats ? 2 : 0) - 1
++  const stateW = state ? visibleWidth(state.text) : 0
++  const hintW = visibleWidth(view.hint)
++  const withHint = hintW > 0 && (state ? stateW + TASK_SEP.length + hintW : hintW) <= room
++  let body = ''
++  if (state && room >= 1) body += theme.fg(state.color, truncateToWidth(state.text, room, ELLIPSIS))
++  if (withHint && view.hint) body += (state ? theme.fg('dim', TASK_SEP) : '') + theme.fg(view.hintColor, view.hint)
++  const left = head + (body ? ' ' + body : '')
++  const line = stats ? left + ' '.repeat(Math.max(1, width - visibleWidth(left) - statW)) + stats.text : left
++  return { line: truncateToWidth(line, width), hintOnOwnLine: !withHint && view.hint !== '' }
++}
++
+ interface DegreeStyle {
+   glyph: string
+   name: string
+@@ -98,13 +153,7 @@
+     (row.unread ? theme.fg('warning', ` ✉${row.unread}`) : '') +
+     (row.hiddenDescendants > 0 ? theme.fg('dim', ` (+${row.hiddenDescendants})`) : '')
+   const act = activityOf(row, style)
+-  const st = formatStats(row)
+-  const sep = theme.fg('dim', STAT_SEP)
+-  const variants = [
+-    { w: COL_ELAPSED + COL_TOKENS + COL_COST + 2 * STAT_SEP.length, text: theme.fg('dim', st.elapsed) + sep + theme.fg('dim', st.tokens) + sep + theme.fg('cost', st.cost) },
+-    { w: COL_ELAPSED + COL_TOKENS + STAT_SEP.length, text: theme.fg('dim', st.elapsed) + sep + theme.fg('dim', st.tokens) },
+-    { w: visibleWidth(st.elapsed), text: theme.fg('dim', st.elapsed) },
+-  ]
++  const variants = statVariants(formatStats(row), theme)
+   const headW = visibleWidth(head)
+   const taskW = visibleWidth(row.task)
+   const actW = visibleWidth(act.text)
+@@ -141,7 +190,9 @@
+   rows: FleetRow[]
+   focused: boolean
+   selectedId: string | null
+-  /** Text shown on the right of the main row. */
++  /** Live state and stats of the main session; absent when the source is unknown. */
++  main?: MainStats
++  /** Dica do main: na linha dele quando cabe, senão numa linha própria. */
+   hint: string
+   hintColor: 'muted' | 'dim' | 'warning'
+   running: number
+@@ -155,12 +206,9 @@
+   if (view.rows.length === 0) return hintLine.length > 0 ? [...hintLine, ''] : []
+   const mainSelected = view.focused && view.selectedId === null
+   const mainLeft = `  ${view.focused && !mainSelected ? '○' : '●'} main`
+-  // Focused: the key hint gets its own line under main; otherwise it shares the main row.
+-  const room = width - visibleWidth(mainLeft) - 2
+-  const hintText = !view.focused && room > 0 ? truncateToWidth(view.hint, room) : ''
+-  const mainPad = Math.max(1, width - visibleWidth(mainLeft) - visibleWidth(hintText))
+-  const lines = [truncateToWidth(theme.fg(mainSelected ? 'accent' : 'text', mainLeft) + ' '.repeat(mainPad) + theme.fg(view.hintColor, hintText), width)]
+-  if (view.focused) lines.push(truncateToWidth(theme.fg(view.hintColor, `    ${view.hint}`), width))
++  const main = layoutMain(view, mainLeft, theme, width)
++  const lines = [main.line]
++  if (main.hintOnOwnLine) lines.push(truncateToWidth(theme.fg(view.hintColor, `    ${view.hint}`), width))
+   const selIdx = view.rows.findIndex((r) => r.id === view.selectedId)
+   let start = selIdx < MAX_ROWS ? 0 : selIdx - (MAX_ROWS - 1)
+   start = Math.max(0, Math.min(start, view.rows.length - MAX_ROWS))
+@@ -185,6 +233,8 @@
+ export interface ControllerDeps {
+   getSource: () => FleetSource | undefined
+   now: () => number
++  /** Estado e stats do main para a linha raiz; ausente = linha sem estado nem colunas. */
++  getMain?: (now: number) => MainStats | undefined
+ }
+ 
+ export class PanelController {
+@@ -203,7 +253,7 @@
+   rows(): FleetRow[] {
+     const source = this.deps.getSource()
+     if (!source) return []
+-    return buildRows(source.list(), { now: this.deps.now(), collapsed: this.collapsed, dismissed: this.dismissed, panel: true, unread: unreadCounts() })
++    return buildRows(source.list(), { now: this.deps.now(), collapsed: this.collapsed, dismissed: this.dismissed, panel: true, mainRoot: true, unread: unreadCounts() })
+   }
+ 
+   view(): PanelView {
+@@ -233,6 +283,7 @@
+       running,
+       finished: source ? finishedCount(source.list(), now) : 0,
+       frame: motionEnabled() ? spinnerAt(now) : undefined,
++      main: this.deps.getMain?.(now),
+     }
+   }
+ 
+--- a/subagent/fleet-ui/view-model.ts
++++ b/subagent/fleet-ui/view-model.ts
+@@ -43,6 +43,8 @@
+   newestRootFirst?: boolean
+   /** Team mode: messages received per run id (the ✉n badge). */
+   unread?: ReadonlyMap<string, number>
++  /** Painel: `main` é a raiz desenhada, então os rows de 1º grau também levam guia (├─ / └─). */
++  mainRoot?: boolean
+ }
+ 
+ interface Node {
+@@ -106,7 +108,7 @@
+     const { rec } = node
+     const visibleChildren = node.children.filter((c) => c.visible)
+     const isCollapsed = opts.collapsed?.has(rec.id) === true && visibleChildren.length > 0
+-    const guides = node.depth === 1 ? '' : ancestors + (isLast ? '└─ ' : '├─ ')
++    const guides = node.depth === 1 && !opts.mainRoot ? '' : ancestors + (isLast ? '└─ ' : '├─ ')
+     rows.push({
+       id: rec.id,
+       parentId: node.depth === 1 ? null : rec.parentId,
+@@ -127,12 +129,12 @@
+       ...(opts.unread?.get(rec.id) ? { unread: opts.unread.get(rec.id) } : {}),
+     })
+     if (isCollapsed) return
+-    // Depth 1 has no guide column of its own; deeper levels carry '│  ' or blanks forward.
+-    const next = node.depth === 1 ? '' : ancestors + (isLast ? '   ' : '│  ')
++    // Sem mainRoot o 1º grau não tem coluna de guia; deeper levels carry '│  ' or blanks forward.
++    const next = node.depth === 1 && !opts.mainRoot ? '' : ancestors + (isLast ? '   ' : '│  ')
+     visibleChildren.forEach((child, i) => emit(child, next, i === visibleChildren.length - 1))
+   }
+   const top = roots.filter((r) => r.visible)
+-  top.forEach((root) => emit(root, '', false))
++  top.forEach((root, i) => emit(root, '', i === top.length - 1))
+   numberRepeats(rows, records)
+   return rows
+ }

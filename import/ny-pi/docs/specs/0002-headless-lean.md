@@ -1,0 +1,130 @@
+# 0002: sessão sem interface (`pi -p`, modo JSON)
+
+Estado: implementado (2026-11-14); medição do S4 depois da correção ainda por repetir no baseline oficial.
+
+## Problema medido
+
+Benchmark S4 com `pi -p` (Sonnet 5.5): 14 de 24 acertos e US$ 0,092 por execução, contra 24 de 24 e US$ 0,030 do pi
+sem o harness. Causas:
+
+1. `plan_mode_complete` ficava ativa fora do modo plano, devolvia `Not in plan mode; tool ignored.` e o modelo
+   parava à espera de aprovação (6 de 16 execuções).
+2. `question` devolvia `Error: UI not available` e a resposta final saía sem pergunta (4 de 8).
+3. A seção `<cwd>` ficava dentro do único bloco de sistema com `cache_control`, então cerca de 21,7 mil tokens eram
+   regravados no cache a cada sessão em outro diretório.
+4. Uma chamada extra para o título da sessão em toda execução.
+
+## Comportamento
+
+Sem interface quer dizer `ctx.hasUI` falso: modo print (`-p`, `--print`) e modo JSON. TUI e RPC não mudam, salvo o
+item 3 e a rede do item 1, que valem para toda sessão.
+
+| # | Regra | Onde |
+|---|---|---|
+| 1 | Sem interface e fora do modo plano, `plan_mode_complete` não fica ativa. `--plan` ou um prompt que começa com `/plan` a mantêm. | `extensions/headless-lean`, `session_start` |
+| 1 | Rede, todo modo: o resultado `Not in plan mode; tool ignored.` chega ao modelo como "não há aprovação a esperar, execute o plano agora no mesmo turno". | `tool_result` |
+| 2 | Sem interface, `question` não fica ativa. Rede: o erro de UI vira "escreva as perguntas, cada uma terminada em `?`, na resposta final e encerre o turno sem alterar arquivos". | `session_start`, `tool_result` |
+| 3 | Pedido Anthropic: a seção `<cwd>` sai do bloco de sistema em cache e vai para um bloco final sem `cache_control`. O bloco em cache fica byte-idêntico entre diretórios; nenhum ponto de cache é criado e os demais blocos mantêm a ordem. Payload em outro formato segue intacto (`PI_HEADLESS_LEAN_DEBUG=1` escreve o motivo no stderr). | `before_provider_request` |
+| 4 | Sem interface, o título de sessão não é gerado (`CLAUDE_CODE_DISABLE_TERMINAL_TITLE=1`, salvo valor já definido). | `session_start` |
+| 7 | Na sessão headless de topo (critério do item 6), `subagent`, `memory` e `lsp_*` não ficam ativas: 0 de 2.091 chamadas em 263 sessões guardadas do ny-pi (Terminal-Bench e gates, 2026-11-16) e 0 chamadas de `subagent` em 168 sessões `pi -p` de topo do Terminal-Bench (2026-11-18); os esquemas pesam no prefixo fixo (`subagent` ~800 tokens). A decisão de 2026-11-18 de manter `subagent` foi substituída em 2026-11-19 (dono: custo x benefício acima de tudo). `PI_HEADLESS_TOOLS=all` mantém as três; subagentes (depth 1 ou mais, também sem interface) ficam fora do corte. Efeito em acerto, custo e tokens da 1ª requisição: a medir no gate de benchmark. | `session_start` |
+| 8 | Na sessão headless de topo, `todo` não fica ativa e a seção `<docs>` (caminhos da documentação do pi) sai do prompt; `PI_HEADLESS_TRIM=0` desliga, `PI_HEADLESS_TOOLS=all` mantém `todo`. | `extensions/headless-lean`, `session_start`, `before_provider_request` |
+| 5 | Contrato: fora do modo plano, "planeje antes" é plano curto e implementação no mesmo turno, salvo pedido contraditório ou com escolha em aberto; sem interface, as perguntas vão na resposta final. | `claude-home/CLAUDE.md`, Delivery |
+
+### Bloco `<headless>` (2026-11-15)
+
+Sem UI, `before_agent_start` acrescenta ao prompt de sistema o bloco `HEADLESS_PROMPT` (cerca de 130 tokens, texto
+fixo, no prefixo em cache). Com UI nada muda. O bloco tem três regras, nesta ordem:
+
+1. Decidir primeiro se o pedido está claro; contradição ou escolha em aberto termina em perguntas, sem alterar arquivo.
+2. Fora disso, nunca pedir permissão para começar: um pedido de plano é plano mais execução no mesmo turno.
+3. Antes da resposta final, conferir o resultado contra o pedido linha a linha, executando uma asserção por regra e
+   por exemplo, e uma entrada logo fora de cada lista de formas aceitas.
+
+Medição (Sonnet, 8 repetições por tarefa, contra a referência k12 de `faf2268`):
+
+| Tarefa | Referência | Regra 2 antes da 1 | Regras 1 e 2 | Regras 1, 2 e 3 |
+|---|---|---|---|---|
+| plan-discount-bug | 6/12 | 8/8 | 8/8 | 8/8 |
+| plan-ask-merge-payments | 12/12 | 1/8 | 8/8 | 8/8 |
+| plan-people-store-v2 | 9/12 | 5/8 | 4/8 | 6/8 |
+| multi-timekit | 1/12 | | | 7/8 |
+| multi-validkit, multi-moneykit, multi-collkit (reservadas) | 12/12 cada | | | 8/8 cada |
+
+A ordem importa: com "implemente" antes de "pergunte", o agente passou a adivinhar num pedido vago.
+`multi-fmtkit` falhava por defeito da tarefa (o teste oculto exigia erro para chave vazia, que o enunciado não
+dizia); o enunciado foi corrigido no mesmo PR.
+
+Fontes (citações conferidas com `quote_check.py` em 2026-11-15):
+
+- Guia de prompting do Codex: "Unless asked for a plan, never end the interaction with only a plan."
+- Anthropic, prompting best practices: "By default, implement changes rather than only suggesting them."
+- arXiv:2607.02294: sob pedido subespecificado os agentes adivinham; por isso a regra 1 vem primeiro.
+- arXiv:2607.06636: testes ancorados na especificação acertam mais que "teste casos de borda"; arXiv:2604.19825:
+  a conferência só vale executada.
+
+Não adotado agora: continuação automática em `agent_before_settle` e crítico independente (arXiv:2610.34577). Custam
+um turno extra ou mais; entram só se o gate mostrar que o bloco não sustenta o ganho.
+
+## Item 6: piso de prefixo
+
+Na sessão headless de topo (sem UI e `PI_CODE_SUBAGENT_DEPTH` ausente ou `0`) o prompt de sistema perde o contrato
+longo e a lista de skills. A extensão reescreve o payload em `before_provider_request`, como o `<cwd>`:
+
+- O bloco `<project_instructions path="...">` que começa por `# Working contract (pi)` ganha o texto de
+  `$CLAUDE_CONFIG_DIR/CLAUDE.headless.md` (`claude-home/CLAUDE.headless.md`, seis regras). Os delimitadores vêm do
+  código do pi (`renderProjectContext`): o fechamento `</project_instructions>` é fixo e o contrato não o contém.
+- A seção `<skills>` (introdução mais `<available_skills>`, de `formatSkillsForPrompt`) sai inteira. `rules/safety.md`,
+  `personal.md`, ferramentas e o resto ficam.
+- Subagentes do pi-code (`--mode json -p`, depth 1 ou mais) e sessões com UI não mudam. Arquivo ausente, vazio ou
+  formato inesperado deixa o payload como está (`PI_HEADLESS_LEAN_DEBUG=1` diz o motivo).
+- `PI_HEADLESS_FLOOR=0` desliga só este item; `PI_HEADLESS_LEAN=0` desliga tudo.
+
+Evidência: A/B do Terminal-Bench com o braço piso (contrato de 6 regras, sem skills no prompt), não inferior ao
+controle: +2,2 pp, IC90 [-4,4; +11,1], custo 0,92×. No servidor falso, o prefixo da 1ª requisição caiu de 24,0 mil
+para 9,2 mil tokens com o CLAUDE.md antigo. O CLAUDE.md atual já encolheu 51% no #40, então o ganho a medir agora é
+menor (a medir; sem número novo).
+
+Reverter: `PI_HEADLESS_FLOOR=0`, ou apagar `claude-home/CLAUDE.headless.md` (arquivo ausente = sem efeito), ou tirar o
+item 6 de `index.ts`.
+
+## Item 8: sem `todo` e sem `<docs>` (2026-11-18)
+
+Medição de composição da 1ª requisição (`pi -p` de topo, stage `install.sh --link` desta árvore + overlay do dono
+2026-11-15, servidor falso `bench/contract/fake_api.py`, sem modelo; tokens aproximados = caracteres / 3,5, sem
+tokenizador local). O stage não carrega MCP, `tool_search` nem ponytail, então não chega aos 11,8 mil tokens reais
+(tokenizador do modelo); vale a diferença entre os dois lados, não o total.
+
+| Bloco | Antes (tok) | Depois (tok) | Dono |
+|---|---|---|---|
+| system: `<tools>` + `<rules>` + cabeçalho (inclui as linhas de `todo`) | 466 | 301 | pi / pi-code |
+| system: `<docs>` | 379 | 0 | pi |
+| system: `<headless>` + Global Rules (`personal.md` ~2.500, `safety.md` ~1.000) | 3.769 | 3.769 | repo (safety) e overlay do dono (personal) |
+| system: contrato headless (6 regras) | 981 | 981 | repo |
+| system: Subagents (lista de 17 agentes) | ~730 | ~730 | pi-code |
+| tools: read 275, bash 220, edit 386, write 158, web_fetch 219, codemode 476, placeholder 59 | 1.793 | 1.793 | pi / pi-code |
+| tools: subagent | 914 | 914 | pi-code (sai no item 7 desde 2026-11-19) |
+| tools: todo | 256 | 0 | pi-code |
+| Total do corpo | 8.933 | 8.130 | |
+
+Corte: -803 tokens (-9%; 31.267 para 28.454 bytes) em todo turno. Escolhido por ser do produto, de uso medido zero
+(0 de 1.211 chamadas em 168 sessões de topo; `edit` e `write` também têm 0, mas ficam: são a via natural de edição
+fora do Terminal-Bench) e sem relação com `bash`, a dica de timeout/background ou o contrato de 6 regras. Fora do
+corte e do produto: `personal.md` (~2.500 tok) é do overlay do dono; reduzi-lo é decisão dele.
+`PI_HEADLESS_TRIM=0` desliga; `codemode` fica.
+
+## Limites conhecidos
+
+- O modo plano é detectado pelo `argv` (`--plan`, prompt `/plan ...`): um `/plan` enviado por stdin não é visto e
+  a ferramenta fica inativa nessa execução.
+- A linha `Graph: ... has no codegraph index` continua nas execuções sem interface (fora desta mudança).
+- O ganho de cache só aparece quando sessões novas começam em diretórios diferentes dentro do TTL do cache.
+- Ferramentas removidas só na sessão `pi -p` de topo e só com uso medido zero: `memory` e `lsp_*` (item 7) e
+  `todo` (item 8); `codemode`, `edit` e `write` ficam (`subagent` sai no item 7).
+
+## Testes
+
+- `node --experimental-strip-types --test extensions/headless-lean/index.test.ts`
+
+## Reverter
+
+Apagar `extensions/headless-lean/` (ou `PI_HEADLESS_LEAN=0`) e a frase do contrato.

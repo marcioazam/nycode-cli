@@ -1,0 +1,11 @@
+{
+  "id": "hard-plugin-registry",
+  "suite": "hard",
+  "kind": "outcome",
+  "prompt": "O pacote docflow (leia README.md) mantém plugins, plugins carregados e hooks em dicionários globais de módulo. Troque isso por registros por instância, seguindo à risca docs/SPEC.md (classe docflow.registry.Registry, ordem de resolução com pai, prioridades, conflito de nomes, dependências, carga e descarga, hooks, registro default para a API antiga, plugins embutidos sem efeito na importação e todos os pontos de chamada). Os nomes, as assinaturas e as exceções estão no SPEC. A suíte em tests/ deve continuar passando.",
+  "timeout_s": 900,
+  "budget_usd": 1.5,
+  "split": "dev",
+  "security": false,
+  "test_cmd": "python3 -m pytest -q -p no:cacheprovider hidden"
+}

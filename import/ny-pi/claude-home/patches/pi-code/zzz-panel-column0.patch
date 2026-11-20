@@ -1,0 +1,28 @@
+diff -ruN a/subagent/fleet-ui/panel.ts b/subagent/fleet-ui/panel.ts
+--- a/subagent/fleet-ui/panel.ts	2026-11-13 12:52:40.303773529 -0300
++++ b/subagent/fleet-ui/panel.ts	2026-11-13 12:52:40.309132165 -0300
+@@ -202,20 +202,20 @@
+ }
+ 
+ export function renderPanel(view: PanelView, theme: UiTheme, width: number): string[] {
+-  const hintLine = view.finished > 0 ? [truncateToWidth(theme.fg('success', `  ✓ ${view.finished} finished`) + theme.fg('dim', ' · /tasks'), width)] : []
++  const hintLine = view.finished > 0 ? [truncateToWidth(theme.fg('success', `✓ ${view.finished} finished`) + theme.fg('dim', ' · /tasks'), width)] : []
+   if (view.rows.length === 0) return hintLine.length > 0 ? [...hintLine, ''] : []
+   const mainSelected = view.focused && view.selectedId === null
+-  const mainLeft = `  ${view.focused && !mainSelected ? '○' : '●'} main`
++  const mainLeft = `${mainSelected ? '❯' : view.focused ? '○' : '●'} main`
+   const main = layoutMain(view, mainLeft, theme, width)
+   const lines = [main.line]
+-  if (main.hintOnOwnLine) lines.push(truncateToWidth(theme.fg(view.hintColor, `    ${view.hint}`), width))
++  if (main.hintOnOwnLine) lines.push(truncateToWidth(theme.fg(view.hintColor, `  ${view.hint}`), width))
+   const selIdx = view.rows.findIndex((r) => r.id === view.selectedId)
+   let start = selIdx < MAX_ROWS ? 0 : selIdx - (MAX_ROWS - 1)
+   start = Math.max(0, Math.min(start, view.rows.length - MAX_ROWS))
+   const shown = view.rows.slice(start, start + MAX_ROWS)
+   for (const row of shown) lines.push(renderRow(row, view.focused && row.id === view.selectedId, theme, width, view.frame))
+   const more = view.rows.length - shown.length
+-  if (more > 0) lines.push(truncateToWidth(theme.fg('dim', `  … ${more} more`), width))
++  if (more > 0) lines.push(truncateToWidth(theme.fg('dim', `… ${more} more`), width))
+   // One blank line separates the panel from the status line widget below it.
+   return [...lines, ...hintLine, '']
+ }

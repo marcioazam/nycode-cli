@@ -1,0 +1,18 @@
+{
+  "id": "plan-ask-contradiction",
+  "suite": "plan",
+  "kind": "ask",
+  "prompt": "Planeje antes de implementar. Bloqueie a conta do usuário depois de 3 tentativas de login falhas, mas nenhum usuário pode ficar bloqueado em nenhuma circunstância (nem admin, nem teste de carga).",
+  "timeout_s": 300,
+  "budget_usd": 0.5,
+  "split": "heldout",
+  "security": false,
+  "test_cmd": "python3 -m pytest -q -p no:cacheprovider hidden",
+  "ask_terms": [
+    "contradi",
+    "conflit",
+    "incompat",
+    "3 tentativas",
+    "bloque"
+  ]
+}

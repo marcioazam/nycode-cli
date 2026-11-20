@@ -1,0 +1,222 @@
+--- a/subagent/run.ts
++++ b/subagent/run.ts
+@@ -26,7 +26,8 @@
+ import { agentHooksEnv, agentInvocationArgs, agentMemoryPromptSection, childPromptBody, taskWithStartContext, unresolvedToolsError, withMemoryTools } from './child.ts'
+ import { getFinalOutput } from './render.ts'
+ import type { SingleResult, SubagentDetails } from './types.ts'
+-import { childNestingEnv, recordSpawnCost } from './nesting/index.ts'
++import { childNestingEnv, claimSpawns, recordSpawnCost } from './nesting/index.ts'
++import { makeSessionDir, respawnDelayMs, respawnTask, shouldRespawn, sleepAbortable, useSessionArgs } from './respawn/index.ts'
+ import { withTeamTool } from './team/types.ts'
+ import { type AgentWorktree, cleanupAgentWorktree, createAgentWorktree } from './worktree.ts'
+ export async function writePromptToTempFile(agentName: string, prompt: string): Promise<{ dir: string; filePath: string }> {
+@@ -288,6 +289,10 @@
+   args.push(...cliSettings().forwardArgs)
+ 
+   let tmpPrompt: { dir: string; filePath: string } | undefined
++  // Sessão persistida (zz-subagent-respawn): permite reiniciar o filho com a conversa inteira; removida no finally.
++  let sessionDir: string | undefined
++  let keepSession = false
++  let tracker: ReturnType<typeof startTracking>
+ 
+   const currentResult: SingleResult = {
+     agent: agentName,
+@@ -311,6 +316,8 @@
+   }
+ 
+   try {
++    sessionDir = makeSessionDir()
++    if (sessionDir) useSessionArgs(args, sessionDir)
+     const promptBody = childPromptBody(agent, options.skillRoots ?? [], memorySection)
+     if (promptBody.trim()) {
+       tmpPrompt = await writePromptToTempFile(agent.name, promptBody)
+@@ -321,8 +328,11 @@
+ 
+     args.push(taskWithStartContext(task, options.startContexts ?? []))
+     let wasAborted = false
++    let respawnWhy: string | undefined
++    let attemptFrom = 0
++    const respawns: string[] = []
+ 
+-    const exitCode = await new Promise<number>((resolve) => {
++    const runAttempt = (): Promise<number> => new Promise<number>((resolve) => {
+       const invocation = getPiInvocation(args)
+       const spawned = spawnChild(invocation.command, invocation.args, {
+         cwd: worktree?.dir ?? runCwd,
+@@ -335,7 +345,8 @@
+         return
+       }
+       const proc = spawned.proc
+-      const tracker = startTracking({ id: options.agentId ?? '', agent: agentName, task, model: agent.model, background: false })
++      // Um tracker por execução, reaproveitado nos respawns: a linha do painel não fica em 'failed' durante a espera.
++      tracker ??= startTracking({ id: options.agentId ?? '', agent: agentName, task, model: agent.model, background: false })
+       tracker?.setPid(proc.pid)
+       let buffer = ''
+       let assistantTurns = 0
+@@ -404,10 +415,13 @@
+           currentResult.stopReason = 'aborted'
+           currentResult.errorMessage = stopNote(stopBy)
+         }
+-        tracker?.finish({ exitCode: finishExitCode(Boolean(currentResult.partial), code), aborted: wasAborted, error: currentResult.errorMessage })
++        respawnWhy = sessionDir
++          ? shouldRespawn({ wasAborted, stopBy, partial: currentResult.partial, attempts: respawns.length, exitCode: code, messages: currentResult.messages.slice(attemptFrom), stderr: currentResult.stderr, claimBudget: () => claimSpawns(1) })
++          : undefined
++        if (!respawnWhy) tracker?.finish({ exitCode: finishExitCode(Boolean(currentResult.partial), code), aborted: wasAborted, error: currentResult.errorMessage })
+         // A capped run was stopped by this module's own SIGTERM, which pi's print mode
+         // answers with exit 143: that is not the agent failing, as background.ts also holds.
+-        resolve(currentResult.partial ? 0 : (code ?? 0))
++        resolve(currentResult.partial ? 0 : (code ?? 1)) // morto por sinal sem ser o nosso SIGTERM = falha
+       })
+ 
+       proc.on('error', (error: Error) => {
+@@ -432,9 +446,36 @@
+       }
+     })
+ 
++    let exitCode = await runAttempt()
++    // Respawn limitado (2x): o filho morreu ou terminou em erro; recarrega a sessão e continua de onde parou.
++    while (respawnWhy && !wasAborted) {
++      const reason = respawnWhy
++      const waitMs = respawnDelayMs(respawns.length)
++      if (onUpdate) onUpdate({ content: [{ type: 'text', text: `(respawning after failure, attempt ${respawns.length + 1}/2 in ${Math.round(waitMs / 1000)}s: ${reason})` }], details: makeDetails([currentResult]) })
++      if (await sleepAbortable(waitMs, signal)) {
++        wasAborted = true
++        tracker?.finish({ aborted: true })
++        break
++      }
++      respawns.push(reason)
++      attemptFrom = currentResult.messages.length
++      currentResult.stopReason = undefined
++      currentResult.errorMessage = undefined
++      currentResult.stderr = ''
++      args[args.length - 1] = respawnTask(reason)
++      exitCode = await runAttempt()
++    }
++    // Se um respawn nem chegou a subir o processo, o tracker ainda está aberto (finish é idempotente).
++    tracker?.finish({ exitCode, error: currentResult.errorMessage ?? currentResult.stderr })
++
+     currentResult.exitCode = exitCode
+     if (wasAborted) throw new Error('Subagent was aborted')
+     appendPartialNote(currentResult)
++    if (respawns.length) appendResultNote(currentResult, `[respawned ${respawns.length} time(s): ${respawns.join(' | ')}]`)
++    if (sessionDir && (exitCode !== 0 || currentResult.stopReason === 'error')) {
++      keepSession = true
++      appendResultNote(currentResult, `[the child failed; its session is kept at ${sessionDir}]`)
++    }
+     return currentResult
+   } finally {
+     recordSpawnCost(currentResult.usage.cost)
+@@ -444,5 +485,6 @@
+       appendWorktreeNote(currentResult, worktree)
+     }
+     removeTmpPrompt(tmpPrompt)
++    if (sessionDir && !keepSession) fs.rmSync(sessionDir, { recursive: true, force: true })
+   }
+ }
+--- a/subagent/respawn/index.ts	1969-12-31 21:00:00.000000000 -0300
++++ b/subagent/respawn/index.ts	1969-12-31 21:00:00.000000000 -0300
+@@ -0,0 +1,104 @@
++/**
++ * Respawn de filho em primeiro plano (zz-subagent-respawn.patch): quando o processo filho morre ou
++ * termina em erro, run.ts o reinicia sobre a mesma sessão persistida, para continuar de onde parou.
++ * Funções puras aqui; o loop e o spawn ficam em run.ts. Qualquer exceção na decisão = sem respawn.
++ */
++
++import { randomUUID } from 'node:crypto'
++import * as fs from 'node:fs'
++import * as os from 'node:os'
++import * as path from 'node:path'
++
++export const MAX_RESPAWNS = 2
++/** Espera antes do 1º e do 2º respawn; PI_SUBAGENT_RESPAWN_DELAY_MS substitui ambas (testes). */
++const DELAYS_MS = [20_000, 60_000]
++/** Erros do provedor que reiniciar não resolve (cota, cobrança, credencial, requisição inválida). */
++const NON_RETRYABLE = /insufficient_quota|billing|quota exceeded|out of budget|usage limit|authentication_error|invalid_api_key|permission_error|invalid_request_error/i
++
++type Env = Record<string, string | undefined>
++interface Msg {
++  role?: string
++  stopReason?: string
++  errorMessage?: string
++}
++
++export interface RespawnInput {
++  wasAborted: boolean
++  stopBy?: string
++  partial?: boolean
++  /** Respawns já feitos. */
++  attempts: number
++  /** Código bruto do close; null = morto por sinal (OOM, kill). */
++  exitCode: number | null
++  /** Só as mensagens desta tentativa. */
++  messages: Msg[]
++  stderr?: string
++  env?: Env
++  /** Reserva uma execução no orçamento do lane; texto de erro = orçamento esgotado. Chamada por último. */
++  claimBudget?: () => string | undefined
++}
++
++const oneLine = (text: string, max: number): string => text.replace(/\s+/g, ' ').trim().slice(0, max)
++
++/** Motivo (≤200 caracteres) para respawnar, ou undefined para manter o comportamento de sempre. */
++export function shouldRespawn(i: RespawnInput): string | undefined {
++  try {
++    const env = i.env ?? process.env
++    if (i.wasAborted || i.stopBy || i.partial || env.PI_SUBAGENT_RESPAWN === '0' || i.attempts >= MAX_RESPAWNS) return undefined
++    const last = [...i.messages].reverse().find((m) => m.role === 'assistant')
++    let reason: string
++    if (i.exitCode !== 0) reason = `exit ${i.exitCode === null ? 'by signal' : `code ${i.exitCode}`}`
++    else if (last?.stopReason === 'error') reason = 'error'
++    else if (!last) reason = 'no assistant message'
++    else return undefined
++    // Erro do último turno só vale quando ele é erro: um turno ok seguido de exit != 0 usa o stderr.
++    const detail = last?.stopReason === 'error' && last.errorMessage ? last.errorMessage : (i.stderr ?? '').trim().slice(-300)
++    if (NON_RETRYABLE.test(`${last?.errorMessage ?? ''}\n${detail}`)) return undefined
++    if (i.claimBudget?.()) return undefined
++    return oneLine(detail ? `${reason}: ${detail}` : reason, 200)
++  } catch {
++    return undefined
++  }
++}
++
++export const respawnDelayMs = (attempt: number, env: Env = process.env): number => {
++  const forced = Number(env.PI_SUBAGENT_RESPAWN_DELAY_MS)
++  return env.PI_SUBAGENT_RESPAWN_DELAY_MS !== undefined && Number.isFinite(forced) && forced >= 0 ? forced : (DELAYS_MS[attempt] ?? DELAYS_MS[DELAYS_MS.length - 1])
++}
++
++/** Diretório de sessão do filho; undefined (= segue com --no-session, sem respawn) se não der para criar. */
++export function makeSessionDir(): string | undefined {
++  try {
++    return fs.mkdtempSync(path.join(os.tmpdir(), 'pi-code-fg-session-'))
++  } catch {
++    return undefined
++  }
++}
++
++/** Troca --no-session por uma sessão persistida (a mesma ideia do background.ts); muda args no lugar. */
++export function useSessionArgs(args: string[], sessionDir: string, id = `pi-code-fg-${randomUUID().slice(0, 8)}`): string[] {
++  const at = args.indexOf('--no-session')
++  if (at !== -1) args.splice(at, 1, '--session-id', id, '--session-dir', sessionDir)
++  return args
++}
++
++/** Tarefa do filho reiniciado; a conversa anterior é recarregada da sessão. */
++export function respawnTask(reason: string): string {
++  return `Your previous run of this task stopped unexpectedly (${oneLine(reason, 200)}). Your full prior conversation is loaded. Continue exactly where you stopped; do not repeat completed tool calls or side effects \u2014 inspect the current state (files, git status) first if unsure. Then finish the original task and give the handback it asked for.`
++}
++
++/** Espera abortável; true = o sinal abortou. */
++export function sleepAbortable(ms: number, signal?: AbortSignal): Promise<boolean> {
++  return new Promise((resolve) => {
++    if (signal?.aborted) return resolve(true)
++    const onAbort = () => {
++      clearTimeout(timer)
++      resolve(true)
++    }
++    const timer = setTimeout(() => {
++      signal?.removeEventListener('abort', onAbort)
++      resolve(false)
++    }, ms)
++    signal?.addEventListener('abort', onAbort, { once: true })
++  })
++}

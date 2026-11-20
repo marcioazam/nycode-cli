@@ -1,0 +1,32 @@
+--- a/status-line.ts	2026-11-13 12:13:35.593782183 -0300
++++ b/status-line.ts	2026-11-13 17:36:07.110186341 -0300
+@@ -346,7 +346,7 @@
+   /** The stdin payload per Claude's documented statusline contract. */
+   function buildPayload(ctx: ExtensionContext): Record<string, unknown> {
+     const usage = ctx.getContextUsage() ?? { tokens: null, contextWindow: 0, percent: null }
+-    const model = ctx.model as { id?: string; name?: string } | undefined
++    const model = ctx.model as { id?: string; name?: string; provider?: string } | undefined
+     // Refresh the cached style name only when a turn boundary may have changed it.
+     if (styleDirty) {
+       styleName = readActiveStyleName(styleFiles)
+@@ -371,7 +371,7 @@
+       },
+       // Both fields, per Claude's documented contract: published statusline scripts
+       // read .model.display_name and render the literal "null" when it is missing.
+-      model: { id: model?.id ?? '', display_name: model?.name ?? model?.id ?? '' },
++      model: { id: model?.id ?? '', display_name: model?.name ?? model?.id ?? '', ...(model?.provider ? { provider: model.provider } : {}) },
+       cost: {
+         total_cost_usd: costTotal,
+         total_duration_ms: Date.now() - sessionStartMs,
+@@ -652,7 +652,11 @@
+ 
+   // The model and effort segments of the payload go stale between turns; a switch
+   // fires these events, so refresh at once instead of waiting for the next tick.
++  // The rate-limit snapshot belongs to the provider that sent it: drop it on a switch, so
++  // Anthropic -> GPT -> Anthropic does not revive the old headers (docs/hud-provider-usage.md).
+   pi.on('model_select', () => {
++    rateLimits = undefined
++    clearTimeout(expiryTimer)
+     scheduleRefresh()
+   })
+   pi.on('thinking_level_select', () => {

@@ -1,0 +1,29 @@
+# Same tool pins as the CI gates (scripts/ci); revs are full commit SHAs with the tag in the comment.
+# The repo's own secret scan stays in .githooks/pre-commit (scripts/check-leaks.sh, with the local
+# personal-identifier list); gitleaks here is the generic layer for contributors using pre-commit.
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: ef6cf06c079dd6b299dfc720b0f14400c9d168e1 # v0.17.5
+    hooks:
+      - id: ruff-check
+        args: [--isolated]
+      - id: ruff-format
+        args: [--isolated]
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: 745eface02aef23e168a8afb6b5737818efbea95 # v0.11.0.1 (shellcheck 0.11.0)
+    hooks:
+      - id: shellcheck
+  - repo: https://github.com/scop/pre-commit-shfmt
+    rev: 479be5958357ba5ab65ce47172117348516860e9 # v3.14.1-1 (shfmt 3.14.1)
+    hooks:
+      - id: shfmt
+        args: [-i, "2", -d]
+  - repo: https://github.com/rhysd/actionlint
+    rev: 914e7df21a07ef503a81201c76d2b11c789d3fca # v1.7.12
+    hooks:
+      - id: actionlint
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: 83d9cd684c87d95d656c1458ef04895a7f1cbd8e # v8.30.1
+    hooks:
+      - id: gitleaks
+        args: [--config=.gitleaks.toml]

@@ -1,0 +1,18 @@
+{
+  "id": "plan-ask-date-format",
+  "suite": "plan",
+  "kind": "ask",
+  "prompt": "Planeje antes de implementar. Troque o formato de data do projeto.",
+  "timeout_s": 300,
+  "budget_usd": 0.5,
+  "split": "dev",
+  "security": false,
+  "test_cmd": "python3 -m pytest -q -p no:cacheprovider hidden",
+  "ask_terms": [
+    "formato",
+    "ISO",
+    "DD/MM",
+    "qual",
+    "quais"
+  ]
+}

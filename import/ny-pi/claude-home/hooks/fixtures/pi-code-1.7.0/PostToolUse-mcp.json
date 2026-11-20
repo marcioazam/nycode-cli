@@ -1,0 +1,30 @@
+{
+ "session_id": "01a1cbdf-c71a-75fe-8856-1b1956fdda28",
+ "cwd": "/tmp/pi-capture/repo",
+ "permission_mode": "default",
+ "transcript_path": "/tmp/pihome/.pi/agent/sessions/--tmp-pi-capture-repo--/2026-11-11T18-30-02-779Z_01a1cbdf-c71a-75fe-8856-1b1956fdda28.jsonl",
+ "effort": {
+  "level": "medium"
+ },
+ "tool_use_id": "toolu_01R8to4Sp9q3ytU5QJ6AMmKZ",
+ "hook_event_name": "PostToolUse",
+ "tool_name": "mcp__keenable__search_web_pages",
+ "tool_input": {
+  "query": "pytest documentation",
+  "max_results": 1
+ },
+ "tool_response": {
+  "content": [
+   {
+    "type": "text",
+    "text": "Title: Full pytest documentation - pytest documentation\nURL: https://pytest.readthedocs.io/en/latest/contents.html\nAcquired: 2026-10-24\nSnippets:\n# Full pytest documentation\u00b6"
+   }
+  ],
+  "details": {
+   "server": "keenable",
+   "tool": "search_web_pages"
+  },
+  "isError": false
+ },
+ "duration_ms": 395
+}

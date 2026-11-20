@@ -1,0 +1,351 @@
+--- a/pi-extension/index.js
++++ b/pi-extension/index.js
+@@ -1,3 +1,5 @@
++// Cópia local (~/.pi/agent/vendor/ponytail): os aliases passam os argumentos adiante (no upstream 4.10.3 eles eram
++// descartados, e `/ponytail-review src/x.ts` perdia o alvo).
+ import { createRequire } from "node:module";
+ 
+ const require = createRequire(import.meta.url);
+@@ -36,6 +38,28 @@
+   return fallback;
+ }
+ 
++// Subagent name from pi-code's `--system-prompt <dir>/prompt-<safeName>.md`; null when absent or unparseable.
++export function subagentName(argv) {
++  const i = Array.isArray(argv) ? argv.indexOf("--system-prompt") : -1;
++  const m = i >= 0 ? /^prompt-(.+)\.md$/.exec(String(argv[i + 1] || "").split(/[\\/]/).pop()) : null;
++  return m ? m[1] : null;
++}
++
++// Mode of a child (subagent) pi process: the parent's mode, then PONYTAIL_SUBAGENT_MATCHER (unanchored,
++// case-insensitive, like Claude's SubagentStart hook) turns it off for agents that do not match.
++// Unparseable name or bad regex fail open (keep the mode).
++export function childMode({ parentMode, matcher, argv, fallback }) {
++  let mode = normalizePersistedMode(parentMode) || fallback;
++  if (mode === "off" || !matcher) return mode;
++  const name = subagentName(argv);
++  if (name === null) return mode;
++  try {
++    return new RegExp(matcher, "i").test(name) ? mode : "off";
++  } catch {
++    return mode;
++  }
++}
++
+ export function parsePonytailCommand(text, defaultMode = DEFAULT_MODE, currentMode = null) {
+   const fallback = normalizePersistedMode(defaultMode) || DEFAULT_MODE;
+   const normalizedText = String(text || "").trim().toLowerCase();
+@@ -95,12 +119,19 @@
+     if (!normalized) return;
+ 
+     currentMode = normalized;
++    process.env.PONYTAIL_PARENT_MODE = currentMode;
+     pi.appendEntry("ponytail-mode", { mode: normalized });
+     syncStatus(ctx);
+     ctx?.ui?.notify?.(`Ponytail mode set to ${normalized}.`, "info");
+   };
+ 
+-  const sendAlias = (skillName, args, ctx) => {
++  // Cópia local: quem espera o próximo agent_settled (aliases sem UI, ver sendAlias).
++  const settledWaiters = [];
++  pi.on("agent_settled", async () => {
++    for (const resolve of settledWaiters.splice(0)) resolve();
++  });
++
++  const sendAlias = async (skillName, args, ctx) => {
+     const normalized = String(args || "").trim();
+     const message = normalized ? `${skillName} ${normalized}` : skillName;
+ 
+@@ -110,7 +141,24 @@
+       return;
+     }
+ 
++    if (ctx?.hasUI !== false) {
++      pi.sendUserMessage(message);
++      return;
++    }
++    // Cópia local: no `pi -p` e no `--mode json` o print mode descarta o runtime quando o handler do command volta,
++    // antes de a execução pedida pelo sendUserMessage começar ("turn_end could not resolve...", ctx stale). Sem UI,
++    // o handler espera essa execução assentar; se ela não começar em 60 s, segue. Mesmo conserto do
++    // claude-home/patches/pi-code/commands-print.patch.
++    const settled = new Promise((resolve) => settledWaiters.push(resolve));
+     pi.sendUserMessage(message);
++    const started = (async () => {
++      for (let waited = 0; waited < 60_000; waited += 50) {
++        if (ctx?.isIdle?.() === false) return true;
++        await new Promise((resolve) => setTimeout(resolve, 50));
++      }
++      return false;
++    })();
++    if (await Promise.race([settled.then(() => false), started])) await settled;
+   };
+ 
+   pi.registerCommand("ponytail", {
+@@ -150,27 +198,27 @@
+ 
+   pi.registerCommand("ponytail-review", {
+     description: "Run /skill:ponytail-review",
+-    handler: (_args, ctx) => sendAlias("/skill:ponytail-review", "", ctx),
++    handler: (args, ctx) => sendAlias("/skill:ponytail-review", args, ctx),
+   });
+ 
+   pi.registerCommand("ponytail-audit", {
+     description: "Run /skill:ponytail-audit",
+-    handler: (_args, ctx) => sendAlias("/skill:ponytail-audit", "", ctx),
++    handler: (args, ctx) => sendAlias("/skill:ponytail-audit", args, ctx),
+   });
+ 
+   pi.registerCommand("ponytail-gain", {
+     description: "Run /skill:ponytail-gain",
+-    handler: (_args, ctx) => sendAlias("/skill:ponytail-gain", "", ctx),
++    handler: (args, ctx) => sendAlias("/skill:ponytail-gain", args, ctx),
+   });
+ 
+   pi.registerCommand("ponytail-debt", {
+     description: "Run /skill:ponytail-debt",
+-    handler: (_args, ctx) => sendAlias("/skill:ponytail-debt", "", ctx),
++    handler: (args, ctx) => sendAlias("/skill:ponytail-debt", args, ctx),
+   });
+ 
+   pi.registerCommand("ponytail-help", {
+     description: "Run /skill:ponytail-help",
+-    handler: (_args, ctx) => sendAlias("/skill:ponytail-help", "", ctx),
++    handler: (args, ctx) => sendAlias("/skill:ponytail-help", args, ctx),
+   });
+ 
+   pi.on("input", async (event) => {
+@@ -187,6 +235,17 @@
+     configuredDefaultMode = getDefaultMode();
+     hideStatus = getHideStatus();
+     currentMode = resolveSessionMode(entries, configuredDefaultMode);
++    if (process.env.PI_CODE_SUBAGENT) {
++      // Child: inherit the parent's mode and honor the matcher; never persisted.
++      currentMode = childMode({
++        parentMode: process.env.PONYTAIL_PARENT_MODE,
++        matcher: process.env.PONYTAIL_SUBAGENT_MATCHER,
++        argv: process.argv,
++        fallback: currentMode,
++      });
++    }
++    // Children spawned later inherit the mode through process.env.
++    process.env.PONYTAIL_PARENT_MODE = currentMode;
+     syncStatus(ctx);
+     if (!getQuietStartup()) {
+       ctx?.ui?.notify?.(`Ponytail loaded: ${currentMode}`, "info");
+--- a/pi-extension/test/extension.test.js
++++ b/pi-extension/test/extension.test.js
+@@ -6,6 +6,10 @@
+ 
+ import ponytailExtension from "../index.js";
+ 
++// These tests drive a parent session: a run inside a pi subagent (PI_CODE_SUBAGENT=1) must not switch them to
++// the child-mode path.
++for (const key of ["PI_CODE_SUBAGENT", "PONYTAIL_PARENT_MODE", "PONYTAIL_SUBAGENT_MATCHER"]) delete process.env[key];
++
+ function createPiHarness() {
+   const events = new Map();
+   const commands = new Map();
+@@ -260,3 +264,28 @@
+ 
+   assert.ok(statusWrites.length > 0, "0 must be treated as 'do not hide'");
+ }));
++
++// Cópia local: os aliases repassam os argumentos à skill.
++test("aliases forward their arguments to the skill", async () => {
++  const { commands, sentUserMessages } = createPiHarness();
++  await commands.get("ponytail-review").handler("src/x.ts", createCommandContext());
++  await commands.get("ponytail-audit").handler("  ", createCommandContext());
++  assert.deepEqual(sentUserMessages.map((m) => m.text), ["/skill:ponytail-review src/x.ts", "/skill:ponytail-audit"]);
++});
++
++// Cópia local: sem UI (pi -p / --mode json) o alias só volta depois que a execução que ele pediu assenta.
++test("aliases without UI wait for the run they started to settle", async () => {
++  const { events, commands, sentUserMessages } = createPiHarness();
++  let idle = true;
++  const ctx = createCommandContext({ hasUI: false, isIdle: () => idle });
++  let returned = false;
++  const done = commands.get("ponytail-gain").handler("", ctx).then(() => { returned = true; });
++  assert.deepEqual(sentUserMessages.map((m) => m.text), ["/skill:ponytail-gain"]);
++  idle = false; // a execução começou
++  await new Promise((resolve) => setTimeout(resolve, 120));
++  assert.equal(returned, false);
++  idle = true;
++  await events.get("agent_settled")();
++  await done;
++  assert.equal(returned, true);
++});
+--- /dev/null
++++ b/pi-extension/test/subagent.test.js
+@@ -0,0 +1,55 @@
++import assert from "node:assert/strict";
++import test from "node:test";
++
++import ponytailExtension, { childMode, subagentName } from "../index.js";
++
++const argv = (name) => ["node", "pi", "--system-prompt", `/tmp/x/prompt-${name}.md`];
++
++test("subagentName parses pi-code's prompt file name", () => {
++  assert.equal(subagentName(argv("swarm-worker")), "swarm-worker");
++  assert.equal(subagentName(["node", "pi"]), null);
++  assert.equal(subagentName(["--system-prompt", "/tmp/other.md"]), null);
++});
++
++test("childMode inherits the parent mode and applies the matcher", () => {
++  const base = { argv: argv("swarm-worker"), fallback: "full" };
++  assert.equal(childMode({ ...base }), "full");
++  assert.equal(childMode({ ...base, parentMode: "ultra" }), "ultra");
++  assert.equal(childMode({ ...base, parentMode: "off", matcher: "swarm" }), "off");
++  assert.equal(childMode({ ...base, parentMode: "lite", matcher: "SWARM" }), "lite");
++  assert.equal(childMode({ ...base, matcher: "^explore$" }), "off");
++});
++
++test("childMode fails open on bad regex or unknown agent", () => {
++  assert.equal(childMode({ argv: argv("a"), fallback: "full", matcher: "(" }), "full");
++  assert.equal(childMode({ argv: ["node"], fallback: "full", matcher: "zzz" }), "full");
++});
++
++test("a child session_start follows the parent mode and does not persist it", async () => {
++  const saved = { ...process.env };
++  const savedArgv = process.argv;
++  const events = new Map();
++  const appended = [];
++  try {
++    process.env.PI_CODE_SUBAGENT = "1";
++    process.env.PONYTAIL_PARENT_MODE = "lite";
++    process.env.PONYTAIL_SUBAGENT_MATCHER = "^other$";
++    process.argv = argv("swarm-worker");
++    ponytailExtension({
++      on: (n, h) => events.set(n, h),
++      registerCommand() {},
++      appendEntry: (...a) => appended.push(a),
++      sendUserMessage() {},
++    });
++    await events.get("session_start")({}, { sessionManager: { getEntries: () => [] }, ui: { notify() {} } });
++    const ev = { systemPrompt: "base", systemPromptOptions: { sections: {} } };
++    await events.get("before_agent_start")(ev);
++    assert.equal(ev.systemPromptOptions.sections.ponytail, undefined);
++    assert.equal(process.env.PONYTAIL_PARENT_MODE, "off");
++    assert.deepEqual(appended, []);
++  } finally {
++    process.argv = savedArgv;
++    for (const k of Object.keys(process.env)) if (!(k in saved)) delete process.env[k];
++    Object.assign(process.env, saved);
++  }
++});
+--- a/skills/ponytail-audit/SKILL.md
++++ b/skills/ponytail-audit/SKILL.md
+@@ -1,5 +1,6 @@
+ ---
+ name: ponytail-audit
++disable-model-invocation: true
+ description: >
+   Whole-repo audit for over-engineering. Like ponytail-review, but scans the
+   entire codebase instead of a diff: a ranked list of what to delete, simplify,
+@@ -19,6 +20,7 @@
+ - `delete:` dead code, unused flexibility, speculative feature. Replacement: nothing.
+ - `stdlib:` hand-rolled thing the standard library ships. Name the function.
+ - `native:` dependency or code doing what the platform already does. Name the feature.
++- `reuse:` equivalent helper, util, or pattern already in this repo. Name the path.
+ - `yagni:` abstraction with one implementation, config nobody sets, layer with one caller.
+ - `shrink:` same logic, fewer lines. Show the shorter form.
+ 
+@@ -26,7 +28,10 @@
+ 
+ Deps the stdlib or platform already ships, single-implementation interfaces,
+ factories with one product, wrappers that only delegate, files exporting one
+-thing, dead flags and config, hand-rolled stdlib.
++thing, dead flags and config, hand-rolled stdlib, helpers duplicating an
++equivalent that already lives in this repo.
++Before emitting `delete:`, grep the whole tree for the symbol, including tests,
++fixtures and string or dynamic references.
+ 
+ ## Output
+ 
+--- a/skills/ponytail-debt/SKILL.md
++++ b/skills/ponytail-debt/SKILL.md
+@@ -1,5 +1,6 @@
+ ---
+ name: ponytail-debt
++disable-model-invocation: true
+ description: >
+   Harvest every `ponytail:` comment in the codebase into a debt ledger, so the
+   deliberate shortcuts and deferrals ponytail leaves behind get tracked instead
+@@ -17,7 +18,7 @@
+ Grep the repo for comment markers, skipping `node_modules`, `.git`, and build
+ output:
+ 
+-`grep -rnE '(#|//) ?ponytail:' .`  (add other comment prefixes if your stack uses them)
++`grep -rnE --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=build '(#|//|/[*]) ?ponytail:' .`  (add other comment prefixes if your stack uses them)
+ 
+ Each hit is one ledger row. The comment prefix keeps prose that merely mentions
+ the convention out of the ledger.
+--- a/skills/ponytail-gain/SKILL.md
++++ b/skills/ponytail-gain/SKILL.md
+@@ -1,5 +1,6 @@
+ ---
+ name: ponytail-gain
++disable-model-invocation: true
+ description: >
+   Show ponytail's measured impact as a compact scoreboard: less code, less
+   cost, more speed, from the benchmark medians. One-shot display, not a
+--- a/skills/ponytail-help/SKILL.md
++++ b/skills/ponytail-help/SKILL.md
+@@ -1,5 +1,6 @@
+ ---
+ name: ponytail-help
++disable-model-invocation: true
+ description: >
+   Quick-reference card for all ponytail modes, skills, and commands.
+   One-shot display, not a persistent mode. Trigger: /ponytail-help,
+@@ -32,9 +33,9 @@
+ | **ponytail-gain** | `/ponytail-gain` | Measured-impact scoreboard: less code, less cost, more speed. |
+ | **ponytail-help** | `/ponytail-help` | This card. |
+ 
+-Codex uses `@ponytail`, `@ponytail-review`, and `@ponytail-help`; Claude Code
+-and OpenCode use the slash-command forms above (OpenCode ships all six as
+-slash commands).
++In Codex CLI and the IDE extension, invoke skills with `$ponytail`,
++`$ponytail-review`, or `$ponytail-help`. Claude Code and OpenCode use the
++slash-command forms above (OpenCode ships all six as slash commands).
+ 
+ ## Deactivate
+ 
+--- a/skills/ponytail-review/SKILL.md
++++ b/skills/ponytail-review/SKILL.md
+@@ -1,5 +1,6 @@
+ ---
+ name: ponytail-review
++disable-model-invocation: true
+ description: >
+   Code review focused exclusively on over-engineering. Finds what to delete:
+   reinvented standard library, unneeded dependencies, speculative abstractions,
+@@ -23,9 +24,11 @@
+ - `delete:` dead code, unused flexibility, speculative feature. Replacement: nothing.
+ - `stdlib:` hand-rolled thing the standard library ships. Name the function.
+ - `native:` dependency or code doing what the platform already does. Name the feature.
++- `reuse:` equivalent helper, util, or pattern already in this repo. Name the path.
+ - `yagni:` abstraction with one implementation, config nobody sets, layer with one caller.
+ - `shrink:` same logic, fewer lines. Show the shorter form.
+ 
++
+ ## Examples
+ 
+ ❌ "This EmailValidator class might be more complex than necessary, have you
+@@ -35,6 +38,8 @@
+ 
+ ✅ `L4: native: moment.js imported for one format call. Intl.DateTimeFormat, 0 deps.`
+ 
++✅ `L18-29: reuse: slugify helper duplicates src/lib/slug.ts slugify. Delete it, import the existing one.`
++
+ ✅ `repo.py:L88: yagni: AbstractRepository with one implementation. Inline it until a second one exists.`
+ 
+ ✅ `L52-71: delete: retry wrapper around an idempotent local call. Nothing replaces it.`
+--- a/skills/ponytail/SKILL.md
++++ b/skills/ponytail/SKILL.md
+@@ -1,5 +1,6 @@
+ ---
+ name: ponytail
++disable-model-invocation: true
+ description: >
+   Forces the laziest solution that actually works, simplest, shortest, most
+   minimal. Channels a senior dev who has seen everything: question whether the

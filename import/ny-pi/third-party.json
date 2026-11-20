@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "note": "Pinned third-party components, fetched at install time (never vendored). type=git: shallow fetch of `commit` (from `subdir` when set), HEAD must equal `commit`. type=npm: tarball sha512 must equal `integrity`. LICENSE at `license_path` must hash to `license_sha256`. patches/third-party/<name>.patch (local modifications) is applied fail-closed when present. dest is relative to ~/.pi/agent.",
+  "components": [
+    {
+      "name": "ponytail",
+      "type": "git",
+      "url": "https://github.com/DietrichGebert/ponytail",
+      "commit": "ef8ca48fed2321ab6668b2a954f23b1af97d7f6d",
+      "license": "MIT",
+      "license_path": "LICENSE",
+      "license_sha256": "fb1bc6909ac3ef82d5c22106e32ef682b0cff66788fa915fb9b53b15c9d2f3ab",
+      "dest": "vendor/ponytail",
+      "required": true,
+      "reason": "settings.json packages entry ./vendor/ponytail (v4.10.3 + local patch: alias args, subagent matcher, disable-model-invocation)"
+    },
+    {
+      "name": "pi-lsp",
+      "type": "npm",
+      "package": "pi-lsp@0.1.7",
+      "url": "https://registry.npmjs.org/pi-lsp/-/pi-lsp-0.1.7.tgz",
+      "integrity": "sha512-bEmxw2pZ3lUh5LDJFCShnmjbCltmSZLOp6neIl+sWEfOEwMBi6IdOoQ2W00Fdc+k8i2Sw17p7XGElykWmDQOkg==",
+      "license": "MIT",
+      "license_path": "LICENSE",
+      "license_sha256": "1126322e2cc8d165adc4c792eeb195717de2bcc7b39be1ce77959d78e87ef685",
+      "dest": "vendor/pi-lsp",
+      "required": true,
+      "reason": "settings.json packages entry ./vendor/pi-lsp (no public git repo; npm tarball + local patch: post-edit diagnostics, process handling)"
+    },
+    {
+      "name": "ralph-loop",
+      "type": "git",
+      "url": "https://github.com/anthropics/claude-plugins-official",
+      "subdir": "plugins/ralph-loop",
+      "commit": "893173fb82a7184fcf3f08ae55930016d84fd588",
+      "license": "Apache-2.0",
+      "license_path": "LICENSE",
+      "license_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "dest": "claude-home/vendor/ralph-loop",
+      "required": true,
+      "reason": "commands/ralph-loop.md, cancel-ralph.md and ralph-help.md call its scripts (+ patch adding scripts/pi-ralph-start.sh)"
+    },
+    {
+      "name": "pr-review-toolkit",
+      "type": "git",
+      "url": "https://github.com/anthropics/claude-plugins-official",
+      "subdir": "plugins/pr-review-toolkit",
+      "commit": "893173fb82a7184fcf3f08ae55930016d84fd588",
+      "license": "Apache-2.0",
+      "license_path": "LICENSE",
+      "license_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "dest": "claude-home/vendor/pr-review-toolkit",
+      "required": true,
+      "reason": "commands/review-pr.md reads its agent prompts"
+    },
+    {
+      "name": "claude-red",
+      "type": "git",
+      "url": "https://github.com/SnailSploit/Claude-Red",
+      "commit": "a8de813edc9f66f60d44cfe42d47750e89d9930b",
+      "license": "MIT",
+      "license_path": "LICENSE",
+      "license_sha256": "f2ebf01e609ee09215fbe0334dc8a96e7474a186f07a73e24e983fa2462e0ff9",
+      "dest": "vendor/claude-red",
+      "required": false,
+      "reason": "offensive-security skill collection; only mentioned in security-audit companion-tools.md"
+    }
+  ]
+}

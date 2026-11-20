@@ -1,0 +1,11 @@
+{
+  "id": "plan-i18n-messages",
+  "suite": "plan",
+  "kind": "outcome",
+  "prompt": "Planeje antes de implementar. Objetivo: as mensagens do pacote msgs/ estão fixas em inglês dentro de auth.py, cart.py e greeting.py. Quero suporte a idiomas 'en' (padrão) e 'pt' via um novo módulo msgs/i18n.py com: CATALOG (dict {locale: {chave: texto}}), set_locale(loc) (locale não suportado -> ValueError), get_locale() e t(chave, **params) (texto formatado com str.format; chave desconhecida devolve a própria chave; chave ausente no idioma atual cai para o texto em 'en'). Chaves e textos: 'auth.invalid_password' = 'Invalid password' / 'Senha inválida'; 'cart.empty' = 'Cart is empty' / 'Carrinho vazio'; 'greeting.hello' = 'Hello, {name}!' / 'Olá, {name}!'. auth.login, cart.checkout e greeting.greet passam a usar o idioma atual; com 'en' o comportamento é idêntico ao de hoje.",
+  "timeout_s": 600,
+  "budget_usd": 1.0,
+  "split": "dev",
+  "security": false,
+  "test_cmd": "python3 -m pytest -q -p no:cacheprovider hidden"
+}

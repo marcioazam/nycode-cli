@@ -1,0 +1,11 @@
+{
+  "id": "multi-moneykit",
+  "suite": "multi",
+  "kind": "outcome",
+  "prompt": "Implemente os 3 módulos independentes abaixo (money.py, tax.py, split.py); hoje cada função levanta NotImplementedError. O trabalho é paralelizável: cada módulo é um arquivo separado, sem imports entre eles, com testes próprios. Se o seu harness tiver subagentes, pode usá-los para dividir o trabalho; senão, faça em sequência. Especificação:\n- money.py: parse_money(s) -> int centavos e format_money(cents) -> str. parse aceita '[-]$?1,234.56' (milhares com ',' em grupos de 3 corretos, 0-2 casas decimais: '5' -> 500, '1234.5' -> 123450, '$0.07' -> 7, '-$3.20' -> -320); '', '1.234', '1,23,4', '.5', '5.', 'abc', '--1' -> ValueError. format devolve '$1,234.56', negativos '-$0.05', 0 -> '$0.00'.\n- tax.py: tax_cents(amount_cents, rate_bps) -> int, imposto = amount * rate_bps / 10000 arredondado meio-para-cima (825 bps = 8,25%; 0,5 centavo sobe); amount < 0 ou rate_bps < 0 -> ValueError; só aritmética inteira (sem float). Também total_cents(amount_cents, rate_bps) -> amount + imposto.\n- split.py: allocate(total_cents, weights) -> list[int], rateio proporcional por maiores restos (soma exata = total; sobras de centavos vão para os maiores restos, empate: índice menor; total negativo rateia o valor absoluto e inverte o sinal); weights inteiros >= 0 com soma > 0, senão (vazio, negativo, soma 0) ValueError. split_evenly(total_cents, parts) -> list[int] divide igualmente (parts < 1 -> ValueError; ex.: 100,3 -> [34,33,33]).",
+  "timeout_s": 900,
+  "budget_usd": 1.5,
+  "split": "heldout",
+  "security": false,
+  "test_cmd": "python3 -m pytest -q -p no:cacheprovider hidden"
+}

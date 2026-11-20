@@ -21,3 +21,6 @@ f9d688d57766f3c4d72b592cc25ea3881bebf46d:packages/ai/scripts/generate-models.ts:
 f9d688d57766f3c4d72b592cc25ea3881bebf46d:packages/ai/scripts/generate-models.ts:generic-api-key:82
 f9d688d57766f3c4d72b592cc25ea3881bebf46d:packages/ai/scripts/generate-models.ts:generic-api-key:84
 f9d688d57766f3c4d72b592cc25ea3881bebf46d:packages/ai/scripts/generate-models.ts:generic-api-key:99
+# ny-pi import (F1): fake AWS key of the atualizador unit test, already allowlisted in import/ny-pi/.gitleaks.toml
+6f4a7050374c77f760d3c0b5dfe7c2642dfc205f:import/ny-pi/claude-home/skills/atualizador/scripts/tests/test_core.py:aws-access-token:652
+6f4a7050374c77f760d3c0b5dfe7c2642dfc205f:import/ny-pi/claude-home/skills/atualizador/scripts/tests/test_core.py:aws-access-token:686

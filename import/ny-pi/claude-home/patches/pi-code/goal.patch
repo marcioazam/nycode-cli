@@ -1,0 +1,872 @@
+diff -ruN a/goal.ts b/goal.ts
+--- a/goal.ts	2026-11-12 19:45:46.464671487 -0300
++++ b/goal.ts	2026-11-12 19:45:46.466221105 -0300
+@@ -9,9 +9,17 @@
+  * - `/goal <condition>` sets (or replaces) the goal and starts a turn with Claude's
+  *   kickoff directive; `/goal` shows status; `/goal clear` (stop/off/reset/none/cancel)
+  *   removes it. The condition is capped at 4,000 characters.
+- * - The evaluator is the session model, or ANTHROPIC_DEFAULT_HAIKU_MODEL resolved against
+- *   the models this user can run. It reads the branch transcript trimmed to half its
+- *   context window and cannot run tools, so the condition must be provable from output.
++ * - The evaluator is Claude's small fast model: PI_GOAL_MODEL or ANTHROPIC_DEFAULT_HAIKU_MODEL
++ *   resolved against the models this user can run, else the newest Haiku of the session's
++ *   provider, else the session model. It runs with thinking off (or the model's lowest
++ *   level when it cannot be off), reads the branch transcript trimmed to half its context
++ *   window plus the harness-measured turn and elapsed time, and cannot run tools, so the
++ *   condition must be provable from output. An unreadable or failed verdict is retried
++ *   (larger budget when cut off, session model when the evaluator is unreachable, brief
++ *   backoff otherwise) before the goal pauses.
++ * - A failed turn whose error leaves the goal set is retried automatically up to three
++ *   times (15/30/60 s) in an interactive session, then pauses; a rate or usage limit or a
++ *   hook pauses at once (Claude 2.1.269 behavior).
+  * - The Stop hooks' consecutive-block cap (CLAUDE_CODE_STOP_HOOK_BLOCK_CAP, default 8)
+  *   bounds a stalled loop: that many not-met verdicts in a row on turns that used no tool
+  *   pause the loop with a warning, goal still set, until the next user prompt.
+@@ -36,11 +44,13 @@
+  */
+ 
+ import * as os from 'node:os'
+-import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent'
++import type { ExtensionAPI, ExtensionContext, Theme } from '@earendil-works/pi-coding-agent'
++import { Text, truncateToWidth, wrapTextWithAnsi } from '@earendil-works/pi-tui'
+ import { hookFiles, readSettingsDisableAllHooks, stopHookBlockCap } from './hooks/index.ts'
+ import {
+   checkinIntervalMs,
+   checkinText,
++  classifyTurnError,
+   classifyUnrecoverable,
+   EVALUATOR_SYSTEM,
+   evaluatorPrompt,
+@@ -54,14 +64,20 @@
+   isClearAlias,
+   kickoffPrompt,
+   MAX_IDLE_CHECKINS,
++  MAX_TURN_RETRIES,
+   NO_GOAL_TEXT,
+   parseVerdict,
+   type RunningWork,
++  VERDICT_TOOL,
++  VERDICT_TOOL_NOTE,
++  verdictFromArgs,
+   renderTranscript,
+   summaryText,
++  turnRetryDelayMs,
+ } from './internal/goal-evaluator.ts'
++import { type GoalMessageDetails, type GoalStyle, goalMessageLines, goalPanelLines, indicatorText } from './internal/goal-ui.ts'
+ import { readManagedSettings } from './internal/managed-settings.ts'
+-import { completeText } from './internal/model-complete.ts'
++import { canForceTool, completeText, completeToolCall } from './internal/model-complete.ts'
+ import { resolveModelOverride } from './internal/model-lookup.ts'
+ import { isProjectApprovedSilently } from './internal/project-approval.ts'
+ import { isSubagentPhaseEvent, SUBAGENT_CHANNEL } from './internal/subagent-events.ts'
+@@ -71,10 +87,17 @@
+  * transcript lines (kickoff, verdicts, check-ins) carry. */
+ const GOAL_ENTRY = 'goal'
+ const GOAL_MESSAGE = 'goal'
+-/** Claude's prompt-hook default; a slow evaluator is an error, not a stall. */
+-const EVALUATOR_TIMEOUT_MS = 30_000
+-/** A verdict is one JSON object; the cap stops a runaway reply. */
+-const EVALUATOR_MAX_TOKENS = 512
++/** Claude's prompt hooks allow 30 s, but the evaluator reads up to half a 1M-token window;
++ * a slow evaluator is still an error, not a stall. */
++const EVALUATOR_TIMEOUT_MS = 90_000
++/** A verdict is one JSON object; the cap stops a runaway reply. Thinking the model cannot
++ * turn off shares this budget (model-complete keeps it at the lowest level). */
++const EVALUATOR_MAX_TOKENS = 1024
++/** One retry with this cap when a reply was cut off before its verdict. */
++const EVALUATOR_RETRY_MAX_TOKENS = 4096
++/** Evaluator calls per turn before the goal pauses on an evaluator error. */
++const EVALUATOR_ATTEMPTS = 3
++const EVALUATOR_BACKOFF_MS = 2_000
+ /** Claude trims the transcript to half the evaluator's context window. */
+ const TRANSCRIPT_WINDOW_SHARE = 0.5
+ const CHARS_PER_TOKEN = 4
+@@ -85,6 +108,13 @@
+ const HOOKS_GATE = "/goal can't run while hooks are restricted (disableAllHooks or allowManagedHooksOnly is set in settings or by policy)."
+ const TRUST_GATE = '/goal is only available in trusted workspaces. Restart, accept the trust dialog, and try again.'
+ 
++/** The evaluator's reply hit its token cap before a verdict could be read. */
++class TruncatedVerdict extends Error {
++  constructor(text: string) {
++    super(text ? `verdict cut off at the token cap: ${text.slice(0, 200)}` : 'verdict cut off at the token cap before any text')
++  }
++}
++
+ type GoalState = 'active' | 'cleared' | 'achieved' | 'failed'
+ 
+ interface GoalEntry {
+@@ -101,6 +131,8 @@
+   tokensAtStart: number
+   /** Evaluator calls are not on the session total; they count toward the goal's spend. */
+   evaluatorTokens: number
++  /** provider/id of the model that gave the latest verdict. */
++  evaluator?: string
+ }
+ 
+ interface TurnMessage {
+@@ -171,7 +203,7 @@
+   const trusted = isProjectApprovedSilently(ctx)
+   const restricted = managed.disableAllHooks === true || managed.allowManagedHooksOnly === true || readSettingsDisableAllHooks(hookFiles(ctx.cwd, os.homedir(), trusted))
+   if (restricted) return HOOKS_GATE
+-  if (!trusted) return TRUST_GATE
++  // if (!trusted) return TRUST_GATE  // desligado por ~/.local/bin/pi
+   return undefined
+ }
+ 
+@@ -179,7 +211,42 @@
+  * pi has no such tier, so the session model stands in unless the override names one of
+  * the models this user can run. */
+ function evaluatorModel(ctx: ExtensionContext): ExtensionContext['model'] {
+-  return resolveModelOverride(ctx, process.env.ANTHROPIC_DEFAULT_HAIKU_MODEL?.trim() || undefined)
++  const override = process.env.PI_GOAL_MODEL?.trim() || process.env.ANTHROPIC_DEFAULT_HAIKU_MODEL?.trim()
++  if (override) return resolveModelOverride(ctx, override)
++  return smallFastModel(ctx) ?? ctx.model
++}
++
++/** Claude's small fast model, found the way Claude names it: the newest Haiku of the
++ * session's provider that this user can run (dated snapshots skipped). Undefined when
++ * the provider has none, and the session model judges instead. */
++function smallFastModel(ctx: ExtensionContext): ExtensionContext['model'] {
++  const session = ctx.model
++  if (!session) return undefined
++  const available = (ctx.modelRegistry?.getAvailable?.() ?? []) as NonNullable<ExtensionContext['model']>[]
++  const version = (id: string): number[] => (/(\d+)-(\d+)/.exec(id)?.slice(1) ?? ['0', '0']).map(Number)
++  const candidates = available.filter((m) => m.provider === session.provider && /haiku/i.test(m.id) && !/\d{8}$/.test(m.id))
++  candidates.sort((a, b) => {
++    const [aMajor, aMinor] = version(a.id)
++    const [bMajor, bMinor] = version(b.id)
++    return bMajor - aMajor || bMinor - aMinor
++  })
++  return candidates[0]
++}
++
++function modelLabel(model: ExtensionContext['model']): string | undefined {
++  return model ? `${model.provider}/${model.id}` : undefined
++}
++
++/** Resolves after `ms`, or rejects at once when the signal fires. */
++function sleep(ms: number, signal?: AbortSignal): Promise<void> {
++  return new Promise((resolve, reject) => {
++    if (signal?.aborted) return reject(signal.reason)
++    const timer = setTimeout(resolve, ms)
++    signal?.addEventListener('abort', () => {
++      clearTimeout(timer)
++      reject(signal.reason)
++    }, { once: true })
++  })
+ }
+ 
+ function transcriptBudget(model: { contextWindow?: number }): number {
+@@ -209,13 +276,16 @@
+   /** A check-in came due while a turn was running: deliver it at the next turn end. */
+   let checkinDue = false
+   let checkinTimer: ReturnType<typeof setTimeout> | undefined
++  /** Automatic retries of failed turns since the last good turn or user prompt. */
++  let turnRetries = 0
++  let retryTimer: ReturnType<typeof setTimeout> | undefined
+   let indicatorTimer: ReturnType<typeof setInterval> | undefined
+ 
+   /** A goal line in the transcript, which the model also reads. A timer can outlive the
+    * session that armed it, and sendMessage throws on a disposed one. */
+-  function send(content: string, options: { triggerTurn: boolean; deliverAs?: 'followUp' }): void {
++  function send(content: string, details: GoalMessageDetails, options: { triggerTurn: boolean; deliverAs?: 'followUp' }): void {
+     try {
+-      pi.sendMessage({ customType: GOAL_MESSAGE, content, display: true }, options)
++      pi.sendMessage({ customType: GOAL_MESSAGE, content, display: true, details }, options)
+     } catch {
+       // Disposed session: nothing left to tell.
+     }
+@@ -231,12 +301,13 @@
+ 
+   function currentSummary(ctx: SessionReader): GoalSummary | undefined {
+     if (!goal) return undefined
+-    return { condition: goal.condition, durationMs: Date.now() - goal.setAt, iterations: goal.iterations, tokens: sessionTokens(ctx) - goal.tokensAtStart + goal.evaluatorTokens, lastReason: goal.lastReason }
++    const evaluator = goal.evaluator ?? (sessionCtx ? modelLabel(evaluatorModel(sessionCtx)) : undefined)
++    return { condition: goal.condition, durationMs: Date.now() - goal.setAt, iterations: goal.iterations, tokens: sessionTokens(ctx) - goal.tokensAtStart + goal.evaluatorTokens, lastReason: goal.lastReason, evaluator }
+   }
+ 
+   function showIndicator(ctx: ExtensionContext): void {
+     if (!goal) return
+-    ctx.ui.setStatus('goal', ctx.ui.theme.fg('accent', `◎ goal ${formatDuration(Date.now() - goal.setAt)}`))
++    ctx.ui.setStatus('goal', ctx.ui.theme.fg('accent', indicatorText(Date.now() - goal.setAt)))
+     if (!indicatorTimer) {
+       indicatorTimer = setInterval(() => {
+         if (sessionCtx) showIndicator(sessionCtx)
+@@ -262,6 +333,12 @@
+     stopCheckin()
+   }
+ 
++  function stopRetry(): void {
++    clearTimeout(retryTimer)
++    retryTimer = undefined
++    turnRetries = 0
++  }
++
+   /** Make `condition` the active goal with fresh counters; the entry is the caller's. */
+   function activate(ctx: ExtensionContext, condition: string): void {
+     goal = { condition, setAt: Date.now(), iterations: 0, tokensAtStart: sessionTokens(ctx), evaluatorTokens: 0 }
+@@ -270,6 +347,7 @@
+     checkinsDelivered = 0
+     idleCheckins = 0
+     endDeferral()
++    stopRetry()
+     showIndicator(ctx)
+   }
+ 
+@@ -280,6 +358,7 @@
+     goal = undefined
+     generation += 1
+     endDeferral()
++    stopRetry()
+     stopIndicator(ctx)
+     pi.appendEntry(GOAL_ENTRY, { state, condition: ended.condition } satisfies GoalEntry)
+     return ended.condition
+@@ -291,7 +370,8 @@
+     if (state === 'achieved') achieved = summary
+     endGoal(ctx, state)
+     const head = state === 'achieved' ? `Goal achieved (${summaryText(summary)}): ${summary.condition}` : `Goal could not be achieved (${summaryText(summary)}): ${summary.condition}`
+-    send(reason ? `${head}\nEvaluator: ${reason}` : head, { triggerTurn: false })
++    const judge = summary.evaluator ? `Evaluator (${summary.evaluator})` : 'Evaluator'
++    send(reason ? `${head}\n${judge}: ${reason}` : head, { kind: state, condition: summary.condition, reason, summary }, { triggerTurn: false })
+   }
+ 
+   /** Claude feeds a not-met reason back as the next turn, under the Stop hooks' cap. */
+@@ -306,22 +386,68 @@
+     }
+     const summary = currentSummary(ctx)
+     const spent = summary ? ` · ${formatDuration(summary.durationMs)} · ${formatTokens(summary.tokens)} tokens` : ''
+-    send(`Goal not yet met (turn ${active.iterations}${spent}): ${reason}\nGoal: ${active.condition}`, { triggerTurn: true })
++    send(`Goal not yet met (turn ${active.iterations}${spent}): ${reason}\nGoal: ${active.condition}`, { kind: 'not_met', condition: active.condition, reason, turn: active.iterations }, { triggerTurn: true })
+   }
+ 
+-  async function askEvaluator(ctx: ExtensionContext, active: ActiveGoal, model: NonNullable<ExtensionContext['model']>): Promise<GoalVerdict> {
++  async function askEvaluator(ctx: ExtensionContext, active: ActiveGoal, model: NonNullable<ExtensionContext['model']>, maxTokens: number, structured: boolean): Promise<GoalVerdict> {
+     const transcript = renderTranscript(branchMessages(ctx), transcriptBudget(model))
+     // Esc during the evaluation aborts the run's signal; the call must die with it, or
+     // a late verdict would queue the next goal turn into a run the user just stopped.
+     const deadline = AbortSignal.timeout(EVALUATOR_TIMEOUT_MS)
+     const signal = ctx.signal ? AbortSignal.any([ctx.signal, deadline]) : deadline
+     // Claude runs its evaluator with thinking disabled: the verdict is mechanical.
+-    // completeText requests no thinking level, which is the same for pi.
+-    const { text, usage } = await completeText(model, evaluatorPrompt(transcript, active.condition), { system: EVALUATOR_SYSTEM, maxTokens: EVALUATOR_MAX_TOKENS, signal, registry: ctx.modelRegistry })
++    // completeText asks for no thinking, or the lowest level a model that cannot turn it
++    // off accepts.
++    const progress = { turn: active.iterations + 1, elapsedMs: Date.now() - active.setAt }
++    const prompt = evaluatorPrompt(transcript, active.condition, progress)
++    // Where the model allows it, the verdict is a forced tool call held to a schema (Claude
++    // pins its evaluator reply with a JSON schema); otherwise it is JSON text.
++    const { text, usage, stopReason, args } = structured
++      ? await completeToolCall(model, prompt, VERDICT_TOOL, { system: `${EVALUATOR_SYSTEM}\n${VERDICT_TOOL_NOTE}`, maxTokens, signal, registry: ctx.modelRegistry })
++      : { ...(await completeText(model, prompt, { system: EVALUATOR_SYSTEM, maxTokens, signal, registry: ctx.modelRegistry })), args: undefined }
+     active.evaluatorTokens += usageTokens(usage as TokenUsage | undefined)
+-    const verdict = parseVerdict(text)
+-    if (!verdict) throw new Error(`unreadable verdict: ${text.slice(0, 200)}`)
+-    return verdict
++    const verdict = verdictFromArgs(args) ?? parseVerdict(text)
++    if (verdict) return verdict
++    if (stopReason === 'length') throw new TruncatedVerdict(text)
++    throw new Error(text ? `unreadable verdict: ${text.slice(0, 200)}` : `empty verdict (stop reason ${stopReason})`)
++  }
++
++  /** Up to EVALUATOR_ATTEMPTS calls: a cut-off reply gets a larger budget, a model the
++   * user cannot reach (an unavailable Haiku) falls back to the session model, and other
++   * failures back off briefly. Throws the last error once attempts run out. */
++  async function judge(ctx: ExtensionContext, active: ActiveGoal, first: NonNullable<ExtensionContext['model']>, startedGeneration: number): Promise<GoalVerdict> {
++    let model = first
++    let maxTokens = EVALUATOR_MAX_TOKENS
++    /** Off once a forced-tool call fails, so a provider that rejects it still gets a verdict as text. */
++    let toolAllowed = true
++    let lastError: unknown
++    for (let attempt = 1; attempt <= EVALUATOR_ATTEMPTS; attempt++) {
++      try {
++        const verdict = await askEvaluator(ctx, active, model, maxTokens, toolAllowed && canForceTool(model))
++        active.evaluator = modelLabel(model)
++        return verdict
++      } catch (error) {
++        lastError = error
++        if (ctx.signal?.aborted || generation !== startedGeneration) throw error
++        if (error instanceof TruncatedVerdict) {
++          maxTokens = EVALUATOR_RETRY_MAX_TOKENS
++          continue
++        }
++        const unrecoverable = classifyUnrecoverable(errorMessage(error))
++        if (unrecoverable && ctx.model && model !== ctx.model) {
++          tell(ctx, `Goal evaluator ${modelLabel(model)} failed (${unrecoverable}); judging on the session model ${modelLabel(ctx.model)} instead.`, 'warning')
++          model = ctx.model
++          continue
++        }
++        if (unrecoverable) throw error
++        if (toolAllowed && canForceTool(model)) {
++          toolAllowed = false
++          continue
++        }
++        if (attempt < EVALUATOR_ATTEMPTS) await sleep(EVALUATOR_BACKOFF_MS * attempt, ctx.signal)
++      }
++    }
++    throw lastError
+   }
+ 
+   async function evaluate(ctx: ExtensionContext): Promise<void> {
+@@ -335,12 +461,13 @@
+     }
+     let verdict: GoalVerdict
+     try {
+-      verdict = await askEvaluator(ctx, active, model)
++      verdict = await judge(ctx, active, model, startedGeneration)
+     } catch (error) {
+       // A user interrupt is not an evaluator failure: the goal stays, nothing to say.
+       if (ctx.signal?.aborted) return
+-      // No verdict is a hook error in Claude's terms: the turn ends and the goal stays.
+-      if (generation === startedGeneration) tell(ctx, `Goal evaluator error: ${errorMessage(error)}. The goal stays set; the next turn is evaluated again.`, 'warning')
++      // No verdict is a hook error in Claude's terms: the turn ends and the goal stays,
++      // paused until the user's next prompt (Claude's "Goal paused" for a hook).
++      if (generation === startedGeneration) tell(ctx, `Goal paused: the evaluator failed ${EVALUATOR_ATTEMPTS} times (${errorMessage(error)}). The goal stays set; send a message to continue and the next turn is evaluated again.`, 'warning')
+       return
+     }
+     // Interrupted, cleared, or replaced during the await: this verdict must not act.
+@@ -349,6 +476,8 @@
+   }
+ 
+   function applyVerdict(ctx: ExtensionContext, active: ActiveGoal, verdict: GoalVerdict): void {
++    // A turn that reached a verdict is a good turn: the retry allowance starts over.
++    turnRetries = 0
+     active.iterations += 1
+     active.lastReason = verdict.reason
+     if (verdict.ok) finish(ctx, 'achieved', verdict.reason)
+@@ -361,7 +490,7 @@
+     checkinDue = false
+     checkinsDelivered += 1
+     const work: RunningWork[] = [...running].map(([id, agentType]) => ({ id, agentType }))
+-    send(checkinText(goal.condition, Date.now() - (deferredSince ?? Date.now()), work, paused), { triggerTurn: true })
++    send(checkinText(goal.condition, Date.now() - (deferredSince ?? Date.now()), work, paused), { kind: 'checkin', condition: goal.condition }, { triggerTurn: true })
+   }
+ 
+   function onCheckinDue(): void {
+@@ -395,6 +524,36 @@
+     armCheckin()
+   }
+ 
++  /** Claude's handling of a failed turn whose error leaves the goal set: an interactive
++   * session retries a transient failure up to MAX_TURN_RETRIES times with a growing
++   * wait, then pauses; a failure a retry would only repeat (rate or usage limit, a hook)
++   * pauses at once. CLAUDE_CODE_GOAL_CHECKIN_MINUTES=0 turns retries off, and headless
++   * runs only pause, as Claude's do. */
++  function handleTurnError(ctx: ExtensionContext, message: string): void {
++    const { action, cause } = classifyTurnError(message)
++    const brief = message.length > 200 ? `${message.slice(0, 200)}...` : message
++    const retriesOff = checkinIntervalMs(process.env, 0) <= 0
++    if (action === 'pause' || retriesOff || !ctx.hasUI || turnRetries >= MAX_TURN_RETRIES) {
++      const why = action === 'retry' && turnRetries >= MAX_TURN_RETRIES ? `${cause}, after ${MAX_TURN_RETRIES} automatic retries` : cause
++      clearTimeout(retryTimer)
++      retryTimer = undefined
++      tell(ctx, `Goal paused (${why}): "${brief}". The goal stays set; send a message to continue.`, 'warning')
++      return
++    }
++    turnRetries += 1
++    const attempt = turnRetries
++    const delay = turnRetryDelayMs(attempt)
++    const startedGeneration = generation
++    tell(ctx, `Goal still active after a failed turn (${cause}); retrying in ${Math.round(delay / 1000)}s (${attempt}/${MAX_TURN_RETRIES}).`, 'info')
++    clearTimeout(retryTimer)
++    retryTimer = setTimeout(() => {
++      retryTimer = undefined
++      if (!goal || generation !== startedGeneration || !sessionCtx?.isIdle()) return
++      send(`Goal retry ${attempt}/${MAX_TURN_RETRIES} after a failed turn (${cause}: ${brief}). Continue toward the goal.\nGoal: ${goal.condition}`, { kind: 'retry', condition: goal.condition }, { triggerTurn: true })
++    }, delay)
++    retryTimer.unref?.()
++  }
++
+   function statusText(ctx: SessionReader): string {
+     const summary = currentSummary(ctx)
+     if (summary) return formatActiveGoal(summary)
+@@ -402,19 +561,48 @@
+     return NO_GOAL_TEXT
+   }
+ 
++  function styleOf(theme: Theme): GoalStyle {
++    return { accent: (s) => theme.fg('accent', s), success: (s) => theme.fg('success', s), error: (s) => theme.fg('error', s), warning: (s) => theme.fg('warning', s), dim: (s) => theme.fg('dim', s), bold: (s) => theme.bold(s) }
++  }
++
++  async function showPanel(ctx: ExtensionContext): Promise<void> {
++    const state = { active: currentSummary(ctx), achieved }
++    await ctx.ui.custom<void>((tui, theme, keybindings, done) => ({
++      render(width: number): string[] {
++        const rule = theme.fg('borderMuted', '─'.repeat(width))
++        const body = goalPanelLines(state, styleOf(theme)).flatMap((line) => (line === '' ? [''] : wrapTextWithAnsi(line, Math.max(1, width - 2)))).map((line) => truncateToWidth(` ${line}`, width))
++        return [rule, ...body, rule]
++      },
++      handleInput(data: string): void {
++        if (keybindings.matches(data, 'tui.select.cancel') || keybindings.matches(data, 'tui.select.confirm')) done()
++      },
++      invalidate(): void {},
++    }))
++  }
++
++  pi.registerMessageRenderer<GoalMessageDetails>(GOAL_MESSAGE, (message, options, theme) => {
++    const content = typeof message.content === 'string' ? message.content : message.content.map((c) => (c.type === 'text' ? c.text : '')).join('')
++    const lines = goalMessageLines(content, message.details, options.expanded, styleOf(theme), options.keyHint('app.tools.expand', 'to expand'))
++    return new Text(lines.join('\n'), options.outputPad, 0)
++  })
++
+   pi.registerCommand('goal', {
+     description: 'Set a goal the session keeps working toward until a separate check confirms it is met; /goal shows status, /goal clear stops',
+     handler: async (args, ctx) => {
+       sessionCtx = ctx
+       const condition = args.trim()
+       if (condition === '') {
+-        tell(ctx, statusText(ctx), 'info')
++        if (ctx.mode !== 'tui') {
++          tell(ctx, statusText(ctx), 'info')
++          return
++        }
++        await showPanel(ctx)
+         return
+       }
+       if (isClearAlias(condition)) {
+         const cleared = endGoal(ctx, 'cleared')
+         if (cleared === undefined) tell(ctx, 'No goal set', 'info')
+-        else send(`Goal cleared: ${cleared}`, { triggerTurn: false })
++        else send(`Goal cleared: ${cleared}`, { kind: 'cleared', condition: cleared }, { triggerTurn: false })
+         return
+       }
+       if (condition.length > GOAL_CONDITION_MAX_CHARS) {
+@@ -430,10 +618,10 @@
+       // is the state a resume restores.
+       activate(ctx, condition)
+       pi.appendEntry(GOAL_ENTRY, { state: 'active', condition } satisfies GoalEntry)
+-      tell(ctx, `Goal set: ${condition}`, 'info')
++      if (!ctx.hasUI) tell(ctx, `Goal set: ${condition}`, 'info')
+       // Setting a goal starts a turn immediately with the condition as the directive; a
+       // send during streaming queues it as a follow-up turn.
+-      send(kickoffPrompt(condition), ctx.isIdle() ? { triggerTurn: true } : { triggerTurn: true, deliverAs: 'followUp' })
++      send(kickoffPrompt(condition), { kind: 'set', condition }, ctx.isIdle() ? { triggerTurn: true } : { triggerTurn: true, deliverAs: 'followUp' })
+       // A headless run (`pi -p "/goal ..."`) exits as soon as the command returns, before
+       // the kickoff turn runs. pi marks the run active synchronously on the send, and the
+       // continuations queued at agent_end extend that run, so waiting here holds the
+@@ -473,6 +661,7 @@
+ 
+   pi.on('session_shutdown', () => {
+     stopCheckin()
++    stopRetry()
+     clearInterval(indicatorTimer)
+     indicatorTimer = undefined
+   })
+@@ -492,6 +681,9 @@
+     if (event.source === 'extension') return
+     noProgressStreak = 0
+     idleCheckins = 0
++    // The user's prompt starts the next turn itself; a pending automatic retry would
++    // only stack another one behind it.
++    stopRetry()
+   })
+ 
+   // On agent_end rather than agent_settled, for the reason hooks.ts gives: a peer
+@@ -518,10 +710,13 @@
+     lastTurnError = undefined
+     if (!goal || message === undefined) return
+     const kind = classifyUnrecoverable(message)
+-    if (!kind) return
++    if (!kind) {
++      handleTurnError(ctx, message)
++      return
++    }
+     endGoal(ctx, 'cleared')
+     const text = `Goal cleared after an unrecoverable error (${kind}): "${message}". Run /goal again to continue.`
+-    send(text, { triggerTurn: false })
++    send(text, { kind: 'error', condition: undefined }, { triggerTurn: false })
+     tell(ctx, text, 'warning')
+   })
+ }
+diff -ruN a/internal/goal-evaluator.ts b/internal/goal-evaluator.ts
+--- a/internal/goal-evaluator.ts	2026-11-12 19:45:46.465199727 -0300
++++ b/internal/goal-evaluator.ts	2026-11-12 19:45:46.466632885 -0300
+@@ -20,7 +20,7 @@
+ 
+ /** The directive a set goal starts its first turn with: the condition itself is the task. */
+ export function kickoffPrompt(condition: string): string {
+-  return `A session-scoped Stop hook is now active with condition: "${condition}". Briefly acknowledge the goal, then immediately start (or continue) working toward it: treat the condition itself as your directive and do not pause to ask the user what to do. The hook will block stopping until the condition holds. It auto-clears once the condition is met, so do not tell the user to run \`/goal clear\` after success; that is only for clearing a goal early.`
++  return `A session-scoped Stop hook is now active with condition: "${condition}". Briefly acknowledge the goal, then immediately start (or continue) working toward it: treat the condition itself as your directive and do not pause to ask the user what to do. The hook will block stopping until the condition holds. It auto-clears once the condition is met, so do not tell the user to run \`/goal clear\` after success; that is only for clearing a goal early. A separate evaluator decides after each turn whether the condition holds, and it reads only this conversation: it runs no commands and opens no files. So make the evidence visible: run the checks the condition names and let their output show, and end each turn with a short status that maps every part of the condition to its evidence or to what remains.`
+ }
+ 
+ /** Claude's stop-condition evaluator instructions: transcript evidence only, three
+@@ -38,9 +38,43 @@
+   'Output the JSON object only, with no text before or after it and no code fence.',
+ ].join('\n')
+ 
++/** How far the goal has run, so a turn or time clause ("or stop after 20 turns") is
++ * judged on fact rather than on the agent's own count. */
++export interface GoalProgress {
++  /** The turn being judged, 1-based. */
++  turn: number
++  elapsedMs: number
++}
++
++/** The verdict as a forced tool call, so a capable evaluator cannot answer off-schema
++ * (Claude pins the reply with a JSON schema the same way). */
++export const VERDICT_TOOL = {
++  name: 'goal_verdict',
++  description: 'Report whether the stop condition is satisfied, with the transcript evidence.',
++  parameters: {
++    type: 'object',
++    properties: {
++      ok: { type: 'boolean', description: 'true only when the transcript shows the condition is satisfied' },
++      impossible: { type: 'boolean', description: 'true only when ok is false and the condition can never be satisfied in this session' },
++      reason: { type: 'string', description: 'evidence quoted from the transcript, or what is missing' },
++    },
++    required: ['ok', 'reason'],
++    additionalProperties: false,
++  },
++}
++
++/** Appended to EVALUATOR_SYSTEM when the verdict comes through VERDICT_TOOL. */
++export const VERDICT_TOOL_NOTE = `Report the verdict by calling the ${VERDICT_TOOL.name} tool once with those fields instead of writing the JSON as text.`
++
++/** The verdict carried by VERDICT_TOOL's arguments, held to the same rules as text. */
++export function verdictFromArgs(args: Record<string, unknown> | undefined): GoalVerdict | undefined {
++  return args ? parseVerdict(JSON.stringify(args)) : undefined
++}
++
+ /** The user turn of the evaluation: the rendered transcript, then Claude's question. */
+-export function evaluatorPrompt(transcript: string, condition: string): string {
+-  return `<transcript>\n${transcript}\n</transcript>\n\nBased on the conversation transcript above, has the following stopping condition been satisfied? Answer based on transcript evidence only.\nCondition: ${condition}`
++export function evaluatorPrompt(transcript: string, condition: string, progress?: GoalProgress): string {
++  const facts = progress ? `\nGoal progress (measured by the harness, authoritative): this is turn ${progress.turn} since the goal was set, running for ${formatDuration(progress.elapsedMs)}.` : ''
++  return `<transcript>\n${transcript}\n</transcript>\n\nBased on the conversation transcript above, has the following stopping condition been satisfied? Answer based on transcript evidence only.${facts}\nCondition: ${condition}`
+ }
+ 
+ export interface GoalVerdict {
+@@ -59,25 +93,68 @@
+   return { ok: lead === 'yes', reason: text.trim(), impossible: false }
+ }
+ 
+-/** The evaluator's JSON verdict, tolerating prose or a code fence around the object; a
+- * reply with no object at all falls back to its yes/no lead. Undefined when the object
+- * does not parse, `ok` is not a boolean, or no lead is there, which the caller treats
+- * as an evaluator error rather than a verdict. */
+-export function parseVerdict(text: string): GoalVerdict | undefined {
+-  const start = text.indexOf('{')
+-  const end = text.lastIndexOf('}')
+-  if (start === -1) return proseVerdict(text)
+-  if (end <= start) return undefined
++/** Each balanced top-level `{...}` span in the text, string literals respected, in order. */
++function objectSpans(text: string): string[] {
++  const spans: string[] = []
++  let depth = 0
++  let start = -1
++  let inString = false
++  let escaped = false
++  for (let i = 0; i < text.length; i++) {
++    const ch = text[i]
++    if (inString) {
++      if (escaped) escaped = false
++      else if (ch === '\\') escaped = true
++      else if (ch === '"') inString = false
++      continue
++    }
++    if (ch === '"' && depth > 0) inString = true
++    else if (ch === '{') {
++      if (depth === 0) start = i
++      depth += 1
++    } else if (ch === '}' && depth > 0) {
++      depth -= 1
++      if (depth === 0) spans.push(text.slice(start, i + 1))
++    }
++  }
++  return spans
++}
++
++function asBoolean(value: unknown): boolean | undefined {
++  if (typeof value === 'boolean') return value
++  if (value === 'true' || value === 'false') return value === 'true'
++  return undefined
++}
++
++function verdictFrom(json: string): GoalVerdict | undefined {
+   let parsed: unknown
+   try {
+-    parsed = JSON.parse(text.slice(start, end + 1))
++    parsed = JSON.parse(json)
+   } catch {
+     return undefined
+   }
+-  if (typeof parsed !== 'object' || parsed === null) return undefined
+-  const { ok, reason, impossible } = parsed as Record<string, unknown>
+-  if (typeof ok !== 'boolean') return undefined
+-  return { ok, reason: typeof reason === 'string' ? reason.trim() : '', impossible: !ok && impossible === true }
++  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return undefined
++  const { ok: rawOk, reason, impossible } = parsed as Record<string, unknown>
++  const ok = asBoolean(rawOk)
++  if (ok === undefined) return undefined
++  return { ok, reason: typeof reason === 'string' ? reason.trim() : '', impossible: !ok && asBoolean(impossible) === true }
++}
++
++/** The evaluator's JSON verdict, tolerating prose or a code fence around the object, a
++ * second object, or `"ok": "true"`; the first object carrying an `ok` wins. A reply
++ * with no object at all falls back to its yes/no lead. Undefined when no object parses
++ * with a boolean `ok` and no lead is there, which the caller treats as an evaluator
++ * error rather than a verdict. */
++export function parseVerdict(text: string): GoalVerdict | undefined {
++  if (!text.includes('{')) return proseVerdict(text)
++  for (const span of objectSpans(text)) {
++    const verdict = verdictFrom(span)
++    if (verdict) return verdict
++  }
++  // Unbalanced braces inside a reason can defeat the scan; the outermost slice remains.
++  const start = text.indexOf('{')
++  const end = text.lastIndexOf('}')
++  return end > start ? verdictFrom(text.slice(start, end + 1)) : undefined
+ }
+ 
+ /** One message's rendering is capped so a single tool dump cannot consume the budget. */
+@@ -182,6 +259,43 @@
+   return UNRECOVERABLE.find(([, pattern]) => pattern.test(errorMessage))?.[0]
+ }
+ 
++/** What Claude does with a failed turn whose error does not clear the goal: retry a
++ * failure that tends to clear on its own, pause on one a retry would only repeat. */
++export interface TurnErrorAction {
++  action: 'retry' | 'pause'
++  cause: string
++}
++
++const PAUSE_CAUSES: ReadonlyArray<[string, RegExp]> = [
++  ['usage limit', /usage limit|session limit|weekly limit|limit (?:will )?resets?|quota exceeded/i],
++  ['rate limit', /rate[ _-]?limit|too many requests|\b429\b/i],
++  ['hook', /\bhook\b/i],
++]
++
++const RETRY_CAUSES: ReadonlyArray<[string, RegExp]> = [
++  ['overloaded', /overload|\b529\b|capacity/i],
++  ['server error', /\b5\d\d\b|internal server error|bad gateway|service unavailable|gateway timeout|api_error/i],
++  ['timeout', /time(?:d)?[ -]?out|deadline/i],
++  ['connection', /network|socket|econn|enotfound|eai_again|fetch failed|connection|terminated|stream (?:ended|closed)/i],
++]
++
++/** Pause or retry for an error classifyUnrecoverable left alone; an unknown error is
++ * treated as transient, the way the goal staying set already assumes. */
++export function classifyTurnError(errorMessage: string): TurnErrorAction {
++  const pause = PAUSE_CAUSES.find(([, pattern]) => pattern.test(errorMessage))
++  if (pause) return { action: 'pause', cause: pause[0] }
++  const retry = RETRY_CAUSES.find(([, pattern]) => pattern.test(errorMessage))
++  return { action: 'retry', cause: retry?.[0] ?? 'error' }
++}
++
++/** Claude retries a transient turn failure three times, then pauses the goal. */
++export const MAX_TURN_RETRIES = 3
++
++/** Wait before automatic retry `attempt` (1-based): 15 s, 30 s, 60 s. */
++export function turnRetryDelayMs(attempt: number): number {
++  return 15_000 * 2 ** Math.max(0, Math.min(attempt - 1, 2))
++}
++
+ export function formatDuration(ms: number): string {
+   const seconds = Math.max(0, Math.round(ms / 1000))
+   if (seconds < 60) return `${seconds}s`
+@@ -208,6 +322,8 @@
+   /** Tokens spent since the goal was set, evaluator calls included. */
+   tokens: number
+   lastReason?: string
++  /** provider/id of the model judging the condition. */
++  evaluator?: string
+ }
+ 
+ /** Claude's status view fields: duration, turn count, and token spend. */
+@@ -221,6 +337,7 @@
+   const turns = summary.iterations === 0 ? 'not yet evaluated' : plural(summary.iterations, 'turn')
+   const lines = [`Goal active: ${summary.condition} (${turns})`, `Running for ${formatDuration(summary.durationMs)} · ${formatTokens(summary.tokens)} tokens`]
+   if (summary.lastReason) lines.push(`Last check: ${summary.lastReason}`)
++  if (summary.evaluator) lines.push(`Evaluator: ${summary.evaluator}`)
+   lines.push('/goal clear to stop early')
+   return lines.join('\n')
+ }
+diff -ruN a/internal/goal-ui.ts b/internal/goal-ui.ts
+--- a/internal/goal-ui.ts	1969-12-31 21:00:00.000000000 -0300
++++ b/internal/goal-ui.ts	2026-11-12 19:45:46.467026874 -0300
+@@ -0,0 +1,86 @@
++/** Pure rendering helpers for the /goal UI (transcript lines, footer text, status panel),
++ * modeled on Claude Code's goal_status attachment and /goal panel. */
++import { formatDuration, formatTokens, type GoalSummary, summaryText } from './goal-evaluator.ts'
++
++export interface GoalMessageDetails {
++  kind: 'set' | 'not_met' | 'achieved' | 'failed' | 'cleared' | 'checkin' | 'retry' | 'error'
++  condition?: string
++  reason?: string
++  summary?: GoalSummary
++  turn?: number
++}
++
++export interface GoalStyle {
++  accent: (s: string) => string
++  success: (s: string) => string
++  error: (s: string) => string
++  warning: (s: string) => string
++  dim: (s: string) => string
++  bold?: (s: string) => string
++}
++
++/** Footer text: the elapsed part is left out during the first second. */
++export function indicatorText(elapsedMs: number): string {
++  return elapsedMs < 1000 ? '◎ /goal active' : `◎ /goal active (${formatDuration(elapsedMs)})`
++}
++
++const firstLine = (s: string): string => s.split('\n', 1)[0] ?? ''
++
++/** Lines of one goal transcript message; `hint` is the styled expand hint. */
++export function goalMessageLines(content: string, details: GoalMessageDetails | undefined, expanded: boolean, style: GoalStyle, hint: string): string[] {
++  const { dim } = style
++  const stats = (d: GoalMessageDetails): string => (d.summary ? dim(` (${summaryText(d.summary)})`) : '')
++  const extra = (d: GoalMessageDetails): string[] => [
++    ...(d.condition ? [dim(`  Goal: ${d.condition}`)] : []),
++    ...(d.reason ? [dim(`  Reason: ${d.reason}`)] : []),
++    ...(d.summary?.evaluator ? [dim(`  Evaluator: ${d.summary.evaluator}`)] : []),
++  ]
++  const fallback = (): string[] => (expanded ? [dim(content)] : [dim(firstLine(content)) + ' ' + hint])
++  if (!details) return fallback()
++  switch (details.kind) {
++    case 'achieved':
++      return [style.success('✓ Goal achieved') + stats(details) + (expanded ? '' : ' ' + hint), ...(expanded ? extra(details) : [])]
++    case 'failed':
++      return [
++        style.error('✗ Goal could not be achieved') + stats(details),
++        ...(expanded ? extra(details) : details.reason ? [dim(`  ${details.reason}`)] : []),
++      ]
++    case 'not_met':
++      return [dim('○ Goal not yet met… continuing') + (expanded ? '' : ' ' + hint), ...(expanded ? extra(details) : [])]
++    case 'set':
++      return [style.accent('◎') + ` Goal set: ${details.condition ?? ''}`, ...(expanded ? [dim(content)] : [])]
++    case 'cleared':
++      return [dim(`Goal cleared: ${details.condition ?? firstLine(content)}`)]
++    case 'error':
++      return [style.warning(firstLine(content))]
++    default:
++      return fallback()
++  }
++}
++
++export interface GoalPanelState {
++  active?: GoalSummary
++  achieved?: GoalSummary
++}
++
++/** Content lines of the /goal status panel (the component adds the border and wrapping). */
++export function goalPanelLines(state: GoalPanelState, style: GoalStyle): string[] {
++  const { dim } = style
++  const bold = style.bold ?? ((s: string) => s)
++  const { active, achieved } = state
++  const s = active ?? achieved
++  if (!s) return [bold('Goal'), '', 'No goal set ' + dim('/goal <condition> to set one'), '', dim('esc to dismiss')]
++  const stats = active
++    ? `running ${formatDuration(s.durationMs)}${s.iterations > 0 ? ` · ${s.iterations} ${s.iterations === 1 ? 'turn' : 'turns'}` : ''} · ${formatTokens(s.tokens)} tokens`
++    : summaryText(s)
++  return [
++    active ? bold(style.accent('◎ Goal active')) : bold(style.success('✓ Goal achieved')),
++    dim(stats),
++    '',
++    `${dim('Goal:')} ${s.condition}`,
++    ...(s.lastReason ? [`${dim('Last check:')} ${s.lastReason}`] : []),
++    ...(active && s.evaluator ? [`${dim('Evaluator:')} ${s.evaluator}`] : []),
++    '',
++    dim(active ? '/goal clear to stop early · esc to dismiss' : '/goal <condition> to set another · esc to dismiss'),
++  ]
++}
+diff -ruN a/internal/model-complete.ts b/internal/model-complete.ts
+--- a/internal/model-complete.ts	2026-11-12 19:45:46.465725846 -0300
++++ b/internal/model-complete.ts	2026-11-12 19:45:46.467423974 -0300
+@@ -15,7 +15,7 @@
+  * throw and the caller falls back to its non-model behavior.
+  */
+ 
+-import type { Api, AssistantMessage, Context, Model, ModelsSimpleStreamOptions, Usage } from '@earendil-works/pi-ai'
++import type { Api, AssistantMessage, Context, Model, ModelsSimpleStreamOptions, StopReason, ThinkingLevel, Usage } from '@earendil-works/pi-ai'
+ import { ModelRuntime } from '@earendil-works/pi-coding-agent'
+ 
+ /** The completion backend: model + context -> assistant message. Overridable for tests. */
+@@ -63,6 +63,26 @@
+   /** Output cap; a summary/decision does not need the model's full budget. */
+   maxTokens?: number
+   signal?: AbortSignal
++  /** Thinking level. Omitted means the least the model allows: off where it can be
++   * turned off, else its lowest level (see minimalReasoning). */
++  reasoning?: ThinkingLevel
++}
++
++/** Levels from cheapest to dearest, as a one-off completion wants them. */
++const ASCENDING_LEVELS: readonly ThinkingLevel[] = ['minimal', 'low', 'medium', 'high']
++
++/**
++ * The cheapest thinking level a model accepts, or undefined when thinking can be off.
++ * Without a level, pi-ai asks for thinking off; a model whose thinkingLevelMap marks
++ * `off: null` (Opus/Sonnet 5.5, Fable 5) cannot honor that and falls back to adaptive
++ * thinking at effort "high", which shares maxTokens with the reply. With a small cap
++ * the thinking used the whole budget and the call returned no text (stopReason
++ * "length"): /goal's "unreadable verdict: " with an empty verdict.
++ */
++export function minimalReasoning(model: Pick<Model<Api>, 'reasoning'> & { thinkingLevelMap?: Partial<Record<string, string | null>> }): ThinkingLevel | undefined {
++  const map = model.thinkingLevelMap
++  if (!model.reasoning || map?.off !== null) return undefined
++  return ASCENDING_LEVELS.find((level) => map[level] !== null)
+ }
+ 
+ function standaloneBackend(): Promise<CompleteFn> {
+@@ -76,6 +96,42 @@
+   return backend
+ }
+ 
++/** A tool whose arguments are the answer: a JSON Schema the reply is held to. */
++export interface AnswerTool {
++  name: string
++  description: string
++  parameters: Record<string, unknown>
++}
++
++/** Whether `model` can be forced to answer through one tool: Anthropic's tool_choice
++ * `{type: "tool"}` is rejected while thinking is on, so only a model whose thinking
++ * can be off qualifies. */
++export function canForceTool(model: Pick<Model<Api>, 'api' | 'reasoning'> & { thinkingLevelMap?: Partial<Record<string, string | null>> }): boolean {
++  return model.api === 'anthropic-messages' && minimalReasoning(model) === undefined
++}
++
++/**
++ * Run `prompt` through `model` forced to call `tool` once, its arguments held to the
++ * tool's schema (strict sampling where the provider has it). Returns the arguments, or
++ * undefined when the reply carried no such call, plus any text, usage and stop reason.
++ * Callers check canForceTool first. Throws like completeText.
++ */
++export async function completeToolCall(model: Model<Api>, prompt: string, tool: AnswerTool, options: CompleteOptions = {}): Promise<{ args: Record<string, unknown> | undefined; text: string; usage: Usage; stopReason: StopReason }> {
++  const context: Context = {
++    systemPrompt: options.system,
++    messages: [{ role: 'user', content: prompt, timestamp: Date.now() }],
++    tools: [{ ...tool, constrainedSampling: { type: 'json_schema', strict: 'prefer' } }],
++  }
++  // pi-ai types toolChoice as "auto" | "none", but the Anthropic adapter passes an object
++  // through as tool_choice, which is how a single tool is forced.
++  const toolChoice = { type: 'tool', name: tool.name } as unknown as ModelsSimpleStreamOptions['toolChoice']
++  const streamOptions = { maxTokens: options.maxTokens ?? 1024, signal: options.signal, reasoning: options.reasoning ?? minimalReasoning(model), toolChoice }
++  const message = options.registry && !backendOverridden ? await options.registry.streamSimple(model, context, streamOptions).result() : await (await standaloneBackend())(model, context, streamOptions)
++  if (message.stopReason === 'error' || message.stopReason === 'aborted') throw new Error(message.errorMessage ?? `completion ${message.stopReason}`)
++  const call = message.content.find((part) => part.type === 'toolCall' && part.name === tool.name) as { arguments?: Record<string, unknown> } | undefined
++  return { args: call?.arguments, text: assistantText(message), usage: message.usage, stopReason: message.stopReason }
++}
++
+ /**
+  * Run `prompt` through `model` as a single user turn and return the reply text plus
+  * the call's usage. A tool that makes a nested LLM call must return that usage on
+@@ -83,15 +139,15 @@
+  * Throws on any failure so the caller can fall back; never returns a partial or a
+  * tool call, only assistant text.
+  */
+-export async function completeText(model: Model<Api>, prompt: string, options: CompleteOptions = {}): Promise<{ text: string; usage: Usage }> {
++export async function completeText(model: Model<Api>, prompt: string, options: CompleteOptions = {}): Promise<{ text: string; usage: Usage; stopReason: StopReason }> {
+   const context: Context = {
+     systemPrompt: options.system,
+     messages: [{ role: 'user', content: prompt, timestamp: Date.now() }],
+   }
+-  const streamOptions = { maxTokens: options.maxTokens ?? 1024, signal: options.signal }
++  const streamOptions = { maxTokens: options.maxTokens ?? 1024, signal: options.signal, reasoning: options.reasoning ?? minimalReasoning(model) }
+   const message = options.registry && !backendOverridden ? await options.registry.streamSimple(model, context, streamOptions).result() : await (await standaloneBackend())(model, context, streamOptions)
+   // pi-ai reports a provider failure or a fired signal by resolving, never rejecting: the
+   // message then has no text, and returned as an answer it is indistinguishable from one.
+   if (message.stopReason === 'error' || message.stopReason === 'aborted') throw new Error(message.errorMessage ?? `completion ${message.stopReason}`)
+-  return { text: assistantText(message), usage: message.usage }
++  return { text: assistantText(message), usage: message.usage, stopReason: message.stopReason }
+ }

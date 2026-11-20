@@ -1,0 +1,11 @@
+{
+  "id": "multi-pathkit",
+  "suite": "multi",
+  "kind": "outcome",
+  "prompt": "Implemente os 3 módulos independentes abaixo (globm.py, normp.py, relp.py); hoje cada função levanta NotImplementedError. O trabalho é paralelizável: cada módulo é um arquivo separado, sem imports entre eles, com testes próprios. Se o seu harness tiver subagentes, pode usá-los para dividir o trabalho; senão, faça em sequência. Especificação:\n- globm.py: glob_match(pattern, path) -> bool para caminhos com '/': '*' casa dentro de um segmento (sem '/'), '?' um caractere (não '/'), um segmento '**' casa zero ou mais segmentos ('a/**' casa 'a' e tudo abaixo; '**/x.py' casa 'x.py'); demais caracteres (inclusive '[') são literais; o casamento é do caminho inteiro.\n- normp.py: normalize(path) -> str, caminhos POSIX: colapsa '//', remove '.', resolve '..' (em absoluto, '..' acima da raiz é descartado; em relativo, '..' líder é mantido), sem '/' final; resultado vazio -> '.'; raiz -> '/'.\n- relp.py: relpath(target, start) -> str entre dois caminhos POSIX absolutos (podem conter '.', '..', '//' e '/' final): devolve o caminho relativo de start até target ('.' se iguais); target ou start não absolutos -> ValueError.",
+  "timeout_s": 900,
+  "budget_usd": 1.5,
+  "split": "dev",
+  "security": false,
+  "test_cmd": "python3 -m pytest -q -p no:cacheprovider hidden"
+}

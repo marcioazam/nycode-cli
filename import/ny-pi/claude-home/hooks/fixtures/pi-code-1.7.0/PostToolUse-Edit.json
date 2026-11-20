@@ -1,0 +1,33 @@
+{
+ "session_id": "01a1cbdf-c71a-75fe-8856-1b1956fdda28",
+ "cwd": "/tmp/pi-capture/repo",
+ "permission_mode": "default",
+ "transcript_path": "/tmp/pihome/.pi/agent/sessions/--tmp-pi-capture-repo--/2026-11-11T18-30-02-779Z_01a1cbdf-c71a-75fe-8856-1b1956fdda28.jsonl",
+ "effort": {
+  "level": "medium"
+ },
+ "tool_use_id": "toolu_01L1bihNWDrTxoXarxVGdkn1",
+ "hook_event_name": "PostToolUse",
+ "tool_name": "Edit",
+ "tool_input": {
+  "file_path": "/tmp/pi-capture/repo/tests/test_x.py",
+  "old_string": "1 == 1",
+  "new_string": "2 == 2",
+  "replace_all": false
+ },
+ "tool_response": {
+  "content": [
+   {
+    "type": "text",
+    "text": "Successfully replaced 1 block(s) in tests/test_x.py."
+   }
+  ],
+  "details": {
+   "diff": " 1 def test_x():\n-2     assert 1 == 1\n+2     assert 2 == 2",
+   "patch": "--- tests/test_x.py\n+++ tests/test_x.py\n@@ -1,2 +1,2 @@\n def test_x():\n-    assert 1 == 1\n+    assert 2 == 2\n",
+   "firstChangedLine": 2
+  },
+  "isError": false
+ },
+ "duration_ms": 2
+}

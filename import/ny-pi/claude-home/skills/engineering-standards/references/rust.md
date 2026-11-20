@@ -1,0 +1,11 @@
+# Rust
+
+Honor the workspace edition, resolver, and declared MSRV. Keep workspace lints and member configuration consistent. Prefer explicit ownership and error types over `unwrap`/`expect` in library or service paths; isolate and justify every `unsafe` block.
+
+Use `cargo fmt`, the configured clippy checks, and relevant tests. Add property or fuzz tests for parsers, protocol framing, serialization, arithmetic, or unsafe invariants when the project supports them. Benchmark performance claims and document any trade-off that affects the public API.
+
+Bound spawned tasks and buffers, and handle task results, including panics and cancellation. Make shutdown and cleanup ownership explicit: dropping a handle does not necessarily stop its task, and losing a `select!` branch may drop work midway through an operation. Review cancellation safety and lock lifetimes across `.await`; route blocking work through the adopted runtime's appropriate mechanism, accounting for work that cannot be aborted once started. Test interrupted work as well as normal completion when changing these paths.
+
+Async guidance adapted 2026-09-20 from Jeffallan's [Rust async reference](https://github.com/Jeffallan/claude-skills/blob/882ef55e377dbf9a4dbe496bb41ac6ccd0e555cf/skills/rust-engineer/references/async.md), [MIT](https://github.com/Jeffallan/claude-skills/blob/882ef55e377dbf9a4dbe496bb41ac6ccd0e555cf/LICENSE). Existing workspace/runtime contracts take precedence; no example implementation copied.
+
+Current specifics: time-dependent tests use Tokio paused time ([`start_paused`](https://docs.rs/tokio/latest/tokio/attr.test.html) or [`time::pause`](https://docs.rs/tokio/latest/tokio/time/fn.pause.html), read 2026-10-24: it needs the `test-util` feature and the `current_thread` runtime, and moves only `tokio::time::Instant`, not `std::time`), never fixed sleeps or wall-clock asserts; where the workspace has a `loom` cfg, keep concurrency models on it. With real I/O, wait for readiness under a bounded deadline. Run cargo with `--locked`. Pin Tokio to an LTS line listed in its [README](https://github.com/tokio-rs/tokio/blob/master/README.md) (1.51.x until March 2027 and 1.53.x until September 2027 on 2026-10-24) or track latest.

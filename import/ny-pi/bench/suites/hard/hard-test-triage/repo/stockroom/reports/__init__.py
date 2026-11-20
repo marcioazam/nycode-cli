@@ -1,0 +1,1 @@
+"""Relatórios de estoque."""

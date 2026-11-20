@@ -1,0 +1,11 @@
+{
+  "id": "plan-ingest-exceptions",
+  "suite": "plan",
+  "kind": "outcome",
+  "prompt": "Planeje antes de implementar. Objetivo: o pacote ingest/ sinaliza erros por valores de retorno (parse_line devolve None, check devolve texto). Quero exceções: novo módulo ingest/errors.py com IngestError(ValueError), ParseError e ValidationError (ambas subclasses de IngestError); parse_line levanta ParseError('malformed'); validate.check levanta ValidationError com a mesma mensagem de hoje e devolve o próprio registro quando válido; loader.load(lines, strict=False) continua devolvendo (registros, erros) com erros no formato '<nº da linha>: <mensagem>' (linhas em branco ignoradas); com strict=True levanta o primeiro erro (mesma classe) com a mensagem '<nº da linha>: <mensagem>'. O CLI main(argv): sem erros devolve 0; com erros e sem --strict imprime os registros válidos em stdout, os erros em stderr e devolve 1; com --strict (primeiro argumento) imprime só o erro em stderr e devolve 2. Mensagens e formato de saída de hoje não mudam.",
+  "timeout_s": 600,
+  "budget_usd": 1.0,
+  "split": "dev",
+  "security": false,
+  "test_cmd": "python3 -m pytest -q -p no:cacheprovider hidden"
+}

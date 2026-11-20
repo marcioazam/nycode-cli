@@ -1,0 +1,14 @@
+{
+  "break-filter-js-from-html": "provider refusal (Cyber safeguards) in pilot 2026-11-13, docs/external-eval-terminal-bench-2026-11-13.md",
+  "build-cython-ext": "oracle reward 0: test_pyknotid_repository_tests failed (pyknotid repo tests exit 1)",
+  "build-pmars": "oracle reward 0: pmars not built (test_pmars_works, headless, debian source, built-from-source failed)",
+  "caffe-cifar-10": "oracle AgentTimeoutError after 1200 s; no model, training/accuracy tests failed",
+  "crack-7z-hash": "provider refusal (Cyber safeguards) in pilot 2026-11-13, docs/external-eval-terminal-bench-2026-11-13.md",
+  "make-doom-for-mips": "oracle reward 0: test_vm_execution timed out, no frame.bmp",
+  "mcmc-sampling-stan": "oracle reward 0: RStan not installed/usable (4 tests failed)",
+  "portfolio-optimization": "oracle reward 0: test_performance_and_scalability failed (5000/6000/8000)",
+  "protein-assembly": "oracle reward 0: /app/gblock.txt missing (test_gblock)",
+  "qemu-alpine-ssh": "oracle reward 0: verifier test.sh needs curl/uvx, not found in image",
+  "qemu-startup": "oracle reward 0: verifier test.sh needs curl/uvx, not found in image",
+  "rstan-to-pystan": "oracle reward 0: alpha/sigma/rho/beta estimation accuracy tests failed"
+}
