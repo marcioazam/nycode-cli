@@ -24,8 +24,8 @@ jobs:
         uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with:
           egress-policy: block
-          # Minimal set for: checkout, tool/pip/npm installs, install.sh (pi.dev + GitHub third-party fetch).
-          # Tighten or extend from the harden-runner insights of the first runs.
+          # Minimal set for: checkout, tool/pip/npm installs. Not verified by a run: tighten or extend from the
+          # harden-runner insights of the first runs.
           allowed-endpoints: >
             agent.api.stepsecurity.io:443
             github.com:443
@@ -37,7 +37,6 @@ jobs:
             pypi.org:443
             files.pythonhosted.org:443
             registry.npmjs.org:443
-            pi.dev:443
             nodejs.org:443
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -58,7 +57,7 @@ jobs:
           "$RUNNER_TEMP/venv/bin/pip" install --require-hashes --no-deps -r scripts/ci/requirements-ci.txt
           echo "$RUNNER_TEMP/venv/bin" >> "$GITHUB_PATH"
       - name: Install pinned binaries (sha256-checked)
-        run: bash scripts/ci/install-tools.sh shellcheck shfmt biome rg
+        run: bash scripts/ci/install-tools.sh shellcheck shfmt rg
       - name: Static gate
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
