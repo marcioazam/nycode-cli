@@ -144,7 +144,14 @@ def gate(
     cand_dir: Path,
     extend_cmd: str | None = None,
     cmap: dict[str, Any] | None = None,
+    parity: bool = False,
 ) -> tuple[dict[str, Any], str, int]:
+    """parity: compare two different arms (D-28); see stats.PARITY_IGNORED_META."""
+    pkw: dict[str, Any] = (
+        {"ignore_meta": stats.PARITY_IGNORED_META, "cost_max": stats.PARITY_COST_MAX}
+        if parity
+        else {}
+    )
     b_runs, b_meta = load_round(base_dir)
     c_runs, c_meta = load_round(cand_dir)
     refused = sorted(
@@ -162,14 +169,19 @@ def gate(
 
     v, c_runs, extended = decide(
         b_runs, c_runs, b_meta, c_meta, grow if extend_cmd else None,
-        sequential=c_meta.get("tier") == "pr",
+        sequential=c_meta.get("tier") == "pr", **pkw,
     )  # fmt: skip
+    if parity:
+        v["parity"] = {
+            "ignored_meta": list(stats.PARITY_IGNORED_META),
+            "cost_max": stats.PARITY_COST_MAX,
+        }
     if b_meta.get("not_verified") or c_meta.get("not_verified"):
         v["verdict"] = "NOT_VERIFIED"  # AC6: budget stop is never a pass
     held_b = [r for r in b_runs if r.get("split") == "heldout"]
     held_c = [r for r in c_runs if r.get("split") == "heldout"]
     held = (
-        stats.verdict(held_b, held_c, b_meta, c_meta, True)
+        stats.verdict(held_b, held_c, b_meta, c_meta, True, **pkw)
         if held_b and held_c
         else None
     )
@@ -177,6 +189,8 @@ def gate(
     md = render_summary(
         v, held, b_runs, c_runs, extended, refused, sugg, b_meta, c_meta
     )
+    if parity:
+        md += f"- Modo paridade (D-28): ignora {', '.join(stats.PARITY_IGNORED_META)}; margem de custo {stats.PARITY_COST_MAX:.2f}\n"
     code = 5 if v["verdict"] == "NOT_VERIFIED" else stats.EXIT[v["verdict"]]
     return v, md, code
 

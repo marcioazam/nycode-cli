@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# Arm nycode (09 §2.2): the nycode monorepo of THIS checkout (PR head or main), built with the commands the CI
+# runs (npm ci --ignore-scripts, npm run build) and executed from packages/coding-agent/dist/bundle/cli.js. No
+# installer, no patches, no wrapper. A run never reads the live ~/.nycode: HOME is the stage (throwaway) and
+# NYCODE_CODING_AGENT_DIR points inside it. The owner layer (overlay-nycode.list) is copied in and hashed into
+# .overlay-sha, like the ny-pi arm. The stage dir marks "built"; the build output lives in the checkout (ignored by git).
+set -euo pipefail
+here=$(dirname "$(readlink -f "$0")")
+repo=$(cd "$here/../.." && pwd)
+# shellcheck source=bench/arms/oauth-token.sh
+. "$here/oauth-token.sh"
+# shellcheck source=bench/arms/overlay-sha.sh
+. "$here/overlay-sha.sh"
+real=${BENCH_REAL_HOME:-$HOME}
+# mise shims (node, npm) find their config through $HOME; pinned to the real HOME they resolve as outside the stage.
+export MISE_CONFIG_DIR="${MISE_CONFIG_DIR:-$real/.config/mise}" MISE_DATA_DIR="${MISE_DATA_DIR:-$real/.local/share/mise}"
+export MISE_STATE_DIR="${MISE_STATE_DIR:-$real/.local/state/mise}" MISE_CACHE_DIR="${MISE_CACHE_DIR:-$real/.cache/mise}"
+stage=${BENCH_STAGE:-${BENCH_STAGE_ROOT:-$real/.cache/bench}/bench-nycode-$(git -C "$repo" rev-parse --short=12 HEAD)$(git -C "$repo" diff --quiet HEAD || echo -dirty)}
+bin=${BENCH_NYCODE_BIN:-$repo/packages/coding-agent/dist/bundle/cli.js}
+agent=$stage/.nycode/agent
+if [ ! -f "$stage/.ready" ] || [ ! -x "$bin" ]; then
+  mkdir -p "$(dirname "$stage")" "$agent"
+  # Same two commands as .github/workflows/ci.yml; dependency lifecycle scripts stay off.
+  (cd "$repo" && npm ci --ignore-scripts --no-audit --no-fund --prefer-offline --loglevel=error </dev/null && npm run build --silent </dev/null) >&2
+  # BENCH_OVERLAY_DIR = a frozen copy of the layer (overlay_freeze), so an edit between two rounds does not make them incomparable.
+  overlay=${BENCH_OVERLAY_DIR:-$real/.nycode/agent}
+  [ -d "$overlay" ] || {
+    echo "bench: overlay dir missing: $overlay" >&2
+    exit 2
+  }
+  overlay_copy "$overlay" "$agent" "$here/overlay-nycode.list"
+  overlay_sha "$agent" "$here/overlay-nycode.list" >"$stage/.overlay-sha"
+  # Warm-up: a first real run must not be the first start of the build.
+  HOME=$stage NYCODE_CODING_AGENT_DIR=$agent NYCODE_SKIP_VERSION_CHECK=1 "$bin" --version >/dev/null
+  touch "$stage/.ready"
+fi
+if [ -n "${BENCH_API_KEY_FILE:-}" ]; then
+  export ANTHROPIC_API_KEY
+  ANTHROPIC_API_KEY=$(bench_api_key)
+  unset ANTHROPIC_OAUTH_TOKEN CLAUDE_CODE_OAUTH_TOKEN ANTHROPIC_AUTH_TOKEN
+  bench_pi_workspace_header "$agent/models.json"
+else
+  export ANTHROPIC_OAUTH_TOKEN
+  ANTHROPIC_OAUTH_TOKEN=$(bench_oauth_token)
+  unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
+fi
+# The eval-only flags were understood by pi-code only; nycode gets them from the settings-flags extension (F5), so
+# until then they are dropped like in the pi-vanilla arm (09 §2.2 item 5, not verified to be the same set).
+args=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+  --settings | --mcp-config | --setting-sources | --add-dir) shift 2 ;;
+  --settings=* | --mcp-config=* | --setting-sources=* | --add-dir=* | --strict-mcp-config) shift ;;
+  *)
+    args+=("$1")
+    shift
+    ;;
+  esac
+done
+HOME=$stage NYCODE_CODING_AGENT_DIR=$agent NYCODE_SKIP_VERSION_CHECK=1 exec "$bin" ${args[@]+"${args[@]}"}

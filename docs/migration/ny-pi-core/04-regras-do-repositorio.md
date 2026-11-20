@@ -163,14 +163,17 @@ com `squash` e `merge`) e D-05 (10 checks). Versionado em F2 **sem aplicar**; ap
           { "context": "mcp-conformance" },
           { "context": "ci-static" },
           { "context": "ci-security" },
-          { "context": "instruction-budget" },
-          { "context": "bench-pr" } ] } }
+          { "context": "instruction-budget" } ] } }
   ]
 }
 ```
 
 Contra o JSON do ny-pi mudam só: `required_linear_history` some e `allowed_merge_methods` vira `["squash","merge"]`
 (D-07); os contextos vão de 4 para 10 (D-05).
+
+> **D-29 (2026-11-20).** O ruleset entra em F3 com 9 contextos: `bench-pr` fica fora até o dono liberar as rodadas de
+> benchmark. Ao liberar, um PR acrescenta `{ "context": "bench-pr" }` a este bloco e ao `.github/rulesets/main.json`, e o
+> ruleset aplicado é atualizado por `PUT` com o mesmo arquivo. Onde este documento diz "10 contextos", leia 9 até lá.
 
 - `bypass_actors: []` significa que nem o dono contorna o ruleset: um ruleset errado trava todo merge, inclusive o que
   o corrigiria. Por isso o passo 4.6 só roda com os 10 checks reportando e a clássica continua até o ruleset ser

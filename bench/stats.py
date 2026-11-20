@@ -39,6 +39,11 @@ Z = NormalDist().inv_cdf(1 - ALPHA / 2)  # normal quantile of the two-sided inte
 # ("Gate sequencial"), calibrated by bench/tools/gate_sim.py.
 ALPHA1, COST1, TURNS1 = 0.01, 1.05, 1.05
 META_KEYS = ("model", "arm_version", "overlay_sha")
+# Parity mode (`bench gate --parity`, D-28): two different arms never share arm_version or overlay_sha, so those
+# two stop blocking; model (and jobs, below) still do. The cost margin is the same 1.10 as COST_MAX, stated here
+# so the verdict records the number the parity rule used.
+PARITY_IGNORED_META = ("arm_version", "overlay_sha")
+PARITY_COST_MAX = 1.10
 EXIT = {"PASS": 0, "FAIL": 1, "INCONCLUSIVE": 3, "NOT_COMPARABLE": 4, "NOT_VERIFIED": 5}
 SEC_CONFIRM_REPS = (
     6  # candidate reps of a security task before one failure counts as noise
@@ -221,6 +226,8 @@ def verdict(
     multi: float = 1.0,
     alpha: float = ALPHA,
     n_boot: int = N_BOOT,
+    ignore_meta: Iterable[str] = (),
+    cost_max: float = COST_MAX,
 ) -> Verdict:
     out: Verdict = {
         "verdict": None,
@@ -239,7 +246,8 @@ def verdict(
         "missing": [],
     }
     # `jobs`: wall time under a different parallelism is another measurement (rounds before 2026-11-14 ran with 1)
-    if any(meta_base.get(k) != meta_cand.get(k) for k in META_KEYS) or meta_base.get(
+    keys = [k for k in META_KEYS if k not in set(ignore_meta)]
+    if any(meta_base.get(k) != meta_cand.get(k) for k in keys) or meta_base.get(
         "jobs", 1
     ) != meta_cand.get("jobs", 1):
         out["verdict"] = "NOT_COMPARABLE"
@@ -278,7 +286,7 @@ def verdict(
         b[t]["turns"] is not None and c[t]["turns"] is not None for t in tasks
     )
     for name, r, lim in (
-        ("cost", out["cost_ratio"], COST_MAX),
+        ("cost", out["cost_ratio"], cost_max),
         ("turns", out["turns_ratio"], TURNS_MAX),
     ):
         rules[name] = "INCONCLUSIVE" if r is None else "PASS" if r <= lim else "FAIL"
