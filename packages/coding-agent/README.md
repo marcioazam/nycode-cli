@@ -8,7 +8,7 @@
   <a href="https://www.npmjs.com/package/@nycode/coding-agent"><img alt="npm" src="https://img.shields.io/npm/v/@nycode/coding-agent?style=flat-square&logo=npm&logoColor=white" /></a>
 </p>
 
-> New issues and PRs from new contributors are closed automatically. Maintainers review closed submissions daily. See [CONTRIBUTING.md](https://github.com/marcioazam/nycode-cli/blob/main/CONTRIBUTING.md).
+> New issues and PRs from new contributors are closed automatically. Maintainers review closed submissions daily. See [CONTRIBUTING.md](https://github.com/marcioazam/nycode/blob/main/CONTRIBUTING.md).
 
 # Nycode
 
@@ -42,7 +42,7 @@ npm install -g --ignore-scripts @nycode/coding-agent
 
 Nycode requires Node.js 22.19 or newer. The macOS, Linux, and Windows installers can install it if needed. Nycode does not require dependency lifecycle scripts for a normal npm installation.
 
-On macOS and Linux, Nix users can install the latest release with `nix profile add github:marcioazam/nycode-cli/stable`. See the [quickstart](docs/quickstart.md#1-install-nycode) for updating and pinning releases.
+On macOS and Linux, Nix users can install the latest release with `nix profile add github:marcioazam/nycode/stable`. See the [quickstart](docs/quickstart.md#1-install-nycode) for updating and pinning releases.
 
 Start Nycode in the directory where you want it to work:
 
@@ -73,7 +73,7 @@ To publish sessions, use [`badlogic/nycode-share-hf`](https://github.com/badlogi
 Clone the repository, install its dependencies, and run Nycode from source:
 
 ```bash
-git clone https://github.com/marcioazam/nycode-cli
+git clone https://github.com/marcioazam/nycode
 cd nycode
 npm install --ignore-scripts
 ./nycode-test.sh
@@ -88,7 +88,7 @@ npm run check
 ./test.sh
 ```
 
-Read [CONTRIBUTING.md](https://github.com/marcioazam/nycode-cli/blob/main/CONTRIBUTING.md) before opening an issue or pull request. It defines the contribution gate, issue quality bar, and required checks. Read [AGENTS.md](https://github.com/marcioazam/nycode-cli/blob/main/AGENTS.md) for repository-specific implementation, testing, dependency, and release rules.
+Read [CONTRIBUTING.md](https://github.com/marcioazam/nycode/blob/main/CONTRIBUTING.md) before opening an issue or pull request. It defines the contribution gate, issue quality bar, and required checks. Read [AGENTS.md](https://github.com/marcioazam/nycode/blob/main/AGENTS.md) for repository-specific implementation, testing, dependency, and release rules.
 
 ## License
 

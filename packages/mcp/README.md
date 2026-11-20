@@ -72,7 +72,7 @@ const tools: AgentTool[] = (await client.listTools()).map((tool) => ({
 
 For applications that name tools like nycode's coding agent: `createMcpToolName(server, tool, isTaken)` builds `mcp__<server>__<tool>`, limited to the characters and the 64-character length providers accept, with a hash suffix for long names and for names `isTaken` reports as used by another tool. `mcpNamespace(server)` is the prefix of a server's tool names. `normalizeMcpInputSchema()` turns an input schema into an object schema with `properties`, and `limitMcpContent(content, saveOutput)` keeps model-facing text within `MCP_OUTPUT_MAX_BYTES` (20KB) by cutting its middle; `saveOutput`, when given, stores the full text and returns the path the model can read it from.
 
-The [mcp-codemode example](https://github.com/marcioazam/nycode-cli/tree/main/packages/agent/examples/mcp-codemode) also forwards progress, passes `structuredContent` through, and lets `@nycode/codemode` scripts call the tools.
+The [mcp-codemode example](https://github.com/marcioazam/nycode/tree/main/packages/agent/examples/mcp-codemode) also forwards progress, passes `structuredContent` through, and lets `@nycode/codemode` scripts call the tools.
 
 ### OAuth
 

@@ -146,7 +146,7 @@ In a Durable Object of a separately deployed Worker, the delay was about 50 ms. 
 
 ### Deploying the sandbox Worker
 
-A complete setup is in [`examples/cloudflare`](https://github.com/marcioazam/nycode-cli/tree/main/packages/codemode/examples/cloudflare). The sandbox Worker is one file:
+A complete setup is in [`examples/cloudflare`](https://github.com/marcioazam/nycode/tree/main/packages/codemode/examples/cloudflare). The sandbox Worker is one file:
 
 ```ts
 // sandbox/src/index.ts
@@ -309,7 +309,7 @@ const codemodeTool: AgentTool = {
 };
 ```
 
-`result.output` items already have the shape of `@nycode/ai`'s `TextContent` and `ImageContent`. Calling `tool.execute()` directly skips the agent's `beforeToolCall` and `afterToolCall` hooks. To apply them to nested calls too, run each call through `runToolCall()` from `@nycode/agent-core`, as the [mcp-codemode example](https://github.com/marcioazam/nycode-cli/tree/main/packages/agent/examples/mcp-codemode) does. That example also rejects failed nested calls inside the script and combines codemode with MCP tools.
+`result.output` items already have the shape of `@nycode/ai`'s `TextContent` and `ImageContent`. Calling `tool.execute()` directly skips the agent's `beforeToolCall` and `afterToolCall` hooks. To apply them to nested calls too, run each call through `runToolCall()` from `@nycode/agent-core`, as the [mcp-codemode example](https://github.com/marcioazam/nycode/tree/main/packages/agent/examples/mcp-codemode) does. That example also rejects failed nested calls inside the script and combines codemode with MCP tools.
 
 ## Deterministic runs
 

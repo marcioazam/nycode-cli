@@ -31,12 +31,12 @@ Existing sessions are automatically migrated to the current version (v3) when lo
 
 ## Source Files
 
-Source on GitHub ([nycode](https://github.com/marcioazam/nycode-cli)):
-- [`packages/coding-agent/src/core/session-manager.ts`](https://github.com/marcioazam/nycode-cli/blob/main/packages/coding-agent/src/core/session-manager.ts) - Session entry types and SessionManager
+Source on GitHub ([nycode](https://github.com/marcioazam/nycode)):
+- [`packages/coding-agent/src/core/session-manager.ts`](https://github.com/marcioazam/nycode/blob/main/packages/coding-agent/src/core/session-manager.ts) - Session entry types and SessionManager
 - [Message Types](message-types.md) - Shared message and content-block reference
-- [`packages/coding-agent/src/core/messages.ts`](https://github.com/marcioazam/nycode-cli/blob/main/packages/coding-agent/src/core/messages.ts) - Extended message types
-- [`packages/ai/src/types.ts`](https://github.com/marcioazam/nycode-cli/blob/main/packages/ai/src/types.ts) - Base message and content-block types
-- [`packages/agent/src/types.ts`](https://github.com/marcioazam/nycode-cli/blob/main/packages/agent/src/types.ts) - Extensible `AgentMessage` union
+- [`packages/coding-agent/src/core/messages.ts`](https://github.com/marcioazam/nycode/blob/main/packages/coding-agent/src/core/messages.ts) - Extended message types
+- [`packages/ai/src/types.ts`](https://github.com/marcioazam/nycode/blob/main/packages/ai/src/types.ts) - Base message and content-block types
+- [`packages/agent/src/types.ts`](https://github.com/marcioazam/nycode/blob/main/packages/agent/src/types.ts) - Extensible `AgentMessage` union
 
 For TypeScript definitions in your project, inspect `node_modules/@nycode/coding-agent/dist/` and `node_modules/@nycode/ai/dist/`.
 

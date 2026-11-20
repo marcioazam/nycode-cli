@@ -19,7 +19,7 @@ p2 has hot reload with explicit reload/restart controls, logs and owner notices,
 mentions, owner sign-in links, an isolated TUI with nycode's look and keys, and security hardening (CSP, restricted guest
 web assets, WebSocket limits).
 
-p2 lives in `marcioazam/nycode-cli` at `apps/p2` and keeps the name p2.
+p2 lives in `marcioazam/nycode` at `apps/p2` and keeps the name p2.
 
 ## State at handoff
 
@@ -133,7 +133,7 @@ model: `DEV.md` and `README.md` (TUI isolation). Design and as-built notes: `doc
 
 From `AGENTS.md` and this project's history:
 
-- **One tree.** p2, the packages, root config and scripts change together in `marcioazam/nycode-cli`. After p2 changes
+- **One tree.** p2, the packages, root config and scripts change together in `marcioazam/nycode`. After p2 changes
   run `npm run check` both at the root and in `apps/p2`.
 - **Commit only verified states.** When several agents edit one tree, copy an agent's files into a separate worktree
   on top of `HEAD`, run `npm run check` and the full `npm test` there, and commit exactly that content

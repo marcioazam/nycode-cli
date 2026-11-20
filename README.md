@@ -56,10 +56,10 @@ See the [documentation](https://pi.dev/docs/latest) for full setup and usage ins
 ## Run with Nix
 
 ```bash
-nix run github:marcioazam/nycode-cli/stable
+nix run github:marcioazam/nycode/stable
 ```
 
-`stable` points at the latest release. Install it with `nix profile add github:marcioazam/nycode-cli/stable` and update with `nix profile upgrade nycode`. Use a release tag such as `github:marcioazam/nycode-cli/v1.0.0` to pin a version, or `github:marcioazam/nycode-cli` for unreleased changes on `main`. Nix builds Nycode from source.
+`stable` points at the latest release. Install it with `nix profile add github:marcioazam/nycode/stable` and update with `nix profile upgrade nycode`. Use a release tag such as `github:marcioazam/nycode/v1.0.0` to pin a version, or `github:marcioazam/nycode` for unreleased changes on `main`. Nix builds Nycode from source.
 
 Supports ARM64 and x86-64 on Linux and macOS. Use `nix build .` or `nix run .` to build or run your checkout.
 
