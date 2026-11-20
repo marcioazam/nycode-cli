@@ -1,5 +1,5 @@
 // Tests of sign-ins: issue, revoke and list through `SignIns`; tokens kept only as hashes; the authenticator taking a
-// bearer token or the signed sign-in cookie, named after the Pi; the cookie renewed once it is a day old; a sign-in
+// bearer token or the signed sign-in cookie, named after the Nycode; the cookie renewed once it is a day old; a sign-in
 // ending unused; a revoked sign-in's open links closed, and only its own.
 
 import assert from "node:assert/strict";
@@ -9,10 +9,10 @@ import { afterEach, describe, it, mock } from "node:test";
 import { fileURLToPath } from "node:url";
 import { setFlagsFromString } from "node:v8";
 import { runInNewContext } from "node:vm";
-import { createHost, isChordError, webSocketLink } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context";
-import { type Authenticator, Authenticators } from "@earendil-works/chord/http";
-import type { P3Principal } from "@earendil-works/p3/v1";
+import { createHost, isChordError, webSocketLink } from "@nycode/chord";
+import { BACKGROUND_CONTEXT as context } from "@nycode/chord/context";
+import { type Authenticator, Authenticators } from "@nycode/chord/http";
+import type { P3Principal } from "@nycode/p3/v1";
 import { CODING, Sessions, SessionsList } from "../../plugins/sessions/contract.ts";
 import type { App } from "../../src/kit/app.ts";
 import { readConfig } from "../../src/kit/config.ts";
@@ -95,11 +95,11 @@ describe("issuing, listing and revoking", () => {
 });
 
 describe("the cookie's name", () => {
-	it("holds the Pi's id: two Pis on one host keep two cookies, and each takes only its own", async () => {
+	it("holds the Nycode's id: two Pis on one host keep two cookies, and each takes only its own", async () => {
 		const [one, other] = await Promise.all([withWhoami(), withWhoami()]);
 		const cookieOf = async ({ app }: { app: App }) => (await issue(app, MAX, "browser")).cookie.split(";")[0]!;
 		const [first, second] = [await cookieOf(one), await cookieOf(other)];
-		const { id } = (await readConfig(join(one.dataDir, "pi.json")))!;
+		const { id } = (await readConfig(join(one.dataDir, "nycode.json")))!;
 		assert.equal(first.split("=")[0], `p3-${id}`);
 		assert.notEqual(first.split("=")[0], second.split("=")[0]);
 		// A browser sends both to both ports.
@@ -161,7 +161,7 @@ describe("expiry and malformed tokens", () => {
 		for (const token of ["constructor.x", "__proto__.x", "toString.x", "hasOwnProperty.x", ".x", "x", "a.b.c"]) {
 			assert.equal((await whoami(port, { authorization: `Bearer ${token}` })).status, 401, token);
 		}
-		const { id } = (await readConfig(join(dataDir, "pi.json")))!;
+		const { id } = (await readConfig(join(dataDir, "nycode.json")))!;
 		assert.equal((await whoami(port, { cookie: `p3-${id}=__proto__.x` })).status, 401);
 		assert.deepEqual(errors, []);
 	});

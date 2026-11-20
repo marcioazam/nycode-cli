@@ -6,14 +6,14 @@ import { Readable } from "stream";
 import { pipeline } from "stream/promises";
 import { getBinDir, VERSION } from "../config.ts";
 import { fetchWithRetry } from "./management-http.ts";
-import { getPiUserAgent } from "./pi-user-agent.ts";
+import { getNycodeUserAgent } from "./nycode-user-agent.ts";
 
 const TOOLS_DIR = getBinDir();
 const NETWORK_TIMEOUT_MS = 10_000;
 const DOWNLOAD_TIMEOUT_MS = 120_000;
 
 function isOfflineModeEnabled(): boolean {
-	const value = process.env.PI_OFFLINE;
+	const value = process.env.NYCODE_OFFLINE;
 	if (!value) return false;
 	return value === "1" || value.toLowerCase() === "true" || value.toLowerCase() === "yes";
 }
@@ -100,7 +100,7 @@ export async function getLatestVersion(repo: string): Promise<string> {
 	const response = await fetchWithRetry(
 		`https://github.com/${repo}/releases/latest`,
 		{
-			headers: { "User-Agent": getPiUserAgent(VERSION) },
+			headers: { "User-Agent": getNycodeUserAgent(VERSION) },
 			redirect: "manual",
 		},
 		{ timeoutMs: NETWORK_TIMEOUT_MS },

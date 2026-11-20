@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { describe, it } from "node:test";
-import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context";
+import { BACKGROUND_CONTEXT as context } from "@nycode/chord/context";
 import { SignIns } from "../../src/kit/sign-ins.ts";
 import { kitApp, send } from "./support.ts";
 

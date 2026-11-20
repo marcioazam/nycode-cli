@@ -1,4 +1,4 @@
-// A stdio MCP server for p2's MCP tests, in the style of pi-mcp's test/fixtures/stdio-server.mjs. Tools: `echo`
+// A stdio MCP server for p2's MCP tests, in the style of nycode-mcp's test/fixtures/stdio-server.mjs. Tools: `echo`
 // ({ text }), `whoami` (its pid, its parent's, cwd, the client's roots and its `MCP_FIXTURE_*` variables), `crash`
 // (answers, then exits), `grow` (adds the tool `extra` and announces the change). `MCP_FIXTURE_LOG`: a file every start
 // appends its pid to; `MCP_FIXTURE_HANG`: never answers `initialize`.

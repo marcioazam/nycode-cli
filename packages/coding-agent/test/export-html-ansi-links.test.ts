@@ -22,6 +22,6 @@ describe("export HTML ANSI hyperlinks", () => {
 	it("drops links with unsafe schemes and other escape sequences", () => {
 		expect(ansiToHtml(link("javascript:alert(1)", "x"))).toBe("x");
 		expect(ansiToHtml(link("java\x01script:alert(1)", "x"))).toBe("x");
-		expect(ansiToHtml("\x1b]0;title\x07a\x1b[2Kb\x1b]133;A\x1b\\c\x1b_pi:c\x07d\x1be")).toBe("abcde");
+		expect(ansiToHtml("\x1b]0;title\x07a\x1b[2Kb\x1b]133;A\x1b\\c\x1b_nycode:c\x07d\x1be")).toBe("abcde");
 	});
 });

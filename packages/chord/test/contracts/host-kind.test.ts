@@ -27,7 +27,7 @@ describe("host kinds", () => {
 		expect(() => hostKind("Session")).toThrow("expected lowercase");
 		expect(() => hostKind("a:b")).toThrow("expected lowercase");
 		expect(() => hostKind("client")).toThrow('"client" is reserved for hosts without an address');
-		expect(hostKind("@pi/session.v2_~-").kind).toBe("@pi/session.v2_~-");
+		expect(hostKind("@nycode/session.v2_~-").kind).toBe("@nycode/session.v2_~-");
 	});
 
 	it("check an address's params where it is routed, with the kind's compiled check: invalid/host_address", () => {

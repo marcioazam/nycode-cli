@@ -4,9 +4,9 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
-import type { AssistantMessage, ToolCall, ToolResultMessage } from "@earendil-works/pi-ai";
-import { fauxAssistantMessage } from "@earendil-works/pi-ai/providers/faux";
-import type { ConversationView, EntryId, LiveState } from "@earendil-works/pi-durable";
+import type { AssistantMessage, ToolCall, ToolResultMessage } from "@nycode/ai";
+import { fauxAssistantMessage } from "@nycode/ai/providers/faux";
+import type { ConversationView, EntryId, LiveState } from "@nycode/durable";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { Models } from "../../plugins/models/contract.ts";
@@ -14,7 +14,7 @@ import { Sessions } from "../../plugins/sessions/contract.ts";
 import { Browser, browserTests } from "./browser.ts";
 import { type Fixture, holdIn, startFixture, until } from "./helpers.ts";
 
-const live = (view: ConversationView | null | undefined) => view?.docs["pi.live"] as LiveState | undefined;
+const live = (view: ConversationView | null | undefined) => view?.docs["nycode.live"] as LiveState | undefined;
 const panel = "document.querySelector('[data-testid=activity-sheet]')";
 const mobileSheet = "document.querySelector('.sheet-layer .sheet[data-testid=activity-sheet]')";
 const step = (id: string) => `[data-testid=activity-sheet] [data-step-id="${id}"]`;
@@ -112,7 +112,7 @@ function respond(
 	entries.push({
 		id: (entries.length + 1) as EntryId,
 		conversationId: conversation.id,
-		kind: "pi.assistant",
+		kind: "nycode.assistant",
 		model: [message],
 	});
 	for (const part of content) {
@@ -129,7 +129,7 @@ function respond(
 		entries.push({
 			id: (entries.length + 1) as EntryId,
 			conversationId: conversation.id,
-			kind: "pi.tool-result",
+			kind: "nycode.tool-result",
 			model: [result],
 		});
 	}
@@ -169,9 +169,9 @@ function running(output: string, thinking = false): ConversationView {
 	const message = { ...fauxAssistantMessage([]), content, stopReason: "toolUse" as const, timestamp: 1 };
 	return {
 		conversation,
-		entries: [{ id: 1 as EntryId, conversationId: conversation.id, kind: "pi.assistant", model: [message] }],
+		entries: [{ id: 1 as EntryId, conversationId: conversation.id, kind: "nycode.assistant", model: [message] }],
 		docs: {
-			"pi.live": {
+			"nycode.live": {
 				run: { taskId: 1, inputs: [] },
 				tools: thinking ? [] : [{ callId: "live", name: "bash", taskId: 1, status: "running", output }],
 			} as unknown as LiveState,
@@ -565,7 +565,7 @@ describe("a block's steps and active thought", { skip: !browserTests }, () => {
 			conversation,
 			entries,
 			docs: {
-				"pi.live": {
+				"nycode.live": {
 					run: { taskId: 1, inputs: [] },
 					tools: [{ callId, name: "bash", taskId: 1, status: "running", output: "" }],
 				} as unknown as LiveState,

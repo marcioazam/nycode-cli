@@ -3,8 +3,8 @@
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { createHost } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context";
+import { createHost } from "@nycode/chord";
+import { BACKGROUND_CONTEXT as context } from "@nycode/chord/context";
 import {
 	constant,
 	defineFacet,
@@ -19,7 +19,7 @@ import {
 	remote,
 	Server,
 	str,
-} from "@earendil-works/p3/v1";
+} from "@nycode/p3/v1";
 
 /** A store with more members than its view shows. */
 const Store = local("test.store", {

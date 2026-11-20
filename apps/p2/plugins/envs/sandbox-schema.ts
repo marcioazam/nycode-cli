@@ -1,7 +1,7 @@
 // What the sandbox launcher on a host prints (p2-sandbox.sh check, p2-sandbox.mjs status/start/stop): wire input that
 // the manager checks before use.
 
-import { bool, num, obj, str, union } from "@earendil-works/pi-schema";
+import { bool, num, obj, str, union } from "@nycode/schema";
 import { literal } from "@p2/app/v1";
 
 /** `p2-sandbox.sh check`: how Gondolin can run on the host and what it found. */

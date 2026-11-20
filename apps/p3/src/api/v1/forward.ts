@@ -3,7 +3,7 @@
 // explicitly; `forward` fills them from the same-named members of the store, so no member is written a second time.
 // Browser-safe: the API module exports it.
 
-import { type Contract, type Ctx, type Implementation, memberNames } from "@earendil-works/chord";
+import { type Contract, type Ctx, type Implementation, memberNames } from "@nycode/chord";
 import type { P3Principal } from "../../principals.ts";
 
 /** One variant of the remote contract `C` as its factory returns it. */

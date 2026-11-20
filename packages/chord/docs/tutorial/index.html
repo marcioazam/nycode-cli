@@ -149,7 +149,7 @@ anyone being thrown out.</p>
 <p>That is four kinds of program (a server, a process per list, a page, a terminal client) and three kinds of change (new
 data, a new person, new code) in one small app. Wiring that by hand means a web server, a socket protocol, a way to
 start and stop processes, sessions, a bundler for the page and a reload story for each. Chord does the wiring, and its
-<strong>app kit</strong> (<code>@earendil-works/chord/app</code>) makes the decisions an app would otherwise make itself: where data lives,
+<strong>app kit</strong> (<code>@nycode/chord/app</code>) makes the decisions an app would otherwise make itself: where data lives,
 how people sign in, how plugins are found and rolled out.</p>
 <p>This tutorial builds that app. Each chapter adds one thing, shows the code, shows what happens when it runs, and
 states the rule behind it. The app is one directory, <code>test/examples/61-tutorial/</code>; run every step at once from
@@ -1294,7 +1294,7 @@ an index of the app&#39;s, if it had one, is the app&#39;s.</p>
 <section class="chapter" id="telemetry"><header class="opener"><div class="numeral">XI</div><h2>Seeing What Happened</h2><p class="lede">One telemetry store on the server, one trace from a click in the browser to a commit on a worker, a span of your own, whom each span was for, and a small viewer for the owner.</p></header>
 <p class="dropcap">Ada says that adding a todo from her phone feels slow some evenings. Her todo crosses three processes: her page, the
 server&#39;s relay and the list&#39;s worker. A log line per process would say what each one did, but not which lines belong
-to her click, or where the time went. Chord records <strong>telemetry</strong> through pi-telemetry: <strong>spans</strong> (a named, timed
+to her click, or where the time went. Chord records <strong>telemetry</strong> through nycode-telemetry: <strong>spans</strong> (a named, timed
 piece of work with attributes), <strong>events</strong> on spans, and <strong>metrics</strong> (counters and histograms). Each host has one
 <strong>adapter</strong>, given to <code>createHost({ telemetry })</code> and NOOP by default, which decides where they go. A <strong>carrier</strong> in
 each call&#39;s header names the caller&#39;s span, so the spans of one request, recorded by different processes, form one
@@ -1303,7 +1303,7 @@ stores telemetry in one place, follows a click from the browser to the worker, a
 for, reads the store from a script, and ends with the viewer.</p>
 <h3 id="one-store-on-the-server">One store, on the server</h3>
 <p>The app keeps its telemetry in one SQLite file in the data directory, through Chord&#39;s store
-(<code>@earendil-works/chord/telemetry-sqlite</code>), and the server is the only process that writes it. The app&#39;s base code opens
+(<code>@nycode/chord/telemetry-sqlite</code>), and the server is the only process that writes it. The app&#39;s base code opens
 it for the server:</p>
 <!-- quote: src/telemetry.ts -->
 <pre><code><span class="tk-c">/** The telemetry store's file in the data directory `dataDir`. */</span>
@@ -1371,7 +1371,7 @@ then submits again with nothing typed:</p>
 <pre class="plain"><code>wrote docs/tutorial/screens/click-before.png
 wrote docs/tutorial/screens/click-after.png</code></pre>
 <figure class="fig wide"><div style="display: flex; gap: 1rem; align-items: flex-start"><img src="screens/click-before.png" alt="The page with honey typed" style="width: 50%; min-width: 0"><img src="screens/click-after.png" alt="The page after the click: honey in the list" style="width: 50%; min-width: 0"></div><figcaption><span class="fignum">Figure 5.</span> The click, on the real page: honey typed (left), then submitted (right). The list shows honey once the worker&#39;s store committed it and its live query reached the page; the page has recorded <code>page.add</code> and the <code>chord.call</code> under it, and sends them to the server within three seconds.</figcaption></figure>
-<p>It then reads the store until the worker&#39;s spans of both clicks are there and prints honey&#39;s trace with pi-telemetry&#39;s
+<p>It then reads the store until the worker&#39;s spans of both clicks are there and prints honey&#39;s trace with nycode-telemetry&#39;s
 <code>renderTrace</code> (ids and lengths of time masked, which differ at every run), and opens the owner&#39;s trace viewer (the last
 section builds it) on the same trace:</p>
 <!-- output: screenshots -->
@@ -1463,11 +1463,11 @@ has its own, the same function. The server also stamps a page&#39;s spans with i
 came over: <code>page.add</code> above was the owner&#39;s. Only what the hook returns is recorded, never other app data, and the
 attributes are for the owner&#39;s eyes: the store, like the viewer below, is the owner&#39;s.</p>
 <h3 id="reading">Reading</h3>
-<p>The store is read through <code>TelemetryStore</code>, pi-telemetry&#39;s read interface modeled on Jaeger&#39;s: <code>findTraces</code> (complete
+<p>The store is read through <code>TelemetryStore</code>, nycode-telemetry&#39;s read interface modeled on Jaeger&#39;s: <code>findTraces</code> (complete
 traces, newest first, filtered by their first span&#39;s name, attributes, errors or a time window, paged by a cursor),
 <code>getTrace(id)</code> and <code>findMetrics</code> (a metric&#39;s rows, one per series and 10 seconds, with count, sum, min and max).
 <code>trace.ts</code> is a script for a data directory, the app running or not. It opens the file with Chord&#39;s read-only store,
-<code>openTelemetryStore</code> (<code>@earendil-works/chord/telemetry-sqlite/node</code>), which implements only the read interface and
+<code>openTelemetryStore</code> (<code>@nycode/chord/telemetry-sqlite/node</code>), which implements only the read interface and
 opens SQLite read-only: it never writes the file the server writes, never creates or migrates it, and refuses a file
 without a store or with a store of another version.</p>
 <!-- quote: trace.ts -->
@@ -1694,7 +1694,7 @@ plugin author sees is the same model: contracts, factories, registries, facets p
 <tr>
 <td>other host packages</td>
 <td>React for the web</td>
-<td>pi-ai, pi-durable, pi-schema, pi-env, pi-tui, <code>ws</code>, <code>yaml</code>: plugins import them directly</td>
+<td>nycode-ai, nycode-durable, nycode-schema, nycode-env, nycode-tui, <code>ws</code>, <code>yaml</code>: plugins import them directly</td>
 </tr>
 <tr>
 <td>plugins</td>

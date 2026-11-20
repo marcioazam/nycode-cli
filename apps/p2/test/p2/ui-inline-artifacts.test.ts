@@ -5,7 +5,7 @@
 
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
-import type { ToolResultMessage } from "@earendil-works/pi-ai";
+import type { ToolResultMessage } from "@nycode/ai";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { ArtifactPage } from "../../plugins/artifacts/contract.ts";
 import { Chat } from "../../plugins/chat/contract.ts";
@@ -62,7 +62,7 @@ describe("inline artifacts in Chromium", { skip: !browserTests }, () => {
 							message.role === "toolResult" && message.toolName === "codemode" && !message.isError,
 					),
 				);
-				return done.length === index + 1 && !(view?.docs["pi.live"] as { run?: unknown })?.run;
+				return done.length === index + 1 && !(view?.docs["nycode.live"] as { run?: unknown })?.run;
 			});
 		}
 		chat.release();

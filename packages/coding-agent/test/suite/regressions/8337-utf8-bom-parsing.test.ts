@@ -10,7 +10,7 @@ describe("issue #8337 UTF-8 BOM parsing", () => {
 	let testDir: string;
 
 	beforeEach(() => {
-		testDir = mkdtempSync(join(tmpdir(), "pi-8337-"));
+		testDir = mkdtempSync(join(tmpdir(), "nycode-8337-"));
 	});
 
 	afterEach(() => {
@@ -29,12 +29,12 @@ describe("issue #8337 UTF-8 BOM parsing", () => {
 
 		const agentDir = join(testDir, "agent");
 		const projectDir = join(testDir, "project");
-		mkdirSync(join(projectDir, ".pi"), { recursive: true });
+		mkdirSync(join(projectDir, ".nycode"), { recursive: true });
 		mkdirSync(agentDir, { recursive: true });
 		const globalSettingsPath = join(agentDir, "settings.json");
 		writeFileSync(globalSettingsPath, `\uFEFF${JSON.stringify({ defaultModel: "global-model" })}`);
 		writeFileSync(
-			join(projectDir, ".pi", "settings.json"),
+			join(projectDir, ".nycode", "settings.json"),
 			`\uFEFF${JSON.stringify({ defaultProvider: "project-provider" })}`,
 		);
 

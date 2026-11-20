@@ -1,8 +1,8 @@
 // Copied from coding-agent interactive/components/{user-message,assistant-message,compaction-summary-message}.ts with
 // the instance theme (section 5.4) and sanitized server text. p2 additions to the user message (section 1.3): author
 // label with the guest "unverified name" note, peer attribution, reply quote, plugin note, files and image count.
-import type { AssistantMessage } from "@earendil-works/pi-ai";
-import { Box, Container, Markdown, MouseRegion, Spacer, Text } from "@earendil-works/pi-tui";
+import type { AssistantMessage } from "@nycode/ai";
+import { Box, Container, Markdown, MouseRegion, Spacer, Text } from "@nycode/tui";
 import { plainReferences } from "../../runtime/references.ts";
 import type { TuiSettings } from "../../runtime/tui-preferences.ts";
 import { createMarkdownTransform, type MarkdownTransformer } from "../../runtime/tui-renderers.ts";
@@ -25,7 +25,7 @@ type UserItem = Extract<Item, { type: "user" }>;
 // Container output is shared across frames until a child changes, so zoned copies are kept per source array.
 const zonedLines = new WeakMap<readonly string[], readonly string[]>();
 
-/** OSC 133 prompt zones: pi-tui uses them for prompt jumps and strips them from screen lines. */
+/** OSC 133 prompt zones: nycode-tui uses them for prompt jumps and strips them from screen lines. */
 function zone(lines: readonly string[]): readonly string[] {
 	if (lines.length === 0) return lines;
 	let zoned = zonedLines.get(lines);
@@ -60,7 +60,7 @@ abstract class Themed extends Container {
 
 export class UserMessageComponent extends Themed {
 	private item: UserItem;
-	/** A `/skill:` invocation (10.8): pi's collapsible skill block, then the user's own text. */
+	/** A `/skill:` invocation (10.8): nycode's collapsible skill block, then the user's own text. */
 	private skill: SkillInvocationComponent | undefined;
 	private expanded = false;
 	setExpanded(expanded: boolean): void {
@@ -89,7 +89,7 @@ export class UserMessageComponent extends Themed {
 			this.addChild(this.skill);
 		}
 		const item = block ? { ...this.item, text: block.userMessage ?? "" } : this.item;
-		// Nothing of the user's own besides the skill: the block alone, as pi.
+		// Nothing of the user's own besides the skill: the block alone, as nycode.
 		if (block && !item.text && !item.files.length && !item.images.length) return;
 		const bg = (text: string) => theme.bg("userMessageBg", text);
 		const markdown = (paddingY: number) =>
@@ -108,7 +108,7 @@ export class UserMessageComponent extends Themed {
 			);
 		const head: string[] = [];
 		const name = item.author?.name ?? item.peer?.title;
-		// Guests, peers and chat-mode messages are labeled; the owner's own inputs look like pi's.
+		// Guests, peers and chat-mode messages are labeled; the owner's own inputs look like nycode's.
 		if (name && (item.author?.kind === "guest" || item.peer || item.chat)) {
 			const label = theme.fg("accent", theme.bold(lineText(name)));
 			const note = item.author?.kind === "guest" ? theme.fg("muted", " (guest, unverified name)") : "";
@@ -124,7 +124,7 @@ export class UserMessageComponent extends Themed {
 				: []),
 		];
 		if (head.length === 0 && tail.length === 0) {
-			// The Markdown pads and colors its own background, as pi's.
+			// The Markdown pads and colors its own background, as nycode's.
 			this.addChild(markdown(1));
 			return;
 		}
@@ -321,7 +321,7 @@ export class CompactionSummaryComponent extends Themed {
 	}
 }
 
-/** A one-line muted or error notice in the transcript (DTUI `#addText`, pi's `showError`). */
+/** A one-line muted or error notice in the transcript (DTUI `#addText`, nycode's `showError`). */
 export class NoticeComponent extends Themed {
 	private text: string;
 	private color: "muted" | "error" | "warning";

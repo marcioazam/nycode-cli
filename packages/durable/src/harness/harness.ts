@@ -1,21 +1,21 @@
-import type { Context } from "@earendil-works/chord/context";
-import { withAbortSignal, withoutAbortSignal } from "@earendil-works/chord/context";
-import type { JsonValue } from "@earendil-works/chord/json";
-import type { Models } from "@earendil-works/pi-ai";
-import { cleanupSessionResources } from "@earendil-works/pi-ai/session-resources";
+import type { Models } from "@nycode/ai";
+import { cleanupSessionResources } from "@nycode/ai/session-resources";
 import {
 	type ClientIdentity,
 	mergeClientIdentity,
-	PI_ATTRIBUTION,
+	NYCODE_ATTRIBUTION,
 	withClientIdentity,
-} from "@earendil-works/pi-ai/utils/identity";
+} from "@nycode/ai/utils/identity";
+import type { Context } from "@nycode/chord/context";
+import { withAbortSignal, withoutAbortSignal } from "@nycode/chord/context";
+import type { JsonValue } from "@nycode/chord/json";
 import {
 	createTypedMetrics,
 	NOOP_TELEMETRY_CONTEXT,
 	NOOP_TELEMETRY_METRICS,
 	type SpanAttributes,
 	type TelemetryContext,
-} from "@earendil-works/pi-telemetry";
+} from "@nycode/telemetry";
 import { ResetEntry } from "../entries.ts";
 import type { ExecutionEnv } from "../env/index.ts";
 import { contained, SessionImpl } from "../session/session.ts";
@@ -108,10 +108,10 @@ type ConversationHost<Tool extends ToolRegistration> = {
 };
 
 /** Key of the Harness's internal index-size getter, for tests. */
-export const SCHEDULER_INDEX_SIZES = Symbol.for("pi-durable.schedulerIndexSizes");
+export const SCHEDULER_INDEX_SIZES = Symbol.for("nycode-durable.schedulerIndexSizes");
 
 /** Key of the Harness's internal idle-state getter (kept contexts against a full recompute), for tests. */
-export const SCHEDULER_IDLE_STATE = Symbol.for("pi-durable.schedulerIdleState");
+export const SCHEDULER_IDLE_STATE = Symbol.for("nycode-durable.schedulerIdleState");
 
 class ConversationImpl<Tool extends ToolRegistration> implements Conversation {
 	readonly id: ConversationId;
@@ -190,8 +190,8 @@ class ConversationImpl<Tool extends ToolRegistration> implements Conversation {
 	}
 }
 
-/** Request identity of a Harness's model requests: pi-ai's defaults with provider attribution to pi. */
-export const DEFAULT_HARNESS_IDENTITY: ClientIdentity = { attribution: PI_ATTRIBUTION };
+/** Request identity of a Harness's model requests: nycode-ai's defaults with provider attribution to nycode. */
+export const DEFAULT_HARNESS_IDENTITY: ClientIdentity = { attribution: NYCODE_ATTRIBUTION };
 
 /**
  * `HarnessOptions.models` as a function with `HarnessOptions.identity` applied. A plain `Models` is wrapped once; a
@@ -280,7 +280,7 @@ class HarnessImpl<Tool extends ToolRegistration> extends SessionImpl implements 
 		};
 	}
 
-	/** Resolve a conversation's committed `pi.agent` against `snapshot`, or the current one, and the current settings. */
+	/** Resolve a conversation's committed `nycode.agent` against `snapshot`, or the current one, and the current settings. */
 	async resolveAgent(
 		id: ConversationId,
 		snapshot: RegistrySnapshot<Tool> | undefined,
@@ -379,7 +379,7 @@ class HarnessImpl<Tool extends ToolRegistration> extends SessionImpl implements 
 		return this.#tasks.waitForIdle(undefined, context);
 	}
 
-	/** Sum every conversation's committed `pi.usage`. Each document is read at its own point; totals only grow. */
+	/** Sum every conversation's committed `nycode.usage`. Each document is read at its own point; totals only grow. */
 	async usage(context: Context): Promise<UsageState> {
 		const conversations = await this.readOnLine((storage) =>
 			scanAll((cursor) => storage.scanConversations({}, SCAN_PAGE_SIZE, cursor, context)),
@@ -472,8 +472,8 @@ class HarnessImpl<Tool extends ToolRegistration> extends SessionImpl implements 
 	}
 
 	/**
-	 * The built-in creation hook, in every commit that creates or forks a conversation: empty `pi.live`, `pi.inbox`, and
-	 * `pi.usage`, a fresh `pi.provider`, the conversation's `pi.agent` (see `createAgent()`), then
+	 * The built-in creation hook, in every commit that creates or forks a conversation: empty `nycode.live`, `nycode.inbox`, and
+	 * `nycode.usage`, a fresh `nycode.provider`, the conversation's `nycode.agent` (see `createAgent()`), then
 	 * `HarnessOptions.conversationCreated`.
 	 */
 	protected override async conversationCreated(tx: Transaction, record: ConversationRecord): Promise<void> {
@@ -495,7 +495,7 @@ function safeReport(
 	telemetry: TelemetryContext,
 ): (error: unknown, info: ReportInfo, context?: Context) => void {
 	const reports = createTypedMetrics(telemetry.metrics ?? NOOP_TELEMETRY_METRICS, [DURABLE_TELEMETRY_SCHEMA]).counter(
-		"pi.durable.reports",
+		"nycode.durable.reports",
 	);
 	return (error, info, context) => {
 		if (onReport !== undefined) {
@@ -527,7 +527,7 @@ function safeReport(
 		}
 		try {
 			reports.add(1, { type: info.kind });
-			context?.telemetry.addEvent("pi.durable.report", attributes);
+			context?.telemetry.addEvent("nycode.durable.report", attributes);
 		} catch {
 			// Dropped: see above.
 		}

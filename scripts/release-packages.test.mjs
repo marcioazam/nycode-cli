@@ -11,7 +11,7 @@ function writeManifest(directory, manifest) {
 }
 
 test("lists the non-private direct subfolders and ignores nested package.json files", (t) => {
-	const root = mkdtempSync(join(tmpdir(), "pi-release-packages-"));
+	const root = mkdtempSync(join(tmpdir(), "nycode-release-packages-"));
 	t.after(() => rmSync(root, { recursive: true, force: true }));
 	writeManifest(join(root, "tui"), { name: "@test/tui", version: "1.0.0" });
 	writeManifest(join(root, "ai"), { name: "@test/ai", version: "1.0.0" });

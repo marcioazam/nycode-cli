@@ -5,7 +5,7 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { describe, it } from "node:test";
-import { hostKind, str } from "@earendil-works/p3/v1";
+import { hostKind, str } from "@nycode/p3/v1";
 import { createLayout, defaultDataDir, ifExists, layoutOf, workerDirectory } from "../../src/kit/layout.ts";
 import { tempDir } from "./support.ts";
 
@@ -21,7 +21,7 @@ describe("the data directory", () => {
 		}
 		assert.deepEqual(layout, {
 			dataDir,
-			config: join(dataDir, "pi.json"),
+			config: join(dataDir, "nycode.json"),
 			serverStore: join(dataDir, "server", "store.sqlite"),
 			cookieSecret: join(dataDir, "server", "cookie-secret"),
 			workerBase: join(dataDir, "cache", "worker"),
@@ -30,7 +30,7 @@ describe("the data directory", () => {
 			log: join(dataDir, "logs", "server.log"),
 		});
 		assert.deepEqual(layoutOf(dataDir), layout);
-		assert.equal(defaultDataDir(), join(homedir(), ".pi", "p3"));
+		assert.equal(defaultDataDir(), join(homedir(), ".nycode", "p3"));
 	});
 });
 

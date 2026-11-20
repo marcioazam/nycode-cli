@@ -3,8 +3,8 @@ import { mkdir, readFile, realpath, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
-import type { ToolResultMessage } from "@earendil-works/pi-ai";
-import type { ConversationView } from "@earendil-works/pi-durable";
+import type { ToolResultMessage } from "@nycode/ai";
+import type { ConversationView } from "@nycode/durable";
 import { BACKGROUND_CONTEXT, whenLive } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { Mcp } from "../../plugins/mcp/contract.ts";
@@ -102,14 +102,14 @@ describe("subagents (fake provider)", () => {
 		const sub = await holdIn(owner, Chat, { session, conversation: child.conversationId }, "participant");
 		const view = await until(sub.view, (value) => texts(value).includes("Echo: hello helper"));
 		// The sidebar lists the chosen tools; the agent also has `team` (`scope: "subagent"`), offered from the start.
-		const agent = view?.docs["pi.agent"] as { tools: string[]; modelTools: { add: string[] } };
+		const agent = view?.docs["nycode.agent"] as { tools: string[]; modelTools: { add: string[] } };
 		assert.deepEqual(agent.tools, ["bash", "read", "team"]);
 		assert.deepEqual(agent.modelTools.add, ["team"]);
 		await sub.configure({ model: { provider: "faux", modelId: "faux-1" }, thinkingLevel: "off" }, BACKGROUND_CONTEXT);
 		await until(children.children, (value) => value?.[session]?.[0]?.thinkingLevel === "off");
 		await sub.send({ text: "direct child message", requestId: "direct" }, BACKGROUND_CONTEXT);
 		await until(sub.view, (value) => texts(value).includes("Echo: direct child message"));
-		const root = await until(chat.view, (value) => !(value?.docs["pi.live"] as { run?: unknown })?.run);
+		const root = await until(chat.view, (value) => !(value?.docs["nycode.live"] as { run?: unknown })?.run);
 		assert.ok(!texts(root).includes("Echo: direct child message"), "direct child prompts do not auto-report");
 		sub.release();
 		const missing = owner.hold(Chat, { session, conversation: 999 }, BACKGROUND_CONTEXT);
@@ -228,7 +228,7 @@ describe("subagents (fake provider)", () => {
 	});
 });
 
-// Pi Mobile 24e3fccdd: spawn takes a cwd (e.g. a git worktree the main agent created first).
+// Nycode Mobile 24e3fccdd: spawn takes a cwd (e.g. a git worktree the main agent created first).
 describe("a subagent spawned with its own cwd (fake provider)", () => {
 	let fixture: Fixture;
 	before(async () => {
@@ -353,7 +353,7 @@ describe("subagents with code mode (fake provider)", () => {
 			(view) =>
 				texts({ ...view!, entries: (view?.entries ?? []).filter((entry) => entry.id > after) }).includes(
 					`<sender kind="subagent" name="${name}"/>`,
-				) && !(view?.docs["pi.live"] as { run?: unknown } | undefined)?.run,
+				) && !(view?.docs["nycode.live"] as { run?: unknown } | undefined)?.run,
 		);
 	/** The newest entry of the main conversation's window: what a later report must follow. */
 	const newest = () => chat.view.value?.entries.at(-1)?.id ?? 0;
@@ -442,7 +442,7 @@ describe("subagents with code mode (fake provider)", () => {
 		assert.deepEqual(value.nested, { n: 2 });
 		assert.match(value.refused, /^Unknown tools: subagent\. Choose from your own tools: /);
 		// The script-only tools were enabled by name before the script started; the model is still offered its choice.
-		const tools = (sub.view.value?.docs["pi.agent"] as { tools: string[] }).tools;
+		const tools = (sub.view.value?.docs["nycode.agent"] as { tools: string[] }).tools;
 		assert.ok(tools.includes("agent"), tools.join());
 		await reported("coder");
 		await until(children.children, (value) =>

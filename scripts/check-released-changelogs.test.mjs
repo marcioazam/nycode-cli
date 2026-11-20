@@ -12,7 +12,7 @@ const RELEASED = "## [1.0.0] - 2026-01-01\n\n### Fixed\n\n- Fixed the first bug\
 
 /** A repository with one published package whose changelog was released as 1.0.0 and tagged v1.0.0. */
 function releasedRepository(t) {
-	const root = mkdtempSync(join(tmpdir(), "pi-released-changelogs-"));
+	const root = mkdtempSync(join(tmpdir(), "nycode-released-changelogs-"));
 	t.after(() => rmSync(root, { recursive: true, force: true }));
 	const git = (...args) => execFileSync("git", args, { cwd: root, stdio: "ignore" });
 	mkdirSync(join(root, "packages", "ai"), { recursive: true });

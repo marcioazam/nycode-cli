@@ -204,13 +204,13 @@ state (the app's API shows it): another incarnation is another run.
 | a package in `dependencies`: `@bob/notes`, `@bob/notes/web` | inlined from `node_modules` at the installed version, through the package's `exports` |
 | a plugin inside a dependency on a whole repository of several: `@bob/plugins/notes/contract.ts` | inlined, as any package file |
 | a `chord.external` package, a Node builtin (Node facets) | loaded when the script runs |
-| `pluginFile` from `@earendil-works/chord/plugins` | the absolute path of a file of this plugin |
+| `pluginFile` from `@nycode/chord/plugins` | the absolute path of a file of this plugin |
 
 Refused at build, each with the file, line and rule:
 
 - `@acme/app/v1` when the app does not list v1 ("@acme/app/v1 is not available: this app provides v3, v2");
   another kind's module (`@acme/app/v3/web` from a worker facet); two API versions in one facet.
-- Chord itself (`@earendil-works/chord`): the app's API re-exports what plugins may use.
+- Chord itself (`@nycode/chord`): the app's API re-exports what plugins may use.
 - A relative path leaving the plugin's root (base code, another root); a file of a directory that is no plugin.
 - A file copied from another plugin importing anything but the API and its own plugin's files.
 - A per-kind file (`contract.web.tsx`, `contract.Web.ts` alike) or another kind's facet file (`web.tsx`) reached from
@@ -343,7 +343,7 @@ export const messages = defineMessages("bob.stats", {
 ## Testing a plugin alone
 
 ```ts
-import { testPlugin } from "@earendil-works/chord/plugins";
+import { testPlugin } from "@nycode/chord/plugins";
 import * as apiV3 from "@acme/app/v3";
 import * as apiV3Worker from "@acme/app/v3/worker";
 

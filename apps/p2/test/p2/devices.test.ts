@@ -303,7 +303,7 @@ test("loopback without a credential is nobody: pages ask to sign in, owner route
 	const port = fixture.server.port;
 	const page = await http(port, "/");
 	assert.equal(page.status, 401);
-	assert(page.body.includes("Sign in to Pi"));
+	assert(page.body.includes("Sign in to Nycode"));
 	assert.equal(page.headers["set-cookie"], undefined);
 	assert.equal((await http(port, "/s/anything")).status, 401);
 	assert.equal((await http(port, "/owner/check")).status, 401);

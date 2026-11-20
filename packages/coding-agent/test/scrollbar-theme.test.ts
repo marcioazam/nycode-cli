@@ -17,7 +17,7 @@ function loadDarkTheme(): { name: string; colors: Record<string, string | number
 }
 
 function writeTheme(theme: { name: string; colors: Record<string, string | number> }): string {
-	const testDir = mkdtempSync(join(tmpdir(), "pi-scrollbar-theme-"));
+	const testDir = mkdtempSync(join(tmpdir(), "nycode-scrollbar-theme-"));
 	tempDirs.push(testDir);
 	const themePath = join(testDir, `${theme.name}.json`);
 	writeFileSync(themePath, JSON.stringify(theme));

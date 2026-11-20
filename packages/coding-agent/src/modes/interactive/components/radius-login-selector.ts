@@ -2,7 +2,7 @@
  * The `/login` menu with the animated "Sign in with Radius" option. Internal to the interactive mode.
  */
 
-import { Text, type TUI } from "@earendil-works/pi-tui";
+import { Text, type TUI } from "@nycode/tui";
 import { theme } from "../theme/theme.ts";
 import { ExtensionSelectorComponent } from "./extension-selector.ts";
 import { radiusShimmer, startBrandAnimation } from "./provider-brand.ts";

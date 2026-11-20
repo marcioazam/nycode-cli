@@ -1,6 +1,6 @@
 // The file operations the directory-backed sync pieces need, as an interface: any environment that has them (Node,
-// a container, a remote host) can back a sync remote or the host's sync state. Shaped as Pi Durable's `FileSystem`
-// (`@earendil-works/pi-durable/env`), so its environments pass as they are.
+// a container, a remote host) can back a sync remote or the host's sync state. Shaped as Nycode Durable's `FileSystem`
+// (`@nycode/durable/env`), so its environments pass as they are.
 
 import type { Context } from "../context/index.ts";
 

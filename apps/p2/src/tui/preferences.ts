@@ -1,8 +1,8 @@
 // Guest-local TUI preferences (p2-tui-port.md section 4.2): validated by the launcher, posted to the worker as data
 // and merged over the server's defaults there. Pure (no fs/env); shared by the launcher, the worker and the server.
 
-import { compile, type Schema } from "@earendil-works/pi-schema";
-import type { KeybindingsConfig } from "@earendil-works/pi-tui";
+import { compile, type Schema } from "@nycode/schema";
+import type { KeybindingsConfig } from "@nycode/tui";
 import { type TuiServerPreferences, type TuiSettings, TuiSettingsSchema } from "../runtime/tui-preferences.ts";
 import { isPrivileged, sanitizeKeybindings } from "./keybindings.ts";
 import type { ThemeJson } from "./theme/theme.ts";
@@ -15,7 +15,7 @@ export type TuiLocalPreferences = {
 	keybindings: KeybindingsConfig;
 	theme?: string;
 	settings: TuiSettings;
-	/** Validated custom themes by name (pi's `~/.pi/agent/themes/*.json`). */
+	/** Validated custom themes by name (nycode's `~/.nycode/agent/themes/*.json`). */
 	themes: Record<string, ThemeJson>;
 	/** Display-only diagnostics: invalid entries and unreadable files, without paths or contents. */
 	problems: string[];
@@ -85,7 +85,7 @@ export function sanitizeServerPreferences(raw: unknown): TuiServerPreferences {
 }
 
 /**
- * Effective preferences in the worker: built-in < server defaults < pi files < p2 prefs (the launcher already merged
+ * Effective preferences in the worker: built-in < server defaults < nycode files < p2 prefs (the launcher already merged
  * the last two). Server bindings for privileged ids are ignored even if a server sends them.
  */
 export function effectivePreferences(

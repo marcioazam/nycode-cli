@@ -5,7 +5,7 @@
 // `chord.host: browser` and stamped with the principal of the link they came over; a worker's are written as they are,
 // stamped with its host.
 
-import type { SpanAttributes, StoredSpan } from "@earendil-works/pi-telemetry";
+import type { SpanAttributes, StoredSpan } from "@nycode/telemetry";
 import type { Static } from "../contracts/index.ts";
 import { forbidden, type Principal } from "../data/index.ts";
 import { defineFacet, type Facet } from "../host/index.ts";

@@ -8,7 +8,7 @@ describe("export HTML skill block rendering", () => {
 		// Skill commands store a structural wrapper in the raw user message:
 		//   <skill name="..." location="...">\n...\n</skill>\n\nactual prompt
 		// The export renderer must detect that wrapper and render only the user-visible prompt,
-		// not the Pi-generated <skill>...</skill> XML tags.
+		// not the Nycode-generated <skill>...</skill> XML tags.
 		expect(templateJs).toMatch(/parseSkillBlock/);
 		expect(templateJs).toMatch(/skillBlock\.userMessage/);
 	});

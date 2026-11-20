@@ -4,7 +4,7 @@
 // answer, followed by the results meant for the person (artifacts, sent files, opened ports). A result its tool shows
 // in place (an inline artifact) comes right after its call instead, splitting the run of calls around it. How much of
 // that shows in the transcript, and how much goes on the wheels, is settings.json's `detail` (`Detail`).
-import type { AssistantMessage } from "@earendil-works/pi-ai";
+import type { AssistantMessage } from "@nycode/ai";
 import type { ComponentType } from "react";
 import type { Item, NestedCall, ToolView } from "../transcript.ts";
 

@@ -28,7 +28,7 @@ export function encodeLogLine(commit: OutboxCommit): string {
 
 /**
  * One line (without its newline) as an outbox commit; `number` names the line in errors. A line of an unknown version
- * is an error: an older pi must not apply writes it does not understand. The writes themselves are checked by
+ * is an error: an older nycode must not apply writes it does not understand. The writes themselves are checked by
  * `applyBatch()`, a trust boundary.
  */
 export function decodeLogLine(text: string, number: number): OutboxCommit {

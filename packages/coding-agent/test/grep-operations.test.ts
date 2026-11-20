@@ -8,7 +8,7 @@ import type { GrepOperations } from "../src/index.ts";
 const expectedContent = [{ type: "text", text: "file.txt-1- before\nfile.txt:2: needle\nfile.txt-3- after" }];
 
 describe("GrepOperations", () => {
-	const cwd = mkdtempSync(join(tmpdir(), "pi-grep-operations-"));
+	const cwd = mkdtempSync(join(tmpdir(), "nycode-grep-operations-"));
 	writeFileSync(join(cwd, "file.txt"), "before\nneedle\nafter\n");
 	afterAll(() => rmSync(cwd, { recursive: true, force: true }));
 

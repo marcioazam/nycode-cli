@@ -1,8 +1,8 @@
 // Copied from coding-agent interactive/components/mermaid.ts (p2-tui-port.md section 7, P12): top-level Mermaid code
 // blocks become Unicode diagrams (grok-mermaid: pure, no I/O, so it runs in the permission-dropped worker). The mode
-// is the visitor's `markdown.mermaid` setting (pi's default "streaming") and the theme the instance theme, both from
-// the transform context instead of pi's settings manager and global theme.
-import { Marked, type Token } from "@earendil-works/pi-tui";
+// is the visitor's `markdown.mermaid` setting (nycode's default "streaming") and the theme the instance theme, both from
+// the transform context instead of nycode's settings manager and global theme.
+import { Marked, type Token } from "@nycode/tui";
 import { type MermaidArt, render, type Span } from "grok-mermaid";
 import type { MarkdownTransformer } from "../../runtime/tui-renderers.ts";
 import type { Theme } from "../theme/theme.ts";
@@ -56,7 +56,7 @@ function themedLines(art: MermaidArt, theme: Theme): string[] {
 	return art.styled.map((row) => row.map((span) => styleSpan(span, theme)).join(""));
 }
 
-/** pi's default when the setting is absent. */
+/** nycode's default when the setting is absent. */
 const mode = (value: MermaidRenderingMode | undefined): MermaidRenderingMode =>
 	value === "off" || value === "final" ? value : "streaming";
 

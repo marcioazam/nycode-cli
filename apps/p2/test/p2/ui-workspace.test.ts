@@ -135,7 +135,7 @@ describe("workspace and terminal structural parity", { skip: !browserTests }, ()
 			button: "left",
 			clickCount: 1,
 		});
-		await browser.wait(`Number(localStorage.getItem('pi-workspace-width'))>320`);
+		await browser.wait(`Number(localStorage.getItem('nycode-workspace-width'))>320`);
 		await browser.click('button[aria-label="Close workspace"]');
 	});
 	it("renders canonical terminal controls even while transport is unavailable, toggles extra keys, moves and hides the panel", async () => {

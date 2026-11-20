@@ -1,4 +1,4 @@
-import { fauxAssistantMessage } from "@earendil-works/pi-ai";
+import { fauxAssistantMessage } from "@nycode/ai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { SessionBeforeCompactEvent } from "../../src/core/extensions/index.ts";
 import { createHarness, type Harness } from "./harness.ts";
@@ -49,8 +49,8 @@ describe("AgentSession compaction model overrides", () => {
 					},
 				},
 				extensionFactories: [
-					(pi) => {
-						pi.on("session_before_compact", (event) => {
+					(nycode) => {
+						nycode.on("session_before_compact", (event) => {
 							preparations.push(event);
 							return {
 								compaction: {
@@ -116,8 +116,8 @@ describe("AgentSession compaction model overrides", () => {
 				},
 			},
 			extensionFactories: [
-				(pi) => {
-					pi.on("session_before_compact", (event) => ({
+				(nycode) => {
+					nycode.on("session_before_compact", (event) => ({
 						compaction: {
 							summary: "big model summary",
 							firstKeptEntryId: event.preparation.firstKeptEntryId,

@@ -1,9 +1,9 @@
-// Pi Mobile's rebuildIndex: an owner re-indexes one session from the start, an archived one too (its worker scans
+// Nycode Mobile's rebuildIndex: an owner re-indexes one session from the start, an archived one too (its worker scans
 // without resuming work and stops again). The rebuild is a job, shown in `Search.rebuilds` while it runs.
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { ConversationView, LiveState } from "@earendil-works/pi-durable";
+import type { ConversationView, LiveState } from "@nycode/durable";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { Search, SearchIndex } from "../../plugins/search/contract.ts";
@@ -12,7 +12,7 @@ import { Hosts } from "../../src/runtime/server.ts";
 import { failureOf, holdIn, poll, startFixture, until } from "./helpers.ts";
 
 const answered = (text: string) => (view: ConversationView | null | undefined) =>
-	JSON.stringify(view?.entries ?? []).includes(text) && !(view?.docs["pi.live"] as LiveState | undefined)?.run;
+	JSON.stringify(view?.entries ?? []).includes(text) && !(view?.docs["nycode.live"] as LiveState | undefined)?.run;
 
 test("rebuildIndex re-indexes active and archived sessions", { timeout: 90_000 }, async (t) => {
 	const fixture = await startFixture();

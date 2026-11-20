@@ -1,9 +1,10 @@
 // A chat turn.
 // Run from packages/durable:
 //   node --conditions=source --experimental-strip-types test/examples/13-chat.ts
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import { createModels } from "@earendil-works/pi-ai/models";
-import { fauxAssistantMessage, fauxProvider } from "@earendil-works/pi-ai/providers/faux";
+
+import { createModels } from "@nycode/ai/models";
+import { fauxAssistantMessage, fauxProvider } from "@nycode/ai/providers/faux";
+import { BACKGROUND_CONTEXT } from "@nycode/chord/context";
 import { AssistantEntry, createRegistry, defineExtension, Harness, MemoryStorage, section } from "../../src/index.ts";
 
 const context = BACKGROUND_CONTEXT;
@@ -25,7 +26,7 @@ const harness = await Harness.open(new MemoryStorage(), { models, registry }, co
 const root = await harness.root(context, { agent: { model: { provider: "faux", modelId: "faux-1" } } });
 
 // submit() durably admits user input and returns a Submission. The built-in
-// pi.generation task prepares the system prompt from the agent's sections,
+// nycode.generation task prepares the system prompt from the agent's sections,
 // calls the model, and appends the answer; wait() resolves once the input is
 // answered or has failed.
 const capital = await root.submit({ type: "input", content: "Capital of France?" }, context);

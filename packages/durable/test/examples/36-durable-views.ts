@@ -5,21 +5,10 @@
 // Run from packages/durable:
 //   node --conditions=source --experimental-strip-types test/examples/36-durable-views.ts
 
-import {
-	arr,
-	createHost,
-	defineFacet,
-	int,
-	local,
-	method,
-	obj,
-	openStore,
-	sqliteBackend,
-	str,
-} from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import { openNodeSqliteDatabase } from "@earendil-works/chord/sqlite/node";
-import { createModels } from "@earendil-works/pi-ai";
+import { createModels } from "@nycode/ai";
+import { arr, createHost, defineFacet, int, local, method, obj, openStore, sqliteBackend, str } from "@nycode/chord";
+import { BACKGROUND_CONTEXT } from "@nycode/chord/context";
+import { openNodeSqliteDatabase } from "@nycode/chord/sqlite/node";
 import { createRegistry, Harness, ROOT_CONVERSATION_ID } from "../../src/index.ts";
 import { StoreStorage } from "../../src/storage/store/index.ts";
 

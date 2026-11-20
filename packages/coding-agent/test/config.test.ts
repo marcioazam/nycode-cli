@@ -15,7 +15,7 @@ import {
 
 const execPathDescriptor = Object.getOwnPropertyDescriptor(process, "execPath");
 const originalPath = process.env.PATH;
-const originalPiPackageDir = process.env.PI_PACKAGE_DIR;
+const originalNycodePackageDir = process.env.NYCODE_PACKAGE_DIR;
 const originalArgv1 = process.argv[1];
 let tempDir: string | undefined;
 
@@ -35,10 +35,10 @@ afterEach(() => {
 	} else {
 		process.env.PATH = originalPath;
 	}
-	if (originalPiPackageDir === undefined) {
-		delete process.env.PI_PACKAGE_DIR;
+	if (originalNycodePackageDir === undefined) {
+		delete process.env.NYCODE_PACKAGE_DIR;
 	} else {
-		process.env.PI_PACKAGE_DIR = originalPiPackageDir;
+		process.env.NYCODE_PACKAGE_DIR = originalNycodePackageDir;
 	}
 	if (originalArgv1 === undefined) {
 		process.argv.splice(1, 1);
@@ -52,38 +52,38 @@ afterEach(() => {
 	}
 });
 
-function createNpmPrefixInstall(template = "pi-prefix-"): { prefix: string; packageDir: string } {
+function createNpmPrefixInstall(template = "nycode-prefix-"): { prefix: string; packageDir: string } {
 	const prefix = mkdtempSync(join(tmpdir(), template));
 	const root = join(prefix, "lib", "node_modules");
-	const scopeDir = join(root, "@earendil-works");
-	const packageDir = join(scopeDir, "pi-coding-agent");
+	const scopeDir = join(root, "@nycode");
+	const packageDir = join(scopeDir, "nycode-coding-agent");
 	mkdirSync(packageDir, { recursive: true });
 	tempDir = prefix;
-	process.env.PI_PACKAGE_DIR = packageDir;
+	process.env.NYCODE_PACKAGE_DIR = packageDir;
 	setExecPath(join(packageDir, "dist", "cli.js"));
 	return { prefix, packageDir };
 }
 
 function createPnpmGlobalInstall(): { root: string; packageDir: string } {
-	const temp = mkdtempSync(join(tmpdir(), "pi-pnpm-"));
+	const temp = mkdtempSync(join(tmpdir(), "nycode-pnpm-"));
 	const binDir = join(temp, "bin");
 	const root = join(temp, "pnpm", "global", "5", "node_modules");
-	const packageDir = join(root, "@mariozechner", "pi-coding-agent");
+	const packageDir = join(root, "@mariozechner", "nycode-coding-agent");
 	mkdirSync(packageDir, { recursive: true });
 	mkdirSync(binDir, { recursive: true });
 	writeFileSync(join(binDir, process.platform === "win32" ? "pnpm.cmd" : "pnpm"), createFakePnpmScript(root));
 	chmodSync(join(binDir, process.platform === "win32" ? "pnpm.cmd" : "pnpm"), 0o755);
 	tempDir = temp;
 	process.env.PATH = `${binDir}${delimiter}${originalPath ?? ""}`;
-	process.env.PI_PACKAGE_DIR = packageDir;
+	process.env.NYCODE_PACKAGE_DIR = packageDir;
 	setExecPath(
 		join(
 			root,
 			".pnpm",
-			"@mariozechner+pi-coding-agent@0.0.0",
+			"@mariozechner+nycode-coding-agent@0.0.0",
 			"node_modules",
 			"@mariozechner",
-			"pi-coding-agent",
+			"nycode-coding-agent",
 			"dist",
 			"cli.js",
 		),
@@ -92,35 +92,35 @@ function createPnpmGlobalInstall(): { root: string; packageDir: string } {
 }
 
 function createYarnGlobalInstall(): { globalDir: string; packageDir: string } {
-	const temp = mkdtempSync(join(tmpdir(), "pi-yarn-"));
+	const temp = mkdtempSync(join(tmpdir(), "nycode-yarn-"));
 	const binDir = join(temp, "bin");
 	const globalDir = join(temp, "yarn", "global");
-	const packageDir = join(globalDir, "node_modules", "@mariozechner", "pi-coding-agent");
+	const packageDir = join(globalDir, "node_modules", "@mariozechner", "nycode-coding-agent");
 	mkdirSync(packageDir, { recursive: true });
 	mkdirSync(binDir, { recursive: true });
 	writeFileSync(join(binDir, process.platform === "win32" ? "yarn.cmd" : "yarn"), createFakeYarnScript(globalDir));
 	chmodSync(join(binDir, process.platform === "win32" ? "yarn.cmd" : "yarn"), 0o755);
 	tempDir = temp;
 	process.env.PATH = `${binDir}${delimiter}${originalPath ?? ""}`;
-	process.env.PI_PACKAGE_DIR = packageDir;
-	setExecPath(join(globalDir, ".yarn", "@mariozechner", "pi-coding-agent", "dist", "cli.js"));
+	process.env.NYCODE_PACKAGE_DIR = packageDir;
+	setExecPath(join(globalDir, ".yarn", "@mariozechner", "nycode-coding-agent", "dist", "cli.js"));
 	return { globalDir, packageDir };
 }
 
 function createBunGlobalInstall(): { packageDir: string } {
-	const temp = mkdtempSync(join(tmpdir(), "pi-bun-"));
+	const temp = mkdtempSync(join(tmpdir(), "nycode-bun-"));
 	const prefix = join(temp, ".bun");
 	const bunBin = join(prefix, "bin");
 	const root = join(prefix, "install", "global", "node_modules");
-	const scopeDir = join(root, "@earendil-works");
-	const packageDir = join(scopeDir, "pi-coding-agent");
+	const scopeDir = join(root, "@nycode");
+	const packageDir = join(scopeDir, "nycode-coding-agent");
 	mkdirSync(packageDir, { recursive: true });
 	mkdirSync(bunBin, { recursive: true });
 	writeFileSync(join(bunBin, process.platform === "win32" ? "bun.cmd" : "bun"), createFakeBunScript(bunBin));
 	chmodSync(join(bunBin, process.platform === "win32" ? "bun.cmd" : "bun"), 0o755);
 	tempDir = temp;
 	process.env.PATH = `${bunBin}${delimiter}${originalPath ?? ""}`;
-	process.env.PI_PACKAGE_DIR = packageDir;
+	process.env.NYCODE_PACKAGE_DIR = packageDir;
 	setExecPath(join(packageDir, "dist", "cli.js"));
 	return { packageDir };
 }
@@ -151,7 +151,7 @@ function createFakeBunScript(bunBin: string): string {
 
 describe("findNodePackageDir", () => {
 	test("skips binary metadata copied into dist", () => {
-		tempDir = mkdtempSync(join(tmpdir(), "pi-package-dir-"));
+		tempDir = mkdtempSync(join(tmpdir(), "nycode-package-dir-"));
 		const distDir = join(tempDir, "dist");
 		const bundleDir = join(distDir, "bundle");
 		mkdirSync(bundleDir, { recursive: true });
@@ -165,12 +165,12 @@ describe("findNodePackageDir", () => {
 describe("detectInstallMethod", () => {
 	test("detects pnpm from Windows .pnpm install paths", () => {
 		setExecPath(
-			"C:\\Users\\Admin\\Documents\\pnpm-repository\\global\\5\\.pnpm\\@earendil-works+pi-coding-agent@0.67.68\\node_modules\\@earendil-works\\pi-coding-agent\\dist\\cli.js",
+			"C:\\Users\\Admin\\Documents\\pnpm-repository\\global\\5\\.pnpm\\@nycode+coding-agent@0.67.68\\node_modules\\@nycode\\coding-agent\\dist\\cli.js",
 		);
 
 		expect(detectInstallMethod()).toBe("pnpm");
-		expect(getUpdateInstruction("@earendil-works/pi-coding-agent")).toBe(
-			"Run: pnpm install -g --ignore-scripts --config.minimumReleaseAge=0 @earendil-works/pi-coding-agent",
+		expect(getUpdateInstruction("@nycode/coding-agent")).toBe(
+			"Run: pnpm install -g --ignore-scripts --config.minimumReleaseAge=0 @nycode/coding-agent",
 		);
 	});
 
@@ -178,15 +178,15 @@ describe("detectInstallMethod", () => {
 		setExecPath("/usr/local/bin/node");
 
 		expect(detectInstallMethod()).toBe("unknown");
-		expect(getSelfUpdateCommand("@earendil-works/pi-coding-agent")).toBeUndefined();
-		expect(getUpdateInstruction("@earendil-works/pi-coding-agent")).toBe(
-			"Update @earendil-works/pi-coding-agent using the package manager, wrapper, or source checkout that provides this installation.",
+		expect(getSelfUpdateCommand("@nycode/coding-agent")).toBeUndefined();
+		expect(getUpdateInstruction("@nycode/coding-agent")).toBe(
+			"Update @nycode/coding-agent using the package manager, wrapper, or source checkout that provides this installation.",
 		);
 	});
 
 	// Issue #7756
 	test("does not name pnpm for unmanaged installs under PNPM_HOME", () => {
-		tempDir = mkdtempSync(join(tmpdir(), "pi-pnpm-home-"));
+		tempDir = mkdtempSync(join(tmpdir(), "nycode-pnpm-home-"));
 		const packageDir = join(
 			tempDir,
 			".local",
@@ -195,49 +195,41 @@ describe("detectInstallMethod", () => {
 			"global-nub",
 			"5",
 			"node_modules",
-			"@earendil-works",
-			"pi-coding-agent",
+			"@nycode",
+			"coding-agent",
 		);
 		mkdirSync(packageDir, { recursive: true });
-		process.env.PI_PACKAGE_DIR = packageDir;
+		process.env.NYCODE_PACKAGE_DIR = packageDir;
 		process.env.PATH = "";
 		process.argv[1] = join(packageDir, "dist", "cli.js");
 		setExecPath(join(packageDir, "dist", "cli.js"));
 
 		expect(detectInstallMethod()).toBe("pnpm");
-		expect(getSelfUpdateCommand("@earendil-works/pi-coding-agent")).toBeUndefined();
-		expect(getSelfUpdateUnavailableInstruction("@earendil-works/pi-coding-agent")).toBe(
-			"Update @earendil-works/pi-coding-agent using the package manager, wrapper, or source checkout that provides this installation.",
+		expect(getSelfUpdateCommand("@nycode/coding-agent")).toBeUndefined();
+		expect(getSelfUpdateUnavailableInstruction("@nycode/coding-agent")).toBe(
+			"Update @nycode/coding-agent using the package manager, wrapper, or source checkout that provides this installation.",
 		);
 	});
 
 	test("self-updates npm installs from custom prefixes", () => {
 		const { prefix } = createNpmPrefixInstall();
 
-		const command = getSelfUpdateCommand("@earendil-works/pi-coding-agent");
+		const command = getSelfUpdateCommand("@nycode/coding-agent");
 
 		expect(detectInstallMethod()).toBe("npm");
 		expect(command).toEqual({
 			command: "npm",
-			args: [
-				"--prefix",
-				prefix,
-				"install",
-				"-g",
-				"--ignore-scripts",
-				"--min-release-age=0",
-				"@earendil-works/pi-coding-agent",
-			],
-			display: `npm --prefix ${prefix} install -g --ignore-scripts --min-release-age=0 @earendil-works/pi-coding-agent`,
+			args: ["--prefix", prefix, "install", "-g", "--ignore-scripts", "--min-release-age=0", "@nycode/coding-agent"],
+			display: `npm --prefix ${prefix} install -g --ignore-scripts --min-release-age=0 @nycode/coding-agent`,
 		});
 	});
 
 	test("self-updates exact npm versions without uninstalling the current package", () => {
 		const { prefix } = createNpmPrefixInstall();
 
-		const command = getSelfUpdateCommand("@earendil-works/pi-coding-agent", undefined, {
-			packageName: "@earendil-works/pi-coding-agent",
-			installSpec: "@earendil-works/pi-coding-agent@1.2.3",
+		const command = getSelfUpdateCommand("@nycode/coding-agent", undefined, {
+			packageName: "@nycode/coding-agent",
+			installSpec: "@nycode/coding-agent@1.2.3",
 		});
 
 		expect(command).toEqual({
@@ -249,21 +241,21 @@ describe("detectInstallMethod", () => {
 				"-g",
 				"--ignore-scripts",
 				"--min-release-age=0",
-				"@earendil-works/pi-coding-agent@1.2.3",
+				"@nycode/coding-agent@1.2.3",
 			],
-			display: `npm --prefix ${prefix} install -g --ignore-scripts --min-release-age=0 @earendil-works/pi-coding-agent@1.2.3`,
+			display: `npm --prefix ${prefix} install -g --ignore-scripts --min-release-age=0 @nycode/coding-agent@1.2.3`,
 		});
 	});
 
 	test("self-updates renamed packages from the current install prefix", () => {
 		const { prefix } = createNpmPrefixInstall();
 
-		const command = getSelfUpdateCommand("@mariozechner/pi-coding-agent", undefined, "@new-scope/pi");
+		const command = getSelfUpdateCommand("@mariozechner/pi-coding-agent", undefined, "@new-scope/nycode");
 
 		expect(command).toEqual({
 			command: "npm",
-			args: ["--prefix", prefix, "install", "-g", "--ignore-scripts", "--min-release-age=0", "@new-scope/pi"],
-			display: `npm --prefix ${prefix} uninstall -g @mariozechner/pi-coding-agent && npm --prefix ${prefix} install -g --ignore-scripts --min-release-age=0 @new-scope/pi`,
+			args: ["--prefix", prefix, "install", "-g", "--ignore-scripts", "--min-release-age=0", "@new-scope/nycode"],
+			display: `npm --prefix ${prefix} uninstall -g @mariozechner/pi-coding-agent && npm --prefix ${prefix} install -g --ignore-scripts --min-release-age=0 @new-scope/nycode`,
 			steps: [
 				{
 					command: "npm",
@@ -272,8 +264,16 @@ describe("detectInstallMethod", () => {
 				},
 				{
 					command: "npm",
-					args: ["--prefix", prefix, "install", "-g", "--ignore-scripts", "--min-release-age=0", "@new-scope/pi"],
-					display: `npm --prefix ${prefix} install -g --ignore-scripts --min-release-age=0 @new-scope/pi`,
+					args: [
+						"--prefix",
+						prefix,
+						"install",
+						"-g",
+						"--ignore-scripts",
+						"--min-release-age=0",
+						"@new-scope/nycode",
+					],
+					display: `npm --prefix ${prefix} install -g --ignore-scripts --min-release-age=0 @new-scope/nycode`,
 				},
 			],
 		});
@@ -282,27 +282,19 @@ describe("detectInstallMethod", () => {
 	test("self-update respects configured npmCommand", () => {
 		const { prefix } = createNpmPrefixInstall();
 
-		const command = getSelfUpdateCommand("@earendil-works/pi-coding-agent", ["npm", "--prefix", prefix]);
+		const command = getSelfUpdateCommand("@nycode/coding-agent", ["npm", "--prefix", prefix]);
 
 		expect(command).toEqual({
 			command: "npm",
-			args: [
-				"--prefix",
-				prefix,
-				"install",
-				"-g",
-				"--ignore-scripts",
-				"--min-release-age=0",
-				"@earendil-works/pi-coding-agent",
-			],
-			display: `npm --prefix ${prefix} install -g --ignore-scripts --min-release-age=0 @earendil-works/pi-coding-agent`,
+			args: ["--prefix", prefix, "install", "-g", "--ignore-scripts", "--min-release-age=0", "@nycode/coding-agent"],
+			display: `npm --prefix ${prefix} install -g --ignore-scripts --min-release-age=0 @nycode/coding-agent`,
 		});
 	});
 
 	test("self-update treats empty npmCommand as unset", () => {
 		const { prefix } = createNpmPrefixInstall();
 
-		const command = getSelfUpdateCommand("@earendil-works/pi-coding-agent", []);
+		const command = getSelfUpdateCommand("@nycode/coding-agent", []);
 
 		expect(command?.args).toEqual([
 			"--prefix",
@@ -311,55 +303,55 @@ describe("detectInstallMethod", () => {
 			"-g",
 			"--ignore-scripts",
 			"--min-release-age=0",
-			"@earendil-works/pi-coding-agent",
+			"@nycode/coding-agent",
 		]);
 	});
 
 	test("quotes npm self-update display paths", () => {
-		const { prefix } = createNpmPrefixInstall("pi prefix ");
+		const { prefix } = createNpmPrefixInstall("nycode prefix ");
 
-		const command = getSelfUpdateCommand("@earendil-works/pi-coding-agent");
+		const command = getSelfUpdateCommand("@nycode/coding-agent");
 
 		expect(command?.display).toBe(
-			`npm --prefix "${prefix}" install -g --ignore-scripts --min-release-age=0 @earendil-works/pi-coding-agent`,
+			`npm --prefix "${prefix}" install -g --ignore-scripts --min-release-age=0 @nycode/coding-agent`,
 		);
 	});
 
 	test("does not infer Windows npm custom prefixes from package paths", () => {
-		const packageDir = "C:\\Users\\Admin\\npm prefix\\node_modules\\@earendil-works\\pi-coding-agent";
-		process.env.PI_PACKAGE_DIR = packageDir;
+		const packageDir = "C:\\Users\\Admin\\npm prefix\\node_modules\\@nycode\\coding-agent";
+		process.env.NYCODE_PACKAGE_DIR = packageDir;
 		setExecPath(`${packageDir}\\dist\\cli.js`);
 
 		expect(detectInstallMethod()).toBe("npm");
-		expect(getUpdateInstruction("@earendil-works/pi-coding-agent")).toBe(
-			"Run: npm install -g --ignore-scripts --min-release-age=0 @earendil-works/pi-coding-agent",
+		expect(getUpdateInstruction("@nycode/coding-agent")).toBe(
+			"Run: npm install -g --ignore-scripts --min-release-age=0 @nycode/coding-agent",
 		);
 	});
 
 	test("self-updates bun global installs from bun pm bin", () => {
 		createBunGlobalInstall();
 
-		const command = getSelfUpdateCommand("@earendil-works/pi-coding-agent");
+		const command = getSelfUpdateCommand("@nycode/coding-agent");
 
 		expect(detectInstallMethod()).toBe("bun");
 		expect(command).toEqual({
 			command: "bun",
-			args: ["install", "-g", "--ignore-scripts", "--minimum-release-age=0", "@earendil-works/pi-coding-agent"],
-			display: "bun install -g --ignore-scripts --minimum-release-age=0 @earendil-works/pi-coding-agent",
+			args: ["install", "-g", "--ignore-scripts", "--minimum-release-age=0", "@nycode/coding-agent"],
+			display: "bun install -g --ignore-scripts --minimum-release-age=0 @nycode/coding-agent",
 		});
 	});
 
 	test("self-updates renamed pnpm global installs by removing the old package first", () => {
 		createPnpmGlobalInstall();
 
-		const command = getSelfUpdateCommand("@mariozechner/pi-coding-agent", undefined, "@new-scope/pi");
+		const command = getSelfUpdateCommand("@mariozechner/pi-coding-agent", undefined, "@new-scope/nycode");
 
 		expect(detectInstallMethod()).toBe("pnpm");
 		expect(command).toEqual({
 			command: "pnpm",
-			args: ["install", "-g", "--ignore-scripts", "--config.minimumReleaseAge=0", "@new-scope/pi"],
+			args: ["install", "-g", "--ignore-scripts", "--config.minimumReleaseAge=0", "@new-scope/nycode"],
 			display:
-				"pnpm remove -g @mariozechner/pi-coding-agent && pnpm install -g --ignore-scripts --config.minimumReleaseAge=0 @new-scope/pi",
+				"pnpm remove -g @mariozechner/pi-coding-agent && pnpm install -g --ignore-scripts --config.minimumReleaseAge=0 @new-scope/nycode",
 			steps: [
 				{
 					command: "pnpm",
@@ -368,19 +360,19 @@ describe("detectInstallMethod", () => {
 				},
 				{
 					command: "pnpm",
-					args: ["install", "-g", "--ignore-scripts", "--config.minimumReleaseAge=0", "@new-scope/pi"],
-					display: "pnpm install -g --ignore-scripts --config.minimumReleaseAge=0 @new-scope/pi",
+					args: ["install", "-g", "--ignore-scripts", "--config.minimumReleaseAge=0", "@new-scope/nycode"],
+					display: "pnpm install -g --ignore-scripts --config.minimumReleaseAge=0 @new-scope/nycode",
 				},
 			],
 		});
 	});
 
 	test("self-updates pnpm v11 global installs resolved through the store", () => {
-		const temp = mkdtempSync(join(tmpdir(), "pi-pnpm11-"));
+		const temp = mkdtempSync(join(tmpdir(), "nycode-pnpm11-"));
 		const binDir = join(temp, "bin");
 		const root = join(temp, "Library", "pnpm", "global", "v11");
-		const packageName = "@earendil-works/pi-coding-agent";
-		const globalPackageDir = join(root, "11e9a", "node_modules", "@earendil-works", "pi-coding-agent");
+		const packageName = "@nycode/coding-agent";
+		const globalPackageDir = join(root, "11e9a", "node_modules", "@nycode", "coding-agent");
 		const storePackageDir = join(
 			temp,
 			"Library",
@@ -388,13 +380,13 @@ describe("detectInstallMethod", () => {
 			"store",
 			"v11",
 			"links",
-			"@earendil-works",
-			"pi-coding-agent",
+			"@nycode",
+			"coding-agent",
 			"0.75.0",
 			"hash",
 			"node_modules",
-			"@earendil-works",
-			"pi-coding-agent",
+			"@nycode",
+			"coding-agent",
 		);
 		mkdirSync(globalPackageDir, { recursive: true });
 		mkdirSync(storePackageDir, { recursive: true });
@@ -404,7 +396,7 @@ describe("detectInstallMethod", () => {
 		chmodSync(join(binDir, process.platform === "win32" ? "pnpm.cmd" : "pnpm"), 0o755);
 		tempDir = temp;
 		process.env.PATH = `${binDir}${delimiter}${originalPath ?? ""}`;
-		process.env.PI_PACKAGE_DIR = storePackageDir;
+		process.env.NYCODE_PACKAGE_DIR = storePackageDir;
 		process.argv[1] = join(globalPackageDir, "dist", "cli.js");
 		setExecPath(join(storePackageDir, "dist", "cli.js"));
 
@@ -421,13 +413,14 @@ describe("detectInstallMethod", () => {
 	test("self-updates renamed yarn global installs by removing the old package first", () => {
 		createYarnGlobalInstall();
 
-		const command = getSelfUpdateCommand("@mariozechner/pi-coding-agent", undefined, "@new-scope/pi");
+		const command = getSelfUpdateCommand("@mariozechner/pi-coding-agent", undefined, "@new-scope/nycode");
 
 		expect(detectInstallMethod()).toBe("yarn");
 		expect(command).toEqual({
 			command: "yarn",
-			args: ["global", "add", "--ignore-scripts", "@new-scope/pi"],
-			display: "yarn global remove @mariozechner/pi-coding-agent && yarn global add --ignore-scripts @new-scope/pi",
+			args: ["global", "add", "--ignore-scripts", "@new-scope/nycode"],
+			display:
+				"yarn global remove @mariozechner/pi-coding-agent && yarn global add --ignore-scripts @new-scope/nycode",
 			steps: [
 				{
 					command: "yarn",
@@ -436,8 +429,8 @@ describe("detectInstallMethod", () => {
 				},
 				{
 					command: "yarn",
-					args: ["global", "add", "--ignore-scripts", "@new-scope/pi"],
-					display: "yarn global add --ignore-scripts @new-scope/pi",
+					args: ["global", "add", "--ignore-scripts", "@new-scope/nycode"],
+					display: "yarn global add --ignore-scripts @new-scope/nycode",
 				},
 			],
 		});
@@ -446,14 +439,14 @@ describe("detectInstallMethod", () => {
 	test("self-updates renamed bun global installs by removing the old package first", () => {
 		createBunGlobalInstall();
 
-		const command = getSelfUpdateCommand("@mariozechner/pi-coding-agent", undefined, "@new-scope/pi");
+		const command = getSelfUpdateCommand("@mariozechner/pi-coding-agent", undefined, "@new-scope/nycode");
 
 		expect(detectInstallMethod()).toBe("bun");
 		expect(command).toEqual({
 			command: "bun",
-			args: ["install", "-g", "--ignore-scripts", "--minimum-release-age=0", "@new-scope/pi"],
+			args: ["install", "-g", "--ignore-scripts", "--minimum-release-age=0", "@new-scope/nycode"],
 			display:
-				"bun uninstall -g @mariozechner/pi-coding-agent && bun install -g --ignore-scripts --minimum-release-age=0 @new-scope/pi",
+				"bun uninstall -g @mariozechner/pi-coding-agent && bun install -g --ignore-scripts --minimum-release-age=0 @new-scope/nycode",
 			steps: [
 				{
 					command: "bun",
@@ -462,8 +455,8 @@ describe("detectInstallMethod", () => {
 				},
 				{
 					command: "bun",
-					args: ["install", "-g", "--ignore-scripts", "--minimum-release-age=0", "@new-scope/pi"],
-					display: "bun install -g --ignore-scripts --minimum-release-age=0 @new-scope/pi",
+					args: ["install", "-g", "--ignore-scripts", "--minimum-release-age=0", "@new-scope/nycode"],
+					display: "bun install -g --ignore-scripts --minimum-release-age=0 @new-scope/nycode",
 				},
 			],
 		});
@@ -473,17 +466,15 @@ describe("detectInstallMethod", () => {
 		const { packageDir } = createNpmPrefixInstall();
 		chmodSync(packageDir, 0o500);
 
-		expect(getSelfUpdateCommand("@earendil-works/pi-coding-agent")).toBeUndefined();
-		expect(getSelfUpdateUnavailableInstruction("@earendil-works/pi-coding-agent")).toContain(
-			"the install path is not writable",
-		);
+		expect(getSelfUpdateCommand("@nycode/coding-agent")).toBeUndefined();
+		expect(getSelfUpdateUnavailableInstruction("@nycode/coding-agent")).toContain("the install path is not writable");
 	});
 });
 
 describe("detectInstallChange", () => {
 	// Regression test for #10439: a deleted pnpm install must not fall back to a package.json further up.
 	test("reports a removed install instead of reading a package.json further up", () => {
-		tempDir = mkdtempSync(join(tmpdir(), "pi-install-change-"));
+		tempDir = mkdtempSync(join(tmpdir(), "nycode-install-change-"));
 		const installDir = join(tempDir, "global", "hash");
 		mkdirSync(installDir, { recursive: true });
 		writeFileSync(join(tempDir, "package.json"), JSON.stringify({ version: "0.0.1" }));
@@ -493,24 +484,24 @@ describe("detectInstallChange", () => {
 });
 
 describe("configured self-update command", () => {
-	const originalSelfUpdateCommand = process.env.PI_SELF_UPDATE_COMMAND;
+	const originalSelfUpdateCommand = process.env.NYCODE_SELF_UPDATE_COMMAND;
 
 	afterEach(() => {
 		if (originalSelfUpdateCommand === undefined) {
-			delete process.env.PI_SELF_UPDATE_COMMAND;
+			delete process.env.NYCODE_SELF_UPDATE_COMMAND;
 		} else {
-			process.env.PI_SELF_UPDATE_COMMAND = originalSelfUpdateCommand;
+			process.env.NYCODE_SELF_UPDATE_COMMAND = originalSelfUpdateCommand;
 		}
 	});
 
-	test("prefers PI_SELF_UPDATE_COMMAND over the setting and splits it on whitespace", () => {
-		process.env.PI_SELF_UPDATE_COMMAND = "  nub   upgrade {installSpec} ";
+	test("prefers NYCODE_SELF_UPDATE_COMMAND over the setting and splits it on whitespace", () => {
+		process.env.NYCODE_SELF_UPDATE_COMMAND = "  nub   upgrade {installSpec} ";
 
 		expect(getConfiguredSelfUpdateArgv(["mise", "upgrade"])).toEqual(["nub", "upgrade", "{installSpec}"]);
 	});
 
-	test("uses the setting when PI_SELF_UPDATE_COMMAND is unset or blank", () => {
-		process.env.PI_SELF_UPDATE_COMMAND = " ";
+	test("uses the setting when NYCODE_SELF_UPDATE_COMMAND is unset or blank", () => {
+		process.env.NYCODE_SELF_UPDATE_COMMAND = " ";
 
 		expect(getConfiguredSelfUpdateArgv(["mise", "upgrade", "npm:{packageName}"])).toEqual([
 			"mise",
@@ -524,21 +515,20 @@ describe("configured self-update command", () => {
 	test("fills placeholders in every argument", () => {
 		const command = makeConfiguredSelfUpdateCommand(
 			["wrapper", "install", "{installSpec}", "--name={packageName}", "--version", "{version}", "{unknown}"],
-			{ packageName: "@earendil-works/pi-coding-agent", version: "1.2.3" },
+			{ packageName: "@nycode/coding-agent", version: "1.2.3" },
 		);
 
 		expect(command).toEqual({
 			command: "wrapper",
 			args: [
 				"install",
-				"@earendil-works/pi-coding-agent@1.2.3",
-				"--name=@earendil-works/pi-coding-agent",
+				"@nycode/coding-agent@1.2.3",
+				"--name=@nycode/coding-agent",
 				"--version",
 				"1.2.3",
 				"{unknown}",
 			],
-			display:
-				"wrapper install @earendil-works/pi-coding-agent@1.2.3 --name=@earendil-works/pi-coding-agent --version 1.2.3 {unknown}",
+			display: "wrapper install @nycode/coding-agent@1.2.3 --name=@nycode/coding-agent --version 1.2.3 {unknown}",
 		});
 	});
 });

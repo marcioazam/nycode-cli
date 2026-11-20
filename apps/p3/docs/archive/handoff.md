@@ -5,17 +5,17 @@ request before a context handoff. Read this file first, in full, then the readin
 
 ## 1. What p3 is and where it stands
 
-- p3 is the successor of p2 (Pi Mobile), built **tabula rasa on the Chord v2 app kit**, next to p2. The owner:
+- p3 is the successor of p2 (Nycode Mobile), built **tabula rasa on the Chord v2 app kit**, next to p2. The owner:
   "leave p2 to the kids". p2 stays his daily driver on the phone until p3 replaces it.
-- **p3 lives on `main`** of github.com/earendil-works/pi, in `/home/badlogic/pi`, in `apps/p3/` (owner, 2026-11-07:
+- **p3 lives on `main`** of github.com/marcioazam/nycode-cli, in `/home/badlogic/nycode`, in `apps/p3/` (owner, 2026-11-07:
   "switch to main, p3 can live there too, branch sucks"; the `p3` branch was rebased onto main and merged, b89b2232c).
-  No branches, no worktrees: work in `/home/badlogic/pi` on main; other sessions share the checkout (commit only your
+  No branches, no worktrees: work in `/home/badlogic/nycode` on main; other sessions share the checkout (commit only your
   own files).
 - **Nothing is specced or built yet.** Next action: write the **step-0 skeleton spec** (section 4) as a Radius artifact
   with the explainer skill, get two reviews, bring it to the owner.
 - **Specs are "nice Radius artifacts using our beautiful explainer"** (owner): Markdown in `apps/p3/docs/<step>/book.md`,
-  built with the explainer skill (`/home/badlogic/.pi/p2/skills/explainer/SKILL.md`, read it first; build:
-  `node /home/badlogic/.pi/p2/skills/explainer/build.mjs <book.md> -o <index.html>`), published with organization visibility:
+  built with the explainer skill (`/home/badlogic/.nycode/p2/skills/explainer/SKILL.md`, read it first; build:
+  `node /home/badlogic/.nycode/p2/skills/explainer/build.mjs <book.md> -o <index.html>`), published with organization visibility:
   `mcporter call radius.artifacts_create title="..." visibility=organization content_type=text/html content=@<index.html> --no-oauth --output json`
   (new version: `radius.artifacts_versions_publish slug=<id> content_type=text/html content=@<file>`). mcporter is in
   the Node bin dir below. Inline SVG diagrams in specs; sequence diagrams as SVG, never ASCII art.
@@ -76,7 +76,7 @@ request before a context handoff. Read this file first, in full, then the readin
 - **Models:** plugins can provide model providers (a providers registry; shape undecided). Workers get only access
   tokens of the session's providers as view state; the server refreshes.
 - **Config files:** one owner on the server per file; workers follow its state and write through its methods.
-- **SSH:** one owner per environment. Hands (pi-env on machines) connect to the brain (server) in the target model.
+- **SSH:** one owner per environment. Hands (nycode-env on machines) connect to the brain (server) in the target model.
 - **Performance:** data plane in the worker (model calls, tool streams); per-call checks are local reads; cache
   credentials; measure startup IPC round trips on the phone.
 - **Where things live:** nothing about turns, drivers or tool access goes into Chord or the kit; it is the harness's
@@ -146,7 +146,7 @@ p2 (reference only; do not port its structure):
 Radius artifacts (owner-facing; read with mcporter `radius.artifacts_read` / `artifacts_files_download`):
 - Tool access "Who May Call What" 01m6r4rywzfyg8t8azyzpvg6fs (16 scenarios: a requirements list for resources and
   sharing); multi-user 01m6rat6w9ew8sssmyrm0rpg4j and users 01m6rt283dee0spr5xv0k6hmkb; brain-and-hands
-  01m6rhhgvrfgj94pn1wf9jmn5w (brain = server + sessions, each session one Durable harness; hands = pi-env on machines
+  01m6rhhgvrfgj94pn1wf9jmn5w (brain = server + sessions, each session one Durable harness; hands = nycode-env on machines
   connecting to the server; Radius = the outbound brain connection: relay, forwards, model gateway, artifacts, MCP);
   research 01m6s536gge4gv8bsn7g4apppy; services (rejected) 01m6sc0dvte2wsszcy4xkd14rs.
 
@@ -156,15 +156,15 @@ Radius artifacts (owner-facing; read with mcporter `radius.artifacts_read` / `ar
   `LD_LIBRARY_PATH=$HOME/node26-lib /tmp/n2613/node-v26.13.0-linux-x64/bin/node`. Chromium:
   `CHROMIUM_BIN=$HOME/.local/bin/chromium-docker`.
 - Fresh worktrees need `npm ci --ignore-scripts` and a copy of the gitignored model data:
-  `cp -r /home/badlogic/pi/packages/ai/src/providers/data <worktree>/packages/ai/src/providers/`.
+  `cp -r /home/badlogic/nycode/packages/ai/src/providers/data <worktree>/packages/ai/src/providers/`.
 - Checks: `npm run check` (root), app checks in `apps/<app>` (`npm run check`). Chord tests from `packages/chord`:
   `node ../../node_modules/vitest/dist/cli.js --run <paths>` (full suite after `npm run build`).
 - Commits: explicit paths, `{feat,fix,docs}(scope): ...`, push `git push origin main`; main's CI:
-  `gh run list --repo earendil-works/pi --branch main --workflow CI`.
+  `gh run list --repo marcioazam/nycode-cli --branch main --workflow CI`.
 
 ## 7. Other open threads (not p3, keep track)
 
-- Phone: runs pi main d07548004 + later deploys by phone dev (session d602d653, deploys only in owner-started turns).
+- Phone: runs nycode main d07548004 + later deploys by phone dev (session d602d653, deploys only in owner-started turns).
   Not yet on the phone as of writing: c96e368e2 (remote bash abort fix, packages/env, needs a restart), 1ff411300
   (composer tap fix; the owner said it works, maybe through a plugin reload). Tell phone dev "deploy" when the owner
   says so.

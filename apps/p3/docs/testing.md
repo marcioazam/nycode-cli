@@ -35,7 +35,7 @@ assert.deepEqual(t.unserved(), []);
 ```
 
 **2. End to end** (most coverage here): p3's real server in the test's process on a temporary data directory, its
-session workers as real processes, its plugins built from two roots as a Pi's are: the built-in one and the tests'
+session workers as real processes, its plugins built from two roots as a Nycode's are: the built-in one and the tests'
 own (`test/plugins/`: the probe, a third-party plugin a test drives a worker with); a test may write plugins of its own
 into `<data directory>/plugins` and apply them. `test/support.ts` gives `testServer()` with `client()` (signed in as
 the owner over WebSocket), `workers()` (the runner's state), `restart()` and `close()`, and `eventually` and `alive`
@@ -46,7 +46,7 @@ for effects in other processes. Model: `test/skeleton.test.ts`.
 
 **4. The release** (`test/release/release.test.ts`, run by `npm run release:p3:local` against the install it makes
 outside the repository): what the package holds, the command, a worker forked from the release's own bundle, and a
-third-party plugin written against the installed API alone (type-checked, loaded from the Pi's user root, called by a
+third-party plugin written against the installed API alone (type-checked, loaded from the Nycode's user root, called by a
 client of the compiled API). Run the bench against the install with `--release` (or the script's `--bench`).
 
 ## What every package tests
@@ -76,7 +76,7 @@ client of the compiled API). Run the bench against the install with `--release` 
 8. **Reviewers' reproductions** become regression tests.
 9. **Mutation check** before reporting: undo each rule and fix one at a time in a copy under `/tmp`; a test must fail
    for each. The copy needs its own package links: copy `apps/p3` to `/tmp/x/apps/p3` and make
-   `/tmp/x/node_modules/@earendil-works/` a directory of links, `p3` to the copy and every other entry to the
+   `/tmp/x/node_modules/@nycode/` a directory of links, `p3` to the copy and every other entry to the
    repository's (linking the whole scope makes p3 resolve to the checkout, and mutations do nothing).
 10. **Serial and loaded:** the suite passes with `--test-concurrency=1` and with four `npm test` at once.
 11. **No leaks:** a failed case closes its sockets and processes (`t.after`, `finally`); one leak hangs the runner.

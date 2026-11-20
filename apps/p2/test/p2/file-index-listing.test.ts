@@ -1,13 +1,13 @@
-// The file index from the environment's own listing (pi-env's `listFiles`, p2-tui-port.md section 8.3 item 2), and its
+// The file index from the environment's own listing (nycode-env's `listFiles`, p2-tui-port.md section 8.3 item 2), and its
 // fallback to the workspace's git/walk index.
 import assert from "node:assert/strict";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { test } from "node:test";
-import { type ExecutionEnv, err, FileError } from "@earendil-works/pi-durable/env";
-import { NodeExecutionEnv } from "@earendil-works/pi-durable/env/node";
-import { Connection, LocalExecutionEnv, localDaemon } from "@earendil-works/pi-env";
+import { type ExecutionEnv, err, FileError } from "@nycode/durable/env";
+import { NodeExecutionEnv } from "@nycode/durable/env/node";
+import { Connection, LocalExecutionEnv, localDaemon } from "@nycode/env";
 import { BACKGROUND_CONTEXT, whenLive } from "@p2/app/v1";
 import { listIndex } from "../../plugins/file-index/listing.ts";
 import { Sessions } from "../../plugins/sessions/contract.ts";
@@ -16,7 +16,7 @@ import { holdIn, startFixture } from "./helpers.ts";
 
 const context = BACKGROUND_CONTEXT;
 /** The development build (`npm run build:daemon` in packages/env), which has `listFiles`. */
-const devDaemon = resolve(import.meta.dirname, "../../../../packages/env/daemon/target/debug/pi-env");
+const devDaemon = resolve(import.meta.dirname, "../../../../packages/env/daemon/target/debug/nycode-env");
 
 /** Whether the daemon at `path` lists files (`hello.features`). */
 async function listsFiles(path: string): Promise<boolean> {
@@ -48,7 +48,7 @@ test("environments without listFiles, or with a daemon released before it, fall 
 	try {
 		assert.equal(await listIndex(new NodeExecutionEnv({ cwd: root }), root, context), undefined);
 		const old = {
-			listFiles: async () => err(new FileError("not_supported", "The pi-env daemon does not list files", root)),
+			listFiles: async () => err(new FileError("not_supported", "The nycode-env daemon does not list files", root)),
 		} as unknown as ExecutionEnv;
 		assert.equal(await listIndex(old, root, context), undefined);
 		const failing = { listFiles: async () => err(new FileError("unknown", "lost", root)) } as unknown as ExecutionEnv;
@@ -59,7 +59,7 @@ test("environments without listFiles, or with a daemon released before it, fall 
 });
 
 test("the daemon's listing has empty and hidden directories, skips node_modules and ignored paths", async (t) => {
-	if (!(await listsFiles(devDaemon))) return t.skip(`no pi-env build with listFiles at ${devDaemon}`);
+	if (!(await listsFiles(devDaemon))) return t.skip(`no nycode-env build with listFiles at ${devDaemon}`);
 	const root = tree([
 		"src/app.ts",
 		"empty/",
@@ -119,7 +119,7 @@ test(
 			data.items.some((item) => item.path === "data" || item.path.startsWith("data/")),
 			JSON.stringify(data.items.slice(0, 10)),
 		);
-		// Empty directories come only from the daemon's listing: a local session uses it where pi-env ships a daemon with it.
+		// Empty directories come only from the daemon's listing: a local session uses it where nycode-env ships a daemon with it.
 		let daemon = false;
 		try {
 			daemon = await listsFiles(localDaemon());

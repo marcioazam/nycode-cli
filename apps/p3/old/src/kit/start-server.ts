@@ -1,5 +1,5 @@
 // `startServer`: the p3 server. It opens the server's part of the data directory (its lock and at once its record,
-// `starting`; the layout, the Pi's config, the cookie secret, the store), creates the server host, Chord's HTTP
+// `starting`; the layout, the Nycode's config, the cookie secret, the store), creates the server host, Chord's HTTP
 // component, its plugins component over p3's built-in root and the session workers, loads the server's plugins with
 // the kit's own facets (the start data, sign-ins, the owner link, the owner's stop, its identity), says `running` in its record
 // once it listens and its owner link is ready, and gives its caller the running app. Right after the listen, off the
@@ -8,17 +8,17 @@
 import { randomBytes } from "node:crypto";
 import { resolve } from "node:path";
 import { debuglog } from "node:util";
-import { createHost, type Facet, openStore, type Store, sqliteBackend } from "@earendil-works/chord";
-import type { Context } from "@earendil-works/chord/context";
-import { createHttp, HttpListener, type ListenAddress } from "@earendil-works/chord/http";
-import { createPlugins } from "@earendil-works/chord/plugins";
-import { openNodeSqliteDatabase } from "@earendil-works/chord/sqlite/node";
-import type { ProcessLock } from "@earendil-works/chord/workers";
-import { Server } from "@earendil-works/p3/v1";
+import { createHost, type Facet, openStore, type Store, sqliteBackend } from "@nycode/chord";
+import type { Context } from "@nycode/chord/context";
+import { createHttp, HttpListener, type ListenAddress } from "@nycode/chord/http";
+import { createPlugins } from "@nycode/chord/plugins";
+import { openNodeSqliteDatabase } from "@nycode/chord/sqlite/node";
+import type { ProcessLock } from "@nycode/chord/workers";
+import { Server } from "@nycode/p3/v1";
 import { API, KINDS, NAME, PRINCIPALS } from "../app.ts";
 import type { P3Principal } from "../principals.ts";
 import { type App, type AppError, RunningApp } from "./app.ts";
-import { openConfig, type PiConfig, writeConfig } from "./config.ts";
+import { openConfig, type NycodeConfig, writeConfig } from "./config.ts";
 import { identityFacet } from "./identity.ts";
 import { appInfoFacet } from "./info.ts";
 import { createLayout, defaultDataDir, type Layout, openDataDir, privateStore } from "./layout.ts";
@@ -37,12 +37,12 @@ const debug = debuglog("p3");
 
 /** What `startServer` takes: what the start script decides. */
 export type ServerOptions = {
-	/** The data directory (no environment variables): `~/.pi/p3` by default. */
+	/** The data directory (no environment variables): `~/.nycode/p3` by default. */
 	readonly dataDir?: string;
 	/** p3's built-in plugins root: a plugin of it failing stops the start. */
 	readonly root: string;
 	/**
-	 * Where the server listens: an address for this start, or the Pi's own port, the one its config keeps from its first
+	 * Where the server listens: an address for this start, or the Nycode's own port, the one its config keeps from its first
 	 * start, which takes `firstPort` (0: a free one).
 	 */
 	readonly listen: ListenAddress | { readonly host: string; readonly firstPort: number };
@@ -140,7 +140,7 @@ export async function startServer(options: ServerOptions, context: Context): Pro
 		{ name: "p3.sign-ins", facet: signIns.facet },
 		{ name: "p3.owner", facet: ownerFacet(link) },
 		{ name: "p3.stop", facet: stopFacet(options.onStop) },
-		{ name: "p3.identity", facet: identityFacet({ run, pid: process.pid, pi: config.id }, () => ownerToken) },
+		{ name: "p3.identity", facet: identityFacet({ run, pid: process.pid, nycode: config.id }, () => ownerToken) },
 		...(options.facets ?? []),
 	];
 	const app = new RunningApp({ host, http, workers, store, plugins, lock }, layout);
@@ -161,7 +161,7 @@ export async function startServer(options: ServerOptions, context: Context): Pro
 		const running = {
 			state: "running",
 			run,
-			pi: config.id,
+			nycode: config.id,
 			port: listening.port,
 			version,
 			startedAt: Date.now(),
@@ -185,8 +185,8 @@ function apiModules(kind: string): string[] {
 	return API.versions.flatMap((version) => [`${API.name}/${version}`, `${API.name}/${version}/${kind}`]);
 }
 
-/** The port of this start: the one `listen` names, else the Pi's own, `firstPort` at its first start. */
-function portOf(listen: ServerOptions["listen"], config: PiConfig): number {
+/** The port of this start: the one `listen` names, else the Nycode's own, `firstPort` at its first start. */
+function portOf(listen: ServerOptions["listen"], config: NycodeConfig): number {
 	return "port" in listen ? listen.port : (config.port ?? listen.firstPort);
 }
 
@@ -195,13 +195,13 @@ const SERVER_LOCK_MS = 1000;
 
 /**
  * The server's own part of the data directory `path`: its lock (one server per data directory), the layout made
- * private, the Pi's config, its sign-in cookie's name and secret, and the server's store; the lock released when the
+ * private, the Nycode's config, its sign-in cookie's name and secret, and the server's store; the lock released when the
  * rest fails.
  */
 async function openServer(
 	path: string,
 	context: Context,
-): Promise<{ layout: Layout; config: PiConfig; cookie: SignInCookie; store: Store; lock: ProcessLock; run: string }> {
+): Promise<{ layout: Layout; config: NycodeConfig; cookie: SignInCookie; store: Store; lock: ProcessLock; run: string }> {
 	const dataDir = await openDataDir(path);
 	const lock = await takeLock(dataDir, "server", SERVER_LOCK_MS, context);
 	if (lock === undefined) throw new Error(`startServer: another server runs on ${dataDir}`);

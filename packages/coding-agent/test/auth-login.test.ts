@@ -1,7 +1,7 @@
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { InMemoryModelsStore, type Model, type Provider } from "@earendil-works/pi-ai";
+import { InMemoryModelsStore, type Model, type Provider } from "@nycode/ai";
 import { describe, expect, test, vi } from "vitest";
 import { runAuthLogin } from "../src/cli/auth-login.ts";
 import type { LoginTerminal } from "../src/cli/auth-terminal.ts";
@@ -143,8 +143,8 @@ function run(
 	});
 }
 
-describe("pi auth login", () => {
-	const usage = "Usage: pi auth login <provider> [--api-key] [--no-browser]";
+describe("nycode auth login", () => {
+	const usage = "Usage: nycode auth login <provider> [--api-key] [--no-browser]";
 
 	test("requires exactly one provider and known options", async () => {
 		const { modelRuntime } = await setup(bothMethods);
@@ -175,7 +175,7 @@ describe("pi auth login", () => {
 		const terminal = scriptedTerminal([], false);
 		expect(await run([PROVIDER_ID], modelRuntime, terminal)).toBe(1);
 		expect(terminal.errors).toEqual([
-			'"pi auth login <provider> [--api-key] [--no-browser]" requires an interactive terminal',
+			'"nycode auth login <provider> [--api-key] [--no-browser]" requires an interactive terminal',
 		]);
 	});
 
@@ -189,7 +189,7 @@ describe("pi auth login", () => {
 		expect(terminal.lines).toContain("Finish in the browser");
 		expect(terminal.opened).toEqual(["https://example.test/authorize"]);
 		expect(terminal.lines).toContain(
-			'To use "Sign in with device code" instead, run "pi auth login login-test --no-browser"',
+			'To use "Sign in with device code" instead, run "nycode auth login login-test --no-browser"',
 		);
 		expect(await credentials.read(PROVIDER_ID)).toMatchObject({ type: "oauth", access: "access-the-code" });
 		expect(terminal.lines.some((line) => line.startsWith("Logged in to Login Test."))).toBe(true);
@@ -217,7 +217,7 @@ describe("pi auth login", () => {
 		const terminal = scriptedTerminal([]);
 		expect(await run([PROVIDER_ID], modelRuntime, terminal)).toBe(0);
 		expect(terminal.lines).toContain(
-			'Other sign-in methods: "Device code", "Copy code". Run "pi auth login login-test --no-browser" to choose one.',
+			'Other sign-in methods: "Device code", "Copy code". Run "nycode auth login login-test --no-browser" to choose one.',
 		);
 	});
 
@@ -401,11 +401,11 @@ describe("pi auth login", () => {
 		expect(terminal.errors).toEqual(["Login Test has no API key login. Omit --api-key to sign in."]);
 	});
 
-	test("reports providers configured outside pi", async () => {
+	test("reports providers configured outside nycode", async () => {
 		const { modelRuntime } = await setup({ apiKey: { name: "AWS profile", resolve: async () => undefined } });
 		const terminal = scriptedTerminal([]);
 		expect(await run([PROVIDER_ID], modelRuntime, terminal)).toBe(1);
-		expect(terminal.errors).toEqual(["Login Test is configured outside pi (AWS profile)."]);
+		expect(terminal.errors).toEqual(["Login Test is configured outside nycode (AWS profile)."]);
 	});
 
 	test("Ctrl+C during the catalog refresh skips it and keeps the login", async () => {
@@ -421,7 +421,9 @@ describe("pi auth login", () => {
 		);
 		const terminal = scriptedTerminal(["sk-test"]);
 		expect(await run([PROVIDER_ID], modelRuntime, terminal, controller.signal)).toBe(0);
-		expect(terminal.lines).toContain("Skipped the Login Test model catalog refresh; pi refreshes it on next start.");
+		expect(terminal.lines).toContain(
+			"Skipped the Login Test model catalog refresh; nycode refreshes it on next start.",
+		);
 		expect(await credentials.read(PROVIDER_ID)).toMatchObject({ type: "api_key", key: "sk-test" });
 	});
 
@@ -436,7 +438,7 @@ describe("pi auth login", () => {
 	});
 
 	test.each(["radius-mcp", "radius_mcp"])("keeps unrelated MCP servers when %s is occupied", async (fallback) => {
-		const agentDir = mkdtempSync(join(tmpdir(), "pi-auth-login-"));
+		const agentDir = mkdtempSync(join(tmpdir(), "nycode-auth-login-"));
 		try {
 			const { modelRuntime } = await setup({ apiKey: bothMethods.apiKey }, "radius");
 			const mcpPath = join(agentDir, "mcp.json");
@@ -459,7 +461,7 @@ describe("pi auth login", () => {
 	});
 
 	test("configures the Radius MCP server without asking, once", async () => {
-		const agentDir = mkdtempSync(join(tmpdir(), "pi-auth-login-"));
+		const agentDir = mkdtempSync(join(tmpdir(), "nycode-auth-login-"));
 		try {
 			const { modelRuntime } = await setup({ apiKey: bothMethods.apiKey }, "radius");
 			const mcpPath = join(agentDir, "mcp.json");

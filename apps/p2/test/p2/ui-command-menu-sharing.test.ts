@@ -407,7 +407,7 @@ describe("command menu: sharing and artifacts", { skip: !browserTests }, () => {
 			const guest = await join(links!.find((link) => link.mode === mode)!.url, name);
 			guests.push(guest);
 			await guest.click(`.session-row[data-session="${id}"] .subagent-toggle[aria-expanded=false]`);
-			await guest.wait(`${helperItem}?.querySelector('.nav-marker > .pi-dots')`);
+			await guest.wait(`${helperItem}?.querySelector('.nav-marker > .nycode-dots')`);
 			return guest;
 		};
 		/** Opens the menu on `item` (hovered) in `guest` and returns its titles once its rows settled. */

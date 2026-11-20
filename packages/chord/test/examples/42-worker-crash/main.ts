@@ -16,7 +16,7 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const plugins = createPlugins(
 	{
 		roots: [fileURLToPath(new URL("./plugins/", import.meta.url))],
-		kinds: { worker: { platform: "node", hostPackages: ["@earendil-works/chord"] } },
+		kinds: { worker: { platform: "node", hostPackages: ["@nycode/chord"] } },
 		onError: console.error,
 	},
 	context,

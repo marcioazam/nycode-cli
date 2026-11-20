@@ -10,7 +10,7 @@ import {
 	matchesKey,
 	truncateToWidth,
 	visibleWidth,
-} from "@earendil-works/pi-tui";
+} from "@nycode/tui";
 
 /** What a consent screen shows. Facts are launcher-known (origin, action, path, size); `preview` is the exact data. */
 export type ConsentRequest = {

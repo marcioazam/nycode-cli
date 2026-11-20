@@ -59,7 +59,7 @@ the model. The rest are additions.
   `variant<C>(principal, Type, params)`.
 - **M7 Users:** principals are `server | worker | user { id }`. Sign-in plugins find or create users. A user has N
   accounts in the vault.
-- **M8 MCP:** a checkout's `.pi/mcp.json` is only a suggestion: enabled per checkout, run in that env and directory.
+- **M8 MCP:** a checkout's `.nycode/mcp.json` is only a suggestion: enabled per checkout, run in that env and directory.
   Server-configured stdio servers run on the server machine. HTTP servers have no location. There is no `runOn`.
 
 The words below mean:
@@ -97,7 +97,7 @@ Each entry gives five things:
 - **Credentials:** vault, per (user, provider); lent or per person.
 - **Misfit:**
   - Selection is per provider, but Radius and admins restrict per model (gap 3).
-  - pi-ai's `AuthResult` has no expiry (`packages/ai/src/auth/types.ts:104`). The pushed state needs `expires` next
+  - nycode-ai's `AuthResult` has no expiry (`packages/ai/src/auth/types.ts:104`). The pushed state needs `expires` next
     to it.
   - The API key handed to the worker is a bearer key valid for every model of the provider, so a per-model
     restriction is enforced only by trusted worker code (gap 8).
@@ -106,7 +106,7 @@ Each entry gives five things:
   - Who pays is now a question (gap 16).
 
 **login**
-- **Is:** not a resource. It is the flow that writes vault entries (pi-ai `CredentialStore.modify` on the server).
+- **Is:** not a resource. It is the flow that writes vault entries (nycode-ai `CredentialStore.modify` on the server).
 - **Facts:** none. Entries live in the vault.
 - **Selector:** none.
 - **Gets:** pages get the per-user login flow, with questions per `docs/questions.md`.
@@ -173,7 +173,7 @@ Each entry gives five things:
   gets only the prompt section.
 - **Credentials:** the service token stays on the server.
 - **Misfit:** M4 names only worker-facing views. Per-session views must also serve page principals (minor).
-- **Rule to keep:** "only the owner speaks for Pi" and "read/write guests talk" become roles on
+- **Rule to keep:** "only the owner speaks for Nycode" and "read/write guests talk" become roles on
   `VoiceRoom { session, conversation }`.
 
 **prompt** (AGENTS.md, skills, templates)
@@ -189,7 +189,7 @@ Each entry gives five things:
 - **Misfit:**
   - In a project session it is unclear whose global instructions apply. The answer should follow the per-person
     rule: the session owner's.
-  - Skills under the env's home (`~/.pi/p2/skills` on the remote) belong to whoever's account the env logs in as. A
+  - Skills under the env's home (`~/.nycode/p2/skills` on the remote) belong to whoever's account the env logs in as. A
     lent env lends its owner's skills too. Acceptable, but say it.
 
 ### Capabilities that reach beyond the session
@@ -474,7 +474,7 @@ the Radius connection, a server-side integration with no session selection.
 **discord**
 - **Is:** an input source bound to a session, not a resource the session uses.
   - Bots are server-side integrations: tokens in `discord.json`.
-  - Links bind a channel to a session, with a cursor, threads and who may wake Pi (discord.md).
+  - Links bind a channel to a session, with a cursor, threads and who may wake Nycode (discord.md).
   - Linking moves the session into a sandbox and locks it to picked resources.
 - **Facts:**
   - bots;
@@ -655,7 +655,7 @@ check must use the selection.
    pick. The policy decides whether she may use the bot.
 2. Discord contributes restricts: the picked set (p2's lock) and env = the chosen sandbox. The projects include gives
    P's resources. The result is P's resources ∩ the pick, with a sandbox location.
-3. A stranger @-mentions Pi. The server builds the batch and delivers it as an input authored "Name · Discord". The
+3. A stranger @-mentions Nycode. The server builds the batch and delivers it as an input authored "Name · Discord". The
    stranger is not a principal, just an attributed author (discord.md, "Batch").
 4. The turn uses everything in the selection: Colin's lent linear if Cristina picked it, and Cristina's per-person
    Anthropic login.
@@ -679,14 +679,14 @@ What breaks:
 3. p2's steps: fence the worker; update the catalog and each following conversation's cwd (transcript-bound,
    Durable); reopen the env, prompt resources, workspace watches and file index; close the old connection unless a
    subagent with its own location still works there (remote-envs.md).
-4. MCP: the leases move to lab. The suggestions in the lab checkout's `.pi/mcp.json` are not enabled there, even if
+4. MCP: the leases move to lab. The suggestions in the lab checkout's `.nycode/mcp.json` are not enabled there, even if
    the same repository's suggestions were enabled at gpu. Expected under M8, but visible.
 5. The SSH login switches to lab's: lent by another person, possibly.
 6. Terminals stay where they were started. Ports: a remote env still cannot forward.
 
 What breaks:
 
-- M2 lists location as a folders-plugin fact ("session S works at slayer:~/pi"). In p2 it is per conversation,
+- M2 lists location as a folders-plugin fact ("session S works at slayer:~/nycode"). In p2 it is per conversation,
   transcript-bound, moved under a fence, and read by core at worker start.
 - If selectors read the location (sandbox restricts, checkout suggestions, "everything in ~/prod-repo gets prod MCP"),
   the selection depends on the location. The move and the new selection must commit in one fence. Otherwise the
@@ -828,7 +828,7 @@ the selection.
 
 ### 7. High: credential kinds beyond request auth
 
-**Problem.** M5's "workers get `AuthResult`" covers HTTP model auth only, and pi-ai's `AuthResult` has no expiry
+**Problem.** M5's "workers get `AuthResult`" covers HTTP model auth only, and nycode-ai's `AuthResult` has no expiry
 field (`packages/ai/src/auth/types.ts:104`). p2 also has:
 
 - SSH private keys, read by the worker today (`plugins/envs/worker.ts`);

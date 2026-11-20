@@ -6,7 +6,7 @@
 // bundle means this client's code is outdated, which the app answers by starting over (a page reloads). The surface
 // specifics (how a socket opens, how a script is fetched, what is outdated, the stylesheets) are given.
 
-import type { TelemetryContext } from "@earendil-works/pi-telemetry";
+import type { TelemetryContext } from "@nycode/telemetry";
 import { BACKGROUND_CONTEXT, type Context, withAbortSignal } from "../context/index.ts";
 import type { Principal } from "../data/index.ts";
 import { createHost, type Host, type HostError, type PluginFacet, type PluginFailure } from "../host/index.ts";

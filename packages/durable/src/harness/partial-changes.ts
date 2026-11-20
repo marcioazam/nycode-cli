@@ -1,15 +1,15 @@
 // What a streamed answer changed in its partial message between two partial commits, so a commit costs the new text.
 
-import { appendText, type Draft } from "@earendil-works/chord/delta";
-import type { JsonRepresentation, JsonValue } from "@earendil-works/chord/json";
-import type { AssistantMessage, AssistantMessageEvent, ToolCall } from "@earendil-works/pi-ai";
-import { type JsonChange, StreamingJsonParser } from "@earendil-works/pi-ai/utils/streaming-json";
+import type { AssistantMessage, AssistantMessageEvent, ToolCall } from "@nycode/ai";
+import { type JsonChange, StreamingJsonParser } from "@nycode/ai/utils/streaming-json";
+import { appendText, type Draft } from "@nycode/chord/delta";
+import type { JsonRepresentation, JsonValue } from "@nycode/chord/json";
 import { type AssignPlan, assignJson } from "./json.ts";
 import type { LiveState } from "./live.ts";
 
 type JsonContainer = Record<string, JsonValue> | JsonValue[];
 
-/** A partial message as `pi.live.generation.message` holds it. */
+/** A partial message as `nycode.live.generation.message` holds it. */
 export type PartialMessage = JsonRepresentation<AssistantMessage>;
 
 /** Committed arguments of a streamed tool call. */
@@ -175,7 +175,7 @@ function applyChange(block: Draft<JsonRepresentation<ToolCall>>, change: JsonCha
 	else appendText(parent as Draft<Record<string, string>>, String(key), change.text);
 }
 
-/** The value a `set` change reports: JSON data, which pi-ai types with read-only arrays. */
+/** The value a `set` change reports: JSON data, which nycode-ai types with read-only arrays. */
 function value(change: Extract<JsonChange, { kind: "set" }>): JsonValue {
 	return change.value as JsonValue;
 }

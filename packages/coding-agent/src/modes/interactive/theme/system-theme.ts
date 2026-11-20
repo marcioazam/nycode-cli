@@ -1,5 +1,5 @@
 /**
- * The `system` theme: pi's colors derived from the terminal's own theme.
+ * The `system` theme: nycode's colors derived from the terminal's own theme.
  *
  * Every token belongs to a color family (its hue) and has contrast rules: it must reach a contrast level
  * on the background and on the panels it is drawn on. Hue and saturation come from the terminal's palette
@@ -9,7 +9,7 @@
  * moves to another lightness, so pastel palettes stay pastel.
  *
  * A contrast level is a target-lightness curve: the OKLab lightness a token needs, given the lightness of
- * the surface below it. The curves were fitted to the reference theme design from the "Pi themes: system
+ * the surface below it. The curves were fitted to the reference theme design from the "Nycode themes: system
  * and light/dark" review. On dark backgrounds they aim for nearly fixed lightness; on light backgrounds the
  * required difference grows as the background darkens.
  *
@@ -29,7 +29,7 @@ import {
 	oklchColor,
 	type RgbColor,
 	rgbColor,
-} from "@earendil-works/pi-tui";
+} from "@nycode/tui";
 import type { ThemeAppearance, ThemeBg, ThemeColor, ThemeToken } from "./theme.ts";
 
 export const SYSTEM_THEME_NAME = "system";

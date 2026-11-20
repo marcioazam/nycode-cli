@@ -23,8 +23,8 @@ describe("defineTable", () => {
 	it("checks the table name, the version, key, index names and index columns", () => {
 		expect(() => defineTable("Edits", { version: 1, columns, key: ["id"] })).toThrow("expected lowercase");
 		expect(() => defineTable("a:b", { version: 1, columns, key: ["id"] })).toThrow("expected lowercase");
-		expect(defineTable("@pi/file-history.edits", { version: 1, columns, key: ["id"] }).name).toBe(
-			"@pi/file-history.edits",
+		expect(defineTable("@nycode/file-history.edits", { version: 1, columns, key: ["id"] }).name).toBe(
+			"@nycode/file-history.edits",
 		);
 		expect(() => defineTable("edits", { version: 0, columns, key: ["id"] })).toThrow("positive integer");
 		expect(() => defineTable("edits", { version: 1, columns, key: [] })).toThrow("no column");

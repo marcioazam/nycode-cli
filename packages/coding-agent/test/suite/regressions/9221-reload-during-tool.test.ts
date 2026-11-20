@@ -1,5 +1,5 @@
-import { fauxAssistantMessage, fauxToolCall } from "@earendil-works/pi-ai";
-import type { ToolResultMessage } from "@earendil-works/pi-ai/compat";
+import { fauxAssistantMessage, fauxToolCall } from "@nycode/ai";
+import type { ToolResultMessage } from "@nycode/ai/compat";
 import { Type } from "typebox";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { assistantMsg, userMsg } from "../../utilities.ts";
@@ -32,13 +32,13 @@ describe("reload during an active session operation", () => {
 			let providerResults: ToolResultMessage[] = [];
 			const h = await createHarness({
 				extensionFactories: [
-					(pi) => {
-						pi.on("session_shutdown", shutdown);
-						pi.registerCommand("reload-runtime", {
+					(nycode) => {
+						nycode.on("session_shutdown", shutdown);
+						nycode.registerCommand("reload-runtime", {
 							description: "Reload extensions",
 							handler: async (_args, ctx) => ctx.reload(),
 						});
-						pi.registerTool({
+						nycode.registerTool({
 							name: "wait_then_succeed",
 							label: "Wait then succeed",
 							description: "Use the tool context after waiting",
@@ -117,9 +117,9 @@ describe("reload during an active session operation", () => {
 		const h = await createHarness({
 			settings: { compaction: { keepRecentTokens: 1 } },
 			extensionFactories: [
-				(pi) => {
-					pi.on("session_shutdown", shutdown);
-					pi.on("session_before_compact", async (event) => {
+				(nycode) => {
+					nycode.on("session_shutdown", shutdown);
+					nycode.on("session_before_compact", async (event) => {
 						started.resolve();
 						await released.promise;
 						return {
@@ -130,7 +130,7 @@ describe("reload during an active session operation", () => {
 							},
 						};
 					});
-					pi.on("session_before_tree", async () => {
+					nycode.on("session_before_tree", async () => {
 						started.resolve();
 						await released.promise;
 					});
@@ -163,9 +163,9 @@ describe("reload during an active session operation", () => {
 		const start = vi.fn();
 		const h = await createHarness({
 			extensionFactories: [
-				(pi) => {
-					pi.on("session_shutdown", shutdown);
-					pi.on("session_start", start);
+				(nycode) => {
+					nycode.on("session_shutdown", shutdown);
+					nycode.on("session_start", start);
 				},
 			],
 		});

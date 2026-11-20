@@ -1,9 +1,9 @@
 // Voice mode (server): browsers reach the speech service (sts-server) only through p2, which signs it in and tells it
 // who is talking (the token never leaves the server). `voice.json` in the data dir names the service and its token;
-// without it voice mode is off. Each conversation is a voice room: the owner's browser has Pi's speech synthesized
+// without it voice mode is off. Each conversation is a voice room: the owner's browser has Nycode's speech synthesized
 // once for everyone, each person's microphone becomes their own messages and is relayed to the others. The owner and
 // read/write guests of the session take part (a guest's grant is rechecked while its socket lives); only the owner
-// speaks for Pi or sets the voice. View-only guests get nothing.
+// speaks for Nycode or sets the voice. View-only guests get nothing.
 //
 // The configuration is pushed, not asked for: VoiceService (contract.ts) publishes the service's engines and default
 // (the service's /voices), or null without a valid voice.json. While anyone holds it, the data dir is watched, and each
@@ -16,7 +16,7 @@ import { type FSWatcher, watch } from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { join } from "node:path";
 import type { Duplex } from "node:stream";
-import { compile, nul, obj, type Static, str, union } from "@earendil-works/pi-schema";
+import { compile, nul, obj, type Static, str, union } from "@nycode/schema";
 import {
 	BACKGROUND_CONTEXT,
 	type Ctx,
@@ -441,7 +441,7 @@ export default defineFacet((host) => {
 						} catch {
 							command = undefined;
 						}
-						// A guest may only tune its own microphone; the owner also speaks for Pi and sets the voice.
+						// A guest may only tune its own microphone; the owner also speaks for Nycode and sets the voice.
 						const allowed = owner ? isRoomCommand(command) : isRoomPersonal(command);
 						if (!allowed) {
 							browser.send(

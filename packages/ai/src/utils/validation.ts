@@ -1,5 +1,5 @@
-import { type CoercingValidator, compile } from "@earendil-works/pi-schema";
-import { formats } from "@earendil-works/pi-schema/formats";
+import { type CoercingValidator, compile } from "@nycode/schema";
+import { formats } from "@nycode/schema/formats";
 import type { Tool, ToolCall } from "../types.ts";
 
 // One compiled validator per schema object: tool schemas are long-lived, so the WeakMap drops entries with their tools.
@@ -17,7 +17,7 @@ function getValidator(schema: Tool["parameters"]): CoercingValidator {
 	return validator;
 }
 
-/** A pi-schema error path (a JSON Pointer) as the dotted path the model sees: `/edits/0/oldText` -> `edits.0.oldText`. */
+/** A nycode-schema error path (a JSON Pointer) as the dotted path the model sees: `/edits/0/oldText` -> `edits.0.oldText`. */
 function formatValidationPath(pointer: string): string {
 	if (pointer === "") return "root";
 	return pointer
@@ -43,8 +43,8 @@ export function validateToolCall(tools: Tool[], toolCall: ToolCall): any {
 }
 
 /**
- * Validates tool call arguments against the tool's JSON Schema (any JSON Schema: pi-schema's builders, TypeBox, plain
- * objects). The arguments are coerced first (pi-schema's `parse()`): models often send `"42"` for a number, a single
+ * Validates tool call arguments against the tool's JSON Schema (any JSON Schema: nycode-schema's builders, TypeBox, plain
+ * objects). The arguments are coerced first (nycode-schema's `parse()`): models often send `"42"` for a number, a single
  * value for an array, or `null` for an omitted optional property.
  * @param tool The tool definition with its JSON Schema
  * @param toolCall The tool call from the LLM

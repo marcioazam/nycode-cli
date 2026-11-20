@@ -4,14 +4,14 @@ import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
-import type { ConversationView } from "@earendil-works/pi-durable";
+import type { ConversationView } from "@nycode/durable";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { SessionLock, Sessions } from "../../plugins/sessions/contract.ts";
 import type { RefIn } from "../../src/runtime/chord.ts";
 import { type Fixture, holdIn, startFixture, until } from "./helpers.ts";
 
-/** The system sections in effect: the latest value of each, replayed from `pi.system` entries. */
+/** The system sections in effect: the latest value of each, replayed from `nycode.system` entries. */
 function sections(view: ConversationView | null | undefined): Record<string, string> {
 	const result: Record<string, string> = {};
 	for (const entry of view?.entries ?? []) {
@@ -58,7 +58,7 @@ describe("prompt resources (fake provider)", () => {
 		await chat.send({ text: "hello", requestId: "1" }, BACKGROUND_CONTEXT);
 		const view = await until(chat.view, (value) => Boolean(sections(value)["agents-md"]));
 		const prompt = sections(view);
-		assert.match(prompt.app ?? "", /running inside Pi \(p2/);
+		assert.match(prompt.app ?? "", /running inside Nycode \(p2/);
 		assert.match(prompt.app ?? "", new RegExp(fixture.dataDir.replaceAll("/", "\\/")));
 		assert.match(prompt["agents-md"] ?? "", /Global rule: be brief\.[\s\S]*Project rule: use tabs\./);
 		assert.match(prompt.skills ?? "", /<name>deploy<\/name><description>Deploys the app\.<\/description>/);

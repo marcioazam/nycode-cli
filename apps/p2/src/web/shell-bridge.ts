@@ -5,19 +5,19 @@ import type { ShellTheme, ShellThemeLink, ThemePreference } from "./theme.ts";
  * The Radius shell's frame
  * ========================
  *
- * Through Radius the app runs in a frame of the Radius shell (`radius.earendil.com/pi/<organization>/<brain>`), on
+ * Through Radius the app runs in a frame of the Radius shell (`radius.earendil.com/nycode/<organization>/<brain>`), on
  * the brain's own origin (`<label>.rdtun.com`). The shell can neither read nor set the frame's address, so on its own
  * its URL stays at the brain's start page while the user moves around in the app: reloading, bookmarking or sharing
  * the shell's URL loses their place, and a link opened in another tab opens the bare frame origin. And the shell's
- * chrome and the app would each keep their own light/dark choice. This bridge is the frame's side of the `pi-shell`
- * channel that fixes these (the shell's side and the full contract: `client/src/views/pi-shell/frame-bridge.ts` in
+ * chrome and the app would each keep their own light/dark choice. This bridge is the frame's side of the `nycode-shell`
+ * channel that fixes these (the shell's side and the full contract: `client/src/views/nycode-shell/frame-bridge.ts` in
  * Radius):
  *
- *   app → shell  { channel: "pi-shell", type: "ready", version: 1 }                once per page load
- *   shell → app  { channel: "pi-shell", type: "hello", version: 1, base, theme }   base: the brain's shell URL
- *   app → shell  { channel: "pi-shell", type: "location", version: 1, path }       after every navigation
- *   shell → app  { channel: "pi-shell", type: "theme", version: 1, preference, scheme }   on every change
- *   app → shell  { channel: "pi-shell", type: "set-theme", version: 1, preference }        the user picked one
+ *   app → shell  { channel: "nycode-shell", type: "ready", version: 1 }                once per page load
+ *   shell → app  { channel: "nycode-shell", type: "hello", version: 1, base, theme }   base: the brain's shell URL
+ *   app → shell  { channel: "nycode-shell", type: "location", version: 1, path }       after every navigation
+ *   shell → app  { channel: "nycode-shell", type: "theme", version: 1, preference, scheme }   on every change
+ *   app → shell  { channel: "nycode-shell", type: "set-theme", version: 1, preference }        the user picked one
  *
  * `path` is the route's link address (`routeHref`: its path and, when the top layer is a viewer, that viewer), so the
  * shell's URL reopens what the user sees, also an open artifact. It never is the frame's `location`: a page outside
@@ -30,7 +30,7 @@ import type { ShellTheme, ShellThemeLink, ThemePreference } from "./theme.ts";
  * the user's pick as `set-theme` and takes the shell's `theme` answer (its echo) as authoritative; the shell also sends
  * `theme` when another of its tabs changes it or the system scheme changes under "system". A `hello` without `theme`
  * (an older shell) leaves the theme to the page (backend `local`). For the first paint before `hello` the shell also
- * puts its resolved scheme into the URL it frames, `#pi-shell-scheme=light|dark` (WebKit does not resolve a frame's
+ * puts its resolved scheme into the URL it frames, `#nycode-shell-scheme=light|dark` (WebKit does not resolve a frame's
  * `prefers-color-scheme` with the embedder's `color-scheme`): the page's inline script (src/hosts/web.ts) paints it
  * and removes the fragment before the app reads the URL; a colour only, trusted for nothing else.
  *
@@ -47,7 +47,7 @@ import type { ShellTheme, ShellThemeLink, ThemePreference } from "./theme.ts";
  * messages and never answer: links then stay this origin's and the theme the page's, as before.
  */
 
-const CHANNEL = "pi-shell";
+const CHANNEL = "nycode-shell";
 const VERSION = 1;
 
 /** The Radius shell framing this page, when the server named one (a plain origin) and a parent frames it. */
@@ -89,7 +89,7 @@ function themeIn(value: unknown): ShellTheme | undefined {
 }
 
 /**
- * Speaks the frame's side of the `pi-shell` channel when the Radius shell frames this page, passing what it says about
+ * Speaks the frame's side of the `nycode-shell` channel when the Radius shell frames this page, passing what it says about
  * the theme to `theme` (theme.ts `shellTheme`); returns a stop function.
  */
 export function startShellBridge(

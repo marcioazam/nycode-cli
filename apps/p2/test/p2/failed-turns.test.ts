@@ -3,9 +3,9 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import type { AssistantMessage } from "@earendil-works/pi-ai";
-import { createModels } from "@earendil-works/pi-ai/models";
-import { fauxAssistantMessage, fauxProvider, fauxText } from "@earendil-works/pi-ai/providers/faux";
+import type { AssistantMessage } from "@nycode/ai";
+import { createModels } from "@nycode/ai/models";
+import { fauxAssistantMessage, fauxProvider, fauxText } from "@nycode/ai/providers/faux";
 import {
 	type CompactionFailure,
 	type ConversationView,
@@ -14,9 +14,9 @@ import {
 	Harness,
 	type LiveState,
 	type RunFailure,
-} from "@earendil-works/pi-durable";
-import { openNodeSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite/node";
-import { stripTerminalSequences } from "@earendil-works/pi-tui";
+} from "@nycode/durable";
+import { openNodeSqliteStorage } from "@nycode/durable/storage/sqlite/node";
+import { stripTerminalSequences } from "@nycode/tui";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { transcriptComponent } from "../../src/tui/messages.ts";
 import { buildTranscript } from "../../src/web/transcript.ts";
@@ -33,7 +33,7 @@ function viewOf(
 	return {
 		conversation: { id } as ConversationView["conversation"],
 		docs: {},
-		entries: [{ id: 1 as EntryId, conversationId: id, kind: "pi.assistant", model: [message] }],
+		entries: [{ id: 1 as EntryId, conversationId: id, kind: "nycode.assistant", model: [message] }],
 	};
 }
 
@@ -44,7 +44,7 @@ function runFailureView(reason: RunFailure["reason"], detail?: string): Conversa
 		reason,
 		...(detail === undefined ? {} : { detail }),
 	};
-	return { ...viewOf("stop"), entries: [], docs: { "pi.live": { runFailure } } };
+	return { ...viewOf("stop"), entries: [], docs: { "nycode.live": { runFailure } } };
 }
 
 function compactionView(
@@ -53,7 +53,7 @@ function compactionView(
 ): ConversationView {
 	const base = viewOf("stop");
 	const compactionFailure: CompactionFailure = { taskId: 10 as CompactionFailure["taskId"], trigger, error };
-	return { ...base, entries: [], docs: { "pi.live": { compactionFailure } } };
+	return { ...base, entries: [], docs: { "nycode.live": { compactionFailure } } };
 }
 
 test("compaction failures persist while idle, survive snapshots, replace older failures, and clear with the live record", () => {
@@ -70,7 +70,7 @@ test("compaction failures persist while idle, survive snapshots, replace older f
 		assert.equal(transcript.busy, false);
 		assert.equal(transcript.working, false);
 		assert.equal(
-			buildTranscript(wholeView({ ...view, docs: { ...view.docs, "pi.usage": {} } })).items[0],
+			buildTranscript(wholeView({ ...view, docs: { ...view.docs, "nycode.usage": {} } })).items[0],
 			transcript.items[0],
 		);
 		const snapshot: ConversationView = JSON.parse(JSON.stringify(view));
@@ -80,7 +80,7 @@ test("compaction failures persist while idle, survive snapshots, replace older f
 			buildTranscript(wholeView(newer)).items.map((item) => item.type === "failure" && item.text),
 			["Compaction failed: new failure"],
 		);
-		assert.deepEqual(buildTranscript(wholeView({ ...view, docs: { "pi.live": {} } })).items, []);
+		assert.deepEqual(buildTranscript(wholeView({ ...view, docs: { "nycode.live": {} } })).items, []);
 	}
 });
 
@@ -107,13 +107,13 @@ test("a run that ended without an answer says why until the next run; Stop and a
 	// The same failure is the same item; a cleared one is gone.
 	const view = runFailureView("model_error", "x");
 	assert.equal(buildTranscript(wholeView(view)).items[0], buildTranscript(wholeView(view)).items[0]);
-	assert.deepEqual(texts({ ...view, docs: { "pi.live": {} } }), []);
+	assert.deepEqual(texts({ ...view, docs: { "nycode.live": {} } }), []);
 });
 
 test("a blocking compaction failure that ended the run shows once; stored model-error notices of earlier versions stay", () => {
 	const detail = "Compaction failed: Summarization failed: 400 prompt is too long";
 	const compaction = compactionView();
-	const live = compaction.docs["pi.live"] as LiveState;
+	const live = compaction.docs["nycode.live"] as LiveState;
 	const runFailure: RunFailure = { taskId: 21 as RunFailure["taskId"], inputs: [], reason: "model_error", detail };
 	const legacy = {
 		id: 1 as EntryId,
@@ -122,14 +122,14 @@ test("a blocking compaction failure that ended the run shows once; stored model-
 		data: { detail: "quota exceeded" },
 	};
 	const items = buildTranscript(
-		wholeView({ ...compaction, entries: [legacy], docs: { "pi.live": { ...live, runFailure } } }),
+		wholeView({ ...compaction, entries: [legacy], docs: { "nycode.live": { ...live, runFailure } } }),
 	).items;
 	assert.deepEqual(
 		items.map((item) => (item.type === "failure" ? item.text : item.type)),
 		["The model could not answer this input. quota exceeded", detail],
 	);
 	// Without the compaction failure the run's failure shows.
-	const alone = buildTranscript(wholeView({ ...compaction, docs: { "pi.live": { runFailure } } })).items;
+	const alone = buildTranscript(wholeView({ ...compaction, docs: { "nycode.live": { runFailure } } })).items;
 	assert.deepEqual(
 		alone.map((item) => item.type === "failure" && item.text),
 		[`The model could not answer this input. ${detail}`],
@@ -224,7 +224,7 @@ test(
 				...empty,
 				entries: [],
 				docs: {
-					"pi.live": {
+					"nycode.live": {
 						run: { taskId: 1, inputs: [] },
 						generation: {
 							attempt: 1,
@@ -277,7 +277,7 @@ test(
 				await browser.evaluate("document.querySelector('.notice.error').getBoundingClientRect().height>0"),
 				true,
 			);
-			await show({ ...compaction, docs: { ...compaction.docs, "pi.usage": {} } });
+			await show({ ...compaction, docs: { ...compaction.docs, "nycode.usage": {} } });
 			await browser.wait(
 				"document.querySelector('.notice.error')?.textContent==='Compaction failed: bad request <script>unsafe</script>'",
 			);
@@ -292,7 +292,7 @@ test(
 			await show(replacement);
 			await browser.wait("document.querySelector('.notice.error')?.textContent==='Compaction failed: new failure'");
 			assert.equal(await browser.evaluate("document.querySelectorAll('.notice.error').length"), 1);
-			await show({ ...replacement, docs: { "pi.live": {} } });
+			await show({ ...replacement, docs: { "nycode.live": {} } });
 			await browser.wait("document.querySelector('.messages') && !document.querySelector('.notice.error')");
 		} finally {
 			await browser?.close();
@@ -304,16 +304,20 @@ test(
 test("p2 TUI shows the persistent compaction error once and removes it when Durable clears it", () => {
 	const base = compactionView();
 	const detail = "Compaction failed: Summarization failed: 400 prompt is too long";
-	const live = base.docs["pi.live"] as LiveState;
+	const live = base.docs["nycode.live"] as LiveState;
 	const runFailure: RunFailure = { taskId: 21 as RunFailure["taskId"], inputs: [], reason: "model_error", detail };
-	const view = { ...base, docs: { "pi.live": { ...live, runFailure } } };
+	const view = { ...base, docs: { "nycode.live": { ...live, runFailure } } };
 	const plain = transcriptComponent(buildTranscript(wholeView(view)), false, false)
 		.render(200)
 		.map(stripTerminalSequences)
 		.join("\n");
 	assert.equal(plain.split(detail).length - 1, 1);
 	assert(!plain.includes("The model could not answer this input."));
-	const cleared = transcriptComponent(buildTranscript(wholeView({ ...base, docs: { "pi.live": {} } })), false, false)
+	const cleared = transcriptComponent(
+		buildTranscript(wholeView({ ...base, docs: { "nycode.live": {} } })),
+		false,
+		false,
+	)
 		.render(200)
 		.map(stripTerminalSequences)
 		.join("\n");

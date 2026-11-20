@@ -1,7 +1,7 @@
 // Messages (§22, R1, R4, 2b): the one `Message` type every link carries, defined as a schema and checked after every
 // decode, and the codecs that turn it into bytes.
 
-import { map, obj as openObj, type Schema } from "@earendil-works/pi-schema";
+import { map, obj as openObj, type Schema } from "@nycode/schema";
 import type { Context } from "../context/index.ts";
 import { arr, int, lit, obj, oneOf, opt, type Static, str, union, unknown } from "../contracts/index.ts";
 import { validatorFor } from "../data/internal.ts";

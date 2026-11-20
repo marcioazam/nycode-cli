@@ -2,7 +2,7 @@
 // the cache of the plugin's generation. A reload to a new generation restarts `Status`; its new code needs a new
 // `Cache` object, and its old attempt stays open until that one is open.
 
-import { constant, defineFacet, local, str } from "@earendil-works/chord";
+import { constant, defineFacet, local, str } from "@nycode/chord";
 
 const generation = "v1";
 

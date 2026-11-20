@@ -1,7 +1,7 @@
 ---
-title: Waiting for the World: suspendable work in pi-durable
+title: Waiting for the World: suspendable work in nycode-durable
 cover: Waiting for / the World
-kicker: A design book · draft, fifth revision · pi-durable · 2026-11-09
+kicker: A design book · draft, fifth revision · nycode-durable · 2026-11-09
 subtitle: How a task, a tool, or a gate waits hours for a webhook, a person, or its children, while nothing runs and the process may sleep
 stats:
   - 0 | new task statuses
@@ -11,10 +11,10 @@ stats:
 note: |
   Draft for review, not built. Follows `spec.md` in the same directory (cited as §n), which records the owner's
   decisions of 2026-11-09, the review by gpt-6-astra, gpt-6.1-sol and claude-opus-5-5, and extends
-  `packages/durable/docs/spec.md` (cited as spec §n). Schemas use `@earendil-works/pi-schema`. How plugins compose
+  `packages/durable/docs/spec.md` (cited as spec §n). Schemas use `@nycode/schema`. How plugins compose
   hooks into policies (approvals, quotas, ordering) is the host's design, not Durable's; the last chapter says where
   that line runs.
-colophon: Waiting for the World · fifth revision · 2026-11-09 · based on suspendable/spec.md and pi-durable spec.md
+colophon: Waiting for the World · fifth revision · 2026-11-09 · based on suspendable/spec.md and nycode-durable spec.md
 ---
 
 # Before we begin {.preface}
@@ -28,7 +28,7 @@ What Ana's team wants is simple to say. While the build runs, nothing should run
 minutes, no alarm except at a deadline. When the webhook arrives, the call continues where it left off and the model
 gets the result. If the process dies in between, the wait is not lost, and the build is not started twice.
 
-pi-durable cannot do that today. A tool is one in-memory function, so the only way for `run_ci` to get the webhook is
+nycode-durable cannot do that today. A tool is one in-memory function, so the only way for `run_ci` to get the webhook is
 to await it inside that function. This book shows why that fails, and then builds the solution one concept at a
 time: signals, sleeps that wait for signals, tools that park, waits on children, waiting for a subagent, and gates
 before a tool runs.
@@ -91,7 +91,7 @@ type ToolRegistration<TParameters extends object = object, TDetails extends Json
 So `run_ci` has to await the webhook inside `execute()`:
 
 ```ts
-import { obj, str } from "@earendil-works/pi-schema";
+import { obj, str } from "@nycode/schema";
 
 // The CI service's client, and a host helper that resolves when the webhook for a build arrives.
 declare const ci: { trigger(input: { ref: string }, context: Context): Promise<{ id: string }> };
@@ -138,7 +138,7 @@ The missing piece is a way for the outside world to hand a value to a task that 
 function defineSignal<S extends object>(definition: {
   readonly name: string; // unique like a task kind; no "/"
   readonly version: number;
-  readonly schema: S; // a pi-schema schema of a JSON value (no bigint(), no bytes()); the value type is Static<S>
+  readonly schema: S; // a nycode-schema schema of a JSON value (no bigint(), no bytes()); the value type is Static<S>
   readonly migrate?: (value: JsonValue, fromVersion: number) => Static<S>;
 }): SignalToken<Static<S>>;
 
@@ -153,7 +153,7 @@ type SignalKey<T> = { readonly signal: string; readonly key: string; readonly "~
 ```
 
 ```ts
-import { obj, oneOf, str } from "@earendil-works/pi-schema";
+import { obj, oneOf, str } from "@nycode/schema";
 
 const CiResult = defineSignal({
   name: "app.ci-result",
@@ -209,7 +209,7 @@ harness => harness: commit: sleeping on "done"
 harness -> tool: the key holds a value: wake at once
 :::
 
-Where it is stored: the task's memos, under a prefix the Harness reserves (`pi.signal.app.ci-result/done`). Memos
+Where it is stored: the task's memos, under a prefix the Harness reserves (`nycode.signal.app.ci-result/done`). Memos
 already live exactly as long as needed (spec §5.2): through checkpoints, restarts, handovers, and migrations, gone when
 the task ends. Code never reads that memo directly.
 
@@ -265,7 +265,7 @@ interface TaskRuntime {
 ```
 
 ```ts
-import { obj, str } from "@earendil-works/pi-schema";
+import { obj, str } from "@nycode/schema";
 
 const HOUR = 60 * 60 * 1000;
 const Answer = defineSignal({ name: "app.answer", version: 1, schema: obj({ text: str() }) });
@@ -375,7 +375,7 @@ why it runs. When the call wakes, the same `execute()` runs again with the same 
 ## run_ci, parked
 
 ```ts
-import { obj, oneOf, str } from "@earendil-works/pi-schema";
+import { obj, oneOf, str } from "@nycode/schema";
 
 const HOUR = 60 * 60 * 1000;
 const CiResult = defineSignal({ name: "app.ci-result", version: 1, schema: obj({ status: oneOf(["passed", "failed"]), logUrl: str() }) });
@@ -534,7 +534,7 @@ wake, so after a wake every `executeTool()` needs an explicit key and an unkeyed
 A `wait` with `policy: "any"` wakes on the first child that ends; the wake lists the children that are terminal:
 
 ```ts
-import { obj, str } from "@earendil-works/pi-schema";
+import { obj, str } from "@nycode/schema";
 
 const ResearchParameters = obj({ x: str(), y: str() });
 
@@ -658,7 +658,7 @@ top: resolve, validate, every `beforeTool` in order, validate again. A gate that
 whole pass ends without a block or a sleep; once intent is committed, `beforeTool` never runs again.
 
 ```ts
-import { bool, obj } from "@earendil-works/pi-schema";
+import { bool, obj } from "@nycode/schema";
 
 const DAY = 24 * 60 * 60 * 1000;
 const Approval = defineSignal({ name: "approvals.decision", version: 1, schema: obj({ allow: bool() }) });
@@ -828,7 +828,7 @@ The result commit is atomic with the entry and the slot. Nothing reruns.
 # Seeing What Waits {#visibility lede="What hosts and UIs can see of parked work, and how a host decides whether to stay awake."}
 
 The task graph shows a sleeping node with its `until` and its keys, and a waiting node with its policy. A parked tool
-call's slot in `pi.live` shows `status: "sleeping"` or `"waiting"`. Durable stores no description of what a wait is
+call's slot in `nycode.live` shows `status: "sleeping"` or `"waiting"`. Durable stores no description of what a wait is
 for: a question's text or an approval's arguments live with whoever asked, in their own records, keyed by task ID and
 key.
 
@@ -855,7 +855,7 @@ recognized and becomes an error result.
 
 None left. Decided: an `afterTools` task can end the run with `{ terminate: true }`, as a `terminate` round ends;
 `RunEndTask` and `runEndTask` (released in 1.5.0) are renamed `HookTask` and `hookTask`, a task spawned by a hook; `run.yield` stays in
-`pi.live`; a model request cannot sleep yet (deferred); code mode parking its VM is separate work
+`nycode.live`; a model request cannot sleep yet (deferred); code mode parking its VM is separate work
 (earendil-works/pi#11981).
 
 # Examples to Build {.appendix}
@@ -881,7 +881,7 @@ format (faux provider, memory storage, printed results), after `37-harness-regis
 |---|---|
 | `TaskState` | `sleeping`: `until?`, `signals?`; `waiting`: `policy: "any"`; `pending`/`running`: `wake?` |
 | `WakeReason` | `time` \| `expired` \| `signal` (name, key) \| `tasks` (ended); the existing `Wake` is unchanged |
-| signals | `defineSignal({ name, version, schema, migrate? })` over a pi-schema schema; `token.key(key)` |
+| signals | `defineSignal({ name, version, schema, migrate? })` over a nycode-schema schema; `token.key(key)` |
 | delivery | `harness.signal(taskId, token, key, value, context)`, `tx.signal(taskId, token, key, value)`: `delivered` \| `duplicate` \| `invalid` \| `closed` \| `not_found` |
 | reading | `readSignal(token, key, context)` on `TaskRuntime`, `HookApi`, `ToolExecutionApi`: `{ value }` \| `{ expired: true }` \| undefined |
 | tools | `execute()` may return `{ sleep }` or `{ wait }`; `api.wake`, `api.checkpoint`; `cancel?(args, api, context)`; `defineTool<TParameters, TDetails, C>` |
@@ -889,8 +889,8 @@ format (faux provider, memory storage, printed results), after `37-harness-regis
 | submissions | `notify: { taskId, key }`; built-in `SubmissionSettled` |
 | hooks | `beforeTool` may return `{ sleep }`; `afterTools` and `onYield` may return `{ tasks }`; `afterTools` tasks may end with `{ terminate: true }`; `RunEndTask`/`runEndTask` renamed `HookTask`/`hookTask` |
 | `HookApi` | `readSignal()`, `now()` |
-| tool task | `pi.tool` 4: checkpoint `parked`; intent stores `wake` and `checkpoint`; `durationMs` is the whole span |
-| documents | `pi.live`: slot status `sleeping`/`waiting`, `run.yield` (no version bump); `pi.generation` 3: phases `afterTools`, `yield` |
+| tool task | `nycode.tool` 4: checkpoint `parked`; intent stores `wake` and `checkpoint`; `durationMs` is the whole span |
+| documents | `nycode.live`: slot status `sleeping`/`waiting`, `run.yield` (no version bump); `nycode.generation` 3: phases `afterTools`, `yield` |
 | error codes | `invalid_park` |
 | storage | no schema change |
 

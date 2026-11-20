@@ -55,8 +55,8 @@ value a worker (slice 10) or a page (slice 11) evaluates where it runs.
 | a file of another discovered plugin (`../sessions/contract.ts`) | inlined (a copy), listed in `copied`; it may import only host packages and files of its own plugin, never packages (a build error otherwise): contracts and side-effect-free modules only (decision 4) |
 | a package in the plugin's `dependencies` | inlined from its `node_modules` |
 | a package in `chord.external` (Node builds) | external, `require`d at evaluation from the plugin's `node_modules`; a browser build fails |
-| a host package (`options.hostPackages`, e.g. `@earendil-works/chord`, `react`, `react/jsx-runtime`, `@app/core`) | external, from the map at evaluation |
-| `@earendil-works/chord/plugins` | external always (its `pluginFile` is per facet, §3) |
+| a host package (`options.hostPackages`, e.g. `@nycode/chord`, `react`, `react/jsx-runtime`, `@app/core`) | external, from the map at evaluation |
+| `@nycode/chord/plugins` | external always (its `pluginFile` is per facet, §3) |
 | a Node builtin (`node:fs`, `fs`) | external (Node builds); a browser build fails |
 | CSS (browser builds) | one stylesheet per facet (`css`) |
 | an asset (`import url from "./icon.svg?url"`, `.wasm`, browser builds) | a content-hashed file in `assets`; the import is its URL under the app's `options.publicPath` |
@@ -75,11 +75,11 @@ value a worker (slice 10) or a page (slice 11) evaluates where it runs.
 const facet = evaluateFacet(built, { hostPackages: HOST, plugin });   // returns the facet, or throws its error
 ```
 
-- `vm.Script` under a stable filename per (plugin, kind, digest), path-like (`/chord-plugins/@pi/notes/worker.ts`
+- `vm.Script` under a stable filename per (plugin, kind, digest), path-like (`/chord-plugins/@nycode/notes/worker.ts`
   plus the digest), run in this context; the default export, checked to be a facet (a declaration error otherwise).
 - **The `require` it passes answers, in order:** the host-package map (each value is what Node's `require` would give:
   a CommonJS package's exports, an ESM package's namespace wrapped once with `__esModule: true`, so default and named
-  imports both work); `@earendil-works/chord/plugins` → `{ pluginFile }` bound to this plugin's directory;
+  imports both work); `@nycode/chord/plugins` → `{ pluginFile }` bound to this plugin's directory;
   `chord.external` packages and Node builtins through `createRequire(join(plugin.dir, "package.json"))`; anything else
   throws naming the facet.
 - **`pluginFile(path)`** gives the absolute path of a file inside the plugin's directory; `..` out of it is refused.
@@ -118,8 +118,8 @@ Decision "Per plugin at startup and reload" changes `host.load` and `host.reload
 
 ```ts
 const plugins = createPlugins({ roots: ["./plugins"], kinds: KINDS, hostPackages: HOST, base: ["./src"] }, ctx);
-plugins.state      // a JSON watchable: { dirty: ["@pi/notes"], install: ["@pi/notes"], set: false, base: false }
-const next = await plugins.build(["@pi/notes"], ctx);                 // built results per (plugin, kind), plain data
+plugins.state      // a JSON watchable: { dirty: ["@nycode/notes"], install: ["@nycode/notes"], set: false, base: false }
+const next = await plugins.build(["@nycode/notes"], ctx);                 // built results per (plugin, kind), plain data
 await rollout([serverStep, ...workerSteps, ...clientSteps], next, ctx);   // the app's order (decision 3)
 ```
 

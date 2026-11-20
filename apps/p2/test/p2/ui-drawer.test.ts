@@ -129,7 +129,7 @@ describe("drawer and new-session parity", { skip: !browserTests }, () => {
 		await browser.metrics(1280, 900);
 		await browser.open(`http://127.0.0.1:${fixture.server.port}/new`);
 		await browser.wait(`document.querySelector('.sidebar-resize') && !document.querySelector('.offline')`);
-		await browser.evaluate("localStorage.removeItem('pi-sidebar-width')");
+		await browser.evaluate("localStorage.removeItem('nycode-sidebar-width')");
 		const width = () => browser.evaluate<number>(`document.querySelector('.drawer').getBoundingClientRect().width`);
 		const drag = async (x: number) => {
 			const point = await browser.evaluate<{ x: number; y: number }>(
@@ -152,19 +152,19 @@ describe("drawer and new-session parity", { skip: !browserTests }, () => {
 		};
 		assert.equal(await width(), 300);
 		await drag(400);
-		await browser.wait(`localStorage.getItem('pi-sidebar-width')==='400'`);
+		await browser.wait(`localStorage.getItem('nycode-sidebar-width')==='400'`);
 		assert.equal(await width(), 400);
 		await drag(0);
-		await browser.wait(`localStorage.getItem('pi-sidebar-width')==='220'`);
+		await browser.wait(`localStorage.getItem('nycode-sidebar-width')==='220'`);
 		await drag(1200);
-		await browser.wait(`localStorage.getItem('pi-sidebar-width')==='560'`);
+		await browser.wait(`localStorage.getItem('nycode-sidebar-width')==='560'`);
 		await browser.open(`http://127.0.0.1:${fixture.server.port}/new`);
 		await browser.wait(`document.querySelector('.sidebar-resize') && !document.querySelector('.offline')`);
 		assert.equal(await width(), 560);
 		await browser.metrics(390, 844);
 		await browser.wait(`getComputedStyle(document.querySelector('.sidebar-resize')).display==='none'`);
 		assert.equal(await width(), 320);
-		await browser.evaluate("localStorage.removeItem('pi-sidebar-width')");
+		await browser.evaluate("localStorage.removeItem('nycode-sidebar-width')");
 	});
 
 	it("orders pinned sessions first, shows and hides subagents behind the session's chevron, and shows a working subagent on its collapsed session", async () => {
@@ -213,7 +213,7 @@ describe("drawer and new-session parity", { skip: !browserTests }, () => {
 		await browser.wait(`!${conversations}.hidden && ${conversations}.querySelector('.subagent-row')`);
 		await browser.click(`${header} .subagent-toggle`);
 		await browser.wait(`${conversations}.hidden`);
-		// While only the subagent works, its collapsed session shows pi's dots as its status, as when its main
+		// While only the subagent works, its collapsed session shows nycode's dots as its status, as when its main
 		// conversation works; shown, the subagent's item has them as its status too.
 		const childChat = await holdIn(
 			owner,
@@ -224,22 +224,22 @@ describe("drawer and new-session parity", { skip: !browserTests }, () => {
 		await childChat.send({ text: "slow child", requestId: "drawer-busy" }, BACKGROUND_CONTEXT);
 		// The status settles once the main conversation's last answer is read (the session is open).
 		await browser.wait(
-			`document.querySelector('${header} > .nav-marker > .pi-dots') && !document.querySelector('${header} .background-work')`,
+			`document.querySelector('${header} > .nav-marker > .nycode-dots') && !document.querySelector('${header} .background-work')`,
 		);
-		// The main conversation's dock says which agent runs, with pi's dots; its subagent's view has its own bar instead.
+		// The main conversation's dock says which agent runs, with nycode's dots; its subagent's view has its own bar instead.
 		await browser.wait(
-			`document.querySelector('.dock .running-agents > .pi-dots') && document.querySelector('.dock .running-agents .running-agent')?.textContent === ${JSON.stringify(child.name)}`,
+			`document.querySelector('.dock .running-agents > .nycode-dots') && document.querySelector('.dock .running-agents .running-agent')?.textContent === ${JSON.stringify(child.name)}`,
 		);
 		await browser.click(`${header} .subagent-toggle`);
 		const subagentRow = `document.querySelector('.nav-row:has(> .subagent-row)')`;
-		await browser.wait(`!${conversations}.hidden && ${subagentRow}.querySelector('.nav-marker > .pi-dots')`);
+		await browser.wait(`!${conversations}.hidden && ${subagentRow}.querySelector('.nav-marker > .nycode-dots')`);
 		await browser.click(".subagent-row");
 		await browser.wait(
 			`location.pathname.endsWith('/c/${child.conversationId}') && document.querySelector('.subagent-row.active')`,
 		);
 		assert.equal(await browser.evaluate(`document.querySelector('.running-agents') === null`), true);
 		await childChat.stop(BACKGROUND_CONTEXT);
-		await browser.wait(`!document.querySelector('.sidebar-section[data-key=other] .pi-dots')`);
+		await browser.wait(`!document.querySelector('.sidebar-section[data-key=other] .nycode-dots')`);
 		for (const held of [childChat, chat, agents, sessions]) held.release();
 	});
 
@@ -251,7 +251,7 @@ describe("drawer and new-session parity", { skip: !browserTests }, () => {
 		const status = await holdIn(owner, SessionStatus, {}, "reader");
 		await chat.send({ text: "slow item", requestId: "item-run" }, BACKGROUND_CONTEXT);
 		await chat.send({ text: "queued next", requestId: "item-queued", whenBusy: "followUp" }, BACKGROUND_CONTEXT);
-		await until(chat.view, (view) => JSON.stringify(view?.docs["pi.inbox"] ?? null).includes("queued next"));
+		await until(chat.view, (view) => JSON.stringify(view?.docs["nycode.inbox"] ?? null).includes("queued next"));
 		await browser.metrics(1280, 900);
 		await browser.open(`http://127.0.0.1:${fixture.server.port}/new`);
 		const item = `.sidebar-section[data-key=other] .session-row[data-session="${session.id}"] > .session-header`;
@@ -262,7 +262,7 @@ describe("drawer and new-session parity", { skip: !browserTests }, () => {
 			);
 			await browser.call("Input.dispatchMouseEvent", { type: "mouseMoved", ...at });
 		};
-		await browser.wait(`document.querySelector('${item} > .nav-marker > .pi-dots')`);
+		await browser.wait(`document.querySelector('${item} > .nav-marker > .nycode-dots')`);
 		await hover();
 		await browser.click(`${item} > button.item-action[data-action=cancel][aria-label="Stop Item actions"]`);
 		await until(status.statuses, (states) => states?.[session.id]?.busy.length === 0);
@@ -571,12 +571,12 @@ describe("guest drawer in Chromium", { skip: !browserTests }, () => {
 			const fetched = await browser.evaluate<{ manifest: number; icon: number; bundle: number; title: string }>(
 				`Promise.all(['/manifest.webmanifest','/icons/icon-192.png','/_chord/web/base'].map((path)=>fetch(path).then((r)=>r.status))).then(([manifest,icon,bundle])=>({manifest,icon,bundle,title:document.title}))`,
 			);
-			assert.deepEqual(fetched, { manifest: 200, icon: 200, bundle: 200, title: "Pi" });
+			assert.deepEqual(fetched, { manifest: 200, icon: 200, bundle: 200, title: "Nycode" });
 			assert.equal(
 				await browser.evaluate<string>(`document.querySelector('link[rel=manifest]').getAttribute('href')`),
 				"/manifest.webmanifest",
 			);
-			// The owner resets the link: the page says so (Pi Mobile's text) instead of reconnecting forever.
+			// The owner resets the link: the page says so (Nycode Mobile's text) instead of reconnecting forever.
 			await sharing.link({ mode: "view", reset: true }, BACKGROUND_CONTEXT);
 			await browser.wait(`document.querySelector('.toast')?.textContent === 'This share has ended.'`);
 			assert.equal(await browser.evaluate<number>(`document.querySelectorAll('.messages .user').length`), 0);

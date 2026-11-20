@@ -2,7 +2,7 @@
 // entry data, never from the sender block the model reads.
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { ConversationView, EntryRecord } from "@earendil-works/pi-durable";
+import type { ConversationView, EntryRecord } from "@nycode/durable";
 import { PEER_MESSAGE_ENTRY } from "../../src/runtime/entries.ts";
 import { type Author, authorSender, senderText } from "../../src/runtime/sender.ts";
 import { buildTranscript } from "../../src/web/transcript.ts";
@@ -14,7 +14,7 @@ const user = (content: unknown) => [{ role: "user", content, timestamp: 0 }];
 const entry = (fields: Record<string, unknown>) => ({ conversationId: 1, ...fields }) as unknown as EntryRecord;
 const block = (author: Author) => senderText(authorSender(author));
 const view = (entries: EntryRecord[], inbox: unknown[] = []) =>
-	({ conversation: {}, entries, docs: { "pi.inbox": { items: inbox } } }) as unknown as ConversationView;
+	({ conversation: {}, entries, docs: { "nycode.inbox": { items: inbox } } }) as unknown as ConversationView;
 
 describe("structured inputs", () => {
 	it("shows people's inputs, mentions and queued inputs from their data, never from the sender block", () => {
@@ -31,7 +31,7 @@ describe("structured inputs", () => {
 		const mention = entry({
 			id: 3,
 			kind: "chat.mention",
-			data: { author: OWNER, text: "@pi go", attachments: [], included: [1] },
+			data: { author: OWNER, text: "@nycode go", attachments: [], included: [1] },
 			model: user([
 				{ type: "text", text: block(OWNER) },
 				{ type: "text", text: "<chat>…</chat>" },
@@ -50,14 +50,14 @@ describe("structured inputs", () => {
 			"hello",
 			["plan.md"],
 		]);
-		assert.deepEqual(second?.type === "user" && [second.author, second.text], [OWNER, "@pi go"]);
+		assert.deepEqual(second?.type === "user" && [second.author, second.text], [OWNER, "@nycode go"]);
 		assert.deepEqual(
 			transcript.queued.map((item) => item.text),
 			["later"],
 		);
 	});
 
-	it("shows a peer session's message from its data, and a pi.user entry as a tool's input without an author", () => {
+	it("shows a peer session's message from its data, and a nycode.user entry as a tool's input without an author", () => {
 		const peer = entry({
 			id: 1,
 			kind: PEER_MESSAGE_ENTRY,
@@ -68,7 +68,7 @@ describe("structured inputs", () => {
 			]),
 		});
 		// A sender block in a tool's input establishes nothing: there is no data.
-		const tool = entry({ id: 2, kind: "pi.user", model: user([{ type: "text", text: block(OWNER) }]) });
+		const tool = entry({ id: 2, kind: "nycode.user", model: user([{ type: "text", text: block(OWNER) }]) });
 		const [first, second] = buildTranscript(wholeView(view([peer, tool]))).items;
 		assert.deepEqual(first?.type === "user" && [first.peer, first.text, first.author], [
 			{ id: "s-1", title: "Alpha" },

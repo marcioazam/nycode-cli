@@ -40,8 +40,8 @@ export interface Candidate {
 /** Whether this process runs with code generation from strings disabled, as under a strict CSP. */
 export const noEval = process.execArgv.includes("--disallow-code-generation-from-strings");
 
-const piSchema: Candidate = {
-	name: "pi-schema",
+const nycodeSchema: Candidate = {
+	name: "nycode-schema",
 	prepare(schema, options) {
 		const validator = compile(schema, options);
 		return { check: validator.check, validator };
@@ -197,7 +197,16 @@ const zod: Candidate = {
 };
 
 /** Every candidate, ours first. */
-export const candidates: readonly Candidate[] = [piSchema, typebox, ajv, ata, ataInterpreter, zod, cfworker, omptype];
+export const candidates: readonly Candidate[] = [
+	nycodeSchema,
+	typebox,
+	ajv,
+	ata,
+	ataInterpreter,
+	zod,
+	cfworker,
+	omptype,
+];
 
 /** Candidates by name, including TypeBox's interpreter (what TypeBox runs when eval is unavailable). */
 export const byName: ReadonlyMap<string, Candidate> = new Map(

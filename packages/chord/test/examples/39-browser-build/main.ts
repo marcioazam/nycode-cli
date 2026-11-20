@@ -16,7 +16,7 @@ const context = BACKGROUND_CONTEXT;
 const root = fileURLToPath(new URL("./plugins/", import.meta.url));
 
 // 1. The component: `web` is a browser kind; its assets are served under `/plugin-assets/`.
-const hostPackages = { "@earendil-works/chord": chord };
+const hostPackages = { "@nycode/chord": chord };
 const plugins = createPlugins(
 	{
 		roots: [root],

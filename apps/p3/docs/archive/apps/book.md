@@ -4,7 +4,7 @@ cover: Apps / Users / Guests
 kicker: A design note · p3 · 2026-11-13 · third edition
 subtitle: The owner builds apps for his family, his club and his team; each person reaches only what an app gives them
 stats:
-  - 1 | owner per Pi, who installs every plugin
+  - 1 | owner per Nycode, who installs every plugin
   - 3 | kinds of people: owner, users of an app, guests of a session
   - 1 | login per app, side by side in one browser
   - 0 | permission engines, settings layers or rule tables
@@ -27,14 +27,14 @@ colophon: p3 apps · design note, third edition · 2026-11-13
 
 # The Goal {.preface}
 
-One Pi, one owner. The owner, or his agent, builds **apps** and shares them:
+One Nycode, one owner. The owner, or his agent, builds **apps** and shares them:
 
 - **The robot** for his son Leo, who cannot read yet: a friendly face, hold to talk, one long-running session in a
   fixed folder with its own instructions and skills, no tools.
 - **Family** for his wife: her calendars and mail, a voice chat of her own, the family files, her journal, and a pane
   with Leo's adventures with the robot.
 - **The football club:** shared match sessions, a roster only coaches change.
-- **Coding:** the app Pi ships with, for himself and his team.
+- **Coding:** the app Nycode ships with, for himself and his team.
 - **Guests:** a friend watches one session, or joins it, through a link.
 
 An app decides what you see (its layout and views), what its sessions get (machine and folder, instructions and
@@ -293,7 +293,7 @@ its creator. The owner passes every check, as always.
 :::figure wide | Her family app on her phone, right after signing in: her own voice chat, her calendars, her journal, and Leo's adventures with the robot, read-only.
 <div class="ap" style="display:flex;gap:28px;justify-content:center;flex-wrap:wrap;font:14px/1.4 'Avenir Next','Helvetica Neue',sans-serif;color:#2a2723">
 <div style="width:260px;border:9px solid #2a2723;border-radius:32px;background:#fff;overflow:hidden">
-<div style="display:flex;justify-content:space-between;padding:10px 16px 6px;font-size:11px;color:#7b7468"><span>9:41</span><span>pi.example</span></div>
+<div style="display:flex;justify-content:space-between;padding:10px 16px 6px;font-size:11px;color:#7b7468"><span>9:41</span><span>nycode.example</span></div>
 <div style="padding:4px 16px 10px;border-bottom:1px solid #e3dbcc"><div style="font-size:19px">Family</div><div style="font-size:12px;color:#7b7468">Signed in as Cristina</div></div>
 <div style="display:flex;font-size:12px;border-bottom:1px solid #e3dbcc"><span style="flex:1;text-align:center;padding:7px 0;border-bottom:2px solid #b4472f">Chat</span><span style="flex:1;text-align:center;padding:7px 0;color:#7b7468">Calendar</span><span style="flex:1;text-align:center;padding:7px 0;color:#7b7468">Journal</span><span style="flex:1;text-align:center;padding:7px 0;color:#7b7468">Leo</span></div>
 <div style="padding:12px 14px;height:250px;background:#fbf8f2">
@@ -306,7 +306,7 @@ its creator. The owner passes every check, as always.
 <div style="display:flex;justify-content:center;padding:12px 0 16px;border-top:1px solid #e3dbcc"><div style="width:58px;height:58px;border-radius:50%;background:#b4472f;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px">Hold</div></div>
 </div>
 <div style="width:260px;border:9px solid #2a2723;border-radius:32px;background:#fff;overflow:hidden">
-<div style="display:flex;justify-content:space-between;padding:10px 16px 6px;font-size:11px;color:#7b7468"><span>9:42</span><span>pi.example</span></div>
+<div style="display:flex;justify-content:space-between;padding:10px 16px 6px;font-size:11px;color:#7b7468"><span>9:42</span><span>nycode.example</span></div>
 <div style="padding:4px 16px 10px;border-bottom:1px solid #e3dbcc"><div style="font-size:19px">Leo's adventures</div><div style="font-size:12px;color:#7b7468">The robot's session · watching</div></div>
 <div style="padding:12px 14px;height:316px;background:#fbf8f2;font-size:13px">
 <div style="color:#7b7468;font-size:11px;margin-bottom:4px">Leo, 16:10</div><div style="margin-bottom:10px">Why do dinosaurs not live anymore?</div>
@@ -646,7 +646,7 @@ export default defineFacet((_host, self) => {
 });
 ```
 
-**Coding** is the plugin Pi ships. Sessions from before apps belong to it (`app: "coding"`). Its rule gives its
+**Coding** is the plugin Nycode ships. Sessions from before apps belong to it (`app: "coding"`). Its rule gives its
 sessions to the owner and to users of a team it invites; team users create sessions through coding's own object. Its
 layout is the sidebar, transcript and changes; no filters.
 
@@ -684,7 +684,7 @@ export function defineAppUsers<C extends JsonValue>(app: string, shape: {
 :::figure wide | The owner's Users view of the family app: invite with a link, each member's own settings, remove.
 <div class="ap" style="font:14px/1.45 'Avenir Next','Helvetica Neue',sans-serif;color:#2a2723;max-width:720px;margin:0 auto;border:1px solid #e3dbcc;border-radius:10px;background:#fff;overflow:hidden">
 <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;background:#f4eee2;border-bottom:1px solid #e3dbcc"><span style="font-weight:600">Family</span><span style="color:#7b7468">/</span><span>Users</span><span style="margin-left:auto;font-size:12px;color:#7b7468">owner</span></div>
-<div style="padding:14px 16px;border-bottom:1px solid #e3dbcc;display:flex;gap:10px;align-items:center"><span style="font-weight:600">Invite</span><span style="flex:1;border:1px solid #e3dbcc;border-radius:6px;padding:6px 10px;font:12px 'SF Mono',Menlo,monospace;color:#5a544a">https://pi.example/apps/family/join#k7Qw…3fZ</span><span style="background:#2a2723;color:#fff;border-radius:6px;padding:6px 12px;font-size:13px">Copy link</span></div>
+<div style="padding:14px 16px;border-bottom:1px solid #e3dbcc;display:flex;gap:10px;align-items:center"><span style="font-weight:600">Invite</span><span style="flex:1;border:1px solid #e3dbcc;border-radius:6px;padding:6px 10px;font:12px 'SF Mono',Menlo,monospace;color:#5a544a">https://nycode.example/apps/family/join#k7Qw…3fZ</span><span style="background:#2a2723;color:#fff;border-radius:6px;padding:6px 12px;font-size:13px">Copy link</span></div>
 <div style="padding:12px 16px;border-bottom:1px solid #e3dbcc"><div style="display:flex;align-items:center;gap:10px"><span style="width:30px;height:30px;border-radius:50%;background:#2e6a8a;color:#fff;display:flex;align-items:center;justify-content:center">C</span><div><div>Cristina</div><div style="font-size:12px;color:#7b7468">joined 2 days ago · GitHub cristina-z · signed in on 2 devices</div></div><span style="margin-left:auto;font-size:13px;color:#b4472f">Remove</span></div>
 <div style="display:flex;gap:24px;margin:10px 0 0 40px;font-size:13px"><div><div style="color:#7b7468;font-size:11px;text-transform:uppercase;letter-spacing:.06em">Calendars</div><div>&#9745; Family &nbsp; &#9745; Cristina &nbsp; &#9744; Mario work</div></div><div><div style="color:#7b7468;font-size:11px;text-transform:uppercase;letter-spacing:.06em">Mail account</div><div style="border:1px solid #e3dbcc;border-radius:5px;padding:2px 8px">cristina@family.example &#9662;</div></div></div></div>
 <div style="padding:12px 16px;display:flex;align-items:center;gap:10px"><span style="width:30px;height:30px;border-radius:50%;background:#c2b18c;color:#fff;display:flex;align-items:center;justify-content:center">O</span><div><div>Oma</div><div style="font-size:12px;color:#7b7468">invited 1 hour ago · not joined yet</div></div><span style="margin-left:auto;font-size:13px;color:#7b7468">Cancel invite</span></div>
@@ -693,9 +693,9 @@ export function defineAppUsers<C extends JsonValue>(app: string, shape: {
 
 :::figure wide | The link goes out by any channel; it opens the family app's own join page, where she picks how to sign in.
 <div class="ap" style="display:flex;gap:30px;align-items:center;justify-content:center;flex-wrap:wrap;font:14px/1.45 'Avenir Next','Helvetica Neue',sans-serif;color:#2a2723">
-<div style="width:250px;background:#fff;border:1px solid #e3dbcc;border-radius:12px;padding:12px"><div style="font-size:11px;color:#7b7468;margin-bottom:6px">Message from Mario</div><div style="background:#efe7d6;border-radius:10px;padding:8px 10px;font-size:13px">Here is our family Pi: <span style="color:#2e6a8a;text-decoration:underline">pi.example/apps/family/join#k7Qw…</span></div></div>
+<div style="width:250px;background:#fff;border:1px solid #e3dbcc;border-radius:12px;padding:12px"><div style="font-size:11px;color:#7b7468;margin-bottom:6px">Message from Mario</div><div style="background:#efe7d6;border-radius:10px;padding:8px 10px;font-size:13px">Here is our family Nycode: <span style="color:#2e6a8a;text-decoration:underline">nycode.example/apps/family/join#k7Qw…</span></div></div>
 <div style="font-size:26px;color:#c2b18c">&#8594;</div>
-<div style="width:300px;background:#fff;border:1px solid #e3dbcc;border-radius:12px;padding:22px 22px 18px;box-shadow:0 10px 30px -18px rgba(60,40,10,.4)"><div style="font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#b4472f">Family</div><div style="font-size:21px;margin:4px 0 4px">Join Mario's family Pi</div><div style="font-size:13px;color:#7b7468;margin-bottom:16px">Your calendars, your mail, your journal.</div>
+<div style="width:300px;background:#fff;border:1px solid #e3dbcc;border-radius:12px;padding:22px 22px 18px;box-shadow:0 10px 30px -18px rgba(60,40,10,.4)"><div style="font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#b4472f">Family</div><div style="font-size:21px;margin:4px 0 4px">Join Mario's family Nycode</div><div style="font-size:13px;color:#7b7468;margin-bottom:16px">Your calendars, your mail, your journal.</div>
 <div style="background:#24292f;color:#fff;border-radius:7px;padding:9px 0;text-align:center;font-size:14px;margin-bottom:12px">Sign in with GitHub</div>
 <div style="display:flex;align-items:center;gap:8px;color:#7b7468;font-size:12px;margin-bottom:12px"><span style="flex:1;border-top:1px solid #e3dbcc"></span>or<span style="flex:1;border-top:1px solid #e3dbcc"></span></div>
 <div style="font-size:12px;color:#7b7468;margin-bottom:4px">Just your name</div><div style="display:flex;gap:8px"><span style="flex:1;border:1px solid #e3dbcc;border-radius:7px;padding:7px 10px;color:#2a2723">Cristina</span><span style="background:#b4472f;color:#fff;border-radius:7px;padding:7px 14px">Join</span></div>
@@ -712,14 +712,14 @@ the app keeps who its users are and how they prove it.
 
 :::sequence animate | Sign in with GitHub on the family app's own join page.
 actor browser "her browser" blue
-actor app "family routes" "on the Pi server" accent
+actor app "family routes" "on the Nycode server" accent
 actor gh "GitHub" muted
 actor kit "SignIns" "the kit"
 browser -> app: GET /apps/family/join#invite
 app --> browser: the family's join page
 browser -> app: GET /join/github?invite=…
 app --> browser: redirect to GitHub, state cookie (Lax)
-browser -> gh: authorize the Pi Family app
+browser -> gh: authorize the Nycode Family app
 gh --> browser: redirect …/github/back?code&state
 browser -> app: GET …/github/back (state cookie)
 app -> gh: exchange code, read her GitHub user

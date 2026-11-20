@@ -3,12 +3,12 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-export const codingAgentName = "@earendil-works/pi-coding-agent";
+export const codingAgentName = "@nycode/coding-agent";
 
 export function smokeTestCodingAgent(directory, runtime = process.execPath) {
 	const packageDir = join(directory, "node_modules", codingAgentName);
 	const manifest = JSON.parse(readFileSync(join(packageDir, "package.json"), "utf8"));
-	const home = mkdtempSync(join(tmpdir(), "pi-coding-agent-smoke-home-"));
+	const home = mkdtempSync(join(tmpdir(), "nycode-coding-agent-smoke-home-"));
 	const entry = join(directory, "coding-agent-smoke.mjs");
 	const env = {
 		PATH: process.env.PATH,
@@ -18,9 +18,9 @@ export function smokeTestCodingAgent(directory, runtime = process.execPath) {
 		LOCALAPPDATA: home,
 		XDG_CONFIG_HOME: home,
 		XDG_CACHE_HOME: home,
-		PI_CODING_AGENT_DIR: join(home, ".pi", "agent"),
-		PI_OFFLINE: "1",
-		PI_TELEMETRY: "0",
+		NYCODE_CODING_AGENT_DIR: join(home, ".nycode", "agent"),
+		NYCODE_OFFLINE: "1",
+		NYCODE_TELEMETRY: "0",
 	};
 	for (const name of ["SystemRoot", "SYSTEMROOT", "WINDIR", "COMSPEC", "PATHEXT"]) {
 		if (process.env[name]) env[name] = process.env[name];
@@ -33,7 +33,7 @@ assert.equal(typeof SessionManager.inMemory, "function");
 assert.equal(typeof ModelRuntime.create, "function");
 `);
 		execFileSync(runtime, [entry], { cwd: directory, env, stdio: ["inherit", "pipe", "pipe"], timeout: 30_000 });
-		for (const cli of new Set([manifest.bin.pi, "dist/cli.js"])) {
+		for (const cli of new Set([manifest.bin.nycode, "dist/cli.js"])) {
 			const output = execFileSync(runtime, [join(packageDir, cli), "--version"], {
 				cwd: directory,
 				encoding: "utf8",

@@ -1,4 +1,4 @@
-// How a stdio server starts on a Windows environment: the pi-env daemon starts `.exe` and `.com` programs directly
+// How a stdio server starts on a Windows environment: the nycode-env daemon starts `.exe` and `.com` programs directly
 // and refuses batch files (`npx` is `npx.cmd`), so every other command runs through `cmd.exe`, quoted as cross-spawn
 // quotes it for Node on Windows.
 

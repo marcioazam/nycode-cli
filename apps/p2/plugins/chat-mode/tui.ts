@@ -1,6 +1,6 @@
 // Chat mode in the TUI (p2-tui-port.md P11b), after the web facet: chat and mention entries show their reply quote
 // and note (the shared `TranscriptEntries` display), a composer chip shows the mode (the owner toggles it with
-// `/chat-mode`), and while it is on `/reply` picks the message the next send answers and `@pi` completes first.
+// `/chat-mode`), and while it is on `/reply` picks the message the next send answers and `@nycode` completes first.
 
 import type { Held, HeldIn } from "@p2/app/v1";
 import { BACKGROUND_CONTEXT, contribute, defineFacet, liveIn, statusOf } from "@p2/app/v1";

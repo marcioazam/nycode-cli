@@ -117,7 +117,7 @@ await workerMain(async ({ address, start, parent, plugins, onClose }, ctx) => {
 	await plugins.load(worker, { kind: "worker", core: [{ name: "@app/core", facet: coreWorker(start) }] }, ctx);
 	return { busy: harness.activeTasks };                                             // extra keep-alive counts
 }, {
-	hostPackages: { "@earendil-works/chord": chord, "@app/core": appCore },  // the child's own instances
+	hostPackages: { "@nycode/chord": chord, "@app/core": appCore },  // the child's own instances
 	redact: (error) => ({ message: redactSecrets(String(error)), ...codeOf(error) }), // what crosses as `fatal`
 	onError: (error) => log(error),
 });

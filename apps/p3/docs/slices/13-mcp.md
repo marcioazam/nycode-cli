@@ -17,7 +17,7 @@ The brief is filled out when the slice is next.
 
 **Open or to carry (docs audit):**
 
-- MCP follows locations through leases; no MCP process or credential in a worker; project `.pi/mcp.json` enabled per
+- MCP follows locations through leases; no MCP process or credential in a worker; project `.nycode/mcp.json` enabled per
   checkout; stdio servers at the location (`runOn`); accounts through an envelope `{ account?, input }`; the
   `tool_search` fallback arrives with MCP; known p2 bugs: the lease not re-sent on server reactivation, unstable
   provider tool schemas (sources in the audit's 2.1 #18). Credentials by reference.

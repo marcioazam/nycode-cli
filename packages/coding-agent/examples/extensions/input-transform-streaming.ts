@@ -8,15 +8,15 @@
  * file changes, giving the model immediate context. During steering the
  * exec call is skipped so the correction reaches the model without delay.
  *
- * Start pi with this extension:
- *   pi -e ./examples/extensions/input-transform-streaming.ts
+ * Start nycode with this extension:
+ *   nycode -e ./examples/extensions/input-transform-streaming.ts
  */
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI } from "@nycode/coding-agent";
 
 const TRIGGER = /\b(changes?|diff|modified)\b/i;
 
-export default function (pi: ExtensionAPI) {
-	pi.on("input", async (event) => {
+export default function (nycode: ExtensionAPI) {
+	nycode.on("input", async (event) => {
 		// During steering, skip the exec call — corrections should be fast
 		if (event.streamingBehavior === "steer") {
 			return { action: "continue" };
@@ -26,7 +26,7 @@ export default function (pi: ExtensionAPI) {
 			return { action: "continue" };
 		}
 
-		const { stdout, code } = await pi.exec("git", ["diff", "--stat"]);
+		const { stdout, code } = await nycode.exec("git", ["diff", "--stat"]);
 		if (code !== 0 || !stdout.trim()) {
 			return { action: "continue" };
 		}

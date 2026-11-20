@@ -1,6 +1,6 @@
 # Slice 27: the terminal client scaffold
 
-**Goal.** Plain `p3` on a terminal opens p3's terminal client, connected to the Pi's server, signed in as the owner
+**Goal.** Plain `p3` on a terminal opens p3's terminal client, connected to the Nycode's server, signed in as the owner
 on the same machine, showing something real from the server: the active sessions, live. Its code comes from the
 server and runs sandboxed, as p2's does: a trusted launcher in the `p3` command, the downloaded code in a child process
 that can reach nothing but the launcher. A plugin's terminal code reloads in place while the client runs. It is a
@@ -15,7 +15,7 @@ stops until the owner takes it.
 
 ## What is there today
 
-- **Plain `p3`** (`src/commands.ts`, `start`; BUILT): starts the Pi's server in the background unless it runs, then
+- **Plain `p3`** (`src/commands.ts`, `start`; BUILT): starts the Nycode's server in the background unless it runs, then
   asks the running server for a fresh owner link over a connection on which the server proved who it is
   (`src/ask.ts`, `src/kit/identity.ts`), and prints `p3 on <dir>, port <n>. Open <link>`. Slice 26's brief says the
   terminal client replaces this here.
@@ -45,14 +45,14 @@ p2 still runs the worker thread. This slice takes Chord's child process; p2's sa
 | | p2 (`apps/p2/src/hosts/`) | Chord (`packages/chord/src/node/tui/`, `src/tui/`) |
 | --- | --- | --- |
 | sandbox | a `Worker` with `--permission`, permissions dropped and verified before the bundle runs; V8 limits; RSS watchdog at 512 MiB | a child process of the launcher's Node: pipes only, empty environment, private directory with only the bootstrap, `--permission` granting only that file, `--no-experimental-sqlite`, a 96 MiB heap; inside, a bootstrap that keeps its own references, a `require` of 21 in-memory builtins, a frozen substitute `process` |
-| code delivery | one bundle (pi-tui, Chord, runtime, every plugin's `tui.ts`), SHA-256-checked, polled every 1 s, swapped whole with a 1 MiB snapshot | a base bundle (CommonJS, at most 8 MiB) plus the plugins' registered scripts; changed plugins applied in place (`host.reload` in the sandbox) through `TuiScripts`; a new sandbox only for a new base bundle |
+| code delivery | one bundle (nycode-tui, Chord, runtime, every plugin's `tui.ts`), SHA-256-checked, polled every 1 s, swapped whole with a 1 MiB snapshot | a base bundle (CommonJS, at most 8 MiB) plus the plugins' registered scripts; changed plugins applied in place (`host.reload` in the sandbox) through `TuiScripts`; a new sandbox only for a new base bundle |
 | what survives a plugin reload | the snapshot the old worker hands over | page state (`scope.pageState`), untouched by reloads |
 | link | the launcher relays opaque chord frames over its own WebSocket with the cookie | the same: the sandbox opens "sockets" the launcher opens to `/chord` with the token, at most four |
 | output | `tui-filter.ts`: safe sequences, 64 KiB frames; modes tracked and undone | `filter.ts`: the same rules; a fixed reset of every mode at the end, also when the process exits |
 | actions | grants: K (the visitor's own privileged key), C (a launcher-drawn consent screen), N (title, progress); copy, paste image, attach, upload, open URL, download, external editor, suspend, save prefs, dev reload, sign out | `copy`, `open`, `attach`, each confirmed on the launcher's own prompt (bottom lines, black on white), one at a time |
 | sign-in | saved owner cookie; on loopback the data directory's owner key; owner link or share link at a prompt; Radius | a token, a token file, or pairing (`/_chord/pair`, Chord's kit) |
 | Node | 26.5.1 or later | 26.5.1 or later (`requireSandboxNode`) |
-| way out | Ctrl-C handled by pi-tui | three Ctrl-C within a second always end the client (exit 130) |
+| way out | Ctrl-C handled by nycode-tui | three Ctrl-C within a second always end the client (exit 130) |
 
 ## p2's terminal features, and what p3 does with each
 
@@ -62,9 +62,9 @@ web-shell plugin has no terminal parts.
 
 | p2 feature | p3 |
 | --- | --- |
-| `npm run tui [url]` starts the client | **27:** plain `p3` on a terminal, for the Pi `--pi`/`--dir` names (decision 2 for a non-terminal) |
+| `npm run tui [url]` starts the client | **27:** plain `p3` on a terminal, for the Nycode `--nycode`/`--dir` names (decision 2 for a non-terminal) |
 | on loopback, sign in as the owner with the data directory's owner key, save nothing | **27:** the owner token file as bearer, sent only to a server that proved itself (decision 3) |
-| a saved owner cookie per origin (`~/.pi/p2-tui/config.json`, 0600) | slice 25 (a device sign-in per server; where it lives: decision 8) |
+| a saved owner cookie per origin (`~/.nycode/p2-tui/config.json`, 0600) | slice 25 (a device sign-in per server; where it lives: decision 8) |
 | owner link pasted at a prompt or `--owner-link` | propose to drop for the terminal: a new device pairs (decision "Signing in a new device", 2026-11-16) |
 | share link `--join`, a display name, the guest cookie, "access ended" with a notice and a way back | slice 5 (links, persons) with slice 25 (the terminal flow) |
 | through Radius (`--radius`: device code, the relay's client channels) | slice 21 (remote access), on the transport of decision 3 |
@@ -85,10 +85,10 @@ web-shell plugin has no terminal parts.
 | download into `~/Downloads/p2` | slice 12 (files) with slice 16 |
 | external editor (Ctrl+G), suspend (Ctrl+Z) | slice 16, Chord changes (the launcher lends the terminal) |
 | window title, progress, program status | slice 16, a Chord change (the filter drops OSC) |
-| visitor preferences: pi's keybindings, settings and themes read from `~/.pi/agent`, p2's `prefs.json`, watched; server defaults (`tui.json`) | slice 16 |
+| visitor preferences: nycode's keybindings, settings and themes read from `~/.nycode/agent`, p2's `prefs.json`, watched; server defaults (`tui.json`) | slice 16 |
 | the terminal's colours queried (OSC 10/11/4, mode 2031); `--theme`, `--no-themes` | slice 16 (Chord takes `mode` and `colors` today; `COLORTERM` picks the depth) |
 | mouse policy (on, all, off) | slice 16 |
-| commands: pi ids, contexts, rebinding, F1, `/hotkeys`, `/settings`, `/keybindings`, `/quit`, `/reload`, toggles | slice 16; **27** has `q` and Ctrl-C to quit |
+| commands: nycode ids, contexts, rebinding, F1, `/hotkeys`, `/settings`, `/keybindings`, `/quit`, `/reload`, toggles | slice 16; **27** has `q` and Ctrl-C to quit |
 | the fullscreen layout copied from coding-agent (transcript, dock, editor, footer), tool cards, renderer registries | slice 16 (the transcript: slice 3) |
 | reading position and drafts per (session, conversation) | slice 16, on page state (built in Chord) |
 | dev reload and restart from the terminal | slice 2 (`AppChanges` over the link, no launcher action) |
@@ -110,7 +110,7 @@ web-shell plugin has no terminal parts.
   (public) and the files. Example `57-tui` with `56-web/tui/main.ts` is the whole pattern in 40 lines.
 - **coding-agent** (`packages/coding-agent/src/main.ts`, `resolveAppMode`): interactive only when stdin and stdout
   are both terminals, else print mode. Its interactive mode is slice 16's model for the screens, not this slice's.
-- **pi-tui** (`packages/tui`): pi's terminal UI library. p2 bundles it into the sandbox, with its native clipboard and
+- **nycode-tui** (`packages/tui`): nycode's terminal UI library. p2 bundles it into the sandbox, with its native clipboard and
   platform helpers replaced at bundle time (`apps/p2/src/hosts/bundles.ts`, `tui-no-native-local-access`); it imports
   `fs`, `os`, `child_process` and `perf_hooks`, none of which the sandbox's `require` gives (decision 7).
 
@@ -124,7 +124,7 @@ file 732 bytes.
 ### Plain `p3`
 
 ```text
-p3 [--pi <name> | --dir <path>]
+p3 [--nycode <name> | --dir <path>]
   stdin and stdout are terminals, Node can sandbox (decision 1)?
     no:  as today: start unless running, print the port and a fresh owner link (decision 2)
     yes: start unless running (slice 26's start, unchanged up to the server's record)
@@ -145,7 +145,7 @@ server sends runs in it. Quitting the client leaves the background server runnin
   on the first request). A base that fails to build is reported `base_build` and makes the surface's routes answer
   503; the server runs on.
 - `KINDS` gains `terminal: { platform: "node" }` (decision 6), so the plugins component builds each plugin's
-  `terminal.ts` with `@earendil-works/p3/v1` and `/v1/terminal` as host packages; the surface publishes them as
+  `terminal.ts` with `@nycode/p3/v1` and `/v1/terminal` as host packages; the surface publishes them as
   registered scripts and one combined file.
 - The server serves no `ThemeChoice` and no `LocaleChoice` yet (cut with the kit, slice 16): the client's theme is the
   fallback of its mode and its language the first catalog offered for the system's locales (English). Chord's
@@ -158,7 +158,7 @@ The sandbox's base bundle, base code at p3's root beside `bin.ts`, `server.ts`, 
 modules, a core facet that serves the registry of terminal views, and a frame that draws:
 
 ```text
- p3 · <pi id> · connected                                       one header line (the connection state, live)
+ p3 · <nycode id> · connected                                       one header line (the connection state, live)
  <the view's lines>                                             the first registered view, the rest of the height
  q quit · ↑↓ select · n new · last error, if any                one status line
 ```
@@ -210,7 +210,7 @@ apps/p3/
   terminal.ts                      the terminal entry (the sandbox's base bundle): startTerminalRuntime, the core facet
                                    serving TerminalViews, the frame
   src/terminal.ts                  plain p3's terminal: whether it runs (a terminal, Node), the transport, startTerminal
-  src/api/v1/terminal.ts           @earendil-works/p3/v1/terminal: what terminal facets import
+  src/api/v1/terminal.ts           @nycode/p3/v1/terminal: what terminal facets import
   src/commands.ts                  start: the server's record returned to its caller, the link printed by the caller
   bin.ts                           plain p3: the terminal or the link; the help text
   src/install.ts                   + TERMINAL: the terminal entry, source or dist/terminal.js
@@ -244,15 +244,15 @@ packages/chord/src/node/tui/launcher.ts   + transport (decision 3; a Chord chang
 - `tuiSurface(server, { kind, plugins, entry, conditions?, tsconfig? })` (`packages/chord/src/node/surfaces/tui.ts`):
   `facet`, `step(name)`, `build()`, `built`; `TuiStart`; `TUI_PREFIX` `/_chord/tui/`.
 - `TuiScripts` (`packages/chord/src/surfaces/scripts.ts`), `defineRegistry` (`src/registries/registry.ts`),
-  `defineMessages` (`src/surfaces/messages.ts`), all through `@earendil-works/p3/v1`'s re-export of Chord's root.
+  `defineMessages` (`src/surfaces/messages.ts`), all through `@nycode/p3/v1`'s re-export of Chord's root.
 - `SessionsList`, `Sessions`, `SessionRow`, `CODING` (`plugins/sessions/contract.ts`), owner variant only.
 - `ask`, `proven` (`src/ask.ts`), `holder` (`src/kit/running.ts`), `IDENTITY_PATH` (`src/kit/identity.ts`).
 
 **PROPOSED:**
 
 ```ts
-// src/api/v1/terminal.ts: @earendil-works/p3/v1/terminal
-export { TuiScope, type BridgeTerminal, type TerminalTheme } from "@earendil-works/chord/tui";
+// src/api/v1/terminal.ts: @nycode/p3/v1/terminal
+export { TuiScope, type BridgeTerminal, type TerminalTheme } from "@nycode/chord/tui";
 
 /** A view of the terminal client: what one plugin shows in the frame's body. */
 export type TerminalView = {
@@ -330,7 +330,7 @@ tests do (`CHORD_TUI_NODE`).
 **End to end** (`test/terminal.test.ts`; `startP3` in process, the real launcher with pipes of the test's own for
 input and output, the real sandbox):
 
-10. The first screen: the header names the Pi, the sessions made before show; created while it runs (by an owner
+10. The first screen: the header names the Nycode, the sessions made before show; created while it runs (by an owner
     client over WebSocket) shows live.
 11. `n` on the terminal creates a session: the owner client's list has it.
 12. `q` ends the client with 0; the output ends with Chord's reset of the terminal's modes; the server runs on.
@@ -347,7 +347,7 @@ input and output, the real sandbox):
     `require("node:fs")`, `fetch` and `process.env` gets refusals and empty values, and the launcher keeps running.
 
 **Command cases** (launched, `test/launched.ts`; a pseudo-terminal from `script -qfec` on Linux, or tmux as
-`.pi/skills/interactive-testing.md` does):
+`.nycode/skills/interactive-testing.md` does):
 
 18. Plain `p3` on a terminal: the screen shows the sessions; `q` exits 0; `p3 status` says running.
 19. Plain `p3` with stdout piped (every existing case of slice 26): the link is printed as today.
@@ -459,7 +459,7 @@ the more of slice 16 leaks in.
 - **C.** A read-only list.
 
 **Recommendation:** A: it exercises a live list, `more`, a call, page state and the reload; rename and archive add
-text input, which belongs with pi-tui's editor (slice 16).
+text input, which belongs with nycode-tui's editor (slice 16).
 
 ### 5. Where the terminal base bundle and the plugins' terminal facets come from in the release
 
@@ -491,7 +491,7 @@ plugin (shell PTYs) whose pane would be "a terminal" too: `plugins/terminals/ter
 plugin's terminal facet.
 
 **Options.**
-- **A.** Kind `terminal`, module `@earendil-works/p3/v1/terminal`, file `terminal.ts`; slice 19's plugin keeps
+- **A.** Kind `terminal`, module `@nycode/p3/v1/terminal`, file `terminal.ts`; slice 19's plugin keeps
   `terminals` and its things are "shells" or "PTYs" in prose.
 - **B.** Kind `tui`, module `/v1/tui`, file `tui.ts`, as Chord and p2.
 - **C.** Kind `terminal`, and slice 19's plugin renamed (`shells`).
@@ -499,36 +499,36 @@ plugin's terminal facet.
 **Recommendation:** A, and `names.md` gains "terminal: the terminal client and its facet kind; not a shell (PTY)". The
 API module exists from this slice, as the decision "The basics before iterating" puts the terminal client first.
 
-### 7. pi-tui in the sandbox now, or Chord's scope only
+### 7. nycode-tui in the sandbox now, or Chord's scope only
 
-**Problem.** Slice 16's terminal UI is pi's (p2 copied coding-agent's components onto pi-tui). pi-tui imports `fs`,
-`os`, `child_process` and `perf_hooks`; the sandbox's `require` refuses them, so pi-tui needs stubs at bundle time (as
+**Problem.** Slice 16's terminal UI is nycode's (p2 copied coding-agent's components onto nycode-tui). nycode-tui imports `fs`,
+`os`, `child_process` and `perf_hooks`; the sandbox's `require` refuses them, so nycode-tui needs stubs at bundle time (as
 p2's `tui-no-native-local-access` plugin) or changes of its own.
 
 **Options.**
-- **A.** Chord's `TuiScope` and a few hand-drawn lines now (as Chord's board example); pi-tui with slice 16, with what
-  it needs then (a build hook in Chord's surface, or pi-tui changes).
-- **B.** pi-tui now: the frame and the list as pi-tui components, the stubs built now.
+- **A.** Chord's `TuiScope` and a few hand-drawn lines now (as Chord's board example); nycode-tui with slice 16, with what
+  it needs then (a build hook in Chord's surface, or nycode-tui changes).
+- **B.** nycode-tui now: the frame and the list as nycode-tui components, the stubs built now.
 
-**Recommendation:** A: the scaffold stays small, and slice 16 decides how pi-tui runs in the sandbox with the
-components it brings. The `TerminalViews` registry is shaped so a pi-tui component can stand behind `render` and
+**Recommendation:** A: the scaffold stays small, and slice 16 decides how nycode-tui runs in the sandbox with the
+components it brings. The `TerminalViews` registry is shaped so a nycode-tui component can stand behind `render` and
 `input`.
 
 ### 8. What the launcher keeps on disk
 
-**Problem.** p2's launcher keeps `~/.pi/p2-tui/config.json` (cookies per origin) and `prefs.json`. In this slice the
-launcher needs nothing of its own: the owner token file is the Pi's (`<dataDir>/owner-token`), and Chord's sandbox
+**Problem.** p2's launcher keeps `~/.nycode/p2-tui/config.json` (cookies per origin) and `prefs.json`. In this slice the
+launcher needs nothing of its own: the owner token file is the Nycode's (`<dataDir>/owner-token`), and Chord's sandbox
 writes its bootstrap into a private temporary directory (0700) that it removes once read. Slice 25's paired servers
 and slice 16's preferences need a place.
 
 **Options.**
 - **A.** Nothing on disk in slice 27; slice 25 and 16 decide.
-- **B.** Decide the place now: `~/.pi/p3-terminal/` (0700; a token per server origin, 0600; later `prefs.json`), as
-  p2's `~/.pi/p2-tui/`, outside every Pi's data directory (`~/.pi/p3` is the default Pi's).
-- **C.** Inside `~/.pi/p3/terminal/`: one tree for p3, but mixed into the default Pi's data directory.
+- **B.** Decide the place now: `~/.nycode/p3-terminal/` (0700; a token per server origin, 0600; later `prefs.json`), as
+  p2's `~/.nycode/p2-tui/`, outside every Nycode's data directory (`~/.nycode/p3` is the default Nycode's).
+- **C.** Inside `~/.nycode/p3/terminal/`: one tree for p3, but mixed into the default Nycode's data directory.
 
-**Recommendation:** A, with B as the direction for slice 25: the client's data is the device's, not a Pi's, and a
-second Pi's terminal must not read the default Pi's directory.
+**Recommendation:** A, with B as the direction for slice 25: the client's data is the device's, not a Nycode's, and a
+second Nycode's terminal must not read the default Nycode's directory.
 
 ### 9. Windows
 
@@ -602,11 +602,11 @@ four.
 7. p2: `docs/p2-notes.md` ("TUI", "TUI through Radius"), `docs/p2-tui-port.md` §2 to §4 and §10,
    `docs/p3-functions/models-prompt-shells.md` ("TUI shell"), `src/hosts/tui.ts`, `tui-client.ts`, `tui-config.ts`,
    `tui-transport.ts`, `tui-sandbox.ts`.
-8. `packages/coding-agent/src/main.ts` (`resolveAppMode`); `.pi/skills/interactive-testing.md`.
+8. `packages/coding-agent/src/main.ts` (`resolveAppMode`); `.nycode/skills/interactive-testing.md`.
 
 ## Carried (not in this slice)
 
-- **Slice 16:** pi-tui in the sandbox and the screens copied from coding-agent; themes, `ThemeChoice`, translations and
+- **Slice 16:** nycode-tui in the sandbox and the screens copied from coding-agent; themes, `ThemeChoice`, translations and
   `LocaleChoice` on the server; the terminal's colours queried; visitor preferences, keybindings, commands; mouse;
   copy by key and on select, paste image, external editor, suspend, window title and progress (Chord changes);
   fixed-origin "open in browser" paths; the launcher printing a crash's sanitized message; an RSS bound for the sandbox

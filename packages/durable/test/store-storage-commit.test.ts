@@ -8,11 +8,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setFlagsFromString } from "node:v8";
 import { runInNewContext } from "node:vm";
-import { type ChordStore, createHost, openStore, sqliteBackend } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT, withTelemetry } from "@earendil-works/chord/context";
-import type { SqliteDatabase, SqliteExecutor } from "@earendil-works/chord/sqlite";
-import { openNodeSqliteDatabase } from "@earendil-works/chord/sqlite/node";
-import { InMemoryTelemetryContext } from "@earendil-works/pi-telemetry";
+import { type ChordStore, createHost, openStore, sqliteBackend } from "@nycode/chord";
+import { BACKGROUND_CONTEXT, withTelemetry } from "@nycode/chord/context";
+import type { SqliteDatabase, SqliteExecutor } from "@nycode/chord/sqlite";
+import { openNodeSqliteDatabase } from "@nycode/chord/sqlite/node";
+import { InMemoryTelemetryContext } from "@nycode/telemetry";
 import { afterEach, describe, expect, it } from "vitest";
 import { idFromNumber } from "../src/ids.ts";
 import { MemoryStorage } from "../src/index.ts";
@@ -43,7 +43,7 @@ afterEach(async () => {
 
 /** A fresh SQLite file in this test's directory. */
 async function storePath(): Promise<string> {
-	directory ??= await mkdtemp(join(tmpdir(), "pi-durable-store-commit-"));
+	directory ??= await mkdtemp(join(tmpdir(), "nycode-durable-store-commit-"));
 	return join(directory, `store-${Math.random().toString(36).slice(2)}.sqlite`);
 }
 

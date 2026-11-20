@@ -1,5 +1,5 @@
 // What the `p3` command does besides running the server in the foreground: `status`, `stop`, `restart`, `list`, and
-// plain `p3`, which starts the Pi's server in the background unless it runs and prints a fresh owner link. Each
+// plain `p3`, which starts the Nycode's server in the background unless it runs and prints a fresh owner link. Each
 // function prints for a person and answers the command's exit code. Whether something runs is `src/kit/running.ts`'s
 // to say (a record believed only while its lock is held, and only of the process that wrote it), never a file's
 // alone. `stop` asks a server that listens over HTTP; it signals only a process that does not answer (or a supervisor
@@ -8,7 +8,7 @@
 import { spawn } from "node:child_process";
 import { readFile, realpath, stat } from "node:fs/promises";
 import { setTimeout as sleep } from "node:timers/promises";
-import type { Context } from "@earendil-works/chord/context";
+import type { Context } from "@nycode/chord/context";
 import { ask, proven } from "./ask.ts";
 import { COMMAND, SUPERVISOR } from "./install.ts";
 import { readConfig } from "./kit/config.ts";
@@ -16,7 +16,7 @@ import { ifExists, layoutOf, openDataDir } from "./kit/layout.ts";
 import { OWNER_LINK_PATH } from "./kit/owner.ts";
 import { type Claimed, type Holder, holder, type ProcessId, type Running as RunningRecord } from "./kit/running.ts";
 import { STOP_PATH } from "./kit/stop.ts";
-import { namedPis } from "./pi.ts";
+import { namedPis } from "./nycode.ts";
 
 /**
  * Plain `p3`: starts the server of `path` in the background unless it runs, and prints its port and an owner link.
@@ -49,7 +49,7 @@ export async function status(path: string, context: Context): Promise<number> {
 		return 1;
 	}
 	const rows = [
-		["pi", record.pi],
+		["nycode", record.nycode],
 		["data directory", dataDir],
 		["port", record.port],
 		["pid", record.pid],
@@ -157,21 +157,21 @@ export async function restart(path: string, port: number | undefined, context: C
 	return stopped === 0 ? start(path, port, context) : stopped;
 }
 
-/** `p3 list`: the default Pi (once it started) and the named ones, each with its state, port and data directory. */
+/** `p3 list`: the default Nycode (once it started) and the named ones, each with its state, port and data directory. */
 export async function list(defaultDir: string, context: Context): Promise<number> {
 	const rows: string[][] = [];
-	for (const pi of [{ name: "(default)", dataDir: defaultDir }, ...(await namedPis())]) {
-		const dataDir = await ifExists(realpath(pi.dataDir));
-		// A Pi is there once it started: it has its config then.
+	for (const nycode of [{ name: "(default)", dataDir: defaultDir }, ...(await namedPis())]) {
+		const dataDir = await ifExists(realpath(nycode.dataDir));
+		// A Nycode is there once it started: it has its config then.
 		const config = dataDir === undefined ? undefined : await readConfig(layoutOf(dataDir).config);
 		if (dataDir === undefined || config === undefined) continue;
 		const { server, supervisor } = await running(dataDir, Date.now() + LOOK_MS, context);
 		const record = listening(server);
 		const idle = server.kind === "free" && supervisor.kind === "free";
 		const state = record !== undefined ? "running" : idle ? "stopped" : "starting";
-		rows.push([pi.name, state, String(record?.port ?? config.port ?? "-"), dataDir]);
+		rows.push([nycode.name, state, String(record?.port ?? config.port ?? "-"), dataDir]);
 	}
-	if (rows.length === 0) console.log("no Pi yet: `p3` starts the default one");
+	if (rows.length === 0) console.log("no Nycode yet: `p3` starts the default one");
 	const width = (column: number): number => Math.max(...rows.map((row) => row[column]!.length));
 	for (const [name, state, port, dataDir] of rows) {
 		console.log(`${name!.padEnd(width(0))}  ${state!.padEnd(width(1))}  ${port!.padEnd(width(2))}  ${dataDir}`);

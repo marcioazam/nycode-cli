@@ -1,5 +1,5 @@
 /*
- * Elanor, Earendil's design system (its npm packages): the fonts, the pi brand's design tokens and the
+ * Elanor, Earendil's design system (its npm packages): the fonts, the nycode brand's design tokens and the
  * components' styles, which p2 uses for Markdown (ElanorMarkdown.tsx). Loaded before style.css. The tokens switch to
  * dark colours on <html data-color-scheme="dark"> (src/web/theme.ts sets it with data-theme).
  */
@@ -8,6 +8,6 @@
 
 @import "@earendil-works/elanor-fonts/mallos-serif.css";
 @import "@earendil-works/elanor-fonts/commit-mono.css";
-@import "@earendil-works/design-tokens/pi.css";
+@import "@earendil-works/design-tokens/nycode.css";
 /* Elanor's component styles, all in its "elanor" cascade layer: p2's unlayered rules win over them. */
 @import "@earendil-works/elanor-react/elanor.min.css";

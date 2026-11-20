@@ -100,7 +100,7 @@ test(
 );
 
 test(
-	"a linked session's Discord sheet: fixed bot, channel and sandbox; who may wake Pi and resources saved in place",
+	"a linked session's Discord sheet: fixed bot, channel and sandbox; who may wake Nycode and resources saved in place",
 	{ skip: !browserTests, timeout: 90_000 },
 	async (t) => {
 		const fixture = await startFixture({ web: true });
@@ -137,13 +137,13 @@ test(
 			"123456789",
 		);
 		assert(await browser.evaluate<boolean>(`${save}.disabled`));
-		// Nobody left to wake Pi: not savable, and it says why.
+		// Nobody left to wake Nycode: not savable, and it says why.
 		await tick("@maintainers");
 		await browser.evaluate(
 			"(()=>{const e=document.querySelector('.discord-form textarea');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(e,'');e.dispatchEvent(new Event('input',{bubbles:true}));})()",
 		);
 		await browser.wait(
-			`${save}.disabled && document.querySelector('.discord-form').innerText.includes('Pick who may wake Pi.')`,
+			`${save}.disabled && document.querySelector('.discord-form').innerText.includes('Pick who may wake Nycode.')`,
 		);
 		// A role, an MCP server and a capability: saved in place.
 		await tick("@helpers");

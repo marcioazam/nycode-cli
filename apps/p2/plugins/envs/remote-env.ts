@@ -9,7 +9,7 @@ import {
 	type SshConnectOptions,
 	sshArguments,
 	sshConnection,
-} from "@earendil-works/pi-env";
+} from "@nycode/env";
 import { type EnvConfig, envId, hostKeyAlias, knownHostsPath, loadEnvs, type SshEnvConfig } from "./config.ts";
 import { deployedCommand, deployLauncher, runLauncher, sandboxArgument, sandboxKey } from "./sandbox-host.ts";
 import { sandboxSecrets } from "./secrets.ts";
@@ -33,7 +33,7 @@ export type EnvConnectOptions = {
 	 * sandboxes only.
 	 */
 	launcher?: string;
-	/** The daemon to run (default: the one pi-env ships for the machine). */
+	/** The daemon to run (default: the one nycode-env ships for the machine). */
 	binary?: string;
 	onLog?: ConnectionOptions["onLog"];
 };
@@ -42,7 +42,7 @@ export type EnvConnectOptions = {
 export type EnvConnection = { connection: Connection; remote(): RemotePlatform | undefined };
 
 /**
- * A pi-env connection to env `name` that starts at its first request: over SSH for an SSH env; for a sandbox, over SSH
+ * A nycode-env connection to env `name` that starts at its first request: over SSH for an SSH env; for a sandbox, over SSH
  * to its host, where p2's launcher starts the sandbox's VM if needed and runs the daemon in it. A sandbox's host
  * configuration is read from `directory`'s envs.json at each start.
  */
@@ -72,7 +72,7 @@ export function envConnection(
 			const daemon = await deployDaemon(host, detected, options.binary ?? packagedDaemon(detected));
 			const deployed = await deployLauncher(host, detected, launcher);
 			// Start the VM first, with the launcher's own allowance (a first start may install Gondolin and download the
-			// guest image): the daemon connection must answer within pi-env's 30 s once it runs.
+			// guest image): the daemon connection must answer within nycode-env's 30 s once it runs.
 			const key = sandboxKey(directory, name);
 			// Secret values go on stdin, never on a command line; the argument names them.
 			const secrets = await sandboxSecrets(directory, name);

@@ -15,7 +15,7 @@ does the final review.
    real Chord and kit APIs, named by file, or defined right there), how it works, the tests case by case, the numbers
    it must meet (below), and a "Read first, in full" list (below). For every part: could a third-party plugin provide
    this, or an alternative, the same way? Docs are committed without review.
-3. **Build.** In the shared checkout `/home/badlogic/pi` on main, no worktree (owner, 2026-11-14, confirming
+3. **Build.** In the shared checkout `/home/badlogic/nycode` on main, no worktree (owner, 2026-11-14, confirming
    2026-11-06); other sessions work there too: commit only your own files, never `git add -A`. Chord v2 code style
    (root `AGENTS.md`) for p3 code too. `cd apps/p3 && npm run check` (the root check skips `apps/`) and the slice's
    tests pass. From slice 2 on, every plugin the slice touches is edited and applied while used in the reload tests:
@@ -43,7 +43,7 @@ does the final review.
 ## Reading
 
 A slice's brief lists what to read in full before detailing or building it: the docs (with sections), the Chord, kit,
-Durable and pi-ai source files, the p2 precedents, and the private reviews on slayer. Always also: `chord-practices.md`
+Durable and nycode-ai source files, the p2 precedents, and the private reviews on slayer. Always also: `chord-practices.md`
 (p3's practices on Chord, kept current with every slice), `names.md`, `decisions.md` in full, and
 `packages/chord/docs/design.md` in full (root `AGENTS.md`). Archive docs use older names;
 translate them with `names.md`.

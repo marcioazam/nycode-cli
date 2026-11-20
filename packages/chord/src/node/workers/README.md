@@ -3,8 +3,8 @@
 The workers component (slice 10 §3, §4, design §23, decision "Slice 10's points"): a forked worker process per address
 of one host kind, started on demand by the route it owns, stopped when idle, never restarted by itself; forked from the
 kind's worker base, bundled once by `build` (a start waits for it); its plugins are built by the server and shipped.
-`workerMain` is the worker's side. Node-only. Exported as `@earendil-works/chord/workers`; the worker's side alone
-(`workerMain`, `processLock`) as `@earendil-works/chord/workers/child`, which loads no esbuild: a worker entry imports
+`workerMain` is the worker's side. Node-only. Exported as `@nycode/chord/workers`; the worker's side alone
+(`workerMain`, `processLock`) as `@nycode/chord/workers/child`, which loads no esbuild: a worker entry imports
 that.
 
 ## For apps (`index.ts`)
@@ -31,14 +31,14 @@ await workers.retry(Session({ id }), ctx);      // a failed or suspended address
 await plugins.rollout([plugins.step("server", server), workers.step("workers")], built, ctx);
 await workers.close(ctx);
 
-// worker.ts (imports `workerMain` from "@earendil-works/chord/workers/child")
+// worker.ts (imports `workerMain` from "@nycode/chord/workers/child")
 workerMain(async ({ address, start, parent, plugins, onClose }, ctx) => {
 	const host = createHost({ address, principal: { kind: "worker" }, store, onError });
 	onClose((ctx) => host.close(ctx));                                    // closers run in reverse order
 	host.connect(parent, { principal: { kind: "server" }, trusted: true }, ctx);   // first: `started` goes out now
 	await plugins.load(host, { kind: "worker", core: [{ name: "@app/core", facet: core(start) }] }, ctx);
 	return { busy: harness.activeTasks };                                 // extra keep-alive counts
-}, { hostPackages: { "@earendil-works/chord": chord }, redact: (error) => ({ message: redacted(error) }), onError });
+}, { hostPackages: { "@nycode/chord": chord }, redact: (error) => ({ message: redacted(error) }), onError });
 ```
 
 - **The route:** `createWorkers` calls `host.route(Kind, …)` itself and keeps its `RouteHandle`. A failed address's
@@ -57,7 +57,7 @@ workerMain(async ({ address, start, parent, plugins, onClose }, ctx) => {
   imported module runs (`sideEffects: false` drops none); `import.meta.url`, `.dirname`, `.filename`, `__dirname` and
   `__filename` name each module's source file. Split at each dynamic `import()` esbuild can follow (a literal
   specifier): the entry module and the chunks it imports statically load at each fork; a lazily imported module, with
-  the packages it imports, is a chunk Node loads when the worker first imports it (pi-ai's provider APIs and their
+  the packages it imports, is a chunk Node loads when the worker first imports it (nycode-ai's provider APIs and their
   SDKs). A module the entry's graph shares with a lazy chunk moves into a shared chunk, which runs before the
   importing chunk's own modules: a module still runs after its imports, but two modules that do not import each other
   may run in another order than unbundled (esbuild's splitting; base code must not rely on sibling order). A variable

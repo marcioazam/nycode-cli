@@ -3,9 +3,10 @@
 // `{ continue }` sends the agent back to work in the same run; a user message queued meanwhile wins over it.
 // Run from packages/durable:
 //   node --conditions=source --experimental-strip-types test/examples/45-review-on-yield.ts
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import { createModels } from "@earendil-works/pi-ai/models";
-import { fauxAssistantMessage, fauxProvider } from "@earendil-works/pi-ai/providers/faux";
+
+import { createModels } from "@nycode/ai/models";
+import { fauxAssistantMessage, fauxProvider } from "@nycode/ai/providers/faux";
+import { BACKGROUND_CONTEXT } from "@nycode/chord/context";
 import {
 	createRegistry,
 	defineExtension,

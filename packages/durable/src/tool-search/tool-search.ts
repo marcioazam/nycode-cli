@@ -3,8 +3,8 @@
  * and the matches are loaded with `control.addTools`, so the next request offers them. Loading writes the
  * conversation's `modelTools` (its `add`), so loaded tools stay offered on that branch, also after a compaction.
  */
-import { resolveSchemaRef } from "@earendil-works/pi-codemode/declarations";
-import { num, obj, opt, str } from "@earendil-works/pi-schema";
+import { resolveSchemaRef } from "@nycode/codemode/declarations";
+import { num, obj, opt, str } from "@nycode/schema";
 import { defineExtension, defineTool } from "../harness/define.ts";
 import type { ToolRegistration } from "../harness/types.ts";
 import { rankDocuments } from "../search.ts";

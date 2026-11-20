@@ -1,4 +1,4 @@
-import { type ClientIdentity, PI_ATTRIBUTION } from "@earendil-works/pi-ai";
+import { type ClientIdentity, NYCODE_ATTRIBUTION } from "@nycode/ai";
 import {
 	type AssistantMessage,
 	createAssistantMessageEventStream,
@@ -6,8 +6,8 @@ import {
 	getModel,
 	toToolDeclaration,
 	type UserMessage,
-} from "@earendil-works/pi-ai/compat";
-import { obj } from "@earendil-works/pi-schema";
+} from "@nycode/ai/compat";
+import { obj } from "@nycode/schema";
 import { describe, expect, it } from "vitest";
 import {
 	Agent,
@@ -1200,7 +1200,7 @@ describe("Agent", () => {
 		expect(receivedSessionId).toBe("session-def");
 	});
 
-	it("attributes requests to pi by default and merges a configured identity over it", async () => {
+	it("attributes requests to nycode by default and merges a configured identity over it", async () => {
 		const received: (ClientIdentity | undefined)[] = [];
 		const agent = new Agent({
 			streamFn: (_model, _context, options) => {
@@ -1221,9 +1221,9 @@ describe("Agent", () => {
 		await agent.prompt("and again");
 
 		expect(received).toEqual([
-			{ attribution: PI_ATTRIBUTION },
+			{ attribution: NYCODE_ATTRIBUTION },
 			{ attribution: acme, userAgent: "short" },
-			{ attribution: PI_ATTRIBUTION, userAgent: "short" },
+			{ attribution: NYCODE_ATTRIBUTION, userAgent: "short" },
 		]);
 	});
 });

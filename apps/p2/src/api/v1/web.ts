@@ -39,10 +39,10 @@ export { type LongPress, type LongPressHandlers, useLongPress } from "../../web/
 export * from "../../web/Markdown.tsx";
 export * from "../../web/menu-components.ts";
 export * from "../../web/model-choice.ts";
+export * from "../../web/NycodeLogo.tsx";
 export * from "../../web/navigation.ts";
 export * from "../../web/navigation-components.ts";
 export * from "../../web/new-session.tsx";
-export * from "../../web/PiLogo.tsx";
 export * from "../../web/path-label.ts";
 export * from "../../web/query-cache.ts";
 export * from "../../web/reconnect.ts";

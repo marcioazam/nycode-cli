@@ -17,7 +17,7 @@ function Attribution({ children }: { children?: ReactNode }) {
 	const sessions = useObject(Sessions, {});
 	const listed = useReadable(liveIn(sessions, "owner", "guest")?.sessions) ?? [];
 	const owner = liveIn(sessions, "owner");
-	// As Pi Mobile: peer labels link only while connected; errors go to the app's toast.
+	// As Nycode Mobile: peer labels link only while connected; errors go to the app's toast.
 	const connected = useConnected();
 	const { setError, fail } = useComposerState();
 	const open = (session: string): void => {

@@ -1,15 +1,4 @@
-import {
-	type Annotations,
-	arr,
-	bool,
-	nul,
-	num,
-	opt,
-	type Properties,
-	type Static,
-	str,
-	union,
-} from "@earendil-works/pi-schema";
+import { type Annotations, arr, bool, nul, num, opt, type Properties, type Static, str, union } from "@nycode/schema";
 import { ModelCostSchema } from "./model-schema.ts";
 import { openObject, stringLiteral, stringRecord } from "./schema-builders.ts";
 
@@ -218,7 +207,7 @@ const OpenAICompletionsCompatProperties = {
 	supportsFinishReason: opt(
 		bool({
 			description:
-				"Whether streamed responses include finish_reason. When false, pi infers stop or toolUse when the stream ends.",
+				"Whether streamed responses include finish_reason. When false, nycode infers stop or toolUse when the stream ends.",
 			default: true,
 		}),
 	),
@@ -277,20 +266,20 @@ const OpenAICompletionsCompatProperties = {
 			],
 			{
 				description:
-					'Format for reasoning or thinking parameters. When omitted, Pi auto-detects the format from the provider URL. "openai" uses reasoning_effort, "openrouter" uses reasoning.effort, "deepseek" uses thinking.type plus reasoning_effort when supported, "together" uses reasoning.enabled plus reasoning_effort when supported, "baseten" uses configurable chat_template_args plus reasoning_effort when supported, "zai" uses thinking.type, "qwen" uses top-level enable_thinking, "qwen-chat-template" uses chat_template_kwargs.enable_thinking and preserve_thinking, "chat-template" uses configurable chat_template_kwargs, "string-thinking" uses top-level thinking, and "ant-ling" uses reasoning.effort only when the mapped effort is non-null.',
+					'Format for reasoning or thinking parameters. When omitted, Nycode auto-detects the format from the provider URL. "openai" uses reasoning_effort, "openrouter" uses reasoning.effort, "deepseek" uses thinking.type plus reasoning_effort when supported, "together" uses reasoning.enabled plus reasoning_effort when supported, "baseten" uses configurable chat_template_args plus reasoning_effort when supported, "zai" uses thinking.type, "qwen" uses top-level enable_thinking, "qwen-chat-template" uses chat_template_kwargs.enable_thinking and preserve_thinking, "chat-template" uses configurable chat_template_kwargs, "string-thinking" uses top-level thinking, and "ant-ling" uses reasoning.effort only when the mapped effort is non-null.',
 			},
 		),
 	),
 	chatTemplateKwargs: opt(
 		stringRecord(ChatTemplateKwargValueSchema, {
 			description:
-				'Kwargs sent as chat_template_kwargs when thinkingFormat is "chat-template". Use $var with "thinking.enabled", "thinking.effort", or "thinking.budget" for pi-controlled values.',
+				'Kwargs sent as chat_template_kwargs when thinkingFormat is "chat-template". Use $var with "thinking.enabled", "thinking.effort", or "thinking.budget" for nycode-controlled values.',
 		}),
 	),
 	chatTemplateArgs: opt(
 		stringRecord(ChatTemplateKwargValueSchema, {
 			description:
-				'Arguments sent as chat_template_args when thinkingFormat is "baseten". Use $var with "thinking.enabled", "thinking.effort", or "thinking.budget" for pi-controlled values.',
+				'Arguments sent as chat_template_args when thinkingFormat is "baseten". Use $var with "thinking.enabled", "thinking.effort", or "thinking.budget" for nycode-controlled values.',
 		}),
 	),
 	openRouterRouting: opt(OpenRouterRoutingSchema),

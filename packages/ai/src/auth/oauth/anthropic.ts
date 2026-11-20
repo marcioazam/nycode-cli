@@ -14,7 +14,7 @@ const decode = (s: string) => atob(s);
 const CLIENT_ID = decode("OWQxYzI1MGEtZTYxYi00NGQ5LTg4ZWQtNTk0NGQxOTYyZjVl");
 const AUTHORIZE_URL = "https://claude.ai/oauth/authorize";
 const TOKEN_URL = "https://platform.claude.com/v1/oauth/token";
-const CALLBACK_HOST = getProviderEnvValue("PI_OAUTH_CALLBACK_HOST") || "127.0.0.1";
+const CALLBACK_HOST = getProviderEnvValue("NYCODE_OAUTH_CALLBACK_HOST") || "127.0.0.1";
 // Preferred so the port can be forwarded into containers or over SSH. Anthropic accepts any loopback port,
 // so login falls back to a free port when this one cannot be bound (#10571).
 const CALLBACK_PORT = 53692;

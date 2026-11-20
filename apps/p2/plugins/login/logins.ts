@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
-import type { AuthPrompt, AuthType } from "@earendil-works/pi-ai";
+import type { AuthPrompt, AuthType } from "@nycode/ai";
 import { LockedFile, processLogs } from "@p2/app/v1/node";
 import type { Resources } from "../models/contract.ts";
 import type { LoginEvent, LoginPrompt, LoginState } from "./contract.ts";
@@ -99,7 +99,7 @@ export class Logins {
 
 	private prompt(attempt: Attempt, input: AuthPrompt, whole: AbortSignal): Promise<string> {
 		const signal = input.signal ? AbortSignal.any([whole, input.signal]) : whole;
-		// pi-ai's method selectors use device_code (Codex) or device-code (Radius).
+		// nycode-ai's method selectors use device_code (Codex) or device-code (Radius).
 		// Other selectors (accounts, organizations, etc.) still require the owner's answer.
 		if (attempt.remote && input.type === "select") {
 			const deviceCode = input.options.find((option) => /^device[-_]code$/.test(option.id));

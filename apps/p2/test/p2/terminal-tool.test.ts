@@ -1,4 +1,4 @@
-// The agent's terminal tool end to end with the fake provider and a real terminal host (skipped without a pi-env
+// The agent's terminal tool end to end with the fake provider and a real terminal host (skipped without a nycode-env
 // daemon build): code mode scripts drive the session's terminals, which are the owner's (listed, labeled, typed into
 // by both); guest turns may use it; tmux errors come back as tool errors; the server serves only the session's current worker, on the session's environments, and archiving closes
 // the session's terminals; a subagent's scripts open windows at its own location. Without code mode, `tool_search`
@@ -9,8 +9,8 @@ import { mkdirSync, realpathSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { setTimeout as sleep } from "node:timers/promises";
-import type { ToolResultMessage } from "@earendil-works/pi-ai";
-import type { ConversationView } from "@earendil-works/pi-durable";
+import type { ToolResultMessage } from "@nycode/ai";
+import type { ConversationView } from "@nycode/durable";
 import { BACKGROUND_CONTEXT, whenLive } from "@p2/app/v1";
 import { WebSocket } from "ws";
 import { Chat } from "../../plugins/chat/contract.ts";
@@ -28,7 +28,7 @@ try {
 	const system = localSystem();
 	await terminalDaemon(system.platform, system.arch, true);
 } catch (error) {
-	unavailable = error instanceof Error ? error.message : "No pi-env daemon with terminal support";
+	unavailable = error instanceof Error ? error.message : "No nycode-env daemon with terminal support";
 }
 
 const results = (view: ConversationView | null | undefined): ToolResultMessage[] =>
@@ -73,7 +73,7 @@ test(
 			return results(
 				await until(
 					target.view,
-					(view) => results(view).length > count && !(view?.docs["pi.live"] as { run?: unknown })?.run,
+					(view) => results(view).length > count && !(view?.docs["nycode.live"] as { run?: unknown })?.run,
 				),
 			).at(-1)!;
 		};
@@ -228,7 +228,7 @@ test(
 				chat.view,
 				(value) =>
 					JSON.stringify(value?.entries ?? []).includes('<sender kind=\\"subagent\\" name=\\"own\\"/>') &&
-					!(value?.docs["pi.live"] as { run?: unknown })?.run,
+					!(value?.docs["nycode.live"] as { run?: unknown })?.run,
 			);
 			const { windows } = (await script('return await tools.terminal({ command: "list-windows" });')) as {
 				windows: { name?: string; opener: string; location: string }[];

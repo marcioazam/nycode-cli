@@ -3,8 +3,8 @@
 // test lets it settle, so what the screen shows meanwhile is the guess, not the server's state.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { ConversationView } from "@earendil-works/pi-durable";
-import { ROOT_CONVERSATION_ID } from "@earendil-works/pi-durable";
+import type { ConversationView } from "@nycode/durable";
+import { ROOT_CONVERSATION_ID } from "@nycode/durable";
 import { Chat, type ModelMeta } from "../../plugins/chat/contract.ts";
 import chatTui, { ChatSurface } from "../../plugins/chat/tui.ts";
 import { type Operation, type Session, Sessions } from "../../plugins/sessions/contract.ts";
@@ -35,7 +35,7 @@ const META: ModelMeta = {
 const VIEW: ConversationView = {
 	conversation: { id: ROOT_CONVERSATION_ID } as ConversationView["conversation"],
 	entries: [],
-	docs: { "pi.agent": { model: { provider: "faux", modelId: "faux-1" } } } as ConversationView["docs"],
+	docs: { "nycode.agent": { model: { provider: "faux", modelId: "faux-1" } } } as ConversationView["docs"],
 };
 
 /** A call the test settles: `call()` waits until `pass()` or `refuse(message)`. */

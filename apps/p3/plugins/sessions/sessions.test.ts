@@ -6,11 +6,11 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
-import { isChordError } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context";
-import { type TestedPlugin, testPlugin } from "@earendil-works/chord/plugins";
-import { type P3Principal, Server } from "@earendil-works/p3/v1";
-import { SessionRoute } from "@earendil-works/p3/v1/server";
+import { isChordError } from "@nycode/chord";
+import { BACKGROUND_CONTEXT as context } from "@nycode/chord/context";
+import { type TestedPlugin, testPlugin } from "@nycode/chord/plugins";
+import { type P3Principal, Server } from "@nycode/p3/v1";
+import { SessionRoute } from "@nycode/p3/v1/server";
 import { API } from "../../src/app.ts";
 import { SERVER_MODULES } from "../../src/modules-server.ts";
 import { CODING, SessionFacts, Sessions, SessionsList } from "./contract.ts";

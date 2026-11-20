@@ -1,6 +1,6 @@
 // Fixture plugin (slice 7c): contracts only, no facet; the other fixtures import (copy) it.
 
-import { hostKind, int, local, method, remote, str } from "@earendil-works/chord";
+import { hostKind, int, local, method, remote, str } from "@nycode/chord";
 
 /** The host kind of the fixtures' worker. */
 export const Worker = hostKind("test.worker");

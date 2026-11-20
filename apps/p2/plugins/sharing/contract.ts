@@ -1,4 +1,4 @@
-import { arr, bool, nul, num, obj, opt, type Static, str, union } from "@earendil-works/pi-schema";
+import { arr, bool, nul, num, obj, opt, type Static, str, union } from "@nycode/schema";
 import { literal, local, method, param, record, remote, serverHost } from "@p2/app/v1";
 
 export const ModeSchema = union([literal("view"), literal("full")]);

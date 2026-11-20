@@ -17,7 +17,7 @@ describe("in-memory store snapshots", () => {
 		let id = "";
 		await telemetry.startSpan({ name: "timed" }, (span) => {
 			const carrier = telemetry.inject(span)!;
-			id = `${carrier["pi-memory-scope"]}:${carrier["pi-memory-span"]}`;
+			id = `${carrier["nycode-memory-scope"]}:${carrier["nycode-memory-span"]}`;
 			clock.mockReturnValue(110);
 			span.addEvent("event", { count: 1 });
 			clock.mockReturnValue(125);

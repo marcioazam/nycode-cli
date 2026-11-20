@@ -1,5 +1,5 @@
-import type { Context } from "@earendil-works/chord/context";
-import { bool, num, obj, opt, type Static, str } from "@earendil-works/pi-schema";
+import type { Context } from "@nycode/chord/context";
+import { bool, num, obj, opt, type Static, str } from "@nycode/schema";
 import { defineTool } from "../harness/define.ts";
 import type { ToolExecutionApi, ToolExecutionResult, ToolRegistration } from "../harness/types.ts";
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES } from "../truncate.ts";

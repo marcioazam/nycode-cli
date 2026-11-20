@@ -3,8 +3,8 @@ import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { fauxAssistantMessage } from "@earendil-works/pi-ai";
-import { Harness, LiveDoc, ReadOnlySession, UserEntry, type Wake } from "@earendil-works/pi-durable";
+import { fauxAssistantMessage } from "@nycode/ai";
+import { Harness, LiveDoc, ReadOnlySession, UserEntry, type Wake } from "@nycode/durable";
 import { afterEach, describe, expect, it } from "vitest";
 import { openNodeJsonlStorage } from "../src/storage/jsonl/node.ts";
 import { openNodeSqliteStorage } from "../src/storage/sqlite/node.ts";
@@ -19,7 +19,7 @@ afterEach(async () => {
 });
 
 async function sqlitePath(): Promise<string> {
-	const directory = await mkdtemp(join(tmpdir(), "pi-durable-read-only-"));
+	const directory = await mkdtemp(join(tmpdir(), "nycode-durable-read-only-"));
 	directories.add(directory);
 	return join(directory, "session.sqlite");
 }
@@ -95,7 +95,7 @@ describe("read-only Harness", () => {
 
 	// #11939: JSONL storage opened with its own `readOnly` writes nothing, not even recovery repairs.
 	it("opens a JSONL session with work running elsewhere without writing", async () => {
-		const directory = await mkdtemp(join(tmpdir(), "pi-durable-read-only-jsonl-"));
+		const directory = await mkdtemp(join(tmpdir(), "nycode-durable-read-only-jsonl-"));
 		directories.add(directory);
 		const setup = chatSetup();
 		const busy = unanswered();

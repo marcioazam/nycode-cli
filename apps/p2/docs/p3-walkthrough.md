@@ -11,10 +11,10 @@ Section 17 lists conflicts between the documents found while writing this.
 
 - **[D] p3 next to p2**, as `apps/p3`, own data directory. p2 keeps running unchanged. Plugins are ported one at a time.
 - **[D] No migration** of p2 data: p3 starts empty (no `seed`, no catalog/shares/subagents import, no legacy parsing).
-- **[D] Chord v2 lives inside p3** until stable, then moves to `packages/chord` (pi first, CI) and p2 is deleted.
+- **[D] Chord v2 lives inside p3** until stable, then moves to `packages/chord` (nycode first, CI) and p2 is deleted.
 - **[D] Durable boundary:** Durable keeps importing today's Chord (`delta`, `context`, `output`); p3 hands Durable only
   plain data and Durable's own types. Chord v2 takes `delta`/`output` over unchanged. `OutputBuffer`/`Progress` already
-  moved to `@earendil-works/chord/output` [B].
+  moved to `@nycode/chord/output` [B].
 - **[D] No backward compatibility** anywhere unless asked.
 - **[D] Approach:** functionality first (`p3-functions/`: 22 domains), then objects per domain (owner, host,
   pure/native, relationships), then target design v2 written from the decision log, then reviewers judge it.
@@ -115,7 +115,7 @@ Section 17 lists conflicts between the documents found while writing this.
 - Storage error ends the store; host reports and restarts.
 - `DocumentStorage` interface (`commit`, `find`, `load`, `scan`, `byTag`, `mintId`); memory implementation in Chord;
   p2/p3 adapts Durable's SQLite `Storage` (`kind = <definition>.<objectHash>`); tag index in the adapter.
-- Conformance suite in `@earendil-works/chord/testing`.
+- Conformance suite in `@nycode/chord/testing`.
 - Persistence split: app state in Chord documents; only transcript-bound data in Durable.
 - Kinds of state: document, derive, source readable, paged method, plugin database (as a native).
 
@@ -245,14 +245,14 @@ Section 17 lists conflicts between the documents found while writing this.
 ## 19. Plugin loading (`plugin-loading.md`, revision 4)
 
 - Sources: built-in, global (`<data>/plugins`), global packages (npm/git, `--ignore-scripts`), project
-  (`<cwd>/.pi/p2/plugins`, worker/web/tui only, never server).
+  (`<cwd>/.nycode/p2/plugins`, worker/web/tui only, never server).
 - Discovery = directory listing, never parses code; server selects, workers scan nothing; dependencies resolved by
   contract name at runtime; missing provider fails at activation with the consumer's name.
 - Names: `<plugin>.<name>` for contracts, registries, Durable extensions, entry kinds; tools `<plugin>_<name>`.
 - Loader D: one base bundle per surface + one script per facet, host packages passed in, no module map (GC reclaims old
   generations); stable filename per (facet, digest), V8 compilation cache off. Vite removed after web D.
 - Project trust: `trust.json` per directory, `ask`/`never`, pin-to-content mode; content-addressed snapshots; approved
-  bytes = executed bytes; change → dirty → owner Reload. Project `.pi/skills`/`.pi/prompts` gated too.
+  bytes = executed bytes; change → dirty → owner Reload. Project `.nycode/skills`/`.nycode/prompts` gated too.
 - Scopes: a page/TUI worker holds one scope; `ClientBundle` pushes bundle hashes; TUI snapshots partitioned per scope.
 - Leaving a scope: provenance map, fallback renderers, blocked tasks with Abort.
 - Security table: trusting a project grants the owner's OS account and owner rights in the browser.

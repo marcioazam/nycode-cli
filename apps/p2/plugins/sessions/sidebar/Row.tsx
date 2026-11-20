@@ -1,5 +1,5 @@
 // The rows of the sidebar and its list pages, items of Elanor's side navigation. A session and each of its subagents
-// are the same item (`AgentItem`): a status, a name and a detail. The status is pi's working dots while it runs, a blue
+// are the same item (`AgentItem`): a status, a name and a detail. The status is nycode's working dots while it runs, a blue
 // dot for an answer not read yet, a red dot for a failure, nothing while idle; a session's is what wants the owner
 // first, then any of its conversations working, and work its status does not show shows as dots before the detail. The
 // detail is how long ago its last message was; under a fine pointer, on hover or keyboard focus, it gives way to the item's one action, an icon button:
@@ -26,7 +26,7 @@ import { type ComponentProps, type ReactNode, useEffect, useId, useMemo, useStat
 import { conversationTargetId } from "../../chat/contract.ts";
 import { byRecentActivity, type Child } from "../../subagents/contract.ts";
 import { stoppable } from "../agent-actions.ts";
-import { FailedDot, PiDots, UnreadMark } from "./marks.tsx";
+import { FailedDot, NycodeDots, UnreadMark } from "./marks.tsx";
 import { type Activity, failureOf, type SidebarRow } from "./model.ts";
 import { NavRow } from "./NavRow.tsx";
 import { failureWords, runState, subagentTitle } from "./run-state.ts";
@@ -42,7 +42,7 @@ export function FailedMark({ label, title }: { label: string; title: string }) {
 }
 
 /**
- * What the sessions a collapsed group or rollup hides do: how many run (pi's dots), how many failed (the warning sign),
+ * What the sessions a collapsed group or rollup hides do: how many run (nycode's dots), how many failed (the warning sign),
  * how many have an unread answer (a blue count). Nothing when none does.
  */
 export function HiddenAttention({ activity }: { activity: Activity }) {
@@ -51,7 +51,7 @@ export function HiddenAttention({ activity }: { activity: Activity }) {
 		<>
 			{working > 0 && (
 				<span className="working-count" title={`${working} running`}>
-					<PiDots />
+					<NycodeDots />
 					{working}
 				</span>
 			)}
@@ -173,7 +173,7 @@ export type ItemAction = { readonly kind: "cancel" | "archive"; readonly title: 
 function StatusMark({ status }: { status: ItemStatus }) {
 	switch (status.kind) {
 		case "working":
-			return <PiDots />;
+			return <NycodeDots />;
 		case "unread":
 			return <UnreadMark />;
 		case "failed":
@@ -306,7 +306,7 @@ function sessionStatus(session: SidebarRow): ItemStatus {
 
 /**
  * A session's running conversations while its status shows that it waits for the owner (a failure or an unread
- * answer): pi's dots before the age, with their count when several run. Nothing while its status shows working or
+ * answer): nycode's dots before the age, with their count when several run. Nothing while its status shows working or
  * nothing runs.
  */
 function BackgroundWork({ session, status }: { session: SidebarRow; status: ItemStatus }) {
@@ -314,7 +314,7 @@ function BackgroundWork({ session, status }: { session: SidebarRow; status: Item
 	if (status.kind === "working" || running === 0) return null;
 	return (
 		<span className="working-count background-work" title={running > 1 ? `${running} agents running` : "Running"}>
-			<PiDots />
+			<NycodeDots />
 			{running > 1 && running}
 		</span>
 	);

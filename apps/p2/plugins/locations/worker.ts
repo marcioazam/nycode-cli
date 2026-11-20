@@ -4,7 +4,7 @@
 // meanwhile is retried after the next commit; a destination that became invalid is recorded as the move's failure.
 // The record is Durable: a worker that stops first applies it after its next start.
 import { setTimeout as sleep } from "node:timers/promises";
-import { ROOT_CONVERSATION_ID } from "@earendil-works/pi-durable";
+import { ROOT_CONVERSATION_ID } from "@nycode/durable";
 import { type Ctx, contribute, defineFacet, expectVariant, sameLocation, signalOf } from "@p2/app/v1";
 import { durableContext } from "@p2/app/v1/node";
 import { CommitSignal, Extensions, HarnessNative, harnessOf, locateConversation, workerOf } from "@p2/app/v1/worker";

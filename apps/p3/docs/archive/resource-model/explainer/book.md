@@ -136,16 +136,16 @@ questions, and they get two answers.
 row "Groupings: show" blue
 box recent "Recent" "per user, from activity" blue
 box folders "Folders" "computed from locations" blue
-box project "Project pi" "curated: members, resources" accent
+box project "Project nycode" "curated: members, resources" accent
 box discord "#support" "a Discord channel" accent
 row "Session"
 gap
-box s1 "Session S1" "source: project pi" accent
+box s1 "Session S1" "source: project nycode" accent
 box s2 "Session S2" "source: #support" accent
 gap
 row "Lists: equip" accent
 gap
-box l1 "pi's list" "Linear · gpu · Anthropic" accent
+box l1 "nycode's list" "Linear · gpu · Anthropic" accent
 box l2 "#support's list" "company key · access to X" accent
 gap
 arrow recent -> s1 "shows" dashed
@@ -233,7 +233,7 @@ await store.add({ id: resource.id, owner, config }, ctx);
 
 :::note | Is a project a resource?
 No. A resource is something a session uses. A project is a grouping that keeps a list of resources; a session in
-pi does not use pi, it uses what is on pi's list. In code, the session's source field points to the project; the
+nycode does not use nycode, it uses what is on nycode's list. In code, the session's source field points to the project; the
 project is never an entry on any list.
 :::
 
@@ -261,9 +261,9 @@ cannot be prevented, so what is brought into a session is the control.
 
 The default layout shows a session's list in its side panel, with where it comes from at the top:
 
-:::figure wide | The default layout: groupings in the sidebar (each section from its own plugin), session S1 in the middle, its list on the right. S1's source is project pi; Charlotta's question uses Colin's Linear login, Cristina's machine and Charlotta's key.
+:::figure wide | The default layout: groupings in the sidebar (each section from its own plugin), session S1 in the middle, its list on the right. S1's source is project nycode; Charlotta's question uses Colin's Linear login, Cristina's machine and Charlotta's key.
 <div class="mk">
-<div class="mk-bar"><i></i><i></i><i></i><span>p3 · pi / Fix flaky upload test</span></div>
+<div class="mk-bar"><i></i><i></i><i></i><span>p3 · nycode / Fix flaky upload test</span></div>
 <div class="mk-cols">
 <div class="mk-side">
  <div class="mk-sec"><h5>Recent <span class="mk-by">recent</span></h5>
@@ -271,11 +271,11 @@ The default layout shows a session's list in its side panel, with where it comes
   <div class="mk-row"><span class="mk-ico sess">S</span>Release notes draft<small>1h</small></div>
  </div>
  <div class="mk-sec"><h5>Folders <span class="mk-by">folders</span></h5>
-  <div class="mk-row"><span class="mk-ico env">M</span>gpu:~/pi<small>2</small></div>
+  <div class="mk-row"><span class="mk-ico env">M</span>gpu:~/nycode<small>2</small></div>
   <div class="mk-row"><span class="mk-ico env">M</span>this machine:~/notes<small>5</small></div>
  </div>
  <div class="mk-sec"><h5>Projects <span class="mk-by">projects</span></h5>
-  <div class="mk-row">▾ <b>pi</b><small>3 people</small></div>
+  <div class="mk-row">▾ <b>nycode</b><small>3 people</small></div>
   <div class="mk-row in sel"><span class="mk-ico sess">S</span>Fix flaky upload test</div>
   <div class="mk-row in"><span class="mk-ico sess">S</span>GPU benchmark</div>
   <div class="mk-row">▸ research-notes</div>
@@ -290,15 +290,15 @@ The default layout shows a session's list in its side panel, with where it comes
 </div>
 <div class="mk-main">
  <div class="mk-h">Fix flaky upload test</div>
- <div class="mk-sub">gpu:~/pi · project pi · owner Cristina</div>
+ <div class="mk-sub">gpu:~/nycode · project nycode · owner Cristina</div>
  <div class="mk-msg"><b>Charlotta</b>Why does the upload test flake on gpu? There is a Linear issue about it.</div>
  <div class="mk-tool">linear.search "upload flaky"  → PI-412</div>
  <div class="mk-tool">bash  npm test -- upload --repeat 20</div>
- <div class="mk-msg"><b>Pi</b>PI-412 matches: the test races the temp-dir cleanup. 3 of 20 runs fail; a fix is ready in <code>upload.test.ts</code>.</div>
+ <div class="mk-msg"><b>Nycode</b>PI-412 matches: the test races the temp-dir cleanup. 3 of 20 runs fail; a fix is ready in <code>upload.test.ts</code>.</div>
 </div>
 <div class="mk-panel">
  <div class="mk-h" style="font-size:13px">Resources <span class="mk-by core">core</span></div>
- <div class="mk-src"><span class="mk-ico sess">P</span>from project <b>pi</b></div>
+ <div class="mk-src"><span class="mk-ico sess">P</span>from project <b>nycode</b></div>
  <div class="mk-list">
   <div class="mk-li"><span class="mk-ico mcp">L</span><div class="t"><div>Linear</div><small>MCP server · Colin</small></div></div>
   <div class="mk-li"><span class="mk-ico env">G</span><div class="t"><div>gpu</div><small>machine · Cristina</small></div></div>
@@ -339,11 +339,11 @@ A project's sessions are a query: catalog rows whose source is the project. The 
 down, so two projects can never both equip one session. Selecting the project shows the project plugin's detail view,
 whose rows are drawn by each thing's own plugin:
 
-:::figure wide | Project pi selected. The projects plugin lists addresses in three columns; every row is drawn by the renderer of that thing's plugin (tags show which), so the project plugin never learns what an MCP server is.
+:::figure wide | Project nycode selected. The projects plugin lists addresses in three columns; every row is drawn by the renderer of that thing's plugin (tags show which), so the project plugin never learns what an MCP server is.
 <div class="mk">
-<div class="mk-bar"><i></i><i></i><i></i><span>p3 · pi</span></div>
+<div class="mk-bar"><i></i><i></i><i></i><span>p3 · nycode</span></div>
 <div style="padding:14px 16px">
- <div style="display:flex;align-items:baseline;gap:10px"><div class="mk-h" style="font-size:18px">pi</div><span class="mk-by">projects</span><span style="margin-left:auto" class="mk-btn">New session here</span></div>
+ <div style="display:flex;align-items:baseline;gap:10px"><div class="mk-h" style="font-size:18px">nycode</div><span class="mk-by">projects</span><span style="margin-left:auto" class="mk-btn">New session here</span></div>
  <div class="mk-sub">Project · 3 people and 1 group · 5 resources · 2 sessions · you are a maintainer</div>
  <div style="display:grid;grid-template-columns:1fr 1.25fr 1fr;gap:14px">
   <div><div class="mk-who">People <span class="mk-by">users</span></div>
@@ -391,16 +391,16 @@ const allowed = creatable.find((c) => c.owner === owner)?.definitions ?? [];
 const creators = useRegistry(Creators).filter((c) => allowed.includes(c.definition.name));
 ```
 
-:::figure wide | The same picker for Colin (engineering) and Cristina (research), with the rule "only engineering may create MCP servers". Cristina's view lacks the MCP creator because her <code>creatable</code> lacks it; she still uses Colin's server in pi.
+:::figure wide | The same picker for Colin (engineering) and Cristina (research), with the rule "only engineering may create MCP servers". Cristina's view lacks the MCP creator because her <code>creatable</code> lacks it; she still uses Colin's server in nycode.
 <div class="mk">
-<div class="mk-bar"><i></i><i></i><i></i><span>Add a resource to project pi</span></div>
+<div class="mk-bar"><i></i><i></i><i></i><span>Add a resource to project nycode</span></div>
 <div class="mk-split">
  <div><div class="mk-who"><span class="mk-ico user">C</span>Colin sees</div>
   <div class="mk-search">Search your resources…</div>
   <div class="mk-who" style="font-size:9.5px">Yours</div>
   <div class="mk-list">
    <div class="mk-li"><span class="mk-ico mcp">R</span><div class="t"><div>Radius MCP</div><small>MCP server · yours</small></div><span class="mk-btn">Bring</span></div>
-   <div class="mk-li off"><span class="mk-ico mcp">L</span><div class="t"><div>Linear</div><small>already in pi</small></div></div>
+   <div class="mk-li off"><span class="mk-ico mcp">L</span><div class="t"><div>Linear</div><small>already in nycode</small></div></div>
   </div>
   <div class="mk-who" style="font-size:9.5px">Create new</div>
   <div class="mk-grid">
@@ -414,7 +414,7 @@ const creators = useRegistry(Creators).filter((c) => allowed.includes(c.definiti
   <div class="mk-search">Search your resources…</div>
   <div class="mk-who" style="font-size:9.5px">Yours</div>
   <div class="mk-list">
-   <div class="mk-li off"><span class="mk-ico env">G</span><div class="t"><div>gpu</div><small>already in pi</small></div></div>
+   <div class="mk-li off"><span class="mk-ico env">G</span><div class="t"><div>gpu</div><small>already in nycode</small></div></div>
    <div class="mk-li"><span class="mk-ico drive">D</span><div class="t"><div>Cristina's drive</div><small>drive · yours</small></div><span class="mk-btn">Bring</span></div>
   </div>
   <div class="mk-who" style="font-size:9.5px">Create new</div>
@@ -530,7 +530,7 @@ list (the Discord plugin's rule). The expiry sits on the list entry, not on the 
  <div class="mk-sub"># support · Discord · owner Mario</div>
  <div class="mk-msg"><b>Lena · Discord</b>Is 0.9 out yet? The changelog link 404s.</div>
  <div class="mk-tool">conversations.answer → "Release notes draft"</div>
- <div class="mk-msg"><b>Pi</b>Not yet: the release notes are still in draft; the 0.9 changelog goes up with the release.</div>
+ <div class="mk-msg"><b>Nycode</b>Not yet: the release notes are still in draft; the 0.9 changelog goes up with the release.</div>
  <div class="mk-msg"><b>Tom · Discord</b>Can you tell the release session to hurry up?</div>
  <div class="mk-tool err">conversations.send → refused: this session may only read answers of "Release notes draft"</div>
 </div>
@@ -600,15 +600,15 @@ note res..mcp: each server view reads the same effective list: resourcesOf(self,
 Resource plugins' per-session server views read the same list and check it at every call, so the worker is never the
 last line:
 
-:::sequence animate | Colin withdraws Linear from project pi while S1 is mid-script; the next call is refused on the server.
+:::sequence animate | Colin withdraws Linear from project nycode while S1 is mid-script; the next call is refused on the server.
 actor colin "Colin's page" "MyResources" blue
 actor core "core resources" "server" accent
-actor projects "projects" "pi's list"
+actor projects "projects" "nycode's list"
 actor mcp "SessionMcp" "S1's view"
 actor worker "S1's worker" "harness"
 colin -> core: withdraw Linear
-core -> projects: remove(pi, Linear)
-projects --> core: pi's list changed
+core -> projects: remove(nycode, Linear)
+projects --> core: nycode's list changed
 core => core: recompute S1's list
 core --> worker: list without Linear
 core --> mcp: Linear gone
@@ -625,19 +625,19 @@ Every kind has the same three parts: a token in its contract file, a server face
 per-session view, a worker facet that contributes its extensions keyed by resource. What differs is what the worker gets.
 
 **Model providers push credentials.** The worker streams from the provider itself; the server refreshes and pushes
-pi-ai's auth with its expiry. Refresh tokens never reach the worker, and a cached token alone is not permission: the
+nycode-ai's auth with its expiry. Refresh tokens never reach the worker, and a cached token alone is not permission: the
 worker refuses once the provider left the list or the auth expired.
 
 ```ts
 host.serve(SessionModels, (_params, principal, self) => {
 	const list = self.get(SessionList, { session: principal.session }).list;   // entries isOf(ModelProvider)
-	const store = self.get(ModelStore, {});                       // pi-ai CredentialStore, one refresh per credential
+	const store = self.get(ModelStore, {});                       // nycode-ai CredentialStore, one refresh per credential
 	// a routine pushes { resource, models, auth, expires } for each, again before the earliest expiry
 });
 ```
 
 **MCP servers run on the server.** One resource per server, its transport in its configuration: HTTP (no location),
-`server-stdio` (the p3 machine; admin by baseline), or `checkout` (an enabled `.pi/mcp.json` entry, bound to that env,
+`server-stdio` (the p3 machine; admin by baseline), or `checkout` (an enabled `.nycode/mcp.json` entry, bound to that env,
 directory and the entry's digest, run there). The worker gets one extension per server on the list; every tool calls
 `SessionMcp.call` with its conversation, so the server admits against the list now and checks that a checkout server
 runs only where that conversation works. Processes stay per session by default, as in p2 (decision 4).
@@ -664,8 +664,8 @@ self.contribute(ResourcePanels, [{ definition: Machine, title: t.message("settin
   <div class="mk-tab" style="border:1px dashed #d5ccb9;border-bottom:none">VNC <span class="mk-by">vnc (3rd party)</span></div>
  </div>
  <div style="border:1px solid #e3dbcc;border-top:none;border-radius:0 0 8px 8px;padding:8px">
-  <div style="display:flex;gap:6px;margin-bottom:6px"><span class="mk-chip">~/pi · bash</span><span class="mk-chip">~/bench · nvidia-smi</span><span class="mk-btn ghost" style="padding:1px 8px">+</span></div>
-  <div class="mk-term"><span class="p">cristina@gpu:~/pi$</span> npm test -- upload --repeat 20<br>  ✓ upload › resumes after drop (19/20)<br>  ✗ upload › cleans temp dir (1/20)  ENOENT: /tmp/pi-up-7f3a<br><span class="p">cristina@gpu:~/pi$</span> ▍</div>
+  <div style="display:flex;gap:6px;margin-bottom:6px"><span class="mk-chip">~/nycode · bash</span><span class="mk-chip">~/bench · nvidia-smi</span><span class="mk-btn ghost" style="padding:1px 8px">+</span></div>
+  <div class="mk-term"><span class="p">cristina@gpu:~/nycode$</span> npm test -- upload --repeat 20<br>  ✓ upload › resumes after drop (19/20)<br>  ✗ upload › cleans temp dir (1/20)  ENOENT: /tmp/nycode-up-7f3a<br><span class="p">cristina@gpu:~/nycode$</span> ▍</div>
  </div>
 </div>
 </div>
@@ -725,13 +725,13 @@ function NewMcpSheet({ owner, done, cancel }: { owner: UserId; done(resource: Re
 }
 ```
 
-:::figure wide | The MCP plugin's creation sheet, opened from "Add resource" on project pi. An admin also gets the owner choice (themselves or the company); Colin sees only his own. The duration belongs to the picker, which brings the new server into pi when the sheet is done.
+:::figure wide | The MCP plugin's creation sheet, opened from "Add resource" on project nycode. An admin also gets the owner choice (themselves or the company); Colin sees only his own. The duration belongs to the picker, which brings the new server into nycode when the sheet is done.
 <div class="mk">
-<div class="mk-bar"><i></i><i></i><i></i><span>Add a resource to project pi › New MCP server</span></div>
+<div class="mk-bar"><i></i><i></i><i></i><span>Add a resource to project nycode › New MCP server</span></div>
 <div class="mk-split">
 <div>
  <div style="display:flex;align-items:center;gap:8px"><span class="mk-ico mcp">M</span><div class="mk-h" style="margin:0">New MCP server</div><span class="mk-by" style="margin-left:auto">sheet: mcp</span></div>
- <div class="mk-sub" style="margin-top:4px">Signed in as you. Everyone who uses pi's sessions will use it with your login.</div>
+ <div class="mk-sub" style="margin-top:4px">Signed in as you. Everyone who uses nycode's sessions will use it with your login.</div>
  <div class="mk-who" style="font-size:9.5px">Name</div>
  <div class="mk-search" style="color:#2a2723">Linear</div>
  <div class="mk-who" style="font-size:9.5px">Connects to</div>
@@ -741,13 +741,13 @@ function NewMcpSheet({ owner, done, cancel }: { owner: UserId; done(resource: Re
  <div style="display:flex;gap:6px"><span class="mk-chip" style="border-color:#b4472f">One per session</span><span class="mk-chip">Shared</span></div>
 </div>
 <div style="background:#fdfbf7">
- <div class="mk-who">Add to pi <span class="mk-by core">picker: core</span></div>
+ <div class="mk-who">Add to nycode <span class="mk-by core">picker: core</span></div>
  <div class="mk-list">
   <div class="mk-li"><div class="t"><div>Owner</div><small>you (Colin)</small></div><span class="mk-pill">admins: or the company</span></div>
   <div class="mk-li"><div class="t"><div>For how long</div><small>until removed</small></div><span class="mk-chip">1 hour</span><span class="mk-chip">until Fri</span></div>
  </div>
- <div style="display:flex;gap:8px;margin-top:10px"><span class="mk-btn pri">Create and add to pi</span><span class="mk-btn">Cancel</span></div>
- <div class="mk-note">Create: McpServers.create → the owner rule and the policy ("only engineering creates MCP servers") → a row, Colin's. Then MyResources.bring into pi: Colin owns it, pi lets members add.</div>
+ <div style="display:flex;gap:8px;margin-top:10px"><span class="mk-btn pri">Create and add to nycode</span><span class="mk-btn">Cancel</span></div>
+ <div class="mk-note">Create: McpServers.create → the owner rule and the policy ("only engineering creates MCP servers") → a row, Colin's. Then MyResources.bring into nycode: Colin owns it, nycode lets members add.</div>
 </div>
 </div>
 </div>
@@ -757,16 +757,16 @@ function NewMcpSheet({ owner, done, cancel }: { owner: UserId; done(resource: Re
 actor page "Colin's page" "sheet + picker" blue
 actor mcp "McpServers" "server, mcp"
 actor res "Resources" "server, core" accent
-actor proj "projects" "pi's list"
-actor worker "pi sessions" "workers"
+actor proj "projects" "nycode's list"
+actor worker "nycode sessions" "workers"
 page -> mcp: create { owner: colin, config }
 mcp => res: create { actor: colin, owner: colin, definition: McpServer }
 res --> mcp: { name: mcp.server, id: 7f3a }
 mcp -> mcp: store.add(7f3a, config)
 mcp --> page: the new resource
-page -> res: MyResources.bring { 7f3a, into: pi }
-res -> proj: mayBring(colin, pi)? add(entry)
-proj --> res: pi's list changed
+page -> res: MyResources.bring { 7f3a, into: nycode }
+res -> proj: mayBring(colin, nycode)? add(entry)
+proj --> res: nycode's list changed
 res --> worker: lists recomputed: Linear added
 :::
 
@@ -780,7 +780,7 @@ Core draws the header from `ResourceInfo`; every panel registered for the defini
 <div style="padding:12px 16px 14px">
  <div style="display:flex;align-items:center;gap:9px"><span class="mk-ico mcp">L</span><div class="mk-h" style="margin:0;font-size:17px">Linear</div><span class="mk-pill" style="background:#e3f1e6;color:#3f7a4b">signed in</span><span class="mk-by core" style="margin-left:auto">header: core</span></div>
  <div class="mk-sub" style="margin-top:3px">MCP server · owner Colin · signed in as colin@earendil.com</div>
- <div style="display:flex;gap:6px;align-items:center;margin:6px 0 10px;flex-wrap:wrap"><span class="mk-who" style="margin:0">Used in</span><span class="mk-chip"><span class="mk-ico sess">P</span>pi</span><span class="mk-chip"><span class="mk-ico sess">S</span>Triage bot · until Fri</span><span class="mk-chip"><span class="mk-ico user">C</span>your sessions (defaults)</span><span style="margin-left:auto" class="mk-btn">Exclude from my defaults</span><span class="mk-btn" style="color:#b4472f;border-color:#e2b2a6">Withdraw everywhere</span></div>
+ <div style="display:flex;gap:6px;align-items:center;margin:6px 0 10px;flex-wrap:wrap"><span class="mk-who" style="margin:0">Used in</span><span class="mk-chip"><span class="mk-ico sess">P</span>nycode</span><span class="mk-chip"><span class="mk-ico sess">S</span>Triage bot · until Fri</span><span class="mk-chip"><span class="mk-ico user">C</span>your sessions (defaults)</span><span style="margin-left:auto" class="mk-btn">Exclude from my defaults</span><span class="mk-btn" style="color:#b4472f;border-color:#e2b2a6">Withdraw everywhere</span></div>
  <div class="mk-tabs">
   <div class="mk-tab on">Tools <span class="mk-by">mcp</span></div>
   <div class="mk-tab">Connection <span class="mk-by">mcp</span></div>
@@ -809,7 +809,7 @@ Core draws the header from `ResourceInfo`; every panel registered for the defini
 <div>
  <div class="mk-who">Yours <span class="mk-by core">core</span></div>
  <div class="mk-list">
-  <div class="mk-li"><span class="mk-ico mcp">L</span><div class="t"><div>Linear</div><small>MCP server · 23 tools · in pi, Triage bot</small></div><span class="mk-by">mcp</span></div>
+  <div class="mk-li"><span class="mk-ico mcp">L</span><div class="t"><div>Linear</div><small>MCP server · 23 tools · in nycode, Triage bot</small></div><span class="mk-by">mcp</span></div>
   <div class="mk-li"><span class="mk-ico model">A</span><div class="t"><div>Anthropic</div><small>model provider · 9 models</small></div><span class="mk-by">models</span></div>
   <div class="mk-li"><span class="mk-ico env">L</span><div class="t"><div>laptop</div><small>machine · asleep</small></div><span class="mk-by">envs</span></div>
   <div class="mk-li"><span class="mk-ico access">→</span><div class="t"><div>Release notes draft · answers</div><small>access to a session · in #support until 14:32</small></div><span class="mk-by">conversations</span></div>

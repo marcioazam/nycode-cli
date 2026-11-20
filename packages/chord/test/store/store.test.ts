@@ -4,7 +4,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { NOOP_TELEMETRY_CONTEXT, NOOP_TELEMETRY_METRICS } from "@earendil-works/pi-telemetry";
+import { NOOP_TELEMETRY_CONTEXT, NOOP_TELEMETRY_METRICS } from "@nycode/telemetry";
 import { afterEach, describe, expect, it } from "vitest";
 import { BACKGROUND_CONTEXT as context, withCancel, withTelemetry } from "../../src/context/index.ts";
 import { int, str } from "../../src/contracts/index.ts";

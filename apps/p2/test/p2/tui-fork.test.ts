@@ -1,8 +1,8 @@
-// `/fork`, `/clone` and `doubleEscapeAction: "fork"` in the TUI (p2-tui-port.md section 10.8): pi's message picker,
+// `/fork`, `/clone` and `doubleEscapeAction: "fork"` in the TUI (p2-tui-port.md section 10.8): nycode's message picker,
 // `Sessions.fork` before the chosen message with its text in the new session's editor, `Sessions.clone`.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { type ConversationView, type EntryId, ROOT_CONVERSATION_ID } from "@earendil-works/pi-durable";
+import { type ConversationView, type EntryId, ROOT_CONVERSATION_ID } from "@nycode/durable";
 import { Chat, type ModelMeta } from "../../plugins/chat/contract.ts";
 import chatTui, { ChatSurface } from "../../plugins/chat/tui.ts";
 import { type Session, Sessions } from "../../plugins/sessions/contract.ts";
@@ -42,7 +42,7 @@ test("/fork picks a message and opens the fork with it in the editor; /clone; do
 	const view = (conversation: number): ConversationView => ({
 		conversation: { id: conversation } as ConversationView["conversation"],
 		entries: conversation === 1 ? [input(1, "first question"), input(3, "second question")] : [],
-		docs: { "pi.agent": { model: { provider: "faux", modelId: "faux-1" } } } as ConversationView["docs"],
+		docs: { "nycode.agent": { model: { provider: "faux", modelId: "faux-1" } } } as ConversationView["docs"],
 	});
 	const { send, runtime, screen } = await topology(t, {
 		server: [
@@ -119,7 +119,7 @@ test("/fork picks a message and opens the fork with it in the editor; /clone; do
 		return surface;
 	};
 	await poll(() => chat().editable);
-	// /fork: pi's picker, the newest message selected; Up picks the first.
+	// /fork: nycode's picker, the newest message selected; Up picks the first.
 	typed(send, "/fork");
 	send(ENTER);
 	await poll(async () => (await screen()).includes("Fork from Message"));

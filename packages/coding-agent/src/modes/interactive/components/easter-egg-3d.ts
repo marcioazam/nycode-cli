@@ -11,17 +11,17 @@ import {
 	type TuiMouseEvent,
 	type TuiMouseEventResult,
 	visibleWidth,
-} from "@earendil-works/pi-tui";
+} from "@nycode/tui";
 import { theme } from "../theme/theme.ts";
 import { ARMIN_HEIGHT, ARMIN_WIDTH, isArminPixel } from "./armin.ts";
 import { formatKeyText } from "./keybinding-hints.ts";
 
 /**
- * Fullscreen 3D easter eggs: the pi logo (header logo click) and Armin (/arminsayshi). Both are bitmaps built from
+ * Fullscreen 3D easter eggs: the nycode logo (header logo click) and Armin (/arminsayshi). Both are bitmaps built from
  * one block per pixel. The current screen dissolves into braille dust while the model spins in the center and its
  * blocks play a sliding puzzle. Leaving plays the same timeline backwards, so the screen reassembles.
  *
- * The pi logo lifts off the header, flies to the center, and grows; the dust spreads out from the header logo.
+ * The nycode logo lifts off the header, flies to the center, and grows; the dust spreads out from the header logo.
  * Armin grows out of a speck at the center; the dust spreads out from the center.
  *
  * The blocks are ray cast per braille dot. A braille cell holds 2x4 roughly square dots, so one pixel of a
@@ -132,11 +132,11 @@ function createModel(
 const CORAL: Rgb = [228, 138, 122];
 const BLUE: Rgb = [79, 142, 179];
 const YELLOW: Rgb = [234, 182, 93];
-const PI_LOGO_PIXELS = ["ccc.", "b.c.", "bb.y", "b..y"];
-const PI_LOGO_COLORS: Record<string, Rgb> = { c: CORAL, b: BLUE, y: YELLOW };
+const NYCODE_LOGO_PIXELS = ["ccc.", "b.c.", "bb.y", "b..y"];
+const NYCODE_LOGO_COLORS: Record<string, Rgb> = { c: CORAL, b: BLUE, y: YELLOW };
 
-function piLogoModel(origin: { column: number; row: number }): Model {
-	return createModel(4, 4, (column, row) => PI_LOGO_COLORS[PI_LOGO_PIXELS[row]![column]!], {
+function nycodeLogoModel(origin: { column: number; row: number }): Model {
+	return createModel(4, 4, (column, row) => NYCODE_LOGO_COLORS[NYCODE_LOGO_PIXELS[row]![column]!], {
 		cameraDistance: 10,
 		widthShare: 0.35,
 		puzzleMoves: (random) => (random < 0.4 ? 2 : 1),
@@ -833,9 +833,9 @@ class BlockRaster {
 }
 
 /**
- * Which easter egg to play. The pi logo lifts off the header logo, whose top-left cell is at `column`, `row`.
+ * Which easter egg to play. The nycode logo lifts off the header logo, whose top-left cell is at `column`, `row`.
  */
-export type EasterEgg3d = { kind: "pi-logo"; column: number; row: number } | { kind: "armin" };
+export type EasterEgg3d = { kind: "nycode-logo"; column: number; row: number } | { kind: "armin" };
 
 let playing = false;
 
@@ -860,7 +860,9 @@ export async function playEasterEgg3d(tui: TUI, screen: readonly string[], egg: 
 		return;
 	}
 	const model =
-		egg.kind === "armin" ? arminModel(toRgb(theme.colors.accent)) : piLogoModel({ column: egg.column, row: egg.row });
+		egg.kind === "armin"
+			? arminModel(toRgb(theme.colors.accent))
+			: nycodeLogoModel({ column: egg.column, row: egg.row });
 	const animation = new EasterEgg3dAnimation(tui, screen, model, colors, () => {
 		playing = false;
 		overlay.hide();
@@ -906,7 +908,7 @@ export class EasterEgg3dAnimation implements Component {
 		this.background = colors.background;
 		this.onDone = onDone;
 		this.timer = setInterval(() => {
-			// Also stop when no longer rendered, e.g. when pi hides all overlays on exit.
+			// Also stop when no longer rendered, e.g. when nycode hides all overlays on exit.
 			if ((this.exit && this.exitProgress() >= 1) || performance.now() - this.lastRender > 1000) this.finish();
 			else this.tui.requestRender();
 		}, FRAME_MS);

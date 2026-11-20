@@ -1,7 +1,7 @@
 // Who the browser is (browser-safe contract): the owner, or a guest sessions were shared with. Served by the server host.
 
-import { remote } from "@earendil-works/chord";
-import { obj, opt, type Static, str, union } from "@earendil-works/pi-schema";
+import { remote } from "@nycode/chord";
+import { obj, opt, type Static, str, union } from "@nycode/schema";
 import { serverHost } from "./chord.ts";
 import { literal, record } from "./schema.ts";
 

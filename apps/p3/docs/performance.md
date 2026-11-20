@@ -8,7 +8,7 @@ it touches and reports the numbers in its Linear issue; a number that gets worse
 No session worker's USS (the memory only that process holds: what one more worker costs) may exceed 55 MiB, in any
 phase. The memory test (`apps/p3/old/test/release/memory.test.ts`, on the old base; to be ported to the skeleton with
 the harness core, ERNDL-855) checks it: four
-workers, each with Durable's harness, the coding tools, a subagent tool, real pi-ai providers against a local HTTPS
+workers, each with Durable's harness, the coding tools, a subagent tool, real nycode-ai providers against a local HTTPS
 stub and telemetry; idle, one streamed answer, a burst of 20 turns with tool calls, five subagents streaming at once.
 
 Where it stands (slayer, Node 26.11.1, the release, USS MiB, median of 20 workers):

@@ -5,8 +5,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { after, before, describe, it } from "node:test";
-import type { ToolResultMessage } from "@earendil-works/pi-ai";
-import type { ConversationView, LiveState } from "@earendil-works/pi-durable";
+import type { ToolResultMessage } from "@nycode/ai";
+import type { ConversationView, LiveState } from "@nycode/durable";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { Sessions } from "../../plugins/sessions/contract.ts";
@@ -15,7 +15,7 @@ import { type Fixture, holdIn, startFixture, until } from "./helpers.ts";
 
 const doc = readFileSync(new URL("../../docs/workflows.md", import.meta.url), "utf8");
 const blocks = [...doc.matchAll(/```js\n([\s\S]*?)```/g)].map((match) => match[1] ?? "");
-const live = (view: ConversationView | null | undefined) => view?.docs["pi.live"] as LiveState | undefined;
+const live = (view: ConversationView | null | undefined) => view?.docs["nycode.live"] as LiveState | undefined;
 const results = (view: ConversationView | null | undefined) =>
 	(view?.entries ?? []).flatMap((entry) =>
 		(entry.model ?? []).filter(

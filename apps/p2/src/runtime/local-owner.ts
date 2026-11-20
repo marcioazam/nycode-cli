@@ -22,9 +22,9 @@ export type LocalSignIn =
 	| { readonly kind: "signed-in"; readonly cookie: string }
 	| { readonly kind: "unavailable"; readonly message: string };
 
-/** The data directory the server uses by default: `P2_DATA_DIR`, else `~/.pi/p2`. */
+/** The data directory the server uses by default: `P2_DATA_DIR`, else `~/.nycode/p2`. */
 export const dataDirectory = (env: NodeJS.ProcessEnv = process.env): string =>
-	env.P2_DATA_DIR ?? join(homedir(), ".pi", "p2");
+	env.P2_DATA_DIR ?? join(homedir(), ".nycode", "p2");
 
 /** The answer to a challenge: HMAC-SHA256 under the owner key of the server's port and the challenge. */
 export const localOwnerProof = (key: string, port: number, challenge: string): string =>

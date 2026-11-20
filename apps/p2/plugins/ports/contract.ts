@@ -1,4 +1,4 @@
-import { arr, bool, int, nul, obj, opt, str, union } from "@earendil-works/pi-schema";
+import { arr, bool, int, nul, obj, opt, str, union } from "@nycode/schema";
 import { defineRegistry, literal, local, method, propertiesOf, remote, serverHost } from "@p2/app/v1";
 import type { Forwards } from "./store.ts";
 

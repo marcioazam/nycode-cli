@@ -15,7 +15,7 @@ import {
 	type SettingItem,
 	SettingsList,
 	truncateToWidth,
-} from "@earendil-works/pi-tui";
+} from "@nycode/tui";
 import type { TuiContext } from "../runtime/tui-context.ts";
 import type { TuiSettingField, TuiSettings } from "../runtime/tui-preferences.ts";
 import { ListOverlay, type ListRow } from "./components/list-overlay.ts";
@@ -25,7 +25,7 @@ import type { ThemeRef } from "./theme/ref.ts";
 import { parseAutoThemeSetting, SYSTEM_THEME_NAME } from "./theme/theme.ts";
 
 type Value = boolean | number | string;
-/** A G setting as pi's selector shows it: its path in prefs.json, pi's default and the values it cycles. */
+/** A G setting as nycode's selector shows it: its path in prefs.json, nycode's default and the values it cycles. */
 type Field = { id: string; label: string; description: string; path: string[]; fallback: Value; values: Value[] };
 const FIELDS: Field[] = [
 	{
@@ -33,7 +33,7 @@ const FIELDS: Field[] = [
 		label: "Hide thinking",
 		description: "Hide thinking blocks in assistant responses",
 		path: ["hideThinkingBlock"],
-		// p2 hides thinking until the setting says otherwise (pi shows it by default).
+		// p2 hides thinking until the setting says otherwise (nycode shows it by default).
 		fallback: true,
 		values: [true, false],
 	},
@@ -196,8 +196,8 @@ function sample(ref: ThemeRef, width: number): string[] {
 }
 
 /**
- * Theme picker: the list on the left in pi's look, the preview below it with its own ThemeRef, so the live transcript
- * keeps its theme until the patch is saved. "automatic" picks a light and a dark theme (pi's pair setting).
+ * Theme picker: the list on the left in nycode's look, the preview below it with its own ThemeRef, so the live transcript
+ * keeps its theme until the patch is saved. "automatic" picks a light and a dark theme (nycode's pair setting).
  */
 export class ThemePicker implements Component, Focusable {
 	focused = false;
@@ -263,7 +263,7 @@ export class ThemePicker implements Component, Focusable {
 	}
 }
 
-/** `/settings`: pi's list; changes stay pending until the overlay closes, then go to the launcher as one patch. */
+/** `/settings`: nycode's list; changes stay pending until the overlay closes, then go to the launcher as one patch. */
 /** `/settings`: the built-in rows, then the plugins' `TuiSettingFields` rows in key order. */
 export function openSettings(ctx: TuiContext, pluginFields: ReadonlyMap<string, TuiSettingField>): void {
 	const settings = ctx.settings;
@@ -357,7 +357,7 @@ export function openSettings(ctx: TuiContext, pluginFields: ReadonlyMap<string, 
 	);
 }
 
-/** Waits for one key and turns it into pi's key id (`ctrl+k`, `alt+enter`); Esc cancels. */
+/** Waits for one key and turns it into nycode's key id (`ctrl+k`, `alt+enter`); Esc cancels. */
 export class KeyCapture implements Component, Focusable {
 	focused = false;
 	private readonly ctx: TuiContext;

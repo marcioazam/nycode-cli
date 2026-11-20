@@ -1,6 +1,6 @@
-// Compiled checks: pi-schema validators of Chord-owned schemas, and the `invalid` error of a failed check.
+// Compiled checks: nycode-schema validators of Chord-owned schemas, and the `invalid` error of a failed check.
 
-import { compile, type JsonSchema, type Validator } from "@earendil-works/pi-schema";
+import { compile, type JsonSchema, type Validator } from "@nycode/schema";
 import type { Context } from "../context/index.ts";
 import { chordMetrics } from "../telemetry.ts";
 import { type ChordError, invalid } from "./errors.ts";

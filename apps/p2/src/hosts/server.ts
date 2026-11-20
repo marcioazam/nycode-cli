@@ -6,13 +6,13 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { homedir } from "node:os";
 import { join, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { isChordError, localeChoiceFacet, type PluginFacet, webSocketLink } from "@earendil-works/chord";
-import { filesFacet } from "@earendil-works/chord/app/files";
-import { nodeCompression } from "@earendil-works/chord/compression";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import type { RolloutResult } from "@earendil-works/chord/plugins";
-import { webSurface } from "@earendil-works/chord/surfaces";
-import { telemetryIngestFacet } from "@earendil-works/chord/telemetry-ingest";
+import { isChordError, localeChoiceFacet, type PluginFacet, webSocketLink } from "@nycode/chord";
+import { filesFacet } from "@nycode/chord/app/files";
+import { nodeCompression } from "@nycode/chord/compression";
+import { BACKGROUND_CONTEXT } from "@nycode/chord/context";
+import type { RolloutResult } from "@nycode/chord/plugins";
+import { webSurface } from "@nycode/chord/surfaces";
+import { telemetryIngestFacet } from "@nycode/chord/telemetry-ingest";
 import { WebSocketServer } from "ws";
 import { backupConfigured } from "../runtime/backup.ts";
 import {
@@ -150,14 +150,14 @@ function principalText(principal: P2Principal): string {
 const NOTHING_STORED = { ingest: () => 0 };
 
 export async function startServer(options: ServerOptions = {}): Promise<P2Server> {
-	// As Pi Mobile: a half-set default model from the environment refuses to start (before taking any lock).
+	// As Nycode Mobile: a half-set default model from the environment refuses to start (before taking any lock).
 	envDefaultModel();
 	const dev = options.dev ?? process.env.P2_DEV === "1";
 	const supervised = dev && process.connected && Number(process.env.P2_DEV_SUPERVISOR_PID) === process.ppid;
 	const resume: unknown = dev ? JSON.parse(process.env.P2_DEV_RESUME ?? "[]") : [];
 	if (!Array.isArray(resume) || !resume.every((id: unknown) => typeof id === "string"))
 		throw new Error("Invalid dev resume list");
-	const dataDir = options.dataDir ?? process.env.P2_DATA_DIR ?? join(homedir(), ".pi", "p2");
+	const dataDir = options.dataDir ?? process.env.P2_DATA_DIR ?? join(homedir(), ".nycode", "p2");
 	// The user plugin root (`<data>/plugins/`): created here, so the plugin watcher watches it from the start.
 	const userRoot = userPluginsDirectory(dataDir);
 	mkdirSync(userRoot, { recursive: true, mode: 0o700 });
@@ -758,7 +758,7 @@ export async function startServer(options: ServerOptions = {}): Promise<P2Server
 					return;
 				}
 				const { principal, origin } = access;
-				// Unauthenticated readiness (Pi Mobile's /health, polled by launchers); known Hosts only.
+				// Unauthenticated readiness (Nycode Mobile's /health, polled by launchers); known Hosts only.
 				if (path === "/health" && (request.method === "GET" || request.method === "HEAD")) {
 					response.writeHead(200, { "Content-Type": "application/json" });
 					response.end(request.method === "HEAD" ? undefined : JSON.stringify({ ok: true, name: "p2" }));

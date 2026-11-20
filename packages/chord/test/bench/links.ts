@@ -6,7 +6,7 @@
 // Run by hand from packages/chord (not in CI):
 //   node --conditions=source --experimental-strip-types --expose-gc test/bench/links.ts
 import { GCProfiler } from "node:v8";
-import { InMemoryTelemetryContext } from "@earendil-works/pi-telemetry";
+import { InMemoryTelemetryContext } from "@nycode/telemetry";
 import { BACKGROUND_CONTEXT, type Context, withTelemetry } from "../../src/context/index.ts";
 import { arr, bytes, hostKind, int, local, method, obj, remote, str } from "../../src/contracts/index.ts";
 import { defineState } from "../../src/documents/index.ts";

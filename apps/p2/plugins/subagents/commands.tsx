@@ -20,7 +20,7 @@ import {
 import { type ReactNode, useMemo } from "react";
 import { conversationOf } from "../chat/contract.ts";
 import type { Session } from "../sessions/contract.ts";
-import { PiDots, useCommandSession, useOpenFromMenu } from "../sessions/contract.web.tsx";
+import { NycodeDots, useCommandSession, useOpenFromMenu } from "../sessions/contract.web.tsx";
 import { SessionStatus } from "../status/contract.ts";
 import { byRecentActivity, type Child, Subagents, shortModelName } from "./contract.ts";
 import { openMain } from "./contract.web.ts";
@@ -143,7 +143,7 @@ function ConversationRows({ session, conversations }: { session: string; convers
 		<CommandMenu.Row
 			key={conversation.id}
 			title={conversation.title}
-			icon={busy?.includes(conversation.id) ? PiDots : IdleMark}
+			icon={busy?.includes(conversation.id) ? NycodeDots : IdleMark}
 			suffix={conversation.suffix}
 			checked={route.session === session && route.conversation === conversation.id}
 			onSelect={async () => {

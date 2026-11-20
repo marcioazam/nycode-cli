@@ -1,4 +1,4 @@
-import type { ImageContent, ModelImageResizeOptions, TextContent } from "@earendil-works/pi-ai";
+import type { ImageContent, ModelImageResizeOptions, TextContent } from "@nycode/ai";
 import { constants } from "fs";
 import { access as fsAccess, open as fsOpen, readFile as fsReadFile } from "fs/promises";
 import { type Static, Type } from "typebox";
@@ -41,7 +41,7 @@ export interface ReadToolDetails {
 	truncation?: TruncationResult;
 	/**
 	 * Id of the model that was selected when the image was read, if it has no image input. Shown to the user only:
-	 * the model gets pi-ai's placeholder per request, so the stored result stays right after a model switch.
+	 * the model gets nycode-ai's placeholder per request, so the stored result stays right after a model switch.
 	 */
 	imageUnsupportedByModel?: string;
 }

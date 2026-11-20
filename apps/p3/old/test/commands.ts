@@ -13,7 +13,7 @@ import { join } from "node:path";
 import type { TestContext } from "node:test";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
-import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context";
+import { BACKGROUND_CONTEXT as context } from "@nycode/chord/context";
 import { CODING, Sessions, SessionsList, SessionWorker } from "../plugins/sessions/contract.ts";
 import { readConfig } from "../src/kit/config.ts";
 import { proofOf } from "../src/kit/identity.ts";
@@ -25,7 +25,7 @@ import { eventually, type Launched, launch, type Ran, run, supervisorsOf, worker
 
 /** p3's command line in a home directory of a test's own. */
 export type Cli = {
-	/** The home directory: the default Pi is `<home>/.pi/p3`, a named one `<home>/.pi/p3/pis/<name>`. */
+	/** The home directory: the default Nycode is `<home>/.nycode/p3`, a named one `<home>/.nycode/p3/pis/<name>`. */
 	readonly home: string;
 	/** A data directory of the test's own for `--dir`. */
 	dir(name: string): string;
@@ -74,10 +74,10 @@ export async function cli(command: readonly string[], t: TestContext): Promise<C
 		await Promise.all(gates.map((gate) => gate.go()));
 		const launched = await Promise.allSettled(servers);
 		await Promise.all(launched.map((one) => (one.status === "fulfilled" ? one.value.close("SIGKILL") : undefined)));
-		const named = await readdir(join(home, ".pi", "p3", "pis")).catch(() => []);
+		const named = await readdir(join(home, ".nycode", "p3", "pis")).catch(() => []);
 		await Promise.all([
 			p3("stop"),
-			...named.map((name) => p3("stop", "--pi", name)),
+			...named.map((name) => p3("stop", "--nycode", name)),
 			...[...dirs].map((dir) => p3("stop", "--dir", dir)),
 		]);
 		await rm(home, { recursive: true, force: true });
@@ -153,9 +153,9 @@ function rows(status: Ran): Record<string, string> {
 	return Object.fromEntries(pairs);
 }
 
-/** The server `p3 status` reports on `pi` (`--pi a`, `--dir <path>`, or nothing): its port, pid and data directory. */
-async function running(cli: Cli, ...pi: string[]): Promise<{ port: number; pid: number; dataDir: string }> {
-	const status = await cli.p3("status", ...pi);
+/** The server `p3 status` reports on `nycode` (`--nycode a`, `--dir <path>`, or nothing): its port, pid and data directory. */
+async function running(cli: Cli, ...nycode: string[]): Promise<{ port: number; pid: number; dataDir: string }> {
+	const status = await cli.p3("status", ...nycode);
 	assert.equal(status.code, 0, status.stdout + status.stderr);
 	const row = rows(status);
 	return { port: Number(row.port), pid: Number(row.pid), dataDir: row["data directory"]! };
@@ -258,10 +258,10 @@ async function statusCase(cli: Cli): Promise<void> {
 	const status = await cli.p3("status", "--dir", dataDir);
 	assert.match(status.stdout, /^running\n/);
 	const row = rows(status);
-	const { id } = (await readConfig(join(dataDir, "pi.json")))!;
+	const { id } = (await readConfig(join(dataDir, "nycode.json")))!;
 	const version = (await cli.p3("--version")).stdout.trim();
 	assert.deepEqual(
-		[status.code, row.pi, row["data directory"], row.port, row.pid, row.version, row.supervisor],
+		[status.code, row.nycode, row["data directory"], row.port, row.pid, row.version, row.supervisor],
 		[
 			0,
 			id,
@@ -288,10 +288,10 @@ async function statusCase(cli: Cli): Promise<void> {
 
 async function startCase(cli: Cli): Promise<void> {
 	// Two at once start one server: the second supervisor finds the directory taken and leaves it alone.
-	// On a free port: the default Pi's own (8789) may be another's on this machine, a test's or a real Pi's.
+	// On a free port: the default Nycode's own (8789) may be another's on this machine, a test's or a real Nycode's.
 	const [first, same] = (await Promise.all([cli.p3("--port", "0"), cli.p3("--port", "0")])).map(started);
 	const server = await running(cli);
-	assert.deepEqual([server.port, server.dataDir, same!.port], [first!.port, join(cli.home, ".pi", "p3"), first!.port]);
+	assert.deepEqual([server.port, server.dataDir, same!.port], [first!.port, join(cli.home, ".nycode", "p3"), first!.port]);
 	const supervisor = Number(rows(await cli.p3("status")).supervisor);
 	assert.deepEqual([alive(supervisor), await pidOf(server.dataDir, "supervisor")], [true, supervisor]);
 	const second = started(await cli.p3());
@@ -328,11 +328,11 @@ async function stopCase(cli: Cli): Promise<void> {
 	const second = await running(cli, "--dir", dataDir);
 	const restarted = started(await cli.p3("restart", "--dir", dataDir));
 	const third = await running(cli, "--dir", dataDir);
-	// Three servers, one port (the Pi's own, taken at its first start), the same sessions.
+	// Three servers, one port (the Nycode's own, taken at its first start), the same sessions.
 	assert.equal(new Set([first.pid, second.pid, third.pid]).size, 3);
 	assert.deepEqual([second.port, third.port, restarted.port], [first.port, first.port, first.port]);
 	assert.deepEqual([alive(second.pid), await titles(third)], [false, ["Kept"]]);
-	// A stopped Pi restarts too.
+	// A stopped Nycode restarts too.
 	await cli.p3("stop", "--dir", dataDir);
 	assert.equal(started(await cli.p3("restart", "--dir", dataDir)).port, first.port);
 }
@@ -397,7 +397,7 @@ async function crashCase(cli: Cli): Promise<void> {
 	assert.equal((await cli.p3("status", "--dir", dataDir)).stdout.split("\n")[0], "not running");
 	assert.deepEqual(
 		(await readdir(dataDir)).filter((name) => name.endsWith(".json")),
-		["pi.json"],
+		["nycode.json"],
 	);
 }
 
@@ -443,8 +443,8 @@ async function startingCase(cli: Cli): Promise<void> {
 // that server went on to run.
 async function heldCase(cli: Cli): Promise<void> {
 	for (const at of ["lock", "plugins"] as const) {
-		// The second a named Pi, which `list` shows once it has its config (made before its plugins are found).
-		const dataDir = at === "lock" ? cli.dir(at) : join(cli.home, ".pi", "p3", "pis", at);
+		// The second a named Nycode, which `list` shows once it has its config (made before its plugins are found).
+		const dataDir = at === "lock" ? cli.dir(at) : join(cli.home, ".nycode", "p3", "pis", at);
 		const gate = await cli.gate(at);
 		const launching = cli.server(dataDir, gate);
 		const pid = await gate.held();
@@ -484,7 +484,7 @@ async function reusedCase(cli: Cli): Promise<void> {
 	try {
 		await once(other, "spawn");
 		// What a crashed server left: its record, whose pid the system has given to `other` since.
-		const left = { pid: other.pid, start: "the crashed server's", state: "running", pi: "0123456789abcdef" };
+		const left = { pid: other.pid, start: "the crashed server's", state: "running", nycode: "0123456789abcdef" };
 		await writeFile(
 			join(dataDir, "server.json"),
 			JSON.stringify({ ...left, port: 1, version: "0.0.1", startedAt: 1 }),
@@ -580,7 +580,7 @@ async function httpStopCase(cli: Cli): Promise<void> {
 }
 
 // Found by review round 3's runs: the supervisor that lost the race for the directory waited a second for its lock,
-// took it once `stop` had stopped the winner, and started the Pi again.
+// took it once `stop` had stopped the winner, and started the Nycode again.
 async function raceCase(cli: Cli): Promise<void> {
 	const dataDir = cli.dir("one");
 	// The first command's supervisor held before it tries for its lock: the second's wins.
@@ -626,7 +626,7 @@ async function identityCase(cli: Cli): Promise<void> {
 	const other = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], { stdio: "ignore" });
 	await once(other, "spawn");
 	const run = "00112233445566778899aabbccddeeff";
-	const record = { state: "running", run, pi: "0123456789abcdef", version: "0.0.1", startedAt: 1, pid: other.pid };
+	const record = { state: "running", run, nycode: "0123456789abcdef", version: "0.0.1", startedAt: 1, pid: other.pid };
 	const claim = (port: number) => writeFile(join(dataDir, "server.json"), JSON.stringify({ ...record, port }));
 	const statusOf = async () => (await cli.p3("status", "--dir", dataDir)).stdout.split("\n")[0];
 	const lock = (await takeLock(dataDir, "server", 0, context))!;
@@ -635,11 +635,11 @@ async function identityCase(cli: Cli): Promise<void> {
 		// A program that echoes the run id (anyone can learn it), without the token: no proof, or one for another nonce.
 		// (And one with the token that answers for another pid.)
 		const guesses = [
-			() => ({ run, pid: other.pid, pi: record.pi }),
+			() => ({ run, pid: other.pid, nycode: record.nycode }),
 			// With the token, the proof, but another pid than the record's (whose `stop` signals).
-			(nonce: string) => ({ run, pid: other.pid! + 1, pi: record.pi, proof: proofOf(token, nonce) }),
-			() => ({ run, pid: other.pid, pi: record.pi, proof: "0".repeat(64) }),
-			() => ({ run, pid: other.pid, pi: record.pi, proof: proofOf(token, "f".repeat(32)) }),
+			(nonce: string) => ({ run, pid: other.pid! + 1, nycode: record.nycode, proof: proofOf(token, nonce) }),
+			() => ({ run, pid: other.pid, nycode: record.nycode, proof: "0".repeat(64) }),
+			() => ({ run, pid: other.pid, nycode: record.nycode, proof: proofOf(token, "f".repeat(32)) }),
 		];
 		for (const guess of guesses) {
 			const program = await impostor(guess);
@@ -648,11 +648,11 @@ async function identityCase(cli: Cli): Promise<void> {
 			assert.equal(await statusOf(), "starting");
 		}
 		// The same with the proof for the nonce asked: the server, as the check says (the one above refused for the proof).
-		const proven = await impostor((nonce) => ({ run, pid: other.pid, pi: record.pi, proof: proofOf(token, nonce) }));
+		const proven = await impostor((nonce) => ({ run, pid: other.pid, nycode: record.nycode, proof: proofOf(token, nonce) }));
 		programs.push(proven);
 		await claim(proven.port);
 		assert.equal(await statusOf(), "running");
-		// A new server of another run on the record's port is not that record's server: another Pi's, and this Pi's own
+		// A new server of another run on the record's port is not that record's server: another Nycode's, and this Nycode's own
 		// (the same token: its record rewritten to name an earlier run).
 		const two = cli.dir("two");
 		const server = await cli.server(two);
@@ -693,7 +693,7 @@ async function claimed(cli: Cli, token: string) {
 	await writeFile(join(dataDir, "owner-token"), `${token}\n`, { mode: 0o600 });
 	const lock = (await takeLock(dataDir, "server", 0, context))!;
 	const run = "00112233445566778899aabbccddeeff";
-	const record = { state: "running", run, pi: "0123456789abcdef", version: "0.0.1", startedAt: 1, pid: process.pid };
+	const record = { state: "running", run, nycode: "0123456789abcdef", version: "0.0.1", startedAt: 1, pid: process.pid };
 	const claim = (port: number) => writeFile(join(dataDir, "server.json"), JSON.stringify({ ...record, port }));
 	return { dataDir, lock, run, claim };
 }
@@ -716,7 +716,7 @@ async function swapCase(cli: Cli): Promise<void> {
 			let port = 0;
 			const server = createHttpServer((request, response) => {
 				const nonce = new URL(request.url ?? "/", "http://x").searchParams.get("nonce") ?? "";
-				const answer = { run, pid: process.pid, pi: "0123456789abcdef", proof: proofOf(token, nonce) };
+				const answer = { run, pid: process.pid, nycode: "0123456789abcdef", proof: proofOf(token, nonce) };
 				response.setHeader("connection", "close");
 				response.end(JSON.stringify(answer), () => {
 					proofs += 1;
@@ -844,7 +844,7 @@ async function busyCase(cli: Cli): Promise<void> {
 		for (const dataDir of [foreground, background]) {
 			assert.deepEqual(
 				(await readdir(dataDir)).filter((name) => name.endsWith(".json")),
-				["pi.json"],
+				["nycode.json"],
 			);
 			for (const role of ["server", "supervisor"] as const)
 				await (await takeLock(dataDir, role, 0, context))!.release();
@@ -853,27 +853,27 @@ async function busyCase(cli: Cli): Promise<void> {
 		// Also when the case failed: a listening socket would keep the test runner alive.
 		taken.close();
 	}
-	// The port was for that start only: the Pi takes its own at the next, and keeps that one. (Not "another port than
+	// The port was for that start only: the Nycode takes its own at the next, and keeps that one. (Not "another port than
 	// the busy one": a free port the system picks may be the one just closed.)
-	assert.equal((await readConfig(join(background, "pi.json")))?.port, undefined);
+	assert.equal((await readConfig(join(background, "nycode.json")))?.port, undefined);
 	const own = started(await cli.p3("--dir", background)).port;
-	assert.equal((await readConfig(join(background, "pi.json")))?.port, own);
+	assert.equal((await readConfig(join(background, "nycode.json")))?.port, own);
 }
 
 async function twoCase(cli: Cli): Promise<void> {
-	const [a, b] = [started(await cli.p3("--pi", "a")), started(await cli.p3("--pi", "b"))];
-	const [serverA, serverB] = [await running(cli, "--pi", "a"), await running(cli, "--pi", "b")];
+	const [a, b] = [started(await cli.p3("--nycode", "a")), started(await cli.p3("--nycode", "b"))];
+	const [serverA, serverB] = [await running(cli, "--nycode", "a"), await running(cli, "--nycode", "b")];
 	assert.deepEqual(
 		[serverA.dataDir, serverB.dataDir],
-		["a", "b"].map((name) => join(cli.home, ".pi", "p3", "pis", name)),
+		["a", "b"].map((name) => join(cli.home, ".nycode", "p3", "pis", name)),
 	);
 	assert.notEqual(a.port, b.port);
 	// Sessions of their own.
 	await create(serverA, "In a");
 	assert.deepEqual([await titles(serverA), await titles(serverB)], [["In a"], []]);
-	// One browser signed in to both: two cookies on one host, each Pi takes its own.
+	// One browser signed in to both: two cookies on one host, each Nycode takes its own.
 	const [cookieA, cookieB] = [(await signIn(a.link)).cookie, (await signIn(b.link)).cookie];
-	const idOf = async (dataDir: string) => (await readConfig(join(dataDir, "pi.json")))!.id;
+	const idOf = async (dataDir: string) => (await readConfig(join(dataDir, "nycode.json")))!.id;
 	assert.deepEqual(
 		[cookieA.split("=")[0], cookieB.split("=")[0]],
 		[`p3-${await idOf(serverA.dataDir)}`, `p3-${await idOf(serverB.dataDir)}`],
@@ -890,7 +890,7 @@ async function twoCase(cli: Cli): Promise<void> {
 	await owner.get(SessionWorker, { session }, context);
 	const workers = await workersOf(serverB.pid, serverB.dataDir);
 	assert.equal(workers.length, 1);
-	assert.equal((await cli.p3("stop", "--pi", "a")).code, 0);
+	assert.equal((await cli.p3("stop", "--nycode", "a")).code, 0);
 	assert.deepEqual([alive(serverA.pid), alive(serverB.pid), ...workers.map(alive)], [false, true, true]);
 	assert.deepEqual(await titles(serverB), ["In b"]);
 	await owner.close(context);
@@ -900,8 +900,8 @@ async function twoCase(cli: Cli): Promise<void> {
 		["b", "running", String(b.port), serverB.dataDir],
 		[""],
 	]);
-	// A named Pi keeps its port.
-	assert.equal(started(await cli.p3("--pi", "a")).port, a.port);
+	// A named Nycode keeps its port.
+	assert.equal(started(await cli.p3("--nycode", "a")).port, a.port);
 }
 
 async function usageCase(cli: Cli): Promise<void> {
@@ -914,10 +914,10 @@ async function usageCase(cli: Cli): Promise<void> {
 		["--port", "1.5"],
 		["server", "--port"],
 		["status", "--port", "1"],
-		["--pi", "Not A Name"],
-		["--pi", "../x"],
-		["--pi", "a", "--dir", cli.dir("x")],
-		["list", "--pi", "a"],
+		["--nycode", "Not A Name"],
+		["--nycode", "../x"],
+		["--nycode", "a", "--dir", cli.dir("x")],
+		["list", "--nycode", "a"],
 		["server", "extra"],
 		["nope"],
 		["--nope"],
@@ -926,7 +926,7 @@ async function usageCase(cli: Cli): Promise<void> {
 	for (const [index, { code, stdout, stderr }] of ran.entries()) {
 		assert.deepEqual(
 			[code, stdout, stderr.split("\n")[0]],
-			[2, "", "Usage: p3 [command] [--pi <name> | --dir <path>] [--port <n>]"],
+			[2, "", "Usage: p3 [command] [--nycode <name> | --dir <path>] [--port <n>]"],
 			refused[index]!.join(" "),
 		);
 	}
@@ -935,5 +935,5 @@ async function usageCase(cli: Cli): Promise<void> {
 	const help = await cli.p3("--help");
 	assert.deepEqual([help.code, help.stderr, help.stdout.split("\n")[0]], [0, "", ran[0]!.stderr.split("\n")[0]]);
 	assert.match((await cli.p3("--version")).stdout, /^\d+\.\d+\.\d+\n$/);
-	assert.deepEqual((await cli.p3("list")).stdout, "no Pi yet: `p3` starts the default one\n");
+	assert.deepEqual((await cli.p3("list")).stdout, "no Nycode yet: `p3` starts the default one\n");
 }

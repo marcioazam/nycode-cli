@@ -1,9 +1,10 @@
-// pi's tool renderer contract (coding-agent core/extensions/types.ts `ToolRenderers`, `ToolRenderContext`,
+// nycode's tool renderer contract (coding-agent core/extensions/types.ts `ToolRenderers`, `ToolRenderContext`,
 // `ToolRendererResolver`), typed for p2: arguments and details are JSON from the conversation view, the theme is the
 // instance theme (section 5), and the calls a call made to other tools come with the context.
-import type { JsonValue } from "@earendil-works/chord/json";
-import type { TextContent } from "@earendil-works/pi-ai";
-import type { Component } from "@earendil-works/pi-tui";
+
+import type { TextContent } from "@nycode/ai";
+import type { JsonValue } from "@nycode/chord/json";
+import type { Component } from "@nycode/tui";
 import type { ImageRef } from "../../runtime/entry-images.ts";
 import type { TuiSettings } from "../../runtime/tui-preferences.ts";
 import type { NestedCall, ToolView } from "../../web/transcript.ts";

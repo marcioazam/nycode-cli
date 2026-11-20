@@ -1,4 +1,4 @@
-import { InMemoryTelemetryContext } from "@earendil-works/pi-telemetry";
+import { InMemoryTelemetryContext } from "@nycode/telemetry";
 import { describe, expect, it } from "vitest";
 import { BACKGROUND_CONTEXT as context, withAbortSignal, withTelemetry } from "../../src/context/index.ts";
 import { int, local, method, remote, str } from "../../src/contracts/index.ts";

@@ -1,4 +1,4 @@
-import { type Credential, InMemoryModelsStore } from "@earendil-works/pi-ai";
+import { type Credential, InMemoryModelsStore } from "@nycode/ai";
 import { describe, expect, test, vi } from "vitest";
 import { runAuthLogout } from "../src/cli/auth-logout.ts";
 import { AuthStorage } from "../src/core/auth-storage.ts";
@@ -30,13 +30,13 @@ const oauthCredential = {
 	expires: Date.now() + 3_600_000,
 } as const;
 
-describe("pi auth logout", () => {
+describe("nycode auth logout", () => {
 	test("requires exactly one provider", async () => {
 		const { errors, run } = await setup({});
 		for (const args of [[], ["--api-key"], ["radius", "extra"]]) {
 			errors.length = 0;
 			expect(await run(args)).toBe(1);
-			expect(errors).toEqual(["Usage: pi auth logout <provider>"]);
+			expect(errors).toEqual(["Usage: nycode auth logout <provider>"]);
 		}
 	});
 

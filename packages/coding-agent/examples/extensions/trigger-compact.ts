@@ -1,8 +1,8 @@
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext } from "@nycode/coding-agent";
 
 const COMPACT_THRESHOLD_TOKENS = 100_000;
 
-export default function (pi: ExtensionAPI) {
+export default function (nycode: ExtensionAPI) {
 	let previousTokens: number | null | undefined;
 
 	const triggerCompaction = (ctx: ExtensionContext, customInstructions?: string) => {
@@ -24,7 +24,7 @@ export default function (pi: ExtensionAPI) {
 		});
 	};
 
-	pi.on("turn_end", (_event, ctx) => {
+	nycode.on("turn_end", (_event, ctx) => {
 		const usage = ctx.getContextUsage();
 		const currentTokens = usage?.tokens ?? null;
 		if (currentTokens === null) {
@@ -40,7 +40,7 @@ export default function (pi: ExtensionAPI) {
 		triggerCompaction(ctx);
 	});
 
-	pi.registerCommand("trigger-compact", {
+	nycode.registerCommand("trigger-compact", {
 		description: "Trigger compaction immediately",
 		handler: async (args, ctx) => {
 			const instructions = args.trim() || undefined;

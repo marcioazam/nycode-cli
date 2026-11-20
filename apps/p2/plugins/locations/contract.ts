@@ -1,7 +1,7 @@
 // The location tools' server side (worker principals only): the environments an agent may move to, their directories,
 // and moving the main agent (its session) once its turn has ended.
 
-import { arr, nul, num, obj, opt, type Static, str, union } from "@earendil-works/pi-schema";
+import { arr, nul, num, obj, opt, type Static, str, union } from "@nycode/schema";
 import { DirectoryListingSchema, literal, method, remote, serverHost } from "@p2/app/v1";
 
 /** One environment as an agent sees it: never keys or identity files. */

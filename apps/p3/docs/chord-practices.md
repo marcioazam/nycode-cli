@@ -8,7 +8,7 @@ mistakes table whenever a package teaches something.
 ```text
 pages, terminal clients   not addressable; reach everything through the server (WebSocket /chord, a sign-in)
         │
-     server               one per Pi: host at Server(), its store, HTTP, every plugin built here at start
+     server               one per Nycode: host at Server(), its store, HTTP, every plugin built here at start
         │                 one link per worker; the server relays clients' holds and calls
 session workers           one process per session: host at Session({ id }), its own store, the worker facets
 ```
@@ -17,7 +17,7 @@ session workers           one process per session: host at Session({ id }), its 
   kind and asks for objects by contract (`ctx.get`, `self.get`); Chord routes and relays.
 - **A plugin** is a folder in a plugins root with one file per facet kind: `server.ts`, `worker.ts` (p3's kinds today;
   `web` and `terminal` come with the UI). The server builds every facet with esbuild at each start and ships the
-  worker facets to the workers. A plugin imports only `@earendil-works/p3/v1` (and `/v1/server`, `/v1/worker` in
+  worker facets to the workers. A plugin imports only `@nycode/p3/v1` (and `/v1/server`, `/v1/worker` in
   those facets), its own files, other plugins' contract files by relative path, and its npm dependencies (inlined).
   Never Chord directly; never `import()` (plugins load whole, at start).
 - **The store:** the server and every worker have one SQLite store, synchronous (a query blocks the event loop).
@@ -40,7 +40,7 @@ session workers           one process per session: host at Session({ id }), its 
   A crashed worker fails its session until `retry` or an apply. After a server restart the sessions plugin's waker
   starts the workers of every `working` session.
 
-## The API (`@earendil-works/p3/v1`)
+## The API (`@nycode/p3/v1`)
 
 | Module | What you get |
 | --- | --- |
@@ -60,7 +60,7 @@ Missing today (ask Mario, `process.md`): `withoutAbortSignal` and `pluginFile` a
 ## The shape of a p3 plugin (the sessions plugin, `apps/p3/plugins/sessions/`)
 
 ```text
-package.json         { "name": "@earendil-works/p3-sessions", "private": true, "type": "module" }
+package.json         { "name": "@nycode/p3-sessions", "private": true, "type": "module" }
 contract.ts          contracts every kind imports (one per audience)
 contract.server.ts   the store's contract, for server facets only
 server.ts            the server facet: the table, the store, the views

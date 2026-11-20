@@ -1,4 +1,4 @@
-import { bool } from "@earendil-works/pi-schema";
+import { bool } from "@nycode/schema";
 import { local, record } from "@p2/app/v1";
 
 /**

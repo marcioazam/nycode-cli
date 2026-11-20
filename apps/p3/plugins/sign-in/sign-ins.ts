@@ -13,7 +13,7 @@ import {
 	oneOf,
 	P3Principal,
 	str,
-} from "@earendil-works/p3/v1";
+} from "@nycode/p3/v1";
 import {
 	Authenticators,
 	cookie,
@@ -24,7 +24,7 @@ import {
 	type Provenance,
 	readCookie,
 	readSignedCookie,
-} from "@earendil-works/p3/v1/server";
+} from "@nycode/p3/v1/server";
 import { SignIns } from "./contract.ts";
 import { hashToken, matchesHash, newToken } from "./secrets.ts";
 
@@ -58,7 +58,7 @@ const SignInsDocument = defineState("p3.sign-ins", {
 });
 
 /**
- * The cookie's key, made once per Pi: its id names the cookie (a browser shares cookies between the ports of one host,
+ * The cookie's key, made once per Nycode: its id names the cookie (a browser shares cookies between the ports of one host,
  * so two Pis on a machine need two names), its secret signs it.
  */
 const CookieKey = defineState("p3.sign-in-cookie", {

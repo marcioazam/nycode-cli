@@ -1,4 +1,4 @@
-// Request validation as Pi Mobile does it: unknown models, thinking levels outside off…max, blank messages; a single
+// Request validation as Nycode Mobile does it: unknown models, thinking levels outside off…max, blank messages; a single
 // configured field still updates the session's catalog entry.
 
 import assert from "node:assert/strict";

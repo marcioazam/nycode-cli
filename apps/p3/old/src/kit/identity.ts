@@ -1,5 +1,5 @@
 // Who a listening server is, proven without a secret on the wire. `GET /_p3/identity?nonce=<32 hex digits>` answers
-// the server's run id (random, made at each start, in its record from the `starting` step on), its pid, its Pi's id,
+// the server's run id (random, made at each start, in its record from the `starting` step on), its pid, its Nycode's id,
 // and `proof`: HMAC-SHA256 of the nonce, keyed by the owner token. A command believes a `running` record only once
 // the server on the record's port answers that record's run id and the proof for the command's own fresh nonce.
 //
@@ -9,15 +9,15 @@
 // proof, and the command sends the token itself (the owner link, the stop) only to a server proven so.
 
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { defineFacet, type Facet } from "@earendil-works/chord";
-import { Http } from "@earendil-works/chord/http";
+import { defineFacet, type Facet } from "@nycode/chord";
+import { Http } from "@nycode/chord/http";
 import type { P3Principal } from "../principals.ts";
 
 /** The path of a server's identity. */
 export const IDENTITY_PATH = "/_p3/identity";
 
 /** What the identity route answers. */
-export type Identity = { readonly run: string; readonly pid: number; readonly pi: string; readonly proof: string };
+export type Identity = { readonly run: string; readonly pid: number; readonly nycode: string; readonly proof: string };
 
 /** A nonce as the route takes it: 16 random bytes in hex. */
 const NONCE = /^[0-9a-f]{32}$/;
@@ -27,7 +27,7 @@ const NONCE = /^[0-9a-f]{32}$/;
  * 400 for a missing or malformed nonce. `ownerToken` is the owner token file's token, known before the server listens.
  */
 export function identityFacet(
-	server: { readonly run: string; readonly pid: number; readonly pi: string },
+	server: { readonly run: string; readonly pid: number; readonly nycode: string },
 	ownerToken: () => string,
 ): Facet<P3Principal> {
 	return defineFacet<P3Principal>((_host, self) =>

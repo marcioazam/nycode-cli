@@ -20,7 +20,7 @@
 
 For each provider:
 
-1. `models(ctx)` returns its chat models: upstream entries mapped to pi models, data corrections (limits, prices), and authored models. `ctx.providerModels(id)` returns another provider's models from this step, e.g. Azure derives from OpenAI.
+1. `models(ctx)` returns its chat models: upstream entries mapped to nycode models, data corrections (limits, prices), and authored models. `ctx.providerModels(id)` returns another provider's models from this step, e.g. Azure derives from OpenAI.
 2. `compat` defaults for each API are merged under each model's own compat. Then the shared rules run: models.dev effort levels for APIs that send them natively, and the rules in `families/`.
 3. `finalize(model, ctx)` applies provider-specific behavior. It runs after the shared rules, so its values win.
 4. Image input limits get the default resize profile, then `finalizeAll(models, ctx)` runs cross-model logic such as Anthropic's allowed fallback models.
@@ -44,7 +44,7 @@ export default defineProvider({
 
 ## Released clients
 
-pi.dev serves each published catalog to every released pi at or above `MINIMUM_PI_VERSION` (`scripts/model-catalog-minimum-version.mjs` in the repository root). Released clients use it within hours, without updating pi, and combine it with their own code's defaults, such as `detectCompat()` in `src/api/openai-completions.ts`.
+pi.dev serves each published catalog to every released nycode at or above `MINIMUM_PI_VERSION` (`scripts/model-catalog-minimum-version.mjs` in the repository root). Released clients use it within hours, without updating nycode, and combine it with their own code's defaults, such as `detectCompat()` in `src/api/openai-completions.ts`.
 
 A catalog change must therefore work with the latest release's code, not only with the code in the same commit. Example: a new code default makes `supportsDeveloperRole: false` redundant for a provider, so the line is removed from the catalog. Released clients still default to `true` and start sending the `developer` role, which the provider rejects.
 

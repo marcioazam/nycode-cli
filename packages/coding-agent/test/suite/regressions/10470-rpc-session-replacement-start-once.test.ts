@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fauxAssistantMessage, registerFauxProvider } from "@earendil-works/pi-ai/compat";
+import { fauxAssistantMessage, registerFauxProvider } from "@nycode/ai/compat";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import {
 	type AgentSessionRuntime,
@@ -104,7 +104,7 @@ describe("RPC session replacement emits session_start once (#10470)", () => {
 	});
 
 	async function createRuntime(starts: string[]): Promise<AgentSessionRuntime> {
-		const tempDir = join(tmpdir(), `pi-10470-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+		const tempDir = join(tmpdir(), `nycode-10470-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 		mkdirSync(tempDir, { recursive: true });
 
 		const faux = registerFauxProvider({ models: [{ id: "faux-1", reasoning: false }] });
@@ -128,8 +128,8 @@ describe("RPC session replacement emits session_start once (#10470)", () => {
 				modelRuntime,
 				resourceLoaderOptions: {
 					extensionFactories: [
-						(pi: ExtensionAPI) => {
-							pi.registerProvider(faux.getModel().provider, {
+						(nycode: ExtensionAPI) => {
+							nycode.registerProvider(faux.getModel().provider, {
 								baseUrl: faux.getModel().baseUrl,
 								apiKey: "faux-key",
 								api: faux.api,
@@ -144,10 +144,10 @@ describe("RPC session replacement emits session_start once (#10470)", () => {
 									maxTokens: model.maxTokens,
 								})),
 							});
-							pi.on("session_start", (event) => {
+							nycode.on("session_start", (event) => {
 								const marker = `${event.reason}:${starts.length}`;
 								starts.push(marker);
-								pi.appendEntry("start-marker", marker);
+								nycode.appendEntry("start-marker", marker);
 							});
 						},
 					],

@@ -19,7 +19,7 @@ import {
 	type TelemetrySpan,
 	type TypedSpanStarter,
 	type TypedTelemetryMetrics,
-} from "@earendil-works/pi-telemetry";
+} from "@nycode/telemetry";
 import type { Address } from "./contracts/index.ts";
 import { isChordError } from "./data/index.ts";
 

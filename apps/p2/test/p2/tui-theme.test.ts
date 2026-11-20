@@ -5,7 +5,7 @@ import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { Markdown, TuiAltScreen } from "@earendil-works/pi-tui";
+import { Markdown, TuiAltScreen } from "@nycode/tui";
 import { WebSocketServer } from "ws";
 import { VirtualTerminal } from "../../../../packages/tui/test/virtual-terminal.ts";
 import { startTuiClient } from "../../src/hosts/tui-client.ts";
@@ -126,7 +126,7 @@ test("server defaults: whitelisted, no privileged bindings, below the visitor's 
 	});
 });
 
-test("launcher reads pi's files and p2 prefs, validates themes and hot-reloads custom themes", async (t) => {
+test("launcher reads nycode's files and p2 prefs, validates themes and hot-reloads custom themes", async (t) => {
 	const directory = mkdtempSync(join(tmpdir(), "p2-tui-prefs-"));
 	t.after(() => rmSync(directory, { recursive: true, force: true }));
 	const agentDir = join(directory, "agent");

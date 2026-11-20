@@ -1,4 +1,4 @@
-import type { Api, Model } from "@earendil-works/pi-ai";
+import type { Api, Model } from "@nycode/ai";
 
 /** Limits an image the model sees must keep; the defaults below are the coding agent's. */
 export type ImageLimits = {
@@ -37,7 +37,7 @@ export type PreparedImage = {
 
 /**
  * Decodes, orients, resizes, and re-encodes images so the model can take them. `read` uses one when given; without
- * one, it passes supported images within the byte limit through as they are. `@earendil-works/pi-durable/images`
+ * one, it passes supported images within the byte limit through as they are. `@nycode/durable/images`
  * provides a Photon-based one.
  */
 export type ImageProcessor = {

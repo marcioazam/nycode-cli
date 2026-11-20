@@ -21,8 +21,8 @@
 //
 // What happens is also logged to the server (POST /voice/log, batched): a phone's console is out of reach.
 
-import type { AssistantMessage } from "@earendil-works/pi-ai";
-import type { ConversationView } from "@earendil-works/pi-durable";
+import type { AssistantMessage } from "@nycode/ai";
+import type { ConversationView } from "@nycode/durable";
 import { follow, type Watchable } from "@p2/app/v1";
 import { pointerKind, pressVerb } from "@p2/app/v1/web";
 import { BargeInDetector, type BargeInPhase, Pcm16kResampler } from "./barge-in.ts";
@@ -68,9 +68,9 @@ export type VoiceRoom = { session: string; conversation: number };
  */
 export type VoiceChat = {
 	readonly view: Watchable<ConversationView | null>;
-	/** Chat mode is on: people talk with each other, Pi answers when addressed (`voiceMessage`). */
+	/** Chat mode is on: people talk with each other, Nycode answers when addressed (`voiceMessage`). */
 	readonly chatMode: boolean;
-	/** What people call the agent ("Pi" unless the owner renamed it): "Claude, …" addresses it by voice. */
+	/** What people call the agent ("Nycode" unless the owner renamed it): "Claude, …" addresses it by voice. */
 	readonly agentName: string;
 	send(text: string, requestId: string): Promise<unknown>;
 	/** Aborts the run (as the Stop button); the caller's queued inputs come back as text. */
@@ -141,7 +141,7 @@ export function responses(view: ConversationView): Answer[] {
 		const message = entry.model?.[0];
 		if (message?.role === "assistant") add(message, true, entry.id);
 	}
-	const live = view.docs["pi.live"] as { run?: unknown; generation?: { message?: AssistantMessage } } | undefined;
+	const live = view.docs["nycode.live"] as { run?: unknown; generation?: { message?: AssistantMessage } } | undefined;
 	const partial = live?.generation?.message;
 	if (partial?.role === "assistant") add(partial, false);
 	return out;
@@ -772,10 +772,10 @@ export class VoiceEngine {
 		}
 		const chat = this.#chat();
 		const message = voiceMessage(text, chat?.chatMode ?? false, chat?.agentName);
-		// What Pi was saying is superseded by a message for Pi (in chat mode, people talking with each other leave Pi
+		// What Nycode was saying is superseded by a message for Nycode (in chat mode, people talking with each other leave Nycode
 		// be).
 		if (message.interrupts) this.#muteCurrent("new message");
-		// Talking to Pi interrupts, as in a conversation: a busy run is stopped before the first such message (unless
+		// Talking to Nycode interrupts, as in a conversation: a busy run is stopped before the first such message (unless
 		// its words stopped it already), so it is answered now. Work handed to a doer subagent keeps going.
 		this.#transcripts.push(message.text, message.interrupts && !stopped);
 	}
@@ -856,7 +856,7 @@ export class VoiceEngine {
 
 	#onView(view: ConversationView | null): void {
 		if (!view) return;
-		const live = view.docs["pi.live"] as { run?: unknown } | undefined;
+		const live = view.docs["nycode.live"] as { run?: unknown } | undefined;
 		this.#busy = Boolean(live?.run);
 		// Only answers that start after voice mode did are read, and only by the owner's browser (the room says them).
 		if (!this.#baseline) this.#prime(view, "on the first view");

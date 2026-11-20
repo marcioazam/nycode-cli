@@ -47,13 +47,13 @@ function createSessionManager(options: { sessionFile?: string } = {}): SessionMa
 		isPersisted: () => options.sessionFile !== undefined,
 		getSessionFile: () => options.sessionFile,
 		getSessionId: () => "test-session",
-		getSessionDir: () => "/tmp/pi-sessions",
+		getSessionDir: () => "/tmp/nycode-sessions",
 		usesDefaultSessionDir: () => true,
 	} as unknown as SessionManager;
 }
 
 function createTempFile(): string {
-	const dir = mkdtempSync(join(tmpdir(), "pi-shutdown-resume-hint-"));
+	const dir = mkdtempSync(join(tmpdir(), "nycode-shutdown-resume-hint-"));
 	tempDirs.push(dir);
 	const file = join(dir, "session.jsonl");
 	writeFileSync(file, "\n");
@@ -193,7 +193,7 @@ describe("InteractiveMode.shutdown ordering (#5080)", () => {
 
 // Regression for the `read EIO` crash reports (crash_tty_read_eio).
 //
-// When the terminal goes away, stdin reads and setRawMode fail with EIO (pi is
+// When the terminal goes away, stdin reads and setRawMode fail with EIO (nycode is
 // left in an orphaned background process group) or ENOTTY (macOS revoked the
 // tty). Node emits these as `error` events on process.stdin. Without a stdin
 // listener they became uncaught exceptions that were recorded as crashes and

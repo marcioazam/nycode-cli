@@ -77,7 +77,7 @@ describe("search, viewers, artifacts and cost parity", { skip: !browserTests }, 
 		for (let version = 1; version <= 2; version++) {
 			await chat.send({ text: "artifact", requestId: `v-${version}` }, BACKGROUND_CONTEXT);
 			await until(list.artifacts, (artifacts) => artifacts?.[0]?.version === version);
-			await until(chat.view, (view) => !(view?.docs["pi.live"] as { run?: unknown })?.run);
+			await until(chat.view, (view) => !(view?.docs["nycode.live"] as { run?: unknown })?.run);
 		}
 		await browser.metrics(390, 844);
 		await browser.open(`http://127.0.0.1:${fixture.server.port}/s/${id}`);

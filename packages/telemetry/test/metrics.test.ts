@@ -140,7 +140,7 @@ describe("metrics", () => {
 		if (!measurement?.context) throw new Error("Expected measurement context");
 		(measurement.boundaries as number[]).push(3);
 		(measurement.attributes as SpanAttributes).tags = ["mutated"];
-		(measurement.context as TelemetryCarrier)["pi-memory-span"] = "999";
+		(measurement.context as TelemetryCarrier)["nycode-memory-span"] = "999";
 		expect(telemetry.getMetrics()[0]).toMatchObject({
 			boundaries: [1, 2],
 			attributes: { tags: ["original"] },

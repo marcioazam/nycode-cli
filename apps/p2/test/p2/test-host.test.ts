@@ -5,7 +5,7 @@ import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
-import { NodeExecutionEnv } from "@earendil-works/pi-durable/env/node";
+import { NodeExecutionEnv } from "@nycode/durable/env/node";
 import { BACKGROUND_CONTEXT, whenLive } from "@p2/app/v1";
 import { DraftStore, Drafts } from "../../plugins/drafts/contract.ts";
 import draftsWorker from "../../plugins/drafts/worker.ts";
@@ -133,7 +133,7 @@ describe("testHost", () => {
 			publish(ctx, { sample: { running: false, generation: 2, error: "worker fixture failure" } }),
 		);
 		await until(owner.statuses, (value) => value?.sample?.error === "worker fixture failure");
-		// Guests learn that it stopped, never the worker's error text (paths, stacks), as in Pi Mobile.
+		// Guests learn that it stopped, never the worker's error text (paths, stacks), as in Nycode Mobile.
 		assert.deepEqual((await settled(guest.statuses)).sample, { running: false, tasks: 0, busy: [], work: {} });
 		await fixture.root((ctx) => publish(ctx, { sample: { running: true, generation: 3 } }));
 		await until(owner.statuses, (value) => value?.sample?.running === true && value.sample.error === undefined);

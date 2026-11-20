@@ -2,7 +2,7 @@
  * MCP server configuration.
  *
  * Servers are read from `mcp.json` in the agent directory and, for trusted projects, from
- * `<project>/.pi/mcp.json`. Both use the `mcpServers` shape shared by other MCP clients, so
+ * `<project>/.nycode/mcp.json`. Both use the `mcpServers` shape shared by other MCP clients, so
  * existing configurations can be copied over. Project entries replace global entries with the
  * same name.
  *
@@ -31,7 +31,7 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { isMcpServerOverride, mcpNamespace } from "@earendil-works/pi-mcp";
+import { isMcpServerOverride, mcpNamespace } from "@nycode/mcp";
 import { CONFIG_DIR_NAME } from "../../config.ts";
 import { type McpExposure, type McpServerConfig, validateMcpServerConfig } from "../../core/mcp-servers.ts";
 import { stripBom } from "../../utils/text.ts";
@@ -52,7 +52,7 @@ export interface McpServerEntry {
 	source: string;
 	/**
 	 * The global or the project `mcp.json`, or `extension` for servers registered with
-	 * `pi.registerMcpServer()`. Changes to extension servers are not saved.
+	 * `nycode.registerMcpServer()`. Changes to extension servers are not saved.
 	 */
 	scope?: "global" | "project" | "extension";
 	/** Project `mcp.json` with an override of this global server's `enabled`, `exposure`, or `toolExposure`. */

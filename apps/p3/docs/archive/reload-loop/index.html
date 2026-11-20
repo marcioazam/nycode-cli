@@ -184,7 +184,7 @@ pages). <strong>Restart</strong>: the p3 process stops and starts again.</p>
 <td>restart</td>
 </tr>
 <tr>
-<td><code>worker.ts</code> and everything it imports (API, Chord, pi-ai, pi-durable)</td>
+<td><code>worker.ts</code> and everything it imports (API, Chord, nycode-ai, nycode-durable)</td>
 <td>once, when the server starts</td>
 <td>esbuild (the workers component)</td>
 <td>every session worker</td>
@@ -264,7 +264,7 @@ holds its objects. A page loads the new <code>web.tsx</code> script with a <code
 <ul>
 <li><code>apps/p3/start.ts</code>, <code>apps/p3/worker.ts</code>, everything under <code>apps/p3/src/</code> (the API, the principal type, the web
 entry);</li>
-<li>Chord itself, React, pi-ai, pi-durable, pi-schema: every package base code imports;</li>
+<li>Chord itself, React, nycode-ai, nycode-durable, nycode-schema: every package base code imports;</li>
 <li>packages a plugin keeps external (<code>&quot;chord&quot;: { &quot;external&quot;: [...] }</code>), which Node caches until the process ends.</li>
 </ul>
 <p>A restart costs: every worker stops (a Durable run in a worker is recovered when the worker starts again, from its last
@@ -368,7 +368,7 @@ components keep their state. A page that was offline catches up from the snapsho
 <td>&quot;restart needed&quot;</td>
 </tr>
 <tr>
-<td>Chord, React, pi-ai, pi-durable source (this monorepo)</td>
+<td>Chord, React, nycode-ai, nycode-durable source (this monorepo)</td>
 <td><code>base</code> (they went into a base bundle)</td>
 <td>nothing</td>
 <td>&quot;restart needed&quot;</td>

@@ -1,10 +1,10 @@
-// Trusted launcher: reads the visitor's own pi files and p2 prefs, validates them and hands the worker data only
-// (p2-tui-port.md section 4.2). pi's files are only ever read. Paths, env and launcher-only keys (external editor,
+// Trusted launcher: reads the visitor's own nycode files and p2 prefs, validates them and hands the worker data only
+// (p2-tui-port.md section 4.2). nycode's files are only ever read. Paths, env and launcher-only keys (external editor,
 // mouse policy, download folder) never leave this process.
 import { closeSync, existsSync, type FSWatcher, fstatSync, openSync, readdirSync, readSync, watch } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import { getCapabilities, type KeybindingsConfig } from "@earendil-works/pi-tui";
+import { getCapabilities, type KeybindingsConfig } from "@nycode/tui";
 import type { TuiSettings } from "../runtime/tui-preferences.ts";
 import { sanitizeKeybindings } from "../tui/keybindings.ts";
 import {
@@ -23,9 +23,9 @@ import type { MousePolicy } from "./tui-modes.ts";
 const MAX_THEME_BYTES = 1024 * 1024;
 
 export type LocalPreferenceSources = {
-	/** pi's agent directory (`PI_CODING_AGENT_DIR` or `~/.pi/agent`). */
+	/** nycode's agent directory (`NYCODE_CODING_AGENT_DIR` or `~/.nycode/agent`). */
 	agentDir: string;
-	/** p2's launcher directory (`P2_TUI_CONFIG_DIR` or `~/.pi/p2-tui`), holding `prefs.json`. */
+	/** p2's launcher directory (`P2_TUI_CONFIG_DIR` or `~/.nycode/p2-tui`), holding `prefs.json`. */
 	configDir: string;
 	/** `--theme`: this run's theme setting. */
 	theme?: string;
@@ -37,12 +37,12 @@ export function localPreferenceSources(
 	options: { theme?: string; noThemes?: boolean } = {},
 	env: NodeJS.ProcessEnv = process.env,
 ): LocalPreferenceSources {
-	const configured = env.PI_CODING_AGENT_DIR;
+	const configured = env.NYCODE_CODING_AGENT_DIR;
 	const agentDir = configured
 		? configured === "~" || configured.startsWith("~/")
 			? join(homedir(), configured.slice(1))
 			: configured
-		: join(homedir(), ".pi", "agent");
+		: join(homedir(), ".nycode", "agent");
 	return { agentDir, configDir: configDirectory(), ...options };
 }
 
@@ -108,7 +108,7 @@ function customThemes(directory: string, problems: string[]): Record<string, The
 			const theme = validateThemeJson(label, json);
 			const size = JSON.stringify(theme).length;
 			if (total + size > MAX_THEME_BYTES) throw new Error("custom themes exceed 1 MiB in total");
-			// pi: built-in names (and the reserved system name) win over custom files.
+			// nycode: built-in names (and the reserved system name) win over custom files.
 			if (theme.name in BUILTIN_THEMES || theme.name === SYSTEM_THEME_NAME || !isThemeSetting(theme.name))
 				throw new Error(`theme name "${theme.name.slice(0, 64)}" is reserved or invalid`);
 			total += size;
@@ -120,31 +120,31 @@ function customThemes(directory: string, problems: string[]): Record<string, The
 	return themes;
 }
 
-/** pi files first, then p2 prefs; only whitelisted keys are kept (section 4.2 flow step 1). */
+/** nycode files first, then p2 prefs; only whitelisted keys are kept (section 4.2 flow step 1). */
 export function loadLocalPreferences(sources: LocalPreferenceSources): TuiLocalPreferences {
 	const problems: string[] = [];
 	const keybindings: KeybindingsConfig = {};
-	const piBindings = sanitizeKeybindings(
+	const nycodeBindings = sanitizeKeybindings(
 		readJson(join(sources.agentDir, "keybindings.json"), "keybindings.json", problems),
 	);
-	for (const id of piBindings.invalid) problems.push(`keybindings.json: invalid binding ${id}`);
-	Object.assign(keybindings, piBindings.config);
-	const piSettings = record(readJson(join(sources.agentDir, "settings.json"), "settings.json", problems));
+	for (const id of nycodeBindings.invalid) problems.push(`keybindings.json: invalid binding ${id}`);
+	Object.assign(keybindings, nycodeBindings.config);
+	const nycodeSettings = record(readJson(join(sources.agentDir, "settings.json"), "settings.json", problems));
 	const prefs = record(readJson(join(sources.configDir, "prefs.json"), "prefs.json", problems));
 	const prefBindings = sanitizeKeybindings(prefs.keybindings);
 	for (const id of prefBindings.invalid) problems.push(`prefs.json: invalid binding ${id}`);
 	Object.assign(keybindings, prefBindings.config);
 	const settings: TuiSettings[] = [];
 	for (const [label, raw] of [
-		["settings.json", piSettings],
+		["settings.json", nycodeSettings],
 		["prefs.json", record(prefs.settings)],
 	] as const) {
 		const { settings: valid, invalid } = sanitizeSettings(raw);
-		// pi's settings.json holds much more than display keys; only report bad values of keys p2 uses.
+		// nycode's settings.json holds much more than display keys; only report bad values of keys p2 uses.
 		for (const key of invalid) problems.push(`${label}: invalid ${key}`);
 		settings.push(valid);
 	}
-	const theme = [sources.theme, prefs.theme, piSettings.theme].find(isThemeSetting);
+	const theme = [sources.theme, prefs.theme, nycodeSettings.theme].find(isThemeSetting);
 	return {
 		keybindings,
 		...(theme ? { theme } : {}),
@@ -168,7 +168,7 @@ export function watchLocalPreferences(
 		for (const watcher of watchers) watcher.close();
 		watchers = [];
 		const directories = new Set<string>();
-		// A missing directory (a first prefs.json save creates ~/.pi/p2-tui) is noticed through its parent.
+		// A missing directory (a first prefs.json save creates ~/.nycode/p2-tui) is noticed through its parent.
 		for (const directory of [sources.agentDir, join(sources.agentDir, "themes"), sources.configDir])
 			directories.add(existsSync(directory) ? directory : dirname(directory));
 		for (const directory of directories) {
@@ -215,8 +215,8 @@ export function launcherCapabilities(
 }
 
 /**
- * pi's fullscreen captures the mouse by default: all-motion reporting, except button-motion inside multiplexers,
- * where every pointer movement would lag (pi-tui tui-alt-screen.ts makes the same choice from the same variables).
+ * nycode's fullscreen captures the mouse by default: all-motion reporting, except button-motion inside multiplexers,
+ * where every pointer movement would lag (nycode-tui tui-alt-screen.ts makes the same choice from the same variables).
  */
 export function defaultMouse(env: NodeJS.ProcessEnv = process.env): MousePolicy {
 	const term = env.TERM?.toLowerCase() ?? "";
@@ -231,7 +231,7 @@ export function defaultMouse(env: NodeJS.ProcessEnv = process.env): MousePolicy 
 
 /**
  * Launcher-only preferences, never posted to the worker: the mouse policy, the download folder and the external
- * editor command (p2 prefs, then pi's `externalEditor`, then $VISUAL/$EDITOR, then pi's nano/notepad default).
+ * editor command (p2 prefs, then nycode's `externalEditor`, then $VISUAL/$EDITOR, then nycode's nano/notepad default).
  */
 export function launcherPreferences(
 	sources: LocalPreferenceSources,
@@ -239,7 +239,7 @@ export function launcherPreferences(
 	platform: string = process.platform,
 ): { mouse: MousePolicy; downloads: string; editor: string } {
 	const prefs = record(readJson(join(sources.configDir, "prefs.json"), "prefs.json", []));
-	const pi = record(readJson(join(sources.agentDir, "settings.json"), "settings.json", []));
+	const nycode = record(readJson(join(sources.agentDir, "settings.json"), "settings.json", []));
 	const mouse = prefs.mouse;
 	const text = (value: unknown) => (typeof value === "string" && value.trim() ? value.trim() : undefined);
 	const downloads = text(prefs.downloads);
@@ -252,7 +252,7 @@ export function launcherPreferences(
 			: join(homedir(), "Downloads", "p2"),
 		editor:
 			text(prefs.externalEditor) ??
-			text(pi.externalEditor) ??
+			text(nycode.externalEditor) ??
 			text(env.VISUAL) ??
 			text(env.EDITOR) ??
 			(platform === "win32" ? "notepad" : "nano"),

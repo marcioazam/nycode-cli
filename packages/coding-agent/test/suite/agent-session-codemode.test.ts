@@ -1,6 +1,6 @@
 import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { AgentTool } from "@earendil-works/pi-agent-core";
+import type { AgentTool } from "@nycode/agent-core";
 import {
 	type AssistantImages,
 	type ClassifierModel,
@@ -12,8 +12,8 @@ import {
 	type ImageModel,
 	type ImagesContext,
 	type TranscriptContext,
-} from "@earendil-works/pi-ai";
-import type { ToolResultMessage, Usage } from "@earendil-works/pi-ai/compat";
+} from "@nycode/ai";
+import type { ToolResultMessage, Usage } from "@nycode/ai/compat";
 import { Type } from "typebox";
 import { afterEach, describe, expect, it } from "vitest";
 import type { ExtensionAPI } from "../../src/core/extensions/types.ts";
@@ -128,9 +128,9 @@ describe("AgentSession codemode tool", () => {
 
 	async function setup(extensionFactories?: HarnessOptions["extensionFactories"]) {
 		// Registered by an extension so they run with the session's tool context, next to the built-in codemode.
-		const registerTools = (pi: ExtensionAPI) => {
+		const registerTools = (nycode: ExtensionAPI) => {
 			for (const tool of [echoTool as AgentTool, statsTool, screenshotTool]) {
-				pi.registerTool(createToolDefinitionFromAgentTool(tool));
+				nycode.registerTool(createToolDefinitionFromAgentTool(tool));
 			}
 		};
 		const harness = await createHarness({
@@ -214,8 +214,8 @@ describe("AgentSession codemode tool", () => {
 		const entries = outputTool("entries", Type.Array(Type.Object({ id: Type.String(), size: Type.Integer() })));
 		const count = outputTool("count", Type.Number());
 		const harness = await setup([
-			(pi: ExtensionAPI) => {
-				for (const tool of [process, entries, count]) pi.registerTool(createToolDefinitionFromAgentTool(tool));
+			(nycode: ExtensionAPI) => {
+				for (const tool of [process, entries, count]) nycode.registerTool(createToolDefinitionFromAgentTool(tool));
 			},
 		]);
 		harness.session.setActiveToolsByName(["process", "entries", "count", "codemode"]);
@@ -259,8 +259,8 @@ describe("AgentSession codemode tool", () => {
 			},
 		});
 		const harness = await setup([
-			(pi: ExtensionAPI) => {
-				for (const tool of [report, result]) pi.registerTool(createToolDefinitionFromAgentTool(tool));
+			(nycode: ExtensionAPI) => {
+				for (const tool of [report, result]) nycode.registerTool(createToolDefinitionFromAgentTool(tool));
 			},
 		]);
 		harness.session.setActiveToolsByName(["report", "result", "codemode"]);
@@ -337,14 +337,14 @@ describe("AgentSession codemode tool", () => {
 
 	it("routes nested calls through extension hooks", async () => {
 		const harness = await setup([
-			(pi) => {
-				pi.on("tool_call", (event) => {
+			(nycode) => {
+				nycode.on("tool_call", (event) => {
 					if (event.toolName === "echo" && (event.input as { text: string }).text === "forbidden") {
 						return { block: true, reason: "echo of forbidden text is blocked" };
 					}
 					return undefined;
 				});
-				pi.on("tool_result", (event) => {
+				nycode.on("tool_result", (event) => {
 					if (event.toolName === "stats") {
 						return { content: [{ type: "text", text: "redacted" }] };
 					}
@@ -393,7 +393,7 @@ describe("AgentSession codemode tool", () => {
 			parameters: Type.Object({}),
 			execute: async () => ({ content: [{ type: "text", text: "ran" }], details: {}, usage: usage(100, 0.25) }),
 		};
-		const harness = await setup([(pi) => pi.registerTool(createToolDefinitionFromAgentTool(billedTool))]);
+		const harness = await setup([(nycode) => nycode.registerTool(createToolDefinitionFromAgentTool(billedTool))]);
 		harness.setResponses([
 			fauxAssistantMessage(
 				[
@@ -422,14 +422,16 @@ describe("AgentSession codemode tool", () => {
 
 	it("keeps structured content that tool_result handlers replace along with the content", async () => {
 		const harness = await setup([
-			(pi) => {
-				pi.on("tool_result", (event) =>
+			(nycode) => {
+				nycode.on("tool_result", (event) =>
 					event.toolName === "stats"
 						? { content: [{ type: "text", text: "0 files" }], structuredContent: { files: 0, names: [] } }
 						: undefined,
 				);
 				// A later handler that only touches details keeps what the first one set.
-				pi.on("tool_result", (event) => (event.toolName === "stats" ? { details: { audited: true } } : undefined));
+				nycode.on("tool_result", (event) =>
+					event.toolName === "stats" ? { details: { audited: true } } : undefined,
+				);
 			},
 		]);
 		harness.setResponses([

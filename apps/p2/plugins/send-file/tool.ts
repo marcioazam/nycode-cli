@@ -1,5 +1,5 @@
-import { defineExtension, defineTool } from "@earendil-works/pi-durable";
-import { obj, opt, str } from "@earendil-works/pi-schema";
+import { defineExtension, defineTool } from "@nycode/durable";
+import { obj, opt, str } from "@nycode/schema";
 import type { Context, DownloadInfo } from "@p2/app/v1";
 import { DownloadError } from "@p2/app/v1/node";
 

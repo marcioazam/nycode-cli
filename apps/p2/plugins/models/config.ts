@@ -26,11 +26,11 @@ export function summarize(resources: Resources, fake: boolean): ModelSummary {
 	const signedIn = new Set(snapshot.credentials.map((credential) => credential.providerId));
 	if (fake) signedIn.add("faux");
 	const models = snapshot.models.filter((model) => signedIn.has(model.provider));
-	// settings.json's default, then the environment's (Pi Mobile's order), then the first signed-in model.
+	// settings.json's default, then the environment's (Nycode Mobile's order), then the first signed-in model.
 	const configured = snapshot.settings.defaultModel ?? envDefaultModel();
 	const wanted = snapshot.settings.thinkingLevel ?? "high";
 	// The settings' level, clamped to the model's levels; a default model that is not listed keeps the settings' level
-	// (as Pi Mobile's create falls back to it) rather than becoming "off".
+	// (as Nycode Mobile's create falls back to it) rather than becoming "off".
 	const level = (thinkingLevels: readonly string[] | undefined): string =>
 		!thinkingLevels?.length || thinkingLevels.includes(wanted) ? wanted : (thinkingLevels.at(-1) ?? wanted);
 	const fallback = configured

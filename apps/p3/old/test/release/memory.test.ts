@@ -1,7 +1,7 @@
 // A session worker's memory, against the installed release (owner, 2026-11-16: "Session worker memory levers and a
 // budget"). The test builds a server and a worker entry with the release's own options and levers
 // (`bundleOptions`, the worker's V8 flags, Chord's minified worker base, the warm compile cache), serves the
-// installed release's plugins, and runs, in each of several workers at once, a real Durable harness with pi-ai's
+// installed release's plugins, and runs, in each of several workers at once, a real Durable harness with nycode-ai's
 // Anthropic and OpenAI providers against a local HTTPS stub (`test/memory/`): idle, one streamed answer, a burst of
 // 20 turns with tool calls, five subagents streaming at once, idle between. Each worker's USS is sampled every 250 ms
 // from `/proc`; an idle phase ends once a worker's USS settled (`settled`), and the test fails when the USS ever exceeds
@@ -16,7 +16,7 @@ import { join } from "node:path";
 import { describe, it } from "node:test";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
-import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context";
+import { BACKGROUND_CONTEXT as context } from "@nycode/chord/context";
 import { build } from "esbuild";
 import { Sessions, SessionWorker } from "../../plugins/sessions/contract.ts";
 import { bundleOptions, checkExternals, checkLean } from "../../scripts/build-release.ts";
@@ -188,7 +188,7 @@ describe("a session worker's memory, from the release", () => {
 				NODE_EXTRA_CA_CERTS: stub.certificate,
 				P3_MEMORY_STUB: stub.url,
 				P3_MEMORY_PHASES: phases,
-				P3_MEMORY_ROOT: join(P3_RELEASE, "node_modules", "@earendil-works", "p3", "plugins"),
+				P3_MEMORY_ROOT: join(P3_RELEASE, "node_modules", "@nycode", "p3", "plugins"),
 			};
 			const launched = await launch([process.execPath, join(dist, "server.js")], join(dir, "data"), {
 				env,

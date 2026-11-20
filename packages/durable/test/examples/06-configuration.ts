@@ -2,9 +2,9 @@
 // Run from packages/durable:
 //   node --conditions=source --experimental-strip-types test/examples/06-configuration.ts
 
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import { createModels } from "@earendil-works/pi-ai/models";
-import { obj, str } from "@earendil-works/pi-schema";
+import { createModels } from "@nycode/ai/models";
+import { BACKGROUND_CONTEXT } from "@nycode/chord/context";
+import { obj, str } from "@nycode/schema";
 import {
 	AgentDoc,
 	createRegistry,
@@ -66,7 +66,7 @@ const root = await harness.root(context);
 const tools = async () => (await root.agent(context)).tools.map((tool) => tool.name);
 console.log("default tools:", await tools());
 
-// configure() stores choices in the conversation's pi.agent document, one
+// configure() stores choices in the conversation's nycode.agent document, one
 // commit per call. Extensions and tools are passed as objects and stored by
 // name, so a typo cannot slip in.
 await root.configure(

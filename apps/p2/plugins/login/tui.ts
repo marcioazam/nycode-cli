@@ -1,11 +1,11 @@
 // `/login` and `/logout` in the TUI (p2-tui-port.md P6), after coding-agent's oauth-selector and login-dialog on
-// `ProviderLogin` (owner only). Differences from pi, for a remote, sandboxed TUI: no browser is opened and nothing is
+// `ProviderLogin` (owner only). Differences from nycode, for a remote, sandboxed TUI: no browser is opened and nothing is
 // copied by this worker. Opening the sign-in URL and copying it are launcher actions (`openUrl` external, `copy`),
 // each confirmed in the launcher's own screen; secret prompts are masked and never echoed, kept in history, the reload
 // snapshot or status lines.
 
-import type { AuthEvent } from "@earendil-works/pi-ai";
-import { type Component, type Focusable, Input, SelectList, truncateToWidth } from "@earendil-works/pi-tui";
+import type { AuthEvent } from "@nycode/ai";
+import { type Component, type Focusable, Input, SelectList, truncateToWidth } from "@nycode/tui";
 import type { Held } from "@p2/app/v1";
 import { BACKGROUND_CONTEXT, contribute, defineFacet, follow, liveIn, statusOf, whenLive } from "@p2/app/v1";
 import type { TuiContext } from "@p2/app/v1/tui";
@@ -36,7 +36,7 @@ function noticeUrl(event: AuthEvent): string | undefined {
 const opensInBrowser = (event: AuthEvent): boolean =>
 	event.type !== "device_code" || event.openBrowserOnConfirm !== false;
 
-/** The login flow of one provider, rendered from the server's `LoginState` (pi's LoginDialogComponent). */
+/** The login flow of one provider, rendered from the server's `LoginState` (nycode's LoginDialogComponent). */
 export class LoginDialog implements Component, Focusable {
 	private isFocused = false;
 	private readonly ctx: TuiContext;
@@ -208,7 +208,7 @@ export class LoginDialog implements Component, Focusable {
 			this.cancel();
 			return;
 		}
-		// pi: app.message.copy copies the sign-in URL (the launcher suspends its own copy key while this dialog has focus).
+		// nycode: app.message.copy copies the sign-in URL (the launcher suspends its own copy key while this dialog has focus).
 		if (keys.matches(data, "app.message.copy")) {
 			this.copyUrl();
 			return;

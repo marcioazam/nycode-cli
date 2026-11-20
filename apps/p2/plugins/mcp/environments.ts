@@ -1,8 +1,8 @@
-// The supervisor's pi-env connections to environments: one per environment and configuration revision, shared by every
+// The supervisor's nycode-env connections to environments: one per environment and configuration revision, shared by every
 // instance running there and closed with the last one. A connection lost meanwhile starts again at its next request
-// (pi-env); the daemon killed the programs it ran, and their instances reconnect.
+// (nycode-env); the daemon killed the programs it ran, and their instances reconnect.
 
-import type { Connection } from "@earendil-works/pi-env";
+import type { Connection } from "@nycode/env";
 import type { EnvConfig } from "../envs/config.ts";
 
 /** A connection to environment `name` configured as `config`, which starts at its first request. */

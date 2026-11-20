@@ -4,7 +4,7 @@
 // `/cd`'s (the selector's `relocate`: confirmed, then `Sessions.relocate`) and keeps the subfolder below the project's
 // place.
 
-import type { AutocompleteItem } from "@earendil-works/pi-tui";
+import type { AutocompleteItem } from "@nycode/tui";
 import type { TuiContext } from "@p2/app/v1/tui";
 import { ListOverlay, lineText } from "@p2/app/v1/tui";
 import { below, type Project, type ProjectPlace, placeLabel, placeOn } from "../projects/contract.ts";

@@ -2,7 +2,7 @@
 // small Streamable HTTP server and a stub of the workers' states: instances per session and location or shared, leases
 // set per worker generation and released by the view's end, processes ending with their instances, edits of mcp.json,
 // the generation and incarnation fences, placement refusals, projects' mcp.json, where sessions work, environments
-// through a local pi-env daemon, a reload, guests. Reconnects: mcp-instances.test.ts.
+// through a local nycode-env daemon, a reload, guests. Reconnects: mcp-instances.test.ts.
 import assert from "node:assert/strict";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
@@ -11,7 +11,7 @@ import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { Connection } from "@earendil-works/pi-env";
+import { Connection } from "@nycode/env";
 import { constant, follow, type Location, type P2Principal, type SessionLock } from "@p2/app/v1";
 import { Hosts, Server, type WorkerState } from "@p2/app/v1/server";
 import type { EnvConfig } from "../../plugins/envs/config.ts";
@@ -25,12 +25,12 @@ import { type Child, ChildStore } from "../../plugins/subagents/contract.ts";
 import { APP, type Cell, expectChord, failureOf, holdIn, poll, settled, TEST, testHost, until } from "./helpers.ts";
 
 const FIXTURE = fileURLToPath(new URL("../fixtures/mcp-server.mjs", import.meta.url));
-/** The pi-env daemon environments start servers through: `PI_ENV_DAEMON`, else the debug build of packages/env. */
+/** The nycode-env daemon environments start servers through: `NYCODE_ENV_DAEMON`, else the debug build of packages/env. */
 const DAEMON =
-	process.env.PI_ENV_DAEMON ??
+	process.env.NYCODE_ENV_DAEMON ??
 	fileURLToPath(
 		new URL(
-			`../../../../packages/env/daemon/target/debug/pi-env${process.platform === "win32" ? ".exe" : ""}`,
+			`../../../../packages/env/daemon/target/debug/nycode-env${process.platform === "win32" ? ".exe" : ""}`,
 			import.meta.url,
 		),
 	);
@@ -679,8 +679,8 @@ test("a project's mcp.json: its servers run at its location for its session, it 
 	);
 	const errors = s1.errors.value.join("\n");
 	assert.equal(s1.errors.value.length, 2, errors);
-	assert.match(errors, /: \.pi\/mcp\.json: server "remote": HTTP servers are for the owner's mcp\.json/);
-	assert.match(errors, /: \.pi\/mcp\.json: permission denied/);
+	assert.match(errors, /: \.nycode\/mcp\.json: server "remote": HTTP servers are for the owner's mcp\.json/);
+	assert.match(errors, /: \.nycode\/mcp\.json: permission denied/);
 	// Another session at the same location without a project: the owner's servers only; the owner sees every error.
 	assert.deepEqual(
 		(await until(s2.servers, isUp("files"))).map((instance) => instance.server),
@@ -733,8 +733,8 @@ test("a lease gets servers only on environments its session works on: its own, i
 });
 
 test(
-	"environments: servers start through the environment's pi-env daemon, on one connection that closes with the last instance",
-	{ skip: existsSync(DAEMON) ? false : `no pi-env daemon at ${DAEMON} (npm run build:daemon in packages/env)` },
+	"environments: servers start through the environment's nycode-env daemon, on one connection that closes with the last instance",
+	{ skip: existsSync(DAEMON) ? false : `no nycode-env daemon at ${DAEMON} (npm run build:daemon in packages/env)` },
 	async (t) => {
 		// The "environment" is this machine through a local daemon: no SSH, the same operations.
 		const connections: Connection[] = [];

@@ -6,7 +6,7 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { renderTrace } from "@earendil-works/pi-telemetry/render";
+import { renderTrace } from "@nycode/telemetry/render";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { BACKGROUND_CONTEXT as context } from "../../../src/context/index.ts";
 import { openNodeSqliteDatabase } from "../../../src/sqlite/node.ts";

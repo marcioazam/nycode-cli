@@ -1,5 +1,5 @@
-import type { AgentMessage } from "@earendil-works/pi-agent-core";
-import { type AssistantMessage, type Model, normalizeContext, type TranscriptContext } from "@earendil-works/pi-ai";
+import type { AgentMessage } from "@nycode/agent-core";
+import { type AssistantMessage, type Model, normalizeContext, type TranscriptContext } from "@nycode/ai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	type CompactionPreparation,
@@ -13,8 +13,8 @@ const { completeSimpleMock } = vi.hoisted(() => ({
 	completeSimpleMock: vi.fn(),
 }));
 
-vi.mock("@earendil-works/pi-ai/compat", async (importOriginal) => {
-	const actual = await importOriginal<typeof import("@earendil-works/pi-ai/compat")>();
+vi.mock("@nycode/ai/compat", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("@nycode/ai/compat")>();
 	return {
 		...actual,
 		completeSimple: completeSimpleMock,
@@ -269,7 +269,7 @@ describe("generateSummary reasoning options", () => {
 		expect(completeSimpleMock.mock.calls[0][2]).not.toHaveProperty("reasoning");
 	});
 
-	it("leaves Anthropic refusal fallback handling to pi-ai model metadata", async () => {
+	it("leaves Anthropic refusal fallback handling to nycode-ai model metadata", async () => {
 		await generateSummary(
 			messages,
 			createModel(true, 8192, {

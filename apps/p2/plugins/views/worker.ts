@@ -1,7 +1,7 @@
 // Views (worker): the session's views and annotations as browsers hold them (`Views`), the agent's view tools, and the
 // send router that adds what the person selected and annotated (and what other plugins add, `MessageContexts`) to
 // their next message.
-import type { Tx } from "@earendil-works/pi-durable";
+import type { Tx } from "@nycode/durable";
 import {
 	type Author,
 	authorOf,

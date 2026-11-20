@@ -1,7 +1,7 @@
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { colorToHex, okhslColor, styleText } from "@earendil-works/pi-tui";
+import { colorToHex, okhslColor, styleText } from "@nycode/tui";
 import { afterEach, describe, expect, it } from "vitest";
 import { loadThemeFromPath, setTerminalColors } from "../src/modes/interactive/theme/theme.ts";
 
@@ -20,7 +20,7 @@ function loadTheme(base: "dark" | "light", edit: (theme: ThemeFile) => void = ()
 		readFileSync(new URL(`../src/modes/interactive/theme/${base}.json`, import.meta.url), "utf8"),
 	) as ThemeFile;
 	edit(themeJson);
-	const dir = mkdtempSync(join(tmpdir(), "pi-theme-style-"));
+	const dir = mkdtempSync(join(tmpdir(), "nycode-theme-style-"));
 	tempDirs.push(dir);
 	const path = join(dir, `${themeJson.name}.json`);
 	writeFileSync(path, JSON.stringify(themeJson));

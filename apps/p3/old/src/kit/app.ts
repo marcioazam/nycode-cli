@@ -1,12 +1,12 @@
 // The running app: what `startServer` gives its caller. The server's host, its session workers, the data directory,
 // the port it listens on, the owner's link of this start and token file, and the close.
 
-import type { Host, HostError, Store } from "@earendil-works/chord";
-import type { Context } from "@earendil-works/chord/context";
-import type { HttpComponent, HttpError, ListenAddress } from "@earendil-works/chord/http";
-import type { Plugins, PluginsError } from "@earendil-works/chord/plugins";
-import type { ProcessLock, Workers, WorkersError } from "@earendil-works/chord/workers";
-import type { Session } from "@earendil-works/p3/v1";
+import type { Host, HostError, Store } from "@nycode/chord";
+import type { Context } from "@nycode/chord/context";
+import type { HttpComponent, HttpError, ListenAddress } from "@nycode/chord/http";
+import type { Plugins, PluginsError } from "@nycode/chord/plugins";
+import type { ProcessLock, Workers, WorkersError } from "@nycode/chord/workers";
+import type { Session } from "@nycode/p3/v1";
 import type { P3Principal } from "../principals.ts";
 import { removeRecord } from "./running.ts";
 

@@ -1,10 +1,10 @@
 /**
- * MCP server configuration and the servers extensions register with `pi.registerMcpServer()`.
+ * MCP server configuration and the servers extensions register with `nycode.registerMcpServer()`.
  *
  * The core only validates and stores registrations. The MCP extension (built in, or another
  * extension that handles `mcp_servers_change`) connects them next to the servers from `mcp.json`.
  * The `mcpServers` shape itself (stdio and HTTP fields, `oauth`, `enabled`, `description`, `timeout`)
- * is pi-mcp's; this file adds pi's fields to it.
+ * is nycode-mcp's; this file adds nycode's fields to it.
  */
 
 import {
@@ -12,7 +12,7 @@ import {
 	type McpOAuthConfig as McpOAuthFields,
 	type McpStdioServerConfig as McpStdioServerFields,
 	validateMcpServerConfig as validateMcpServerFields,
-} from "@earendil-works/pi-mcp";
+} from "@nycode/mcp";
 
 /**
  * Regular expression for a tool name pattern where `*` matches any characters, as `toolExposure`,
@@ -66,8 +66,8 @@ const MCP_EXPOSURES: readonly string[] = ["codemode", "deferred", "direct", "hid
 const MCP_EXPOSURE_ALIASES: Readonly<Record<string, McpExposure>> = { "codemode-deferred": "codemode" };
 
 /**
- * pi's fields of every server entry, beside the shared `mcpServers` fields of pi-mcp. `description`
- * and `timeout` are shared fields, declared again for pi's documentation.
+ * nycode's fields of every server entry, beside the shared `mcpServers` fields of nycode-mcp. `description`
+ * and `timeout` are shared fields, declared again for nycode's documentation.
  */
 interface McpServerConfigBase {
 	/** Default: `codemode`. */
@@ -89,7 +89,7 @@ interface McpServerConfigBase {
 }
 
 export interface McpStdioServerConfig extends McpStdioServerFields, McpServerConfigBase {
-	// Shared fields, declared again for pi's documentation.
+	// Shared fields, declared again for nycode's documentation.
 	/** Values may reference environment variables (`${NAME}`) or commands (`!cmd`). */
 	env?: Record<string, string>;
 	/** Relative paths resolve against the session working directory. */
@@ -98,16 +98,16 @@ export interface McpStdioServerConfig extends McpStdioServerFields, McpServerCon
 
 /** OAuth client settings for servers that do not support dynamic client registration. */
 export interface McpOAuthConfig extends McpOAuthFields {
-	// Shared fields, declared again for pi's documentation.
+	// Shared fields, declared again for nycode's documentation.
 	/** May reference environment variables (`${NAME}`) or commands (`!cmd`). */
 	clientSecret?: string;
 	/**
 	 * `client_name` sent with dynamic client registration, for servers that only accept known clients.
-	 * Default: `pi`.
+	 * Default: `nycode`.
 	 */
 	clientName?: string;
 	/**
-	 * How pi identifies itself without `clientId`. `auto` (default): pi's Client ID Metadata Document on
+	 * How nycode identifies itself without `clientId`. `auto` (default): nycode's Client ID Metadata Document on
 	 * pi.dev when the authorization server supports it for public clients, otherwise dynamic client
 	 * registration; with `clientName` or a `callbackUrl` other than `/callback` on localhost or 127.0.0.1,
 	 * always dynamic client registration. `cimd`: always the document, and sign-in fails without support.
@@ -117,8 +117,8 @@ export interface McpOAuthConfig extends McpOAuthFields {
 }
 
 /**
- * Whether pi's Client ID Metadata Documents list a redirect URI for the loopback `callbackUrl`: they list
- * `/callback` on localhost and 127.0.0.1, on any port. Without `callbackUrl`, pi uses such a URI.
+ * Whether nycode's Client ID Metadata Documents list a redirect URI for the loopback `callbackUrl`: they list
+ * `/callback` on localhost and 127.0.0.1, on any port. Without `callbackUrl`, nycode uses such a URI.
  */
 export function isClientMetadataDocumentCallback(callbackUrl: string | undefined): boolean {
 	if (callbackUrl === undefined) return true;
@@ -127,12 +127,12 @@ export function isClientMetadataDocumentCallback(callbackUrl: string | undefined
 }
 
 export interface McpHttpServerConfig extends McpHttpServerFields, McpServerConfigBase {
-	// `headers` is shared, declared again for pi's documentation; `oauth` narrows to pi's documented type.
+	// `headers` is shared, declared again for nycode's documentation; `oauth` narrows to nycode's documented type.
 	/** Values may reference environment variables (`${NAME}`) or commands (`!cmd`). */
 	headers?: Record<string, string>;
 	oauth?: McpOAuthConfig;
 	/**
-	 * Send the token of a pi provider (`/login <provider>`) instead of using OAuth. Not allowed in project
+	 * Send the token of a nycode provider (`/login <provider>`) instead of using OAuth. Not allowed in project
 	 * `mcp.json` files, and requires https except on loopback hosts, since it sends the credential to `url`.
 	 */
 	auth?: { provider: string };
@@ -207,7 +207,7 @@ function checkAuth(auth: unknown, url: string): string | undefined {
 }
 
 /**
- * Validate one server entry of the `mcpServers` shape: pi-mcp's shared fields and pi's own. Returns a
+ * Validate one server entry of the `mcpServers` shape: nycode-mcp's shared fields and nycode's own. Returns a
  * copy of the config with exposure aliases resolved, or an error message.
  */
 export function validateMcpServerConfig(name: string, raw: unknown): McpServerConfig | string {
@@ -222,11 +222,11 @@ export function validateMcpServerConfig(name: string, raw: unknown): McpServerCo
 		checkExposures(result.config) ??
 		(result.kind === "http" ? checkAuth(result.config.auth, result.config.url) : undefined);
 	if (error) return `server "${name}": ${error}`;
-	// The cast holds because pi's fields were checked above, which the types cannot express.
+	// The cast holds because nycode's fields were checked above, which the types cannot express.
 	return result.config as McpServerConfig;
 }
 
-/** A server an extension registered with `pi.registerMcpServer()`. */
+/** A server an extension registered with `nycode.registerMcpServer()`. */
 export interface RegisteredMcpServer {
 	name: string;
 	config: McpServerConfig;

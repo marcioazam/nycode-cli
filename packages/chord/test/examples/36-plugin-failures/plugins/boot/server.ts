@@ -1,6 +1,6 @@
 // The boot plugin's server facet: serves `Boot`. The example makes this module throw while it is evaluated.
 
-import { constant, defineFacet, local, str } from "@earendil-works/chord";
+import { constant, defineFacet, local, str } from "@nycode/chord";
 
 const Boot = local("example.boot", { version: 1, params: {}, members: { mode: str() } });
 

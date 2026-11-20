@@ -17,7 +17,7 @@ const http = chordHttp.createHttp(server, { listen: { host: "127.0.0.1", port: 0
 
 // 2. The plugins: the component's facet (its registries and the listener) goes first, then every plugin's server
 //    facet. The listener opens once they are published.
-const modules = { "@earendil-works/chord": chord, "@earendil-works/chord/http": chordHttp };
+const modules = { "@nycode/chord": chord, "@nycode/chord/http": chordHttp };
 const plugins = createPlugins(
 	{
 		roots: [fileURLToPath(new URL("./plugins/", import.meta.url))],

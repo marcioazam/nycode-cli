@@ -25,8 +25,8 @@ export const isBunBinary =
 export const isBunRuntime = !!process.versions.bun;
 
 /** Detect the esbuild-bundled Node.js distribution. */
-declare const PI_BUNDLED_NODE: boolean;
-export const isBundledNode = typeof PI_BUNDLED_NODE !== "undefined" && PI_BUNDLED_NODE;
+declare const NYCODE_BUNDLED_NODE: boolean;
+export const isBundledNode = typeof NYCODE_BUNDLED_NODE !== "undefined" && NYCODE_BUNDLED_NODE;
 
 // =============================================================================
 // Install Method Detection
@@ -335,11 +335,11 @@ export function getSelfUpdateCommand(
 }
 
 /**
- * The self-update command configured by the user: `PI_SELF_UPDATE_COMMAND` (whitespace-separated
+ * The self-update command configured by the user: `NYCODE_SELF_UPDATE_COMMAND` (whitespace-separated
  * argv, no quoting), else the global `selfUpdateCommand` setting. Overrides install-method detection.
  */
 export function getConfiguredSelfUpdateArgv(setting: string[] | undefined): string[] | undefined {
-	const fromEnv = process.env.PI_SELF_UPDATE_COMMAND?.trim().split(/\s+/).filter(Boolean);
+	const fromEnv = process.env.NYCODE_SELF_UPDATE_COMMAND?.trim().split(/\s+/).filter(Boolean);
 	if (fromEnv?.length) return fromEnv;
 	return setting?.length ? setting : undefined;
 }
@@ -368,7 +368,7 @@ export function getSelfUpdateUnavailableInstruction(
 	const method = detectInstallMethod();
 	const target = normalizeSelfUpdatePackageTarget(updatePackageTarget);
 	if (method === "bun-binary") {
-		return `Download from: https://github.com/earendil-works/pi/releases/latest`;
+		return `Download from: https://github.com/marcioazam/nycode-cli/releases/latest`;
 	}
 	const command = getSelfUpdateCommandForMethod(method, packageName, target, npmCommand);
 	// Path-based detection also matches installs that only live under a package manager's directory,
@@ -417,7 +417,7 @@ export function findNodePackageDir(startDir: string): string {
 
 export function getPackageDir(): string {
 	// Allow override via environment variable (useful for Nix/Guix where store paths tokenize poorly)
-	const envDir = process.env.PI_PACKAGE_DIR;
+	const envDir = process.env.NYCODE_PACKAGE_DIR;
 	if (envDir) {
 		return normalizePath(envDir);
 	}
@@ -537,7 +537,7 @@ export function resolveCodemodeWorkerSpecifier(
 let codemodeWorkerDataUrl: URL | undefined;
 
 /**
- * Get the codemode worker entry, or undefined to use the worker that ships next to pi-codemode.
+ * Get the codemode worker entry, or undefined to use the worker that ships next to nycode-codemode.
  * The Bun and Node release builds both pass the worker as an extra entrypoint.
  */
 export function getCodemodeWorkerSpecifier(): string | URL | undefined {
@@ -554,7 +554,7 @@ export function getCodemodeWorkerSpecifier(): string | URL | undefined {
 export type InstallChange = { kind: "updated"; version: string } | { kind: "removed" };
 
 /**
- * Detect that the package this process runs from changed on disk, for example after `pi update`
+ * Detect that the package this process runs from changed on disk, for example after `nycode update`
  * in another terminal. Code loaded on demand can then be missing or from another version.
  *
  * Checks the package.json read at startup. Resolving it again would walk up past a deleted install
@@ -575,13 +575,13 @@ export function detectInstallChange(packageJsonPath = startupPackageJsonPath): I
 }
 
 // =============================================================================
-// App Config (from package.json piConfig)
+// App Config (from package.json nycodeConfig)
 // =============================================================================
 
 interface PackageJson {
 	name?: string;
 	version?: string;
-	piConfig?: {
+	nycodeConfig?: {
 		name?: string;
 		configDir?: string;
 	};
@@ -599,14 +599,14 @@ try {
 	if (err.code !== "ENOENT") throw e;
 }
 
-const piConfigName: string | undefined = pkg.piConfig?.name;
-export const PACKAGE_NAME: string = pkg.name || "@earendil-works/pi-coding-agent";
-export const APP_NAME: string = piConfigName || "pi";
-export const APP_TITLE: string = piConfigName ? APP_NAME : "π";
-export const CONFIG_DIR_NAME: string = pkg.piConfig?.configDir || ".pi";
+const nycodeConfigName: string | undefined = pkg.nycodeConfig?.name;
+export const PACKAGE_NAME: string = pkg.name || "@nycode/coding-agent";
+export const APP_NAME: string = nycodeConfigName || "nycode";
+export const APP_TITLE: string = nycodeConfigName ? APP_NAME : "π";
+export const CONFIG_DIR_NAME: string = pkg.nycodeConfig?.configDir || ".nycode";
 export const VERSION: string = pkg.version || "0.0.0";
 
-// e.g., PI_CODING_AGENT_DIR or TAU_CODING_AGENT_DIR
+// e.g., NYCODE_CODING_AGENT_DIR or TAU_CODING_AGENT_DIR
 export const ENV_AGENT_DIR = `${APP_NAME.toUpperCase()}_CODING_AGENT_DIR`;
 export const ENV_SESSION_DIR = `${APP_NAME.toUpperCase()}_CODING_AGENT_SESSION_DIR`;
 
@@ -618,15 +618,15 @@ const DEFAULT_SHARE_VIEWER_URL = "https://pi.dev/session/";
 
 /** Get the share viewer URL for a gist ID. */
 export function getShareViewerUrl(gistId: string): string {
-	const baseUrl = process.env.PI_SHARE_VIEWER_URL || DEFAULT_SHARE_VIEWER_URL;
+	const baseUrl = process.env.NYCODE_SHARE_VIEWER_URL || DEFAULT_SHARE_VIEWER_URL;
 	return `${baseUrl}#${gistId}`;
 }
 
 // =============================================================================
-// User Config Paths (~/.pi/agent/*)
+// User Config Paths (~/.nycode/agent/*)
 // =============================================================================
 
-/** Get the agent config directory (e.g., ~/.pi/agent/) */
+/** Get the agent config directory (e.g., ~/.nycode/agent/) */
 export function getAgentDir(): string {
 	const envDir = process.env[ENV_AGENT_DIR];
 	if (envDir) {

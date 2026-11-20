@@ -1,4 +1,4 @@
-import type { AssistantMessage } from "@earendil-works/pi-ai";
+import type { AssistantMessage } from "@nycode/ai";
 import {
 	type CSSProperties,
 	createContext,
@@ -556,7 +556,7 @@ function Thought({ item }: { item: Extract<ChatItem, { type: "thought" }> }) {
  * an error or the length limit below it.
  */
 const Answer = memo(function Answer({ item }: { item: Extract<ChatItem, { type: "answer" }> }) {
-	const reply = useReply(item.streaming ? undefined : item.entryId, "Pi");
+	const reply = useReply(item.streaming ? undefined : item.entryId, "Nycode");
 	const branch = useContext(BranchFrom);
 	const { message, entryId } = item;
 	const text = item.text.trim();

@@ -1,4 +1,4 @@
-# What the Pi Roam base must enable: the merged inventory
+# What the Nycode Roam base must enable: the merged inventory
 
 Merged by the p3 session (2026-11-09) from `base-inventory-astra.md` (60 product cases, B01-B15),
 `base-inventory-sol.md` (39 p2 plugins + 50 products, F1-F14, gaps G01-G11) and `base-inventory-opus.md` (70 cases,
@@ -94,7 +94,7 @@ is missing), **DECIDED** (owner decision today). Coverage counts are the reports
 
 5. **Model providers and environments as contributions** (NEEDED). Durable takes one `models` and one `env` function
    (`HarnessOptions`); p3 composes them from plugin contributions (several providers, a virtual router; several
-   environment kinds with capabilities and placement). Model wraps cover the whole Models runtime, including pi-ai's
+   environment kinds with capabilities and placement). Model wraps cover the whole Models runtime, including nycode-ai's
    payload, header, response and raw stream callbacks (`packages/ai/src/models.ts`), so stats and cache warming do not
    need private access [S G04, P03]. An environment wrap covers files and shell; it is not confinement. `undefined`
    environment, never a local fallback. [S F4, G07; A B14; O N-ENVS]
@@ -189,7 +189,7 @@ keys and receipts instead).
 **Cut:** compulsory resources, ACLs, projects, Home, inbox, board or ticket types in base; a public Durable `Extension`
 in plugin APIs beyond what the harness object defines; a central event log; a second workflow engine (Chord jobs and
 Durable tasks suffice); a stringly action or permission bus; fixed UI slot catalogs per product; mandatory full payload
-logging; compatibility with old pi's JSONL paths, jiti loading or mutable event payloads; live session sync.
+logging; compatibility with old nycode's JSONL paths, jiti loading or mutable event payloads; live session sync.
 
 ## 4. Conflicts and open questions
 

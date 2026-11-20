@@ -720,7 +720,7 @@ textarea.input {
 /* The transcript is a virtual list (use-chat-scroll.ts): `.rows` holds a spacer for the rows above, the rows near the
    viewport, and a spacer for the rows below. Each row carries its spacing to the row before it as padding, so its
    measured height is everything it adds; a row is a flex column like the list it replaces (its margins stay inside).
-   The rhythm (.pi/skills/p2-ui.md): a turn starts --s5 below what came before; its parts (thinking, words, wheels, the
+   The rhythm (.nycode/skills/p2-ui.md): a turn starts --s5 below what came before; its parts (thinking, words, wheels, the
    answer, results) follow --s2 apart. One-line rows (a thought, a wheel, an incoming message's header) are --row tall,
    so one turning into another never changes the height. */
 .rows {
@@ -2256,27 +2256,27 @@ button.diff-number:hover {
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
-.pi-logo {
+.nycode-logo {
 	width: 64px;
 	height: 64px;
 	flex: none;
 	shape-rendering: crispEdges;
 }
-.hero-title .pi-logo {
+.hero-title .nycode-logo {
 	width: 32px;
 	height: 32px;
 }
-.pi-logo.compact {
+.nycode-logo.compact {
 	width: 24px;
 	height: 24px;
 }
-.pi-logo-coral {
+.nycode-logo-coral {
 	fill: rgb(228 138 122);
 }
-.pi-logo-blue {
+.nycode-logo-blue {
 	fill: rgb(79 142 179);
 }
-.pi-logo-yellow {
+.nycode-logo-yellow {
 	fill: rgb(234 182 93);
 }
 
@@ -2628,7 +2628,7 @@ button.diff-number:hover {
 	font-family: var(--mono);
 	font-size: var(--fs-xs);
 }
-.subagent-bar > span:not(.pi-dots) {
+.subagent-bar > span:not(.nycode-dots) {
 	flex: 1;
 	min-width: 0;
 	overflow-wrap: anywhere;
@@ -3664,7 +3664,7 @@ button.history-edge:disabled {
 	min-width: 0;
 }
 
-/* The Pi macOS app (apps/p2-mac, in progress) shows the page under its transparent title bar, the window buttons over
+/* The Nycode macOS app (apps/p2-mac, in progress) shows the page under its transparent title bar, the window buttons over
    its top left corner. It sets data-shell="macos" and --shell-inset-start (the buttons' width) on <html>, and marks the
    bars at that corner with data-shell-corner, whichever layout or plugin put them there: their content starts after
    the buttons. */

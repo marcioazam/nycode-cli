@@ -76,7 +76,7 @@ final class OAuthLoopback {
 				let components = URLComponents(string: "http://127.0.0.1\(target)")
 				let ours = components?.path == Self.path
 				let body = ours
-					? "<!doctype html><meta charset=utf-8><title>Pi</title><body style=\"font: 15px -apple-system; margin: 4em; text-align: center\">Signed in to Radius. You can close this tab and return to Pi."
+					? "<!doctype html><meta charset=utf-8><title>Nycode</title><body style=\"font: 15px -apple-system; margin: 4em; text-align: center\">Signed in to Radius. You can close this tab and return to Nycode."
 					: "Not found"
 				let response = "HTTP/1.1 \(ours ? "200 OK" : "404 Not Found")\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: \(body.utf8.count)\r\nConnection: close\r\nCache-Control: no-store\r\n\r\n\(body)"
 				connection.send(content: Data(response.utf8), completion: .contentProcessed { _ in connection.cancel() })

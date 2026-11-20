@@ -3,8 +3,8 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { constant, openStore, sqliteBackend } from "@earendil-works/chord";
-import { openNodeSqliteDatabase } from "@earendil-works/chord/sqlite/node";
+import { constant, openStore, sqliteBackend } from "@nycode/chord";
+import { openNodeSqliteDatabase } from "@nycode/chord/sqlite/node";
 import { BACKGROUND_CONTEXT as context, query } from "@p2/app/v1";
 import { Shares } from "../../plugins/sharing/contract.ts";
 import { normalizeEmail } from "../../plugins/sharing/server.ts";

@@ -1,5 +1,5 @@
-// MCP tools as Durable tools, exposed as pi exposes them by default: one tool per tool of the session's servers, named as
-// pi names them (`mcp__<server>__<tool>`), callable only from code mode scripts (or loaded through `tool_search` while
+// MCP tools as Durable tools, exposed as nycode exposes them by default: one tool per tool of the session's servers, named as
+// nycode names them (`mcp__<server>__<tool>`), callable only from code mode scripts (or loaded through `tool_search` while
 // code mode is off), calling the server's instance where the calling conversation works.
 //
 // Durable gives every conversation of a session the same tools, while a server may have an instance per location (an
@@ -12,12 +12,12 @@
 //   them, each server with its own namespace (`mcp__<server>`), summary and instructions; a server another location
 //   has, and a variant another location's instance describes, are not there;
 // - a call goes to the instance where the calling conversation works, and only as the variant that instance describes.
-// The model learns of a server as in pi: its namespace in the `codemode` section with a one-line summary (the
+// The model learns of a server as in nycode: its namespace in the `codemode` section with a one-line summary (the
 // configured `description`, else the first line of the server's instructions), or, without code mode, a line in the
 // `mcp_servers` section; the full instructions come from `describeNamespace()`.
 
 import { createHash } from "node:crypto";
-import type { JsonValue } from "@earendil-works/chord/json";
+import type { JsonValue } from "@nycode/chord/json";
 import {
 	type Agent,
 	type ConversationId,
@@ -31,9 +31,9 @@ import {
 	type ToolRegistration,
 	type Wrap,
 	wrapSection,
-} from "@earendil-works/pi-durable";
-import { CODEMODE_TOOL_NAME } from "@earendil-works/pi-durable/codemode";
-import { TOOL_SEARCH_TOOL_NAME } from "@earendil-works/pi-durable/tool-search";
+} from "@nycode/durable";
+import { CODEMODE_TOOL_NAME } from "@nycode/durable/codemode";
+import { TOOL_SEARCH_TOOL_NAME } from "@nycode/durable/tool-search";
 import {
 	type CallToolResult,
 	createMcpToolName,
@@ -42,14 +42,14 @@ import {
 	mcpServerSummary,
 	normalizeMcpInputSchema,
 	toLlmContent,
-} from "@earendil-works/pi-mcp";
+} from "@nycode/mcp";
 import { type Context, type Location, locationText, sameLocation } from "@p2/app/v1";
 import type { P2Tool } from "@p2/app/v1/worker";
 import { type Instance, type McpTool, type SessionLease, signInLink } from "./contract.ts";
 
 /**
- * How the model reaches MCP tools, as pi's exposures: `codemode` (pi's default) from code mode scripts, which find them
- * with `searchTools()`; `tool_search` (pi's `deferred`, its fallback without code mode) by loading them with
+ * How the model reaches MCP tools, as nycode's exposures: `codemode` (nycode's default) from code mode scripts, which find them
+ * with `searchTools()`; `tool_search` (nycode's `deferred`, its fallback without code mode) by loading them with
  * `tool_search`, then calling them directly.
  */
 export type McpReach = "codemode" | "tool_search";
@@ -99,7 +99,7 @@ export const MCP_EXTENSION = "mcp";
 /** The MCP extension without instances: nothing to offer, nothing to cut. */
 export const EMPTY_MCP_EXTENSION: Extension<P2Tool> = defineExtension<P2Tool>({ name: MCP_EXTENSION });
 
-/** The longest summary a server's namespace or `mcp_servers` line shows, as in pi. */
+/** The longest summary a server's namespace or `mcp_servers` line shows, as in nycode. */
 const MAX_SUMMARY_CHARS = 250;
 
 /** The session's instances as the extension offers them, by server name, then ID. */
@@ -116,7 +116,7 @@ export function offeredInstances(instances: readonly Instance[]): OfferedInstanc
 		}));
 }
 
-/** The instance's summary as pi shows it: its first line, at most `MAX_SUMMARY_CHARS` characters. */
+/** The instance's summary as nycode shows it: its first line, at most `MAX_SUMMARY_CHARS` characters. */
 function summaryOf(instance: Instance): string {
 	const characters = [...mcpServerSummary(instance.description, instance.instructions)];
 	if (characters.length <= MAX_SUMMARY_CHARS) return characters.join("");
@@ -175,8 +175,8 @@ type Variant = { readonly server: string; readonly tool: McpTool; readonly descr
 const variantKey = (server: string, tool: McpTool): string => JSON.stringify([server, tool.name, toolDescriptor(tool)]);
 
 /**
- * Every variant of `offer`'s tools, by `variantKey`, with its name. As in pi, a tool gets `mcp__<server>__<tool>`,
- * sanitized, and every tool whose name sanitizes to another tool's (of any server) gets pi's hash suffix, so no name
+ * Every variant of `offer`'s tools, by `variantKey`, with its name. As in nycode, a tool gets `mcp__<server>__<tool>`,
+ * sanitized, and every tool whose name sanitizes to another tool's (of any server) gets nycode's hash suffix, so no name
  * depends on the order of the list. Several variants of one tool: the one the lease where the session works uses keeps
  * the plain name (the main conversation's names do not change when a subagent works elsewhere), every other gets a
  * suffix from its descriptor; without one there, they all do.
@@ -194,7 +194,7 @@ function toolVariants(offer: McpOffer): ReadonlyMap<string, Variant> {
 	const variants = new Map<string, Variant>();
 	for (const [plain, group] of groups) {
 		const entries = [...group.values()];
-		// Tools of several servers or names share the plain name once sanitized: pi suffixes them all.
+		// Tools of several servers or names share the plain name once sanitized: nycode suffixes them all.
 		const clash = new Set(entries.map(({ server, tool }) => JSON.stringify([server, tool.name]))).size > 1;
 		const homeKeys = [...group.keys()].filter((key) => home.has(key));
 		for (const [key, entry] of group) {
@@ -225,10 +225,10 @@ function sessionVariants(offer: McpOffer): ReadonlySet<string> {
 	);
 }
 
-/** Provider tool names are limited to 64 characters, as pi-mcp's names are. */
+/** Provider tool names are limited to 64 characters, as nycode-mcp's names are. */
 const MAX_TOOL_NAME_LENGTH = 64;
 
-/** The name of a variant that does not keep the plain name: pi's sanitized name with a hash of the variant. */
+/** The name of a variant that does not keep the plain name: nycode's sanitized name with a hash of the variant. */
 function variantName(server: string, tool: string, descriptor: string): string {
 	const name = `mcp__${server}__${tool}`.replace(/[^A-Za-z0-9_]/g, "_");
 	const hash = createHash("sha256").update(`${server}\0${tool}\0${descriptor}`).digest("hex").slice(0, 8);
@@ -370,7 +370,7 @@ function withAgent(api: ToolExecutionApi, agent: ToolExecutionApi["agent"]): Too
 }
 
 /**
- * The `mcp_servers` section, as pi's for servers whose tools `tool_search` loads: the servers of the conversation's
+ * The `mcp_servers` section, as nycode's for servers whose tools `tool_search` loads: the servers of the conversation's
  * view, with their summaries.
  */
 function serversSection(

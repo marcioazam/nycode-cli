@@ -1,4 +1,4 @@
-import type { AuthInfoLink, OAuthDeviceCodeInfo } from "@earendil-works/pi-ai";
+import type { AuthInfoLink, OAuthDeviceCodeInfo } from "@nycode/ai";
 import {
 	Container,
 	type Focusable,
@@ -10,7 +10,7 @@ import {
 	Text,
 	TruncatedText,
 	type TUI,
-} from "@earendil-works/pi-tui";
+} from "@nycode/tui";
 import { copyToClipboard } from "../../../utils/clipboard.ts";
 import { openBrowser } from "../../../utils/open-browser.ts";
 import { displayUrl, webUrl } from "../../../utils/web-url.ts";

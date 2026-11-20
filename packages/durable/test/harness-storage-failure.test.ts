@@ -1,6 +1,6 @@
 import { runInNewContext } from "node:vm";
-import type { Context } from "@earendil-works/chord/context";
-import { createModels } from "@earendil-works/pi-ai";
+import { createModels } from "@nycode/ai";
+import type { Context } from "@nycode/chord/context";
 import {
 	createRegistry,
 	defineExtension,
@@ -11,7 +11,7 @@ import {
 	MemoryStorage,
 	StorageRequestError,
 	type TaskId,
-} from "@earendil-works/pi-durable";
+} from "@nycode/durable";
 import { describe, expect, it } from "vitest";
 import { safeNow } from "../src/harness/harness.ts";
 import { conversationViews } from "../src/harness/view.ts";
@@ -307,7 +307,7 @@ describe("a failed Storage call", () => {
 				return root.entries({ order: "descending" }, 1, page.next ?? { after: 1, order: "ascending" }, context);
 			},
 			() => root.commit((tx) => tx.scanEntries({ conversationId: 999_999 as never }, 10), context),
-			// `pi.live` keeps no history.
+			// `nycode.live` keeps no history.
 			() => harness.snapshotAsOf(LiveDoc as never, root.id, entry.id, context),
 		];
 		for (const request of requests) {

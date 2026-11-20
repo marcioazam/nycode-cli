@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setFlagsFromString } from "node:v8";
 import { runInNewContext } from "node:vm";
+import { createModels } from "@nycode/ai";
 import {
 	applyBatch,
 	type ChordStore,
@@ -21,13 +22,12 @@ import {
 	type Store,
 	sqliteBackend,
 	str,
-} from "@earendil-works/chord";
-import type { Context } from "@earendil-works/chord/context";
-import { BACKGROUND_CONTEXT, withTelemetry } from "@earendil-works/chord/context";
-import { openNodeSqliteDatabase } from "@earendil-works/chord/sqlite/node";
-import { createModels } from "@earendil-works/pi-ai";
-import { registerStorageConformance } from "@earendil-works/pi-durable/testing";
-import { InMemoryTelemetryContext } from "@earendil-works/pi-telemetry";
+} from "@nycode/chord";
+import type { Context } from "@nycode/chord/context";
+import { BACKGROUND_CONTEXT, withTelemetry } from "@nycode/chord/context";
+import { openNodeSqliteDatabase } from "@nycode/chord/sqlite/node";
+import { registerStorageConformance } from "@nycode/durable/testing";
+import { InMemoryTelemetryContext } from "@nycode/telemetry";
 import { describe, expect, it } from "vitest";
 import { StorageRequestError } from "../src/errors.ts";
 import { idFromNumber } from "../src/ids.ts";
@@ -116,7 +116,7 @@ registerStorageConformance({ describe, expect, it }, "StoreStorage", async (use)
 });
 
 registerStorageConformance({ describe, expect, it }, "StoreStorage across reopen", async (use) => {
-	const directory = await mkdtemp(join(tmpdir(), "pi-durable-store-conformance-"));
+	const directory = await mkdtemp(join(tmpdir(), "nycode-durable-store-conformance-"));
 	const path = join(directory, "store.sqlite");
 	const storage = new ReopeningStorage(await openStoreStorage(path), path);
 	try {
@@ -331,7 +331,7 @@ describe("archives and batches of Durable data", () => {
 
 describe("head markers (the entry_heads table)", () => {
 	it("a head entry is found after reopen, in an imported archive and in a replayed outbox", async () => {
-		const directory = await mkdtemp(join(tmpdir(), "pi-durable-store-heads-"));
+		const directory = await mkdtemp(join(tmpdir(), "nycode-durable-store-heads-"));
 		const path = join(directory, "store.sqlite");
 		const open = async () =>
 			(await openStore(sqliteBackend(await openNodeSqliteDatabase(path)), context, { outbox: true })) as ChordStore;

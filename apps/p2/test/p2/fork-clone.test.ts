@@ -4,7 +4,7 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { after, before, describe, it } from "node:test";
-import type { ConversationView } from "@earendil-works/pi-durable";
+import type { ConversationView } from "@nycode/durable";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { Artifacts } from "../../plugins/artifacts/contract.ts";
 import { Chat } from "../../plugins/chat/contract.ts";
@@ -40,7 +40,7 @@ describe("clone and fork (fake provider)", () => {
 		await chat.send({ text: "first", requestId: "1" }, BACKGROUND_CONTEXT);
 		await until(chat.view, (view) => text(view).includes("Echo: first"));
 		await chat.send({ text: "artifact", requestId: "2" }, BACKGROUND_CONTEXT);
-		await until(chat.view, (view) => (view?.entries ?? []).some((entry) => entry.kind === "pi.tool-result"));
+		await until(chat.view, (view) => (view?.entries ?? []).some((entry) => entry.kind === "nycode.tool-result"));
 		await chat.send({ text: "second", requestId: "3" }, BACKGROUND_CONTEXT);
 		await until(chat.view, (view) => text(view).includes("Echo: second"));
 		const status = await holdIn(owner, SessionStatus, {}, "reader");

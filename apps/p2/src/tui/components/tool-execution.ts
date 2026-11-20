@@ -1,7 +1,7 @@
 // Copied from coding-agent interactive/components/tool-execution.ts. p2 drives a card from the transcript's ToolView
 // (call, live slot and result joined, src/web/transcript.ts) instead of agent events; images stay text placeholders
-// (no PNG transcoder, section 11); a tool without renderers uses pi's generic call/result fallbacks.
-import { Box, type Component, Container, MouseRegion, Spacer, Text } from "@earendil-works/pi-tui";
+// (no PNG transcoder, section 11); a tool without renderers uses nycode's generic call/result fallbacks.
+import { Box, type Component, Container, MouseRegion, Spacer, Text } from "@nycode/tui";
 import type { ToolView } from "../../web/transcript.ts";
 import type { RenderContext } from "../render-context.ts";
 import { formatToolCallWithArgs, getTextOutput, moreLinesHint } from "../tools/render-utils.ts";
@@ -86,7 +86,7 @@ export class ToolExecutionComponent extends Container {
 		return this.tool.status === "error" || this.tool.status === "interrupted";
 	}
 
-	/** The result as pi's card holds it: absent until the call runs; partial while running. */
+	/** The result as nycode's card holds it: absent until the call runs; partial while running. */
 	private get result(): ToolResultView | undefined {
 		const tool = this.tool;
 		if (tool.status === "pending" && !this.calls?.length) return undefined;

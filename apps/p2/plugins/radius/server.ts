@@ -8,7 +8,7 @@ import { RadiusBrain, type RadiusStatus } from "./brain.ts";
 import { RadiusConnections, RadiusService } from "./contract.ts";
 import { RelayAccess } from "./relay-access.ts";
 
-/** Pi Mobile's status lines: the brain it connected as, or why it is not connected (retrying). */
+/** Nycode Mobile's status lines: the brain it connected as, or why it is not connected (retrying). */
 export function radiusStatusText(status: RadiusStatus): string {
 	return status.status === "connected"
 		? status.name === undefined
@@ -36,7 +36,7 @@ export default defineFacet((host) => {
 					relay,
 					name: serverName.name.value ?? undefined,
 					forwards: forwards().forwards,
-					// As Pi Mobile: each new status once, retries with their error.
+					// As Nycode Mobile: each new status once, retries with their error.
 					onStatus: (status) => {
 						const text = radiusStatusText(status);
 						if (text && text !== lastStatus) console.log(`Radius: ${text}`);

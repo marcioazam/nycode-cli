@@ -5,7 +5,7 @@
 // forgets them, the stored tokens stay.
 
 import { randomUUID } from "node:crypto";
-import type { McpOAuthConfig } from "@earendil-works/pi-mcp";
+import type { McpOAuthConfig } from "@nycode/mcp";
 import {
 	completeMcpSignIn,
 	createMcpAuthProvider,
@@ -21,7 +21,7 @@ import {
 	type OAuthChallenge,
 	responseFromRedirectUrl,
 	startMcpSignIn,
-} from "@earendil-works/pi-mcp/oauth";
+} from "@nycode/mcp/oauth";
 import { PluginError } from "@p2/app/v1";
 import { expandHostVariables } from "./config.ts";
 import type { McpCredentials } from "./credentials.ts";
@@ -52,11 +52,11 @@ export type CredentialsChanged = (server: string) => void;
 export const SIGN_IN_TIMEOUT_MS = 10 * 60_000;
 
 /**
- * pi's Client ID Metadata Documents on pi.dev: they list the loopback redirect URIs `http://127.0.0.1/callback` and
+ * nycode's Client ID Metadata Documents on pi.dev: they list the loopback redirect URIs `http://127.0.0.1/callback` and
  * `http://localhost/callback` (any port), so loopback sign-ins may use them; p2's https callback route registers
  * dynamically.
  */
-const PI_CLIENT_METADATA_DOCUMENTS: McpClientMetadataDocuments = {
+const NYCODE_CLIENT_METADATA_DOCUMENTS: McpClientMetadataDocuments = {
 	baseUrl: "https://pi.dev/oauth",
 	listsRedirectUrl: (redirectUrl) => {
 		const url = new URL(redirectUrl);
@@ -127,7 +127,7 @@ export class SignIns {
 			settings: () => settingsOf(server.config),
 			onChallenge: (challenge) => this.#challenges.set(keyOf(server), challenge),
 			clientName: this.#clientName,
-			clientMetadataDocuments: PI_CLIENT_METADATA_DOCUMENTS,
+			clientMetadataDocuments: NYCODE_CLIENT_METADATA_DOCUMENTS,
 		});
 	}
 
@@ -145,7 +145,7 @@ export class SignIns {
 						serverUrl: server.url,
 						store,
 						settings,
-						clientMetadataDocuments: PI_CLIENT_METADATA_DOCUMENTS,
+						clientMetadataDocuments: NYCODE_CLIENT_METADATA_DOCUMENTS,
 						renderPage: (page) => callbackPage(server.name, page),
 					});
 		const options: McpSignInOptions = {
@@ -155,7 +155,7 @@ export class SignIns {
 			redirectUrl: listening.redirectUrl,
 			challenge: this.#challenges.get(keyOf(server)),
 			clientName: this.#clientName,
-			clientMetadataDocuments: PI_CLIENT_METADATA_DOCUMENTS,
+			clientMetadataDocuments: NYCODE_CLIENT_METADATA_DOCUMENTS,
 		};
 		let start: Awaited<ReturnType<typeof startMcpSignIn>>;
 		try {

@@ -8,7 +8,7 @@ import {
 	getSupportedThinkingLevels,
 	InMemoryModelsStore,
 	type Model,
-} from "@earendil-works/pi-ai";
+} from "@nycode/ai";
 import { afterEach, beforeEach, describe, expect, it, onTestFinished } from "vitest";
 import { AuthStorage } from "../src/core/auth-storage.ts";
 import { ModelRuntime } from "../src/core/model-runtime.ts";
@@ -265,7 +265,7 @@ describe("createAgentSession with virtual models", () => {
 	let tempDir: string;
 
 	beforeEach(() => {
-		tempDir = mkdtempSync(join(tmpdir(), "pi-virtual-models-"));
+		tempDir = mkdtempSync(join(tmpdir(), "nycode-virtual-models-"));
 	});
 
 	afterEach(() => {

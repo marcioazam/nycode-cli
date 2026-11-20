@@ -208,7 +208,7 @@ describe("validateToolArguments", () => {
 			expect(() => validateToolArguments(tool, toolCall)).toThrow("Validation failed");
 		}
 	});
-	it("lists pi-schema's errors, then the arguments it received", () => {
+	it("lists nycode-schema's errors, then the arguments it received", () => {
 		const { tool, toolCall } = createToolCallWithPlainSchema({ type: "number" } as Tool["parameters"], "many");
 		expect(() => validateToolArguments(tool, toolCall)).toThrow(
 			'Validation failed for tool "echo":\n  - value: expected number, got string\n\nReceived arguments:\n{\n  "value": "many"\n}',

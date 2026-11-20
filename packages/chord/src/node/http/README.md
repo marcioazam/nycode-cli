@@ -6,7 +6,7 @@ object", "The HTTP component's security baseline", "Slice 10 fix round, allowed 
 Plugins contribute routes, wraps, sockets, allowed hosts, framers, relays and CSP sources to the registry `Http`; routes
 return response descriptions. The core is one Web-standard handler, `fetch(Request) → Response`; Chord's own Node server
 (the listener) is the easy path, an app with a server of its own mounts the handler. Node-only; `ws` is an optional peer
-dependency of `@earendil-works/chord`, imported only here. Exported as `@earendil-works/chord/http`.
+dependency of `@nycode/chord`, imported only here. Exported as `@nycode/chord/http`.
 
 ## For apps (`index.ts`)
 

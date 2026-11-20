@@ -19,15 +19,15 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 /** Workspace package name -> its source root, so cross-package imports are followed. */
 const WORKSPACE = {
-	"@earendil-works/chord": "packages/chord/src",
-	"@earendil-works/pi-ai": "packages/ai/src",
-	"@earendil-works/pi-durable": "packages/durable/src",
-	"@earendil-works/pi-agent-core": "packages/agent/src",
-	"@earendil-works/pi-codemode": "packages/codemode/src",
-	"@earendil-works/pi-telemetry": "packages/telemetry/src",
-	"@earendil-works/pi-mcp": "packages/mcp/src",
-	"@earendil-works/pi-schema": "packages/schema/src",
-	"@earendil-works/pi-tui": "packages/tui/src",
+	"@nycode/chord": "packages/chord/src",
+	"@nycode/ai": "packages/ai/src",
+	"@nycode/durable": "packages/durable/src",
+	"@nycode/agent-core": "packages/agent/src",
+	"@nycode/codemode": "packages/codemode/src",
+	"@nycode/telemetry": "packages/telemetry/src",
+	"@nycode/mcp": "packages/mcp/src",
+	"@nycode/schema": "packages/schema/src",
+	"@nycode/tui": "packages/tui/src",
 };
 
 /**
@@ -41,7 +41,7 @@ const BUDGETS = {
 	},
 	"packages/ai": {
 		"./models": {
-			// Request telemetry reaches pi-ai's telemetry.ts and pi-telemetry's root (index, noop, metrics, memory).
+			// Request telemetry reaches nycode-ai's telemetry.ts and nycode-telemetry's root (index, noop, metrics, memory).
 			// Request identity reaches utils/identity.ts and its version constant.
 			maxFiles: 20,
 			forbid: ["providers/", "models.generated.ts", "index.ts", "utils/validation.ts", "utils/string-enum.ts"],
@@ -51,7 +51,7 @@ const BUDGETS = {
 			maxFiles: 3,
 			forbid: ["providers/", "api/", "index.ts"],
 			overrides: {
-				// Tool argument validation runs on pi-schema: its validator, coercion and format checks (the checks TypeBox's
+				// Tool argument validation runs on nycode-schema: its validator, coercion and format checks (the checks TypeBox's
 				// validator ran by default). TypeBox, an external package, was not counted before.
 				"./utils/validation": { maxFiles: 42, forbid: ["providers/", "api/", "packages/ai/src/index.ts"] },
 			},
@@ -73,13 +73,13 @@ const BUDGETS = {
 	},
 	"packages/durable": {
 		".": {
-			// Tool argument validation reaches pi-schema (validator, coercion and format checks; 39 files that replace
-			// TypeBox, which this walk did not count); provider-session creation reaches pi-ai's lean UUID utility; the
+			// Tool argument validation reaches nycode-schema (validator, coercion and format checks; 39 files that replace
+			// TypeBox, which this walk did not count); provider-session creation reaches nycode-ai's lean UUID utility; the
 			// memory and SQLite storages share scan order and cursor handling. Values from Chord's root (copyJson,
-			// replicatedState) reach its host runtime through the root barrel. Chord's context reaches pi-telemetry's root
+			// replicatedState) reach its host runtime through the root barrel. Chord's context reaches nycode-telemetry's root
 			// (index, noop, metrics, memory) for its NOOP telemetry default; harness/telemetry.ts is Durable's schema.
-			// The Harness's request identity reaches pi-ai's utils/identity.ts and its version constant. Partial commits
-			// parse streamed tool-call arguments with pi-ai's utils/streaming-json.ts (and its json-parse.ts) to append what
+			// The Harness's request identity reaches nycode-ai's utils/identity.ts and its version constant. Partial commits
+			// parse streamed tool-call arguments with nycode-ai's utils/streaming-json.ts (and its json-parse.ts) to append what
 			// argument strings grew by (harness/partial-changes.ts). Chord's watches fold pending ops with Delta's
 			// pending queue (delta/pending.ts). `registryReader` (harness/registry-reader.ts) reads a Chord v2 registry
 			// value through type-only imports. The Session caches hot Storage reads (session/cached-storage.ts) and keeps
@@ -95,7 +95,7 @@ const BUDGETS = {
 			],
 		},
 		// The file tools reach their environment helpers and the Harness definitions they need, not the Harness itself,
-		// and pi-schema's root for their schema builders (10 files; its format checks stay out).
+		// and nycode-schema's root for their schema builders (10 files; its format checks stay out).
 		"./tools": { maxFiles: 27, forbid: ["packages/durable/src/images/", "packages/schema/src/formats/"] },
 		// The fit-images extension hooks the Harness's tool task, so it reaches most of the root's graph (what a Harness
 		// user loads anyway); Photon stays behind `./images`.

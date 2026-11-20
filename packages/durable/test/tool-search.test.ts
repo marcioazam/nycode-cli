@@ -1,4 +1,4 @@
-import { type AssistantMessage, fauxAssistantMessage, fauxText, fauxToolCall } from "@earendil-works/pi-ai";
+import { type AssistantMessage, fauxAssistantMessage, fauxText, fauxToolCall } from "@nycode/ai";
 import {
 	AgentDoc,
 	type Conversation,
@@ -8,8 +8,8 @@ import {
 	type JsonObject,
 	MemoryStorage,
 	type ToolRegistration,
-} from "@earendil-works/pi-durable";
-import { num, obj, opt } from "@earendil-works/pi-schema";
+} from "@nycode/durable";
+import { num, obj, opt } from "@nycode/schema";
 import { describe, expect, it } from "vitest";
 import { createToolSearchExtension } from "../src/tool-search/index.ts";
 import { allEntries, type ChatSetup, chatSetup, openChat } from "./chat-support.ts";
@@ -47,16 +47,16 @@ async function offered(root: Conversation): Promise<string[]> {
 	return (await root.agent(context)).tools.map((each) => each.name);
 }
 
-/** The model messages of the `pi.system` entries, oldest first. */
+/** The model messages of the `nycode.system` entries, oldest first. */
 function systemMessages(entries: readonly EntryRecord[]) {
 	return entries
-		.filter((entry) => entry.kind === "pi.system")
+		.filter((entry) => entry.kind === "nycode.system")
 		.map((entry) => entry.model![0] as { toolsAdded?: { name: string }[]; toolsRemoved?: { name: string }[] });
 }
 
 function toolResultTexts(entries: readonly EntryRecord[]): string[] {
 	return entries
-		.filter((entry) => entry.kind === "pi.tool-result")
+		.filter((entry) => entry.kind === "nycode.tool-result")
 		.map((entry) => (entry.model![0] as { content: { text?: string }[] }).content.map((item) => item.text).join(""));
 }
 

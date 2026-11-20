@@ -6,7 +6,7 @@
 //   taskset -c 6 node --conditions=source --experimental-strip-types --expose-gc test/bench/registries.ts
 import { performance } from "node:perf_hooks";
 import { GCProfiler } from "node:v8";
-import { InMemoryTelemetryContext } from "@earendil-works/pi-telemetry";
+import { InMemoryTelemetryContext } from "@nycode/telemetry";
 import { BACKGROUND_CONTEXT as context } from "../../src/context/index.ts";
 import { int, local } from "../../src/contracts/index.ts";
 import { createHost, defineFacet } from "../../src/host/index.ts";

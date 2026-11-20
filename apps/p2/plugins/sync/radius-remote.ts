@@ -17,7 +17,7 @@ export type RadiusSyncAccess = { readonly gateway: string; readonly serverId: st
 const PAGE_SIZE = 100;
 
 /** The header carrying the sync rules' version (`SYNC_PROTOCOL`) on every request; Radius reads it as 0 when absent. */
-const PROTOCOL_HEADER = "pi-sync-protocol";
+const PROTOCOL_HEADER = "nycode-sync-protocol";
 
 /** Radius's code for a write this client's protocol is too old for: the session moved under newer rules. */
 const PROTOCOL_TOO_OLD = "protocol_too_old";

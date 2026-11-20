@@ -10,7 +10,7 @@ describe("issue #2781 skill collision precedence: user skills should override pa
 	let cwd: string;
 
 	beforeEach(() => {
-		tempDir = join(tmpdir(), `pi-2781-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+		tempDir = join(tmpdir(), `nycode-2781-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 		agentDir = join(tempDir, "agent");
 		cwd = join(tempDir, "project");
 		mkdirSync(agentDir, { recursive: true });
@@ -27,7 +27,11 @@ describe("issue #2781 skill collision precedence: user skills should override pa
 		mkdirSync(skillDir, { recursive: true });
 		writeFileSync(
 			join(pkgDir, "package.json"),
-			JSON.stringify({ name: `fake-pkg-${name}`, version: "1.0.0", pi: { skills: [`skills/${name}`] } }, null, 2),
+			JSON.stringify(
+				{ name: `fake-pkg-${name}`, version: "1.0.0", nycode: { skills: [`skills/${name}`] } },
+				null,
+				2,
+			),
 		);
 		writeFileSync(
 			join(skillDir, "SKILL.md"),
@@ -45,7 +49,7 @@ describe("issue #2781 skill collision precedence: user skills should override pa
 	}
 
 	function createProjectSkill(name: string, description: string): string {
-		const skillDir = join(cwd, ".pi", "skills", name);
+		const skillDir = join(cwd, ".nycode", "skills", name);
 		mkdirSync(skillDir, { recursive: true });
 		const skillPath = join(skillDir, "SKILL.md");
 		writeFileSync(skillPath, `---\nname: ${name}\ndescription: ${description}\n---\nProject skill content`);
@@ -53,7 +57,7 @@ describe("issue #2781 skill collision precedence: user skills should override pa
 	}
 
 	function createSettingsWithPackage(pkgDir: string, scope: "user" | "project"): void {
-		const settingsDir = scope === "user" ? agentDir : join(cwd, ".pi");
+		const settingsDir = scope === "user" ? agentDir : join(cwd, ".nycode");
 		mkdirSync(settingsDir, { recursive: true });
 		writeFileSync(join(settingsDir, "settings.json"), JSON.stringify({ packages: [pkgDir] }, null, 2));
 	}

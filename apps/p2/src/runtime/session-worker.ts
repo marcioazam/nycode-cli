@@ -1,9 +1,10 @@
 // What the server tells and asks a session worker (browser-safe): its spawn parameters and the lifecycle calls a
 // relocation makes. The worker serves `WorkerBoundary` (worker.ts); the sessions plugin on the server calls it.
-import { method, remote } from "@earendil-works/chord";
-import type { ModelThinkingLevel } from "@earendil-works/pi-ai";
-import type { ModelRef } from "@earendil-works/pi-durable";
-import { arr, bool, nul, num, obj, opt, str, union } from "@earendil-works/pi-schema";
+
+import type { ModelThinkingLevel } from "@nycode/ai";
+import { method, remote } from "@nycode/chord";
+import type { ModelRef } from "@nycode/durable";
+import { arr, bool, nul, num, obj, opt, str, union } from "@nycode/schema";
 import { param, sessionHost } from "./chord.ts";
 import { LocationSchema } from "./location.ts";
 

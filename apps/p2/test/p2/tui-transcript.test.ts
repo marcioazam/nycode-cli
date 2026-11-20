@@ -2,8 +2,8 @@
 // synchronously (store change -> runtime.changed() -> sync) must finish on the views it rendered.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { type EntryId, type EntryRecord, ROOT_CONVERSATION_ID } from "@earendil-works/pi-durable";
-import { ScrollView } from "@earendil-works/pi-tui";
+import { type EntryId, type EntryRecord, ROOT_CONVERSATION_ID } from "@nycode/durable";
+import { ScrollView } from "@nycode/tui";
 import { TranscriptView } from "../../src/tui/components/transcript.ts";
 import { ThemeRef } from "../../src/tui/theme/ref.ts";
 import { BUILTIN_THEMES, createTheme } from "../../src/tui/theme/theme.ts";
@@ -14,7 +14,7 @@ const user = (id: number): EntryRecord =>
 	({
 		id: id as EntryId,
 		conversationId: ROOT_CONVERSATION_ID,
-		kind: "pi.user",
+		kind: "nycode.user",
 		model: [{ role: "user", content: `message ${id}`, timestamp: id }],
 	}) as EntryRecord;
 const transcriptOf = (ids: number[]) =>

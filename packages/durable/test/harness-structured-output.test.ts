@@ -1,14 +1,14 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { JsonValue } from "@earendil-works/chord/json";
 import {
 	type AssistantMessage,
 	fauxAssistantMessage,
 	fauxText,
 	fauxToolCall,
 	type ToolResultMessage,
-} from "@earendil-works/pi-ai";
+} from "@nycode/ai";
+import type { JsonValue } from "@nycode/chord/json";
 import {
 	defineTool,
 	MemoryStorage,
@@ -19,8 +19,8 @@ import {
 	type ToolRegistration,
 	ToolResultEntry,
 	ToolTask,
-} from "@earendil-works/pi-durable";
-import { nul, num, obj } from "@earendil-works/pi-schema";
+} from "@nycode/durable";
+import { nul, num, obj } from "@nycode/schema";
 import { describe, expect, it } from "vitest";
 import { NodeExecutionEnv } from "../src/env/node.ts";
 import { createBashTool } from "../src/tools/index.ts";
@@ -362,7 +362,7 @@ describe("structured output", () => {
 	});
 
 	it("gives callers of bash its retained output and exit code, also for a nonzero exit", async () => {
-		const directory = mkdtempSync(join(tmpdir(), "pi-durable-structured-"));
+		const directory = mkdtempSync(join(tmpdir(), "nycode-durable-structured-"));
 		try {
 			const setup = chatSetup();
 			addTool(setup.registry, createBashTool());

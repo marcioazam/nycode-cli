@@ -1,7 +1,7 @@
 // biome-ignore-all lint/suspicious/noTemplateCurlyInString: TypeBox template literal syntax, as in the original tests.
 // biome-ignore-all lint/correctness/noPrecisionLoss: the original tests' literal, kept as written.
 // TypeBox 1.3.27's Value.Convert tests (test/typebox/runtime/value/convert, MIT, (c) Haydn Paterson), ported to the
-// conversion pass of pi-schema's coercion. Schemas are still built with TypeBox: its schemas are JSON Schema, and the
+// conversion pass of nycode-schema's coercion. Schemas are still built with TypeBox: its schemas are JSON Schema, and the
 // port reads only their JSON structure, never TypeBox's kind marks. Run with vitest.
 
 import { Type } from "typebox";

@@ -1,8 +1,8 @@
 // Browser: the app framed by the Radius shell, end to end with the real web bundle. A stand-in shell page on another
 // site (`localhost` against the app's `127.0.0.1`) frames the app as Radius does and speaks the shell's side of the
-// `pi-shell` channel (src/web/shell-bridge.ts): it answers `ready` with its base and its theme, mirrors each reported
+// `nycode-shell` channel (src/web/shell-bridge.ts): it answers `ready` with its base and its theme, mirrors each reported
 // address into its own URL with replaceState, and owns the theme (src/web/theme.ts, backend `shell`). The app is told it is relayed, framed by that origin, as the Radius plugin's
-// request resolver would. The shell's real side is Radius's (its pi-shell e2e test frames a stand-in app instead).
+// request resolver would. The shell's real side is Radius's (its nycode-shell e2e test frames a stand-in app instead).
 import assert from "node:assert/strict";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
@@ -15,14 +15,14 @@ import { RequestResolvers } from "../../src/runtime/server.ts";
 import { Browser, browserTests } from "./browser.ts";
 import { type Fixture, holdIn, poll, startFixture } from "./helpers.ts";
 
-const BRAIN = "/pi/acme/11111111-0000-4000-8000-000000000000";
+const BRAIN = "/nycode/acme/11111111-0000-4000-8000-000000000000";
 
 /**
  * The stand-in shell: frames `app`, keeps the channel's messages in `window.shellLog`. It owns the theme as Radius's
- * shell does: its origin's `pi-theme` (absent: system), resolved with its own matchMedia and applied to its chrome
+ * shell does: its origin's `nycode-theme` (absent: system), resolved with its own matchMedia and applied to its chrome
  * (`<html data-color-scheme>` and `color-scheme`), sent in `hello` and as `theme` on every change; `set-theme` stores
  * and echoes it, `shellSetTheme` is the shell's own change. It frames the app with its resolved scheme as a hint in the
- * URL (`#pi-shell-scheme=`). `?theme=none` is a shell without the theme (its `hello` has none, no hint),
+ * URL (`#nycode-shell-scheme=`). `?theme=none` is a shell without the theme (its `hello` has none, no hint),
  * `?theme=silent` one without the channel (no `hello`, no hint), `?theme=late` one whose `hello` waits for
  * `shellHello()` and whose frame element is `color-scheme: light`, so the frame's `prefers-color-scheme` is light
  * whatever the shell shows, as in WebKit on a light system.
@@ -36,11 +36,11 @@ const mode = new URLSearchParams(location.search).get("theme");
 const system = matchMedia("(prefers-color-scheme: dark)");
 window.shellLog = [];
 const theme = () => {
-	const stored = localStorage.getItem("pi-theme");
+	const stored = localStorage.getItem("nycode-theme");
 	const preference = stored === "light" || stored === "dark" ? stored : "system";
 	return { preference, scheme: preference === "system" ? (system.matches ? "dark" : "light") : preference };
 };
-const post = (message) => frame.contentWindow.postMessage({ channel: "pi-shell", version: 1, ...message }, appOrigin);
+const post = (message) => frame.contentWindow.postMessage({ channel: "nycode-shell", version: 1, ...message }, appOrigin);
 const applied = () => {
 	const { scheme } = theme();
 	document.documentElement.dataset.colorScheme = scheme;
@@ -49,19 +49,19 @@ const applied = () => {
 };
 const changed = () => mode !== "none" && post({ type: "theme", ...applied() });
 window.shellSetTheme = (preference) => {
-	if (preference === "system") localStorage.removeItem("pi-theme");
-	else localStorage.setItem("pi-theme", preference);
+	if (preference === "system") localStorage.removeItem("nycode-theme");
+	else localStorage.setItem("nycode-theme", preference);
 	changed();
 };
 applied();
 if (mode === "late") frame.style.colorScheme = "light";
-frame.src = appOrigin + "/" + (mode === "none" || mode === "silent" ? "" : "#pi-shell-scheme=" + theme().scheme);
+frame.src = appOrigin + "/" + (mode === "none" || mode === "silent" ? "" : "#nycode-shell-scheme=" + theme().scheme);
 const hello = () => post({ type: "hello", base: location.origin + ${JSON.stringify(BRAIN)}, ...(mode === "none" ? {} : { theme: theme() }) });
 window.shellHello = hello;
 system.addEventListener("change", () => theme().preference === "system" && changed());
-addEventListener("storage", (event) => event.key === "pi-theme" && changed());
+addEventListener("storage", (event) => event.key === "nycode-theme" && changed());
 addEventListener("message", (event) => {
-	if (event.source !== frame.contentWindow || event.origin !== appOrigin || event.data?.channel !== "pi-shell") return;
+	if (event.source !== frame.contentWindow || event.origin !== appOrigin || event.data?.channel !== "nycode-shell") return;
 	shellLog.push(event.data);
 	if (event.data.type === "ready" && mode !== "silent" && mode !== "late") hello();
 	if (event.data.type === "location") history.replaceState(null, "", ${JSON.stringify(BRAIN)} + (event.data.path === "/" ? "" : event.data.path));
@@ -160,8 +160,8 @@ describe("framed by the Radius shell", { skip: !browserTests }, () => {
 			poll(() => inApp<boolean>(`Boolean(${expression})`), 30_000, `in the app: ${expression}`);
 		const store = (value: string | null) =>
 			value === null
-				? `localStorage.removeItem("pi-theme")`
-				: `localStorage.setItem("pi-theme", ${JSON.stringify(value)})`;
+				? `localStorage.removeItem("nycode-theme")`
+				: `localStorage.setItem("nycode-theme", ${JSON.stringify(value)})`;
 		/**
 		 * Opens the shell (`mode`: its `?theme=`) with its own stored preference `preference`, until the app's switch
 		 * shows.
@@ -175,7 +175,7 @@ describe("framed by the Radius shell", { skip: !browserTests }, () => {
 			await poll(async () => (await switchTitle()) !== "", 30_000, "the app's theme switch");
 		};
 		/**
-		 * Stores `value` as the framed app's own `pi-theme` (a stale forced value). Browsers partition a frame's storage by
+		 * Stores `value` as the framed app's own `nycode-theme` (a stale forced value). Browsers partition a frame's storage by
 		 * the top-level site, so only the framed page can write it.
 		 */
 		const storeInFrame = async (value: string | null) => {
@@ -198,20 +198,20 @@ describe("framed by the Radius shell", { skip: !browserTests }, () => {
 			// The app's switch (Dark → System): asked of the shell, which stores, applies and echoes it.
 			await inApp(`document.querySelector(".theme-toggle").click()`);
 			await browser.wait(
-				`localStorage.getItem("pi-theme") === null && document.documentElement.dataset.colorScheme === "light"`,
+				`localStorage.getItem("nycode-theme") === null && document.documentElement.dataset.colorScheme === "light"`,
 			);
 			await waitInApp(`document.documentElement.dataset.theme === "light"`);
 			assert.equal(await switchTitle(), "Theme: System");
 			assert.deepEqual(
 				(await log()).filter((message) => message.type === "set-theme"),
-				[{ channel: "pi-shell", version: 1, type: "set-theme", preference: "system" }],
+				[{ channel: "nycode-shell", version: 1, type: "set-theme", preference: "system" }],
 			);
 			// System → Light.
 			await inApp(`document.querySelector(".theme-toggle").click()`);
-			await browser.wait(`localStorage.getItem("pi-theme") === "light"`);
+			await browser.wait(`localStorage.getItem("nycode-theme") === "light"`);
 			assert.equal(await switchTitle(), "Theme: Light");
 			// The frame's own stored value stayed as it was.
-			assert.equal(await inApp<string>(`localStorage.getItem("pi-theme")`), "dark");
+			assert.equal(await inApp<string>(`localStorage.getItem("nycode-theme")`), "dark");
 		});
 
 		it("takes the shell's resolved scheme under System when the system's changes", async () => {
@@ -236,7 +236,7 @@ describe("framed by the Radius shell", { skip: !browserTests }, () => {
 			assert.equal(await switchTitle(), "Theme: Dark");
 			// Dark → System, stored by the page as before; nothing asked of the shell.
 			await inApp(`document.querySelector(".theme-toggle").click()`);
-			await waitInApp(`localStorage.getItem("pi-theme") === null`);
+			await waitInApp(`localStorage.getItem("nycode-theme") === null`);
 			assert.ok(!(await log()).some((message) => message.type === "set-theme"));
 		});
 
@@ -269,7 +269,7 @@ describe("framed by the Radius shell", { skip: !browserTests }, () => {
 			await browser.wait(`document.querySelector(".theme-toggle")`);
 			assert.equal(await browser.evaluate<string>("document.documentElement.dataset.theme"), "dark");
 			await browser.evaluate(`document.querySelector(".theme-toggle").click()`);
-			assert.equal(await browser.evaluate<string | null>(`localStorage.getItem("pi-theme")`), null);
+			assert.equal(await browser.evaluate<string | null>(`localStorage.getItem("nycode-theme")`), null);
 		});
 	});
 });

@@ -7,7 +7,7 @@
 // Run by hand from packages/chord (not in CI):
 //   node --conditions=source --experimental-strip-types test/bench/slice-14.ts
 import { performance } from "node:perf_hooks";
-import { InMemoryTelemetryContext } from "@earendil-works/pi-telemetry";
+import { InMemoryTelemetryContext } from "@nycode/telemetry";
 import { BACKGROUND_CONTEXT, type Context, withTelemetry } from "../../src/context/index.ts";
 import {
 	arr,

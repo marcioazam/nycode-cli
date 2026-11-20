@@ -9,16 +9,16 @@ import {
 } from "../src/terminal.ts";
 
 describe("resolveEscapeTimeoutMs", () => {
-	it("uses PI_TUI_ESC_TIMEOUT when configured", () => {
-		assert.equal(resolveEscapeTimeoutMs({ PI_TUI_ESC_TIMEOUT: "80" }), 80);
-		assert.equal(resolveEscapeTimeoutMs({ PI_TUI_ESC_TIMEOUT: "80", SSH_TTY: "/dev/pts/1" }), 80);
+	it("uses NYCODE_TUI_ESC_TIMEOUT when configured", () => {
+		assert.equal(resolveEscapeTimeoutMs({ NYCODE_TUI_ESC_TIMEOUT: "80" }), 80);
+		assert.equal(resolveEscapeTimeoutMs({ NYCODE_TUI_ESC_TIMEOUT: "80", SSH_TTY: "/dev/pts/1" }), 80);
 	});
 
-	it("ignores invalid PI_TUI_ESC_TIMEOUT values", () => {
-		assert.equal(resolveEscapeTimeoutMs({ PI_TUI_ESC_TIMEOUT: "abc" }), 10);
-		assert.equal(resolveEscapeTimeoutMs({ PI_TUI_ESC_TIMEOUT: "0" }), 10);
-		assert.equal(resolveEscapeTimeoutMs({ PI_TUI_ESC_TIMEOUT: "-5" }), 10);
-		assert.equal(resolveEscapeTimeoutMs({ PI_TUI_ESC_TIMEOUT: "" }), 10);
+	it("ignores invalid NYCODE_TUI_ESC_TIMEOUT values", () => {
+		assert.equal(resolveEscapeTimeoutMs({ NYCODE_TUI_ESC_TIMEOUT: "abc" }), 10);
+		assert.equal(resolveEscapeTimeoutMs({ NYCODE_TUI_ESC_TIMEOUT: "0" }), 10);
+		assert.equal(resolveEscapeTimeoutMs({ NYCODE_TUI_ESC_TIMEOUT: "-5" }), 10);
+		assert.equal(resolveEscapeTimeoutMs({ NYCODE_TUI_ESC_TIMEOUT: "" }), 10);
 	});
 
 	it("defaults to 100ms over SSH", () => {
@@ -242,18 +242,18 @@ describe("ProcessTerminal Kitty keyboard protocol negotiation", () => {
 
 	// #10607
 	describe("program status (OSC 7501)", () => {
-		const working = "\x1b]7501;state=working:app=pi\x1b\\";
+		const working = "\x1b]7501;state=working:app=nycode\x1b\\";
 		const clear = "\x1b]7501;state=clear\x1b\\";
 
 		function withOverride(value: string | undefined, fn: () => void): void {
-			const previous = process.env.PI_PROGRAM_STATUS;
-			if (value === undefined) delete process.env.PI_PROGRAM_STATUS;
-			else process.env.PI_PROGRAM_STATUS = value;
+			const previous = process.env.NYCODE_PROGRAM_STATUS;
+			if (value === undefined) delete process.env.NYCODE_PROGRAM_STATUS;
+			else process.env.NYCODE_PROGRAM_STATUS = value;
 			try {
 				fn();
 			} finally {
-				if (previous === undefined) delete process.env.PI_PROGRAM_STATUS;
-				else process.env.PI_PROGRAM_STATUS = previous;
+				if (previous === undefined) delete process.env.NYCODE_PROGRAM_STATUS;
+				else process.env.NYCODE_PROGRAM_STATUS = previous;
 			}
 		}
 
@@ -261,7 +261,7 @@ describe("ProcessTerminal Kitty keyboard protocol negotiation", () => {
 			withOverride(undefined, () => {
 				const harness = setupNegotiation();
 				try {
-					harness.terminal.setProgramStatus({ state: "working", app: "pi" });
+					harness.terminal.setProgramStatus({ state: "working", app: "nycode" });
 					assert.equal(harness.writes.includes(working), false);
 
 					harness.send("\x1b]7501;?\x1b\\");
@@ -283,7 +283,7 @@ describe("ProcessTerminal Kitty keyboard protocol negotiation", () => {
 				try {
 					harness.send("\x1b[?62;4;52c");
 					harness.send("\x1b]7501;?\x07");
-					harness.terminal.setProgramStatus({ state: "working", app: "pi" });
+					harness.terminal.setProgramStatus({ state: "working", app: "nycode" });
 
 					assert.equal(harness.getInput(), undefined);
 					assert.equal(
@@ -296,12 +296,12 @@ describe("ProcessTerminal Kitty keyboard protocol negotiation", () => {
 			});
 		});
 
-		it("skips the query when PI_PROGRAM_STATUS is set", () => {
+		it("skips the query when NYCODE_PROGRAM_STATUS is set", () => {
 			withOverride("1", () => {
 				const harness = setupNegotiation();
 				try {
 					assert.equal(harness.writes[0], "\x1b[>7u\x1b[?u\x1b[c");
-					harness.terminal.setProgramStatus({ state: "working", app: "pi" });
+					harness.terminal.setProgramStatus({ state: "working", app: "nycode" });
 					assert.equal(harness.writes.at(-1), working);
 				} finally {
 					harness.cleanup();
@@ -311,7 +311,7 @@ describe("ProcessTerminal Kitty keyboard protocol negotiation", () => {
 				const harness = setupNegotiation();
 				try {
 					assert.equal(harness.writes[0], "\x1b[>7u\x1b[?u\x1b[c");
-					harness.terminal.setProgramStatus({ state: "working", app: "pi" });
+					harness.terminal.setProgramStatus({ state: "working", app: "nycode" });
 					assert.equal(harness.writes.includes(working), false);
 				} finally {
 					harness.cleanup();
@@ -323,7 +323,7 @@ describe("ProcessTerminal Kitty keyboard protocol negotiation", () => {
 			withOverride(undefined, () => {
 				const harness = setupNegotiation();
 				try {
-					harness.terminal.setProgramStatus({ state: "working", app: "pi" });
+					harness.terminal.setProgramStatus({ state: "working", app: "nycode" });
 					harness.terminal.stop();
 					(harness.terminal as unknown as { queryAndEnableKittyProtocol(): void }).queryAndEnableKittyProtocol();
 
@@ -343,14 +343,14 @@ describe("ProcessTerminal Kitty keyboard protocol negotiation", () => {
 			withOverride(undefined, () => {
 				const harness = setupNegotiation();
 				try {
-					harness.terminal.setProgramStatus({ state: "working", app: "pi" });
+					harness.terminal.setProgramStatus({ state: "working", app: "nycode" });
 					harness.send("\x1b]7501;?\x1b\\");
 					harness.terminal.stop();
 					assert.ok(harness.writes.includes(clear));
 
 					// Stopped: nothing is written until the restarted terminal confirms support again.
 					const writesBeforeRestart = harness.writes.length;
-					harness.terminal.setProgramStatus({ state: "working", app: "pi" });
+					harness.terminal.setProgramStatus({ state: "working", app: "nycode" });
 					assert.equal(harness.writes.length, writesBeforeRestart);
 
 					(harness.terminal as unknown as { queryAndEnableKittyProtocol(): void }).queryAndEnableKittyProtocol();
@@ -414,8 +414,8 @@ describe("ProcessTerminal title", () => {
 		}) as typeof process.stdout.write;
 
 		try {
-			terminal.setTitle("pi - work\x07\x1b]52;c;Zm9v\x07\u009b2J - repo");
-			assert.deepEqual(writes, ["\x1b]0;pi - work ]52;c;Zm9v 2J - repo\x07"]);
+			terminal.setTitle("nycode - work\x07\x1b]52;c;Zm9v\x07\u009b2J - repo");
+			assert.deepEqual(writes, ["\x1b]0;nycode - work ]52;c;Zm9v 2J - repo\x07"]);
 		} finally {
 			process.stdout.write = previousWrite;
 		}

@@ -31,9 +31,9 @@ import {
 	type StateDefinition,
 	str,
 	type Watchable,
-} from "@earendil-works/chord";
-import type { Context } from "@earendil-works/chord/context";
-import type { NativeWatchable } from "@earendil-works/chord/watch";
+} from "@nycode/chord";
+import type { Context } from "@nycode/chord/context";
+import type { NativeWatchable } from "@nycode/chord/watch";
 import { type P2Principal, principalKey, type Revocation, revokedBy } from "./principals.ts";
 
 export type Ctx = ChordCtx<P2Principal>;
@@ -74,7 +74,7 @@ export const param = { str, int, bool, oneOf };
 
 // Chord's decided errors for plugins: `invalid(reason, message)` for refused arguments or params, `forbidden(message)`
 // for a refused principal.
-export { forbidden, invalid } from "@earendil-works/chord";
+export { forbidden, invalid } from "@nycode/chord";
 
 type Variants<R> = R extends { readonly variant: infer V } ? Exclude<V, undefined> : never;
 /** The variants of a reference to `C` (remote types), or `never`. */
@@ -129,7 +129,7 @@ export function serveNative<V>(host: FacetHost, registry: Registry<V, V | undefi
 }
 
 /**
- * `self.derive` for values TypeScript does not see as JSON: pi-schema's optional fields are `T | undefined`, which
+ * `self.derive` for values TypeScript does not see as JSON: nycode-schema's optional fields are `T | undefined`, which
  * Chord's `JsonValue` refuses. The value is JSON at runtime all the same (state is).
  */
 export function deriveTyped<const S extends readonly (Watchable<unknown> | NativeWatchable<unknown>)[], T>(

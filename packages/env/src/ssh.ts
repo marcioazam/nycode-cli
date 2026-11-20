@@ -28,7 +28,7 @@ export interface SshTarget {
 	identityFile?: string;
 	/** Host keys this application trusts; `acceptHostKey` adds to it. */
 	knownHostsFile: string;
-	/** The name keys are stored under, independent of aliases, ports and jump hosts, e.g. `pi-env-<env name>`. */
+	/** The name keys are stored under, independent of aliases, ports and jump hosts, e.g. `nycode-env-<env name>`. */
 	hostKeyAlias: string;
 	/** The `ssh` program; default `ssh`. */
 	ssh?: string;
@@ -183,7 +183,7 @@ function runSsh(
  * Showing a fingerprint is not authentication: compare it with one obtained out of band before accepting it.
  */
 export async function scanHostKey(target: SshTarget): Promise<{ lines: string[]; fingerprints: string[] }> {
-	const directory = await mkdtemp(join(tmpdir(), "pi-env-hostkey-"));
+	const directory = await mkdtemp(join(tmpdir(), "nycode-env-hostkey-"));
 	try {
 		const scanned = join(directory, "known_hosts");
 		// Authentication may fail without the key; the key is recorded before authentication.
@@ -357,15 +357,15 @@ export async function detectPlatform(target: SshTarget): Promise<RemotePlatform>
 
 /** The daemon binary this package ships for a remote system. */
 export function packagedDaemon(remote: Pick<RemotePlatform, "platform" | "arch">): string {
-	const name = `pi-env-${remote.platform}-${remote.arch}`;
-	return join(packageRoot, "bin", name, remote.platform === "windows" ? "pi-env.exe" : "pi-env");
+	const name = `nycode-env-${remote.platform}-${remote.arch}`;
+	return join(packageRoot, "bin", name, remote.platform === "windows" ? "nycode-env.exe" : "nycode-env");
 }
 
 /** The daemon this package ships for the machine it runs on, e.g. for terminals of local sessions. */
 export function localDaemon(): string {
 	const platform = process.platform === "win32" ? "windows" : process.platform;
 	if (platform !== "linux" && platform !== "android" && platform !== "darwin" && platform !== "windows") {
-		throw new Error(`No pi-env daemon for ${process.platform}`);
+		throw new Error(`No nycode-env daemon for ${process.platform}`);
 	}
 	return packagedDaemon({ platform, arch: normalizeArch(process.arch) });
 }
@@ -380,10 +380,10 @@ function quotePowerShell(text: string): string {
 
 /** Where a daemon with this content lives on the remote machine: named by its SHA-256, so versions never collide. */
 function daemonPath(remote: RemotePlatform, sha256: string): string {
-	const name = `pi-env-${sha256.slice(0, 32)}`;
+	const name = `nycode-env-${sha256.slice(0, 32)}`;
 	return remote.platform === "windows"
-		? `${remote.home}\\.pi\\mobile\\tools\\${name}.exe`
-		: `${remote.home}/.pi/mobile/tools/${name}`;
+		? `${remote.home}\\.nycode\\mobile\\tools\\${name}.exe`
+		: `${remote.home}/.nycode/mobile/tools/${name}`;
 }
 
 const POSIX_HASH = `hash() { if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | cut -d' ' -f1; elif command -v shasum >/dev/null 2>&1; then shasum -a 256 "$1" | cut -d' ' -f1; elif command -v openssl >/dev/null 2>&1; then openssl dgst -sha256 "$1" | sed 's/.*= //'; else echo none; fi; }`;
@@ -410,13 +410,13 @@ export async function deployDaemon(
 	remote: RemotePlatform,
 	binary = packagedDaemon(remote),
 ): Promise<string> {
-	if (!existsSync(binary)) throw new Error(`No pi-env daemon for ${remote.platform}-${remote.arch} at ${binary}`);
+	if (!existsSync(binary)) throw new Error(`No nycode-env daemon for ${remote.platform}-${remote.arch} at ${binary}`);
 	const bytes = await readFile(binary);
 	const sha256 = createHash("sha256").update(bytes).digest("hex");
 	const file = daemonPath(remote, sha256);
 	const state = await checkDaemon(target, remote, file, sha256);
 	if (state === "present") return file;
-	if (state === "nohash") throw new Error(`${target.host} has no sha256sum, shasum or openssl to verify pi-env`);
+	if (state === "nohash") throw new Error(`${target.host} has no sha256sum, shasum or openssl to verify nycode-env`);
 	if (remote.platform === "windows") {
 		const upload = powershell(
 			[
@@ -424,18 +424,18 @@ export async function deployDaemon(
 				`$f = ${quotePowerShell(file)}`,
 				"$d = Split-Path -Parent $f",
 				"New-Item -ItemType Directory -Force -Path $d | Out-Null",
-				"$t = Join-Path $d ('.pi-env-' + [guid]::NewGuid().ToString() + '.tmp')",
+				"$t = Join-Path $d ('.nycode-env-' + [guid]::NewGuid().ToString() + '.tmp')",
 				// PowerShell reads redirected stdin itself, as text lines for `$input`, so the binary comes as base64 lines
 				// up to an end marker: Windows' sshd may never pass on the end of stdin.
 				"$text = New-Object System.Text.StringBuilder",
 				"foreach ($line in $input) { if ($line -eq 'PI-ENV-END') { break }; [void]$text.Append($line) }",
 				"$bytes = [Convert]::FromBase64String($text.ToString())",
 				"$out = [IO.File]::Open($t, 'CreateNew', 'Write', 'None'); $out.Write($bytes, 0, $bytes.Length); $out.Close()",
-				`if ((Get-FileHash -Algorithm SHA256 -LiteralPath $t).Hash.ToLower() -ne '${sha256}') { Remove-Item -LiteralPath $t; throw 'pi-env upload is corrupt' }`,
+				`if ((Get-FileHash -Algorithm SHA256 -LiteralPath $t).Hash.ToLower() -ne '${sha256}') { Remove-Item -LiteralPath $t; throw 'nycode-env upload is corrupt' }`,
 				// A running daemon or a virus scanner can hold the old file for a moment.
 				"for ($i = 0; ; $i++) { try { Move-Item -Force -LiteralPath $t -Destination $f; break } catch { if ($i -ge 20) { throw }; Start-Sleep -Milliseconds 250 } }",
 				// Older daemons; one that is running stays until it exits.
-				"Get-ChildItem -LiteralPath $d -Filter 'pi-env-*.exe' | Where-Object { $_.FullName -ne $f } | ForEach-Object { Remove-Item -LiteralPath $_.FullName -ErrorAction SilentlyContinue }",
+				"Get-ChildItem -LiteralPath $d -Filter 'nycode-env-*.exe' | Where-Object { $_.FullName -ne $f } | ForEach-Object { Remove-Item -LiteralPath $_.FullName -ErrorAction SilentlyContinue }",
 				"'deployed'",
 			].join("; "),
 		);
@@ -450,13 +450,13 @@ export async function deployDaemon(
 		'd=$(dirname "$f")',
 		'mkdir -p "$d"',
 		'chmod 700 "$d"',
-		't=$(mktemp "$d/.pi-env.XXXXXX")',
+		't=$(mktemp "$d/.nycode-env.XXXXXX")',
 		'cat > "$t"',
-		`if [ "$(hash "$t")" != ${sha256} ]; then rm -f "$t"; echo "pi-env upload is corrupt" >&2; exit 1; fi`,
+		`if [ "$(hash "$t")" != ${sha256} ]; then rm -f "$t"; echo "nycode-env upload is corrupt" >&2; exit 1; fi`,
 		'chmod 700 "$t"',
 		'mv -f "$t" "$f"',
 		// Older daemons; running ones keep their file open until they exit.
-		'for old in "$d"/pi-env-*; do [ "$old" = "$f" ] || rm -f "$old"; done',
+		'for old in "$d"/nycode-env-*; do [ "$old" = "$f" ] || rm -f "$old"; done',
 		"echo deployed",
 	].join("\n");
 	await runSsh(target, `sh -c ${quotePosix(upload)}`, { stdin: bytes, timeoutMs: UPLOAD_TIMEOUT_MS });

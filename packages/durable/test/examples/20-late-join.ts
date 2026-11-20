@@ -3,10 +3,10 @@
 // Run from packages/durable:
 //   node --conditions=source --experimental-strip-types test/examples/20-late-join.ts
 
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import { createModels } from "@earendil-works/pi-ai/models";
-import { fauxAssistantMessage, fauxProvider, fauxText, fauxToolCall } from "@earendil-works/pi-ai/providers/faux";
-import { obj } from "@earendil-works/pi-schema";
+import { createModels } from "@nycode/ai/models";
+import { fauxAssistantMessage, fauxProvider, fauxText, fauxToolCall } from "@nycode/ai/providers/faux";
+import { BACKGROUND_CONTEXT } from "@nycode/chord/context";
+import { obj } from "@nycode/schema";
 import {
 	createRegistry,
 	defineExtension,
@@ -57,7 +57,7 @@ await pause(500);
 // The view holds the newest entries and the documents, including the running tool's output and, later, the answer
 // being streamed.
 const view = await root.watch(context);
-const live = view.value.docs["pi.live"] as LiveState;
+const live = view.value.docs["nycode.live"] as LiveState;
 console.log(
 	"view entries:",
 	view.value.entries.map((entry) => entry.kind),
@@ -67,7 +67,7 @@ let shown = "";
 view.start(async (call) => {
 	if (call.kind !== "value") return;
 	const { value } = call;
-	const state = value.docs["pi.live"] as LiveState;
+	const state = value.docs["nycode.live"] as LiveState;
 	const slot = state.tools?.[0];
 	if (slot?.status === "running") console.log("view output now:", JSON.stringify(slot.output));
 	const partial = state.generation?.message?.content.find((block) => block.type === "text")?.text ?? "";

@@ -2,7 +2,7 @@
 // (the ctx, the state document and its fence, throws and aborts), finishes (cleanup, retries, blocked, dropped),
 // `running`, keep-alive, the object's end, cost guards and GC.
 
-import { InMemoryTelemetryContext } from "@earendil-works/pi-telemetry";
+import { InMemoryTelemetryContext } from "@nycode/telemetry";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import {
 	type Context,

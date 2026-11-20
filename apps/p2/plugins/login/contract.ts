@@ -1,4 +1,4 @@
-import type { AuthEvent, AuthPrompt, AuthType } from "@earendil-works/pi-ai";
+import type { AuthEvent, AuthPrompt, AuthType } from "@nycode/ai";
 
 type WithoutSignal<P = AuthPrompt> = P extends AuthPrompt ? Omit<P, "signal"> : never;
 export type LoginPrompt = WithoutSignal & { id: string };
@@ -9,7 +9,7 @@ export type LoginEvent =
 	| { type: "notice"; attemptId: string; event: AuthEvent }
 	| { type: "finished"; attemptId: string; status: "success" | "cancelled" | "error"; message?: string };
 
-import { arr, bool, nul, num, obj, opt, type Static, str, union, unknown } from "@earendil-works/pi-schema";
+import { arr, bool, nul, num, obj, opt, type Static, str, union, unknown } from "@nycode/schema";
 import { literal, local, method, propertiesOf, remote, serverHost, unsafe } from "@p2/app/v1";
 
 const AuthTypeSchema = union([literal("api_key"), literal("oauth")]);
@@ -44,7 +44,7 @@ const OwnerSchema = obj({ owner: str({ minLength: 1 }) });
 
 /**
  * Provider logins of the server (host-internal): p2's provider-owned flows over the shared credentials. A login
- * belongs to the owner that started it (as in Pi Mobile): only it sees its prompts and notices, answers, cancels or
+ * belongs to the owner that started it (as in Nycode Mobile): only it sees its prompts and notices, answers, cancels or
  * dismisses it, and only its leaving ends it.
  */
 export const LoginService = local("p2.login-service", {

@@ -3,8 +3,8 @@
  * Validates that the faux provider and session factory work correctly.
  */
 
-import type { AgentTool } from "@earendil-works/pi-agent-core";
-import type { AssistantMessage } from "@earendil-works/pi-ai";
+import type { AgentTool } from "@nycode/agent-core";
+import type { AssistantMessage } from "@nycode/ai";
 import { Type } from "typebox";
 import { afterEach, describe, expect, it } from "vitest";
 import { createHarness, createHarnessWithExtensions, type Harness } from "./test-harness.ts";
@@ -278,8 +278,8 @@ describe("test harness", () => {
 			extensionFactories: [
 				{
 					path: "<alpha>",
-					factory: (pi) => {
-						pi.registerCommand("shared-cmd", {
+					factory: (nycode) => {
+						nycode.registerCommand("shared-cmd", {
 							description: "Alpha command",
 							handler: async (args) => {
 								calls.push(`alpha:${args}`);
@@ -289,8 +289,8 @@ describe("test harness", () => {
 				},
 				{
 					path: "<beta>",
-					factory: (pi) => {
-						pi.registerCommand("shared-cmd", {
+					factory: (nycode) => {
+						nycode.registerCommand("shared-cmd", {
 							description: "Beta command",
 							handler: async (args) => {
 								calls.push(`beta:${args}`);

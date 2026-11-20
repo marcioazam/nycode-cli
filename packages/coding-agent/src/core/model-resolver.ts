@@ -2,14 +2,8 @@
  * Model resolution, scoping, and initial selection
  */
 
-import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
-import {
-	type Api,
-	type AuthOperationOptions,
-	type KnownProvider,
-	type Model,
-	modelsAreEqual,
-} from "@earendil-works/pi-ai";
+import type { ThinkingLevel } from "@nycode/agent-core";
+import { type Api, type AuthOperationOptions, type KnownProvider, type Model, modelsAreEqual } from "@nycode/ai";
 import { minimatch } from "minimatch";
 import { isValidThinkingLevel } from "../cli/args.ts";
 import { DEFAULT_THINKING_LEVEL } from "./defaults.ts";

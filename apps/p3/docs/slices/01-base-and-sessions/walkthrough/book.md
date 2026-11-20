@@ -26,7 +26,7 @@ archives and restores sessions. This is everything it consists of. Sizes are lin
 | File | Lines | What it is for |
 | --- | --- | --- |
 | `apps/p3/server.ts` | 28 | `startP3`: gives the kit the data directory, the plugins root, the port and the worker's entry |
-| `apps/p3/bin.ts` (slice 26) | 43 | the command: starts the server on `~/.pi/p3`, port 8789, prints the owner link, closes on a signal |
+| `apps/p3/bin.ts` (slice 26) | 43 | the command: starts the server on `~/.nycode/p3`, port 8789, prints the owner link, closes on a signal |
 | `src/install.ts` (slice 26) | 31 | where p3's files are, in a checkout or in the built package: the plugins root, the worker's entry |
 | `apps/p3/worker.ts` | 7 | a session worker's entry: one call of the kit's `startWorker` |
 | `src/principals.ts` | 15 | who someone is: `owner`, `person`, `worker`, `server`, as a schema and its type |
@@ -115,7 +115,7 @@ build, the release tests) are not part of this walkthrough.
 
 ## Words used throughout
 
-The **owner** owns the Pi; a **person** is anyone else (none is let in yet). A **principal** says who calls; the
+The **owner** owns the Nycode; a **person** is anyone else (none is let in yet). A **principal** says who calls; the
 link a call arrives on stamps it. A **session** is one agent workspace with its own **worker** process and store; its
 **address** is `Session({ id })`. A **contract** declares an object type: its members and who it is for. A **store**
 is a `local` object that owns data; a **view** is a `remote` object that shows one audience part of a store. A
@@ -151,7 +151,7 @@ another session's.
 // What p3 is to its kit, its entries and its tests: its name, its API (the package, its versions, this process's
 // instances of the modules), its facet kinds and its principals as links stamp them.
 
-/** p3's name: its default data directory is `~/.pi/p3`. */
+/** p3's name: its default data directory is `~/.nycode/p3`. */
 export const NAME = "p3";
 
 /** p3's API: its package, its versions (newest first) and this process's modules by specifier. */
@@ -189,8 +189,8 @@ passes its own instance in, so contracts and helpers are the same objects everyw
 
 // Everything of Chord's root; the names this module defines itself (`defineFacet`, `Server`, `Session`) win over a
 // same-named export of Chord's.
-export * from "@earendil-works/chord";
-export { BACKGROUND_CONTEXT, type Context } from "@earendil-works/chord/context";
+export * from "@nycode/chord";
+export { BACKGROUND_CONTEXT, type Context } from "@nycode/chord/context";
 export { contribute } from "../../kit/contribute.ts";
 export { forward } from "../../kit/forward.ts";
 export type { P3Principal } from "../../principals.ts";
@@ -200,7 +200,7 @@ export function defineFacet(setup: (host: FacetHost<P3Principal>, self: FacetSel
 	return chordFacet<P3Principal>(setup);
 }
 
-/** The server: one per Pi. */
+/** The server: one per Nycode. */
 export const Server = hostKind("server");
 
 /** A session: a worker process of its own, with its own store. */
@@ -215,7 +215,7 @@ sessions plugin. The reason is in its comment; chapter VII uses it.
 // server (`AppInfo`), the registry of HTTP routes (`Http`), and the contracts base code reads and a plugin serves
 // (`SessionRoute`).
 
-export { Http } from "@earendil-works/chord/http";
+export { Http } from "@nycode/chord/http";
 export { AppInfo } from "../../kit/info.ts";
 
 /**
@@ -244,7 +244,7 @@ export const SessionRoute = local("p3.session-route", {
 /** p3's port: p2 keeps 8788. */
 const PORT = 8789;
 
-/** Starts p3 on `dataDir` (`~/.pi/p3` by default) with its built-in plugins from `root`, listening on `port`. */
+/** Starts p3 on `dataDir` (`~/.nycode/p3` by default) with its built-in plugins from `root`, listening on `port`. */
 export function startP3(
 	context: Context,
 	options: { readonly dataDir?: string; readonly root?: string; readonly port?: number } = {},
@@ -273,7 +273,7 @@ command. Whole:
 
 const USAGE = `Usage: p3 [dataDir] [--port <n>]
 
-Starts the p3 server on dataDir (default: ~/.pi/p3) and prints the owner link.
+Starts the p3 server on dataDir (default: ~/.nycode/p3) and prints the owner link.
 
 Options:
   --port <n>   The port to listen on, on 127.0.0.1 (default: 8789; 0: a free one)
@@ -375,7 +375,7 @@ const debug = debuglog("p3");
 
 /** What `startServer` takes: what the start script decides. */
 export type ServerOptions = {
-	/** The data directory (no environment variables): `~/.pi/p3` by default. */
+	/** The data directory (no environment variables): `~/.nycode/p3` by default. */
 	readonly dataDir?: string;
 	/** p3's built-in plugins root: a plugin of it failing stops the start. */
 	readonly root: string;
@@ -616,7 +616,7 @@ function linkHost(host: string): string {
 The data directory, as `src/kit/layout.ts` makes it (the file is in the appendix):
 
 ```text
-~/.pi/p3/                        0700, like every directory below
+~/.nycode/p3/                        0700, like every directory below
   server/store.sqlite            the server's store, 0600 (sessions, sign-ins)
   server/cookie-secret           0600
   workers/session/<address>/     one per session: store.sqlite
@@ -1602,7 +1602,7 @@ the server sees the worker as started. The start data both hosts serve, `src/kit
 // start script. `AppInfo` on the server (the data directory, p3's name, its newest API version), `WorkerInfo` on a
 // worker (its address).
 
-/** What the server knows of the Pi: its data directory, its name, its newest API version. */
+/** What the server knows of the Nycode: its data directory, its name, its newest API version. */
 export const AppInfo = local("p3.info", {
 	version: 1,
 	params: {},
@@ -2033,7 +2033,7 @@ The same bench on the same day and Chord (slayer, three runs each):
 | `links.signedIn(request, …)` for cookies too | a cookie link is never tracked | the same test, its cookie cases |
 | `new WeakMap<HttpRequest, string>()` | every authenticated request is kept forever | "keeps no request it authenticated" (GC) |
 | `this.#hash = undefined` in `OwnerLink.consume` | the owner link works twice | "serves a page reading the fragment, signs the owner in once…" |
-| `join(homedir(), ".pi", NAME)` | another default data directory | "makes the layout's directories with mode 0700…" |
+| `join(homedir(), ".nycode", NAME)` | another default data directory | "makes the layout's directories with mode 0700…" |
 
 Two tests had waits without a bound and hung under a mutation; both are bounded now. The script is
 `/tmp/p3-s1-redo/mutate.py` on slayer: it copies nothing into the repository.
@@ -2201,7 +2201,7 @@ Nothing dominates, and nothing grows with the number of sessions.
 
 **Decided for the redo (owner, 2026-11-15):** the kit is typed to p3; `forward` takes the view's own members as a
 fourth argument; state and last touch get their writers with the harness (slice 3); the kit's names are p3's
-(`p3.info`, `p3.sign-ins`, the cookie `p3-sign-in`, `/_p3/owner`); the default data directory is `~/.pi/p3`; Chord
+(`p3.info`, `p3.sign-ins`, the cookie `p3-sign-in`, `/_p3/owner`); the default data directory is `~/.nycode/p3`; Chord
 exports `memberNames`; a sign-in that ends closes its own links through Chord's `links.opened` close.
 
 **Carried to later slices:**
@@ -2219,7 +2219,7 @@ exports `memberNames`; a sign-in that ends closes its own links through Chord's 
   gives reliably.
 - The kit closes only links its own authenticator signed in. A later authenticator (Radius sign-in) must close its
   own links when its credential ends.
-- A `~/.p3` from the first build is not read any more; the data directory is `~/.pi/p3`.
+- A `~/.p3` from the first build is not read any more; the data directory is `~/.nycode/p3`.
 
 # The Remaining Kit Files {.appendix}
 
@@ -2244,9 +2244,9 @@ export type Layout = {
 	readonly ownerToken: string;
 };
 
-/** The data directory unless the start script names one: `~/.pi/p3`. */
+/** The data directory unless the start script names one: `~/.nycode/p3`. */
 export function defaultDataDir(): string {
-	return join(homedir(), ".pi", NAME);
+	return join(homedir(), ".nycode", NAME);
 }
 
 /**

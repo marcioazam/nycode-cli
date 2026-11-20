@@ -1,4 +1,4 @@
-import { arr, num, obj, type Static, str, union } from "@earendil-works/pi-schema";
+import { arr, num, obj, type Static, str, union } from "@nycode/schema";
 import { literal, local, method, param, record, remote, sessionHost } from "@p2/app/v1";
 
 export const AuthorSchema = obj({

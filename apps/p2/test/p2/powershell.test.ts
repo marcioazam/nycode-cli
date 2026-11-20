@@ -1,9 +1,9 @@
-// The powershell plugin's per-agent choice (Pi Mobile's offerPowerShell, per agent location): Durable's deferred
+// The powershell plugin's per-agent choice (Nycode Mobile's offerPowerShell, per agent location): Durable's deferred
 // `powershell` tool is offered to an agent by its own tool selection, leaving its other choices alone. The decision from
 // each agent's machine is covered by relocate-worker.test.ts.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { AgentState } from "@earendil-works/pi-durable";
+import type { AgentState } from "@nycode/durable";
 import { offersPowerShell, setPowerShell } from "../../plugins/powershell/worker.ts";
 
 test("PowerShell is offered by an agent's own tool selection, other choices untouched", () => {

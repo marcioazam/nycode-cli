@@ -1,8 +1,8 @@
 // The agent's view tools, for code mode only (namespace `view`): list the session's views with the person's selections
 // and annotations, open (or show again) a view of any kind a web facet registered, close one, arrange the person's
 // panes, and resolve annotations. They act on the session's documents only.
-import { defineExtension, type ToolExecutionApi, type ToolNamespace } from "@earendil-works/pi-durable";
-import { arr, int, obj, opt, str, unknown } from "@earendil-works/pi-schema";
+import { defineExtension, type ToolExecutionApi, type ToolNamespace } from "@nycode/durable";
+import { arr, int, obj, opt, str, unknown } from "@nycode/schema";
 import { type Context, type JsonValue, propertiesOf, unsafe } from "@p2/app/v1";
 import { defineP2Tool, type P2Tool } from "@p2/app/v1/worker";
 import {

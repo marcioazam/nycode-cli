@@ -2,7 +2,7 @@
 // `openNodeSqliteStorage(path)` opening Durable's storage on Chord's store over that file (`StoreStorage`), so the
 // harness test files that take a SQLite storage run unchanged on the store.
 
-import type { NodeSqliteDatabaseOptions } from "@earendil-works/chord/sqlite/node";
+import type { NodeSqliteDatabaseOptions } from "@nycode/chord/sqlite/node";
 import type { SqliteStorageOptions } from "../src/storage/sqlite/index.ts";
 import type { Storage } from "../src/types.ts";
 import { openStoreStorage } from "./store-storage-support.ts";
@@ -11,7 +11,7 @@ export {
 	NodeSqliteDatabase,
 	type NodeSqliteDatabaseOptions,
 	openNodeSqliteDatabase,
-} from "@earendil-works/chord/sqlite/node";
+} from "@nycode/chord/sqlite/node";
 
 /** Node SQLite connection settings plus durable storage options, as the original takes them. */
 export type NodeSqliteStorageOptions = NodeSqliteDatabaseOptions & SqliteStorageOptions;

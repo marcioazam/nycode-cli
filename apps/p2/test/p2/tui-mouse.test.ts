@@ -38,7 +38,7 @@ test("selection gesture: a drag's or a multi-click's release, never a plain clic
 	assert.equal(defaultMouse({ TERM: "xterm-256color" }), "all");
 });
 
-/** Plays pi-tui: on every left release it requests the copy (as copy-on-select would with a selection). */
+/** Plays nycode-tui: on every left release it requests the copy (as copy-on-select would with a selection). */
 const FAKE_WORKER = `const seen=[];let id=0;export default ({send,onMessage})=>onMessage(message=>{
 	if(message.kind==='snapshot')return seen;
 	if(message.kind!=='resize')seen.push(message);
@@ -107,7 +107,7 @@ async function fakeLauncher(
 }
 
 test(
-	"launcher: mouse reports reach the worker; pi-tui's copy is accepted only after the launcher saw the release",
+	"launcher: mouse reports reach the worker; nycode-tui's copy is accepted only after the launcher saw the release",
 	{ skip: !supported, timeout: 30000 },
 	async (t) => {
 		const { client, terminal, writes, copies, seen } = await fakeLauncher(t, "on");
@@ -132,7 +132,11 @@ test(
 		assert.deepEqual(copies, ["selected text"]);
 		assert.equal((await responses()).at(-1)?.ok, true);
 		const inputs = (await seen()).filter((message) => message.kind === "input").map((message) => message.data);
-		assert.deepEqual(inputs.slice(-3), [press(5, 5), drag(12, 6), release(12, 6)], "pi-tui selects in the worker");
+		assert.deepEqual(
+			inputs.slice(-3),
+			[press(5, 5), drag(12, 6), release(12, 6)],
+			"nycode-tui selects in the worker",
+		);
 		// The window is single-use.
 		terminal.sendInput("w");
 		await poll(async () => (await responses()).length === 4);
@@ -145,7 +149,7 @@ test(
 );
 
 test(
-	"launcher: with the mouse off pi-tui does not capture it and no gesture opens a copy window",
+	"launcher: with the mouse off nycode-tui does not capture it and no gesture opens a copy window",
 	{ skip: !supported, timeout: 30000 },
 	async (t) => {
 		const all = await fakeLauncher(t, "all");
@@ -198,7 +202,7 @@ test(
 		const lines = async () => terminal.flushAndGetViewport();
 		const screen = async () => (await lines()).join("\n");
 		await poll(async () => (await screen()).includes("New session"), 15000);
-		assert(writes.join("").includes("\x1b[?1000h"), "pi-tui captures the mouse");
+		assert(writes.join("").includes("\x1b[?1000h"), "nycode-tui captures the mouse");
 		terminal.sendInput("\x1b[B");
 		terminal.sendInput("\r");
 		await poll(async () => !(await screen()).includes("Connecting conversation") && (await screen()).includes("•"));
@@ -208,13 +212,13 @@ test(
 			await poll(async () => (await screen()).includes(`Echo: ${word}`), 20000);
 		}
 		await poll(async () => !(await screen()).includes("Echo: alpha"));
-		// Wheel up scrolls the transcript back (pi: "auto" lines per notch).
+		// Wheel up scrolls the transcript back (nycode: "auto" lines per notch).
 		for (let index = 0; index < 30 && !(await screen()).includes("Echo: alpha"); index++) {
 			terminal.sendInput(wheelUp(10, 4));
 			await new Promise((resolve) => setTimeout(resolve, 40));
 		}
 		await poll(async () => (await screen()).includes("Echo: alpha"), 5000, "scrolled up");
-		// Drag across "Echo: alpha" selects it in pi-tui; the release copies it, once.
+		// Drag across "Echo: alpha" selects it in nycode-tui; the release copies it, once.
 		const rows = await lines();
 		const row = rows.findIndex((line) => line.includes("Echo: alpha"));
 		const column = rows[row]!.indexOf("Echo: alpha");

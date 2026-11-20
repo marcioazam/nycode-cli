@@ -4,7 +4,7 @@ import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { NodeExecutionEnv } from "@earendil-works/pi-durable/env/node";
+import { NodeExecutionEnv } from "@nycode/durable/env/node";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { Workspace } from "../../plugins/workspace/environment.ts";
 
@@ -50,7 +50,7 @@ test("search without git grep -m keeps per-file limits and propagates other erro
 	}
 });
 
-// Pi Mobile 24e3fccdd: a subagent's own cwd may be a linked worktree, whose index and HEAD live in the main repository.
+// Nycode Mobile 24e3fccdd: a subagent's own cwd may be a linked worktree, whose index and HEAD live in the main repository.
 test("a linked git worktree's index and HEAD are watched", { timeout: 60_000 }, async () => {
 	const directory = await realpath(await mkdtemp(join(tmpdir(), "p2-workspace-worktree-")));
 	const git = (cwd: string, ...args: string[]) =>

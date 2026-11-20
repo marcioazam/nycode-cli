@@ -1,7 +1,7 @@
 // Backup of this instance's stores (`src/runtime/backup.ts`): the server holds the backup remote (`BackupUploads`, a
 // native) and every store's status (`Backup`); each session's worker uploads its own store through `BackupRemote`, a
 // slot's body streamed through the server in chunks.
-import { bool, bytes, int, nul, num, obj, opt, type Static, str, union } from "@earendil-works/pi-schema";
+import { bool, bytes, int, nul, num, obj, opt, type Static, str, union } from "@nycode/schema";
 import { defineRegistry, keyedRegistry, literal, local, method, record, remote, serverHost } from "@p2/app/v1";
 import type { OpenBackupTarget, PutBatchResult } from "@p2/app/v1/node";
 

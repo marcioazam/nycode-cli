@@ -1,6 +1,6 @@
 // The counter plugin's server facet: serves `Counter`. The example makes its factory throw.
 
-import { constant, defineFacet, int, local } from "@earendil-works/chord";
+import { constant, defineFacet, int, local } from "@nycode/chord";
 
 const Counter = local("example.counter", { version: 1, params: {}, members: { start: int() } });
 

@@ -2,8 +2,8 @@
 // everything else stays the same object, and clients show both references and inline parts.
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { ImageContent } from "@earendil-works/pi-ai";
-import type { ConversationId, EntryId, EntryRecord } from "@earendil-works/pi-durable";
+import type { ImageContent } from "@nycode/ai";
+import type { ConversationId, EntryId, EntryRecord } from "@nycode/durable";
 import { entryImageRefs, imageAt, shownImage } from "../../src/runtime/entry-images.ts";
 
 // A 1x1 PNG.
@@ -13,7 +13,7 @@ const image: ImageContent = { type: "image", mimeType: "image/png", data: PNG };
 const entry = (id: number, model: EntryRecord["model"]): EntryRecord => ({
 	id: id as EntryId,
 	conversationId: 1 as ConversationId,
-	kind: "pi.tool-result",
+	kind: "nycode.tool-result",
 	...(model === undefined ? {} : { model }),
 });
 

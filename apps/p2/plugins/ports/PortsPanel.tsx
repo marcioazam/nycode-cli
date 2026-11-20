@@ -1,4 +1,4 @@
-import type { Static } from "@earendil-works/pi-schema";
+import type { Static } from "@nycode/schema";
 import { BACKGROUND_CONTEXT, liveIn } from "@p2/app/v1";
 import { CopyButton, errorText, Sheet, Switch, useObject, useOptimisticCall, useReadable } from "@p2/app/v1/web";
 import { useState } from "react";
@@ -58,7 +58,7 @@ export function PortsPanel({ onClose }: { onClose: () => void }) {
 			{forwards && !origin && (
 				<p className="muted small">
 					Links appear once this server has been opened through Radius (
-					<span className="mono">npm run radius:login</span>, then Pi in Radius).
+					<span className="mono">npm run radius:login</span>, then Nycode in Radius).
 				</p>
 			)}
 			<div className="list">

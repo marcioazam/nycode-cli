@@ -25,7 +25,7 @@ function createFixture(): {
 	structure: ModelDataStructure;
 	values: Record<string, unknown>;
 } {
-	const packageRoot = mkdtempSync(join(tmpdir(), "pi-model-data-"));
+	const packageRoot = mkdtempSync(join(tmpdir(), "nycode-model-data-"));
 	temporaryRoots.push(packageRoot);
 	const providersDir = join(packageRoot, "src", "providers");
 	const dataDir = join(providersDir, "data");

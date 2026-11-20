@@ -1,6 +1,6 @@
 // Tests of `startServer`: the layout and the start-data object, start and close, the server's record, one server per
 // data directory, the directory made private, directories the kit must not tighten, the owner link's address, a
-// failing root, a port in use, and the Pi's own port.
+// failing root, a port in use, and the Nycode's own port.
 
 import assert from "node:assert/strict";
 import { once } from "node:events";
@@ -9,8 +9,8 @@ import { type AddressInfo, createServer } from "node:net";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
-import { local, str } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context";
+import { local, str } from "@nycode/chord";
+import { BACKGROUND_CONTEXT as context } from "@nycode/chord/context";
 import { readConfig } from "../../src/kit/config.ts";
 import { AppInfo } from "../../src/kit/info.ts";
 import { holder } from "../../src/kit/running.ts";
@@ -22,7 +22,7 @@ const Echo = local("test.echo", { version: 1, params: {}, members: { text: str()
 
 /** A plugin's server facet serving `Echo` through p3's API. */
 const ECHO_SERVER = [
-	'import { constant, defineFacet, local, str } from "@earendil-works/p3/v1";',
+	'import { constant, defineFacet, local, str } from "@nycode/p3/v1";',
 	'const Echo = local("test.echo", { version: 1, params: {}, members: { text: str() } });',
 	'export default defineFacet((host) => host.serve(Echo, () => ({ text: constant("echo") })));',
 ].join("\n");
@@ -30,14 +30,14 @@ const ECHO_SERVER = [
 describe("starting and closing", () => {
 	it("lays out the data directory, serves AppInfo and the root's plugins, and closes everything", async () => {
 		const { app, dataDir, port } = await kitApp({ plugins: { echo: { "server.ts": ECHO_SERVER } } });
-		const files = ["cache", "logs", "owner-token", "pi.json", "server", "server.json", "workers"];
+		const files = ["cache", "logs", "owner-token", "nycode.json", "server", "server.json", "workers"];
 		assert.deepEqual((await readdir(dataDir)).sort(), files);
 		// Its record: believed while it runs, gone with it.
-		const { id } = (await readConfig(join(dataDir, "pi.json")))!;
+		const { id } = (await readConfig(join(dataDir, "nycode.json")))!;
 		const found = await holder(dataDir, "server", context);
 		assert.ok(found.kind === "claimed");
 		const { record } = found;
-		assert.deepEqual([record.pi, record.pid, record.port, record.version], [id, process.pid, port, "0.0.0-test"]);
+		assert.deepEqual([record.nycode, record.pid, record.port, record.version], [id, process.pid, port, "0.0.0-test"]);
 		assert.ok(Math.abs(Date.now() - record.startedAt) < 5000);
 		assert.equal(app.port(), port);
 		const server = (await readdir(join(dataDir, "server"))).filter((name) => !name.startsWith("."));
@@ -78,7 +78,7 @@ describe("starting and closing", () => {
 		const { app } = await kitApp({ dataDir });
 		const mode = async (path: string) => (await stat(join(dataDir, path))).mode & 0o777;
 		const directories = [".", "server", "workers", "cache", "cache/worker", "cache/node", "logs"];
-		const files = ["server/store.sqlite", "server/cookie-secret", "owner-token", "pi.json", "server.json"];
+		const files = ["server/store.sqlite", "server/cookie-secret", "owner-token", "nycode.json", "server.json"];
 		assert.deepEqual(
 			await Promise.all(directories.map(mode)),
 			directories.map(() => 0o700),
@@ -119,7 +119,7 @@ describe("starting and closing", () => {
 		const dataDir = join(await tempDir(), "data");
 		await mkdir(dataDir);
 		// Its config is read after the record says `starting`.
-		await writeFile(join(dataDir, "pi.json"), JSON.stringify({ id: "not hex" }));
+		await writeFile(join(dataDir, "nycode.json"), JSON.stringify({ id: "not hex" }));
 		assert.match(String(await rejection(kitApp({ dataDir }))), /"id" must be 16 hex digits/);
 		assert.ok(!(await readdir(dataDir)).includes("server.json"));
 		assert.deepEqual(await holder(dataDir, "server", context), { kind: "free" });
@@ -157,9 +157,9 @@ describe("listening", () => {
 		await kitApp({ dataDir });
 	});
 
-	it("listens on the Pi's own port: the first start's, kept in its config; a port named for one start is not kept", async () => {
+	it("listens on the Nycode's own port: the first start's, kept in its config; a port named for one start is not kept", async () => {
 		const dataDir = join(await tempDir(), "data");
-		const config = () => readConfig(join(dataDir, "pi.json"));
+		const config = () => readConfig(join(dataDir, "nycode.json"));
 		const named = await kitApp({ dataDir });
 		assert.equal((await config())?.port, undefined);
 		await named.app.close(context);

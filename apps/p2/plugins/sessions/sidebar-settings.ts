@@ -1,6 +1,6 @@
 // Sidebar settings (server): the owner's order of the sidebar's rollups, each rollup's window and which rollups are
 // collapsed, persisted in the server's store and served to the owner.
-import { arr, bool, obj, str } from "@earendil-works/pi-schema";
+import { arr, bool, obj, str } from "@nycode/schema";
 import { defineState, deriveTyped, type FacetHost, forbidden, isOwner, record } from "@p2/app/v1";
 import { SidebarSettings, SidebarSettingsStore, SidebarWindowSchema } from "./contract.ts";
 

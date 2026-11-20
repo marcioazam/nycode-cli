@@ -23,10 +23,10 @@ describe("MCP tool renderers", () => {
 					harness.session.getToolDefinition(toolName),
 				);
 
-			const call = resolve("mcp__my_docs__search")?.renderCall?.({ query: "pi" }, theme, {
+			const call = resolve("mcp__my_docs__search")?.renderCall?.({ query: "nycode" }, theme, {
 				expanded: false,
 			} as unknown as ToolRenderContext);
-			expect(stripAnsi(call?.render(100).join("\n") ?? "")).toContain('my_docs/search query="pi"');
+			expect(stripAnsi(call?.render(100).join("\n") ?? "")).toContain('my_docs/search query="nycode"');
 			expect(resolve("not_mcp")).toBeUndefined();
 			// Registered tools keep their own renderers.
 			expect(resolve("read")?.renderCall).toBe(harness.session.getToolDefinition("read")?.renderCall);
@@ -37,14 +37,14 @@ describe("MCP tool renderers", () => {
 
 	it("renders them in HTML exports too", async () => {
 		initTheme("dark");
-		const dir = mkdtempSync(join(tmpdir(), "pi-10285-"));
+		const dir = mkdtempSync(join(tmpdir(), "nycode-10285-"));
 		const sessionManager = SessionManager.create(dir, join(dir, "sessions"));
 		const harness = await createHarness({ extensionFactories: [mcpExtension], sessionManager });
 		try {
 			sessionManager.appendMessage({ role: "user", content: "search", timestamp: 1 });
 			sessionManager.appendMessage({
 				role: "assistant",
-				content: [{ type: "toolCall", id: "call-1", name: "mcp__my_docs__search", arguments: { query: "pi" } }],
+				content: [{ type: "toolCall", id: "call-1", name: "mcp__my_docs__search", arguments: { query: "nycode" } }],
 				api: "anthropic-messages",
 				provider: "anthropic",
 				model: "test",

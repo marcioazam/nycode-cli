@@ -22,7 +22,7 @@ describe("issue #2791 fs.watch error event crashes process", () => {
 	let tempRoot: string;
 
 	beforeEach(() => {
-		tempRoot = mkdtempSync(join(tmpdir(), "pi-2791-"));
+		tempRoot = mkdtempSync(join(tmpdir(), "nycode-2791-"));
 		const agentDir = join(tempRoot, "agent");
 		const themesDir = join(agentDir, "themes");
 		mkdirSync(themesDir, { recursive: true });
@@ -51,7 +51,7 @@ describe("issue #2791 fs.watch error event crashes process", () => {
 			`
 import { setTheme, stopThemeWatcher } from "${themeModulePath}";
 
-process.env.PI_CODING_AGENT_DIR = "${agentDir}";
+process.env.NYCODE_CODING_AGENT_DIR = "${agentDir}";
 
 setTheme("custom-test", true);
 
@@ -90,7 +90,7 @@ process.exit(0);
 			_stdout = execFileSync(process.execPath, [scriptPath], {
 				timeout: 10000,
 				encoding: "utf-8",
-				env: { ...process.env, PI_CODING_AGENT_DIR: agentDir },
+				env: { ...process.env, NYCODE_CODING_AGENT_DIR: agentDir },
 				stdio: ["pipe", "pipe", "pipe"],
 			});
 			exitCode = 0;

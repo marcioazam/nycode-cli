@@ -1,7 +1,7 @@
 // The notes plugin: a route, and its own wrap (around its own routes only) adding a header.
 
-import { defineFacet } from "@earendil-works/chord";
-import { Http } from "@earendil-works/chord/http";
+import { defineFacet } from "@nycode/chord";
+import { Http } from "@nycode/chord/http";
 
 export default defineFacet((_host, self) =>
 	self.contribute(Http, {

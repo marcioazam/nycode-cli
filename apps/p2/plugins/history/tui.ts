@@ -1,6 +1,6 @@
 // History tool cards in the TUI (docs/history-tool.md section 5), after the web's: a search names its query and hit
 // count, a read its mode and count, a handoff its text; expanded, the hit and entry lines.
-import { Text } from "@earendil-works/pi-tui";
+import { Text } from "@nycode/tui";
 import { contribute, defineFacet } from "@p2/app/v1";
 import { getTextOutput, lineText, record, str, type ToolRenderers, TuiToolRenderers } from "@p2/app/v1/tui";
 import { HISTORY_HANDOFF, HISTORY_READ, HISTORY_SEARCH } from "./tools.ts";

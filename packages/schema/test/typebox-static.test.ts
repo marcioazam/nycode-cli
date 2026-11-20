@@ -1,4 +1,4 @@
-// Static for TypeBox-built schemas: the common kinds give TypeBox's own static type, without pi-schema importing
+// Static for TypeBox-built schemas: the common kinds give TypeBox's own static type, without nycode-schema importing
 // TypeBox; other kinds give `unknown`. Type-level tests (they pass when this file type-checks), against TypeBox 1.3.27.
 
 import { Type, type Static as TypeBoxOwn } from "typebox";

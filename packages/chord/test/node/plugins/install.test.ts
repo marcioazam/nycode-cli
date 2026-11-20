@@ -68,7 +68,7 @@ describe("installDependencies", () => {
 async function workerOf(root: string, name: string): Promise<string> {
 	const { plugins } = await discoverPlugins([root], { kinds: KINDS }, context);
 	const plugin = plugins.find((each) => each.name === name)!;
-	const options = { hostPackages: ["@earendil-works/chord"], platform: "node", plugins } as const;
+	const options = { hostPackages: ["@nycode/chord"], platform: "node", plugins } as const;
 	const built = await buildFacet(plugin, "worker", options, context);
 	if (built.kind === "failed") throw new Error(built.errors.join("\n"));
 	return built.source;

@@ -8,7 +8,7 @@ import {
 	McpSignInCancelledError,
 	type OAuthChallenge,
 	OAuthIssuerMismatchError,
-} from "@earendil-works/pi-mcp/oauth";
+} from "@nycode/mcp/oauth";
 import { afterEach, describe, expect, it } from "vitest";
 import { InMemoryAuthStorageBackend } from "../src/core/auth-storage.ts";
 import {
@@ -29,9 +29,9 @@ describe("MCP OAuth refresh", () => {
 	async function signedIn() {
 		const server = await startOAuthMcpServer();
 		cleanups.push(server.close);
-		const lockDir = mkdtempSync(join(tmpdir(), "pi-mcp-refresh-"));
+		const lockDir = mkdtempSync(join(tmpdir(), "nycode-mcp-refresh-"));
 		cleanups.push(() => rmSync(lockDir, { recursive: true, force: true }));
-		// Stores sharing the credential file and lock directory stand in for separate pi processes.
+		// Stores sharing the credential file and lock directory stand in for separate nycode processes.
 		const backend = new InMemoryAuthStorageBackend();
 		const process = () => {
 			const store = new McpOAuthCredentialStore(backend, lockDir).forServer("test", server.url);
@@ -236,7 +236,7 @@ describe("MCP OAuth client ID metadata documents", () => {
 	});
 
 	// #11426
-	it("uses pi's document by default when authorization responses name their issuer", async () => {
+	it("uses nycode's document by default when authorization responses name their issuer", async () => {
 		const { server, store, signIn } = await startServer({ cimd: true, issParameter: true });
 		await signIn({});
 		const [authorization] = server.authorizations;

@@ -1,6 +1,6 @@
 # Group commit for the Durable Session
 
-Status: design, revision 2 (after three reviews). Branch `durable-perf` (worktree `~/pi-perf` on slayer), on top of the
+Status: design, revision 2 (after three reviews). Branch `durable-perf` (worktree `~/nycode-perf` on slayer), on top of the
 uncommitted prerequisites (record cache, conversation tails, kept context ranges advanced at publish, task-document
 index, deferred tool-slot `running` and generation attempt). Read `docs/spec.md` §1, §4, §4.1, §5, §8, §10.1 alongside.
 
@@ -81,7 +81,7 @@ commit(
 
 `receive` is a durability receipt, not publication: the Session publishes later (§5.3). It is Storage's only write
 method (it replaced the earlier one-batch `commit(writes, adopt, context)`, and took its name): every backend implements
-it natively. Tests and suites that write one batch directly use `commitWrites()` (`@earendil-works/pi-durable/testing`),
+it natively. Tests and suites that write one batch directly use `commitWrites()` (`@nycode/durable/testing`),
 which throws the refusal.
 
 Example: `[A, B, C, D]`, C refused. A and B are durable and published; C rejects with the refusal; D rejects with

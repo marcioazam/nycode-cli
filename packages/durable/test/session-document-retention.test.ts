@@ -1,7 +1,7 @@
 // The Session's document cache is bounded by use: unattached documents leave it after the retention period and load
 // from Storage again; documents with a watch or a document state never leave it.
 
-import { fauxAssistantMessage, fauxText, fauxToolCall } from "@earendil-works/pi-ai";
+import { fauxAssistantMessage, fauxText, fauxToolCall } from "@nycode/ai";
 import {
 	type ConversationId,
 	defineDoc,
@@ -11,8 +11,8 @@ import {
 	type LiveState,
 	MemoryStorage,
 	type StorageWrite,
-} from "@earendil-works/pi-durable";
-import { obj } from "@earendil-works/pi-schema";
+} from "@nycode/durable";
+import { obj } from "@nycode/schema";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { SessionImpl, setDefaultDocumentRetention } from "../src/session/session.ts";
 import { chatSetup, openChat } from "./chat-support.ts";
@@ -72,9 +72,9 @@ const Failing = defineDoc<Counter>({
 
 /** The default retention of this run, as the setup file set it. */
 const defaultForRun =
-	process.env.PI_DURABLE_DOCUMENT_RETENTION_MS === undefined
+	process.env.NYCODE_DURABLE_DOCUMENT_RETENTION_MS === undefined
 		? 600_000
-		: Number(process.env.PI_DURABLE_DOCUMENT_RETENTION_MS);
+		: Number(process.env.NYCODE_DURABLE_DOCUMENT_RETENTION_MS);
 
 /** A conversation document any Harness test can read. */
 const TestDoc = defineDoc<Counter>({
@@ -543,7 +543,7 @@ describe("document cache retention", () => {
 			await harness.close(context);
 			// Ids and times differ between runs; the sequence of entries, run states, and tool outputs must not.
 			return history.views.map((view) => {
-				const live = (view.docs["pi.live"] ?? {}) as LiveState;
+				const live = (view.docs["nycode.live"] ?? {}) as LiveState;
 				const tools = (live.tools ?? []).map((slot) => `${slot.callId}:${slot.status}:${slot.output ?? ""}`);
 				const kinds = view.entries.map((entry) => entry.kind).join(",");
 				return `${kinds} run:${live.run !== undefined} generation:${live.generation !== undefined} ${tools.join(" ")}`;

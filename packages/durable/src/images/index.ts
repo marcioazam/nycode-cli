@@ -17,8 +17,8 @@ const JPEG_QUALITIES = [80, 70, 55, 40];
 
 /**
  * An `ImageProcessor` on Photon (Rust compiled to WebAssembly), for `createCodingTools({ images })`. `wasm` is
- * Photon's `photon_rs_bg.wasm` as bytes or as a compiled module: `@earendil-works/pi-durable/images/node` reads it from
- * the installed package, `@earendil-works/pi-durable/images/cloudflare` imports it as a Workers module. Elsewhere, such
+ * Photon's `photon_rs_bg.wasm` as bytes or as a compiled module: `@nycode/durable/images/node` reads it from
+ * the installed package, `@nycode/durable/images/cloudflare` imports it as a Workers module. Elsewhere, such
  * as a browser, fetch the file and pass its bytes. Photon loads once per process; later calls reuse the first `wasm`.
  *
  * An image already upright, in a format providers take inline, and within the limits is returned as it is, once it

@@ -2,6 +2,8 @@
 
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Duplex } from "node:stream";
+import type { CredentialStore, ModelsStore } from "@nycode/ai";
+import type { MutableModels } from "@nycode/ai/models";
 import {
 	constant,
 	defineRegistry,
@@ -10,13 +12,11 @@ import {
 	local,
 	method,
 	type Store,
-} from "@earendil-works/chord";
-import type { Context } from "@earendil-works/chord/context";
-import type { JsonValue } from "@earendil-works/chord/json";
-import type { CredentialStore, ModelsStore } from "@earendil-works/pi-ai";
-import type { MutableModels } from "@earendil-works/pi-ai/models";
-import { arr, bool, nul, num, obj, opt, type Static, str, union } from "@earendil-works/pi-schema";
-import type { TelemetryStore } from "@earendil-works/pi-telemetry";
+} from "@nycode/chord";
+import type { Context } from "@nycode/chord/context";
+import type { JsonValue } from "@nycode/chord/json";
+import { arr, bool, nul, num, obj, opt, type Static, str, union } from "@nycode/schema";
+import type { TelemetryStore } from "@nycode/telemetry";
 import { Access } from "./access.ts";
 import {
 	type Ctx,

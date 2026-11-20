@@ -11,7 +11,7 @@
  * again from the server), with the documents but without the live state (a run, its queue: stale once kept), and the
  * measured row heights. The most recently used `MAX_CONVERSATIONS` stay.
  */
-import type { ConversationView, TranscriptView } from "@earendil-works/pi-durable";
+import type { ConversationView, TranscriptView } from "@nycode/durable";
 import { keptWindow } from "./history.ts";
 
 export type Kept = {
@@ -77,8 +77,8 @@ export async function loadKept(key: string): Promise<Kept | undefined> {
 function keptView(view: TranscriptView): ConversationView {
 	const kept = keptWindow(view, MAX_BYTES);
 	const docs = { ...kept.docs };
-	delete docs["pi.live"];
-	delete docs["pi.inbox"];
+	delete docs["nycode.live"];
+	delete docs["nycode.inbox"];
 	return { ...kept, docs };
 }
 

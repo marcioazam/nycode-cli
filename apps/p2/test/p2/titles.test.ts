@@ -1,4 +1,4 @@
-// Session titles and activity as in Pi Mobile: an automatic title is the first user message (line breaks as spaces,
+// Session titles and activity as in Nycode Mobile: an automatic title is the first user message (line breaks as spaces,
 // 100 characters) until a title is given or renamed (titleEdited); titles are at most 120 characters; a relocation
 // counts as activity.
 
@@ -8,7 +8,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { after, before, describe, it } from "node:test";
-import type { ConversationView, LiveState } from "@earendil-works/pi-durable";
+import type { ConversationView, LiveState } from "@nycode/durable";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { Catalog, type Session, Sessions } from "../../plugins/sessions/contract.ts";
@@ -18,7 +18,7 @@ import type { Host, RefIn } from "../../src/runtime/chord.ts";
 import { type Fixture, holdIn, startFixture, until } from "./helpers.ts";
 
 const answered = (view: ConversationView | null | undefined) =>
-	JSON.stringify(view?.entries ?? []).includes("Echo:") && !(view?.docs["pi.live"] as LiveState | undefined)?.run;
+	JSON.stringify(view?.entries ?? []).includes("Echo:") && !(view?.docs["nycode.live"] as LiveState | undefined)?.run;
 
 describe("session titles (fake provider)", () => {
 	let fixture: Fixture;

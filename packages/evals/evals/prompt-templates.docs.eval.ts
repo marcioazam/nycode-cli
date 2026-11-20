@@ -1,8 +1,8 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { contentText } from "@earendil-works/pi-ai";
+import { contentText } from "@nycode/ai";
 import { describeEval, StructuredOutputJudge } from "vitest-evals";
-import { createPiDocumentationEvalHarness } from "../src/harness.ts";
+import { createNycodeDocumentationEvalHarness } from "../src/harness.ts";
 
 const TEMPLATE_NAME = "current-time";
 const COMMAND = `/${TEMPLATE_NAME}`;
@@ -16,16 +16,16 @@ const SCENARIOS = [
 	},
 	{
 		title: "Create a user prompt template",
-		request: `Make a ${COMMAND} prompt template available in all my Pi sessions containing exactly: ${TEMPLATE_PROMPT}`,
+		request: `Make a ${COMMAND} prompt template available in all my Nycode sessions containing exactly: ${TEMPLATE_PROMPT}`,
 		scope: "user",
 	},
 ] as const;
 
 function registerScenario(scenario: (typeof SCENARIOS)[number]): void {
-	const harness = createPiDocumentationEvalHarness({
+	const harness = createNycodeDocumentationEvalHarness({
 		output: ({ session, agentDir }) => {
 			const workspace = session.sessionManager.getCwd();
-			const projectPath = join(workspace, ".pi", "prompts", `${TEMPLATE_NAME}.md`);
+			const projectPath = join(workspace, ".nycode", "prompts", `${TEMPLATE_NAME}.md`);
 			const userPath = join(agentDir, "prompts", `${TEMPLATE_NAME}.md`);
 			const expectedPath = scenario.scope === "project" ? projectPath : userPath;
 			const otherPath = scenario.scope === "project" ? userPath : projectPath;

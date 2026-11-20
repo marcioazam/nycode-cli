@@ -1,5 +1,5 @@
 // The `p3` command as a user runs it: launched from source as processes of its own, on a temporary home (named Pis
-// live under `~/.pi/p3/pis/`), each case with its own Pi.
+// live under `~/.nycode/p3/pis/`), each case with its own Nycode.
 
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
@@ -17,9 +17,9 @@ let home: string | undefined;
 
 afterEach(async () => {
 	if (home === undefined) return;
-	// Every Pi of the case stopped, whatever the case left running.
+	// Every Nycode of the case stopped, whatever the case left running.
 	await p3("stop").catch(() => {});
-	await p3("stop", "--pi", "two").catch(() => {});
+	await p3("stop", "--nycode", "two").catch(() => {});
 	await rm(home, { recursive: true, force: true });
 	home = undefined;
 });
@@ -38,7 +38,7 @@ async function p3(...args: string[]): Promise<{ readonly code: number; readonly 
 }
 
 describe("the p3 command", () => {
-	it("starts a Pi in the background once, prints an owner link, says it runs, and stops it", async () => {
+	it("starts a Nycode in the background once, prints an owner link, says it runs, and stops it", async () => {
 		const first = await p3("--port", "0");
 		assert.equal(first.code, 0, first.out);
 		const port = /port (\d+)\. Open http:\/\/127\.0\.0\.1:(\d+)\/_p3\/owner#/.exec(first.out);
@@ -58,27 +58,27 @@ describe("the p3 command", () => {
 		assert.match(after.out, /not running/);
 	});
 
-	it("keeps a named Pi's port across starts, lists the Pis and restarts one", async () => {
-		const started = await p3("--pi", "two");
+	it("keeps a named Nycode's port across starts, lists the Pis and restarts one", async () => {
+		const started = await p3("--nycode", "two");
 		assert.equal(started.code, 0, started.out);
 		const port = /port (\d+)\./.exec(started.out)?.[1];
 		assert.ok(port !== undefined);
-		const kept = JSON.parse(await readFile(join(home!, ".pi", "p3", "pis", "two", "pi.json"), "utf8")) as {
+		const kept = JSON.parse(await readFile(join(home!, ".nycode", "p3", "pis", "two", "nycode.json"), "utf8")) as {
 			readonly port: number;
 		};
 		assert.equal(String(kept.port), port);
 		const list = await p3("list");
 		assert.match(list.out, new RegExp(`two\\s+running\\s+${port}`));
-		const restarted = await p3("restart", "--pi", "two");
+		const restarted = await p3("restart", "--nycode", "two");
 		assert.equal(restarted.code, 0, restarted.out);
 		assert.match(restarted.out, new RegExp(`port ${port}\\.`));
-		await p3("stop", "--pi", "two");
+		await p3("stop", "--nycode", "two");
 		assert.match((await p3("list")).out, new RegExp(`two\\s+stopped\\s+${port}`));
 	});
 
 	it("refuses a command line it does not understand", async () => {
 		assert.equal((await p3("bogus")).code, 2);
-		assert.equal((await p3("--pi", "Not A Name")).code, 2);
+		assert.equal((await p3("--nycode", "Not A Name")).code, 2);
 		assert.equal((await p3("status", "--port", "1")).code, 2);
 	});
 });

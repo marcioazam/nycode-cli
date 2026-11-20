@@ -1,5 +1,5 @@
 // Store identities only, never log text. Browser persistence is best-effort (storage can be disabled).
-export const DISMISSED_NOTICE_PREFIX = "pi-owner-notice-dismissed:";
+export const DISMISSED_NOTICE_PREFIX = "nycode-owner-notice-dismissed:";
 
 export function noticeWasDismissed(id: string): boolean {
 	try {

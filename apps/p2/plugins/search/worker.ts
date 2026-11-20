@@ -9,8 +9,8 @@ import {
 	type EntryId,
 	type EntryRecord,
 	ROOT_CONVERSATION_ID,
-} from "@earendil-works/pi-durable";
-import { bool } from "@earendil-works/pi-schema";
+} from "@nycode/durable";
+import { bool } from "@nycode/schema";
 import {
 	agentMessage,
 	type Ctx,
@@ -47,7 +47,7 @@ function indexedMessage(entry: EntryRecord): IndexedMessage | undefined {
 	if (role !== "user" && role !== "assistant") return undefined;
 	// Durable's own entries with user messages (compaction summaries, handoffs) are not inputs; neither are user shell
 	// commands (`!cmd`), whose model message is the command's output (it must not become the session's title).
-	if (role === "user" && entry.kind.startsWith("pi.") && entry.kind !== "pi.user") return undefined;
+	if (role === "user" && entry.kind.startsWith("nycode.") && entry.kind !== "nycode.user") return undefined;
 	if (entry.kind === SHELL_ENTRY) return undefined;
 	if (role === "assistant" && !AssistantEntry.is(entry)) return undefined;
 	const messages = entry.model?.filter((message) => message.role === role) ?? [];

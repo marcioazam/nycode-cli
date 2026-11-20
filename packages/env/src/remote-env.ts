@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { type PlatformPath, posix, win32 } from "node:path";
 import { StringDecoder } from "node:string_decoder";
 import { fileURLToPath } from "node:url";
-import type { Context } from "@earendil-works/chord/context";
+import type { Context } from "@nycode/chord/context";
 import {
 	type BinaryReader,
 	type DirReader,
@@ -27,7 +27,7 @@ import {
 	type TextLine,
 	type TextLineReader,
 	type WatchTarget,
-} from "@earendil-works/pi-durable/env";
+} from "@nycode/durable/env";
 import { type Connection, type Json, nodePlatform, RemoteError, type RemoteInfo } from "./connection.ts";
 import { abortResult, toFileError } from "./errors.ts";
 import { listFilesOver } from "./list-files.ts";
@@ -50,7 +50,7 @@ const LINE_CHUNK = 64 * 1024;
 
 export interface RemoteExecutionEnvOptions {
 	connection: Connection;
-	/** The file namespace: equal ids see the same files (`FileSystem.id`), e.g. `pi-env:<env name>`. */
+	/** The file namespace: equal ids see the same files (`FileSystem.id`), e.g. `nycode-env:<env name>`. */
 	id: string;
 	cwd: string;
 	shellPath?: string;
@@ -348,7 +348,7 @@ class RemoteTextLineReader implements TextLineReader {
 }
 
 /**
- * An `ExecutionEnv` on another machine, reached through a pi-env daemon. Results match `NodeExecutionEnv` running on
+ * An `ExecutionEnv` on another machine, reached through a nycode-env daemon. Results match `NodeExecutionEnv` running on
  * that machine: the daemon performs the system calls, and this class applies Node's path, error, and result rules.
  */
 export class RemoteExecutionEnv implements ExecutionEnv {

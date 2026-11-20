@@ -1,6 +1,6 @@
 // Copied from coding-agent core/tools/render-utils.ts without `node:os` homedir, `pathToFileURL` hyperlinks or local
 // path resolution (section 11): paths display relative to the session cwd. Output text is sanitized server text.
-import { imageFallback } from "@earendil-works/pi-tui";
+import { imageFallback } from "@nycode/tui";
 import { keyHint, type RenderContext, safeText } from "../render-context.ts";
 import type { Theme } from "../theme/theme.ts";
 import type { ToolResultView } from "./types.ts";

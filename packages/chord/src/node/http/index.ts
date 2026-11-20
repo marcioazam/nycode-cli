@@ -1,4 +1,4 @@
-// Chord v2's HTTP component (`@earendil-works/chord/http`, slice 10 §2): a Web-standard `fetch` handler built
+// Chord v2's HTTP component (`@nycode/chord/http`, slice 10 §2): a Web-standard `fetch` handler built
 // from the routes, wraps and sockets plugins contribute to the registry `Http`, with the security baseline on by
 // default, Chord's own Node listener, a Node upgrade adapter and the Node request conversion for apps that mount it.
 // Node-only; `ws` is an optional peer dependency, imported only here.

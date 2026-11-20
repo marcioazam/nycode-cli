@@ -2,9 +2,9 @@
 // by the principal alone, before anything else; its admission then reads the sessions table, so no worker starts for
 // a session that does not exist. The kit gives both to the workers component, the test topology to its own route.
 
-import { type Address, type AdmitSelf, allow, deny } from "@earendil-works/chord";
-import type { Session } from "@earendil-works/p3/v1";
-import { SessionRoute } from "@earendil-works/p3/v1/server";
+import { type Address, type AdmitSelf, allow, deny } from "@nycode/chord";
+import type { Session } from "@nycode/p3/v1";
+import { SessionRoute } from "@nycode/p3/v1/server";
 import type { P3Principal } from "./principals.ts";
 
 /** Who may reach a session's worker: the owner and the server (persons come with admission, slice 5). */

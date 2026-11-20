@@ -24,7 +24,7 @@ export interface OpenRouterPricingOverride {
 	input_cache_write?: string;
 }
 
-/** The fields pi reads from a model in OpenRouter's `GET /models` and `GET /models/user`. */
+/** The fields nycode reads from a model in OpenRouter's `GET /models` and `GET /models/user`. */
 export interface OpenRouterModel {
 	id: string;
 	context_length?: number | null;
@@ -43,7 +43,7 @@ function perMillion(value: string | undefined, fallback: number): number {
 }
 
 /**
- * Convert OpenRouter's $/token prices to pi's $/1M tokens. Missing, invalid and negative base
+ * Convert OpenRouter's $/token prices to nycode's $/1M tokens. Missing, invalid and negative base
  * prices are 0. Prompt-length overrides become request-wide tiers; a rate a tier does not list
  * keeps the base price. Time-of-day overrides are skipped because ModelCost cannot express them.
  */

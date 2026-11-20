@@ -1,8 +1,8 @@
 // The tunnel plugin: when its tunnel opens, it allows the tunnel's public host (requests through it are https); when
 // it closes, it takes the host back. Its contribution is a writable, so the router follows each change.
 
-import { defineFacet, local, method, str } from "@earendil-works/chord";
-import { Http, type HttpContribution } from "@earendil-works/chord/http";
+import { defineFacet, local, method, str } from "@nycode/chord";
+import { Http, type HttpContribution } from "@nycode/chord/http";
 
 export const Tunnel = local("example.tunnel", {
 	version: 1,

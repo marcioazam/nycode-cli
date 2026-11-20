@@ -117,7 +117,7 @@ table{max-width:100%}
 ourselves, but p3 must allow 3rd parties to integrate them and associate external accounts with the p3 account AND let
 a plugin that provides that integration use that account info to do stuff like mcp sign in, or providers, or
 whatever.&quot; Nothing here is decided or built; every name is a proposal. Chord names (remote, local, registries,
-references, the kit&#39;s <code>Sessions</code> and <code>Http</code>) are real. pi-ai&#39;s provider auth follows its <code>ApiKeyAuth</code>
+references, the kit&#39;s <code>Sessions</code> and <code>Http</code>) are real. nycode-ai&#39;s provider auth follows its <code>ApiKeyAuth</code>
 (<code>packages/ai/src/auth/types.ts</code>). The decisions needed are listed at the end.</p>
 </div>
 </section><div class="inner">
@@ -171,7 +171,7 @@ expires and the new token arrives as a state change; every use on the worker is 
 <li><strong>A session uses an account only when its owner brought it in.</strong> Bringing an account into a session is a grant the
 account&#39;s user makes; the server checks it when the session&#39;s worker asks for credentials. Nothing personal comes
 into a shared session by itself.</li>
-<li><strong>Models and MCP use the same path.</strong> A model-provider plugin contributes a pi-ai provider whose auth reads the
+<li><strong>Models and MCP use the same path.</strong> A model-provider plugin contributes a nycode-ai provider whose auth reads the
 followed token; the MCP plugin connects to a server with an <code>auth: { account }</code> setting the same way.</li>
 </ol>
 <h3 id="words-used-throughout">Words used throughout</h3>
@@ -481,7 +481,7 @@ worker&#39;s reference fails and its next use sees &quot;unavailable&quot;.</p>
 </section>
 
 <section class="chapter" id="models"><header class="opener"><div class="numeral">VI</div><h2>Models</h2><p class="lede">A model-provider plugin whose auth reads the followed token.</p></header>
-<p class="dropcap">The Radius integration (or a separate plugin) contributes a pi-ai provider to the session worker&#39;s <code>ModelProviders</code>
+<p class="dropcap">The Radius integration (or a separate plugin) contributes a nycode-ai provider to the session worker&#39;s <code>ModelProviders</code>
 registry (the harness&#39;s, from the map). Its auth resolves the token from the followed <code>AccountCredentials</code>, so each
 request uses the current token and the refresh is the server&#39;s business:</p>
 <pre><code><span class="tk-c">// ~/.p3/plugins/p3-radius/worker.ts (third party)</span>
@@ -758,7 +758,7 @@ its own provider&#39;s rows) is enforceable for well-behaved plugins through the
 </tbody></table>
 </section>
 
-<p class="colophon">p3 users, accounts and access · design proposal, first edition · 2026-11-07 · sources: Chord design §4, §6, §7, §17, §23; the app kit; pi-ai auth types; the Radius API&#39;s members, groups and context operations</p>
+<p class="colophon">p3 users, accounts and access · design proposal, first edition · 2026-11-07 · sources: Chord design §4, §6, §7, §17, §23; the app kit; nycode-ai auth types; the Radius API&#39;s members, groups and context operations</p>
 </div></div>
 <script>(function activate(root) {
 	const replay = (f) => {

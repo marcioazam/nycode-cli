@@ -6,7 +6,7 @@ keyed by the tool's name. A tool without any registration still shows, with the 
 
 Paths are relative to `apps/p2`. Plugins import p2 only through `@p2/app/v1` and its per-kind modules
 (`/worker`, `/web`, `/tui`); see `docs/handoff.md` and Chord's plugin guide (`packages/chord/docs/
-plugin-authoring.md`) for plugins in general, `.pi/skills/p2-ui.md` for p2's UI rules.
+plugin-authoring.md`) for plugins in general, `.nycode/skills/p2-ui.md` for p2's UI rules.
 
 ## The parts
 
@@ -42,15 +42,15 @@ manifest.
 ### The tool (worker)
 
 `tool.ts` defines the tool with Durable's `defineTool`: `name`, `description` and `parameters` (a JSON Schema built
-with `@earendil-works/pi-schema`) are what the model sees; `execute` does the work. Its result has `output` (the text
+with `@nycode/schema`) are what the model sees; `execute` does the work. Its result has `output` (the text
 the model reads, and the chat's output block) and `details` (JSON for the UI, see below). A thrown error becomes a
 failed call whose output is the error's message.
 
 ```ts plugins/word-count/tool.ts
 // The `word_count` tool: what the model sees (name, description, parameters) and what it does. Nothing here says how
 // a call looks: that is the web and TUI facets' business.
-import { defineExtension, defineTool } from "@earendil-works/pi-durable";
-import { obj, str } from "@earendil-works/pi-schema";
+import { defineExtension, defineTool } from "@nycode/durable";
+import { obj, str } from "@nycode/schema";
 
 /** What a call's result keeps for the UI, beside the text the model reads: the counts. */
 export type WordCountDetails = { words: number; lines: number };
@@ -245,12 +245,12 @@ of identical calls in a row.
 
 ### The terminal (TUI)
 
-`tui.ts` registers pi's renderer contract for the tool in `TuiToolRenderers` (`src/tui/tools/types.ts`), keyed by
+`tui.ts` registers nycode's renderer contract for the tool in `TuiToolRenderers` (`src/tui/tools/types.ts`), keyed by
 the tool's name.
 
 ```ts plugins/word-count/tui.ts
 // The TUI facet: the tool's card in the terminal transcript.
-import { Text } from "@earendil-works/pi-tui";
+import { Text } from "@nycode/tui";
 import { contribute, defineFacet } from "@p2/app/v1";
 import { getTextOutput, lineText, record, str, type ToolRenderers, TuiToolRenderers } from "@p2/app/v1/tui";
 
@@ -278,7 +278,7 @@ export default defineFacet((host) => {
 
 | Field | Gets | Draws | Without it |
 | --- | --- | --- | --- |
-| `renderCall` | the arguments, the theme, the context | the card's head | the tool's name and its arguments (pi's generic card) |
+| `renderCall` | the arguments, the theme, the context | the card's head | the tool's name and its arguments (nycode's generic card) |
 | `renderResult` | the result (`content`, `details`), `{ expanded, isPartial }`, the theme, the context | the card's body | the output's first 10 lines, all when expanded |
 | `renderShell` | — | `"self"`: the renderer draws its own frame; `"default"`: in the card's box | the box |
 | `nestedCalls` | the `ToolView` | the calls this call made, for `context.calls` | `tool.calls` |
@@ -312,7 +312,7 @@ Briefly; each is a keyed registry a facet contributes to (`docs/plugin-hooks.md`
 - **Composer expanders** (`ComposerExpanders`, `src/runtime/composer.ts`): rewrite the composer's text before it is
   sent (the prompt plugin expands `/template` and `/skill:`).
 - **Sheets**: a component in a slot opens a route layer with `openLayer({ kind: "sheet", name, locator })` and
-  renders `Sheet` while `useSheet(name)` is its own (`.pi/skills/p2-ui.md`, Back navigation).
+  renders `Sheet` while `useSheet(name)` is its own (`.nycode/skills/p2-ui.md`, Back navigation).
 - **Viewers**: `OpenViewer` with a `ViewerItem` (a sent file) from a `Result` or `Detail`.
 - **Transcript entries** (`TranscriptEntries`, the chat plugin's contract): what a plugin adds to the display of its
   entry kind's messages (the message it answers, a note), in the chat and the TUI.
@@ -336,4 +336,4 @@ Briefly; each is a keyed registry a facet contributes to (`docs/plugin-hooks.md`
 - **The TUI** (Node 26): draw a transcript with `transcriptComponent(transcript, false, expanded, { renderers })`
   from `src/tui/messages.ts` and match the stripped lines; add your renderers to `PLUGIN_TUI_RENDERERS` in
   `test/fixtures/tui-tools.ts`.
-- Browser tests run with `CHROMIUM_BIN` set (`.pi/skills/p2-ui.md`, Tests).
+- Browser tests run with `CHROMIUM_BIN` set (`.nycode/skills/p2-ui.md`, Tests).

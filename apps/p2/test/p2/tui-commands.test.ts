@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { getKeybindings, stripTerminalSequences, TuiAltScreen } from "@earendil-works/pi-tui";
+import { getKeybindings, stripTerminalSequences, TuiAltScreen } from "@nycode/tui";
 import { VirtualTerminal } from "../../../../packages/tui/test/virtual-terminal.ts";
 import { loadLocalPreferences } from "../../src/hosts/tui-local-preferences.ts";
 import { defineFacet } from "../../src/runtime/chord.ts";
@@ -37,7 +37,7 @@ async function runtimeWith(t: { after(fn: () => unknown): void }, ...facets: Ret
 	const tui = new TuiAltScreen(terminal);
 	const runtime = new TuiRuntime(fixture.host, tui);
 	await runtime.start();
-	// The worker runtime's wiring: input reaches the runtime through pi-tui (stage 2 runs first).
+	// The worker runtime's wiring: input reaches the runtime through nycode-tui (stage 2 runs first).
 	tui.setLayoutRoot(runtime.root);
 	tui.setFocus(runtime);
 	tui.start();
@@ -60,10 +60,10 @@ test("when expressions parse, evaluate and detect overlap under exclusive groups
 	assert.throws(() => parseWhen("(chat"), /missing/);
 });
 
-test("privileged keys: same pi default collision kept (search next), other collisions lose and are reported", () => {
+test("privileged keys: same nycode default collision kept (search next), other collisions lose and are reported", () => {
 	const definitions = builtinKeybindings();
 	const defaults = resolvePrivilegedKeys(definitions, {});
-	// pi resolves Ctrl+G (external editor / search next) by mode; the worker suspends interception while searching.
+	// nycode resolves Ctrl+G (external editor / search next) by mode; the worker suspends interception while searching.
 	assert.deepEqual(defaults.keys["app.editor.external"], ["ctrl+g"]);
 	assert.deepEqual(defaults.keys["app.clipboard.pasteImage"], ["ctrl+v"]);
 	assert.deepEqual(defaults.lost, []);
@@ -85,7 +85,7 @@ test("privileged keys: same pi default collision kept (search next), other colli
 	assert.deepEqual(rebound.keys["app.editor.external"], []);
 });
 
-test("pi keybindings.json: legacy names migrate, invalid entries are reported, the user override drives dispatch", async (t) => {
+test("nycode keybindings.json: legacy names migrate, invalid entries are reported, the user override drives dispatch", async (t) => {
 	const directory = mkdtempSync(join(tmpdir(), "p2-tui-keys-"));
 	t.after(() => rmSync(directory, { recursive: true, force: true }));
 	const agentDir = join(directory, "agent");
@@ -114,7 +114,7 @@ test("pi keybindings.json: legacy names migrate, invalid entries are reported, t
 	await poll(() => runtime.commands.list().some((item) => item.id === "app.model.select"));
 	runtime.appearance.update({ local: preferences });
 	assert.deepEqual(runtime.keys.getKeys("app.model.select"), ["ctrl+k"]);
-	assert.equal(getKeybindings(), runtime.keys, "the rebuilt manager is installed for pi-tui components");
+	assert.equal(getKeybindings(), runtime.keys, "the rebuilt manager is installed for nycode-tui components");
 	send("\x0c");
 	assert.equal(selected, 0, "Ctrl+L no longer selects");
 	send(CTRL_K);

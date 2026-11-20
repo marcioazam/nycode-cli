@@ -14,7 +14,7 @@ import {
 	type Message,
 	type Models,
 	type ToolResultMessage,
-} from "@earendil-works/pi-ai";
+} from "@nycode/ai";
 import {
 	defineTool,
 	type GenerationCheckpoint,
@@ -26,8 +26,8 @@ import {
 	type Storage,
 	type SubmissionId,
 	type TaskId,
-} from "@earendil-works/pi-durable";
-import { obj } from "@earendil-works/pi-schema";
+} from "@nycode/durable";
+import { obj } from "@nycode/schema";
 import { afterEach, describe, expect, it } from "vitest";
 import { openNodeSqliteStorage } from "../src/storage/sqlite/node.ts";
 import { commitWrites } from "../src/testing/commit-writes.ts";
@@ -48,7 +48,7 @@ afterEach(async () => {
 });
 
 async function sqlitePath(): Promise<string> {
-	const directory = await mkdtemp(join(tmpdir(), "pi-durable-restart-"));
+	const directory = await mkdtemp(join(tmpdir(), "nycode-durable-restart-"));
 	directories.add(directory);
 	return join(directory, "session.sqlite");
 }
@@ -79,12 +79,12 @@ async function live(harness: Harness): Promise<Readonly<LiveState>> {
 	return (await harness.snapshot(LiveDoc, ROOT_CONVERSATION_ID, context)) ?? {};
 }
 
-/** Every `pi.live` value from now on, as memory adopts it. */
+/** Every `nycode.live` value from now on, as memory adopts it. */
 function liveValues(harness: Harness): LiveState[] {
 	const values: LiveState[] = [];
 	followCommits(harness, (publication) => {
 		for (const change of publication.changes) {
-			if (change.type === "document" && change.record.kind === "pi.live" && change.kind === "change") {
+			if (change.type === "document" && change.record.kind === "nycode.live" && change.kind === "change") {
 				values.push(change.value as LiveState);
 			}
 		}
@@ -159,7 +159,7 @@ describe("a generation interrupted while the model answers (#11139)", () => {
 		expect((await opened.harness.getTask(taskId, context))?.restarts).toBe(1);
 		opened.harness.resume();
 		expect((await settled(opened.harness, id)).status).toBe("done");
-		// The backoff showed in `pi.live` with why.
+		// The backoff showed in `nycode.live` with why.
 		const retry = values.find((value) => value.generation?.retry !== undefined)?.generation;
 		expect(retry).toEqual({
 			attempt: 1,
@@ -167,7 +167,7 @@ describe("a generation interrupted while the model answers (#11139)", () => {
 		});
 		expect(values.some((value) => value.generation?.attempt === 2)).toBe(true);
 		const entries = await allEntries(opened.root);
-		expect(entries.map((entry) => entry.kind)).toEqual(["pi.user", "pi.assistant", "pi.assistant"]);
+		expect(entries.map((entry) => entry.kind)).toEqual(["nycode.user", "nycode.assistant", "nycode.assistant"]);
 		const converted = entries[1]!.model![0] as AssistantMessage;
 		expect(converted.stopReason).toBe("aborted");
 		expect(textOf(converted)).toBe(partial);
@@ -229,7 +229,7 @@ describe("a generation interrupted while the model answers (#11139)", () => {
 			error: { message: text, detail: { reason: "interrupted" } },
 		});
 		const entries = await allEntries(opened.root);
-		expect(entries.map((entry) => entry.kind)).toEqual(["pi.user", "pi.assistant", "pi.assistant"]);
+		expect(entries.map((entry) => entry.kind)).toEqual(["nycode.user", "nycode.assistant", "nycode.assistant"]);
 		expect(entries.slice(1).map((entry) => (entry.model![0] as AssistantMessage).stopReason)).toEqual([
 			"aborted",
 			"aborted",
@@ -407,7 +407,7 @@ describe("other tasks cut off restartLimit times in a row (#11139)", () => {
 		}
 		expect((await settled(opened.harness, id)).status).toBe("done");
 		expect(runs).toBe(2);
-		const result = (await allEntries(opened.root)).find((entry) => entry.kind === "pi.tool-result")!;
+		const result = (await allEntries(opened.root)).find((entry) => entry.kind === "nycode.tool-result")!;
 		const message = result.model![0] as ToolResultMessage;
 		expect(message.isError).toBe(true);
 		expect(result.data).toMatchObject({
@@ -421,14 +421,15 @@ describe("other tasks cut off restartLimit times in a row (#11139)", () => {
 		});
 		// The slot's partial output is kept, as for an interrupted call.
 		expect(textOf(message)).toContain("partial");
-		const toolTask = (await opened.harness.commit((tx) => tx.scanTasks({ kind: "pi.tool" }, 10), context)).items[0]!;
+		const toolTask = (await opened.harness.commit((tx) => tx.scanTasks({ kind: "nycode.tool" }, 10), context))
+			.items[0]!;
 		expect(toolTask.state).toMatchObject({
 			status: "terminal",
 			outcome: { status: "failed", error: { detail: { reason: "restart_limit" } } },
 		});
 		expect(setup.infos).toContainEqual({
 			kind: "task_interrupted",
-			task: { id: toolTask.id, kind: "pi.tool", conversationId: ROOT_CONVERSATION_ID },
+			task: { id: toolTask.id, kind: "nycode.tool", conversationId: ROOT_CONVERSATION_ID },
 			reason: "restart_limit",
 			restarts: 2,
 		});
@@ -469,7 +470,7 @@ describe("other tasks cut off restartLimit times in a row (#11139)", () => {
 		await waitFor(() => setup.infos.length > 0);
 		expect(setup.infos).toContainEqual({
 			kind: "task_interrupted",
-			task: { id: compaction, kind: "pi.compaction", conversationId: ROOT_CONVERSATION_ID },
+			task: { id: compaction, kind: "nycode.compaction", conversationId: ROOT_CONVERSATION_ID },
 			reason: "restart_limit",
 			restarts: 1,
 		});
@@ -611,9 +612,9 @@ describe("crash edges (#11139)", () => {
 		const charged = values.filter((value) => value.generation?.retry !== undefined);
 		expect(charged.map((value) => value.generation?.attempt)).toEqual([1]);
 		expect((await allEntries(opened.root)).map((entry) => entry.kind)).toEqual([
-			"pi.user",
-			"pi.assistant",
-			"pi.assistant",
+			"nycode.user",
+			"nycode.assistant",
+			"nycode.assistant",
 		]);
 		await opened.harness.close(context);
 	});
@@ -639,7 +640,7 @@ describe("crash edges (#11139)", () => {
 			runFailure: { taskId, inputs: [id], reason: "restart_limit", detail: text, first: expect.any(Number) },
 		});
 		const entries = await allEntries(opened.root);
-		expect(entries.map((entry) => entry.kind)).toEqual(["pi.user", "pi.assistant"]);
+		expect(entries.map((entry) => entry.kind)).toEqual(["nycode.user", "nycode.assistant"]);
 		expect(textOf(entries[1]!.model![0])).toBe(partial);
 		expect(setup.faux.state.callCount).toBe(0);
 		await opened.harness.close(context);
@@ -663,7 +664,7 @@ describe("crash edges (#11139)", () => {
 			reason: "restart_limit",
 			detail: "The generation was interrupted 3 times in a row in its request phase",
 		});
-		expect((await allEntries(opened.root)).map((entry) => entry.kind)).toEqual(["pi.user"]);
+		expect((await allEntries(opened.root)).map((entry) => entry.kind)).toEqual(["nycode.user"]);
 		expect((await live(opened.harness)).generation).toBeUndefined();
 		await opened.harness.close(context);
 	});
@@ -693,7 +694,7 @@ describe("crash edges (#11139)", () => {
 			expect((await opened.harness.getTask(taskId, context))?.restarts).toBe(crash);
 			opened.harness.resume();
 		}
-		const detail = `Abort handler of task ${taskId} (pi.generation) was cut off 2 times`;
+		const detail = `Abort handler of task ${taskId} (nycode.generation) was cut off 2 times`;
 		expect(await settled(opened.harness, id)).toMatchObject({ status: "unanswered", reason: "aborted", detail });
 		expect(await live(opened.harness)).toEqual({
 			runFailure: { taskId, inputs: [id], reason: "aborted", detail, first: expect.any(Number) },
@@ -723,7 +724,7 @@ describe("reports of work crashes ended (#11139)", () => {
 		expect(setup.infos).toEqual([
 			{
 				kind: "task_interrupted",
-				task: { id: taskId, kind: "pi.generation", conversationId: ROOT_CONVERSATION_ID },
+				task: { id: taskId, kind: "nycode.generation", conversationId: ROOT_CONVERSATION_ID },
 				reason: "interrupted",
 				restarts: 1,
 			},

@@ -3,7 +3,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
-import type { AuthOperationOptions } from "@earendil-works/pi-ai";
+import type { AuthOperationOptions } from "@nycode/ai";
 import lockfile from "proper-lockfile";
 import { normalizePath } from "./config-json.ts";
 

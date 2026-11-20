@@ -1,13 +1,13 @@
-// Code mode's calls (copied from Pi Mobile): nested calls live from pi.live.nestedTools, grouped by the model's call
+// Code mode's calls (copied from Nycode Mobile): nested calls live from nycode.live.nestedTools, grouped by the model's call
 // with depth from the parentCallId chain, settled from the result's details.calls; in the browser (the script's step
 // in its turn's activity sheet) and in the TUI's card.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { AssistantMessage, ToolResultMessage } from "@earendil-works/pi-ai";
-import { fauxAssistantMessage } from "@earendil-works/pi-ai/providers/faux";
-import type { ConversationView, EntryId, LiveState } from "@earendil-works/pi-durable";
-import type { CodemodeToolDetails } from "@earendil-works/pi-durable/codemode";
-import { stripTerminalSequences } from "@earendil-works/pi-tui";
+import type { AssistantMessage, ToolResultMessage } from "@nycode/ai";
+import { fauxAssistantMessage } from "@nycode/ai/providers/faux";
+import type { ConversationView, EntryId, LiveState } from "@nycode/durable";
+import type { CodemodeToolDetails } from "@nycode/durable/codemode";
+import { stripTerminalSequences } from "@nycode/tui";
 import { scriptCalls } from "../../plugins/codemode/nested.ts";
 import { transcriptComponent } from "../../src/tui/messages.ts";
 import { buildTranscript, type ToolView } from "../../src/web/transcript.ts";
@@ -36,7 +36,7 @@ function assistant(id: number, callId: string, code = SCRIPT): ConversationView[
 		stopReason: "toolUse",
 		timestamp: id,
 	};
-	return { id: id as EntryId, conversationId: conversation.id, kind: "pi.assistant", model: [message] };
+	return { id: id as EntryId, conversationId: conversation.id, kind: "nycode.assistant", model: [message] };
 }
 
 type NestedSlot = NonNullable<LiveState["nestedTools"]>[number];
@@ -91,7 +91,7 @@ function running(): ConversationView {
 		conversation,
 		entries: [assistant(2, CALL)],
 		docs: {
-			"pi.live": {
+			"nycode.live": {
 				run: { taskId: 1, inputs: [] },
 				tools: [{ callId: CALL, name: "codemode", taskId: 1, status: "running" }],
 				nestedTools,
@@ -121,7 +121,7 @@ function settled(): ConversationView {
 		conversation,
 		entries: [
 			assistant(2, CALL),
-			{ id: 3 as EntryId, conversationId: conversation.id, kind: "pi.tool-result", model: [result] },
+			{ id: 3 as EntryId, conversationId: conversation.id, kind: "nycode.tool-result", model: [result] },
 		],
 		docs: {},
 	};
@@ -161,11 +161,11 @@ test("live nested calls are grouped under the model's call, with depth from the 
 
 test("live calls of code mode's internal tools show by their script name, as settled ones do", () => {
 	const view = running();
-	const live = view.docs["pi.live"] as unknown as LiveState;
-	const classify = slot(CALL, "c10", 30, "pi.codemode.models.classify", { prompt: "x" }, "running");
+	const live = view.docs["nycode.live"] as unknown as LiveState;
+	const classify = slot(CALL, "c10", 30, "nycode.codemode.models.classify", { prompt: "x" }, "running");
 	const card = codemode({
 		...view,
-		docs: { ...view.docs, "pi.live": { ...live, nestedTools: [...(live.nestedTools ?? []), classify] } },
+		docs: { ...view.docs, "nycode.live": { ...live, nestedTools: [...(live.nestedTools ?? []), classify] } },
 	} as ConversationView);
 	assert.equal(card?.calls?.at(-1)?.name, "models.classify");
 });
@@ -194,7 +194,7 @@ test("settled calls come from the result's details.calls", () => {
 	assert.equal(codemode(broken)?.calls, undefined);
 });
 
-test("TUI shows pi's code mode card: the script, the newest nested calls by depth, then the output", () => {
+test("TUI shows nycode's code mode card: the script, the newest nested calls by depth, then the output", () => {
 	const render = (view: ConversationView, expanded = false) =>
 		transcriptComponent(buildTranscript(wholeView(view)), false, expanded, { renderers: PLUGIN_TUI_RENDERERS })
 			.render(120)
@@ -202,7 +202,7 @@ test("TUI shows pi's code mode card: the script, the newest nested calls by dept
 			.join("\n");
 	const live = render(running());
 	assert.match(live, /codemode\n +\/\/ read every file/);
-	// pi's renderer: the newest eight rows with status, name, JSON arguments, duration; earlier ones behind a hint.
+	// nycode's renderer: the newest eight rows with status, name, JSON arguments, duration; earlier ones behind a hint.
 	assert.match(live, /2 earlier calls/);
 	assert.doesNotMatch(live, /subagent/);
 	assert.match(live, /✗ read .*f3\.ts.* 40ms\n +ENOENT: f3\.ts/);

@@ -7,23 +7,16 @@
  * tool listings): a nested durable call with its own task, live row, abort, usage accounting, and replay policy. The
  * code mode tool turns a script's call of the global into a call of that tool.
  */
-import type { Context } from "@earendil-works/chord/context";
-import type { JsonValue } from "@earendil-works/chord/json";
-import type {
-	AnyModel,
-	ClassifierContext,
-	ImagesContext,
-	Models,
-	ModelType,
-	ModelTypeMap,
-	Usage,
-} from "@earendil-works/pi-ai";
-import { obj, unknown } from "@earendil-works/pi-schema";
+
+import type { AnyModel, ClassifierContext, ImagesContext, Models, ModelType, ModelTypeMap, Usage } from "@nycode/ai";
+import type { Context } from "@nycode/chord/context";
+import type { JsonValue } from "@nycode/chord/json";
+import { obj, unknown } from "@nycode/schema";
 import { defineTool } from "../harness/define.ts";
 import type { ToolRegistration } from "../harness/types.ts";
 
 /** Reserved names of code mode's internal tools; they are never listed to scripts or the model. */
-export const CODEMODE_INTERNAL_PREFIX = "pi.codemode.";
+export const CODEMODE_INTERNAL_PREFIX = "nycode.codemode.";
 export const CLASSIFY_TOOL = `${CODEMODE_INTERNAL_PREFIX}models.classify`;
 export const GENERATE_IMAGES_TOOL = `${CODEMODE_INTERNAL_PREFIX}models.generateImages`;
 

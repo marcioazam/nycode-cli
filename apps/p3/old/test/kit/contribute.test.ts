@@ -2,9 +2,9 @@
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { createHost } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context";
-import { constant, contribute, defineFacet, defineRegistry, local, type P3Principal, str } from "@earendil-works/p3/v1";
+import { createHost } from "@nycode/chord";
+import { BACKGROUND_CONTEXT as context } from "@nycode/chord/context";
+import { constant, contribute, defineFacet, defineRegistry, local, type P3Principal, str } from "@nycode/p3/v1";
 
 /** A registry of greetings, composed into one list. */
 const Greetings = defineRegistry<string, readonly string[]>("test.greetings", { version: 1 });
@@ -13,7 +13,7 @@ const Names = local("test.names", { version: 1, params: {}, members: { name: str
 
 const facet = defineFacet((host) => {
 	host.serve(Greetings, { compose: (table) => table.map(({ value }) => value) });
-	host.serve(Names, () => ({ name: constant("Pi") }));
+	host.serve(Names, () => ({ name: constant("Nycode") }));
 	// The contribution follows another object's state: it needs a reference, so it needs an object.
 	contribute(host, "test.greeter", (self) => {
 		const names = self.get(Names, {});
@@ -29,7 +29,7 @@ describe("contribute", () => {
 		const host = createHost<P3Principal>({ onError: () => {} });
 		await host.load([{ name: "@test/contribute", facet }], context);
 		const greetings = await host.registry(Greetings, context);
-		assert.deepEqual(greetings.value, ["hello Pi"]);
+		assert.deepEqual(greetings.value, ["hello Nycode"]);
 		await host.close(context);
 	});
 });

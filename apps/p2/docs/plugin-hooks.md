@@ -148,7 +148,7 @@ Reserved host endpoints are `/health`, `/__p2_dev`, `/__p2_tui[/<hash>.mjs]` and
 
 `Extensions` (`src/runtime/worker.ts:57`): key = extension name, value = a Durable `Extension`
 (`packages/durable/src/harness/types.ts:365-374`). Every conversation selects every installed extension unless its
-`pi.agent.extensions` says otherwise (`packages/durable/src/harness/types.ts:530-532`); the Harness reads the registry
+`nycode.agent.extensions` says otherwise (`packages/durable/src/harness/types.ts:530-532`); the Harness reads the registry
 through `durableRegistry` (`src/runtime/durable.ts:41`).
 
 | Part | Field | What | p2 users |
@@ -209,7 +209,7 @@ self.register(SendRouters, {
   (`plugins/chat/contract.ts:127-128`); `write` appends display-only entries (`:150-158`). Data that is a person's
   message (`MessageDataSchema`, `src/runtime/input.ts:144`) is shown by both UIs; other model-less kinds are hidden on
   the web (`src/web/transcript.ts:506-512`) and need a `TuiEntryRenderers` entry in the TUI.
-- **Documents:** `defineDoc` from `@earendil-works/pi-durable`; write in `harness.commit(tx => tx.doc(Doc, id))`,
+- **Documents:** `defineDoc` from `@nycode/durable`; write in `harness.commit(tx => tx.doc(Doc, id))`,
   read with `harness.snapshot(Doc, id)` or in tools/hooks via their API. Conversation docs reach clients in
   `Chat.view.docs`. Examples: `p2.subagents`, `p2.agent-run`, `p2.views`, chat-mode's `ChatModeDoc`
   (`plugins/chat-mode/worker.ts:25`). Change signals: `CommitSignal` (`src/runtime/commits.ts:4`), `watchSource`
@@ -298,14 +298,14 @@ Every factory is instantiated when registered (`:480`), rendered or not.
 
 ### 5.2 Commands, keys, slash
 
-`TuiCommands` (`src/runtime/tui-commands.ts:29-49`): key = command id (pi ids such as `app.model.select` where the
+`TuiCommands` (`src/runtime/tui-commands.ts:29-49`): key = command id (nycode ids such as `app.model.select` where the
 meaning matches, else `<plugin>.<verb>`; `tui.*` and launcher ids are refused, `:260`). Value: `title`, `category`,
 `keys`, `when`, `slash: {name, argumentHint, complete, tabOnly}`, `palette`, `run(ctx, args)`.
 
 - `when` grammar (`:65-113`): `&&`, `||`, `!`, parentheses over terms: screen names, `owner`/`guest`, `connected`,
   `overlay`, `overlay:<id>`, and the active surface's `contexts()` (`src/runtime/tui.ts:403-411`). More terms win.
 - Key conflicts, launcher-owned keys, slash collisions are reported in `/hotkeys`, never thrown (`:248-330`).
-- Visitors rebind ids in pi's `keybindings.json` or `prefs.json`; server defaults in `tui.json`.
+- Visitors rebind ids in nycode's `keybindings.json` or `prefs.json`; server defaults in `tui.json`.
 
 ```ts
 // plugins/artifacts/tui.ts:192
@@ -320,11 +320,11 @@ Prompt registers templates and skills (`plugins/prompt/tui.ts:87`).
 
 | Registry | Key → value | Order | Users |
 | --- | --- | --- | --- |
-| `TuiToolRenderers` | tool name → pi `ToolRenderers` (`renderCall`, `renderResult`, `renderShell`, p2's `nestedCalls`; `src/tui/tools/types.ts`) | — (without one: pi's generic card) | coding-tools, powershell, codemode, artifacts, ports, send-file, subagents, history |
+| `TuiToolRenderers` | tool name → nycode `ToolRenderers` (`renderCall`, `renderResult`, `renderShell`, p2's `nestedCalls`; `src/tui/tools/types.ts`) | — (without one: nycode's generic card) | coding-tools, powershell, codemode, artifacts, ports, send-file, subagents, history |
 | `TuiToolRendererResolvers` | `<order>:<plugin>` → `(toolName, next) => renderers` | key order, then the registry (`src/tui/tools/index.ts`); the registry's `nestedCalls` stays | quiet-tools (`10:`: one line per call, full content when expanded or failed) |
 | `TuiSettingFields` | `<plugin>.<name>` → `/settings` row (label, values, fallback), stored at `settings.plugins.<plugin>.<name>` of the visitor's prefs; read with `pluginSetting`; resolvers get the settings, a change redraws every card (`src/runtime/tui-preferences.ts`) | after the built-in rows, key order | quiet-tools |
 | `TuiEntryRenderers` | entry kind → `(entry, ctx) => Component \| undefined` (replaces the display; `undefined` hides) | — | core `p2.shell` (`src/tui/core-commands.ts:290`) |
-| `TuiMarkdownTransformers` | `<order>:<plugin>` → pi `MarkdownTransformer` | key order | core `00:mermaid` |
+| `TuiMarkdownTransformers` | `<order>:<plugin>` → nycode `MarkdownTransformer` | key order | core `00:mermaid` |
 | `TranscriptEntries` | shared with web (4.3) | — | chat-mode |
 
 All in `src/runtime/tui-renderers.ts:16-45`; consumed by the chat surface (`plugins/chat/tui.ts:226-248`).
@@ -365,7 +365,7 @@ actions can be requested; `K` actions fire on the visitor's own key and may ask 
 
 ## 6. Inconsistencies
 
-1. **Tool cards.** TUI: `TuiToolRenderers` + ordered resolvers, pi's contract. Web: a hard-coded switch in core
+1. **Tool cards.** TUI: `TuiToolRenderers` + ordered resolvers, nycode's contract. Web: a hard-coded switch in core
    (`src/web/Chat.tsx:303-511`) that knows plugin tools (artifact, ports, send_file, subagent) and imports a plugin
    contract (`src/web/Chat.tsx:12`). A new plugin's tool gets the generic JSON card on the web.
 2. **Entry display.** TUI `TuiEntryRenderers` replaces an entry's display; web has only `TranscriptEntries` (adds a
@@ -403,23 +403,23 @@ actions can be requested; `K` actions fire on the visitor's own key and may ask 
 12. **Reload.** Server/worker reload in place; TUI swaps the worker; web facets take effect through a page reload.
    Registries behave the same, their consumers do not.
 
-## 7. What is lacking (compared with pi 1.0 extensions)
+## 7. What is lacking (compared with nycode 1.0 extensions)
 
 Reference: `packages/coding-agent/docs/extensions.md`.
 
-| pi 1.0 | p2 today | Gap |
+| nycode 1.0 | p2 today | Gap |
 | --- | --- | --- |
-| `pi.on()` lifecycle: `session_start`/`shutdown`, `before_agent_start`, `context`, `message_end`, `tool_call`/`tool_result`, `turn_end`, `agent_before_settle`, `session_before_compact`, `user_bash`, `input`, `provider_stream_event`, `cache_warming_decision` | Chord resources for start/shutdown; Durable hooks cover `context` (`beforeRequest`), `message_end` (notify-only `afterResponse`), `tool_call`/`tool_result`, `turn_end` (`afterTools`), settle (`onYield`), compaction; `SendRouters` covers `Chat.send` input only | No input hook for peer/subagent/agent inputs; no `user_bash` (shell is hard-coded in chat); no stream events; no whole-prompt override (sections and `wrapSection` instead). Only cache-warming uses hooks (`afterResponse`, which gets the message only; the request it repeats comes from `HarnessParts.requestOf`); pi's `cache_warming_decision` has no p2 counterpart. |
+| `nycode.on()` lifecycle: `session_start`/`shutdown`, `before_agent_start`, `context`, `message_end`, `tool_call`/`tool_result`, `turn_end`, `agent_before_settle`, `session_before_compact`, `user_bash`, `input`, `provider_stream_event`, `cache_warming_decision` | Chord resources for start/shutdown; Durable hooks cover `context` (`beforeRequest`), `message_end` (notify-only `afterResponse`), `tool_call`/`tool_result`, `turn_end` (`afterTools`), settle (`onYield`), compaction; `SendRouters` covers `Chat.send` input only | No input hook for peer/subagent/agent inputs; no `user_bash` (shell is hard-coded in chat); no stream events; no whole-prompt override (sections and `wrapSection` instead). Only cache-warming uses hooks (`afterResponse`, which gets the message only; the request it repeats comes from `HarnessParts.requestOf`); nycode's `cache_warming_decision` has no p2 counterpart. |
 | `registerTool` with `exposure`, `namespace`, `annotations`, `prepareLoadout`, `reachesTools` | `callers`, `deferred`, replay policy | No annotations (no approval policy), no namespaces; `tool_search` not installed. |
 | `registerCommand`, `registerShortcut` | TUI only | No web commands or shortcuts. |
 | `registerFlag` | none | Plugins get configuration only via env vars or their own files; `settings.json` is closed. |
 | `registerProvider`, `registerVirtualModel` | `models.json` and `HarnessConfig["default"]` owned by the models plugin | No provider or virtual-model contribution. |
 | `registerMcpServer` | none (open item in `docs/handoff.md`) | No MCP. |
 | `sendUserMessage`, `sendMessage`, `appendEntry` | `Conversation.submit` / `write` (worker), `Chat.send` (clients) | Equivalent. |
-| `setActiveTools`, model and thinking control | `configure` on Durable `pi.agent`; `ExtensionSwitches` | Equivalent, per conversation. |
+| `setActiveTools`, model and thinking control | `configure` on Durable `nycode.agent`; `ExtensionSwitches` | Equivalent, per conversation. |
 | `registerToolRenderer`, message renderers | TUI only | Web has neither (6.1, 6.2). |
 | `ctx.ui` dialogs (`confirm`, `select`, `input`), widgets, status, title | TUI overlays and status lines inside the TUI; nothing a tool can ask | A tool cannot ask the person (ports asks the model to obtain confirmation in chat). |
-| `pi.events` between extensions | Chord contracts and registries | Stronger in p2. |
+| `nycode.events` between extensions | Chord contracts and registries | Stronger in p2. |
 | packages with skills, prompts, themes | built-in plugins only | Designed in `plugin-loading.md`. |
 | themes | TUI: visitor's own; web: fixed CSS | No plugin themes. |
 
@@ -450,13 +450,13 @@ Ordered by value; each keeps one name and one shape across surfaces.
 7. **Owner notices as a contract.** A server `Notices` registry/object (tone, message, actions as command ids,
    dismiss) with web lane and TUI status lines as two renderers; `processLogs.notice` becomes one producer.
 8. **Plugin settings.** `settings.json` `plugins.<name>` validated by a schema each plugin registers
-   (`SettingsSchemas`), hot-reloaded like today; moves `codemode` out of core. This also covers pi's flags.
+   (`SettingsSchemas`), hot-reloaded like today; moves `codemode` out of core. This also covers nycode's flags.
 9. **Multi-provider registries.** `HarnessConfig` → `ModelProviders` (several plugins add providers, merged into
    `Models`); `HarnessEnvironments` keyed by environment kind; `ConversationLocations` as a registry. Unblocks
    `registerProvider`-like plugins and MCP.
 10. **Hooks that p2 owns.** An input hook for every submission path (Chat, peer, subagent, agent), a shell hook for
    `Chat.shell`, and a worker-side `ToolApprovals` question document with web and TUI renderers, so a tool can ask a
-   person (pi's `ctx.ui.confirm`) and annotations can drive it.
+   person (nycode's `ctx.ui.confirm`) and annotations can drive it.
 11. **Core free of plugin names.** Web facets loaded from the plugin graph like the other surfaces (plugin-loading.md);
    `Route` extension data per plugin (`route.plugins[name]`); no `plugins.includes(...)` in hosts; dev-tools through a
    `DevControl` contract instead of `src/hosts/dev-channel.ts`.

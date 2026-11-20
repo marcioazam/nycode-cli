@@ -1,5 +1,5 @@
 // Who runs on a data directory. A server writes `server.json` the moment it holds the data directory's lock (`starting`:
-// its pid and its process's start time), again once it listens and its owner link is ready (`running`: its Pi's id,
+// its pid and its process's start time), again once it listens and its owner link is ready (`running`: its Nycode's id,
 // port, version and start time), and removes it at a clean exit; the background server's supervisor does the same
 // with `supervisor.json`. A crash leaves the file behind, so nobody trusts a file alone: each process also holds a
 // lock named after the data directory for as long as it lives, and a record counts only while its lock is held and its
@@ -9,8 +9,8 @@ import { execFile } from "node:child_process";
 import { readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { type Context, withAbortSignal } from "@earendil-works/chord/context";
-import { type ProcessLock, processLock } from "@earendil-works/chord/workers";
+import { type Context, withAbortSignal } from "@nycode/chord/context";
+import { type ProcessLock, processLock } from "@nycode/chord/workers";
 import { ifExists } from "./layout.ts";
 import { writeSecret } from "./secrets.ts";
 
@@ -29,8 +29,8 @@ export type ServerState =
 	| {
 			readonly state: "running";
 			readonly run: string;
-			/** The Pi's id (`pi.json`). */
-			readonly pi: string;
+			/** The Nycode's id (`nycode.json`). */
+			readonly nycode: string;
 			readonly port: number;
 			readonly version: string;
 			/** When it listened, in ms since the epoch. */

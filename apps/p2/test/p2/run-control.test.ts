@@ -4,7 +4,7 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { ConversationView, LiveState } from "@earendil-works/pi-durable";
+import type { ConversationView, LiveState } from "@nycode/durable";
 import { BACKGROUND_CONTEXT, follow, whenLive } from "@p2/app/v1";
 import { Chat, RunControl } from "../../plugins/chat/contract.ts";
 import { Drafts } from "../../plugins/drafts/contract.ts";
@@ -13,9 +13,9 @@ import { Sharing } from "../../plugins/sharing/contract.ts";
 import { SessionStatus } from "../../plugins/status/contract.ts";
 import { type Fixture, holdIn, http, startFixture, until } from "./helpers.ts";
 
-const live = (view: ConversationView | null | undefined) => view?.docs["pi.live"] as LiveState | undefined;
+const live = (view: ConversationView | null | undefined) => view?.docs["nycode.live"] as LiveState | undefined;
 const queued = (view: ConversationView | null | undefined) =>
-	(view?.docs["pi.inbox"] as { items?: { id: number }[] } | undefined)?.items ?? [];
+	(view?.docs["nycode.inbox"] as { items?: { id: number }[] } | undefined)?.items ?? [];
 
 /** A guest of `session` admitted through a share link of `mode`. */
 async function guestOf(fixture: Fixture, session: string, mode: "full" | "view") {

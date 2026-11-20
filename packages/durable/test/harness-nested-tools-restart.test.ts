@@ -1,14 +1,14 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Context } from "@earendil-works/chord/context";
 import {
 	type AssistantMessage,
 	fauxAssistantMessage,
 	fauxText,
 	fauxToolCall,
 	type ToolResultMessage,
-} from "@earendil-works/pi-ai";
+} from "@nycode/ai";
+import type { Context } from "@nycode/chord/context";
 import {
 	defineExtension,
 	defineTask,
@@ -21,8 +21,8 @@ import {
 	ToolResultEntry,
 	ToolTask,
 	type ToolTaskInput,
-} from "@earendil-works/pi-durable";
-import { obj, opt, str } from "@earendil-works/pi-schema";
+} from "@nycode/durable";
+import { obj, opt, str } from "@nycode/schema";
 import { afterEach, describe, expect, it } from "vitest";
 import { openNodeSqliteStorage } from "../src/storage/sqlite/node.ts";
 import { allEntries, type ChatSetup, chatSetup, openChat } from "./chat-support.ts";
@@ -55,7 +55,7 @@ afterEach(async () => {
 });
 
 async function sqlitePath(): Promise<string> {
-	const directory = await mkdtemp(join(tmpdir(), "pi-durable-nested-restart-"));
+	const directory = await mkdtemp(join(tmpdir(), "nycode-durable-nested-restart-"));
 	directories.add(directory);
 	return join(directory, "session.sqlite");
 }
@@ -494,7 +494,7 @@ describe("nested tool calls across a restart", () => {
 					if ((change.value.input as ToolTaskInput).kind !== "model" || change.value.state.status !== "terminal")
 						continue;
 					const live = publication.changes.find(
-						(each) => each.type === "document" && each.record.kind === "pi.live",
+						(each) => each.type === "document" && each.record.kind === "nycode.live",
 					);
 					const value =
 						live?.type === "document" && live.kind === "change"

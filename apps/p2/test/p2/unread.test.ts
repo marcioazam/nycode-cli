@@ -1,5 +1,5 @@
 // Unread answers: the server keeps, per session, the latest root answer and how far the owner has read (persisted, any
-// device); the sidebar's item shows pi's working dots while the agent works, then a steady dot for an unread answer.
+// device); the sidebar's item shows nycode's working dots while the agent works, then a steady dot for an unread answer.
 
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -77,7 +77,7 @@ describe("unread answers", () => {
 	});
 
 	it(
-		"shows pi's working dots, then a steady unread dot and a bold title, cleared by opening the session",
+		"shows nycode's working dots, then a steady unread dot and a bold title, cleared by opening the session",
 		{
 			skip: !browserTests,
 		},
@@ -97,7 +97,7 @@ describe("unread answers", () => {
 				await browser.wait(`Boolean(${row})`);
 				const chat = await holdIn(owner, Chat, { session: target.id, conversation: 1 }, "participant");
 				await chat.send({ text: "slow-tool", requestId: "slow" }, BACKGROUND_CONTEXT);
-				const working = ".nav-marker .pi-dots";
+				const working = ".nav-marker .nycode-dots";
 				await browser.wait(`Boolean(${row}?.querySelector('${working}'))`);
 				await browser.wait(`Boolean(${row}?.querySelector('.unread-dot')) && !${row}?.querySelector('${working}')`);
 				assert.equal(

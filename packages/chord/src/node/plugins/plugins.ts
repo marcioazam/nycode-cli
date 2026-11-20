@@ -35,7 +35,7 @@ export type PluginsOptions = {
 	readonly api?: AppApi;
 	/**
 	 * The app's facet kinds (one file per kind in a plugin), each with where its builds run and the host packages they
-	 * keep external: `{ server: { platform: "node", hostPackages: ["@earendil-works/chord", "@app/core"] }, … }`.
+	 * keep external: `{ server: { platform: "node", hostPackages: ["@nycode/chord", "@app/core"] }, … }`.
 	 */
 	readonly kinds: Readonly<Record<string, KindDefinition>>;
 	/**

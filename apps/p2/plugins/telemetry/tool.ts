@@ -2,8 +2,8 @@
 // spans), find metrics, in the owner's telemetry store on the server (`Traces`, its `agent` variant). Never in a locked
 // session (`locked: "never"`); the server refuses them while the session is shared or locked, at every call. Deferred:
 // the code-mode section lists the namespace only, `describeNamespace("telemetry")` gives the declarations.
-import { defineExtension, type ToolNamespace } from "@earendil-works/pi-durable";
-import { bool, obj, opt, str } from "@earendil-works/pi-schema";
+import { defineExtension, type ToolNamespace } from "@nycode/durable";
+import { bool, obj, opt, str } from "@nycode/schema";
 import type { Context, JsonValue } from "@p2/app/v1";
 import { defineP2Tool, type P2Tool, renderTrace } from "@p2/app/v1/worker";
 import {
@@ -115,7 +115,7 @@ export function createTelemetryExtension(backend: TelemetryBackend) {
 			telemetryTool<MetricQuery>({
 				name: "telemetry_find_metrics",
 				description:
-					"A metric's 10 s aggregates (count, sum, min, max per series and interval), e.g. chord.link.bytes, pi.ai.request.duration. Filters: startMin/startMax (ms), attributes (equalities). At most 1000 rows.",
+					"A metric's 10 s aggregates (count, sum, min, max per series and interval), e.g. chord.link.bytes, nycode.ai.request.duration. Filters: startMin/startMax (ms), attributes (equalities). At most 1000 rows.",
 				parameters: MetricQuerySchema,
 				output: FoundMetricsSchema,
 				run: async (query, context) => {

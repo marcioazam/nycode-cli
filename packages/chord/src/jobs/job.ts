@@ -3,7 +3,7 @@
 // both on the attempt that is live; the attempt's seal cuts its invocations off (slice 6a §1.3). Each phase of a run
 // (its start's intent, its run, its finish) is a `chord.job` span, under the run's stored carrier or its starter's span.
 
-import type { TelemetrySpan } from "@earendil-works/pi-telemetry";
+import type { TelemetrySpan } from "@nycode/telemetry";
 import { type Context, withAbortSignal, withoutAbortSignal, withTelemetry } from "../context/index.ts";
 import { ChordError, isChordError, PluginError, type Principal } from "../data/index.ts";
 import type { Draft } from "../delta/index.ts";

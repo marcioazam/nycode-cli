@@ -39,7 +39,7 @@ type NotesProvider = Implementation<typeof Notes>; // { variant: "editor"; membe
   key built like an identity key (`session|S1`); two addresses are equal when their keys are. The params are checked
   where the address is routed or served (`invalid/host_address`), not when it is made. No host-name strings in app code.
 - Schema helpers: `str`, `num`, `int`, `bool`, `nul`, `lit`, `oneOf`, `union`, `obj`, `arr`, `map`, `opt`, `bytes`,
-  `unknown`, `Schema` and `Static`, over `@earendil-works/pi-schema`'s builders: plain JSON Schema typed with the values
+  `unknown`, `Schema` and `Static`, over `@nycode/schema`'s builders: plain JSON Schema typed with the values
   it accepts. They keep the shapes contracts were fingerprinted with: `lit` carries its JSON `type`, `oneOf(...)` is a
   union of `lit`s, `map` one pattern property (`^.*$`), `obj` is closed. `opt(...)` marks an object field (or a table
   column) optional and is no schema elsewhere. Any other JSON Schema object of the vocabulary below works too; a

@@ -38,7 +38,7 @@ Read-only map of what the app must do in environments, execution, terminals, wor
 | domain | function | data | durability | who | where | depends on |
 |---|---|---|---|---|---|---|
 | exec | local execution env at the session cwd | – | R | W | Wkr | – |
-| exec | remote execution env over SSH (pi-env daemon), connects at first operation; offline is that operation's error | SSH connection | R | W | Wkr, Rem | env config, daemon deploy |
+| exec | remote execution env over SSH (nycode-env daemon), connects at first operation; offline is that operation's error | SSH connection | R | W | Wkr, Rem | env config, daemon deploy |
 | exec | a remote session never falls back to local tools; unknown env refuses | – | – | S | Wkr | – |
 | exec | daemon binary per remote platform/arch, deployed over SSH; local dev build or override variable | binaries ~ MB | P (remote) | S | Wkr, Host, Rem | – |
 | exec | subagent with its own cwd on the same connection | – | R | W | Wkr | – |
@@ -118,7 +118,7 @@ Read-only map of what the app must do in environments, execution, terminals, wor
 
 | domain | function | data | durability | who | where | depends on |
 |---|---|---|---|---|---|---|
-| idx | `@` completion: rank like pi (exact, prefix, substring, then fuzzy), dirs +10, limit 20 (max 100), kind filter | index ≤ 50k items | R (cache, kept 60 s) | O, GW | Wkr, Web, TUI | listing |
+| idx | `@` completion: rank like nycode (exact, prefix, substring, then fuzzy), dirs +10, limit 20 (max 100), kind filter | index ≤ 50k items | R (cache, kept 60 s) | O, GW | Wkr, Web, TUI | listing |
 | idx | Tab directory listing for path completion | ≤ 2000 entries | E | O, GW | Wkr, TUI, Web | folder list |
 | idx | completion refuses paths outside the cwd (`/`, `~`, `..`) | – | – | S | Wkr | – |
 | idx | build from the env's own listing, else from git/walk; at most one rebuild per second while files change; discarded after a move | – | R | S | Wkr | exec env, change notifications |

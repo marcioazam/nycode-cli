@@ -1,8 +1,8 @@
 // Gondolin sandboxes (plugins/envs, type "gondolin"): their configuration, the launcher's arguments, and confinement:
 // a conversation working in a sandbox cannot leave it through the location tools, subagent placement or one-shot agents.
 // The VM itself runs only with P2_TEST_GONDOLIN=1 (it needs /dev/kvm, QEMU >= 7.2 and Node >= 22, and downloads the guest
-// image on first use), with pi-env's Linux daemon for this machine (static: the guest is Alpine) from P2_TEST_DAEMON or
-// pi-env's package.
+// image on first use), with nycode-env's Linux daemon for this machine (static: the guest is Alpine) from P2_TEST_DAEMON or
+// nycode-env's package.
 
 import assert from "node:assert/strict";
 import { type ChildProcess, execFileSync, spawn } from "node:child_process";
@@ -28,9 +28,9 @@ import type {
 	ToolExecutionApi,
 	ToolExecutionResult,
 	ToolPark,
-} from "@earendil-works/pi-durable";
-import { Connection, localDaemon, RemoteExecutionEnv } from "@earendil-works/pi-env";
-import { compile } from "@earendil-works/pi-schema";
+} from "@nycode/durable";
+import { Connection, localDaemon, RemoteExecutionEnv } from "@nycode/env";
+import { compile } from "@nycode/schema";
 import { BACKGROUND_CONTEXT, type Location } from "@p2/app/v1";
 import { WebSocket } from "ws";
 import { Chat } from "../../plugins/chat/contract.ts";
@@ -288,11 +288,11 @@ test("confinement is decided per conversation from its location; one-shot agents
 });
 
 test(
-	"the launcher runs pi-env in a Gondolin VM with its folders and allowed hosts only",
+	"the launcher runs nycode-env in a Gondolin VM with its folders and allowed hosts only",
 	{ skip: process.env.P2_TEST_GONDOLIN !== "1", timeout: 900_000 },
 	async (t) => {
 		const daemon = process.env.P2_TEST_DAEMON ?? localDaemon();
-		if (!existsSync(daemon)) return t.skip(`no pi-env daemon at ${daemon}`);
+		if (!existsSync(daemon)) return t.skip(`no nycode-env daemon at ${daemon}`);
 		const home = mkdtempSync(join(tmpdir(), "p2-gondolin-test-"));
 		// Named as p2 deploys it (its installed Gondolin is shared with real use).
 		const launcher = join(home, launcherId(fileURLToPath(sandboxDir)));
@@ -333,7 +333,7 @@ test(
 				}),
 			/secrets|start/i,
 		);
-		// As p2 does: start first (a first start installs and boots for longer than pi-env waits for its daemon); the
+		// As p2 does: start first (a first start installs and boots for longer than nycode-env waits for its daemon); the
 		// values come on stdin.
 		execFileSync("sh", [join(launcher, "p2-sandbox.sh"), "start", name, argument], {
 			timeout: 660_000,
@@ -378,7 +378,7 @@ test(
 		);
 		assert.equal(curl.ok, true);
 		assert.equal(output, "403", "hosts outside the allowed list are refused");
-		// Processes pi-env starts see the placeholder (and its alias and git helper), never the value; requests to the
+		// Processes nycode-env starts see the placeholder (and its alias and git helper), never the value; requests to the
 		// secret's host carry the value.
 		const shell = async (command: string) => {
 			let text = "";
@@ -476,7 +476,7 @@ test(
 				: !sshd
 					? "no local sshd"
 					: !existsSync(localDaemon())
-						? `no packaged pi-env daemon at ${localDaemon()}`
+						? `no packaged nycode-env daemon at ${localDaemon()}`
 						: false,
 		timeout: 900_000,
 	},
@@ -519,8 +519,8 @@ test(
 				rmSync(root, { recursive: true, force: true });
 				for (const sandbox of ["sbx", "spare"]) {
 					const key = sandboxKey(fixture.dataDir, sandbox);
-					rmSync(join(homedir(), ".pi", "p2", "sandbox", "run", key), { recursive: true, force: true });
-					rmSync(join(homedir(), ".pi", "p2", "sandbox", "disks", `${key}.qcow2`), { force: true });
+					rmSync(join(homedir(), ".nycode", "p2", "sandbox", "run", key), { recursive: true, force: true });
+					rmSync(join(homedir(), ".nycode", "p2", "sandbox", "disks", `${key}.qcow2`), { force: true });
 				}
 			}
 		});
@@ -558,7 +558,7 @@ test(
 		await envs.sandboxStart({ name: "spare" }, BACKGROUND_CONTEXT);
 		await envs.delete({ name: "spare" }, BACKGROUND_CONTEXT);
 		assert(
-			!existsSync(join(homedir(), ".pi", "p2", "sandbox", "run", sandboxKey(fixture.dataDir, "spare"), "sock")),
+			!existsSync(join(homedir(), ".nycode", "p2", "sandbox", "run", sandboxKey(fixture.dataDir, "spare"), "sock")),
 			"the VM's supervisor is gone",
 		);
 		const vm = await envs.test({ name: "sbx" }, BACKGROUND_CONTEXT);
@@ -608,7 +608,7 @@ test(
 			main.view,
 			(view) =>
 				(view?.entries ?? []).some((entry) => entry.kind === "p2.agent-message") &&
-				!(view?.docs["pi.live"] as { run?: unknown } | undefined)?.run,
+				!(view?.docs["nycode.live"] as { run?: unknown } | undefined)?.run,
 			60_000,
 		);
 		const results = (view: ConversationView | null | undefined) =>

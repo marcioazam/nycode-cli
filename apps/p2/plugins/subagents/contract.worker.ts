@@ -2,8 +2,8 @@
 // plugins read: one-shot agents, search, PowerShell), the tool choices subagents and one-shot agents resolve alike
 // from their caller's tools, and giving a subagent its own location (a granted `location_move`).
 
-import type { ModelThinkingLevel } from "@earendil-works/pi-ai";
-import { clampThinkingLevel, type Models } from "@earendil-works/pi-ai/models";
+import type { ModelThinkingLevel } from "@nycode/ai";
+import { clampThinkingLevel, type Models } from "@nycode/ai/models";
 import {
 	type Agent,
 	type ConversationId,
@@ -16,7 +16,7 @@ import {
 	type ToolExecutionApi,
 	type ToolRegistration,
 	type Tx,
-} from "@earendil-works/pi-durable";
+} from "@nycode/durable";
 import type { Context, Location } from "@p2/app/v1";
 import type { P2Tool } from "@p2/app/v1/worker";
 import { modelRefOf } from "./contract.ts";

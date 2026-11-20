@@ -1,11 +1,11 @@
-// The Familiar in the owner's page, named "Ask Pi": home (`/`) opens its session, as its row above the sidebar's "New
+// The Familiar in the owner's page, named "Ask Nycode": home (`/`) opens its session, as its row above the sidebar's "New
 // session" does; either makes it on first use. The sidebar lists its session there only, not in any rollup.
 import { BACKGROUND_CONTEXT, contribute, defineFacet, keptIn, liveIn } from "@p2/app/v1";
 import {
 	conversationRoute,
 	NEW_SESSION,
+	NycodeLogo,
 	navigate,
-	PiLogo,
 	SideNavigation,
 	Slots,
 	useComposerState,
@@ -27,7 +27,7 @@ function FamiliarRow() {
 }
 
 /**
- * The Familiar's row: the Pi logo (framed while its session works) and its name, bold with a dot for an unread answer,
+ * The Familiar's row: the Nycode logo (framed while its session works) and its name, bold with a dot for an unread answer,
  * selected while its session shows. It opens the session, which the server makes or restores first when it has to.
  */
 function OwnerRow() {
@@ -71,7 +71,7 @@ function OwnerRow() {
 				onActivate={open}
 				marker={
 					<IconMarker working={row !== undefined && row.worker.busy.length > 0}>
-						<PiLogo compact />
+						<NycodeLogo compact />
 					</IconMarker>
 				}
 				label={<span className={`session-title ${unread ? "unread" : ""}`}>{FAMILIAR_TITLE}</span>}

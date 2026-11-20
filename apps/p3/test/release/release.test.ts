@@ -1,7 +1,7 @@
 // The installed release: p3 as `npm run release:p3:local` built, packed and installed it outside the repository.
 // `P3_RELEASE` names the install directory; the release script sets it. Not part of `npm test`: it needs that install.
 // It checks what the package holds, the command, a session's worker forked from the release's own bundle, and a
-// third-party plugin written against nothing but the installed API: type-checked, loaded from the Pi's user root, and
+// third-party plugin written against nothing but the installed API: type-checked, loaded from the Nycode's user root, and
 // called by a client that uses the compiled API modules.
 
 import assert from "node:assert/strict";
@@ -12,9 +12,9 @@ import { join } from "node:path";
 import { after, describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
-import { createHost, webSocketLink } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context";
-import type { P3Principal } from "@earendil-works/p3/v1";
+import { createHost, webSocketLink } from "@nycode/chord";
+import { BACKGROUND_CONTEXT as context } from "@nycode/chord/context";
+import type { P3Principal } from "@nycode/p3/v1";
 import { Sessions, SessionWorker } from "../../plugins/sessions/contract.ts";
 import { eventually } from "../support.ts";
 
@@ -25,7 +25,7 @@ if (P3_RELEASE === undefined) throw new Error("release.test.ts: set P3_RELEASE t
 
 /** The install's node_modules and the installed package. */
 const MODULES = join(P3_RELEASE, "node_modules");
-const PACKAGE = join(MODULES, "@earendil-works", "p3");
+const PACKAGE = join(MODULES, "@nycode", "p3");
 
 /** The installed command. */
 const P3 = [process.execPath, join(PACKAGE, "dist", "p3.js")];
@@ -94,7 +94,7 @@ describe("the installed release", () => {
 		const plugin = join(dataDir, "plugins", "hello");
 		await mkdir(plugin, { recursive: true });
 		for (const [name, text] of Object.entries(HELLO)) await writeFile(join(plugin, name), text);
-		// The author's project resolves `@earendil-works/p3` from the install, as an npm dependency would.
+		// The author's project resolves `@nycode/p3` from the install, as an npm dependency would.
 		await symlink(MODULES, join(plugin, "node_modules"));
 		const checked = await run(process.execPath, [TSC, "-p", plugin]).catch((error: { stdout: string }) => error);
 		assert.equal(checked.stdout, "", "the plugin type-checks against the installed API");
@@ -126,7 +126,7 @@ const HELLO = {
 		include: ["contract.ts", "server.ts"],
 	}),
 	"contract.ts": [
-		'import { method, obj, oneOf, remote, Server, str } from "@earendil-works/p3/v1";',
+		'import { method, obj, oneOf, remote, Server, str } from "@nycode/p3/v1";',
 		"",
 		"/** A greeting the server has for its owner, plain or loud. */",
 		'export const Hello = remote("hello.greeting", {',
@@ -137,7 +137,7 @@ const HELLO = {
 		"});",
 	].join("\n"),
 	"server.ts": [
-		'import { constant, defineFacet, forbidden } from "@earendil-works/p3/v1";',
+		'import { constant, defineFacet, forbidden } from "@nycode/p3/v1";',
 		'import { Hello } from "./contract.ts";',
 		"",
 		"export default defineFacet((host) => {",
@@ -153,7 +153,7 @@ const HELLO = {
 	].join("\n"),
 	// The plugin's own client, outside the server: the compiled API modules run it.
 	"client.mjs": [
-		'import { BACKGROUND_CONTEXT as context, createHost, webSocketLink } from "@earendil-works/p3/v1";',
+		'import { BACKGROUND_CONTEXT as context, createHost, webSocketLink } from "@nycode/p3/v1";',
 		'import { Hello } from "./contract.ts";',
 		"",
 		"const [port, token] = process.argv.slice(2);",

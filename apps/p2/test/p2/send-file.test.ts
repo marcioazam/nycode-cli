@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { mkdir, open, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
-import type { ToolResultMessage } from "@earendil-works/pi-ai";
-import type { ConversationView } from "@earendil-works/pi-durable";
+import type { ToolResultMessage } from "@nycode/ai";
+import type { ConversationView } from "@nycode/durable";
 import { BACKGROUND_CONTEXT, whenLive } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import type { DownloadInfo } from "../../plugins/files/contract.ts";
@@ -42,7 +42,7 @@ describe("send_file (fake provider)", () => {
 		await chat.send({ text: "send-file", requestId: `file-${++count}` }, BACKGROUND_CONTEXT);
 		const view = await until(
 			chat.view,
-			(view) => results(view).length === count && !(view?.docs["pi.live"] as { run?: unknown })?.run,
+			(view) => results(view).length === count && !(view?.docs["nycode.live"] as { run?: unknown })?.run,
 		);
 		return results(view).at(-1)!;
 	};

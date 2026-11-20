@@ -4,8 +4,8 @@
 import { createHash } from "node:crypto";
 import { readdir, stat } from "node:fs/promises";
 import { dirname, join, type PlatformPath, posix, win32 } from "node:path";
-import type { FileError, Result } from "@earendil-works/pi-durable/env";
-import type { Connection } from "@earendil-works/pi-env";
+import type { FileError, Result } from "@nycode/durable/env";
+import type { Connection } from "@nycode/env";
 import { normalizePath } from "./config-json.ts";
 import type { DirectoryListing } from "./schemas.ts";
 

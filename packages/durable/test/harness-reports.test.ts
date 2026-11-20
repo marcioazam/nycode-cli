@@ -1,4 +1,4 @@
-import { createModels, fauxAssistantMessage } from "@earendil-works/pi-ai";
+import { createModels, fauxAssistantMessage } from "@nycode/ai";
 import {
 	type AnyTask,
 	createRegistry,
@@ -13,8 +13,8 @@ import {
 	type SetTimer,
 	section,
 	wrapTool,
-} from "@earendil-works/pi-durable";
-import { obj } from "@earendil-works/pi-schema";
+} from "@nycode/durable";
+import { obj } from "@nycode/schema";
 import { describe, expect, it } from "vitest";
 import { chatSetup } from "./chat-support.ts";
 import { ControlledStorage, context } from "./session-support.ts";
@@ -155,7 +155,7 @@ describe("reports", () => {
 		const root = await harness.root(context, { agent: { model: { provider: "faux", modelId: "faux-1" } } });
 		await (await root.submit({ type: "input", content: "hi" }, context)).wait(context);
 		const infoOf = (message: string) => reports.find((report) => report.message === message)?.info;
-		const generation = { kind: "pi.generation", conversationId: root.id };
+		const generation = { kind: "nycode.generation", conversationId: root.id };
 		expect(infoOf("env")).toMatchObject({ kind: "host_error", callback: "env", task: generation });
 		expect(infoOf("section")).toMatchObject({ kind: "extension_error", extension: "sections", task: generation });
 		expect(infoOf("hook")).toMatchObject({ kind: "extension_error", extension: "hooks", task: generation });

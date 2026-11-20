@@ -1,6 +1,6 @@
 // The artifacts plugin's viewer layer: the route layer that shows a sent file over the chat (send_file's cards write it),
 // read back from the route by the chat's content slot.
-import { compile, obj } from "@earendil-works/pi-schema";
+import { compile, obj } from "@nycode/schema";
 import { literal } from "@p2/app/v1";
 import type { Layer, ViewerItem } from "@p2/app/v1/web";
 import { DownloadInfoSchema } from "../files/contract.ts";

@@ -3,7 +3,7 @@
 // accepted batches written per table (`PendingWrites`, through `statements.ts`). Over a remote SQLite every statement
 // is a round trip while the write lock is held; a group of commits must not cost one round trip per write.
 
-import type { SqliteExecutor } from "@earendil-works/chord/sqlite";
+import type { SqliteExecutor } from "@nycode/chord/sqlite";
 import type {
 	DocumentContent,
 	DocumentCreate,

@@ -2,8 +2,8 @@
 // server's `POST /upload` (`SessionFiles`), a message's attachments are materialized where its conversation works
 // (`Attachments`), and snapshots are found and read for `GET /download`.
 import { join, posix } from "node:path";
-import type { ConversationId } from "@earendil-works/pi-durable";
-import { RemoteExecutionEnv } from "@earendil-works/pi-env";
+import type { ConversationId } from "@nycode/durable";
+import { RemoteExecutionEnv } from "@nycode/env";
 import { defineFacet, forbidden } from "@p2/app/v1";
 import {
 	DOWNLOADS,
@@ -56,7 +56,7 @@ export default defineFacet((host) => {
 				);
 				if (isLocalEnvironment(env)) return attachments;
 				const paths = env instanceof RemoteExecutionEnv ? await remotePaths(env.connection) : posix;
-				const directory = paths.join(value(await env.absolutePath("~/.pi/p2/uploads", context)), session);
+				const directory = paths.join(value(await env.absolutePath("~/.nycode/p2/uploads", context)), session);
 				value(await env.createDir(directory, { recursive: true }, context));
 				return Promise.all(
 					attachments.map(async (attachment, index) => {

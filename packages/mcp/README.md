@@ -1,13 +1,13 @@
-# @earendil-works/pi-mcp
+# @nycode/mcp
 
-A small, standalone Model Context Protocol client. It does not depend on the official MCP SDK or other pi packages.
+A small, standalone Model Context Protocol client. It does not depend on the official MCP SDK or other nycode packages.
 
 The package provides a transport-neutral client core, stdio and Streamable HTTP transports, a stdio transport over a pipe to a program started elsewhere, and an in-memory testing transport.
 
 ## Usage
 
 ```typescript
-import { McpClient, StdioTransport } from "@earendil-works/pi-mcp";
+import { McpClient, StdioTransport } from "@nycode/mcp";
 
 const transport = new StdioTransport({
 	command: "npx",
@@ -31,11 +31,11 @@ An MCP transport owns framing and I/O. It delivers individual JSON-RPC messages 
 
 ### Stdio servers started elsewhere
 
-`PipeTransport` speaks MCP's stdio framing over a program that something else starts, for example on another machine. `open` starts the program, connects its stdout and stderr to the given handlers, and returns an `McpPipe` (`write`, `closeStdin`, `close` to kill, and an `exited` promise). `@earendil-works/pi-env`'s `openProcess()` returns one, without an adapter:
+`PipeTransport` speaks MCP's stdio framing over a program that something else starts, for example on another machine. `open` starts the program, connects its stdout and stderr to the given handlers, and returns an `McpPipe` (`write`, `closeStdin`, `close` to kill, and an `exited` promise). `@nycode/env`'s `openProcess()` returns one, without an adapter:
 
 ```typescript
-import { openProcess } from "@earendil-works/pi-env";
-import { PipeTransport } from "@earendil-works/pi-mcp";
+import { openProcess } from "@nycode/env";
+import { PipeTransport } from "@nycode/mcp";
 
 const transport = new PipeTransport({
 	open: (handlers) => openProcess(connection, { cwd, argv, ...handlers }),
@@ -47,13 +47,13 @@ Closing the transport closes the program's stdin and kills it if it has not exit
 
 ### Tools for an LLM
 
-`toLlmContent(result)` converts a `CallToolResult` to text and image content for a model, in the shape of `@earendil-works/pi-ai`'s `TextContent` and `ImageContent`. Text and images pass through, embedded text and image resources are unwrapped, and audio, resource links, and binary resources become short text placeholders. A result without content blocks but with `structuredContent` becomes its JSON.
+`toLlmContent(result)` converts a `CallToolResult` to text and image content for a model, in the shape of `@nycode/ai`'s `TextContent` and `ImageContent`. Text and images pass through, embedded text and image resources are unwrapped, and audio, resource links, and binary resources become short text placeholders. A result without content blocks but with `structuredContent` becomes its JSON.
 
-Wrapping an MCP tool as a `pi-agent-core` `AgentTool`:
+Wrapping an MCP tool as a `nycode-agent-core` `AgentTool`:
 
 ```typescript
-import type { AgentTool } from "@earendil-works/pi-agent-core";
-import { toLlmContent } from "@earendil-works/pi-mcp";
+import type { AgentTool } from "@nycode/agent-core";
+import { toLlmContent } from "@nycode/mcp";
 
 const tools: AgentTool[] = (await client.listTools()).map((tool) => ({
 	// Providers allow at most 64 characters of [A-Za-z0-9_-].
@@ -70,23 +70,23 @@ const tools: AgentTool[] = (await client.listTools()).map((tool) => ({
 }));
 ```
 
-For applications that name tools like pi's coding agent: `createMcpToolName(server, tool, isTaken)` builds `mcp__<server>__<tool>`, limited to the characters and the 64-character length providers accept, with a hash suffix for long names and for names `isTaken` reports as used by another tool. `mcpNamespace(server)` is the prefix of a server's tool names. `normalizeMcpInputSchema()` turns an input schema into an object schema with `properties`, and `limitMcpContent(content, saveOutput)` keeps model-facing text within `MCP_OUTPUT_MAX_BYTES` (20KB) by cutting its middle; `saveOutput`, when given, stores the full text and returns the path the model can read it from.
+For applications that name tools like nycode's coding agent: `createMcpToolName(server, tool, isTaken)` builds `mcp__<server>__<tool>`, limited to the characters and the 64-character length providers accept, with a hash suffix for long names and for names `isTaken` reports as used by another tool. `mcpNamespace(server)` is the prefix of a server's tool names. `normalizeMcpInputSchema()` turns an input schema into an object schema with `properties`, and `limitMcpContent(content, saveOutput)` keeps model-facing text within `MCP_OUTPUT_MAX_BYTES` (20KB) by cutting its middle; `saveOutput`, when given, stores the full text and returns the path the model can read it from.
 
-The [mcp-codemode example](https://github.com/earendil-works/pi/tree/main/packages/agent/examples/mcp-codemode) also forwards progress, passes `structuredContent` through, and lets `@earendil-works/pi-codemode` scripts call the tools.
+The [mcp-codemode example](https://github.com/marcioazam/nycode-cli/tree/main/packages/agent/examples/mcp-codemode) also forwards progress, passes `structuredContent` through, and lets `@nycode/codemode` scripts call the tools.
 
 ### OAuth
 
-`@earendil-works/pi-mcp/oauth` provides the MCP OAuth client subset without depending on the official SDK:
+`@nycode/mcp/oauth` provides the MCP OAuth client subset without depending on the official SDK:
 
 ```typescript
-import { McpClient, StreamableHttpTransport } from "@earendil-works/pi-mcp";
+import { McpClient, StreamableHttpTransport } from "@nycode/mcp";
 import {
 	adaptOAuthProvider,
 	authorizeMcp,
 	McpOAuthAuthorizationRequiredError,
 	McpOAuthProvider,
 	OAuthCallbackServer,
-} from "@earendil-works/pi-mcp/oauth";
+} from "@nycode/mcp/oauth";
 
 const serverUrl = "https://mcp.example.com/mcp";
 const callback = await OAuthCallbackServer.listen();
@@ -130,10 +130,10 @@ Inject `McpOAuthStateStore` into `McpOAuthProvider` for durable credentials. The
 
 #### Sign-in in two halves
 
-`startMcpSignIn()` and `completeMcpSignIn()` run the sign-in pi uses, split so the second half can run in another request with the same state store (an `McpOAuthServerStore`: a state store with a refresh lock). The caller picks the redirect URI: a loopback one, or an https callback route of its own. `startMcpSignIn()` first tries to refresh the stored tokens under the store's refresh lock, so never call it while holding that lock; its `redirect` result is plain data the application can persist until the response arrives. Pass `completeMcpSignIn()` the same options, including the redirect URI you chose (not `started.redirectUrl`, which may be a variant specific to the MCP server).
+`startMcpSignIn()` and `completeMcpSignIn()` run the sign-in nycode uses, split so the second half can run in another request with the same state store (an `McpOAuthServerStore`: a state store with a refresh lock). The caller picks the redirect URI: a loopback one, or an https callback route of its own. `startMcpSignIn()` first tries to refresh the stored tokens under the store's refresh lock, so never call it while holding that lock; its `redirect` result is plain data the application can persist until the response arrives. Pass `completeMcpSignIn()` the same options, including the redirect URI you chose (not `started.redirectUrl`, which may be a variant specific to the MCP server).
 
 ```typescript
-import { completeMcpSignIn, responseFromRedirectUrl, startMcpSignIn } from "@earendil-works/pi-mcp/oauth";
+import { completeMcpSignIn, responseFromRedirectUrl, startMcpSignIn } from "@nycode/mcp/oauth";
 
 const signIn = { serverUrl, store, settings: {}, redirectUrl: "https://app.example/mcp/callback", clientName: "My app" };
 const started = await startMcpSignIn(signIn);
@@ -154,7 +154,7 @@ The OAuth implementation is adapted from the MIT-licensed Model Context Protocol
 `validateMcpServerConfig(name, entry, options)` validates one entry of the `mcpServers` shape that MCP clients share: stdio servers (`command`, `args`, `env`, `cwd`), Streamable HTTP servers (`url`, `headers`, `oauth`), and `enabled`, `description`, and `timeout`. It returns `{ kind: "stdio" | "http", config }` or `{ kind: "invalid", error }`. Fields it does not know stay in `config`, typed `unknown`, for the application to check afterwards, depending on `kind` where it matters. Resolving `${VAR}` references and relative paths is left to the application. `oauth.clientRegistration: "cimd"` is accepted only with `options.checkMetadataDocumentCallback`, which checks that the application's Client ID Metadata Documents list the callback.
 
 ```typescript
-import { validateMcpServerConfig } from "@earendil-works/pi-mcp";
+import { validateMcpServerConfig } from "@nycode/mcp";
 
 for (const [name, entry] of Object.entries(file.mcpServers)) {
 	const result = validateMcpServerConfig(name, entry);
@@ -188,4 +188,4 @@ Batch JSON-RPC messages, legacy HTTP+SSE, servers, sampling, and tasks are outsi
 
 ## Testing
 
-`@earendil-works/pi-mcp/testing` exports `createInMemoryTransportPair()` for client and adapter tests.
+`@nycode/mcp/testing` exports `createInMemoryTransportPair()` for client and adapter tests.

@@ -5,8 +5,8 @@ import {
 	type StoredSpan,
 	type TelemetryCarrier,
 	type TelemetryMetrics,
-} from "@earendil-works/pi-telemetry";
-import { renderTrace } from "@earendil-works/pi-telemetry/render";
+} from "@nycode/telemetry";
+import { renderTrace } from "@nycode/telemetry/render";
 import { describe, expect, it } from "vitest";
 import { BACKGROUND_CONTEXT, type Context, withTelemetry } from "../src/context/index.ts";
 import { ChordError } from "../src/data/index.ts";
@@ -449,7 +449,7 @@ describe("what a peer sends (slice 9 review M1, M2, L8)", () => {
 	it.each([
 		["a 500,000-character type", { type: "x".repeat(500_000) }],
 		["a 257-character host kind", { address: { kind: "k".repeat(257), params: {} } }],
-		["a carrier with a control character", { trace: { "pi-memory-span": "\u001b]0;PWNED\u0007" } }],
+		["a carrier with a control character", { trace: { "nycode-memory-span": "\u001b]0;PWNED\u0007" } }],
 		["a carrier key with a space", { trace: { "a b": "c" } }],
 		["a carrier of 9 keys", { trace: Object.fromEntries(Array.from({ length: 9 }, (_, i) => [`k${i}`, "v"])) }],
 		["a carrier value of 257 characters", { trace: { k: "v".repeat(257) } }],

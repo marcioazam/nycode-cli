@@ -1,5 +1,5 @@
 // One registry drives keys, palette, slash commands and help (p2-tui-port.md section 6). The dispatcher implements
-// stages 3-4 of the section 6.2 precedence contract inside the worker; stage 1 is the launcher, stage 2 pi-tui's
+// stages 3-4 of the section 6.2 precedence contract inside the worker; stage 1 is the launcher, stage 2 nycode-tui's
 // alt screen (which runs before the focused component), stage 5 the focused component.
 
 import {
@@ -13,7 +13,7 @@ import {
 	KeybindingsManager,
 	type KeyId,
 	setKeybindings,
-} from "@earendil-works/pi-tui";
+} from "@nycode/tui";
 import {
 	builtinKeybindings,
 	DEFAULT_KEY_PLATFORM,
@@ -30,7 +30,7 @@ export type TuiCommand = {
 	title: string;
 	/** Groups /hotkeys and the palette ("Session", "View", ...). */
 	category?: string;
-	/** Default keys for plugin ids. Ids from pi's built-in table (`app.*`) always use pi's defaults. */
+	/** Default keys for plugin ids. Ids from nycode's built-in table (`app.*`) always use nycode's defaults. */
 	keys?: KeyId | KeyId[];
 	/** Boolean context expression, e.g. "chat && editorEmpty && !overlay". More terms = more specific. */
 	when?: string;
@@ -45,7 +45,7 @@ export type TuiCommand = {
 	palette?: false;
 	run(ctx: TuiContext, args?: string): void | Promise<void>;
 };
-/** Key = command id: pi ids where the semantics match, otherwise `<plugin>.<verb>`. */
+/** Key = command id: nycode ids where the semantics match, otherwise `<plugin>.<verb>`. */
 export const TuiCommands = keyedRegistry<TuiCommand>("p2.tui-commands");
 
 /** A slash name that is not a command: a prompt template (`name`) or a skill (`skill:name`). */
@@ -153,7 +153,7 @@ type Entry = {
 	userBound: boolean;
 	slash: string | undefined;
 };
-/** Transcript keys pi-tui's alt screen consumes before the focused component (stage 2), unless an overlay defers. */
+/** Transcript keys nycode-tui's alt screen consumes before the focused component (stage 2), unless an overlay defers. */
 const TRANSCRIPT_KEYS = [
 	"tui.altScreen.search",
 	"tui.altScreen.pageUp",
@@ -182,7 +182,7 @@ export class TuiCommandDispatcher {
 	private keymap: KeybindingsManager;
 	conflicts: TuiCommandConflict[] = [];
 	privileged: PrivilegedResolution = { keys: {}, lost: [] };
-	/** Unknown ids in user keybindings: kept (pi does), reported in /hotkeys. */
+	/** Unknown ids in user keybindings: kept (nycode does), reported in /hotkeys. */
 	unknown: string[] = [];
 	readonly autocomplete: AutocompleteProvider;
 	private readonly options: {
@@ -393,7 +393,7 @@ export class TuiCommandDispatcher {
 	}
 }
 
-/** `/name` and argument completion fed by the registry (never pi's fs-reading CombinedAutocompleteProvider). */
+/** `/name` and argument completion fed by the registry (never nycode's fs-reading CombinedAutocompleteProvider). */
 class SlashCompletion implements AutocompleteProvider {
 	private dispatcher: TuiCommandDispatcher;
 	constructor(dispatcher: TuiCommandDispatcher) {
@@ -423,7 +423,7 @@ class SlashCompletion implements AutocompleteProvider {
 						description: hint ? `${hint} — ${item.command.title}` : item.command.title,
 					};
 				});
-			// Templates and skills after the commands; pi matches `skill:` names by their bare name first.
+			// Templates and skills after the commands; nycode matches `skill:` names by their bare name first.
 			const extra = this.dispatcher.slashEntries().map(({ entry }) => ({
 				value: entry.name,
 				label: entry.name,

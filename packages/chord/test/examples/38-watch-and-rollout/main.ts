@@ -57,7 +57,7 @@ function print(result: RolloutResult): void {
 }
 
 // The host packages: this process's Chord, kept external in Node builds.
-const modules = { "@earendil-works/chord": chord };
+const modules = { "@nycode/chord": chord };
 const node = { platform: "node", hostPackages: Object.keys(modules) } as const;
 const plugins = createPlugins(
 	{

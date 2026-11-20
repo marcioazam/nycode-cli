@@ -2,8 +2,8 @@
 // each kind of listener then sees.
 import { setFlagsFromString } from "node:v8";
 import { runInNewContext } from "node:vm";
-import { applyImmutable } from "@earendil-works/chord/delta";
-import type { JsonValue } from "@earendil-works/chord/json";
+import { applyImmutable } from "@nycode/chord/delta";
+import type { JsonValue } from "@nycode/chord/json";
 import {
 	type CommitChange,
 	type CommitOptions,
@@ -15,7 +15,7 @@ import {
 	ReadOnlySession,
 	type SetTimer,
 	type StorageWrite,
-} from "@earendil-works/pi-durable";
+} from "@nycode/durable";
 import { describe, expect, it } from "vitest";
 import { type ObservedCommit, SessionImpl } from "../src/session/session.ts";
 import { ControlledStorage, context, createConversation, flush, onValue } from "./session-support.ts";

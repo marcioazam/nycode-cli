@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { registerFauxProvider } from "@earendil-works/pi-ai/compat";
+import { registerFauxProvider } from "@nycode/ai/compat";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import {
 	type CreateAgentSessionRuntimeFactory,
@@ -45,7 +45,7 @@ describe("print mode JSON output of session_start events", () => {
 	});
 
 	test("streams entries appended by session_start at startup and after ctx.newSession()", async () => {
-		const tempDir = join(tmpdir(), `pi-print-start-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+		const tempDir = join(tmpdir(), `nycode-print-start-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 		mkdirSync(tempDir, { recursive: true });
 		const faux = registerFauxProvider({ models: [{ id: "faux-1", reasoning: false }] });
 		cleanups.push(() => {
@@ -66,11 +66,11 @@ describe("print mode JSON output of session_start events", () => {
 				modelRuntime,
 				resourceLoaderOptions: {
 					extensionFactories: [
-						(pi: ExtensionAPI) => {
-							pi.on("session_start", (event) => {
-								pi.appendEntry("start-marker", event.reason);
+						(nycode: ExtensionAPI) => {
+							nycode.on("session_start", (event) => {
+								nycode.appendEntry("start-marker", event.reason);
 							});
-							pi.registerCommand("renew", {
+							nycode.registerCommand("renew", {
 								description: "start a new session",
 								handler: async (_args, ctx) => {
 									await ctx.newSession();

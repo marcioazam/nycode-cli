@@ -1,10 +1,10 @@
 // Durable on Chord v2 (Node): contexts, and the Harness's registry read from the worker's Chord registries of
 // extensions and their switches, with every tool's requirements checked (`tool-access.ts`).
-import type { RegistryValue } from "@earendil-works/chord";
-import type { Context } from "@earendil-works/chord/context";
-import { BACKGROUND_CONTEXT, withAbortSignal } from "@earendil-works/chord/context";
-import { createRegistry, type Extension, type RegistryReader, type RegistrySnapshot } from "@earendil-works/pi-durable";
-import { createToolSearchExtension } from "@earendil-works/pi-durable/tool-search";
+import type { RegistryValue } from "@nycode/chord";
+import type { Context } from "@nycode/chord/context";
+import { BACKGROUND_CONTEXT, withAbortSignal } from "@nycode/chord/context";
+import { createRegistry, type Extension, type RegistryReader, type RegistrySnapshot } from "@nycode/durable";
+import { createToolSearchExtension } from "@nycode/durable/tool-search";
 import { keyedRegistry } from "./chord.ts";
 import { guardTool, type P2Tool } from "./tool-access.ts";
 
@@ -34,7 +34,7 @@ const CODEMODE_EXTENSION = "codemode";
 /**
  * Durable's registry over the worker's `Extensions` and `ExtensionSwitches`: a snapshot per (extensions, switched-off
  * set), made once and kept while the composition lives. Without code mode, deferred tools the model may call (MCP
- * tools, the terminal tool) are reachable only through `tool_search`, as pi falls back: it is installed then, once,
+ * tools, the terminal tool) are reachable only through `tool_search`, as nycode falls back: it is installed then, once,
  * whichever plugins offer such tools; `subscribe` observes both registries' compositions (its
  * listener called inside the Chord batch that composed, so it only wakes the scheduler). `context` ends the
  * observations.

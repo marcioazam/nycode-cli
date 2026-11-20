@@ -1,4 +1,4 @@
-import type { Static } from "@earendil-works/pi-schema";
+import type { Static } from "@nycode/schema";
 import type { Location } from "@p2/app/v1";
 import type { QuerySchema, WriteSchema } from "./contract.ts";
 

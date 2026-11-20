@@ -380,9 +380,9 @@ The `owner` string is opaque to the engine; each adapter fills it:
 
 | | namespace | owner | kind | key |
 | --- | --- | --- | --- | --- |
-| Durable session document | `pi-durable` | `session` | `pi.settings` | |
-| Durable conversation document | `pi-durable` | `conversation:7` | `pi.provider` | |
-| Durable task document | `pi-durable` | `task:31` | `pi.codemode` | |
+| Durable session document | `nycode-durable` | `session` | `nycode.settings` | |
+| Durable conversation document | `nycode-durable` | `conversation:7` | `nycode.provider` | |
+| Durable task document | `nycode-durable` | `task:31` | `nycode.codemode` | |
 | Chord persisted document | `chord` | `session:notes.store` | `notes` | `n-42` |
 
 What the owner string means (a conversation's documents fork and rewind with it, a task's are retired with the task)
@@ -611,9 +611,9 @@ self.on(conversation.entries, async ({ value: entries }, ctx) => {
 # What's Next {.epilogue lede="What is decided, and the order in which it gets built."}
 
 The direction and all seventeen review items are decided (decision log, 2026-10-21). The store is new code; the parts
-outside it are small changes in pi:
+outside it are small changes in nycode:
 
-- **pi, one change:** `Storage.commit(writes, adopt, context)` with every storage calling `adopt` (S1), the
+- **nycode, one change:** `Storage.commit(writes, adopt, context)` with every storage calling `adopt` (S1), the
   Session's handling of rejections after adoption, the narrowed `mintId` comment (S10), `traceIn(options, fn,
   context)` (context last), Durable's `WatchHandle`/`WatchEnd` moved into Chord with generic end reasons and explicit
   retirement (W2), and Durable's state getters and the `replicatedState` family removed (W14).

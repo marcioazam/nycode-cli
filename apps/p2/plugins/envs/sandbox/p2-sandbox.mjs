@@ -1,6 +1,6 @@
 // p2's sandbox program on a host environment: one long-lived Gondolin VM per sandbox, held by a supervisor process
 // (`serve`), and the commands p2 runs over SSH (`daemon`, `start`, `status`, `stop`, `reset`, `forget`). `daemon` starts the supervisor
-// when the sandbox is not running, then runs the pi-env daemon in the VM with stdin and stdout passed through, so p2
+// when the sandbox is not running, then runs the nycode-env daemon in the VM with stdin and stdout passed through, so p2
 // talks to the daemon in the VM as it does to one on any other machine. Started by p2-sandbox.sh. Secrets: the
 // configuration names them (with their hosts), `start` reads their values as JSON on stdin and hands them to the
 // supervisor in its environment; the supervisor's HTTP proxy puts them into outbound request headers for their hosts,
@@ -37,8 +37,8 @@ import {
 const START_TIMEOUT_MS = 600_000;
 /** How long a stopping VM may take to write what it holds to its disk. */
 const SYNC_TIMEOUT_MS = 30_000;
-/** Where the pi-env daemon is copied in the VM, and where Gondolin mounts the folders before binding them. */
-const GUEST_TOOLS = "/opt/pi-env";
+/** Where the nycode-env daemon is copied in the VM, and where Gondolin mounts the folders before binding them. */
+const GUEST_TOOLS = "/opt/nycode-env";
 const GUEST_VFS = "/.p2-vfs";
 const GUEST_ENV = {
 	HOME: "/root",
@@ -149,12 +149,12 @@ function parseConfig(text) {
 }
 
 function runDir(name) {
-	return join(homedir(), ".pi", "p2", "sandbox", "run", name);
+	return join(homedir(), ".nycode", "p2", "sandbox", "run", name);
 }
 
 /** The sandbox's own disk: a qcow2 layer over the guest image it was created from (the image stays its base). */
 function diskPath(name) {
-	return join(homedir(), ".pi", "p2", "sandbox", "disks", `${name}.qcow2`);
+	return join(homedir(), ".nycode", "p2", "sandbox", "disks", `${name}.qcow2`);
 }
 
 /**
@@ -189,7 +189,7 @@ async function createDisk(disk, config) {
 
 /**
  * `~` and `~/…` are the host user's home; other paths must be absolute. A writable folder must not hold or be inside
- * ~/.pi: p2 runs this launcher and pi-env's daemons from there, on the host.
+ * ~/.nycode: p2 runs this launcher and nycode-env's daemons from there, on the host.
  */
 function hostPath(path, readonly) {
 	const home = homedir();
@@ -197,9 +197,11 @@ function hostPath(path, readonly) {
 	if (!isAbsolute(expanded)) throw new Error(`Folder must be absolute or start with ~: ${path}`);
 	const resolved = resolve(expanded);
 	const within = (parent, child) => child === parent || child.startsWith(parent === "/" ? "/" : `${parent}/`);
-	const pi = join(home, ".pi");
-	if (!readonly && (within(resolved, pi) || within(pi, resolved)))
-		throw new Error(`A writable folder must not contain or be inside ${pi} (p2's launcher runs from there): ${path}`);
+	const nycode = join(home, ".nycode");
+	if (!readonly && (within(resolved, nycode) || within(nycode, resolved)))
+		throw new Error(
+			`A writable folder must not contain or be inside ${nycode} (p2's launcher runs from there): ${path}`,
+		);
 	return resolved;
 }
 
@@ -300,7 +302,7 @@ async function ensureRunning(name, config, secrets) {
 	}
 }
 
-/** Run the pi-env daemon in the VM: stdin goes to it, its stdout and stderr come back, its exit code is ours. */
+/** Run the nycode-env daemon in the VM: stdin goes to it, its stdout and stderr come back, its exit code is ours. */
 async function runDaemon(name, config, binary, args) {
 	try {
 		await ensureRunning(name, config);

@@ -1,4 +1,4 @@
-// The window's brain tabs, shown while signed in to Radius: the Radius shell's tab bar (pi-shell/PiShell.tsx, Elanor's
+// The window's brain tabs, shown while signed in to Radius: the Radius shell's tab bar (nycode-shell/NycodeShell.tsx, Elanor's
 // Tabs) drawn natively in the window's title bar row, next to the window buttons. It belongs to the window, not to a
 // page, so it stays put while the page under it changes. A click selects a tab in place, Cmd-click or the middle
 // button opens it in a window of its own, and so does dragging a tab out of the bar. The bar's empty parts drag the

@@ -1,8 +1,8 @@
-# @earendil-works/chord
+# @nycode/chord
 
 Chord builds applications out of **objects** that live in several processes (a server, workers, browser tabs) and keep running while their plugins are **reloaded**.
 
-- An **object type** is a contract: a name, params that select the instance, the host it lives on, its members (state and methods) and a version. Contracts are runtime values described with JSON Schema, written with the builders of `@earendil-works/pi-schema`.
+- An **object type** is a contract: a name, params that select the instance, the host it lives on, its members (state and methods) and a version. Contracts are runtime values described with JSON Schema, written with the builders of `@nycode/schema`.
 - A **facet** is a plugin's declarations for one host: the types it serves and its contributions to registries. A factory only declares; Chord activates.
 - Everyone gets a **reference**, never the object. A reference is live and hydrated once its `get` resolves, works the same locally and across links, and keeps its object alive.
 - **Documents** are named JSON values an object owns, written in transactions and persisted in Chord's store; **derives** compute values from watchables; **jobs** are owned work that outlives the call that started it.
@@ -15,37 +15,37 @@ The design, the rule book for all of this, is [docs/design.md](docs/design.md).
 
 | Import | Contents | Runs in |
 |--------|----------|---------|
-| `@earendil-works/chord` | Contracts (`local`, `remote`, `method`, the schema builders), errors (`ChordError`, `isChordError`), hosts and facets (`createHost`, `defineFacet`), documents (`defineState`), derives and natives (`constant`, `mapShared`), routines and jobs (`defineJob`), links (`memoryLinkPair`, `ipcLink`, `webSocketLink`), registries (`defineRegistry`), the store (`openStore`, `defineTable`, queries, export and import), and the client surfaces' shared part (`Themes`, `ThemeChoice`, `WebScripts`, `TuiScripts`, messages and languages: `defineMessages`, `Translations`, `LocaleChoice`, `formatTime`, `formatNumber`). | Node and browsers |
-| `@earendil-works/chord/http` | HTTP: a Web-standard `fetch` handler (`createHttp`) built from the routes, wraps and sockets plugins contribute to the registry `Http`, authenticators (`Authenticators`), responses as descriptions, a security baseline on by default, Chord's Node listener and `nodeRequest`, the links endpoint. | Node |
-| `@earendil-works/chord/workers` | Workers: `createWorkers` runs a forked worker per address of a host kind, started on demand and stopped when idle; `workerMain` is a worker's entry; `processLock`. | Node |
-| `@earendil-works/chord/compression` | `nodeCompression`: the synchronous compressor `createHost({ compression })` takes (raw deflate over `node:zlib`), so JSON parts above 16 KiB a host originates go deflated. | Node |
-| `@earendil-works/chord/workers/child` | The worker's side alone: `workerMain` and `processLock`, without esbuild (a worker entry imports this). | Node |
-| `@earendil-works/chord/plugins` | Plugins: discovery, builds with esbuild (`buildFacet`), evaluation, the watcher, rollouts, `createPlugins`, `installPlugin`, `testPlugin`, `pluginFile`. | Node |
-| `@earendil-works/chord/plugins/runtime` | `createPluginRuntime`: loads built plugins without esbuild (a worker's side). | Node |
-| `@earendil-works/chord/app` | The app kit: `startServer`, `startWorker`, the start-data objects, sessions and the owner's sign-in, device pairing, files, export and import per address, optional plugins (users, invites, ephemeral login). | Node |
-| `@earendil-works/chord/surfaces` | The client surfaces' server side: `webSurface` (base bundle, plugin scripts, the page) and `tuiSurface` (the terminal surface). | Node |
-| `@earendil-works/chord/web` | The web surface's browser side: `startPage` in the app's web entry, `followThemes`, `followLanguage`. | Browsers |
-| `@earendil-works/chord/react` | Optional React bindings: `HostProvider`, `useHold`, `useWatch`, `useRefState`, `useVariant`, `useRegistry`, `usePageState`, `useMessages`, `watchStore`. | Browsers |
-| `@earendil-works/chord/tui` | The terminal surface's sandbox side: `startTerminalRuntime` in the app's terminal entry, `BridgeTerminal`, `TerminalTheme`, `TuiScope`. | Node (sandboxed) |
-| `@earendil-works/chord/tui/launcher` | The terminal launcher, the trusted side of a terminal client: `startTerminal`, `requireSandboxNode`. | Node |
-| `@earendil-works/chord/context` | Explicit cancellation, telemetry, and invocation values: `BACKGROUND_CONTEXT`, `withCancel`, `withAbortSignal`, `withoutAbortSignal`, `withTelemetry`, `traceIn`, `withContextValue`, `awaitWithContext`. | Node and browsers |
-| `@earendil-works/chord/delta` | The transactional JSON tracker, structural diff, immutable apply, and the wire encoder/decoder for operation batches. | Node and browsers |
-| `@earendil-works/chord/json` | `JsonValue`, `JsonRepresentation`, `copyJson`, `isJsonValue`. | Node and browsers |
-| `@earendil-works/chord/watch` | The watch types `Watchable`, `WatchHandle`, `NativeWatchable`, `NativeWatchHandle`, `WatchCall`, `NativeWatchCall`, and `WatchEnd`, with their implementations `Watch` and `NativeWatch`. | Node and browsers |
-| `@earendil-works/chord/output` | Bounded output streams and paced progress: `OutputBuffer` (head or tail window of a stream, `OutputLimits`, `OutputSkip`), `boundOutput`, `sanitizeOutput`, `utf8ByteLength`, and `Progress` (adaptive commits of a changing value). | Node and browsers |
-| `@earendil-works/chord/telemetry-sqlite` | `createSqliteTelemetry(db, { retentionMs?, maxQueuedSpans? })`: buffered recording and backend-independent `TelemetryStore` queries. | Any SQLite adapter |
-| `@earendil-works/chord/sqlite` | Portable `SqliteDatabase`, `SqliteExecutor`, and `SqliteValue`, atomic `applySqliteMigrations(database, migrations, { table })`, and `validateSqliteSchemaPrefix`. The metadata table must be a valid, non-reserved SQLite identifier; migration versions start at 1 and are contiguous. | Any SQLite adapter |
-| `@earendil-works/chord/sqlite/node` | `NodeSqliteDatabase`, `openNodeSqliteDatabase`, and `NodeSqliteDatabaseOptions`. | Node |
-| `@earendil-works/chord/sqlite/cloudflare` | `DurableObjectSqliteDatabase` and the structural `DurableObjectSqliteStorage` binding type. | Cloudflare Durable Objects |
-| `@earendil-works/chord/sync` | Sync (experimental): a store's outbox commits uploaded to a remote into slots created once (`uploadSession`), applied on another copy (`pullSession`), folded into snapshots (`foldSession`); `FlushScheduler`; the remote and sync-state interfaces, and directory-backed ones over a `SyncFileSystem` for development and tests. | Node and browsers |
+| `@nycode/chord` | Contracts (`local`, `remote`, `method`, the schema builders), errors (`ChordError`, `isChordError`), hosts and facets (`createHost`, `defineFacet`), documents (`defineState`), derives and natives (`constant`, `mapShared`), routines and jobs (`defineJob`), links (`memoryLinkPair`, `ipcLink`, `webSocketLink`), registries (`defineRegistry`), the store (`openStore`, `defineTable`, queries, export and import), and the client surfaces' shared part (`Themes`, `ThemeChoice`, `WebScripts`, `TuiScripts`, messages and languages: `defineMessages`, `Translations`, `LocaleChoice`, `formatTime`, `formatNumber`). | Node and browsers |
+| `@nycode/chord/http` | HTTP: a Web-standard `fetch` handler (`createHttp`) built from the routes, wraps and sockets plugins contribute to the registry `Http`, authenticators (`Authenticators`), responses as descriptions, a security baseline on by default, Chord's Node listener and `nodeRequest`, the links endpoint. | Node |
+| `@nycode/chord/workers` | Workers: `createWorkers` runs a forked worker per address of a host kind, started on demand and stopped when idle; `workerMain` is a worker's entry; `processLock`. | Node |
+| `@nycode/chord/compression` | `nodeCompression`: the synchronous compressor `createHost({ compression })` takes (raw deflate over `node:zlib`), so JSON parts above 16 KiB a host originates go deflated. | Node |
+| `@nycode/chord/workers/child` | The worker's side alone: `workerMain` and `processLock`, without esbuild (a worker entry imports this). | Node |
+| `@nycode/chord/plugins` | Plugins: discovery, builds with esbuild (`buildFacet`), evaluation, the watcher, rollouts, `createPlugins`, `installPlugin`, `testPlugin`, `pluginFile`. | Node |
+| `@nycode/chord/plugins/runtime` | `createPluginRuntime`: loads built plugins without esbuild (a worker's side). | Node |
+| `@nycode/chord/app` | The app kit: `startServer`, `startWorker`, the start-data objects, sessions and the owner's sign-in, device pairing, files, export and import per address, optional plugins (users, invites, ephemeral login). | Node |
+| `@nycode/chord/surfaces` | The client surfaces' server side: `webSurface` (base bundle, plugin scripts, the page) and `tuiSurface` (the terminal surface). | Node |
+| `@nycode/chord/web` | The web surface's browser side: `startPage` in the app's web entry, `followThemes`, `followLanguage`. | Browsers |
+| `@nycode/chord/react` | Optional React bindings: `HostProvider`, `useHold`, `useWatch`, `useRefState`, `useVariant`, `useRegistry`, `usePageState`, `useMessages`, `watchStore`. | Browsers |
+| `@nycode/chord/tui` | The terminal surface's sandbox side: `startTerminalRuntime` in the app's terminal entry, `BridgeTerminal`, `TerminalTheme`, `TuiScope`. | Node (sandboxed) |
+| `@nycode/chord/tui/launcher` | The terminal launcher, the trusted side of a terminal client: `startTerminal`, `requireSandboxNode`. | Node |
+| `@nycode/chord/context` | Explicit cancellation, telemetry, and invocation values: `BACKGROUND_CONTEXT`, `withCancel`, `withAbortSignal`, `withoutAbortSignal`, `withTelemetry`, `traceIn`, `withContextValue`, `awaitWithContext`. | Node and browsers |
+| `@nycode/chord/delta` | The transactional JSON tracker, structural diff, immutable apply, and the wire encoder/decoder for operation batches. | Node and browsers |
+| `@nycode/chord/json` | `JsonValue`, `JsonRepresentation`, `copyJson`, `isJsonValue`. | Node and browsers |
+| `@nycode/chord/watch` | The watch types `Watchable`, `WatchHandle`, `NativeWatchable`, `NativeWatchHandle`, `WatchCall`, `NativeWatchCall`, and `WatchEnd`, with their implementations `Watch` and `NativeWatch`. | Node and browsers |
+| `@nycode/chord/output` | Bounded output streams and paced progress: `OutputBuffer` (head or tail window of a stream, `OutputLimits`, `OutputSkip`), `boundOutput`, `sanitizeOutput`, `utf8ByteLength`, and `Progress` (adaptive commits of a changing value). | Node and browsers |
+| `@nycode/chord/telemetry-sqlite` | `createSqliteTelemetry(db, { retentionMs?, maxQueuedSpans? })`: buffered recording and backend-independent `TelemetryStore` queries. | Any SQLite adapter |
+| `@nycode/chord/sqlite` | Portable `SqliteDatabase`, `SqliteExecutor`, and `SqliteValue`, atomic `applySqliteMigrations(database, migrations, { table })`, and `validateSqliteSchemaPrefix`. The metadata table must be a valid, non-reserved SQLite identifier; migration versions start at 1 and are contiguous. | Any SQLite adapter |
+| `@nycode/chord/sqlite/node` | `NodeSqliteDatabase`, `openNodeSqliteDatabase`, and `NodeSqliteDatabaseOptions`. | Node |
+| `@nycode/chord/sqlite/cloudflare` | `DurableObjectSqliteDatabase` and the structural `DurableObjectSqliteStorage` binding type. | Cloudflare Durable Objects |
+| `@nycode/chord/sync` | Sync (experimental): a store's outbox commits uploaded to a remote into slots created once (`uploadSession`), applied on another copy (`pullSession`), folded into snapshots (`foldSession`); `FlushScheduler`; the remote and sync-state interfaces, and directory-backed ones over a `SyncFileSystem` for development and tests. | Node and browsers |
 
 `esbuild` (for `/plugins`, `/surfaces` and `/workers`), `ws` (for `/http` and `/tui/launcher`) and `react` (for `/react`) are optional peer dependencies, imported only there; `/app` uses all but `react`.
 
 ## Quick start
 
 ```ts
-import { createHost, defineFacet, local, method, obj, str, constant } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
+import { createHost, defineFacet, local, method, obj, str, constant } from "@nycode/chord";
+import { BACKGROUND_CONTEXT } from "@nycode/chord/context";
 
 const context = BACKGROUND_CONTEXT; // every call takes a context, used for cancellation
 
@@ -78,15 +78,15 @@ await host.close(context);
 - [Design](docs/design.md): the target design, the one current statement of every rule; [decisions](docs/decisions.md): the decision log; [slices](docs/slices.md): the build plan and its carry-over.
 - [Plugins and hosts](docs/guide-plugins-hosts/book.md): a tutorial building a notes app with plugins, HTTP and workers; [plugin authoring](docs/plugin-authoring.md): the guide for agents writing plugins.
 - [Examples](test/examples/): runnable references, one topic each. Run from `packages/chord`: `node --conditions=source --experimental-strip-types test/examples/01-objects.ts`.
-- Each layer's README in `src/*/README.md` and `src/node/*/README.md`; the [delta guide](src/delta/README.md): ownership, lifecycle, operation, and replica contracts of `@earendil-works/chord/delta`.
+- Each layer's README in `src/*/README.md` and `src/node/*/README.md`; the [delta guide](src/delta/README.md): ownership, lifecycle, operation, and replica contracts of `@nycode/chord/delta`.
 
 ## Explicit Context telemetry
 
 `Context` always carries a `telemetry: TelemetrySpan`, alongside `abortSignal`. `BACKGROUND_CONTEXT` and `TODO_CONTEXT` use the shared no-op span `NOOP_TELEMETRY_CONTEXT`. Adapters (`TelemetryContext`) belong to hosts and start root spans; adapters are never placed in a `Context`.
 
 ```ts
-import { BACKGROUND_CONTEXT, traceIn, withTelemetry } from '@earendil-works/chord/context';
-import { InMemoryTelemetryContext } from '@earendil-works/pi-telemetry';
+import { BACKGROUND_CONTEXT, traceIn, withTelemetry } from '@nycode/chord/context';
+import { InMemoryTelemetryContext } from '@nycode/telemetry';
 
 const telemetry = new InMemoryTelemetryContext();
 await telemetry.startSpan({ name: 'app.request' }, async (span) => {
@@ -109,9 +109,9 @@ These helpers operate on the standalone `Context` API. They do not yet instrumen
 ## SQLite telemetry
 
 ```ts
-import { createSqliteTelemetry } from '@earendil-works/chord/telemetry-sqlite';
-import { openNodeSqliteDatabase } from '@earendil-works/chord/sqlite/node';
-import { renderTrace } from '@earendil-works/pi-telemetry/render';
+import { createSqliteTelemetry } from '@nycode/chord/telemetry-sqlite';
+import { openNodeSqliteDatabase } from '@nycode/chord/sqlite/node';
+import { renderTrace } from '@nycode/telemetry/render';
 
 const db = await openNodeSqliteDatabase('telemetry.db');
 const telemetry = await createSqliteTelemetry(db);
@@ -136,10 +136,10 @@ The adapter implements `TelemetryStore`: `findTraces()`, `getTrace()`, and `find
 
 ## Tracking JSON deltas
 
-Import the standalone transactional tracker from `@earendil-works/chord/delta`:
+Import the standalone transactional tracker from `@nycode/chord/delta`:
 
 ```ts
-import { applyImmutable, track } from "@earendil-works/chord/delta";
+import { applyImmutable, track } from "@nycode/chord/delta";
 
 const tracker = track({ output: "", count: 0 });
 const change = tracker.beginChange();

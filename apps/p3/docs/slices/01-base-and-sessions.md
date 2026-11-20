@@ -58,7 +58,7 @@ and 2 of the map):
 ```text
 apps/p3/
   server.ts                   startP3: the kit's startServer with the plugins root and the session worker's entry
-  bin.ts                      the command (slice 26 moved the start script here from server.ts): ~/.pi/p3 on port
+  bin.ts                      the command (slice 26 moved the start script here from server.ts): ~/.nycode/p3 on port
                               8789, prints the owner link, closes on a signal
   src/install.ts              where p3's files are, in a checkout or in the built package (slice 26)
   worker.ts                   a session worker: the kit's startWorker
@@ -155,7 +155,7 @@ host connected to the server first, its plugins loaded with `p3.worker-info`.
 module exports Chord's `Http` registry, which a plugin needs for a route (the kit's tests use one to see who a request
 runs as).
 
-### `forward` (`src/kit/forward.ts`, exported by `@earendil-works/p3/v1`)
+### `forward` (`src/kit/forward.ts`, exported by `@nycode/p3/v1`)
 
 40 of p2's 48 remote factories own nothing: they get a `local` store and declare every member a second time. `forward`
 writes that once.
@@ -183,7 +183,7 @@ host.serve(Sessions, (_params, principal, self) => {
 - `forward` reads the names of the variant's members from the contract with Chord's `memberNames(Remote, variant)`
   (decision F): Chord refuses an implementation with a member too many, so the store's other members must stay out.
 
-### `contribute` (`src/kit/contribute.ts`, exported by `@earendil-works/p3/v1`)
+### `contribute` (`src/kit/contribute.ts`, exported by `@nycode/p3/v1`)
 
 p2's helper (`apps/p2/src/runtime/contribute.ts`): `contribute(host, name, register)` serves a host-lifetime `local`
 object named `name` with no members whose factory only calls `register(self)`, so contributions that need a reference
@@ -192,7 +192,7 @@ or a registry come and go with it. Not used by this slice's plugin; tested alone
 ## Contracts and objects
 
 Every API below is Chord's (`packages/chord/src/host/README.md`, "Named queries", "Lists", "Admission";
-`plugin-authoring.md`), re-exported by `@earendil-works/p3/v1`.
+`plugin-authoring.md`), re-exported by `@nycode/p3/v1`.
 
 ```ts
 // plugins/sessions/contract.ts
@@ -530,7 +530,7 @@ audience per contract).
 - **C. State and last touch have no writer in this slice:** the columns, the index and the order are built and set at
   create; the harness reports transitions in slice 3. So "a row moves to the top" is tested here only by creates.
 - **D. Names are p3's:** `p3.info`, `p3.worker-info`, `p3.sign-ins`, the cookie `p3-sign-in`, `/_p3/owner`.
-- **E. The default data directory is `~/.pi/p3`** (not `~/.p3`). What the first build left in `~/.p3` does not matter.
+- **E. The default data directory is `~/.nycode/p3`** (not `~/.p3`). What the first build left in `~/.p3` does not matter.
 - **F. `forward` learns a contract's members from Chord:** Chord exports `memberNames(contract, variant)`, the current
   version's `{ state, methods, events }` name lists. No wrapper of `remote` in p3's API.
 

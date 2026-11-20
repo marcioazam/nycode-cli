@@ -1,7 +1,7 @@
 import { runInDurableObject } from "cloudflare:test";
 import { env } from "cloudflare:workers";
-import { DurableObjectSqliteDatabase } from "@earendil-works/chord/sqlite/cloudflare";
-import { registerStorageConformance } from "@earendil-works/pi-durable/testing";
+import { DurableObjectSqliteDatabase } from "@nycode/chord/sqlite/cloudflare";
+import { registerStorageConformance } from "@nycode/durable/testing";
 import { describe, expect, it } from "vitest";
 import { openDurableObjectSqliteStorage } from "../src/storage/sqlite/cloudflare.ts";
 import { applySqliteMigrationsForSchema, createSqliteMigrations } from "../src/storage/sqlite/migrations.ts";

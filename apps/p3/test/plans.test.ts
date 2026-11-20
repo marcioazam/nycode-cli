@@ -6,10 +6,10 @@
 import assert from "node:assert/strict";
 import { DatabaseSync, type SQLInputValue } from "node:sqlite";
 import { describe, it } from "node:test";
-import { createHost, openStore, sqliteBackend } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context";
-import { NodeSqliteDatabase } from "@earendil-works/chord/sqlite/node";
-import { type P3Principal, Server } from "@earendil-works/p3/v1";
+import { createHost, openStore, sqliteBackend } from "@nycode/chord";
+import { BACKGROUND_CONTEXT as context } from "@nycode/chord/context";
+import { NodeSqliteDatabase } from "@nycode/chord/sqlite/node";
+import { type P3Principal, Server } from "@nycode/p3/v1";
 import { SessionsStore } from "../plugins/sessions/contract.server.ts";
 import { CODING } from "../plugins/sessions/contract.ts";
 import sessionsServer from "../plugins/sessions/server.ts";
@@ -43,7 +43,7 @@ describe("the plans of the sessions store's queries", () => {
 		const onError = (error: { readonly kind: string }) => assert.fail(error.kind);
 		const host = createHost<P3Principal>({ address: Server(), principal: { kind: "server" }, store, onError });
 		try {
-			await host.load([{ name: "@earendil-works/p3-sessions", facet: sessionsServer }], context);
+			await host.load([{ name: "@nycode/p3-sessions", facet: sessionsServer }], context);
 			const sessions = await host.get(SessionsStore, {}, context);
 			for (let i = 0; i < 6; i++) {
 				const id = await sessions.create({ title: `s${i}`, creator: { kind: "owner" } }, context);

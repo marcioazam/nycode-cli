@@ -24,7 +24,7 @@ describe("recording", () => {
 			["browser:inc:3", "browser:inc:2", "child"],
 			["browser:inc:2", undefined, "root"],
 		]);
-		expect(carrier).toEqual({ "pi-sqlite-span": "browser:inc:2", "pi-sqlite-trace": "browser:inc:2" });
+		expect(carrier).toEqual({ "nycode-sqlite-span": "browser:inc:2", "nycode-sqlite-trace": "browser:inc:2" });
 		gate.resolve();
 		await open;
 		expect(recorder.take(false).spans.map(({ name }) => name)).toEqual(["open"]);

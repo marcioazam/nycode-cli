@@ -13,8 +13,8 @@ import {
 	ToolTask,
 	wrapSection,
 	wrapTool,
-} from "@earendil-works/pi-durable";
-import { obj } from "@earendil-works/pi-schema";
+} from "@nycode/durable";
+import { obj } from "@nycode/schema";
 import { describe, expect, it } from "vitest";
 import { agentHooks, resolveAgent, resolveSettings } from "../src/harness/agent.ts";
 import { context } from "./session-support.ts";
@@ -113,7 +113,7 @@ describe("registry", () => {
 			[defineExtension({ name: "x", sections: [section("a", () => "1"), section("a", () => "2")] }), "two sections"],
 			[defineExtension({ name: "x", sections: [section("Bad Key", () => "")] }), "must match"],
 			[defineExtension({ name: "x", sections: [section("instructions", () => "")] }), "reserved"],
-			[defineExtension({ name: "x", tasks: [task("pi.generation")] }), "already installed"],
+			[defineExtension({ name: "x", tasks: [task("nycode.generation")] }), "already installed"],
 			[defineExtension({ name: "x", tasks: [task("app.index")] }), "already installed"],
 		] as const;
 		for (const [extension, message] of invalid) expect(() => registry.install(extension)).toThrow(message);
@@ -288,9 +288,9 @@ describe("agent resolution", () => {
 		local.install(defineExtension<AppTool>({ name: "b", hooks: [hook(ToolTask, second)] }));
 		const a = { extension: "a", handlers: first };
 		const b = { extension: "b", handlers: second };
-		expect(agentHooks(resolve(undefined, local.snapshot()), "pi.tool")).toEqual([a, b]);
-		expect(agentHooks(resolve({ extensions: ["b", "a"] }, local.snapshot()), "pi.tool")).toEqual([b, a]);
-		expect(agentHooks(resolve({ extensions: ["b"] }, local.snapshot()), "pi.generation")).toEqual([]);
+		expect(agentHooks(resolve(undefined, local.snapshot()), "nycode.tool")).toEqual([a, b]);
+		expect(agentHooks(resolve({ extensions: ["b", "a"] }, local.snapshot()), "nycode.tool")).toEqual([b, a]);
+		expect(agentHooks(resolve({ extensions: ["b"] }, local.snapshot()), "nycode.generation")).toEqual([]);
 
 		const defaults = resolve(undefined, local.snapshot());
 		expect(defaults.model).toBeUndefined();

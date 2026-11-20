@@ -4,7 +4,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { loginToRadius, newServerId, radiusGatewayFromEnv, readRadiusConfig, writeRadiusConfig } from "./brain.ts";
 
-const directory = process.env.P2_DATA_DIR ?? join(homedir(), ".pi", "p2");
+const directory = process.env.P2_DATA_DIR ?? join(homedir(), ".nycode", "p2");
 await mkdir(directory, { recursive: true, mode: 0o700 });
 const existing = await readRadiusConfig(directory);
 const gateway = radiusGatewayFromEnv();

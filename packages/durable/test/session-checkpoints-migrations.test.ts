@@ -1,11 +1,5 @@
-import type { Op } from "@earendil-works/chord/delta";
-import {
-	defineDoc,
-	defineDocFamily,
-	type EntryId,
-	type JsonObject,
-	type StorageWrite,
-} from "@earendil-works/pi-durable";
+import type { Op } from "@nycode/chord/delta";
+import { defineDoc, defineDocFamily, type EntryId, type JsonObject, type StorageWrite } from "@nycode/durable";
 import { describe, expect, it } from "vitest";
 import {
 	context,

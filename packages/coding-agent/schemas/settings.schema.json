@@ -273,7 +273,7 @@
         "type": "string"
       },
       "minItems": 1,
-      "description": "Command `pi update` runs to update Pi itself, in argv form such as [\"mise\", \"use\", \"-g\", \"npm:{packageName}@{version}\"]. Placeholders: {packageName}, {version}, {installSpec}. PI_SELF_UPDATE_COMMAND takes precedence. Global setting only."
+      "description": "Command `nycode update` runs to update Nycode itself, in argv form such as [\"mise\", \"use\", \"-g\", \"npm:{packageName}@{version}\"]. Placeholders: {packageName}, {version}, {installSpec}. NYCODE_SELF_UPDATE_COMMAND takes precedence. Global setting only."
     },
     "collapseChangelog": {
       "type": "boolean",
@@ -654,7 +654,7 @@
     },
     "httpProxy": {
       "type": "string",
-      "description": "Proxy URL applied as HTTP_PROXY and HTTPS_PROXY for Pi-managed HTTP clients."
+      "description": "Proxy URL applied as HTTP_PROXY and HTTPS_PROXY for Nycode-managed HTTP clients."
     },
     "httpIdleTimeoutMs": {
       "anyOf": [

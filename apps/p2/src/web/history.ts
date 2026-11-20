@@ -3,16 +3,16 @@
 // entries and the entries of a gap page in through `Chat.entries`. One store per host and conversation, kept a while
 // after nobody views it, so switching back finds its pages loaded.
 
-import { BACKGROUND_CONTEXT, type Context, withAbortSignal } from "@earendil-works/chord/context";
-import type { NativeWatchable, Watchable, WatchEnd } from "@earendil-works/chord/watch";
+import { BACKGROUND_CONTEXT, type Context, withAbortSignal } from "@nycode/chord/context";
+import type { NativeWatchable, Watchable, WatchEnd } from "@nycode/chord/watch";
 import {
 	ConversationTranscript,
 	type ConversationView,
 	type EntryId,
 	type TranscriptItem,
 	type TranscriptView,
-} from "@earendil-works/pi-durable";
-import type { Static } from "@earendil-works/pi-schema";
+} from "@nycode/durable";
+import type { Static } from "@nycode/schema";
 import type { EntriesPage, EntriesQuerySchema } from "../runtime/schemas.ts";
 
 /** One page of `Chat.entries`. */

@@ -7,10 +7,10 @@ import {
 	createAssistantMessageEventStream,
 	getAttributionHeaders,
 	type Model,
+	NYCODE_ATTRIBUTION,
 	normalizeContext,
-	PI_ATTRIBUTION,
 	type SimpleStreamOptions,
-} from "@earendil-works/pi-ai";
+} from "@nycode/ai";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { VERSION } from "../src/config.ts";
 import { AuthStorage } from "../src/core/auth-storage.ts";
@@ -26,20 +26,20 @@ describe("createAgentSession client identity", () => {
 	let originalTelemetryEnv: string | undefined;
 
 	beforeEach(() => {
-		tempDir = join(tmpdir(), `pi-sdk-identity-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+		tempDir = join(tmpdir(), `nycode-sdk-identity-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 		cwd = join(tempDir, "project");
 		agentDir = join(tempDir, "agent");
 		mkdirSync(cwd, { recursive: true });
 		mkdirSync(agentDir, { recursive: true });
-		originalTelemetryEnv = process.env.PI_TELEMETRY;
-		delete process.env.PI_TELEMETRY;
+		originalTelemetryEnv = process.env.NYCODE_TELEMETRY;
+		delete process.env.NYCODE_TELEMETRY;
 	});
 
 	afterEach(() => {
 		if (originalTelemetryEnv === undefined) {
-			delete process.env.PI_TELEMETRY;
+			delete process.env.NYCODE_TELEMETRY;
 		} else {
-			process.env.PI_TELEMETRY = originalTelemetryEnv;
+			process.env.NYCODE_TELEMETRY = originalTelemetryEnv;
 		}
 		if (tempDir && existsSync(tempDir)) {
 			rmSync(tempDir, { recursive: true, force: true });
@@ -139,18 +139,18 @@ describe("createAgentSession client identity", () => {
 		}
 	}
 
-	it("identifies pi with a detailed User-Agent and attribution as a CLI agent", async () => {
+	it("identifies nycode with a detailed User-Agent and attribution as a CLI agent", async () => {
 		const model = createModel("openrouter", "https://openrouter.ai/api/v1");
 		const options = await captureOptions(model);
 
 		expect(options?.identity).toEqual({
 			userAgent: "detailed",
 			version: VERSION,
-			attribution: PI_ATTRIBUTION,
+			attribution: NYCODE_ATTRIBUTION,
 		});
 		expect(getAttributionHeaders(model, options?.identity)).toEqual({
 			"HTTP-Referer": "https://pi.dev",
-			"X-OpenRouter-Title": "pi",
+			"X-OpenRouter-Title": "nycode",
 			"X-OpenRouter-Categories": "cli-agent",
 		});
 	});
@@ -163,8 +163,8 @@ describe("createAgentSession client identity", () => {
 		expect(getAttributionHeaders(model, options?.identity)).toEqual({});
 	});
 
-	it("turns attribution off with PI_TELEMETRY=0", async () => {
-		process.env.PI_TELEMETRY = "0";
+	it("turns attribution off with NYCODE_TELEMETRY=0", async () => {
+		process.env.NYCODE_TELEMETRY = "0";
 		const options = await captureOptions(createModel("openrouter", "https://openrouter.ai/api/v1"));
 
 		expect(options?.identity?.attribution).toBeNull();

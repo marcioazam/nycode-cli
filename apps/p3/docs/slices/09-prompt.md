@@ -1,6 +1,6 @@
 # Slice 9: Prompt
 
-**Goal.** AGENTS.md, skills and prompt templates from the Pi, the environment and the project, by location. p2's `plugins/prompt` as precedent.
+**Goal.** AGENTS.md, skills and prompt templates from the Nycode, the environment and the project, by location. p2's `plugins/prompt` as precedent.
 
 **Depends on:** slice 8.
 

@@ -33,7 +33,7 @@ const root = join(copy, "plugins");
 //    external in the server kind's builds, the modules given at load). Its npm command (here a stand-in): what
 //    `installDependencies` runs in a plugin's directory.
 const modules = {
-	"@earendil-works/chord": chord,
+	"@nycode/chord": chord,
 	"@example/app": app,
 	"@example/legacy": createRequire(import.meta.url)("./app/legacy.cjs"),
 };

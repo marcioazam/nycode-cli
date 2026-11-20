@@ -9,8 +9,8 @@ import { build } from "esbuild";
 const src = new URL("../../src/", import.meta.url).pathname;
 
 const entries: Record<string, string> = {
-	"pi-schema": `export { compile } from ${JSON.stringify(`${src}index.ts`)};`,
-	"pi-schema + formats": `export { compile } from ${JSON.stringify(`${src}index.ts`)}; export { formats } from ${JSON.stringify(`${src}formats/index.ts`)};`,
+	"nycode-schema": `export { compile } from ${JSON.stringify(`${src}index.ts`)};`,
+	"nycode-schema + formats": `export { compile } from ${JSON.stringify(`${src}index.ts`)}; export { formats } from ${JSON.stringify(`${src}formats/index.ts`)};`,
 	typebox: `export { Compile } from "typebox/compile";`,
 	cfworker: `export { Validator } from "@cfworker/json-schema";`,
 	ajv: `export { default } from "ajv/dist/2020.js";`,

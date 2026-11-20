@@ -14,7 +14,7 @@ note: |
   here exists in the code on the branch, except what decision 1 proposes (marked). Decisions the owner has not taken
   are marked **Decision needed** and listed in the last chapter; review notes mark points found while checking the
   sources.
-colophon: p3 step 0 · spec, first edition · 2026-11-06 · sources: Chord design.md §3-§24, decisions 2026-11-01..06, the app kit and example 61, pi-durable spec §2.2, §7.1, §9.3
+colophon: p3 step 0 · spec, first edition · 2026-11-06 · sources: Chord design.md §3-§24, decisions 2026-11-01..06, the app kit and example 61, nycode-durable spec §2.2, §7.1, §9.3
 ---
 
 # Before we begin {.preface}
@@ -58,7 +58,7 @@ decision 1.
    inside `send` and pushed before `send` answers; the working status is pushed by a routine.
 7. **The page is optimistic.** A new session's row and a sent message appear at once with React's `useOptimistic`;
    Chord's rule that a call's answer follows its state swaps in the real values without a flicker.
-8. **A fake model is the first model provider.** The `fake-model` plugin contributes one pi-ai provider, `fake`, whose
+8. **A fake model is the first model provider.** The `fake-model` plugin contributes one nycode-ai provider, `fake`, whose
    model `echo` streams "You said: ..." back; step 1 adds real providers the same way.
 :::
 
@@ -73,7 +73,7 @@ extension point: one contribution per plugin, composed by the plugin that serves
 `Harness` on a session's store, owned by the Chord object `Harness`. The **root conversation** is the session's one
 Durable conversation in step 0 (`ROOT_CONVERSATION_ID`). The **catalog** is the server's table of sessions; its
 per-principal view is `SessionList`. The **view** is Durable's `ConversationView`: a window of entries plus the
-built-in documents (`pi.live` holds the run and the streaming answer).
+built-in documents (`nycode.live` holds the run and the streaming answer).
 
 # What Runs Where {#where lede="Three kinds of host, four plugins, and which object owns what."}
 
@@ -142,9 +142,9 @@ The start script is the tutorial's `startTodo` with p3's values. It is base code
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { startServer } from "@earendil-works/chord/app";
-import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context";
-import { pageScripts } from "@earendil-works/chord/surfaces";
+import { startServer } from "@nycode/chord/app";
+import { BACKGROUND_CONTEXT as context } from "@nycode/chord/context";
+import { pageScripts } from "@nycode/chord/surfaces";
 import * as v1 from "@p3/app/v1";
 import { API, KINDS } from "./src/kinds.ts";
 import type { P3Principal } from "./src/principals.ts";
@@ -184,15 +184,15 @@ console.log(`Open ${app.ownerLink()}`);
 
 ```ts
 // apps/p3/worker.ts
-import { startWorker } from "@earendil-works/chord/app";
+import { startWorker } from "@nycode/chord/app";
 import { API, KINDS } from "./src/kinds.ts";
 
 startWorker({ api: API, kinds: KINDS, onError: (error) => console.error("p3 session:", error) });
 ```
 
 `src/kinds.ts` holds `API` (`{ name: "@p3/app", versions: ["v1"], modules: { ... } }`) and `KINDS`: `server` and
-`worker` on Node, `web` in the browser with React. The worker kind also lists `@earendil-works/pi-ai` and
-`@earendil-works/pi-durable` as host packages, so plugins import them by name and every plugin shares the process's one
+`worker` on Node, `web` in the browser with React. The worker kind also lists `@nycode/ai` and
+`@nycode/durable` as host packages, so plugins import them by name and every plugin shares the process's one
 instance (decision 2).
 
 The principal is the kit's minimum plus the worker:
@@ -230,7 +230,7 @@ export function defineFacet(setup: (host: FacetHost<P3Principal>, self: FacetSel
 }
 
 export type { P3Principal } from "../../principals.ts";
-export { AppInfo, HostRuntime, KeepAlive, WorkerInfo } from "@earendil-works/chord/app";   // HostRuntime, KeepAlive: decision 1
+export { AppInfo, HostRuntime, KeepAlive, WorkerInfo } from "@nycode/chord/app";   // HostRuntime, KeepAlive: decision 1
 ```
 
 The worker module declares the three registries a session's worker is built around. It declares them only (their
@@ -238,13 +238,13 @@ tokens); the `harness` plugin serves them.
 
 ```ts
 // apps/p3/src/api/v1/worker.ts
-import type { Provider } from "@earendil-works/pi-ai";
-import type { Extension, Harness as DurableHarness } from "@earendil-works/pi-durable";
+import type { Provider } from "@nycode/ai";
+import type { Extension, Harness as DurableHarness } from "@nycode/durable";
 
 /** Durable extensions: one per contributing plugin (a writable when its tools change at runtime). */
 export const Extensions = defineRegistry<Extension, readonly Extension[]>("p3.extensions", { version: 1 });
 
-/** Model providers: one pi-ai provider per contributing plugin, composed into the session's `Models`. */
+/** Model providers: one nycode-ai provider per contributing plugin, composed into the session's `Models`. */
 export const ModelProviders = defineRegistry<Provider, Models>("p3.model-providers", { version: 1 });
 
 /** The session's open Durable harness, for objects that follow its views: `undefined` while none is open. */
@@ -281,14 +281,14 @@ export function useRoute(): string;
 /** Moves the page to `path` without a reload (`history.pushState`). */
 export function navigate(path: string): void;
 
-export { useHold, useHost, useMessages, usePageState, useRegistry, useWatch } from "@earendil-works/chord/react";
+export { useHold, useHost, useMessages, usePageState, useRegistry, useWatch } from "@nycode/chord/react";
 ```
 
 `Sidebar` and `Screens` are served by the page's own core facet in `src/web/main.tsx` (as example 61's `Panels`): the
 slots are base code, what fills them is plugins.
 
 :::review | Review: the model providers' shape is step 1's
-The handoff leaves the providers registry's shape undecided. Step 0 takes the smallest one that runs: one pi-ai
+The handoff leaves the providers registry's shape undecided. Step 0 takes the smallest one that runs: one nycode-ai
 `Provider` per plugin, composed with `createModels()` and `setProvider` (a second contribution with the same provider id
 is reported and left out, the first by plugin name wins). Step 1 (real models, credentials as worker view state, the
 server refreshing tokens) may change the contribution; the token's version moves then.
@@ -301,9 +301,9 @@ Durable harness as a native.
 
 ```ts
 // apps/p3/plugins/harness/worker.ts
-import { createModels } from "@earendil-works/pi-ai";
-import { Harness as DurableHarness } from "@earendil-works/pi-durable";
-import { StoreStorage } from "@earendil-works/pi-durable/storage/store";
+import { createModels } from "@nycode/ai";
+import { Harness as DurableHarness } from "@nycode/durable";
+import { StoreStorage } from "@nycode/durable/storage/store";
 import { ChordRoot, defineFacet, HostRuntime, KeepAlive, local, withContextValue } from "@p3/app/v1";
 import { Extensions, HarnessNative, ModelProviders } from "@p3/app/v1/worker";
 import { durableRegistry } from "./registry.ts";
@@ -441,7 +441,7 @@ plugin does not have. Pages and terminals have no store and are not served it.
 
 ```ts
 // apps/p3/plugins/fake-model/worker.ts
-import { fauxAssistantMessage, type FauxResponseFactory, fauxProvider } from "@earendil-works/pi-ai";
+import { fauxAssistantMessage, type FauxResponseFactory, fauxProvider } from "@nycode/ai";
 import { defineFacet } from "@p3/app/v1";
 import { ModelProviders } from "@p3/app/v1/worker";
 
@@ -589,7 +589,7 @@ host.serve(SessionMeta, (_params, self) => {
 	const harness = self.registry(HarnessNative);
 	self.retryOn(harness);
 	const view = self.follow((observer, context) => observeRoot(harness.value, observer, context, { min: 1, max: 1 }));
-	const status = self.derive([view], ([v]) => (v.docs["pi.live"]?.run === undefined ? "idle" : "working"));
+	const status = self.derive([view], ([v]) => (v.docs["nycode.live"]?.run === undefined ? "idle" : "working"));
 	// Pushed from where it changes: the first call reports the current status, later calls every change.
 	self.on(status, async ({ value }, ctx) => {
 		if (list.variant === "worker") await list.report({ status: value }, ctx);
@@ -649,7 +649,7 @@ host.serve(ChatStore, (_params, self) => {
 		send: async ({ text, requestId }, ctx) => {
 			const root = await harness.value!.root(ctx);
 			if (meta.title.value.title === "") await meta.rename({ title: firstLine(text, 80) }, ctx);
-			// Resolves once Durable committed the input: it is in `view` (an entry, or queued in `pi.inbox` while a run
+			// Resolves once Durable committed the input: it is in `view` (an entry, or queued in `nycode.inbox` while a run
 			// is busy) before this method answers.
 			await root.submit({ type: "input", content: text, requestId, whenBusy: "followUp" }, ctx);
 			return null;
@@ -670,7 +670,7 @@ host.serve(Chat, (_params, principal, self) => {
 - **Followed, never copied.** The transcript is Durable's; `self.follow` over `observeConversation` makes its view a
   Chord watchable without a second copy (decision "App authoring rules confirmed by the p2 audit"). Durable keeps one
   mount per conversation; chat's and sessions' observers share it.
-- **The streamed answer** is the run's `pi.live` document in the view: each delta Durable commits is one view
+- **The streamed answer** is the run's `nycode.live` document in the view: each delta Durable commits is one view
   revision, one `state` message to the page. Nothing in p3 assembles a stream.
 - **`requestId`** makes a retried send exactly-once (Durable's submission dedupe): the page makes one per message, so a
   send whose answer was lost in a reconnect and is sent again is admitted once.
@@ -696,7 +696,7 @@ durable --> worker: committed: view gains the user entry
 worker --> server: state (view), then result
 server --> page: its own state (title), the worker's state (view), then result
 page -> page: transition ends: real entry and title shown
-durable -> worker: generation streams into pi.live
+durable -> worker: generation streams into nycode.live
 worker --> page: one state message per revision (via server)
 :::
 
@@ -778,7 +778,7 @@ worker --> page: Chat bound: view (empty transcript)
 
 `plugins/chat/web.tsx` contributes `Screens` `{ path: "/s/:id", Component: ChatScreen }`: the transcript from `view.entries`
 (user and assistant text; tool entries render as a placeholder until tools exist), the streaming answer from
-`view.docs["pi.live"]`, a composer whose half-typed text is page state (`usePageState`, kept across a plugin reload),
+`view.docs["nycode.live"]`, a composer whose half-typed text is page state (`usePageState`, kept across a plugin reload),
 Send and Stop. Sending:
 
 ```tsx
@@ -850,11 +850,11 @@ decisions are the owner's; the first blocks the build.
 1. **How a plugin gets its host's store, root scope, load signal and keep-alive** (chapter IV): recommended A, two kit
    registries `HostRuntime` and `KeepAlive`; alternatives B (app core facets and a ready hook in `startWorker`) and C
    (p3 on `workerMain`, without `startWorker`).
-2. **pi-ai and pi-durable as host packages of the worker kind** (chapter II): plugins import them by name, as web
+2. **nycode-ai and nycode-durable as host packages of the worker kind** (chapter II): plugins import them by name, as web
    plugins import React; recommended, because re-exporting Durable's whole extension surface through `@p3/app/v1/worker`
    would copy its API into p3's and pin it to p3's versions. The alternative re-exports what p3 supports and nothing
    else (stricter, more upkeep per Durable change).
-3. **Data directory and port**: `~/.p3` (the kit's default for the name `p3`) and 8789, next to p2's `~/.pi/p2` and
+3. **Data directory and port**: `~/.p3` (the kit's default for the name `p3`) and 8789, next to p2's `~/.nycode/p2` and
    8788. Recommended as is.
 4. **The page names new sessions** (chapter VIII): `crypto.randomUUID()` on the page, checked by pattern and created
    idempotently on the server, so the row and the screen need no round trip. The alternative (the server names it)
@@ -874,7 +874,7 @@ workers whose sessions were working at shutdown (step 2).
 | `HostRuntime` (`chord.app.runtime`) | registry, kit (decision 1) | every kit host | `{ store, root, whenLoaded }` |
 | `KeepAlive` (`chord.app.keep-alive`) | registry, kit (decision 1) | every kit worker | counts summed into `busy` |
 | `Extensions` (`p3.extensions`) | registry | worker, served by `harness` | Durable `Extension` per plugin |
-| `ModelProviders` (`p3.model-providers`) | registry | worker, served by `harness` | pi-ai `Provider` per plugin; value `Models` |
+| `ModelProviders` (`p3.model-providers`) | registry | worker, served by `harness` | nycode-ai `Provider` per plugin; value `Models` |
 | `HarnessNative` (`p3.harness`) | registry | worker, served by `harness` | the open Durable harness |
 | `Harness` (`p3.harness`) | local, empty params | worker | none: owns Durable |
 | `SessionStore` (`p3.sessions.store`) | local, empty params | server | `sessions`, `create`, `report`; table `p3.sessions` |

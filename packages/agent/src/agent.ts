@@ -11,7 +11,7 @@ import {
 	type ThinkingBudgets,
 	type Transport,
 	toToolDeclaration,
-} from "@earendil-works/pi-ai";
+} from "@nycode/ai";
 import { runAgentLoop, runAgentLoopContinue } from "./agent-loop.ts";
 import { getDefaultStreamFn } from "./stream-fn.ts";
 import type {
@@ -141,7 +141,7 @@ export interface AgentOptions {
 	toolExecution?: ToolExecutionMode;
 	/**
 	 * How requests identify the app to providers, merged field by field over `DEFAULT_AGENT_IDENTITY`
-	 * (`{ attribution: PI_ATTRIBUTION }`). Pass `{ attribution: null }` to send no attribution headers.
+	 * (`{ attribution: NYCODE_ATTRIBUTION }`). Pass `{ attribution: null }` to send no attribution headers.
 	 */
 	identity?: ClientIdentity;
 }

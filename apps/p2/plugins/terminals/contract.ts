@@ -1,4 +1,4 @@
-import { arr, bool, int, nul, obj, opt, str, union } from "@earendil-works/pi-schema";
+import { arr, bool, int, nul, obj, opt, str, union } from "@nycode/schema";
 import {
 	defineRegistry,
 	LocationSchema,

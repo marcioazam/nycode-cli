@@ -9,8 +9,8 @@ first and win until the design is updated.
 - **p3 next to p2, fully isolated.** The new design is built as a new app (`apps/p3`) with its own data directory. p2
   keeps running unchanged with its data. Plugins are ported to p3 one at a time.
 - **No legacy data migration.** p3 starts empty: no import of p2's `catalog.sqlite`, `shares.sqlite` or subagents table.
-- **Chord v2 lives in `packages/chord/src/next`** (export `@earendil-works/chord/next`), developed on `private` only
-  (owner override of the "pi first" rule for this directory) and upstreamed to pi once stable; then `next/` replaces
+- **Chord v2 lives in `packages/chord/src/next`** (export `@nycode/chord/next`), developed on `private` only
+  (owner override of the "nycode first" rule for this directory) and upstreamed to nycode once stable; then `next/` replaces
   today's Chord and p2 is deleted. `next/` imports `../context`, `../delta`, `../json`, `../output` directly, so
   Durable's `Context`, `Draft` and `JsonValue` are the same modules and types in v2 (no copies, no type conflicts).
   (Replaces "Chord v2 lives inside p3". Now `src` and the package's root: "Chord v2 becomes the package's root".)
@@ -58,8 +58,8 @@ first and win until the design is updated.
   `transaction(change, context)`). Examples: `self.tx(fn, ctx)`, `handle.change(fn, ctx)` and keyed
   `handle.change(key, fn, ctx)`, `handle.retire(ctx)` and keyed `handle.retire(key, ctx)`, `chord(fn, context)`,
   `job.start(args, ctx, { key })`. Applied to design.md, the guide and the walkthrough; the frozen `step-*.md` and
-  `kernel.md` document the frozen code and keep its signatures. pi's `traceIn(context, options, fn)` (implemented in
-  `chord/context`) becomes `traceIn(options, fn, context)` in the same pi change as S1 (owner, 2026-10-21).
+  `kernel.md` document the frozen code and keep its signatures. nycode's `traceIn(context, options, fn)` (implemented in
+  `chord/context`) becomes `traceIn(options, fn, context)` in the same nycode change as S1 (owner, 2026-10-21).
 
 ## Hosts and placement
 
@@ -67,7 +67,7 @@ first and win until the design is updated.
   key)` looked a key up in the input untyped). A function is type-checked and composable. The caller runs it and
   sends the result; the provider runs it too and refuses an object that is not its own. Placement is then no longer
   part of the contract fingerprint; a changed rule surfaces as that refusal.
-- **Incarnations are minted by Chord** (uuidv7, the code copied from pi-ai into Chord: no dependency), never passed
+- **Incarnations are minted by Chord** (uuidv7, the code copied from nycode-ai into Chord: no dependency), never passed
   in; the link handshake carries it, so the other side sees a restart as a new incarnation of the same identity.
 
 - **The low-level host API** (no topology layer; Radius and DO show entry points vary, so the kernel has no
@@ -108,8 +108,8 @@ first and win until the design is updated.
   only the object's own calls and jobs; work elsewhere that uses the native (e.g. Durable tool executions using a code
   mode sandbox) is the owner's to drain or end in `close` ("old code keeps running" applies to natives too).
 - **Code mode in p3 drains its sandbox in `close`** (**superseded in part** by R16 (`close` detaches the sandbox and disposes of it in the background)) (not moved into Durable): the plugin keeps owning the
-  `pi-codemode` sandbox; on `reload` (and `stop`) `close` seals it (no new scripts), running scripts finish or hit
-  their deadline, then its VMs and worker threads end (`closeWhenIdle` in `pi-codemode`, or a counter in the plugin).
+  `nycode-codemode` sandbox; on `reload` (and `stop`) `close` seals it (no new scripts), running scripts finish or hit
+  their deadline, then its VMs and worker threads end (`closeWhenIdle` in `nycode-codemode`, or a counter in the plugin).
   New scripts start on the new sandbox through the registry entry. `RunningCalls`, the removal message and
   `abortTask` on reload go away; after a worker stop Durable replays as today.
 - **Invariants across owners (#5):** the owner of the dependent data enforces the rule by reconciling from the other
@@ -176,11 +176,11 @@ first and win until the design is updated.
   storage is shaped for Durable (scans by id, no tags); Chord documents and Durable transcripts never commit together,
   so they need not share a storage. Node-specific storages live outside the portable core; a Durable Object SQLite
   storage can follow. (Replaces the earlier "adapter over Durable's node SQLite storage" for the playground.)
-- **Durable's SQLite driver layer moves into Chord** (`@earendil-works/chord/sqlite`, `/sqlite/node`,
+- **Durable's SQLite driver layer moves into Chord** (`@nycode/chord/sqlite`, `/sqlite/node`,
   `/sqlite/cloudflare`): the `SqliteDatabase`/`SqliteExecutor` interfaces, the `node:sqlite` and Durable Object
   drivers, the migration runner and schema-prefix helpers. Durable imports them from Chord (it already depends on
   Chord, so no cycle) and re-exports them under its old paths so no Durable user breaks. Chord's SQLite document
-  storage uses the same drivers (`next/` imports `../sqlite` like `../output`). Done in pi first, then merged.
+  storage uses the same drivers (`next/` imports `../sqlite` like `../output`). Done in nycode first, then merged.
 
 ## Derives and natives step
 
@@ -233,14 +233,14 @@ first and win until the design is updated.
   attributes, fn)` gives `fn` a child `ctx` (principal and `get` kept), so calls inside are parented correctly.
 - **One adapter per host:** (**superseded in part** by the adapter is a `TelemetryContext` with readonly `metrics`/`propagation` members, held only by hosts ("Telemetry types and review cleanup")) `createHost({ telemetry })`, the adapter implements `TelemetryContext` and optionally
   `TelemetryPropagation` and `TelemetryMetrics` (no split). Default NOOP.
-- **pi-telemetry additions** (pi first): `TelemetryCarrier = Record<string, string>` (opaque, W3C-compatible);
+- **nycode-telemetry additions** (nycode first): `TelemetryCarrier = Record<string, string>` (opaque, W3C-compatible);
   `TelemetryPropagation { inject(context) → carrier | undefined; extract(carrier) → TelemetryContext }` (absent,
   invalid or unknown carriers give the adapter's root, never throw; carriers are best effort: after an adapter change
   only links are lost); span links (`SpanOptions.links`, required `TelemetrySpan.addLink(link)`, a link targets a
   context); `NOOP_TELEMETRY_PROPAGATION`; the in-memory adapter implements propagation, links and metrics (carrier
   snapshots, no forced W3C fields); conformance fixture with optional `propagation`. No `isRecording` for now (it would
   break adapters, as would closure attributes).
-- **Metrics** (in the same pi change): `TelemetryMetrics { counter, upDownCounter, histogram }` with `add`/`record`
+- **Metrics** (in the same nycode change): `TelemetryMetrics { counter, upDownCounter, histogram }` with `add`/`record`
   (synchronous, cheap, never throw; histogram `record` takes an optional context for exemplars), `InstrumentOptions`
   (description, unit), histogram boundaries, `NOOP_TELEMETRY_METRICS`, typed through `metrics` in telemetry schemas,
   low-cardinality attributes only.
@@ -254,7 +254,7 @@ first and win until the design is updated.
   runs, job runs and finishes; events on the enclosing span for commits inside a method (`chord.commit` with docs, ops,
   duration), retries and parking; metrics for background high-frequency work (state frames, bytes on WebSocket links,
   commit durations, in-flight calls, active holds, open links, park durations, backpressure waits). Verbose per-commit
-  or per-frame spans are an adapter decision (filter by name); Chord, Durable and pi-ai only report. Sampling,
+  or per-frame spans are an adapter decision (filter by name); Chord, Durable and nycode-ai only report. Sampling,
   buffering and limits belong to the adapter.
 - **No measuring for telemetry:** only sizes the code already has are reported (encoded WebSocket frames, `byteLength`
   of bytes, lengths a storage computed while writing); nothing is serialized just to count it.
@@ -262,60 +262,60 @@ first and win until the design is updated.
 - **Debugging:** (**superseded in part** by the SQLite telemetry store and `TelemetryStore` ("Telemetry store")) a JSONL trace adapter (bounded rotating file, batched asynchronous writes, drops when full, never
   blocks) and a text renderer of one trace now; a web trace viewer in the playground (span tree, durations, hosts,
   links, attributes, events; also usable standalone on a JSONL file) with the web shell.
-- **Durable** (pi): (**superseded in part** by "Durable and AI spans" and "Telemetry implementation decisions" (phase spans under the stored carrier; every input submission starts its own trace)) `HarnessOptions.telemetry`; an optional `trace` carrier field on submission and task records (the
+- **Durable** (nycode): (**superseded in part** by "Durable and AI spans" and "Telemetry implementation decisions" (phase spans under the stored carrier; every input submission starts its own trace)) `HarnessOptions.telemetry`; an optional `trace` carrier field on submission and task records (the
   submitting call's or the parent task's carrier, rewritten with the record as other immutable fields are; JSON records,
   no migration, no format bump, old records simply have no link); task runs are child spans while their trigger runs in
   the same process, otherwise root spans linked to the stored carrier; Durable spans get their own schema. Persisted
   Chord jobs store their start carrier the same way.
-- **Own schema, no OTel GenAI (owner, 2026-10-18):** pi's AI and Durable telemetry uses its own typed schema
-  (`pi.ai.*`, `pi.durable.*`); the OTel GenAI conventions (development status, renames, streaming still `TODO`) are not
-  followed. An OTel adapter may translate pi's names to `gen_ai.*` at export. Model stream details are span events, never
-  per delta. The pi part of telemetry (propagation, links, metrics, typed metric schemas, `chord/context` telemetry
-  member, `HarnessOptions.telemetry` type) is approved as diffed in `/home/badlogic/pi-telemetry`.
-- **Durable and AI spans (owner, 2026-10-18), partly open:** (**superseded in part** by pi-ai's option is `telemetry` (a span), not `telemetryContext` ("Telemetry types and review cleanup")) every span is short and in one process. Spans:
-  `pi.durable.submit` (admission), `pi.durable.phase` (one invocation of any task's phase; fixed name, `task.name`,
-  `phase`, `kind`, `attempt`, `resumed`, outcome as attributes), `pi.ai.request` (one model request). Events:
-  `pi.ai.first_chunk`, `pi.ai.block` (per `*_end`: type, index, chars, tool; never per delta), `pi.durable.entry`,
-  `pi.durable.submission`, `pi.durable.replay` (a codemode call answered from its journal). No content ever; entry ids
+- **Own schema, no OTel GenAI (owner, 2026-10-18):** nycode's AI and Durable telemetry uses its own typed schema
+  (`nycode.ai.*`, `nycode.durable.*`); the OTel GenAI conventions (development status, renames, streaming still `TODO`) are not
+  followed. An OTel adapter may translate nycode's names to `gen_ai.*` at export. Model stream details are span events, never
+  per delta. The nycode part of telemetry (propagation, links, metrics, typed metric schemas, `chord/context` telemetry
+  member, `HarnessOptions.telemetry` type) is approved as diffed in `/home/badlogic/nycode-telemetry`.
+- **Durable and AI spans (owner, 2026-10-18), partly open:** (**superseded in part** by nycode-ai's option is `telemetry` (a span), not `telemetryContext` ("Telemetry types and review cleanup")) every span is short and in one process. Spans:
+  `nycode.durable.submit` (admission), `nycode.durable.phase` (one invocation of any task's phase; fixed name, `task.name`,
+  `phase`, `kind`, `attempt`, `resumed`, outcome as attributes), `nycode.ai.request` (one model request). Events:
+  `nycode.ai.first_chunk`, `nycode.ai.block` (per `*_end`: type, index, chars, tool; never per delta), `nycode.durable.entry`,
+  `nycode.durable.submission`, `nycode.durable.replay` (a codemode call answered from its journal). No content ever; entry ids
   point to the transcript. Submissions and tasks store their creator's carrier; phase spans are children of it. Every
   input submission starts its own trace, linked to its trigger (bounded traces; subagent report chains do not nest).
-  No hook spans for now. Metrics: `pi.ai.request.duration`, `pi.ai.first_chunk.duration`, `pi.ai.tokens`, `pi.ai.cost`,
-  `pi.durable.phase.duration`, `pi.durable.tasks.active` (ids never on metrics). `pi.ai.request` is emitted by pi-ai
+  No hook spans for now. Metrics: `nycode.ai.request.duration`, `nycode.ai.first_chunk.duration`, `nycode.ai.tokens`, `nycode.ai.cost`,
+  `nycode.durable.phase.duration`, `nycode.durable.tasks.active` (ids never on metrics). `nycode.ai.request` is emitted by nycode-ai
   in one wrapper around `lazyStream` in `models.ts` (both `stream` and `streamSimple`; reads the event stream, changes
-  nothing; deferred results get `pi.ai.poll` the same way); Durable passes `telemetryContext`. Background tasks
+  nothing; deferred results get `nycode.ai.poll` the same way); Durable passes `telemetryContext`. Background tasks
   (e.g. compaction) are children of the creating phase like every task. A task picked up by a new process sets
   `resumed=true` and stays under its stored carrier (same trace).
 - **Telemetry implementation decisions (owner, 2026-10-18):** `TelemetryContext` carries optional `metrics` and
   `propagation` members (every span from an adapter carries its capabilities), so one type is used everywhere
-  (`HarnessOptions.telemetry`, `createHost({ telemetry })`, `Context.telemetry`, pi-ai's option, renamed `telemetry`).
+  (`HarnessOptions.telemetry`, `createHost({ telemetry })`, `Context.telemetry`, nycode-ai's option, renamed `telemetry`).
   Entry and submission events only after a successful commit. Several queued inputs started as one run: the run takes
   the first input's carrier and stores the others' as immutable creation-time links on its first phase span; a steer's
   submit span links to the running run's carrier. A phase closed or cancelled without a committed state ends
   `aborted`. Submit spans only on the public submit path; internal admissions inside another commit show as events.
   ToolTask sets `tool.name`/`tool.call_id` on its own span. Write submissions are children of the caller; only input
-  submissions start traces. Polls count tokens and cost only for final results. Import budgets raised (pi-ai models
+  submissions start traces. Polls count tokens and cost only for final results. Import budgets raised (nycode-ai models
   18, Durable root 71).
 - **Errors in telemetry (owner, 2026-10-18):** a failed span carries `status: "error"` with a fixed category name and the
   error message truncated to 500 characters (`provider_error` for a model request, `task_faulted` for a faulted phase).
   Cancelling is not an error (`stop=aborted`/`outcome=aborted` keep status ok). Durable's `onReport` stays unchanged;
-  every report is additionally a `pi.durable.report` event on the current span (its own short root span outside any
-  span) plus a `pi.durable.reports { type }` counter. (Superseded in part below: no root span for reports.)
+  every report is additionally a `nycode.durable.report` event on the current span (its own short root span outside any
+  span) plus a `nycode.durable.reports { type }` counter. (Superseded in part below: no root span for reports.)
 - **Telemetry types and review cleanup (owner, 2026-10-18):** `Context.telemetry` is always a `TelemetrySpan` (default:
   the NOOP span); the adapter (`TelemetryContext` with readonly `metrics`/`propagation`) is held only by hosts
-  (`createHost`, `HarnessOptions`) to start roots, never put into a Context; pi-ai's option is `telemetry?:
+  (`createHost`, `HarnessOptions`) to start roots, never put into a Context; nycode-ai's option is `telemetry?:
   TelemetrySpan`. Code that only has a Context calls the generic `addEvent` (no typed-events helper, no casts, no
   duck typing). A report is an event on the current span plus the counter and `onReport`; outside any span only the
   latter two. `TaskOptions.trace?: TelemetryCarrier | "root"` (absent: inherit). No protection against broken adapters.
   Telemetry never walks or reads data just to measure (checkpoint event compares the phase only). Instrument caches are
   `WeakMap`s keyed by the adapter's metrics object.
-- **Telemetry store (owner, 2026-10-18):** a SQLite adapter in Chord (`@earendil-works/chord/telemetry-sqlite`, reusing
+- **Telemetry store (owner, 2026-10-18):** a SQLite adapter in Chord (`@nycode/chord/telemetry-sqlite`, reusing
   `chord/sqlite`, Node and Cloudflare): settled spans one row each (events and links inline), metrics aggregated per
   series per 10 s, a 1 s batched flush that also deletes rows older than the retention (7 days), a bounded queue of
-  settled spans (dropped and counted), no retries. A shared read interface `TelemetryStore` in pi-telemetry, modeled on
+  settled spans (dropped and counted), no retries. A shared read interface `TelemetryStore` in nycode-telemetry, modeled on
   Jaeger's span reader: `findTraces({ name, attributes, errors, start window, limit, cursor })` returns complete traces
   (newest trace start first, paged by an opaque cursor), `getTrace(id)`, `findMetrics({ name, window, attributes })`.
   Spans carry global ids and a trace id (a root's own id), links carry trace and span id. Both the SQLite and the
-  in-memory adapter implement it; one renderer `renderTrace(spans)` (subpath `pi-telemetry/render`) prints links and
+  in-memory adapter implement it; one renderer `renderTrace(spans)` (subpath `nycode-telemetry/render`) prints links and
   never follows them. Live spans, incoming-link search and duration search are left out. The store's metric read method is
   `findMetrics` (`metrics` is the recording capability). Adapters trust typed inputs (no validation of malformed
   caller values, no try/catch around recording); only carriers from another process are checked (keys present,
@@ -489,7 +489,7 @@ validation and copies the v2 kernel added around Delta.
 
 ## Process (after review round 2)
 
-- **Layer by layer, as pi-durable was built:** the existing `next/` code (about 10k lines, kernel steps 1–6) is frozen as
+- **Layer by layer, as nycode-durable was built:** the existing `next/` code (about 10k lines, kernel steps 1–6) is frozen as
   a reference and not built on; Chord v2 is rebuilt bottom-up in small layers (data and contracts; readable and derive;
   documents and store; objects; references and `ctx`; protocol and links; relay, routes, revocation; routines and
   jobs; registries; reload and rollout; telemetry). Per layer: a one-page spec with data flow, cost per hop, a line
@@ -556,7 +556,7 @@ validation and copies the v2 kernel added around Delta.
   absent document is a no-op, `tx.draft(…, { tags })` creates a missing document with its tags, existence is read
   outside the transaction. The R12 and R13 patterns are documented in `design.md` (section 9).
 - **R14, checkpoints (owner, 2026-10-19; **refined** by "Slice plan and slice-1 review decisions": required only for persisted documents):** no default, but `checkpointWhen` is required on every document
-  definition, in Chord and in Durable (a pi breaking change), so forgetting it is a type error. Durable's task-scoped
+  definition, in Chord and in Durable (a nycode breaking change), so forgetting it is a type error. Durable's task-scoped
   documents (nested call, codemode run and journal) return false (they retire with their task); the codemode store
   checkpoints after 64 deltas; p2's small settings documents checkpoint on every write, its growing ones after 64.
 - **R15, old calls and migration (owner, 2026-10-19):** as in Durable: running calls keep their old handles until they
@@ -691,12 +691,12 @@ validation and copies the v2 kernel added around Delta.
 - **S1, adoption inside the commit step (owner, 2026-10-21; store review):** every owner's in-memory adoption runs
   synchronously inside the store's commit step, after the backend commit and before the next commit starts, so memory
   always shows a complete prefix of the log. Durable's `Storage.commit(writes, adopt, context)` gains a required `adopt`
-  callback (pi breaking change): every storage calls it synchronously once the commit is durable and before its next
+  callback (nycode breaking change): every storage calls it synchronously once the commit is durable and before its next
   commit; the Session catches its own adoption error and fails; a rejection after adoption fails the Session without
   `tx.discard()`; `writeAtClose` passes a no-op; `StoreStorage` forwards `adopt` into the store's step; Chord objects
   adopt (pointer swap) the same way. Listeners stay where they are: after adoption, in each owner's continuation
   (unchanged), so their order across owners may differ from the seq order while every listener reads a complete
-  prefix. Checked against Durable's code (memory, JSONL, SQLite, GuardedStorage, writeAtClose); the pi change and its
+  prefix. Checked against Durable's code (memory, JSONL, SQLite, GuardedStorage, writeAtClose); the nycode change and its
   test run come with the store work.
 - **S2, references to later commits (owner, 2026-10-21; store review):** no mechanism and no new rule. Ids are minted
   inside the transaction that creates them (Durable `tx.appendEntry` → `mintId`) and reach other code only after that
@@ -743,7 +743,7 @@ validation and copies the v2 kernel added around Delta.
   transaction that never committed was never seen outside it, S2; Durable's transactions are serialized on the
   Session line). In the store each owner's id counter starts at open above that owner's highest stored id (one index
   lookup per table; a replica taking over gets it the same way). Durable's existing storages already behave so; the
-  comment changes in the same pi change as S1.
+  comment changes in the same nycode change as S1.
 - **S11, copying documents into a fork (owner, 2026-10-21; store review):** `StoreStorage` reconstructs the source
   documents of a `document.copy` before entering the commit step (reads of committed history outside the step) and
   enters it with plain creates carrying the base; Durable is unchanged. Safe because the source is a past state and
@@ -963,7 +963,7 @@ validation and copies the v2 kernel added around Delta.
   started after 150 frames, stop during a running call, a retire with a derive over it, a reload during a routine call,
   GC counts of retained revisions.
 - **W2, W3, watch fixes (owner, 2026-10-21; review round 4):** W2a: retirement is an explicit source event (last frame
-  `[["r", null]]`, then the end `retired`), never inferred from `value === null`; in Chord and in Durable alike (a pi
+  `[["r", null]]`, then the end `retired`), never inferred from `value === null`; in Chord and in Durable alike (a nycode
   change; Durable's `CommittedWatch` stops treating `null` as retirement). W2b: only `routines.on` delivers the
   acquisition value: it calls its handler once with `watch.value` (ops `[["r", value]]`), then starts the watch and
   drains the buffered commits; a direct `watch()`/`start()` user keeps Durable's pattern (use `watch.value` first, then
@@ -1061,7 +1061,7 @@ validation and copies the v2 kernel added around Delta.
   check runs once per declared or edited method. Owner rule: no runtime checks of values TypeScript already guarantees
   (AGENTS.md); declaration checks of decided rules the types cannot express stay.
 - **Cost counters (owner, 2026-10-22):** the function that does the work counts it through its context (validation,
-  compilation, canonical JSON, a future counted `copyJson` with an optional context added in pi); call sites never
+  compilation, canonical JSON, a future counted `copyJson` with an optional context added in nycode); call sites never
   count work done elsewhere. Counters stay plain totals without site labels: mainly a test guard (a test isolates one
   operation), plus a rough production number; attribution, if ever needed, comes from an event on the context's span.
   The error rebuild from the wire does not copy (fresh decoder output) and checks only the envelope.
@@ -1084,11 +1084,11 @@ validation and copies the v2 kernel added around Delta.
   "missing" for those two cases, TypeBox's message otherwise. A malformed error envelope from a peer throws a plain
   `Error`. `Principal` is a type alias (apps declare principals as type aliases, not interfaces).
 - **One watch-handle implementation, upstream first (owner, 2026-10-22; L2 spec):** Durable's `CommittedWatch` moves
-  into Chord's shared `src/watch.ts` (pi change, upstream first), generalized to serve native watchables too
+  into Chord's shared `src/watch.ts` (nycode change, upstream first), generalized to serve native watchables too
   (`NativeWatchHandle`, listener `(value, context)`, overflow to the newest value); Durable uses it and its
   `observation.ts` goes away; Chord v2's L2 builds on it. Publications, derives, sinks, `constant` and `writable` stay in
   `next/` (v2 only). Durable's synchronous view-change hook (so a derive over a Durable view is marked in the commit
-  step) is a later pi change, with L3d.
+  step) is a later nycode change, with L3d.
 - **L2 spec decisions (owner, 2026-10-22):** watchable state is JSON only (no bytes in documents, derives, reference
   members or any watchable; bytes only in method arguments and results and chunked transfers; Delta stays JSON-only;
   supersedes W4's "JSON plus bytes" for watchables). `mapShared` lives in v2's `watch/` until v2 goes upstream. C10 is
@@ -1224,7 +1224,7 @@ validation and copies the v2 kernel added around Delta.
   - Used by link hold members while the K=2 window is full (encoded once when an ack frees a slot) and by state
     watches (`Watch` over `(value, ops)`): a slow listener gets one call per batch with the folded ops and the newest
     value. Measured, listener taking 1 s: 438 calls and 3.39 MB of ops become 171 and 371 KB. The watch change is in
-    Chord's shared `src/watch.ts` (pi first); tests and `examples/04-watches` change with the contract.
+    Chord's shared `src/watch.ts` (nycode first); tests and `examples/04-watches` change with the contract.
   - Unchanged: Durable's event stream (`watchEvents` batches are events: they keep their own queue until removed),
     `NativeWatch` (newest value), relays (drop + `reset { hold }`: parts are opaque).
   Animation: `packages/chord/docs/flow-control/fold/` (Radius 01m5nc9s24e9kscppen2fxgwye).
@@ -1239,7 +1239,7 @@ validation and copies the v2 kernel added around Delta.
   taken in one step, applied in one batch), entries flagged `reset: true` in the header for relays; a second `bound`
   only for slice 7's restarted objects. ~~Relayed calls are sent round-robin per origin while the worker's call window
   is full (each origin keeps its order).~~ (**superseded** by "Relay flow control per origin": a relay forwards calls at
-  once; each origin has its own N at the provider). The Durable conversation view's size on re-hold is a known cost until pi
+  once; each origin has its own N at the provider). The Durable conversation view's size on re-hold is a known cost until nycode
   #11327 lands.
 - **Relay flow control per origin (owner, 2026-10-24):** supersedes per-hop acks, `reset { holds }`, relay recovery
   and id renumbering ("Flow control: an ack-clocked window" relay part, "Slice 4a review decisions" reset part). The
@@ -1323,7 +1323,7 @@ validation and copies the v2 kernel added around Delta.
   time across reloads. Kept separate from jobs (different lifecycle, reload behaviour and output). Open: the
   handover's bound (`closeTimeout`, whose default may drop from 30 s to 10 s, or its own).
 - **Slice 6 first decisions (owner, 2026-10-26):** (1) **Durable's internal commit observers run inside `adopt`**
-  (pi change, upstream first, built and reviewed before the slice): the Session's `observeCommits` listeners (view
+  (nycode change, upstream first, built and reviewed before the slice): the Session's `observeCommits` listeners (view
   mounts, task graph, scheduler, submissions) move from `#publish`, after `Storage.commit` returned, into the `adopt`
   callback, so every Durable view changes inside the storage's commit step; with `StoreStorage` Durable's `adopt` runs
   inside the host's batch, and Chord follows Durable's views as sources marked in the step (W1). Reason: today a
@@ -1361,7 +1361,7 @@ validation and copies the v2 kernel added around Delta.
   listeners fire after host listeners; a commit the storage rejects after `adopt` is published (it is durable; a
   replica stays equal to storage; spec invariant 2 changes) and its waits resolve before the Session fails; with a
   storage that works after `adopt` (JSONL) the publication runs before `Storage.commit` resolves; a throwing telemetry
-  call is reported as `host_error` with callback `"telemetry"` and no longer rejects a durable commit. Nothing in pi or
+  call is reported as `host_error` with callback `"telemetry"` and no longer rejects a durable commit. Nothing in nycode or
   p2 depends on the old orders (checked: p2's three `subscribeCommits` users).
   **After the reviews of the second build (owner, 2026-10-26):** one delivery rule for every watch: a watch delivers a
   frame in a microtask queued after the frame arrived, also when its listener was busy (Chord's shared `src/watch.ts`:
@@ -1375,7 +1375,7 @@ validation and copies the v2 kernel added around Delta.
   already queued folds frames that arrive later, so a watch can still deliver a commit before its host listeners, also
   in a shared commit step chained through promises); a complete fix (a late delivery queues itself again) would stall
   watchers behind a source that changes in every microtask. Decided instead (option b): **no ordering promise between
-  host `subscribeCommits` listeners and watch listeners** (independent observers; nothing in pi or p2 depends on their
+  host `subscribeCommits` listeners and watch listeners** (independent observers; nothing in nycode or p2 depends on their
   order); waits and aborts still follow the host listeners by construction; the hop in `src/watch.ts` is reverted.
 - **Durable's synchronous observers (owner, 2026-10-26):** `observeConversation(id, observer, ctx)`,
   `observeTaskGraph(observer, ctx)` and `observeDoc(token, …, observer, ctx)` become Durable's public primitive: the
@@ -1401,7 +1401,7 @@ validation and copies the v2 kernel added around Delta.
   later write delivers the new incarnation as `[["r", value]]` on the same watch. A watch ends when its owner ends
   (`ended`): a Chord document's object, a Durable task document's task (the retirement call, then `ended`, in the same
   commit), the Session; and by `stop`, cancellation, failure or a throwing listener. Durable's watches change from
-  incarnation to address (breaking; nothing in pi or p2 watches a document that retires). Leaks: none new for task
+  incarnation to address (breaking; nothing in nycode or p2 watches a document that retires). Leaks: none new for task
   documents (they end with their task and invocation); a forgotten watch of a session or conversation document that
   is retired for good stays until its taker's context, `stop` or the Session ends it (GC tests). Still to decide: the
   shape of the flag, the value an absent address shows to members, derives and `.value`, and the per-key source in a
@@ -1596,7 +1596,7 @@ validation and copies the v2 kernel added around Delta.
   "One vocabulary, groups 2 and 3"), same words: a
   value's watch says whether it can be computed, `ref.state` whether its object is reachable (values stay readable
   while loading). No new leaks: an open watch on a failed source holds what it held before and ends with its owner,
-  reference or context (GC test). Built: the shared `src/watch.ts` upstream in pi first (Durable's listeners adapt),
+  reference or context (GC test). Built: the shared `src/watch.ts` upstream in nycode first (Durable's listeners adapt),
   then slice 6a (points 1-3 except registries; registries in slice 8).
 - **One vocabulary, group 1: the shared watch (owner, 2026-10-27: "yes"; vocabulary audit `/tmp/vocab-audit.md`,
   A1, A3, A8):** built in the same upstream change as the failure calls. (a) `WatchEnd` is tagged by `kind`, not
@@ -1623,10 +1623,10 @@ validation and copies the v2 kernel added around Delta.
   wire error format (`WireError`). (8) `HostError`: `failure` where the value is a `FailureCause`, `error` otherwise;
   positions `{ kind: "on" | "onLive" | "native", position }`. (9) Store types as Durable's: `history: "latest" |
   "rewindable"`, pages `{ items, next }`, a singleton's address has no key (`""` only in the column). (10) The
-  listener parameter is `call`; holds `served | relayed`; `put.v` is `version`. Durable's public API (pi upstream,
+  listener parameter is `call`; holds `served | relayed`; `put.v` is `version`. Durable's public API (nycode upstream,
   with group 1): (11) `onReport(report)` with `report.kind` and `report.error`; `session_failed` is `storage_failed`.
   (12) `subscribeCommits` is `observeCommits` with the observer shape (`{ value, detach }`); a file watcher stops with
-  `stop(ctx)`. (13) `CompactionFailure.reason` and `CompactionStatus.reason` are `trigger` (`pi.live`'s definition
+  `stop(ctx)`. (13) `CompactionFailure.reason` and `CompactionStatus.reason` are `trigger` (`nycode.live`'s definition
   bumps its version with a `migrate`). (14) ~~One word for a definition that cannot take the stored state:
   `incompatible`~~ (**superseded**, owner 2026-10-27: `task_too_old` is stored in orphaned outcomes and settlements, and the
   report's `incompatible_task` covered two cases): the `task_outdated` report uses the scheduler's own words,
@@ -1637,16 +1637,16 @@ validation and copies the v2 kernel added around Delta.
   throwing Chord's codes (6b), one retirement value ("One retirement mechanism" (2) stands).
   Added (owner, 2026-10-27, "lgtm"): Durable's `SessionEnd` and the `ReportFrom` argument of `runtime.report()` are
   tagged by `kind` too (neither is stored).
-- **Chord v2 and its docs live in pi upstream (owner, 2026-10-27: "we can put chord v2 in upstream", "the docs can
+- **Chord v2 and its docs live in nycode upstream (owner, 2026-10-27: "we can put chord v2 in upstream", "the docs can
   all be public, and in upstream"):** `packages/chord/src/next`, `src/next-node`, `test/next`, `test/next-node` and
-  `docs/next` moved to pi `main` (`93029a0f1`), not exported until v2 has an entry point (experimental, noted in the
+  `docs/next` moved to nycode `main` (`93029a0f1`), not exported until v2 has an entry point (experimental, noted in the
   changelog); the decision log moved from `apps/p2/docs/redesign-decisions.md` to `packages/chord/docs/decisions.md`;
   the root `AGENTS.md` carries the "Chord v2 Code Style" section. From now on every slice and every design doc change
-  goes to pi first (worktree of `upstream/main`, check, tests, push, CI, merge into `private`); only `apps/` stays
+  goes to nycode first (worktree of `upstream/main`, check, tests, push, CI, merge into `private`); only `apps/` stays
   private.
 - **Slice 6b D1: `StoreStorage` and `durableView` live in Durable (owner, 2026-10-27: "they are only used if durable
-  is used"):** in Durable's own `src` (an ordinary pi module, now that Chord v2 is upstream), importing
-  `@earendil-works/chord/next` (Chord's `./next` export comes with them; now the root export). No package cycle: Durable already depends on
+  is used"):** in Durable's own `src` (an ordinary nycode module, now that Chord v2 is upstream), importing
+  `@nycode/chord/next` (Chord's `./next` export comes with them; now the root export). No package cycle: Durable already depends on
   Chord, Chord imports nothing of Durable (S13). Durable's conformance suite runs in Durable's tests and CI.
 - **Slice 6b D2: Durable's records are ordinary declared tables of the store (owner, 2026-10-27: "a, that's the whole
   purpose of this slice"):** `StoreStorage` declares conversations, entries, tasks, submissions and `record_ids` as
@@ -1681,7 +1681,7 @@ validation and copies the v2 kernel added around Delta.
   never does, so nothing collides; the state document stays an ordinary document of the run; `finish` deletes the
   record and retires the state (Q9), so only unsettled runs are stored and in memory; activation loads them through the
   engine's key listing and a load per run (no new engine read). Durable's tables are named under the type name
-  `pi.durable` (`"session:pi.durable:entries"`; type names are unique per app). One `StoreStorage` per store: a second
+  `nycode.durable` (`"session:nycode.durable:entries"`; type names are unique per app). One `StoreStorage` per store: a second
   one on the same store is refused (`invalid/args`), as one host per store (rule 7). Rejected on the way: a table per
   job, a store-wide runs table, `$`-marked internal names (owner: "if our abstractions can't cleanly support this
   without $ magic, it's a bad abstraction").
@@ -1701,7 +1701,7 @@ validation and copies the v2 kernel added around Delta.
   after `withinMs`; a crash loses what is not stored. Only run state documents for now.
 - **Slice 6b D9: `self.follow(attach)` follows Durable's views (owner, 2026-10-27: "sounds good"):** a generic Chord
   primitive, no `durableView` module in Durable: `attach(observer, ctx)` returns `Promise<{ value, detach }>`
-  (Durable's `Observation`; its observers have Chord's watch shapes since pi `5f312dac4`). Chord makes the observer,
+  (Durable's `Observation`; its observers have Chord's watch shapes since nycode `5f312dac4`). Chord makes the observer,
   attaches during activation (early calls held, `value` the start value), detaches at the attempt's end; calls inside a
   batch mark the source in the step, calls outside one are grouped into one batch on the next microtask; a rejected or
   `undefined` attach fails the activation as a failed dependency; Durable's `failed` end ends the watches `failed`.
@@ -1723,12 +1723,12 @@ validation and copies the v2 kernel added around Delta.
   with its state, and per retired keyed document, that Chord never reads).
 - **Slice 6b R2: no host kind in store names (owner, 2026-10-27: "what use is host in table names anyways? seems
   stupid. no host"; supersedes the host-kind part of W7, "Restricted names" and "Slice 6a's three code questions" (3)):**
-  tables are `"<object type>:<table>"` (`"notes.store:edits"`, `"pi.durable:entries"`), document owners
+  tables are `"<object type>:<table>"` (`"notes.store:edits"`, `"nycode.durable:entries"`), document owners
   `"<object type>"`; a store belongs to one host (rule 7), so the host kind told nothing, and `StoreStorage` and stores
   used before or without a host get the same names. W7's rule stays: no host instance in a name. Changed in 6a's code
   in 6b; the applier checks two parts.
-- **Slice 6b: owner names and claims, no `pi.durable` (owner, 2026-10-27: "seems reasonable"; supersedes D2's and D5's
-  `pi.durable` type name and D5's "one `StoreStorage` per store" rule):** every table and document in the store belongs
+- **Slice 6b: owner names and claims, no `nycode.durable` (owner, 2026-10-27: "seems reasonable"; supersedes D2's and D5's
+  `nycode.durable` type name and D5's "one `StoreStorage` per store" rule):** every table and document in the store belongs
   to an owner name, claimed once per store. A `local` object with empty params (P3) claims its type when it first
   declares persisted data (`self.table`, persisted `self.state`, persisted `self.job`); `StoreStorage.open(store, owner,
   ctx)` claims `owner`; a second claim of a name is refused (`invalid/args`): a second harness, or a plugin type that
@@ -2144,41 +2144,41 @@ validation and copies the v2 kernel added around Delta.
 - **API versions in the import path (owner, 2026-10-31: "this sounds about right"; "must be declared by the plugin in
   code, we do not want to dig around package.json files anymore"):** the app's base code is internal except its API
   modules, which it exposes as host packages with a version in the path (`@acme/app/v3`; Chord's
-  `@earendil-works/chord/v2`); the app lists the versions it still provides (an older one as the same module, or a
+  `@nycode/chord/v2`); the app lists the versions it still provides (an older one as the same module, or a
   thin layer); an import of an unlisted version is a build error naming the available ones. No `package.json` field
   and no npm ranges for this. Contracts and registry tokens inside an API keep their own versions. The rest of the
   plugin model is a proposal (`docs/plugin-model/`).
-- **A schema package beneath pi-ai and Chord (owner, 2026-10-31: "i want the schema package"; "if we keep it a
-  dependency in pi-ai, we must be able to rip it out"; TypeBox is "horrible to treeshake"):** a small package with no
-  dependencies (working name `@earendil-works/schema`) under both pi-ai and Chord (siblings: neither depends on the
+- **A schema package beneath nycode-ai and Chord (owner, 2026-10-31: "i want the schema package"; "if we keep it a
+  dependency in nycode-ai, we must be able to rip it out"; TypeBox is "horrible to treeshake"):** a small package with no
+  dependencies (working name `@earendil-works/schema`) under both nycode-ai and Chord (siblings: neither depends on the
   other): helpers returning plain JSON Schema, a structural `JsonSchema` type, `Static` from the helpers' literal
   types, and a validator for general JSON Schema (tool schemas from MCP servers and extensions use `$ref`, `anyOf`,
-  `pattern`, ...), without `eval` or `new Function` (CSP-safe). Chord v2 drops TypeBox; pi-ai's core never imports
+  `pattern`, ...), without `eval` or `new Function` (CSP-safe). Chord v2 drops TypeBox; nycode-ai's core never imports
   it (TypeBox schemas still pass as JSON Schema; TypeBox-typed extras only in an optional subpath, so ripping it out
   is deleting that subpath). Not omptype (its validator compiles with `new Function`; its 10.7k lines are mostly
   ArkType's API). Open: which validator (measure `@cfworker/json-schema` and TypeBox against the official
-  JSON-Schema-Test-Suite and Chord's argument checks first), and moving `Type` out of pi-ai's main export.
-  **Built** (owner, 2026-10-31: "clone pi add the package, done"; pi `fab2c53`): `packages/schema`,
-  `@earendil-works/pi-schema`: `compile(schema, { draft, formats, schemas })` with `check` (narrowing) and `errors`
+  JSON-Schema-Test-Suite and Chord's argument checks first), and moving `Type` out of nycode-ai's main export.
+  **Built** (owner, 2026-10-31: "clone nycode add the package, done"; nycode `fab2c53`): `packages/schema`,
+  `@nycode/schema`: `compile(schema, { draft, formats, schemas })` with `check` (narrowing) and `errors`
   (JSON Pointer paths), Chord-style builders typed with `Static`, formats as the opt-in `./formats` entry, leaf and regex
   checks shared through weak caches (GC-tested); its own closure-compiled validator, chosen after measuring
   (`/tmp/schema-measure.md`, Radius 01m69x3dz2fsg9k1r33vde7hv6): 2,222 of 2,223 core suite tests (TypeBox 2,200,
   cfworker 2,167, omptype 1,522), Chord checks at 0.95-1.3x TypeBox's compiled speed and the same with `new Function`
   blocked, 7.9 MB for 3,200 distinct schemas (cfworker 7.6, TypeBox 54.7), 8.5 KB gzip. Still open: switching Chord v2
-  and pi-ai to it (`Type` out of pi-ai's main export), formats on by default in pi-ai.
+  and nycode-ai to it (`Type` out of nycode-ai's main export), formats on by default in nycode-ai.
 - **The schema switch (owner, 2026-10-31):** TypeBox leaves Chord (v1 too: "remove typebox wherever we can"),
-  pi-ai, pi-agent-core and pi-durable; extensions must not break ("absolutely 100%"), proven by a guard over our own
+  nycode-ai, nycode-agent-core and nycode-durable; extensions must not break ("absolutely 100%"), proven by a guard over our own
   extensions, built-in tools and generated arguments (verdicts, coerced arguments, provider payloads and inferred
-  parameter types identical; owner: "just use ours", no npm corpus). **Coercion lives in pi-schema** as an opt-in,
-  the superset of TypeBox's `Value.Convert` rules and pi-ai's own (TypeBox's rule first where they conflict):
+  parameter types identical; owner: "just use ours", no npm corpus). **Coercion lives in nycode-schema** as an opt-in,
+  the superset of TypeBox's `Value.Convert` rules and nycode-ai's own (TypeBox's rule first where they conflict):
   `compile(schema, { coerce: true })` adds `coerce(value)` (a copy, never mutating) and `parse(value)` (`{ ok, value }
-  | { ok, errors }`); pi-ai uses it for every tool, whatever built the schema (so plain-JSON MCP tools gain the
-  TypeBox rules). **Error texts are pi-schema's own** (no mapping to TypeBox's wording). Extensions keep `Type`,
-  `Static`, `TSchema` from the coding agent's bundled TypeBox (the pi-ai they see is compat plus those); an extension
-  author type-checking against the published pi-ai no longer finds them there (accepted: "fine"). **`format` is an
-  annotation in Chord** ("no format check": no format module in Chord's or Durable's entries; pi-ai still checks
+  | { ok, errors }`); nycode-ai uses it for every tool, whatever built the schema (so plain-JSON MCP tools gain the
+  TypeBox rules). **Error texts are nycode-schema's own** (no mapping to TypeBox's wording). Extensions keep `Type`,
+  `Static`, `TSchema` from the coding agent's bundled TypeBox (the nycode-ai they see is compat plus those); an extension
+  author type-checking against the published nycode-ai no longer finds them there (accepted: "fine"). **`format` is an
+  annotation in Chord** ("no format check": no format module in Chord's or Durable's entries; nycode-ai still checks
   formats on tool arguments). **Chord's envelope check costs +10 to +100 ns per message** from untrusted links
-  (pi-schema reads fields by name from a list; no eval): accepted ("negligible"), no hand-written check.
+  (nycode-schema reads fields by name from a list; no eval): accepted ("negligible"), no hand-written check.
 - **Contracts come from where the plugin's code came from (owner, 2026-11-01: "ok"; plugin model point 1, primer
   `docs/plugin-primer/`; supersedes "Plugins import each other by name"):** a plugin carries the contract it was
   written against, never the running app's newest file. The problem: by name, a third-party plugin's next build copied
@@ -2348,15 +2348,15 @@ validation and copies the v2 kernel added around Delta.
 - **Slice 11, P9: a terminal component scope, library-agnostic (owner, 2026-11-01: "yeah, sure"; p2's `TuiScope`
   in `src/runtime/tui.ts`):** the counterpart of the React bindings: a scope tied to a component's life with `hold`,
   `watch` and `registry`, releasing everything on dispose, calling one `changed` callback the app wires to its redraw
-  (one line with pi-tui; any library works). p2's retry with backoff for gone references is not carried over (v2
-  references wait and rebind by themselves). No pi-tui dependency.
+  (one line with nycode-tui; any library works). p2's retry with backoff for gone references is not carried over (v2
+  references wait and rebind by themselves). No nycode-tui dependency.
 - **Admitting pages' telemetry (owner, 2026-11-12: "`telemetryIngestFacet({ admit(principal) })` (refused:
   forbidden)"; p2 wiring telemetry; refines "Telemetry from browser pages"):** the ingest facet takes `admit(principal)`,
   required: `PageTelemetry` serves a principal it admits, and a refused principal's hold fails `forbidden` (no contract
   change, nothing written). Why: the budget of 1,200 spans per minute is per page (incarnation), and one principal may
   open up to 1,000 pages' worth of links, so a guest could fill the store's queue for its whole retention; an app admits
   whom it trusts (p2: owners only). The kit admits every page (its links are signed in). Its entry points are public for
-  an app with its own hosts: `@earendil-works/chord/telemetry-ingest` (the recorder, the batches and objects, the facet,
+  an app with its own hosts: `@nycode/chord/telemetry-ingest` (the recorder, the batches and objects, the facet,
   the senders).
 - **Surfaces for an app with its own HTTP stack and styling (owner, 2026-11-12: "Chord 1: yes", "Chord 2: yes", "Cloud:
   (b)"; p2's move onto the web surface):** (1) `webSurface(server, { ..., routes: false })` contributes no `Http`
@@ -2370,13 +2370,13 @@ validation and copies the v2 kernel added around Delta.
   exactly like the server process does (source, no dist needed)") `webSurface`'s and `tuiSurface`'s `tsconfig` (and
   `buildBase`'s `BaseResolution`): the base resolves through that tsconfig.json's `paths`, for a server whose loader
   resolves workspace packages through them (p2's source resolver). Conditions alone missed a package whose `exports`
-  name only `dist/` (pi-ai's `./utils/*`): a checkout that never builds `dist/` (p2 on a phone) failed its base. Without
+  name only `dist/` (nycode-ai's `./utils/*`): a checkout that never builds `dist/` (p2 on a phone) failed its base. Without
   `tsconfig` every tsconfig.json stays ignored. Plugin builds need nothing: they bundle a plugin's own `dependencies`
   only, the app's packages being host packages.
-- **`chord.plugins` is a package's manifest of plugins, as pi's (owner, 2026-11-01: "yes"; slice 12 review, Opus H1;
+- **`chord.plugins` is a package's manifest of plugins, as nycode's (owner, 2026-11-01: "yes"; slice 12 review, Opus H1;
   refines "The plugin model ... imports and builds" (Imports) and `slice-12.md` §2, §5):** a package (npm, git, local)
   declares the plugins it provides in its `package.json`, `"chord": { "plugins": ["./notes", "./search"] }` (globs and
-  exclusions as pi's `pi.extensions`); installing it picks up exactly those folders. Without the field discovery is
+  exclusions as nycode's `nycode.extensions`); installing it picks up exactly those folders. Without the field discovery is
   conventional: the package is one plugin when its top has facet files, else its subfolders with a `package.json`.
   Depending on a plugin inside a multi-plugin repository is an ordinary dependency on the whole repository (npm version
   or `github:bob/plugins#<commit>`, installed by plain npm), imported by path into it (`@bob/plugins/notes/contract.ts`)
@@ -2394,8 +2394,8 @@ validation and copies the v2 kernel added around Delta.
 - **p3 meeting, 2026-11-02 (Mario and Armin; Armin's summary, relayed by the owner):** session sync: the session
   repository talks to the server process to enumerate sessions; the session index in the server is updated by the
   worker from events and sent to the server by RPC. Sync to R2 goes through Radius: Radius keys each session by id and
-  keeps its last sequence number, tells pi which sessions it has with their last sequence numbers (optimization: time
-  of last sync), and pi sends the delta commit log from that sequence number; R2 stores the SQLite file and the commit
+  keeps its last sequence number, tells nycode which sessions it has with their last sequence numbers (optimization: time
+  of last sync), and nycode sends the delta commit log from that sequence number; R2 stores the SQLite file and the commit
   log (SQLite DO to R2); sessions have an owner id. The index is a Chord table replicated like sessions; its entry is
   updated only on a session metadata change, a session idle-state change and a subagent idle-state change. p3: each
   host (server, worker, tui, web) has a kernel loading the plugins with contribution points via registries; p2's look
@@ -2413,7 +2413,7 @@ validation and copies the v2 kernel added around Delta.
 - **p3 notes, 2026-11-02 (owner):** subagents may start with the main agent's context: `context: "inherit"` forks the
   parent conversation (Durable's `conversation.fork`) at the last entry before the assistant message with the spawning
   call; model, tools and location may differ; the tool's description names the cost (prompt cache only with the same
-  model). pi's `/tree` (in-session branches) is wanted for p3: proposed as forks inside the session's store (edit an
+  model). nycode's `/tree` (in-session branches) is wanted for p3: proposed as forks inside the session's store (edit an
   earlier message to fork, a branch list to switch; a full navigator and branch summaries later).
 - **Sync applies batches with the host stopped (owner, 2026-11-02: "sure"; sync example `60-session-sync`; folded into design §10, 2026-11-13):**
   `applyBatch` refuses while a host holds claims on the store; the sync layer stops the session's worker, applies,
@@ -2474,7 +2474,7 @@ validation and copies the v2 kernel added around Delta.
   `Message`), `t.message` takes only keys whose arguments are JSON scalars, and the theme choice and the locale choice
   share one per-principal preference store (`src/surfaces/preference.ts`).
 - **Chord v2 becomes the package's root (owner, 2026-11-03: "src/old", "subpaths", "yes", "yes", "no, chord is
-  wip"; for merging pi-private into pi this week; trial `/home/badlogic/chord-root-move/report.md`):** `src/next` is
+  wip"; for merging nycode-private into nycode this week; trial `/home/badlogic/chord-root-move/report.md`):** `src/next` is
   the package's `src` (its main export), the Node parts `src/next-node` are `src/node` with short subpaths (`/http`,
   `/workers`, `/plugins`, `/plugins/runtime`, `/app`, and slice 11's `/web`, `/surfaces`, `/react`, `/tui`,
   `/tui/launcher`; `/surfaces` was `/next/web/server`, renamed in the run because it exports the terminal surface's
@@ -2877,7 +2877,7 @@ validation and copies the v2 kernel added around Delta.
   so no removal can delete a blob the copied index names; it refuses an existing target. (10) `meta: null` is stored
   as absent; space names are `[a-z0-9][a-z0-9._-]{0,63}`, paths at most 1,024 characters without empty, `.` or `..`
   segments. (11) `cancel(upload)` drops an upload a writer gave up (a server route whose client went away), so it
-  holds neither a slot of the cap nor bytes for the hour until it expires. (12) `@earendil-works/chord/app/files`
+  holds neither a slot of the cap nor bytes for the hour until it expires. (12) `@nycode/chord/app/files`
   exports `Files`, `FilesFolder`, `filesFacet`, `copyFiles` and the kit's private directories and stores without the
   rest of the kit, for an app's worker process that must load neither esbuild nor the server's components (p2's). (13) A
   write takes an optional `created` for imports (owner, 2026-11-05, after p2's migration dry run: every migrated file
@@ -3018,7 +3018,7 @@ validation and copies the v2 kernel added around Delta.
   a plugin's `dependencies` are installed into its own `node_modules` (`npm install --ignore-scripts`) and bundled into
   each facet that imports them (host packages, its `peerDependencies`, stay external and are passed in). On Node a
   plugin may keep named packages external with an explicit list in its `package.json` (`"chord": { "external": [...] }`):
-  server and worker facets then load them from the plugin's `node_modules` (`createRequire`, as pi 1.0 loads extension
+  server and worker facets then load them from the plugin's `node_modules` (`createRequire`, as nycode 1.0 loads extension
   dependencies), native addons included; they stay in Node's module cache until the process ends, so a new version
   takes effect after a restart. A browser or TUI facet importing an external package fails to build. Slice 7b
   (the loader).
@@ -3102,7 +3102,7 @@ validation and copies the v2 kernel added around Delta.
   round 1 and shown to the owner (not his quote): `StoreStorage.close` waits for its commits only (its reads go straight
   to the store, which stays open).
 - **The performance and memory bar, and converging reviews (owner, 2026-10-27: "yes"):** supersedes "as good as
-  HEAD in everything" for Chord v2 slices and pi changes. CPU: each hot path (calls, changes, watches, links) within
+  HEAD in everything" for Chord v2 slices and nycode changes. CPU: each hot path (calls, changes, watches, links) within
   about 5% of HEAD, measured in bursts with alternating processes pinned to one CPU; worse is fixed or goes to the
   owner with numbers. Memory: allocation per operation and memory retained after GC no worse than HEAD beyond noise,
   with GC probes for everything that must be collected (ended objects, released references, closed hosts, watches on
@@ -3130,7 +3130,7 @@ validation and copies the v2 kernel added around Delta.
   `BEGIN`; canonical `set` vocabulary with an explicit null for clears. (7) `int` columns kept in the safe range by a SQL
   `CHECK` (an out-of-range result in the step is fatal, accepted), the JS evaluator checking the same. (8) The outbox
   floor (`read(afterSeq)` valid from the floor to `lastSeq`). (9) The manifest carries `nextDocumentId`. (10) A bounded
-  LRU for `chord/sqlite/node`'s prepared statements (pi change). (11) Slots keep `valueVersion` and `storedVersion` (as
+  LRU for `chord/sqlite/node`'s prepared statements (nycode change). (11) Slots keep `valueVersion` and `storedVersion` (as
   Durable's `LoadedDocument`). (12) An admitted commit of a failing object adopts and publishes once (Sol, Fable). (13)
   Retiring a `latest` record deletes its row. (14) One host per store. The rest: section 15 of the spec. Carry-over to
   slice 7 recorded in slices.md.
@@ -3197,8 +3197,8 @@ validation and copies the v2 kernel added around Delta.
 - **Restricted names instead of assigned table names (owner, 2026-10-27; slice 6a spec review blocker 5):** names
   that become SQL names are restricted at declaration (and checked on import) instead of being mapped. Host kinds,
   object types (every contract, not only stores) and table names use npm package-name characters `[a-z0-9@/._~-]`,
-  lowercase only (SQLite compares identifiers case-insensitively), so plugin-prefixed type names (`@pi/file-history.store`)
-  stay valid; the separator is `:`, which they cannot contain, so the rendering `"session:@pi/file-history.store:edits"`
+  lowercase only (SQLite compares identifiers case-insensitively), so plugin-prefixed type names (`@nycode/file-history.store`)
+  stay valid; the separator is `:`, which they cannot contain, so the rendering `"session:@nycode/file-history.store:edits"`
   is injective (`a/b` + `c` and `a` + `b/c` differ) and readable in `sqlite3`. Index names `[a-z0-9_]+`, rendered
   `<table>:<index>`. Column names `[A-Za-z_][A-Za-z0-9_]*` (camelCase allowed), two columns equal ignoring ASCII case
   refused at `defineTable`, no `$` (the hidden `$v` and `<column>$v` cannot collide). Import is a trust boundary: every
@@ -3216,7 +3216,7 @@ validation and copies the v2 kernel added around Delta.
   20, `changes()` 1 and 10). Measured in workerd: `SELECT changes()` costs about 1.5 µs per statement and reads or
   writes no billed rows, so making every `run` count would nearly double a small write on Durable Objects for callers
   that need no count (Durable's `SqliteStorage`): hence a separate method (option 2, owner). Name `runCounted`
-  (owner). pi `8025c414d` (upstream first), with a real Durable Object test in Durable's workerd suite.
+  (owner). nycode `8025c414d` (upstream first), with a real Durable Object test in Durable's workerd suite.
 - **Store errors: Durable's rule (owner, 2026-10-26; slice 6a spec review blocker 3; **superseded in part** by "Slice 6b
   D4: the store has Durable's Storage semantics": a step failing before `COMMIT` rejects only its commit):** any backend error in a commit
   step is `storage_failed` (the store stops, every later commit and read rejects `unavailable/storage_failed`, a new
@@ -3412,7 +3412,7 @@ validation and copies the v2 kernel added around Delta.
   compressor compress parts above 16 KiB at their origin; browsers send uncompressed and inflate asynchronously with
   `DecompressionStream`, holding later messages of the link in order (bounded by the window and N; acks after apply).
 - **Slice 4a approved (owner, 2026-10-24):** `packages/chord/docs/slice-4a.md` as revised after the reviews. Build
-  order: the pending queue in Chord's shared code first (pi, upstream), then the slice by a fresh Opus builder (`s4`).
+  order: the pending queue in Chord's shared code first (nycode, upstream), then the slice by a fresh Opus builder (`s4`).
 - **Slice 4a review decisions (owner, 2026-10-23; Astra's and Fable's spec reviews, `/tmp/s4a-review-*.md`):**
   supersedes in part "Slice 4 split and first decisions" (resets as `r` ops). A `hold` carries the address the caller
   computed; relays route by address and never need the contract or parse params. A `hold` carries `principal?` and
@@ -3620,7 +3620,7 @@ From `research/chord-on-durable-objects.md`, adopted for the Chord v2 kernel bec
   beyond a use (a pinned Durable phase holding an old table is fine). Natives reach other plugins only this way: no
   `opaque` members, no natives in method results. What a native's old value does after its owner restarts is the
   owner's `close` (a model runtime keeps working until collected; a closed SSH connection fails its in-flight `exec`).
-- **HTTP is an optional Chord component** (**superseded in part** by "Slice 10's points": `html` instead of `page`, request bodies through `json`/`body`, authentication one app hook, plugin sockets instead of a channel component until a second user) (`@earendil-works/chord/http`): a route gets a plain request summary
+- **HTTP is an optional Chord component** (**superseded in part** by "Slice 10's points": `html` instead of `page`, request bodies through `json`/`body`, authentication one app hook, plugin sockets instead of a channel component until a second user) (`@nycode/chord/http`): a route gets a plain request summary
   (method, path params, query, principal, selected headers; parsed and capped JSON bodies; uploads handed over in
   chunks) and returns a response description (`json`, `page`, `bytes` with `size`, `mime` and `read(offset, length)`,
   `redirect`, `error`). The component does ranges (206/416), HEAD, download headers, streaming, abort on disconnect and
@@ -3639,7 +3639,7 @@ From `research/chord-on-durable-objects.md`, adopted for the Chord v2 kernel bec
 
 - **`HarnessOptions.models` and `settings` accept a function** (`() => Models`, `() => HarnessSettings`), like
   `env`; a plain object is still accepted. Internally both are stored as functions; generation, hooks and tools get
-  the function's current return value. Replaces p2's `Proxy` around the registry entry. Done in pi main first, then
+  the function's current return value. Replaces p2's `Proxy` around the registry entry. Done in nycode main first, then
   merged into `private`.
 - Models and environments reach the harness through registry entries (functions) registered by the objects that own
   their natives; the `Harness` object opens Durable itself (no host value) and looks the entries up at each use.
@@ -3650,7 +3650,7 @@ From `research/chord-on-durable-objects.md`, adopted for the Chord v2 kernel bec
   as state keyed by a uuidv7. Example login: `start({ provider })` returns an id; the flow's live state holds the
   current step (`{ id, kind, ... }`), notices and status; `answer({ id, step, value })` resolves the waiting step (a
   late or second answer to a step that is gone gets "no longer active"); `cancel`. The client watches the state, so no
-  `next()` is needed. pi-ai's promise-based `prompt` callback stays inside the owner (the job keeps the resolver);
+  `next()` is needed. nycode-ai's promise-based `prompt` callback stays inside the owner (the job keeps the resolver);
   nothing crosses an object boundary. Open: the flow as a keyed document of `Login`, or an object `LoginFlow {id}` that
   lives until done ("jobs as objects").
 - **Imperative consumers get a client helper over the same flow state,** (**superseded in part** by design section 20 (flow state is tagged by `kind`, not `status`)) not a second server protocol. Tests,

@@ -1,8 +1,8 @@
-# p3 locks: what a Pi, an app and a session may use (design, PROPOSED)
+# p3 locks: what a Nycode, an app and a session may use (design, PROPOSED)
 
 Status: the owner's decisions of 2026-11-13, written down for review. Not built. Companion to Chord's admission
 (`packages/chord/docs/admission/design.md`): admissions decide **who** may reach an object; locks decide **what** a
-Pi, an app or a session gets (tools, skills, MCP servers, places, plugins). Supersedes the settings layer of
+Nycode, an app or a session gets (tools, skills, MCP servers, places, plugins). Supersedes the settings layer of
 `apps/p3/docs/org-managed/book.md` and the lock chapters of `apps/p3/docs/people/book.md` (second edition).
 
 ## 1. The model
@@ -10,9 +10,9 @@ Pi, an app or a session gets (tools, skills, MCP servers, places, plugins). Supe
 - **A plugin declares what can be switched off or limited** (a lock), registers it with the server, and enforces it
   itself where it hands things out. The base stores values and composes them; it enforces nothing on its own except
   the plugin switch (section 5).
-- **Layers, only narrowing:** company (the org profile) > Pi (the owner) > app (the app's defaults in code, then the
+- **Layers, only narrowing:** company (the org profile) > Nycode (the owner) > app (the app's defaults in code, then the
   owner's app configuration) > session (the owner, the app's code, or the agent from the owner's sessions).
-- **One sheet per scope** (Pi, app, session; the company's in Radius), for technical owners, with the agent's help.
+- **One sheet per scope** (Nycode, app, session; the company's in Radius), for technical owners, with the agent's help.
 - **Everything user-visible is a message** (Chord's `defineMessages`, `MessageData`), never a string.
 
 ## 2. Declaring a lock
@@ -24,7 +24,7 @@ export type Lock<T extends JsonValue> = {
 	readonly title: MessageData;                          // rendered per viewer (Chord §23 "Messages and languages")
 	readonly description?: MessageData;
 	readonly version: number;
-	readonly schema: Schema<T>;                           // pi-schema; values are checked against it on every write
+	readonly schema: Schema<T>;                           // nycode-schema; values are checked against it on every write
 	readonly open: T;                                     // no restriction
 	readonly closed: T;                                   // the most restrictive value
 	narrow(upper: T, lower: T): T;                        // a lower layer only narrows
@@ -64,9 +64,9 @@ export function lockValueFor<T extends JsonValue>(self: Self, lock: Lock<T>, ses
 // self.get(LocksStore, {}).effective.at(session) (a keyed member of the locks plugin's local store), then the same derive.
 ```
 
-The locks plugin's server store keeps the stored values per scope (a document per scope, keyed: `pi`, `app:<id>`,
+The locks plugin's server store keeps the stored values per scope (a document per scope, keyed: `nycode`, `app:<id>`,
 `session:<id>` host-keyed by `Session`) and computes each session's effective values: for every registered lock,
-`narrow(company, narrow(pi, narrow(app, session)))`, each layer's value migrated to the lock's version first (a value
+`narrow(company, narrow(nycode, narrow(app, session)))`, each layer's value migrated to the lock's version first (a value
 of a newer version, a failing `migrate` or a value failing the schema gives `closed` and is reported). The app layer
 is the app's code defaults (`AppContribution.locks`) overridden by the owner's app configuration.
 
@@ -91,7 +91,7 @@ The locks decided so far:
 | `coding.bash` | coding-tools | switch | the extension and the tool's execute |
 | `conversations.reach` | conversations | list of session ids or null | listing and sending (a session's agent reaches other sessions only through it) |
 | `terminals.use` | terminals | switch | `Terminals.open` (pane and agent tool) |
-| `mcp.servers`, `mcp.tools`, `mcp.project` | mcp | names (`project:<name>` for `.pi/mcp.json`), globs, switch | placement, the worker's extension |
+| `mcp.servers`, `mcp.tools`, `mcp.project` | mcp | names (`project:<name>` for `.nycode/mcp.json`), globs, switch | placement, the worker's extension |
 | `prompt.instructions`, `prompt.skills`, `prompt.context` | prompt | sources; allow/deny globs with sources (`plugin:<p>/<s>`, `env:<e>/<s>`, `project:<s>`) | loading, listing, `/name` expansion |
 | `locations.places` | locations | `{ environment, cwd }[]` or null | every move and every spawn with `cwd`/`env` |
 | `subagents.use`, `subagents.environments` | subagents | switch, list | spawn and moves of subagents |
@@ -105,7 +105,7 @@ skills load; it is not confinement (only an environment, e.g. a sandbox, confine
 
 ## 5. Plugins as a whole: the plugin switch
 
-- **Base plugins** (from Pi's own root, `startServer({ root })`) have no switch; they declare locks.
+- **Base plugins** (from Nycode's own root, `startServer({ root })`) have no switch; they declare locks.
 - **Every other plugin** (from the user's root: installed by the owner, the agent or an org profile) gets an
   automatic switch lock `plugin:<name>` per app and session. An app sets its default for plugins it does not know:
   `defineApp(id, { otherPlugins: "on" | "off" })`; on every install the owner (or the agent) chooses the apps ("Enable
@@ -116,13 +116,13 @@ skills load; it is not confinement (only an environment, e.g. a sandbox, confine
   The plugin's code still runs (every worker loads every plugin); nothing reaches it through switched-off
   contributions. Owners of other registries use `pluginAllowed(self, plugin)`.
 - **A company ban** is not a switch: it is the loader's admission (the kit gets `startServer({ plugins: { admit } })`;
-  a blocked plugin is never loaded on that Pi; from `org-managed/book.md`).
+  a blocked plugin is never loaded on that Nycode; from `org-managed/book.md`).
 
 ## 6. The sheet
 
 ```ts
 // plugins/locks (server), PROPOSED: the sheet's object, owner only
-export const LockSheet = remote("locks.sheet", { version: 1, params: { scope: str() },   // "pi", "app:<id>", "session:<id>"
+export const LockSheet = remote("locks.sheet", { version: 1, params: { scope: str() },   // "nycode", "app:<id>", "session:<id>"
 	hostAddress: () => Server(),
 	variants: { owner: {
 		state: { locks: arr(LockRow) },        // per registered lock: id, plugin, title, description, JSON Schema,

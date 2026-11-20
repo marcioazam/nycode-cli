@@ -1,4 +1,4 @@
-// Pi on Discord: the relay between channels and sessions with a fake Discord and a fake session (who may wake Pi,
+// Nycode on Discord: the relay between channels and sessions with a fake Discord and a fake session (who may wake Nycode,
 // batches since the cursor, threads, pending replies split at 2000 characters, refusals), and a session's
 // `DiscordIngress` with the fake provider (a batch with an attachment downloaded into the session's uploads, its turn's
 // answer, a thread's subagent forked from the main conversation).
@@ -8,8 +8,8 @@ import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
-import type { UserMessage } from "@earendil-works/pi-ai";
-import type { ConversationView } from "@earendil-works/pi-durable";
+import type { UserMessage } from "@nycode/ai";
+import type { ConversationView } from "@nycode/durable";
 import { BACKGROUND_CONTEXT, type SessionLock } from "@p2/app/v1";
 import { Chat, ChatCosts } from "../../plugins/chat/contract.ts";
 import type { Binding } from "../../plugins/discord/contract.ts";
@@ -201,21 +201,21 @@ function setup(initial: Binding = binding()) {
 }
 
 describe("discord relay", () => {
-	it("delivers the messages since the cursor when someone allowed mentions Pi; others are ignored", async () => {
+	it("delivers the messages since the cursor when someone allowed mentions Nycode; others are ignored", async () => {
 		const { discord, sessions, relay, state } = setup();
 		discord.say("c1", message("before the bot"));
 		const stranger = discord.say("c1", message(`<@${BOT}> hi`, { author: { id: "u2", name: "Eve", bot: false } }));
 		await relay.onMessage("bot-a", stranger);
-		assert.equal(sessions.delivered.length, 0, "u2 may not wake Pi");
-		// Another bot is a person to the link: not allowed to wake Pi here, its message is in the batch.
+		assert.equal(sessions.delivered.length, 0, "u2 may not wake Nycode");
+		// Another bot is a person to the link: not allowed to wake Nycode here, its message is in the batch.
 		const bot = discord.say(
 			"c1",
 			message(`<@${BOT}> I am a bot`, { author: { id: "b7", name: "Helper", bot: true } }),
 		);
 		await relay.onMessage("bot-a", bot);
-		assert.equal(sessions.delivered.length, 0, "b7 may not wake Pi");
+		assert.equal(sessions.delivered.length, 0, "b7 may not wake Nycode");
 		// The link's own bot (an earlier reply) is never in a batch.
-		discord.say("c1", message("my earlier answer", { author: { id: BOT, name: "Pi", bot: true } }));
+		discord.say("c1", message("my earlier answer", { author: { id: BOT, name: "Nycode", bot: true } }));
 		const byRole = discord.say(
 			"c1",
 			message(`<@${BOT}> what do you think?`, { author: { id: "u3", name: "Bo", bot: false }, roles: ["r1"] }),
@@ -230,9 +230,9 @@ describe("discord relay", () => {
 		assert.deepEqual(input.text.split("\n"), [
 			"[Discord #general (Guild): 4 messages since the last delivery]",
 			"Ada (<@u1>): before the bot",
-			"Eve (<@u2>): @Pi hi",
-			"Helper (bot, <@b7>): @Pi I am a bot",
-			"Bo (<@u3>): @Pi what do you think?",
+			"Eve (<@u2>): @Nycode hi",
+			"Helper (bot, <@b7>): @Nycode I am a bot",
+			"Bo (<@u3>): @Nycode what do you think?",
 		]);
 		assert.equal(state().bindings.c1?.cursor, byRole.id);
 		assert.equal(state().pending[byRole.id]?.submissionId, 1);
@@ -240,16 +240,16 @@ describe("discord relay", () => {
 		// The next batch starts after the cursor.
 		const next = discord.say("c1", message(`<@${BOT}> and now?`));
 		await relay.onMessage("bot-a", next);
-		assert.deepEqual(sessions.delivered[1]?.text.split("\n").slice(1), ["Ada (<@u1>): @Pi and now?"]);
+		assert.deepEqual(sessions.delivered[1]?.text.split("\n").slice(1), ["Ada (<@u1>): @Nycode and now?"]);
 	});
 
-	it("another bot is a person: it wakes Pi by the link's rules; the link's own bot never does", async () => {
+	it("another bot is a person: it wakes Nycode by the link's rules; the link's own bot never does", async () => {
 		const { discord, sessions, relay } = setup(
 			binding({ cursor: "1", wake: { anyone: false, users: ["b7"], roles: [] } }),
 		);
 		const own = discord.say(
 			"c1",
-			message(`<@${BOT}> talking to myself`, { author: { id: BOT, name: "Pi", bot: true } }),
+			message(`<@${BOT}> talking to myself`, { author: { id: BOT, name: "Nycode", bot: true } }),
 		);
 		await relay.onMessage("bot-a", own);
 		assert.equal(sessions.delivered.length, 0, "never its own message");
@@ -259,7 +259,7 @@ describe("discord relay", () => {
 		);
 		await relay.onMessage("bot-a", helper);
 		assert.deepEqual(sessions.delivered[0]?.author, { id: "b7", name: "Helper" });
-		assert.deepEqual(sessions.delivered[0]?.text.split("\n").slice(1), ["Helper (bot, <@b7>): @Pi build done"]);
+		assert.deepEqual(sessions.delivered[0]?.text.split("\n").slice(1), ["Helper (bot, <@b7>): @Nycode build done"]);
 	});
 
 	it("loop guard: at most 3 bot-started turns in a row per channel; one notice; a person's message resets it", async () => {
@@ -295,7 +295,7 @@ describe("discord relay", () => {
 		assert.equal(sessions.delivered.length, 5);
 		assert.deepEqual(sessions.delivered[4]?.text.split("\n").slice(-2), [
 			"Ada (<@u1>): ok, carry on",
-			"Helper (bot, <@b7>): @Pi six",
+			"Helper (bot, <@b7>): @Nycode six",
 		]);
 	});
 
@@ -339,7 +339,7 @@ describe("discord relay", () => {
 		sessions.turns.set(1, { state: "answered", text: answer, files: [], answer: 1000 + 1 });
 		await Promise.all([relay.checkPending(), relay.checkPending(new Set(["s1"]))]);
 		assert(discord.posted.length >= 2, "split");
-		assert.equal(discord.posted[0]?.replyTo, trigger.id, "the first part replies to the message that woke Pi");
+		assert.equal(discord.posted[0]?.replyTo, trigger.id, "the first part replies to the message that woke Nycode");
 		assert(discord.posted.slice(1).every((post) => post.replyTo === undefined));
 		assert.equal(
 			discord.posted
@@ -394,7 +394,7 @@ describe("discord relay", () => {
 		assert.deepEqual(sessions.delivered[0]?.text.split("\n"), [
 			'[Discord thread "Release plan" in #general (Guild), its first delivery: 2 messages of the thread]',
 			"Ada (<@u1>): thread opener",
-			"Ada (<@u1>): @Pi plan it",
+			"Ada (<@u1>): @Nycode plan it",
 		]);
 		assert.deepEqual(state().bindings.c1?.threads.t1, { conversation: 41, name: "Release plan", cursor: first.id });
 		assert.equal(state().bindings.c1?.cursor, "1", "the channel's cursor is the channel's own");
@@ -448,10 +448,10 @@ describe("discord relay", () => {
 				.map((input) => input.text.split("\n").slice(1));
 		// The second starts at the cursor the first left: no message is in both.
 		assert.deepEqual(batches(false), [
-			["Ada (<@u1>): one", "Ada (<@u1>): @Pi first"],
-			["Ada (<@u1>): two", "Ada (<@u1>): @Pi second"],
+			["Ada (<@u1>): one", "Ada (<@u1>): @Nycode first"],
+			["Ada (<@u1>): two", "Ada (<@u1>): @Nycode second"],
 		]);
-		assert.deepEqual(batches(true), [["Ada (<@u1>): @Pi a"], ["Ada (<@u1>): @Pi b"]]);
+		assert.deepEqual(batches(true), [["Ada (<@u1>): @Nycode a"], ["Ada (<@u1>): @Nycode b"]]);
 		assert.equal(sessions.threads.length, 1, "one subagent for the thread");
 		assert.equal(state().bindings.c1?.cursor, second.id);
 		assert.equal(state().bindings.c1?.threads.t1?.cursor, b.id);
@@ -480,7 +480,7 @@ describe("discord relay", () => {
 			"Bo (<@u3>): shall we plan the release?",
 			"[The thread]",
 			"Ada (<@u1>): in the thread",
-			"Ada (<@u1>): @Pi plan it",
+			"Ada (<@u1>): @Nycode plan it",
 		]);
 		assert.equal(sessions.delivered[0]?.context.messages, 4);
 		assert.equal(state().bindings.c1?.cursor, "1", "the channel's cursor stays: the main agent still gets these");
@@ -492,7 +492,7 @@ describe("discord relay", () => {
 		assert.deepEqual(sessions.delivered[1]?.text.split("\n"), [
 			'[Discord thread "Release plan" in #general (Guild): 2 messages since the last delivery]',
 			"Ada (<@u1>): more detail",
-			"Ada (<@u1>): @Pi and now?",
+			"Ada (<@u1>): @Nycode and now?",
 		]);
 		// The main agent's next batch has every channel message since its cursor, the thread's start included.
 		const main = discord.say("c1", message(`<@${BOT}> back here`));
@@ -501,7 +501,7 @@ describe("discord relay", () => {
 			"Ada (<@u1>): before the thread",
 			"Bo (<@u3>): shall we plan the release?",
 			"Ada (<@u1>): unrelated, after the thread",
-			"Ada (<@u1>): @Pi back here",
+			"Ada (<@u1>): @Nycode back here",
 		]);
 	});
 
@@ -529,8 +529,8 @@ describe("discord relay", () => {
 		// The command is never delivered: the next batch has the messages around it, not it.
 		const after = discord.say("c1", message(`<@${BOT}> next`));
 		await relay.onMessage("bot-a", after);
-		assert.deepEqual(sessions.delivered.at(-1)?.text.split("\n").slice(1), ["Ada (<@u1>): @Pi next"]);
-		assert.deepEqual(sessions.delivered[1]?.text.split("\n").slice(1), ["Ada (<@u1>): @Pi and another"]);
+		assert.deepEqual(sessions.delivered.at(-1)?.text.split("\n").slice(1), ["Ada (<@u1>): @Nycode next"]);
+		assert.deepEqual(sessions.delivered[1]?.text.split("\n").slice(1), ["Ada (<@u1>): @Nycode and another"]);
 	});
 
 	it("stop with nothing running says so; status and compact go to the main conversation; strangers' commands are ignored", async () => {
@@ -677,7 +677,7 @@ describe("discord relay", () => {
 			throw new Error("worker down");
 		};
 		await relay.onMessage("bot-a", discord.say("c1", message(`<@${BOT}> again`)));
-		assert.match(discord.posted.at(-1)?.text ?? "", /Could not reach Pi: worker down/);
+		assert.match(discord.posted.at(-1)?.text ?? "", /Could not reach Nycode: worker down/);
 		const after = discord.typed.length;
 		await relay.typing();
 		assert.equal(discord.typed.length, after);
@@ -696,7 +696,7 @@ describe("discord relay", () => {
 		assert.equal(lines[0], "[Discord #general (Guild): 200 messages since the last delivery]");
 		assert.equal(lines[1], "Ada (<@u1>): line 0", "message 1 of 200");
 		assert.equal(lines[101], `Ada (<@u1>): ${said[100]?.text}`, "past the first page");
-		assert.equal(lines.at(-1), "Ada (<@u1>): @Pi summarize");
+		assert.equal(lines.at(-1), "Ada (<@u1>): @Nycode summarize");
 		assert.equal(sessions.delivered[0]?.context.messages, 200);
 		assert.deepEqual(
 			discord.requests.map((request) => request.after),
@@ -717,7 +717,7 @@ describe("discord relay", () => {
 		);
 		assert.equal(lines.length, 201);
 		assert.equal(lines[1], "Ada (<@u1>): line 251");
-		assert.equal(lines.at(-1), "Ada (<@u1>): @Pi what happened?");
+		assert.equal(lines.at(-1), "Ada (<@u1>): @Nycode what happened?");
 	});
 
 	it("catches up after downtime: one batch per link and thread, every message from the cursor to the newest allowed mention", async () => {
@@ -747,10 +747,10 @@ describe("discord relay", () => {
 		assert.deepEqual(channel?.text.split("\n"), [
 			"[Discord #general (Guild): 5 messages since the last delivery]",
 			"Ada (<@u1>): good morning",
-			"Eve (<@u9>): @Pi me too",
-			"Ada (<@u1>): @Pi first question",
+			"Eve (<@u9>): @Nycode me too",
+			"Ada (<@u1>): @Nycode first question",
 			"Bo (<@u3>): some context for it",
-			"Ada (<@u1>): @Pi second question",
+			"Ada (<@u1>): @Nycode second question",
 		]);
 		assert.equal(state().bindings.c1?.cursor, newest.id);
 		assert.equal(sessions.delivered[1]?.conversation, 41);
@@ -813,7 +813,7 @@ const texts = (view: ConversationView | null | undefined): string[] =>
 		),
 	);
 
-/** The system sections in effect: the latest value of each, replayed from `pi.system` entries. */
+/** The system sections in effect: the latest value of each, replayed from `nycode.system` entries. */
 function sections(view: ConversationView | null | undefined): Record<string, string> {
 	const result: Record<string, string> = {};
 	for (const entry of view?.entries ?? [])
@@ -864,7 +864,7 @@ describe("discord ingress (fake provider)", () => {
 		const input = {
 			requestId: "discord:500",
 			author: { id: "u1", name: "Ada" },
-			text: "[Discord #general (Guild): 1 message since the last delivery]\nAda: @Pi read this",
+			text: "[Discord #general (Guild): 1 message since the last delivery]\nAda: @Nycode read this",
 			context: { channel: "general", guild: "Guild", messages: 1 },
 			files: [{ url: `${cdnUrl}/notes.txt`, name: "notes.txt", size: 20, key: "discord:500:0", ref: "500" }],
 			lock: NO_LOCK,
@@ -1134,7 +1134,7 @@ describe("discord ingress (fake provider)", () => {
 				conversation,
 				requestId: "discord:600",
 				author: { id: "u1", name: "Ada" },
-				text: "Ada (<@u1>): @Pi in the thread",
+				text: "Ada (<@u1>): @Nycode in the thread",
 				context: { channel: "general", guild: "Guild", messages: 1, thread: "Release Plan!" },
 				files: [],
 				lock: null,

@@ -4,7 +4,7 @@ The app kit (slice 13, design §23 "The app kit", decisions "The app kit, point 
 over `http`, `workers` and `plugins` so an app is its API, its built-in plugins and a start script. `startServer` on the
 server, `startWorker` in a worker's entry; the kit makes the data directory, the stores, the hosts, HTTP with deny by
 default, sign-ins and the owner's sign-in, device pairing, each host's files, export and import per address, and the
-plugin roots with "apply changes". Node-only. Exported as `@earendil-works/chord/app`. Examples 53 (`53-app/`, a whole
+plugin roots with "apply changes". Node-only. Exported as `@nycode/chord/app`. Examples 53 (`53-app/`, a whole
 small app), 54 (sign-ins and pairing) and 55 (export and import) run one app; 65 (`65-files.ts`) shows `Files` on a
 host of its own.
 
@@ -235,7 +235,7 @@ see a path on disk.
 - **Caps** per host (`files` option): a file over `maxFile` or a write past `maxTotal` (the blobs on disk, uploads
   under way included; a copy adds nothing) is refused `too_large`. Reads by range: `read({ id, offset, length })`, at
   most 4 MiB a call.
-- **For apps with hosts of their own** (`@earendil-works/chord/app/files`, without the rest of the kit):
+- **For apps with hosts of their own** (`@nycode/chord/app/files`, without the rest of the kit):
   `filesFacet(dir, caps, uploads)` serves `Files` and `FilesFolder` over the files directory `dir`; `startServer` and `startWorker` load it on theirs. `copyFiles({ store, files }, target,
   ctx)` copies a host's files (the part of its store's export that is `Files`' own, imported as `target/store.sqlite`,
   and its blobs, hard-linked or copied into `target/files/blobs/`) into a new host directory, where the source store
@@ -344,7 +344,7 @@ queries and changes), `blobs.ts` (blob files), `folder-views.ts` (live listings)
 
 With `web` the kit builds the page's base bundle from `web.entry`, publishes the `web` kind's plugin scripts and serves
 the page through `web.page` at `web.paths` (`["/"]`), signed in unless `web.public` (`webSurface`,
-`@earendil-works/chord/surfaces`); with `tui` the terminal's base bundle and the `tui` kind's scripts for launchers
+`@nycode/chord/surfaces`); with `tui` the terminal's base bundle and the `tui` kind's scripts for launchers
 (`tuiSurface`). Both base bundles resolve packages with the server process's conditions (`--conditions`/`-C` of its
 flags and `NODE_OPTIONS`: a server started with `--conditions=source` serves pages built from Chord's source, never
 `dist/`), or with `web.conditions`/`tui.conditions`. Plugin assets are served under `/_chord/web/assets/` (the plugins

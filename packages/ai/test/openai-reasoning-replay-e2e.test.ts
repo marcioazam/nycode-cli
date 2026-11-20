@@ -35,7 +35,7 @@ const targets: Target[] = [
 		name: "Codex over WebSocket",
 		model: getModel("openai-codex", "gpt-6.2-sol"),
 		apiKey: codexToken,
-		options: { transport: "websocket", sessionId: "pi-e2e-reasoning-replay" },
+		options: { transport: "websocket", sessionId: "nycode-e2e-reasoning-replay" },
 	},
 ];
 

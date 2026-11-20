@@ -2,7 +2,7 @@
 
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
-import type { ConversationView, LiveState } from "@earendil-works/pi-durable";
+import type { ConversationView, LiveState } from "@nycode/durable";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { DraftStore } from "../../plugins/drafts/contract.ts";
@@ -13,7 +13,7 @@ import { Session } from "../../src/runtime/chord.ts";
 import { type Fixture, holdIn, settled, startFixture, testHost, until } from "./helpers.ts";
 
 const live = (view: ConversationView | null | undefined): LiveState | undefined =>
-	view?.docs["pi.live"] as unknown as LiveState | undefined;
+	view?.docs["nycode.live"] as unknown as LiveState | undefined;
 
 describe("drafts store", () => {
 	it("keeps drafts per conversation and author, and hands each out once", async (t) => {

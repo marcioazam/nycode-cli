@@ -1,4 +1,4 @@
-# Brief: what must the p3 (Pi Roam) base enable?
+# Brief: what must the p3 (Nycode Roam) base enable?
 
 ## The guiding principle (owner, 2026-11-09)
 
@@ -9,7 +9,7 @@ integrations, bespoke apps: all plugins.
 
 ## Context to read first
 
-- Direction notes: /home/badlogic/pi/apps/p3/docs/direction-pi-roam.md (your own Pi instance, fully extensible UI,
+- Direction notes: /home/badlogic/nycode/apps/p3/docs/direction-nycode-roam.md (your own Nycode instance, fully extensible UI,
   session and server side; backups and remote access through Radius; a one-click cloud machine for a team instance; the
   instance is the trust boundary; multiplayer rarely used).
 - The harness discussion so far (owner and me, today): plugins never see Durable's extension type directly; p3's
@@ -28,20 +28,20 @@ integrations, bespoke apps: all plugins.
   §14-§15 routines, jobs; §17 registries; §23 kit, web/TUI surfaces). p2's plugins in apps/p2/plugins/* (what exists).
 - UX proposals: Armin's Home-first walkthrough (text: /tmp/armin.txt): one Home conversation (an orchestrator) that
   spawns sessions in the background, cards, a "needs you" inbox, projects that become bespoke screens, lending a machine
-  on request. The coding walkthrough: /home/badlogic/pi/apps/p3/docs/coding-flow/index.html. Cristina's sharing proposal:
+  on request. The coding walkthrough: /home/badlogic/nycode/apps/p3/docs/coding-flow/index.html. Cristina's sharing proposal:
   /tmp/cristina.md (shares through Radius, guests, the UI served to viewers). The resource model spec (permissions
-  design, now one possible plugin among others): /home/badlogic/pi/apps/p3/docs/resource-model/book.md.
+  design, now one possible plugin among others): /home/badlogic/nycode/apps/p3/docs/resource-model/book.md.
 - The owner's examples: a personal assistant (like OpenClaw / Muse style) with almost no UI that he talks to through
   iMessage, WhatsApp, Discord, Slack; a bespoke app for a daily task, e.g. what Earendil's triage agent does (find it in
   the earendil-works GitHub org: `gh repo list earendil-works --limit 200 | grep -i tri`, read its README and how it
-  works) built inside Pi Roam as its own UI, where he can pull an issue analysis into a new session and work on it with
+  works) built inside Nycode Roam as its own UI, where he can pull an issue analysis into a new session and work on it with
   an agent, or accept the proposed fix directly; the Discord integration (connect the instance to a server; the first
   message from a channel creates a session from a template; it starts closed until he opens it; a policy plugin limits
   its tools with filters/hooks/wraps); usage and cost statistics across sessions.
 
 ## Your task
 
-Go broad. Produce an extensive list of use cases and products people may want to build on Pi Roam (the owner wants
+Go broad. Produce an extensive list of use cases and products people may want to build on Nycode Roam (the owner wants
 "really everything": personal assistants over chat apps, orchestrators and inboxes, bespoke apps like triage,
 dashboards, automations on timers/webhooks/events, stats, sharing, team instances, coding workflows, voice, mobile,
 TUI, browsers, sandboxes, MCP, backups/restore, multi-device, search, memory, scheduled reports, approvals, human in

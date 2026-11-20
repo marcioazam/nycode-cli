@@ -1,4 +1,4 @@
-// Schema helpers: Chord's short constructors over pi-schema's builders (plain JSON Schema, typed with the values they
+// Schema helpers: Chord's short constructors over nycode-schema's builders (plain JSON Schema, typed with the values they
 // accept), and method, keyed member and event member declarations. The helpers keep the shapes contracts were
 // fingerprinted with: literals carry their `type`, `oneOf` is a union of literals, `map` a pattern-property record.
 
@@ -18,9 +18,9 @@ import {
 	str as strSchema,
 	union as unionSchema,
 	unknown as unknownSchema,
-} from "@earendil-works/pi-schema";
+} from "@nycode/schema";
 
-export { Optional, opt, type Schema, type Static } from "@earendil-works/pi-schema";
+export { Optional, opt, type Schema, type Static } from "@nycode/schema";
 
 import type { HostKind, KindShape } from "./host-kind.ts";
 import type { Params } from "./params.ts";
@@ -32,7 +32,7 @@ export type Bounds = { readonly min?: number; readonly max?: number };
 export type Defaulted<T> = { readonly default: T };
 
 // Interfaces, not intersections: declarations of apps' exported contracts and tables name them (an intersection with
-// `Schema<T>` would print pi-schema's private brand, which declaration files cannot name).
+// `Schema<T>` would print nycode-schema's private brand, which declaration files cannot name).
 
 /** A string schema (`str()`), told apart from the other scalars by its `type`. */
 export interface StringSchema extends Schema<string> {
@@ -150,7 +150,7 @@ export function unknown(): Schema<unknown> {
 
 /**
  * A `Uint8Array` leaf, checked by `instanceof` and length, never enumerated: `{ type: "bytes", minLength?, maxLength? }`
- * (pi-schema's extension of JSON Schema for values that never pass through JSON).
+ * (nycode-schema's extension of JSON Schema for values that never pass through JSON).
  */
 export function bytes(options: Bounds = {}): Schema<Uint8Array> {
 	return bytesSchema(limits(options, "minLength", "maxLength"));

@@ -174,7 +174,7 @@ workerMain(
 		return { busy: (await worker.get(Busy, {}, ctx)).counts };
 	},
 	{
-		hostPackages: { "@earendil-works/chord": chord },
+		hostPackages: { "@nycode/chord": chord },
 		redact: (error) => ({
 			message: String(error instanceof Error ? error.message : error).replace(/secret\S*/g, "[redacted]"),
 		}),

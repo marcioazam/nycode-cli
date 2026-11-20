@@ -1,4 +1,4 @@
-// The Familiar in the owner's page (plugins/familiar/web.tsx), named "Ask Pi": home and its row above the sidebar's "New
+// The Familiar in the owner's page (plugins/familiar/web.tsx), named "Ask Nycode": home and its row above the sidebar's "New
 // session" open its session (made on first use), which no rollup lists; an archived one stays archived until the row is
 // used.
 import assert from "node:assert/strict";
@@ -33,7 +33,7 @@ describe("the Familiar as home", { skip: !browserTests }, () => {
 		const sessions = await holdIn(owner, Sessions, {}, "owner");
 		await sessions.create({ cwd: fixture.workspace, title: "Ordinary" }, BACKGROUND_CONTEXT);
 		await browser.metrics(1280, 900);
-		// Home makes the Familiar and shows its session, as "Ask Pi".
+		// Home makes the Familiar and shows its session, as "Ask Nycode".
 		await browser.open(`http://127.0.0.1:${fixture.server.port}/`);
 		const familiar = await holdIn(owner, Familiar, {}, "owner");
 		const id = await until(familiar.session, (value) => typeof value === "string");
@@ -41,20 +41,22 @@ describe("the Familiar as home", { skip: !browserTests }, () => {
 		assert.equal(
 			(await until(sessions.sessions, (rows) => rows?.some((row) => row.id === id)))?.find((row) => row.id === id)
 				?.title,
-			"Ask Pi",
+			"Ask Nycode",
 		);
-		// The list starts with its row (the Pi logo as its icon), selected while it shows, then "New session"; the header's
+		// The list starts with its row (the Nycode logo as its icon), selected while it shows, then "New session"; the header's
 		// logo is only a logo.
 		await browser.wait(
-			`document.querySelector('.sidebar-start .nav-row.selected:has(.nav-marker .pi-logo) > .familiar-entry.active')`,
+			`document.querySelector('.sidebar-start .nav-row.selected:has(.nav-marker .nycode-logo) > .familiar-entry.active')`,
 		);
 		assert.deepEqual(
 			await browser.evaluate<string[]>(
 				`[...document.querySelectorAll('.sidebar-start .nav-label')].map((label) => label.textContent)`,
 			),
-			["Ask Pi", "New session"],
+			["Ask Nycode", "New session"],
 		);
-		assert.ok(await browser.evaluate<boolean>(`document.querySelector('.drawer-top .brand > .pi-logo') !== null`));
+		assert.ok(
+			await browser.evaluate<boolean>(`document.querySelector('.drawer-top .brand > .nycode-logo') !== null`),
+		);
 		// No rollup lists it.
 		await browser.wait(
 			`[...new Set([...document.querySelectorAll('.sidebar-nav .session-main .session-title')].map(e=>e.textContent))].join()==='Ordinary'`,

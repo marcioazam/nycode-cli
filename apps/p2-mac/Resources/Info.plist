@@ -5,15 +5,15 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleExecutable</key>
-	<string>Pi</string>
+	<string>Nycode</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.earendil.pi</string>
+	<string>com.earendil.nycode</string>
 	<key>CFBundleName</key>
-	<string>Pi</string>
+	<string>Nycode</string>
 	<key>CFBundleDisplayName</key>
-	<string>Pi</string>
+	<string>Nycode</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -27,7 +27,7 @@
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Pi uses the microphone for voice mode.</string>
+	<string>Nycode uses the microphone for voice mode.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>

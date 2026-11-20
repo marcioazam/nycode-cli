@@ -1,4 +1,4 @@
-// The `p3` command. `p3 server` runs a Pi's server in the foreground (closed by SIGINT, SIGTERM or the owner's stop);
+// The `p3` command. `p3 server` runs a Nycode's server in the foreground (closed by SIGINT, SIGTERM or the owner's stop);
 // plain `p3` starts it in the background under its supervisor unless it runs, and prints an owner link; `p3 stop`
 // stops it; `p3 restart` stops, then starts it; `p3 status` says whether it runs; `p3 list` lists the Pis. Whether a
 // server runs: its data directory's lock is held and `running.json` names its pid and port. The owner link and the stop
@@ -10,31 +10,31 @@ import { spawn } from "node:child_process";
 import { readFile, realpath } from "node:fs/promises";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
-import { BACKGROUND_CONTEXT as context, withAbortSignal } from "@earendil-works/chord/context";
-import { processLock } from "@earendil-works/chord/workers/child";
+import { BACKGROUND_CONTEXT as context, withAbortSignal } from "@nycode/chord/context";
+import { processLock } from "@nycode/chord/workers/child";
 import { defaultDataDir, openDataDir } from "./files.ts";
 import { COMMAND, PLUGINS, SUPERVISOR, version, WORKER } from "./install.ts";
-import { DEFAULT_PORT, dataDirOf, isPiName, keepPort, keptPort, namedPis, readConfig } from "./pi.ts";
+import { DEFAULT_PORT, dataDirOf, isNycodeName, keepPort, keptPort, namedPis, readConfig } from "./nycode.ts";
 import { type ServerRecord, serverFile, serverLock, supervisorFile, supervisorLock } from "./records.ts";
 import { type RunningServer, startServer } from "./server.ts";
 
-const USAGE = `Usage: p3 [command] [--pi <name> | --dir <path>] [--port <n>]
+const USAGE = `Usage: p3 [command] [--nycode <name> | --dir <path>] [--port <n>]
 
-A Pi is its data directory: ~/.pi/p3 (the default Pi), ~/.pi/p3/pis/<name> (--pi) or any directory (--dir).
+A Nycode is its data directory: ~/.nycode/p3 (the default Nycode), ~/.nycode/p3/pis/<name> (--nycode) or any directory (--dir).
 
 Commands:
-  (none)     Start the Pi's server in the background unless it runs; print its port and an owner link (also: start)
-  server     Run the Pi's server in the foreground
-  status     Say whether the Pi's server runs: its port, pid, data directory, version and start time
-  stop       Stop the Pi's server; returns once it is gone
+  (none)     Start the Nycode's server in the background unless it runs; print its port and an owner link (also: start)
+  server     Run the Nycode's server in the foreground
+  status     Say whether the Nycode's server runs: its port, pid, data directory, version and start time
+  stop       Stop the Nycode's server; returns once it is gone
   restart    Stop, then start in the background
   list       The Pis on this machine and their state
 
 Options:
-  --pi <name>   A named Pi (lower case letters, digits, - and _)
-  --dir <path>  A Pi in any directory
-  --port <n>    The port for this start, on 127.0.0.1 (0: a free one). Without it a Pi listens on its own port:
-                ${DEFAULT_PORT} for the default Pi, else a free one taken at its first start and kept
+  --nycode <name>   A named Nycode (lower case letters, digits, - and _)
+  --dir <path>  A Nycode in any directory
+  --port <n>    The port for this start, on 127.0.0.1 (0: a free one). Without it a Nycode listens on its own port:
+                ${DEFAULT_PORT} for the default Nycode, else a free one taken at its first start and kept
   --version     Print p3's version
   --help        Print this help`;
 
@@ -45,7 +45,7 @@ const START_MS = 30_000;
 const STOP_MS = 10_000;
 
 /** The command line's flags. */
-type Flags = { readonly pi?: string; readonly dir?: string; readonly port?: string };
+type Flags = { readonly nycode?: string; readonly dir?: string; readonly port?: string };
 
 const { values, positionals } = commandLine();
 if (values.help === true) console.log(USAGE);
@@ -57,7 +57,7 @@ function commandLine() {
 	try {
 		return parseArgs({
 			options: {
-				pi: { type: "string" },
+				nycode: { type: "string" },
 				dir: { type: "string" },
 				port: { type: "string" },
 				version: { type: "boolean" },
@@ -70,14 +70,14 @@ function commandLine() {
 	}
 }
 
-/** Runs `command` (plain `p3` is `start`) on the Pi `flags` names; a failure is one line and exit 1. */
+/** Runs `command` (plain `p3` is `start`) on the Nycode `flags` names; a failure is one line and exit 1. */
 async function run([command = "start", ...rest]: readonly string[], flags: Flags): Promise<void> {
 	// A trust boundary: the command line.
 	const starts = command === "start" || command === "server" || command === "restart";
-	if (rest.length > 0 || (flags.pi !== undefined && flags.dir !== undefined)) usage();
-	if (flags.pi !== undefined && !isPiName(flags.pi)) usage();
+	if (rest.length > 0 || (flags.nycode !== undefined && flags.dir !== undefined)) usage();
+	if (flags.nycode !== undefined && !isNycodeName(flags.nycode)) usage();
 	if (flags.port !== undefined && !(starts && /^\d{1,5}$/.test(flags.port) && Number(flags.port) <= 65535)) usage();
-	if (command === "list" && (flags.pi !== undefined || flags.dir !== undefined)) usage();
+	if (command === "list" && (flags.nycode !== undefined || flags.dir !== undefined)) usage();
 	const dataDir = dataDirOf(flags);
 	const port = flags.port === undefined ? undefined : Number(flags.port);
 	try {
@@ -204,20 +204,20 @@ async function status(path: string): Promise<void> {
 	console.log(["running", ...rows.map(([name, value]) => `  ${String(name).padEnd(16)}${value}`)].join("\n"));
 }
 
-/** Lists the default Pi (once it started) and the named ones, each with its state, port and data directory. */
+/** Lists the default Nycode (once it started) and the named ones, each with its state, port and data directory. */
 async function list(): Promise<void> {
 	const rows: string[][] = [];
-	for (const pi of [{ name: "(default)", dataDir: defaultDataDir() }, ...(await namedPis())]) {
-		const dataDir = await realpath(pi.dataDir).catch(() => undefined);
-		// A Pi is there once it started: it has its config then.
+	for (const nycode of [{ name: "(default)", dataDir: defaultDataDir() }, ...(await namedPis())]) {
+		const dataDir = await realpath(nycode.dataDir).catch(() => undefined);
+		// A Nycode is there once it started: it has its config then.
 		const config = dataDir === undefined ? undefined : await readConfig(dataDir);
 		if (dataDir === undefined || config === undefined) continue;
 		const record = await running(dataDir);
 		const state =
 			record !== undefined ? "running" : (await supervisorPid(dataDir)) !== undefined ? "starting" : "stopped";
-		rows.push([pi.name, state, String(record?.port ?? config.port ?? "-"), dataDir]);
+		rows.push([nycode.name, state, String(record?.port ?? config.port ?? "-"), dataDir]);
 	}
-	if (rows.length === 0) console.log("no Pi yet: `p3` starts the default one");
+	if (rows.length === 0) console.log("no Nycode yet: `p3` starts the default one");
 	const width = (column: number): number => Math.max(...rows.map((row) => row[column]!.length));
 	for (const [name, state, port, dir] of rows) {
 		console.log(`${name!.padEnd(width(0))}  ${state!.padEnd(width(1))}  ${port!.padEnd(width(2))}  ${dir}`);

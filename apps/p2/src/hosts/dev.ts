@@ -2,7 +2,7 @@
 // changes (Reload), and a changed module of the running server asks for a restart.
 import { randomUUID } from "node:crypto";
 import { relative } from "node:path";
-import type { Plugins } from "@earendil-works/chord/plugins";
+import type { Plugins } from "@nycode/chord/plugins";
 import type { DevResult, DevStatus } from "../runtime/dev-protocol.ts";
 import { processLogs } from "../runtime/logs.ts";
 import type { LoadedModules } from "./dev-modules.ts";

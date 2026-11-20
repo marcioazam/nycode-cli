@@ -17,7 +17,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # p2 has its own check (own biome.json, TypeScript 5.9; apps/ is outside the root Biome and tsc configs).
-# apps/ exists only in pi-private.
+# apps/ exists only in nycode-private.
 if [ -d apps/p2 ]; then
   for file in $STAGED_FILES; do
     case "$file" in

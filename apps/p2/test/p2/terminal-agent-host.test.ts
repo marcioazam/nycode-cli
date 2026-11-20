@@ -1,4 +1,4 @@
-// The terminal host's calls for the agent's terminal tool, against a real host and pi-env daemon (skipped without a
+// The terminal host's calls for the agent's terminal tool, against a real host and nycode-env daemon (skipped without a
 // daemon build): opens and inputs done once per key, the read cursor and its ring overflow, waits (quiet, match, exit,
 // timeout, cancel), plain text, the alternate screen as screen text, captures, session list pushes to the viewers,
 // the agent's terminal cap, closing a session, and an outdated host refusing calls.
@@ -29,7 +29,7 @@ try {
 	const system = localSystem();
 	await terminalDaemon(system.platform, system.arch, true);
 } catch (error) {
-	unavailable = error instanceof Error ? error.message : "No pi-env daemon with terminal support";
+	unavailable = error instanceof Error ? error.message : "No nycode-env daemon with terminal support";
 }
 
 /** A host connection that records events and makes calls. */

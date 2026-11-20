@@ -1,6 +1,6 @@
 // A session lives in its own worker process: `Session({ id })` is its address.
 
-import { hostKind, int, method, remote, str } from "@earendil-works/chord";
+import { hostKind, int, method, remote, str } from "@nycode/chord";
 
 export const Session = hostKind("session", { id: str() });
 

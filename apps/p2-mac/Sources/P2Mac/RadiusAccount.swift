@@ -1,14 +1,14 @@
-// The app's Radius account is this Mac's Pi's: one credential, in the Pi's `radius.json` on disk, shared 1:1. The Pi
-// connects to Radius with it; the app lists the tabs with it (`GET /v1/pi/servers`, which takes any gateway bearer and
+// The app's Radius account is this Mac's Nycode's: one credential, in the Nycode's `radius.json` on disk, shared 1:1. The Nycode
+// connects to Radius with it; the app lists the tabs with it (`GET /v1/nycode/servers`, which takes any gateway bearer and
 // covers the token's organization) and gets the grants that open other Pis on their forwarded origins. The app loads
 // no Radius pages.
 //
-// - Sign in: as the Pi's own `radius:login`, but through the system browser (OAuth client `pi-gateway`, scope
+// - Sign in: as the Nycode's own `radius:login`, but through the system browser (OAuth client `nycode-gateway`, scope
 //   `gateway offline_access`, PKCE, a loopback redirect; never inside a webview). The credential goes into radius.json,
-//   keeping the Pi's server ID; the Pi connects with it within 30 seconds.
-// - Refresh: Radius does not rotate refresh tokens, so the app and the Pi refresh the credential independently. The
-//   app reads the file before every call and writes a refreshed token back; the Pi reads it again on every attempt.
-// - Sign out: radius.json goes, which disconnects the Pi too.
+//   keeping the Nycode's server ID; the Nycode connects with it within 30 seconds.
+// - Refresh: Radius does not rotate refresh tokens, so the app and the Nycode refresh the credential independently. The
+//   app reads the file before every call and writes a refreshed token back; the Nycode reads it again on every attempt.
+// - Sign out: radius.json goes, which disconnects the Nycode too.
 import AppKit
 import CryptoKit
 import Foundation
@@ -18,7 +18,7 @@ import Security
 final class RadiusAccount {
 	static let changed = Notification.Name("P2MacRadiusAccountChanged")
 
-	/// This Mac's Pi, whose radius.json holds the credential and which refreshes it while it runs.
+	/// This Mac's Nycode, whose radius.json holds the credential and which refreshes it while it runs.
 	var server: ServerController {
 		didSet { NotificationCenter.default.post(name: Self.changed, object: self) }
 	}
@@ -30,28 +30,28 @@ final class RadiusAccount {
 	enum Failure: Error, LocalizedError {
 		/// No usable credential: sign in (again).
 		case signedOut(String)
-		/// The user has no Pi shell (`pi_shell_not_enabled`).
+		/// The user has no Nycode shell (`nycode_shell_not_enabled`).
 		case notEnabled
 		case http(Int, String)
 
 		var errorDescription: String? {
 			switch self {
 			case .signedOut(let reason): "Signed out of Radius: \(reason)"
-			case .notEnabled: "Pi is not enabled for this Radius account"
+			case .notEnabled: "Nycode is not enabled for this Radius account"
 			case .http(let status, let error): "Radius answered \(status): \(error)"
 			}
 		}
 	}
 
-	private static let clientID = "pi-gateway"
+	private static let clientID = "nycode-gateway"
 	private static let scope = "gateway offline_access"
 	/// Development against a fake gateway (P2MAC_SIGN_IN=headless): the app fetches the authorization page itself
 	/// instead of opening the browser, and signs in at launch.
 	let headless = ProcessInfo.processInfo.environment["P2MAC_SIGN_IN"] == "headless"
-	/// The gateway new sign-ins use: `PI_RADIUS_GATEWAY` as for the CLIs, else production. A signed-in credential
+	/// The gateway new sign-ins use: `NYCODE_RADIUS_GATEWAY` as for the CLIs, else production. A signed-in credential
 	/// names its own.
 	private let defaultGateway: URL = {
-		let configured = ProcessInfo.processInfo.environment["PI_RADIUS_GATEWAY"] ?? "https://radius.pi.dev"
+		let configured = ProcessInfo.processInfo.environment["NYCODE_RADIUS_GATEWAY"] ?? "https://radius.pi.dev"
 		return URL(string: configured.hasSuffix("/") ? String(configured.dropLast()) : configured)!
 	}()
 
@@ -61,7 +61,7 @@ final class RadiusAccount {
 
 	private var file: URL { server.config.dataDir.appending(path: "radius.json") }
 
-	/// radius.json as written (p2's `RadiusBrainConfig`): gateway, serverId, credential, and the Pi's own fields.
+	/// radius.json as written (p2's `RadiusBrainConfig`): gateway, serverId, credential, and the Nycode's own fields.
 	private func stored() -> [String: Any]? {
 		guard let data = try? Data(contentsOf: file) else { return nil }
 		return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
@@ -124,7 +124,7 @@ final class RadiusAccount {
 				"grant_type": "authorization_code", "client_id": Self.clientID, "redirect_uri": loopback.redirectURI.absoluteString,
 				"code": code, "code_verifier": verifier,
 			])
-		// As p2's `radius:login`: the same gateway keeps the Pi's server ID (and what it learned), another starts anew.
+		// As p2's `radius:login`: the same gateway keeps the Nycode's server ID (and what it learned), another starts anew.
 		var config = stored() ?? [:]
 		if config["gateway"] as? String != gateway.absoluteString {
 			config = ["serverId": UUID().uuidString.lowercased()]
@@ -136,7 +136,7 @@ final class RadiusAccount {
 		NotificationCenter.default.post(name: Self.changed, object: self)
 	}
 
-	/// Removes the credential, which signs the app out and disconnects this Mac's Pi (the caller clears the Radius
+	/// Removes the credential, which signs the app out and disconnects this Mac's Nycode (the caller clears the Radius
 	/// pages' cookies).
 	func signOut() {
 		try? FileManager.default.removeItem(at: file)
@@ -147,15 +147,15 @@ final class RadiusAccount {
 
 	// MARK: - Calls
 
-	/// The Pi servers of the token's organization (`/v1/pi/servers`, the shell's `/pi/api/brains` shape), for the tabs.
+	/// The Nycode servers of the token's organization (`/v1/nycode/servers`, the shell's `/nycode/api/brains` shape), for the tabs.
 	func servers() async throws -> Data {
-		try await authorized(URLRequest(url: gateway.appending(path: "v1/pi/servers")))
+		try await authorized(URLRequest(url: gateway.appending(path: "v1/nycode/servers")))
 	}
 
-	/// A one-minute grant URL that opens `path` (an address of the Pi's UI) on the Pi's forwarded origin
+	/// A one-minute grant URL that opens `path` (an address of the Nycode's UI) on the Nycode's forwarded origin
 	/// (`https://<label>.rdtun.com`) and leaves a view cookie there.
 	func openURL(organization: String, server: String, path: String) async throws -> URL {
-		var components = URLComponents(url: gateway.appending(path: "v1/pi/servers/\(organization)/\(server)/open"), resolvingAgainstBaseURL: false)!
+		var components = URLComponents(url: gateway.appending(path: "v1/nycode/servers/\(organization)/\(server)/open"), resolvingAgainstBaseURL: false)!
 		components.queryItems = [URLQueryItem(name: "path", value: path)]
 		var request = URLRequest(url: components.url!)
 		request.httpMethod = "POST"
@@ -185,7 +185,7 @@ final class RadiusAccount {
 				continue
 			}
 			if status == 401 { throw Failure.signedOut(error) }
-			if status == 404 && error == "pi_shell_not_enabled" { throw Failure.notEnabled }
+			if status == 404 && error == "nycode_shell_not_enabled" { throw Failure.notEnabled }
 			throw Failure.http(status, error)
 		}
 	}
@@ -222,13 +222,13 @@ final class RadiusAccount {
 			NotificationCenter.default.post(name: Self.changed, object: self)
 			throw Failure.signedOut(reason)
 		}
-		// The file again: the Pi may have written meanwhile (what it learned about itself); only the credential is ours.
+		// The file again: the Nycode may have written meanwhile (what it learned about itself); only the credential is ours.
 		var latest = stored() ?? config
 		latest["credential"] = config["credential"]
 		try write(latest)
 	}
 
-	/// pi-ai's OAuthCredential, as p2 stores it: `{ type, access, refresh, expires (ms), scope }`.
+	/// nycode-ai's OAuthCredential, as p2 stores it: `{ type, access, refresh, expires (ms), scope }`.
 	private func token(_ gateway: URL, _ form: [String: String]) async throws -> [String: Any] {
 		var request = URLRequest(url: gateway.appending(path: "v1/oauth/token"))
 		request.httpMethod = "POST"

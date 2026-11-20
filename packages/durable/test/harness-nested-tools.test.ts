@@ -1,9 +1,6 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { withAbortSignal } from "@earendil-works/chord/context";
-import { applyImmutable } from "@earendil-works/chord/delta";
-import type { JsonValue } from "@earendil-works/chord/json";
 import {
 	type AssistantMessage,
 	fauxAssistantMessage,
@@ -11,7 +8,10 @@ import {
 	fauxToolCall,
 	type ToolResultMessage,
 	type Usage,
-} from "@earendil-works/pi-ai";
+} from "@nycode/ai";
+import { withAbortSignal } from "@nycode/chord/context";
+import { applyImmutable } from "@nycode/chord/delta";
+import type { JsonValue } from "@nycode/chord/json";
 import {
 	AssistantEntry,
 	type ConversationView,
@@ -31,8 +31,8 @@ import {
 	type ToolTaskInput,
 	type ToolTaskResult,
 	UsageDoc,
-} from "@earendil-works/pi-durable";
-import { obj, opt, str } from "@earendil-works/pi-schema";
+} from "@nycode/durable";
+import { obj, opt, str } from "@nycode/schema";
 import { afterEach, describe, expect, it } from "vitest";
 import { openNodeSqliteStorage } from "../src/storage/sqlite/node.ts";
 import { commitWrites } from "../src/testing/commit-writes.ts";
@@ -130,7 +130,7 @@ describe("nested tool calls", () => {
 		};
 		const { harness, root } = await openChat(storage, setup);
 		await (await root.submit({ type: "input", content: "go" }, context)).wait(context);
-		const nested = written.filter((write) => write.kind.startsWith("pi.tool."));
+		const nested = written.filter((write) => write.kind.startsWith("nycode.tool."));
 		expect(nested).toEqual([
 			{ kind: NestedCallDoc.definition.kind, key: "1" },
 			{ kind: NestedCallDoc.definition.kind, key: "named" },
@@ -430,7 +430,7 @@ describe("nested tool calls", () => {
 		await harness.close(context);
 	});
 
-	it("reports nested calls in pi.live.nestedTools with their parent", async () => {
+	it("reports nested calls in nycode.live.nestedTools with their parent", async () => {
 		const setup = chatSetup();
 		const release = deferred();
 		const running = deferred();
@@ -553,7 +553,7 @@ describe("nested tool calls", () => {
 	});
 
 	it("reattaches a replay-safe caller to the nested calls it made before a restart", async () => {
-		const directory = await mkdtemp(join(tmpdir(), "pi-durable-nested-"));
+		const directory = await mkdtemp(join(tmpdir(), "nycode-durable-nested-"));
 		directories.add(directory);
 		const path = join(directory, "session.sqlite");
 		const setup = chatSetup();
@@ -655,7 +655,7 @@ describe("nested tool calls", () => {
 	});
 
 	it("aborts left-running nested calls of a caller interrupted while it cleaned them up", async () => {
-		const directory = await mkdtemp(join(tmpdir(), "pi-durable-nested-"));
+		const directory = await mkdtemp(join(tmpdir(), "nycode-durable-nested-"));
 		directories.add(directory);
 		const path = join(directory, "session.sqlite");
 		const setup = chatSetup();
@@ -867,7 +867,7 @@ describe("nested tool calls", () => {
 		const submission = await root.submit({ type: "input", content: "go" }, context);
 		await Promise.all([running.one.promise, running.two.promise]);
 		const watch = await root.watch(context);
-		const nestedOf = (view: ConversationView) => (view.docs["pi.live"] as LiveState).nestedTools ?? [];
+		const nestedOf = (view: ConversationView) => (view.docs["nycode.live"] as LiveState).nestedTools ?? [];
 		expect(nestedOf(watch.value).map((slot) => [slot.callId, slot.status])).toEqual([
 			["c1/1", "running"],
 			["c1/2", "running"],
@@ -1266,7 +1266,7 @@ describe("tool task version 1 and 2 records", () => {
 		checkpoint: JsonValue,
 		version: 1 | 2 = 1,
 	): Promise<{ path: string; id: TaskId }> {
-		const directory = await mkdtemp(join(tmpdir(), "pi-durable-tool-v1-"));
+		const directory = await mkdtemp(join(tmpdir(), "nycode-durable-tool-v1-"));
 		directories.add(directory);
 		const path = join(directory, "session.sqlite");
 		// No submission, so the Harness never starts scheduling and the task stays pending.

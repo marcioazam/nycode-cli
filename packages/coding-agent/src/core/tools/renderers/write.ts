@@ -6,7 +6,7 @@
  * definition, so the tool's public shape is unchanged.
  */
 
-import { Container, Text } from "@earendil-works/pi-tui";
+import { Container, Text } from "@nycode/tui";
 import { keyHint } from "../../../modes/interactive/components/keybinding-hints.ts";
 import {
 	CodeHighlighter,

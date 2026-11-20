@@ -68,7 +68,7 @@ export function pluginFile(path: string): string {
 }
 
 /** The one specifier of this component a script imports (`pluginFile`): external always, answered per facet. */
-export const PLUGINS_SPECIFIER = "@earendil-works/chord/plugins";
+export const PLUGINS_SPECIFIER = "@nycode/chord/plugins";
 
 /**
  * The `require` a facet script of `plugin` takes (`where` names the facet in its errors). A computed `require(x)`
@@ -115,7 +115,7 @@ function requireFor(
 function refusedAtRun(built: BuiltScript, version: string | undefined, specifier: string): string | undefined {
 	const { api } = built;
 	if (api === undefined || specifier === PLUGINS_SPECIFIER) return undefined;
-	if (packageName(specifier) === "@earendil-works/chord") return "plugins import Chord through the app's API";
+	if (packageName(specifier) === "@nycode/chord") return "plugins import Chord through the app's API";
 	const required = versionOf(built, specifier);
 	if (required === undefined || version === undefined || required === version) return undefined;
 	return `this script uses ${api.name}/${version}: one facet uses one version of the API`;

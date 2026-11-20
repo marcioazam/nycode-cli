@@ -2,7 +2,7 @@
 // that needs a reference, a registry, a derive or a writable needs an object to declare them in. Browser-safe: the API
 // module exports it.
 
-import { type FacetHost, local, type StoreSelf } from "@earendil-works/chord";
+import { type FacetHost, local, type StoreSelf } from "@nycode/chord";
 import type { P3Principal } from "../../principals.ts";
 
 /**

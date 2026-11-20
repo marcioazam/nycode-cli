@@ -10,7 +10,7 @@ Read by slice briefs (each brief says which part): `people/book.md`, `locks/desi
 `layouts/mocks.html`, `coding-flow/index.html`, `base-inventory/explainer/book.md` and `merged.md`, `map/book.md`,
 `step-0/book.md`, `step-0a/book.md`, `reload-loop/book.md`, `startup-telemetry/book.md`, `efficiency.md`,
 `rundown/book.md`, `accounts/book.md`, `status-2026-11-09.md`, `status-2026-11-13.md`, `handoff.md`,
-`direction-pi-roam.md`.
+`direction-nycode-roam.md`.
 
 The record only (superseded designs and raw inputs): `resource-model/`, `resources-code/`, `model-stress/`,
 `base-inventory/*-{astra,opus,sol,brief}.md`, `authz-research.md`, `plan-2026-11-11.md`, the 2026-11-13 sketches never committed before (`users-sketch.md`,

@@ -185,7 +185,8 @@ function TestResult({
 			<>
 				<div className="notice env-test">
 					<p>
-						<strong>Connected</strong> · {test.platform} {test.arch} · pi-env {test.version} · {test.latencyMs} ms
+						<strong>Connected</strong> · {test.platform} {test.arch} · nycode-env {test.version} ·{" "}
+						{test.latencyMs} ms
 					</p>
 					<p className="muted small mono">{test.home}</p>
 					<p className="muted small">
@@ -266,7 +267,7 @@ function KeySection({
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string>();
 	const valid = ENV_NAME.test(name);
-	// Looked up once typing pauses (Pi Mobile waits 300 ms), not on every keystroke.
+	// Looked up once typing pauses (Nycode Mobile waits 300 ms), not on every keystroke.
 	useEffect(() => {
 		let current = true;
 		setPublicKey(undefined);

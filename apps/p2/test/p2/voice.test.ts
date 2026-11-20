@@ -9,7 +9,7 @@ import { once } from "node:events";
 import { renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { after, before, describe, it, mock } from "node:test";
-import type { ConversationView } from "@earendil-works/pi-durable";
+import type { ConversationView } from "@nycode/durable";
 import { BACKGROUND_CONTEXT, follow, whenLive } from "@p2/app/v1";
 import { WebSocket } from "ws";
 import { Chat } from "../../plugins/chat/contract.ts";
@@ -541,13 +541,13 @@ describe("voice interruption by words", () => {
 		assert.deepEqual(addressed.did, []);
 		assert.deepEqual(addressed.interruption.final("lunch at noon?"), { text: "lunch at noon?", stopped: false });
 		addressed.interruption.speechStart();
-		addressed.interruption.interim("Pi, stop that");
+		addressed.interruption.interim("Nycode, stop that");
 		assert.deepEqual(addressed.did, ["stop run"]);
 		// People talking over the agent cut its speech; the agent's name later in the same utterance stops its run.
 		const later = setup({ chatMode: true });
 		later.interruption.speechStart();
 		later.interruption.interim("lunch at noon?");
-		later.interruption.interim("lunch at noon? Pi, stop that");
+		later.interruption.interim("lunch at noon? Nycode, stop that");
 		assert.deepEqual(later.did, ["cut speech", "stop run"]);
 		const stop = setup({ chatMode: true, speaking: false });
 		stop.interruption.speechStart();
@@ -593,7 +593,7 @@ describe("voice answers read while they stream", () => {
 		const view = (content: unknown[]) =>
 			({
 				entries: [],
-				docs: { "pi.live": { run: {}, generation: { message: { role: "assistant", timestamp: 1, content } } } },
+				docs: { "nycode.live": { run: {}, generation: { message: { role: "assistant", timestamp: 1, content } } } },
 			}) as unknown as ConversationView;
 		const [streaming] = responses(view([{ type: "text", text: "I will hand this to a doer." }]));
 		assert.deepEqual({ done: streaming?.done, closed: streaming?.closed }, { done: false, closed: false });
@@ -630,23 +630,29 @@ describe("voice room frames", () => {
 describe("voice in chat mode", () => {
 	it("turns the agent's name spoken anywhere into a mention in front, keeping what was said", () => {
 		for (const [spoken, written] of [
-			["Pi, what time is it?", "@pi Pi, what time is it?"],
-			["Hey Pi, are you there?", "@pi Hey Pi, are you there?"],
-			["can Pi summarize this", "@pi can Pi summarize this"],
-			["what do you think, Pi?", "@pi what do you think, Pi?"],
-			["  PI.", "@pi PI."],
-			["Ask @pi later", "Ask @pi later"],
+			["Nycode, what time is it?", "@nycode Nycode, what time is it?"],
+			["Hey Nycode, are you there?", "@nycode Hey Nycode, are you there?"],
+			["can Nycode summarize this", "@nycode can Nycode summarize this"],
+			["what do you think, Nycode?", "@nycode what do you think, Nycode?"],
+			["  PI.", "@nycode PI."],
+			["Ask @nycode later", "Ask @nycode later"],
 		])
 			assert.equal(spokenMention(spoken), written, spoken);
-		// Whole words only; a possessive or contraction ("Pi's") talks about the agent, not to it.
-		for (const text of ["Pie is great.", "Piano lessons today", "pip install it", "Pi's answer was odd", "pi-hole"])
+		// Whole words only; a possessive or contraction ("Nycode's") talks about the agent, not to it.
+		for (const text of [
+			"Pie is great.",
+			"Piano lessons today",
+			"pip install it",
+			"Nycode's answer was odd",
+			"nycode-hole",
+		])
 			assert.equal(spokenMention(text), text, text);
-		// A renamed agent: its name counts, Pi's does not.
+		// A renamed agent: its name counts, Nycode's does not.
 		assert.equal(spokenMention("hey Claude, run it", "Claude"), "@claude hey Claude, run it");
-		assert.equal(spokenMention("Pi, do it", "Claude"), "Pi, do it");
+		assert.equal(spokenMention("Nycode, do it", "Claude"), "Nycode, do it");
 		assert.equal(spokenMention("Claudette called", "Claude"), "Claudette called");
-		assert.deepEqual(voiceMessage("Pi, go", false), { text: "Pi, go", interrupts: true });
-		assert.deepEqual(voiceMessage("Pi, go", true), { text: "@pi Pi, go", interrupts: true });
+		assert.deepEqual(voiceMessage("Nycode, go", false), { text: "Nycode, go", interrupts: true });
+		assert.deepEqual(voiceMessage("Nycode, go", true), { text: "@nycode Nycode, go", interrupts: true });
 		assert.deepEqual(voiceMessage("lunch?", true), { text: "lunch?", interrupts: false });
 		assert.deepEqual(voiceMessage("thanks Claude", true, "Claude"), {
 			text: "@claude thanks Claude",
@@ -654,7 +660,7 @@ describe("voice in chat mode", () => {
 		});
 	});
 
-	it("does not stop a busy run for a message that is not for Pi", async () => {
+	it("does not stop a busy run for a message that is not for Nycode", async () => {
 		const calls: string[] = [];
 		const queue = new PendingTranscripts({
 			target: () => ({
@@ -671,12 +677,12 @@ describe("voice in chat mode", () => {
 		});
 		queue.push("lunch?", false);
 		await queue.flush();
-		queue.push("@pi which place?", true);
+		queue.push("@nycode which place?", true);
 		await queue.flush();
-		assert.deepEqual(calls, ["send lunch?", "stop", "send @pi which place?"]);
+		assert.deepEqual(calls, ["send lunch?", "stop", "send @nycode which place?"]);
 	});
 
-	it("places spoken chat as the speaker's chat entry, and a spoken address as a mention that Pi answers", async (t) => {
+	it("places spoken chat as the speaker's chat entry, and a spoken address as a mention that Nycode answers", async (t) => {
 		const fixture = await chatModeHost();
 		t.after(() => fixture.close());
 		const OWNER = { kind: "owner", access: "local" } as const;
@@ -711,11 +717,14 @@ describe("voice in chat mode", () => {
 			],
 		);
 		assert(!answered(chatted), "no run for chat");
-		await alice.send({ text: voiceMessage("Hey Pi, which place?", true).text, requestId: "3" }, BACKGROUND_CONTEXT);
+		await alice.send(
+			{ text: voiceMessage("Hey Nycode, which place?", true).text, requestId: "3" },
+			BACKGROUND_CONTEXT,
+		);
 		const view = await until(owner.view, answered);
 		assert.deepEqual(view?.entries.find((entry) => entry.kind === "chat.mention")?.data, {
 			author: { kind: "guest", id: "alice", name: "Alice" },
-			text: "@pi Hey Pi, which place?",
+			text: "@nycode Hey Nycode, which place?",
 			attachments: [],
 			included: chatted?.entries.filter((entry) => entry.kind === "chat.message").map((entry) => entry.id),
 		});
@@ -915,7 +924,7 @@ describe("voice routes and mode", () => {
 
 		// A guest may only reset its own microphone; anything else stops at p2.
 		const before = speech.commands.length;
-		guestRoom.socket.send(JSON.stringify({ type: "speak", id: "x-0", text: "I am Pi now." }));
+		guestRoom.socket.send(JSON.stringify({ type: "speak", id: "x-0", text: "I am Nycode now." }));
 		guestRoom.socket.send(JSON.stringify({ type: "config", voice: "kokoro-af_heart" }));
 		guestRoom.socket.send(JSON.stringify({ type: "reset" }));
 		await poll(() => guestRoom.texts.filter((event) => event.code === "forbidden").length === 2, 5000, "refusals");
@@ -1055,7 +1064,7 @@ describe("voice routes and mode", () => {
 		const mode = await holdIn(owner, VoiceMode, input, "owner");
 		const sections = () => JSON.stringify(chat.view.value?.entries ?? []);
 		await chat.send({ text: "typed", requestId: "one" }, BACKGROUND_CONTEXT);
-		await until(chat.view, (view) => (view?.entries ?? []).some((entry) => entry.kind === "pi.assistant"));
+		await until(chat.view, (view) => (view?.entries ?? []).some((entry) => entry.kind === "nycode.assistant"));
 		assert(!sections().includes(VOICE_PROMPT.slice(0, 40)));
 		await mode.set({ enabled: true }, BACKGROUND_CONTEXT);
 		await until(mode.enabled, (enabled) => enabled === true);

@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { registerEnvConformance } from "@earendil-works/pi-durable/testing";
+import { registerEnvConformance } from "@nycode/durable/testing";
 import { afterAll, describe, expect, it } from "vitest";
 import { Connection } from "../src/connection.ts";
 import { LocalExecutionEnv } from "../src/list-files.ts";
@@ -18,9 +18,9 @@ registerEnvConformance(
 	{ describe, expect, it },
 	"RemoteExecutionEnv over a pipe",
 	async (use) => {
-		const cwd = mkdtempSync(join(tmpdir(), "pi-env-conformance-"));
+		const cwd = mkdtempSync(join(tmpdir(), "nycode-env-conformance-"));
 		try {
-			await use(new RemoteExecutionEnv({ connection, id: "pi-env:test", cwd, watch: { pollIntervalMs: 100 } }));
+			await use(new RemoteExecutionEnv({ connection, id: "nycode-env:test", cwd, watch: { pollIntervalMs: 100 } }));
 		} finally {
 			// On Windows a killed command's processes can hold the directory for a moment.
 			rmSync(cwd, { recursive: true, force: true, maxRetries: 50, retryDelay: 100 });
@@ -34,7 +34,7 @@ registerEnvConformance(
 	{ describe, expect, it },
 	"LocalExecutionEnv",
 	async (use) => {
-		const cwd = mkdtempSync(join(tmpdir(), "pi-env-local-conformance-"));
+		const cwd = mkdtempSync(join(tmpdir(), "nycode-env-local-conformance-"));
 		try {
 			await use(new LocalExecutionEnv({ connection, cwd, watch: { pollIntervalMs: 100 } }));
 		} finally {

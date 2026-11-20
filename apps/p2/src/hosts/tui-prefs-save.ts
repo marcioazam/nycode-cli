@@ -1,7 +1,7 @@
 // The `savePrefs` launcher action (p2-tui-port.md sections 3.2, P10): a worker proposes a patch of the visitor's
-// `~/.pi/p2-tui/prefs.json`; the launcher validates it (privileged bindings and launcher-only keys such as the editor
+// `~/.nycode/p2-tui/prefs.json`; the launcher validates it (privileged bindings and launcher-only keys such as the editor
 // command are refused before anything is shown), shows the exact change as a diff and writes atomically after a local
-// confirmation. pi's own files are never written.
+// confirmation. nycode's own files are never written.
 
 import { randomUUID } from "node:crypto";
 import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
@@ -82,7 +82,7 @@ function dropEmpty(value: Record<string, unknown>): Record<string, unknown> {
 	);
 }
 
-/** Applies a patch: null removes, objects merge one level deep (pi's nested settings), empty objects disappear. */
+/** Applies a patch: null removes, objects merge one level deep (nycode's nested settings), empty objects disappear. */
 export function applyPrefsPatch(current: Record<string, unknown>, patch: PrefsPatch): Record<string, unknown> {
 	const merge = (base: Record<string, unknown>, change: Record<string, unknown>): Record<string, unknown> => {
 		const next: Record<string, unknown> = { ...base };

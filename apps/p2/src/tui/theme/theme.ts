@@ -14,7 +14,7 @@ import {
 	type TerminalColorMode,
 	type TerminalColors,
 	type TextAttributes,
-} from "@earendil-works/pi-tui";
+} from "@nycode/tui";
 import { common, createLowlight } from "lowlight";
 import { DARK_THEME, LIGHT_THEME } from "./builtin-themes.ts";
 import { generateSystemThemeColors, SYSTEM_THEME_NAME, terminalAppearance } from "./system-theme.ts";

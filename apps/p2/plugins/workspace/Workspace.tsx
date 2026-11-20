@@ -262,7 +262,7 @@ export function WorkspacePanel({
 	const searchKey = `search:${JSON.stringify(submitted)}`;
 	const [search, setSearch] = useState<Loaded<Extract<WorkspaceResult, { kind: "search" }>>>({ loading: false });
 	const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
-	const [wrap, setWrap] = useState(() => localStorage.getItem("pi-workspace-wrap") === "1");
+	const [wrap, setWrap] = useState(() => localStorage.getItem("nycode-workspace-wrap") === "1");
 	const [version, setVersion] = useState(0);
 	// The Files tree: every shown folder's listing, by path ("" is the root).
 	const [listings, setListings] = useState<Record<string, Loaded<Extract<WorkspaceResult, { kind: "list" }>>>>({});
@@ -289,7 +289,7 @@ export function WorkspacePanel({
 	const [file, setFile] = useState<Loaded<Extract<WorkspaceResult, { kind: "file" }>>>({ loading: true });
 	const [diff, setDiff] = useState<Loaded<Extract<WorkspaceResult, { kind: "diff" }>>>({ loading: true });
 	// Draft review comments survive reloads, per conversation, until sent or discarded.
-	const commentsKey = `pi-review:${sessionId}:${conversationId}`;
+	const commentsKey = `nycode-review:${sessionId}:${conversationId}`;
 	const [comments, setCommentsState] = useState<ReviewComment[]>([]);
 	useEffect(() => {
 		try {
@@ -305,7 +305,7 @@ export function WorkspacePanel({
 		else localStorage.removeItem(commentsKey);
 	};
 	// The open comment box (new or edit) is kept too, so a reload mid-typing loses nothing.
-	const editorKey = `pi-review-editor:${sessionId}:${conversationId}`;
+	const editorKey = `nycode-review-editor:${sessionId}:${conversationId}`;
 	const [editor, setEditorState] = useState<CommentEditor>();
 	useEffect(() => {
 		try {
@@ -620,7 +620,7 @@ export function WorkspacePanel({
 		scroller.current?.scrollTo({ top: 0 });
 	}, [filterText]);
 	// Its width, dragged from the left edge and remembered; phones ignore it (full screen).
-	const width = useDragSize("pi-workspace-width", "--workspace-width");
+	const width = useDragSize("nycode-workspace-width", "--workspace-width");
 	// Room to split: the chat and the panel share what the sidebar leaves; the list keeps its width, and the chat and
 	// the file column split the rest equally (flex in style.css). Their sum doesn't change when the split toggles.
 	const column = useRef<HTMLDivElement>(null);
@@ -693,7 +693,7 @@ export function WorkspacePanel({
 					void nav.replace(update((current) => ({ ...current, file: { ...selection, view } }))(nav.route))
 				}
 				onWrap={() => {
-					localStorage.setItem("pi-workspace-wrap", wrap ? "0" : "1");
+					localStorage.setItem("nycode-workspace-wrap", wrap ? "0" : "1");
 					setWrap(!wrap);
 				}}
 				onBack={() => setSelection(undefined)}

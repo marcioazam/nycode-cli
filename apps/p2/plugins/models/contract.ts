@@ -1,4 +1,4 @@
-import { arr, nul, num, obj, opt, type Static, str, union, unknown } from "@earendil-works/pi-schema";
+import { arr, nul, num, obj, opt, type Static, str, union, unknown } from "@nycode/schema";
 import { defineRegistry, local, method, remote, serverHost, unsafe } from "@p2/app/v1";
 import type { MobileSettings } from "@p2/app/v1/node";
 import type { ResourceSnapshot, Resources } from "./resources.ts";
@@ -30,7 +30,7 @@ export const EnabledModelsSchema = arr(str({ minLength: 1, maxLength: 300 }), { 
 
 /** Provider models for the picker and the default for new sessions (owner only). */
 export const Models = remote("p2.models", {
-	/** 2: `enabledModels`, `scopedModels` and `setEnabledModels` (pi's model scope for cycling). */
+	/** 2: `enabledModels`, `scopedModels` and `setEnabledModels` (nycode's model scope for cycling). */
 	version: 2,
 	params: {},
 	hostAddress: serverHost,

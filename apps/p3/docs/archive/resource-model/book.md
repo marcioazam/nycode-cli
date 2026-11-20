@@ -21,7 +21,7 @@ colophon: p3 resource model · spec, third edition · 2026-11-08
 # Before we begin {.preface}
 
 Mario runs p3 on his laptop. Every session he opens has his models, his MCP servers, his machines and every tool the
-installed plugins offer, and he never configured any of it. At Earendil, Colin, Cristina and Charlotta share project pi:
+installed plugins offer, and he never configured any of it. At Earendil, Colin, Cristina and Charlotta share project nycode:
 its sessions use exactly what the three brought, each with its owner's login. A session fed by the #support Discord
 channel may read the answers of one other session for an hour and has no shell at all.
 
@@ -420,7 +420,7 @@ asking the plugin that owns it, never through the users plugin.
 
 1. **Sign-in ends:** the kit's sessions for that user are revoked; `signIn` refuses the user's identities.
 2. **Their resources stop counting:** the resources plugin's `usable` drops entries whose owner is disabled, so
-   Colin's Linear server leaves project pi's effective list the moment Colin is disabled. The rows stay, so an admin
+   Colin's Linear server leaves project nycode's effective list the moment Colin is disabled. The rows stay, so an admin
    can re-enable without anyone re-bringing anything.
 3. **Their sessions stay** visible to the people who could see them (shared with, members of the source grouping);
    who owns them from then on is an admin's choice (reassign or archive), not automatic.
@@ -611,7 +611,7 @@ export const MyResources = remote("p3.resources.mine", {
 - **Set source** needs the session side (its owner by baseline) and the destination side (a grouping's `mayJoin`);
   the policy sees `{ kind: "set-source", ... }`.
 - **Lock down** switches a session to its own list, from a snapshot: from defaults, the same session's current
-  entries; from a grouping, only the entries the actor may bring themselves, `until` kept. Cristina locking down a pi
+  entries; from a grouping, only the entries the actor may bring themselves, `until` kept. Cristina locking down a nycode
   session cannot keep Colin's server.
 - **Copies** (clone, fork) re-run these rules before the copy's worker starts; content is copied, consent is not.
 
@@ -755,7 +755,7 @@ the sessions plugin keeps `mayView`, `maySend` (owner, shared with send, members
 per session and user, and uses them as baselines for its typed operations (send, shell, reset, configure, set source).
 
 :::review | Decision for the owner: showing sessions a project does not equip
-Linking a pi session to Discord makes it use the channel's list, and it leaves pi. Both reviewers propose that a
+Linking a nycode session to Discord makes it use the channel's list, and it leaves nycode. Both reviewers propose that a
 project may also keep plain "shown here" references to such sessions, granting nothing.
 :::
 
@@ -901,7 +901,7 @@ export const McpServer = defineResource("mcp.server");
 export const Transport = union([
 	obj({ kind: lit("http"), url: str() }),                                               // no location
 	obj({ kind: lit("server-stdio"), command: str(), args: arr(str()) }),                 // the p3 machine; admin by baseline
-	obj({ kind: lit("checkout"), env: ResourceRef, dir: str(), entry: str(), digest: str() }),   // an enabled .pi/mcp.json entry
+	obj({ kind: lit("checkout"), env: ResourceRef, dir: str(), entry: str(), digest: str() }),   // an enabled .nycode/mcp.json entry
 ]);
 export const McpConfig = obj({ name: str(), transport: Transport, lifetime: oneOf("session", "shared") });
 
@@ -1035,10 +1035,10 @@ export default defineFacet((host) => {
 });
 ```
 
-## When Colin withdraws Linear from project pi
+## When Colin withdraws Linear from project nycode
 
 1. `MyResources.withdraw` raises Linear's revision in the index and asks the projects plugin to remove the entry.
-2. `SessionList` for every pi session recomputes without Linear; `SessionMcp.servers` recomputes and is pushed.
+2. `SessionList` for every nycode session recomputes without Linear; `SessionMcp.servers` recomputes and is pushed.
 3. The worker's `self.on` replaces the extensions; the harness also stops admitting Linear's.
 4. A call already on its way reaches `SessionMcp.call` and is refused there. Output already in the transcript stays.
 
@@ -1200,7 +1200,7 @@ self.contribute(Extensions, [[ConversationsTool, conversationsExtension(session)
    the list side passes (Mario made the link).
 4. S2's `SessionList` gains the entry; `SessionConversations.targets` lists one session with `answer`; the tool shows
    one target.
-5. Tom (Discord) asks Pi to tell the release session to hurry up: `send` is refused by `authorize`; Lena's question is
+5. Tom (Discord) asks Nycode to tell the release session to hurry up: `send` is refused by `authorize`; Lena's question is
    answered from the release session's latest answer.
 6. At the deadline the entry leaves the list; a call a second later is refused by `authorize` against the current
    time, whatever the worker still shows.
@@ -1290,7 +1290,7 @@ export function ResourceDetail({ resource }: { resource: ResourceRef }) {
 	return (
 		<Sheet title={info.label}>
 			<OwnerLine owner={info.owner} />
-			<UsedIn lists={info.lists} />                                  {/* "pi · until Fri", "Support bot" */}
+			<UsedIn lists={info.lists} />                                  {/* "nycode · until Fri", "Support bot" */}
 			<HeaderActions resource={resource} actions={info.actions} />  {/* Withdraw everywhere, Exclude from my defaults */}
 			<Tabs>{panels.map((p) => <Tab key={p.title.key} title={p.title}><p.Panel resource={resource} /></Tab>)}</Tabs>
 		</Sheet>
@@ -1303,7 +1303,7 @@ export function SessionResourcesPanel({ session }: { session: string }) {
 	if (view === null || view === undefined) return null;
 	return (
 		<Panel>
-			<SourceChip source={view.source} />                               {/* "from project pi", "from #support", "your defaults" */}
+			<SourceChip source={view.source} />                               {/* "from project nycode", "from #support", "your defaults" */}
 			{view.list.kind === "ready"
 				? view.list.entries.map((e) => <EntryRow key={keyOf(e.resource)} entry={e} actions={view.actions} />)
 				: <Unavailable reason={view.list.reason} />}
@@ -1377,7 +1377,7 @@ function McpRow({ resource }: { resource: ResourceRef }) {
 }
 ```
 
-A project member who is not the owner sees Colin's server in pi with the MCP plugin's row and panels; the panels read
+A project member who is not the owner sees Colin's server in nycode with the MCP plugin's row and panels; the panels read
 `McpServers`, whose view for that member shows the server (it is on a list they see) without secrets and without the
 owner's methods' effect: `configure`, `signIn` and `remove` refuse anyone but the owner, and the panel shows them only
 when `actions` says so.
@@ -1390,8 +1390,8 @@ data it shows is whatever its own views allow.
 
 # Models, Machines, Drives {#kinds lede="Three more definitions, each the same pattern: a row, a store keyed by id, a per-session view."}
 
-- **Model providers** (`models.provider`, created): the store keeps pi-ai credentials and refreshes on the server;
-  `SessionModels` pushes, per provider on the list, its models and pi-ai `AuthResult` with expiry; the worker's
+- **Model providers** (`models.provider`, created): the store keeps nycode-ai credentials and refreshes on the server;
+  `SessionModels` pushes, per provider on the list, its models and nycode-ai `AuthResult` with expiry; the worker's
   provider auth reads the latest push and refuses when the list is not ready, the provider left it or the auth
   expired. Logouts and edits push at once. Bedrock and Vertex with ambient credentials get a server-side stream or are
   unsupported.
@@ -1417,14 +1417,14 @@ open with Armin and Vegard.
 # Six Scenarios {#scenarios lede="The cases every change must keep working."}
 
 1. **Mario on a laptop:** defaults everywhere; installing a plugin with a tool puts it in the next turn.
-2. **Project pi:** Colin creates it, adds Cristina and Charlotta, each brings their own resource (plus tools, decision
+2. **Project nycode:** Colin creates it, adds Cristina and Charlotta, each brings their own resource (plus tools, decision
    1); Charlotta's message uses Colin's Linear, Cristina's machine, Charlotta's key. Colin withdraws Linear: chapter
    VIII.
 3. **Discord for an hour:** chapter IX.
 4. **SAML:** engineering may create MCP servers; Cristina in research does not see the creator but uses Colin's server
-   in pi; adding research to the rule shows her the creator without a reload.
+   in nycode; adding research to the rule shows her the creator without a reload.
 5. **A new tool:** in defaults sessions at once; never in the Discord channel's list.
-6. **Drives:** the company drive and Mario's drive in pi; the agent gets drive tools for both.
+6. **Drives:** the company drive and Mario's drive in nycode; the agent gets drive tools for both.
 
 # Open Questions {.epilogue lede="Four decisions for the owner."}
 

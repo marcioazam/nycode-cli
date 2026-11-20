@@ -1,5 +1,5 @@
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import type { ExecutionEnv, FileChange, FileWatcher, WatchTarget } from "@earendil-works/pi-durable/env";
+import { BACKGROUND_CONTEXT } from "@nycode/chord/context";
+import type { ExecutionEnv, FileChange, FileWatcher, WatchTarget } from "@nycode/durable/env";
 
 const context = BACKGROUND_CONTEXT;
 /** An invalid read (an editor's save caught half-way) is read once more after this long before it is reported. */

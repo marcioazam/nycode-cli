@@ -2,7 +2,7 @@
 // through `json_each(?)` (one SQL text per table, no bound-parameter limit), and large rows bound column by column in
 // multi-row `VALUES` of a few fixed sizes, so their already JSON-encoded records are not escaped a second time.
 
-import type { SqliteExecutor } from "@earendil-works/chord/sqlite";
+import type { SqliteExecutor } from "@nycode/chord/sqlite";
 import type { Cell } from "./rows.ts";
 
 /** The rows `sql` reads for `values`, given as its one JSON array parameter (`json_each(?)`): one statement per chunk. */

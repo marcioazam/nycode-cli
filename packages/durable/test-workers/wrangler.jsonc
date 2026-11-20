@@ -1,5 +1,5 @@
 {
-	"name": "pi-durable-test-workers",
+	"name": "nycode-durable-test-workers",
 	"main": "./worker.ts",
 	"compatibility_date": "2026-10-01",
 	"compatibility_flags": ["nodejs_compat"],

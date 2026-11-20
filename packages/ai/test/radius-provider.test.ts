@@ -40,7 +40,7 @@ describe("Radius provider catalogs", () => {
 		const provider = radiusProvider();
 		expect(provider.getModels().length).toBeGreaterThan(0);
 		expect(provider.getModels()).toContainEqual(
-			expect.objectContaining({ id: "balanced", provider: "radius", api: "pi-messages" }),
+			expect.objectContaining({ id: "balanced", provider: "radius", api: "nycode-messages" }),
 		);
 	});
 

@@ -45,7 +45,7 @@ export async function resolvePlace(ctx: TuiContext, place: ProjectPlace): Promis
 
 /**
  * Why `Envs.listDirectory` failed for `place`, from its message (the only part that crosses the link): Node's and the
- * pi-env daemon's `ENOENT`/`ENOTDIR` (`scandir`/`opendir`) and the SSH manager's "Working directory is not a
+ * nycode-env daemon's `ENOENT`/`ENOTDIR` (`scandir`/`opendir`) and the SSH manager's "Working directory is not a
  * directory" mean the machine answered without the folder; "Environment "x" is not configured" names no environment;
  * anything else (refused, timed out, no daemon, …) is unreachable with its own message.
  */

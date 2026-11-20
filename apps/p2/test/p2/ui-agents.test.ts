@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
-import type { ConversationView, LiveState } from "@earendil-works/pi-durable";
+import type { ConversationView, LiveState } from "@nycode/durable";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { Models } from "../../plugins/models/contract.ts";
@@ -16,7 +16,7 @@ import { Browser, browserTests, COMPOSER } from "./browser.ts";
 import { type Fixture, holdIn, startFixture, until } from "./helpers.ts";
 
 const SCRIPT = `return await tools.agent({ prompt: 'json {"ok":true}', label: "Check ok", schema: { type: "object" }, tools: [] });`;
-const live = (view: ConversationView | null | undefined) => view?.docs["pi.live"] as LiveState | undefined;
+const live = (view: ConversationView | null | undefined) => view?.docs["nycode.live"] as LiveState | undefined;
 const text = (selector: string) => `document.querySelector(${JSON.stringify(selector)})?.textContent`;
 
 describe("one-shot agents and subagent archiving in the browser", { skip: !browserTests }, () => {
@@ -199,7 +199,7 @@ describe("one-shot agents and subagent archiving in the browser", { skip: !brows
 		);
 	});
 
-	// Pi Mobile 24e3fccdd: a subagent spawned with its own cwd shows it in its bar and spawn card, and its workspace
+	// Nycode Mobile 24e3fccdd: a subagent spawned with its own cwd shows it in its bar and spawn card, and its workspace
 	// panel opens there.
 	it("shows a subagent's own cwd and opens its workspace panel there", async () => {
 		const worktree = join(fixture.workspace, "worktree");

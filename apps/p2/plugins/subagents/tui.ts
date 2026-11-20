@@ -2,7 +2,7 @@
 // and the reply (an answer as Markdown). A running spawn says where the subagent works (DTUI `apply`). Also the
 // session selector's subagent conversations (threaded sort, p2-tui-port.md section 1.17).
 
-import { Container, Markdown, Spacer, Text } from "@earendil-works/pi-tui";
+import { Container, Markdown, Spacer, Text } from "@nycode/tui";
 import { BACKGROUND_CONTEXT, contribute, defineFacet, liveIn, locationText } from "@p2/app/v1";
 import type { TuiContext } from "@p2/app/v1/tui";
 import {
@@ -101,7 +101,7 @@ const sessionSource: TuiSessionSource = {
 };
 
 /**
- * `/agents` (pi's DurableTui `selectConversation`, the web sidebar's subagent rows): the session's main conversation,
+ * `/agents` (nycode's DurableTui `selectConversation`, the web sidebar's subagent rows): the session's main conversation,
  * its subagents and one-shot agents. Enter opens one, keeping each conversation's draft and reading position (P0c);
  * participants archive or restore a subagent (one-shot agents are read-only), the archived ones shown on request.
  */

@@ -6,8 +6,8 @@
 
 import { join } from "node:path";
 import { parseArgs } from "node:util";
-import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context";
-import { telemetryIngestFacet } from "@earendil-works/chord/telemetry-ingest";
+import { BACKGROUND_CONTEXT as context } from "@nycode/chord/context";
+import { telemetryIngestFacet } from "@nycode/chord/telemetry-ingest";
 import { WORKER_V8_FLAGS } from "../../src/install.ts";
 import { startServer } from "../../src/kit/start-server.ts";
 import type { P3Principal } from "../../src/principals.ts";

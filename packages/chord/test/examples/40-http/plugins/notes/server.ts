@@ -1,9 +1,9 @@
 // The notes plugin's server facet: a page, a JSON route and a file download, contributed to the HTTP component's
 // registry.
 
-import { defineFacet } from "@earendil-works/chord";
-import { fileResponse, Http } from "@earendil-works/chord/http";
-import { pluginFile } from "@earendil-works/chord/plugins";
+import { defineFacet } from "@nycode/chord";
+import { fileResponse, Http } from "@nycode/chord/http";
+import { pluginFile } from "@nycode/chord/plugins";
 
 export default defineFacet((_host, self) =>
 	self.contribute(Http, {

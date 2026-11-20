@@ -102,7 +102,7 @@ it still provides:
 ```ts
 // plugins/stats/worker.ts
 import { defineFacet, Session, Panels } from "@acme/app/v3";
-import { remote, str } from "@earendil-works/chord/v2";
+import { remote, str } from "@nycode/chord/v2";
 ```
 
 - The app provides `/v3`, its current API. If version 2 plugins still work unchanged against it, `/v2` is listed too,
@@ -111,7 +111,7 @@ import { remote, str } from "@earendil-works/chord/v2";
   v3, v2". The plugin keeps its old code, and the message tells an agent exactly what to change.
 - Nothing to fill in elsewhere: no `package.json` field, no npm ranges. Skeletons and examples import the current
   version, so an agent copies it without thinking.
-- Chord's own surface is versioned the same way (`@earendil-works/chord/v2`).
+- Chord's own surface is versioned the same way (`@nycode/chord/v2`).
 
 Decided: "the API version must be declared by the plugin in code" (owner, 2026-10-31); the import path is how.
 
@@ -136,7 +136,7 @@ A contract file imports only host packages at runtime (Chord, the app's API); na
 | Import | Resolved to | Versioned by |
 | --- | --- | --- |
 | its own files (`./store.ts`) | copied into its script | the plugin itself |
-| host packages (`@acme/app/v3`, `@earendil-works/chord/v2`, `react`) | the running process's instance, shared | the path's version; the app lists what it provides |
+| host packages (`@acme/app/v3`, `@nycode/chord/v2`, `react`) | the running process's instance, shared | the path's version; the app lists what it provides |
 | npm packages in its `dependencies` (`slugify`, a third party's contracts package) | its own `node_modules`, bundled | the installed version |
 | the app's own plugins (`../notes/contract.ts`), in the same root | copied into its script | the same revision: one repository |
 

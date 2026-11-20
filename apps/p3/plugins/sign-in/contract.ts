@@ -1,7 +1,7 @@
 // The sign-in plugin's contract: the server's sign-ins. A sign-in is one browser or device signed in as a principal,
 // behind a token `<id>.<secret>` (random); only the secret's hash is kept.
 
-import { arr, bool, local, method, nul, num, obj, oneOf, opt, P3Principal, str, union } from "@earendil-works/p3/v1";
+import { arr, bool, local, method, nul, num, obj, oneOf, opt, P3Principal, str, union } from "@nycode/p3/v1";
 
 /** The server's sign-ins (one per server): issue, verify, revoke, and the live list of them. */
 export const SignIns = local("p3.sign-ins", {

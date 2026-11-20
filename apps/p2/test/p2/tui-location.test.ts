@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { stripVTControlCharacters } from "node:util";
-import { type ConversationView, ROOT_CONVERSATION_ID } from "@earendil-works/pi-durable";
+import { type ConversationView, ROOT_CONVERSATION_ID } from "@nycode/durable";
 import { Chat, type ModelMeta } from "../../plugins/chat/contract.ts";
 import chatTui from "../../plugins/chat/tui.ts";
 import { Envs } from "../../plugins/envs/contract.ts";
@@ -293,7 +293,7 @@ test("+ New session: Tab cycles this device and the environments; /new [env:]pat
 	runtime.navigate("sessions");
 	await poll(async () => (await screen()).includes("+ New session"));
 	runtime.ctx.commands.run("app.session.new");
-	// From a session, `/new` without an argument starts over in its env:cwd (pi's /new).
+	// From a session, `/new` without an argument starts over in its env:cwd (nycode's /new).
 	await poll(() => (calls.create?.length ?? 0) === 1);
 	assert.deepEqual(calls.create?.[0], { cwd: "/work", env: null });
 	runtime.navigate("sessions", undefined);

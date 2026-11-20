@@ -2,7 +2,7 @@
 // `Traces` (server) by the owner's pages (the Traces view and Settings) and by the agent of a session that is neither
 // shared nor locked (the `telemetry` code-mode tools). Results are bounded: a page of traces, a trace's spans, metric
 // rows.
-import { arr, bool, int, nul, num, obj, oneOf, opt, type Static, str, union } from "@earendil-works/pi-schema";
+import { arr, bool, int, nul, num, obj, oneOf, opt, type Static, str, union } from "@nycode/schema";
 import { literal, method, record, remote, serverHost } from "@p2/app/v1";
 
 /** The most traces one search returns. */
@@ -22,7 +22,7 @@ const AttributesSchema = record(AttributeValueSchema);
 /** An attribute a search filters by (equality). */
 const FilterValueSchema = union([str(), num(), bool()]);
 
-/** A settled span as the store keeps it (pi-telemetry's `StoredSpan`): times in milliseconds, events relative. */
+/** A settled span as the store keeps it (nycode-telemetry's `StoredSpan`): times in milliseconds, events relative. */
 export const SpanSchema = obj({
 	id: str(),
 	traceId: str(),
@@ -40,7 +40,7 @@ export const SpanSchema = obj({
 });
 export type Span = Static<typeof SpanSchema>;
 
-/** A search of traces (pi-telemetry's `TraceQuery`): the first span's name, attributes one span has, errors, a window. */
+/** A search of traces (nycode-telemetry's `TraceQuery`): the first span's name, attributes one span has, errors, a window. */
 export const TraceQuerySchema = obj({
 	/** The name of the trace's earliest span. */
 	name: opt(str({ minLength: 1, maxLength: 128 })),
@@ -77,7 +77,7 @@ export type FoundTraces = Static<typeof FoundTracesSchema>;
 export const TraceSchema = obj({ traceId: str(), spans: arr(SpanSchema), truncated: bool() });
 export type Trace = Static<typeof TraceSchema>;
 
-/** A search of metrics (pi-telemetry's `MetricQuery`): one metric, a window of its 10 s intervals, attributes. */
+/** A search of metrics (nycode-telemetry's `MetricQuery`): one metric, a window of its 10 s intervals, attributes. */
 export const MetricQuerySchema = obj({
 	name: str({ minLength: 1, maxLength: 128 }),
 	startMin: opt(num()),

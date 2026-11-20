@@ -1,5 +1,5 @@
-import type { JsonValue } from "@earendil-works/chord/json";
-import type { AssistantMessage, ImageContent, TextContent, ToolResultMessage } from "@earendil-works/pi-ai";
+import type { AssistantMessage, ImageContent, TextContent, ToolResultMessage } from "@nycode/ai";
+import type { JsonValue } from "@nycode/chord/json";
 import type {
 	AgentState,
 	CompactionFailure,
@@ -11,7 +11,7 @@ import type {
 	ToolSlot,
 	TranscriptItem,
 	TranscriptView,
-} from "@earendil-works/pi-durable";
+} from "@nycode/durable";
 
 import { type AgentMessage, agentMessage, peerMessage } from "../runtime/entries.ts";
 import { type ShownImage, shownImage } from "../runtime/entry-images.ts";
@@ -175,7 +175,7 @@ const SEEN_CALLS = 1_000;
 
 /**
  * The nested calls of model-issued call `callId`, as Durable shows them. While the call runs that is
- * `pi.live.nestedTools` (`slots`: this call's slots, parents before children); the commit appending its result removes
+ * `nycode.live.nestedTools` (`slots`: this call's slots, parents before children); the commit appending its result removes
  * them. A settled call shows the last live list this browser saw (lost on reload); the tool's contribution may read a
  * final list from its result instead (`ToolActivity.nestedCalls`).
  */
@@ -271,12 +271,12 @@ function shellItems(key: string, raw: unknown): Item[] {
 		data.output ? `${fence}\n${data.output}\n${fence}` : "(no output)",
 		...(data.truncated ? ["Earlier output was dropped."] : []),
 		...(status ? [status] : []),
-		`Run by ${data.author.kind === "owner" ? "the owner" : `${data.author.name} (guest)`}${data.includeInContext ? "" : ", not shared with Pi"}.`,
+		`Run by ${data.author.kind === "owner" ? "the owner" : `${data.author.name} (guest)`}${data.includeInContext ? "" : ", not shared with Nycode"}.`,
 	].join("\n\n");
 	return [{ type: "marker", key, label: `$ ${data.command}`, detail }];
 }
 
-/** What a run that ended without an answer shows (`pi.live.runFailure`); nothing for a Stop or a new context. */
+/** What a run that ended without an answer shows (`nycode.live.runFailure`); nothing for a Stop or a new context. */
 function runFailureText(failure: RunFailure): string | undefined {
 	const detail = failure.detail?.trim();
 	switch (failure.reason) {
@@ -309,10 +309,10 @@ export function buildTranscript(
 	display?: EntryDisplayOf,
 	filling: ReadonlySet<string> = new Set(),
 ): Transcript {
-	const live = view.docs["pi.live"] as unknown as LiveState | undefined;
+	const live = view.docs["nycode.live"] as unknown as LiveState | undefined;
 	const compactionFailure = live?.compactionFailure;
 	const compactionError = compactionFailure ? `Compaction failed: ${compactionFailure.error}` : undefined;
-	const inbox = view.docs["pi.inbox"] as unknown as InboxState | undefined;
+	const inbox = view.docs["nycode.inbox"] as unknown as InboxState | undefined;
 	const busy = Boolean(live?.run);
 	const results = new Map<string, ToolResultMessage>();
 	let latest: EntryRecord | undefined;
@@ -388,13 +388,13 @@ export function buildTranscript(
 					},
 				]),
 			);
-		} else if (entry.kind === "pi.compaction") {
+		} else if (entry.kind === "nycode.compaction") {
 			items.push(
 				...cachedItems(entry, [], () => [
 					{ type: "marker", key, label: "Context compacted", detail: message ? text(message.content) : "" },
 				]),
 			);
-		} else if (entry.kind === "pi.reset") {
+		} else if (entry.kind === "nycode.reset") {
 			items.push(
 				...cachedItems(entry, [], () => [
 					{
@@ -570,7 +570,7 @@ export function buildTranscript(
 						},
 					],
 		),
-		agent: (view.docs["pi.agent"] ?? {}) as AgentState,
+		agent: (view.docs["nycode.agent"] ?? {}) as AgentState,
 	};
 }
 

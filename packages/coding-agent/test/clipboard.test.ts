@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import type * as OsModule from "node:os";
-import type { NativeClipboard } from "@earendil-works/pi-tui";
+import type { NativeClipboard } from "@nycode/tui";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { copyToClipboard, readClipboardText } from "../src/utils/clipboard.ts";
 
@@ -21,7 +21,7 @@ const mocks = vi.hoisted(() => ({
 		>(),
 	platform: vi.fn<() => NodeJS.Platform>(),
 }));
-vi.mock("@earendil-works/pi-tui", () => ({ getNativeClipboard: mocks.getNativeClipboard }));
+vi.mock("@nycode/tui", () => ({ getNativeClipboard: mocks.getNativeClipboard }));
 vi.mock("../src/utils/clipboard-command.ts", () => ({ runClipboardCommand: mocks.command }));
 vi.mock("node:os", async () => ({
 	...(await vi.importActual<typeof OsModule>("node:os")),
@@ -42,7 +42,7 @@ beforeEach(() => {
 		"WT_SESSION",
 		"WSL_DISTRO_NAME",
 		"WSLENV",
-		"PI_CLIPBOARD_OSC52",
+		"NYCODE_CLIPBOARD_OSC52",
 	])
 		vi.stubEnv(name, "");
 	mocks.platform.mockReturnValue("darwin");
@@ -155,11 +155,11 @@ describe("copyToClipboard", () => {
 		["darwin", undefined],
 		["win32", undefined],
 		["linux", ":99"],
-	] as const)("PI_CLIPBOARD_OSC52=1 emits OSC 52 after a successful %s copy", async (platform, display) => {
+	] as const)("NYCODE_CLIPBOARD_OSC52=1 emits OSC 52 after a successful %s copy", async (platform, display) => {
 		// Regression test for #10826, #10835, #10114: remote clients without SSH markers.
 		mocks.platform.mockReturnValue(platform);
 		if (display) vi.stubEnv("DISPLAY", display);
-		vi.stubEnv("PI_CLIPBOARD_OSC52", "1");
+		vi.stubEnv("NYCODE_CLIPBOARD_OSC52", "1");
 		await copyToClipboard("hello");
 		if (platform === "linux") {
 			expect(mocks.command).toHaveBeenCalledWith("xclip", ["-selection", "clipboard"], {

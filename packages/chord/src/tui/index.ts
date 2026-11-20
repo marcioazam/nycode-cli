@@ -1,4 +1,4 @@
-// Chord v2's terminal surface, the sandbox side (`@earendil-works/chord/tui`; slice 11 §4): `startTerminalRuntime` in
+// Chord v2's terminal surface, the sandbox side (`@nycode/chord/tui`; slice 11 §4): `startTerminalRuntime` in
 // the app's terminal entry, the bridged terminal, the theme lookup and `TuiScope`. The launcher and the server side are
 // `/tui/launcher` and `/surfaces`'s `tuiSurface`.
 

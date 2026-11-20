@@ -196,7 +196,7 @@ static bool open_clipboard(x11_clipboard* clipboard) {
         XCB_COPY_FROM_PARENT, XCB_CW_EVENT_MASK, &mask
     );
     clipboard->clipboard = intern_atom(clipboard, "CLIPBOARD");
-    clipboard->property = intern_atom(clipboard, "PI_CLIPBOARD");
+    clipboard->property = intern_atom(clipboard, "NYCODE_CLIPBOARD");
     clipboard->targets = intern_atom(clipboard, "TARGETS");
     clipboard->incr = intern_atom(clipboard, "INCR");
     return clipboard->clipboard && clipboard->property && clipboard->targets && clipboard->incr;
@@ -267,7 +267,7 @@ static void read_clipboard(clipboard_job* job) {
     close_clipboard(&clipboard);
 }
 
-PI_NAPI_EXPORT napi_value napi_register_module_v1(napi_env env, napi_value exports) {
+NYCODE_NAPI_EXPORT napi_value napi_register_module_v1(napi_env env, napi_value exports) {
     set_function_export(env, exports, "getText", get_clipboard_text);
     set_function_export(env, exports, "getImage", get_clipboard_image);
     return exports;

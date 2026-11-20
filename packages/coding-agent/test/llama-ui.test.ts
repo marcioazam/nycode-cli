@@ -1,4 +1,4 @@
-import { type Component, setKeybindings, type TUI } from "@earendil-works/pi-tui";
+import { type Component, setKeybindings, type TUI } from "@nycode/tui";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ExtensionCommandContext } from "../src/core/extensions/types.ts";
 import { KeybindingsManager } from "../src/core/keybindings.ts";

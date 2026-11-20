@@ -1,7 +1,7 @@
-// The SQLite telemetry store read-only, on Node (`@earendil-works/chord/telemetry-sqlite/node`): a store file that
+// The SQLite telemetry store read-only, on Node (`@nycode/chord/telemetry-sqlite/node`): a store file that
 // recorders of other processes write, opened for its reads (`TelemetryStore`) only.
 
-import type { TelemetryStore } from "@earendil-works/pi-telemetry";
+import type { TelemetryStore } from "@nycode/telemetry";
 import { openNodeSqliteDatabase } from "../sqlite/node.ts";
 import { assertTelemetryStore } from "./schema.ts";
 import { findMetrics, findTraces, getTrace } from "./store.ts";

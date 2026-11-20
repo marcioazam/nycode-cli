@@ -16,7 +16,7 @@ const SYLLABLES = [
 	"ta",
 	"ne",
 	"vo",
-	"pi",
+	"nycode",
 	"da",
 	"ru",
 	"xe",

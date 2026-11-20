@@ -1,6 +1,6 @@
 /**
  * The transcript's scroll controller: a virtual list that renders only the rows near the viewport, keeps the reader's
- * place while rows change size, follows the answer at the bottom (Pi Mobile's pinning), and reveals an entry anywhere
+ * place while rows change size, follows the answer at the bottom (Nycode Mobile's pinning), and reveals an entry anywhere
  * in the loaded history.
  *
  * Problem: a row's real height is known only once it is rendered, and older history arrives in pages above the reader.
@@ -110,7 +110,7 @@ export class TranscriptScroll {
 	layout = new RowLayout();
 	/** The rows to render: React renders these, `committed` reports them in the DOM. */
 	range: RowRange = NONE;
-	/** Following the answer at the bottom (Pi Mobile's `pinned`). */
+	/** Following the answer at the bottom (Nycode Mobile's `pinned`). */
 	pinned = true;
 	atBottom = true;
 	/**
@@ -728,7 +728,7 @@ export class TranscriptScroll {
 		const clamped = !down && !this.#gesture.active && this.#lastScrollTop - top < 2;
 		this.#lastScrollTop = top;
 		const bottom = isBottom(scroller) || clamped;
-		// Pi Mobile's rule: reaching the bottom while scrolling down follows the answer; anything else stops.
+		// Nycode Mobile's rule: reaching the bottom while scrolling down follows the answer; anything else stops.
 		if (!this.#target && !this.#following) this.pinned = bottom ? this.pinned || down : this.pinned && down;
 		// A held correction pushes its amount of content past an edge, out of reach: a reader scrolling into that
 		// edge would be stopped there until the scroll settles. Near it, it is written (see `#nearEdge`).

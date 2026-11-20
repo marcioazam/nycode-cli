@@ -4,7 +4,7 @@
 // copied to other environments (docs/agent-plugins.md).
 import { keyedRegistry } from "./chord.ts";
 
-/** A plugin's skills: `dir`, a directory of skills in pi's layout (`<name>/SKILL.md`, or `.md` files). */
+/** A plugin's skills: `dir`, a directory of skills in nycode's layout (`<name>/SKILL.md`, or `.md` files). */
 export type PluginSkillsEntry = { readonly dir: string };
 
 /** The plugins' skills directories, by plugin name. */

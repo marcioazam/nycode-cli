@@ -1,4 +1,4 @@
-// A provider login belongs to the owner that started it (as in Pi Mobile): only that owner sees its prompts, answers,
+// A provider login belongs to the owner that started it (as in Nycode Mobile): only that owner sees its prompts, answers,
 // cancels or dismisses it; its leaving (closed sheet, disconnect) ends it; another owner's sheet does not.
 
 import assert from "node:assert/strict";
@@ -6,8 +6,8 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { createModels } from "@earendil-works/pi-ai/models";
-import { fauxProvider } from "@earendil-works/pi-ai/providers/faux";
+import { createModels } from "@nycode/ai/models";
+import { fauxProvider } from "@nycode/ai/providers/faux";
 import { BACKGROUND_CONTEXT, follow, whenLive } from "@p2/app/v1";
 import { ProviderLogin } from "../../plugins/login/contract.ts";
 import loginServer from "../../plugins/login/server.ts";

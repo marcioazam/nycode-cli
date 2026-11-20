@@ -55,7 +55,7 @@ const typed = "types=chat,image,classifier";
 
 let root;
 beforeEach(() => {
-	root = mkdtempSync(join(tmpdir(), "pi-catalog-pin-"));
+	root = mkdtempSync(join(tmpdir(), "nycode-catalog-pin-"));
 	mkdirSync(join(root, "packages/ai/src/providers"), { recursive: true });
 	mkdirSync(join(root, "nix"));
 	writeFileSync(
@@ -74,7 +74,7 @@ function readPin() {
 	return readFileSync(join(root, "nix/model-catalog.json"), "utf8");
 }
 
-function mockPiDev({ live = liveRevision, failure } = {}) {
+function mockNycodeDev({ live = liveRevision, failure } = {}) {
 	const requests = [];
 	mock.method(globalThis, "fetch", async (url) => {
 		requests.push(url);
@@ -85,16 +85,16 @@ function mockPiDev({ live = liveRevision, failure } = {}) {
 		}
 		if (failure === "discovery-http") return new Response(null, { status: 503 });
 		return new Response(failure === "discovery-hash" ? "wrong" : bodies.get(live), {
-			headers: { "x-pi-model-catalog-revision": failure === "discovery-revision" ? "latest" : live },
+			headers: { "x-nycode-model-catalog-revision": failure === "discovery-revision" ? "latest" : live },
 		});
 	});
 	return requests;
 }
 
 test("pins the newest typed catalog after verifying its immutable URL", async () => {
-	const requests = mockPiDev();
+	const requests = mockNycodeDev();
 	assert.deepEqual(await pinned(updateModelCatalogPin(root)), { revision: liveRevision, updated: true });
-	// No pi-version: main's version is the last release, which pi.dev answers
+	// No nycode-version: main's version is the last release, which pi.dev answers
 	// with the catalog for released clients (#10985).
 	assert.deepEqual(requests, [
 		`https://pi.dev/api/models?${typed}`,
@@ -104,7 +104,7 @@ test("pins the newest typed catalog after verifying its immutable URL", async ()
 });
 
 test("keeps a pin that still hydrates the checkout and has the live model groups", async () => {
-	const requests = mockPiDev();
+	const requests = mockNycodeDev();
 	assert.deepEqual(await pinned(updateModelCatalogPin(root, { ifStale: true })), {
 		revision: currentRevision,
 		updated: false,
@@ -120,7 +120,7 @@ test("keeps a pin that still hydrates the checkout and has the live model groups
 test("replaces a pin that lacks a model type of the live catalog", async (t) => {
 	const errors = [];
 	t.mock.method(console, "error", (message) => errors.push(message));
-	mockPiDev({ live: classifierRevision });
+	mockNycodeDev({ live: classifierRevision });
 	assert.deepEqual(await pinned(updateModelCatalogPin(root, { ifStale: true })), {
 		revision: classifierRevision,
 		updated: true,
@@ -136,7 +136,7 @@ test("replaces a pin whose provider uses a different API than the live catalog",
 	const errors = [];
 	t.mock.method(console, "error", (message) => errors.push(message));
 	writeFileSync(join(root, "nix/model-catalog.json"), pinFile(switchedRevision));
-	mockPiDev();
+	mockNycodeDev();
 	assert.deepEqual(await pinned(updateModelCatalogPin(root, { ifStale: true })), { revision: liveRevision, updated: true });
 	assert.equal(readPin(), pinFile(liveRevision));
 	assert.deepEqual(errors, [
@@ -147,27 +147,27 @@ test("replaces a pin whose provider uses a different API than the live catalog",
 test("replaces a pin that no longer hydrates the checkout", async (t) => {
 	t.mock.method(console, "error", () => {});
 	writeFileSync(join(root, "nix/model-catalog.json"), pinFile(staleRevision));
-	mockPiDev();
+	mockNycodeDev();
 	assert.deepEqual(await pinned(updateModelCatalogPin(root, { ifStale: true })), { revision: liveRevision, updated: true });
 	assert.equal(readPin(), pinFile(liveRevision));
 });
 
 test("refuses to pin a live catalog that cannot hydrate the checkout", async () => {
-	mockPiDev({ live: staleRevision });
+	mockNycodeDev({ live: staleRevision });
 	await assert.rejects(updateModelCatalogPin(root), /cannot hydrate this checkout/);
 	assert.equal(readPin(), pinFile(currentRevision));
 });
 
 for (const failure of ["discovery-http", "discovery-revision", "discovery-hash", "revision-http", "revision-hash"]) {
 	test(`keeps the old pin on ${failure} failure`, async () => {
-		mockPiDev({ failure });
+		mockNycodeDev({ failure });
 		await assert.rejects(updateModelCatalogPin(root));
 		assert.equal(readPin(), pinFile(currentRevision));
 	});
 }
 
 test("does not treat an unreachable pinned revision as stale", async () => {
-	mockPiDev({ failure: "revision-http" });
+	mockNycodeDev({ failure: "revision-http" });
 	await assert.rejects(updateModelCatalogPin(root, { ifStale: true }), /unavailable/);
 	assert.equal(readPin(), pinFile(currentRevision));
 });

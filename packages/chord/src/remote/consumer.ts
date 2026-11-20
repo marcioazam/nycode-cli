@@ -7,7 +7,7 @@
 // host without a compressor, the deflated parts of this host's own holds and calls are inflated asynchronously first,
 // and the message is handled once they are.
 
-import type { TelemetryCarrier } from "@earendil-works/pi-telemetry";
+import type { TelemetryCarrier } from "@nycode/telemetry";
 import type { Context } from "../context/index.ts";
 import { type MethodData, takesNoArgs } from "../contracts/internal.ts";
 import { ChordError, isChordError } from "../data/index.ts";

@@ -2,8 +2,8 @@
 // resolves to its final answer, parsed as JSON and validated against `schema`. Nothing is reported to the main
 // conversation: only the script's return value reaches it.
 
-import type { AssistantMessage } from "@earendil-works/pi-ai";
-import type { Models } from "@earendil-works/pi-ai/models";
+import type { AssistantMessage } from "@nycode/ai";
+import type { Models } from "@nycode/ai/models";
 import {
 	AssistantEntry,
 	type ConversationId,
@@ -12,9 +12,9 @@ import {
 	defineExtension,
 	type Extension,
 	ROOT_CONVERSATION_ID,
-} from "@earendil-works/pi-durable";
-import { arr, compile, obj, opt, str, unknown, type Validator } from "@earendil-works/pi-schema";
-import { formats } from "@earendil-works/pi-schema/formats";
+} from "@nycode/durable";
+import { arr, compile, obj, opt, str, unknown, type Validator } from "@nycode/schema";
+import { formats } from "@nycode/schema/formats";
 import type { JsonValue } from "@p2/app/v1";
 import { record, SUBAGENT_TASK_ENTRY } from "@p2/app/v1";
 import { defineP2Tool, isTopLevel, type P2Tool } from "@p2/app/v1/worker";
@@ -68,7 +68,7 @@ export function createAgentExtension(models: Models, access: () => ReadonlyMap<s
 			const fail = (text: string) => ({ output: [{ type: "text" as const, text }], isError: true });
 			let validator: Validator;
 			try {
-				// Formats are checked, as TypeBox's compiler did before the switch to pi-schema.
+				// Formats are checked, as TypeBox's compiler did before the switch to nycode-schema.
 				validator = compile(args.schema, { formats });
 			} catch (error) {
 				return fail(`Invalid schema: ${errorMessage(error)}`);

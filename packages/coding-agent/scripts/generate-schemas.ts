@@ -3,14 +3,14 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { ProviderCompatSchema } from "@earendil-works/pi-ai/providers/compat-schema";
+import { ProviderCompatSchema } from "@nycode/ai/providers/compat-schema";
 import {
 	ModelCostSchema,
 	ModelInputLimitsSchema,
 	ModelPromptCacheSchema,
 	ModelThinkingLevelSchema,
 	ThinkingLevelMapSchema,
-} from "@earendil-works/pi-ai/providers/model-schema";
+} from "@nycode/ai/providers/model-schema";
 import type { TSchema } from "typebox";
 import { KeybindingsSchema, KeybindingValueSchema } from "../src/core/keybindings-schema.ts";
 import { ModelsConfigSchema } from "../src/core/model-config.ts";

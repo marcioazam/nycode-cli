@@ -2,7 +2,7 @@
 // registry as plugin commands so they are rebindable, listed and conflict-checked (p2-tui-port.md section 6.3).
 // Like the header/footer fallbacks (section 7.1), the worker runtime always loads this facet.
 
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
+import { BACKGROUND_CONTEXT } from "@nycode/chord/context";
 import {
 	type Component,
 	type Focusable,
@@ -11,7 +11,7 @@ import {
 	type KeyId,
 	SelectList,
 	truncateToWidth,
-} from "@earendil-works/pi-tui";
+} from "@nycode/tui";
 import { defineFacet, serveKeyed } from "../runtime/chord.ts";
 import { SHELL_ENTRY } from "../runtime/shell.ts";
 import { TuiSlots } from "../runtime/tui.ts";
@@ -32,7 +32,7 @@ import { formatKeyText } from "./render-context.ts";
 import { openKeybindings, openSettings } from "./settings.ts";
 
 /** Config locations as display text only: the worker never reads files (the launcher does). */
-export const KEYBINDING_SOURCES = ["~/.pi/agent/keybindings.json", "~/.pi/p2-tui/prefs.json (keybindings)"];
+export const KEYBINDING_SOURCES = ["~/.nycode/agent/keybindings.json", "~/.nycode/p2-tui/prefs.json (keybindings)"];
 
 const border = (ctx: TuiContext, width: number) => ctx.theme.current.fg("border", "─".repeat(Math.max(1, width)));
 
@@ -138,7 +138,7 @@ export function hotkeysText(ctx: TuiContext): string[] {
 			"Enter moves the session to the environment (● marks its current one); Ctrl+T test, Ctrl+K host key, Ctrl+F forget",
 		);
 	}
-	heading("Editor and transcript (pi-tui)");
+	heading("Editor and transcript (nycode-tui)");
 	for (const id of Object.keys(definitions).filter(
 		(id) => id.startsWith("tui.editor.") || id.startsWith("tui.altScreen."),
 	))
@@ -259,7 +259,7 @@ export const CORE_COMMANDS: Record<string, TuiCommand> = {
 	"app.exit": {
 		title: "Exit",
 		category: "General",
-		// pi: Ctrl+D exits only on an empty editor; otherwise the editor deletes forward.
+		// nycode: Ctrl+D exits only on an empty editor; otherwise the editor deletes forward.
 		when: "!overlay && (!editorFocused || editorEmpty)",
 		slash: { name: "quit" },
 		run: (ctx) => ctx.exit(),
@@ -318,8 +318,8 @@ export const tuiCoreFacet = defineFacet((host, self) => {
 	serveKeyed(host, TuiEntryRenderers);
 	serveKeyed(host, TuiMarkdownTransformers);
 	self.contribute(TuiCommands, CORE_COMMANDS);
-	// pi's built-in transformer, ahead of plugin transformers ("10:…").
+	// nycode's built-in transformer, ahead of plugin transformers ("10:…").
 	self.contribute(TuiMarkdownTransformers, { "00:mermaid": mermaidMarkdownTransformer });
-	// The host's user shell entries (`!cmd`, src/runtime/shell.ts) as pi's bash execution component.
+	// The host's user shell entries (`!cmd`, src/runtime/shell.ts) as nycode's bash execution component.
 	self.contribute(TuiEntryRenderers, { [SHELL_ENTRY]: shellEntryRenderer });
 });

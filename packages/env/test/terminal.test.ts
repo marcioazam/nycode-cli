@@ -14,7 +14,7 @@ afterAll(() => {
 });
 
 function connect(): { connection: Connection; cwd: string } {
-	const cwd = mkdtempSync(join(tmpdir(), "pi-env-terminal-"));
+	const cwd = mkdtempSync(join(tmpdir(), "nycode-env-terminal-"));
 	dirs.push(cwd);
 	const connection = new Connection({ command: [daemon] });
 	connections.push(connection);

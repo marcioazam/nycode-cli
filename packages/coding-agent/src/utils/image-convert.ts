@@ -1,4 +1,4 @@
-import { getCapabilities, type ImageTranscoder, setImageTranscoder } from "@earendil-works/pi-tui";
+import { getCapabilities, type ImageTranscoder, setImageTranscoder } from "@nycode/tui";
 import { applyExifOrientation } from "./exif-orientation.ts";
 import { loadPhoton } from "./photon.ts";
 
@@ -55,7 +55,7 @@ export async function convertToPng(
 }
 
 /**
- * Load photon and return a synchronous PNG transcoder for pi-tui's Kitty image rendering.
+ * Load photon and return a synchronous PNG transcoder for nycode-tui's Kitty image rendering.
  * Returns undefined if photon cannot be loaded.
  */
 export async function loadPngTranscoder(): Promise<ImageTranscoder | undefined> {
@@ -71,7 +71,7 @@ let pngTranscoderLoad: Promise<boolean> | undefined;
 let pngTranscoderRegistered = false;
 
 /**
- * On Kitty-protocol terminals, register photon as pi-tui's image transcoder so non-PNG images render.
+ * On Kitty-protocol terminals, register photon as nycode-tui's image transcoder so non-PNG images render.
  * Loads photon once. `onRegistered` runs after registration so callers can re-render images that
  * showed text fallbacks; it is not called if the transcoder was already registered or cannot load.
  */

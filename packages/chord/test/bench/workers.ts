@@ -21,7 +21,7 @@ const EXEC_ARGV = ["--conditions=source", "--experimental-strip-types", "--no-wa
 
 const gc = (globalThis as { gc?: () => void }).gc!;
 const Session = hostKind("session", { id: str() });
-const modules = { "@earendil-works/chord": chord };
+const modules = { "@nycode/chord": chord };
 const plugins = createPlugins(
 	{ roots: [ROOT], kinds: { worker: { platform: "node", hostPackages: Object.keys(modules) } }, onError: () => {} },
 	context,

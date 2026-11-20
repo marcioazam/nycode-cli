@@ -2,8 +2,8 @@
 // This Mac's brain loads directly and signs in with the owner key, behind a native placeholder while its server is not
 // reachable. Other Pis load from Radius's forwarded origin for them (`https://<label>.rdtun.com`), as the page itself,
 // through a grant the app gets with the shared Radius credential; when the origin's view cookie has expired it sends
-// the page to Radius's `/pi/forward`, and the app gets a fresh grant instead; while the page is open, the app renews
-// that cookie before it expires (ViewCookie.swift). A window keeps the pages of its recent brains (PiWindowController),
+// the page to Radius's `/nycode/forward`, and the app gets a fresh grant instead; while the page is open, the app renews
+// that cookie before it expires (ViewCookie.swift). A window keeps the pages of its recent brains (NycodeWindowController),
 // so switching tabs is instant. Every page gets the host bridge (HostBridge.swift).
 import AppKit
 import WebKit
@@ -14,15 +14,15 @@ final class BrainPage: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadD
 	let webView: ChromeWebView
 	/// The webview and the placeholder over it.
 	let view = NSView()
-	private unowned let host: PiWindowController
+	private unowned let host: NycodeWindowController
 	private let placeholder = Placeholder()
 	private(set) var path: String
 	private var loaded = false
 	private var connecting = false
 	private var signInWithToken = false
-	/// A remote Pi's forwarded origin, learned from its first grant URL.
+	/// A remote Nycode's forwarded origin, learned from its first grant URL.
 	private var remoteOrigin: URL?
-	/// Renews a remote Pi's view cookie while the page is open (ViewCookie.swift).
+	/// Renews a remote Nycode's view cookie while the page is open (ViewCookie.swift).
 	private var renewal: Task<Void, Never>?
 	private var urlObservation: NSKeyValueObservation?
 
@@ -37,13 +37,13 @@ final class BrainPage: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadD
 	private var window: NSWindow? { host.window }
 	var app: AppDelegate { host.app }
 
-	init(brain: Brain, path: String, host: PiWindowController) {
+	init(brain: Brain, path: String, host: NycodeWindowController) {
 		self.brain = brain
 		self.path = path
 		self.host = host
 		let configuration = WKWebViewConfiguration()
 		configuration.websiteDataStore = WKWebsiteDataStore(forIdentifier: brain.dataStoreID)
-		configuration.applicationNameForUserAgent = "PiMac/0.0.1"
+		configuration.applicationNameForUserAgent = "NycodeMac/0.0.1"
 		configuration.preferences.isElementFullscreenEnabled = true
 		configuration.preferences.javaScriptCanOpenWindowsAutomatically = true
 		configuration.mediaTypesRequiringUserActionForPlayback = []
@@ -86,14 +86,14 @@ final class BrainPage: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadD
 		}
 	}
 
-	/// Whether `url` is this Pi's own page: its loopback origin, or its forwarded origin.
+	/// Whether `url` is this Nycode's own page: its loopback origin, or its forwarded origin.
 	private func owns(_ url: URL) -> Bool {
 		if brain.isDirect { return brain.route.contains(url) }
 		guard let remoteOrigin else { return false }
 		return url.scheme == remoteOrigin.scheme && url.host == remoteOrigin.host
 	}
 
-	/// Whether a frame on `origin` is this Pi's own: only those get the microphone and the host bridge.
+	/// Whether a frame on `origin` is this Nycode's own: only those get the microphone and the host bridge.
 	func owns(_ origin: WKSecurityOrigin) -> Bool {
 		let page: URL? = brain.isDirect ? brain.route.url("/") : remoteOrigin
 		guard let page else { return false }
@@ -105,19 +105,19 @@ final class BrainPage: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadD
 		Appearance.crossFade(placeholder)
 	}
 
-	/// Tells the page the app's light/dark preference changed, if a page of this Pi is loaded.
+	/// Tells the page the app's light/dark preference changed, if a page of this Nycode is loaded.
 	func appearanceChanged(_ preference: Appearance) {
 		guard let url = webView.url, owns(url) else { return }
 		HostBridge.themeChanged(preference, in: webView)
 	}
 
-	/// Hands a menu item p2 carries out (Settings…) to the page, if a page of this Pi is loaded.
+	/// Hands a menu item p2 carries out (Settings…) to the page, if a page of this Nycode is loaded.
 	func menuChosen(_ item: String) {
 		guard let url = webView.url, owns(url) else { return }
 		HostBridge.menuChosen(item, in: webView)
 	}
 
-	/// Opens `path` on a remote Pi through a fresh grant.
+	/// Opens `path` on a remote Nycode through a fresh grant.
 	private func openRemote() async {
 		guard case .remote(let organization, let server) = brain.route else { return }
 		placeholder.show(title: "Opening \(brain.name)…", detail: nil, action: nil)
@@ -131,7 +131,7 @@ final class BrainPage: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadD
 		}
 	}
 
-	/// Renews the remote Pi's view cookie every `ViewCookie.renewEvery` from now (the grant just loaded set a fresh one),
+	/// Renews the remote Nycode's view cookie every `ViewCookie.renewEvery` from now (the grant just loaded set a fresh one),
 	/// and `ViewCookie.retryAfter` after a failure. The sleep runs on the continuous clock, so a renewal that fell due
 	/// while the Mac slept runs right after it wakes. A closed page ends the loop at its next wake.
 	private func renewViewCookie() {
@@ -147,7 +147,7 @@ final class BrainPage: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadD
 					await self.webView.configuration.websiteDataStore.httpCookieStore.setCookie(cookie)
 					wait = ViewCookie.renewEvery
 				} catch {
-					NSLog("Pi: renewing the view cookie of %@ failed: %@", self.brain.name, error.localizedDescription)
+					NSLog("Nycode: renewing the view cookie of %@ failed: %@", self.brain.name, error.localizedDescription)
 					wait = ViewCookie.retryAfter
 				}
 			}
@@ -221,7 +221,7 @@ final class BrainPage: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadD
 		// Frames inside the page (artifact previews) are the page's business; its CSP limits them.
 		if let frame = action.targetFrame, !frame.isMainFrame { return .allow }
 		// The forwarded origin's view cookie expired: it asks Radius for a new grant, the app gets one itself.
-		if case .remote = brain.route, url.path == "/pi/forward" {
+		if case .remote = brain.route, url.path == "/nycode/forward" {
 			if let wanted = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first(where: { $0.name == "path" })?.value,
 				wanted.hasPrefix("/")
 			{
@@ -267,7 +267,7 @@ final class BrainPage: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownloadD
 	func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
 		if (error as NSError).code == NSURLErrorCancelled { return }
 		loaded = false
-		placeholder.show(title: "Cannot reach Pi", detail: error.localizedDescription, action: "Try Again")
+		placeholder.show(title: "Cannot reach Nycode", detail: error.localizedDescription, action: "Try Again")
 	}
 
 	func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
@@ -418,20 +418,20 @@ private final class Placeholder: NSView {
 
 	func show(for server: ServerController) {
 		switch server.phase {
-		case .checking: show(title: "Looking for Pi…", detail: nil, action: nil)
-		case .starting: show(title: "Starting Pi…", detail: server.config.origin.absoluteString, action: nil)
-		case .stopping: show(title: "Stopping Pi…", detail: nil, action: nil)
+		case .checking: show(title: "Looking for Nycode…", detail: nil, action: nil)
+		case .starting: show(title: "Starting Nycode…", detail: server.config.origin.absoluteString, action: nil)
+		case .stopping: show(title: "Stopping Nycode…", detail: nil, action: nil)
 		case .running: show(title: "Signing in…", detail: nil, action: nil)
 		case .stopped where server.config.source == .attached:
 			show(
-				title: "Pi is not running",
+				title: "Nycode is not running",
 				detail: "Waiting for the server at \(server.config.origin.host!):\(server.config.port). Start it in its checkout, or choose another server in the menu bar.",
 				action: nil)
 		case .stopped:
 			server.config.checkout == nil
-				? show(title: "Pi is not running", detail: "Choose a p2 checkout in the menu bar item to run it from this app.", action: nil)
-				: show(title: "Pi is stopped", detail: nil, action: "Start Pi")
-		case .failed(let message): show(title: "Pi is not running", detail: message, action: server.canStart ? "Start Pi" : nil)
+				? show(title: "Nycode is not running", detail: "Choose a p2 checkout in the menu bar item to run it from this app.", action: nil)
+				: show(title: "Nycode is stopped", detail: nil, action: "Start Nycode")
+		case .failed(let message): show(title: "Nycode is not running", detail: message, action: server.canStart ? "Start Nycode" : nil)
 		}
 	}
 

@@ -3,7 +3,7 @@
 // `codemode` and `agent`. Code mode stays independently removable: no import of its plugin. Its conversations are listed
 // with the subagents (one-shot entries of their document), which is where their sidebar metadata and read-only rule live.
 
-import type { Models } from "@earendil-works/pi-ai/models";
+import type { Models } from "@nycode/ai/models";
 import { contribute, defineFacet } from "@p2/app/v1";
 import { Extensions, HarnessConfig, toolsByName } from "@p2/app/v1/worker";
 import { createAgentExtension } from "./tool.ts";

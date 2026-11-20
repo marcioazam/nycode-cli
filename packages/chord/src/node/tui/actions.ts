@@ -205,7 +205,7 @@ export function openerCommand(url: string, platform: NodeJS.Platform = process.p
 /** Opens `url` with the platform's opener (`openerCommand`), detached, best effort: a missing opener is no crash. */
 async function platformOpener(url: string): Promise<void> {
 	const [command, args] = openerCommand(url);
-	// The root as its directory: no opener needs the launcher's (a WSL path too long for explorer.exe, pi #11592).
+	// The root as its directory: no opener needs the launcher's (a WSL path too long for explorer.exe, nycode #11592).
 	spawn(command, args, { stdio: "ignore", detached: true, cwd: "/", shell: false })
 		.on("error", () => {})
 		.unref();

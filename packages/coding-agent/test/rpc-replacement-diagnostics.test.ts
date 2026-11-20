@@ -28,7 +28,7 @@ describe("RPC diagnostics after session replacement", () => {
 	// The runtime factory runs again on every new_session, but only the startup diagnostics were reported, so a
 	// problem that first appeared on replacement went nowhere. Found while fixing #11264.
 	it("writes a diagnostic that first appears on new_session to stderr once", async () => {
-		const tempRoot = mkdtempSync(join(tmpdir(), "pi-rpc-replacement-diagnostics-"));
+		const tempRoot = mkdtempSync(join(tmpdir(), "nycode-rpc-replacement-diagnostics-"));
 		tempDirs.push(tempRoot);
 		const agentDir = join(tempRoot, "agent");
 		const projectDir = join(tempRoot, "project");
@@ -51,7 +51,7 @@ describe("RPC diagnostics after session replacement", () => {
 
 		const child = spawn(process.execPath, ["--import", sourceResolverUrl, cliPath, "--mode", "rpc", "--no-session"], {
 			cwd: projectDir,
-			env: { ...process.env, [ENV_AGENT_DIR]: agentDir, PI_OFFLINE: "1" },
+			env: { ...process.env, [ENV_AGENT_DIR]: agentDir, NYCODE_OFFLINE: "1" },
 			stdio: ["pipe", "pipe", "pipe"],
 		});
 		let stdout = "";

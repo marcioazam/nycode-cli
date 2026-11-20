@@ -1,4 +1,4 @@
-import { arr, bool, num, obj, opt, type Static, str } from "@earendil-works/pi-schema";
+import { arr, bool, num, obj, opt, type Static, str } from "@nycode/schema";
 import {
 	evolve,
 	type Location,

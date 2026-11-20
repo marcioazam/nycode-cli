@@ -7,10 +7,10 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync }
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
-import { openStore, type Store, sqliteBackend } from "@earendil-works/chord";
-import { openNodeSqliteDatabase } from "@earendil-works/chord/sqlite/node";
-import { FileSyncStateStore, pullSession } from "@earendil-works/chord/sync";
-import type { ConversationView, LiveState } from "@earendil-works/pi-durable";
+import { openStore, type Store, sqliteBackend } from "@nycode/chord";
+import { openNodeSqliteDatabase } from "@nycode/chord/sqlite/node";
+import { FileSyncStateStore, pullSession } from "@nycode/chord/sync";
+import type { ConversationView, LiveState } from "@nycode/durable";
 import { BACKGROUND_CONTEXT, type Host } from "@p2/app/v1";
 import { Backup } from "../../plugins/backup/contract.ts";
 import { Chat } from "../../plugins/chat/contract.ts";
@@ -21,7 +21,7 @@ import { clientHost, type Fixture, holdIn, localOwner, startFixture, until } fro
 
 const answers = (count: number) => (view: ConversationView | null | undefined) =>
 	(JSON.stringify(view?.entries ?? []).match(/Echo:/g)?.length ?? 0) >= count &&
-	!(view?.docs["pi.live"] as LiveState | undefined)?.run;
+	!(view?.docs["nycode.live"] as LiveState | undefined)?.run;
 
 /** A store's contents without its manifest, comparable across stores. */
 async function contents(store: Store): Promise<string> {

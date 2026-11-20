@@ -49,7 +49,7 @@ describe("HTML export deep session tree", () => {
 
 	beforeAll(async () => {
 		initTheme("dark");
-		tempDir = mkdtempSync(join(tmpdir(), "pi-export-deep-"));
+		tempDir = mkdtempSync(join(tmpdir(), "nycode-export-deep-"));
 		const header = {
 			type: "session",
 			version: CURRENT_SESSION_VERSION,

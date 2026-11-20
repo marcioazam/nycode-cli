@@ -1,4 +1,4 @@
-import type { AssistantMessage, ImageContent } from "@earendil-works/pi-ai";
+import type { AssistantMessage, ImageContent } from "@nycode/ai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { SessionShutdownEvent } from "../src/index.ts";
 import { runPrintMode } from "../src/modes/print-mode.ts";
@@ -153,7 +153,7 @@ describe("runPrintMode", () => {
 		expect(errorSpy).toHaveBeenCalled();
 	});
 
-	// A signal during the final disposal used to hit no handler and kill pi mid-dispose.
+	// A signal during the final disposal used to hit no handler and kill nycode mid-dispose.
 	it("waits for the final disposal when SIGTERM arrives during it, and exits on a repeated SIGTERM", async () => {
 		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => undefined) as never);
 		const runtimeHost = createRuntimeHost(createAssistantMessage({ text: "done" }));

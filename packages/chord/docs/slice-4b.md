@@ -179,7 +179,7 @@ browsers have only the asynchronous `CompressionStream`/`DecompressionStream`.
 ## Carry-over taken (from `slices.md`, section "Slice 4b")
 
 All of it: revocation, cross-host cycles with instance ids, `host.references` and `host.activity`, size limits and
-compression, the Durable conversation view's size on re-hold (known cost until pi #11327; nothing to build), route
+compression, the Durable conversation view's size on re-hold (known cost until nycode #11327; nothing to build), route
 links' context (give `route` a `context` option, defaulting to the host's background context, used for the link's
 work and telemetry), one N on every host (unchanged; note stays), `gone` becomes reachable (test it through
 revocation; drop the hand-ended test only if the new one covers the same paths).

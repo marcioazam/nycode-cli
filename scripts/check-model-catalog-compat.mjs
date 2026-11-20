@@ -1,22 +1,22 @@
 #!/usr/bin/env node
 
-// Checks that released pi versions can use the model catalog we are about to publish.
+// Checks that released nycode versions can use the model catalog we are about to publish.
 //
-// Problem: pi.dev serves each published catalog to every released pi at or above
-// MINIMUM_PI_VERSION. Released clients use it right away, without updating pi.
+// Problem: pi.dev serves each published catalog to every released nycode at or above
+// MINIMUM_PI_VERSION. Released clients use it right away, without updating nycode.
 // If the catalog needs code they don't have, they break.
 //
 // Example: a catalog moved the kimi-coding models from anthropic-messages to
-// openai-completions. pi 1.2.0's kimi-coding provider only implements
+// openai-completions. nycode 1.2.0's kimi-coding provider only implements
 // anthropic-messages, so 1.2.0 sent requests to the wrong API and they failed.
 //
 // Check: build the model list a released client would end up with (its built-in
-// models, overlaid by the new catalog), and compile the release's pi-ai source
-// against it. pi-ai's types tie each provider to the APIs it implements, so a
+// models, overlaid by the new catalog), and compile the release's nycode-ai source
+// against it. nycode-ai's types tie each provider to the APIs it implements, so a
 // model with an API its provider lacks is a type error.
 //
 // Only the latest release on npm is checked. If it is older than
-// MINIMUM_PI_VERSION, no released pi receives the catalog, and the check is skipped.
+// MINIMUM_PI_VERSION, no released nycode receives the catalog, and the check is skipped.
 //
 // Usage: node scripts/check-model-catalog-compat.mjs [--catalog <file>]
 //   --catalog <file>  catalog to check (default: .artifacts/model-catalog/models.all.json,
@@ -29,9 +29,9 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { MINIMUM_PI_VERSION } from "./model-catalog-minimum-version.mjs";
-import { compareModelCatalogPiVersions } from "./model-catalog-protocol.ts";
+import { compareModelCatalogNycodeVersions } from "./model-catalog-protocol.ts";
 
-const PI_AI_PACKAGE = "@earendil-works/pi-ai";
+const NYCODE_AI_PACKAGE = "@nycode/ai";
 
 /** Read a release's built-in model data (`dist/providers/data`) as model lists by provider. */
 function readBuiltinModels(dataDir) {
@@ -76,18 +76,18 @@ function main() {
 	const { values } = parseArgs({ options: { catalog: { type: "string" } } });
 	const catalogPath = resolve(values.catalog ?? join(root, ".artifacts/model-catalog/models.all.json"));
 
-	const release = run("npm", ["view", PI_AI_PACKAGE, "version"], root).trim();
-	if (compareModelCatalogPiVersions(release, MINIMUM_PI_VERSION) < 0) {
+	const release = run("npm", ["view", NYCODE_AI_PACKAGE, "version"], root).trim();
+	if (compareModelCatalogNycodeVersions(release, MINIMUM_PI_VERSION) < 0) {
 		console.log(
-			`Skipped: the latest release ${release} is older than MINIMUM_PI_VERSION ${MINIMUM_PI_VERSION}, so no released pi receives this catalog.`,
+			`Skipped: the latest release ${release} is older than MINIMUM_PI_VERSION ${MINIMUM_PI_VERSION}, so no released nycode receives this catalog.`,
 		);
 		return;
 	}
 
-	const temporaryDir = mkdtempSync(join(tmpdir(), "pi-model-catalog-compat-"));
+	const temporaryDir = mkdtempSync(join(tmpdir(), "nycode-model-catalog-compat-"));
 	const releaseDir = join(temporaryDir, "release");
 	try {
-		console.log(`Checking the model catalog against pi ${release}...`);
+		console.log(`Checking the model catalog against nycode ${release}...`);
 		// The release's source code.
 		const archive = join(temporaryDir, "release.tar");
 		run("git", ["archive", "--prefix=release/", "--output", archive, `v${release}`], root);
@@ -95,7 +95,7 @@ function main() {
 
 		// The built-in models users have: the data shipped in the published package.
 		const [{ filename }] = JSON.parse(
-			run("npm", ["pack", `${PI_AI_PACKAGE}@${release}`, "--pack-destination", temporaryDir, "--json"], root),
+			run("npm", ["pack", `${NYCODE_AI_PACKAGE}@${release}`, "--pack-destination", temporaryDir, "--json"], root),
 		);
 		run("tar", ["xzf", join(temporaryDir, filename), "-C", temporaryDir, "package/dist/providers/data"], root);
 		const builtin = readBuiltinModels(join(temporaryDir, "package/dist/providers/data"));
@@ -105,13 +105,13 @@ function main() {
 
 		console.log("Installing the release's dependencies...");
 		run("npm", ["ci", "--ignore-scripts", "--no-audit", "--no-fund"], releaseDir);
-		// pi-ai's types depend on the declarations of its workspace dependencies.
+		// nycode-ai's types depend on the declarations of its workspace dependencies.
 		const { dependencies } = JSON.parse(readFileSync(join(releaseDir, "packages/ai/package.json"), "utf8"));
-		for (const name of Object.keys(dependencies).filter((name) => name.startsWith("@earendil-works/"))) {
+		for (const name of Object.keys(dependencies).filter((name) => name.startsWith("@nycode/"))) {
 			run("npm", ["run", "build", "--workspace", name], releaseDir);
 		}
 
-		console.log("Type-checking the release's pi-ai with the merged models...");
+		console.log("Type-checking the release's nycode-ai with the merged models...");
 		run(process.execPath, ["packages/ai/scripts/hydrate-model-catalog.ts", mergedPath], releaseDir);
 		try {
 			run(process.execPath, ["node_modules/typescript/bin/tsc", "-p", "packages/ai/tsconfig.build.json", "--noEmit"], releaseDir);
@@ -120,15 +120,15 @@ function main() {
 				[
 					error.message,
 					"",
-					`The model catalog does not type-check against pi ${release}'s pi-ai (errors above).`,
-					`pi.dev serves it to released pi >= ${MINIMUM_PI_VERSION}, so those clients would receive models`,
+					`The model catalog does not type-check against nycode ${release}'s nycode-ai (errors above).`,
+					`pi.dev serves it to released nycode >= ${MINIMUM_PI_VERSION}, so those clients would receive models`,
 					"their code cannot handle, e.g. a model whose api its provider does not implement.",
 					"If the change is intended, set MINIMUM_PI_VERSION in scripts/model-catalog-minimum-version.mjs",
 					"to the next release in the same commit.",
 				].join("\n"),
 			);
 		}
-		console.log(`The model catalog is compatible with pi ${release}.`);
+		console.log(`The model catalog is compatible with nycode ${release}.`);
 	} finally {
 		rmSync(temporaryDir, { recursive: true, force: true });
 	}

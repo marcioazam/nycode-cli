@@ -1,9 +1,9 @@
-// `!cmd`/`!!cmd` in the TUI (p2-tui-port.md section 10.8): pi's bash mode border, `Chat.shell`, the live command as
-// pi's bash execution component at the end of the transcript, Escape cancels, one command at a time, and finished
+// `!cmd`/`!!cmd` in the TUI (p2-tui-port.md section 10.8): nycode's bash mode border, `Chat.shell`, the live command as
+// nycode's bash execution component at the end of the transcript, Escape cancels, one command at a time, and finished
 // `p2.shell` entries rendered by the chat facet.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { type ConversationView, type EntryId, ROOT_CONVERSATION_ID } from "@earendil-works/pi-durable";
+import { type ConversationView, type EntryId, ROOT_CONVERSATION_ID } from "@nycode/durable";
 import { Chat, type ModelMeta, SHELL_BUSY, type ShellState } from "../../plugins/chat/contract.ts";
 import chatTui, { ChatSurface } from "../../plugins/chat/tui.ts";
 import statusTui from "../../plugins/status/tui.ts";
@@ -47,10 +47,10 @@ const view: ConversationView = {
 			model: [{ role: "user", content: [{ type: "text", text: "Ran `make test`" }], timestamp: 1 }],
 		},
 	],
-	docs: { "pi.agent": { model: { provider: "faux", modelId: "faux-1" } } } as ConversationView["docs"],
+	docs: { "nycode.agent": { model: { provider: "faux", modelId: "faux-1" } } } as ConversationView["docs"],
 };
 
-test("`!` and `!!` run commands; the live one shows at the end; Escape cancels; entries render as pi", async (t) => {
+test("`!` and `!!` run commands; the live one shows at the end; Escape cancels; entries render as nycode", async (t) => {
 	const calls: Record<string, unknown[]> = {};
 	const record = (name: string, args: unknown) => {
 		calls[name] = [...(calls[name] ?? []), args];
@@ -110,13 +110,13 @@ test("`!` and `!!` run commands; the live one shows at the end; Escape cancels; 
 		columns: 100,
 	});
 	runtime.navigate("chat", "s");
-	// A finished command: pi's component with the author, its output (sanitized) and how it ended.
+	// A finished command: nycode's component with the author, its output (sanitized) and how it ended.
 	await poll(async () => (await screen()).includes("$ make test · Alice (guest)"));
 	let shown = await screen();
 	assert.match(shown, /FAIL parser/);
 	assert.match(shown, /\(exit 3\)/);
 	assert.doesNotMatch(shown, /52;c;evil/);
-	// Bash mode: the editor border takes pi's bash color while the text starts with `!`.
+	// Bash mode: the editor border takes nycode's bash color while the text starts with `!`.
 	const chat = runtime.ctx.surface("chat");
 	assert(chat instanceof ChatSurface);
 	const theme = runtime.theme.current;
@@ -132,7 +132,7 @@ test("`!` and `!!` run commands; the live one shows at the end; Escape cancels; 
 	await poll(async () => (await screen()).includes("$ ls -la") && (await screen()).includes("partial output"));
 	assert.match(await screen(), /Running\.\.\./);
 	await poll(() => chat.editor.getText() === "");
-	// One at a time: a second command is refused with pi's text and stays in the editor.
+	// One at a time: a second command is refused with nycode's text and stays in the editor.
 	typed(send, "!!pwd");
 	send(ENTER);
 	await poll(() => runtime.notices.some((notice) => notice.text === SHELL_BUSY));

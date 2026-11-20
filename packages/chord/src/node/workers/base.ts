@@ -5,7 +5,7 @@
 // addons, packages reading their own files) and Node builtins stay external: Node loads them at each fork from where
 // the build resolved them. Everything else, the app's files and workspace packages linked into `node_modules`, is
 // inlined. The bundle is split at each dynamic `import()` esbuild can follow: the entry module and the chunks it imports
-// statically load at each fork, a lazily imported module (pi-ai's provider APIs and the packages they import) only when
+// statically load at each fork, a lazily imported module (nycode-ai's provider APIs and the packages they import) only when
 // the worker imports it. Every file is an ES module with its source map beside it (`<name>.mjs.map`, linked from its
 // last line; an inline one would be text of the module V8 keeps, and Node keeps its decoded copy), written at the first
 // fork (`file()`; a handle never forked writes nothing) into one private directory its handle owns and removes: a new temporary one, or

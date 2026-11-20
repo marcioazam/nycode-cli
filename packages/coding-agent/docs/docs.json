@@ -12,8 +12,8 @@
           "path": "quickstart.md"
         },
         {
-          "title": "How Pi Works",
-          "path": "how-pi-works.md"
+          "title": "How Nycode Works",
+          "path": "how-nycode-works.md"
         }
       ]
     },
@@ -21,10 +21,10 @@
       "title": "Guides",
       "items": [
         {
-          "title": "Run Pi",
+          "title": "Run Nycode",
           "items": [
             {
-              "title": "Use Pi in the Terminal",
+              "title": "Use Nycode in the Terminal",
               "path": "usage.md"
             },
             {
@@ -36,11 +36,11 @@
               "path": "sessions.md"
             },
             {
-              "title": "Run Pi Safely",
+              "title": "Run Nycode Safely",
               "path": "security.md"
             },
             {
-              "title": "Isolate Pi",
+              "title": "Isolate Nycode",
               "path": "containerization.md"
             },
             {
@@ -60,24 +60,24 @@
               "path": "shell-aliases.md"
             },
             {
-              "title": "Run Pi in tmux",
+              "title": "Run Nycode in tmux",
               "path": "tmux.md"
             },
             {
-              "title": "Run Pi on Windows",
+              "title": "Run Nycode on Windows",
               "path": "windows.md"
             },
             {
-              "title": "Run Pi on Android",
+              "title": "Run Nycode on Android",
               "path": "termux.md"
             }
           ]
         },
         {
-          "title": "Customize Pi",
+          "title": "Customize Nycode",
           "items": [
             {
-              "title": "Configure Pi",
+              "title": "Configure Nycode",
               "path": "configuration.md"
             },
             {
@@ -93,7 +93,7 @@
               "path": "themes.md"
             },
             {
-              "title": "Use Pi Packages",
+              "title": "Use Nycode Packages",
               "path": "packages.md"
             },
             {
@@ -103,7 +103,7 @@
           ]
         },
         {
-          "title": "Build on Pi",
+          "title": "Build on Nycode",
           "items": [
             {
               "title": "Build Extensions",

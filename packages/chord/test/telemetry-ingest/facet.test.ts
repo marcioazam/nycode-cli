@@ -4,7 +4,7 @@
 // and stamped with the link's principal; a worker's batch is written as it is, stamped with its host; nobody else
 // gets the worker's `ingest`; the calls record no span of their own.
 
-import { InMemoryTelemetryContext, type StoredSpan } from "@earendil-works/pi-telemetry";
+import { InMemoryTelemetryContext, type StoredSpan } from "@nycode/telemetry";
 import { describe, expect, it, vi } from "vitest";
 import { BACKGROUND_CONTEXT as context } from "../../src/context/index.ts";
 import { hostKind } from "../../src/contracts/index.ts";

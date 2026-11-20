@@ -4,7 +4,7 @@ import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { stripTerminalSequences, TuiAltScreen } from "@earendil-works/pi-tui";
+import { stripTerminalSequences, TuiAltScreen } from "@nycode/tui";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { VirtualTerminal } from "../../../../packages/tui/test/virtual-terminal.ts";
 import { Devices } from "../../plugins/devices/contract.ts";
@@ -297,7 +297,7 @@ test("bare-host TUI facets register, render session/model pickers and reload wit
 	runtime.handleInput("\x1b[B");
 	runtime.handleInput("\r");
 	assert.equal(runtime.session, session.id);
-	// pi's model selector as an overlay; without a session it sets the default for new sessions.
+	// nycode's model selector as an overlay; without a session it sets the default for new sessions.
 	runtime.session = undefined;
 	runtime.navigate("sessions");
 	const screen = async () => (await terminal.flushAndGetViewport()).join("\n");

@@ -22,7 +22,7 @@ export interface ResizedImage {
  * Tag on image resize worker replies. Node can post its own messages on the worker channel
  * (for example `{ "watch:require": [...] }` under `node --watch`), so replies must be identifiable.
  */
-export const IMAGE_RESIZE_WORKER_RESPONSE_TYPE = "pi:image-resize-response";
+export const IMAGE_RESIZE_WORKER_RESPONSE_TYPE = "nycode:image-resize-response";
 
 export type ResizeImageWorkerResponse =
 	| { type: typeof IMAGE_RESIZE_WORKER_RESPONSE_TYPE; result: ResizedImage | null }

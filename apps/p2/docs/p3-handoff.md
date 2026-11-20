@@ -6,7 +6,7 @@ not written here.
 
 ## 1. What we are doing
 
-Redesigning Chord (the object runtime) and p2 (Pi Mobile) from scratch as **Chord v2** (`packages/chord/src`)
+Redesigning Chord (the object runtime) and p2 (Nycode Mobile) from scratch as **Chord v2** (`packages/chord/src`)
 and **p3** (`apps/p3`, later). Goal (owner): a minimal, powerful runtime with the fewest footguns, no memory leaks, the
 best possible performance and easy-to-grok code (size is not a goal by itself: owner, 2026-10-27).
 
@@ -36,10 +36,10 @@ private `ce43d89b8` (p2 imports v1 from `/old`); Chord docs now `packages/chord/
 slices.md), examples `test/examples/`. 59-chat on a table upstream `3c7a9ca0e`. Decision "p2 moves to Chord v2, then
 v1 is deleted" (`d5c4b80eb`, owner yes to all 11 points; 7 = createHttp later). Running overnight (owner wants the
 port done by morning, no phone deploy): `ui-back` (Opus; brief `/tmp/ui-back-brief.md`, report `/tmp/ui-back/report.md`;
-worktree `pi-ui-back` + `/home/badlogic/bundled-ui-work`; reverts Cristina's `1cf20071f`, ports bundled-ui UI changes
-back, bundled-ui builds from pi-private; UNCOMMITTED until the owner checks in the morning) and `p2-port` (Opus;
-worktree `/home/badlogic/pi-p2-v2`, brief `/home/badlogic/p2-port/build-brief.md`, plan `/home/badlogic/p2-port/plan.md`;
-P1-P3, S0 now; after ui-back, bring its result into pi-p2-v2 and tell p2-port to do S1-S8 with the UI; I make local
+worktree `nycode-ui-back` + `/home/badlogic/bundled-ui-work`; reverts Cristina's `1cf20071f`, ports bundled-ui UI changes
+back, bundled-ui builds from nycode-private; UNCOMMITTED until the owner checks in the morning) and `p2-port` (Opus;
+worktree `/home/badlogic/nycode-p2-v2`, brief `/home/badlogic/p2-port/build-brief.md`, plan `/home/badlogic/p2-port/plan.md`;
+P1-P3, S0 now; after ui-back, bring its result into nycode-p2-v2 and tell p2-port to do S1-S8 with the UI; I make local
 checkpoint commits there, never pushed until reviewed). Chord move scripts kept in `/home/badlogic/chord-root-move/`.
 bundled-ui is public on purpose (jsDelivr needs it); its git history holds the UI source.
 
@@ -47,7 +47,7 @@ bundled-ui is public on purpose (jsDelivr needs it); its git history holds the U
 private `46905bc1c`. Decided and recorded: i18n (`9c248717d`, built after slice 11: carry-over), Chord v2 becomes the
 package's root (`1d81a6972`: src/old, /json and /watch subpaths, short Node subpaths, docs -> docs, no version
 bump). schema-guard scripts deleted (owner). `chord-root` is doing the real run (brief `/tmp/chord-root-run-brief.md`,
-scripts `/home/badlogic/chord-root-move/`): worktrees `pi-chord-up` (upstream part) and `pi-chord-priv` (p2's part);
+scripts `/home/badlogic/chord-root-move/`): worktrees `nycode-chord-up` (upstream part) and `nycode-chord-priv` (p2's part);
 then an Opus reviews package description/README wording; then commit upstream, merge into private, commit p2's part.
 Next after that: i18n build, telemetry (slice 9), small examples; p3 work packages after the meeting.
 
@@ -55,16 +55,16 @@ Next after that: i18n build, telemetry (slice 9), small examples; p3 work packag
 - Slice 11 sandbox is a child process (decision "The terminal's sandbox is a child process", upstream `128912d24`,
   design `10cf3264f`, slice-11.md `65c85bda2`). Opus rounds: recheck 2 (`/tmp/s11-recheck2-opus.md`: E7 getter on
   process prototypes, E8 SIGUSR1, E9 attach before yes, E10-E13) fixed by audit-builder (round 3); recheck 3 running
-  in `s8-spec-opus` (`/tmp/s11-recheck3-opus.md`). pi-s11 is a local commit `wip slice 11` (made with --no-verify:
+  in `s8-spec-opus` (`/tmp/s11-recheck3-opus.md`). nycode-s11 is a local commit `wip slice 11` (made with --no-verify:
   REDO the final commit with hooks, amend message), rebased on upstream/main (no conflicts), slices.md carry-over
   cleaned and "What exists" gained 11-13, package-lock regenerated with npm 11.21.1 (`/tmp/npmlatest`, the repo's
   lock needs a newer npm than node 24's 11.4.2) and left unstaged; `npm run check` clean; full Chord tests running
-  (`/tmp/s11-final-tests.log`). Then: commit (amend, PI_ALLOW_LOCKFILE_CHANGE=1 with package-lock.json), push
+  (`/tmp/s11-final-tests.log`). Then: commit (amend, NYCODE_ALLOW_LOCKFILE_CHANGE=1 with package-lock.json), push
   upstream, CI, merge into private.
-- `chord-root` subagent (Opus) in `/home/badlogic/pi-chord-root` (worktree of origin/private): trial of making Chord v2
+- `chord-root` subagent (Opus) in `/home/badlogic/nycode-chord-root` (worktree of origin/private): trial of making Chord v2
   the package root, old v1 to `src/old` or p2 (Durable and env import the root too), as a re-runnable script
-  (`/tmp/chord-root/`), brief `/tmp/chord-root-brief.md`, report `/tmp/chord-root/report.md`. Owner wants pi-private
-  merged (into pi) this week.
+  (`/tmp/chord-root/`), brief `/tmp/chord-root-brief.md`, report `/tmp/chord-root/report.md`. Owner wants nycode-private
+  merged (into nycode) this week.
 
 **CURRENT STATE 2026-11-02 (night); the older paragraphs below are history.**
 - **Owner's working mode now:** "go ahead, just do all the things. tired of reviewing": this session writes specs,
@@ -73,10 +73,10 @@ Next after that: i18n build, telemetry (slice 9), small examples; p3 work packag
   much"; `s8-spec-fable` is just a name, it runs Opus). Sol (`s8-spec-sol`) and fresh reviewers keep failing with
   model_error on security reviews: drop them, use Opus (`s8-spec-opus`) alone if needed.
 - **Committed upstream (CI green, merged into private `edf7b4bed`):** slices 10, 12 (`9823079ad`, plugin model), 13
-  (`072e413bf`, app kit), the schema switch (pi-schema, TypeBox gone except coding agent; `6536f8012`, `be039fb31`,
-  `a6bde34`, `6291b9bcc`), example `60-session-sync` (`15f00a786`). p2 migrated to pi-schema in private; phone runs
+  (`072e413bf`, app kit), the schema switch (nycode-schema, TypeBox gone except coding agent; `6536f8012`, `be039fb31`,
+  `a6bde34`, `6291b9bcc`), example `60-session-sync` (`15f00a786`). p2 migrated to nycode-schema in private; phone runs
   `66641ca8c` (voice fixes round 2) + sts-server `08f6cf8d6` (partial transcripts) deployed on slayer.
-- **Slice 11 (web and TUI) is building, uncommitted:** `audit-builder` in `/home/badlogic/pi-s11` (base upstream
+- **Slice 11 (web and TUI) is building, uncommitted:** `audit-builder` in `/home/badlogic/nycode-s11` (base upstream
   `d6af4d18e`; later docs commits not imported: rebase at commit). Built: surfaces, `startPage`, React hooks, themes,
   TUI launcher + sandbox, app-kit follow-ups (`startServer`, `exportData`/`importData` without stopping), example
   `59-chat` (worker per channel, uploads), fix round 1 done. **Now:** the TUI sandbox becomes a **child process**
@@ -101,21 +101,21 @@ Next after that: i18n build, telemetry (slice 9), small examples; p3 work packag
   v2. Research files `/tmp/p3-prep/{features,extensions,envs,sync-example}.md`. Other explainers today: theming
   (`docs/theming/`, 01m6ecp0ndf8hb1m0ea6dqy8jn), plugin primer (01m69waqspfwwt21bjhvsp5w28), schema charts
   (01m69x3dz2fsg9k1r33vde7hv6 v6).
-- **Worktrees:** `/home/badlogic/pi-observers` (docs, detach to upstream/main before each edit), `pi-s11` (slice 11),
-  `pi-sync-ex` (sync example, committed), `pi-s12`, `pi-s13` (committed slices), `pi-schema-switch`,
-  `pi-schema-chord`, `pi-schema-pkg` (schema work, committed; guard scripts untracked in pi-schema-switch,
+- **Worktrees:** `/home/badlogic/pi-observers` (docs, detach to upstream/main before each edit), `nycode-s11` (slice 11),
+  `nycode-sync-ex` (sync example, committed), `nycode-s12`, `nycode-s13` (committed slices), `nycode-schema-switch`,
+  `nycode-schema-chord`, `nycode-schema-pkg` (schema work, committed; guard scripts untracked in nycode-schema-switch,
   `packages/coding-agent/scripts/schema-guard/`, owner never decided keep/drop), `p2-voice`, `p2-shots`,
-  `p2-schema` (private, committed), `/home/badlogic/pi-private` (private), `p2-live`, `pi-mono` (owner's). Phone deploys
+  `p2-schema` (private, committed), `/home/badlogic/nycode-private` (private), `p2-live`, `nycode-mono` (owner's). Phone deploys
   only through the phone dev session `d602d653-61f1-4f99-aa54-99267e9dbf4e`, from owner-started turns.
 - **Next after slice 11:** i18n (if decided), telemetry (slice 9), the small-examples pass; p3 work packages after the
   2026-11-03 meeting.
 - **Process lesson (again):** never run a file write and the dependent git command in one parallel tool batch (it
   happened 3 more times today).
 
-State as of 2026-10-28: **slices 6b and 8 are committed upstream** (pi `main`: 6b `14b4c56e5`, the design-audit fixes
+State as of 2026-10-28: **slices 6b and 8 are committed upstream** (nycode `main`: 6b `14b4c56e5`, the design-audit fixes
 for slices 1-6a `391e83fb1`, slice 8 `6eb99ad65`; CI green; merged into `private` `c684ee727`). Since 2026-10-27 all
 of Chord v2 (`src`, its tests and `packages/chord/docs`, the decision log `decisions.md` included) lives in
-pi upstream: commit there first (worktree `/home/badlogic/pi-observers`, detach to `upstream/main`), then merge into
+nycode upstream: commit there first (worktree `/home/badlogic/pi-observers`, detach to `upstream/main`), then merge into
 `private`. p2's check is clean on `c684ee727`; the phone runs `ff7cdfeae` (p2 itself unchanged since). Next: slice 7
 (reload and rollout): spec written by this session reading the code itself, decisions one at a time, spec reviews,
 build, reviews. Then slice 9 (telemetry; C11 `ctx.trace` to decide).
@@ -125,7 +125,7 @@ into `private`). Slice order now (owner): 7b reload in the kernel, 7c loader and
 TUI (the app kit, optional `chord/*` subpaths), 9 telemetry last. 7b's brief `docs/slice-7b/` (artifact
 `slice-7b`, Radius `01m63r5q1febvtwpwqxrz76zn5`) and its six points are decided ("Slice 7b's open points, as
 recommended"; plugin npm dependencies bundled, external by opt-in). **7b is building:** spec `slice-7b.md`
-(`0c3675e64`), `s7b-builder` (radius/claude-opus-5-5) in `/home/badlogic/pi-7b`, brief `/tmp/s7b-builder-brief.md`, notes
+(`0c3675e64`), `s7b-builder` (radius/claude-opus-5-5) in `/home/badlogic/nycode-7b`, brief `/tmp/s7b-builder-brief.md`, notes
 `/tmp/s7b-build-notes.md`; then build reviews by `s8-spec-{astra,fable,opus,sol}` (Opus on radius), fixes, commit.
 All Opus subagents run on `radius/claude-opus-5-5` (owner). The old `docs/explainer/` is stale (rewrite or delete:
 owner). Dependency model docs: `docs/dependencies/`.
@@ -158,11 +158,11 @@ read implementations in full only where this session or a subagent changes them 
 than one context). Slice 10 (HTTP and workers): spec `slice-10.md` approved (owner: "just build it, have it reviewed, ensure we have
 cute examples"); decisions in "Slice 10's points" (D1-D12, D10b, R1-R6, Q1-Q6, "The app kit is malleable by plugins";
 no automatic worker restarts, no route backoff timer); two spec review rounds folded (`/tmp/s10-spec-review*-*.md`).
-**Building:** `audit-builder` in `/home/badlogic/pi-7b` (detached at upstream `bc9a20f84`), brief
+**Building:** `audit-builder` in `/home/badlogic/nycode-7b` (detached at upstream `bc9a20f84`), brief
 `/tmp/s10-builder-brief.md`, notes `/tmp/s10-build-notes.md`; examples 40-43+ must be small and cute. Then build
 reviews by `s8-spec-{astra,fable,opus,sol}`, fixes, commit upstream. Then 11, 9, the small-examples pass.
 
-**State 2026-10-31 (evening):** slice 10 (HTTP and workers) is built in `/home/badlogic/pi-7b` (uncommitted, base
+**State 2026-10-31 (evening):** slice 10 (HTTP and workers) is built in `/home/badlogic/nycode-7b` (uncommitted, base
 upstream `bc9a20f84`), through fix rounds 1-3 (briefs `/tmp/s10-fix{1,2}-brief.md`, notes `/tmp/s10-fix1-notes.md`);
 four build reviews, three security audits and two recheck rounds (`/tmp/s10-build-review-*.md`,
 `/tmp/s10-security-*.md`, `/tmp/s10-recheck*-*.md`); Sol's second recheck found three leftovers (nodeRequest on TRACE
@@ -171,7 +171,7 @@ send to `audit-builder`; then fold spec and design §23, commit, CI, merge. Many
 dated 2026-10-31: origins only from relays, the HTTP security baseline with relays, the HTTP server as a native object,
 a fetch core with Node as the easy path, settings are arguments, CSP nonce per response, API versions in import paths,
 plugins import by name (to be reversed: see the plugin model proposal `docs/plugin-model/`), worker errors in
-public). Open with the owner: the plugin model's six points, Chord's own frozen schema module replacing TypeBox (pi-ai
+public). Open with the owner: the plugin model's six points, Chord's own frozen schema module replacing TypeBox (nycode-ai
 widening to accept both), slice 11 P3 onward (`slice-11.md` draft), the app kit design pass (`chord/app`, with
 user management and worker-less shapes). Docs written today: `docs/http-workers/` (Radius
 01m692mkyzekvr2advcnn9hb1g), `docs/guide-plugins-hosts/` (tutorial, Radius 01m693kb2re9aa54c51cynbsy1, v10),
@@ -180,24 +180,24 @@ user management and worker-less shapes). Docs written today: `docs/http-workers/
 **State 2026-10-31 (night):** **slice 10 is committed upstream** (`8959ad6e6`, fixes `cc08278a6` build without DOM
 types, `20362c155` a CI heap bound; docs `b22c5f694`: design §23, `slice-10.md` as built, explainer version 2; CI
 green; merged into `private`). Fix rounds 4-5 closed Sol's leftovers (`/tmp/s10-recheck3-sol.md` clean, 2,235
-tests). **Schema package** decided (`81f3cd412`, "A schema package beneath pi-ai and Chord"); measurement
+tests). **Schema package** decided (`81f3cd412`, "A schema package beneath nycode-ai and Chord"); measurement
 `/tmp/schema-measure.md` (cfworker accurate but 16-330x slower than TypeBox's JIT; omptype weak on JSON Schema and
 `new Function`; a closure-compiled prototype `/tmp/schema-measure/proto.mjs` matches TypeBox's speed): recommended
 our own closure-compiled validator, 1.5-2.5k lines; open with the owner: write its design, and moving `Type` to
-`pi-ai/typebox`. **Plugin model** open, explained to the owner as eight points (1 reverse import-by-name, 2 the app's
+`nycode-ai/typebox`. **Plugin model** open, explained to the owner as eight points (1 reverse import-by-name, 2 the app's
 API with Chord re-exported and generations, 3 API split per host kind, 4 host kinds on registry tokens, 5 third-party
 contracts, 6 `testPlugin`, 7 single-file plugins, 8 built-in plugins). All Claude subagents run on
 `anthropic/claude-opus-5-5` (owner, 2026-10-31; replaces radius Opus/Fable). `schema-measure` (anthropic Opus) holds
 the schema measurement context.
 
-**State 2026-11-01 (morning):** **TypeBox is gone from pi** except the coding agent (for extensions): pi-schema
-(`@earendil-works/pi-schema`, its own closure-compiled validator, no eval; opt-in coercion `compile(s, { coerce: true
-})` with `coerce`/`parse`, the superset of TypeBox's `Value.Convert` and pi-ai's old rules; `Static` also types
-TypeBox-built schemas) is under pi-ai (`6536f8012`), pi-agent-core, pi-durable, Chord v1 and v2 (`be039fb31`, JSON and
+**State 2026-11-01 (morning):** **TypeBox is gone from nycode** except the coding agent (for extensions): nycode-schema
+(`@nycode/schema`, its own closure-compiled validator, no eval; opt-in coercion `compile(s, { coerce: true
+})` with `coerce`/`parse`, the superset of TypeBox's `Value.Convert` and nycode-ai's old rules; `Static` also types
+TypeBox-built schemas) is under nycode-ai (`6536f8012`), nycode-agent-core, nycode-durable, Chord v1 and v2 (`be039fb31`, JSON and
 fingerprints identical, `format` an annotation), benchmark vs ata/Ajv/Zod/TypeBox/cfworker/omptype (`a6bde34`,
 Radius 01m69x3dz2fsg9k1r33vde7hv6), TypeBox `Static` fallback (`6291b9bcc`); decisions "A schema package beneath
-pi-ai and Chord" and "The schema switch". Extensions guarded by `packages/coding-agent/scripts/schema-guard/`
-(untracked, in `/home/badlogic/pi-schema-switch`; baselines `/tmp/schema-guard/`). p2 migrated in private
+nycode-ai and Chord" and "The schema switch". Extensions guarded by `packages/coding-agent/scripts/schema-guard/`
+(untracked, in `/home/badlogic/nycode-schema-switch`; baselines `/tmp/schema-guard/`). p2 migrated in private
 (`387404afc`, every schema's JSON unchanged), private pushed `23f7c90c1`. Next: phone redeploy when the owner asks
 (through the phone dev session, owner-started turn only); then the plugin model (primer `docs/plugin-primer/`,
 Radius 01m69waqspfwwt21bjhvsp5w28, eight open points).
@@ -207,7 +207,7 @@ decided (decision log, 2026-11-01) and folded into design §21 ("The plugin mode
 TUI"). Owner: "go ahead, just do all the things. tired of reviewing": this session writes specs, runs builds and
 reviews and commits without asking per point (only truly new decisions go to him). Slice order now 12 (plugin model,
 `slice-12.md`), 13 (app kit, `slice-13.md`), 11 (web and TUI on the kit, `slice-11.md` rewritten), 9 (telemetry).
-**Slice 12 is building:** `audit-builder` (anthropic Opus) in `/home/badlogic/pi-s12`, brief `/tmp/s12-builder-brief.md`,
+**Slice 12 is building:** `audit-builder` (anthropic Opus) in `/home/badlogic/nycode-s12`, brief `/tmp/s12-builder-brief.md`,
 notes `/tmp/s12-build-notes.md`. Then reviews by `s8-spec-opus` and `s8-spec-sol`, fixes, commit, then 13, then 11.
 Separately: `voice-doer` audits and fixes p2's voice mechanics in `/home/badlogic/p2-voice` (brief
 `/tmp/voice-audit-brief.md`; owner's rule: VAD may misfire, only Parakeet's real text interrupts; stop work at once
@@ -232,7 +232,7 @@ when the user speaks; speak text before tool calls; choppy audio); deploy throug
   state members, `local` contracts only". Lazy creation, activation waiting for `self.get` dependencies and automatic
   retry stay. Owner's rule: **Chord and Durable align as much as possible** (design §1.10).
 - First spec review: "Writes carry their versions; archives are lossless", "Store errors: Durable's rule",
-  "`runCounted` in `chord/sqlite`" (pi `8025c414d`, verified in workerd: `rowsWritten` counts index writes),
+  "`runCounted` in `chord/sqlite`" (nycode `8025c414d`, verified in workerd: `rowsWritten` counts index writes),
   "Restricted names instead of assigned table names", "Nullable columns and the `set` form", "The migration API: the
   reviewers' consensus" (the owner delegates the shape), "Cold keyed loads on the line", "Slice 6a small items" (20,
   among them: no hand-written memory backend, tests on SQLite `:memory:`).
@@ -257,7 +257,7 @@ when the user speaks; speak text before tool calls; choppy audio); deploy throug
   benchmark against a HEAD copy (bursts, alternating, pinned; allocation and retained memory). Re-reviews reuse the
   same reviewers (restore them; archiving keeps their context); a fix round adds no new decisions or features. Never message the phone session from a turn not started by the owner
   (it is refused). When a reviewer on an OpenAI model (Astra, Sol) fails with a model error during security work, it
-  was likely a refusal: send it a message that this is a defensive review of our own open-source code (pi, packages/chord),
+  was likely a refusal: send it a message that this is a defensive review of our own open-source code (nycode, packages/chord),
   run against local copies, then let it continue (owner, 2026-10-31). Never commit a file write and the dependent git commit in one parallel tool batch (it happened
   three times: the commit missed the edit). Never call `history_handoff` unless the owner says so; the app may compact
   on its own, so keep this section current (2026-10-27: it was stale at a compaction).
@@ -296,15 +296,15 @@ when the user speaks; speak text before tool calls; choppy audio); deploy throug
   AGENTS.md (in every agent's context); every code brief and every review names it.
 - **Code subagents never commit or push unless told to** (owner, 2026-10-22): implement until done and report; reviewers
   review; the subagent fixes; the owner reviews the uncommitted changes in p2's workspace tab; then this session tells it
-  to commit. New Chord v2 code lives in `packages/chord/src/` (pi upstream since 2026-10-27, `93029a0f1`).
+  to commit. New Chord v2 code lives in `packages/chord/src/` (nycode upstream since 2026-10-27, `93029a0f1`).
 
 ## 6. Environment and flows
 
-- slayer: repo `/home/badlogic/pi-private`, branch `private`; remotes `origin` (pi-private), `upstream` (pi). Node 24:
+- slayer: repo `/home/badlogic/nycode-private`, branch `private`; remotes `origin` (nycode-private), `upstream` (nycode). Node 24:
   `/home/badlogic/node-v24.4.1-linux-x64/bin`. Commit docs with explicit paths; push `origin HEAD:private`; when a push
   is rejected: `git fetch origin && git merge --no-edit origin/private` (never rebase or stash).
-- **Everything outside `apps/` is pi first, Chord v2 and its docs included** (owner, 2026-10-27: Chord v2 and all
-  its docs, the decision log too, live in pi upstream: `packages/chord/src`, `test`, `docs`,
+- **Everything outside `apps/` is nycode first, Chord v2 and its docs included** (owner, 2026-10-27: Chord v2 and all
+  its docs, the decision log too, live in nycode upstream: `packages/chord/src`, `test`, `docs`,
   `docs/decisions.md`): worktree of `upstream/main` (`/home/badlogic/pi-observers`, `npm ci --ignore-scripts`,
   `(cd packages/ai && npm run hydrate-model-data)`, `npm run check`, explicit test files only, never the full Durable
   suite (paid e2e), push to `upstream main`, wait for green CI, then merge `upstream/main` into `private`).
@@ -312,11 +312,11 @@ when the user speaks; speak text before tool calls; choppy audio); deploy throug
   test`. Playground: `apps/chord-playground`.
 - Subagents: none of this session's are active (all archived on 2026-10-26); `ultimate`, `issue-10959`,
   `p3-walkthrough` are the owner's (leave). Worktrees: `/home/badlogic/p2-live` (runs the live p2 server, tmux `p2`;
-  keep); `/home/badlogic/pi-observers` (upstream pi worktree used for today's pi changes, detached at `6c384aa30`,
-  clean; reuse for the next pi change after `git fetch upstream && git checkout --detach upstream/main` and
+  keep); `/home/badlogic/pi-observers` (upstream nycode worktree used for today's nycode changes, detached at `6c384aa30`,
+  clean; reuse for the next nycode change after `git fetch upstream && git checkout --detach upstream/main` and
   `npm ci --ignore-scripts`). Durable/Chord tests without a build: vitest configs `/tmp/observers/vitest.durable.config.ts`
-  and `/tmp/observers/vitest.chord.config.ts` (alias pi-ai and pi-telemetry to src). The phone dev session `d602d653-61f1-4f99-aa54-99267e9dbf4e` deploys p2
+  and `/tmp/observers/vitest.chord.config.ts` (alias nycode-ai and nycode-telemetry to src). The phone dev session `d602d653-61f1-4f99-aa54-99267e9dbf4e` deploys p2
   to the phone on request (only from owner-initiated turns).
 - Radius artifacts: always `visibility=private` (mcporter usage in `/home/badlogic/AGENTS.md`). Explainer build:
-  `node /home/badlogic/.pi/p2/skills/explainer/build.mjs <md> -o <html>`; the store book and walkthrough are
+  `node /home/badlogic/.nycode/p2/skills/explainer/build.mjs <md> -o <html>`; the store book and walkthrough are
   published as private artifacts (book `01m5g0jztafkrvk6kq8w88h6hx`, walkthrough `01m5g0ms6demgtyyfdznhxnfre`).

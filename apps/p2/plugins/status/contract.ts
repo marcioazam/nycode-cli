@@ -1,5 +1,5 @@
-import type { Usage } from "@earendil-works/pi-ai";
-import { arr, bool, nul, num, obj, opt, type Static, str, union, unknown } from "@earendil-works/pi-schema";
+import type { Usage } from "@nycode/ai";
+import { arr, bool, nul, num, obj, opt, type Static, str, union, unknown } from "@nycode/schema";
 import { evolve, literal, local, method, param, record, remote, serverHost, unsafe } from "@p2/app/v1";
 
 /**

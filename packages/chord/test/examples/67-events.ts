@@ -5,7 +5,7 @@
 // server drops what would wait for it (nothing queues for a slow consumer), while its state still arrives whole.
 // Run from packages/chord:
 //   node --conditions=source --experimental-strip-types test/examples/67-events.ts
-import { InMemoryTelemetryContext } from "@earendil-works/pi-telemetry";
+import { InMemoryTelemetryContext } from "@nycode/telemetry";
 import { BACKGROUND_CONTEXT } from "../../src/context/index.ts";
 import { event, hostKind, int, local, num, obj, remote } from "../../src/contracts/index.ts";
 import { defineState } from "../../src/documents/index.ts";

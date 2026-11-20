@@ -256,7 +256,7 @@ test(
 		await browser.wait(`!document.querySelector('.owner-notice.error')`);
 		assert.equal(
 			await browser.evaluate<string>(
-				`localStorage.getItem(${JSON.stringify(`pi-owner-notice-dismissed:log:${row.id}:${row.time}`)})`,
+				`localStorage.getItem(${JSON.stringify(`nycode-owner-notice-dismissed:log:${row.id}:${row.time}`)})`,
 			),
 			"1",
 		);

@@ -1,13 +1,13 @@
 # Chord Delta
 
 Chord Delta produces immutable JSON revisions and exact operation batches for
-ordered replicas. Import it from `@earendil-works/chord/delta`.
+ordered replicas. Import it from `@nycode/chord/delta`.
 
 Immutability is an ownership contract. Nothing is frozen or defensively copied,
 so an illegal mutation is not detected. It silently corrupts state.
 
 ```ts
-import { applyImmutable, applyImmutableBatches, track } from "@earendil-works/chord/delta";
+import { applyImmutable, applyImmutableBatches, track } from "@nycode/chord/delta";
 
 const initial = { output: "", entries: [] as { id: number }[] };
 const tracker = track(initial); // `initial` is transferred: never mutate it again
@@ -68,7 +68,7 @@ Mutable replay needs a detached starting root and a detached copy of every batch
 for every replica. Never apply one in-memory batch to two mutable replicas:
 
 ```ts
-import { apply } from "@earendil-works/chord/delta";
+import { apply } from "@nycode/chord/delta";
 
 const detach = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
@@ -89,7 +89,7 @@ that is still running, a link whose window is full) and folds them while they
 wait, so what it hands over replays to the same value with fewer ops:
 
 ```ts
-import { PendingOps } from "@earendil-works/chord/delta";
+import { PendingOps } from "@nycode/chord/delta";
 
 const pending = new PendingOps();
 pending.push(prepared.ops); // for each adopted batch, while the consumer is busy
@@ -232,7 +232,7 @@ string therefore costs O(N x length) in total: quadratic.
 The fix: hand Delta the chunk.
 
 ```ts
-import { appendText } from "@earendil-works/chord/delta";
+import { appendText } from "@nycode/chord/delta";
 
 appendText(change.state.message, "text", chunk);   // records ["a", path, chunk]: O(chunk), no compare, no copy
 ```

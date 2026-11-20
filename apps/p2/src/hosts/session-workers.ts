@@ -3,11 +3,11 @@
 // data), logs and owner notices, restarts after a crash (as v1), and the lifecycle steps of relocation and cloning,
 // serialized per session.
 import { realpathSync } from "node:fs";
-import type { FollowAttachment, FollowObserver, Store } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT, type Context } from "@earendil-works/chord/context";
-import type { JsonValue } from "@earendil-works/chord/json";
-import type { BaseInputs, Plugins } from "@earendil-works/chord/plugins";
-import { createWorkers, type WorkerState, type Workers, type WorkersError } from "@earendil-works/chord/workers";
+import type { FollowAttachment, FollowObserver, Store } from "@nycode/chord";
+import { BACKGROUND_CONTEXT, type Context } from "@nycode/chord/context";
+import type { JsonValue } from "@nycode/chord/json";
+import type { BaseInputs, Plugins } from "@nycode/chord/plugins";
+import { createWorkers, type WorkerState, type Workers, type WorkersError } from "@nycode/chord/workers";
 import { type Host, Session } from "../runtime/chord.ts";
 import { logWriter, processLogs } from "../runtime/logs.ts";
 import { canView, type P2Principal } from "../runtime/principals.ts";
@@ -434,7 +434,7 @@ export class SessionWorkers implements SessionWorkerControl {
 	}
 
 	/**
-	 * A worker's start, crash or failure: an owner notice (redacted), with the stderr tail as Pi Mobile; a crash is
+	 * A worker's start, crash or failure: an owner notice (redacted), with the stderr tail as Nycode Mobile; a crash is
 	 * "Worker exited (signal): tail" in the notice and the status error too, as in v1. A lost link Chord recovers from
 	 * is only a log event.
 	 */

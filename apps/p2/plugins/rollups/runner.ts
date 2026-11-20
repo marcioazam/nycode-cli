@@ -3,8 +3,8 @@
 // is skipped), and the script's output checked against `RollupOutputSchema`, the trust boundary between the script and
 // the sidebar.
 import { createHash } from "node:crypto";
-import type { CodemodeSandbox } from "@earendil-works/pi-codemode";
-import { arr, compile, num, obj, opt, type Static, str, unknown } from "@earendil-works/pi-schema";
+import type { CodemodeSandbox } from "@nycode/codemode";
+import { arr, compile, num, obj, opt, type Static, str, unknown } from "@nycode/schema";
 import type { Project } from "../projects/contract.ts";
 import type { Session } from "../sessions/contract.ts";
 import type { Status } from "../status/contract.ts";

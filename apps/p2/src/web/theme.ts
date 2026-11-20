@@ -8,19 +8,19 @@ import { shellFrame } from "./shell-bridge.ts";
  * script (src/hosts/web.ts) sets both before styles load (no flash), by the same rule as `startTheme`'s choice of
  * backend below.
  *
- * - `local`: a bare browser (localhost, the LAN). The page owns the preference: its origin's localStorage `pi-theme`
+ * - `local`: a bare browser (localhost, the LAN). The page owns the preference: its origin's localStorage `nycode-theme`
  *   (absent: system), "system" resolved with its own `matchMedia`, other tabs followed through `storage` events.
  * - `shell`: framed by the Radius shell (shell-bridge.ts), once the shell's `hello` carried its theme. The shell owns
  *   the preference and resolves it: the page applies the shell's `scheme` as given and never consults its own
  *   `matchMedia` (an iframe's `prefers-color-scheme` follows the embedder only in some engines). A pick is sent with
  *   `set-theme`; the shell answers each with exactly one `theme` (its echo), so while picks are unanswered the page
  *   drops `theme` messages and applies the one answering its last pick: two quick picks never flicker back.
- * - `native`: in p2-mac (`window.webkit.messageHandlers.piHost`). The app owns the preference and sets its appearance,
+ * - `native`: in p2-mac (`window.webkit.messageHandlers.nycodeHost`). The app owns the preference and sets its appearance,
  *   which `prefers-color-scheme` follows, so "system" resolves with `matchMedia`; the bridge answers `theme` and
- *   `set-theme` with the preference, and `pi-host-theme` events report every change. While a `set-theme` is
+ *   `set-theme` with the preference, and `nycode-host-theme` events report every change. While a `set-theme` is
  *   unanswered the page ignores the events (they may be for an earlier pick) and takes the answer to its last request.
  * - `framed`: framed by the shell before its `hello`. The page shows the scheme the shell hinted in the frame's URL
- *   (`#pi-shell-scheme=light|dark`, which the inline script took and removed: `data-pi-shell-scheme`; WebKit does not
+ *   (`#nycode-shell-scheme=light|dark`, which the inline script took and removed: `data-nycode-shell-scheme`; WebKit does not
  *   resolve a frame's `prefers-color-scheme` with the embedder's `color-scheme`), else the system's. It neither reads
  *   nor writes its stored value, ignores `storage` events and keeps a pick in memory. A `hello` with a theme sends that
  *   pick as `set-theme` (the user's intent wins; the echo settles it), else takes the shell's preference. A `hello`
@@ -31,7 +31,7 @@ import { shellFrame } from "./shell-bridge.ts";
  * origin is ignored, never pushed up. A pick applies at once (optimistic); the host's answer replaces it, which
  * settles races between tabs or windows.
  *
- * A change of the shown scheme after load cross-fades: the DOM change runs in a view transition of type `pi-theme`
+ * A change of the shown scheme after load cross-fades: the DOM change runs in a view transition of type `nycode-theme`
  * (the browser's default cross-fade of the whole page). Each document fades its own pixels: the Radius shell keeps
  * this frame out of its snapshot, and p2-mac fades only its native views. No fade for what the page shows while it
  * starts (the first paint, the shell's hint, anything before the first frame was shown, the shell's `hello`, p2-mac's
@@ -57,7 +57,9 @@ export type ShellThemeLink = {
 };
 
 /** p2-mac's message handler in the page world (with reply: `postMessage` resolves to the app's answer). */
-type PiHost = { postMessage(message: { type: "theme" } | { type: "set-theme"; preference: ThemePreference }): unknown };
+type NycodeHost = {
+	postMessage(message: { type: "theme" } | { type: "set-theme"; preference: ThemePreference }): unknown;
+};
 
 /** Who owns the preference (see above), with what each backend tracks of its host. */
 type Backend =
@@ -72,14 +74,14 @@ type Backend =
 	  }
 	| {
 			readonly kind: "native";
-			readonly host: PiHost;
+			readonly host: NycodeHost;
 			/** Bumped by each request and each applied report: an answer counts only when it is the latest. */
 			turn: number;
 			/** `set-theme` requests without an answer. */
 			unanswered: number;
 	  };
 
-const KEY = "pi-theme";
+const KEY = "nycode-theme";
 // Must match --bg in style.css: the mobile browser bar takes this colour.
 const BACKGROUND = { light: "#fbfaf8", dark: "#151413" } as const;
 const listeners = new Set<() => void>();
@@ -125,7 +127,7 @@ export function startTheme(): () => void {
 	media.addEventListener("change", systemChanged);
 	window.addEventListener("storage", stored);
 	if (backend.kind === "native") {
-		window.addEventListener("pi-host-theme", hostReported);
+		window.addEventListener("nycode-host-theme", hostReported);
 		ask(backend, { type: "theme" });
 	}
 	return () => {
@@ -134,7 +136,7 @@ export function startTheme(): () => void {
 		showing = undefined;
 		media.removeEventListener("change", systemChanged);
 		window.removeEventListener("storage", stored);
-		window.removeEventListener("pi-host-theme", hostReported);
+		window.removeEventListener("nycode-host-theme", hostReported);
 		system = undefined;
 		backend = { kind: "local" };
 		preference = "system";
@@ -143,13 +145,14 @@ export function startTheme(): () => void {
 
 /** The scheme the shell hinted in the frame's URL, as the page's inline script kept it (src/hosts/web.ts). */
 function shellHint(): ThemeScheme | undefined {
-	const hint = document.documentElement.dataset.piShellScheme;
+	const hint = document.documentElement.dataset.nycodeShellScheme;
 	return hint === "light" || hint === "dark" ? hint : undefined;
 }
 
 /** p2-mac's bridge, when this page runs in its window. */
-function nativeHost(): PiHost | undefined {
-	return (window as { webkit?: { messageHandlers?: { piHost?: PiHost } } }).webkit?.messageHandlers?.piHost;
+function nativeHost(): NycodeHost | undefined {
+	return (window as { webkit?: { messageHandlers?: { nycodeHost?: NycodeHost } } }).webkit?.messageHandlers
+		?.nycodeHost;
 }
 
 function read(): ThemePreference {
@@ -218,7 +221,7 @@ function apply(show: Show): void {
 	}
 	let transition: ViewTransition;
 	try {
-		transition = document.startViewTransition({ update: paint, types: ["pi-theme"] });
+		transition = document.startViewTransition({ update: paint, types: ["nycode-theme"] });
 	} catch {
 		// Browsers with view transitions but without types take only the update function.
 		transition = document.startViewTransition(paint);

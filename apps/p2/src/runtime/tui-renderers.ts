@@ -1,8 +1,8 @@
 // Rendering contributions (p2-tui-port.md section 7.2). Ordered registries use numeric key prefixes
 // (`<order>:<plugin>`), applied in key order.
 
-import type { EntryRecord } from "@earendil-works/pi-durable";
-import type { Component } from "@earendil-works/pi-tui";
+import type { EntryRecord } from "@nycode/durable";
+import type { Component } from "@nycode/tui";
 import type { RenderContext } from "../tui/render-context.ts";
 import type { ThemeRef } from "../tui/theme/ref.ts";
 import type { Theme } from "../tui/theme/theme.ts";
@@ -12,7 +12,7 @@ import type { TuiSettings } from "./tui-preferences.ts";
 
 export type { ToolRenderContext, ToolRendererResolver, ToolRenderers } from "../tui/tools/types.ts";
 
-/** Tool renderers by tool name, from the plugins that own the tools; a tool without any gets pi's generic card. */
+/** Tool renderers by tool name, from the plugins that own the tools; a tool without any gets nycode's generic card. */
 export const TuiToolRenderers = keyedRegistry<ToolRenderers>("p2.tui-tool-renderers");
 /** `ToolRendererResolver`s with `next()`, run in key order before `TuiToolRenderers`. */
 export const TuiToolRendererResolvers = keyedRegistry<ToolRendererResolver>("p2.tui-tool-renderer-resolvers");
@@ -26,7 +26,7 @@ export type TuiEntryRenderer = (entry: EntryRecord, ctx: EntryRenderContext) => 
 export const TuiEntryRenderers = keyedRegistry<TuiEntryRenderer>("p2.tui-entry-renderers");
 
 /**
- * pi's `MarkdownTransformContext`. p2 adds the instance theme and the visitor's settings: pi's transformers close over
+ * nycode's `MarkdownTransformContext`. p2 adds the instance theme and the visitor's settings: nycode's transformers close over
  * its global theme and settings manager, p2's are registry entries shared by every instance (section 5.4).
  */
 export type MarkdownTransformContext = {
@@ -36,7 +36,7 @@ export type MarkdownTransformContext = {
 	theme: Theme;
 	settings: TuiSettings | undefined;
 };
-/** pi's `MarkdownTransformer`: rewrites Markdown source before rendering; errors keep the current text. */
+/** nycode's `MarkdownTransformer`: rewrites Markdown source before rendering; errors keep the current text. */
 export type MarkdownTransformer = (markdown: string, context: MarkdownTransformContext) => string;
 export const TuiMarkdownTransformers = keyedRegistry<MarkdownTransformer>("p2.tui-markdown-transformers");
 

@@ -5,7 +5,7 @@
 // Each `resolve` is a `chord.resolve` root span linked to the hold that started it (slice 9). A route with an
 // admission (slice 14 §2.3, `route-admission.ts`) resolves an address only for holds its decisions allow.
 
-import type { TelemetrySpan } from "@earendil-works/pi-telemetry";
+import type { TelemetrySpan } from "@nycode/telemetry";
 import { type Context, withTelemetry } from "../context/index.ts";
 import type { Address, HostKind, KindShape } from "../contracts/index.ts";
 import { kindParams, type ParamsData } from "../contracts/internal.ts";

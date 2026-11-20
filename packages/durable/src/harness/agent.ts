@@ -1,5 +1,5 @@
-import type { Draft } from "@earendil-works/chord/delta";
-import { copyJson } from "@earendil-works/chord/json";
+import type { Draft } from "@nycode/chord/delta";
+import { copyJson } from "@nycode/chord/json";
 import { defineDoc } from "../documents.ts";
 import { documentRetention, persistWithin } from "../session/session.ts";
 import type { ConversationId, ConversationRecord, Tx } from "../types.ts";
@@ -45,7 +45,7 @@ export const INSTRUCTIONS_KEY = "instructions";
 
 /** Built-in agent document; rewindable so forks start from the agent at their fork entry. */
 export const AgentDoc = defineDoc<AgentState>({
-	kind: "pi.agent",
+	kind: "nycode.agent",
 	version: 1,
 	scope: "conversation",
 	history: "rewindable",
@@ -89,7 +89,7 @@ export function resolveSettings(settings: HarnessSettings | undefined): Settings
 	};
 }
 
-/** Apply one change to `pi.agent`: a given field replaces the stored one, `null` clears it, `undefined` changes nothing. */
+/** Apply one change to `nycode.agent`: a given field replaces the stored one, `null` clears it, `undefined` changes nothing. */
 export async function configure(tx: Tx, conversationId: ConversationId, change: AgentChange): Promise<void> {
 	const state = await tx.doc(AgentDoc, conversationId);
 	applyChange(state, change);
@@ -203,7 +203,7 @@ function names(items: readonly { readonly name: string }[]): string[] {
 }
 
 /**
- * Built-in part of every Harness commit that creates or forks a conversation, for `pi.agent`: a fork keeps its `asOf`
+ * Built-in part of every Harness commit that creates or forks a conversation, for `nycode.agent`: a fork keeps its `asOf`
  * copy; a new task-owned conversation copies the stored agent of its owner task's conversation; a new ownerless one
  * starts empty.
  */

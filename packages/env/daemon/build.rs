@@ -1,4 +1,4 @@
-//! Exposes the npm package version as `PI_ENV_VERSION`, so `hello` reports the release the daemon shipped with.
+//! Exposes the npm package version as `NYCODE_ENV_VERSION`, so `hello` reports the release the daemon shipped with.
 
 fn main() {
     println!("cargo:rerun-if-changed=../package.json");
@@ -8,5 +8,5 @@ fn main() {
         .nth(1)
         .and_then(|rest| rest.split('"').nth(1))
         .expect("version in ../package.json");
-    println!("cargo:rustc-env=PI_ENV_VERSION={version}");
+    println!("cargo:rustc-env=NYCODE_ENV_VERSION={version}");
 }

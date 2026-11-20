@@ -3,7 +3,7 @@
 // Ctrl+S saves it through the launcher's `download` (bounded, never overwriting) and Ctrl+B opens the download in the
 // browser (launcher `openUrl`; the browser needs its own sign-in). The worker never fetches `/download` itself.
 
-import { Text } from "@earendil-works/pi-tui";
+import { Text } from "@nycode/tui";
 import { BACKGROUND_CONTEXT, contribute, defineFacet, statusOf, whenLive } from "@p2/app/v1";
 import type { TuiContext } from "@p2/app/v1/tui";
 import {

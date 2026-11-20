@@ -695,7 +695,7 @@ describe("command menu", { skip: !browserTests }, () => {
 			const helperItem = `[...document.querySelectorAll('.session-row[data-session="${session}"] .conversation-row')].find((e) => e.querySelector('.session-title')?.textContent === 'helper')`;
 			/** Long-presses the item `expression` evaluates to and waits for the menu on `chip`, its rows settled. */
 			const longPress = async (expression: string, chip: string) => {
-				// Once the drawer settled: no finite animation runs (pi's dots run forever).
+				// Once the drawer settled: no finite animation runs (nycode's dots run forever).
 				await browser.wait(
 					`(${expression}).getBoundingClientRect().left >= 0 && !document.getAnimations().some((a) => a.playState === 'running' && a.effect?.getTiming().iterations !== Infinity)`,
 				);

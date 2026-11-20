@@ -1,8 +1,8 @@
 // The counter's tool for the session's agent: `counter_add`, for code mode only (scripts call it as
 // `tools.counter_add({ by })`), in the code-mode namespace `counter` its extension declares: the prompt lists the
 // namespace with its description, `describeNamespace("counter")` gives its instructions and tools.
-import { defineExtension } from "@earendil-works/pi-durable";
-import { int, obj } from "@earendil-works/pi-schema";
+import { defineExtension } from "@nycode/durable";
+import { int, obj } from "@nycode/schema";
 import { contribute, defineFacet, expectVariant } from "@p2/app/v1";
 import { defineP2Tool, Extensions, type P2Tool, workerOf } from "@p2/app/v1/worker";
 import { Counter } from "./contract.ts";

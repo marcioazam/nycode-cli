@@ -6,7 +6,7 @@
 // reaches the reads over its table; a keyed probe decides whether a read must run again.
 // Run from packages/chord:
 //   node --conditions=source --experimental-strip-types test/examples/72-exists-and-joins.ts
-import { InMemoryTelemetryContext } from "@earendil-works/pi-telemetry";
+import { InMemoryTelemetryContext } from "@nycode/telemetry";
 import { BACKGROUND_CONTEXT, withTelemetry } from "../../src/context/index.ts";
 import { arr, bool, int, local, method, obj, queries, str, unknown } from "../../src/contracts/index.ts";
 import { createHost, defineFacet } from "../../src/host/index.ts";

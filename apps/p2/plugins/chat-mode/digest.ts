@@ -1,7 +1,7 @@
 // What the agent receives when someone mentions it in chat mode, and what a reply quotes (pure functions, worker and
 // tests). Everything here reads entry data; nothing parses text written for the model.
-import type { EntryRecord, InboxState } from "@earendil-works/pi-durable";
-import { compile } from "@earendil-works/pi-schema";
+import type { EntryRecord, InboxState } from "@nycode/durable";
+import { compile } from "@nycode/schema";
 import type { Author } from "@p2/app/v1";
 import { messageData } from "@p2/app/v1";
 import type { Submit } from "../chat/contract.ts";
@@ -44,11 +44,11 @@ export function excerpt(text: string): string {
 	return flat.length > EXCERPT_LENGTH ? `${flat.slice(0, EXCERPT_LENGTH - 1).trimEnd()}…` : flat;
 }
 
-const AGENT = { kind: "agent", id: "agent", name: "Pi" } as const;
+const AGENT = { kind: "agent", id: "agent", name: "Nycode" } as const;
 
 /**
  * What a reply quotes from an entry, derived from the entry's own data: a chat message, a person's input (for a
- * mention, what they wrote, not the digest), or one of Pi's answers. Undefined for anything else.
+ * mention, what they wrote, not the digest), or one of Nycode's answers. Undefined for anything else.
  */
 export function quoteOf(entry: EntryRecord): ReplyTo | undefined {
 	const quote = (author: ReplyTo["author"], text: string): ReplyTo | undefined => {
@@ -85,7 +85,7 @@ export const readEnough = (entries: readonly EntryRecord[]): boolean => {
 };
 
 /**
- * Chat messages no mention has passed on to Pi yet, oldest first. `entries` are newest first, as a backwards scan
+ * Chat messages no mention has passed on to Nycode yet, oldest first. `entries` are newest first, as a backwards scan
  * reads them; `inbox` holds mentions still queued. Each mention records the chat entries its digest included, so a chat
  * message placed while a mention waited in the queue is not covered by it and goes with the next one. The scan stops
  * at the lowest chat entry the latest mention passed on (see `boundaryOf`).

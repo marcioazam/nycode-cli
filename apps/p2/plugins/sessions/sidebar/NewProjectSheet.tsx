@@ -1,6 +1,6 @@
 // New project, from the Projects rollup's options: a folder picker (its own layer, `PROJECT_FOLDER`), then this sheet
 // names the project, its default location the chosen place (`NEW_PROJECT`, its locator the place).
-import { compile, nul, obj, str, union } from "@earendil-works/pi-schema";
+import { compile, nul, obj, str, union } from "@nycode/schema";
 import { type Layer, Sheet, shortPath } from "@p2/app/v1/web";
 import { useEffect, useRef, useState } from "react";
 import type { ProjectPlace } from "../../projects/contract.ts";

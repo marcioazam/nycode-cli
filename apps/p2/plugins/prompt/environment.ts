@@ -1,6 +1,6 @@
 import { join, type PlatformPath } from "node:path";
-import type { ExecutionEnv } from "@earendil-works/pi-durable/env";
-import { NodeExecutionEnv } from "@earendil-works/pi-durable/env/node";
+import type { ExecutionEnv } from "@nycode/durable/env";
+import { NodeExecutionEnv } from "@nycode/durable/env/node";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { Observer } from "@p2/app/v1/node";
 import { isLocalEnvironment } from "@p2/app/v1/worker";
@@ -46,9 +46,9 @@ export type PromptSource = {
 	cwd: string;
 	/** Path rules of the environment's system. */
 	paths: () => Promise<PlatformPath>;
-	/** The global skills directory in the environment: `<data>/skills` locally, `~/.pi/p2/skills` remotely. */
+	/** The global skills directory in the environment: `<data>/skills` locally, `~/.nycode/p2/skills` remotely. */
 	skillsRoot: () => Promise<string>;
-	/** The global prompt templates directory: `<data>/prompts` locally, `~/.pi/p2/prompts` remotely. */
+	/** The global prompt templates directory: `<data>/prompts` locally, `~/.nycode/p2/prompts` remotely. */
 	promptsRoot?: () => Promise<string>;
 	/** The plugins' skills directories (on this machine only: `PluginSkills`), read when watching starts. */
 	pluginSkills?: () => readonly string[];
@@ -78,10 +78,10 @@ export function promptObserver(source: PromptSource): Observer {
 					return [
 						...agentsCandidates(paths, cwd).map((path) => ({ path })),
 						{ path: await source.skillsRoot(), recursive: true, exclude: SKILL_EXCLUDES },
-						{ path: paths.join(cwd, ".pi", "skills"), recursive: true, exclude: SKILL_EXCLUDES },
+						{ path: paths.join(cwd, ".nycode", "skills"), recursive: true, exclude: SKILL_EXCLUDES },
 						// Prompt templates: `.md` files directly in these directories.
 						{ path: await promptsRoot() },
-						{ path: paths.join(cwd, ".pi", "prompts") },
+						{ path: paths.join(cwd, ".nycode", "prompts") },
 						...(source.pluginSkills?.() ?? []).map((path) => ({
 							path,
 							recursive: true,

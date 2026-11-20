@@ -243,7 +243,7 @@ const LOADERS: Readonly<Record<string, Loader>> = {
 const ASSET = Symbol("chord.plugins.asset");
 
 /** Chord's package: never imported by plugins of an app with an API (only its `/plugins` for `pluginFile`). */
-const CHORD_PACKAGE = "@earendil-works/chord";
+const CHORD_PACKAGE = "@nycode/chord";
 
 /**
  * The import rules of one build (§2's table, slice 12 §1-§4) as an esbuild plugin, and what the build read: every file

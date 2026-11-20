@@ -6,9 +6,9 @@ import assert from "node:assert/strict";
 import { readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, it } from "node:test";
-import { isChordError } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context";
-import { method, remote, Session, str } from "@earendil-works/p3/v1";
+import { isChordError } from "@nycode/chord";
+import { BACKGROUND_CONTEXT as context } from "@nycode/chord/context";
+import { method, remote, Session, str } from "@nycode/p3/v1";
 import type { App } from "../../src/kit/app.ts";
 import { kitApp, ROUTE, tempDir, WORKER } from "./support.ts";
 
@@ -23,8 +23,8 @@ const Notes = remote("test.notes", {
 /** A plugin on each session's worker: a persisted document, and the worker's own address from `WorkerInfo`. */
 const NOTES_PLUGIN = {
 	"worker.ts": [
-		'import { defineFacet, defineState, local, method, obj, remote, Session, str } from "@earendil-works/p3/v1";',
-		'import { WorkerInfo } from "@earendil-works/p3/v1/worker";',
+		'import { defineFacet, defineState, local, method, obj, remote, Session, str } from "@nycode/p3/v1";',
+		'import { WorkerInfo } from "@nycode/p3/v1/worker";',
 		'const Notes = remote("test.notes", { version: 1, params: { id: str() }, hostAddress: ({ id }) => Session({ id }),',
 		"\tvariants: { main: { state: { text: str(), address: str() }, methods: { write: method(str()) } } } });",
 		'const Text = defineState("test.text", { schema: obj({ text: str() }), version: 1, initial: () => ({ text: "" }), persist: true, checkpointWhen: () => false });',

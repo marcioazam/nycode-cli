@@ -1,10 +1,10 @@
-// The supervisor's pi-env connections (plugins/mcp/environments.ts): one per environment and configuration revision,
+// The supervisor's nycode-env connections (plugins/mcp/environments.ts): one per environment and configuration revision,
 // shared by its users, closed with the last one; an edited environment is another connection. Connections here never
 // start (a command that does not exist): a closed one refuses at once with "Connection closed", an open one tries to
 // start and fails to spawn.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { Connection } from "@earendil-works/pi-env";
+import { Connection } from "@nycode/env";
 import { type EnvConfig, envRevision } from "../../plugins/envs/config.ts";
 import { EnvConnections } from "../../plugins/mcp/environments.ts";
 
@@ -22,7 +22,7 @@ test("users of one environment share its connection; the last release closes it"
 	const opened: string[] = [];
 	const envs = new EnvConnections((name) => {
 		opened.push(name);
-		return new Connection({ command: ["/nonexistent/pi-env"] });
+		return new Connection({ command: ["/nonexistent/nycode-env"] });
 	});
 	const first = envs.acquire("gpu", GPU, envRevision(GPU));
 	const second = envs.acquire("gpu", GPU, envRevision(GPU));
@@ -44,7 +44,7 @@ test("users of one environment share its connection; the last release closes it"
 });
 
 test("an edited environment is another connection; the old one stays for its users until they release it", async () => {
-	const envs = new EnvConnections(() => new Connection({ command: ["/nonexistent/pi-env"] }));
+	const envs = new EnvConnections(() => new Connection({ command: ["/nonexistent/nycode-env"] }));
 	const before = envs.acquire("gpu", GPU, envRevision(GPU));
 	const after = envs.acquire("gpu", EDITED, envRevision(EDITED));
 	assert.notEqual(after.connection, before.connection);

@@ -1,4 +1,4 @@
-// A project's `.pi/mcp.json` checked against the owner's servers (plugins/mcp/project.ts): what it may add (stdio
+// A project's `.nycode/mcp.json` checked against the owner's servers (plugins/mcp/project.ts): what it may add (stdio
 // servers at its location), what it may change (`enabled` of the owner's servers), and each rule that refuses the rest.
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -62,7 +62,7 @@ test("each rule refuses what it should, naming the server and why; the other ent
 	);
 	const errors = config.errors.join("\n");
 	assert.equal(config.errors.length, 11, errors);
-	for (const error of config.errors) assert.match(error, /^\.pi\/mcp\.json: /);
+	for (const error of config.errors) assert.match(error, /^\.nycode\/mcp\.json: /);
 	assert.match(errors, /server "remote": HTTP servers are for the owner's mcp\.json/);
 	assert.match(errors, /server "placed": "runOn" is for the owner's mcp\.json/);
 	assert.match(errors, /server "everywhere": "shared" is for the owner's mcp\.json/);
@@ -79,8 +79,8 @@ test("each rule refuses what it should, naming the server and why; the other ent
 
 test("a file that is no configuration is one error, and nothing else", () => {
 	for (const [text, why] of [
-		["{", /Invalid \.pi\/mcp\.json syntax/],
-		["[]", /\.pi\/mcp\.json must be an object/],
+		["{", /Invalid \.nycode\/mcp\.json syntax/],
+		["[]", /\.nycode\/mcp\.json must be an object/],
 		['{ "mcpServers": [] }', /"mcpServers" must be an object/],
 	] as const) {
 		const config = parseProjectConfig(text, OWNER);

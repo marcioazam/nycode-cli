@@ -1,4 +1,4 @@
-// The app-level collapsed sidebar state from Pi Mobile, shared by the shell and drawer controls, and where the sidebar
+// The app-level collapsed sidebar state from Nycode Mobile, shared by the shell and drawer controls, and where the sidebar
 // docks instead of being the drawer.
 import { useSyncExternalStore } from "react";
 
@@ -17,7 +17,7 @@ export function useSidebarDocked(): boolean {
 	return useSyncExternalStore(subscribeDocked, dockedSnapshot);
 }
 
-const KEY = "pi-sidebar-collapsed";
+const KEY = "nycode-sidebar-collapsed";
 const listeners = new Set<() => void>();
 let collapsed = false;
 try {

@@ -2,8 +2,8 @@
 // a note, and a webhook another site calls (cross-site: it always runs anonymous, so it is public). Nothing else is
 // public: a request nobody signed in gets 401 before this code runs (deny by default).
 
-import { defineFacet } from "@earendil-works/chord";
-import { Http } from "@earendil-works/chord/http";
+import { defineFacet } from "@nycode/chord";
+import { Http } from "@nycode/chord/http";
 
 const notes = ["buy milk"];
 

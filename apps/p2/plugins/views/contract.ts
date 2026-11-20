@@ -3,20 +3,7 @@
 // item it shows, and the person's selection in it; annotations (comments, removals, drawings) mark up any view or the
 // transcript. The session's worker owns all of it; the layout of the panes is each device's own (web.tsx).
 
-import {
-	arr,
-	int,
-	nul,
-	nullable,
-	num,
-	obj,
-	oneOf,
-	opt,
-	type Static,
-	str,
-	union,
-	unknown,
-} from "@earendil-works/pi-schema";
+import { arr, int, nul, nullable, num, obj, oneOf, opt, type Static, str, union, unknown } from "@nycode/schema";
 import {
 	type AcceptsTable,
 	type Ctx,

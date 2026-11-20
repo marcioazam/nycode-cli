@@ -5,14 +5,14 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
+import { BACKGROUND_CONTEXT } from "@nycode/chord/context";
 import {
 	STORAGE_MEMORY_SCALES,
 	STORAGE_READ_BENCHMARKS,
 	type StorageBenchmarkScale,
 	seedStorageBenchmark,
 	storageBenchmarkPrimaryRecordCount,
-} from "@earendil-works/pi-durable/testing";
+} from "@nycode/durable/testing";
 import { openNodeJsonlStorage } from "../src/storage/jsonl/node.ts";
 import { MemoryStorage } from "../src/storage/memory.ts";
 import { openNodeSqliteStorage } from "../src/storage/sqlite/node.ts";
@@ -125,7 +125,7 @@ async function runWorker(backend: StorageBenchmarkBackend, scale: StorageBenchma
 	if (backend === "memory") {
 		storage = new MemoryStorage();
 	} else {
-		directory = await mkdtemp(join(tmpdir(), `pi-durable-${backend}-memory-`));
+		directory = await mkdtemp(join(tmpdir(), `nycode-durable-${backend}-memory-`));
 		path = join(directory, backend === "jsonl" ? "storage" : "storage.sqlite");
 		storage =
 			backend === "sqlite"

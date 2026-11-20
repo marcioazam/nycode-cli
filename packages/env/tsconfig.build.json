@@ -3,8 +3,8 @@
 	"compilerOptions": {
 		"outDir": "./dist",
 		"paths": {
-			"@earendil-works/chord/context": ["../chord/dist/context/index.d.ts"],
-			"@earendil-works/pi-durable/env": ["../durable/dist/env/index.d.ts"]
+			"@nycode/chord/context": ["../chord/dist/context/index.d.ts"],
+			"@nycode/durable/env": ["../durable/dist/env/index.d.ts"]
 		},
 		"rootDir": "./src"
 	},

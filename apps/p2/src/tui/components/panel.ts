@@ -1,6 +1,6 @@
 // The side panel's frame: a title line over a scrollable body, both behind a one-column bar that separates the panel
 // from the chat on its left. The runtime lays it out next to the screen's body and routes keys to it while focused.
-import { type Component, ScrollView, truncateToWidth, VStack } from "@earendil-works/pi-tui";
+import { type Component, ScrollView, truncateToWidth, VStack } from "@nycode/tui";
 import type { RenderContext } from "../render-context.ts";
 
 /** What a plugin shows in the panel: lines at a width, released when the panel closes. */

@@ -1,7 +1,7 @@
 import { evictDurableObject, runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
 import { type DurableObjectState, type DurableObjectStub, env } from "cloudflare:workers";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import { AssistantEntry, type TaskId } from "@earendil-works/pi-durable";
+import { BACKGROUND_CONTEXT } from "@nycode/chord/context";
+import { AssistantEntry, type TaskId } from "@nycode/durable";
 import { describe, expect, it } from "vitest";
 import { nativeTimer } from "../src/timers.ts";
 import type { TestSession } from "./worker.ts";

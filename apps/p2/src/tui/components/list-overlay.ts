@@ -1,5 +1,5 @@
 // Overlays for the web-parity panels (p2-tui-port.md P11): a filterable list with per-row actions, in the look of
-// pi's selectors (borders, `→` cursor, dim hints), and a yes/no confirmation. Rows are server data: callers pass text
+// nycode's selectors (borders, `→` cursor, dim hints), and a yes/no confirmation. Rows are server data: callers pass text
 // through `lineText`/`safeText`; the overlay sanitizes again.
 import {
 	type Component,
@@ -11,7 +11,7 @@ import {
 	truncateToWidth,
 	visibleWidth,
 	wrapTextWithAnsi,
-} from "@earendil-works/pi-tui";
+} from "@nycode/tui";
 import type { TuiContext } from "../../runtime/tui-context.ts";
 import { lineText } from "../render-context.ts";
 import type { SelectorContext } from "./selectors.ts";

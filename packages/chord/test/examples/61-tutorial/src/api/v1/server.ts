@@ -5,7 +5,7 @@
 import { ephemeralLoginFacet } from "../../../../../../src/node/app/index.ts";
 import type { TodoPrincipal } from "../../principals.ts";
 
-export type { StoredSpan, StoredTrace } from "@earendil-works/pi-telemetry";
+export type { StoredSpan, StoredTrace } from "@nycode/telemetry";
 export { AppInfo } from "../../../../../../src/node/app/index.ts";
 export { Http } from "../../../../../../src/node/http/index.ts";
 export { openTelemetryStore } from "../../../../../../src/telemetry-sqlite/node.ts";

@@ -1,4 +1,4 @@
-import { Box, Container, Markdown, type MarkdownTheme, MouseRegion, Spacer, Text } from "@earendil-works/pi-tui";
+import { Box, Container, Markdown, type MarkdownTheme, MouseRegion, Spacer, Text } from "@nycode/tui";
 import type { MarkdownTransformer } from "../../../core/extensions/types.ts";
 import type { BranchSummaryMessage } from "../../../core/messages.ts";
 import { getMarkdownTheme, theme } from "../theme/theme.ts";
@@ -72,7 +72,7 @@ export class BranchSummaryMessageComponent extends Box {
 					0,
 					this.markdownTheme,
 					{ color: (text: string) => theme.fg("customMessageText", text) },
-					// Transformers see only the summary content, not Pi's header.
+					// Transformers see only the summary content, not Nycode's header.
 					{ transform: (markdown, width) => header + transform(markdown, width) },
 				),
 			);

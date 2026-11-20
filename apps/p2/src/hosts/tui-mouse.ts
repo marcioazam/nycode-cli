@@ -1,5 +1,5 @@
 // The launcher's view of the mouse (p2-tui-port.md section 3.1 rule 5): mouse reports go to the worker as input
-// (pi-tui scrolls and selects there), and the launcher recognizes, from the raw SGR reports alone, the release that
+// (nycode-tui scrolls and selects there), and the launcher recognizes, from the raw SGR reports alone, the release that
 // ends a selection gesture: a drag with the left button, or a double/triple click. Only that gesture copies.
 
 // biome-ignore lint/suspicious/noControlCharactersInRegex: SGR mouse reports.

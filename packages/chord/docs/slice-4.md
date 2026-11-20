@@ -37,7 +37,7 @@ the carry-over (L6, L7) and slices 3a/3b. Builds on `9066b343c`.
 6. **`loading` on a live hold**: a relay whose upstream link dropped tells its downstream holds; 3b's consumer moves
    only `failed -> loading` on it today.
 7. **The pending queue** (fold, leaf index, cap 10,000) per hold member on the provider side, and in Chord's shared
-   watch handle (pi first; carry-over L6).
+   watch handle (nycode first; carry-over L6).
 
 ## 4a: races
 
@@ -118,7 +118,7 @@ Links and transports:
    object may choose another variant).
 3. **Call fairness: round-robin per origin at the relay** (race 20): each origin's calls keep their order; while the
    worker's window is full, origins take turns, so one flooding tab cannot starve the others.
-4. **The Durable conversation view:** known cost until Durable's windowed view (pi #11327, waiting for its reporter)
+4. **The Durable conversation view:** known cost until Durable's windowed view (nycode #11327, waiting for its reporter)
    lands: a re-hold sends the whole active transcript.
 
 ## 4b: scope and races (sketch)

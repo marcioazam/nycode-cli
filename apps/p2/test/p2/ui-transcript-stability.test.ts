@@ -7,8 +7,8 @@ import assert from "node:assert/strict";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
-import { fauxAssistantMessage } from "@earendil-works/pi-ai/providers/faux";
-import type { ConversationView, EntryDraft, LiveState } from "@earendil-works/pi-durable";
+import { fauxAssistantMessage } from "@nycode/ai/providers/faux";
+import type { ConversationView, EntryDraft, LiveState } from "@nycode/durable";
 import { BACKGROUND_CONTEXT, follow } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { Models } from "../../plugins/models/contract.ts";
@@ -19,7 +19,7 @@ import { Browser, browserTests, COMPOSER } from "./browser.ts";
 import { type Fixture, holdIn, startFixture, until } from "./helpers.ts";
 import { type ProbeReport, RENDER_PROBE } from "./render-probe.ts";
 
-const live = (view: ConversationView | null | undefined) => view?.docs["pi.live"] as LiveState | undefined;
+const live = (view: ConversationView | null | undefined) => view?.docs["nycode.live"] as LiveState | undefined;
 const answered = (text: string) => (view: ConversationView | null | undefined) =>
 	JSON.stringify(view?.entries ?? []).includes(text) && !live(view)?.run;
 const REPORT = "window.__probe.report()";
@@ -51,12 +51,12 @@ const input = (text: string, timestamp: number) =>
 	}) as EntryDraft;
 const response = (content: Parameters<typeof fauxAssistantMessage>[0], timestamp: number, toolUse = false) =>
 	({
-		kind: "pi.assistant",
+		kind: "nycode.assistant",
 		model: [{ ...fauxAssistantMessage(content, toolUse ? { stopReason: "toolUse" } : {}), timestamp }],
 	}) as EntryDraft;
 const result = (id: string, name: string, text: string, timestamp: number) =>
 	({
-		kind: "pi.tool-result",
+		kind: "nycode.tool-result",
 		model: [
 			{
 				role: "toolResult",

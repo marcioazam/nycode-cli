@@ -96,7 +96,7 @@ for real on a demo repository. Stills are from the web on a desktop and a phone 
 ## Shell commands and chat mode
 
 {{img:shell-command-tui.webp|A shell command run from the TUI with its output (the web can only show it).}}
-{{img:chatmode-two-people.webp|Chat mode: owner and guest talk, an @pi mention gets a digest and an answer.}}
+{{img:chatmode-two-people.webp|Chat mode: owner and guest talk, an @nycode mention gets a digest and an answer.}}
 
 ## Sharing, devices, providers
 
@@ -154,7 +154,7 @@ not carried over.
 | History and handoff | re-read earlier entries after compaction, hand off with a continuation | 533 | **base** |
 | Code mode | scripts calling tools as nested durable calls | 155 + Durable | **base** (small, Durable owns it) |
 | Shell commands | `!cmd` and `!!cmd` in the conversation's environment | in chat | **base**, web too (TUI only today) |
-| Chat mode | people talk without a turn, `@pi` mentions | 876 | later |
+| Chat mode | people talk without a turn, `@nycode` mentions | 876 | later |
 | Sharing and guests | share links, guest names, revocation | 1,047 | later (the app kit's users and invites cover the start) |
 | Devices and owner login | owner links, device cookies | 684 | **base**, replaced by the app kit's sign-ins and pairing |
 | Models, credentials, provider login | picker, scope, API keys, OAuth flows | 3,828 | **base** |
@@ -173,7 +173,7 @@ not carried over.
 | Web shell | PWA, sheets, navigation, reconnect | 9,252 | **base**, rebuilt on slice 11 ("look and feel great") |
 | TUI | launcher, sandbox, 40 commands, themes, keybindings | 6,720 + launcher | **base** on slice 11 |
 | Dev and reload | supervisor, dirty marks, reload tool | 468 + scripts | **base** as the app kit's "apply changes"; the supervisor goes |
-| Fake provider, `PI_MOBILE_*` aliases, `P2_DEV_RESUME` | test and legacy leftovers | 218 | drop |
+| Fake provider, `NYCODE_MOBILE_*` aliases, `P2_DEV_RESUME` | test and legacy leftovers | 218 | drop |
 | `tool_search`, MCP | not installed in p2 | - | later |
 
 Rough edges p3 should not inherit: features only in the TUI (shell commands, clone, fork, compact, new context), no
@@ -184,7 +184,7 @@ plugin loader's module leak on reload (solved by Chord's plugin component).
 
 ## What p2 does
 
-p2's server and workers start a daemon (`pi-env`) over SSH on demand, one connection per session and per use (four
+p2's server and workers start a daemon (`nycode-env`) over SSH on demand, one connection per session and per use (four
 connection pools: each worker, the directory picker, the connection test, the terminal host). The daemon is
 stateless and kills its commands 30 seconds after its connection goes quiet. Its frame protocol (exec, files, watch,
 file listing, PTYs) does not depend on SSH.
@@ -220,7 +220,7 @@ file listing, PTYs) does not depend on SSH.
 ## Decided
 
 The worker updates the session index from events and sends it to the server; sessions sync to R2 through Radius:
-Radius reports per session its last sequence number, pi uploads the commit log from there; R2 holds the SQLite file
+Radius reports per session its last sequence number, nycode uploads the commit log from there; R2 holds the SQLite file
 and the commit log, a SQLite Durable Object applies them; sessions have an owner id; the index is a Chord table
 replicated like a session, its row updated only on metadata, session idle and subagent idle changes.
 
@@ -263,7 +263,7 @@ starts it to sync.
 
 ## The sync example
 
-`packages/chord/test/examples/60-session-sync/` (uncommitted, in `/home/badlogic/pi-sync-ex`) plays the decided
+`packages/chord/test/examples/60-session-sync/` (uncommitted, in `/home/badlogic/nycode-sync-ex`) plays the decided
 protocol with Chord's real store pieces (the outbox, `applyBatch`, export archives) and a small in-memory stand-in for
 Radius. Its output, step by step:
 
@@ -306,11 +306,11 @@ its stand-ins fake that the sync layer must build (authenticated handshake, pers
 retries, streaming bootstrap with files, the DO and R2 side, the continue fence, the split's new id, pull-back after a
 power loss).
 
-# Branches and Subagent Context {#branches lede="pi's /tree, fork and clone, and subagents that start from the parent's context."}
+# Branches and Subagent Context {#branches lede="nycode's /tree, fork and clone, and subagents that start from the parent's context."}
 
-pi branches three ways; p2 has two, in the TUI only:
+nycode branches three ways; p2 has two, in the TUI only:
 
-| pi | What it does | p2 |
+| nycode | What it does | p2 |
 | --- | --- | --- |
 | `/tree` | branch inside the session: pick an earlier message, edit and resubmit; the old branch stays; leaving a branch can summarize it into the one entered | missing |
 | `/fork` | a new session from an earlier user message | TUI only, main conversation only |
@@ -388,7 +388,7 @@ command registry with its own key handling.
 Offer few things, each stable: what an API offers, it must keep (versioned in the import path, `@p3/app/v1`). Every
 cluster below is a registry or a contract that already exists in Chord, Durable or p2; p3 v1 publishes those and
 nothing else. Legacy concepts of the old extension API are not carried: CLI flags, an event bus, RPC-mode UI, `hasUI`
-checks, "destructive switch" gates, `pi.exec` running locally regardless of the environment.
+checks, "destructive switch" gates, `nycode.exec` running locally regardless of the environment.
 
 ## Seven clusters
 

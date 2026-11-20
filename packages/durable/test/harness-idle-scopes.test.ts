@@ -1,7 +1,7 @@
 // Idle checks without per-commit scans: a task change settles only the conversations above it (idle waiters and kept
 // context ranges), expiry runs oldest first from an ordered index, and `wake()` reads only sleeping tasks while work
 // is active. Every case checks the incremental idle state against a full recompute (`SCHEDULER_IDLE_STATE`).
-import { createModels } from "@earendil-works/pi-ai";
+import { createModels } from "@nycode/ai";
 import {
 	type Conversation,
 	type ConversationId,
@@ -14,8 +14,8 @@ import {
 	type SetTimer,
 	type Storage,
 	type TaskId,
-} from "@earendil-works/pi-durable";
-import { obj } from "@earendil-works/pi-schema";
+} from "@nycode/durable";
+import { obj } from "@nycode/schema";
 import { afterEach, describe, expect, it } from "vitest";
 import { SCHEDULER_IDLE_STATE } from "../src/harness/harness.ts";
 import { commitWrites } from "../src/testing/commit-writes.ts";

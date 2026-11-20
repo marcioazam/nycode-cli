@@ -9,7 +9,7 @@ import {
 	MemoryStorage,
 	type TranscriptItem,
 	type TranscriptView,
-} from "@earendil-works/pi-durable";
+} from "@nycode/durable";
 import { describe, expect, it } from "vitest";
 import { allEntries, chatSetup, openChat } from "./chat-support.ts";
 import { context, onValue } from "./session-support.ts";

@@ -1,12 +1,12 @@
 // A per-conversation turn limit stops a long run after a number of tool rounds; a continue resumes it without a user
-// message, with a fresh budget. A host learns that a run stopped from `pi.live.runFailure`.
+// message, with a fresh budget. A host learns that a run stopped from `nycode.live.runFailure`.
 // Run from packages/durable:
 //   node --conditions=source --experimental-strip-types test/examples/33-turn-limit-and-continue.ts
 
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import { createModels } from "@earendil-works/pi-ai/models";
-import { fauxAssistantMessage, fauxProvider, fauxToolCall } from "@earendil-works/pi-ai/providers/faux";
-import { num, obj } from "@earendil-works/pi-schema";
+import { createModels } from "@nycode/ai/models";
+import { fauxAssistantMessage, fauxProvider, fauxToolCall } from "@nycode/ai/providers/faux";
+import { BACKGROUND_CONTEXT } from "@nycode/chord/context";
+import { num, obj } from "@nycode/schema";
 import {
 	ConversationBusy,
 	createRegistry,

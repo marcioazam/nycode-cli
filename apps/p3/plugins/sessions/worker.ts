@@ -4,7 +4,7 @@
 // the session, design §4), so a rename on the server reaches it live. The harness core resumes Durable's run once the
 // worker loaded; `SessionStart` only starts it.
 
-import { constant, defineFacet, forbidden, forward } from "@earendil-works/p3/v1";
+import { constant, defineFacet, forbidden, forward } from "@nycode/p3/v1";
 import { SessionFacts, SessionStart, SessionWorker } from "./contract.ts";
 
 export default defineFacet((host) => {

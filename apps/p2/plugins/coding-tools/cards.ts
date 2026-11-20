@@ -2,7 +2,7 @@
 // ls}.ts. Removed (p2-tui-port.md section 11): local path resolution, `getReadmePath` docs classification and edit's
 // local preview (`computeEditsDiff` reads the local fs): the edit card shows the result's `details.diff`. Paths display
 // relative to the session cwd. bash's card is the shared shell card (`createShellRenderers`).
-import { Container, Spacer, Text } from "@earendil-works/pi-tui";
+import { Container, Spacer, Text } from "@nycode/tui";
 import {
 	DEFAULT_MAX_BYTES,
 	DEFAULT_MAX_LINES,

@@ -96,7 +96,7 @@ export async function fleet(
 	const starts: string[] = [];
 	const behaviours = new Map<string, WorkerBehaviour>();
 	const output: string[] = [];
-	const modules = { "@earendil-works/chord": chord };
+	const modules = { "@nycode/chord": chord };
 	const plugins = createPlugins(
 		{ roots: [root], kinds: { worker: { platform: "node", hostPackages: Object.keys(modules) } }, onError: () => {} },
 		context,

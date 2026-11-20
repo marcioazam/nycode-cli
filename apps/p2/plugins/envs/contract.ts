@@ -1,4 +1,4 @@
-import { arr, bool, int, nul, num, obj, opt, type Static, str, union } from "@earendil-works/pi-schema";
+import { arr, bool, int, nul, num, obj, opt, type Static, str, union } from "@nycode/schema";
 import {
 	DirectoryListingSchema,
 	defineRegistry,

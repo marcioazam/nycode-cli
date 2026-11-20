@@ -18,7 +18,7 @@ import {
 	type TelemetryPropagation,
 	type TelemetrySpan,
 	telemetryNow,
-} from "@earendil-works/pi-telemetry";
+} from "@nycode/telemetry";
 
 /** What a recorder hands its owner at once: settled spans and metric aggregates. */
 export type TelemetryBatch = { readonly spans: StoredSpan[]; readonly metrics: StoredMetric[] };
@@ -32,8 +32,8 @@ type Metric = StoredMetric & { readonly key: string };
 const identities = new WeakMap<TelemetryContext, Identity>();
 
 /** The carrier's keys: a span's id and its trace's (the SQLite store's since slice 9: stored job carriers use them). */
-const SPAN_KEY = "pi-sqlite-span";
-const TRACE_KEY = "pi-sqlite-trace";
+const SPAN_KEY = "nycode-sqlite-span";
+const TRACE_KEY = "nycode-sqlite-trace";
 
 /** The metric interval. */
 export const INTERVAL_MS = 10_000;
@@ -188,7 +188,7 @@ export class TelemetryRecorder implements TelemetryContext, TelemetryPropagation
 		this.#prefix ??= this.#scope();
 		const id = `${this.#prefix}:${++this.#sequence}`;
 		const identity = { id, traceId: parent?.traceId ?? id };
-		// The start on the clock pi-telemetry's adapters share; the end and events by the monotonic clock from it.
+		// The start on the clock nycode-telemetry's adapters share; the end and events by the monotonic clock from it.
 		const started = telemetryNow();
 		const clock = performance.now();
 		const events: { name: string; timeMs: number; attributes: SpanAttributes }[] = [];

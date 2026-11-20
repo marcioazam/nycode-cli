@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Waiting for the World: suspendable work in pi-durable</title>
+<title>Waiting for the World: suspendable work in nycode-durable</title>
 <style>
 
 :root{--paper:#fbf8f2;--ink:#2a2723;--muted:#7b7468;--rule:#e3dbcc;--accent:#b4472f;--blue:#2e6a8a;--sand:#c2b18c;--soft:#f4eee2}
@@ -109,13 +109,13 @@ table{max-width:100%}
 </head>
 <body><div class="book">
 <section class="cover">
-  <div class="kicker">A design book · draft, fifth revision · pi-durable · 2026-11-09</div>
+  <div class="kicker">A design book · draft, fifth revision · nycode-durable · 2026-11-09</div>
   <h1>Waiting for<br>the World</h1>
   <p class="subtitle">How a task, a tool, or a gate waits hours for a webhook, a person, or its children, while nothing runs and the process may sleep</p>
   <div class="cover-stats"><div class="stat"><b>0</b><span>new task statuses</span></div><div class="stat"><b>1</b><span>new delivery operation, signal()</span></div><div class="stat"><b>0</b><span>changes to the SQLite schema</span></div><div class="stat"><b>4</b><span>reasons parked work wakes: time, expired, signal, tasks</span></div></div>
   <div class="cover-note"><p>Draft for review, not built. Follows <code>spec.md</code> in the same directory (cited as §n), which records the owner&#39;s
 decisions of 2026-11-09, the review by gpt-6-astra, gpt-6.1-sol and claude-opus-5-5, and extends
-<code>packages/durable/docs/spec.md</code> (cited as spec §n). Schemas use <code>@earendil-works/pi-schema</code>. How plugins compose
+<code>packages/durable/docs/spec.md</code> (cited as spec §n). Schemas use <code>@nycode/schema</code>. How plugins compose
 hooks into policies (approvals, quotas, ordering) is the host&#39;s design, not Durable&#39;s; the last chapter says where
 that line runs.</p>
 </div>
@@ -149,7 +149,7 @@ evicted at any moment.</p>
 <p>What Ana&#39;s team wants is simple to say. While the build runs, nothing should run: no process held open for twenty
 minutes, no alarm except at a deadline. When the webhook arrives, the call continues where it left off and the model
 gets the result. If the process dies in between, the wait is not lost, and the build is not started twice.</p>
-<p>pi-durable cannot do that today. A tool is one in-memory function, so the only way for <code>run_ci</code> to get the webhook is
+<p>nycode-durable cannot do that today. A tool is one in-memory function, so the only way for <code>run_ci</code> to get the webhook is
 to await it inside that function. This book shows why that fails, and then builds the solution one concept at a
 time: signals, sleeps that wait for signals, tools that park, waits on children, waiting for a subagent, and gates
 before a tool runs.</p>
@@ -197,7 +197,7 @@ all. Its whole life is one function:</p>
   <span class="tk-f">execute</span>(args: <span class="tk-t">ToolArgs</span>&lt;TParameters&gt;, api: <span class="tk-t">ToolExecutionApi</span>&lt;TDetails&gt;, context: <span class="tk-t">Context</span>): <span class="tk-t">Promise</span>&lt;<span class="tk-t">ToolExecutionResult</span>&lt;TDetails&gt;&gt;;
 };</code></pre>
 <p>So <code>run_ci</code> has to await the webhook inside <code>execute()</code>:</p>
-<pre><code><span class="tk-k">import</span> { obj, str } <span class="tk-k">from</span> <span class="tk-s">"@earendil-works/pi-schema"</span>;
+<pre><code><span class="tk-k">import</span> { obj, str } <span class="tk-k">from</span> <span class="tk-s">"@nycode/schema"</span>;
 
 <span class="tk-c">// The CI service's client, and a host helper that resolves when the webhook for a build arrives.</span>
 <span class="tk-k">declare</span> <span class="tk-k">const</span> ci: { <span class="tk-f">trigger</span>(input: { ref: string }, context: <span class="tk-t">Context</span>): <span class="tk-t">Promise</span>&lt;{ id: string }&gt; };
@@ -228,7 +228,7 @@ that itself waits for a person. Each is a promise in memory.</p>
 <pre><code><span class="tk-k">function</span> <span class="tk-f">defineSignal</span>&lt;S <span class="tk-k">extends</span> object&gt;(definition: {
   <span class="tk-k">readonly</span> name: string; <span class="tk-c">// unique like a task kind; no "/"</span>
   <span class="tk-k">readonly</span> version: number;
-  <span class="tk-k">readonly</span> schema: S; <span class="tk-c">// a pi-schema schema of a JSON value (no bigint(), no bytes()); the value type is Static&lt;S&gt;</span>
+  <span class="tk-k">readonly</span> schema: S; <span class="tk-c">// a nycode-schema schema of a JSON value (no bigint(), no bytes()); the value type is Static&lt;S&gt;</span>
   <span class="tk-k">readonly</span> migrate?: (value: <span class="tk-t">JsonValue</span>, fromVersion: number) =&gt; <span class="tk-t">Static</span>&lt;S&gt;;
 }): <span class="tk-t">SignalToken</span>&lt;<span class="tk-t">Static</span>&lt;S&gt;&gt;;
 
@@ -240,7 +240,7 @@ that itself waits for a person. Each is a promise in memory.</p>
 }
 
 <span class="tk-k">type</span> <span class="tk-t">SignalKey</span>&lt;T&gt; = { <span class="tk-k">readonly</span> signal: string; <span class="tk-k">readonly</span> key: string; <span class="tk-k">readonly</span> <span class="tk-s">"~value"</span>?: T };</code></pre>
-<pre><code><span class="tk-k">import</span> { obj, oneOf, str } <span class="tk-k">from</span> <span class="tk-s">"@earendil-works/pi-schema"</span>;
+<pre><code><span class="tk-k">import</span> { obj, oneOf, str } <span class="tk-k">from</span> <span class="tk-s">"@nycode/schema"</span>;
 
 <span class="tk-k">const</span> <span class="tk-t">CiResult</span> = <span class="tk-f">defineSignal</span>({
   name: <span class="tk-s">"app.ci-result"</span>,
@@ -298,7 +298,7 @@ inside its own commit. Neither checks who calls it; the host authenticates the s
 <p>The value is stored on the task whatever state the task is in, as long as it is live. That matters in the case that
 breaks most designs: the webhook can arrive before the task has parked.</p>
 <figure class="fig anim"><svg viewBox="0 0 720 286" width="100%" role="img" aria-label="An early webhook. The value is stored while the tool still runs; its sleep wakes at once." xmlns="http://www.w3.org/2000/svg" style="font-family:'Avenir Next','Helvetica Neue',Helvetica,Arial,sans-serif;max-width:760px"><defs><marker id="f2m" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#7b7468"/></marker><marker id="f2a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#b4472f"/></marker><marker id="f2b" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#2e6a8a"/></marker></defs><line x1="130.7" y1="52" x2="130.7" y2="278" stroke="#c9bfae" stroke-dasharray="3 3"/><rect x="45.7" y="10" width="170" height="42" rx="4" fill="#fff" stroke="#c9bfae"/><text x="130.7" y="27" font-size="11" fill="#2a2723" text-anchor="middle">run_ci</text><text x="130.7" y="41" font-size="9.5" fill="#7b7468" text-anchor="middle">tool task, running</text><line x1="360" y1="52" x2="360" y2="278" stroke="#c9bfae" stroke-dasharray="3 3"/><rect x="275" y="10" width="170" height="42" rx="4" fill="#fff" stroke="#b4472f" stroke-width="1.5"/><text x="360" y="27" font-size="11" fill="#2a2723" text-anchor="middle">Harness</text><text x="360" y="41" font-size="9.5" fill="#7b7468" text-anchor="middle">the line</text><line x1="589.3" y1="52" x2="589.3" y2="278" stroke="#c9bfae" stroke-dasharray="3 3"/><rect x="504.3" y="10" width="170" height="42" rx="4" fill="#efe9dd" stroke="#c9bfae"/><text x="589.3" y="30" font-size="11" fill="#2a2723" text-anchor="middle">CI service</text><g class="step edge" style="--i:1"><line x1="130.7" y1="78" x2="586.3" y2="78" stroke="#7b7468" marker-end="url(#f2m)"/><text x="360" y="72" font-size="10" fill="#2a2723" text-anchor="middle">trigger build for task 41</text></g><g class="step edge" style="--i:2"><line x1="589.3" y1="110" x2="363" y2="110" stroke="#7b7468" marker-end="url(#f2m)"/><text x="474.7" y="104" font-size="10" fill="#2a2723" text-anchor="middle">signal(41, CiResult, &quot;done&quot;, { passed })</text></g><g class="step edge" style="--i:3"><path d="M360 136 h34 v14 h-32" fill="none" stroke="#b4472f" marker-end="url(#f2a)"/><text x="402" y="146" font-size="10" fill="#b4472f" text-anchor="start">commit: value stored (task still running)</text></g><g class="step edge" style="--i:4"><line x1="130.7" y1="182" x2="357" y2="182" stroke="#7b7468" marker-end="url(#f2m)"/><text x="245.3" y="176" font-size="10" fill="#2a2723" text-anchor="middle">return { sleep: { signals: [CiResult.key(&quot;done&quot;)] } }</text></g><g class="step edge" style="--i:5"><path d="M360 208 h34 v14 h-32" fill="none" stroke="#b4472f" marker-end="url(#f2a)"/><text x="402" y="218" font-size="10" fill="#b4472f" text-anchor="start">commit: sleeping on &quot;done&quot;</text></g><g class="step edge" style="--i:6"><line x1="360" y1="254" x2="133.7" y2="254" stroke="#7b7468" marker-end="url(#f2m)"/><text x="245.3" y="248" font-size="10" fill="#2a2723" text-anchor="middle">the key holds a value: wake at once</text></g></svg><figcaption><button class="replay" type="button">Replay</button><span class="fignum">Figure 2.</span> An early webhook. The value is stored while the tool still runs; its sleep wakes at once.</figcaption></figure>
-<p>Where it is stored: the task&#39;s memos, under a prefix the Harness reserves (<code>pi.signal.app.ci-result/done</code>). Memos
+<p>Where it is stored: the task&#39;s memos, under a prefix the Harness reserves (<code>nycode.signal.app.ci-result/done</code>). Memos
 already live exactly as long as needed (spec §5.2): through checkpoints, restarts, handovers, and migrations, gone when
 the task ends. Code never reads that memo directly.</p>
 <h3 id="size">Size</h3>
@@ -336,7 +336,7 @@ older version if needed. It reads the live task record the scheduler keeps in me
   <span class="tk-c">/** The key's state: its value, expired at the deadline, or undefined while nothing came. */</span>
   <span class="tk-f">readSignal</span>&lt;T&gt;(token: <span class="tk-t">SignalToken</span>&lt;T&gt;, key: string, context: <span class="tk-t">Context</span>): <span class="tk-t">Promise</span>&lt;<span class="tk-t">SignalState</span>&lt;T&gt; | <span class="tk-k">undefined</span>&gt;;
 }</code></pre>
-<pre><code><span class="tk-k">import</span> { obj, str } <span class="tk-k">from</span> <span class="tk-s">"@earendil-works/pi-schema"</span>;
+<pre><code><span class="tk-k">import</span> { obj, str } <span class="tk-k">from</span> <span class="tk-s">"@nycode/schema"</span>;
 
 <span class="tk-k">const</span> HOUR = <span class="tk-n">60</span> * <span class="tk-n">60</span> * <span class="tk-n">1000</span>;
 <span class="tk-k">const</span> <span class="tk-t">Answer</span> = <span class="tk-f">defineSignal</span>({ name: <span class="tk-s">"app.answer"</span>, version: <span class="tk-n">1</span>, schema: <span class="tk-f">obj</span>({ text: <span class="tk-f">str</span>() }) });
@@ -444,7 +444,7 @@ tool task commits it:</p>
 <p>The words are the task&#39;s: <code>sleep</code> and <code>wait</code> mirror the parked states, <code>checkpoint</code> is what the tool keeps, <code>wake</code> is
 why it runs. When the call wakes, the same <code>execute()</code> runs again with the same arguments and <code>api.wake</code> set.</p>
 <h3 id="run-ci-parked">run_ci, parked</h3>
-<pre><code><span class="tk-k">import</span> { obj, oneOf, str } <span class="tk-k">from</span> <span class="tk-s">"@earendil-works/pi-schema"</span>;
+<pre><code><span class="tk-k">import</span> { obj, oneOf, str } <span class="tk-k">from</span> <span class="tk-s">"@nycode/schema"</span>;
 
 <span class="tk-k">const</span> HOUR = <span class="tk-n">60</span> * <span class="tk-n">60</span> * <span class="tk-n">1000</span>;
 <span class="tk-k">const</span> <span class="tk-t">CiResult</span> = <span class="tk-f">defineSignal</span>({ name: <span class="tk-s">"app.ci-result"</span>, version: <span class="tk-n">1</span>, schema: <span class="tk-f">obj</span>({ status: <span class="tk-f">oneOf</span>([<span class="tk-s">"passed"</span>, <span class="tk-s">"failed"</span>]), logUrl: <span class="tk-f">str</span>() }) });
@@ -550,7 +550,7 @@ commit that creates it, so every later run with the same key gets the same child
 another task kind under a used key throw. Default keys are positions in a run, which mean different calls after a
 wake, so after a wake every <code>executeTool()</code> needs an explicit key and an unkeyed <code>createTask()</code> throws.</p>
 <p>A <code>wait</code> with <code>policy: &quot;any&quot;</code> wakes on the first child that ends; the wake lists the children that are terminal:</p>
-<pre><code><span class="tk-k">import</span> { obj, str } <span class="tk-k">from</span> <span class="tk-s">"@earendil-works/pi-schema"</span>;
+<pre><code><span class="tk-k">import</span> { obj, str } <span class="tk-k">from</span> <span class="tk-s">"@nycode/schema"</span>;
 
 <span class="tk-k">const</span> <span class="tk-t">ResearchParameters</span> = <span class="tk-f">obj</span>({ x: <span class="tk-f">str</span>(), y: <span class="tk-f">str</span>() });
 
@@ -658,7 +658,7 @@ parks the tool task at its <code>call</code> checkpoint. On every wake before in
 top: resolve, validate, every <code>beforeTool</code> in order, validate again. A gate that waited reads its key with
 <code>readSignal()</code>, a value, expired, or nothing yet, and passes, blocks, or sleeps on a new key. The call runs only when a
 whole pass ends without a block or a sleep; once intent is committed, <code>beforeTool</code> never runs again.</p>
-<pre><code><span class="tk-k">import</span> { bool, obj } <span class="tk-k">from</span> <span class="tk-s">"@earendil-works/pi-schema"</span>;
+<pre><code><span class="tk-k">import</span> { bool, obj } <span class="tk-k">from</span> <span class="tk-s">"@nycode/schema"</span>;
 
 <span class="tk-k">const</span> DAY = <span class="tk-n">24</span> * <span class="tk-n">60</span> * <span class="tk-n">60</span> * <span class="tk-n">1000</span>;
 <span class="tk-k">const</span> <span class="tk-t">Approval</span> = <span class="tk-f">defineSignal</span>({ name: <span class="tk-s">"approvals.decision"</span>, version: <span class="tk-n">1</span>, schema: <span class="tk-f">obj</span>({ allow: <span class="tk-f">bool</span>() }) });
@@ -785,7 +785,7 @@ the last park&#39;s checkpoint, then <code>interrupted</code>.</p>
 
 <section class="chapter" id="visibility"><header class="opener"><div class="numeral">XI</div><h2>Seeing What Waits</h2><p class="lede">What hosts and UIs can see of parked work, and how a host decides whether to stay awake.</p></header>
 <p class="dropcap">The task graph shows a sleeping node with its <code>until</code> and its keys, and a waiting node with its policy. A parked tool
-call&#39;s slot in <code>pi.live</code> shows <code>status: &quot;sleeping&quot;</code> or <code>&quot;waiting&quot;</code>. Durable stores no description of what a wait is
+call&#39;s slot in <code>nycode.live</code> shows <code>status: &quot;sleeping&quot;</code> or <code>&quot;waiting&quot;</code>. Durable stores no description of what a wait is
 for: a question&#39;s text or an approval&#39;s arguments live with whoever asked, in their own records, keyed by task ID and
 key.</p>
 <p>A host decides whether its process must stay up from <code>wake()</code>, not from the task graph: a Session whose work is all
@@ -810,7 +810,7 @@ recognized and becomes an error result.</p>
 <section class="chapter epilogue" id="open-questions"><header class="opener"><div class="numeral">∴</div><h2>Open Questions</h2><p class="lede">What was decided at the end of the review.</p></header>
 <p class="dropcap">None left. Decided: an <code>afterTools</code> task can end the run with <code>{ terminate: true }</code>, as a <code>terminate</code> round ends;
 <code>RunEndTask</code> and <code>runEndTask</code> (released in 1.5.0) are renamed <code>HookTask</code> and <code>hookTask</code>, a task spawned by a hook; <code>run.yield</code> stays in
-<code>pi.live</code>; a model request cannot sleep yet (deferred); code mode parking its VM is separate work
+<code>nycode.live</code>; a model request cannot sleep yet (deferred); code mode parking its VM is separate work
 (earendil-works/pi#11981).</p>
 </section>
 
@@ -881,7 +881,7 @@ format (faux provider, memory storage, printed results), after <code>37-harness-
 </tr>
 <tr>
 <td>signals</td>
-<td><code>defineSignal({ name, version, schema, migrate? })</code> over a pi-schema schema; <code>token.key(key)</code></td>
+<td><code>defineSignal({ name, version, schema, migrate? })</code> over a nycode-schema schema; <code>token.key(key)</code></td>
 </tr>
 <tr>
 <td>delivery</td>
@@ -913,11 +913,11 @@ format (faux provider, memory storage, printed results), after <code>37-harness-
 </tr>
 <tr>
 <td>tool task</td>
-<td><code>pi.tool</code> 4: checkpoint <code>parked</code>; intent stores <code>wake</code> and <code>checkpoint</code>; <code>durationMs</code> is the whole span</td>
+<td><code>nycode.tool</code> 4: checkpoint <code>parked</code>; intent stores <code>wake</code> and <code>checkpoint</code>; <code>durationMs</code> is the whole span</td>
 </tr>
 <tr>
 <td>documents</td>
-<td><code>pi.live</code>: slot status <code>sleeping</code>/<code>waiting</code>, <code>run.yield</code> (no version bump); <code>pi.generation</code> 3: phases <code>afterTools</code>, <code>yield</code></td>
+<td><code>nycode.live</code>: slot status <code>sleeping</code>/<code>waiting</code>, <code>run.yield</code> (no version bump); <code>nycode.generation</code> 3: phases <code>afterTools</code>, <code>yield</code></td>
 </tr>
 <tr>
 <td>error codes</td>
@@ -939,7 +939,7 @@ task. <strong>Park:</strong> commit <code>waiting</code> or <code>sleeping</code
 live task. <strong>Token:</strong> a signal&#39;s name, version, and schema. <strong>Wake:</strong> why parked work runs again.</p>
 </section>
 
-<p class="colophon">Waiting for the World · fifth revision · 2026-11-09 · based on suspendable/spec.md and pi-durable spec.md</p>
+<p class="colophon">Waiting for the World · fifth revision · 2026-11-09 · based on suspendable/spec.md and nycode-durable spec.md</p>
 </div></div>
 <script>(function activate(root) {
 	const replay = (f) => {

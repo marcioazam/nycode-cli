@@ -80,7 +80,7 @@ note "Plugin scripts are evaluated inside the base code of their host; they reac
 | Code | Built | By | Runs in | Changes by |
 | --- | --- | --- | --- | --- |
 | `start.ts`, the kit, Chord, `src/api/v1/*`, `src/principals.ts` | not bundled: Node loads them at start | Node | the server process | restart |
-| `worker.ts` and everything it imports (API, Chord, pi-ai, pi-durable) | once, when the server starts | esbuild (the workers component) | every session worker | restart (a worker forked later still gets the start's snapshot) |
+| `worker.ts` and everything it imports (API, Chord, nycode-ai, nycode-durable) | once, when the server starts | esbuild (the workers component) | every session worker | restart (a worker forked later still gets the start's snapshot) |
 | `src/web/main.tsx` and what it imports (API web module, Chord, React) | once, at start, content-hashed | esbuild (the web surface) | every page | restart, then each page reloads |
 | the terminal entry | once, at start | esbuild (the terminal surface) | every terminal client's sandbox | restart, then the terminal restarts its sandbox |
 | a plugin's `server.ts` | at start, then on each Apply that includes it | esbuild (the plugins component) | the server | Apply |
@@ -108,7 +108,7 @@ Everything in the muted row of the figure. Concretely, for p3:
 
 - `apps/p3/start.ts`, `apps/p3/worker.ts`, everything under `apps/p3/src/` (the API, the principal type, the web
   entry);
-- Chord itself, React, pi-ai, pi-durable, pi-schema: every package base code imports;
+- Chord itself, React, nycode-ai, nycode-durable, nycode-schema: every package base code imports;
 - packages a plugin keeps external (`"chord": { "external": [...] }`), which Node caches until the process ends.
 
 A restart costs: every worker stops (a Durable run in a worker is recovered when the worker starts again, from its last
@@ -182,7 +182,7 @@ plug --> page: marks clear
 | `plugins/hello/package.json` (a new dependency) | `install` | today: nothing installs; the dependency must be installed first (`npm install --ignore-scripts` in the plugin, or the kit's `installDependencies`), then the plugin is marked and builds | (a gap: see the last chapter) |
 | half an edit: an agent saved a file that does not compile | `dirty` | the build fails: hello keeps its old code on every host, stays marked, the error is shown | nothing changes |
 | `src/api/v1/index.ts`, `start.ts`, `worker.ts`, `src/web/main.tsx` | `base` | nothing: Apply cannot change base code | "restart needed" |
-| Chord, React, pi-ai, pi-durable source (this monorepo) | `base` (they went into a base bundle) | nothing | "restart needed" |
+| Chord, React, nycode-ai, nycode-durable source (this monorepo) | `base` (they went into a base bundle) | nothing | "restart needed" |
 
 **After a restart**, for the last two rows: the server starts, builds the worker base and the page's base bundle from the
 files as they are now (a new hash), builds every plugin once, loads them. Pages reconnect, ask for the base hash, see

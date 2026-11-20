@@ -1,5 +1,5 @@
 // A facet's registration-only object (browser-safe).
-import { local } from "@earendil-works/chord";
+import { local } from "@nycode/chord";
 import type { FacetHost, StoreSelf } from "./chord.ts";
 
 /**

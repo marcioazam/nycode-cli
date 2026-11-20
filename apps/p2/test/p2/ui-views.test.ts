@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
-import type { ToolResultMessage } from "@earendil-works/pi-ai";
+import type { ToolResultMessage } from "@nycode/ai";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { ArtifactPage } from "../../plugins/artifacts/contract.ts";
 import { Chat } from "../../plugins/chat/contract.ts";
@@ -63,7 +63,7 @@ describe("views in Chromium", { skip: !browserTests }, () => {
 						message.role === "toolResult" && message.toolName === "codemode",
 				),
 			);
-			return done.length === calls && !(value?.docs["pi.live"] as { run?: unknown })?.run;
+			return done.length === calls && !(value?.docs["nycode.live"] as { run?: unknown })?.run;
 		});
 		const result = (results?.entries ?? [])
 			.flatMap((entry) => entry.model ?? [])

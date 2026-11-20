@@ -2,7 +2,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { JsonValue } from "@earendil-works/chord/json";
+import type { JsonValue } from "@nycode/chord/json";
 import {
 	defineSignal,
 	defineTask,
@@ -13,8 +13,8 @@ import {
 	type TaskId,
 	type TaskState,
 	type WakeReason,
-} from "@earendil-works/pi-durable";
-import { bigint, bytes, int, obj, str } from "@earendil-works/pi-schema";
+} from "@nycode/durable";
+import { bigint, bytes, int, obj, str } from "@nycode/schema";
 import { afterEach, describe, expect, it } from "vitest";
 import { openNodeSqliteStorage } from "../src/storage/sqlite/node.ts";
 import { commitWrites } from "../src/testing/commit-writes.ts";
@@ -77,7 +77,7 @@ afterEach(async () => {
 });
 
 async function sqlitePath(): Promise<string> {
-	const directory = await mkdtemp(join(tmpdir(), "pi-durable-signals-"));
+	const directory = await mkdtemp(join(tmpdir(), "nycode-durable-signals-"));
 	directories.add(directory);
 	return join(directory, "session.sqlite");
 }

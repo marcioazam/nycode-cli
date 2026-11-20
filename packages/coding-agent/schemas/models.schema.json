@@ -116,7 +116,7 @@
                   },
                   "promptCache": {
                     "$ref": "#/$defs/ModelPromptCache",
-                    "description": "Best-effort prompt cache lifetime in seconds for the short and long retention tiers. Pi warms only tiers with a known lifetime."
+                    "description": "Best-effort prompt cache lifetime in seconds for the short and long retention tiers. Nycode warms only tiers with a known lifetime."
                   },
                   "contextWindow": {
                     "type": "number",
@@ -291,7 +291,7 @@
                     },
                     "promptCache": {
                       "$ref": "#/$defs/ModelPromptCache",
-                      "description": "Best-effort prompt cache lifetime in seconds for the short and long retention tiers. Pi warms only tiers with a known lifetime."
+                      "description": "Best-effort prompt cache lifetime in seconds for the short and long retention tiers. Nycode warms only tiers with a known lifetime."
                     },
                     "contextWindow": {
                       "type": "number",
@@ -528,7 +528,7 @@
         },
         "supportsFinishReason": {
           "type": "boolean",
-          "description": "Whether streamed responses include finish_reason. When false, pi infers stop or toolUse when the stream ends.",
+          "description": "Whether streamed responses include finish_reason. When false, nycode infers stop or toolUse when the stream ends.",
           "default": true
         },
         "maxTokensField": {
@@ -615,7 +615,7 @@
               "const": "ant-ling"
             }
           ],
-          "description": "Format for reasoning or thinking parameters. When omitted, Pi auto-detects the format from the provider URL. \"openai\" uses reasoning_effort, \"openrouter\" uses reasoning.effort, \"deepseek\" uses thinking.type plus reasoning_effort when supported, \"together\" uses reasoning.enabled plus reasoning_effort when supported, \"baseten\" uses configurable chat_template_args plus reasoning_effort when supported, \"zai\" uses thinking.type, \"qwen\" uses top-level enable_thinking, \"qwen-chat-template\" uses chat_template_kwargs.enable_thinking and preserve_thinking, \"chat-template\" uses configurable chat_template_kwargs, \"string-thinking\" uses top-level thinking, and \"ant-ling\" uses reasoning.effort only when the mapped effort is non-null."
+          "description": "Format for reasoning or thinking parameters. When omitted, Nycode auto-detects the format from the provider URL. \"openai\" uses reasoning_effort, \"openrouter\" uses reasoning.effort, \"deepseek\" uses thinking.type plus reasoning_effort when supported, \"together\" uses reasoning.enabled plus reasoning_effort when supported, \"baseten\" uses configurable chat_template_args plus reasoning_effort when supported, \"zai\" uses thinking.type, \"qwen\" uses top-level enable_thinking, \"qwen-chat-template\" uses chat_template_kwargs.enable_thinking and preserve_thinking, \"chat-template\" uses configurable chat_template_kwargs, \"string-thinking\" uses top-level thinking, and \"ant-ling\" uses reasoning.effort only when the mapped effort is non-null."
         },
         "chatTemplateKwargs": {
           "type": "object",
@@ -664,7 +664,7 @@
               ]
             }
           },
-          "description": "Kwargs sent as chat_template_kwargs when thinkingFormat is \"chat-template\". Use $var with \"thinking.enabled\", \"thinking.effort\", or \"thinking.budget\" for pi-controlled values."
+          "description": "Kwargs sent as chat_template_kwargs when thinkingFormat is \"chat-template\". Use $var with \"thinking.enabled\", \"thinking.effort\", or \"thinking.budget\" for nycode-controlled values."
         },
         "chatTemplateArgs": {
           "type": "object",
@@ -713,7 +713,7 @@
               ]
             }
           },
-          "description": "Arguments sent as chat_template_args when thinkingFormat is \"baseten\". Use $var with \"thinking.enabled\", \"thinking.effort\", or \"thinking.budget\" for pi-controlled values."
+          "description": "Arguments sent as chat_template_args when thinkingFormat is \"baseten\". Use $var with \"thinking.enabled\", \"thinking.effort\", or \"thinking.budget\" for nycode-controlled values."
         },
         "openRouterRouting": {
           "type": "object",

@@ -223,8 +223,8 @@ async function hasFacetFile(dir: string, kinds: readonly string[]): Promise<bool
 }
 
 /**
- * The plugins `chord.plugins` (`listed`: folders of the package, as paths, globs and `!` exclusions, as pi's
- * `pi.extensions`) of the package in `dir` names: each a folder with a `package.json` (the package itself when listed
+ * The plugins `chord.plugins` (`listed`: folders of the package, as paths, globs and `!` exclusions, as nycode's
+ * `nycode.extensions`) of the package in `dir` names: each a folder with a `package.json` (the package itself when listed
  * as `.`). A manifest that is no list of strings, an entry or a link leaving the package, a listed path that is no
  * directory, and a listing of nothing are problems.
  */

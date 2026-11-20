@@ -1,6 +1,6 @@
 // Session locks (server): every locked session's picked resources, persisted, and the remote view the owner sets them
 // through and each session's worker follows its own lock with.
-import { obj } from "@earendil-works/pi-schema";
+import { obj } from "@nycode/schema";
 import {
 	defineState,
 	deriveTyped,

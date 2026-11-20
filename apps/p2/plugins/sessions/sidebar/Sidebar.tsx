@@ -13,8 +13,8 @@ import {
 	NavLockIcon,
 	NavMoreIcon,
 	NEW_SESSION,
+	NycodeLogo,
 	openCommandMenu,
-	PiLogo,
 	Sidebar,
 	SideNavigation,
 	ThemeButton,
@@ -399,7 +399,7 @@ export const SidebarView = memo(function SidebarView({
 			"Shared session",
 			<>
 				<div className="brand">
-					<PiLogo compact />
+					<NycodeLogo compact />
 					<span>Shared session</span>
 				</div>
 				<p className="empty-note">
@@ -431,7 +431,7 @@ export const SidebarView = memo(function SidebarView({
 		"Sessions",
 		<div className="drawer-header-row">
 			<div className="brand">
-				<PiLogo compact />
+				<NycodeLogo compact />
 			</div>
 			{headerActions}
 			<Sidebar.Trigger className="collapse-sidebar" aria-label="Collapse sidebar" />

@@ -1,6 +1,6 @@
 // The Session's writer: commits the mutation line admitted, stored in batches off the line and published in line order.
-import type { Context } from "@earendil-works/chord/context";
-import { withoutAbortSignal } from "@earendil-works/chord/context";
+import type { Context } from "@nycode/chord/context";
+import { withoutAbortSignal } from "@nycode/chord/context";
 import { SessionFailed } from "../errors.ts";
 import type { CommitResult, Seq, StorageWrite } from "../types.ts";
 

@@ -74,7 +74,7 @@ Types served on session workers with an empty input get a `session` input (versi
 `plugins/sessions/server.ts:291,300`), `PluginRemoval` (`src/hosts/plugins.ts:107`, callers
 `src/hosts/server.ts:301,333`).
 
-**Touches.** Chord (via pi first): `host` helpers with pattern and resolver in `remote(...)` contracts, address
+**Touches.** Chord (via nycode first): `host` helpers with pattern and resolver in `remote(...)` contracts, address
 resolution without `at`, the check at `serve` and at acquisition, placement in the fingerprint; `at` stays only for the
 transition. p2: `host` on every remote contract, the three input changes above, removing the 85 literal options and the
 plumbed `at` (`useObject`, `holdLingering`, `linger.ts`, TUI `watch`, `file-completion.tsx`), tests.
@@ -94,7 +94,7 @@ p2 cast by hand: five check `(principal as { host?: unknown }).host !== "server"
 `via: "relay"` covers both Radius and remote cookie devices, `device` is optional, and the owner has no name (`authorOf`
 returns "Owner", the web prints the literal "Owner": `src/web/Chat.tsx:742,772`).
 
-**Change, Chord (via pi first).** The principal type is a type parameter of the host (`createHost<P>(...)`); factories,
+**Change, Chord (via nycode first).** The principal type is a type parameter of the host (`createHost<P>(...)`); factories,
 `ctx`, `principalKey` and `invalidatePrincipal` receive `P` and TypeScript narrows on `kind`. Chord invents no
 principals: the app supplies the principal of the host's own code (`createHost({ self: … })`) and the one the parent's
 own requests carry (`host.connect(link, { principal: … })`); relayed requests keep the caller's principal;
@@ -173,12 +173,12 @@ automatically when the call finishes while the conversation is open in that tab 
 history; only for owner and full guests). TUI: no docked workspace; open it in the file view or show the path.
 `/downloads` lists `files` send calls as well as old `send_file` calls.
 
-**Open question: old names.** Durable stores tool names in the `pi.agent` selections (`tools`,
+**Open question: old names.** Durable stores tool names in the `nycode.agent` selections (`tools`,
 `packages/durable/src/harness/agent.ts`), and pending calls resolve by exact name (`packages/durable/src/harness/tool.ts:210`).
 Subagents store `"send_file"` in their tool list (`CODING_TOOLS`, `plugins/subagents/tools.ts:31`), and models copy
 calls from their history. An alias in the subagent registry is therefore not enough. Either keep `send_file` registered
 as a hidden compatibility tool (old arguments, unsafe replay, not offered to new configurations), or migrate the
-`pi.agent` selections.
+`nycode.agent` selections.
 
 **Touches.** Old Durable entries are named `send_file`: the web card, the TUI renderers and `/downloads`
 (`toolViews("send_file")`, `plugins/send-file/tui.ts:99`) keep rendering that name. Rename in `CODING_TOOLS` and the
@@ -311,7 +311,7 @@ await store.reload(ctx);                                                        
 
 **Batch.** One pass after the in-place relocation lands (it touches the same plugin files), together with entries 1
 (terminology, `variant` with a link protocol version), 2 (object types declare their host), 3 (typed principals),
-5 (`lifetime`), 8 (an awaited reference has its state) and 9 (state `init`). Chord first, via pi (Chord source, tests, docs `spec.md`/`guide.md`/`tutorial.md`; CI), then p2. Not
+5 (`lifetime`), 8 (an awaited reference has its state) and 9 (state `init`). Chord first, via nycode (Chord source, tests, docs `spec.md`/`guide.md`/`tutorial.md`; CI), then p2. Not
 in the batch: 4 (`files` tool), 6 (references re-acquire), the resource and listener redesign.
 
 ## 8. An awaited reference has its state, local or remote (batch)

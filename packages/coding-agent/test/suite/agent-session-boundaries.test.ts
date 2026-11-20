@@ -1,5 +1,5 @@
-import type { AgentTool } from "@earendil-works/pi-agent-core";
-import { fauxAssistantMessage, fauxToolCall } from "@earendil-works/pi-ai";
+import type { AgentTool } from "@nycode/agent-core";
+import { fauxAssistantMessage, fauxToolCall } from "@nycode/ai";
 import { Type } from "typebox";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createHarness, getMessageText, type Harness } from "./harness.ts";
@@ -25,8 +25,8 @@ describe("AgentSession actionable boundaries", () => {
 		const requests: string[] = [];
 		const harness = await createHarness({
 			extensionFactories: [
-				(pi) => {
-					pi.on("turn_end", (event) => {
+				(nycode) => {
+					nycode.on("turn_end", (event) => {
 						observedIds.push(event.messageEntryId);
 						if (handled) return;
 						handled = true;
@@ -75,15 +75,15 @@ describe("AgentSession actionable boundaries", () => {
 			const requests: string[] = [];
 			const harness = await createHarness({
 				extensionFactories: [
-					(pi) => {
-						pi.on("turn_end", () => {
+					(nycode) => {
+						nycode.on("turn_end", () => {
 							if (handled) return;
 							handled = true;
 							if (queueKind === "steering" || queueKind === "both") {
-								pi.sendUserMessage("queued steering", { deliverAs: "steer" });
+								nycode.sendUserMessage("queued steering", { deliverAs: "steer" });
 							}
 							if (queueKind === "follow-up" || queueKind === "both") {
-								pi.sendUserMessage("queued follow-up", { deliverAs: "followUp" });
+								nycode.sendUserMessage("queued follow-up", { deliverAs: "followUp" });
 							}
 							return {
 								entries: [{ type: "compaction", summary: "exact handoff", firstKeptEntryId: null }],
@@ -133,8 +133,8 @@ describe("AgentSession actionable boundaries", () => {
 			models: [{ id: "faux-1", contextWindow: 2_000, maxTokens: 100 }],
 			settings: { compaction: { enabled: true, keepRecentTokens: 1, reserveTokens: 0 } },
 			extensionFactories: [
-				(pi) => {
-					pi.on("turn_end", (event, ctx) => {
+				(nycode) => {
+					nycode.on("turn_end", (event, ctx) => {
 						if (handled) return;
 						handled = true;
 						const user = [...ctx.sessionManager.getBranch()]
@@ -150,7 +150,7 @@ describe("AgentSession actionable boundaries", () => {
 							continue: true,
 						};
 					});
-					pi.on("session_before_compact", (event) => ({
+					nycode.on("session_before_compact", (event) => ({
 						compaction: {
 							summary: "older history summary",
 							firstKeptEntryId: event.preparation.firstKeptEntryId,
@@ -187,8 +187,8 @@ describe("AgentSession actionable boundaries", () => {
 			models: [{ id: "faux-1", contextWindow: 2_000, maxTokens: 100 }],
 			settings: { compaction: { enabled: true, keepRecentTokens: 1, reserveTokens: 0 } },
 			extensionFactories: [
-				(pi) => {
-					pi.on("turn_end", () => {
+				(nycode) => {
+					nycode.on("turn_end", () => {
 						if (handled) return;
 						handled = true;
 						return {
@@ -204,7 +204,7 @@ describe("AgentSession actionable boundaries", () => {
 							continue: true,
 						};
 					});
-					pi.on("session_before_compact", (event) => ({
+					nycode.on("session_before_compact", (event) => ({
 						compaction: {
 							summary: "older history summary",
 							firstKeptEntryId: event.preparation.firstKeptEntryId,
@@ -235,8 +235,8 @@ describe("AgentSession actionable boundaries", () => {
 		const snapshots: string[] = [];
 		const harness = await createHarness({
 			extensionFactories: [
-				(pi) => {
-					pi.on("turn_end", () => {
+				(nycode) => {
+					nycode.on("turn_end", () => {
 						if (handled) return;
 						handled = true;
 						return {
@@ -271,8 +271,8 @@ describe("AgentSession actionable boundaries", () => {
 		const requests: string[] = [];
 		const harness = await createHarness({
 			extensionFactories: [
-				(pi) => {
-					pi.on("agent_before_settle", () => {
+				(nycode) => {
+					nycode.on("agent_before_settle", () => {
 						if (requested) return;
 						requested = true;
 						return {
@@ -315,16 +315,16 @@ describe("AgentSession actionable boundaries", () => {
 		const requests: string[] = [];
 		const harness = await createHarness({
 			extensionFactories: [
-				(pi) => {
-					pi.on("agent_end", () => {
+				(nycode) => {
+					nycode.on("agent_end", () => {
 						if (!firstRun) return;
 						firstRun = false;
-						pi.sendMessage(
+						nycode.sendMessage(
 							{ customType: "agent-end-context", content: "queued after agent end", display: false },
 							{ triggerTurn: false },
 						);
 					});
-					pi.on("agent_before_settle", (event) => {
+					nycode.on("agent_before_settle", (event) => {
 						if (continued) return;
 						continued = true;
 						expect(JSON.stringify(event.context.pendingMessages)).toContain("queued after agent end");
@@ -356,11 +356,11 @@ describe("AgentSession actionable boundaries", () => {
 		const requests: string[] = [];
 		const harness = await createHarness({
 			extensionFactories: [
-				(pi) => {
-					pi.on("agent_before_settle", () => {
+				(nycode) => {
+					nycode.on("agent_before_settle", () => {
 						if (handled) return;
 						handled = true;
-						pi.sendUserMessage("queued follow-up", { deliverAs: "followUp" });
+						nycode.sendUserMessage("queued follow-up", { deliverAs: "followUp" });
 						return {
 							entries: [
 								{
@@ -402,20 +402,20 @@ describe("AgentSession actionable boundaries", () => {
 		const lifecycle: string[] = [];
 		const harness = await createHarness({
 			extensionFactories: [
-				(pi) => {
-					pi.on("agent_start", () => {
+				(nycode) => {
+					nycode.on("agent_start", () => {
 						lifecycle.push("start");
 					});
-					pi.on("agent_settled", (_event, ctx) => {
+					nycode.on("agent_settled", (_event, ctx) => {
 						lifecycle.push(`settled-first:${ctx.isIdle()}`);
 						if (triggered) return;
 						triggered = true;
-						pi.sendMessage(
+						nycode.sendMessage(
 							{ customType: "settled-trigger", content: "start later", display: false },
 							{ triggerTurn: true },
 						);
 					});
-					pi.on("agent_settled", (_event, ctx) => {
+					nycode.on("agent_settled", (_event, ctx) => {
 						lifecycle.push(`settled-second:${ctx.isIdle()}`);
 					});
 				},
@@ -447,8 +447,8 @@ describe("AgentSession actionable boundaries", () => {
 		const harness = await createHarness({
 			tools: [tool],
 			extensionFactories: [
-				(pi) => {
-					pi.on("turn_end", (event, ctx) => {
+				(nycode) => {
+					nycode.on("turn_end", (event, ctx) => {
 						const user = [...ctx.sessionManager.getBranch()]
 							.reverse()
 							.find((entry) => entry.type === "message" && entry.message.role === "user");
@@ -480,8 +480,8 @@ describe("AgentSession actionable boundaries", () => {
 		let turnEnds = 0;
 		const harness = await createHarness({
 			extensionFactories: [
-				(pi) => {
-					pi.on("turn_end", (event) => {
+				(nycode) => {
+					nycode.on("turn_end", (event) => {
 						turnEnds++;
 						expect(event.outcome).toBe("error");
 						return { entries: [{ type: "custom", customType: "failure-boundary", data: true }] };
@@ -509,8 +509,8 @@ describe("AgentSession actionable boundaries", () => {
 			models: [{ id: "faux-1", contextWindow: 10_000, maxTokens: 100 }],
 			settings: { compaction: { enabled: true, keepRecentTokens: 1, reserveTokens: 300 } },
 			extensionFactories: [
-				(pi) => {
-					pi.on("message_end", (event) => {
+				(nycode) => {
+					nycode.on("message_end", (event) => {
 						if (event.message.role !== "assistant") return;
 						return {
 							message: {
@@ -519,7 +519,7 @@ describe("AgentSession actionable boundaries", () => {
 							},
 						};
 					});
-					pi.on("turn_end", (event) => {
+					nycode.on("turn_end", (event) => {
 						if (handled) return;
 						handled = true;
 						return {
@@ -544,8 +544,8 @@ describe("AgentSession actionable boundaries", () => {
 			models: [{ id: "faux-1", contextWindow: 5_000, maxTokens: 100 }],
 			settings: { compaction: { enabled: true, keepRecentTokens: 1, reserveTokens: 0 } },
 			extensionFactories: [
-				(pi) => {
-					pi.on("message_end", (event) => {
+				(nycode) => {
+					nycode.on("message_end", (event) => {
 						if (event.message.role !== "assistant") return;
 						return {
 							message: {
@@ -554,7 +554,7 @@ describe("AgentSession actionable boundaries", () => {
 							},
 						};
 					});
-					pi.on("turn_end", (_event, ctx) => {
+					nycode.on("turn_end", (_event, ctx) => {
 						if (handled) return;
 						handled = true;
 						const user = [...ctx.sessionManager.getBranch()]
@@ -631,11 +631,11 @@ describe("AgentSession actionable boundaries", () => {
 		const requests: string[] = [];
 		const harness = await createHarness({
 			extensionFactories: [
-				(pi) => {
-					pi.on("agent_before_settle", () => {
+				(nycode) => {
+					nycode.on("agent_before_settle", () => {
 						if (handled) return;
 						handled = true;
-						pi.sendMessage(
+						nycode.sendMessage(
 							{ customType: "pending-boundary", content: "persist before continue", display: false },
 							{ triggerTurn: false },
 						);
@@ -666,11 +666,11 @@ describe("AgentSession actionable boundaries", () => {
 		let handled = false;
 		const harness = await createHarness({
 			extensionFactories: [
-				(pi) => {
-					pi.on("agent_before_settle", (_event, ctx) => {
+				(nycode) => {
+					nycode.on("agent_before_settle", (_event, ctx) => {
 						if (handled) return;
 						handled = true;
-						pi.sendUserMessage("still queued", { deliverAs: "followUp" });
+						nycode.sendUserMessage("still queued", { deliverAs: "followUp" });
 						const targets = ctx.sessionManager
 							.getBranch()
 							.flatMap((entry) =>
@@ -707,8 +707,8 @@ describe("AgentSession actionable boundaries", () => {
 		const release = deferred();
 		const harness = await createHarness({
 			extensionFactories: [
-				(pi) => {
-					pi.on("agent_before_settle", async () => {
+				(nycode) => {
+					nycode.on("agent_before_settle", async () => {
 						started.resolve();
 						await release.promise;
 						return {
@@ -790,8 +790,8 @@ describe("durable length recovery", () => {
 			settings: { compaction: { keepRecentTokens: 1, reserveTokens: 0 } },
 			tools: [tool],
 			extensionFactories: [
-				(pi) => {
-					pi.on("session_before_compact", (event) => ({
+				(nycode) => {
+					nycode.on("session_before_compact", (event) => ({
 						compaction: {
 							summary: "recovered input",
 							firstKeptEntryId: event.preparation.firstKeptEntryId,
@@ -832,19 +832,19 @@ describe("durable length recovery", () => {
 			models: [{ id: "faux-1", contextWindow: 1000, maxTokens: 100 }],
 			settings: { compaction: { keepRecentTokens: 1, reserveTokens: 0 } },
 			extensionFactories: [
-				(pi) => {
-					pi.on("session_before_compact", (event) => ({
+				(nycode) => {
+					nycode.on("session_before_compact", (event) => ({
 						compaction: {
 							summary: "recovered input",
 							firstKeptEntryId: event.preparation.firstKeptEntryId,
 							tokensBefore: event.preparation.tokensBefore,
 						},
 					}));
-					pi.on("agent_end", (event) => {
+					nycode.on("agent_end", (event) => {
 						if (queued || !event.messages.some((message) => getMessageText(message) === "first recovered"))
 							return;
 						queued = true;
-						pi.sendUserMessage("distinct follow-up", { deliverAs: "followUp" });
+						nycode.sendUserMessage("distinct follow-up", { deliverAs: "followUp" });
 					});
 				},
 			],
@@ -897,8 +897,8 @@ describe("durable length recovery", () => {
 			models: [{ id: "faux-1", contextWindow: 1_000, maxTokens: 100 }],
 			settings: { compaction: { enabled: true, keepRecentTokens: 1, reserveTokens: 0 } },
 			extensionFactories: [
-				(pi) => {
-					pi.on("session_before_compact", () => ({ cancel: true }));
+				(nycode) => {
+					nycode.on("session_before_compact", () => ({ cancel: true }));
 				},
 			],
 		});
@@ -933,8 +933,8 @@ describe("durable length recovery", () => {
 			models: [{ id: "faux-1", contextWindow: 1_000, maxTokens: 100 }],
 			settings: { compaction: { enabled: true, keepRecentTokens: 1, reserveTokens: 0 } },
 			extensionFactories: [
-				(pi) => {
-					pi.on("turn_end", (event) => {
+				(nycode) => {
+					nycode.on("turn_end", (event) => {
 						if (replaced || event.outcome !== "error") return;
 						replaced = true;
 						overflowId = event.messageEntryId;
@@ -948,7 +948,7 @@ describe("durable length recovery", () => {
 							],
 						};
 					});
-					pi.on("session_before_compact", (event) => ({
+					nycode.on("session_before_compact", (event) => ({
 						compaction: {
 							summary: "recovered overflow",
 							firstKeptEntryId: event.preparation.firstKeptEntryId,
@@ -979,11 +979,11 @@ describe("durable length recovery", () => {
 		const harness = await createHarness({
 			settings: { retry: { enabled: true, maxRetries: 2, baseDelayMs: 1 } },
 			extensionFactories: [
-				(pi) => {
-					pi.on("turn_end", (event) => {
+				(nycode) => {
+					nycode.on("turn_end", (event) => {
 						if (queued || event.outcome !== "error") return;
 						queued = true;
-						pi.sendUserMessage("queued follow-up", { deliverAs: "followUp" });
+						nycode.sendUserMessage("queued follow-up", { deliverAs: "followUp" });
 					});
 				},
 			],

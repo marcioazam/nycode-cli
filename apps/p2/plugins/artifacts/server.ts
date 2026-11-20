@@ -2,7 +2,7 @@
 // `Artifacts` (people list, read and remove them; the session's worker does its agent's tools), each html artifact as
 // the pages showing it hold it (`ArtifactPage`: its state, its side of the agent's requests, what it reports; the open
 // pages kept by `pages.ts`), and `/artifact-frame`, which serves an html version into its sandboxed frame (`frame.ts`).
-import { int, obj, str, unknown } from "@earendil-works/pi-schema";
+import { int, obj, str, unknown } from "@nycode/schema";
 import {
 	type Ctx,
 	canSend,

@@ -1,6 +1,6 @@
-import type { AgentTool } from "@earendil-works/pi-agent-core";
-import { fauxAssistantMessage, fauxToolCall } from "@earendil-works/pi-ai";
-import type { ExtensionAPI, InputEvent } from "@earendil-works/pi-coding-agent";
+import type { AgentTool } from "@nycode/agent-core";
+import { fauxAssistantMessage, fauxToolCall } from "@nycode/ai";
+import type { ExtensionAPI, InputEvent } from "@nycode/coding-agent";
 import { Type } from "typebox";
 import { afterEach, describe, expect, it } from "vitest";
 import { createHarness, getAssistantTexts, getMessageText, getUserTexts, type Harness } from "./harness.ts";
@@ -14,7 +14,7 @@ async function createWaitingHarness(
 		tools?: AgentTool[];
 		extensionFactories?: Harness["session"]["extensionRunner"] extends never
 			? never
-			: Array<(pi: ExtensionAPI) => void>;
+			: Array<(nycode: ExtensionAPI) => void>;
 	} = {},
 ): Promise<{
 	harness: Harness;
@@ -74,8 +74,8 @@ describe("AgentSession queue characterization", () => {
 		const commandRuns: string[] = [];
 		const harness = await createHarness({
 			extensionFactories: [
-				(pi) => {
-					pi.registerCommand("testcmd", {
+				(nycode) => {
+					nycode.registerCommand("testcmd", {
 						description: "Test command",
 						handler: async (args) => {
 							commandRuns.push(args);
@@ -97,8 +97,8 @@ describe("AgentSession queue characterization", () => {
 		let extensionApi: ExtensionAPI | undefined;
 		const waiting = await createWaitingHarness({
 			extensionFactories: [
-				(pi) => {
-					extensionApi = pi;
+				(nycode) => {
+					extensionApi = nycode;
 				},
 			],
 		});
@@ -164,8 +164,8 @@ describe("AgentSession queue characterization", () => {
 		const inputEvents: Array<Pick<InputEvent, "text" | "source" | "streamingBehavior">> = [];
 		const waiting = await createWaitingHarness({
 			extensionFactories: [
-				(pi) => {
-					pi.on("input", (event) => {
+				(nycode) => {
+					nycode.on("input", (event) => {
 						inputEvents.push({
 							text: event.text,
 							source: event.source,
@@ -473,8 +473,8 @@ describe("AgentSession queue characterization", () => {
 	it("throws when queueing an extension command with steer", async () => {
 		const harness = await createHarness({
 			extensionFactories: [
-				(pi) => {
-					pi.registerCommand("testcmd", {
+				(nycode) => {
+					nycode.registerCommand("testcmd", {
 						description: "Test command",
 						handler: async () => {},
 					});
@@ -491,8 +491,8 @@ describe("AgentSession queue characterization", () => {
 	it("throws when queueing an extension command with followUp", async () => {
 		const harness = await createHarness({
 			extensionFactories: [
-				(pi) => {
-					pi.registerCommand("testcmd", {
+				(nycode) => {
+					nycode.registerCommand("testcmd", {
 						description: "Test command",
 						handler: async () => {},
 					});
@@ -510,11 +510,11 @@ describe("AgentSession queue characterization", () => {
 		let sent = false;
 		const harness = await createHarness({
 			extensionFactories: [
-				(pi: ExtensionAPI) => {
-					pi.on("agent_end", async () => {
+				(nycode: ExtensionAPI) => {
+					nycode.on("agent_end", async () => {
 						if (sent) return;
 						sent = true;
-						pi.sendUserMessage("conflict report", { deliverAs: "followUp" });
+						nycode.sendUserMessage("conflict report", { deliverAs: "followUp" });
 					});
 				},
 			],

@@ -1,6 +1,6 @@
 // The session's lock on its worker: followed from the server's `SessionLock` and mirrored into the session's Durable
 // state (`SessionLockDoc`), where the tool guard and the prompt read it at each use.
-import type { Harness } from "@earendil-works/pi-durable";
+import type { Harness } from "@nycode/durable";
 import {
 	type Context,
 	type Ctx,

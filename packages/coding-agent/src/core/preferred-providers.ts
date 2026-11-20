@@ -1,6 +1,6 @@
 /**
  * Preferred partner providers and the order provider lists show them in. Kept free of UI code so the list can move
- * to pi-ai once provider lists are offered there.
+ * to nycode-ai once provider lists are offered there.
  */
 
 import { RADIUS_PROVIDER_ID } from "./radius.ts";

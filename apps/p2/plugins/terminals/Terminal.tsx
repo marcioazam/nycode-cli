@@ -162,7 +162,7 @@ function cssColor(element: HTMLElement, property: string, fallback: number): num
 /**
  * Block elements (U+2580–U+259F) as rectangles of the cell in eighths, [left, top, right, bottom], or a shade's
  * opacity. Font glyphs for them stop short of the line box and come from fallback fonts with other metrics, so half
- * block art (Pi's logo) gets gaps and offsets; terminals draw these themselves.
+ * block art (Nycode's logo) gets gaps and offsets; terminals draw these themselves.
  */
 const BLOCKS: Record<string, [number, number, number, number][] | number> = {
 	"▀": [[0, 0, 8, 4]],
@@ -1420,7 +1420,7 @@ export function TerminalView({
 						onPointerDown={keepFocus}
 						onClick={() => session.current?.attach(terminal.id)}
 					>
-						{terminal.agent && <span className="terminal-agent">Pi</span>}
+						{terminal.agent && <span className="terminal-agent">Nycode</span>}
 						{label(terminal)}
 					</button>
 				))}

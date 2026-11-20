@@ -2,9 +2,9 @@
 // before every call, so no tool repeats the checks. There is no per-turn authority: whoever may send input in a session
 // may have its agent call every tool it has; what a session's agents may reach is decided by its tool selection, its
 // location (a sandbox) and its lock.
-import type { Context } from "@earendil-works/chord/context";
-import type { JsonValue } from "@earendil-works/chord/json";
-import type { Extension, ToolExecutionResult, ToolPark, ToolRegistration } from "@earendil-works/pi-durable";
+import type { Context } from "@nycode/chord/context";
+import type { JsonValue } from "@nycode/chord/json";
+import type { Extension, ToolExecutionResult, ToolPark, ToolRegistration } from "@nycode/durable";
 import { isTopLevel } from "./main-conversation.ts";
 import type { LockCapability } from "./session-lock.ts";
 import { sessionLock } from "./session-lock-doc.ts";

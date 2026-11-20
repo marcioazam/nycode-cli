@@ -1,7 +1,7 @@
 // Tool arguments typed from a TypeBox-built parameter schema. Durable does not depend on TypeBox: the schema below
-// has TypeBox 1.x's type shapes as its d.mts declare them; pi-schema's own tests check the shapes against TypeBox.
+// has TypeBox 1.x's type shapes as its d.mts declare them; nycode-schema's own tests check the shapes against TypeBox.
 
-import { defineTool, type ToolRegistration } from "@earendil-works/pi-durable";
+import { defineTool, type ToolRegistration } from "@nycode/durable";
 import { describe, expectTypeOf, it } from "vitest";
 
 interface TString {

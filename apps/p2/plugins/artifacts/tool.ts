@@ -2,8 +2,8 @@
 // session's html and md artifacts (kept on the server, `Artifacts`), show one in the transcript or open it beside the
 // chat (a view of its kind), and work with an html page open on some device: its errors, logs, state, and code run in
 // it. What the tools reach on the server comes in through `ArtifactBackend`.
-import { defineExtension, type ToolExecutionApi, type ToolNamespace } from "@earendil-works/pi-durable";
-import { arr, int, obj, opt, str, unknown } from "@earendil-works/pi-schema";
+import { defineExtension, type ToolExecutionApi, type ToolNamespace } from "@nycode/durable";
+import { arr, int, obj, opt, str, unknown } from "@nycode/schema";
 import { type Context, type JsonValue, unsafe } from "@p2/app/v1";
 import { defineP2Tool, type P2Tool } from "@p2/app/v1/worker";
 import { freeViewId, openView, readViews } from "../views/doc.ts";

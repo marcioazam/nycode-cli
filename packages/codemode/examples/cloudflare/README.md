@@ -1,8 +1,8 @@
-# pi-codemode on Cloudflare
+# nycode-codemode on Cloudflare
 
 This example has two Workers:
 
-- **`sandbox/`** deploys `CodemodeSandboxDurableObject` as its own Worker, `pi-codemode-sandbox`.
+- **`sandbox/`** deploys `CodemodeSandboxDurableObject` as its own Worker, `nycode-codemode-sandbox`.
   Scripts run there, in a separate isolate.
 - **`agent/`** has a `Session` Durable Object that owns the tools. It runs scripts through
   `RemoteCodemodeSandbox`, which keeps the tools and results in `Session` while the sandbox Worker
@@ -13,7 +13,7 @@ sandbox must be a separate Worker, and which limits apply.
 
 ## Try it locally
 
-Install `@earendil-works/pi-codemode` and `wrangler` in each directory, then start both Workers in
+Install `@nycode/codemode` and `wrangler` in each directory, then start both Workers in
 one process:
 
 ```sh

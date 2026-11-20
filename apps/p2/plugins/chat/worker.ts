@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
-import type { ImageContent, TextContent } from "@earendil-works/pi-ai";
-import type { Models } from "@earendil-works/pi-ai/models";
-import { getSupportedThinkingLevels } from "@earendil-works/pi-ai/models";
+import type { ImageContent, TextContent } from "@nycode/ai";
+import type { Models } from "@nycode/ai/models";
+import { getSupportedThinkingLevels } from "@nycode/ai/models";
 import {
 	type AgentState,
 	type ConversationId,
@@ -14,10 +14,10 @@ import {
 	type InboxItem,
 	type SubmissionId,
 	type TaskId,
-} from "@earendil-works/pi-durable";
-import { fitImage } from "@earendil-works/pi-durable/images/fit";
-import { type ImageProcessor, imageLimits } from "@earendil-works/pi-durable/tools";
-import { obj } from "@earendil-works/pi-schema";
+} from "@nycode/durable";
+import { fitImage } from "@nycode/durable/images/fit";
+import { type ImageProcessor, imageLimits } from "@nycode/durable/tools";
+import { obj } from "@nycode/schema";
 import type { JsonValue } from "@p2/app/v1";
 import {
 	type Author,
@@ -95,7 +95,7 @@ const Live = defineTypedState("p2.conversation.stats", {
 /**
  * The message text with its files in place, marked as Codex marks local images: each `attachment:` reference becomes
  * `<image name=[Image #N] path="…">`, the image itself (when the conversation's model accepts images, fitted to its
- * limits as pi fits them), then `</image>`; a file of another type becomes `<file name=[File #N] path="…" />`. The
+ * limits as nycode fits them), then `</image>`; a file of another type becomes `<file name=[File #N] path="…" />`. The
  * path is the file's copy where the conversation's tools run; a later reference to the same file is its name alone.
  * What fitting changed, or why an image is not shown, goes inside its tag. Files the text does not reference (clients
  * without references) follow the text. With a cap, the newest (last) images are inlined; the others are only marked.
@@ -186,7 +186,7 @@ export default defineFacet((host) => {
 			const live = self.state(Live);
 			/** The view's model from the catalog: name, window and levels, never provider configuration. */
 			const modelMeta = (view: ConversationView | null): ModelMeta | null => {
-				const ref = (view?.docs["pi.agent"] as AgentState | undefined)?.model;
+				const ref = (view?.docs["nycode.agent"] as AgentState | undefined)?.model;
 				const model = ref ? models()?.getModel(ref.provider, ref.modelId) : undefined;
 				return model
 					? {
@@ -274,7 +274,7 @@ export default defineFacet((host) => {
 				abortCompaction: async (ctx) => {
 					const { harness: durable } = target();
 					// The live compaction tasks of this conversation, as its view shows them.
-					const running = view.value?.docs["pi.live"] as { compactions?: { taskId: number }[] } | undefined;
+					const running = view.value?.docs["nycode.live"] as { compactions?: { taskId: number }[] } | undefined;
 					let aborted = 0;
 					for (const { taskId } of running?.compactions ?? [])
 						if ((await durable.abortTask(taskId as TaskId, ctx)) === "marked") {
@@ -503,7 +503,7 @@ export default defineFacet((host) => {
 					}),
 				send: ({ attachments, ...input }, ctx) =>
 					call(async () => {
-						// As Pi Mobile: a message has text or attachments.
+						// As Nycode Mobile: a message has text or attachments.
 						if (!input.text.trim() && !attachments?.length) throw new Error("Invalid content");
 						await writable(ctx);
 						for (const route of routers.value.values()) {
@@ -539,7 +539,7 @@ export default defineFacet((host) => {
 						await writable(ctx);
 						await chat.configure(change, ctx);
 						// The main conversation's model is the session's: the sidebar and the next worker start use it. Either
-						// field alone updates it (Pi Mobile's configure).
+						// field alone updates it (Nycode Mobile's configure).
 						if (
 							(change.model || change.thinkingLevel) &&
 							conversation === (await mainConversation(harness().durable, ctx))

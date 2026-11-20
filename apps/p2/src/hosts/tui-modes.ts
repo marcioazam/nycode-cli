@@ -20,7 +20,7 @@ export const TERMINAL_RESET =
 	"\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l\x1b[?1004l\x1b[?7h\x1b[?2004l\x1b[?25h\x1b[?2026l\x1b[0m\x1b[r\x1b[?1049l";
 
 /**
- * The kitty keyboard flags ProcessTerminal pushes (pi-tui terminal.ts, `DESIRED_KITTY_KEYBOARD_PROTOCOL_FLAGS`), and
+ * The kitty keyboard flags ProcessTerminal pushes (nycode-tui terminal.ts, `DESIRED_KITTY_KEYBOARD_PROTOCOL_FLAGS`), and
  * their pop. The main and alternate screens keep separate keyboard-mode stacks (kitty keyboard protocol spec), and
  * the launcher pushes on the main screen before the worker enters the alternate one.
  */

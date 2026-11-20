@@ -1,7 +1,7 @@
 // The owner's telemetry (server): `Traces` over the server's telemetry store (`ServerParts.telemetry`), bounded. The
 // owner reads everything; a session's worker (its agent's tools) reads it only while the session is neither shared nor
 // locked, checked at each call: sharing the session later cuts its agent off at once.
-import type { AttributeValue, StoredSpan, StoredTrace, TelemetryStore } from "@earendil-works/pi-telemetry";
+import type { AttributeValue, StoredSpan, StoredTrace, TelemetryStore } from "@nycode/telemetry";
 import { ChordError, type Ctx, defineFacet, forbidden, invalid, isOwner, isWorker } from "@p2/app/v1";
 import { serverOf } from "@p2/app/v1/server";
 import { SessionLocks } from "../sessions/contract.ts";
@@ -119,7 +119,7 @@ function summary(trace: StoredTrace): TraceSummary {
 }
 
 /**
- * A stored span as the contract carries it: the store's attribute records may hold `undefined` values (pi-telemetry's
+ * A stored span as the contract carries it: the store's attribute records may hold `undefined` values (nycode-telemetry's
  * `SpanAttributes` allows them, a stored span never has one), which no schema value is; they are left out.
  */
 function plain(span: StoredSpan): Trace["spans"][number] {
@@ -147,6 +147,6 @@ function defined(attributes: StoredSpan["attributes"]): Attributes {
 /** An attribute's value as the contract types it. */
 function plainValue(value: AttributeValue): Attributes[string] {
 	if (typeof value !== "object") return value;
-	// The stored array as it is: pi-telemetry types it readonly, the contract's schema type is the same array without it.
+	// The stored array as it is: nycode-telemetry types it readonly, the contract's schema type is the same array without it.
 	return value as string[] | number[] | boolean[];
 }

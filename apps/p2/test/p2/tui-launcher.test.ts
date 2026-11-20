@@ -98,7 +98,7 @@ test(
 		for (const char of "hello terminal") terminal.sendInput(char);
 		terminal.sendInput("\r");
 		await poll(async () => (await screen()).includes("Echo: hello terminal"), 20000, "bundled chat answer");
-		// pi's footer: conversation context against the owner's model catalog, model on the right.
+		// nycode's footer: conversation context against the owner's model catalog, model on the right.
 		await poll(async () => /\d%\/\d/.test(await screen()));
 		assert((await screen()).includes("(faux) faux-1"));
 		for (const char of "unsent draft") terminal.sendInput(char);
@@ -121,7 +121,7 @@ test(
 		terminal.sendInput("\x15");
 		for (const char of "slow stream") terminal.sendInput(char);
 		terminal.sendInput("\r");
-		// pi's working indicator in the editor border.
+		// nycode's working indicator in the editor border.
 		await poll(async () => (await screen()).includes("Working..."));
 		for (const char of "queued text") terminal.sendInput(char);
 		// Alt+Enter in kitty's encoding: the virtual terminal reports the kitty protocol, which the worker now knows.
@@ -276,7 +276,7 @@ test(
 		await poll(async () => !(await screen()).includes("Connecting conversation"));
 		for (const char of "clicked draft") terminal.sendInput(char);
 		await poll(async () => (await draft()) === "clicked draft");
-		// An SGR click on the editor's line: pi-tui would focus the editor itself, bypassing the runtime's commands.
+		// An SGR click on the editor's line: nycode-tui would focus the editor itself, bypassing the runtime's commands.
 		const row = (await viewport()).findIndex((line) => line.includes("clicked draft")) + 1;
 		assert(row > 0);
 		terminal.sendInput(`\x1b[<0;4;${row}M`);

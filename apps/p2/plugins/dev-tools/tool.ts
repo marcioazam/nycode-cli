@@ -1,7 +1,7 @@
 // The `reload_plugins` tool: builds and rolls out p2 plugins (the built-in ones of a p2 checkout, the user root's that
 // agents write) and reports per plugin; and, in a session working on the p2 checkout, how p2 development applies edits.
-import { defineExtension, section } from "@earendil-works/pi-durable";
-import { arr, obj, opt, str } from "@earendil-works/pi-schema";
+import { defineExtension, section } from "@nycode/durable";
+import { arr, obj, opt, str } from "@nycode/schema";
 import type { Context } from "@p2/app/v1";
 import { defineP2Tool, isTopLevel, type P2Tool } from "@p2/app/v1/worker";
 import type { PluginReloadResult } from "./contract.ts";

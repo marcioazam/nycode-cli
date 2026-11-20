@@ -17,7 +17,7 @@ built-in plugins could be changed, only by owner-started turns, and only in dev 
    (`listRoots`: the first root wins; discovery reports the clash). The server creates the directory at start (mode
    0700). User plugins import p2 only through `@p2/app/v1` and its per-kind modules; the bundles resolve `react` and
    the other host packages from the app's and the repository's `node_modules` (`common.nodePaths`,
-   `src/hosts/bundles.ts`). `pluginFile(path)` from `@earendil-works/chord/plugins` resolves against the plugin's own
+   `src/hosts/bundles.ts`). `pluginFile(path)` from `@nycode/chord/plugins` resolves against the plugin's own
    directory in whichever root it lives (the facet's `plugin.dir`).
 2. **Writing** uses the ordinary coding tools, no plugin file tools: the agent works in the server's environment. A
    session working on this machine writes there directly; any other session spawns a subagent with `env: null` and

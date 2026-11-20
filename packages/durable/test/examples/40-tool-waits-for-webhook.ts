@@ -7,11 +7,11 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { BACKGROUND_CONTEXT, type Context } from "@earendil-works/chord/context";
-import type { ToolResultMessage } from "@earendil-works/pi-ai";
-import { createModels } from "@earendil-works/pi-ai/models";
-import { fauxAssistantMessage, fauxProvider, fauxToolCall } from "@earendil-works/pi-ai/providers/faux";
-import { obj, oneOf, str } from "@earendil-works/pi-schema";
+import type { ToolResultMessage } from "@nycode/ai";
+import { createModels } from "@nycode/ai/models";
+import { fauxAssistantMessage, fauxProvider, fauxToolCall } from "@nycode/ai/providers/faux";
+import { BACKGROUND_CONTEXT, type Context } from "@nycode/chord/context";
+import { obj, oneOf, str } from "@nycode/schema";
 import {
 	type Conversation,
 	createRegistry,
@@ -133,7 +133,7 @@ faux.setResponses([callCi("main"), fauxAssistantMessage("CI is green."), callCi(
 
 const registry = createRegistry();
 registry.install(defineExtension({ name: "ci", tools: [runCi] }));
-const directory = await mkdtemp(join(tmpdir(), "pi-durable-ci-"));
+const directory = await mkdtemp(join(tmpdir(), "nycode-durable-ci-"));
 const open = async () =>
 	Harness.open(
 		await openNodeSqliteStorage(join(directory, "session.sqlite")),

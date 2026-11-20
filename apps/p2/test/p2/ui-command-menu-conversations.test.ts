@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
-import type { ConversationView, LiveState } from "@earendil-works/pi-durable";
+import type { ConversationView, LiveState } from "@nycode/durable";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { Models } from "../../plugins/models/contract.ts";
@@ -51,8 +51,8 @@ describe("command menu conversations", { skip: !browserTests }, () => {
 			await chat.send({ text, requestId: `turn-${++turns}` }, BACKGROUND_CONTEXT);
 			await until(
 				chat.view,
-				// SAFETY: Durable keeps the run state in the "pi.live" document as a LiveState.
-				(view) => !(view?.docs["pi.live"] as LiveState | undefined)?.run && reports(view) >= before + reported,
+				// SAFETY: Durable keeps the run state in the "nycode.live" document as a LiveState.
+				(view) => !(view?.docs["nycode.live"] as LiveState | undefined)?.run && reports(view) >= before + reported,
 				30_000,
 			);
 		} finally {

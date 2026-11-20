@@ -9,9 +9,9 @@ sharing switches in the base, and calls the preset lock `default`), `book.md` wi
 
 # Before we begin {.preface}
 
-p3 gives one Pi to each person. Colin's plan has two dates. On December 1, Pi Roam: a person runs their own Pi,
+p3 gives one Nycode to each person. Colin's plan has two dates. On December 1, Nycode Roam: a person runs their own Nycode,
 reaches it through Radius, backs it up there. On December 18, Org Devices: an org has a machine, and each member
-creates their own Pi on it with "Create my Pi here" in Radius. Dana works at Acme. Her Pi is hers: her sessions, her
+creates their own Nycode on it with "Create my Nycode here" in Radius. Dana works at Acme. Her Nycode is hers: her sessions, her
 logins, her plugins. But Acme wants three things from it. It should start with Acme's plugins, MCP servers and models
 already set up. It should not share sessions with people outside Acme. And it should not quietly load code Acme never
 approved.
@@ -19,7 +19,7 @@ approved.
 The obvious answer is a permission system: plugins name their operations, the org writes rules over them, a policy
 plugin decides each call. The consultations showed what that costs. Every plugin author classifies every method, the
 base grows levels, a rule registry and a `may` member, and the result is still a guardrail, because code running in the
-Pi's process can skip any check. And it does not even cover the first wish: provisioning ("start with our MCP
+Nycode's process can skip any check. And it does not even cover the first wish: provisioning ("start with our MCP
 servers") is a separate mechanism.
 
 This design takes the other road. **Everything an org wants is a setting.** Plugins already need settings for their
@@ -40,13 +40,13 @@ the same data with a different lock.
    setting and any change to an org's entry with the error code `managed` ("Managed by Acme").
 4. **Enrollment is a root-owned file:** "you belong to org Acme, its server is this, its key is this; do nothing before
    you have synced". It holds no secrets and no settings.
-5. **The profile comes from the org server (Radius), signed with the org's key.** An enrolled Pi starts locked, fetches
+5. **The profile comes from the org server (Radius), signed with the org's key.** An enrolled Nycode starts locked, fetches
    its profile, installs the required plugins, writes the signed profile as its cache and unlocks. Later starts use the
    cache at once and follow the server live.
 6. **The gate is one tagged state:** `unmanaged`, `pending`, `ready`, `stale`, `revoked`. Sessions start, workers
    authorize and plugins load only when it is `unmanaged` or `ready`.
-7. **In the Pi it is a guardrail; at Radius it is real.** It stops Dana's agent and well-behaved plugins. A shell under
-   the Pi's Unix user, root, or an admitted plugin can ignore it. Sharing, peers and org-paid models are enforced at
+7. **In the Nycode it is a guardrail; at Radius it is real.** It stops Dana's agent and well-behaved plugins. A shell under
+   the Nycode's Unix user, root, or an admitted plugin can ignore it. Sharing, peers and org-paid models are enforced at
    Radius from the same profile.
 8. **The base must have one settings mechanism now,** before any org exists: one write path, a `managed` error, base
    switches for sharing and peers, and a gate that is always `unmanaged`. Retrofitting a single write path later is the
@@ -54,23 +54,23 @@ the same data with a different lock.
 9. **One mechanism covers every case Acme cares about.** Adding an MCP server, editing Acme's Jira entry, installing a
    plugin, writing one, sharing outside Acme, a live removal, and a lock on Acme's own plugin's setting all end in
    `Settings.set`, `admit` or a setting a plugin follows. Chapter IV traces each one through the code.
-10. **On an Org Device the shell is moved out of reach.** The Pi runs as a service under its own Unix user, from a
+10. **On an Org Device the shell is moved out of reach.** The Nycode runs as a service under its own Unix user, from a
    root-owned install; the agent's tools run only in Gondolin sandboxes with the folders Acme allows; Radius serves org
-   resources only to a Pi that proves a device-bound key. A patched copy gets nothing from Acme, and a member's agent
-   can no longer touch the Pi's files at all. Restriction plugins, picked in Radius, narrow it further.
+   resources only to a Nycode that proves a device-bound key. A patched copy gets nothing from Acme, and a member's agent
+   can no longer touch the Nycode's files at all. Restriction plugins, picked in Radius, narrow it further.
 :::
 
 ## Words used throughout
 
-A **member** is a person in an org, and the owner of one Pi. A **setting** is a named, typed piece of configuration a
+A **member** is a person in an org, and the owner of one Nycode. A **setting** is a named, typed piece of configuration a
 plugin declares with **`defineSetting`**. Its **merge** kind is **value** (one value) or **entries** (a record of named
 entries). The **user layer** holds the member's own values; the **managed layer** holds the org's, each with a
 **lock**: **default** (the org's value is a starting point) or **locked** (only the org's value counts). The
 **effective value** is what plugins read after both layers are combined. The **enrollment file** binds a machine's Pis
-to an org. The **profile** is the org's managed layer for one member's Pi, signed with the **org key**; the Pi keeps the
-last good one as its **cache**. The **gate** is the Pi's org state. **Admit** is the kit's check that decides at
+to an org. The **profile** is the org's managed layer for one member's Nycode, signed with the **org key**; the Nycode keeps the
+last good one as its **cache**. The **gate** is the Nycode's org state. **Admit** is the kit's check that decides at
 discovery which plugins load. A **guardrail** holds against the member's agent and well-behaved code; a **wall** holds
-even against a modified Pi, because Radius enforces it. On a locked-down machine the Pi runs as a **service user** of its own, and the
+even against a modified Nycode, because Radius enforces it. On a locked-down machine the Nycode runs as a **service user** of its own, and the
 agent's tools run in **sandboxes**, Gondolin VMs with chosen folders mounted. A **restriction plugin** is a required
 org plugin that narrows what members and their agents can do.
 
@@ -82,18 +82,18 @@ them, such as an MCP server in `mcp.servers`. The research note `authz-research.
 is not pursued.
 :::
 
-# What Acme Sets {#profile lede="The two files behind an org-managed Pi: the admin's enrollment and Acme's signed profile."}
+# What Acme Sets {#profile lede="The two files behind an org-managed Nycode: the admin's enrollment and Acme's signed profile."}
 
-Two documents make Dana's Pi Acme's. The first sits on the machine and never changes: it says which org the machine's
+Two documents make Dana's Nycode Acme's. The first sits on the machine and never changes: it says which org the machine's
 Pis belong to. The second lives in Radius, changes whenever Acme's admin edits it, and says what Acme wants. The split
 matters. The machine admin decides once that a machine is Acme's. Acme's admin then edits one profile in Radius, and
-every member's Pi follows it live, with no agent on the machine keeping files in sync.
+every member's Nycode follows it live, with no agent on the machine keeping files in sync.
 
 ## The enrollment file
 
 On an Org Device, the Device's own setup (running as root, with the org's service token) writes this file once. On a
 member's laptop, the org's device management (MDM: the tool an IT department uses to push files and settings to
-company laptops) delivers it. Without the file, a Pi is personal and unmanaged, as on December 1.
+company laptops) delivers it. Without the file, a Nycode is personal and unmanaged, as on December 1.
 
 ```json
 // PROPOSED · /etc/p3/enrollment.json, owned by root, mode 0644, parent directories root-owned
@@ -108,25 +108,25 @@ company laptops) delivers it. Without the file, a Pi is personal and unmanaged, 
 
 It holds no secrets. `orgKey` is the public key profiles are signed with. `pluginSources` limits where the org may push
 code from: a profile naming a plugin outside these prefixes is refused, even when signed. The path is fixed in the base
-code: no flag and no environment variable can point the Pi at another file, so a member's agent cannot enroll the Pi
+code: no flag and no environment variable can point the Nycode at another file, so a member's agent cannot enroll the Nycode
 somewhere else or skip enrollment.
 
-The Pi's own credential is not in the file. "Create my Pi here" in Radius, or Dana's Radius sign-in on the gate page,
-gives her Pi its own token, kept in the Pi's data directory. A shared token in a machine-wide file would be wrong: the
+The Nycode's own credential is not in the file. "Create my Nycode here" in Radius, or Dana's Radius sign-in on the gate page,
+gives her Nycode its own token, kept in the Nycode's data directory. A shared token in a machine-wide file would be wrong: the
 profile is per member.
 
 ## The profile
 
-Radius resolves Acme's groups to one profile per member and Pi. Here is Dana's:
+Radius resolves Acme's groups to one profile per member and Nycode. Here is Dana's:
 
 ```json
-// PROPOSED · the profile Radius serves to Dana's Pi
+// PROPOSED · the profile Radius serves to Dana's Nycode
 {
   "payload": {
     "org": "acme",
     "orgName": "Acme",
     "member": "dana@acme.com",
-    "pi": "pi_7f3a",
+    "nycode": "nycode_7f3a",
     "revision": 42,
     "issuedAt": "2026-12-18T09:00:00Z",
     "maxOffline": null,
@@ -157,29 +157,29 @@ Radius resolves Acme's groups to one profile per member and Pi. Here is Dana's:
 
 Read line by line, it says:
 
-| Setting | Lock | Effect on Dana's Pi |
+| Setting | Lock | Effect on Dana's Nycode |
 | --- | --- | --- |
 | `p3.plugins` | locked | `acme-tools` and `acme-deploy` are installed at the pinned ref and hash. `acme-reviews` is allowed: offered in the catalog, installed on request. Nothing else may be installed. |
 | `p3.plugins.own` | locked `false` | Plugins Dana or her agent write do not load: only approved builds run. |
 | `mcp.servers` | locked | Jira and Linear are connected; Dana cannot add a server. |
 | `models.providers` | locked | Only Radius's model gateway; Acme's provider keys stay at Radius. |
 | `p3.sharing.audience` | locked `"org"` | Sessions can be shared with Acme members only. |
-| `p3.peers.audience` | locked `"org"` | The Pi connects only to Pis of Acme members. |
+| `p3.peers.audience` | locked `"org"` | The Nycode connects only to Pis of Acme members. |
 | `prompt.instructions` | default | Acme's instructions are in every session; Dana may add her own beside them, not edit Acme's. |
 
 Every setting the profile does not name stays Dana's. Credentials are never in the profile: `auth: { radius: "jira" }`
 is a reference, resolved at Radius when the MCP plugin connects. Leaving Acme removes access at Radius, with nothing to
 wipe on the machine.
 
-`member` and `pi` bind the profile to Dana's Pi: a profile issued for another member or another Pi is refused, even
-when the signature is valid. `revision` only grows: the Pi never takes a lower one than it has. `maxOffline` is
+`member` and `nycode` bind the profile to Dana's Nycode: a profile issued for another member or another Nycode is refused, even
+when the signature is valid. `revision` only grows: the Nycode never takes a lower one than it has. `maxOffline` is
 optional; it is explained in chapter III.
 
 :::review | Review: who holds the org key
 The consultation says the profile is signed "with the org key, not with Radius's key, so Radius alone cannot forge
 one". That holds only if the private key is not at Radius: the admin signs in the browser with a key Radius never sees.
 If Radius's profile editor signs with a per-org key it stores, the signature still stops edits of the cache on the
-machine, but a compromised Radius can push code to every member's Pi. Decision needed (Open Questions).
+machine, but a compromised Radius can push code to every member's Nycode. Decision needed (Open Questions).
 :::
 
 # Everything Is a Setting {#settings lede="One declaration per setting, two merge kinds, two locks, one write path: what plugin authors write, and what they do not."}
@@ -194,7 +194,7 @@ method that knows about locks.
 
 A setting is a token in the contract file of the plugin that owns it, like a `defineState` token: a name, a schema, a
 merge kind and an initial value. The plugin contributes it to the registry `SettingKinds`, from which the settings page
-renders its forms and which the Pi reports to the org server so its admin form knows the setting.
+renders its forms and which the Nycode reports to the org server so its admin form knows the setting.
 
 ```ts
 // PROPOSED · apps/p3/plugins/mcp/contract.ts (full file in chapter IV)
@@ -221,12 +221,12 @@ The effective value follows four rules:
 | (gate not open) | the initial value | none |
 
 A locked setting does not delete the member's values. They are kept and ignored, so when Acme unlocks
-`mcp.servers`, or Dana's Pi leaves Acme, her own servers come back. While the gate is closed (`pending`, `stale`,
+`mcp.servers`, or Dana's Nycode leaves Acme, her own servers come back. While the gate is closed (`pending`, `stale`,
 `revoked`), every setting reads its initial value; nothing from Dana's own configuration acts before Acme has spoken.
 
 ## The one write path
 
-`Settings` is a local object with empty params on the server: one per Pi, persisted, the only writer of the user
+`Settings` is a local object with empty params on the server: one per Nycode, persisted, the only writer of the user
 layer. Its one method, `set`, takes either a whole value or one entry of an entries setting, and refuses in this order:
 
 1. the gate is closed: `gated`, "Waiting for Acme";
@@ -278,9 +278,9 @@ later security asks for "no MCP servers except ours". The admin changes one word
 personal servers disconnect within a second, stay stored, and come back if the lock is ever lifted. There is no
 second mechanism for restrictions.
 
-# Enrolled, Locked, Ready {#gate lede="How a Pi waits for its org, unlocks, starts from its cache and follows updates, and the one kit change it needs."}
+# Enrolled, Locked, Ready {#gate lede="How a Nycode waits for its org, unlocks, starts from its cache and follows updates, and the one kit change it needs."}
 
-The enrollment file says "do nothing before you have synced". The Pi needs a single place that knows whether it has
+The enrollment file says "do nothing before you have synced". The Nycode needs a single place that knows whether it has
 synced, which every part consults: the start of a session, a worker's authorization, plugin loading, `Settings.set`.
 That place is the **gate**, a derived value of one base object, `OrgGate`.
 
@@ -288,11 +288,11 @@ That place is the **gate**, a derived value of one base object, `OrgGate`.
 
 ```text
 // PROPOSED · OrgGate.gate
-unmanaged                        no enrollment file: personal Pi, everything open
+unmanaged                        no enrollment file: personal Nycode, everything open
 pending { org, why }             enrolled, no valid profile yet: locked; the page shows "Connect to Acme" and why
 ready   { profile, live }        a valid profile is applied: open; live = following the server now, else from cache
 stale   { profile }              offline longer than the profile's maxOffline: locked again (only if Acme set one)
-revoked { org }                  Acme removed this member or Pi: locked; the data stays where it is
+revoked { org }                  Acme removed this member or Nycode: locked; the data stays where it is
 ```
 
 :::flow wide animate | The gate's states. Only `unmanaged` and `ready` are open; every other state runs no session and loads no plugin beyond the app's own.
@@ -302,7 +302,7 @@ box ready "ready" "profile applied, live or cached" accent
 row "Locked" muted
 box pending "pending" "enrolled, no valid profile"
 box stale "stale" "offline > maxOffline" dashed
-box revoked "revoked" "Acme removed the Pi"
+box revoked "revoked" "Acme removed the Nycode"
 arrow pending -> ready "first sync"
 arrow ready -> stale "too long offline"
 arrow stale -> ready "reconnect"
@@ -320,16 +320,16 @@ Locked means four things, all through hooks Chord already has or the one kit cha
 
 ## First start
 
-:::sequence animate | Dana's Pi on its first start. Nothing outside the app root runs before the accent step.
+:::sequence animate | Dana's Nycode on its first start. Nothing outside the app root runs before the accent step.
 actor start "start script" "base code"
 actor gate "OrgGate" "app root" accent
 actor radius "Radius" "org server" blue
 actor disk "data dir" muted
 start -> start: read /etc/p3/enrollment.json
 start -> gate: startServer (admit: app root only)
-gate -> radius: follow profile (Pi token)
+gate -> radius: follow profile (Nycode token)
 radius --> gate: signed profile, revision 42
-gate -> gate: check signature, member, pi, hashes, pluginSources
+gate -> gate: check signature, member, nycode, hashes, pluginSources
 gate -> disk: install acme-tools, acme-deploy into the org root
 gate => disk: write profile cache (atomic rename)
 gate -> start: gate ready: Apply (admit follows the profile)
@@ -337,8 +337,8 @@ gate -> start: gate ready: Apply (admit follows the profile)
 
 1. The start script (base code, not a plugin) reads the enrollment file before `startServer`, and the cache if there
    is one. With no cache the gate starts `pending`.
-2. `OrgGate` connects to `server` with the Pi's token. Without a token, the gate page asks Dana to sign in with Radius.
-3. It checks the profile: the signature against `orgKey`, `org`, `member` and `pi`, every plugin source under
+2. `OrgGate` connects to `server` with the Nycode's token. Without a token, the gate page asks Dana to sign in with Radius.
+3. It checks the profile: the signature against `orgKey`, `org`, `member` and `nycode`, every plugin source under
    `pluginSources`. A profile that fails is not used, and the gate page says why.
 4. It installs every required plugin at its pinned ref into the org root, and checks each installed tree against its
    `hash`. A required plugin that fails to install or build keeps the gate `pending`, with the reason on the page.
@@ -438,7 +438,7 @@ plugins = await app.host.get(Plugins, {}, context);
 `own()` reads the effective `p3.plugins.own`: from the cached profile before the host is up, from `Settings` after.
 `admits` (`apps/p3/src/admit.ts`, in chapter IV) is a few lines. The app root always loads. Nothing else loads while the gate is locked. In the org root, a
 plugin loads when its name is an org entry of `p3.plugins` and its tree matched its hash. In the member root, a
-plugin loads when the Pi is unmanaged, or when the effective `p3.plugins.own` is `true`.
+plugin loads when the Nycode is unmanaged, or when the effective `p3.plugins.own` is `true`.
 
 `p3.plugins.own` is how "no agent-written plugins" becomes enforceable: not by tracking who wrote a file, which no
 check can know, but by loading only approved builds. An org plugin edited in place no longer matches its hash: the base
@@ -489,9 +489,9 @@ exists on origin/main (checked again for this edition: `local`, `remote`, `hostK
 `persist` and `checkpointWhen`, `defineRegistry`, `keyedEntries`, `StoreSelf.state`, `self.registry`, `self.get`,
 `self.derive`, `self.on`, `self.onLive`, `self.open`, `self.follow`, `self.writable`, `self.contribute`, `PluginError`,
 `forbidden`,
-`useHold`, `useWatch`). Names from pi's other packages are real too: Durable's `defineTool` and its
-`ToolExecutionResult`, pi-mcp's `McpClient`, `StreamableHttpTransport`, `createMcpToolName`, `toLlmContent`,
-pi-schema's `compile`.
+`useHold`, `useWatch`). Names from nycode's other packages are real too: Durable's `defineTool` and its
+`ToolExecutionResult`, nycode-mcp's `McpClient`, `StreamableHttpTransport`, `createMcpToolName`, `toLlmContent`,
+nycode-schema's `compile`.
 
 ## What the admin fills in
 
@@ -502,21 +502,21 @@ Acme's admin opens the org's page in Radius. Each field becomes one place in the
 | Org | Name, id | Acme, `acme` | `orgName`, `org` |
 | Org | Signing key | `acme-2026-11` (see Open Questions) | `signature.key` |
 | Org | Plugin sources | `github.com/acme/` | `pluginSources` of the enrollment file |
-| Assignment | Profile per group | everyone in `acme-staff` | one profile per member and Pi |
+| Assignment | Profile per group | everyone in `acme-staff` | one profile per member and Nycode |
 | Plugins | Name, source (git URL and ref, or npm name and version), Required or Allowed | `acme-tools` and `acme-deploy` required, `acme-reviews` allowed | `p3.plugins` entries; Radius fetches each source and computes its `hash` on save |
 | Plugins | Members may add or write plugins | off | `p3.plugins` locked, `p3.plugins.own` locked `false` |
 | MCP servers | Name, URL, credential (a Radius connection), "only these servers" | Jira, Linear; only these | `mcp.servers` entries, locked |
 | Models | Providers, "only these" | Radius gateway; only this | `models.providers` entries, locked |
 | Sharing | Sessions may be shared with: anyone, members of Acme, nobody; locked | members of Acme; locked | `p3.sharing.audience` |
-| Peers | Pis this Pi may connect to: any, Acme's, none; locked | Acme's; locked | `p3.peers.audience` |
+| Peers | Pis this Nycode may connect to: any, Acme's, none; locked | Acme's; locked | `p3.peers.audience` |
 | Instructions | Name, text, members may add their own | `acme`; yes | `prompt.instructions` entries, default |
-| Offline | Lock a Pi after this many days without Radius | off | `maxOffline` |
+| Offline | Lock a Nycode after this many days without Radius | off | `maxOffline` |
 | Environments | Kinds allowed; folders that may be mounted (path, writable); hosts sandboxes may reach | sandboxes only; `~/work/acme` writable, `~/Documents/acme-specs` read-only; GitHub, npm, `*.acme.internal` | `environments.kinds`, `sandbox.folders`, `sandbox.allowHosts`, locked (chapter VI) |
 | Restriction plugins | Earendil's catalog and Acme's own; each with its settings | sandbox environments; tool rules blocking `mcp__linear__delete_*` and `session_export` | required `p3.plugins` entries; `toolRules.blocked` (chapter VI) |
 | Other settings | Setting name, value, lock | `deploy.targets`: staging and production, locked | `settings["deploy.targets"]` |
 
 The last row is what makes the design flexible: any setting any approved plugin declares can be managed, not a fixed
-list of switches. Radius learns the names and schemas from the Pis: after each sync a Pi reports the `SettingKinds` of
+list of switches. Radius learns the names and schemas from the Pis: after each sync a Nycode reports the `SettingKinds` of
 its loaded plugins (name, merge kind, JSON schema), and the form for `deploy.targets` is generated from that schema and
 checked against it on save.
 
@@ -525,13 +525,13 @@ checked against it on save.
 This is Dana's profile, complete. Hashes and the key are shortened; nothing else is left out.
 
 ```json
-// PROPOSED · served by Radius at GET /orgs/acme/pis/pi_7f3a/profile
+// PROPOSED · served by Radius at GET /orgs/acme/pis/nycode_7f3a/profile
 {
   "payload": {
     "org": "acme",
     "orgName": "Acme",
     "member": "dana@acme.com",
-    "pi": "pi_7f3a",
+    "nycode": "nycode_7f3a",
     "deviceKey": "p256:BHk2…",
     "revision": 42,
     "issuedAt": "2026-12-18T09:00:00Z",
@@ -595,7 +595,7 @@ This is Dana's profile, complete. Hashes and the key are shortened; nothing else
 ```
 
 The signature covers the canonical JSON of `payload` (keys sorted, no whitespace). `deviceKey` is the public half of
-the key Dana's Pi made at enrollment (chapter VI); Radius serves the profile, and every org resource, only to a Pi that
+the key Dana's Nycode made at enrollment (chapter VI); Radius serves the profile, and every org resource, only to a Nycode that
 proves it holds the private half.
 
 ## The enrollment file
@@ -643,9 +643,9 @@ The same as in chapter I, complete:
 import {
 	arr, defineRegistry, lit, local, map, method, obj, oneOf, PluginError, remote, type Schema, type Self, type Static,
 	str, type TableItem, union, unknown, type Watchable,
-} from "@earendil-works/chord";
-import type { JsonValue } from "@earendil-works/chord/json";
-import { compile, type Validator } from "@earendil-works/pi-schema";
+} from "@nycode/chord";
+import type { JsonValue } from "@nycode/chord/json";
+import { compile, type Validator } from "@nycode/schema";
 import { Server } from "./hosts.ts";
 
 /** A declared setting as the registry and the store see it. */
@@ -737,8 +737,8 @@ harness to say, from `managed`.
 // PROPOSED · apps/p3/plugins/settings/server.ts (app root)
 // The registry of declared settings, the store of the member's values with the managed layer on top, and the view.
 
-import { defineState, forbidden, keyedEntries, map, obj, PluginError, unknown } from "@earendil-works/chord";
-import type { JsonValue } from "@earendil-works/chord/json";
+import { defineState, forbidden, keyedEntries, map, obj, PluginError, unknown } from "@nycode/chord";
+import type { JsonValue } from "@nycode/chord/json";
 import { defineFacet, type P3Principal } from "@p3/app/v1";
 import { type Gate, type ManagedSetting, OrgGate } from "@p3/app/v1/org";
 import { type SettingKind, SettingKinds, Settings, SettingsView, type SettingWrite } from "@p3/app/v1/settings";
@@ -847,17 +847,17 @@ drops its entry.
 // The gate's contract and schemas (`@p3/app/v1/org`): the org's managed settings as the profile carries them, and the
 // five states of the gate.
 
-import { bool, lit, local, map, nul, num, obj, oneOf, type Static, str, union, unknown } from "@earendil-works/chord";
+import { bool, lit, local, map, nul, num, obj, oneOf, type Static, str, union, unknown } from "@nycode/chord";
 
 /** One managed setting in a profile. */
 export const ManagedSetting = obj({ lock: oneOf("default", "locked"), value: unknown() });
 
-/** A profile's payload, after the signature, the member, the Pi and the plugin sources were checked. */
+/** A profile's payload, after the signature, the member, the Nycode and the plugin sources were checked. */
 export const Profile = obj({
 	org: str(),
 	orgName: str(),
 	member: str(),
-	pi: str(),
+	nycode: str(),
 	deviceKey: str(),
 	revision: num(),
 	issuedAt: str(),
@@ -865,7 +865,7 @@ export const Profile = obj({
 	settings: map(ManagedSetting),
 });
 
-/** The Pi's org state. */
+/** The Nycode's org state. */
 export const Gate = union([
 	obj({ kind: lit("unmanaged") }),
 	obj({ kind: lit("pending"), org: str(), orgName: str(), why: str() }),
@@ -877,7 +877,7 @@ export const Gate = union([
 export type Gate = Static<typeof Gate>;
 export type ManagedSetting = Static<typeof ManagedSetting>;
 
-/** The Pi's org state, on the server. */
+/** The Nycode's org state, on the server. */
 export const OrgGate = local("p3.org-gate", { version: 1, params: {}, members: { gate: Gate } });
 ```
 
@@ -887,7 +887,7 @@ export const OrgGate = local("p3.org-gate", { version: 1, params: {}, members: {
 // PROPOSED · apps/p3/app/v1/plugins.ts
 // The plugin settings and the plugin service (`@p3/app/v1/plugins`): installs, writes and Apply go only through it.
 
-import { arr, bool, lit, local, map, method, nul, obj, oneOf, remote, type Static, str, union } from "@earendil-works/chord";
+import { arr, bool, lit, local, map, method, nul, obj, oneOf, remote, type Static, str, union } from "@nycode/chord";
 import { Server } from "./hosts.ts";
 import { defineSetting } from "./settings.ts";
 
@@ -958,8 +958,8 @@ export const PluginsView = remote("p3.plugins-view", {
 
 import { rm } from "node:fs/promises";
 import { join } from "node:path";
-import { forbidden, PluginError } from "@earendil-works/chord";
-import type { Context } from "@earendil-works/chord/context";
+import { forbidden, PluginError } from "@nycode/chord";
+import type { Context } from "@nycode/chord/context";
 import { defineFacet, type P3Principal, PluginManager } from "@p3/app/v1";
 import { OrgGate } from "@p3/app/v1/org";
 import { OwnPlugins, PluginEntries, type PluginEntry, Plugins, PluginsView } from "@p3/app/v1/plugins";
@@ -1002,7 +1002,7 @@ export default defineFacet<P3Principal>((host) => {
 					if (!mark?.entries.includes(request.name)) throw new PluginError("unknown_plugin", `${request.name} is not in the catalog`);
 					await installOrg(request.name, entries.value[request.name]!, ctx);
 				} else {
-					if (!own.value) throw refusedBy(OwnPlugins, "Plugins from other sources do not load on this Pi");
+					if (!own.value) throw refusedBy(OwnPlugins, "Plugins from other sources do not load on this Nycode");
 					if (mark?.lock === "locked") throw refusedBy(PluginEntries, "Only the catalog's plugins can be installed");
 					const [name] = await kit.install({ source: request.source, root: MEMBER_ROOT }, ctx);
 					await settings.set({ kind: "entry", name: PluginEntries.name, entry: name!, value: { source: request.source, hash: null, required: false } }, ctx);
@@ -1011,7 +1011,7 @@ export default defineFacet<P3Principal>((host) => {
 				await kit.apply(ctx);
 			},
 			write: async ({ plugin, path, content }, ctx) => {
-				if (!own.value) throw refusedBy(OwnPlugins, "Plugins written on this Pi do not load");
+				if (!own.value) throw refusedBy(OwnPlugins, "Plugins written on this Nycode do not load");
 				await writePluginFile(MEMBER_ROOT, plugin, path, content, ctx);   // stays inside the member root
 			},
 			reconcile: async (wanted, ctx) => {
@@ -1052,13 +1052,13 @@ export default defineFacet<P3Principal>((host) => {
 
 `catalogOf` lists every discovered plugin and every catalog entry with its state, and for each plugin that is not
 loaded it runs the same `admits` the kit runs and says why: "not in Acme's catalog", "edited since it was installed",
-"plugins written on this Pi do not load (managed by Acme)".
+"plugins written on this Nycode do not load (managed by Acme)".
 
 ```ts
 // PROPOSED · apps/p3/src/admit.ts (base code)
 // Which discovered plugins load: the kit asks `admits` at every discovery (the kit change of chapter III).
 
-import type { Plugin } from "@earendil-works/chord/plugins";
+import type { Plugin } from "@nycode/chord/plugins";
 import type { Gate } from "../app/v1/org.ts";
 
 /** What admission depends on: the gate, the org root's verified hashes, and the effective `p3.plugins.own`. */
@@ -1120,8 +1120,8 @@ cannot be pinned, and Radius refuses to save it as an org plugin.
 // Every tool error goes through `toolError`: a refusal that names a setting tells the model who manages it and that
 // retrying will not help.
 
-import { PluginError } from "@earendil-works/chord";
-import type { ToolExecutionResult } from "@earendil-works/pi-durable";
+import { PluginError } from "@nycode/chord";
+import type { ToolExecutionResult } from "@nycode/durable";
 import type { ManagedMark } from "@p3/app/v1/settings";
 
 /** The tool result for `error`, with `managed` (the view's marks) to say who manages the setting it names. */
@@ -1152,7 +1152,7 @@ run a command. With it, the model stops and tells Dana.
 // PROPOSED · apps/p3/plugins/mcp/contract.ts
 // The MCP plugin's setting, its connections on the server, and their tools for session workers.
 
-import { arr, local, map, method, nul, obj, oneOf, opt, remote, str, union, unknown } from "@earendil-works/chord";
+import { arr, local, map, method, nul, obj, oneOf, opt, remote, str, union, unknown } from "@nycode/chord";
 import { Server } from "@p3/app/v1/hosts";
 import { defineSetting } from "@p3/app/v1/settings";
 
@@ -1192,9 +1192,9 @@ export const McpToolsView = remote("mcp.tools", {
 // PROPOSED · apps/p3/plugins/mcp/server.ts
 // The connections: one MCP client per effective server, reconciled whenever the effective `mcp.servers` changes.
 
-import { forbidden, PluginError, type Reference } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import { McpClient, StreamableHttpTransport, type Tool } from "@earendil-works/pi-mcp";
+import { forbidden, PluginError, type Reference } from "@nycode/chord";
+import { BACKGROUND_CONTEXT } from "@nycode/chord/context";
+import { McpClient, StreamableHttpTransport, type Tool } from "@nycode/mcp";
 import { defineFacet, type P3Principal } from "@p3/app/v1";
 import { RadiusAuth } from "@p3/radius/contract";
 import { SettingKinds, setting } from "@p3/app/v1/settings";
@@ -1285,10 +1285,10 @@ store for a named secret. The Jira token never enters the profile, the settings 
 // PROPOSED · apps/p3/plugins/mcp/worker.ts
 // A session's MCP tools, and the agent's tool to add a server: both through server views, as the owner's session.
 
-import type { Reference } from "@earendil-works/chord";
-import { defineTool, type ToolRegistration } from "@earendil-works/pi-durable";
-import { createMcpToolName, toLlmContent } from "@earendil-works/pi-mcp";
-import { obj, str } from "@earendil-works/pi-schema";
+import type { Reference } from "@nycode/chord";
+import { defineTool, type ToolRegistration } from "@nycode/durable";
+import { createMcpToolName, toLlmContent } from "@nycode/mcp";
+import { obj, str } from "@nycode/schema";
 import { defineFacet, HarnessTools, local, type P3Principal } from "@p3/app/v1";
 import { SettingsView } from "@p3/app/v1/settings";
 import { toolError } from "../harness/refusals.ts";
@@ -1312,7 +1312,7 @@ export default defineFacet<P3Principal>((host) => {
 function addServer(settings: Reference<typeof SettingsView>): ToolRegistration {
 	return defineTool({
 		name: "mcp_add_server",
-		description: "Add a remote MCP server to this Pi. Its tools are available from the next turn.",
+		description: "Add a remote MCP server to this Nycode. Its tools are available from the next turn.",
 		parameters: obj({ name: str(), url: str() }),
 		async execute({ name, url }, _api, context) {
 			try {
@@ -1350,9 +1350,9 @@ applies on top of it (decision "No per-run authority").
 // PROPOSED · apps/p3/plugins/mcp/web.tsx
 // The MCP section of the settings page: drawn from the effective value and the managed marks, never from a guess.
 
-import { PluginError } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import { useHold, useWatch } from "@earendil-works/chord/react";
+import { PluginError } from "@nycode/chord";
+import { BACKGROUND_CONTEXT } from "@nycode/chord/context";
+import { useHold, useWatch } from "@nycode/chord/react";
 import { useState } from "react";
 import { SettingsView } from "@p3/app/v1/settings";
 import { McpServers, type McpServerConfig } from "./contract.ts";
@@ -1401,7 +1401,7 @@ export function McpSettings() {
 ```ts
 // PROPOSED · apps/p3/plugins/sharing/contract.ts
 
-import { arr, local, method, obj, oneOf, remote, str } from "@earendil-works/chord";
+import { arr, local, method, obj, oneOf, remote, str } from "@nycode/chord";
 import { Server } from "@p3/app/v1/hosts";
 import { defineSetting } from "@p3/app/v1/settings";
 
@@ -1430,7 +1430,7 @@ export const Sharing = remote("p3.sharing", {
 // PROPOSED · apps/p3/plugins/sharing/server.ts (app root)
 // Shares: refused by the audience setting before Radius is asked; ended when the setting tightens.
 
-import { arr, defineState, forbidden, obj } from "@earendil-works/chord";
+import { arr, defineState, forbidden, obj } from "@nycode/chord";
 import { defineFacet, type P3Principal } from "@p3/app/v1";
 import { RadiusOrg } from "@p3/radius/contract";
 import { refusedBy, SettingKinds, setting } from "@p3/app/v1/settings";
@@ -1468,10 +1468,10 @@ export default defineFacet<P3Principal>((host, facet) => {
 			shares: self.derive([list], ([doc]) => doc.shares),
 			share: async (request, ctx) => {
 				const now = audience.value;
-				if (now === "nobody") throw refusedBy(SharingAudience, "Sessions on this Pi cannot be shared");
+				if (now === "nobody") throw refusedBy(SharingAudience, "Sessions on this Nycode cannot be shared");
 				if (now === "org" && !(await radius.isMember({ email: request.invitee }, ctx)))
 					throw refusedBy(SharingAudience, `${request.invitee} is not a member of the org; sessions can be shared with members only`);
-				// Radius checks again from the profile it signed: a modified Pi gets the same answer.
+				// Radius checks again from the profile it signed: a modified Nycode gets the same answer.
 				const share = await radius.share(request, ctx);
 				await list.change((draft) => {
 					draft.shares.push(share);
@@ -1503,16 +1503,16 @@ export default defineFacet<P3Principal>((host, facet) => {
 ```
 
 ```ts
-// PROPOSED · Radius: POST /orgs/:org/pis/:pi/shares (the invite endpoint behind RadiusOrg.share)
+// PROPOSED · Radius: POST /orgs/:org/pis/:nycode/shares (the invite endpoint behind RadiusOrg.share)
 async function createShare(request: Request): Promise<Response> {
-	const pi = await authenticatePi(request);                 // a short-lived token minted against the device key
-	const profile = await profiles.current(pi.org, pi.member, pi.id);
+	const nycode = await authenticateNycode(request);                 // a short-lived token minted against the device key
+	const profile = await profiles.current(nycode.org, nycode.member, nycode.id);
 	const audience = profile.settings["p3.sharing.audience"]?.value ?? "anyone";
 	const { session, invitee, mode } = await request.json();
 	if (audience === "nobody") return refuse(403, "sharing_disabled");
-	if (audience === "org" && !(await orgs.isMember(pi.org, invitee))) return refuse(403, "outside_org");
+	if (audience === "org" && !(await orgs.isMember(nycode.org, invitee))) return refuse(403, "outside_org");
 	// Org-only shares need a Radius sign-in to redeem: no anonymous link, and membership is checked again at sign-in.
-	const grant = await grants.create({ pi: pi.id, session, invitee, mode, requireMember: audience === "org" ? pi.org : null });
+	const grant = await grants.create({ nycode: nycode.id, session, invitee, mode, requireMember: audience === "org" ? nycode.org : null });
 	return Response.json(grant);
 }
 ```
@@ -1522,7 +1522,7 @@ async function createShare(request: Request): Promise<Response> {
 ```ts
 // PROPOSED · github.com/acme/p3-deploy, contract.ts. Written by Acme's developers; nothing in it knows about orgs.
 
-import { local, map, method, obj, oneOf, str } from "@earendil-works/chord";
+import { local, map, method, obj, oneOf, str } from "@nycode/chord";
 import { defineSetting } from "@p3/app/v1/settings";
 
 export const DeployTarget = obj({ host: str(), branch: str(), approval: oneOf("none", "review") });
@@ -1539,7 +1539,7 @@ export const Deployer = local("acme.deployer", {
 ```ts
 // PROPOSED · github.com/acme/p3-deploy, server.ts
 
-import { PluginError } from "@earendil-works/chord";
+import { PluginError } from "@nycode/chord";
 import { defineFacet, type P3Principal } from "@p3/app/v1";
 import { SettingKinds, setting } from "@p3/app/v1/settings";
 import { Deployer, DeployTargets } from "./contract.ts";
@@ -1612,7 +1612,7 @@ for another way; tell the user to ask Acme's admin.
 
 The model answers Dana that Acme manages the MCP servers. If it tries `bash` instead, to edit a config file: there is
 none (MCP servers are a setting, not a file), and with the lock-down of chapter VI its shell runs in a sandbox that sees
-only Acme's allowed folders, not the Pi's data directory.
+only Acme's allowed folders, not the Nycode's data directory.
 
 ### (iii) Acme's Jira entry appears, connects, and cannot be edited
 
@@ -1646,11 +1646,11 @@ only Acme's allowed folders, not the Pi's data directory.
 **A plugin that is not allowed.** Dana pastes `https://github.com/someone/p3-weather` into "Install from a source".
 
 1. `Plugins.install({ kind: "source", … })`: `own.value` is `false` (Acme locked `p3.plugins.own`), so
-   `refusedBy(OwnPlugins, "Plugins from other sources do not load on this Pi")`. The page shows it with "Managed by
+   `refusedBy(OwnPlugins, "Plugins from other sources do not load on this Nycode")`. The page shows it with "Managed by
    Acme", because `managed["p3.plugins.own"]` exists.
 2. Suppose the tree got into the member root anyway (copied there before enrollment, or by a shell running as the
-   Pi's user without the lock-down). Discovery finds it; `admits` reaches the last line, `state.ownPlugins` is
-   `false`, and it does not load. The catalog lists it as "left-out: plugins written or installed on this Pi do not
+   Nycode's user without the lock-down). Discovery finds it; `admits` reaches the last line, `state.ownPlugins` is
+   `false`, and it does not load. The catalog lists it as "left-out: plugins written or installed on this Nycode do not
    load (managed by Acme)".
 3. And if someone put it into the org root under a catalog name? Its hash does not match: `recheck` drops it from
    `verified`, and `admits` refuses it.
@@ -1660,14 +1660,14 @@ only Acme's allowed folders, not the Pi's data directory.
 Dana asks for "a small plugin that shows the weather in the sidebar". The agent calls the plugin tool `plugin_write({
 plugin: "weather", path: "web.tsx", content: "…" })`.
 
-1. `PluginsView.write` → `Plugins.write`: `own.value` is `false`, so `refusedBy(OwnPlugins, "Plugins written on this Pi
+1. `PluginsView.write` → `Plugins.write`: `own.value` is `false`, so `refusedBy(OwnPlugins, "Plugins written on this Nycode
    do not load")`.
-2. `toolError` turns it into: **"Plugins written on this Pi do not load. The setting p3.plugins.own is managed by Acme
+2. `toolError` turns it into: **"Plugins written on this Nycode do not load. The setting p3.plugins.own is managed by Acme
    and locked. Do not retry or look for another way; tell the user to ask Acme's admin."**
 3. Without the lock-down, a determined agent could still write the files with its own file tools into the member
    root and call `plugin_apply`. Apply runs, the plugin is discovered, `admits` returns `false`, and the apply tool's
-   result lists `weather: left out: plugins written on this Pi do not load (managed by Acme)`. With the lock-down, the
-   write itself fails: the member root belongs to the Pi's service user and is in no sandbox's folders.
+   result lists `weather: left out: plugins written on this Nycode do not load (managed by Acme)`. With the lock-down, the
+   write itself fails: the member root belongs to the Nycode's service user and is in no sandbox's folders.
 
 ### (vi) Dana shares a session with an outside email
 
@@ -1676,17 +1676,17 @@ Dana opens the share sheet of a session and types `sam@partner.example`.
 1. `Sharing.share` → `Shares.share`. `audience.value` is `"org"`. `radius.isMember({ email: "sam@partner.example" })`
    answers `false`. The method throws `refusedBy(SharingAudience, "sam@partner.example is not a member of the org;
    sessions can be shared with members only")`, and the sheet shows it with "Managed by Acme".
-2. A modified Pi that skips that check reaches Radius's `createShare`. Radius loads the profile it signed for
-   `pi_7f3a`, finds `"org"`, asks its own membership table and answers `403 outside_org`. No grant, no link, no relay.
+2. A modified Nycode that skips that check reaches Radius's `createShare`. Radius loads the profile it signed for
+   `nycode_7f3a`, finds `"org"`, asks its own membership table and answers `403 outside_org`. No grant, no link, no relay.
 3. A grant made before the lock (when the audience was `"anyone"`) is ended by the `self.on(audience, …)` routine:
    `radius.revokeShare` for every invitee who is not a member. Radius also ends such grants itself when the profile
-   changes, so a Pi that is offline at that moment does not keep them alive.
+   changes, so a Nycode that is offline at that moment does not keep them alive.
 
 ### (vii) Acme removes Linear, live
 
 Acme's admin deletes the Linear row and saves. Radius signs revision 43.
 
-1. `OrgClient` receives it over the follow connection, checks the signature, `member`, `pi` and the plugin sources,
+1. `OrgClient` receives it over the follow connection, checks the signature, `member`, `nycode` and the plugin sources,
    and offers it. `OrgGate`'s routine writes the cache (settings first) and calls `plugins.reconcile` (nothing to
    install) and `plugins.apply`.
 2. `gate` changes, so `Settings.effective` changes: `mcp.servers` is now `{ jira }`.
@@ -1704,10 +1704,10 @@ The page's MCP section loses its Linear row in the same second, because it watch
 `acme-deploy` declares `deploy.targets` and reads it with `setting(self, DeployTargets)`. Its authors wrote the
 settings page form for it, as for any setting; they never mention orgs.
 
-1. Acme's admin opens "Other settings" in Radius. The setting is listed because Dana's Pi reported the `SettingKinds`
+1. Acme's admin opens "Other settings" in Radius. The setting is listed because Dana's Nycode reported the `SettingKinds`
    of its loaded plugins at its last sync, with the schema `map(DeployTarget)`. Radius renders the form from the
    schema; the admin adds `staging` and `production` and picks "locked".
-2. The profile carries `"deploy.targets": { "lock": "locked", "value": { … } }`. On Dana's Pi, `effectiveOf` returns
+2. The profile carries `"deploy.targets": { "lock": "locked", "value": { … } }`. On Dana's Nycode, `effectiveOf` returns
    exactly those two targets; `Deployer.targets` (a derive of the effective value) shows them; `deploy({ target:
    "my-box" })` fails with "No deploy target my-box" from the plugin's own check.
 3. Dana's attempt to add `my-box` on the settings page, or her agent's through a settings tool, ends in `Settings.set`
@@ -1717,10 +1717,10 @@ The plugin did one thing: it kept its configuration as a setting. That is the wh
 and orgs. A plugin that keeps its targets in a private file instead would escape the lock; Acme's answer is not to
 admit it.
 
-# Guardrails and Walls {#trust lede="Who this stops, who it does not, and what Radius enforces whatever the Pi does."}
+# Guardrails and Walls {#trust lede="Who this stops, who it does not, and what Radius enforces whatever the Nycode does."}
 
-Every check in the Pi runs in the Pi's process, as the Pi's Unix user. That decides what it can stop. The design is
-honest about it: in the Pi, managed settings are a guardrail; where Radius sits in the path, they are a wall.
+Every check in the Nycode runs in the Nycode's process, as the Nycode's Unix user. That decides what it can stop. The design is
+honest about it: in the Nycode, managed settings are a guardrail; where Radius sits in the path, they are a wall.
 
 ## Three adversaries
 
@@ -1728,12 +1728,12 @@ honest about it: in the Pi, managed settings are a guardrail; where Radius sits 
 the plugin tools, the share tool and file edits. `Settings.set` refuses locked settings. The base's install path
 refuses plugins outside the profile, and `admit` keeps unapproved code from loading. The enrollment file is root-owned.
 An edited cache fails its signature, and the gate falls back to `pending`. All of these hold. What does not hold, on a
-Pi that runs as Dana's own user, is `bash` under the Pi's Unix user: it can start a modified copy of the Pi on the same
-data directory, with Dana's token, ignoring the gate. On a personal Pi that is the decided trust line ("The agent
-writes plugins": the boundary is access to the server). On an Org Device chapter VI moves it: the Pi runs as a user of
-its own and the agent's shell runs in a sandbox, so the shell cannot reach the Pi's files.
+Nycode that runs as Dana's own user, is `bash` under the Nycode's Unix user: it can start a modified copy of the Nycode on the same
+data directory, with Dana's token, ignoring the gate. On a personal Nycode that is the decided trust line ("The agent
+writes plugins": the boundary is access to the server). On an Org Device chapter VI moves it: the Nycode runs as a user of
+its own and the agent's shell runs in a sandbox, so the shell cannot reach the Nycode's files.
 
-**A third-party plugin** is server code in the Pi's process. It can do anything the process can. Admitting it is the
+**A third-party plugin** is server code in the Nycode's process. It can do anything the process can. Admitting it is the
 trust decision, and the only control is `p3.plugins`. A plugin that keeps its configuration through settings is covered
 without knowing it.
 
@@ -1743,49 +1743,49 @@ enforced at Radius.
 
 ## What is real
 
-| Acme wants | Pi-side check | Real at Radius |
+| Acme wants | Nycode-side check | Real at Radius |
 | --- | --- | --- |
 | No MCP servers except Acme's | `set` refuses; MCP connects only to effective entries | Jira and Linear tokens live at Radius (`auth: radius`), so only those two work with Acme's accounts. Another server with Dana's own credentials: guardrail. |
 | Only Radius's models | `set` refuses; the models plugin offers only effective providers | Acme's keys never leave Radius; leaving Acme ends access. Another provider with Dana's own key: guardrail. |
-| Required and approved plugins only | install path, `admit`, hash checks | guardrail: the org root is written by the Pi's Unix user; with the service user of chapter VI the agent cannot write it. |
+| Required and approved plugins only | install path, `admit`, hash checks | guardrail: the org root is written by the Nycode's Unix user; with the service user of chapter VI the agent cannot write it. |
 | No sharing outside Acme | the share method refuses; tightening ends non-conforming shares | Radius issues guest sign-ins and relays from the same profile: real. |
-| No Pis outside Acme | the peer plugin refuses and closes links | Radius brokers every Pi-to-Pi link: real. |
+| No Pis outside Acme | the peer plugin refuses and closes links | Radius brokers every Nycode-to-Nycode link: real. |
 | Company instructions | the harness reads the effective value | guardrail (it is a prompt). |
 
 On an Org Device, the Device's setup may pre-install Acme's plugins into a root-owned directory such as
-`/opt/p3/org-plugins` and give it as the org root. The Pi can then load but not change them, which makes "approved
+`/opt/p3/org-plugins` and give it as the org root. The Nycode can then load but not change them, which makes "approved
 builds only" hold against the agent's `bash` too, for that root. It is an option, not a requirement.
 
 :::note | Revocation while offline
 Radius-enforced parts end the moment Acme removes Dana: guest links, peer links and org models stop at Radius. The
-Pi-side settings follow only when the Pi reconnects and receives `revoked`. A Pi that stays offline keeps its cached
-profile, and an offline Pi can be given an older signed profile it was once sent. Acme bounds both with `maxOffline`,
-at the price of a Pi that locks itself after that long without the server.
+Nycode-side settings follow only when the Nycode reconnects and receives `revoked`. A Nycode that stays offline keeps its cached
+profile, and an offline Nycode can be given an older signed profile it was once sent. Acme bounds both with `maxOffline`,
+at the price of a Nycode that locks itself after that long without the server.
 :::
 
-# Locking Down the Machine {#lockdown lede="How a managed Pi holds against a member or an agent with a shell: a signed install, a service user, tools only in sandboxes, execution control, a key Radius checks, and restriction plugins the org picks."}
+# Locking Down the Machine {#lockdown lede="How a managed Nycode holds against a member or an agent with a shell: a signed install, a service user, tools only in sandboxes, execution control, a key Radius checks, and restriction plugins the org picks."}
 
-Chapter V ends at one line: `bash` under the Pi's Unix user defeats every check in the Pi. On a personal Pi that line
+Chapter V ends at one line: `bash` under the Nycode's Unix user defeats every check in the Nycode. On a personal Nycode that line
 is fine, it is the decided trust boundary. On an Org Device it is the first thing a curious agent finds. Dana's agent
-runs `bash` as the user the Pi runs as, so it can edit the profile cache, read the Radius token, write into the org
-root, or start a patched copy of the Pi on the same data directory with Dana's token.
+runs `bash` as the user the Nycode runs as, so it can edit the profile cache, read the Radius token, write into the org
+root, or start a patched copy of the Nycode on the same data directory with Dana's token.
 
-The fix is not more checks inside the Pi. It is to move the Pi out of reach of the shell: the Pi runs as a user of its
+The fix is not more checks inside the Nycode. It is to move the Nycode out of reach of the shell: the Nycode runs as a user of its
 own, from files nobody else can write, and the agent's tools run in sandboxes that see only the folders Acme allows,
-never as the Pi's user and never as Dana's. Five pieces do that, and a sixth lets Acme narrow what members can do
+never as the Nycode's user and never as Dana's. Five pieces do that, and a sixth lets Acme narrow what members can do
 further. Each stops some adversaries and not others; the table at the end says which.
 
 ## "Can't I just patch out the check?"
 
 Armin asked it on 2026-11-13: "in practice surely the only way to enforce a lock down status is after user signs in
-with their org? otherwise i just patch out that check". The owner's answer: "not if pi runs as a different provisioned
+with their org? otherwise i just patch out that check". The owner's answer: "not if nycode runs as a different provisioned
 user on the machine." Both are right, about different things, and the pieces below are why.
 
-**Armin is right that Radius is where org resources are gated.** Whatever a Pi does locally, Acme's models, Acme's
-MCP credentials, the sharing relay and peer links come from Radius, and Radius gives them only to a Pi that signed in
-as a member of Acme and proves its device key (piece (e)). A Pi that skips every local check gets nothing from Acme.
+**Armin is right that Radius is where org resources are gated.** Whatever a Nycode does locally, Acme's models, Acme's
+MCP credentials, the sharing relay and peer links come from Radius, and Radius gives them only to a Nycode that signed in
+as a member of Acme and proves its device key (piece (e)). A Nycode that skips every local check gets nothing from Acme.
 
-**The owner is right that the managed Pi itself cannot be patched by Armin.** The check Armin would patch runs in a
+**The owner is right that the managed Nycode itself cannot be patched by Armin.** The check Armin would patch runs in a
 process he does not own, from files he cannot write:
 
 1. The binary is installed by the admin into a system location and signed (a). Armin cannot change it in place.
@@ -1793,15 +1793,15 @@ process he does not own, from files he cannot write:
    cache, its store or its plugin roots, or read its Radius token: the operating system refuses all of that across
    users.
 3. Armin can run his own patched copy, as himself. Execution control (d) can stop a patched binary from starting. If
-   it starts anyway (from source, with a `node` Armin needs for his work), it has no access to the managed Pi's data
-   directory, no Radius token and no device key. It is a personal, unmanaged Pi with Armin's own provider keys and
+   it starts anyway (from source, with a `node` Armin needs for his work), it has no access to the managed Nycode's data
+   directory, no Radius token and no device key. It is a personal, unmanaged Nycode with Armin's own provider keys and
    none of Acme's resources.
 4. His agent cannot help him: its tools run in a sandbox (c) that sees only the folders Acme allows and none of the
-   Pi's files.
+   Nycode's files.
 
 **What a member with local admin rights can still do:** everything on that machine. Root can stop the service, replace
-the binary, edit the data directory, read the process's memory, and use the device key from a patched Pi (a TPM or
-Secure Enclave key cannot be exported, but root on the same machine can use it). Such a Pi ignores every Pi-side lock
+the binary, edit the data directory, read the process's memory, and use the device key from a patched Nycode (a TPM or
+Secure Enclave key cannot be exported, but root on the same machine can use it). Such a Nycode ignores every Nycode-side lock
 and still gets Acme's resources, on that machine. What still holds then is what Radius enforces from the profile it
 signed: who sessions can be shared with, which Pis can connect, what the model gateway and the MCP credentials allow.
 That is why Org Devices give members no root, and why laptops in the MDM's care do not make members administrators.
@@ -1810,12 +1810,12 @@ design.
 
 ## (a) One signed executable in a system location
 
-The Pi is installed by the machine's admin (on a laptop: the MDM, the tool an IT department uses to push software and
+The Nycode is installed by the machine's admin (on a laptop: the MDM, the tool an IT department uses to push software and
 settings to company machines) into a directory only an administrator can write: `/opt/p3` on Linux,
 `/Library/Application Support/p3` or `/usr/local/p3` on macOS, `C:\Program Files\p3` on Windows. Dana and her agent can
 read and run it, not change it.
 
-**What pi has today.** The coding agent already ships standalone binaries:
+**What nycode has today.** The coding agent already ships standalone binaries:
 
 - `packages/coding-agent`'s `build:binary` script and `scripts/build-binaries.sh` compile `dist/bun/cli.js` with Bun's
   `--compile` into one executable per platform (darwin arm64 and x64, linux x64 and arm64, windows x64 and arm64),
@@ -1838,7 +1838,7 @@ own mechanism: one Node binary with the bundled server injected into it), and it
 | --- | --- | --- |
 | `p3` | Node with the bundled server, the worker entry and the TUI; started as `p3 serve`, `p3 worker`, `p3` (TUI) | yes |
 | `esbuild` | plugin builds; found through `ESBUILD_BINARY_PATH` | yes |
-| `pi-env` | the tool daemon of `packages/env` (Rust), copied into each sandbox VM, (c) below | yes |
+| `nycode-env` | the tool daemon of `packages/env` (Rust), copied into each sandbox VM, (c) below | yes |
 | `p3-devkey` | the device key helper, (e) below | yes, with the platform's key access entitlement on macOS |
 
 Three kit changes follow, all for laptops later rather than Dec 18: the worker fork must start the same executable in
@@ -1849,19 +1849,19 @@ a whole, and the kit installs that tarball; and esbuild's path comes from the in
 directory, where the service user could replace it.
 
 On macOS the four files are signed with a Developer ID and the package is notarized; on Windows they carry
-Authenticode signatures. Signing is what lets (d) tell this Pi from a patched copy.
+Authenticode signatures. Signing is what lets (d) tell this Nycode from a patched copy.
 
-## (b) The Pi runs as a service under its own user
+## (b) The Nycode runs as a service under its own user
 
-Each member's Pi is a system service with a Unix user (a Windows service account) of its own, created by the root
-setup when Dana's Pi is created:
+Each member's Nycode is a system service with a Unix user (a Windows service account) of its own, created by the root
+setup when Dana's Nycode is created:
 
 | | Linux (Org Devices, Dec 18) | macOS | Windows |
 | --- | --- | --- | --- |
 | Service | systemd unit `p3@dana.service`, `User=p3-dana` | launchd daemon `/Library/LaunchDaemons/com.earendil.p3.dana.plist`, `UserName` `_p3dana` | a Windows service per member, virtual account `NT SERVICE\p3-dana` |
 | Data directory | `/var/lib/p3/dana`, owner `p3-dana`, mode 0700 | `/Library/Application Support/p3/dana`, owner `_p3dana`, 0700 | `C:\ProgramData\p3\dana`, ACL: the service account only |
-| Inside it | the Chord store, the profile cache, the Pi's Radius token, the org root, the member root, secrets | same | same |
-| Listens on | `127.0.0.1:<port>`, a port per member Pi | same | same |
+| Inside it | the Chord store, the profile cache, the Nycode's Radius token, the org root, the member root, secrets | same | same |
+| Listens on | `127.0.0.1:<port>`, a port per member Nycode | same | same |
 
 The profile cache, the Radius token and both plugin roots now belong to `p3-dana`. Dana's user cannot read or write
 them, and neither can anything running as Dana: her shell, her editor.
@@ -1870,12 +1870,12 @@ them, and neither can anything running as Dana: her shell, her editor.
 sign-in of the owner, mode 0600, `ownerTokenFile` in `packages/chord/src/node/app/owner.ts`), and one-time owner links
 for the browser. Only where the token lives changes:
 
-- When the root setup creates the Pi, it writes `~dana/.p3/pi.json`, owner `dana`, mode 0600: `{ "url":
+- When the root setup creates the Nycode, it writes `~dana/.p3/nycode.json`, owner `dana`, mode 0600: `{ "url":
   "http://127.0.0.1:47123", "token": "<a device sign-in of the owner>" }`. Other members on the same Org Device cannot
   read it. On Windows the file is under `%LOCALAPPDATA%\p3` with an ACL for Dana only.
 - **The TUI** (`p3`, run by Dana) reads the file and opens its Chord link with the token as a bearer credential, as
   command-line clients use the owner token file today.
-- **The browser on the same machine:** `p3 open` reads the same file, asks the Pi for a fresh one-time owner link
+- **The browser on the same machine:** `p3 open` reads the same file, asks the Nycode for a fresh one-time owner link
   (`POST /_chord/owner-link` with the bearer token; the base route calls the kit's existing `App.ownerLink()` through
   the platform binding), and opens it. The page posts the one-time token from the URL fragment and gets the owner
   cookie, as the kit's owner link works today.
@@ -1886,19 +1886,19 @@ for the browser. Only where the token lives changes:
 A unix socket checked by peer credentials would avoid the token file, but Node has no API to read a socket peer's
 credentials (`SO_PEERCRED`, `LOCAL_PEERCRED`), and the kit listens on TCP only (`ListenAddress` is a host and a port).
 The token file gives the same guarantee through the file system: only Dana can read it. Her agent can read it too,
-and that is fine: it then talks to the Pi as the owner, and the owner is held by the locks.
+and that is fine: it then talks to the Nycode as the owner, and the owner is held by the locks.
 
 ## (c) The agent's tools run only in sandboxes
 
-A Pi running as `p3-dana` that runs `bash` in its own process would hand `p3-dana`'s rights to the agent, and the
-service user would protect nothing. Running the tools as Dana instead (a sudo rule that lets `p3-dana` start `pi-env`
-as `dana`, as the first draft of this chapter proposed) protects the Pi, but hands the agent everything Dana has: her
+A Nycode running as `p3-dana` that runs `bash` in its own process would hand `p3-dana`'s rights to the agent, and the
+service user would protect nothing. Running the tools as Dana instead (a sudo rule that lets `p3-dana` start `nycode-env`
+as `dana`, as the first draft of this chapter proposed) protects the Nycode, but hands the agent everything Dana has: her
 SSH keys, her browser profile, every file in her home, any host on the network. Prompt injection then reaches all of
 it.
 
 So, at the owner's suggestion, the agent's tools run **only in sandbox environments**: Gondolin VMs with chosen local
-folders mounted into them, never directly as the Pi's service user and never as Dana's user. This is a profile setting,
-enforced by the environments plugin, which Earendil ships as a Pi plugin that Acme selects in Radius like any other.
+folders mounted into them, never directly as the Nycode's service user and never as Dana's user. This is a profile setting,
+enforced by the environments plugin, which Earendil ships as a Nycode plugin that Acme selects in Radius like any other.
 
 **What Gondolin is, as it exists today.** `@earendil-works/gondolin` (0.14.0 in this repo's lockfile) is Earendil's
 sandbox: "Local Linux micro-VMs with a fully programmable network stack and filesystem", running on macOS or Linux with
@@ -1911,21 +1911,21 @@ only. Its README lists no Windows support.
 **p2 already runs it.** p2's environments plugin (`apps/p2/plugins/envs/`) has a `gondolin` environment kind
 (`GondolinEnvConfigSchema` in `schema.ts`: a host, an image, up to 16 `mounts` of a host folder at a guest path with
 `readonly`, `allowHosts`, CPUs, memory, a disk). Its launcher (`sandbox/p2-sandbox.sh`, `p2-sandbox.mjs`) keeps one
-long-lived VM per sandbox in a supervisor process, copies the `pi-env` daemon into the VM and speaks pi-env's protocol
+long-lived VM per sandbox in a supervisor process, copies the `nycode-env` daemon into the VM and speaks nycode-env's protocol
 to it, so the session's tools run inside the VM exactly as on an SSH machine. It checks host names before DNS
-resolution (`isRequestAllowed`), keeps the VM's own disk across restarts, refuses a writable mount of `~` or `~/.pi`,
+resolution (`isRequestAllowed`), keeps the VM's own disk across restarts, refuses a writable mount of `~` or `~/.nycode`,
 and today needs Linux with a usable `/dev/kvm` and QEMU 7.2 or newer (`sandboxSupport` in `manager.ts`). p3's
-environments plugin takes this code; the difference is that the VM runs on the Pi's own machine, under the service
+environments plugin takes this code; the difference is that the VM runs on the Nycode's own machine, under the service
 user, instead of on an SSH host.
 
 **The settings.** Three settings, declared by the environments plugin, carry Acme's rules:
 
 ```ts
 // PROPOSED · @earendil/p3-environments (github.com/earendil-works/p3-environments), contract.ts
-import { arr, bool, obj, oneOf, str } from "@earendil-works/chord";
+import { arr, bool, obj, oneOf, str } from "@nycode/chord";
 import { defineSetting } from "@p3/app/v1/settings";
 
-/** Which kinds of environment sessions may use. `local` is the Pi's own process user. */
+/** Which kinds of environment sessions may use. `local` is the Nycode's own process user. */
 export const EnvironmentKinds = defineSetting("environments.kinds", arr(oneOf("local", "ssh", "sandbox")), {
 	merge: "value",
 	initial: ["local", "ssh", "sandbox"],
@@ -1996,22 +1996,22 @@ host.serve(Environments, (_params, self) => {
 ```
 
 The session side needs one rule in the base: a session's environment comes only from `Environments.envs`, and the
-Pi's own process user (`local`) is an environment like any other, so with `environments.kinds` locked to `["sandbox"]`
+Nycode's own process user (`local`) is an environment like any other, so with `environments.kinds` locked to `["sandbox"]`
 no session gets `bash` in the service's process. A tool call made before a session picked a sandbox has no environment
 and fails.
 
-**Which folders the Pi can reach at all.** The VM's file system is served by the Pi's process, which runs as
-`p3-dana`, and `p3-dana` cannot read Dana's home. So Dana grants the Pi her chosen folders herself, with the operating
+**Which folders the Nycode can reach at all.** The VM's file system is served by the Nycode's process, which runs as
+`p3-dana`, and `p3-dana` cannot read Dana's home. So Dana grants the Nycode her chosen folders herself, with the operating
 system's access lists: `p3 folders add ~/work/acme` runs, as Dana, `setfacl -R -m u:p3-dana:rwX,d:u:p3-dana:rwX,d:u:dana:rwX
 ~/work/acme` on Linux (`chmod +a` on macOS). That gives three layers, each with its own owner: Dana decides which of
-her folders the Pi can reach, Acme decides which of those may be mounted, and each sandbox mounts what its session
+her folders the Nycode can reach, Acme decides which of those may be mounted, and each sandbox mounts what its session
 needs.
 
 **Compared with running the tools as Dana:**
 
 | | Tools as Dana (sudo rule, first draft) | Tools only in sandboxes |
 | --- | --- | --- |
-| Privilege crossing | `p3-dana` starts processes as `dana`: a root-written sudoers rule per Pi | none: the VM runs as `p3-dana`; Dana grants folders with her own access lists |
+| Privilege crossing | `p3-dana` starts processes as `dana`: a root-written sudoers rule per Nycode | none: the VM runs as `p3-dana`; Dana grants folders with her own access lists |
 | What the agent's `bash` can read | everything Dana can: home, SSH keys, browser profile | only the mounted folders |
 | Network | anything Dana's user can reach | only `sandbox.allowHosts`, checked before DNS |
 | Secrets | in Dana's environment and files | outside the VM, injected into requests for their hosts |
@@ -2027,8 +2027,8 @@ Dana's own terminal work is unaffected: only the agent's tools are sandboxed.
 
 ## (d) Execution control
 
-(a) to (c) protect the managed Pi. They do not stop Dana from running a different Pi: a patched copy of the binary,
-or pi from source, as her own user, with her own provider keys. Execution control is the MDM's job, not the Pi's:
+(a) to (c) protect the managed Nycode. They do not stop Dana from running a different Nycode: a patched copy of the binary,
+or nycode from source, as her own user, with her own provider keys. Execution control is the MDM's job, not the Nycode's:
 
 - **macOS:** an endpoint-security agent installed by the MDM, with an allow list by signing team; Dana is not an
   administrator. Gatekeeper alone checks only downloaded files.
@@ -2036,32 +2036,32 @@ or pi from source, as her own user, with her own provider keys. Execution contro
   directories.
 - **Windows:** App Control for Business or AppLocker publisher rules, pushed by the MDM.
 
-Execution control has a hard limit on developer machines: it stops a patched `p3` binary, not a Pi run from source by
+Execution control has a hard limit on developer machines: it stops a patched `p3` binary, not a Nycode run from source by
 an interpreter Dana needs for her work (`node`, `python`). That is why (e) matters more: a copy that runs gets nothing
 from Acme.
 
 ## (e) A device-bound key
 
-At enrollment the Pi asks `p3-devkey` to create a key that cannot leave the machine: in the Secure Enclave on macOS
+At enrollment the Nycode asks `p3-devkey` to create a key that cannot leave the machine: in the Secure Enclave on macOS
 (P-256, the only curve it offers), in the TPM 2.0 on Linux and Windows (`/dev/tpmrm0`, the Windows Platform Crypto
 Provider; a cloud Org Device has a virtual TPM). The public half goes to Radius with the first sync and is in the
-profile as `deviceKey`. From then on Radius gives org resources only to a Pi that proves it holds the private half:
+profile as `deviceKey`. From then on Radius gives org resources only to a Nycode that proves it holds the private half:
 
-:::sequence animate | Every Radius token is minted against the device key. A copy of the Pi's data on another machine, or under another user, has no key.
-actor pi "Dana's Pi" "p3-dana"
+:::sequence animate | Every Radius token is minted against the device key. A copy of the Nycode's data on another machine, or under another user, has no key.
+actor nycode "Dana's Nycode" "p3-dana"
 actor key "p3-devkey" "TPM / Secure Enclave" muted
 actor radius "Radius" blue
-pi -> radius: POST /pis/pi_7f3a/challenge
-radius --> pi: nonce
-pi -> key: sign(nonce)
-key --> pi: signature
-pi -> radius: POST /pis/pi_7f3a/token { nonce, signature }
-radius => pi: access token, 10 minutes (models, MCP gateway, relay, peers)
+nycode -> radius: POST /pis/nycode_7f3a/challenge
+radius --> nycode: nonce
+nycode -> key: sign(nonce)
+key --> nycode: signature
+nycode -> radius: POST /pis/nycode_7f3a/token { nonce, signature }
+radius => nycode: access token, 10 minutes (models, MCP gateway, relay, peers)
 :::
 
 The org's resources at Radius (the model gateway with Acme's keys, the MCP credentials behind `auth: radius`, the
-sharing relay, peer links) all take only that short-lived token. Copying the data directory, or the Pi's long-lived
-Radius token, to another machine gives a Pi that cannot get one. The key handle is readable only by `p3-dana` (on
+sharing relay, peer links) all take only that short-lived token. Copying the data directory, or the Nycode's long-lived
+Radius token, to another machine gives a Nycode that cannot get one. The key handle is readable only by `p3-dana` (on
 Linux the TPM device is opened by the service, in the `tss` group; Dana is not).
 
 For Dec 18 a simpler form is enough: a key file in the data directory, mode 0600, owner `p3-dana`. It stops Dana and
@@ -2092,7 +2092,7 @@ blocked tool result the model sees.
 
 ```ts
 // PROPOSED · @earendil/p3-tool-rules, worker.ts. Durable API: defineExtension, hook, ToolTask, beforeTool's { block }.
-import { defineExtension, hook, ToolTask } from "@earendil-works/pi-durable";
+import { defineExtension, hook, ToolTask } from "@nycode/durable";
 
 /** Blocks every tool whose name matches the effective `toolRules.blocked`, in every session. */
 export function toolRules(blocked: () => readonly string[]) {
@@ -2119,12 +2119,12 @@ only by plugins from the org root. Without that, a session that does not select 
 
 | Piece | Dana's agent | Dana with a shell | Dana with admin rights | A third-party plugin |
 | --- | --- | --- | --- | --- |
-| (a) signed install in a system location | cannot patch the Pi | cannot patch it; can run another copy | no | no: it runs inside |
+| (a) signed install in a system location | cannot patch the Nycode | cannot patch it; can run another copy | no | no: it runs inside |
 | (b) service user | cannot edit the cache, token, roots or store | same | no | no: it runs as the service user |
-| (c) tools only in sandboxes | sees only the mounted folders and allowed hosts; never the Pi's files, never all of Dana's | not needed: her own shell is hers | no | no: it runs in the Pi's process, outside any VM |
+| (c) tools only in sandboxes | sees only the mounted folders and allowed hosts; never the Nycode's files, never all of Dana's | not needed: her own shell is hers | no | no: it runs in the Nycode's process, outside any VM |
 | (d) execution control | cannot start a patched binary | same, except interpreters she needs | only where the MDM holds admin rights back | not applicable |
 | (e) device-bound key | a copy it starts gets nothing from Acme | same | cannot export the key; can use it on that machine | can use it from inside |
-| Restriction plugins | its blocked tools stay blocked in every session | same, inside the managed Pi | no | no: it runs beside them |
+| Restriction plugins | its blocked tools stay blocked in every session | same, inside the managed Nycode | no | no: it runs beside them |
 | Plugin list (`admit`, hashes) | its plugins do not load | same | no | holds: unadmitted code never runs |
 | Radius enforcement | holds | holds | holds | holds |
 
@@ -2137,16 +2137,16 @@ and Radius.
 
 **Dec 18, Linux Org Devices:**
 
-- (b) a systemd unit and a Unix user per member Pi, data in `/var/lib/p3/<member>`;
+- (b) a systemd unit and a Unix user per member Nycode, data in `/var/lib/p3/<member>`;
 - (a) a root-owned install directory `/opt/p3`, installed by the Device setup: Node, the bundled server, esbuild,
-  `pi-env`, Gondolin's runtime; not yet a single executable, not yet signed (on Linux, file ownership already does the
+  `nycode-env`, Gondolin's runtime; not yet a single executable, not yet signed (on Linux, file ownership already does the
   work);
 - (c) sandbox-only environments from Earendil's environments plugin, built from p2's `gondolin` kind: QEMU 7.2 or
   newer and `/dev/kvm` on the Device (for a cloud Device: nested virtualization or bare metal), the service user in the
   `kvm` group, `p3 folders add` for the member's folders, the three settings in the profile; the service user's own
   `local` environment never offered;
 - restriction plugins: the Radius catalog section, the tool-rules plugin, and the base's required-extensions registry;
-- `~<member>/.p3/pi.json` for the TUI and `p3 open`, and Radius sign-in through the relay for the browser;
+- `~<member>/.p3/nycode.json` for the TUI and `p3 open`, and Radius sign-in through the relay for the browser;
 - (e) the key-file form of the device key.
 
 **Later, for laptops:** the single executable and its signing and notarization; launchd daemons and Windows services;
@@ -2155,32 +2155,32 @@ Windows, where Gondolin lists no support, has no sandbox-only mode yet; the Secu
 key; installs from complete, hashed plugin artifacts without `npm` and `git`; and execution control, which is the
 MDM's, configured by the org.
 
-# When Things Fail {#failures lede="Every failure the consultations found, and what the Pi does."}
+# When Things Fail {#failures lede="Every failure the consultations found, and what the Nycode does."}
 
-The rule behind every row: a failure never makes an enrolled Pi unmanaged, and never opens what the last good profile
+The rule behind every row: a failure never makes an enrolled Nycode unmanaged, and never opens what the last good profile
 closed.
 
 | Failure | What happens | Note |
 | --- | --- | --- |
-| First sync never succeeds (server down, wrong URL, Dana not signed in) | `pending` with the reason; retried with backoff; no sessions | Fail closed, as the owner wants. An admin's typo locks every new Pi, visibly. |
+| First sync never succeeds (server down, wrong URL, Dana not signed in) | `pending` with the reason; retried with backoff; no sessions | Fail closed, as the owner wants. An admin's typo locks every new Nycode, visibly. |
 | A required plugin fails to install or build on the first sync | `pending` with the plugin and its error | Required means required. |
 | Enrollment file present but invalid | `pending` with the parse error | Never unmanaged. |
-| Enrollment file missing | `unmanaged` on the next start | Only root can remove it (root-owned file and parent directories). The path is fixed in base code. On an Org Device the Device's supervisor refuses to start a member Pi without it. |
+| Enrollment file missing | `unmanaged` on the next start | Only root can remove it (root-owned file and parent directories). The path is fixed in base code. On an Org Device the Device's supervisor refuses to start a member Nycode without it. |
 | Offline after the first sync | `ready` from the cache, `live: false` | With `maxOffline` set: `stale` once it passes. None by default. |
-| Cache edited or deleted under the Pi's Unix user | signature check fails or no cache: `pending` | Fail closed. |
-| Older signed profile replayed | refused while the Pi knows a higher revision; after a deleted cache, accepted until the next sync | Bounded by `maxOffline`. |
-| Profile for another member or Pi | refused (`member`, `pi`) | Signed is not enough. |
+| Cache edited or deleted under the Nycode's Unix user | signature check fails or no cache: `pending` | Fail closed. |
+| Older signed profile replayed | refused while the Nycode knows a higher revision; after a deleted cache, accepted until the next sync | Bounded by `maxOffline`. |
+| Profile for another member or Nycode | refused (`member`, `nycode`) | Signed is not enough. |
 | Plugin source outside `pluginSources` | the profile is refused | Bounds what a stolen org key can push. |
 | Profile names a setting no loaded plugin declares | kept in the layer; applies when the plugin loads | A plugin installed later is managed from its first moment. |
 | An org value fails the plugin's schema | that setting reads its initial value and refuses writes; reported to Acme | The rest applies. |
 | Update tightens while sessions run | settings change live; MCP disconnects, shares and peer links end; removed plugins unload on Apply | Calls already sent cannot be recalled. |
 | Update's plugin install fails | settings applied, the failed plugin's previous version keeps running; reported and retried | A tightening never waits for an install. |
-| Dana or her Pi removed from Acme | `revoked`: locked; data stays | Radius ends org access at once. What happens to the data on an Org Device is Acme's decision. |
+| Dana or her Nycode removed from Acme | `revoked`: locked; data stays | Radius ends org access at once. What happens to the data on an Org Device is Acme's decision. |
 | Org server or Radius compromised, org key safe | cannot forge profiles | Radius still controls its own enforcement (sharing, peers, models). |
-| Org key compromised | can push code to every enrolled Pi | Pinned refs and hashes, `pluginSources` in the root-owned file. Required plugins are a code-push channel by design. |
+| Org key compromised | can push code to every enrolled Nycode | Pinned refs and hashes, `pluginSources` in the root-owned file. Required plugins are a code-push channel by design. |
 | Clock set back to dodge `maxOffline` | the check passes | Guardrail: the clock belongs to the machine. |
-| Shell under the Pi's Unix user | can run a modified Pi on the same data | Without lock-down, not enforceable on the machine; Radius-side checks hold. With chapter VI, the member's shell is not that user. |
-| A copy of the Pi's data and token on another machine | gets no Radius token: it cannot prove the device key | Org models, MCP credentials, relay and peers stay closed to it (chapter VI, (e)). |
+| Shell under the Nycode's Unix user | can run a modified Nycode on the same data | Without lock-down, not enforceable on the machine; Radius-side checks hold. With chapter VI, the member's shell is not that user. |
+| A copy of the Nycode's data and token on another machine | gets no Radius token: it cannot prove the device key | Org models, MCP credentials, relay and peers stay closed to it (chapter VI, (e)). |
 | Root, or an admitted plugin | ignores everything | Root is the admin; admitting a plugin is the trust decision. |
 
 # What the Base Needs Now {#now lede="What p3 must build before any org exists, and what waits for December 18."}
@@ -2213,10 +2213,10 @@ place that starts a session or loads a plugin asks one gate. With no org, all of
 - `OrgGate`, `OrgClient`, the profile cache and the gate page ("Connect to Acme", the reason, sign-in).
 - The kit change: plugin roots and `admit`.
 - Hash checks of the org root at start and before each Apply.
-- In Radius: the profile editor per org and group, per-member profiles, signing, the `revoked` answer, "Create my Pi
+- In Radius: the profile editor per org and group, per-member profiles, signing, the `revoked` answer, "Create my Nycode
   here", and enforcement of sharing and peers from the same profile.
-- On Org Devices: the Device setup writes the enrollment file; its supervisor refuses to start a member Pi without it.
-- The lock-down of chapter VI for Linux Org Devices: a service user and systemd unit per member Pi, the root-owned
+- On Org Devices: the Device setup writes the enrollment file; its supervisor refuses to start a member Nycode without it.
+- The lock-down of chapter VI for Linux Org Devices: a service user and systemd unit per member Nycode, the root-owned
   install in `/opt/p3`, sandbox-only environments (Gondolin, KVM on the Device), restriction plugins with the base's
   required-extensions registry, the client token file in the member's home, and the key-file form of the device key.
   The single signed executable, launchd and Windows services, hardware keys and execution control wait for laptops.
@@ -2230,13 +2230,13 @@ plugins. It does not cover everything, and the limits are deliberate.
   setting for it (an allowed-hosts setting), and budgets belong at Radius.
 - **Denying an action that is not configuration,** such as exporting or deleting a session, unless the base or the
   plugin exposes a switch setting for it.
-- **Different rights for different people in one Pi.** There is one person per Pi; Radius picks the profile per
+- **Different rights for different people in one Nycode.** There is one person per Nycode; Radius picks the profile per
   member, and guests get what the session gives them.
 - **A plugin's private config files.** The answer is the plugin list.
-- **A shell under the Pi's Unix user, root, or an admitted plugin.** They are past the boundary.
+- **A shell under the Nycode's Unix user, root, or an admitted plugin.** They are past the boundary.
 - **Instant revocation while offline,** and replays of an older signed profile, unless Acme sets `maxOffline`.
-- **Running without the org server.** A new enrolled Pi does nothing before its first sync, by design.
-- **One Pi in two orgs.** The enrollment file names one.
+- **Running without the org server.** A new enrolled Nycode does nothing before its first sync, by design.
+- **One Nycode in two orgs.** The enrollment file names one.
 
 ## Decisions needed
 
@@ -2247,9 +2247,9 @@ plugins. It does not cover everything, and the limits are deliberate.
 3. **Instructions as entries.** `prompt.instructions` is drawn here as an entries setting so Acme's text and Dana's sit
    side by side. The harness's prompt design may want a different owner for it.
 4. **What `revoked` does to data on an Org Device.** Keep it (as here), export it to the org, or delete it.
-5. **Lock-down on laptops.** A per-member system service with sandbox-only tools (chapter VI) protects the Pi's files
+5. **Lock-down on laptops.** A per-member system service with sandbox-only tools (chapter VI) protects the Nycode's files
    from the member's shell, but costs a service user, a signed install and a VM per sandbox, and has no Windows form
-   yet. The alternative is a Pi under the member's own user with Radius-side enforcement only. Recommended: the
+   yet. The alternative is a Nycode under the member's own user with Radius-side enforcement only. Recommended: the
    service on Org Devices from Dec 18; decide for laptops once an org asks for MDM deployment.
 6. **Hosts without virtualization.** Sandbox-only needs `/dev/kvm` (or macOS's hypervisor) and has no Windows support.
    On such a host an org can allow `ssh` environments to a machine it controls, or no tools at all; running tools as

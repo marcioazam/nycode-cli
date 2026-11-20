@@ -1,8 +1,8 @@
 import { expect } from "vitest";
 import { describeEval } from "vitest-evals";
-import { createPiCodingAgentHarness } from "../src/harness.ts";
+import { createNycodeCodingAgentHarness } from "../src/harness.ts";
 
-const harness = createPiCodingAgentHarness({ noTools: "all" });
+const harness = createNycodeCodingAgentHarness({ noTools: "all" });
 
 describeEval("Answer a basic prompt", { harness }, (it) => {
 	it("returns the expected answer", async ({ run }) => {
@@ -10,8 +10,8 @@ describeEval("Answer a basic prompt", { harness }, (it) => {
 		expect(result.output.trim()).toBe("Paris");
 		expect(result.errors).toEqual([]);
 		expect(result.usage).toMatchObject({
-			provider: process.env.PI_PROVIDER,
-			model: process.env.PI_MODEL,
+			provider: process.env.NYCODE_PROVIDER,
+			model: process.env.NYCODE_MODEL,
 		});
 		expect(result.usage.totalTokens).toBeGreaterThan(0);
 	});

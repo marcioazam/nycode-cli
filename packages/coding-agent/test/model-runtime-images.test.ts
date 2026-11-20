@@ -12,7 +12,7 @@ import {
 	InMemoryModelsStore,
 	isModelType,
 	type Model,
-} from "@earendil-works/pi-ai";
+} from "@nycode/ai";
 import { afterEach, describe, expect, it } from "vitest";
 import { AuthStorage } from "../src/core/auth-storage.ts";
 import { ModelRuntime } from "../src/core/model-runtime.ts";
@@ -77,7 +77,7 @@ describe("ModelRuntime image generation", () => {
 	async function createRuntime(modelsJson?: object): Promise<ModelRuntime> {
 		let modelsPath: string | null = null;
 		if (modelsJson) {
-			const dir = mkdtempSync(join(tmpdir(), "pi-images-"));
+			const dir = mkdtempSync(join(tmpdir(), "nycode-images-"));
 			tempDirs.push(dir);
 			modelsPath = join(dir, "models.json");
 			writeFileSync(modelsPath, JSON.stringify(modelsJson));
@@ -287,7 +287,7 @@ describe("ModelRuntime image generation", () => {
 		const runtime = await createRuntime({
 			providers: {
 				openrouter: {
-					headers: { "X-Title": "pi" },
+					headers: { "X-Title": "nycode" },
 					modelOverrides: {
 						"openrouter/auto": { name: "Auto (renamed)" },
 						"google/gemini-3-pro-image": { headers: { "X-Chat-Only": "yes" } },
@@ -307,13 +307,13 @@ describe("ModelRuntime image generation", () => {
 		const chatAuth = await runtime.getAuth(chat);
 		const imageAuth = await runtime.getAuth(image);
 		expect(imageAuth?.auth.apiKey).toBe("sk-or");
-		expect(chatAuth?.auth.headers).toMatchObject({ "X-Title": "pi", "X-Chat-Only": "yes" });
-		expect(imageAuth?.auth.headers).toEqual({ "X-Title": "pi" });
+		expect(chatAuth?.auth.headers).toMatchObject({ "X-Title": "nycode", "X-Chat-Only": "yes" });
+		expect(imageAuth?.auth.headers).toEqual({ "X-Title": "nycode" });
 	});
 
 	it("does not add image generation or classification to composed chat-only providers", async () => {
 		const runtime = await createRuntime({
-			providers: { anthropic: { headers: { "X-Title": "pi" } } },
+			providers: { anthropic: { headers: { "X-Title": "nycode" } } },
 		});
 		const provider = runtime.getProvider("anthropic")!;
 		expect(provider.generateImages).toBeUndefined();

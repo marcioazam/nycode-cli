@@ -1,4 +1,4 @@
-import { arr, bool, nul, num, obj, opt, type Static, str, union } from "@earendil-works/pi-schema";
+import { arr, bool, nul, num, obj, opt, type Static, str, union } from "@nycode/schema";
 import { literal, local, method, param, propertiesOf, remote, serverHost, sessionHost } from "@p2/app/v1";
 import { ProjectSchema } from "../projects/contract.ts";
 
@@ -81,7 +81,7 @@ export const ConversationBroker = local("p2.conversation-broker", {
 /** Only a current worker generation can broker a root tool invocation. */
 export const Conversations = remote("p2.conversations", {
 	/**
-	 * 2: request IDs up to 500 characters (Pi Mobile's limit: nested code mode calls make long ones). 3: `origin`, the
+	 * 2: request IDs up to 500 characters (Nycode Mobile's limit: nested code mode calls make long ones). 3: `origin`, the
 	 * sending turn's: `"owner"` or absent. 4: `create`, `stop`, `archive` and `restore`;
 	 * `list` gives each session's location and project, and the projects. 5: no `origin` (p2 has no per-turn
 	 * authority). Only workers hold it, and they reload with the server: no `accepts`.

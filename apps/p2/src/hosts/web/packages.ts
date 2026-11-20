@@ -8,5 +8,5 @@ export const WEB_PACKAGES = [
 	"react",
 	"react/jsx-runtime",
 	"react-dom",
-	"@earendil-works/pi-schema",
+	"@nycode/schema",
 ] as const;

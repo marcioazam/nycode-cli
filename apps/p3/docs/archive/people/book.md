@@ -2,11 +2,11 @@
 title: p3 people, apps and locks
 cover: People / Apps / Locks
 kicker: The design so far · p3 · 2026-11-13 · second edition
-subtitle: One owner, persons with roles in apps, and one lock mechanism for apps, sessions, the Pi and companies; every decision of 2026-11-13, the review findings, and what is still open
+subtitle: One owner, persons with roles in apps, and one lock mechanism for apps, sessions, the Nycode and companies; every decision of 2026-11-13, the review findings, and what is still open
 stats:
   - 0 | changes to Chord's core (one open question may need one)
   - 6 | changes to the app kit
-  - 4 | lock layers: company, Pi, app, session
+  - 4 | lock layers: company, Nycode, app, session
   - 4 | open questions for the owner
 note: |
   The state of the design at the end of 2026-11-13, written so the work can resume from this note alone. It supersedes
@@ -16,17 +16,17 @@ note: |
   `self.derive`, `self.on`, `self.onLive`, `self.writable`, `self.contribute`, `self.table`, `self.query`, `self.tx`
   (`tx.put`, `tx.delete`), `defineRegistry`, `keyedEntries`, `defineState` (`keyed: Session`), `defineTable`, `json`
   columns with `{ version }`, `forbidden`, `host.revoke` and `revokedBy`; the kit's `SignIns` (`issue`, `verify`,
-  `revoke`), `Authenticators`, pairing, `testPlugin`, the two plugin roots; pi-schema's builders (`str` with `format`).
+  `revoke`), `Authenticators`, pairing, `testPlugin`, the two plugin roots; nycode-schema's builders (`str` with `format`).
   The owner said at the end: "this still seems overly complex imo". Reviewers are asked to find what can go.
 colophon: p3 people, apps and locks · second edition · 2026-11-13
 ---
 
 # Where This Comes From {.preface}
 
-The owner wants to build **apps** on his Pi and share them: a robot for his son (who cannot read: a face, hold to talk,
+The owner wants to build **apps** on his Nycode and share them: a robot for his son (who cannot read: a face, hold to talk,
 one session in a fixed folder, no tools), a family app for his wife (her calendars and mail, a voice chat, her
 journal, and Leo's robot adventures to watch), a football club (coaches change the roster, everyone talks in match
-sessions), coding (the app Pi ships with), guests of single sessions, a Discord bot session that may only message one
+sessions), coding (the app Nycode ships with), guests of single sessions, a Discord bot session that may only message one
 other session. And companies (Colin's plan, Dec 18: Org Devices) must be able to restrict the Pis of their members.
 
 The day went through several designs that the owner rejected: managed settings (`defineSetting`), plugin manifests
@@ -71,7 +71,7 @@ To be up to speed on this design (after a compaction or in a new session), read 
 ## Decisions of 2026-11-13 {#decisions}
 
 :::findings
-1. **One Pi, one owner, who installs every plugin; plugins (apps among them) are trusted code.** Only people are
+1. **One Nycode, one owner, who installs every plugin; plugins (apps among them) are trusted code.** Only people are
    confined. ("we control that shit, owner installs all code")
 2. **An app is a plugin.** It creates the layouts, views and objects it needs and reuses any other plugin's. The
    agent writes one when asked. Coding is the built-in app.
@@ -82,10 +82,10 @@ To be up to speed on this design (after a compaction or in a new session), read 
    objects as a courtesy; privacy from him is never a guarantee ("I can just dig out her journal from sqlite").
 6. **A session belongs to exactly one app** (its rules and locks apply); any app may show any session.
 7. **Lockdown is locks:** a plugin declares what can be switched off or limited, registers it with the server, and
-   enforces it itself; layers company > Pi > app > session only narrow.
-8. **Plugins outside Pi's own root get a plugin switch per app;** an app says only `otherPlugins: "on" | "off"`; on
-   install the owner chooses the apps. Base plugins (Pi's root) have no switch; they declare locks.
-9. **One sheet per scope** (app, session, optionally the Pi), for technical owners, with the agent's help; the
+   enforces it itself; layers company > Nycode > app > session only narrow.
+8. **Plugins outside Nycode's own root get a plugin switch per app;** an app says only `otherPlugins: "on" | "off"`; on
+   install the owner chooses the apps. Base plugins (Nycode's root) have no switch; they declare locks.
+9. **One sheet per scope** (app, session, optionally the Nycode), for technical owners, with the agent's help; the
    company's values show read-only.
 10. **The company layer is the org profile:** an initial copy on disk, then whatever Radius delivers.
 11. **Radius learns the locks** from member Pis' reports and by loading selected plugins' server facets in a sandbox.
@@ -201,15 +201,15 @@ export type TuiSignIn = { readonly provider: string; readonly label: string; run
 export const TuiSignIns = defineRegistry<TuiSignIn, readonly TuiSignIn[]>("people.tui-sign-ins", { version: 1 });
 ```
 
-- **Built in:** `radius` (while the Pi is connected to Radius: Radius signs the person in, with Google or GitHub at
+- **Built in:** `radius` (while the Nycode is connected to Radius: Radius signs the person in, with Google or GitHub at
   Radius, and forwards the verified email, as p2's guests by email work today) and `device` (a cookie in this
-  browser; a token file in this terminal, `~/.pi/clients/<pi>.json`, mode 0600, sent as a bearer header).
-- **OAuth directly at Google or GitHub** would need every Pi registered as an OAuth client at its own address (and
+  browser; a token file in this terminal, `~/.nycode/clients/<nycode>.json`, mode 0600, sent as a bearer header).
+- **OAuth directly at Google or GitHub** would need every Nycode registered as an OAuth client at its own address (and
   Google refuses private LAN addresses): impractical; it happens at Radius once for everyone.
 - **More devices:** sign in through the same provider, or pair: on a signed-in device "Add device" shows a code or QR
   code; the new browser or terminal polls and gets a sign-in for the same subject (kit pairing, generalized,
-  chapter VIII). A terminal can also `pi join <link>`.
-- **Without Radius** (a LAN-only Pi) only `device` remains.
+  chapter VIII). A terminal can also `nycode join <link>`.
+- **Without Radius** (a LAN-only Nycode) only `device` remains.
 - **The owner invites from the terminal too:** `/invite Tanja family:member` prints the link and a QR code.
 
 # The Session Check {#access lede="One question every session view and object asks: may this principal see or send here?"}
@@ -303,7 +303,7 @@ export function lockValue<T>(self: Self, lock: Lock<T>): Readable<T>;
 /** Server: the same for any session. */
 export function lockValueFor<T>(self: Self, lock: Lock<T>, session: string): Readable<T>;
 
-// Two string formats for values that name things (pi-schema has `str({ format })`; checked with compile's formats):
+// Two string formats for values that name things (nycode-schema has `str({ format })`; checked with compile's formats):
 export const glob = () => str({ format: "p3.glob", minLength: 1 });                 // "linear__*"
 export const ref = (kind: HostKind) => str({ format: `p3.ref:${kind.name}` });       // an id of that kind
 ```
@@ -334,7 +334,7 @@ host.serve(CodingTools, (_params, self) => {
 | `terminals.use` | terminals | switch | `Terminals.open` (pane and agent tool both go through it); state `allowed` hides the button |
 | `mcp.servers` | mcp | `ref(McpServer)[]` or null; project servers as `project:<name>` | placement starts only those |
 | `mcp.tools` | mcp | `glob()[]` or null (`linear__*`) | the worker extension offers only those |
-| `mcp.project` | mcp | switch | `.pi/mcp.json` servers placed at all |
+| `mcp.project` | mcp | switch | `.nycode/mcp.json` servers placed at all |
 | `prompt.instructions` | prompt | sources `instance` / `environment` / `project` | which AGENTS.md are loaded |
 | `prompt.skills`, `prompt.templates` | prompt | `glob()[]` with source prefix (`project:*`) | loading, listing and `/name` expansion |
 | `locations.places` | locations | `{ environment: ref(Environment), cwd }[]` | every move, every spawn with `cwd`/`env` |
@@ -363,9 +363,9 @@ host.serve(CodingTools, (_params, self) => {
 - **The agent:** code-mode namespace `locks` (`locks_catalog`, `locks_set({ scope, lock, value })`), only from the
   owner's sessions; `locks.manage` is itself a lock.
 
-# The Plugin Switch {#switch lede="Plugins outside Pi's own root can be switched off per app, as a whole, without declaring anything."}
+# The Plugin Switch {#switch lede="Plugins outside Nycode's own root can be switched off per app, as a whole, without declaring anything."}
 
-- **Base or not** is where a plugin was loaded from: the kit's app root (`startServer({ root })`, shipped with Pi)
+- **Base or not** is where a plugin was loaded from: the kit's app root (`startServer({ root })`, shipped with Nycode)
   or the user's root (`<dataDir>/plugins`, everything the owner or the agent installed, org plugins included).
 - **Base plugins have no switch;** they declare locks for everything that matters (we maintain them).
 - **Every other plugin has a switch per app,** declared or not, locks or not (locks come on top, for finer control
@@ -379,37 +379,37 @@ host.serve(CodingTools, (_params, self) => {
   them through switched-off contributions, and persons are denied by default anyway. Owners of other registries use
   `pluginAllowed(self, plugin)`.
 
-# Layers and Sheets {#layers lede="company > Pi > app > session; only narrowing; one sheet per scope."}
+# Layers and Sheets {#layers lede="company > Nycode > app > session; only narrowing; one sheet per scope."}
 
 | Layer | Set by | Stored |
 | --- | --- | --- |
 | company | the org profile (Radius, signed; initial copy on disk) | the profile cache |
-| Pi | the owner's Pi sheet ("no bash on this Pi") | server |
+| Nycode | the owner's Nycode sheet ("no bash on this Nycode") | server |
 | app | the app's code (`locks`, `otherPlugins`), then the owner's app sheet over it | server, per app |
 | session | the owner's session sheet | server, keyed by `Session` |
 
-`effective = narrow(company, narrow(pi, narrow(app, session)))`, applied per lock; plugin switches the same way. The
-owner may change an app's defaults in either direction within the company and Pi values; a session only narrows.
+`effective = narrow(company, narrow(nycode, narrow(app, session)))`, applied per lock; plugin switches the same way. The
+owner may change an app's defaults in either direction within the company and Nycode values; a session only narrows.
 Every sheet shows the upper layers' values read-only next to its own.
 
 # Companies {#company lede="The org profile is the top layer; Radius learns the locks."}
 
 - **Enrollment** (from `org-managed/book.md`, still valid): an admin-owned file `/etc/p3/enrollment.json` (org,
-  server, org key, allowed plugin sources; optionally an initial profile); the Pi stays locked until its first sync
+  server, org key, allowed plugin sources; optionally an initial profile); the Nycode stays locked until its first sync
   delivered a signed profile, then works from the cache and follows changes live. Gate states `unmanaged`,
   `pending`, `ready`, `stale`, `revoked`. Machine lock-down (service user, signed executable, gondolin sandboxes, a
   device key) as written there.
 - **The profile:** the plugin list (`required`, `allowed`, `blocked`) and lock values by id:
 
 ```jsonc
-// PROPOSED · part of Acme's profile for a member's Pi
+// PROPOSED · part of Acme's profile for a member's Nycode
 {
   "plugins": { "required": ["@earendil/linear"], "blocked": ["@someone/drive"] },
   "locks": { "coding.bash": false, "subagents.environments": ["acme-sandbox"], "conversations.reach": null }
 }
 ```
 
-- **Applied on the Pi** as the company layer: a value is checked against the schema its own plugin declares; a value
+- **Applied on the Nycode** as the company layer: a value is checked against the schema its own plugin declares; a value
   that does not match gives `closed`; an id no plugin declares stays "missing".
 - **How Radius knows the locks:** member Pis report their `Locks` (id, plugin, version, title, JSON Schema) on every
   sync; and Radius loads selected plugins' server facets in a sandbox (as `testPlugin` collects contributions) to read
@@ -567,6 +567,6 @@ the ordinary one; the session check lets every club person send there; its agent
    the worker asks the server, persons get one variant and a check per call.
 3. **The page with several sessions** must compose panes, slots and commands per session (plugin switches, locks):
    a mechanism of the page, not designed yet.
-4. **Complexity:** the owner finds it "still overly complex". Candidates to cut: the Pi layer (the owner can set the
+4. **Complexity:** the owner finds it "still overly complex". Candidates to cut: the Nycode layer (the owner can set the
    same on each app), `LockEditors` (pickers only), runtime-contributed locks, `otherPlugins` (always off for apps
    that set locks?), separate `sessions` in the principal (a share as a one-session role?).

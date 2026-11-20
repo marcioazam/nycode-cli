@@ -11,8 +11,8 @@ stats:
 note: |
   A design sketch for the owner (2026-11-08), after the model stress test (`model-stress/report.md`) and the decision
   "no per-run authority; what is brought into a session is the control". It shows the shape in code; names are
-  proposals, Chord and pi-ai APIs are real (`remote`, `local`, `defineTable`, `self.query`, keyed `at`, `self.on`,
-  `self.writable`, `self.contribute`; pi-ai's `createProvider`, `AuthResult`). Single user first; what multi-user adds is
+  proposals, Chord and nycode-ai APIs are real (`remote`, `local`, `defineTable`, `self.query`, keyed `at`, `self.on`,
+  `self.writable`, `self.contribute`; nycode-ai's `createProvider`, `AuthResult`). Single user first; what multi-user adds is
   marked. Not decided, not built.
 colophon: p3 resources in code · sketch, first edition · 2026-11-08
 ---
@@ -43,7 +43,7 @@ which resources a session gets), and the **selection** (core composes the select
    per session on the server, live; until every selector has answered, a session's selection is empty (fail closed).
 4. **Each kind serves one per-session view with params `{}`.** The worker holds `SessionModels {}`; the server's factory
    reads `principal.session` and that session's bindings. No dynamic params, no extra lookups on the worker.
-5. **Two delivery patterns.** Pushed credentials when the worker does the work itself (model streams: pi-ai's
+5. **Two delivery patterns.** Pushed credentials when the worker does the work itself (model streams: nycode-ai's
    `AuthResult` with an expiry, refreshed by the server). Server-run methods when the secret must not leave the server
    (search, mail, MCP): the worker calls, the server checks the selection and does it.
 6. **Removing a resource from a session is a state change.** The view's state drops it, the worker's contribution
@@ -74,7 +74,7 @@ export type Binding = Static<typeof Binding>;
 ```ts
 // @p3/app/v1/server: what server facets use
 
-/** Secrets, per plugin, key and owner; one write at a time per entry (pi-ai's `CredentialStore.modify` semantics). */
+/** Secrets, per plugin, key and owner; one write at a time per entry (nycode-ai's `CredentialStore.modify` semantics). */
 export const Vault = local("p3.vault", {
 	version: 1,
 	params: {},
@@ -146,8 +146,8 @@ export const MODELS = "p3.models";
 
 /** One provider as a session's worker may use it: its models and the request auth, refreshed by the server. */
 export const ProviderForSession = obj({
-	id: str(), label: str(), api: str(),                         // pi-ai api id: "anthropic", "openai-responses"
-	models: arr(unknown()),                                       // pi-ai ProviderModel[] from the catalog
+	id: str(), label: str(), api: str(),                         // nycode-ai api id: "anthropic", "openai-responses"
+	models: arr(unknown()),                                       // nycode-ai ProviderModel[] from the catalog
 	auth: obj({ apiKey: opt(str()), headers: opt(map(str())), baseUrl: opt(str()), env: opt(map(str())), expires: opt(num()) }),
 });
 
@@ -171,8 +171,8 @@ host.serve(ModelStore, (_params, self) => {            // host-lifetime: definit
 	const providers = self.table(Providers);
 	const vault = self.get(Vault, {});
 	return {
-		/** pi-ai request auth for one binding: the right login's credential, refreshed once if it expires soon. */
-		authFor: async ({ binding, session }, ctx) => resolveAuth(binding, session, vault, ctx),   // pi-ai OAuthAuth.refresh / ApiKeyAuth.resolve
+		/** nycode-ai request auth for one binding: the right login's credential, refreshed once if it expires soon. */
+		authFor: async ({ binding, session }, ctx) => resolveAuth(binding, session, vault, ctx),   // nycode-ai OAuthAuth.refresh / ApiKeyAuth.resolve
 		catalog: async ({ id }, ctx) => catalogOf(id, ctx),
 		// add, remove, … (the sheet's methods)
 	};
@@ -201,11 +201,11 @@ host.serve(SessionModels, (_params, principal, self) => {
 host.serve(ModelsInSession, (_params, self) => {
 	const session = self.get(SessionModels, {});
 	const contributed = self.writable<readonly Provider[]>([]);
-	self.contribute(ModelProviders, contributed);                // the harness composes pi-ai Models from these
+	self.contribute(ModelProviders, contributed);                // the harness composes nycode-ai Models from these
 	self.on(session.providers, ({ value }) => {
 		contributed.set(value.map((pushed) => createProvider({
 			id: pushed.id, name: pushed.label, models: pushed.models,
-			api: streamsFor(pushed.api),                         // pi-ai's implementation for that API
+			api: streamsFor(pushed.api),                         // nycode-ai's implementation for that API
 			auth: { apiKey: { name: pushed.label, resolve: async () => {
 				const current = session.providers.value.find((p) => p.id === pushed.id)?.auth;
 				return current && { auth: current, source: "p3" };       // always the latest push
@@ -247,7 +247,7 @@ const Servers = defineTable("p3.mcp.servers", {              // definitions: one
 	},
 	key: ["id"],
 });
-const Checkouts = defineTable("p3.mcp.checkouts", {          // a checkout's .pi/mcp.json on an env: enabled per checkout
+const Checkouts = defineTable("p3.mcp.checkouts", {          // a checkout's .nycode/mcp.json on an env: enabled per checkout
 	version: 1,
 	columns: { env: str(), dir: str(), server: str(), enabled: bool(), config: json(unknown(), { version: 1 }) },
 	key: ["env", "dir", "server"],
@@ -401,7 +401,7 @@ actor projects "projects plugin" "server, facts" muted
 actor selection "Selection" "server, core" accent
 actor view "SessionMcp" "server, per session"
 actor worker "session worker" "Durable"
-page -> projects: remove { project pi, resource mcp:radius }
+page -> projects: remove { project nycode, resource mcp:radius }
 projects => projects: commit the fact
 projects --> selection: its include selector's watchable changes
 selection => selection: recompute S1: mcp:radius gone

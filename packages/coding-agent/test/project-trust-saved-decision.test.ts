@@ -29,7 +29,7 @@ interface Dirs {
 }
 
 function setup(): Dirs {
-	const tempRoot = realpathSync(mkdtempSync(join(tmpdir(), "pi-project-trust-saved-")));
+	const tempRoot = realpathSync(mkdtempSync(join(tmpdir(), "nycode-project-trust-saved-")));
 	tempDirs.push(tempRoot);
 	const dirs = {
 		agentDir: join(tempRoot, "agent"),
@@ -44,8 +44,8 @@ function setup(): Dirs {
 	writeFileSync(
 		dirs.extensionFile,
 		`import { writeFileSync } from "node:fs";
-export default function (pi) {
-	pi.registerProvider("trust-probe", {
+export default function (nycode) {
+	nycode.registerProvider("trust-probe", {
 		baseUrl: "https://trust-probe.invalid/v1",
 		apiKey: "trust-probe-key",
 		api: "openai-completions",
@@ -59,7 +59,7 @@ export default function (pi) {
 			maxTokens: 1000,
 		}],
 	});
-	pi.on("session_start", (_event, ctx) => {
+	nycode.on("session_start", (_event, ctx) => {
 		writeFileSync(${JSON.stringify(dirs.probeFile)}, JSON.stringify({ trusted: ctx.isProjectTrusted() }));
 		process.exit(0);
 	});
@@ -88,7 +88,7 @@ async function probeProjectTrust(dirs: Dirs): Promise<boolean> {
 		],
 		{
 			cwd: dirs.projectDir,
-			env: { ...process.env, [ENV_AGENT_DIR]: dirs.agentDir, PI_OFFLINE: "1" },
+			env: { ...process.env, [ENV_AGENT_DIR]: dirs.agentDir, NYCODE_OFFLINE: "1" },
 			stdio: ["ignore", "ignore", "pipe"],
 		},
 	);

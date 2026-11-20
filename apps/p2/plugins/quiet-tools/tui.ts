@@ -2,7 +2,7 @@
 // call, an expanded transcript (Ctrl+O) or a clicked line shows the tool's full content, drawn by the renderers this
 // resolver wraps, without the card's box.
 
-import { Box, type Component, Container, Text, truncateToWidth } from "@earendil-works/pi-tui";
+import { Box, type Component, Container, Text, truncateToWidth } from "@nycode/tui";
 import { contribute, defineFacet } from "@p2/app/v1";
 import {
 	formatToolCallWithArgs,

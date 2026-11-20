@@ -1,4 +1,4 @@
-import { bool, int, num, obj, opt, str, union, unknown } from "@earendil-works/pi-schema";
+import { bool, int, num, obj, opt, str, union, unknown } from "@nycode/schema";
 import { LocationSchema, literal, local, method, param, remote, sessionHost, unsafe } from "@p2/app/v1";
 import type { WorkspaceBytes, WorkspaceResult } from "./protocol.ts";
 

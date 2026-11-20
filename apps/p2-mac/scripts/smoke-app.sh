@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Checks that a packaged Pi.app's own p2 starts: its signed Node runs the server from the app's resources, with a
+# Checks that a packaged Nycode.app's own p2 starts: its signed Node runs the server from the app's resources, with a
 # throwaway data directory and the faux provider, and the server answers /health.
 #
-#   ./scripts/smoke-app.sh build/Pi.app
+#   ./scripts/smoke-app.sh build/Nycode.app
 set -euo pipefail
-app="${1:?usage: smoke-app.sh <Pi.app>}"
+app="${1:?usage: smoke-app.sh <Nycode.app>}"
 resources="$(cd "$app/Contents/Resources" && pwd)"
 data="$(mktemp -d)"
 port=18797

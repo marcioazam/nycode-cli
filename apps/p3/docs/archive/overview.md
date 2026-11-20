@@ -1,13 +1,13 @@
 # p3 overview
 
-p3 is the successor of p2 (Pi Mobile): one Pi per person, built on Chord v2 with a kit of its own (`src/kit/`, the
+p3 is the successor of p2 (Nycode Mobile): one Nycode per person, built on Chord v2 with a kit of its own (`src/kit/`, the
 parts of Chord's app kit p3 needs, copied and cut down), next to p2 in `apps/p3/` on main, with its own data
 directory. It starts empty: no migration of p2's data. Slice 1 is built (`slices/README.md`).
 
 ## Goals
 
 - **Almost everything is a plugin.** Base code is vocabulary (the principal, the API, the start script, the worker
-  entry); every behaviour, the UI included, is a plugin. Pi stays malleable: cheap extension points, basic primitives.
+  entry); every behaviour, the UI included, is a plugin. Nycode stays malleable: cheap extension points, basic primitives.
 - **Reload without restarts.** Editing a plugin and applying it loses nothing (decision "Reloads first").
 - **Fast and low memory.** Quick worker starts, little RSS per worker, few bytes on the wire (`workflow.md`, Numbers).
 - **Small, concise, easy to understand** at every level: code, contracts, docs.
@@ -62,7 +62,7 @@ its child and starts it again after a crash; on request from the page: slice 2).
 | org | enrollment, the org profile (later) |
 | workspace, terminals | the project's files, git, the file index; PTYs and their viewers |
 | status, search, logs | what runs where without starting a worker; message search; notices |
-| radius, ports, backup | the relay, forwards, whole-Pi backups |
+| radius, ports, backup | the relay, forwards, whole-Nycode backups |
 | discord, chat-mode, voice | sessions talked to from elsewhere and in other ways |
 
 **UI:** the web page on Elanor (Earendil's React design system) and the terminal client, waiting for the team's UI

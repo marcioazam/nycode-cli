@@ -55,7 +55,7 @@ static napi_value get_state(napi_env env, napi_callback_info info) {
     return result;
 }
 
-PI_NAPI_EXPORT napi_value napi_register_module_v1(napi_env env, napi_value exports) {
+NYCODE_NAPI_EXPORT napi_value napi_register_module_v1(napi_env env, napi_value exports) {
     set_function_export(env, exports, "getText", get_clipboard_text);
     set_function_export(env, exports, "getImage", get_clipboard_image);
     set_function_export(env, exports, "release", release_reader);

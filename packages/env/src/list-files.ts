@@ -1,4 +1,4 @@
-import type { Context } from "@earendil-works/chord/context";
+import type { Context } from "@nycode/chord/context";
 import {
 	type ExecutionEnv,
 	err,
@@ -9,8 +9,8 @@ import {
 	type ListFilesOptions,
 	ok,
 	type Result,
-} from "@earendil-works/pi-durable/env";
-import { NodeExecutionEnv } from "@earendil-works/pi-durable/env/node";
+} from "@nycode/durable/env";
+import { NodeExecutionEnv } from "@nycode/durable/env/node";
 import type { Connection } from "./connection.ts";
 import { abortResult, toFileError } from "./errors.ts";
 
@@ -37,7 +37,7 @@ export async function listFilesOver(
 	if (aborted) return aborted;
 	try {
 		if (!(await connection.info(context.abortSignal)).features?.includes("listFiles")) {
-			return err(new FileError("not_supported", "The pi-env daemon does not list files; update it", path));
+			return err(new FileError("not_supported", "The nycode-env daemon does not list files; update it", path));
 		}
 		const { json, payload } = await connection.request(
 			"listFiles",
@@ -77,7 +77,7 @@ export type LocalExecutionEnvOptions = ConstructorParameters<typeof NodeExecutio
 };
 
 /**
- * `NodeExecutionEnv` with `listFiles` through a pi-env daemon on the same machine, so local and remote environments
+ * `NodeExecutionEnv` with `listFiles` through a nycode-env daemon on the same machine, so local and remote environments
  * list files with the same code. Everything else is `NodeExecutionEnv`'s. The connection belongs to the caller, who
  * closes it; several environments may share it.
  */

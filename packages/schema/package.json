@@ -1,5 +1,5 @@
 {
-	"name": "@earendil-works/pi-schema",
+	"name": "@nycode/schema",
 	"version": "1.6.0",
 	"description": "JSON Schema validation without eval: drafts 2020-12 and 7, compiled into plain closures",
 	"type": "module",
@@ -41,7 +41,7 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/earendil-works/pi.git",
+		"url": "git+https://github.com/marcioazam/nycode-cli.git",
 		"directory": "packages/schema"
 	},
 	"engines": {

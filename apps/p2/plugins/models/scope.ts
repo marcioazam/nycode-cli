@@ -1,4 +1,4 @@
-// Model scope for cycling (pi's `enabledModels`, coding-agent core/model-resolver.ts `resolveModelScopeFromModels`),
+// Model scope for cycling (nycode's `enabledModels`, coding-agent core/model-resolver.ts `resolveModelScopeFromModels`),
 // pure: patterns are `provider/modelId` or `modelId`, a case-insensitive `*`/`?` glob over either, each with an optional
 // `:thinkingLevel` suffix. Exact references win over globs; duplicates keep their first position.
 import type { ModelInfo } from "./contract.ts";

@@ -1,5 +1,5 @@
 import { stripVTControlCharacters } from "node:util";
-import type { TUI } from "@earendil-works/pi-tui";
+import type { TUI } from "@nycode/tui";
 import { applyPatch } from "diff";
 import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
@@ -253,7 +253,7 @@ describe("Coding Agent Tools", () => {
 			);
 
 			// The result is replayed after a switch to a vision model, so it keeps the image and no
-			// note saying the model cannot see it; pi-ai replaces the image per request instead.
+			// note saying the model cannot see it; nycode-ai replaces the image per request instead.
 			expect(getTextOutput(result)).toBe("Read image file [image/png]");
 			expect(result.content.some((c) => c.type === "image")).toBe(true);
 
@@ -1584,12 +1584,12 @@ describe("edit tool fuzzy matching", () => {
 
 		const result = await editTool.execute("test-fuzzy-chinese", {
 			path: testFile,
-			edits: [{ oldText: "你好,世界\n你好(世界)\n", newText: "你好，pi\n你好(pi)\n" }],
+			edits: [{ oldText: "你好,世界\n你好(世界)\n", newText: "你好，nycode\n你好(nycode)\n" }],
 		});
 
 		expect(getTextOutput(result)).toContain("Successfully replaced");
 		const content = readFileSync(testFile, "utf-8");
-		expect(content).toBe("你好，pi\n你好(pi)\n");
+		expect(content).toBe("你好，nycode\n你好(nycode)\n");
 	});
 
 	it("should match compatibility-equivalent Unicode forms", async () => {

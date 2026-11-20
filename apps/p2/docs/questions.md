@@ -6,7 +6,7 @@ Status: design (target). A p2 service, not a Chord or Durable feature. Reference
 
 Running work sometimes needs an answer from a person:
 
-- **login:** pi-ai's OAuth and API-key flows ask for a pasted code, a secret or an account selection (today a promise map
+- **login:** nycode-ai's OAuth and API-key flows ask for a pasted code, a secret or an account selection (today a promise map
   inside `plugins/login/logins.ts`, `prompt`/`answer`);
 - **tool approval:** before the agent runs a dangerous tool, the owner allows or denies it (p2 has none today);
 - **a question tool:** the model asks everyone present and needs all their answers.
@@ -159,7 +159,7 @@ execute: async ({ question, options }, ctx) => {
 },
 ```
 
-**Login.** The login flow is a job (target-design §10); pi-ai's `prompt` callback asks the owner-scoped store, which
+**Login.** The login flow is a job (target-design §10); nycode-ai's `prompt` callback asks the owner-scoped store, which
 replaces the promise map in `Logins`:
 
 ```ts

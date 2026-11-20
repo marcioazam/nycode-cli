@@ -4,11 +4,11 @@ import { streamSimple as streamAzureOpenAIResponses } from "../src/api/azure-ope
 import { streamSimple as streamGoogleGenerativeAI } from "../src/api/google-generative-ai.ts";
 import { streamSimple as streamGoogleVertex } from "../src/api/google-vertex.ts";
 import { streamSimple as streamMistral } from "../src/api/mistral-conversations.ts";
+import { streamSimple as streamNycodeMessages } from "../src/api/nycode-messages.ts";
 import { streamSimple as streamOpenAICodexResponses } from "../src/api/openai-codex-responses.ts";
 import { streamSimple as streamOpenAICompletions } from "../src/api/openai-completions.ts";
 import { streamSimple as streamOpenAIResponses } from "../src/api/openai-responses.ts";
 import { generateImages } from "../src/api/openrouter-images.ts";
-import { streamSimple as streamPiMessages } from "../src/api/pi-messages.ts";
 import type { Api, FetchFunction, ImageModel, Model } from "../src/types.ts";
 import { normalizeContext } from "../src/utils/transcript.ts";
 
@@ -100,7 +100,7 @@ describe("fetch stream option", () => {
 		expect(globalThis.fetch).toBe(fallback);
 	});
 
-	it("uses fetch for Mistral, Codex SSE, and pi-messages HTTP requests", async () => {
+	it("uses fetch for Mistral, Codex SSE, and nycode-messages HTTP requests", async () => {
 		const { custom, fallback } = mockFetches();
 		await streamMistral(createModel("mistral-conversations"), context, {
 			apiKey: "test-key",
@@ -112,7 +112,7 @@ describe("fetch stream option", () => {
 			transport: "sse",
 			maxRetries: 0,
 		}).result();
-		await streamPiMessages(createModel("pi-messages"), context, {
+		await streamNycodeMessages(createModel("nycode-messages"), context, {
 			apiKey: "test-key",
 			fetch: custom,
 		}).result();

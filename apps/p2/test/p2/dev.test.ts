@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { setTimeout as delay } from "node:timers/promises";
-import { num, str } from "@earendil-works/pi-schema";
+import { num, str } from "@nycode/schema";
 import { BACKGROUND_CONTEXT, follow, method, param, remote, serverHost, sessionHost, statusOf } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { Sessions } from "../../plugins/sessions/contract.ts";
@@ -49,7 +49,7 @@ function probes(name: string) {
 	};
 }
 const { worker: Probe, server: ServerProbe } = probes("test.dev-probe");
-const contractSource = `import { num, obj, str } from "@earendil-works/pi-schema";
+const contractSource = `import { num, obj, str } from "@nycode/schema";
 import { method, param, remote, serverHost, sessionHost } from "@p2/app/v1";
 const variants = { reader: { methods: { label: method(undefined, str()), pid: method(undefined, num()) } } };
 export const Probe = remote("test.dev-probe", { version: 1, params: { session: param.str() },
@@ -72,7 +72,7 @@ async function unregistered(port: number, path: string): Promise<void> {
 	const gone = await http(port, path);
 	const never = await http(port, "/__dev_never_registered");
 	assert.deepEqual([gone.status, never.status], [401, 401], `${path}: registration was removed`);
-	for (const answer of [gone, never]) assert.match(answer.body, /<title>Pi · Sign in<\/title>/);
+	for (const answer of [gone, never]) assert.match(answer.body, /<title>Nycode · Sign in<\/title>/);
 }
 
 /** A probe facet of `kind` whose eager object serves a route (server) and records its close in `directory`. */
@@ -268,7 +268,8 @@ test(
 				Boolean(
 					value?.entries.some(
 						(entry) =>
-							entry.kind === "pi.assistant" && JSON.stringify(entry.model).includes("reload-stream-sentinel"),
+							entry.kind === "nycode.assistant" &&
+							JSON.stringify(entry.model).includes("reload-stream-sentinel"),
 					),
 				),
 			);
@@ -278,7 +279,7 @@ test(
 				Boolean(
 					value?.entries.some(
 						(entry) =>
-							entry.kind === "pi.assistant" &&
+							entry.kind === "nycode.assistant" &&
 							JSON.stringify(entry.model).includes("code-switch-sentinel switched-code"),
 					),
 				),
@@ -439,7 +440,8 @@ test(
 				Boolean(
 					value?.entries.some(
 						(entry) =>
-							entry.kind === "pi.assistant" && JSON.stringify(entry.model).includes("plugin-removal-sentinel"),
+							entry.kind === "nycode.assistant" &&
+							JSON.stringify(entry.model).includes("plugin-removal-sentinel"),
 					),
 				),
 			);
@@ -449,7 +451,7 @@ test(
 			await until(removalChat.view, (value) =>
 				Boolean(
 					value?.entries.some(
-						(entry) => entry.kind === "pi.assistant" && JSON.stringify(entry.model).includes("after-removal"),
+						(entry) => entry.kind === "nycode.assistant" && JSON.stringify(entry.model).includes("after-removal"),
 					),
 				),
 			);
@@ -486,7 +488,8 @@ test(
 				Boolean(
 					value?.entries.some(
 						(entry) =>
-							entry.kind === "pi.assistant" && JSON.stringify(entry.model).includes("plugin-addition-sentinel"),
+							entry.kind === "nycode.assistant" &&
+							JSON.stringify(entry.model).includes("plugin-addition-sentinel"),
 					),
 				),
 			);
@@ -536,7 +539,8 @@ test(
 				Boolean(
 					value?.entries.some(
 						(entry) =>
-							entry.kind === "pi.assistant" && JSON.stringify(entry.model).includes("restart-stream-sentinel"),
+							entry.kind === "nycode.assistant" &&
+							JSON.stringify(entry.model).includes("restart-stream-sentinel"),
 					),
 				),
 			);

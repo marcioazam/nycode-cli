@@ -1,4 +1,4 @@
-import { InMemoryTelemetryContext, type SpanAttributes } from "@earendil-works/pi-telemetry";
+import { InMemoryTelemetryContext, type SpanAttributes } from "@nycode/telemetry";
 import { describe, expect, it, vi } from "vitest";
 import { BACKGROUND_CONTEXT as context, withAbortSignal, withCancel, withTelemetry } from "../../src/context/index.ts";
 import { type Address, evolve, hostKind, int, local, method, obj, remote, str } from "../../src/contracts/index.ts";

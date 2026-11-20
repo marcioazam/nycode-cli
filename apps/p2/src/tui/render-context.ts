@@ -1,6 +1,6 @@
 // What copied coding-agent components need instead of its globals (`theme`, `keyHint`, `process.platform`):
 // p2-tui-port.md section 5.4. P0d's TuiContext is a superset of RenderContext.
-import { stripTerminalSequences } from "@earendil-works/pi-tui";
+import { stripTerminalSequences } from "@nycode/tui";
 import type { ThemeRef } from "./theme/ref.ts";
 
 export interface RenderContext {
@@ -30,7 +30,7 @@ export function formatKeyText(key: string, options: { capitalize?: boolean } = {
 		.join("/");
 }
 
-/** Keys of a binding id; plugin ids are not in pi-tui's `Keybinding` union, so this casts once (section 6.3). */
+/** Keys of a binding id; plugin ids are not in nycode-tui's `Keybinding` union, so this casts once (section 6.3). */
 export function keyHint(ctx: RenderContext, id: string, description: string): string {
 	const theme = ctx.theme.current;
 	return theme.fg("dim", ctx.keyText(id)) + theme.fg("muted", ` ${description}`);

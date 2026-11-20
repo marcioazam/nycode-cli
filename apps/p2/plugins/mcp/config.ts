@@ -1,14 +1,14 @@
 // The owner's MCP configuration, `<P2_DATA_DIR>/mcp.json` (a trust boundary): the shared `mcpServers` shape checked by
-// pi-mcp, p2's own fields (`shared`, `runOn`) checked here, and the file followed while the server runs.
+// nycode-mcp, p2's own fields (`shared`, `runOn`) checked here, and the file followed while the server runs.
 
 import { join } from "node:path";
-import { NodeExecutionEnv } from "@earendil-works/pi-durable/env/node";
+import { NodeExecutionEnv } from "@nycode/durable/env/node";
 import {
 	type McpHttpServerConfig,
 	type McpStdioServerConfig,
 	mcpNamespace,
 	validateMcpServerConfig,
-} from "@earendil-works/pi-mcp";
+} from "@nycode/mcp";
 import { Observer, optionalText, stripBom, stripJsonComments } from "@p2/app/v1/node";
 
 /** Where a stdio server runs: where the conversation works, on the p2 host, or on an environment of `envs.json`. */
@@ -95,7 +95,7 @@ function ownerServer(name: string, raw: unknown): Entry {
 	const invalid = (error: string): Entry => ({ kind: "invalid", error: `server "${name}": ${error}` });
 	const result = validateMcpServerConfig(name, raw);
 	if (result.kind === "invalid") return { kind: "invalid", error: result.error };
-	// The entry keeps fields pi-mcp does not know (p2's `shared` and `runOn` among them), unused from here on.
+	// The entry keeps fields nycode-mcp does not know (p2's `shared` and `runOn` among them), unused from here on.
 	const { shared, runOn } = result.config;
 	const enabled = result.config.enabled !== false;
 	if (shared !== undefined && typeof shared !== "boolean") return invalid("shared must be a boolean");

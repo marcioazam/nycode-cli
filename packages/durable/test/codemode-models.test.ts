@@ -1,7 +1,6 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Context } from "@earendil-works/chord/context";
 import {
 	type AssistantImages,
 	type ClassifierResult,
@@ -10,9 +9,10 @@ import {
 	fauxText,
 	fauxToolCall,
 	type MutableModels,
-} from "@earendil-works/pi-ai";
-import { CodemodeSandbox } from "@earendil-works/pi-codemode";
-import { MemoryStorage, ToolResultEntry, UsageDoc } from "@earendil-works/pi-durable";
+} from "@nycode/ai";
+import type { Context } from "@nycode/chord/context";
+import { CodemodeSandbox } from "@nycode/codemode";
+import { MemoryStorage, ToolResultEntry, UsageDoc } from "@nycode/durable";
 import { describe, expect, it } from "vitest";
 import { createCodemodeExtension } from "../src/codemode/codemode.ts";
 import type { ExecutionEnv } from "../src/env/index.ts";
@@ -162,7 +162,7 @@ describe("code mode models.*", () => {
 				questions: { good: { type: "bool", instructions: "Is it good?", criteria: { true: "yes", false: "no" } } },
 			});
 			const found = (await searchTools("classify generate images models")).length;
-			const described = (await describeTool("pi.codemode.models.classify")) !== undefined;
+			const described = (await describeTool("nycode.codemode.models.classify")) !== undefined;
 			return [result.stopReason, result.answers.good.value, Object.keys(tools).some((name) => name.includes("models")), ALL_TOOLS.some((tool) => tool.name.includes("models")), found, described];`,
 		);
 		expect(JSON.parse(text)).toEqual(["stop", true, false, false, 0, false]);
@@ -171,7 +171,7 @@ describe("code mode models.*", () => {
 			{ name: "models.classify", status: "ok" },
 		]);
 		// Counted once, under the internal tool, by the Harness.
-		expect(usage?.tools["pi.codemode.models.classify"]?.cost.total).toBeCloseTo(0.0012);
+		expect(usage?.tools["nycode.codemode.models.classify"]?.cost.total).toBeCloseTo(0.0012);
 	});
 
 	it("resolves a model call that failed with its result, as the coding agent does", async () => {
@@ -222,7 +222,7 @@ describe("code mode models.*", () => {
 	it("does not start a model call that waited for a slot after the script ended", async () => {
 		const chat = modelsChat();
 		chat.gate.open = deferred();
-		const directory = await mkdtemp(join(tmpdir(), "pi-codemode-models-"));
+		const directory = await mkdtemp(join(tmpdir(), "nycode-codemode-models-"));
 		// The result spills to a file after the script ended and before the tool returns. Then the running
 		// calls finish and free their slots, which the two waiting calls would take.
 		class SlowTempFiles extends NodeExecutionEnv {

@@ -27,7 +27,7 @@ function sourceModel(id: string, api: ModelsDevV2Model["api"]): ModelsDevV2Model
 }
 
 function generateOpencodeModels(models: ModelsDevV2Model[], strict = false) {
-	const root = mkdtempSync(join(tmpdir(), "pi-opencode-generation-"));
+	const root = mkdtempSync(join(tmpdir(), "nycode-opencode-generation-"));
 	temporaryRoots.push(root);
 	const preloadPath = join(root, "mock-catalog.mjs");
 	const outputPath = join(root, "catalog");

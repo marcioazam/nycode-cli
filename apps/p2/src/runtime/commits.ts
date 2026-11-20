@@ -1,4 +1,4 @@
-import type { CommitObservation, CommitPublication, Harness } from "@earendil-works/pi-durable";
+import type { CommitObservation, CommitPublication, Harness } from "@nycode/durable";
 
 /** Wakes a catch-up task after relevant commits. Subscribe before its initial scan to avoid missing a race. */
 export class CommitSignal {

@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
-import type { ConversationView, LiveState } from "@earendil-works/pi-durable";
+import type { ConversationView, LiveState } from "@nycode/durable";
 import { BACKGROUND_CONTEXT, follow, whenLive } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { rankFiles, withDirectories } from "../../plugins/file-index/rank.ts";
@@ -20,9 +20,9 @@ import { wholeView } from "../fixtures/whole-view.ts";
 import { expectChord, holdIn, http, startFixture, until } from "./helpers.ts";
 
 type Fixture = Awaited<ReturnType<typeof startFixture>>;
-const live = (view: ConversationView | null | undefined) => view?.docs["pi.live"] as LiveState | undefined;
+const live = (view: ConversationView | null | undefined) => view?.docs["nycode.live"] as LiveState | undefined;
 const queued = (view: ConversationView | null | undefined) =>
-	(view?.docs["pi.inbox"] as { items?: { id: number }[] } | undefined)?.items ?? [];
+	(view?.docs["nycode.inbox"] as { items?: { id: number }[] } | undefined)?.items ?? [];
 
 /** A guest admitted through a share link of `mode`. */
 async function guestOf(fixture: Fixture, owner: Host, session: string, mode: "full" | "view", name: string) {
@@ -57,7 +57,7 @@ test("compact, reset and model metadata: owner, full guest and view guest", { ti
 	const ownerChat = await chat(owner, "participant");
 	t.after(follow(ownerChat.view, () => {}));
 	await ownerChat.send({ text: "first", requestId: "a" }, BACKGROUND_CONTEXT);
-	await until(ownerChat.view, (view) => Boolean(view?.entries.some((entry) => entry.kind === "pi.assistant")));
+	await until(ownerChat.view, (view) => Boolean(view?.entries.some((entry) => entry.kind === "nycode.assistant")));
 	// Guest-safe model metadata: the conversation's model from the catalog, also for a view-only guest.
 	const viewer = await chat(await guestOf(fixture, owner, session, "view", "Viewer"), "viewer");
 	assert.equal(viewer.variant, "viewer");
@@ -73,10 +73,10 @@ test("compact, reset and model metadata: owner, full guest and view guest", { ti
 	await expectChord(asParticipant.reset({}, BACKGROUND_CONTEXT), "invalid");
 	await expectChord(asParticipant.dequeueOwn(BACKGROUND_CONTEXT), "invalid");
 
-	// Compaction: a task, then a pi.compaction entry in the view; nothing to abort when idle.
+	// Compaction: a task, then a nycode.compaction entry in the view; nothing to abort when idle.
 	const { taskId } = await ownerChat.compact({ instructions: "keep it short" }, BACKGROUND_CONTEXT);
 	assert(Number.isInteger(taskId));
-	await until(ownerChat.view, (view) => Boolean(view?.entries.some((entry) => entry.kind === "pi.compaction")));
+	await until(ownerChat.view, (view) => Boolean(view?.entries.some((entry) => entry.kind === "nycode.compaction")));
 	assert.deepEqual(await ownerChat.abortCompaction(BACKGROUND_CONTEXT), { aborted: 0 });
 
 	// A full guest may compact and abort compaction, but not start a new context.
@@ -85,12 +85,12 @@ test("compact, reset and model metadata: owner, full guest and view guest", { ti
 	assert.deepEqual(await guestChat.abortCompaction(BACKGROUND_CONTEXT), { aborted: 0 });
 	await expectChord(guestChat.reset({ handoff: "x" }, BACKGROUND_CONTEXT), "forbidden");
 
-	// The owner's reset places a pi.reset entry carrying the handoff.
+	// The owner's reset places a nycode.reset entry carrying the handoff.
 	await ownerChat.reset({ handoff: "Continue with the tests." }, BACKGROUND_CONTEXT);
 	const reset = await until(ownerChat.view, (view) =>
-		Boolean(view?.entries.some((entry) => entry.kind === "pi.reset")),
+		Boolean(view?.entries.some((entry) => entry.kind === "nycode.reset")),
 	);
-	const marker = reset?.entries.find((entry) => entry.kind === "pi.reset");
+	const marker = reset?.entries.find((entry) => entry.kind === "nycode.reset");
 	assert.match(JSON.stringify(marker?.model ?? []), /Continue with the tests\./);
 	// The handoff belongs to the new-context marker, expandable like a compaction summary, not a user message.
 	const items = buildTranscript(wholeView(reset!)).items;
@@ -103,12 +103,12 @@ test("abortCompaction aborts a running compaction", { timeout: 90_000 }, async (
 	const ownerChat = await chat(owner, "participant");
 	t.after(follow(ownerChat.view, () => {}));
 	await ownerChat.send({ text: "first", requestId: "a" }, BACKGROUND_CONTEXT);
-	await until(ownerChat.view, (view) => Boolean(view?.entries.some((entry) => entry.kind === "pi.assistant")));
+	await until(ownerChat.view, (view) => Boolean(view?.entries.some((entry) => entry.kind === "nycode.assistant")));
 	await ownerChat.compact({}, BACKGROUND_CONTEXT);
 	// The fake summary streams for a while: the abort marks the task before it places a summary.
 	assert.deepEqual(await ownerChat.abortCompaction(BACKGROUND_CONTEXT), { aborted: 1 });
 	const after = await until(ownerChat.view, (view) => !live(view)?.compactions?.length);
-	assert(!after?.entries.some((entry) => entry.kind === "pi.compaction"), "aborted: no summary");
+	assert(!after?.entries.some((entry) => entry.kind === "nycode.compaction"), "aborted: no summary");
 });
 
 test("dequeueOwn restores only the caller's queued inputs, in order", { timeout: 90_000 }, async (t) => {
@@ -179,7 +179,7 @@ test(
 		timeout: 60_000,
 	},
 	async (t) => {
-		// Pure ranking: pi's name scores, directories first on ties, then depth, length and name; fuzzy matches last.
+		// Pure ranking: nycode's name scores, directories first on ties, then depth, length and name; fuzzy matches last.
 		const items = withDirectories(["src/app.ts", "src/web/app.tsx", "docs/apple.md", "README.md", "src/main.ts"]);
 		assert.deepEqual(
 			items.filter((item) => item.dir).map((item) => item.path),

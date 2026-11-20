@@ -3,8 +3,8 @@
 // Needed only for a change made elsewhere (another host's commit reaching this one, a first value). After a call on the
 // same reference the value is there already: a call's answer follows its state (design §3).
 
-import type { Watchable } from "@earendil-works/chord";
-import type { Context } from "@earendil-works/chord/context";
+import type { Watchable } from "@nycode/chord";
+import type { Context } from "@nycode/chord/context";
 
 /** The first value of `source`, now or later, for which `done` holds; rejects after `ms` (2 s by default). */
 export async function until<T>(

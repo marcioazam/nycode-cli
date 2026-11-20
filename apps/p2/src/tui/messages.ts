@@ -1,7 +1,7 @@
 // A whole transcript as one component outside a runtime (tests, previews): the chat screen's TranscriptView with the
 // built-in dark theme and the current keymap's hints, tools drawn by `renderers` (by tool name; plugins register theirs
-// in `TuiToolRenderers`) or pi's generic card. The chat surface itself keeps one TranscriptView per screen.
-import { getKeybindings, type Keybinding } from "@earendil-works/pi-tui";
+// in `TuiToolRenderers`) or nycode's generic card. The chat surface itself keeps one TranscriptView per screen.
+import { getKeybindings, type Keybinding } from "@nycode/tui";
 import type { Transcript } from "../web/transcript.ts";
 import { TranscriptView } from "./components/transcript.ts";
 import { formatKeyText } from "./render-context.ts";

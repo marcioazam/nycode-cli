@@ -1,7 +1,7 @@
 // Schema snapshots: one schema-aware walk checks an app schema against Chord's vocabulary and produces a
 // Chord-owned copy and its normal form (the fingerprint input).
 
-import type { JsonSchema } from "@earendil-works/pi-schema";
+import type { JsonSchema } from "@nycode/schema";
 import { isJsonValue, type JsonValue } from "../json.ts";
 
 /**

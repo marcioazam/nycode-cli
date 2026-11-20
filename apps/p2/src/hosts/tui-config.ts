@@ -14,7 +14,7 @@ export type TuiConfig = { connections: Record<string, TuiConnection> };
  * directory's owner key (never saved; a new sign-in replaces it).
  */
 export type TuiAdmission = TuiCredentials & { role: "owner" | "guest"; session?: string; local?: true };
-export const configDirectory = (): string => process.env.P2_TUI_CONFIG_DIR ?? join(homedir(), ".pi", "p2-tui");
+export const configDirectory = (): string => process.env.P2_TUI_CONFIG_DIR ?? join(homedir(), ".nycode", "p2-tui");
 const COOKIE = /^[\x21-\x7e]{1,4096}$/;
 const SESSION = /^[\w-]{1,128}$/;
 export function readConfig(directory = configDirectory()): TuiConfig {
@@ -183,7 +183,7 @@ export type TuiPrompt = (kind: "link" | "name", reason?: string) => Promise<stri
 /**
  * Sign-in (section 4.1). An expired or remotely revoked cookie leads back to sign-in, not an endless unauthenticated
  * reconnect. A valid saved owner cookie comes first. On loopback the server's own user then signs in with the owner key
- * of its data directory (`dataDir`, default `P2_DATA_DIR` or `~/.pi/p2`; a server with another data directory refuses
+ * of its data directory (`dataDir`, default `P2_DATA_DIR` or `~/.nycode/p2`; a server with another data directory refuses
  * that with a clear error), unless `--join` explicitly asks for a guest view; a stored guest cookie never downgrades
  * it. Remote origins use a valid guest cookie next. Everyone else is asked for either link.
  */
@@ -314,7 +314,7 @@ export function parseTuiArgs(args: readonly string[], env: NodeJS.ProcessEnv = p
 			joinLink = args[++i];
 			if (!joinLink) throw new Error("--join needs a share link");
 		} else if (arg === "--theme") {
-			// pi's --theme: this run's theme setting (a name or "light/dark" pair).
+			// nycode's --theme: this run's theme setting (a name or "light/dark" pair).
 			theme = args[++i];
 			if (!theme) throw new Error("--theme needs a value");
 		} else if (arg === "--no-themes") noThemes = true;

@@ -1,4 +1,4 @@
-// Model and thinking selection in the TUI (p2-tui-port.md section 1.7, P4): pi's model selector, thinking selector
+// Model and thinking selection in the TUI (p2-tui-port.md section 1.7, P4): nycode's model selector, thinking selector
 // and scoped models selector as overlays, Shift+Tab thinking cycling and Ctrl+P / Shift+Ctrl+P model cycling over the
 // owner's scope (`enabledModels`, else every signed-in model). The model is the owner's choice and cost: `Models` and
 // `Chat.configure` are owner-only, so guests get a read-only line. Without a session, a choice sets the default for
@@ -98,7 +98,7 @@ export class ModelState implements TuiSurface {
 					this.received = { ...this.received, model: model ?? null };
 				});
 				follow(ref.view, (view) => {
-					const agent = view?.docs["pi.agent"] as { thinkingLevel?: string } | undefined;
+					const agent = view?.docs["nycode.agent"] as { thinkingLevel?: string } | undefined;
 					this.received = { ...this.received, thinkingLevel: agent?.thinkingLevel };
 				});
 			});
@@ -301,7 +301,7 @@ function openThinkingSelector(ctx: TuiContext): void {
 	);
 }
 
-/** pi's Ctrl+P / Shift+Ctrl+P: the next model of the scope (or of every signed-in model), with its scoped level. */
+/** nycode's Ctrl+P / Shift+Ctrl+P: the next model of the scope (or of every signed-in model), with its scoped level. */
 function cycleModel(ctx: TuiContext, direction: 1 | -1): void {
 	const state = stateOf(ctx);
 	if (!state || readOnly(ctx, state)) return;
@@ -322,7 +322,7 @@ function cycleModel(ctx: TuiContext, direction: 1 | -1): void {
 	);
 }
 
-/** pi's Shift+Tab: the next of the model's thinking levels. */
+/** nycode's Shift+Tab: the next of the model's thinking levels. */
 function cycleThinking(ctx: TuiContext): void {
 	const state = stateOf(ctx);
 	if (!state || readOnly(ctx, state)) return;
@@ -383,7 +383,7 @@ export const MODEL_COMMANDS: Record<string, TuiCommand> = {
 		run: (ctx, args) => {
 			const state = stateOf(ctx);
 			const query = args?.trim();
-			// pi: `/model provider/id` switches at once when it names exactly one model.
+			// nycode: `/model provider/id` switches at once when it names exactly one model.
 			const exact = query
 				? state?.catalog.find((model) => `${model.provider}/${model.modelId}`.toLowerCase() === query.toLowerCase())
 				: undefined;

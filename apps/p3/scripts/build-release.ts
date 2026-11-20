@@ -63,7 +63,7 @@ export async function buildRelease(dist: string = join(P3, "dist")): Promise<Bui
 	await writeFile(join(dist, "p3.js"), LAUNCHER);
 	await chmod(join(dist, "p3.js"), 0o755);
 	// The API modules, compiled against the workspace's sources: their declarations name Chord's types through the
-	// package (`import("@earendil-works/chord")`), as an install resolves them.
+	// package (`import("@nycode/chord")`), as an install resolves them.
 	const tsc = join(REPOSITORY, "node_modules", "typescript", "bin", "tsc");
 	execFileSync(process.execPath, [tsc, "-p", join(P3, "tsconfig.build.json"), "--outDir", dist], { stdio: "inherit" });
 	const files = await readdir(dist, { recursive: true, withFileTypes: true });

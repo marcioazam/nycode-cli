@@ -59,7 +59,7 @@ export {
 	untilAborted,
 	type Watchable,
 	type Writable,
-} from "@earendil-works/chord";
+} from "@nycode/chord";
 export {
 	awaitWithContext,
 	BACKGROUND_CONTEXT,
@@ -67,9 +67,9 @@ export {
 	withAbortSignal,
 	withCancel,
 	withoutAbortSignal,
-} from "@earendil-works/chord/context";
-export type { JsonValue } from "@earendil-works/chord/json";
-export type { NativeWatchable, WatchCall, WatchHandle } from "@earendil-works/chord/watch";
+} from "@nycode/chord/context";
+export type { JsonValue } from "@nycode/chord/json";
+export type { NativeWatchable, WatchCall, WatchHandle } from "@nycode/chord/watch";
 export * from "../../runtime/access.ts";
 export * from "../../runtime/chord.ts";
 export * from "../../runtime/composer.ts";

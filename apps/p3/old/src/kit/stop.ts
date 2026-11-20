@@ -2,8 +2,8 @@
 // token file), answered first; then the server closes as on `SIGTERM`. A command needs no signal for it, so it stops a
 // server whose process it cannot identify (no `ps`) or may not signal.
 
-import { defineFacet, type Facet } from "@earendil-works/chord";
-import { Http } from "@earendil-works/chord/http";
+import { defineFacet, type Facet } from "@nycode/chord";
+import { Http } from "@nycode/chord/http";
 import type { P3Principal } from "../principals.ts";
 
 /** The path the owner posts to for the server to stop. */

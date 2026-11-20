@@ -1,4 +1,4 @@
-import type { Context } from "@earendil-works/chord/context";
+import type { Context } from "@nycode/chord/context";
 import { expect, expectTypeOf, it } from "vitest";
 import { idFromNumber, seqFromNumber } from "../src/ids.ts";
 import type {

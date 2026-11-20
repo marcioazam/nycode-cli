@@ -57,7 +57,7 @@ env conformance suite and `test/differential.test.ts` check each rule below.
 - An abort settles as `aborted`; `cleanup()` kills without aborting, so the command settles with exit code 137.
 - A process killed by a signal reports `128 + signal`.
 - Spill: once the output crosses `spill.afterBytes` or `spill.afterLines` (counted over raw chunks in arrival order, as
-  Node counts), the complete raw output goes to `pi-output-<uuid>.log` in a fresh `tmp-` directory.
+  Node counts), the complete raw output goes to `nycode-output-<uuid>.log` in a fresh `tmp-` directory.
 
 ## Watching
 

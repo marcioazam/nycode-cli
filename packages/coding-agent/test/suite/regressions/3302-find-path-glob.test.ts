@@ -20,7 +20,7 @@ describe("issue #3302 find returns no results for path-based glob patterns", () 
 	let tempRoot: string;
 
 	beforeEach(() => {
-		tempRoot = mkdtempSync(join(tmpdir(), "pi-3302-"));
+		tempRoot = mkdtempSync(join(tmpdir(), "nycode-3302-"));
 		mkdirSync(join(tempRoot, "some", "parent", "child"), { recursive: true });
 		mkdirSync(join(tempRoot, "src", "foo", "bar"), { recursive: true });
 		writeFileSync(join(tempRoot, "some", "parent", "child", "file.ext"), "");

@@ -21,7 +21,7 @@ try {
 	const system = localSystem();
 	await terminalDaemon(system.platform, system.arch, true);
 } catch (error) {
-	unavailable = error instanceof Error ? error.message : "No pi-env daemon with terminal support";
+	unavailable = error instanceof Error ? error.message : "No nycode-env daemon with terminal support";
 }
 const ghostty = await Ghostty.load(
 	await readFile(new URL("../../plugins/terminals/vendor/ghostty/ghostty-vt.wasm", import.meta.url)),

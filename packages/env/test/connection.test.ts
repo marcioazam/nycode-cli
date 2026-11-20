@@ -81,16 +81,16 @@ describe("Connection start failures", () => {
 		const error = await startError(connect(failing("ssh: Permission denied (publickey).\n", 255)));
 		expect(isConnectionLost(error)).toBe(true);
 		expect(error.message).toBe(
-			"pi-env exited with code 255 before it was ready\nremote stderr:\nssh: Permission denied (publickey).",
+			"nycode-env exited with code 255 before it was ready\nremote stderr:\nssh: Permission denied (publickey).",
 		);
 	});
 
 	it("keeps the message unchanged when the daemon wrote nothing printable to stderr", async () => {
 		expect((await startError(connect("process.exit(3);"))).message).toBe(
-			"pi-env exited with code 3 before it was ready",
+			"nycode-env exited with code 3 before it was ready",
 		);
 		expect((await startError(connect(failing(" \n\u0007\u001b[0m\n", 3)))).message).toBe(
-			"pi-env exited with code 3 before it was ready",
+			"nycode-env exited with code 3 before it was ready",
 		);
 	});
 
@@ -99,7 +99,7 @@ describe("Connection start failures", () => {
 			"\u001b[31mred\u001b[0m\r\nbell\u0007 del\u007f\tc1:\u0085\u009d end\nÜberprüfung fehlgeschlagen ✗\n\n";
 		const error = await startError(connect(failing(stderr)));
 		expect(error.message).toBe(
-			"pi-env exited with code 1 before it was ready\nremote stderr:\nred\nbell del\tc1: end\nÜberprüfung fehlgeschlagen ✗",
+			"nycode-env exited with code 1 before it was ready\nremote stderr:\nred\nbell del\tc1: end\nÜberprüfung fehlgeschlagen ✗",
 		);
 	});
 
@@ -107,7 +107,7 @@ describe("Connection start failures", () => {
 		const lines = Array.from({ length: 30 }, (_, index) => `line ${index}`);
 		const error = await startError(connect(failing(`${lines.join("\n")}\n`)));
 		expect(error.message).toBe(
-			`pi-env exited with code 1 before it was ready\nremote stderr:\n${lines.slice(10).join("\n")}`,
+			`nycode-env exited with code 1 before it was ready\nremote stderr:\n${lines.slice(10).join("\n")}`,
 		);
 	});
 
@@ -125,7 +125,7 @@ describe("Connection start failures", () => {
 
 	// #10716: acknowledge the first stderr read before writing the remaining UTF-8 bytes.
 	it.each(["\u00e9", "\u9519", "\u{1f600}"])("decodes %s split across stderr chunks", async (character) => {
-		const directory = mkdtempSync(join(tmpdir(), "pi-env-stderr-"));
+		const directory = mkdtempSync(join(tmpdir(), "nycode-env-stderr-"));
 		const acknowledged = join(directory, "logged");
 		const stderr = `prefix ${character} suffix\n`;
 		const bytes = Buffer.from(stderr);
@@ -154,7 +154,7 @@ const poll = setInterval(() => {
 			expect(logged.length).toBeGreaterThanOrEqual(2);
 			expect(logged.join("")).toBe(stderr);
 			expect(error.message).toBe(
-				`pi-env exited with code 7 before it was ready\nremote stderr:\n${stderr.trimEnd()}`,
+				`nycode-env exited with code 7 before it was ready\nremote stderr:\n${stderr.trimEnd()}`,
 			);
 		} finally {
 			connection.close();
@@ -170,7 +170,7 @@ const poll = setInterval(() => {
 			),
 		);
 		expect(logged.join("")).toBe("x\uFFFD");
-		expect(error.message).toBe("pi-env exited with code 7 before it was ready\nremote stderr:\nx\uFFFD");
+		expect(error.message).toBe("nycode-env exited with code 7 before it was ready\nremote stderr:\nx\uFFFD");
 	});
 
 	it("reports only the stderr of the attempt that failed", async () => {
@@ -196,7 +196,7 @@ const poll = setInterval(() => {
 	});
 
 	it("reports a daemon that cannot be started as a spawn error", async () => {
-		const connection = new Connection({ command: ["/nonexistent/pi-env"] });
+		const connection = new Connection({ command: ["/nonexistent/nycode-env"] });
 		connections.push(connection);
 		const error = await startError(connection);
 		if (!(error instanceof RemoteError)) throw error;
@@ -216,7 +216,7 @@ describe("Connection of a ready daemon", () => {
 		);
 		if (!(outcome instanceof Error)) throw new Error("The request did not fail");
 		expect(isConnectionLost(outcome)).toBe(true);
-		expect(outcome.message).toBe("pi-env connection lost");
+		expect(outcome.message).toBe("nycode-env connection lost");
 		// The process the daemon started holds its pipes for 3 s; the request must not wait for them.
 		expect(Date.now() - started).toBeLessThan(2000);
 	});

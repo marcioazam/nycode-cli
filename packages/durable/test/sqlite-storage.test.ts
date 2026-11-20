@@ -2,11 +2,11 @@ import { mkdtemp, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import type { Context } from "@earendil-works/chord/context";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import type { JsonValue } from "@earendil-works/chord/json";
-import type { SqliteDatabase, SqliteValue } from "@earendil-works/chord/sqlite";
-import { registerStorageConformance } from "@earendil-works/pi-durable/testing";
+import type { Context } from "@nycode/chord/context";
+import { BACKGROUND_CONTEXT } from "@nycode/chord/context";
+import type { JsonValue } from "@nycode/chord/json";
+import type { SqliteDatabase, SqliteValue } from "@nycode/chord/sqlite";
+import { registerStorageConformance } from "@nycode/durable/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { idFromNumber } from "../src/ids.ts";
 import { type SqliteStorage, SqliteStorage as SqliteStorageClass } from "../src/storage/sqlite/index.ts";
@@ -44,7 +44,7 @@ afterEach(async () => {
 });
 
 async function createSqliteStorage(options: { readonly walAutoCheckpointPages?: number } = {}) {
-	const directory = await mkdtemp(join(tmpdir(), "pi-durable-sqlite-"));
+	const directory = await mkdtemp(join(tmpdir(), "nycode-durable-sqlite-"));
 	tempDirectories.add(directory);
 	const path = join(directory, "storage.sqlite");
 	const storage = await openNodeSqliteStorage(path, options);
@@ -127,7 +127,7 @@ registerStorageConformance({ describe, expect, it }, "SqliteStorage", async (use
 );
 
 registerStorageConformance({ describe, expect, it }, "SqliteStorage across reopen", async (use) => {
-	const directory = await mkdtemp(join(tmpdir(), "pi-durable-sqlite-conformance-"));
+	const directory = await mkdtemp(join(tmpdir(), "nycode-durable-sqlite-conformance-"));
 	const path = join(directory, "storage.sqlite");
 	const created = await openNodeSqliteStorage(path);
 	await created.close(context);
@@ -206,7 +206,7 @@ describe("Pico SqliteStorage", () => {
 	});
 
 	it("namespaces tables and indexes with a prefix across reopen", async () => {
-		const directory = await mkdtemp(join(tmpdir(), "pi-durable-sqlite-"));
+		const directory = await mkdtemp(join(tmpdir(), "nycode-durable-sqlite-"));
 		tempDirectories.add(directory);
 		const path = join(directory, "storage.sqlite");
 		const host = new DatabaseSync(path);
@@ -215,11 +215,11 @@ describe("Pico SqliteStorage", () => {
 		} finally {
 			host.close();
 		}
-		const storage = await openNodeSqliteStorage(path, { prefix: "pi_" });
+		const storage = await openNodeSqliteStorage(path, { prefix: "nycode_" });
 		expect(await createRoot(storage)).toBe(1);
 		await storage.close(context);
 
-		const reopened = await openNodeSqliteStorage(path, { prefix: "pi_" });
+		const reopened = await openNodeSqliteStorage(path, { prefix: "nycode_" });
 		openStorages.add(reopened);
 		expect(await reopened.conversation(ROOT_CONVERSATION_ID, context)).toEqual({ id: ROOT_CONVERSATION_ID });
 		const database = new DatabaseSync(path);
@@ -228,15 +228,15 @@ describe("Pico SqliteStorage", () => {
 				.prepare("SELECT name FROM sqlite_master WHERE type IN ('table', 'index') AND name NOT LIKE 'sqlite_%'")
 				.all()
 				.map((row) => String(row.name));
-			expect(names.filter((name) => !name.startsWith("pi_"))).toEqual(["tasks"]);
-			expect(names).toContain("pi_tasks");
+			expect(names.filter((name) => !name.startsWith("nycode_"))).toEqual(["tasks"]);
+			expect(names).toContain("nycode_tasks");
 		} finally {
 			database.close();
 		}
 	});
 
 	it("rejects an invalid prefix before creating the database", async () => {
-		const directory = await mkdtemp(join(tmpdir(), "pi-durable-sqlite-"));
+		const directory = await mkdtemp(join(tmpdir(), "nycode-durable-sqlite-"));
 		tempDirectories.add(directory);
 		const databaseDirectory = join(directory, "nested");
 		await expect(
@@ -723,7 +723,7 @@ describe("SqliteStorage batches", () => {
 	}
 
 	async function openDatabase(): Promise<SqliteDatabase> {
-		const directory = await mkdtemp(join(tmpdir(), "pi-durable-sqlite-"));
+		const directory = await mkdtemp(join(tmpdir(), "nycode-durable-sqlite-"));
 		tempDirectories.add(directory);
 		return openNodeSqliteDatabase(join(directory, "storage.sqlite"));
 	}

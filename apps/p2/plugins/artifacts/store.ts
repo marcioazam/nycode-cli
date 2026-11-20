@@ -3,7 +3,7 @@
 // session (`keyed: Session`): its artifacts (kind, title, newest version, times) and its html pages' states; each
 // version's content a row of a table with a `host(Session)` column, written once. Every write is one transaction of the
 // server's `ArtifactStoreHost`; the reads before a write run inside it.
-import { int, map, num, obj, oneOf, str, unknown } from "@earendil-works/pi-schema";
+import { int, map, num, obj, oneOf, str, unknown } from "@nycode/schema";
 import {
 	type Address,
 	type Context,

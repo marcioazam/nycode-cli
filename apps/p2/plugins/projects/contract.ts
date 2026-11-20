@@ -1,7 +1,7 @@
 // Projects: the owner's groupings of sessions, each with its places (where its sessions start, the first one by default;
 // `/move` goes to another machine's), in the owner's order; which project each session belongs to; and the helpers that
 // find a project's place on a machine and a directory's subpath below a place. Browser-safe: the sessions TUI uses them.
-import { arr, nul, num, obj, type Static, str, union } from "@earendil-works/pi-schema";
+import { arr, nul, num, obj, type Static, str, union } from "@nycode/schema";
 import { evolve, LOCAL, local, method, record, remote, serverHost } from "@p2/app/v1";
 
 /** Where a project lives on one machine: `env` null is this device; `path` may start with `~` (that machine's home). */

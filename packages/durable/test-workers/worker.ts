@@ -1,8 +1,8 @@
 // A Durable Object that hosts a Harness the way an application would: opened in the constructor, woken by its alarm
 // through `onWake`. Tests drive it with `runInDurableObject()`, evict it, and run its alarm.
 import { DurableObject, type DurableObjectState } from "cloudflare:workers";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import { createModels, type FauxResponseStep, fauxAssistantMessage, fauxProvider } from "@earendil-works/pi-ai";
+import { BACKGROUND_CONTEXT } from "@nycode/chord/context";
+import { createModels, type FauxResponseStep, fauxAssistantMessage, fauxProvider } from "@nycode/ai";
 import {
 	type Conversation,
 	createRegistry,
@@ -11,8 +11,8 @@ import {
 	Harness,
 	type TaskId,
 	type Wake,
-} from "@earendil-works/pi-durable";
-import { openDurableObjectSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite/cloudflare";
+} from "@nycode/durable";
+import { openDurableObjectSqliteStorage } from "@nycode/durable/storage/sqlite/cloudflare";
 
 const context = BACKGROUND_CONTEXT;
 
@@ -153,5 +153,5 @@ export class TestSession extends DurableObject {
 }
 
 export default {
-	fetch: () => new Response("pi-durable test worker"),
+	fetch: () => new Response("nycode-durable test worker"),
 };

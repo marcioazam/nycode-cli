@@ -1,5 +1,5 @@
 // The session worker's base (Chord's worker base of src/hosts/worker.ts): a fork loads no provider SDK and no esbuild
-// (pi-ai's provider APIs stay lazy chunks), and the OAuth flows and Bedrock, which pi-ai imports through variable
+// (nycode-ai's provider APIs stay lazy chunks), and the OAuth flows and Bedrock, which nycode-ai imports through variable
 // specifiers by default, are lazy chunks of the snapshot (worker-oauth.test.ts runs them).
 
 import assert from "node:assert/strict";

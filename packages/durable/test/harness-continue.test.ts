@@ -3,7 +3,6 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { withTelemetry } from "@earendil-works/chord/context";
 import {
 	type AssistantMessage,
 	type FauxResponseStep,
@@ -11,7 +10,8 @@ import {
 	fauxText,
 	fauxToolCall,
 	type Message,
-} from "@earendil-works/pi-ai";
+} from "@nycode/ai";
+import { withTelemetry } from "@nycode/chord/context";
 import {
 	AssistantEntry,
 	type Conversation,
@@ -25,9 +25,9 @@ import {
 	type SettledSubmissionRecord,
 	type Storage,
 	UserEntry,
-} from "@earendil-works/pi-durable";
-import { obj } from "@earendil-works/pi-schema";
-import { InMemoryTelemetryContext } from "@earendil-works/pi-telemetry";
+} from "@nycode/durable";
+import { obj } from "@nycode/schema";
+import { InMemoryTelemetryContext } from "@nycode/telemetry";
 import { afterEach, describe, expect, it } from "vitest";
 import { openNodeSqliteStorage } from "../src/storage/sqlite/node.ts";
 import { allEntries, type ChatSetup, chatSetup, openChat, textOf, unanswered, waitFor } from "./chat-support.ts";
@@ -47,7 +47,7 @@ afterEach(async () => {
 });
 
 async function sqlitePath(): Promise<string> {
-	const directory = await mkdtemp(join(tmpdir(), "pi-durable-continue-"));
+	const directory = await mkdtemp(join(tmpdir(), "nycode-durable-continue-"));
 	directories.add(directory);
 	return join(directory, "session.sqlite");
 }
@@ -375,7 +375,7 @@ describe("continue", () => {
 		const spans = telemetry.getSpans();
 		const caller = spans.find((span) => span.name === "caller")!;
 		const submit = spans.find(
-			(span) => span.name === "pi.durable.submit" && span.attributes["submission.id"] === id,
+			(span) => span.name === "nycode.durable.submit" && span.attributes["submission.id"] === id,
 		)!;
 		expect(submit).toMatchObject({ parentId: null, attributes: { result: "placed" } });
 		expect(submit.links).toEqual([{ context: caller.context, attributes: {} }]);
@@ -383,7 +383,7 @@ describe("continue", () => {
 		expect(
 			spans.some(
 				(span) =>
-					span.name === "pi.durable.phase" &&
+					span.name === "nycode.durable.phase" &&
 					span.attributes.phase === "prepare" &&
 					JSON.stringify(span.parentContext) === JSON.stringify(submit.context),
 			),

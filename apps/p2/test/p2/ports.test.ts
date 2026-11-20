@@ -3,8 +3,8 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import type { ToolResultMessage } from "@earendil-works/pi-ai";
-import type { ConversationView } from "@earendil-works/pi-durable";
+import type { ToolResultMessage } from "@nycode/ai";
+import type { ConversationView } from "@nycode/durable";
 import { BACKGROUND_CONTEXT, whenLive } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { ForwardsNative, Ports } from "../../plugins/ports/contract.ts";
@@ -32,7 +32,7 @@ test("forwards persist, validate ports, preserve ownership and invalidate remove
 	assert.match(web.id, /^[a-z0-9]{10}$/);
 	assert.equal(web.name, "web");
 	assert.notEqual(web.id, api.id);
-	await assert.rejects(forwards.add(8788, "pi", [8788]), /Pi's own port/);
+	await assert.rejects(forwards.add(8788, "nycode", [8788]), /Nycode's own port/);
 	await assert.rejects(forwards.add(70000, undefined, []), /1 to 65535/);
 	await assert.rejects(forwards.add(12, "x".repeat(41), []), /at most/);
 	assert.deepEqual(
@@ -47,7 +47,7 @@ test("forwards persist, validate ports, preserve ownership and invalidate remove
 	assert.notEqual((await forwards.add(5173, "web", [])).id, web.id);
 	const own = await forwards.openForSession("one", 4000, {}, []);
 	assert.equal((await forwards.openForSession("one", 4000, { public: true }, [])).id, own.id);
-	// Another session may change it (Pi Mobile 67cdb4ca4): it keeps its address and its opener.
+	// Another session may change it (Nycode Mobile 67cdb4ca4): it keeps its address and its opener.
 	assert.deepEqual(await forwards.openForSession("two", 4000, { public: false, name: "renamed" }, []), {
 		id: own.id,
 		port: 4000,
@@ -114,7 +114,7 @@ test(
 			return results(
 				await until(
 					target.view,
-					(view) => results(view).length > count && !(view?.docs["pi.live"] as { run?: unknown })?.run,
+					(view) => results(view).length > count && !(view?.docs["nycode.live"] as { run?: unknown })?.run,
 				),
 			).at(-1)!;
 		};
@@ -182,7 +182,7 @@ test(
 		// The agent may close any forward, also the owner's.
 		const other = await sessions.create({ cwd: fixture.workspace, title: "Other" }, BACKGROUND_CONTEXT);
 		const otherChat = await holdIn(owner, Chat, { session: other.id, conversation: 1 }, "participant");
-		// A remote-environment session cannot open (Pi Mobile's message); it can still close.
+		// A remote-environment session cannot open (Nycode Mobile's message); it can still close.
 		assert.equal((await call({ action: "list" }, otherChat)).isError, false);
 		await fixture.server.host.root(
 			async (ctx) => (await ctx.get(Catalog, {})).update({ id: other.id, env: "gpu" }, ctx),

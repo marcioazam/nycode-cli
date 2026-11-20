@@ -4,7 +4,7 @@
 // conversation and another session's header that session, and Back returns. Fake provider, disposable data.
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
-import type { ConversationView, EntryId, LiveState } from "@earendil-works/pi-durable";
+import type { ConversationView, EntryId, LiveState } from "@nycode/durable";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { Models } from "../../plugins/models/contract.ts";
@@ -13,7 +13,7 @@ import { Subagents } from "../../plugins/subagents/contract.ts";
 import { Browser, browserTests } from "./browser.ts";
 import { type Fixture, holdIn, startFixture, until } from "./helpers.ts";
 
-const live = (view: ConversationView | null | undefined) => view?.docs["pi.live"] as LiveState | undefined;
+const live = (view: ConversationView | null | undefined) => view?.docs["nycode.live"] as LiveState | undefined;
 const conversation = { id: 1 } as ConversationView["conversation"];
 const AT = Date.UTC(2026, 0, 2, 10, 30);
 

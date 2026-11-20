@@ -2,7 +2,7 @@
 // the tool's text, and the forward's addresses as text once opened. Opening them in a browser is a launcher capability
 // (p2-tui-port.md section 3.5); OSC 8 hyperlinks stay stripped. `/ports` (P11f) is the web's ports panel.
 
-import { Text } from "@earendil-works/pi-tui";
+import { Text } from "@nycode/tui";
 import { BACKGROUND_CONTEXT, contribute, defineFacet, type HeldIn, liveIn, whenLive } from "@p2/app/v1";
 import type { TuiContext } from "@p2/app/v1/tui";
 import {

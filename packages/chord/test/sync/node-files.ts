@@ -1,4 +1,4 @@
-// `SyncFileSystem` over Node's file system, for the sync tests (a host passes its own environment, such as Pi Durable's
+// `SyncFileSystem` over Node's file system, for the sync tests (a host passes its own environment, such as Nycode Durable's
 // `NodeExecutionEnv`).
 
 import { appendFile, mkdir, open, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";

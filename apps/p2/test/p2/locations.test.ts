@@ -7,8 +7,8 @@ import assert from "node:assert/strict";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
-import type { ToolResultMessage } from "@earendil-works/pi-ai";
-import type { ConversationView } from "@earendil-works/pi-durable";
+import type { ToolResultMessage } from "@nycode/ai";
+import type { ConversationView } from "@nycode/durable";
 import { BACKGROUND_CONTEXT, whenLive } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { AgentLocations } from "../../plugins/locations/contract.ts";
@@ -29,7 +29,7 @@ const results = (view: ConversationView | null | undefined, tool?: string): Tool
 		);
 const text = (message: ToolResultMessage | undefined) =>
 	message?.content.map((part) => (part.type === "text" ? part.text : "")).join("") ?? "";
-const idle = (view: ConversationView | null | undefined) => !(view?.docs["pi.live"] as { run?: unknown })?.run;
+const idle = (view: ConversationView | null | undefined) => !(view?.docs["nycode.live"] as { run?: unknown })?.run;
 
 test("location tools: schemas and defaults", () => {
 	const extension = createLocationExtension({
@@ -160,8 +160,8 @@ test(
 		assert.equal(scheduled?.isError, false, text(scheduled));
 		assert.match(text(scheduled), /moves to .*next when this turn ends/);
 		await until(sessions.sessions, (rows) => rows?.find((row) => row.id === session)?.cwd === next, 30_000);
-		await until(chat.view, (view) => (view?.docs["pi.agent"] as { cwd?: string })?.cwd === next);
-		await until(plain.view, (view) => (view?.docs["pi.agent"] as { cwd?: string })?.cwd === next);
+		await until(chat.view, (view) => (view?.docs["nycode.agent"] as { cwd?: string })?.cwd === next);
+		await until(plain.view, (view) => (view?.docs["nycode.agent"] as { cwd?: string })?.cwd === next);
 		assert.equal((await child("placed"))?.location?.cwd, other);
 		const [after] = await call("location_envs {}");
 		assert.match(text(after), new RegExp(`You work at ${next}`));

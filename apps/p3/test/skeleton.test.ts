@@ -6,9 +6,9 @@ import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { afterEach, describe, it } from "node:test";
 import { setTimeout as sleep } from "node:timers/promises";
-import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context";
-import { remote, Session, str } from "@earendil-works/p3/v1";
-import { WorkerRunners } from "@earendil-works/p3/v1/server";
+import { BACKGROUND_CONTEXT as context } from "@nycode/chord/context";
+import { remote, Session, str } from "@nycode/p3/v1";
+import { WorkerRunners } from "@nycode/p3/v1/server";
 import { Sessions, SessionWorker } from "../plugins/sessions/contract.ts";
 import { Probe } from "./plugins/probe/contract.ts";
 import { alive, eventually, IDLE_MS, type TestServer, testServer } from "./support.ts";
@@ -26,7 +26,7 @@ const Versioned = remote("versioned.versioned", {
 
 /** The source of a single-file worker plugin serving `Versioned` with `version`. */
 function versioned(version: string): string {
-	return `import { constant, defineFacet, remote, Session, str } from "@earendil-works/p3/v1";
+	return `import { constant, defineFacet, remote, Session, str } from "@nycode/p3/v1";
 const Versioned = remote("versioned.versioned", {
 	version: 1,
 	params: { session: str() },

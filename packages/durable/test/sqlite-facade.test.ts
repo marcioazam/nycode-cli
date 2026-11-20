@@ -1,11 +1,11 @@
 import { DatabaseSync, type StatementSync } from "node:sqlite";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import { DurableObjectSqliteDatabase as ChordDurableObjectSqliteDatabase } from "@earendil-works/chord/sqlite/cloudflare";
+import { BACKGROUND_CONTEXT } from "@nycode/chord/context";
+import { DurableObjectSqliteDatabase as ChordDurableObjectSqliteDatabase } from "@nycode/chord/sqlite/cloudflare";
 import {
 	NodeSqliteDatabase as ChordNodeSqliteDatabase,
 	openNodeSqliteDatabase as chordOpenNodeSqliteDatabase,
-} from "@earendil-works/chord/sqlite/node";
-import { DurableObjectSqliteDatabase } from "@earendil-works/pi-durable/storage/sqlite/cloudflare";
+} from "@nycode/chord/sqlite/node";
+import { DurableObjectSqliteDatabase } from "@nycode/durable/storage/sqlite/cloudflare";
 import { describe, expect, it } from "vitest";
 import { idFromNumber } from "../src/ids.ts";
 import type { SqliteDatabase, SqliteExecutor, SqliteValue } from "../src/storage/sqlite/index.ts";

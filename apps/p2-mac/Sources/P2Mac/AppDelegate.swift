@@ -11,7 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
 	private(set) var radius: RadiusAccount!
 	private let updater = Updater()
 	private var statusItem: NSStatusItem!
-	private var windows: [PiWindowController] = []
+	private var windows: [NycodeWindowController] = []
 	private var found: [FoundServer] = []
 	private let serverMenu = NSMenu()
 	// One item for the submenu, re-added on every rebuild: a submenu belongs to one item for good.
@@ -43,7 +43,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
 			signals.append(source)
 		}
 		statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-		statusItem.button?.image = PiGlyph.templateImage(size: 15)
+		statusItem.button?.image = NycodeGlyph.templateImage(size: 15)
 		statusItem.button?.appearsDisabled = true
 		let menu = NSMenu()
 		menu.delegate = self
@@ -53,7 +53,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
 	}
 
 	func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
-		if !hasVisibleWindows { openPi(nil) }
+		if !hasVisibleWindows { openNycode(nil) }
 		return true
 	}
 
@@ -86,7 +86,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
 			}
 			for window in windows { window.close() }
 			watch(ServerController(config: config))
-			openPi(nil)
+			openNycode(nil)
 			await server.poll()
 			if server.phase == .stopped && server.canStart { await server.start() }
 		}
@@ -120,7 +120,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
 
 	/// Opens `path` of brain `id` in a new window.
 	func openWindow(_ id: String, path: String) {
-		let controller = PiWindowController(app: self, brain: id, path: path)
+		let controller = NycodeWindowController(app: self, brain: id, path: path)
 		let previous = windows.last?.window
 		windows.append(controller)
 		if let window = controller.window {
@@ -128,8 +128,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
 				window.setFrame(previous.frame, display: false)
 				window.setFrameTopLeftPoint(window.cascadeTopLeft(from: NSPoint(x: previous.frame.minX, y: previous.frame.maxY)))
 			} else {
-				window.setFrameAutosaveName("Pi.main")
-				if !window.setFrameUsingName("Pi.main") { window.center() }
+				window.setFrameAutosaveName("Nycode.main")
+				if !window.setFrameUsingName("Nycode.main") { window.center() }
 			}
 		}
 		NSApp.setActivationPolicy(.regular)
@@ -137,13 +137,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
 		NSApp.activate()
 	}
 
-	func windowClosed(_ controller: PiWindowController) {
+	func windowClosed(_ controller: NycodeWindowController) {
 		windows.removeAll { $0 === controller }
 		if windows.isEmpty { NSApp.setActivationPolicy(.accessory) }
 	}
 
 	/// Brings up a window: the frontmost one, else a new one on this Mac's brain.
-	@objc func openPi(_ sender: Any?) {
+	@objc func openNycode(_ sender: Any?) {
 		if let existing = windows.last {
 			existing.showWindow(nil)
 			NSApp.activate()
@@ -153,7 +153,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
 	}
 
 	@objc func newWindow(_ sender: Any?) {
-		let current = (NSApp.keyWindow?.delegate as? PiWindowController)?.selected
+		let current = (NSApp.keyWindow?.delegate as? NycodeWindowController)?.selected
 		if let id = current ?? directory.local?.id { openWindow(id, path: "/") }
 	}
 
@@ -205,11 +205,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
 		menu.addItem(disabled(statusLine()))
 		menu.addItem(disabled(detailLine()))
 		menu.addItem(.separator())
-		menu.addItem(item("Open Pi", #selector(openPi), key: "o"))
+		menu.addItem(item("Open Nycode", #selector(openNycode), key: "o"))
 		menu.addItem(.separator())
-		if server.canStart { menu.addItem(item("Start Pi", #selector(startServer))) }
-		if server.canRestart { menu.addItem(item("Restart Pi", #selector(restartServer))) }
-		if server.canStop { menu.addItem(item("Stop Pi", #selector(stopServer))) }
+		if server.canStart { menu.addItem(item("Start Nycode", #selector(startServer))) }
+		if server.canRestart { menu.addItem(item("Restart Nycode", #selector(restartServer))) }
+		if server.canStop { menu.addItem(item("Stop Nycode", #selector(stopServer))) }
 		if config.source == .own, FileManager.default.fileExists(atPath: server.logFile.path) {
 			menu.addItem(item("Show Server Log", #selector(showLog)))
 		}
@@ -218,7 +218,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
 		if directory.fixture {
 			menu.addItem(disabled("Radius: brains from P2MAC_BRAINS"))
 		} else if radius.signedIn {
-			menu.addItem(disabled("Signed in to Radius · with this Mac's Pi"))
+			menu.addItem(disabled("Signed in to Radius · with this Mac's Nycode"))
 			menu.addItem(item("Sign Out of Radius", #selector(signOutOfRadius)))
 		} else {
 			menu.addItem(item("Sign In to Radius…", #selector(signInToRadius)))
@@ -226,7 +226,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
 		fillServerMenu()
 		menu.addItem(serverItem)
 		menu.addItem(.separator())
-		menu.addItem(item("Quit Pi", #selector(NSApplication.terminate(_:)), key: "q", target: NSApp))
+		menu.addItem(item("Quit Nycode", #selector(NSApplication.terminate(_:)), key: "q", target: NSApp))
 	}
 
 	/// The servers to choose from: the running ones found on this Mac, and the app's own.
@@ -234,7 +234,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
 		let menu = serverMenu
 		menu.removeAllItems()
 		let config = server.config
-		menu.addItem(disabled(found.isEmpty ? "No running Pi servers found" : "Running on this Mac"))
+		menu.addItem(disabled(found.isEmpty ? "No running Nycode servers found" : "Running on this Mac"))
 		for found in found {
 			var title = "127.0.0.1:\(found.port) · \(abbreviate(found.dataDir.path))"
 			if let checkout = found.checkout { title += " · \(abbreviate(checkout.path))" }
@@ -246,26 +246,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
 		}
 		menu.addItem(.separator())
 		let ownTitle = config.runsBundled
-			? "Run Pi from This App"
-			: config.checkout.map { "Run Pi from \(abbreviate($0.path))" } ?? "Run Pi from a Checkout"
+			? "Run Nycode from This App"
+			: config.checkout.map { "Run Nycode from \(abbreviate($0.path))" } ?? "Run Nycode from a Checkout"
 		let own = item(ownTitle, #selector(useOwn))
 		own.state = config.source == .own ? .on : .off
 		own.isEnabled = config.checkout != nil
 		menu.addItem(own)
 		menu.addItem(item("Choose p2 Checkout…", #selector(chooseCheckout)))
 		if ServerConfig.bundled != nil, config.checkout != nil, !config.runsBundled {
-			menu.addItem(item("Use This App's Pi Instead of the Checkout", #selector(forgetCheckout)))
+			menu.addItem(item("Use This App's Nycode Instead of the Checkout", #selector(forgetCheckout)))
 		}
 	}
 
 	private func statusLine() -> String {
 		switch server.phase {
-		case .checking: "Looking for Pi…"
-		case .starting: "Pi is starting…"
-		case .running: "Pi is running · On this Mac"
-		case .stopping: "Pi is stopping…"
-		case .stopped: server.config.source == .attached ? "Pi is not running" : "Pi is stopped"
-		case .failed(let message): "Pi is not running: \(message)"
+		case .checking: "Looking for Nycode…"
+		case .starting: "Nycode is starting…"
+		case .running: "Nycode is running · On this Mac"
+		case .stopping: "Nycode is stopping…"
+		case .stopped: server.config.source == .attached ? "Nycode is not running" : "Nycode is stopped"
+		case .failed(let message): "Nycode is not running: \(message)"
 		}
 	}
 
@@ -294,7 +294,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
 		}
 	}
 
-	/// Removes the shared credential: this Mac's Pi disconnects too.
+	/// Removes the shared credential: this Mac's Nycode disconnects too.
 	@objc private func signOutOfRadius() {
 		radius.signOut()
 	}
@@ -321,7 +321,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
 		let panel = NSOpenPanel()
 		panel.canChooseDirectories = true
 		panel.canChooseFiles = false
-		panel.message = "Choose a pi-mono checkout or its apps/p2 directory"
+		panel.message = "Choose a nycode-mono checkout or its apps/p2 directory"
 		NSApp.activate()
 		guard panel.runModal() == .OK, let folder = panel.url else { return }
 		guard let p2 = ServerConfig.p2Directory(folder) else {

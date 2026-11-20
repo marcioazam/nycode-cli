@@ -1,7 +1,7 @@
 // Cache warming in the session worker: a Durable extension whose `afterResponse` hook starts warming each
 // conversation's last request (`./warmer.ts`), bound to the Harness, the settings and the worker's liveness.
-import type { Message, Usage } from "@earendil-works/pi-ai";
-import { defineExtension, GenerationTask, hook, LiveDoc, UsageDoc, type UsageState } from "@earendil-works/pi-durable";
+import type { Message, Usage } from "@nycode/ai";
+import { defineExtension, GenerationTask, hook, LiveDoc, UsageDoc, type UsageState } from "@nycode/durable";
 import { BACKGROUND_CONTEXT, defineFacet, local } from "@p2/app/v1";
 import { ExtensionSwitches } from "@p2/app/v1/node";
 import { Extensions, harnessOf, isTopLevel, workerOf } from "@p2/app/v1/worker";
@@ -86,7 +86,7 @@ function startsWith(current: readonly Message[], sent: readonly Message[]): bool
 	);
 }
 
-/** Adds `usage` to `totals[key]` in a `pi.usage` draft, as Durable's own usage recording does. */
+/** Adds `usage` to `totals[key]` in a `nycode.usage` draft, as Durable's own usage recording does. */
 function addUsage(totals: UsageState["models"], key: string, usage: Usage): void {
 	// Own keys only, as Durable looks them up.
 	const total = Object.hasOwn(totals, key) ? totals[key] : undefined;

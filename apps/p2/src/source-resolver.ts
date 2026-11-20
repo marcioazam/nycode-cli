@@ -46,7 +46,7 @@ function aliasesOf(directory: string, prefix: string): SourceAlias[] {
 		});
 }
 
-const aliases: SourceAlias[] = [...aliasesOf(repositoryRoot, "@earendil-works/"), ...aliasesOf(appRoot, "@p2/")].sort(
+const aliases: SourceAlias[] = [...aliasesOf(repositoryRoot, "@nycode/"), ...aliasesOf(appRoot, "@p2/")].sort(
 	(left, right) => right.pattern.length - left.pattern.length,
 );
 

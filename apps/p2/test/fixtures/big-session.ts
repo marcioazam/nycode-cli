@@ -1,7 +1,7 @@
 // A long synthetic conversation as Durable entry drafts (Node tests and scripts/measure-view.ts): turns of a person's
 // input, a thinking answer that calls tools, the tools' results (some large, as reads and builds produce) and a closing
 // answer. Deterministic, so sizes compare across runs.
-import type { EntryDraft } from "@earendil-works/pi-durable";
+import type { EntryDraft } from "@nycode/durable";
 
 const usage = (input: number) => ({
 	input,
@@ -51,7 +51,7 @@ export function bigSessionEntries(count: number, bigBytes = 24_000): EntryDraft[
 			const id = `call-${turn}-${call}`;
 			const big = (turn * 3 + call) % 5 === 0;
 			entries.push({
-				kind: "pi.assistant",
+				kind: "nycode.assistant",
 				model: [
 					{
 						role: "assistant",
@@ -76,7 +76,7 @@ export function bigSessionEntries(count: number, bigBytes = 24_000): EntryDraft[
 			} as EntryDraft);
 			const output = big ? lines(Math.ceil(bigBytes / 100), `line`) : lines(4, "ok");
 			entries.push({
-				kind: "pi.tool-result",
+				kind: "nycode.tool-result",
 				model: [
 					{
 						role: "toolResult",
@@ -90,7 +90,7 @@ export function bigSessionEntries(count: number, bigBytes = 24_000): EntryDraft[
 			} as EntryDraft);
 		}
 		entries.push({
-			kind: "pi.assistant",
+			kind: "nycode.assistant",
 			model: [
 				{
 					role: "assistant",

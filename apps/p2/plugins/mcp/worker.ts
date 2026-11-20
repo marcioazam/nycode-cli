@@ -1,13 +1,13 @@
 // The MCP plugin's worker facet: the worker object holding the server's `Mcp` view. It sets the locations the session's
-// conversations work at (the session's, active subagents' own), with the project `.pi/mcp.json` read at each through
+// conversations work at (the session's, active subagents' own), with the project `.nycode/mcp.json` read at each through
 // its environment, as its leases, again whenever they may have changed and whenever the view (re)activates, and offers
 // the session's servers as one composing Durable extension (`mcp`, `tools.ts`) that follows the view's `servers`,
-// `leases` and the code mode switch: each conversation sees the servers of its location's lease; as in pi, tools are
+// `leases` and the code mode switch: each conversation sees the servers of its location's lease; as in nycode, tools are
 // for code mode scripts, and only without code mode does `tool_search` (installed by the worker's registry) load them
 // for the model. No MCP process or credential is ever in a worker.
 
 import { setTimeout as sleep } from "node:timers/promises";
-import { type ConversationId, type Extension, type Harness, ROOT_CONVERSATION_ID } from "@earendil-works/pi-durable";
+import { type ConversationId, type Extension, type Harness, ROOT_CONVERSATION_ID } from "@nycode/durable";
 import {
 	type Context,
 	type Ctx,
@@ -68,7 +68,7 @@ function mcpWorker(self: StoreSelf): void {
 		harness().environments.locate(conversationId, context, read);
 	const call: McpCall = (request, context) =>
 		worker().root((ctx) => expectVariant(view, "worker").call(request, ctx), context);
-	// Code mode switched off or not loaded: the tools would be unreachable, so `tool_search` loads them, as pi falls back.
+	// Code mode switched off or not loaded: the tools would be unreachable, so `tool_search` loads them, as nycode falls back.
 	const reach = self.derive(
 		[self.registry(ExtensionSwitches)],
 		([switches]): McpReach => (switches.get(CODEMODE_EXTENSION) === true ? "codemode" : "tool_search"),
@@ -236,7 +236,7 @@ async function workLocations(
 }
 
 /**
- * The project configurations at `locations`: `<cwd>/.pi/mcp.json` read through each location's environment (the
+ * The project configurations at `locations`: `<cwd>/.nycode/mcp.json` read through each location's environment (the
  * manager checks them). A missing file is none; one too large or unreadable is reported as such.
  */
 async function projectFiles(
@@ -247,7 +247,7 @@ async function projectFiles(
 	const files: ProjectFile[] = [];
 	for (const location of locations) {
 		const env = await environments.at(location);
-		const path = await env.joinPath([location.cwd, ".pi", "mcp.json"], context);
+		const path = await env.joinPath([location.cwd, ".nycode", "mcp.json"], context);
 		const read = path.ok ? await env.readTextFile(path.value, context) : path;
 		if (read.ok)
 			files.push(

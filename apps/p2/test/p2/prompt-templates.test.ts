@@ -1,4 +1,4 @@
-// Prompt templates and `/skill:` (p2-tui-port.md 10.8): pi's parsing and expansion, the loader, the worker's
+// Prompt templates and `/skill:` (p2-tui-port.md 10.8): nycode's parsing and expansion, the loader, the worker's
 // PromptResources object (participants only, live reload, expand), and the TUI's completion, expansion and skill block.
 
 import assert from "node:assert/strict";
@@ -7,7 +7,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { stripTerminalSequences } from "@earendil-works/pi-tui";
+import { stripTerminalSequences } from "@nycode/tui";
 import { BACKGROUND_CONTEXT, whenLive } from "@p2/app/v1";
 import { VirtualTerminal } from "../../../../packages/tui/test/virtual-terminal.ts";
 import { promptComposer } from "../../plugins/prompt/composer.ts";
@@ -33,21 +33,21 @@ import { BUILTIN_THEMES, createTheme } from "../../src/tui/theme/theme.ts";
 import { expectChord, holdIn, poll, startFixture, until } from "./helpers.ts";
 import { topology } from "./tui-fixture.ts";
 
-test("pi's argument parsing and substitution", () => {
+test("nycode's argument parsing and substitution", () => {
 	assert.deepEqual(parseCommandArgs(`one "two words" 'three'  four`), ["one", "two words", "three", "four"]);
 	const args = ["a", "b", "c"];
 	assert.equal(substituteArgs("$1-$2-$3-$4", args), "a-b-c-");
 	assert.equal(substituteArgs("$@|$ARGUMENTS", args), "a b c|a b c");
-	// biome-ignore lint/suspicious/noTemplateCurlyInString: pi's template syntax, not a JS template.
+	// biome-ignore lint/suspicious/noTemplateCurlyInString: nycode's template syntax, not a JS template.
 	assert.equal(substituteArgs("${2:-x} ${5:-default}", args), "b default");
-	// biome-ignore lint/suspicious/noTemplateCurlyInString: pi's template syntax, not a JS template.
+	// biome-ignore lint/suspicious/noTemplateCurlyInString: nycode's template syntax, not a JS template.
 	assert.equal(substituteArgs("${@:-none}", []), "none");
-	// biome-ignore lint/suspicious/noTemplateCurlyInString: pi's template syntax, not a JS template.
+	// biome-ignore lint/suspicious/noTemplateCurlyInString: nycode's template syntax, not a JS template.
 	assert.equal(substituteArgs("${@:2}|${@:2:1}|${@:0}", args), "b c|b|a b c");
 	assert.equal(substituteArgs("$1", ["$2"]), "$2", "values are not substituted again");
 });
 
-test("templates: pi's file format; expansion of templates and skill blocks", async () => {
+test("templates: nycode's file format; expansion of templates and skill blocks", async () => {
 	const withHint = parseTemplate(
 		"review.md",
 		"---\ndescription: Review a file\nargument-hint: <file>\n---\nReview $1 carefully.",
@@ -95,13 +95,13 @@ test("loader: global then project templates, invalid ones skipped, every skill i
 	t.after(() => rmSync(directory, { recursive: true, force: true }));
 	const cwd = join(directory, "project");
 	await mkdir(join(directory, "prompts"), { recursive: true });
-	await mkdir(join(cwd, ".pi", "prompts"), { recursive: true });
+	await mkdir(join(cwd, ".nycode", "prompts"), { recursive: true });
 	await mkdir(join(directory, "skills", "hidden"), { recursive: true });
 	writeFileSync(join(directory, "prompts", "fix.md"), "Fix $@");
 	writeFileSync(join(directory, "prompts", "broken.md"), "---\n: : bad\n---\nx");
 	writeFileSync(join(directory, "prompts", "notes.txt"), "not a template");
-	writeFileSync(join(cwd, ".pi", "prompts", "fix.md"), "Project fix");
-	writeFileSync(join(cwd, ".pi", "prompts", "plan.md"), "---\ndescription: Plan it\n---\nPlan $1");
+	writeFileSync(join(cwd, ".nycode", "prompts", "fix.md"), "Project fix");
+	writeFileSync(join(cwd, ".nycode", "prompts", "plan.md"), "---\ndescription: Plan it\n---\nPlan $1");
 	writeFileSync(
 		join(directory, "skills", "hidden", "SKILL.md"),
 		"---\nname: hidden\ndescription: Only by name\ndisable-model-invocation: true\n---\nSecret steps",
@@ -158,8 +158,8 @@ test("PromptResources on the worker: participants only, live templates, expand w
 	assert.equal(await expandComposerText(web, session.id, 1, "/greet web"), "Hello web!");
 	assert.equal(await expandComposerText(web, session.id, 1, "no command"), "no command");
 	// The project's templates appear live.
-	await mkdir(join(fixture.workspace, ".pi", "prompts"), { recursive: true });
-	await writeFile(join(fixture.workspace, ".pi", "prompts", "plan.md"), "Plan $@");
+	await mkdir(join(fixture.workspace, ".nycode", "prompts"), { recursive: true });
+	await writeFile(join(fixture.workspace, ".nycode", "prompts", "plan.md"), "Plan $@");
 	await until(resources.templates, (value) => value?.some((entry) => entry.name === "plan") === true);
 	// A view-only guest cannot hold it.
 	const sharing = owner.hold(Sharing, { session: session.id }, BACKGROUND_CONTEXT);
@@ -179,7 +179,7 @@ test("PromptResources on the worker: participants only, live templates, expand w
 	);
 });
 
-test("TUI: a skill invocation shows pi's collapsed skill block, then the user's text", () => {
+test("TUI: a skill invocation shows nycode's collapsed skill block, then the user's text", () => {
 	const ctx = {
 		theme: new ThemeRef(createTheme(BUILTIN_THEMES.dark!, "truecolor")),
 		keyText: () => "ctrl+o",

@@ -27,13 +27,13 @@ import {
 	type ResourceTemplate,
 	StdioTransport,
 	StreamableHttpTransport,
-} from "@earendil-works/pi-mcp";
+} from "@nycode/mcp";
 import {
 	type McpAuthProvider,
 	McpOAuthAuthorizationRequiredError,
 	type McpOAuthSettings,
 	type OAuthChallenge,
-} from "@earendil-works/pi-mcp/oauth";
+} from "@nycode/mcp/oauth";
 import { VERSION } from "../../config.ts";
 import { resolveConfigValueOrThrow, resolveHeadersOrThrow } from "../../core/resolve-config-value.ts";
 import { sliceTail } from "../../core/tools/truncate.ts";
@@ -43,7 +43,7 @@ import { createMcpAuthProvider, type McpOAuthCredentialStore } from "./oauth.ts"
 import type { McpResourceServer } from "./resources.ts";
 import type { McpToolCaller } from "./tools.ts";
 
-export { McpSignInCancelledError } from "@earendil-works/pi-mcp/oauth";
+export { McpSignInCancelledError } from "@nycode/mcp/oauth";
 export { McpServerLog } from "./log.ts";
 export { McpOAuthCredentialStore, signInMcpServer } from "./oauth.ts";
 
@@ -170,7 +170,7 @@ export class McpServerConnection implements McpToolCaller, McpResourceServer {
 		cwd: string;
 		createTransport: McpTransportFactory;
 		credentials: McpOAuthCredentialStore;
-		/** The current token of a pi provider, for servers with `auth.provider`. */
+		/** The current token of a nycode provider, for servers with `auth.provider`. */
 		providerToken?: (provider: string) => Promise<string | undefined>;
 		onTools: (connection: McpServerConnection) => void;
 		/** Called when `state`, `error`, or `tools` change. */
@@ -360,7 +360,7 @@ export class McpServerConnection implements McpToolCaller, McpResourceServer {
 
 	private async connectOnce(): Promise<McpClient> {
 		const client = new McpClient({
-			name: "pi",
+			name: "nycode",
 			version: VERSION,
 			requestTimeoutMs: this.timeoutMs,
 			roots: [{ uri: pathToFileURL(this.cwd).href, name: basename(this.cwd) }],

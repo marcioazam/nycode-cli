@@ -36,7 +36,7 @@ export interface ExecResult {
 	stderr: string;
 	/** Exit code, or 128 + signal number when a signal terminated the command (143 for SIGTERM). */
 	code: number;
-	/** The command was terminated by pi: timeout, abort, or output over `maxBuffer`. */
+	/** The command was terminated by nycode: timeout, abort, or output over `maxBuffer`. */
 	killed: boolean;
 	/** Output exceeded `maxBuffer`; stdout and stderr are incomplete and `code` is nonzero. */
 	truncated: boolean;

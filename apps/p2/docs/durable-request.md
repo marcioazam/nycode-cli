@@ -3,7 +3,7 @@
 **Superseded:** p2 builds its own document store in Chord with a storage interface and adapts Durable's `Storage` in p2
 (`target-design.md` §9). Only moving `OutputBuffer`/`Progress` to Chord is still under consideration.
 
-From the Chord/p2 redesign (`target-design.md`). To be implemented on pi `main` (`packages/durable`, plus `packages/chord`
+From the Chord/p2 redesign (`target-design.md`). To be implemented on nycode `main` (`packages/durable`, plus `packages/chord`
 where noted), then merged into `private`.
 
 ## Why
@@ -16,7 +16,7 @@ store on top of it.
 
 ## What we need
 
-1. **A document-only transaction core**, exported from Durable (for example `@earendil-works/pi-durable/documents`):
+1. **A document-only transaction core**, exported from Durable (for example `@nycode/durable/documents`):
    - acquire a draft for a document address (`kind`, `scope`, optional `key`), creating it on first write
      (`initial()`), loading and migrating it through the host otherwise;
    - retire a document;
@@ -32,7 +32,7 @@ store on top of it.
 2. **Definitions usable outside a conversation:** `defineDoc` with `scope: "session"` already exists; the core needs to
    accept a session-scoped address with an arbitrary `kind` and `key` chosen by p2 (p2 maps an object's identity hash,
    the state name and the key into them). Confirm whether `kind` must be globally registered or may be dynamic.
-3. **Move `OutputBuffer` and `Progress`** (`harness/output.ts`) to Chord (for example `@earendil-works/chord/progress`);
+3. **Move `OutputBuffer` and `Progress`** (`harness/output.ts`) to Chord (for example `@nycode/chord/progress`);
    Durable imports them from there and **re-exports** them under their current names, so nothing breaks.
 4. **Review of p2's use of `Storage`:** p2's store calls the core and `Storage` directly (memory and SQLite backends),
    without a `Session`. It must uphold what `Session` guarantees to `Storage`: serialized commits (p2 serializes per

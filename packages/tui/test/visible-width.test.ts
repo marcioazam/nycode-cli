@@ -7,7 +7,7 @@ describe("visibleWidth", () => {
 		assert.strictEqual(visibleWidth("\x1b[38;5;4mhello\x1b[39m world"), 11);
 		assert.strictEqual(visibleWidth("\x1b]8;;https://example.com\x07link\x1b]8;;\x07"), 4);
 		assert.strictEqual(visibleWidth("\x1b]133;A\x1b\\prompt"), 6);
-		assert.strictEqual(visibleWidth("\x1b_pi:c\x07cursor"), 6);
+		assert.strictEqual(visibleWidth("\x1b_nycode:c\x07cursor"), 6);
 	});
 
 	it("counts tabs as three columns in styled text", () => {

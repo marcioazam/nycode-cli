@@ -12,7 +12,7 @@ import { createReadStream, createWriteStream, statSync } from "node:fs";
 import { mkdtemp, rename, rm } from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
 import { pipeline } from "node:stream/promises";
-import type { TelemetryContext } from "@earendil-works/pi-telemetry";
+import type { TelemetryContext } from "@nycode/telemetry";
 import { type Context, withAbortSignal } from "../../context/index.ts";
 import { type Address, type HostKind, hostKind, type KindShape } from "../../contracts/index.ts";
 import { isChordError, type Principal } from "../../data/index.ts";

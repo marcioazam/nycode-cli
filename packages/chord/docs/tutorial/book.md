@@ -27,7 +27,7 @@ anyone being thrown out.
 That is four kinds of program (a server, a process per list, a page, a terminal client) and three kinds of change (new
 data, a new person, new code) in one small app. Wiring that by hand means a web server, a socket protocol, a way to
 start and stop processes, sessions, a bundler for the page and a reload story for each. Chord does the wiring, and its
-**app kit** (`@earendil-works/chord/app`) makes the decisions an app would otherwise make itself: where data lives,
+**app kit** (`@nycode/chord/app`) makes the decisions an app would otherwise make itself: where data lives,
 how people sign in, how plugins are found and rolled out.
 
 This tutorial builds that app. Each chapter adds one thing, shows the code, shows what happens when it runs, and
@@ -1458,7 +1458,7 @@ an index of the app's, if it had one, is the app's.
 
 Ada says that adding a todo from her phone feels slow some evenings. Her todo crosses three processes: her page, the
 server's relay and the list's worker. A log line per process would say what each one did, but not which lines belong
-to her click, or where the time went. Chord records **telemetry** through pi-telemetry: **spans** (a named, timed
+to her click, or where the time went. Chord records **telemetry** through nycode-telemetry: **spans** (a named, timed
 piece of work with attributes), **events** on spans, and **metrics** (counters and histograms). Each host has one
 **adapter**, given to `createHost({ telemetry })` and NOOP by default, which decides where they go. A **carrier** in
 each call's header names the caller's span, so the spans of one request, recorded by different processes, form one
@@ -1469,7 +1469,7 @@ for, reads the store from a script, and ends with the viewer.
 ## One store, on the server
 
 The app keeps its telemetry in one SQLite file in the data directory, through Chord's store
-(`@earendil-works/chord/telemetry-sqlite`), and the server is the only process that writes it. The app's base code opens
+(`@nycode/chord/telemetry-sqlite`), and the server is the only process that writes it. The app's base code opens
 it for the server:
 
 <!-- quote: src/telemetry.ts -->
@@ -1570,7 +1570,7 @@ wrote docs/tutorial/screens/click-after.png
 <div style="display: flex; gap: 1rem; align-items: flex-start"><img src="screens/click-before.png" alt="The page with honey typed" style="width: 50%; min-width: 0"><img src="screens/click-after.png" alt="The page after the click: honey in the list" style="width: 50%; min-width: 0"></div>
 :::
 
-It then reads the store until the worker's spans of both clicks are there and prints honey's trace with pi-telemetry's
+It then reads the store until the worker's spans of both clicks are there and prints honey's trace with nycode-telemetry's
 `renderTrace` (ids and lengths of time masked, which differ at every run), and opens the owner's trace viewer (the last
 section builds it) on the same trace:
 
@@ -1705,11 +1705,11 @@ attributes are for the owner's eyes: the store, like the viewer below, is the ow
 
 ## Reading
 
-The store is read through `TelemetryStore`, pi-telemetry's read interface modeled on Jaeger's: `findTraces` (complete
+The store is read through `TelemetryStore`, nycode-telemetry's read interface modeled on Jaeger's: `findTraces` (complete
 traces, newest first, filtered by their first span's name, attributes, errors or a time window, paged by a cursor),
 `getTrace(id)` and `findMetrics` (a metric's rows, one per series and 10 seconds, with count, sum, min and max).
 `trace.ts` is a script for a data directory, the app running or not. It opens the file with Chord's read-only store,
-`openTelemetryStore` (`@earendil-works/chord/telemetry-sqlite/node`), which implements only the read interface and
+`openTelemetryStore` (`@nycode/chord/telemetry-sqlite/node`), which implements only the read interface and
 opens SQLite read-only: it never writes the file the server writes, never creates or migrates it, and refuses a file
 without a store or with a store of another version.
 
@@ -1977,7 +1977,7 @@ plugin author sees is the same model: contracts, factories, registries, facets p
 | host kinds | `Server`, `List({ id })` | `Server`, `Session({ id })` (`serverHost`, `sessionHost`) |
 | principals | server, worker, owner, user | `owner` (with `access`), `guest` (with `sessions` and `revision`), `worker`, `server`, `host` |
 | API | `@todo/app/v1`, `/server`, `/web`, `/tui` | `@p2/app/v1` (browser-safe), `/node` (server and worker), `/server`, `/worker`, `/web`, `/tui` |
-| other host packages | React for the web | pi-ai, pi-durable, pi-schema, pi-env, pi-tui, `ws`, `yaml`: plugins import them directly |
+| other host packages | React for the web | nycode-ai, nycode-durable, nycode-schema, nycode-env, nycode-tui, `ws`, `yaml`: plugins import them directly |
 | plugins | `plugins/<name>/`, `package.json` named `@todo/<name>` | `apps/p2/plugins/<name>/`, `package.json` named `<name>` |
 | a Chord store | the kit's, per host: persisted documents and tables | none: durable data is Durable's (documents with a conversation) or p2's own files |
 | page and terminal | kit surfaces, `Panels` and `Screens` | p2's bundles; the page's `Slots` registry, `useObject`, `useReadable` |

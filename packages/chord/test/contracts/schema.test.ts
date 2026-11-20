@@ -1,11 +1,11 @@
-// Tests of the schema helpers: the JSON Schema they build over pi-schema's builders, their types, `bytes()`, `method`,
+// Tests of the schema helpers: the JSON Schema they build over nycode-schema's builders, their types, `bytes()`, `method`,
 // and that a contract's declaration can name every type of its members.
 
 import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { compile } from "@earendil-works/pi-schema";
+import { compile } from "@nycode/schema";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import {
 	arr,
@@ -69,7 +69,7 @@ describe("schema helpers", () => {
 		expect(compile(schema).check({ a: "x", c: 1 })).toBe(false);
 	});
 
-	it("Static gives the values' type; pi-schema's compiler checks them", () => {
+	it("Static gives the values' type; nycode-schema's compiler checks them", () => {
 		const schema = obj({ kind: oneOf("chat", "agent"), n: opt(int()), tags: arr(str()), data: bytes() });
 		type Expected = { kind: "chat" | "agent"; n?: number; tags: string[]; data: Uint8Array };
 		expectTypeOf<Equal<Static<typeof schema>, Expected>>().toEqualTypeOf<true>();
@@ -112,16 +112,13 @@ describe("method", () => {
 
 describe("the types of a contract's members", () => {
 	// A package that exports a contract emits its declaration, which holds the contract's inferred type. A type in it
-	// that Chord's entry point does not export is written as a path into `node_modules/@earendil-works/chord/` (or
+	// that Chord's entry point does not export is written as a path into `node_modules/@nycode/chord/` (or
 	// refused, TS2883): a declaration no consumer of that package can resolve.
 	it("are all exported, so a contract's emitted declaration names them through Chord's entry point", () => {
 		const directory = mkdtempSync(join(tmpdir(), "chord-declarations-"));
 		try {
-			mkdirSync(join(directory, "node_modules", "@earendil-works"), { recursive: true });
-			symlinkSync(
-				resolve(import.meta.dirname, "../.."),
-				join(directory, "node_modules", "@earendil-works", "chord"),
-			);
+			mkdirSync(join(directory, "node_modules", "@nycode"), { recursive: true });
+			symlinkSync(resolve(import.meta.dirname, "../.."), join(directory, "node_modules", "@nycode", "chord"));
 			writeFileSync(join(directory, "contract.ts"), EVERY_MEMBER_KIND);
 			writeFileSync(join(directory, "tsconfig.json"), JSON.stringify(DECLARATIONS));
 			const tsc = resolve(import.meta.dirname, "../../../../node_modules/typescript/bin/tsc");
@@ -154,7 +151,7 @@ const DECLARATIONS = {
 };
 
 const EVERY_MEMBER_KIND = `
-import * as chord from "@earendil-works/chord";
+import * as chord from "@nycode/chord";
 const { arr, bool, bytes, event, hostKind, int, keyed, lit, local, map, method, nul, num, obj, oneOf, opt, queries, remote, str, union, unknown } = chord;
 
 export const Home = hostKind("home", { id: str() });

@@ -3,14 +3,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-	createSession,
-	defineTask,
-	type Harness,
-	type Storage,
-	type TaskId,
-	type TaskRuntime,
-} from "@earendil-works/pi-durable";
+import { createSession, defineTask, type Harness, type Storage, type TaskId, type TaskRuntime } from "@nycode/durable";
 import { afterEach, describe, expect, it } from "vitest";
 import { openNodeSqliteStorage } from "../src/storage/sqlite/node.ts";
 import { context } from "./session-support.ts";
@@ -76,7 +69,7 @@ afterEach(async () => {
 });
 
 async function sqlitePath(): Promise<string> {
-	const directory = await mkdtemp(join(tmpdir(), "pi-durable-indexes-"));
+	const directory = await mkdtemp(join(tmpdir(), "nycode-durable-indexes-"));
 	directories.push(directory);
 	return join(directory, "session.sqlite");
 }

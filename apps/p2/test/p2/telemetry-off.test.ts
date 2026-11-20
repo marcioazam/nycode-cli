@@ -6,9 +6,9 @@ import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import { after, before, describe, it, mock } from "node:test";
 import { setTimeout as sleep } from "node:timers/promises";
-import { PageTelemetry, WorkerTelemetry } from "@earendil-works/chord/telemetry-ingest";
-import type { ToolResultMessage } from "@earendil-works/pi-ai";
-import type { ConversationView } from "@earendil-works/pi-durable";
+import type { ToolResultMessage } from "@nycode/ai";
+import { PageTelemetry, WorkerTelemetry } from "@nycode/chord/telemetry-ingest";
+import type { ConversationView } from "@nycode/durable";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { Sessions } from "../../plugins/sessions/contract.ts";
@@ -19,7 +19,7 @@ import { telemetryStore } from "../../src/runtime/host-dirs.ts";
 import { Browser, browserTests } from "./browser.ts";
 import { type Fixture, holdIn, startFixture, until } from "./helpers.ts";
 
-const idle = (view: ConversationView | null | undefined) => !(view?.docs["pi.live"] as { run?: unknown })?.run;
+const idle = (view: ConversationView | null | undefined) => !(view?.docs["nycode.live"] as { run?: unknown })?.run;
 const text = (message: ToolResultMessage | undefined) =>
 	(message?.content ?? []).map((part) => (part.type === "text" ? part.text : "")).join("");
 

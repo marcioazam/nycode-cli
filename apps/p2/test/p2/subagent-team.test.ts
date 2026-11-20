@@ -3,8 +3,8 @@
 
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
-import type { ToolResultMessage } from "@earendil-works/pi-ai";
-import type { ConversationView, EntryRecord } from "@earendil-works/pi-durable";
+import type { ToolResultMessage } from "@nycode/ai";
+import type { ConversationView, EntryRecord } from "@nycode/durable";
 import { BACKGROUND_CONTEXT, follow } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { Sessions } from "../../plugins/sessions/contract.ts";

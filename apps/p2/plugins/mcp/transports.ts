@@ -1,17 +1,17 @@
 // How an instance opens its MCP transport, by where it runs: a program on the p2 host (`StdioTransport`), a program
-// on an environment through its pi-env daemon (`PipeTransport` over `openProcess`, through `cmd.exe` on Windows), or
+// on an environment through its nycode-env daemon (`PipeTransport` over `openProcess`, through `cmd.exe` on Windows), or
 // a Streamable HTTP server (with the stored OAuth tokens when it signs in).
 
 import { posix, win32 } from "node:path";
 import { pathToFileURL } from "node:url";
-import { type Connection, nodePlatform, openProcess, RemoteError } from "@earendil-works/pi-env";
+import { type Connection, nodePlatform, openProcess, RemoteError } from "@nycode/env";
 import {
 	type AuthProvider,
 	type McpTransport,
 	PipeTransport,
 	StdioTransport,
 	StreamableHttpTransport,
-} from "@earendil-works/pi-mcp";
+} from "@nycode/mcp";
 import { expandHostVariables } from "./config.ts";
 import type { EnvConnections } from "./environments.ts";
 import type { Connect, RemoteConnect } from "./placement.ts";
@@ -99,7 +99,7 @@ async function remoteTransport(connect: RemoteConnect, connection: Connection): 
 				return await openProcess(connection, { cwd, argv: launch.argv, env, onStdout, onStderr });
 			} catch (error) {
 				if (error instanceof RemoteError && error.code === "not_supported")
-					throw new DaemonTooOldError(`the pi-env daemon on ${connect.environment} is too old; update it`);
+					throw new DaemonTooOldError(`the nycode-env daemon on ${connect.environment} is too old; update it`);
 				throw error;
 			}
 		},

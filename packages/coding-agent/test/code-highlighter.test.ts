@@ -1,4 +1,4 @@
-import type { TUI } from "@earendil-works/pi-tui";
+import type { TUI } from "@nycode/tui";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { writeRenderers } from "../src/core/tools/renderers/write.ts";
 import { codemodeRenderers } from "../src/extensions/codemode/renderer.ts";

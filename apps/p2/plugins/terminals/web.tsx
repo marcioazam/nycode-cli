@@ -66,7 +66,7 @@ function Surface({ bottom }: { bottom: boolean }) {
 							...nav.route,
 							terminal: undefined,
 							startTerminal: undefined,
-							// The workspace keeps its folder (Pi Mobile).
+							// The workspace keeps its folder (Nycode Mobile).
 							workspace: { tab: "terminal", directory: nav.route.workspace?.directory ?? "", terminal: id },
 						}
 					: { ...nav.route, workspace: undefined, terminal: id ?? "", startTerminal: undefined },

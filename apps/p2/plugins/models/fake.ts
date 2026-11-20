@@ -1,15 +1,9 @@
 // The fake provider of demo and test mode (P2_FAKE, `startServer({ fake: true })`): prompts that make the faux model
 // call a tool (SCRIPTED and the `<tool> <json>` forms), one-shot agents' sample answers, and echoes otherwise.
 import { appendFileSync } from "node:fs";
-import type { Message } from "@earendil-works/pi-ai";
-import { type CreateModelsOptions, createModels } from "@earendil-works/pi-ai/models";
-import {
-	fauxAssistantMessage,
-	fauxProvider,
-	fauxText,
-	fauxThinking,
-	fauxToolCall,
-} from "@earendil-works/pi-ai/providers/faux";
+import type { Message } from "@nycode/ai";
+import { type CreateModelsOptions, createModels } from "@nycode/ai/models";
+import { fauxAssistantMessage, fauxProvider, fauxText, fauxThinking, fauxToolCall } from "@nycode/ai/providers/faux";
 import { SENDER_PREFIX } from "@p2/app/v1";
 
 // Fake-mode prompts that make the faux model call one tool; anything else is echoed.

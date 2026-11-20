@@ -28,7 +28,7 @@ const OTHER_ROUTE = "https://relay.example/mcp/callback";
 /** A loopback redirect URI; tests read the redirect from the authorization server instead of following it. */
 const LOOPBACK = "http://127.0.0.1:1/callback";
 
-/** Documents that list `/callback` on 127.0.0.1, like pi's on pi.dev. */
+/** Documents that list `/callback` on 127.0.0.1, like nycode's on pi.dev. */
 const documents: McpClientMetadataDocuments = {
 	baseUrl: "https://app.example/oauth",
 	listsRedirectUrl: (redirectUrl) => {

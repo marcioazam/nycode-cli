@@ -26,14 +26,14 @@ async function fetchRevision(revision) {
 
 /**
  * Discover the newest published catalog. It is generated from main, which is
- * what this checkout builds. Do not send `pi-version`: on main it is the last
+ * what this checkout builds. Do not send `nycode-version`: on main it is the last
  * released version, and pi.dev answers it with the catalog for released
  * clients, which predates any `MINIMUM_PI_VERSION` bump main depends on.
  */
 async function fetchLiveCatalog() {
 	const response = await fetch(`https://pi.dev/api/models?${MODEL_TYPES}`);
 	if (!response.ok) throw new Error(`Catalog discovery failed: HTTP ${response.status}`);
-	const revision = response.headers.get("x-pi-model-catalog-revision");
+	const revision = response.headers.get("x-nycode-model-catalog-revision");
 	if (typeof revision !== "string" || !REVISION_RE.test(revision)) {
 		throw new Error("Catalog discovery returned an invalid or missing revision");
 	}
@@ -62,7 +62,7 @@ function modelApiGroups(root, bytes) {
 
 /** Hydrate the checkout's model data from catalog bytes, as the Nix build does. */
 export function hydrateModelCatalogBytes(root, bytes, options = {}) {
-	const directory = mkdtempSync(join(tmpdir(), "pi-model-catalog-pin-"));
+	const directory = mkdtempSync(join(tmpdir(), "nycode-model-catalog-pin-"));
 	try {
 		const catalogPath = join(directory, "models.all.json");
 		writeFileSync(catalogPath, bytes);

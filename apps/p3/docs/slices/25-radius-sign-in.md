@@ -1,6 +1,6 @@
 # Slice 25: Sign-in with Radius
 
-**Goal.** Signing in to a Pi with Radius is really nice, on the web and in the terminal: one button (or one command),
+**Goal.** Signing in to a Nycode with Radius is really nice, on the web and in the terminal: one button (or one command),
 one approval at Radius, back in and remembered. The first web and terminal scaffold of p3 comes with it.
 
 **Decided (owner, 2026-11-15):** its own slice, right after slice 1; a small web scaffold (the base page entry
@@ -12,9 +12,9 @@ and the sign-in records stay).
 
 | p2 feature | p3 |
 | --- | --- |
-| The server's own link to Radius: set up once in a terminal (`npm run radius:login`, device code, client `pi-gateway`, scope `gateway offline_access`), tokens in `radius.json`, refreshed under 5 minutes, status only in logs | a Radius card in the owner's settings replaces the command (this slice or slice 21) |
+| The server's own link to Radius: set up once in a terminal (`npm run radius:login`, device code, client `nycode-gateway`, scope `gateway offline_access`), tokens in `radius.json`, refreshed under 5 minutes, status only in logs | a Radius card in the owner's settings replaces the command (this slice or slice 21) |
 | Browsers never sign in with Radius: identity comes from the relay (Radius checks the request and passes `{ kind, id, organization_id, email }`) | a person's identity bound by Radius user id, not email |
-| The terminal launcher's own device-code login (owner only) | `pi join <link>` and the launcher share one flow |
+| The terminal launcher's own device-code login (owner only) | `nycode join <link>` and the launcher share one flow |
 | Radius as a model provider, Radius's MCP server: separate logins | not this slice (slices 7, 13) |
 
 ## What Radius offers today
@@ -26,17 +26,17 @@ and the sign-in records stay).
   - redirects only to loopback;
   - one scope, `gateway`, which is the user's whole API access.
 
-So today a Pi can learn who a person is only through the relay, or by running a device-code login itself. The second
-gives the Pi the person's full Radius token: fine for the owner, not for other people.
+So today a Nycode can learn who a person is only through the relay, or by running a device-code login itself. The second
+gives the Nycode the person's full Radius token: fine for the owner, not for other people.
 
 ## The proposed flow (to detail with the slice)
 
-The same flow on the web and in the terminal: a **pending sign-in** on the Pi.
-1. The client asks its own Pi to start a sign-in.
+The same flow on the web and in the terminal: a **pending sign-in** on the Nycode.
+1. The client asks its own Nycode to start a sign-in.
 2. The person approves at `radius.earendil.com/pair?code=…`, with the code filled in: one click when they are signed
    in to Radius.
-3. The Pi's server learns the Radius user id and email, and finds or binds the person by user id.
-4. The waiting browser gets the Pi's sign-in cookie; the terminal gets a token in its client file.
+3. The Nycode's server learns the Radius user id and email, and finds or binds the person by user id.
+4. The waiting browser gets the Nycode's sign-in cookie; the terminal gets a token in its client file.
 
 Screens (from the research):
 - the join card;
@@ -48,8 +48,8 @@ Screens (from the research):
 A visit through the relay needs no sign-in: the relay's identity maps to the same person.
 
 **Radius changes it needs** (research recommendation):
-1. a sign-in run through the Pi's own Radius connection, with a consent screen naming the Pi and its owner, so no
-   person hands the Pi a token;
+1. a sign-in run through the Nycode's own Radius connection, with a consent screen naming the Nycode and its owner, so no
+   person hands the Nycode a token;
 2. admission by Radius user id rather than email, a join path for any Radius user through the relay, and terminal
    connections for people other than the owner.
 
@@ -59,12 +59,12 @@ Until then, the screens can run on today's device code, for the owner only.
 
 - The sign-in screen lists the registered identity providers: Radius and pairing.
 - Pairing: the new device shows a short code, a signed-in device approves it (`p3 pair <code>`, the local page, the
-  terminal client); no link travels, so the Pi never needs its public address (decision "Signing in a new device").
+  terminal client); no link travels, so the Nycode never needs its public address (decision "Signing in a new device").
 - No owner password.
-- **Remote requests are accepted for any host name** (a tunnel's, a LAN address), so a Pi behind ngrok needs no
+- **Remote requests are accepted for any host name** (a tunnel's, a LAN address), so a Nycode behind ngrok needs no
   configured domain. Safe because authority comes only from a sign-in, never from the host name or from loopback: a
   request whose host is no loopback name is remote and needs a sign-in, and the sign-in cookie is bound to the host the
-  browser used, so a DNS-rebinding page (`evil.com` pointed at the Pi) is anonymous and reaches public routes only. The
+  browser used, so a DNS-rebinding page (`evil.com` pointed at the Nycode) is anonymous and reaches public routes only. The
   public pairing route is the remaining risk (an attacker's page starts a pairing and asks the owner to approve it), so:
   the code expires within minutes and is single use; the approval shows everything needed to judge the request (the
   host name it came through, the client's IP address, its browser or terminal, when it started) with approve and deny;

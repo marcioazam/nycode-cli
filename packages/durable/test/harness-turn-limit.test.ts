@@ -3,7 +3,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { type AssistantMessage, fauxAssistantMessage, fauxText, fauxToolCall } from "@earendil-works/pi-ai";
+import { type AssistantMessage, fauxAssistantMessage, fauxText, fauxToolCall } from "@nycode/ai";
 import {
 	type AfterFailedRun,
 	type Conversation,
@@ -16,8 +16,8 @@ import {
 	type ToolRegistration,
 	ToolResultEntry,
 	ToolTask,
-} from "@earendil-works/pi-durable";
-import { obj } from "@earendil-works/pi-schema";
+} from "@nycode/durable";
+import { obj } from "@nycode/schema";
 import { afterEach, describe, expect, it } from "vitest";
 import { openNodeSqliteStorage } from "../src/storage/sqlite/node.ts";
 import { allEntries, type ChatSetup, chatSetup, openChat, textOf } from "./chat-support.ts";
@@ -305,7 +305,7 @@ describe("turn limit", () => {
 
 	// #11043
 	it("keeps the stored count across a restart", async () => {
-		const directory = await mkdtemp(join(tmpdir(), "pi-durable-turns-"));
+		const directory = await mkdtemp(join(tmpdir(), "nycode-durable-turns-"));
 		directories.add(directory);
 		const path = join(directory, "session.sqlite");
 		const setup = chatSetup();

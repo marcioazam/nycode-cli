@@ -52,8 +52,8 @@ final class ChromeWebView: WKWebView {
 
 /// The page side: marks the document as shown in the app and reports the strip's interactive elements.
 enum ChromeScript {
-	static let world = WKContentWorld.world(name: "pi-chrome")
-	static let handler = "piChrome"
+	static let world = WKContentWorld.world(name: "nycode-chrome")
+	static let handler = "nycodeChrome"
 
 	/// Installs the script and its message handler in `controller`; `receive` gets the reported rectangles.
 	static func install(in controller: WKUserContentController, receive: @escaping ([CGRect]) -> Void) {
@@ -63,7 +63,7 @@ enum ChromeScript {
 
 	/// Sets the width the window buttons take (0: none) and marks the bars at the corner again.
 	static func setInset(_ inset: CGFloat, in webView: WKWebView) {
-		webView.evaluateJavaScript("window.piChromeInset(\(Int(inset)))", in: nil, in: world)
+		webView.evaluateJavaScript("window.nycodeChromeInset(\(Int(inset)))", in: nil, in: world)
 	}
 
 	// Samples the strip with elementFromPoint (cheap, and independent of p2's markup) rather than walking the DOM:
@@ -105,7 +105,7 @@ enum ChromeScript {
 				frame = requestAnimationFrame(runMark);
 				fallback = setTimeout(runMark, 100);
 			};
-			window.piChromeInset = (value) => {
+			window.nycodeChromeInset = (value) => {
 				inset = value;
 				root.style.setProperty("--shell-inset-start", `${value}px`);
 				markCorner();

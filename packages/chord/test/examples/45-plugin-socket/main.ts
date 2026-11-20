@@ -22,7 +22,7 @@ const app = defineFacet<Principal>((_host, self) => {
 		return name === null ? undefined : { kind: "user", name };
 	});
 });
-const modules = { "@earendil-works/chord": chord, "@earendil-works/chord/http": chordHttp };
+const modules = { "@nycode/chord": chord, "@nycode/chord/http": chordHttp };
 const plugins = createPlugins(
 	{
 		roots: [fileURLToPath(new URL("./plugins/", import.meta.url))],

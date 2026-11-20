@@ -1,13 +1,13 @@
 // The session's prompt templates and skills for participants (p2-tui-port.md 10.8), served by the session worker.
 
-import { arr, obj, opt, type Static, str, union } from "@earendil-works/pi-schema";
+import { arr, obj, opt, type Static, str, union } from "@nycode/schema";
 import { literal, method, param, remote, sessionHost } from "@p2/app/v1";
 
 export const TemplateInfoSchema = obj({
 	name: str(),
 	description: str(),
 	argumentHint: opt(str()),
-	/** p2's data directory (`~/.pi/p2/prompts` on a remote environment) or the project's `.pi/prompts`. */
+	/** p2's data directory (`~/.nycode/p2/prompts` on a remote environment) or the project's `.nycode/prompts`. */
 	source: union([literal("global"), literal("project")]),
 });
 export type TemplateInfo = Static<typeof TemplateInfoSchema>;
@@ -30,7 +30,7 @@ export const PromptResources = remote("p2.prompt-resources", {
 			state: { templates: arr(TemplateInfoSchema), skills: arr(SkillInfoSchema) },
 			methods: {
 				/**
-				 * pi's expansion: `/skill:name args` becomes the skill block plus the args, `/name args` the template with
+				 * nycode's expansion: `/skill:name args` becomes the skill block plus the args, `/name args` the template with
 				 * its arguments substituted. Other text, unknown names and unreadable skills come back unchanged.
 				 */
 				expand: method(

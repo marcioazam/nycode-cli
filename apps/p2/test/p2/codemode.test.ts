@@ -5,9 +5,9 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
-import type { ToolResultMessage } from "@earendil-works/pi-ai";
-import type { ConversationView, LiveState } from "@earendil-works/pi-durable";
-import type { CodemodeToolDetails } from "@earendil-works/pi-durable/codemode";
+import type { ToolResultMessage } from "@nycode/ai";
+import type { ConversationView, LiveState } from "@nycode/durable";
+import type { CodemodeToolDetails } from "@nycode/durable/codemode";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { scriptCalls } from "../../plugins/codemode/nested.ts";
@@ -25,7 +25,7 @@ const codemodeResults = (view: ConversationView | null | undefined): ToolResultM
 			(message): message is ToolResultMessage => message.role === "toolResult" && message.toolName === "codemode",
 		),
 	);
-const live = (view: ConversationView | null | undefined) => view?.docs["pi.live"] as LiveState | undefined;
+const live = (view: ConversationView | null | undefined) => view?.docs["nycode.live"] as LiveState | undefined;
 /** The settled list of a code mode result: its script's tool calls (Durable writes it with the result). */
 const detailCalls = (result: ToolResultMessage) => (result.details as CodemodeToolDetails | undefined)?.calls ?? [];
 /** The script's call, with its calls as code mode's contribution reads them (live, or its result's list). */

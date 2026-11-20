@@ -61,7 +61,7 @@ async function itemPlugin(root: string, dir: string, label: string): Promise<voi
 /** The worker facet of `itemPlugin`'s plugin `dir`. */
 function itemSource(dir: string, label: string): string {
 	return [
-		'import { constant, defineFacet, local, str } from "@earendil-works/chord";',
+		'import { constant, defineFacet, local, str } from "@nycode/chord";',
 		`const Item = local("test.${dir}", { version: 1, params: {}, members: { label: str() } });`,
 		`export default defineFacet((host) => host.serve(Item, () => ({ label: constant(${JSON.stringify(label)}) })));`,
 	].join("\n");
@@ -104,7 +104,7 @@ describe("per plugin at startup", () => {
 		});
 		await writePlugin(root, "setup", "@test/setup", {
 			"worker.ts":
-				'import { defineFacet } from "@earendil-works/chord";\nexport default defineFacet(() => { throw new Error("in setup"); });',
+				'import { defineFacet } from "@nycode/chord";\nexport default defineFacet(() => { throw new Error("in setup"); });',
 		});
 		const { plugins } = await component(root);
 		const host = createHost({ onError: () => {} });
@@ -216,13 +216,13 @@ describe("per plugin at reload", () => {
 		const root = await tempRoot();
 		const provider = (version: number) =>
 			[
-				'import { constant, defineFacet, local, int } from "@earendil-works/chord";',
+				'import { constant, defineFacet, local, int } from "@nycode/chord";',
 				`export const P = local("test.provider", { version: ${version}, params: {}, members: { n: int() } });`,
 				`export default defineFacet((host) => host.serve(P, () => ({ n: constant(${version}) })));`,
 			].join("\n");
 		const consumer = (version: number) =>
 			[
-				'import { defineFacet, local, int, str } from "@earendil-works/chord";',
+				'import { defineFacet, local, int, str } from "@nycode/chord";',
 				`const P = local("test.provider", { version: ${version}, params: {}, members: { n: int() } });`,
 				'const C = local("test.consumer", { version: 1, params: {}, members: { label: str() } });',
 				`export default defineFacet((host) => host.serve(C, (_, self) => ({ label: self.derive([self.get(P, {}).n], ([n]) => "v${version} " + n) })));`,
@@ -474,7 +474,7 @@ describe("the app's API, required roots and installs (slice 12 §1, §5)", () =>
 	});
 
 	it("rejects load when a required root is missing, holds a broken package or loses a name to an earlier root (Opus M3)", async () => {
-		const facet = 'import { defineFacet } from "@earendil-works/chord";\nexport default defineFacet(() => {});';
+		const facet = 'import { defineFacet } from "@nycode/chord";\nexport default defineFacet(() => {});';
 		const broken = await tempRoot();
 		await writePlugin(broken, "core", "@app/core", { "server.ts": facet });
 		await writeFile(join(broken, "core", "package.json"), "{ not json");
@@ -539,7 +539,7 @@ describe("plugins whose files move, and removed plugins (slice 12 fix round 2, S
 		const root = await tempRoot();
 		const facet = (label: string) =>
 			[
-				'import { constant, defineFacet, local, str } from "@earendil-works/chord";',
+				'import { constant, defineFacet, local, str } from "@nycode/chord";',
 				'const Item = local("test.hello", { version: 1, params: {}, members: { label: str() } });',
 				`export default defineFacet((host) => host.serve(Item, () => ({ label: constant(${JSON.stringify(label)}) })));`,
 			].join("\n");
@@ -586,7 +586,7 @@ describe("GC", () => {
 		const probe = { made: (closure: object) => void made.push(new WeakRef(closure)) };
 		const source = (label: string) =>
 			[
-				'import { constant, defineFacet, local, str } from "@earendil-works/chord";',
+				'import { constant, defineFacet, local, str } from "@nycode/chord";',
 				'import { made } from "@test/probe";',
 				'const Item = local("test.gc", { version: 1, params: {}, members: { label: str() } });',
 				// A closure per evaluation, which only this evaluation's code holds.
@@ -757,7 +757,7 @@ describe("fix round 1", () => {
 		// The plugin keeps a server facet only.
 		await rm(join(root, "a", "worker.ts"));
 		await writeFiles(join(root, "a"), {
-			"server.ts": 'import { defineFacet } from "@earendil-works/chord";\nexport default defineFacet(() => {});',
+			"server.ts": 'import { defineFacet } from "@nycode/chord";\nexport default defineFacet(() => {});',
 		});
 		await vi.waitFor(() => expect(plugins.state.value).toMatchObject({ set: true }), { timeout: 5_000 });
 		const built = await plugins.build(["@test/a"], context);
@@ -833,7 +833,7 @@ describe("the reload queues and garbage collection", () => {
 		const probe = { made: (value: object) => made.push(new WeakRef(value)) };
 		const source = (bad: boolean) =>
 			[
-				'import { constant, defineFacet, int, local } from "@earendil-works/chord";',
+				'import { constant, defineFacet, int, local } from "@nycode/chord";',
 				'import { made } from "@test/probe";',
 				`const state = { bad: ${bad}, big: new Array(10000).fill("payload") };`,
 				"made(state);",

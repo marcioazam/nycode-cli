@@ -5,7 +5,7 @@
 // last sends the one `release`, and a reference made after it holds anew.
 // Run from packages/chord:
 //   node --conditions=source --experimental-strip-types test/examples/68-shared-holds.ts
-import { InMemoryTelemetryContext } from "@earendil-works/pi-telemetry";
+import { InMemoryTelemetryContext } from "@nycode/telemetry";
 import { BACKGROUND_CONTEXT } from "../../src/context/index.ts";
 import { hostKind, int, method, obj, remote } from "../../src/contracts/index.ts";
 import { defineState } from "../../src/documents/index.ts";

@@ -3,8 +3,8 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { CompatSchemasByApi } from "@earendil-works/pi-ai/providers/compat-schema";
-import { ModelInputLimitsSchema } from "@earendil-works/pi-ai/providers/model-schema";
+import { CompatSchemasByApi } from "@nycode/ai/providers/compat-schema";
+import { ModelInputLimitsSchema } from "@nycode/ai/providers/model-schema";
 import type { TSchema } from "typebox";
 import { ModelsJsonSchemas } from "../src/core/model-config.ts";
 

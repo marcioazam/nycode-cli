@@ -17,7 +17,7 @@ function writePackage(directory, manifest, files) {
 }
 
 function createFixture(t, { importUndeclared = false } = {}) {
-	const temporaryRoot = mkdtempSync(join(tmpdir(), "pi-coding-agent-smoke-test-"));
+	const temporaryRoot = mkdtempSync(join(tmpdir(), "nycode-coding-agent-smoke-test-"));
 	t.after(() => rmSync(temporaryRoot, { recursive: true, force: true }));
 	const root = join(temporaryRoot, "fixture with spaces");
 	const repoRoot = join(root, "repo");
@@ -33,7 +33,7 @@ function createFixture(t, { importUndeclared = false } = {}) {
 			types: "./dist/index.d.ts",
 			exports: { ".": { types: "./dist/index.d.ts", import: "./dist/index.js" } },
 			files: ["dist"],
-			bin: { pi: "dist/bundle/cli.js" },
+			bin: { nycode: "dist/bundle/cli.js" },
 		},
 		{
 			"dist/index.js": `${importUndeclared ? 'import "@earendil-works/undeclared";' : ""}

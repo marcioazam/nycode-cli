@@ -63,7 +63,7 @@ const powershellToolConfig: ShellToolConfig = {
 	prompt: "PS>",
 	promptSnippet: powershellToolSystemPromptContribution.snippet,
 	promptGuidelines: powershellToolSystemPromptContribution.guidelines,
-	tempFilePrefix: "pi-powershell",
+	tempFilePrefix: "nycode-powershell",
 };
 
 export function createPowerShellToolDefinition(

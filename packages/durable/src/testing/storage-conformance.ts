@@ -1,6 +1,6 @@
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import type { Op } from "@earendil-works/chord/delta";
-import type { JsonValue } from "@earendil-works/chord/json";
+import { BACKGROUND_CONTEXT } from "@nycode/chord/context";
+import type { Op } from "@nycode/chord/delta";
+import type { JsonValue } from "@nycode/chord/json";
 import { idFromNumber } from "../ids.ts";
 import {
 	type ConversationId,
@@ -782,7 +782,7 @@ export function createStorageConformance(options: StorageConformanceOptions): re
 			const ids = [] as TaskId<JsonValue>[];
 			for (let index = 0; index < 5; index++) ids.push(await storage.mintId<TaskId<JsonValue>>());
 			const signals = [{ signal: "app.answer", key: "a" }];
-			const memos = { "pi.signal.app.answer/a": { version: 1, value: { text: "yes" } } };
+			const memos = { "nycode.signal.app.answer/a": { version: 1, value: { text: "yes" } } };
 			const tasks: StoredTask[] = [
 				// A sleep without `until`, waiting only for a signal.
 				{ ...pendingTask(ids[0]!, rootId), state: { status: "sleeping", checkpoint: { phase: "next" }, signals } },

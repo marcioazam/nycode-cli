@@ -5,7 +5,7 @@ import { getModel, normalizeContext } from "../src/compat.ts";
 import type { Api, FetchFunction, Model, ProviderResponse } from "../src/types.ts";
 import { formatUserAgent } from "../src/utils/identity.ts";
 
-const PI_USER_AGENT = formatUserAgent();
+const NYCODE_USER_AGENT = formatUserAgent();
 
 function createSseResponse(events: unknown[], headers?: Record<string, string>): Response {
 	const body = `${events.map((event) => `data: ${JSON.stringify(event)}`).join("\r\n\r\n")}\r\n\r\ndata: [DONE]\r\n\r\n`;
@@ -112,7 +112,7 @@ describe("Mistral HTTP transport", () => {
 		expect(headers.get("accept")).toBe("text/event-stream");
 		expect(headers.get("x-affinity")).toBe("session-1");
 		expect(headers.get("x-custom")).toBe("value");
-		expect(headers.get("user-agent")).toBe(PI_USER_AGENT);
+		expect(headers.get("user-agent")).toBe(NYCODE_USER_AGENT);
 		expect(callbackPayload?.maxTokens).toBe(123);
 		expect(callbackPayload?.promptMode).toBe("reasoning");
 		expect(callbackPayload?.promptCacheKey).toBe("session-1");
@@ -170,7 +170,7 @@ describe("Mistral HTTP transport", () => {
 					content: [
 						{ type: "thinking", thinking: "reason" },
 						{ type: "text", text: "answer" },
-						{ type: "toolCall", id: "abc123456", name: "lookup", arguments: { query: "pi" } },
+						{ type: "toolCall", id: "abc123456", name: "lookup", arguments: { query: "nycode" } },
 					],
 					usage: {
 						input: 0,
@@ -218,7 +218,7 @@ describe("Mistral HTTP transport", () => {
 					{
 						id: "abc123456",
 						type: "function",
-						function: { name: "lookup", arguments: '{"query":"pi"}' },
+						function: { name: "lookup", arguments: '{"query":"nycode"}' },
 						index: 0,
 					},
 				],
@@ -293,7 +293,7 @@ describe("Mistral HTTP transport", () => {
 							tool_calls: [
 								{
 									index: 0,
-									function: { name: "", arguments: '"pi"}' },
+									function: { name: "", arguments: '"nycode"}' },
 								},
 							],
 						},
@@ -317,7 +317,7 @@ describe("Mistral HTTP transport", () => {
 		expect(message.content).toEqual([
 			{ type: "thinking", thinking: "reason" },
 			{ type: "text", text: "answer" },
-			{ type: "toolCall", id: "abc123456", name: "lookup", arguments: { query: "pi" } },
+			{ type: "toolCall", id: "abc123456", name: "lookup", arguments: { query: "nycode" } },
 		]);
 		expect(message.usage).toMatchObject({ input: 7, output: 4, cacheRead: 3, cacheWrite: 0, totalTokens: 14 });
 	});

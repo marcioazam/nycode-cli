@@ -1,11 +1,11 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { getKeybindings, setKeybindings } from "@earendil-works/pi-tui";
+import { getKeybindings, setKeybindings } from "@nycode/tui";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@earendil-works/pi-tui", async (importOriginal) => {
-	const actual = await importOriginal<typeof import("@earendil-works/pi-tui")>();
+vi.mock("@nycode/tui", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("@nycode/tui")>();
 	class FakeTui {
 		terminal = { rows: 24 };
 		setClearOnShrink() {}
@@ -49,7 +49,7 @@ describe("selectConfig keybindings", () => {
 	});
 
 	it("uses the user's keybindings.json", async () => {
-		agentDir = mkdtempSync(join(tmpdir(), "pi-config-keys-"));
+		agentDir = mkdtempSync(join(tmpdir(), "nycode-config-keys-"));
 		writeFileSync(
 			join(agentDir, "keybindings.json"),
 			JSON.stringify({ "tui.select.up": ["up", "ctrl+p"], "tui.select.down": ["down", "ctrl+n"] }),

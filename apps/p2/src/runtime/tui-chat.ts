@@ -1,7 +1,7 @@
 // What other TUI facets use of the chat plugin's surface (slot "chat"): chat mode's replies and send_file's downloads.
 // They reach it through `chatSurface`, never the chat plugin's class: plugins share contracts, not code.
 
-import type { Component } from "@earendil-works/pi-tui";
+import type { Component } from "@nycode/tui";
 import type { ToolView } from "../web/transcript.ts";
 import type { TuiContext } from "./tui-context.ts";
 
@@ -15,11 +15,11 @@ export interface ChatSurfaceApi extends Component {
 	readonly [CHAT_SURFACE]: true;
 	/** The message the next send answers. */
 	readonly replyTo: { entryId: number; name: string } | undefined;
-	/** Chat mode switched replies on or off; `mentionName` is the agent's name to mention (default "Pi"). */
+	/** Chat mode switched replies on or off; `mentionName` is the agent's name to mention (default "Nycode"). */
 	setCanReply(enabled: boolean, mentionName?: string): void;
 	/** The next send answers this entry (chat mode); undefined cancels. */
 	setReplyTo(target: { entryId: number; name: string } | undefined): void;
-	/** Messages a reply can answer: people's and Pi's committed messages, newest first. */
+	/** Messages a reply can answer: people's and Nycode's committed messages, newest first. */
 	replyTargets(): ReplyTarget[];
 	/** The viewed conversation's finished calls of the tool `name`. */
 	toolViews(name: string): ToolView[];

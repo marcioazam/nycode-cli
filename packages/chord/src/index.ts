@@ -1,4 +1,4 @@
-// Chord (`@earendil-works/chord`, v2, experimental): every layer's API for apps, and the store's surface for adapters
+// Chord (`@nycode/chord`, v2, experimental): every layer's API for apps, and the store's surface for adapters
 // (Durable's `StoreStorage`), marked internal. The Node components and the client surfaces are subpaths (`/http`,
 // `/workers`, `/plugins`, `/app`, `/surfaces`, `/web`, `/react`, `/tui`).
 

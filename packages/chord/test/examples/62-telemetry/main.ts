@@ -8,7 +8,7 @@
 import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { renderTrace } from "@earendil-works/pi-telemetry/render";
+import { renderTrace } from "@nycode/telemetry/render";
 import { WebSocket } from "ws";
 import { BACKGROUND_CONTEXT as context, withTelemetry } from "../../../src/context/index.ts";
 import { createHost, type WebSocketLike, webSocketLink } from "../../../src/index.ts";

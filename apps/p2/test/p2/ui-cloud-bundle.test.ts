@@ -1,6 +1,6 @@
 // Browser: the Radius Cloud Brain build (scripts/cloud-bundle.ts) makes a working page. The build's files are served
-// as Radius serves them (under /pi/ui/<sha>/, here on the brain's own origin through Chromium's request interception,
-// as the relay presents both on one origin), in a page naming the brain's Chord URL in `#root`'s `data-pi-bootstrap`:
+// as Radius serves them (under /nycode/ui/<sha>/, here on the brain's own origin through Chromium's request interception,
+// as the relay presents both on one origin), in a page naming the brain's Chord URL in `#root`'s `data-nycode-bootstrap`:
 // the app renders, connects, and never asks for the web surface's files (a static page). Fake provider.
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
@@ -43,10 +43,10 @@ describe("the Cloud Brain page", { skip: !browserTests }, () => {
 			script: string;
 			stylesheets: string[];
 		};
-		const prefix = `/pi/ui/${SHA}/`;
+		const prefix = `/nycode/ui/${SHA}/`;
 		const page = `<!doctype html><html><head><meta charset="utf-8">${manifest.stylesheets
 			.map((style) => `<link rel="stylesheet" href="${prefix}${style}">`)
-			.join("")}</head><body><div id="root" data-pi-bootstrap='${JSON.stringify({
+			.join("")}</head><body><div id="root" data-nycode-bootstrap='${JSON.stringify({
 			chordUrl: `ws://127.0.0.1:${fixture.server.port}/chord`,
 		})}'></div><script type="module" src="${prefix}${manifest.script}"></script></body></html>`;
 		const requested: string[] = [];

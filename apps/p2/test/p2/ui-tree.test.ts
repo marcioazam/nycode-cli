@@ -13,7 +13,7 @@ import { Browser, browserTests, COMPOSER, composerText, setComposer } from "./br
 import { type Fixture, holdIn, startFixture, until } from "./helpers.ts";
 
 const idle = (view: { docs: Record<string, unknown> } | null | undefined) =>
-	!(view?.docs["pi.live"] as { run?: unknown } | undefined)?.run;
+	!(view?.docs["nycode.live"] as { run?: unknown } | undefined)?.run;
 
 describe("branches in the browser", { skip: !browserTests }, () => {
 	let fixture: Fixture, browser: Browser, id: string;

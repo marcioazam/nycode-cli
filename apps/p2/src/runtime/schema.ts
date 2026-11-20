@@ -1,15 +1,15 @@
 // Schema helpers with the exact JSON TypeBox's `Type.Literal`, `Type.Record` and `Type.Unsafe` built, so contracts,
-// state and tool parameters declared before the switch to pi-schema keep their JSON and their Chord fingerprints, and
+// state and tool parameters declared before the switch to nycode-schema keep their JSON and their Chord fingerprints, and
 // `propertiesOf` for building one object schema from another's properties (TypeBox's `schema.properties`).
 
-import { type Annotations, type Optional, opt, type Schema } from "@earendil-works/pi-schema";
+import { type Annotations, type Optional, opt, type Schema } from "@nycode/schema";
 
-/** `Type.Literal(value)`: the value with its JSON type (pi-schema's `lit` has no `type`). */
+/** `Type.Literal(value)`: the value with its JSON type (nycode-schema's `lit` has no `type`). */
 export function literal<const V extends string | number | boolean>(value: V, options: Annotations<V> = {}): Schema<V> {
 	return { type: typeof value, const: value, ...options };
 }
 
-/** `Type.Record(Type.String(), value)`: one pattern property for every key (pi-schema's `map` uses `additionalProperties`). */
+/** `Type.Record(Type.String(), value)`: one pattern property for every key (nycode-schema's `map` uses `additionalProperties`). */
 export function record<T>(value: Schema<T>, options: Annotations<Record<string, T>> = {}): Schema<Record<string, T>> {
 	return { type: "object", patternProperties: { "^.*$": value }, ...options };
 }

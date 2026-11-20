@@ -16,10 +16,10 @@ import {
 	type Registry,
 	type WebSocketLike,
 	webSocketLink,
-} from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import type { NativeWatchable, Watchable } from "@earendil-works/chord/watch";
-import type { ImageProcessor } from "@earendil-works/pi-durable/tools";
+} from "@nycode/chord";
+import { BACKGROUND_CONTEXT } from "@nycode/chord/context";
+import type { NativeWatchable, Watchable } from "@nycode/chord/watch";
+import type { ImageProcessor } from "@nycode/durable/tools";
 import { WebSocket as NodeWebSocket } from "ws";
 import { type P2Server, type ServerOptions, startServer } from "../../src/hosts/server.ts";
 import {
@@ -61,8 +61,8 @@ import {
 
 // Chord's test-only parts, for the test files: they import Chord only through this module (and the plugin API), so the
 // switch to Chord v2 changes these helpers rather than every test.
-export { binaryCodec, ChordError, memoryLinkPair } from "@earendil-works/chord";
-export { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
+export { binaryCodec, ChordError, memoryLinkPair } from "@nycode/chord";
+export { BACKGROUND_CONTEXT } from "@nycode/chord/context";
 
 /** Chord's reports of mistakes that would wait (a request nobody serves, a registry without provider): always a bug. */
 const MISTAKES = new Set(["registry_undeclared", "unbound_long", "transaction_cancelled"]);

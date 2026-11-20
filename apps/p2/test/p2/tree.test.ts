@@ -5,8 +5,8 @@
 
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
-import type { ToolResultMessage } from "@earendil-works/pi-ai";
-import { type ConversationView, createSession, defineDoc, ROOT_CONVERSATION_ID } from "@earendil-works/pi-durable";
+import type { ToolResultMessage } from "@nycode/ai";
+import { type ConversationView, createSession, defineDoc, ROOT_CONVERSATION_ID } from "@nycode/durable";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { Artifacts } from "../../plugins/artifacts/contract.ts";
 import { Chat } from "../../plugins/chat/contract.ts";
@@ -325,7 +325,7 @@ describe("/tree (fake provider)", () => {
 		const left = tree.main;
 		const chat = await chatOf(left);
 		await chat.send({ text: "slow answer", requestId: "slow" }, BACKGROUND_CONTEXT);
-		await until(chat.view, (next) => Boolean((next?.docs["pi.live"] as { run?: unknown } | undefined)?.run));
+		await until(chat.view, (next) => Boolean((next?.docs["nycode.live"] as { run?: unknown } | undefined)?.run));
 		await ref.select({ conversation: 1 }, BACKGROUND_CONTEXT);
 		const sessions = await sessionsRef();
 		await until(sessions.sessions, (list) => list.find((each) => each.id === session.id)?.main === 1);
@@ -337,7 +337,7 @@ describe("/tree (fake provider)", () => {
 			/earlier branch of the session/,
 		);
 		await chat.stop(BACKGROUND_CONTEXT);
-		await until(chat.view, (next) => !(next?.docs["pi.live"] as { run?: unknown } | undefined)?.run);
+		await until(chat.view, (next) => !(next?.docs["nycode.live"] as { run?: unknown } | undefined)?.run);
 		chat.release();
 		await idle();
 		await ref.select({ conversation: left }, BACKGROUND_CONTEXT);

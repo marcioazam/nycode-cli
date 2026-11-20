@@ -1,7 +1,7 @@
 // The terminal tool's card in the TUI: the tmux command line, then the output it returned (the last lines; expanded,
 // all of it). The TUI has no terminal panel: the owner watches agent terminals in the web.
 
-import { Text } from "@earendil-works/pi-tui";
+import { Text } from "@nycode/tui";
 import { contribute, defineFacet } from "@p2/app/v1";
 import { getTextOutput, lineText, str, type ToolRenderers, TuiToolRenderers } from "@p2/app/v1/tui";
 

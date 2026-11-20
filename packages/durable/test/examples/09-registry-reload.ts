@@ -2,9 +2,9 @@
 // Run from packages/durable:
 //   node --conditions=source --experimental-strip-types test/examples/09-registry-reload.ts
 
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import { createModels } from "@earendil-works/pi-ai/models";
-import { obj, str } from "@earendil-works/pi-schema";
+import { createModels } from "@nycode/ai/models";
+import { BACKGROUND_CONTEXT } from "@nycode/chord/context";
+import { obj, str } from "@nycode/schema";
 import { createRegistry, defineExtension, defineTool, Harness, MemoryStorage, wrapTool } from "../../src/index.ts";
 
 const context = BACKGROUND_CONTEXT;

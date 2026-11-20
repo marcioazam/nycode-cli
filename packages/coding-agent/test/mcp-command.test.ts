@@ -8,7 +8,7 @@ import { startOAuthMcpServer } from "./suite/mcp-oauth-server.ts";
 
 const FIXTURE = resolve(import.meta.dirname, "../../mcp/test/fixtures/stdio-server.mjs");
 
-describe("pi mcp", () => {
+describe("nycode mcp", () => {
 	const dirs: string[] = [];
 
 	afterEach(() => {
@@ -21,7 +21,7 @@ describe("pi mcp", () => {
 		dir?: string,
 		providerToken?: (provider: string) => Promise<string | undefined>,
 	) {
-		const agentDir = dir ?? mkdtempSync(join(tmpdir(), "pi-mcp-command-"));
+		const agentDir = dir ?? mkdtempSync(join(tmpdir(), "nycode-mcp-command-"));
 		if (!dir) dirs.push(agentDir);
 		if (servers) writeFileSync(join(agentDir, "mcp.json"), JSON.stringify({ mcpServers: servers }));
 		const output: string[] = [];
@@ -39,7 +39,7 @@ describe("pi mcp", () => {
 
 	const servers = {
 		fixture: { command: process.execPath, args: [FIXTURE] },
-		broken: { command: "pi-test-missing-mcp-server" },
+		broken: { command: "nycode-test-missing-mcp-server" },
 		parked: { command: process.execPath, args: [FIXTURE], enabled: false },
 		bad: { args: ["no command"] },
 	};
@@ -50,7 +50,7 @@ describe("pi mcp", () => {
 		expect(output).toContain("fixture: connected, 1 tool (codemode, global)\n");
 		expect(output).toContain("  tools: echo");
 		expect(output).toContain(
-			"broken: failed (codemode, global)\n  pi-test-missing-mcp-server\n  spawn pi-test-missing-mcp-server ENOENT",
+			"broken: failed (codemode, global)\n  nycode-test-missing-mcp-server\n  spawn nycode-test-missing-mcp-server ENOENT",
 		);
 		expect(output).toContain("parked: disabled (codemode, global)");
 		expect(output).toContain("config error: ");
@@ -101,16 +101,16 @@ describe("pi mcp", () => {
 			expect(signedIn).toMatchObject({ exitCode: 0, output: expect.stringContaining("radius: connected, 1 tool") });
 			expect(requested).toContain("radius");
 
-			// Without the provider's credentials the hint names the provider's /login, not `pi mcp login`.
+			// Without the provider's credentials the hint names the provider's /login, not `nycode mcp login`.
 			const signedOut = await run(["list"], radius, undefined, async () => undefined);
 			expect(signedOut.exitCode).toBe(1);
 			expect(signedOut.output).toContain("radius: needs sign-in (codemode, global)");
-			expect(signedOut.output).toContain("  sign in with: /login radius in pi");
+			expect(signedOut.output).toContain("  sign in with: /login radius in nycode");
 
 			for (const command of ["login", "logout"]) {
 				expect(await run([command, "radius"], radius)).toMatchObject({
 					exitCode: 1,
-					output: `MCP server "radius" uses the credentials of provider "radius". Run "pi auth ${command} radius".`,
+					output: `MCP server "radius" uses the credentials of provider "radius". Run "nycode auth ${command} radius".`,
 				});
 			}
 		} finally {
@@ -197,16 +197,16 @@ describe("pi mcp", () => {
 				"--url",
 				"https://mcp.sentry.dev/mcp",
 				"--oauth-client-id",
-				"pi",
+				"nycode",
 				"--oauth-client-name",
 				"Claude Code",
 			],
 			undefined,
 			agentDir,
 		);
-		expect(oauth.output).toContain("If it requires sign-in: pi mcp login sentry");
+		expect(oauth.output).toContain("If it requires sign-in: nycode mcp login sentry");
 		expect(readConfig(join(agentDir, "mcp.json")).mcpServers).toMatchObject({
-			sentry: { url: "https://mcp.sentry.dev/mcp", oauth: { clientId: "pi", clientName: "Claude Code" } },
+			sentry: { url: "https://mcp.sentry.dev/mcp", oauth: { clientId: "nycode", clientName: "Claude Code" } },
 		});
 
 		await run(
@@ -241,7 +241,7 @@ describe("pi mcp", () => {
 	it("adds and removes project servers", async () => {
 		const added = await run(["add", "-l", "local", "--", "node", "server.js"], undefined);
 		expect(added.output).toContain("The project is not trusted");
-		const projectConfig = join(added.agentDir, ".pi", "mcp.json");
+		const projectConfig = join(added.agentDir, ".nycode", "mcp.json");
 		expect(readConfig(projectConfig)).toEqual({ mcpServers: { local: { command: "node", args: ["server.js"] } } });
 
 		const wrongScope = await run(["remove", "local"], undefined, added.agentDir);

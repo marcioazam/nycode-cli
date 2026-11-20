@@ -1,4 +1,4 @@
-import { fauxAssistantMessage, fauxToolCall, type ImageContent } from "@earendil-works/pi-ai";
+import { fauxAssistantMessage, fauxToolCall, type ImageContent } from "@nycode/ai";
 import { afterEach, describe, expect, it } from "vitest";
 import { createHarness, type Harness } from "../harness.ts";
 

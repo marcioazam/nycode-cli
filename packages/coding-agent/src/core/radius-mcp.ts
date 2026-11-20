@@ -1,5 +1,5 @@
 import path from "node:path";
-import { mcpNamespace } from "@earendil-works/pi-mcp";
+import { mcpNamespace } from "@nycode/mcp";
 import { loadMcpConfig } from "../extensions/mcp/config.ts";
 import type { McpHttpServerConfig } from "./mcp-servers.ts";
 import { RADIUS_MCP_URL } from "./radius.ts";

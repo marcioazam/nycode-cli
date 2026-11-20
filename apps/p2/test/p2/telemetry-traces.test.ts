@@ -5,8 +5,8 @@
 // and its spans' details, and Settings shows it too. Fake provider, disposable data.
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
-import type { ToolResultMessage } from "@earendil-works/pi-ai";
-import type { ConversationView } from "@earendil-works/pi-durable";
+import type { ToolResultMessage } from "@nycode/ai";
+import type { ConversationView } from "@nycode/durable";
 import { BACKGROUND_CONTEXT, isChordError } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { SessionLock, Sessions } from "../../plugins/sessions/contract.ts";
@@ -27,7 +27,7 @@ const GUEST: GuestPrincipal = {
 	revision: 1,
 };
 
-const idle = (view: ConversationView | null | undefined) => !(view?.docs["pi.live"] as { run?: unknown })?.run;
+const idle = (view: ConversationView | null | undefined) => !(view?.docs["nycode.live"] as { run?: unknown })?.run;
 const text = (message: ToolResultMessage | undefined) =>
 	(message?.content ?? []).map((part) => (part.type === "text" ? part.text : "")).join("");
 const output = (message: ToolResultMessage | undefined): string =>
@@ -75,12 +75,12 @@ describe("the owner's telemetry read back", () => {
 		fixture = await startFixture({ web: browserTests, settings: { telemetry: true } });
 		owner = fixture.browser();
 		sessions = await holdIn(owner, Sessions, {}, "owner");
-		// Traces to read: a session's turn (the worker's, Durable's and pi-ai's spans), written within a second.
+		// Traces to read: a session's turn (the worker's, Durable's and nycode-ai's spans), written within a second.
 		const first = await session("First");
 		await script(first, "return 1;");
 		const traces = await holdIn(owner, Traces, {}, "owner");
 		await poll(
-			async () => (await traces.findTraces({ name: "pi.durable.submit" }, BACKGROUND_CONTEXT)).traces.length > 0,
+			async () => (await traces.findTraces({ name: "nycode.durable.submit" }, BACKGROUND_CONTEXT)).traces.length > 0,
 		);
 		traces.release();
 	});
@@ -93,7 +93,8 @@ describe("the owner's telemetry read back", () => {
 		assert.ok(page.cursor, "more than one trace: a cursor");
 		const next = await traces.findTraces({ limit: 1, cursor: page.cursor! }, BACKGROUND_CONTEXT);
 		assert.notEqual(next.traces[0]?.traceId, page.traces[0]?.traceId);
-		const [submit] = (await traces.findTraces({ name: "pi.durable.submit", limit: 1 }, BACKGROUND_CONTEXT)).traces;
+		const [submit] = (await traces.findTraces({ name: "nycode.durable.submit", limit: 1 }, BACKGROUND_CONTEXT))
+			.traces;
 		assert.ok(submit && submit.spans > 0 && submit.hosts.some((host) => host.startsWith("session|")));
 		const trace = await traces.getTrace({ traceId: submit.traceId }, BACKGROUND_CONTEXT);
 		assert.equal(trace?.spans.length, submit.spans);
@@ -147,11 +148,11 @@ describe("the owner's telemetry read back", () => {
 		const result = await script(
 			id,
 			[
-				'const found = await tools.telemetry_find_traces({ name: "pi.durable.submit", limit: 2 });',
+				'const found = await tools.telemetry_find_traces({ name: "nycode.durable.submit", limit: 2 });',
 				"const one = await tools.telemetry_get_trace({ traceId: found.traces[0].traceId });",
 				"const none = await tools.telemetry_get_trace({ traceId: 'nope' });",
 				'const metrics = await tools.telemetry_find_metrics({ name: "chord.link.bytes" });',
-				"return { found: found.traces.length, spans: one.trace.spans.length, text: one.text.includes('pi.durable.submit'), none: none.found, metrics: Array.isArray(metrics.metrics) };",
+				"return { found: found.traces.length, spans: one.trace.spans.length, text: one.text.includes('nycode.durable.submit'), none: none.found, metrics: Array.isArray(metrics.metrics) };",
 			].join("\n"),
 		);
 		assert.equal(result.isError, false, text(result));
@@ -185,11 +186,11 @@ describe("the owner's telemetry read back", () => {
 			// A search by the first span's name lists the turn's trace.
 			await browser.wait("document.querySelector('.traces-row')");
 			await browser.evaluate(
-				`(() => { const input = document.querySelector('input[aria-label="Span name"]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, 'pi.durable.submit'); input.dispatchEvent(new Event('input', { bubbles: true })); })()`,
+				`(() => { const input = document.querySelector('input[aria-label="Span name"]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, 'nycode.durable.submit'); input.dispatchEvent(new Event('input', { bubbles: true })); })()`,
 			);
 			await browser.click(".traces-form button[type=submit]");
 			await browser.wait(
-				"[...document.querySelectorAll('.traces-row-name')].length > 0 && [...document.querySelectorAll('.traces-row-name')].every((e) => e.textContent.includes('pi.durable.submit'))",
+				"[...document.querySelectorAll('.traces-row-name')].length > 0 && [...document.querySelectorAll('.traces-row-name')].every((e) => e.textContent.includes('nycode.durable.submit'))",
 			);
 			await browser.click(".traces-row");
 			await browser.wait("document.querySelectorAll('.traces-tree .traces-span').length > 0");

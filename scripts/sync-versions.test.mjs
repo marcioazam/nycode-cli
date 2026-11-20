@@ -27,32 +27,32 @@ function runSyncVersions(root) {
 
 // #10865: caret ranges allowed older agents to install incompatible newer workspace dependencies.
 test("pins published and private dependencies without touching registry aliases, generated manifests, or published lockstep", async () => {
-	const root = await mkdtemp(join(tmpdir(), "pi-sync-versions-"));
+	const root = await mkdtemp(join(tmpdir(), "nycode-sync-versions-"));
 	try {
 		await writeManifest(root, "packages/ai", {
-			name: "@earendil-works/pi-ai",
+			name: "@nycode/ai",
 			version: "2.0.0",
 		});
 		await writeManifest(root, "packages/coding-agent", {
-			name: "@earendil-works/pi-coding-agent",
+			name: "@nycode/coding-agent",
 			version: "2.0.0",
 			dependencies: {
-				"@earendil-works/pi-ai": "^2.0.0",
+				"@nycode/ai": "^2.0.0",
 			},
 			devDependencies: {
-				"@earendil-works/pi-ai": "~1.0.0",
+				"@nycode/ai": "~1.0.0",
 			},
 			optionalDependencies: {
-				"@earendil-works/pi-ai": "1.0.0",
+				"@nycode/ai": "1.0.0",
 			},
 		});
 		await writeManifest(root, "packages/evals", {
-			name: "@earendil-works/pi-evals",
+			name: "@nycode/evals",
 			version: "9.9.9",
 			private: true,
 			dependencies: {
-				"@earendil-works/pi-coding-agent": "^1.0.0",
-				"@mariozechner/pi-ai": "npm:@earendil-works/pi-ai@1.0.0",
+				"@nycode/coding-agent": "^1.0.0",
+				"@mariozechner/pi-ai": "npm:@nycode/ai@1.0.0",
 			},
 		});
 		await writeManifest(root, "apps/p2", {
@@ -60,7 +60,7 @@ test("pins published and private dependencies without touching registry aliases,
 			version: "0.0.1",
 			private: true,
 			dependencies: {
-				"@earendil-works/pi-ai": "1.0.0",
+				"@nycode/ai": "1.0.0",
 			},
 		});
 		await writeManifest(root, "packages/coding-agent/install-lock", {
@@ -68,7 +68,7 @@ test("pins published and private dependencies without touching registry aliases,
 			version: "0.0.0",
 			private: true,
 			dependencies: {
-				"@earendil-works/pi-coding-agent": "^1.0.0",
+				"@nycode/coding-agent": "^1.0.0",
 			},
 		});
 
@@ -77,23 +77,23 @@ test("pins published and private dependencies without touching registry aliases,
 
 		const agentManifest = await readManifest(root, "packages/coding-agent");
 		for (const section of ["dependencies", "devDependencies", "optionalDependencies"]) {
-			assert.equal(agentManifest[section]["@earendil-works/pi-ai"], "2.0.0");
+			assert.equal(agentManifest[section]["@nycode/ai"], "2.0.0");
 		}
 		const evalsManifest = await readManifest(root, "packages/evals");
-		assert.equal(evalsManifest.dependencies["@earendil-works/pi-coding-agent"], "2.0.0");
-		assert.equal(evalsManifest.dependencies["@mariozechner/pi-ai"], "npm:@earendil-works/pi-ai@1.0.0");
+		assert.equal(evalsManifest.dependencies["@nycode/coding-agent"], "2.0.0");
+		assert.equal(evalsManifest.dependencies["@mariozechner/pi-ai"], "npm:@nycode/ai@1.0.0");
 		const appManifest = await readManifest(root, "apps/p2");
-		assert.equal(appManifest.dependencies["@earendil-works/pi-ai"], "2.0.0");
+		assert.equal(appManifest.dependencies["@nycode/ai"], "2.0.0");
 		assert.equal(appManifest.version, "0.0.1");
 		const generatedManifest = await readManifest(root, "packages/coding-agent/install-lock");
-		assert.equal(generatedManifest.dependencies["@earendil-works/pi-coding-agent"], "^1.0.0");
+		assert.equal(generatedManifest.dependencies["@nycode/coding-agent"], "^1.0.0");
 
 		const alreadySynced = runSyncVersions(root);
 		assert.equal(alreadySynced.status, 0, alreadySynced.stderr);
 		assert.match(alreadySynced.stdout, /All inter-package dependencies are already in sync/);
 
 		await writeManifest(root, "packages/ai", {
-			name: "@earendil-works/pi-ai",
+			name: "@nycode/ai",
 			version: "3.0.0",
 		});
 		const lockstepFailure = runSyncVersions(root);
@@ -104,15 +104,15 @@ test("pins published and private dependencies without touching registry aliases,
 });
 
 test("syncs to the published packages only, not to private fixtures or nested copies of a package", async () => {
-	const root = await mkdtemp(join(tmpdir(), "pi-sync-versions-"));
+	const root = await mkdtemp(join(tmpdir(), "nycode-sync-versions-"));
 	try {
 		await writeManifest(root, "packages/coding-agent", {
-			name: "@earendil-works/pi-coding-agent",
+			name: "@nycode/coding-agent",
 			version: "2.0.0",
 		});
 		// Leftover output of scripts/build-binaries.sh: a non-private copy of the manifest at an older version.
 		await writeManifest(root, "packages/coding-agent/binaries/darwin-arm64", {
-			name: "@earendil-works/pi-coding-agent",
+			name: "@nycode/coding-agent",
 			version: "1.0.0",
 		});
 		await writeManifest(root, "packages/chord/test/examples/deps/greeting", {
@@ -126,16 +126,16 @@ test("syncs to the published packages only, not to private fixtures or nested co
 			dependencies: { "example-greeting": "file:../../deps/greeting" },
 		});
 		await writeManifest(root, "packages/evals", {
-			name: "@earendil-works/pi-evals",
+			name: "@nycode/evals",
 			version: "2.0.0",
 			private: true,
-			dependencies: { "@earendil-works/pi-coding-agent": "1.0.0" },
+			dependencies: { "@nycode/coding-agent": "1.0.0" },
 		});
 
 		const result = runSyncVersions(root);
 		assert.equal(result.status, 0, result.stderr);
 		const evalsManifest = await readManifest(root, "packages/evals");
-		assert.equal(evalsManifest.dependencies["@earendil-works/pi-coding-agent"], "2.0.0");
+		assert.equal(evalsManifest.dependencies["@nycode/coding-agent"], "2.0.0");
 		const pluginManifest = await readManifest(root, "packages/chord/test/examples/plugins/report");
 		assert.equal(pluginManifest.dependencies["example-greeting"], "file:../../deps/greeting");
 	} finally {
@@ -143,20 +143,20 @@ test("syncs to the published packages only, not to private fixtures or nested co
 	}
 });
 
-test("writes the pi-ai version constant", async () => {
-	const root = await mkdtemp(join(tmpdir(), "pi-sync-versions-"));
+test("writes the nycode-ai version constant", async () => {
+	const root = await mkdtemp(join(tmpdir(), "nycode-sync-versions-"));
 	try {
 		await writeManifest(root, "packages/ai", {
-			name: "@earendil-works/pi-ai",
+			name: "@nycode/ai",
 			version: "2.0.0",
 		});
 		const versionPath = join(root, "packages/ai/src/utils/version.ts");
 		await mkdir(join(root, "packages/ai/src/utils"), { recursive: true });
-		await writeFile(versionPath, 'export const PI_AI_VERSION = "1.0.0";\n');
+		await writeFile(versionPath, 'export const NYCODE_AI_VERSION = "1.0.0";\n');
 
 		const result = runSyncVersions(root);
 		assert.equal(result.status, 0, result.stderr);
-		assert.match(await readFile(versionPath, "utf8"), /export const PI_AI_VERSION = "2\.0\.0";\n$/);
+		assert.match(await readFile(versionPath, "utf8"), /export const NYCODE_AI_VERSION = "2\.0\.0";\n$/);
 	} finally {
 		await rm(root, { recursive: true, force: true });
 	}

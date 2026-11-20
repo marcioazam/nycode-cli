@@ -1,6 +1,6 @@
 # Slice 6b: Durable and jobs on the store (spec)
 
-Status: **built** (2026-10-28, pi `14b4c56e5`: one build, a build review and two fix rounds by the four spec reviewers;
+Status: **built** (2026-10-28, nycode `14b4c56e5`: one build, a build review and two fix rounds by the four spec reviewers;
 reopen, the one-entry commit's mean and the resume watch's CPU accepted by the owner). Was: ready to build (2026-10-27).
 
 The single source for building 6b, together with `design.md` read in full; the decision log `decisions.md` (later
@@ -149,7 +149,7 @@ Every item below changes 6a's code; nothing is deployed, so the schema and the a
 
 ## 2. `StoreStorage`: Durable's `Storage` on the store (D1, D2)
 
-In Durable's `src` (an ordinary pi module), importing Chord v2 (`@earendil-works/chord`, then `/next`) for
+In Durable's `src` (an ordinary nycode module), importing Chord v2 (`@nycode/chord`, then `/next`) for
 the store and the adapter surface below, marked internal for adapters. It passes Durable's storage
 conformance suite on SQLite `:memory:` and across reopen (a wrapper that closes and reopens the store file after
 every commit, Durable's reopen harness), and Durable's Session and harness test files run on it.

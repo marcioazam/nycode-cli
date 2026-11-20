@@ -1,5 +1,5 @@
-import type { ModelsRefreshResult } from "@earendil-works/pi-ai";
-import { setKeybindings, type TUI } from "@earendil-works/pi-tui";
+import type { ModelsRefreshResult } from "@nycode/ai";
+import { setKeybindings, type TUI } from "@nycode/tui";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { KeybindingsManager } from "../src/core/keybindings.ts";
 import { ModelSelectorComponent } from "../src/modes/interactive/components/model-selector.ts";

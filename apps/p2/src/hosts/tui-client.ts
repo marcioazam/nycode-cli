@@ -1,6 +1,6 @@
 // Trusted launcher transport. Downloaded code sees opaque chord frames, not the socket, URL or sign-in cookie.
 import { createHash } from "node:crypto";
-import type { ProgramStatus, Terminal } from "@earendil-works/pi-tui";
+import type { ProgramStatus, Terminal } from "@nycode/tui";
 import { clientLinkPath } from "../runtime/stale-page.ts";
 import type { TuiLocalPreferences } from "../tui/preferences.ts";
 import type { TuiCredentials } from "./tui-config.ts";
@@ -22,7 +22,7 @@ import { colorFgBgScheme, TerminalColorProbe } from "./tui-terminal-colors.ts";
 import { cookieTransport, MAX_LINK_FRAME, type TuiSocket, type TuiTransport } from "./tui-transport.ts";
 import { TrustedUi, visibleText } from "./tui-trusted-ui.ts";
 
-/** How long after the launcher saw a selection gesture pi-tui's copy request is accepted. */
+/** How long after the launcher saw a selection gesture nycode-tui's copy request is accepted. */
 const GESTURE_WINDOW_MS = 2000;
 /** The server no longer admits this sign-in (401/403): a revoked or reset share, an archived session, a logout. */
 export class TuiAccessEnded extends Error {
@@ -397,7 +397,7 @@ export async function startTuiClient(options: {
 					rows: Math.min(200, Math.max(5, options.terminal.rows)),
 					// The launcher's fixed origin, shown in the header (never credentials).
 					origin: options.url.origin,
-					// The visitor's mouse policy decides whether pi-tui captures the mouse (wheel, app-owned selection).
+					// The visitor's mouse policy decides whether nycode-tui captures the mouse (wheel, app-owned selection).
 					mouse: (options.mouse ?? "off") !== "off",
 					...(options.role ? { role: options.role } : {}),
 				},
@@ -526,7 +526,7 @@ export async function startTuiClient(options: {
 			return;
 		}
 		// Copy on selection (rule 5): the release the launcher itself saw ending a drag or multi-click opens a short,
-		// single-use window in which pi-tui's copy-on-select request (sent by the worker on that release) is accepted.
+		// single-use window in which nycode-tui's copy-on-select request (sent by the worker on that release) is accepted.
 		if ((options.mouse ?? "off") !== "off" && selection.feed(data)) gestureAt = Date.now();
 		if (Buffer.byteLength(data) <= MAX_TERMINAL_FRAME) sandbox?.post({ kind: "input", data });
 	};

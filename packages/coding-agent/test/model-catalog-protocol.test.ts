@@ -1,6 +1,6 @@
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { InMemoryCredentialStore } from "@earendil-works/pi-ai";
+import { InMemoryCredentialStore } from "@nycode/ai";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import {
 	getModelCatalogProviderKey,
@@ -39,8 +39,8 @@ const index: ModelCatalogIndex = {
 	schemaVersion: 1,
 	defaultRevision: mixedApiRevision,
 	catalogs: [
-		{ minimumPiVersion: "0.80.7", revision: legacyRevision },
-		{ minimumPiVersion: "0.85.0", revision: mixedApiRevision },
+		{ minimumNycodeVersion: "0.80.7", revision: legacyRevision },
+		{ minimumNycodeVersion: "0.85.0", revision: mixedApiRevision },
 	],
 };
 
@@ -66,7 +66,7 @@ function startCatalogServer(requests: string[]): Promise<Server> {
 		} else {
 			const catalog = selectModelCatalog(
 				parseModelCatalogIndex(objects.get(MODEL_CATALOG_INDEX_KEY)),
-				catalogRequest.piVersion,
+				catalogRequest.nycodeVersion,
 			);
 			const body = catalog
 				? (objects.get(getModelCatalogProviderKey(catalog.revision, provider, catalogRequest.representation)) ??
@@ -79,7 +79,7 @@ function startCatalogServer(requests: string[]): Promise<Server> {
 					.writeHead(200, {
 						"content-type": "application/json",
 						"last-modified": lastModified,
-						"x-pi-model-catalog-revision": catalog.revision,
+						"x-nycode-model-catalog-revision": catalog.revision,
 					})
 					.end(JSON.stringify(body));
 			}

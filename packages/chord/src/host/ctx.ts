@@ -2,7 +2,7 @@
 // references and child spans (`ctx.trace`, slice 9), its node of the call chain (old work during a reload); and the
 // abort signal of a call's context, linked to long-lived sources until it settles.
 
-import type { SpanAttributes, TelemetrySpan } from "@earendil-works/pi-telemetry";
+import type { SpanAttributes, TelemetrySpan } from "@nycode/telemetry";
 import { type Context, type ContextKey, withAbortSignal, withoutAbortSignal, withTelemetry } from "../context/index.ts";
 import type { Contract, ParamsOf } from "../contracts/index.ts";
 import { ChordError, type Principal } from "../data/index.ts";

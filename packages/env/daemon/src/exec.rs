@@ -164,7 +164,7 @@ impl Spill {
         }
     }
 
-    /// `createTempFile({ prefix: "pi-output-", suffix: ".log" })`: a fresh `tmp-` directory holding the file.
+    /// `createTempFile({ prefix: "nycode-output-", suffix: ".log" })`: a fresh `tmp-` directory holding the file.
     fn start(&mut self, tmpdir: &str) -> Result<(), String> {
         let prefix = Path::new(tmpdir)
             .join("tmp-")
@@ -172,7 +172,7 @@ impl Spill {
             .into_owned();
         let directory = sys::mkdtemp(&prefix).map_err(|error| error.to_string())?;
         let path = Path::new(&directory)
-            .join(format!("pi-output-{}.log", random_uuid()))
+            .join(format!("nycode-output-{}.log", random_uuid()))
             .to_string_lossy()
             .into_owned();
         let mut file = OpenOptions::new()

@@ -1,9 +1,9 @@
-// Removing someone else's queued input (×) discards it, as in Pi Mobile; moving it back to the editor (restore) still
+// Removing someone else's queued input (×) discards it, as in Nycode Mobile; moving it back to the editor (restore) still
 // returns it to its author's composer (p2's draft rule), never to the person who moved it.
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { ConversationView, LiveState } from "@earendil-works/pi-durable";
+import type { ConversationView, LiveState } from "@nycode/durable";
 import { BACKGROUND_CONTEXT, follow } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { Drafts } from "../../plugins/drafts/contract.ts";
@@ -11,9 +11,9 @@ import { Sessions } from "../../plugins/sessions/contract.ts";
 import { Sharing } from "../../plugins/sharing/contract.ts";
 import { holdIn, http, settled, startFixture, until } from "./helpers.ts";
 
-const live = (view: ConversationView | null | undefined) => view?.docs["pi.live"] as LiveState | undefined;
+const live = (view: ConversationView | null | undefined) => view?.docs["nycode.live"] as LiveState | undefined;
 const queued = (view: ConversationView | null | undefined) =>
-	(view?.docs["pi.inbox"] as { items?: { id: number }[] } | undefined)?.items ?? [];
+	(view?.docs["nycode.inbox"] as { items?: { id: number }[] } | undefined)?.items ?? [];
 
 test("× discards another author's queued input; Move back returns it to its author", { timeout: 60_000 }, async (t) => {
 	const fixture = await startFixture({ allowedHosts: ["share.test"] });

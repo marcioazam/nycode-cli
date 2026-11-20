@@ -5,7 +5,7 @@ import { arch, platform } from "os";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ensureTool, getLatestVersion, type ToolStatus } from "../src/utils/tools-manager.ts";
 
-const originalOffline = process.env.PI_OFFLINE;
+const originalOffline = process.env.NYCODE_OFFLINE;
 
 vi.mock("fs", async (importOriginal) => {
 	const actual = await importOriginal<typeof Fs>();
@@ -33,8 +33,8 @@ vi.mock("child_process", async (importOriginal) => {
 });
 
 afterEach(() => {
-	if (originalOffline === undefined) delete process.env.PI_OFFLINE;
-	else process.env.PI_OFFLINE = originalOffline;
+	if (originalOffline === undefined) delete process.env.NYCODE_OFFLINE;
+	else process.env.NYCODE_OFFLINE = originalOffline;
 	vi.unstubAllGlobals();
 	vi.mocked(arch).mockReturnValue("x64");
 	vi.mocked(platform).mockReturnValue("linux");
@@ -113,7 +113,7 @@ describe("getLatestVersion", () => {
 
 describe("ensureTool", () => {
 	it("reports status through a callback without writing to the console", async () => {
-		process.env.PI_OFFLINE = "1";
+		process.env.NYCODE_OFFLINE = "1";
 		const statuses: ToolStatus[] = [];
 		const consoleLog = vi.spyOn(console, "log").mockImplementation(() => {});
 
@@ -131,7 +131,7 @@ describe("ensureTool", () => {
 	});
 
 	it("surfaces the error cause chain when a download fails", async () => {
-		delete process.env.PI_OFFLINE;
+		delete process.env.NYCODE_OFFLINE;
 		const cause = new Error("connect ETIMEDOUT 140.82.113.3:443");
 		vi.stubGlobal(
 			"fetch",
@@ -155,7 +155,7 @@ describe("ensureTool", () => {
 
 	// #11209: ARM32 previously fell back to x86-64 release archives.
 	it.each(["arm", "ia32"])("does not download x86-64 binaries on %s", async (architecture) => {
-		delete process.env.PI_OFFLINE;
+		delete process.env.NYCODE_OFFLINE;
 		vi.mocked(arch).mockReturnValue(architecture as NodeJS.Architecture);
 		const fetchMock = vi.fn();
 		vi.stubGlobal("fetch", fetchMock);

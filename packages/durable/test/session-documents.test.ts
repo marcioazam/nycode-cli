@@ -1,12 +1,6 @@
-import type { Draft } from "@earendil-works/chord/delta";
-import type { JsonValue } from "@earendil-works/chord/json";
-import {
-	type ConversationId,
-	defineDoc,
-	defineDocFamily,
-	type JsonObject,
-	type TaskId,
-} from "@earendil-works/pi-durable";
+import type { Draft } from "@nycode/chord/delta";
+import type { JsonValue } from "@nycode/chord/json";
+import { type ConversationId, defineDoc, defineDocFamily, type JsonObject, type TaskId } from "@nycode/durable";
 import { describe, expect, it } from "vitest";
 import { idFromNumber } from "../src/ids.ts";
 import {

@@ -1,7 +1,7 @@
 {
-	"name": "@earendil-works/pi-durable",
+	"name": "@nycode/durable",
 	"version": "1.6.0",
-	"description": "Durable conversation, task, and document runtime for Pi",
+	"description": "Durable conversation, task, and document runtime for Nycode",
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
@@ -131,7 +131,7 @@
 	"scripts": {
 		"clean": "node ../../scripts/package-files.mjs clean dist",
 		"build": "tsc -p tsconfig.build.json",
-		"test": "vitest --run && PI_DURABLE_DOCUMENT_RETENTION_MS=0 vitest --run && npm run test:store && npm run test:workers",
+		"test": "vitest --run && NYCODE_DURABLE_DOCUMENT_RETENTION_MS=0 vitest --run && npm run test:store && npm run test:workers",
 		"test:store": "vitest --run --config vitest.store.config.ts",
 		"test:workers": "vitest --run --config test-workers/vitest.config.ts",
 		"bench:storage": "vitest bench --config vitest.benchmark.config.ts",
@@ -157,18 +157,18 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/earendil-works/pi.git",
+		"url": "git+https://github.com/marcioazam/nycode-cli.git",
 		"directory": "packages/durable"
 	},
 	"engines": {
 		"node": ">=22.19.0"
 	},
 	"dependencies": {
-		"@earendil-works/chord": "1.6.0",
-		"@earendil-works/pi-ai": "1.6.0",
-		"@earendil-works/pi-codemode": "1.6.0",
-		"@earendil-works/pi-schema": "1.6.0",
-		"@earendil-works/pi-telemetry": "1.6.0",
+		"@nycode/chord": "1.6.0",
+		"@nycode/ai": "1.6.0",
+		"@nycode/codemode": "1.6.0",
+		"@nycode/schema": "1.6.0",
+		"@nycode/telemetry": "1.6.0",
 		"@silvia-odwyer/photon": "0.3.3",
 		"diff": "8.0.4"
 	},

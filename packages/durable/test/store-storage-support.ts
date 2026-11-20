@@ -1,9 +1,9 @@
 // StoreStorage over a SQLite file for tests: a store opened on the file, Durable's storage in it under a test owner
 // name, and a close that closes the store too (the app's part: in tests the storage is the store's only owner).
 
-import { openStore, sqliteBackend } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import { type NodeSqliteDatabaseOptions, openNodeSqliteDatabase } from "@earendil-works/chord/sqlite/node";
+import { openStore, sqliteBackend } from "@nycode/chord";
+import { BACKGROUND_CONTEXT } from "@nycode/chord/context";
+import { type NodeSqliteDatabaseOptions, openNodeSqliteDatabase } from "@nycode/chord/sqlite/node";
 import { StoreStorage } from "../src/storage/store/index.ts";
 import type { Storage } from "../src/types.ts";
 

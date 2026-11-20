@@ -64,11 +64,11 @@ describe("rollups made from code", () => {
 			: undefined;
 
 	it("saves a rollup and runs it once, recording what it read", async () => {
-		const pi = folder("pi");
-		await sessions.create({ cwd: pi, title: "one" }, BACKGROUND_CONTEXT);
+		const nycode = folder("nycode");
+		await sessions.create({ cwd: nycode, title: "one" }, BACKGROUND_CONTEXT);
 		const entry = await save({ key: "folders-by-code", code: BY_FOLDER });
 		assert.equal(entry.error, null);
-		assert.deepEqual(groupsOf(entry), [["pi", 1]]);
+		assert.deepEqual(groupsOf(entry), [["nycode", 1]]);
 		// `id` and `cwd`: the fields the script read of each session.
 		assert.deepEqual(entry.reads.toSorted(), ["sessions.cwd", "sessions.id"]);
 		assert.notEqual(entry.checkedAt, null);
@@ -277,14 +277,14 @@ describe("fingerprintOf", () => {
 				statuses: { late: { running: true, tasks: 1, busy: [1], work: {} } },
 				answers: { early: 4 },
 				reads: { early: 2 },
-				memberships: { early: "pi" },
+				memberships: { early: "nycode" },
 			},
 			10,
 		);
 		assert.deepEqual(
 			input.sessions.map((each) => [each.id, each.state, each.project, each.unread, each.model]),
 			[
-				["early", "stopped", "pi", true, "faux/faux-1"],
+				["early", "stopped", "nycode", true, "faux/faux-1"],
 				["late", "working", null, false, "faux/faux-1"],
 			],
 		);

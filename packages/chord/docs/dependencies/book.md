@@ -14,7 +14,7 @@ note: |
   resolution: a link going is like a plugin unloading") and five rounds of review by Astra, Fable, Opus and Sol, who
   played more than 300 scenarios from p2's plugins and their own against it. The working document is
   `/tmp/model/model.md`; the reviews are in `/tmp/dep-graph-*.md`, `/tmp/barrier-*.md` and `/tmp/model/review*-*.md`.
-  Code references are to pi `main` at `358f7d46a` (`packages/chord/src/next`, now `src`). Notes marked *review* record a point
+  Code references are to nycode `main` at `358f7d46a` (`packages/chord/src/next`, now `src`). Notes marked *review* record a point
   the reviewers found or still disagree on; *Owner* marks a decision that is his.
 colophon: Parked Until Resolved · first edition · 2026-10-29 · Chord v2 design proposal for slice 7
 ---
@@ -1258,7 +1258,7 @@ scenario catalogs cite.
 Status: proposal for the owner, not decided. Built in slice 7 with reload and rollout. Sources: the owner's direction
 ("park until resolved"; "no difference between local and remote resolution: a link going is like a plugin
 unloading"), the reviews (`/tmp/dep-mechanism-*.md`, `/tmp/dep-graph-*.md`, `/tmp/barrier-*.md`,
-`/tmp/model/review{1,2}-*.md`), the code at pi `358f7d46a`. **Owner** marks an open decision.
+`/tmp/model/review{1,2}-*.md`), the code at nycode `358f7d46a`. **Owner** marks an open decision.
 
 Draft 7 (round 6): (A) also retries in lockstep without finding the cycle (Fable); the probe's recovery after a
 suppressed search becomes a choice between (B1) a re-search backoff for probes only (recommended) and (B2) a full

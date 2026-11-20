@@ -1,8 +1,8 @@
-import { createHost, memoryLinkPair } from "@earendil-works/chord";
-import { createAssistantMessageEventStream, validateToolArguments } from "@earendil-works/pi-ai";
-import { complete, getModel, getProviders, streamSimple } from "@earendil-works/pi-ai/compat";
-import { Agent, streamProxy } from "@earendil-works/pi-agent-core";
-import { obj, str } from "@earendil-works/pi-schema";
+import { createHost, memoryLinkPair } from "@nycode/chord";
+import { createAssistantMessageEventStream, validateToolArguments } from "@nycode/ai";
+import { complete, getModel, getProviders, streamSimple } from "@nycode/ai/compat";
+import { Agent, streamProxy } from "@nycode/agent-core";
+import { obj, str } from "@nycode/schema";
 
 // Keep this entry browser-safe. It is bundled by scripts/check-browser-smoke.mjs
 // to catch accidental Node-only runtime imports in browser-facing package exports.

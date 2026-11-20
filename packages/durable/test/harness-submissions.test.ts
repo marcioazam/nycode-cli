@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fauxAssistantMessage } from "@earendil-works/pi-ai";
+import { fauxAssistantMessage } from "@nycode/ai";
 import {
 	AssistantEntry,
 	ConversationBusy,
@@ -13,7 +13,7 @@ import {
 	type SubmissionId,
 	type SubmissionRecord,
 	UserEntry,
-} from "@earendil-works/pi-durable";
+} from "@nycode/durable";
 import { afterEach, describe, expect, it } from "vitest";
 import type { SessionImpl } from "../src/session/session.ts";
 import { openNodeSqliteStorage } from "../src/storage/sqlite/node.ts";
@@ -29,7 +29,7 @@ afterEach(async () => {
 });
 
 async function sqlitePath(): Promise<string> {
-	const directory = await mkdtemp(join(tmpdir(), "pi-durable-submissions-"));
+	const directory = await mkdtemp(join(tmpdir(), "nycode-durable-submissions-"));
 	directories.add(directory);
 	return join(directory, "session.sqlite");
 }
@@ -69,7 +69,7 @@ describe("submissions", () => {
 		expect(entry?.model).toEqual([{ role: "user", content: "hi", timestamp: 42 }]);
 		const live = await harness.snapshot(LiveDoc, root.id, context);
 		expect(live?.run?.inputs).toEqual([submission.id]);
-		expect((await harness.getTask(live!.run!.taskId, context))?.kind).toBe("pi.generation");
+		expect((await harness.getTask(live!.run!.taskId, context))?.kind).toBe("nycode.generation");
 
 		const commits = storage.commits.length;
 		const rejected = root.submit({ type: "input", content: "again", whenBusy: "reject" }, context);
@@ -312,7 +312,7 @@ describe("submissions", () => {
 		expect(await root.commit((tx) => tx.entry(Counter, 999_999 as EntryId), context)).toBeUndefined();
 		expect(Counter.is(counter)).toBe(true);
 		expect(AssistantEntry.is(counter)).toBe(false);
-		expect([UserEntry.kind, AssistantEntry.kind]).toEqual(["pi.user", "pi.assistant"]);
+		expect([UserEntry.kind, AssistantEntry.kind]).toEqual(["nycode.user", "nycode.assistant"]);
 		await harness.close(context);
 	});
 

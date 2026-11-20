@@ -1,4 +1,4 @@
-// What happens between a Discord channel and its linked session (server): a mention by someone allowed to wake Pi, seen
+// What happens between a Discord channel and its linked session (server): a mention by someone allowed to wake Nycode, seen
 // by the link's bot, delivers the messages since the link's cursor (a thread's: to its forked subagent) as one input; a
 // pending reply is posted once its turn ended. Plain logic over ports, so tests run it with fake bots and sessions.
 import type { SessionLock } from "@p2/app/v1";
@@ -81,7 +81,7 @@ export type SessionPort = {
 	command(session: string, input: { conversation?: number; command: Command }): Promise<{ text: string }>;
 };
 
-/** The relay's persisted state: bindings by channel, pending replies by the Discord message that woke Pi. */
+/** The relay's persisted state: bindings by channel, pending replies by the Discord message that woke Nycode. */
 export type RelayState = { bindings: Record<string, Binding>; pending: Record<string, Pending> };
 
 export type StatePort = {
@@ -134,7 +134,7 @@ export class Relay {
 	}
 
 	/**
-	 * A message bot `bot` received: a mention of it by someone allowed to wake Pi, in a channel linked through it (or a
+	 * A message bot `bot` received: a mention of it by someone allowed to wake Nycode, in a channel linked through it (or a
 	 * thread of one), delivers. Other bots count as people, within the loop guard; the bot's own messages never count.
 	 */
 	async onMessage(bot: string, message: DiscordMessage): Promise<void> {
@@ -161,7 +161,7 @@ export class Relay {
 		else if (this.#botTurnAllowed(port, message)) await this.deliver(binding.channelId, message, thread);
 	}
 
-	/** A person wrote in `target` (a channel or thread): bots may wake Pi there again. */
+	/** A person wrote in `target` (a channel or thread): bots may wake Nycode there again. */
 	#personWrote(target: string): void {
 		this.#botStreaks.delete(target);
 	}
@@ -206,7 +206,7 @@ export class Relay {
 		const port = this.#port(binding.botId);
 		const where = thread?.id ?? binding.channelId;
 		const refusal = await this.#sessions.usable(binding.session);
-		if (refusal) return port.reply(where, message.id, `Pi is not listening here right now: ${refusal}`);
+		if (refusal) return port.reply(where, message.id, `Nycode is not listening here right now: ${refusal}`);
 		const conversation = thread ? binding.threads[thread.id]?.conversation : undefined;
 		if (thread && conversation === undefined)
 			return port.reply(
@@ -221,7 +221,7 @@ export class Relay {
 				command,
 			}));
 		} catch (error) {
-			text = `Could not reach Pi: ${error instanceof Error ? error.message : String(error)}`;
+			text = `Could not reach Nycode: ${error instanceof Error ? error.message : String(error)}`;
 		}
 		await port.reply(where, message.id, text);
 	}
@@ -281,7 +281,7 @@ export class Relay {
 		const port = this.#port(binding.botId);
 		const where = thread?.id ?? channelId;
 		const refusal = await this.#sessions.usable(binding.session);
-		if (refusal) return port.reply(where, trigger.id, `Pi is not listening here right now: ${refusal}`);
+		if (refusal) return port.reply(where, trigger.id, `Nycode is not listening here right now: ${refusal}`);
 		let conversation: number | undefined;
 		let cursor = binding.cursor;
 		if (thread) {
@@ -355,7 +355,7 @@ export class Relay {
 			await port.reply(
 				where,
 				trigger.id,
-				`Could not reach Pi: ${error instanceof Error ? error.message : String(error)}`,
+				`Could not reach Nycode: ${error instanceof Error ? error.message : String(error)}`,
 			);
 			return;
 		}
@@ -380,7 +380,7 @@ export class Relay {
 
 	/**
 	 * Bot `bot` (re)connected: what it missed. For each of its links and their threads, the newest mention since the
-	 * cursor by someone allowed to wake Pi delivers, as if it had just arrived (one delivery each, the messages before it
+	 * cursor by someone allowed to wake Nycode delivers, as if it had just arrived (one delivery each, the messages before it
 	 * included).
 	 */
 	async catchUp(bot: string): Promise<void> {
@@ -554,7 +554,7 @@ export class Relay {
 	}
 
 	/**
-	 * Refreshes "Pi is typing" (Discord shows it about 10 s; call it every 8 s) where a delivery is under way or a reply
+	 * Refreshes "Nycode is typing" (Discord shows it about 10 s; call it every 8 s) where a delivery is under way or a reply
 	 * is pending, queued or not: it ends with the delivery's failure, or when the reply is posted, stopped or failed.
 	 */
 	async typing(): Promise<void> {
@@ -637,7 +637,7 @@ function megabytes(size: number): string {
 	return `${(size / (1024 * 1024)).toFixed(1)} MiB`;
 }
 
-/** Whether the author of a message may wake Pi in its binding. */
+/** Whether the author of a message may wake Nycode in its binding. */
 export function mayWake(wake: Wake, author: string, roles: readonly string[]): boolean {
 	return wake.anyone || wake.users.includes(author) || roles.some((role) => wake.roles.includes(role));
 }
@@ -699,7 +699,7 @@ class BatchWindow {
 
 /**
  * A batch's text: under the header, each section's title (if any), then one `Name (<@id>): text` line (or paragraph) per
- * message, bots marked `Name (bot, <@id>)`, oldest first, the bot's mention written `@Pi`, and attachments too large to download listed as links. The
+ * message, bots marked `Name (bot, <@id>)`, oldest first, the bot's mention written `@Nycode`, and attachments too large to download listed as links. The
  * attachments to download, keyed by message and position.
  */
 export function batchOf(
@@ -709,7 +709,7 @@ export function batchOf(
 ): { text: string; files: { url: string; name: string; size: number; key: string; ref: string }[] } {
 	const files: { url: string; name: string; size: number; key: string; ref: string }[] = [];
 	const line = (message: DiscordMessage) => {
-		const text = message.text.replaceAll(`<@${botId}>`, "@Pi").replaceAll(`<@!${botId}>`, "@Pi").trim();
+		const text = message.text.replaceAll(`<@${botId}>`, "@Nycode").replaceAll(`<@!${botId}>`, "@Nycode").trim();
 		const links: string[] = [];
 		message.attachments.forEach((attachment, index) => {
 			if (attachment.size <= MAX_ATTACHMENT && files.length < MAX_FILES)

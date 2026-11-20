@@ -1,7 +1,7 @@
 // The control messages between the server and a session worker: JSON messages beside the link's frames on one IPC
 // channel (`{ p3: message }`; the IPC link takes only its frames). The base's worker speaks them, a runner sends them.
 
-import type { PluginScript } from "@earendil-works/chord/plugins/runtime";
+import type { PluginScript } from "@nycode/chord/plugins/runtime";
 
 /** What the server sends a worker. */
 export type ToWorker =

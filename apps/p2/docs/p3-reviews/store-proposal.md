@@ -53,7 +53,7 @@ takeover now: the desktop writes another entry 812 → the row points to the wro
 backend   SQLite (Node, Durable Objects, sqlite-wasm) | memory | IndexedDB
           rows, declared indexes, one atomic write batch
 store     defineTable, query DSL, controlled writes, commit queue, seq, outbox, export/replay
-  ├─ Durable adapter    StoreStorage implements Durable's Storage on tables "pi-durable/*"
+  ├─ Durable adapter    StoreStorage implements Durable's Storage on tables "nycode-durable/*"
   ├─ Chord documents    on tables "chord/*"
   └─ plugin tables      self.table(...) in their owning objects
 ```
@@ -88,7 +88,7 @@ host.serve(FileHistoryStore, (_, self) => {          // input-less local object 
 - **`json(schema)` columns (owner, 2026-10-21, proposal):** a column that holds a JSON value typed by its schema but is
   opaque to the store: not indexable, not usable in `where`/`orderBy`/`groupBy` (a type error), read back typed (no
   manual `parseJson<T>` casts as in Durable's SQLite storage today), not validated on write (R9), part of the table's
-  fingerprint. Scalar columns are what queries and indexes use. Example: `pi-durable/entries` =
+  fingerprint. Scalar columns are what queries and indexes use. Example: `nycode-durable/entries` =
   `obj({ id: int(), conversationId: int(), headOf: opt(int()), commitSeq: int(), record: json(EntryRecord) })`.
   Under the real-tables layout this is exactly Durable's current SQLite shape (index columns plus `record TEXT`).
 - A table belongs to one owning object, like a document: only that object reads and writes it; address (host,
@@ -148,7 +148,7 @@ store.commit(async (batch, seq) => { /* reads only through batch; checks; puts a
 
 ```
 { seq: 41, ops: [
-  { table: "pi-durable/entries", key: [812], v: 1, row: { … } },
+  { table: "nycode-durable/entries", key: [812], v: 1, row: { … } },
   { table: "file-history/edits", key: ["e1"], v: 2, row: { … } },
   { table: "file-history/edits", key: ["e0"], delete: true } ] }
 ```

@@ -19,14 +19,14 @@ import { Routes } from "../../src/runtime/server.ts";
 import { poll } from "./helpers.ts";
 
 export const OWNER = { kind: "user", id: "usr_1", organization_id: "org_1" };
-const CLIENT_PROTOCOL = "pi-server.client.v2";
+const CLIENT_PROTOCOL = "nycode-server.client.v2";
 export const PUBLIC_ORIGIN = "https://0123456789abcdef0123456789abcdef.rdtun.com";
 type Frame = { id: string; type: number; payload: Buffer };
 
 /**
  * Local stand-in for the Radius context endpoint and relay v4, or v5 with `channels`: then the brain's channel sockets
  * (`/v1/servers/<id>/channels/<connection>`) are accepted unless `rejectChannels`, and `channel(id)` resolves with the
- * relay's end of one. Pi clients (`pi-server.client.v2`) get a `ws` channel without a request, as the owner for
+ * relay's end of one. Nycode clients (`nycode-server.client.v2`) get a `ws` channel without a request, as the owner for
  * `Bearer fixture-token` and as another user otherwise; their upgrade fails with 403 when the brain refuses the channel.
  * Never contacts Radius.
  */
@@ -88,16 +88,16 @@ async function handleSync(sync: FakeSync, request: IncomingMessage, response: Se
 
 export async function fakeRadius(options: { channels?: boolean; rejectChannels?: boolean } = {}) {
 	const sync: FakeSync = { stores: new Map(), tokens: [] };
-	const version = options.channels ? "pi-server.host.v5" : "pi-server.host.v4";
+	const version = options.channels ? "nycode-server.host.v5" : "nycode-server.host.v4";
 	const sockets = new WebSocketServer({
 		noServer: true,
 		handleProtocols: (protocols) =>
-			[version, "pi-server.channel.v1", CLIENT_PROTOCOL].find((protocol) => protocols.has(protocol)) ?? false,
+			[version, "nycode-server.channel.v1", CLIENT_PROTOCOL].find((protocol) => protocols.has(protocol)) ?? false,
 	});
 	const channels = new Map<string, WebSocket>();
 	const channelWaiters = new Map<string, (socket: WebSocket) => void>();
 	const closeWaiters = new Map<string, () => void>();
-	/** A Pi client: a channel the brain opens its own socket for, then piped to the client as Radius does. */
+	/** A Nycode client: a channel the brain opens its own socket for, then piped to the client as Radius does. */
 	const connectClient = async (request: IncomingMessage, socket: Duplex, head: Buffer) => {
 		const id = randomUUID();
 		const principal = request.headers.authorization === "Bearer fixture-token" ? OWNER : { ...OWNER, id: "usr_2" };

@@ -11,18 +11,16 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { parseArgs } from "node:util";
-import { createHost, type Host, webSocketLink } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context";
-import type { P3Principal } from "@earendil-works/p3/v1";
+import { createHost, type Host, webSocketLink } from "@nycode/chord";
+import { BACKGROUND_CONTEXT as context } from "@nycode/chord/context";
+import type { P3Principal } from "@nycode/p3/v1";
 import { Sessions, SessionWorker } from "../plugins/sessions/contract.ts";
 import { COMMAND } from "../src/install.ts";
 
 /** Node's arguments that run the `p3` command: the release installed in `--release`, else this checkout's source. */
 const { release } = parseArgs({ options: { release: { type: "string" } } }).values;
 const P3 =
-	release === undefined
-		? COMMAND
-		: [join(release, "install", "node_modules", "@earendil-works", "p3", "dist", "p3.js")];
+	release === undefined ? COMMAND : [join(release, "install", "node_modules", "@nycode", "p3", "dist", "p3.js")];
 console.log(`p3 from ${release === undefined ? "source" : `the release in ${release}`}, Node ${process.versions.node}`);
 
 /** How many launches and worker starts are measured. */
@@ -42,7 +40,7 @@ try {
 	line("server: launch to listening, cold (first)", `${launches[0]!.toFixed(0)} ms`);
 	line("server: launch to listening, warm", stats(launches.slice(1)));
 
-	const server = await launch(join(root, "pi"));
+	const server = await launch(join(root, "nycode"));
 	try {
 		const client = await ownerClient(server.dataDir, server.port);
 		const sessions = await client.get(Sessions, {}, context);

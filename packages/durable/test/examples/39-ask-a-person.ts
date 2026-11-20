@@ -2,9 +2,10 @@
 // meanwhile. The first question is answered; the second expires, and its late answer is refused.
 // Run from packages/durable:
 //   node --conditions=source --experimental-strip-types test/examples/39-ask-a-person.ts
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import { createModels } from "@earendil-works/pi-ai/models";
-import { obj, str } from "@earendil-works/pi-schema";
+
+import { createModels } from "@nycode/ai/models";
+import { BACKGROUND_CONTEXT } from "@nycode/chord/context";
+import { obj, str } from "@nycode/schema";
 import {
 	createRegistry,
 	defineExtension,

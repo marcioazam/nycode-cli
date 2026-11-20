@@ -11,7 +11,7 @@ stats:
   - 6 | decisions open
 note: |
   A brief before the slice 7b spec, written by the redesign session from `design.md` §21, the dependency model
-  (`dependencies/model.md`, decided and built for 7a in pi `339847eb1`), the carry-over in `slices.md` and the code at
+  (`dependencies/model.md`, decided and built for 7a in nycode `339847eb1`), the carry-over in `slices.md` and the code at
   `339847eb1`. Marks: **Decided** points cite the decision; **Open** points are the owner's, with a recommendation.
 colophon: Slice 7b brief · 2026-10-29 · Chord v2
 ---
@@ -82,12 +82,12 @@ plugins/notes/
 
 ```json
 {
-  "name": "@pi/notes",
+  "name": "@nycode/notes",
   "version": "1.4.0",
   "type": "module",
   "peerDependencies": {
-    "@earendil-works/chord": "^2",
-    "@earendil-works/pi-durable": "^1",
+    "@nycode/chord": "^2",
+    "@nycode/durable": "^1",
     "react": "^19"
   },
   "dependencies": {
@@ -103,7 +103,7 @@ plugins/notes/
   `--ignore-scripts` and bundled into every facet that imports them. **Decided** (owner, 2026-10-29): bundled by
   default; on Node a plugin may keep named packages external by an explicit list, `"chord": { "external":
   ["better-sqlite3"] }`. Server and worker facets then load them from the plugin's `node_modules` with `createRequire`,
-  as pi 1.0 loads extension dependencies, native addons included; they stay in Node's module cache until the process
+  as nycode 1.0 loads extension dependencies, native addons included; they stay in Node's module cache until the process
   ends, so a new version takes effect after a restart. A browser or TUI facet that imports one fails to build.
 - **No `tsconfig.json` is needed.** The bundler strips types and does not type-check; JSX is compiled with the
   automatic React runtime, a fixed setting of the loader. A plugin may keep a `tsconfig.json` for its editor and for
@@ -114,7 +114,7 @@ returns nothing.
 
 ```ts
 // plugins/notes/contract.ts
-import { defineRegistry, local, remote, str, obj, arr, method } from "@earendil-works/chord";
+import { defineRegistry, local, remote, str, obj, arr, method } from "@nycode/chord";
 import { Session } from "@app/core";                        // the app's host kinds, a host package
 export const NoteStore = local("notes.store", { version: 1, params: {}, members: { /* … */ } });
 export const Notes = remote("notes", {
@@ -149,10 +149,10 @@ Each facet is built on its own, as one script. The bundler starts at the facet f
 | An import of | Becomes |
 | --- | --- |
 | the plugin's own files (`./store.ts`, `./NoteList.tsx`) | inlined into the facet's script |
-| another plugin's contract (`../sessions/contract.ts`, or `@pi/sessions/contract` for an installed package) | inlined too: a copy, so a plugin carries the contract version it was built against (`accepts` needs that); only contracts and side-effect-free modules may be imported across plugins |
+| another plugin's contract (`../sessions/contract.ts`, or `@nycode/sessions/contract` for an installed package) | inlined too: a copy, so a plugin carries the contract version it was built against (`accepts` needs that); only contracts and side-effect-free modules may be imported across plugins |
 | an npm package in `dependencies` (`marked`) | inlined, resolved from the plugin's own `node_modules` |
 | an npm package listed in `chord.external` (Node facets only) | external: `require`d from the plugin's own `node_modules` at evaluation |
-| a host package (`@earendil-works/chord`, `react`, `@app/core`, …) | **external**: a parameter of the script, the host's instance at load time |
+| a host package (`@nycode/chord`, `react`, `@app/core`, …) | **external**: a parameter of the script, the host's instance at load time |
 | a Node builtin (`node:fs`) | external, through the `require` the loader passes (server and worker facets only; a web facet that imports one fails to build) |
 | CSS (`import "./notes.css"`) | collected into one stylesheet per web facet |
 | an asset by URL (`import iconUrl from "./assets/icon.svg?url"`) | a content-hashed file served by the app; the import is its URL |
@@ -164,7 +164,7 @@ second copy of Chord, and an old version is garbage-collected once nothing holds
 // what the bundler emits for plugins/notes/worker.ts (simplified)
 (function (require, __files) {
   const { defineFacet } = require("@app/core");             // the host's instance
-  const { local, remote, str } = require("@earendil-works/chord");
+  const { local, remote, str } = require("@nycode/chord");
   const { marked } = /* marked's code, inlined */;
   /* contract.ts, store.ts, inlined */
   return defineFacet((host) => { /* … */ });
@@ -172,16 +172,16 @@ second copy of Chord, and an old version is garbage-collected once nothing holds
 ```
 
 ```ts
-// the loader (proposed @earendil-works/chord/loader), Node side
-import { buildFacet, evaluateFacet } from "@earendil-works/chord/loader";
+// the loader (proposed @nycode/chord/loader), Node side
+import { buildFacet, evaluateFacet } from "@nycode/chord/loader";
 
 const HOST_PACKAGES = {                                     // the app's base bundle exports these
-  "@earendil-works/chord": chord, "@earendil-works/pi-durable": durable,
+  "@nycode/chord": chord, "@nycode/durable": durable,
   "@app/core": core, react, "react/jsx-runtime": jsxRuntime,
 };
 const script = await buildFacet({ plugin: "/data/plugins/notes", facet: "worker.ts", hostPackages: Object.keys(HOST_PACKAGES), platform: "node" });
 const facet = evaluateFacet(script, { hostPackages: HOST_PACKAGES, require: createRequire(import.meta.url), dir: "/data/plugins/notes" });
-await host.reload([{ name: "@pi/notes", facet }], ctx);    // or host.load the first time
+await host.reload([{ name: "@nycode/notes", facet }], ctx);    // or host.load the first time
 ```
 
 - `buildFacet` is esbuild with: the facet as entry, the host packages and `node:*` external, `format: "cjs"` wrapped
@@ -220,7 +220,7 @@ inside it, refusing `..` out of it:
 
 ```ts
 // plugins/notes/worker.ts
-import { pluginFile } from "@earendil-works/chord/loader";   // reads the directory the loader passed
+import { pluginFile } from "@nycode/chord/loader";   // reads the directory the loader passed
 const template = await readFile(pluginFile("assets/template.md"), "utf8");
 ```
 
@@ -248,7 +248,7 @@ own plugin's directory; nothing gives it another plugin's files.
 
 # HTTP {#http lede="What Chord provides, what p2 has, and what p3 needs."}
 
-**Chord v2 has no HTTP server today.** Design §23 designs one (`@earendil-works/chord/http`) and defers it until
+**Chord v2 has no HTTP server today.** Design §23 designs one (`@nycode/chord/http`) and defers it until
 "the kernel fixes and a first real proof" are done. p2's HTTP is its own, about 30 lines of helpers plus the server host:
 
 ```ts
@@ -314,13 +314,13 @@ subpath an app imports only if it wants it, none of them in Chord's kernel.
 
 ```ts
 // server.ts: a whole app with plugins, a web and a TUI surface
-import { createHost } from "@earendil-works/chord";
-import { discoverPlugins, pluginLoader } from "@earendil-works/chord/loader";
-import { httpServer } from "@earendil-works/chord/http";
-import { workerRoute } from "@earendil-works/chord/workers";
-import { webSurface } from "@earendil-works/chord/web";
-import { tuiSurface } from "@earendil-works/chord/tui";
-import { devReload } from "@earendil-works/chord/dev";
+import { createHost } from "@nycode/chord";
+import { discoverPlugins, pluginLoader } from "@nycode/chord/loader";
+import { httpServer } from "@nycode/chord/http";
+import { workerRoute } from "@nycode/chord/workers";
+import { webSurface } from "@nycode/chord/web";
+import { tuiSurface } from "@nycode/chord/tui";
+import { devReload } from "@nycode/chord/dev";
 import { Server, Session, core } from "./core.ts";              // the app's base code: host kinds, principals, core facet
 
 const plugins = await discoverPlugins(["./plugins", join(dataDir, "plugins")]);
@@ -338,7 +338,7 @@ devReload({ server, loader, plugins, watch: true });                            
 
 ```ts
 // worker.ts
-import { workerMain } from "@earendil-works/chord/workers";
+import { workerMain } from "@nycode/chord/workers";
 await workerMain(async ({ address, init, parent }) => {
   const worker = createHost<P>({ address, principal: { kind: "worker", session: init.id }, onError });
   worker.connect(parent, { principal: { kind: "server" }, trusted: true }, ctx);
@@ -367,12 +367,12 @@ app's registries (`Http`, `Panels`, a TUI command list).
 | `chord/http` | the Node HTTP server, the `Http` registry (routes, wraps, request resolvers, responses as descriptions: ranges, downloads, `HEAD`), WebSocket entry calling `host.accept` | `src/hosts/server.ts` (HTTP part), `runtime/http.ts`, `Routes`, `Upgrades`, `RequestResolvers` |
 | `chord/workers` | `workerRoute` (fork a worker per address, IPC link, start message, idle stop from `host.activity`, crash restart with backoff), `workerMain` (the child's side) | `SessionHosts` in `runtime/server.ts`, `hosts/worker.ts` |
 | `chord/web` | the page host (connect over a WebSocket with reconnect, load web facets from their scripts, React provider and hooks: `useObject` over `host.hold`, `useRegistry`, `useWatch`), serving the bundle by hash, reload on a new manifest | `hosts/web/*`, `runtime/web.tsx`, `src/web/reconnect.ts` |
-| `chord/tui` | the TUI launcher and sandbox (pi-tui, the bundle download, a link over the launcher's socket), slots and commands as registries | `hosts/tui-*.ts`, `runtime/tui.ts` |
+| `chord/tui` | the TUI launcher and sandbox (nycode-tui, the bundle download, a link over the launcher's socket), slots and commands as registries | `hosts/tui-*.ts`, `runtime/tui.ts` |
 | `chord/dev` | the source watcher marking plugins dirty, the reload control (`reload(plugins)` on every host in order: server, workers, then a manifest bump for pages and the TUI) | `performReload` in `hosts/server.ts`, the dev protocol |
 
 Each is ordinary code on top of Chord's public API: nothing in the kernel depends on it, a Durable Object deployment
 uses none of it, and an app can replace any one (its own HTTP server, its own shell). React is a host package of the web
-component, pi-tui of the TUI component; an app without them never imports them.
+component, nycode-tui of the TUI component; an app without them never imports them.
 
 ## What stays the app's
 
@@ -381,7 +381,7 @@ the core facet and core objects (catalog, harness); the web shell's layout and t
 contribute to beyond `Http`. That is roughly what p3's base code should be: a few hundred lines, not ten thousand.
 
 :::review | Open 6: the app kit
-(a) Chord ships these six components as optional subpaths of `@earendil-works/chord`, built in this order: `loader`
+(a) Chord ships these six components as optional subpaths of `@nycode/chord`, built in this order: `loader`
 and `dev` with 7b (reload needs them), `http` and `workers` next (p3 needs them first), `web` and `tui` after (lifted
 from p2's code, which works today). (b) Chord ships only `loader`; the rest is p3's base code. Recommended: (a), as the
 owner asked; each component gets its own slice spec and review, after 7b and before slice 9 or alongside p3's base.

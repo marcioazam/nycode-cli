@@ -2,11 +2,11 @@ import { spawnSync } from "node:child_process";
 import { appendFileSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context";
-import type { Model } from "@earendil-works/pi-ai";
-import type { ToolDiagnostic, ToolExecutionApi, ToolExecutionResult } from "@earendil-works/pi-durable";
-import { createNodePhotonImages } from "@earendil-works/pi-durable/images/node";
-import { createCodingTools } from "@earendil-works/pi-durable/tools";
+import type { Model } from "@nycode/ai";
+import { BACKGROUND_CONTEXT as context } from "@nycode/chord/context";
+import type { ToolDiagnostic, ToolExecutionApi, ToolExecutionResult } from "@nycode/durable";
+import { createNodePhotonImages } from "@nycode/durable/images/node";
+import { createCodingTools } from "@nycode/durable/tools";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { getOrThrow } from "../src/env/index.ts";
 import { NodeExecutionEnv } from "../src/env/node.ts";
@@ -28,7 +28,7 @@ import {
 	withOrientation,
 } from "./image-fixtures.ts";
 
-const directory = mkdtempSync(join(tmpdir(), "pi-durable-images-"));
+const directory = mkdtempSync(join(tmpdir(), "nycode-durable-images-"));
 let processor: ImageProcessor;
 
 beforeAll(async () => {
@@ -147,7 +147,7 @@ describe("read of images, without an image processor", () => {
 	it("names a text-only model in details for UIs, not in what the model gets", async () => {
 		const result = await read("a.png", encode(4, 4, "png"), { input: ["text"] });
 		// The result is replayed after a switch to a vision model, so it keeps the image and no note that the model
-		// cannot see it; pi-ai replaces the image per request instead (#12131).
+		// cannot see it; nycode-ai replaces the image per request instead (#12131).
 		expect(onlyImage(result).mimeType).toBe("image/png");
 		expect(messages(result)).toEqual(["Read image file [image/png]."]);
 		expect(result.details).toEqual({ imageUnsupportedByModel: "test" });

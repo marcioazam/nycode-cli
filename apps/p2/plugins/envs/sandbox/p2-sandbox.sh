@@ -1,7 +1,7 @@
 #!/bin/sh
 # p2's sandbox launcher on a host environment. `check` reports whether Gondolin can run here (JSON): Linux, a usable
 # /dev/kvm, Node >= 22 and QEMU >= 7.2. Every other command installs Gondolin once, then runs p2-sandbox.mjs with the
-# same arguments. stdout belongs to that program (it carries pi-env's protocol), so setup output goes to stderr. Each
+# same arguments. stdout belongs to that program (it carries nycode-env's protocol), so setup output goes to stderr. Each
 # launcher version has its own directory (named by its content); sandboxes keep running across versions.
 set -eu
 D=$(cd "$(dirname "$0")" && pwd)

@@ -2,11 +2,11 @@
 // address, started by its first hold the route admits, stopped when idle). What the start script decides of them, and
 // what the server sends a worker at its start. The worker's side is `worker.ts`.
 
-import type { Host, Store } from "@earendil-works/chord";
-import type { Context } from "@earendil-works/chord/context";
-import type { Plugins } from "@earendil-works/chord/plugins";
-import { createWorkers, type Workers, type WorkersError } from "@earendil-works/chord/workers";
-import { Session } from "@earendil-works/p3/v1";
+import type { Host, Store } from "@nycode/chord";
+import type { Context } from "@nycode/chord/context";
+import type { Plugins } from "@nycode/chord/plugins";
+import { createWorkers, type Workers, type WorkersError } from "@nycode/chord/workers";
+import { Session } from "@nycode/p3/v1";
 import { NAME, PRINCIPALS } from "../app.ts";
 import type { P3Principal } from "../principals.ts";
 import { mayReachSession, sessionExists } from "../session-route.ts";

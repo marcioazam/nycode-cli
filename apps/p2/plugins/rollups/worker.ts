@@ -1,8 +1,8 @@
 // The Familiar's `sidebar_rollups` tool (worker, the Familiar's session only): lists the rollups made from code, tries a
 // script against the sessions now, saves, refreshes and removes rollups. The owner sees a saved rollup in the sidebar.
-import { schemaToType } from "@earendil-works/pi-codemode";
-import { defineExtension } from "@earendil-works/pi-durable";
-import { obj, opt, type Static, str, union } from "@earendil-works/pi-schema";
+import { schemaToType } from "@nycode/codemode";
+import { defineExtension } from "@nycode/durable";
+import { obj, opt, type Static, str, union } from "@nycode/schema";
 import { type Ctx, defineFacet, expectVariant, literal, local, type RefIn } from "@p2/app/v1";
 import { defineP2Tool, Extensions, type P2Tool, type WorkerParts, workerOf } from "@p2/app/v1/worker";
 import { FAMILIAR_INIT } from "../familiar/contract.ts";

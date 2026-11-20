@@ -1,4 +1,4 @@
-// Worker lifecycle as in Pi Mobile: a root model no longer configured fails the start visibly; an exit nobody asked
+// Worker lifecycle as in Nycode Mobile: a root model no longer configured fails the start visibly; an exit nobody asked
 // for is an owner notice ("Worker exited (signal): …") and its holders get a new worker (five crash restarts a
 // minute; the next crash is the status error until Retry); the default thinking level comes from the settings when
 // the default model is not listed.
@@ -74,7 +74,7 @@ describe("worker lifecycle (fake provider)", () => {
 						(notice) => notice.source === source && /^Worker exited \(SIGKILL\)(: .+)?$/s.test(notice.message),
 					),
 			);
-			// As in Pi Mobile the failure does not block: the held chat binds to a new worker.
+			// As in Nycode Mobile the failure does not block: the held chat binds to a new worker.
 			await until(chat.state, (state) => state.kind === "live");
 			await chat.send({ text: "again", requestId: "two" }, BACKGROUND_CONTEXT);
 		} finally {
@@ -138,12 +138,12 @@ it("keeps the settings' thinking level when the default model is not listed", ()
 	});
 });
 
-it("takes the default model from P2_PROVIDER/P2_MODEL (or Pi Mobile's names) after settings.json's", async () => {
+it("takes the default model from P2_PROVIDER/P2_MODEL (or Nycode Mobile's names) after settings.json's", async () => {
 	assert.deepEqual(envDefaultModel({ P2_PROVIDER: "faux", P2_MODEL: "faux-1" }), {
 		provider: "faux",
 		modelId: "faux-1",
 	});
-	assert.deepEqual(envDefaultModel({ PI_MOBILE_PROVIDER: "a", PI_MOBILE_MODEL: "b" }), {
+	assert.deepEqual(envDefaultModel({ NYCODE_MOBILE_PROVIDER: "a", NYCODE_MOBILE_MODEL: "b" }), {
 		provider: "a",
 		modelId: "b",
 	});

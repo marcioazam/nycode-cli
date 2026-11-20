@@ -12,10 +12,10 @@ import {
 	SelectList,
 	Spacer,
 	Text,
-} from "@earendil-works/pi-tui";
+} from "@nycode/tui";
 import { keyHint, lineText, type RenderContext } from "../render-context.ts";
 
-/** Key matching over pi's ids (the runtime's manager, installed with setKeybindings). */
+/** Key matching over nycode's ids (the runtime's manager, installed with setKeybindings). */
 export type SelectorContext = RenderContext & { keys: { matches(data: string, id: string): boolean } };
 
 export class DynamicBorder implements Component {
@@ -139,7 +139,7 @@ export class ModelSelectorComponent extends Container implements Focusable {
 	}
 
 	private sortModels(models: SelectorModel[]): SelectorModel[] {
-		// Current model first, default second, then by provider (pi).
+		// Current model first, default second, then by provider (nycode).
 		return models.sort(
 			(a, b) =>
 				Number(same(b, this.current)) - Number(same(a, this.current)) ||
@@ -358,7 +358,7 @@ export class ThinkingSelectorComponent extends Container implements Focusable {
 }
 
 /**
- * pi's `/scoped-models` (scoped-models-selector.ts), reduced: every catalog model with a check mark when enabled;
+ * nycode's `/scoped-models` (scoped-models-selector.ts), reduced: every catalog model with a check mark when enabled;
  * Enter or Space toggles, Ctrl+S saves the scope as exact `provider/modelId` patterns in catalog order (the owner's
  * settings.json `enabledModels`, replacing hand-written globs), Escape cancels.
  */

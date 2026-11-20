@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { compile } from "@earendil-works/pi-schema";
+import { compile } from "@nycode/schema";
 import { envRevision, LockedFile, optionalText, stripBom, stripJsonComments } from "@p2/app/v1/node";
 import { ENV_NAME, type EnvConfig, EnvConfigSchema, type EnvsConfig, type GondolinEnvConfig } from "./schema.ts";
 
@@ -27,8 +27,8 @@ function sshField(value: string | undefined): boolean {
 	return value === undefined || (!value.startsWith("-") && !/\s/.test(value) && !hasControl(value));
 }
 
-/** Paths p2 uses in a sandbox: where pi-env's daemon is copied, where Gondolin mounts the folders before binding. */
-const RESERVED = ["/opt/pi-env", "/.p2-vfs"];
+/** Paths p2 uses in a sandbox: where nycode-env's daemon is copied, where Gondolin mounts the folders before binding. */
+const RESERVED = ["/opt/nycode-env", "/.p2-vfs"];
 
 /** A path inside a sandbox: absolute, normalized, not the root, without control characters. */
 function guestPath(path: string): boolean {
@@ -66,8 +66,8 @@ export function validateEnv(value: unknown): EnvConfig {
 			)
 				throw new Error(`${mount.guest} is used by p2 in the sandbox (${RESERVED.join(", ")})`);
 			// The launcher refuses these too, after resolving the path on the host; this is the form's early answer.
-			if (!mount.readonly && (mount.host === "~" || mount.host === "/" || /^~\/\.pi(\/|$)/.test(mount.host)))
-				throw new Error(`A writable folder must not contain or be inside ~/.pi: ${mount.host}`);
+			if (!mount.readonly && (mount.host === "~" || mount.host === "/" || /^~\/\.nycode(\/|$)/.test(mount.host)))
+				throw new Error(`A writable folder must not contain or be inside ~/.nycode: ${mount.host}`);
 			if (guests.has(mount.guest)) throw new Error(`Two folders at ${mount.guest}`);
 			guests.add(mount.guest);
 		}
@@ -143,7 +143,7 @@ export async function saveEnv(directory: string, name: string, config: EnvConfig
 
 /** The env's `FileSystem.id`: equal ids see the same files. */
 export function envId(name: string, config: EnvConfig): string {
-	return `pi-env:${name}@${envRevision(config)}`;
+	return `nycode-env:${name}@${envRevision(config)}`;
 }
 
 /** Host keys this application trusts, separate from the user's own `known_hosts`. */
@@ -153,5 +153,5 @@ export function knownHostsPath(directory: string): string {
 
 /** The name an env's host keys are stored under, independent of host aliases, ports and jump hosts. */
 export function hostKeyAlias(name: string): string {
-	return `pi-env-${name}`;
+	return `nycode-env-${name}`;
 }

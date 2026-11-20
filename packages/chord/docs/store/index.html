@@ -471,23 +471,23 @@ deltas, versions, <code>checkpointWhen</code>, one live document per address. Th
 </thead>
 <tbody><tr>
 <td>Durable session document</td>
-<td><code>pi-durable</code></td>
+<td><code>nycode-durable</code></td>
 <td><code>session</code></td>
-<td><code>pi.settings</code></td>
+<td><code>nycode.settings</code></td>
 <td></td>
 </tr>
 <tr>
 <td>Durable conversation document</td>
-<td><code>pi-durable</code></td>
+<td><code>nycode-durable</code></td>
 <td><code>conversation:7</code></td>
-<td><code>pi.provider</code></td>
+<td><code>nycode.provider</code></td>
 <td></td>
 </tr>
 <tr>
 <td>Durable task document</td>
-<td><code>pi-durable</code></td>
+<td><code>nycode-durable</code></td>
 <td><code>task:31</code></td>
-<td><code>pi.codemode</code></td>
+<td><code>nycode.codemode</code></td>
 <td></td>
 </tr>
 <tr>
@@ -674,9 +674,9 @@ stale results inside the destination&#39;s transaction:</p>
 
 <section class="chapter epilogue" id="what-s-next"><header class="opener"><div class="numeral">∴</div><h2>What&#39;s Next</h2><p class="lede">What is decided, and the order in which it gets built.</p></header>
 <p class="dropcap">The direction and all seventeen review items are decided (decision log, 2026-10-21). The store is new code; the parts
-outside it are small changes in pi:</p>
+outside it are small changes in nycode:</p>
 <ul>
-<li><strong>pi, one change:</strong> <code>Storage.commit(writes, adopt, context)</code> with every storage calling <code>adopt</code> (S1), the
+<li><strong>nycode, one change:</strong> <code>Storage.commit(writes, adopt, context)</code> with every storage calling <code>adopt</code> (S1), the
 Session&#39;s handling of rejections after adoption, the narrowed <code>mintId</code> comment (S10), <code>traceIn(options, fn, context)</code> (context last), Durable&#39;s <code>WatchHandle</code>/<code>WatchEnd</code> moved into Chord with generic end reasons and explicit
 retirement (W2), and Durable&#39;s state getters and the <code>replicatedState</code> family removed (W14).</li>
 <li><strong>The store</strong> in <code>packages/chord/src</code>: commit step and outbox, tables and the query language, the SQLite and

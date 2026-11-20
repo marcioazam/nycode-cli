@@ -42,8 +42,8 @@ describe("codemode plugin", () => {
 			first?.tools?.map((tool) => [tool.name, tool.replay, tool.callers]),
 			[
 				["codemode", "safe", ["model"]],
-				["pi.codemode.models.classify", undefined, ["tools"]],
-				["pi.codemode.models.generateImages", undefined, ["tools"]],
+				["nycode.codemode.models.classify", undefined, ["tools"]],
+				["nycode.codemode.models.generateImages", undefined, ["tools"]],
 			],
 		);
 		assert.deepEqual(

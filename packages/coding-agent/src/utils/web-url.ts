@@ -1,4 +1,4 @@
-import { replaceControlCharacters } from "@earendil-works/pi-tui";
+import { replaceControlCharacters } from "@nycode/tui";
 
 /**
  * The `http:` or `https:` URL `value` names, normalized, or undefined. The shared launcher also opens files and custom

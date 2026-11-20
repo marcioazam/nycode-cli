@@ -1,13 +1,13 @@
 # `/tree`: branching the main conversation
 
-pi's `/tree` in p2 (owner decisions from the design discussion). Code: `plugins/tree/` (worker, tree panel),
+nycode's `/tree` in p2 (owner decisions from the design discussion). Code: `plugins/tree/` (worker, tree panel),
 `src/runtime/main-conversation.ts`, `src/tui/components/tree-selector.ts`, `/tree` in `plugins/chat/tui.ts`, the branch
 rename sheet (`plugins/sessions/BranchSheet.tsx`, rendered by the sidebar, `plugins/sessions/web.tsx`). Tests:
 `tree.test.ts`, `tui-tree.test.ts`, `ui-tree.test.ts`.
 
 ## Goal
 
-pi's `/tree` (`packages/coding-agent/src/core/agent-session.ts` `navigateTree`, `components/tree-selector.ts`) moves
+nycode's `/tree` (`packages/coding-agent/src/core/agent-session.ts` `navigateTree`, `components/tree-selector.ts`) moves
 the session's position to an earlier entry; the next message starts a new branch there, and old branches stay
 reachable. Example:
 
@@ -25,8 +25,8 @@ conversation whose history is 1's entries through 2, then its own. Nothing is co
 `head: "self"` entry carrying a copy of the context (copies a context per switch), and head markers with an end point
 (changes Durable's context rule).
 
-Durable needs no change. Fork policies (spec §3.7) give the right state: `pi.agent` is `asOf` (model, tools,
-instructions as at the fork point); `pi.inbox`, `pi.provider` and `pi.usage` start fresh.
+Durable needs no change. Fork policies (spec §3.7) give the right state: `nycode.agent` is `asOf` (model, tools,
+instructions as at the fork point); `nycode.inbox`, `nycode.provider` and `nycode.usage` start fresh.
 
 ## 1. Top-level conversations and the current main
 
@@ -47,7 +47,7 @@ version 2; absent: `{ 1, [{ 1, null }] }`):
   label as the session title for 4, no labels for `SessionTree` 1; 2 lacks only `branch`). A web page or TUI viewing the previous main conversation follows a switch.
 - Earlier branches are read-only (`ReadOnlyConversations`): only the main conversation takes input (send, dequeue,
   configure); Stop stays allowed. A branch left while it works keeps running in the background: its run and queued
-  input go on, the session's sidebar item shows pi's working dots (its Cancel stops that run too), and its answer
+  input go on, the session's sidebar item shows nycode's working dots (its Cancel stops that run too), and its answer
   counts as unread. To watch or stop it, switch
   back to it. The web shows only the main conversation and subagents (others redirect to the main one).
 - **Labels** are stored per branch (see [Labels](#labels)).
@@ -70,7 +70,7 @@ A branch forked before a subagent was spawned still lists that subagent (accepte
 
 ### Navigate
 
-`SessionTree.navigate({ entry })` (owner), pi's rules:
+`SessionTree.navigate({ entry })` (owner), nycode's rules:
 
 | Picked | Result |
 | --- | --- |
@@ -97,7 +97,7 @@ What the tree panel and the TUI selector call a branch: `label` in `p2.main`, st
 - **Renaming:** `SessionTree.rename({ conversation, label })` (owner): one line, 1 to 200 characters after trimming;
   null or empty resets conversation 1 to the session title (other branches need a label). Web: a branch's label in the
   tree panel is the command menu's target for the branch (hovered or focused, then the menu's shortcut; a long press on
-  touch screens): "Rename branch…" opens a sheet. TUI: pi's label key (`app.tree.editLabel`, Shift+L) in
+  touch screens): "Rename branch…" opens a sheet. TUI: nycode's label key (`app.tree.editLabel`, Shift+L) in
   `/tree` renames the branch holding the selected message.
 - **Version 1** (`branches: number[]`) migrates to `label: null` (Durable `migrate`). At start the worker labels the
   null branches other than conversation 1 once, in one commit: the fork point's message (`parent.at`; for an Edit that
@@ -105,7 +105,7 @@ What the tree panel and the TUI selector call a branch: `label` in `p2.main`, st
 
 ### Sending in a new branch
 
-Navigating to where the main conversation already ends changes nothing (pi: choosing the current position is a no-op),
+Navigating to where the main conversation already ends changes nothing (nycode: choosing the current position is a no-op),
 so a branch after the last answer is made with the next message instead: "send in a new branch" (Alt+Enter while
 idle, or Send's menu). It keeps an idea apart without writing a throwaway message first, and leaves no empty
 branch behind when the owner changes their mind.
@@ -122,7 +122,7 @@ Alt+Enter "what about OAuth?"
 the main conversation, in one commit; the client then sends the message to the fork as any message. Fork and send are
 two steps (Durable's first input is a `submit()` after the fork): a lost connection between them leaves the message in
 the composer or editor and an empty branch, which is harmless. Clients offer it only to the owner, in the main
-conversation, idle and with entries; while a run is busy the same key queues a follow-up (pi's Alt+Enter). The label
+conversation, idle and with entries; while a run is busy the same key queues a follow-up (nycode's Alt+Enter). The label
 is the message (attachments only: their names).
 
 ### Tree
@@ -130,15 +130,15 @@ is the message (attachments only: their names).
 `SessionTree.tree()` (owner) returns the nodes (entry, parent node, role, preview), the main conversation and its last
 node:
 
-- Nodes are user messages (not head markers) and assistant answers with text, like pi's default filter.
+- Nodes are user messages (not head markers) and assistant answers with text, like nycode's default filter.
 - A branch's own entries are its fork-aware entries with IDs above `parent.at` (entry IDs are Session-global and the
   fork is created after `at`); its first node hangs below the last node at or before `parent.at`.
 - The whole history is scanned per call: fine for now; long sessions may need paging.
 
 ### Where
 
-- TUI: `/tree` (`app.session.tree`) and double Escape (`doubleEscapeAction`, default "tree" as in pi), a selector
-  adapted from pi's `tree-selector.ts` (layout, active path, paging, label input; no filters or folding). A branch's
+- TUI: `/tree` (`app.session.tree`) and double Escape (`doubleEscapeAction`, default "tree" as in nycode), a selector
+  adapted from nycode's `tree-selector.ts` (layout, active path, paging, label input; no filters or folding). A branch's
   label shows before its first own message (`TreeNode.conversation` names the branch storing a node).
 - Web: "Edit" beside the owner's view of a user message (on hover; always shown on touch screens) and "Branch from
   here" under an answer, in the main conversation; not under the conversation's last entry, where the composer sends
@@ -198,8 +198,8 @@ first / Echo: first
 
 ## Later
 
-- Branch summary of the branch being left (pi's `branchSummary`): a write in the new branch after the fork.
-- Filters and folding in the selectors; labels on single entries (pi's entry labels).
-- Session cost: sum `pi.usage` over all top-level conversations.
+- Branch summary of the branch being left (nycode's `branchSummary`): a write in the new branch after the fork.
+- Filters and folding in the selectors; labels on single entries (nycode's entry labels).
+- Session cost: sum `nycode.usage` over all top-level conversations.
 - History tools in a branch search only the branch's own entries (inherited ones are indexed with conversation 1).
 - Deleting or archiving branches.

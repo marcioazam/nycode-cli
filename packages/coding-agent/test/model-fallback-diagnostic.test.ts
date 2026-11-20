@@ -48,7 +48,7 @@ describe("model fallback message", () => {
 	// Found while fixing #11264: "Could not restore model" was shown only at interactive startup. A /resume into
 	// a session whose model is gone fell back to another model silently, and other modes never showed it.
 	it("is written to stderr in RPC mode when switch_session falls back to another model", async () => {
-		const tempRoot = mkdtempSync(join(tmpdir(), "pi-model-fallback-"));
+		const tempRoot = mkdtempSync(join(tmpdir(), "nycode-model-fallback-"));
 		tempDirs.push(tempRoot);
 		const agentDir = join(tempRoot, "agent");
 		const projectDir = join(tempRoot, "project");
@@ -76,7 +76,7 @@ describe("model fallback message", () => {
 
 		const child = spawn(process.execPath, ["--import", sourceResolverUrl, cliPath, "--mode", "rpc", "--no-session"], {
 			cwd: projectDir,
-			env: { ...process.env, [ENV_AGENT_DIR]: agentDir, PI_OFFLINE: "1" },
+			env: { ...process.env, [ENV_AGENT_DIR]: agentDir, NYCODE_OFFLINE: "1" },
 			stdio: ["pipe", "pipe", "pipe"],
 		});
 		let stdout = "";

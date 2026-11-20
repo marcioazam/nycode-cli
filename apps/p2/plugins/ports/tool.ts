@@ -1,5 +1,5 @@
-import { defineExtension, section } from "@earendil-works/pi-durable";
-import { bool, int, obj, opt, str, union } from "@earendil-works/pi-schema";
+import { defineExtension, section } from "@nycode/durable";
+import { bool, int, obj, opt, str, union } from "@nycode/schema";
 import type { Context } from "@p2/app/v1";
 import { literal } from "@p2/app/v1";
 import { defineP2Tool, isTopLevel, type P2Tool } from "@p2/app/v1/worker";
@@ -33,7 +33,7 @@ function describe(reply: PortsReply, self: string): string {
 		...(reply.addressesKnown
 			? []
 			: [
-					"Addresses are not known yet: Pi has not been opened through Radius by its owner. They appear once it has; the owner also finds them under Envs → Ports.",
+					"Addresses are not known yet: Nycode has not been opened through Radius by its owner. They appear once it has; the owner also finds them under Envs → Ports.",
 				]),
 	].join("\n");
 }

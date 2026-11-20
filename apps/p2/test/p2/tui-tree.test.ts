@@ -1,15 +1,10 @@
-// `/tree` in the TUI (docs/tree.md): pi's tree selector over the session's branches with their labels (the session
-// title for a null one) and pi's label key renaming the selected message's branch, `SessionTree.navigate` with the
-// chosen user message in the editor of the conversation it switched to, double Escape (pi's default "tree"), a TUI
+// `/tree` in the TUI (docs/tree.md): nycode's tree selector over the session's branches with their labels (the session
+// title for a null one) and nycode's label key renaming the selected message's branch, `SessionTree.navigate` with the
+// chosen user message in the editor of the conversation it switched to, double Escape (nycode's default "tree"), a TUI
 // following a switch made elsewhere (the session row's `main`), and Alt+Enter sending in a new branch when idle.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import {
-	type ConversationView,
-	type EntryId,
-	type EntryRecord,
-	ROOT_CONVERSATION_ID,
-} from "@earendil-works/pi-durable";
+import { type ConversationView, type EntryId, type EntryRecord, ROOT_CONVERSATION_ID } from "@nycode/durable";
 import { Chat, type ModelMeta } from "../../plugins/chat/contract.ts";
 import chatTui, { ChatSurface } from "../../plugins/chat/tui.ts";
 import { type Session, Sessions } from "../../plugins/sessions/contract.ts";
@@ -59,7 +54,7 @@ const answered = (conversation: number): ConversationView => ({
 		{
 			id: 1 as EntryId,
 			conversationId: ROOT_CONVERSATION_ID,
-			kind: "pi.assistant",
+			kind: "nycode.assistant",
 			model: [
 				{
 					role: "assistant",
@@ -74,7 +69,7 @@ const answered = (conversation: number): ConversationView => ({
 			],
 		} as EntryRecord,
 	],
-	docs: { "pi.agent": { model: { provider: "faux", modelId: "faux-1" } } } as ConversationView["docs"],
+	docs: { "nycode.agent": { model: { provider: "faux", modelId: "faux-1" } } } as ConversationView["docs"],
 });
 
 test("/tree switches branches with the chosen message in the editor; double Escape; following a switch", async (t) => {
@@ -85,7 +80,7 @@ test("/tree switches branches with the chosen message in the editor; double Esca
 	const view = (conversation: number): ConversationView => ({
 		conversation: { id: conversation } as ConversationView["conversation"],
 		entries: [],
-		docs: { "pi.agent": { model: { provider: "faux", modelId: "faux-1" } } } as ConversationView["docs"],
+		docs: { "nycode.agent": { model: { provider: "faux", modelId: "faux-1" } } } as ConversationView["docs"],
 	});
 	const { send, runtime, screen } = await topology(t, {
 		server: [
@@ -162,7 +157,7 @@ test("/tree switches branches with the chosen message in the editor; double Esca
 		return surface;
 	};
 	await poll(() => chat().editable);
-	// pi's layout: the current branch first, a connector where "Echo: first" branches, the current one selected.
+	// nycode's layout: the current branch first, a connector where "Echo: first" branches, the current one selected.
 	typed(send, "/tree");
 	send(ENTER);
 	await poll(async () => (await screen()).includes("Session Tree"));
@@ -173,7 +168,7 @@ test("/tree switches branches with the chosen message in the editor; double Esca
 	assert.match(shown, /› .*• assistant: Echo: second/);
 	assert.match(shown, /└─ \[Echo: first\] user: other/);
 	assert.match(shown, /\(4\/6\)/);
-	// pi's label key renames the branch holding the selected message.
+	// nycode's label key renames the branch holding the selected message.
 	send("L");
 	await poll(async () => (await screen()).includes("Branch label (empty: the session title):"));
 	typed(send, BACKSPACE.repeat("Fixture".length));
@@ -209,7 +204,7 @@ test("/tree switches branches with the chosen message in the editor; double Esca
 	// Another device switches back: this TUI, viewing the previous main conversation, follows.
 	setMain(1);
 	await poll(() => runtime.identity === "s#1");
-	// Double Escape on an empty editor opens the tree (pi's default action).
+	// Double Escape on an empty editor opens the tree (nycode's default action).
 	await poll(() => chat().editable);
 	chat().editor.setText("");
 	send(ESC);
@@ -319,7 +314,7 @@ test("Alt+Enter: idle, the message goes to a new branch and is sent there; busy 
 	assert.equal(runtime.drafts.get("s#1") ?? "", "");
 	// While a run is busy, Alt+Enter queues a follow-up in the conversation shown.
 	const busy = answered(6);
-	views.get(6)?.replace(undefined as never, { ...busy, docs: { ...busy.docs, "pi.live": { run: { id: 1 } } } });
+	views.get(6)?.replace(undefined as never, { ...busy, docs: { ...busy.docs, "nycode.live": { run: { id: 1 } } } });
 	await poll(() => [...chat().contexts()].includes("busy"));
 	typed(send, "later");
 	send(ALT_ENTER);

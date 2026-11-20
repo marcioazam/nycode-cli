@@ -9,7 +9,7 @@
 //   taskset -c 10 node --conditions=source --experimental-strip-types --expose-gc test/bench/telemetry.ts
 import { performance } from "node:perf_hooks";
 import { GCProfiler } from "node:v8";
-import { InMemoryTelemetryContext } from "@earendil-works/pi-telemetry";
+import { InMemoryTelemetryContext } from "@nycode/telemetry";
 import { BACKGROUND_CONTEXT, type Context, withTelemetry } from "../../src/context/index.ts";
 import { arr, hostKind, int, local, method, obj, remote, str } from "../../src/contracts/index.ts";
 import { defineState } from "../../src/documents/index.ts";

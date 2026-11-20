@@ -1,4 +1,4 @@
-// Chord v2's client surfaces, the server side (`@earendil-works/chord/surfaces`; slice 11 §1, §4): the web surface
+// Chord v2's client surfaces, the server side (`@nycode/chord/surfaces`; slice 11 §1, §4): the web surface
 // (base bundle, plugin scripts, `WebScripts`, the page) and the terminal surface.
 
 export { type BaseBundle, type BasePlatform, type BaseResolution, buildBase, processConditions } from "./bundle.ts";

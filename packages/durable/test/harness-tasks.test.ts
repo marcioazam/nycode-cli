@@ -1,6 +1,6 @@
-import type { Context } from "@earendil-works/chord/context";
-import { withAbortSignal, withCancel } from "@earendil-works/chord/context";
-import { createModels } from "@earendil-works/pi-ai";
+import { createModels } from "@nycode/ai";
+import type { Context } from "@nycode/chord/context";
+import { withAbortSignal, withCancel } from "@nycode/chord/context";
 import {
 	type CommitPublication,
 	type Conversation,
@@ -17,9 +17,9 @@ import {
 	type StorageWrite,
 	type TaskId,
 	type TaskRuntime,
-} from "@earendil-works/pi-durable";
-import { obj } from "@earendil-works/pi-schema";
-import { InMemoryTelemetryContext } from "@earendil-works/pi-telemetry";
+} from "@nycode/durable";
+import { obj } from "@nycode/schema";
+import { InMemoryTelemetryContext } from "@nycode/telemetry";
 import { describe, expect, it } from "vitest";
 import type { SessionImpl } from "../src/session/session.ts";
 import { addHooks, addTask, addTool, user } from "./harness-support.ts";
@@ -1657,7 +1657,7 @@ describe("publication at adoption", () => {
 		expect(seen).toEqual(["terminal"]);
 		expect(await harness.closed).toEqual({ kind: "failed", error: new Error("reclaim failed") });
 		expect(infos).toContainEqual({ kind: "storage_failed" });
-		const active = telemetry.getMetrics().filter((metric) => metric.name === "pi.durable.tasks.active");
+		const active = telemetry.getMetrics().filter((metric) => metric.name === "nycode.durable.tasks.active");
 		expect(active.map((metric) => metric.value)).toEqual([1, -1]);
 	});
 
@@ -1669,7 +1669,7 @@ describe("publication at adoption", () => {
 		storage.rejectAfterAdopt = (writes) => writes.some((write) => write.type === "task");
 		await expect(start(root, Idle)).rejects.toThrow("reclaim failed");
 		expect(await harness.closed).toMatchObject({ kind: "failed" });
-		const active = telemetry.getMetrics().filter((metric) => metric.name === "pi.durable.tasks.active");
+		const active = telemetry.getMetrics().filter((metric) => metric.name === "nycode.durable.tasks.active");
 		expect(active.map((metric) => metric.value)).toEqual([1, -1]);
 	});
 

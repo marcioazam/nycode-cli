@@ -1,5 +1,5 @@
 // p2's sandbox launcher on a host environment: deploying it (sandbox/ of this plugin, named by its content under the
-// host's ~/.pi/p2/sandbox/; the files are read from the source directory the caller passes), the command line that runs it over SSH, and one-shot commands (check, start, status, stop)
+// host's ~/.nycode/p2/sandbox/; the files are read from the source directory the caller passes), the command line that runs it over SSH, and one-shot commands (check, start, status, stop)
 // whose JSON answer p2 reads.
 
 import { spawn } from "node:child_process";
@@ -7,7 +7,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { hostname } from "node:os";
 import { join } from "node:path";
-import { type RemotePlatform, type SshTarget, sshArguments } from "@earendil-works/pi-env";
+import { type RemotePlatform, type SshTarget, sshArguments } from "@nycode/env";
 import { DEFAULT_DISK_GB, type GondolinEnvConfig } from "./config.ts";
 import type { SecretMeta } from "./secrets.ts";
 
@@ -113,7 +113,7 @@ function runOnHost(
  */
 export async function deployLauncher(target: SshTarget, remote: RemotePlatform, source: string): Promise<string> {
 	const bundle = bundleOf(source);
-	const root = `${remote.home}/.pi/p2/sandbox`;
+	const root = `${remote.home}/.nycode/p2/sandbox`;
 	const directory = `${root}/${bundle.id}`;
 	const sha = (content: Buffer) => createHash("sha256").update(content).digest("hex");
 	const script = [

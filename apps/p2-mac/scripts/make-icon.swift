@@ -1,4 +1,4 @@
-// Draws the app icon: the Pi logo (apps/p2/src/web/PiLogo.tsx and public/icons/favicon.svg, in its colours) on a white
+// Draws the app icon: the Nycode logo (apps/p2/src/web/NycodeLogo.tsx and public/icons/favicon.svg, in its colours) on a white
 // macOS icon plate, as an .iconset directory for iconutil. Usage: swift scripts/make-icon.swift <out.iconset>
 import AppKit
 

@@ -1,5 +1,5 @@
 // The owner's settings.json editor: the settings as the server holds them, and a change of some of them.
-import { arr, nul, obj, str, union, unknown } from "@earendil-works/pi-schema";
+import { arr, nul, obj, str, union, unknown } from "@nycode/schema";
 import { method, remote, serverHost, unsafe } from "@p2/app/v1";
 import type { MobileSettings } from "@p2/app/v1/node";
 

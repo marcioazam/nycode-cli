@@ -6,8 +6,8 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
-import type { ToolResultMessage } from "@earendil-works/pi-ai";
-import type { ConversationView, EntryRecord, Tx } from "@earendil-works/pi-durable";
+import type { ToolResultMessage } from "@nycode/ai";
+import type { ConversationView, EntryRecord, Tx } from "@nycode/durable";
 import { BACKGROUND_CONTEXT, follow } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { readEntries, renderEntry, withinBudget } from "../../plugins/history/tools.ts";
@@ -98,7 +98,7 @@ describe("history tools", () => {
 	it("reads exactly the requested entries with around 0, neighbours, ranges and the tail before a boundary", async () => {
 		const entries = [1, 2, 3, 4, 5, 6, 7, 8].map((id) => user(id, `message ${id}`));
 		const tx = fakeTx(entries, 6);
-		// pi-history's slice(-0) bug: before 0 returned every entry instead of none.
+		// nycode-history's slice(-0) bug: before 0 returned every entry instead of none.
 		const exact = await readEntries(tx, 1 as never, { mode: "items", entries: [3], around: 0 });
 		assert.deepEqual(
 			exact.records.map((record) => Number(record.id)),
@@ -134,7 +134,7 @@ describe("history tools", () => {
 
 	it("renders authors, tool calls by name and placeholders; never tool results; cuts at the budget", () => {
 		const assistant = entry(2, {
-			kind: "pi.assistant",
+			kind: "nycode.assistant",
 			model: [
 				{
 					role: "assistant",
@@ -147,7 +147,7 @@ describe("history tools", () => {
 			],
 		});
 		const result = entry(3, {
-			kind: "pi.tool-result",
+			kind: "nycode.tool-result",
 			model: [{ role: "toolResult", toolCallId: "c1", toolName: "bash", content: [{ type: "text", text: "OUT" }] }],
 		});
 		const rendered = renderEntry(assistant, new Map([["c1", false]]));
@@ -216,7 +216,7 @@ describe("history tools end to end (fake provider)", () => {
 		await say("the zebrafish migration plan", "one");
 		await say("unrelated second message", "two");
 		await chat.compact({}, BACKGROUND_CONTEXT);
-		await until(chat.view, (view) => (view?.entries ?? []).some((each) => each.kind === "pi.compaction"), 60_000);
+		await until(chat.view, (view) => (view?.entries ?? []).some((each) => each.kind === "nycode.compaction"), 60_000);
 		await idle();
 		await say("after the compaction", "three");
 
@@ -232,8 +232,10 @@ describe("history tools end to end (fake provider)", () => {
 		assert.equal((read.match(/^#\d+ /gm) ?? []).length, 1, "exactly the requested entry");
 
 		await call("history_handoff", { text: "Continue the zebrafish plan." }, "handoff");
-		const view = await until(chat.view, (value) => (value?.entries ?? []).some((each) => each.kind === "pi.reset"));
-		const reset = view?.entries.find((each) => each.kind === "pi.reset");
+		const view = await until(chat.view, (value) =>
+			(value?.entries ?? []).some((each) => each.kind === "nycode.reset"),
+		);
+		const reset = view?.entries.find((each) => each.kind === "nycode.reset");
 		assert.match(JSON.stringify(reset?.model), /Continue the zebrafish plan/);
 		const tail = await call("history_read", { mode: "tail", count: 3 }, "tail");
 		assert.match(tail, /history_handoff/, "the entries right before the handoff");

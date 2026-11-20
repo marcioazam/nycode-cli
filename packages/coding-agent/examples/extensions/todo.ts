@@ -10,9 +10,9 @@
  * correct for that point in history.
  */
 
-import { StringEnum } from "@earendil-works/pi-ai";
-import type { ExtensionAPI, ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
-import { matchesKey, Text, truncateToWidth } from "@earendil-works/pi-tui";
+import { StringEnum } from "@nycode/ai";
+import type { ExtensionAPI, ExtensionContext, Theme } from "@nycode/coding-agent";
+import { matchesKey, Text, truncateToWidth } from "@nycode/tui";
 import { Type } from "typebox";
 
 interface Todo {
@@ -102,7 +102,7 @@ class TodoListComponent {
 	}
 }
 
-export default function (pi: ExtensionAPI) {
+export default function (nycode: ExtensionAPI) {
 	// In-memory state (reconstructed from session on load)
 	let todos: Todo[] = [];
 	let nextId = 1;
@@ -129,11 +129,11 @@ export default function (pi: ExtensionAPI) {
 	};
 
 	// Reconstruct state on session events
-	pi.on("session_start", async (_event, ctx) => reconstructState(ctx));
-	pi.on("session_tree", async (_event, ctx) => reconstructState(ctx));
+	nycode.on("session_start", async (_event, ctx) => reconstructState(ctx));
+	nycode.on("session_tree", async (_event, ctx) => reconstructState(ctx));
 
 	// Register the todo tool for the LLM
-	pi.registerTool({
+	nycode.registerTool({
 		name: "todo",
 		label: "Todo",
 		description: "Manage a todo list. Actions: list, add (text), toggle (id), clear",
@@ -288,7 +288,7 @@ export default function (pi: ExtensionAPI) {
 	});
 
 	// Register the /todos command for users
-	pi.registerCommand("todos", {
+	nycode.registerCommand("todos", {
 		description: "Show all todos on the current branch",
 		handler: async (_args, ctx) => {
 			if (ctx.mode !== "tui") {

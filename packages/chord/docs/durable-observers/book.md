@@ -1,7 +1,7 @@
 ---
 title: In the Step: when Durable's views change, and who hears it
 cover: In the / Step
-kicker: An explainer · Chord v2 slice 6 and pi-durable · 2026-10-26
+kicker: An explainer · Chord v2 slice 6 and nycode-durable · 2026-10-26
 subtitle: Why Durable's views must change inside the storage's commit, why the first build broke hosts, and what the "publication at adoption" proposal changes
 stats:
   - 1 | Durable commit, seen as one change
@@ -51,7 +51,7 @@ it changes.
 
 ## Words used throughout
 
-**Durable** is pi's agent harness; a **Session** is its one line of atomic commits. **Storage** is Durable's storage
+**Durable** is nycode's agent harness; a **Session** is its one line of atomic commits. **Storage** is Durable's storage
 interface; `Storage.commit(writes, adopt, context)` stores a batch and calls **`adopt(seq)`** once it is durable.
 Durable's **trackers** hold each loaded document's value in memory. **Internal observers** are Durable's own commit
 listeners (`observeCommits`): the conversation **view** mounts, the **task graph**, the **scheduler** and the
@@ -204,7 +204,7 @@ The gap is the bug. The first build created it by splitting the publication. The
 const adopt = (seq: Seq): void => {
   const documents = tx.adopt(seq);                              // trackers, as today
   const publication = this.#publication(seq, writes, documents);
-  this.#events(writes);                                         // pi.durable.entry / .submission, contained
+  this.#events(writes);                                         // nycode.durable.entry / .submission, contained
   this.#notifyInternal(publication);                            // views, graph, scheduler, submissions
   this.#notifyHosts(publication);                               // subscribeCommits
 };

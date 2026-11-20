@@ -1,7 +1,7 @@
 {
-	"name": "Pi",
-	"short_name": "Pi",
-	"description": "Self-hosted mobile home for Pi coding agents",
+	"name": "Nycode",
+	"short_name": "Nycode",
+	"description": "Self-hosted mobile home for Nycode coding agents",
 	"id": "/",
 	"start_url": "/",
 	"scope": "/",

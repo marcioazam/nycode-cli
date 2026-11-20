@@ -84,7 +84,7 @@ extension point: one plugin defines it, others contribute. A **rollout** applies
 Start without plugins. One host, one object that keeps notes:
 
 ```ts
-import { createHost, defineFacet, defineState, local, method, obj, arr, str } from "@earendil-works/chord";
+import { createHost, defineFacet, defineState, local, method, obj, arr, str } from "@nycode/chord";
 
 const NoteList = obj({ items: arr(str()) });          // one schema, used by the contract and the document
 
@@ -742,7 +742,7 @@ Plugins import their host only through the API, a version in the path:
 
 ```ts
 // src/api/v1/index.ts: "@app/api/v1", for every kind
-export { defineRegistry, local, obj, remote, str } from "@earendil-works/chord";   // the Chord surface the app supports
+export { defineRegistry, local, obj, remote, str } from "@nycode/chord";   // the Chord surface the app supports
 export { defineFacet, Project, Server } from "../../core.ts";                           // bound to the app's principal
 // src/api/v1/web.ts: "@app/api/v1/web", for pages only
 export const Panels = defineRegistry<Panel, readonly Panel[]>("app.panels", { version: 1 });
@@ -880,7 +880,7 @@ answer. Chord's telemetry makes the four steps one **trace**: a tree of **spans*
 host recording its own with its own **adapter**, joined by **carriers** (a few strings naming the caller's span) that
 ride on the wire with every `hold` and `call`.
 
-Give the server a store and the kit does the rest. The SQLite store (`@earendil-works/chord/telemetry-sqlite`)
+Give the server a store and the kit does the rest. The SQLite store (`@nycode/chord/telemetry-sqlite`)
 records settled spans and metrics in one file in the data directory, and the server is its only writer: every worker
 records in memory and sends its spans and metrics to the server once a second over its link, and a page that records
 (`startPage({ telemetry: true })`) sends its own every few seconds and when hidden (example 62):
@@ -934,7 +934,7 @@ an object's activation (`chord.activate`, linked to whoever asked first). Routin
 `run` and `finish` stay under the carrier its start stored, even when a restarted worker resumes the run. Metrics
 (`chord.link.bytes`, `chord.commit.duration`, `chord.calls.in_flight`, ...) are aggregated per 10 s; ids are never their
 attributes. Without an adapter (the default), Chord starts no span and sends no carrier: a call costs what it did before.
-A script or a viewer reads the file with `openTelemetryStore(path)` (`@earendil-works/chord/telemetry-sqlite/node`),
+A script or a viewer reads the file with `openTelemetryStore(path)` (`@nycode/chord/telemetry-sqlite/node`),
 which opens it read-only and offers only the read interface (`findTraces`, `getTrace`, `findMetrics`).
 
 # Reference {.appendix}

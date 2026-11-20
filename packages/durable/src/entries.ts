@@ -1,4 +1,4 @@
-import type { JsonValue } from "@earendil-works/chord/json";
+import type { JsonValue } from "@nycode/chord/json";
 import type { CompactionReason, ToolDiagnostic } from "./harness/types.ts";
 import type { Entry, EntryRecord, TypedEntry } from "./types.ts";
 
@@ -12,23 +12,23 @@ export function defineEntry<D extends JsonValue = never>(kind: string): Entry<D>
 }
 
 /** User input: `model` is `[UserMessage]`. Written by submissions. */
-export const UserEntry = defineEntry("pi.user");
+export const UserEntry = defineEntry("nycode.user");
 /** Provider result with any stop reason: `model` is `[AssistantMessage]`. Written by generation. */
-export const AssistantEntry = defineEntry("pi.assistant");
+export const AssistantEntry = defineEntry("nycode.assistant");
 /** Positional prompt and tool change: `model` is `[SystemMessage]` with empty `content`. */
-export const SystemEntry = defineEntry("pi.system");
+export const SystemEntry = defineEntry("nycode.system");
 /**
  * Tool result: `model` is `[ToolResultMessage]`, whose content ends with the rendered diagnostics block; `data` holds
  * the structured diagnostics, possibly none. Written by tool tasks, and by generation for calls it did not offer.
  */
-export const ToolResultEntry = defineEntry<{ diagnostics: ToolDiagnostic[] }>("pi.tool-result");
+export const ToolResultEntry = defineEntry<{ diagnostics: ToolDiagnostic[] }>("nycode.tool-result");
 /**
  * Start of a new context: always `head: "self"`, with `model` absent for a plain reset or `[UserMessage]` carrying the
  * handoff text. Written by `Conversation.reset()` and the `handoff` tool control.
  */
-export const ResetEntry = defineEntry("pi.reset");
+export const ResetEntry = defineEntry("nycode.reset");
 /**
  * Compaction summary: `model` is `[UserMessage]` with the wrapped summary, `head` the first kept entry. Written by
  * compaction tasks, directly or through a write submission.
  */
-export const CompactionEntry = defineEntry<{ reason: CompactionReason }>("pi.compaction");
+export const CompactionEntry = defineEntry<{ reason: CompactionReason }>("nycode.compaction");

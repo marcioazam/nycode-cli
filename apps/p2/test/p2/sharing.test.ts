@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { join as joinPath } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { after, before, describe, it } from "node:test";
-import type { ConversationView, LiveState } from "@earendil-works/pi-durable";
+import type { ConversationView, LiveState } from "@nycode/durable";
 import { BACKGROUND_CONTEXT, follow, type Held, isChordError, whenLive } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { Drafts } from "../../plugins/drafts/contract.ts";
@@ -23,7 +23,7 @@ import { expectChord, type Fixture, holdIn, http, poll, startFixture, until, web
 
 const TUNNEL = { Host: "share.test", Origin: "https://share.test" };
 const live = (view: ConversationView | null | undefined): LiveState | undefined =>
-	view?.docs["pi.live"] as unknown as LiveState | undefined;
+	view?.docs["nycode.live"] as unknown as LiveState | undefined;
 const users = (view: ConversationView | null | undefined) =>
 	view ? buildTranscript(wholeView(view)).items.flatMap((item) => (item.type === "user" ? [item] : [])) : [];
 

@@ -3,7 +3,7 @@
 // the same window; the host does keyed calls once).
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { ToolExecutionApi, ToolExecutionResult, ToolPark } from "@earendil-works/pi-durable";
+import type { ToolExecutionApi, ToolExecutionResult, ToolPark } from "@nycode/durable";
 import { BACKGROUND_CONTEXT, type JsonValue } from "@p2/app/v1";
 import { createTerminalExtension, type TerminalBackend } from "../../plugins/terminals/tool.ts";
 

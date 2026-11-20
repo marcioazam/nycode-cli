@@ -15,9 +15,9 @@ import {
 } from "../../../src/node/plugins/index.ts";
 import { KINDS, tempRoot, writeFiles, writePackage, writePlugin } from "./support.ts";
 
-const NODE: BuildOptions = { hostPackages: ["@earendil-works/chord"], platform: "node" };
+const NODE: BuildOptions = { hostPackages: ["@nycode/chord"], platform: "node" };
 const BROWSER: BuildOptions = {
-	hostPackages: ["@earendil-works/chord", "react/jsx-runtime"],
+	hostPackages: ["@nycode/chord", "react/jsx-runtime"],
 	platform: "browser",
 	publicPath: "/assets/",
 };
@@ -54,7 +54,7 @@ describe("building a facet: the import table", () => {
 		const real = await realpath(root);
 		expect(built).toMatchObject({ plugin: "@test/notes", facet: "worker", assets: [] });
 		expect(built.source.startsWith("(function (require, module, exports) {")).toBe(true);
-		expect(built.source).toContain('require("@earendil-works/chord")');
+		expect(built.source).toContain('require("@nycode/chord")');
 		expect(built.copied).toEqual([join(real, "contracts", "contract.ts")]);
 		expect(built.inputs.map(({ file }) => file)).toEqual([
 			join(real, "contracts", "contract.ts"),
@@ -108,7 +108,7 @@ describe("building a facet: the import table", () => {
 					'import native from "native-dep";',
 					'import { join } from "node:path";',
 					'import { readFileSync } from "fs";',
-					'import { pluginFile } from "@earendil-works/chord/plugins";',
+					'import { pluginFile } from "@nycode/chord/plugins";',
 					"export default { setup: () => [pad, native, join, readFileSync, pluginFile] };",
 				].join("\n"),
 			},
@@ -119,7 +119,7 @@ describe("building a facet: the import table", () => {
 		const { plugin } = await discovered(root, "@test/deps");
 		const built = script(await buildFacet(plugin, "worker", NODE, context));
 		expect(built.source).toContain('"pad:"');
-		for (const external of ["native-dep", "node:path", "fs", "@earendil-works/chord/plugins"]) {
+		for (const external of ["native-dep", "node:path", "fs", "@nycode/chord/plugins"]) {
 			expect(built.source).toContain(`require("${external}")`);
 		}
 		// Packages are no inputs: the watcher ignores node_modules.
@@ -382,7 +382,7 @@ describe("building a facet: the app's API (slice 12 §1)", () => {
 			"worker.ts": [
 				'import { defineFacet } from "@acme/app/v3";',
 				'import { Tools } from "@acme/app/v3/worker";',
-				'import { pluginFile } from "@earendil-works/chord/plugins";',
+				'import { pluginFile } from "@nycode/chord/plugins";',
 				"export default defineFacet(() => [Tools, pluginFile]);",
 			].join("\n"),
 		});
@@ -398,7 +398,7 @@ describe("building a facet: the app's API (slice 12 §1)", () => {
 				'import { a } from "@acme/app/v1";',
 				'import { b } from "@acme/app";',
 				'import { c } from "@acme/app/v3/web";',
-				'import { d } from "@earendil-works/chord";',
+				'import { d } from "@nycode/chord";',
 				"export default { setup: () => [a, b, c, d] };",
 			].join("\n"),
 		});
@@ -406,13 +406,13 @@ describe("building a facet: the app's API (slice 12 §1)", () => {
 		// Chord is refused even when the app lists it as a host package.
 		const options = {
 			...apiKind("worker"),
-			hostPackages: [...apiKind("worker").hostPackages, "@earendil-works/chord"],
+			hostPackages: [...apiKind("worker").hostPackages, "@nycode/chord"],
 		};
 		expect(errors(await buildFacet(plugin, "worker", options, context))).toEqual([
 			'worker.ts:1:19: "@acme/app/v1": @acme/app/v1 is not available: this app provides v3, v2',
 			'worker.ts:2:19: "@acme/app": import a version of the app\'s API (this app provides v3, v2)',
 			'worker.ts:3:19: "@acme/app/v3/web": not available to worker facets',
-			'worker.ts:4:19: "@earendil-works/chord": plugins import Chord through the app\'s API ("@acme/app/v3"), never directly',
+			'worker.ts:4:19: "@nycode/chord": plugins import Chord through the app\'s API ("@acme/app/v3"), never directly',
 		]);
 	});
 
@@ -720,8 +720,7 @@ describe("building a facet: single-file plugins (slice 12 §4)", () => {
 	it("allows host packages only, refusing other files, packages and builtins with a pointer to a directory", async () => {
 		const root = await tempRoot();
 		await writeFiles(root, {
-			"hello.server.ts":
-				'import { defineFacet } from "@earendil-works/chord";\nexport default defineFacet(() => {});',
+			"hello.server.ts": 'import { defineFacet } from "@nycode/chord";\nexport default defineFacet(() => {});',
 			"bad.server.ts": [
 				'import { a } from "./hello.server.ts";',
 				'import b from "some-package";',

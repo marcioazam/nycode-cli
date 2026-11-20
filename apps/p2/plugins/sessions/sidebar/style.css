@@ -108,7 +108,7 @@
 	background: var(--semantic-color-background-fill-ghost-neutral-active);
 }
 /* The marker column: an item's status or a group's icon, as wide as the icon; kept when empty. One --nav-icon box
-   whatever it holds, so an icon, a dot and pi's dots share their centre. */
+   whatever it holds, so an icon, a dot and nycode's dots share their centre. */
 .nav-marker {
 	display: inline-flex;
 	flex: none;
@@ -121,7 +121,7 @@
 .nav-marker + .nav-link {
 	margin-inline-start: var(--s1);
 }
-/* What an item's status looks like (Row.tsx), in the marker column. Working is the only motion: pi's dots (the
+/* What an item's status looks like (Row.tsx), in the marker column. Working is the only motion: nycode's dots (the
    Familiar's row frames its logo instead). Wanting the owner is steady: a blue dot for an unread answer (the name is
    bold too), a red one for a failure (its tooltip says what failed). A collapsed heading counts them at its end. */
 
@@ -158,50 +158,50 @@
 		stroke-dashoffset: -100;
 	}
 }
-/* Working, as pi's terminal UI shows it (PiDots): one braille frame at a time, a strip of the ten stepped through by
-   transform, slowly (160ms a frame against pi's 80ms) and in the icons' colour, so many running agents stay calm.
+/* Working, as nycode's terminal UI shows it (NycodeDots): one braille frame at a time, a strip of the ten stepped through by
+   transform, slowly (160ms a frame against nycode's 80ms) and in the icons' colour, so many running agents stay calm.
    The strip starts at the box's left edge, left to right in any writing direction, so the box shows one whole frame
-   at each step; every strip's delay puts it on the page's one clock (PiDots), so running items step together. Still
+   at each step; every strip's delay puts it on the page's one clock (NycodeDots), so running items step together. Still
    on its first frame without motion. A frame is drawn, not a font's glyph: Android 10's braille font puts ⠸'s dots in
    the left column, so that frame jumped. Each frame is a braille cell, a 2×4 grid of 2px dots 2px apart in a 16px
    box, centred across and on the box's bottom edge (where the font's dots sat), all in whole pixels: every frame's
    dots sit on the same pixels, and the strip steps by whole pixels. */
-.pi-dots {
-	--pi-frame: 16px;
-	--pi-dot: 2px;
+.nycode-dots {
+	--nycode-frame: 16px;
+	--nycode-dot: 2px;
 	display: inline-block;
 	flex: none;
-	width: var(--pi-frame);
-	height: var(--pi-frame);
+	width: var(--nycode-frame);
+	height: var(--nycode-frame);
 	overflow: hidden;
 	direction: ltr;
 	color: var(--semantic-color-icon-secondary);
 }
-.pi-dots-strip {
+.nycode-dots-strip {
 	display: flex;
-	width: calc(10 * var(--pi-frame));
-	animation: pi-dots 1.6s steps(10) infinite;
+	width: calc(10 * var(--nycode-frame));
+	animation: nycode-dots 1.6s steps(10) infinite;
 }
-.pi-dots-strip > span {
+.nycode-dots-strip > span {
 	display: grid;
 	flex: none;
-	grid-template: repeat(4, var(--pi-dot)) / repeat(2, var(--pi-dot));
-	gap: var(--pi-dot);
+	grid-template: repeat(4, var(--nycode-dot)) / repeat(2, var(--nycode-dot));
+	gap: var(--nycode-dot);
 	place-content: end center;
-	width: var(--pi-frame);
-	height: var(--pi-frame);
+	width: var(--nycode-frame);
+	height: var(--nycode-frame);
 }
-.pi-dots-strip i {
+.nycode-dots-strip i {
 	border-radius: 50%;
 	background: currentColor;
 }
-@keyframes pi-dots {
+@keyframes nycode-dots {
 	to {
-		translate: calc(-10 * var(--pi-frame)) 0;
+		translate: calc(-10 * var(--nycode-frame)) 0;
 	}
 }
 @media (prefers-reduced-motion: reduce) {
-	.pi-dots-strip {
+	.nycode-dots-strip {
 		animation: none;
 	}
 	.working-frame-track {
@@ -214,7 +214,7 @@
 }
 /* The phone's drawer stays rendered off screen while closed: its marks stop there. */
 @media (max-width: 899px) {
-	.app:not(.drawer-open) .drawer :is(.pi-dots-strip, .working-frame-dash) {
+	.app:not(.drawer-open) .drawer :is(.nycode-dots-strip, .working-frame-dash) {
 		animation-play-state: paused;
 	}
 }
@@ -243,18 +243,18 @@
 @media (forced-colors: active) {
 	.unread-dot,
 	.failed-dot,
-	.pi-dots-strip i {
+	.nycode-dots-strip i {
 		forced-color-adjust: none;
 	}
 }
-/* How many of a collapsed group's or rollup's sessions run: pi's dots and the count. */
+/* How many of a collapsed group's or rollup's sessions run: nycode's dots and the count. */
 .working-count {
 	display: inline-flex;
 	flex: none;
 	align-items: baseline;
 	gap: 2px;
 }
-.working-count > .pi-dots {
+.working-count > .nycode-dots {
 	align-self: center;
 }
 /* How many of a collapsed group's or rollup's sessions failed: a warning sign and the count, in the error colour. The

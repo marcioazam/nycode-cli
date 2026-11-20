@@ -4,10 +4,10 @@
  * patterns end to end.
  */
 
-import type { Context } from "@earendil-works/chord/context";
-import type { Draft } from "@earendil-works/chord/delta";
-import type { JsonValue } from "@earendil-works/chord/json";
-import type { AssistantMessage, Models, ToolCall } from "@earendil-works/pi-ai";
+import type { AssistantMessage, Models, ToolCall } from "@nycode/ai";
+import type { Context } from "@nycode/chord/context";
+import type { Draft } from "@nycode/chord/delta";
+import type { JsonValue } from "@nycode/chord/json";
 import {
 	type Conversation,
 	type ConversationId,
@@ -41,8 +41,8 @@ import {
 	type Tx,
 	type UserInput,
 	wrapTool,
-} from "@earendil-works/pi-durable";
-import { bool, obj, oneOf, str } from "@earendil-works/pi-schema";
+} from "@nycode/durable";
+import { bool, obj, oneOf, str } from "@nycode/schema";
 import { expect, expectTypeOf, it } from "vitest";
 import type { ExecutionEnv } from "../src/env/index.ts";
 import { CodingTools, createBashTool, createEditTool, createReadTool } from "../src/tools/index.ts";

@@ -16,7 +16,7 @@ function showToken(ctx: TuiContext, token: string): void {
 			"One-time sign-in token",
 			() => [
 				"This token grants full owner access. Give it only to your own device, not to collaborators.",
-				"Open Pi's domain on the other device, paste it into the sign-in page and sign in. It expires.",
+				"Open Nycode's domain on the other device, paste it into the sign-in page and sign in. It expires.",
 				"",
 				`  ${lineText(token)}`,
 			],

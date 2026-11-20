@@ -8,7 +8,7 @@ import {
 	OPENAI_PROVIDER_ID,
 } from "./acme-server.ts";
 import { inspectProvider, type ProviderRuntimeOutput } from "./configured-runtime.ts";
-import { createPiDocumentationEvalHarness } from "../src/harness.ts";
+import { createNycodeDocumentationEvalHarness } from "../src/harness.ts";
 
 const server = createAcmeServer("openai");
 
@@ -33,7 +33,7 @@ const expected: ProviderRuntimeOutput = {
 	},
 };
 
-const harness = createPiDocumentationEvalHarness({
+const harness = createNycodeDocumentationEvalHarness({
 	output: ({ session }) =>
 		inspectProvider(session.modelRuntime, {
 			providerId: OPENAI_PROVIDER_ID,
@@ -48,11 +48,11 @@ const harness = createPiDocumentationEvalHarness({
 const judge = StructuredOutputJudge({ expected, match: "strict", allowExtras: false });
 
 describeEval("Add OpenAI-compatible provider", { harness, judges: [judge], judgeThreshold: null }, (it) => {
-	it("configures a provider that works through Pi", async ({ run }) => {
+	it("configures a provider that works through Nycode", async ({ run }) => {
 		await run([
 			{
 				type: "prompt",
-				content: `Configure this running Pi installation with Acme as a provider. Do not create project-local configuration. Its provider ID is ${OPENAI_PROVIDER_ID}, its API is at ${server.baseUrl()}, and it uses OpenAI Chat Completions. Read its API key from the ACME_API_KEY environment variable.
+				content: `Configure this running Nycode installation with Acme as a provider. Do not create project-local configuration. Its provider ID is ${OPENAI_PROVIDER_ID}, its API is at ${server.baseUrl()}, and it uses OpenAI Chat Completions. Read its API key from the ACME_API_KEY environment variable.
 
 The provider offers one model, ${OPENAI_MODEL_ID}, shown as “Acme Chat”. It accepts text, does not support reasoning, has a 32,768-token context window and a 4,096-token maximum output, and has no usage cost.`,
 			},

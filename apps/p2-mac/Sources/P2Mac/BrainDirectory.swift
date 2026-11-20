@@ -14,7 +14,7 @@ final class BrainDirectory {
 	static let changed = Notification.Name("P2MacBrainDirectoryChanged")
 
 	private(set) var brains: [Brain] = []
-	/// Windows show the tab bar: signed in to Radius, and the account has Pi.
+	/// Windows show the tab bar: signed in to Radius, and the account has Nycode.
 	private(set) var showsTabs = false
 	/// The list comes from P2MAC_BRAINS, not from Radius.
 	let fixture: Bool
@@ -43,7 +43,7 @@ final class BrainDirectory {
 			MainActor.assumeIsolated { self?.accountChanged() }
 		}
 		rebuild()
-		// radius.json may also appear, change or go behind the app's back (`radius:login`, the Pi): the poll looks every
+		// radius.json may also appear, change or go behind the app's back (`radius:login`, the Nycode): the poll looks every
 		// time.
 		polling = Task { [weak self] in
 			while !Task.isCancelled {
@@ -138,7 +138,7 @@ final class BrainDirectory {
 	}
 }
 
-/// Radius's `/v1/pi/servers` (the shell's `/pi/api/brains`; radius `common/src/pi-brains.ts`): the list is `servers`
+/// Radius's `/v1/nycode/servers` (the shell's `/nycode/api/brains`; radius `common/src/nycode-brains.ts`): the list is `servers`
 /// (`brains`, its old name, goes away); `cloudBrains` unused.
 private struct RadiusBrainList: Decodable {
 	let servers: [RadiusBrain]

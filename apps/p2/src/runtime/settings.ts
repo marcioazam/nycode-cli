@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
-import { type AuthOperationOptions, StringEnum } from "@earendil-works/pi-ai";
-import { arr, bool, compile, int, obj, opt, type Static, str } from "@earendil-works/pi-schema";
+import { type AuthOperationOptions, StringEnum } from "@nycode/ai";
+import { arr, bool, compile, int, obj, opt, type Static, str } from "@nycode/schema";
 import { stripBom, stripJsonComments } from "./config-json.ts";
 import { LockedFile } from "./locked-file.ts";
 
@@ -11,7 +11,7 @@ const schema = obj({
 	defaultModel: opt(obj({ provider: str({ minLength: 1 }), modelId: str({ minLength: 1 }) })),
 	thinkingLevel: opt(StringEnum(thinkingLevels)),
 	/**
-	 * p2 addition (pi's `enabledModels`): model patterns for the TUI's scoped model cycling, in order. Each is
+	 * p2 addition (nycode's `enabledModels`): model patterns for the TUI's scoped model cycling, in order. Each is
 	 * `provider/modelId` or `modelId`, a `*`/`?` glob over either, with an optional `:thinkingLevel`.
 	 */
 	enabledModels: opt(arr(str({ minLength: 1, maxLength: 300 }), { maxItems: 500 })),
@@ -45,11 +45,11 @@ const schema = obj({
 	followUpMode: opt(StringEnum(queueModes)),
 	/**
 	 * Offer the durable `codemode` tool (scripts that call the other tools), with the codemode plugin loaded.
-	 * Default on in p2 (Pi Mobile: off); `false` uninstalls it live from every worker.
+	 * Default on in p2 (Nycode Mobile: off); `false` uninstalls it live from every worker.
 	 */
 	codemode: opt(bool()),
 	/**
-	 * pi's `cacheWarming`, kept by the cache-warming plugin: "idle" (default) keeps a conversation's prompt cache entry
+	 * nycode's `cacheWarming`, kept by the cache-warming plugin: "idle" (default) keeps a conversation's prompt cache entry
 	 * warm while its run streams and for up to 30 minutes after it settled, "streaming" only while it streams, "off"
 	 * never.
 	 */

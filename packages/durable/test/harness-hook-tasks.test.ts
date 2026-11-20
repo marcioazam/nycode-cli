@@ -3,8 +3,8 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { JsonValue } from "@earendil-works/chord/json";
-import { fauxAssistantMessage, fauxText, fauxToolCall } from "@earendil-works/pi-ai";
+import { fauxAssistantMessage, fauxText, fauxToolCall } from "@nycode/ai";
+import type { JsonValue } from "@nycode/chord/json";
 import {
 	type AfterToolsDecision,
 	defineExtension,
@@ -18,8 +18,8 @@ import {
 	MemoryStorage,
 	type TaskId,
 	type YieldDecision,
-} from "@earendil-works/pi-durable";
-import { obj } from "@earendil-works/pi-schema";
+} from "@nycode/durable";
+import { obj } from "@nycode/schema";
 import { afterEach, describe, expect, it } from "vitest";
 import { settleSchedulerOutcome } from "../src/harness/live.ts";
 import type { Transaction } from "../src/session/transaction.ts";
@@ -37,7 +37,7 @@ afterEach(async () => {
 });
 
 async function sqlitePath(): Promise<string> {
-	const directory = await mkdtemp(join(tmpdir(), "pi-durable-hook-tasks-"));
+	const directory = await mkdtemp(join(tmpdir(), "nycode-durable-hook-tasks-"));
 	directories.add(directory);
 	return join(directory, "session.sqlite");
 }
@@ -111,7 +111,7 @@ describe("afterTools tasks", () => {
 		expect(settled.status).toBe("done");
 		// Answered with the tool-calling answer; no further request.
 		expect(settled.status === "done" && settled.type === "input" ? settled.answer : undefined).toBe(
-			(await allEntries(opened.root)).find((entry) => entry.kind === "pi.assistant")?.id,
+			(await allEntries(opened.root)).find((entry) => entry.kind === "nycode.assistant")?.id,
 		);
 		expect(setup.faux.state.callCount).toBe(1);
 		await opened.harness.close(context);

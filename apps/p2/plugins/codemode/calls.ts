@@ -6,7 +6,7 @@ import {
 	type LiveState,
 	type TaskId,
 	type ToolExecutionApi,
-} from "@earendil-works/pi-durable";
+} from "@nycode/durable";
 import type { Context } from "@p2/app/v1";
 
 /** What a call removed mid-script reports, as its output, before Durable settles it aborted. */

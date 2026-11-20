@@ -1,11 +1,11 @@
 # p2 handoff
 
-For whoever continues p2, human or agent, starting cold. It assumes you know pi and this repository, but not the
+For whoever continues p2, human or agent, starting cold. It assumes you know nycode and this repository, but not the
 history of p2. Everything you need is in the repository; nothing depends on earlier conversations.
 
 ## What p2 is
 
-p2 (`apps/p2`) is Pi Mobile rebuilt on **Chord**, an object runtime (Chord v2: `@earendil-works/chord`,
+p2 (`apps/p2`) is Nycode Mobile rebuilt on **Chord**, an object runtime (Chord v2: `@nycode/chord`,
 `packages/chord`; p2 runs on Chord v2 only, see `docs/p2-notes.md` **Chord v2**; Chord v1 is deleted).
 Every feature is a plugin (`apps/p2/plugins/*`) with facets per process: `server.ts`, `worker.ts` (one worker per
 session, running Durable), `web.tsx` and `tui.ts`. There is no manifest and no dependency list: p2 discovers plugins
@@ -13,42 +13,42 @@ by listing their facet files and loads them alphabetically. Chord resolves depen
 order does not matter; a missing provider fails loudly, naming the consumer. Compatible backend reloads preserve
 unchanged state and resources; a successful reload publishes rebuilt web and TUI bundles.
 
-p2 replaced Pi Mobile (formerly `apps/mobile`, removed; see git history). Its web UI matches Pi Mobile's (same DOM,
-classes, styles); the data layer is Chord objects instead of Pi Mobile's hand-written protocol. On top of Pi Mobile,
-p2 has hot reload with explicit reload/restart controls, logs and owner notices, chat mode with replies and `@pi`
-mentions, owner sign-in links, an isolated TUI with pi's look and keys, and security hardening (CSP, restricted guest
+p2 replaced Nycode Mobile (formerly `apps/mobile`, removed; see git history). Its web UI matches Nycode Mobile's (same DOM,
+classes, styles); the data layer is Chord objects instead of Nycode Mobile's hand-written protocol. On top of Nycode Mobile,
+p2 has hot reload with explicit reload/restart controls, logs and owner notices, chat mode with replies and `@nycode`
+mentions, owner sign-in links, an isolated TUI with nycode's look and keys, and security hardening (CSP, restricted guest
 web assets, WebSocket limits).
 
-p2 lives in `earendil-works/pi` at `apps/p2` and keeps the name p2.
+p2 lives in `marcioazam/nycode-cli` at `apps/p2` and keeps the name p2.
 
 ## State at handoff
 
 | Where | What | Port | Data |
 | --- | --- | --- | --- |
-| Phone (Termux, Node 26) | p2, the daily driver; Pi Mobile's sessions were imported when it replaced Pi Mobile | 8787 | `~/.pi/p2` |
-| slayer (`slayer.marioslab.io`) | development and tests (`~/pi`, branch `main`); no p2 server runs there | | |
+| Phone (Termux, Node 26) | p2, the daily driver; Nycode Mobile's sessions were imported when it replaced Nycode Mobile | 8787 | `~/.nycode/p2` |
+| slayer (`slayer.marioslab.io`) | development and tests (`~/nycode`, branch `main`); no p2 server runs there | | |
 
-Done: everything Pi Mobile did (checked by a four-part audit; what differs on purpose is under Decisions in
+Done: everything Nycode Mobile did (checked by a four-part audit; what differs on purpose is under Decisions in
 `docs/p2-notes.md`), the switch of the phone, the TUI port phases P0–P7 and P9–P11, and Chord in `packages/chord`
-replacing the old facet/service runtime and the `pi-client`, `pi-protocol` and `pi-server` packages (pi
+replacing the old facet/service runtime and the `nycode-client`, `nycode-protocol` and `nycode-server` packages (nycode
 `6db4070f1`). Open items are under [Open work](#open-work).
 
 ## The phone
 
-- **Checkout:** `~/pi`, branch `main` (Node 26.3.1). Old data: `~/.pi/mobile` (keep it: imported history refers to
-  attachments there) and `~/.pi/p2.trial-oct10` (a leftover, deletable). The TUI's Node check (26.5.1 or newer) may be
+- **Checkout:** `~/nycode`, branch `main` (Node 26.3.1). Old data: `~/.nycode/mobile` (keep it: imported history refers to
+  attachments there) and `~/.nycode/p2.trial-oct10` (a leftover, deletable). The TUI's Node check (26.5.1 or newer) may be
   lowered to 26.3.1 locally in `src/hosts/tui-sandbox.ts`, uncommitted; leave it alone when updating.
 - **p2** runs as the runit service `$PREFIX/var/service/p2` (termux-services; `sv status|restart
   $PREFIX/var/service/p2`; logs in `$PREFIX/var/log/p2/current`). Its `run` script takes the wake lock, sets
-  `PORT=8787`, `P2_DATA_DIR=~/.pi/p2`, `P2_ALLOWED_HOSTS=pim.ngrok.pro`, `P2_PUBLIC_URL=https://pim.ngrok.pro`, and
-  runs the dev supervisor from `~/pi/apps/p2` (`node --import ./src/source.ts scripts/dev.mjs`). The service
+  `PORT=8787`, `P2_DATA_DIR=~/.nycode/p2`, `P2_ALLOWED_HOSTS=pim.ngrok.pro`, `P2_PUBLIC_URL=https://pim.ngrok.pro`, and
+  runs the dev supervisor from `~/nycode/apps/p2` (`node --import ./src/source.ts scripts/dev.mjs`). The service
   `p2-orphan-reaper` runs beside it.
-- **Deploy** (only pushed commits): in `~/pi`, `git fetch origin && git merge --ff-only origin/main`,
+- **Deploy** (only pushed commits): in `~/nycode`, `git fetch origin && git merge --ff-only origin/main`,
   `npm install --ignore-scripts` at the root if a `package*.json` changed, `cd apps/p2 && npm run check`, then
   `npm run reload -- --restart` (plugin-only changes: **Reload**). The restart replaces the server process; the
   supervisor stays.
 - **Per-host stores:** a p2 with per-host stores refuses a data directory in the older layout. Once: stop p2,
-  `npm run migrate-data -- --dry-run`, then `npm run migrate-data` (old files go to `~/.pi/p2/pre-files-backup/`;
+  `npm run migrate-data -- --dry-run`, then `npm run migrate-data` (old files go to `~/.nycode/p2/pre-files-backup/`;
   `scripts/data-report.ts` before and `--compare` after), then start it (`docs/p2-notes.md`, Migration).
 - **Tunnel:** ngrok as the runit service `$PREFIX/var/service/ngrok`, inside the proot Ubuntu (`proot-distro login
   ubuntu`), forwarding `https://pim.ngrok.pro` to `127.0.0.1:8787` with the traffic policy `~/policy.yaml`
@@ -85,8 +85,8 @@ websites make never carry owner rights. Sign out per device or all devices in th
 Runtime code (`src/hosts`, `src/runtime`, workspace packages such as `packages/chord`) needs a restart; the "Server
 code changed" pill appears only when a module the server actually loaded changed.
 
-**slayer.** Development happens in `~/pi` (branch `main`); scratch worktrees for verifying an agent's files or running
-browser tests go under `/tmp` (`git worktree add /tmp/<name>`), never into `~/pi`. No p2 server runs there (the old
+**slayer.** Development happens in `~/nycode` (branch `main`); scratch worktrees for verifying an agent's files or running
+browser tests go under `/tmp` (`git worktree add /tmp/<name>`), never into `~/nycode`. No p2 server runs there (the old
 public instance at p2.mariozechner.at is gone). Node 24: `~/node-v24.4.1-linux-x64/bin`; Node 26 (TUI tests):
 `~/.local/bin/node26`. Browser tests: `CHROMIUM_BIN=/home/badlogic/.local/bin/chromium-docker`.
 
@@ -117,28 +117,28 @@ public instance at p2.mariozechner.at is gone). Node 24: `~/node-v24.4.1-linux-x
 - **Durable** (`packages/durable`) runs the agent: conversations, inputs as custom entries (`p2.input`,
   `chat.mention`), display-only writes placed immediately, code mode (QuickJS sandbox; scripts call tools as
   `tools.<name>`, one-shot agents via `tools.agent`, tools grouped by the namespaces their extensions declare),
-  compaction with visible failures, deferred tools and `tool_search` (MCP tools are for code mode scripts, as in pi;
+  compaction with visible failures, deferred tools and `tool_search` (MCP tools are for code mode scripts, as in nycode;
   `tool_search` loads them only while code mode is off).
 
 ## The TUI
 
-`npm run tui [url]` (Node ≥ 26.5.1). The launcher owns the terminal, the connection and sign-in; all TUI code (pi-tui
+`npm run tui [url]` (Node ≥ 26.5.1). The launcher owns the terminal, the connection and sign-in; all TUI code (nycode-tui
 and plugin facets) comes from the server as one bundle and runs in a worker that drops every Node permission first.
 Output passes a strict escape-sequence allowlist; privileged actions (copy, open URL, download, external editor,
 attach, saving preferences, sign-out) need launcher grants, mostly with a launcher-drawn consent screen. Preferences
-(keybindings, theme, display settings) are the visitor's own (`~/.pi/agent`, `~/.pi/p2-tui/prefs.json`). Threat
+(keybindings, theme, display settings) are the visitor's own (`~/.nycode/agent`, `~/.nycode/p2-tui/prefs.json`). Threat
 model: `DEV.md` and `README.md` (TUI isolation). Design and as-built notes: `docs/p2-tui-port.md`.
 
 ## Rules
 
 From `AGENTS.md` and this project's history:
 
-- **One tree.** p2, the packages, root config and scripts change together in `earendil-works/pi`. After p2 changes
+- **One tree.** p2, the packages, root config and scripts change together in `marcioazam/nycode-cli`. After p2 changes
   run `npm run check` both at the root and in `apps/p2`.
 - **Commit only verified states.** When several agents edit one tree, copy an agent's files into a separate worktree
   on top of `HEAD`, run `npm run check` and the full `npm test` there, and commit exactly that content
   (`git hash-object -w` and `git update-index`). A browser test that times out under load and passes on its own is
-  acceptable; anything else is not. Lockfile commits need `PI_ALLOW_LOCKFILE_CHANGE=1`; npm 11 strips `libc` fields,
+  acceptable; anything else is not. Lockfile commits need `NYCODE_ALLOW_LOCKFILE_CHANGE=1`; npm 11 strips `libc` fields,
   revert that noise. Never `--no-verify`.
 - **Deploy only pushed commits** (The phone, Deploy).
 - **Port from the diff.** Changes copied from elsewhere start from the commit (`git show <hash>`), never from a
@@ -153,11 +153,11 @@ From `AGENTS.md` and this project's history:
 
 ## Open work
 
-1. **The phone's daemon binary:** p2's file index uses the pi-env daemon's `listFiles` when the packaged daemon has
-   it, else the old git/walk index. slayer has a fresh build in `packages/env/bin/pi-env-linux-x64` (static musl;
+1. **The phone's daemon binary:** p2's file index uses the nycode-env daemon's `listFiles` when the packaged daemon has
+   it, else the old git/walk index. slayer has a fresh build in `packages/env/bin/nycode-env-linux-x64` (static musl;
    built with `RUSTFLAGS="-C linker=rust-lld -C link-self-contained=yes" cargo build --release --locked --target
    x86_64-unknown-linux-musl` in `packages/env/daemon`). On the phone: `cargo build --release --locked` there and copy
-   it to `packages/env/bin/pi-env-android-arm64/pi-env`. The next pi-env release ships all targets through CI.
+   it to `packages/env/bin/nycode-env-android-arm64/nycode-env`. The next nycode-env release ships all targets through CI.
 2. **TUI:** launcher images, a filtered terminal relay, a "trust like SSH" mode, web tool cards
    (`docs/p2-tui-port.md` §10). Fork from subagent conversations; fork/clone, shell and templates have no web UI yet
    beyond rendering.
@@ -165,13 +165,13 @@ From `AGENTS.md` and this project's history:
    serves `bytes=-` whole, workspace answers 416; body readers: sharing answers 400 past the limit, devices 413);
    decide one behavior each.
 4. **MCP:** `plugins/mcp` (WP6-8 of `docs/mcp-durable.md`: owner `mcp.json`, host stdio and HTTP, code mode
-   tools (`tool_search` without code mode), servers on environments, project `.pi/mcp.json`, OAuth sign-in); code mode
+   tools (`tool_search` without code mode), servers on environments, project `.nycode/mcp.json`, OAuth sign-in); code mode
    namespaces are done (one composing `mcp` extension whose wraps show each conversation the servers of its
-   location's lease, each namespace `mcp__<server>` with pi's one-line summary; `mcp_servers` only without code mode;
+   location's lease, each namespace `mcp__<server>` with nycode's one-line summary; `mcp_servers` only without code mode;
    design and the Durable alternative: Radius artifact `01m7czh2mtetn9n716pzqnd7mk`); owner and account qualifiers for
    same-named servers of several people are p3's; whether Radius sends its cookie on a
    sign-in's redirect back is unverified.
-5. **npm:** deprecate `@earendil-works/pi-client`, `pi-protocol` and `pi-server` (1.1.0), which no longer exist.
+5. **npm:** deprecate `@earendil-works/pi-client`, `nycode-protocol` and `nycode-server` (1.1.0), which no longer exist.
 6. `docs/p2-notes.md` TODO: the TypeScript 5.9.3 pin (Termux), an isolating plugin loader, sandboxing third-party
    facets.
 7. **Slow test suite:** about 11 minutes serially; files could run in parallel once their isolation is fixed. The

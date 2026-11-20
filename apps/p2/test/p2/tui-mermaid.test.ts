@@ -1,4 +1,4 @@
-// pi's Mermaid Markdown transformer in p2 (p2-tui-port.md P12): modes from the visitor's `markdown.mermaid` setting,
+// nycode's Mermaid Markdown transformer in p2 (p2-tui-port.md P12): modes from the visitor's `markdown.mermaid` setting,
 // the instance theme, and the fallbacks (too wide, invalid, thinking).
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -19,7 +19,7 @@ const context = (patch: Partial<MarkdownTransformContext> = {}): MarkdownTransfo
 });
 const plain = (text: string) => stripVTControlCharacters(text);
 
-test("renders top-level Mermaid blocks as diagrams by default (pi's streaming mode)", () => {
+test("renders top-level Mermaid blocks as diagrams by default (nycode's streaming mode)", () => {
 	const out = mermaidMarkdownTransformer(DIAGRAM, context());
 	assert.doesNotMatch(out, /```mermaid/);
 	assert.match(plain(out), /│ A │[\s\S]*▼[\s\S]*│ B │/);

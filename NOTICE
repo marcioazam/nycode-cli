@@ -1,0 +1,13 @@
+nycode
+======
+
+nycode é um fork de earendil-works/pi (https://github.com/earendil-works/pi),
+distribuído sob a licença MIT. O texto da licença e o aviso de copyright
+originais estão em LICENSE, sem alteração.
+
+Commit base do upstream: 073b0bae8488ee20def26e873b77036dac4e9eea
+
+Mudanças deste fork em relação ao upstream: renomeação do produto de "pi" para
+"nycode" (pacotes npm, binário, variáveis de ambiente NYCODE_*, diretório de
+configuração .nycode), URLs do repositório e remoção dos workflows de CI da
+Earendil. Detalhes em docs/fork/2026-11-20-fork-do-pi.md.

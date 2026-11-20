@@ -5,12 +5,12 @@
 import type { P3Principal } from "./principals.ts";
 
 /** p3's API: its package and its versions (newest first). */
-export const API = { name: "@earendil-works/p3", versions: ["v1"] } as const;
+export const API = { name: "@nycode/p3", versions: ["v1"] } as const;
 
 /** The facet kinds a plugin may have: one file per kind (`server.ts`, `worker.ts`), each with its API modules. */
 export const KINDS = {
-	server: { platform: "node", hostPackages: ["@earendil-works/p3/v1", "@earendil-works/p3/v1/server"] },
-	worker: { platform: "node", hostPackages: ["@earendil-works/p3/v1", "@earendil-works/p3/v1/worker"] },
+	server: { platform: "node", hostPackages: ["@nycode/p3/v1", "@nycode/p3/v1/server"] },
+	worker: { platform: "node", hostPackages: ["@nycode/p3/v1", "@nycode/p3/v1/worker"] },
 } as const;
 
 /** The server's principal. */

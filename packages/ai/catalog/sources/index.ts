@@ -23,7 +23,7 @@ export interface CatalogSources {
 	aiGateway: AiGatewayCatalog;
 	/** Live NVIDIA NIM ids, keyed by both the raw and the normalized id. */
 	nvidiaModelIds: Map<string, string>;
-	radius: Model<"pi-messages">[];
+	radius: Model<"nycode-messages">[];
 }
 
 async function fetchJson<T>(url: string, label: string): Promise<T> {
@@ -46,7 +46,7 @@ async function fetchNvidiaModelIds(): Promise<Map<string, string>> {
 	return modelIds;
 }
 
-async function fetchRadiusModels(): Promise<Model<"pi-messages">[]> {
+async function fetchRadiusModels(): Promise<Model<"nycode-messages">[]> {
 	const config = await loadRadiusGatewayConfig(DEFAULT_RADIUS_GATEWAY);
 	const models = getRadiusModelsFromConfig("radius", config);
 	if (models.length === 0) throw new Error("Radius API returned no models");

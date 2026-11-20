@@ -1,7 +1,7 @@
 # tui (launcher)
 
 The trusted side of a terminal client (slice 11 §4, decision "Slice 11, P8"; p2's `tui-client.ts`, `tui-sandbox.ts`,
-`tui-bootstrap.mjs`, `tui-filter.ts`): `@earendil-works/chord/tui/launcher`. Needs Node 26.5.1 or later (the Node its
+`tui-bootstrap.mjs`, `tui-filter.ts`): `@nycode/chord/tui/launcher`. Needs Node 26.5.1 or later (the Node its
 sandbox was checked on); `requireSandboxNode` refuses older ones with a clear error.
 
 ```ts

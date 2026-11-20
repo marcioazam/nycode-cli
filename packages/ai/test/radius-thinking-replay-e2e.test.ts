@@ -5,7 +5,7 @@
  * should become part of the model's context. Through Radius they are silently dropped: the model never sees its
  * earlier reasoning, and the provider reports no input tokens for it.
  *
- * How it was found: a Pi Mobile session on radius/claude-opus-5-5 reached ~996K context tokens, but its compaction
+ * How it was found: a Nycode Mobile session on radius/claude-opus-5-5 reached ~996K context tokens, but its compaction
  * request was 1.38M tokens ("prompt is too long"). Compaction serializes all assistant thinking as text, while the
  * live context had been carrying none of it.
  *
@@ -14,7 +14,7 @@
  * `providerThinkingLevel` and replays it as an effort marker next to the block. The request also sets
  * `thinking.block_binding.prefix_mismatch_behavior = "drop_block"`, so a block whose marker is missing is dropped
  * without an error. Direct Anthropic replies carry `providerThinkingLevel: "high"`. Radius replies do not: its
- * pi-messages `done` event omits `providerThinkingLevel`, although the client parses it (see `pi-messages.ts`). Radius
+ * nycode-messages `done` event omits `providerThinkingLevel`, although the client parses it (see `nycode-messages.ts`). Radius
  * does honor the field when a client sends it, so the fix is for Radius to return it.
  *
  * Measurement: get one real reply with thinking and a tool call, then send the follow-up request twice, once with the
@@ -25,7 +25,7 @@
  *   radius                          with 582, without 582 (+0 of 463 output tokens)
  *   radius, level "high" injected   with 997, without 582
  *
- * Credentials: RADIUS_API_KEY or a `radius` entry in ~/.pi/agent/auth.json; ANTHROPIC_API_KEY, ANTHROPIC_OAUTH_TOKEN or
+ * Credentials: RADIUS_API_KEY or a `radius` entry in ~/.nycode/agent/auth.json; ANTHROPIC_API_KEY, ANTHROPIC_OAUTH_TOKEN or
  * an `anthropic` entry for the control. Each test makes three paid requests.
  */
 import { describe, expect, it } from "vitest";

@@ -1,4 +1,4 @@
-import { type JsonValue, track } from "@earendil-works/chord/delta";
+import { type JsonValue, track } from "@nycode/chord/delta";
 import { describe, expect, it } from "vitest";
 import { assignJson } from "../src/harness/json.ts";
 

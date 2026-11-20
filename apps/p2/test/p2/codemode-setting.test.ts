@@ -1,12 +1,12 @@
-// The `codemode` setting (Pi Mobile's, default on in p2): `false` in settings.json uninstalls code mode live from a
+// The `codemode` setting (Nycode Mobile's, default on in p2): `false` in settings.json uninstalls code mode live from a
 // running worker, the codemode plugin staying loaded and the agent tool installed; `true` (or nothing) offers it again.
 
 import assert from "node:assert/strict";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { test } from "node:test";
-import type { ToolResultMessage } from "@earendil-works/pi-ai";
-import type { ConversationView, LiveState } from "@earendil-works/pi-durable";
+import type { ToolResultMessage } from "@nycode/ai";
+import type { ConversationView, LiveState } from "@nycode/durable";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { Sessions } from "../../plugins/sessions/contract.ts";
@@ -14,7 +14,7 @@ import { expectVariant } from "../../src/runtime/chord.ts";
 import { validateSettings } from "../../src/runtime/settings.ts";
 import { holdIn, startFixture, until } from "./helpers.ts";
 
-const live = (view: ConversationView | null | undefined) => view?.docs["pi.live"] as LiveState | undefined;
+const live = (view: ConversationView | null | undefined) => view?.docs["nycode.live"] as LiveState | undefined;
 const codemodeResults = (view: ConversationView | null | undefined): ToolResultMessage[] =>
 	(view?.entries ?? []).flatMap((entry) =>
 		(entry.model ?? []).filter(
@@ -38,7 +38,7 @@ function sections(view: ConversationView | null | undefined): Record<string, str
 	return current;
 }
 
-test("Pi Mobile's settings.json with `codemode` validates", () => {
+test("Nycode Mobile's settings.json with `codemode` validates", () => {
 	assert.deepEqual(validateSettings({ codemode: false }), { codemode: false });
 	assert.throws(() => validateSettings({ codemode: "yes" }), /Invalid settings/);
 });

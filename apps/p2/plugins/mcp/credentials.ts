@@ -1,10 +1,10 @@
 // The MCP servers' OAuth credentials, `<P2_DATA_DIR>/mcp-auth.json` (private, 0600): per server, by name and URL as in
-// pi, the registered client, the tokens and a pending sign-in's PKCE verifier. Only the server's manager reads and
+// nycode, the registered client, the tokens and a pending sign-in's PKCE verifier. Only the server's manager reads and
 // writes it; tokens never leave the server.
 
 import { join } from "node:path";
-import { mcpNamespace } from "@earendil-works/pi-mcp";
-import type { McpOAuthServerStore, McpOAuthState } from "@earendil-works/pi-mcp/oauth";
+import { mcpNamespace } from "@nycode/mcp";
+import type { McpOAuthServerStore, McpOAuthState } from "@nycode/mcp/oauth";
 import { LockedFile, stripBom } from "@p2/app/v1/node";
 
 /** The stored states by server key. */
@@ -20,7 +20,7 @@ export class McpCredentials {
 		this.#file = new LockedFile(join(dataDir, "mcp-auth.json"));
 	}
 
-	/** The state store of server `name` at `url`, for pi-mcp's sign-in and auth provider. */
+	/** The state store of server `name` at `url`, for nycode-mcp's sign-in and auth provider. */
 	forServer(name: string, url: string): McpOAuthServerStore {
 		const key = keyOf(name, url);
 		return {
@@ -58,7 +58,7 @@ export class McpCredentials {
 		return this.#file.close();
 	}
 
-	/** Runs `fn` after the server's previous refresh (not reentrant, as pi-mcp's lock). */
+	/** Runs `fn` after the server's previous refresh (not reentrant, as nycode-mcp's lock). */
 	async #withRefreshLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
 		const previous = this.#refreshing.get(key) ?? Promise.resolve();
 		const run = previous.catch(() => {}).then(fn);
@@ -71,7 +71,7 @@ export class McpCredentials {
 	}
 }
 
-/** A server's key, as pi's: servers sharing a URL keep separate accounts. */
+/** A server's key, as nycode's: servers sharing a URL keep separate accounts. */
 function keyOf(name: string, url: string): string {
 	return `${mcpNamespace(name)}|${String(new URL(url))}`;
 }
@@ -80,7 +80,7 @@ function keyOf(name: string, url: string): string {
 function parseStates(text: string | undefined): States {
 	if (!text?.trim()) return {};
 	const value: unknown = JSON.parse(stripBom(text));
-	// The file is p2's own: its entries are states pi-mcp wrote.
+	// The file is p2's own: its entries are states nycode-mcp wrote.
 	return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as States) : {};
 }
 

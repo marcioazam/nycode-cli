@@ -67,7 +67,7 @@ describe("command menu: app and views commands", { skip: !browserTests }, () => 
 		await browser.call("Emulation.setUserAgentOverride", { userAgent, platform: "MacIntel" });
 		await browser.open(`${base}/s/${id}`);
 		await browser.evaluate(
-			`(() => { for (const key of [${JSON.stringify(RECENTS)}, 'pi-theme', 'pi-sidebar-collapsed']) localStorage.removeItem(key); })()`,
+			`(() => { for (const key of [${JSON.stringify(RECENTS)}, 'nycode-theme', 'nycode-sidebar-collapsed']) localStorage.removeItem(key); })()`,
 		);
 		await browser.open(`${base}/s/${id}`);
 		await browser.wait(`document.querySelector('${COMPOSER}') && !document.querySelector('.offline')`);
@@ -120,7 +120,7 @@ describe("command menu: app and views commands", { skip: !browserTests }, () => 
 			assert.ok(!(await browser.evaluate<string[]>(TITLES)).includes("Hide sidebar"));
 			await run("show side", "Show sidebar");
 			await browser.wait(`${CLOSED} && !document.querySelector('.app.sidebar-collapsed')`);
-			assert.equal(await browser.evaluate(`localStorage.getItem('pi-sidebar-collapsed')`), "0");
+			assert.equal(await browser.evaluate(`localStorage.getItem('nycode-sidebar-collapsed')`), "0");
 		});
 
 		it("closes the side panel while it shows a run's activity", async () => {
@@ -155,7 +155,7 @@ describe("command menu: app and views commands", { skip: !browserTests }, () => 
 			assert.deepEqual(await browser.evaluate(CHECKED), ["System"]);
 			await run("dark", "Dark");
 			await browser.wait(`${CLOSED} && document.documentElement.dataset.theme==='dark'`);
-			assert.equal(await browser.evaluate(`localStorage.getItem('pi-theme')`), "dark");
+			assert.equal(await browser.evaluate(`localStorage.getItem('nycode-theme')`), "dark");
 			assert.equal(
 				await browser.evaluate(`document.querySelector('.theme-toggle').getAttribute('title')`),
 				"Theme: Dark",

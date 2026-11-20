@@ -4,7 +4,7 @@
  * Shows how to select a specific model and thinking level.
  */
 
-import { createAgentSession, ModelRuntime } from "@earendil-works/pi-coding-agent";
+import { createAgentSession, ModelRuntime } from "@nycode/coding-agent";
 
 const modelRuntime = await ModelRuntime.create();
 

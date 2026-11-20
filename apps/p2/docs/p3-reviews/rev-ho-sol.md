@@ -14,7 +14,7 @@ Statuses:
 - **Superseded:** an earlier recommendation or expectation was replaced by a later owner decision. It must not be treated as current advice.
 - **Historical/unverified:** a candidate or old reproduction whose outcome/current applicability is not established by the surviving record.
 
-The last full adversarial review used `pi-private origin/private` at `6559589bd66bc909cfc1d694426799a3c4cd95f6`. Earlier referenced review points used `320ee90511eaf74624092c164ee13b5650868f9f` and older snapshots, including `f04acc2d`. File/line citations in copied reports refer to those snapshots, not necessarily the present worktree. The target design was not implemented/executed by the plugin review: this was source inspection and migration sketching.
+The last full adversarial review used `nycode-private origin/private` at `6559589bd66bc909cfc1d694426799a3c4cd95f6`. Earlier referenced review points used `320ee90511eaf74624092c164ee13b5650868f9f` and older snapshots, including `f04acc2d`. File/line citations in copied reports refer to those snapshots, not necessarily the present worktree. The target design was not implemented/executed by the plugin review: this was source inspection and migration sketching.
 
 Only this review file is being written for the collection request. No commit is requested or made.
 
@@ -283,7 +283,7 @@ Status annotation: the six concrete findings are open as of this conversation. T
 
 # Adversarial review findings
 
-Baseline: pi-private origin/private 6559589bd66bc909cfc1d694426799a3c4cd95f6. Repository untouched. Source inspection, not execution of the unimplemented target. Four plugins: chat (6 files/3300 lines), codemode (3/155), subagents (6/1012), models (14/2381): 29 files, 6848 lines. Full essential facet sketches: /tmp/p2-adversarial-plugin-sketches.md (337 lines).
+Baseline: nycode-private origin/private 6559589bd66bc909cfc1d694426799a3c4cd95f6. Repository untouched. Source inspection, not execution of the unimplemented target. Four plugins: chat (6 files/3300 lines), codemode (3/155), subagents (6/1012), models (14/2381): 29 files, 6848 lines. Full essential facet sketches: /tmp/p2-adversarial-plugin-sketches.md (337 lines).
 
 ## 1. P1 — Persisted subagent policies cannot be optional merely because their facet failed
 
@@ -361,7 +361,7 @@ Status annotation: proposed, uncompiled migration sketches, not implemented APIs
 
 # Essential migration sketches
 
-Baseline: pi-private origin/private 6559589bd66bc909cfc1d694426799a3c4cd95f6.
+Baseline: nycode-private origin/private 6559589bd66bc909cfc1d694426799a3c4cd95f6.
 Read-only review; these are sketches, not compilable patches. Names such as `bindReadableResource`, `watchConversation`, `loadAndCompose`, and `withCurrentWorker` below are proposed p2-local adapters, not additional Chord APIs. Existing parsing, rendering and validation helpers are retained. The cited revision spells standing work `self.routines`; a rename to `self.run` is mechanical.
 
 ## Chat

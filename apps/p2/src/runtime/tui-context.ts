@@ -8,7 +8,7 @@ import type {
 	KeybindingsManager,
 	KeyId,
 	OverlayOptions,
-} from "@earendil-works/pi-tui";
+} from "@nycode/tui";
 import type { PrivilegedResolution } from "../tui/keybindings.ts";
 import type { RenderContext } from "../tui/render-context.ts";
 import type { ThemeRef } from "../tui/theme/ref.ts";
@@ -17,7 +17,7 @@ import type { TuiScope } from "./tui.ts";
 import type { TuiCommand, TuiCommandConflict } from "./tui-commands.ts";
 import type { TuiSettings } from "./tui-preferences.ts";
 
-/** Key matching over dynamic (plugin) ids; the one place that casts strings to pi-tui's Keybinding union. */
+/** Key matching over dynamic (plugin) ids; the one place that casts strings to nycode-tui's Keybinding union. */
 export interface TuiKeys {
 	/** The current manager (rebuilt whenever commands or preferences change; also installed via setKeybindings). */
 	readonly manager: KeybindingsManager;
@@ -31,7 +31,7 @@ export interface TuiHints {
 	keyText(id: string): string;
 	/** Capitalized key text ("Ctrl+O"). */
 	keyDisplayText(id: string): string;
-	/** Dim keys + muted description, like pi's `keyHint`. */
+	/** Dim keys + muted description, like nycode's `keyHint`. */
 	key(id: string, description: string): string;
 	raw(key: string, description: string): string;
 }
@@ -138,7 +138,7 @@ export interface TuiContext extends RenderContext {
 	/** A scope for an overlay or a command (references, optimistic guesses), disposed by its owner when it closes. */
 	scope(): TuiScope;
 	/**
-	 * Show an overlay on pi-tui's stack. While it is focused, commands whose `when` names `overlay` or `overlay:<id>`
+	 * Show an overlay on nycode-tui's stack. While it is focused, commands whose `when` names `overlay` or `overlay:<id>`
 	 * run before the component (section 6.2 stage 3). Closed on navigation, reload and plugin replacement.
 	 */
 	overlay(

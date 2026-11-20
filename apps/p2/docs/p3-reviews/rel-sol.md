@@ -1,6 +1,6 @@
 # rel-sol — focused adversarial reload and rollout review
 
-Scope: `target-design.md` §15 and `plugin-loading.md` §§4.1, 7.4, 7.5, on pi-private `6559589bd`; read-only review against real p2 plugins and runtime. Assumes §§7–14 as given. This records review conclusions and recommendations, not implemented behavior. References to an "owner decision" below mean the decision is stated as decided in the target design; the proposed fixes and open questions are **not** known to have been decided by the owner.
+Scope: `target-design.md` §15 and `plugin-loading.md` §§4.1, 7.4, 7.5, on nycode-private `6559589bd`; read-only review against real p2 plugins and runtime. Assumes §§7–14 as given. This records review conclusions and recommendations, not implemented behavior. References to an "owner decision" below mean the decision is stated as decided in the target design; the proposed fixes and open questions are **not** known to have been decided by the owner.
 
 ## Verdict
 

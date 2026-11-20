@@ -2,7 +2,7 @@
 // and a subagent's message. Their entry kinds and data are read across plugins (attribution, search) and by both UIs
 // (transcript rows).
 
-import { compile, num, obj, type Static, str, union } from "@earendil-works/pi-schema";
+import { compile, num, obj, type Static, str, union } from "@nycode/schema";
 import { literal } from "./schema.ts";
 
 /**

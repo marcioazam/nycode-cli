@@ -57,7 +57,7 @@ function packPackages(packages, tarballDirectory) {
 
 function prepareOutputDirectory(outDir, options) {
 	const repoRoot = resolve(options.repoRoot);
-	if (!outDir) return mkdtempSync(join(tmpdir(), "pi-package-artifacts-"));
+	if (!outDir) return mkdtempSync(join(tmpdir(), "nycode-package-artifacts-"));
 	const outputDirectory = resolve(outDir);
 	if (dirname(outputDirectory) === outputDirectory || isInsidePath(repoRoot, outputDirectory)) {
 		throw new Error(`Output directory must not be the repository, its ancestor, or a filesystem root: ${outputDirectory}`);

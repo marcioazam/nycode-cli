@@ -2,11 +2,11 @@
 // start script. `AppInfo` on the server (the data directory, p3's name, its newest API version), `WorkerInfo` on a
 // worker (its address).
 
-import { type Address, constant, defineFacet, type Facet, local, obj, str, unknown } from "@earendil-works/chord";
-import type { JsonValue } from "@earendil-works/chord/json";
+import { type Address, constant, defineFacet, type Facet, local, obj, str, unknown } from "@nycode/chord";
+import type { JsonValue } from "@nycode/chord/json";
 import type { P3Principal } from "../principals.ts";
 
-/** What the server knows of the Pi: its data directory, its name, its newest API version. */
+/** What the server knows of the Nycode: its data directory, its name, its newest API version. */
 export const AppInfo = local("p3.info", {
 	version: 1,
 	params: {},

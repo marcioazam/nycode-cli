@@ -1,5 +1,5 @@
 // Copied from coding-agent src/modes/interactive/theme/theme-schema.ts (p2-tui-port.md section 5.3), its schema
-// rebuilt with pi-schema with the same JSON (coding-agent's copy still uses TypeBox).
+// rebuilt with nycode-schema with the same JSON (coding-agent's copy still uses TypeBox).
 /**
  * Theme JSON validation, kept out of `theme.ts` on purpose.
  *
@@ -9,7 +9,7 @@
  * `setThemeJsonValidator()`. Built-in themes do not need validation.
  */
 
-import { compile, int, obj, opt, type Properties, type Static, str, union } from "@earendil-works/pi-schema";
+import { compile, int, obj, opt, type Properties, type Static, str, union } from "@nycode/schema";
 import { literal, record, unsafe } from "../../runtime/schema.ts";
 import { THEME_TOKENS, type ThemeColorValues, type ThemeTokenDescriptors } from "./theme-tokens.ts";
 
@@ -80,7 +80,7 @@ export const ThemeJsonSchema = obj(
 			),
 		),
 	},
-	{ title: "Pi Coding Agent Theme", description: "Theme schema for Pi coding agent" },
+	{ title: "Nycode Coding Agent Theme", description: "Theme schema for Nycode coding agent" },
 );
 
 const compiledThemeSchema = compile(ThemeJsonSchema);

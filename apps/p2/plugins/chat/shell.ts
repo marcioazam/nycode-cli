@@ -2,8 +2,8 @@
 // output while it runs; the run places the command's `p2.shell` entry before it ends, so the live block gives way to
 // the entry without a gap. One command at a time per conversation; the session neither moves nor clones while one runs.
 
-import type { ConversationId, Harness as DurableHarness } from "@earendil-works/pi-durable";
-import { bool, int, map, nul, num, obj, opt, type Static, str, union } from "@earendil-works/pi-schema";
+import type { ConversationId, Harness as DurableHarness } from "@nycode/durable";
+import { bool, int, map, nul, num, obj, opt, type Static, str, union } from "@nycode/schema";
 import {
 	authorSender,
 	defineJob,

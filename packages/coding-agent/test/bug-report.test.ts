@@ -1,11 +1,4 @@
-import {
-	Container,
-	Editor,
-	getKeybindings,
-	setKeybindings,
-	stripTerminalSequences,
-	TuiMainScreen,
-} from "@earendil-works/pi-tui";
+import { Container, Editor, getKeybindings, setKeybindings, stripTerminalSequences, TuiMainScreen } from "@nycode/tui";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { VirtualTerminal } from "../../tui/test/virtual-terminal.ts";
 import type { AgentSession } from "../src/core/agent-session.ts";
@@ -46,7 +39,7 @@ describe("bug report prompt", () => {
 			const descriptionEditor = editorContainer.children[0];
 			expect(descriptionEditor).toBeInstanceOf(ExtensionEditorComponent);
 			if (!(descriptionEditor instanceof ExtensionEditorComponent)) throw new Error("Missing description editor");
-			descriptionEditor.handleInput("\x1b[200~Request failed\r\n  ↳ pi exiting...\r\nstack trace\x1b[201~");
+			descriptionEditor.handleInput("\x1b[200~Request failed\r\n  ↳ nycode exiting...\r\nstack trace\x1b[201~");
 			descriptionEditor.handleInput("\r");
 			expect(editorContainer.children[0]).toBe(editor);
 
@@ -72,7 +65,7 @@ describe("bug report prompt", () => {
 			if (!(deliverySelector instanceof ExtensionSelectorComponent)) throw new Error("Missing delivery selector");
 			const deliveryLines = deliverySelector.render(120).map(stripTerminalSequences);
 			expect(deliveryLines.some((line) => line.includes("Description: Request failed"))).toBe(true);
-			expect(deliveryLines.some((line) => line.includes("↳ pi exiting..."))).toBe(true);
+			expect(deliveryLines.some((line) => line.includes("↳ nycode exiting..."))).toBe(true);
 			expect(deliveryLines.some((line) => line.includes("stack trace"))).toBe(true);
 
 			deliverySelector.handleInput("j");

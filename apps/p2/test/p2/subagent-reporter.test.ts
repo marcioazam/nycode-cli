@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { ConversationHandle, SettledSubmissionRecord, Submission } from "@earendil-works/pi-durable";
+import type { ConversationHandle, SettledSubmissionRecord, Submission } from "@nycode/durable";
 import { BACKGROUND_CONTEXT, type Context } from "@p2/app/v1";
 import { settledOrWithdrawn } from "../../plugins/subagents/tools.ts";
 

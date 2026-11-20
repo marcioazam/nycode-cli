@@ -9,7 +9,7 @@ import {
 	fauxText,
 	fauxToolCall,
 	type ToolResultMessage,
-} from "@earendil-works/pi-ai";
+} from "@nycode/ai";
 import {
 	defineSignal,
 	defineTask,
@@ -25,8 +25,8 @@ import {
 	ToolResultEntry,
 	ToolTask,
 	type WakeReason,
-} from "@earendil-works/pi-durable";
-import { obj, str } from "@earendil-works/pi-schema";
+} from "@nycode/durable";
+import { obj, str } from "@nycode/schema";
 import { afterEach, describe, expect, it } from "vitest";
 import { openNodeSqliteStorage } from "../src/storage/sqlite/node.ts";
 import { allEntries, type ChatSetup, chatSetup, openChat, waitFor } from "./chat-support.ts";
@@ -44,7 +44,7 @@ afterEach(async () => {
 });
 
 async function sqlitePath(): Promise<string> {
-	const directory = await mkdtemp(join(tmpdir(), "pi-durable-children-"));
+	const directory = await mkdtemp(join(tmpdir(), "nycode-durable-children-"));
 	directories.add(directory);
 	return join(directory, "session.sqlite");
 }
@@ -366,7 +366,7 @@ describe("submissions that notify a task", () => {
 		);
 		const signalled = settling?.find((write) => write.type === "task" && write.value.id === waiter);
 		expect(signalled?.type === "task" ? signalled.value.memos : undefined).toHaveProperty([
-			"pi.signal.pi.submission-settled/settled",
+			"nycode.signal.nycode.submission-settled/settled",
 		]);
 		await harness.close(context);
 	});
@@ -458,7 +458,10 @@ describe("submissions that notify a task", () => {
 		expect(writes).toHaveLength(1);
 		const [signalled] = writes;
 		const memos = signalled?.type === "task" ? Object.keys(signalled.value.memos ?? {}) : [];
-		expect(memos).toEqual(["pi.signal.pi.submission-settled/one", "pi.signal.pi.submission-settled/two"]);
+		expect(memos).toEqual([
+			"nycode.signal.nycode.submission-settled/one",
+			"nycode.signal.nycode.submission-settled/two",
+		]);
 		await harness.waitForTask(waiter, context);
 		await harness.close(context);
 	});

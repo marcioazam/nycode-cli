@@ -47,7 +47,7 @@ describe("evaluating a facet", () => {
 		const root = await tempRoot();
 		await writePlugin(root, "p", "@test/p", {
 			"worker.ts": [
-				'import { ChordError, defineFacet } from "@earendil-works/chord";',
+				'import { ChordError, defineFacet } from "@nycode/chord";',
 				"const facet = defineFacet(() => {});",
 				'export default { ...facet, made: new ChordError({ code: "unavailable", message: "m" }), is: (e: unknown) => e instanceof ChordError };',
 			].join("\n"),
@@ -102,7 +102,7 @@ describe("evaluating a facet", () => {
 		await host.close(context);
 		await writePlugin(root, "escape", "@test/escape", {
 			"worker.ts":
-				'import { pluginFile } from "@earendil-works/chord/plugins";\nexport default { setup: () => {}, escape: () => pluginFile("../files/assets/data.txt") };',
+				'import { pluginFile } from "@nycode/chord/plugins";\nexport default { setup: () => {}, escape: () => pluginFile("../files/assets/data.txt") };',
 		});
 		const escaping = await built(root, "@test/escape");
 		const probe = evaluateFacet(escaping.script, {
@@ -120,7 +120,7 @@ describe("evaluating a facet", () => {
 		const root = await tempRoot();
 		await writeFiles(root, {
 			"lone.worker.ts":
-				'import { pluginFile } from "@earendil-works/chord/plugins";\nexport default { setup: () => {}, read: () => pluginFile("x.txt") };',
+				'import { pluginFile } from "@nycode/chord/plugins";\nexport default { setup: () => {}, read: () => pluginFile("x.txt") };',
 		});
 		const { script, plugin } = await built(root, "lone");
 		const probe = evaluateFacet(script, { hostPackages: HOSTS, plugin }) as unknown as Probe;
@@ -154,7 +154,7 @@ describe("evaluating a facet", () => {
 		const root = await tempRoot();
 		await writePlugin(root, "dynamic", "@test/dynamic", {
 			"worker.ts": [
-				'import { defineFacet } from "@earendil-works/chord";',
+				'import { defineFacet } from "@nycode/chord";',
 				"const later = (specifier: string) => import(specifier);",
 				"export default { ...defineFacet(() => {}), later };",
 			].join("\n"),
@@ -191,12 +191,12 @@ describe("a computed require refuses what the build refuses (slice 12 fix round 
 	it("refuses another version of the app's API, Chord itself, and builtins in a single-file plugin", async () => {
 		const root = await tempRoot();
 		const api = { name: "@acme/app", versions: ["v3", "v2"] };
-		const modules = { "@acme/app/v3": { value: 3 }, "@acme/app/v2": { value: 2 }, "@earendil-works/chord": {} };
+		const modules = { "@acme/app/v3": { value: 3 }, "@acme/app/v2": { value: 2 }, "@nycode/chord": {} };
 		const join = (...parts: string[]) => `[${parts.map((part) => JSON.stringify(part)).join(", ")}].join("/")`;
 		await writePlugin(root, "mixed", "@test/mixed", {
 			"worker.ts": [
 				'import { value } from "@acme/app/v3";',
-				`export default { setup: () => {}, other: () => require(${join("@acme/app", "v2")}), chord: () => require(${join("@earendil-works", "chord", "next")}), same: () => require(${join("@acme/app", "v3")}).value + value };`,
+				`export default { setup: () => {}, other: () => require(${join("@acme/app", "v2")}), chord: () => require(${join("@nycode", "chord", "next")}), same: () => require(${join("@acme/app", "v3")}).value + value };`,
 			].join("\n"),
 		});
 		await writeFiles(root, {

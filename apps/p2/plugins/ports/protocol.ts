@@ -11,7 +11,7 @@
  * public forwards.
  */
 
-import type { Static } from "@earendil-works/pi-schema";
+import type { Static } from "@nycode/schema";
 import type { ForwardBaseSchema, ForwardSchema, QuerySchema, ReplySchema } from "./contract.ts";
 
 /** Opaque forward IDs: Radius puts them in a DNS label, so lowercase letters and digits only. */

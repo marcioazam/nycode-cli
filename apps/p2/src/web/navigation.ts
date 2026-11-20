@@ -7,7 +7,7 @@ import {
 	useSyncExternalStore,
 } from "react";
 import { panelsFor, rememberPanels } from "./session-panels.ts";
-// Adapted from Pi Mobile: independent browser-only navigation, no app imports.
+// Adapted from Nycode Mobile: independent browser-only navigation, no app imports.
 // Plugins own named modal locators; the runtime owns the stack and Back behavior.
 export type Layer = { kind: "drawer" } | { kind: "sheet" | "viewer"; name: string; locator?: string };
 export type WorkspaceTab = "files" | "changes" | "search" | "comments" | "terminal";
@@ -108,7 +108,7 @@ const subscribeLinkBase = (listener: () => void) => {
 /**
  * The address an in-app link to `route` carries, for a modified or middle click, "Open in new tab" and "Copy link
  * address" (a plain click acts in the page, `inPage`): `routeHref`, under the Radius shell's URL when the app runs in
- * its frame (`/pi/<organization>/<brain>/s/<id>…`, the shell's start page itself without a trailing `/`).
+ * its frame (`/nycode/<organization>/<brain>/s/<id>…`, the shell's start page itself without a trailing `/`).
  */
 export function linkHref(route: Route): string {
 	const href = routeHref(route);

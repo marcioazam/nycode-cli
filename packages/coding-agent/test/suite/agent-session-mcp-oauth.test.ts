@@ -2,8 +2,8 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { type AddressInfo, createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fauxAssistantMessage, fauxToolCall } from "@earendil-works/pi-ai";
-import type { ToolResultMessage } from "@earendil-works/pi-ai/compat";
+import { fauxAssistantMessage, fauxToolCall } from "@nycode/ai";
+import type { ToolResultMessage } from "@nycode/ai/compat";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { InMemoryAuthStorageBackend } from "../../src/core/auth-storage.ts";
 import { emitSessionShutdownEvent } from "../../src/core/extensions/runner.ts";
@@ -200,7 +200,7 @@ describe("AgentSession MCP OAuth", () => {
 
 		const fallback = await setup("follow");
 		await fallback.harness.session.prompt("/mcp login issues");
-		expect(fallback.server.registrations.map((metadata) => metadata.client_name)).toEqual(["pi"]);
+		expect(fallback.server.registrations.map((metadata) => metadata.client_name)).toEqual(["nycode"]);
 		// OpenID Connect servers reject the loopback redirect URI of a `web` client (#10493).
 		expect(fallback.server.registrations.map((metadata) => metadata.application_type)).toEqual(["native"]);
 	});
@@ -217,10 +217,10 @@ describe("AgentSession MCP OAuth", () => {
 		expect(fixed.opened[0].searchParams.get("redirect_uri")).toBe(`http://127.0.0.1:${port}/oauth/done`);
 	});
 
-	it("gives up on pi mcp login after --timeout, also while the authorization server hangs", async () => {
+	it("gives up on nycode mcp login after --timeout, also while the authorization server hangs", async () => {
 		const server = await startOAuthMcpServer();
 		cleanups.push(server.close);
-		const agentDir = mkdtempSync(join(tmpdir(), "pi-mcp-login-"));
+		const agentDir = mkdtempSync(join(tmpdir(), "nycode-mcp-login-"));
 		cleanups.push(() => rmSync(agentDir, { recursive: true, force: true }));
 		writeFileSync(join(agentDir, "mcp.json"), JSON.stringify({ mcpServers: { issues: { url: server.url } } }));
 		const login = async () => {
@@ -248,13 +248,13 @@ describe("AgentSession MCP OAuth", () => {
 		expect(stalled.output.at(-1)).toContain("was cancelled or not completed within");
 	});
 
-	it("uses credentials from pi mcp login on the next turn", async () => {
+	it("uses credentials from nycode mcp login on the next turn", async () => {
 		const { harness, server, backend } = await setup("follow");
-		const agentDir = mkdtempSync(join(tmpdir(), "pi-mcp-login-"));
+		const agentDir = mkdtempSync(join(tmpdir(), "nycode-mcp-login-"));
 		cleanups.push(() => rmSync(agentDir, { recursive: true, force: true }));
 		writeFileSync(join(agentDir, "mcp.json"), JSON.stringify({ mcpServers: { issues: { url: server.url } } }));
 
-		// The agent runs `pi mcp login issues` through bash; the user approves in the browser.
+		// The agent runs `nycode mcp login issues` through bash; the user approves in the browser.
 		const output: string[] = [];
 		const exitCode = await runMcpCommand(["login", "issues"], {
 			cwd: agentDir,

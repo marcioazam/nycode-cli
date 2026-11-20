@@ -109,7 +109,7 @@ describe("convertToPng", () => {
 	});
 });
 
-// Issue #10292: pi-tui uses this transcoder to show non-PNG images on Kitty-protocol terminals.
+// Issue #10292: nycode-tui uses this transcoder to show non-PNG images on Kitty-protocol terminals.
 it("loadPngTranscoder converts synchronously to oriented PNG data", async () => {
 	const transcoder = (await loadPngTranscoder())!;
 	const png = Buffer.from(transcoder(jpegWithXmpBeforeOrientation(), "image/jpeg")!, "base64");

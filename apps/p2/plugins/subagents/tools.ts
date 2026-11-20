@@ -1,9 +1,9 @@
-// Persistent background subagents, adapted from pi-durable's
+// Persistent background subagents, adapted from nycode-durable's
 // test/examples/23-subagent-background.ts (MIT; see third-party/pi.LICENSE).
 // Adds per-subagent model, thinking level and tool selection, and an optional own location (environment and cwd).
 
-import type { AssistantMessage, ModelThinkingLevel } from "@earendil-works/pi-ai";
-import type { Models } from "@earendil-works/pi-ai/models";
+import type { AssistantMessage, ModelThinkingLevel } from "@nycode/ai";
+import type { Models } from "@nycode/ai/models";
 import {
 	AgentDoc,
 	AssistantEntry,
@@ -23,8 +23,8 @@ import {
 	type Submission,
 	type ToolExecutionApi,
 	type Tx,
-} from "@earendil-works/pi-durable";
-import { arr, bool, compile, nul, obj, opt, str, union } from "@earendil-works/pi-schema";
+} from "@nycode/durable";
+import { arr, bool, compile, nul, obj, opt, str, union } from "@nycode/schema";
 import type { Context, JsonValue } from "@p2/app/v1";
 import { type Location, type LocationInput, literal, locationText, senderText } from "@p2/app/v1";
 import { defineP2Tool, mainConversation, type P2Tool } from "@p2/app/v1/worker";
@@ -234,7 +234,7 @@ const locationDetails = (location: Location | undefined): Pick<SubagentDetails, 
 
 /**
  * Places what version 1 left unplaced (an own cwd without its environment: `spawnedOn` tells the environment it was
- * spawned on), then lists where the session's subagents work: the conversations following the session (Pi Mobile
+ * spawned on), then lists where the session's subagents work: the conversations following the session (Nycode Mobile
  * 78056b34e: subagents spawned without their own location, one-shot agents) and the own locations.
  */
 export async function placeSubagents(
@@ -364,7 +364,7 @@ export async function setArchived(
 	}, context);
 }
 
-// TODO: use the tool API's models once pi-durable exposes them
+// TODO: use the tool API's models once nycode-durable exposes them
 // (earendil-works/pi#10395). Until then the host passes its Models instance. `access` gives the worker's tools by name,
 // with what they declare (`P2Tool`).
 export function createSubagentExtension(

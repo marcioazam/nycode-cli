@@ -4,7 +4,7 @@ import type {
 	SpanStatus,
 	TelemetryCarrier,
 	TelemetrySpan,
-} from "@earendil-works/pi-telemetry";
+} from "@nycode/telemetry";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createTelemetryAdapterConformance } from "../../telemetry/src/testing/index.ts";
 import type { SqliteDatabase } from "../src/sqlite/index.ts";
@@ -53,9 +53,9 @@ async function fixture(options?: SqliteTelemetryOptions) {
 					id: Number(row.id.split(":")[1]),
 					parentId:
 						row.parent_id?.split(":")[0] === row.id.split(":")[0] ? Number(row.parent_id?.split(":")[1]) : null,
-					context: { "pi-sqlite-span": row.id, "pi-sqlite-trace": row.trace_id },
+					context: { "nycode-sqlite-span": row.id, "nycode-sqlite-trace": row.trace_id },
 					parentContext: row.parent_id
-						? { "pi-sqlite-span": row.parent_id, "pi-sqlite-trace": row.trace_id }
+						? { "nycode-sqlite-span": row.parent_id, "nycode-sqlite-trace": row.trace_id }
 						: null,
 					name: row.name,
 					attributes: JSON.parse(row.attributes) as SpanAttributes,
@@ -65,7 +65,7 @@ async function fixture(options?: SqliteTelemetryOptions) {
 					links: (
 						JSON.parse(row.links) as { trace_id: string; span_id: string; attributes: SpanAttributes }[]
 					).map((link) => ({
-						context: { "pi-sqlite-span": link.span_id, "pi-sqlite-trace": link.trace_id },
+						context: { "nycode-sqlite-span": link.span_id, "nycode-sqlite-trace": link.trace_id },
 						attributes: link.attributes,
 					})),
 					status: JSON.parse(row.status) as SpanStatus,

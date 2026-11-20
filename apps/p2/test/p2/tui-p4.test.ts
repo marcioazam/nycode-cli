@@ -3,10 +3,10 @@
 // /new-context, Alt+Up restore-own, and closing overlays cleanly across a reload.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { ConversationView, EntryRecord } from "@earendil-works/pi-durable";
-import { ROOT_CONVERSATION_ID } from "@earendil-works/pi-durable";
-import { num } from "@earendil-works/pi-schema";
-import { stripTerminalSequences, TuiAltScreen } from "@earendil-works/pi-tui";
+import type { ConversationView, EntryRecord } from "@nycode/durable";
+import { ROOT_CONVERSATION_ID } from "@nycode/durable";
+import { num } from "@nycode/schema";
+import { stripTerminalSequences, TuiAltScreen } from "@nycode/tui";
 import { forbidden, remote } from "@p2/app/v1";
 import { VirtualTerminal } from "../../../../packages/tui/test/virtual-terminal.ts";
 import { Chat, type ModelMeta } from "../../plugins/chat/contract.ts";
@@ -71,7 +71,7 @@ const viewOf = (entries: EntryRecord[] = [], docs: Record<string, unknown> = {})
 	conversation: { id: ROOT_CONVERSATION_ID } as ConversationView["conversation"],
 	entries,
 	docs: {
-		"pi.agent": { model: { provider: "faux", modelId: "faux-1" }, thinkingLevel: "off" },
+		"nycode.agent": { model: { provider: "faux", modelId: "faux-1" }, thinkingLevel: "off" },
 		...docs,
 	} as ConversationView["docs"],
 });
@@ -523,7 +523,7 @@ test("/new, /name and /session", async (t) => {
 
 test("chat controls: /compact, Escape aborts compaction, /new-context, Alt+Up restores own queued messages", async (t) => {
 	const compacting = viewOf([], {
-		"pi.live": { compactions: [{ taskId: 9, trigger: "manual", blocking: false, attempt: 0 }] },
+		"nycode.live": { compactions: [{ taskId: 9, trigger: "manual", blocking: false, attempt: 0 }] },
 	});
 	const { screen, send, calls, runtime } = await setup(t, { view: compacting });
 	await poll(async () => (await screen()).includes("Compacting context... (escape to cancel)"));

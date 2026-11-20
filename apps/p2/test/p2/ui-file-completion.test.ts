@@ -1,5 +1,5 @@
-// P7c of p2-tui-port.md: `@` and Tab file completion in the web composer (a p2 addition; Pi Mobile has none), with
-// real key events: the popover's Enter/Escape win over send/stop, IME composition never opens it, `@pi` is never a
+// P7c of p2-tui-port.md: `@` and Tab file completion in the web composer (a p2 addition; Nycode Mobile has none), with
+// real key events: the popover's Enter/Escape win over send/stop, IME composition never opens it, `@nycode` is never a
 // file, Tab completes a path-like token.
 
 import assert from "node:assert/strict";
@@ -92,10 +92,10 @@ describe("web composer file completion", { skip: !browserTests }, () => {
 		await clear();
 	});
 
-	it("never completes @pi as a file; out-of-scope prefixes show the hint", async () => {
-		await browser.call("Input.insertText", { text: "ask @pi" });
+	it("never completes @nycode as a file; out-of-scope prefixes show the hint", async () => {
+		await browser.call("Input.insertText", { text: "ask @nycode" });
 		await new Promise((resolve) => setTimeout(resolve, 400));
-		assert(!(await popover(browser)).includes("pipe.ts"), "@pi is the agent mention, not pipe.ts");
+		assert(!(await popover(browser)).includes("pipe.ts"), "@nycode is the agent mention, not pipe.ts");
 		await clear();
 		await browser.call("Input.insertText", { text: "see @../x" });
 		await browser.wait(`document.querySelector('.file-completion-hint')?.textContent.includes('session directory')`);

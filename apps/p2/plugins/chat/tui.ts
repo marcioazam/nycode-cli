@@ -1,19 +1,11 @@
 // The chat screen: coding-agent's fullscreen chat layout (chat-viewport.ts, DurableTui) over a p2 conversation.
-// The transcript is incremental components in a ScrollView (pi-tui's scroll and search keys), the dock holds the
-// pending area and pi's editor with the working indicator in its border. Everything the reader leaves behind is kept
+// The transcript is incremental components in a ScrollView (nycode-tui's scroll and search keys), the dock holds the
+// pending area and nycode's editor with the working indicator in its border. Everything the reader leaves behind is kept
 // per viewed conversation, (session, conversation): references, drafts, pending send IDs and the reading position (P0c).
 
 import { randomUUID } from "node:crypto";
-import type { ConversationView, LiveState } from "@earendil-works/pi-durable";
-import {
-	type Component,
-	Container,
-	ScrollView,
-	Text,
-	TruncatedText,
-	truncateToWidth,
-	VStack,
-} from "@earendil-works/pi-tui";
+import type { ConversationView, LiveState } from "@nycode/durable";
+import { type Component, Container, ScrollView, Text, TruncatedText, truncateToWidth, VStack } from "@nycode/tui";
 import type { Held, HeldIn } from "@p2/app/v1";
 import { BACKGROUND_CONTEXT, FileIndex, followRegistry, liveIn, serveKeyed, statusOf, whenLive } from "@p2/app/v1";
 import {
@@ -79,11 +71,11 @@ type Outgoing = {
 /** No message in flight: one array, so a transcript rebuild sees "unchanged". */
 const NO_OUTGOING: readonly Outgoing[] = [];
 
-/** pi: a second Ctrl+C within this window exits; a second Escape runs `doubleEscapeAction`. */
+/** nycode: a second Ctrl+C within this window exits; a second Escape runs `doubleEscapeAction`. */
 const DOUBLE_CTRL_C_MS = 500;
 const DOUBLE_ESCAPE_MS = 500;
 
-/** pi-tui scrolls by painting the last frame's output again, without rendering: report each new scroll position. */
+/** nycode-tui scrolls by painting the last frame's output again, without rendering: report each new scroll position. */
 class TranscriptScrollView extends ScrollView {
 	private laidOutTop = 0;
 	onScrolled: (() => void) | undefined;
@@ -123,7 +115,7 @@ export class ChatSurface implements TuiSurface, ChatSurfaceApi {
 	/** Replies exist while a plugin allows them (chat-mode, in chat mode), as the web's `canReply`. */
 	canReply = false;
 	/** The agent's name to mention while chat mode is on (chat-mode's setting), offered first as `@name`. */
-	mentionName = "Pi";
+	mentionName = "Nycode";
 	/** The message the next send answers. */
 	replyTo: { entryId: number; name: string } | undefined;
 	private readonly readOnly = new Text("", 1, 0);
@@ -136,7 +128,7 @@ export class ChatSurface implements TuiSurface, ChatSurfaceApi {
 	private rows: readonly Session[] = [];
 	/** Where the viewed conversation works (its agent's cwd: a subagent's own, else the session's). */
 	private get cwd(): string {
-		const agent = this.view?.docs["pi.agent"] as { cwd?: unknown } | undefined;
+		const agent = this.view?.docs["nycode.agent"] as { cwd?: unknown } | undefined;
 		return typeof agent?.cwd === "string" ? agent.cwd : (this.rows.find((row) => row.id === this.session)?.cwd ?? "");
 	}
 	private ref: Held<typeof Chat> | undefined;
@@ -146,7 +138,7 @@ export class ChatSurface implements TuiSurface, ChatSurfaceApi {
 	/** A `!cmd` in flight: its block shows as running before the server's state does. */
 	private starting: () => ShellState = () => null;
 	private start: OptimisticAdd<ShellState> | undefined;
-	/** A `/compact` in flight: the compaction indicator shows before `pi.live` does. */
+	/** A `/compact` in flight: the compaction indicator shows before `nycode.live` does. */
 	private compacting: () => boolean = () => false;
 	private compactNow: OptimisticAdd<boolean> | undefined;
 	/** The session catalog (`/fork`, `/clone`). */
@@ -252,13 +244,13 @@ export class ChatSurface implements TuiSurface, ChatSurfaceApi {
 				(text) => {
 					if (runtime.notices.at(-1)?.text !== text) runtime.notify(text);
 				},
-				// Chat mode: `@pi` (or the agent's name there) mentions the agent; offered first while chat mode is on.
+				// Chat mode: `@nycode` (or the agent's name there) mentions the agent; offered first while chat mode is on.
 				() => (this.canReply ? this.mentionName : undefined),
 			),
 		);
 		// Editor clears before onSubmit: restore until admission succeeds, including failed/offline sends.
 		this.editor.onSubmit = (text) => {
-			// pi's bash mode: `!cmd` runs a command whose output joins the context, `!!cmd` one that stays out of it.
+			// nycode's bash mode: `!cmd` runs a command whose output joins the context, `!!cmd` one that stays out of it.
 			const bang = /^\s*(!!?)\s*([\s\S]*)$/.exec(text);
 			if (bang?.[2]?.trim()) {
 				this.editor.setText(text);
@@ -274,7 +266,7 @@ export class ChatSurface implements TuiSurface, ChatSurfaceApi {
 					runtime.notify(`/${name} is not available here`, "warning");
 					return;
 				}
-				// A prompt template or /skill: (10.8) is expanded on the session worker, then sent as pi does.
+				// A prompt template or /skill: (10.8) is expanded on the session worker, then sent as nycode does.
 				if (name && runtime.ctx.commands.expandable(name)) {
 					this.editor.setText(text);
 					void runtime.ctx.commands.expand(text.trimStart()).then((expanded) => {
@@ -469,7 +461,7 @@ export class ChatSurface implements TuiSurface, ChatSurfaceApi {
 		);
 	}
 
-	/** The latest answer's text (pi's /copy and Ctrl+X): the last assistant message's text parts. */
+	/** The latest answer's text (nycode's /copy and Ctrl+X): the last assistant message's text parts. */
 	/** Uploaded attachments (P9) waiting for the next send, by identity; added only by the launcher's uploads. */
 	readonly attachments = new Map<string, LauncherUpload[]>();
 	addAttachment(file: LauncherUpload): boolean {
@@ -555,7 +547,7 @@ export class ChatSurface implements TuiSurface, ChatSurfaceApi {
 		}
 	}
 
-	/** pi: the thinking level's border color, or the bash mode color while the text starts with `!`. */
+	/** nycode: the thinking level's border color, or the bash mode color while the text starts with `!`. */
 	private syncBorder(): void {
 		const theme = this.runtime.theme;
 		const level = this.current?.agent.thinkingLevel ?? "off";
@@ -564,7 +556,7 @@ export class ChatSurface implements TuiSurface, ChatSurfaceApi {
 			bash ? theme.current.getBashModeBorderColor()(text) : theme.current.getThinkingBorderColor(level)(text);
 	}
 
-	/** The running command as pi's bash execution component at the end of the transcript. */
+	/** The running command as nycode's bash execution component at the end of the transcript. */
 	private syncShell(): void {
 		const live = this.shownShell;
 		if (!live) {
@@ -622,7 +614,7 @@ export class ChatSurface implements TuiSurface, ChatSurfaceApi {
 	}
 
 	/**
-	 * `!cmd`/`!!cmd`: runs the command (`Chat.shell`); one at a time, as pi. Its block shows as running at once and the
+	 * `!cmd`/`!!cmd`: runs the command (`Chat.shell`); one at a time, as nycode. Its block shows as running at once and the
 	 * editor clears; a refused command comes back to the editor with the error.
 	 */
 	shell(command: string, includeInContext: boolean): void {
@@ -688,13 +680,13 @@ export class ChatSurface implements TuiSurface, ChatSurfaceApi {
 		}
 	}
 
-	/** DTUI `#syncStatus`: retry, compaction, running tool or working, from `pi.live`. */
+	/** DTUI `#syncStatus`: retry, compaction, running tool or working, from `nycode.live`. */
 	private syncIndicator(participant: boolean): void {
 		const ctx = this.runtime.ctx;
 		const tui = this.runtime.tui;
-		const live = this.view?.docs["pi.live"] as unknown as LiveState | undefined;
+		const live = this.view?.docs["nycode.live"] as unknown as LiveState | undefined;
 		const generation = live?.generation;
-		// A `/compact` in flight shows as a manual compaction until `pi.live` has it.
+		// A `/compact` in flight shows as a manual compaction until `nycode.live` has it.
 		const compaction =
 			live?.compactions?.[0] ??
 			(this.compacting() ? { trigger: "manual" as const, attempt: 1, retry: undefined } : undefined);
@@ -903,16 +895,16 @@ export class ChatSurface implements TuiSurface, ChatSurfaceApi {
 	}
 
 	/**
-	 * `app.interrupt` (pi's Escape): aborts a running compaction and stops the generation; the caller's own queued
+	 * `app.interrupt` (nycode's Escape): aborts a running compaction and stops the generation; the caller's own queued
 	 * texts come back to the editor.
 	 */
 	interrupt(): void {
 		const ref = this.participant();
 		const identity = this.identity;
 		if (!ref || !identity) return;
-		const live = this.view?.docs["pi.live"] as unknown as LiveState | undefined;
+		const live = this.view?.docs["nycode.live"] as unknown as LiveState | undefined;
 		const shell = this.liveShell;
-		// pi's order: a running agent, a running command, bash mode's text, then the double Escape on an empty editor.
+		// nycode's order: a running agent, a running command, bash mode's text, then the double Escape on an empty editor.
 		if (!live?.run && !live?.compactions?.length) {
 			if (shell?.running) {
 				this.runtime.perform(ref.abortShell({ shellId: shell.id }, BACKGROUND_CONTEXT));
@@ -931,7 +923,7 @@ export class ChatSurface implements TuiSurface, ChatSurfaceApi {
 			this.runtime.perform(ref.stop(BACKGROUND_CONTEXT).then(({ restored }) => this.restore(identity, restored)));
 	}
 
-	/** pi's `doubleEscapeAction` (default "tree"): "tree" opens `/tree`, "fork" `/fork`'s picker. */
+	/** nycode's `doubleEscapeAction` (default "tree"): "tree" opens `/tree`, "fork" `/fork`'s picker. */
 	private doubleEscape(): void {
 		const action = this.runtime.ctx.settings.doubleEscapeAction ?? "tree";
 		if (action === "none" || this.runtime.role !== "owner") return;
@@ -944,7 +936,7 @@ export class ChatSurface implements TuiSurface, ChatSurfaceApi {
 	}
 
 	/**
-	 * pi's `/tree` (docs/tree.md): the session's branches as one tree; Enter continues the session at the chosen
+	 * nycode's `/tree` (docs/tree.md): the session's branches as one tree; Enter continues the session at the chosen
 	 * message (`SessionTree.navigate`), a user message waiting in the editor of the conversation it switched to. The
 	 * label key renames the selected message's branch (`SessionTree.rename`); a null label shows the session title.
 	 */
@@ -1004,7 +996,7 @@ export class ChatSurface implements TuiSurface, ChatSurfaceApi {
 	}
 
 	/**
-	 * pi's `/fork`: pick a person's message of the loaded transcript; a new session holds what came before it and the
+	 * nycode's `/fork`: pick a person's message of the loaded transcript; a new session holds what came before it and the
 	 * message waits in its editor (`Sessions.fork`). The main conversation only.
 	 */
 	openFork(): void {
@@ -1052,7 +1044,7 @@ export class ChatSurface implements TuiSurface, ChatSurfaceApi {
 		);
 	}
 
-	/** pi's `/clone`: the whole session as a new one (`Sessions.clone`), opened at once. */
+	/** nycode's `/clone`: the whole session as a new one (`Sessions.clone`), opened at once. */
 	cloneSession(): void {
 		const session = this.session;
 		const catalog = liveIn(this.catalog, "owner");
@@ -1099,7 +1091,7 @@ export class ChatSurface implements TuiSurface, ChatSurfaceApi {
 		);
 	}
 
-	/** `app.clear` (pi's Ctrl+C): clears the editor; a second press within 500 ms exits. */
+	/** `app.clear` (nycode's Ctrl+C): clears the editor; a second press within 500 ms exits. */
 	clear(): void {
 		const now = Date.now();
 		if (now - this.lastCtrlC < DOUBLE_CTRL_C_MS) {
@@ -1113,7 +1105,7 @@ export class ChatSurface implements TuiSurface, ChatSurfaceApi {
 	}
 
 	/**
-	 * `app.message.dequeue` (pi's Alt+Up): every queued input of the caller back to the editor, in order, before the
+	 * `app.message.dequeue` (nycode's Alt+Up): every queued input of the caller back to the editor, in order, before the
 	 * current text; other people's stay queued (`Chat.dequeueOwn`).
 	 */
 	dequeueOwn(): void {
@@ -1134,7 +1126,7 @@ export class ChatSurface implements TuiSurface, ChatSurfaceApi {
 	}
 
 	/** Chat mode switched replies on or off (chat-mode's composer chip). */
-	setCanReply(enabled: boolean, mentionName = "Pi"): void {
+	setCanReply(enabled: boolean, mentionName = "Nycode"): void {
 		if (enabled === this.canReply && mentionName === this.mentionName) return;
 		this.canReply = enabled;
 		this.mentionName = mentionName;
@@ -1148,7 +1140,7 @@ export class ChatSurface implements TuiSurface, ChatSurfaceApi {
 		this.runtime.changed();
 	}
 
-	/** Messages a reply can answer: people's and Pi's committed messages, newest first. */
+	/** Messages a reply can answer: people's and Nycode's committed messages, newest first. */
 	replyTargets(): ReplyTarget[] {
 		return (this.current?.items ?? [])
 			.flatMap((item) =>
@@ -1158,7 +1150,7 @@ export class ChatSurface implements TuiSurface, ChatSurfaceApi {
 						? [
 								{
 									entryId: item.entryId,
-									name: "Pi",
+									name: "Nycode",
 									excerpt: item.message.content
 										.flatMap((part) => (part.type === "text" ? [part.text] : []))
 										.join(" "),

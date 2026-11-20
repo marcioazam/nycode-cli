@@ -1,8 +1,8 @@
 // Images of a conversation's entries as clients get them. The chat view carries a reference per image part instead of
 // its bytes: a screenshot is megabytes of base64, and a window of 50 entries with screenshots once came to 38 MB, past
 // what a browser link takes in one part. Pages load the bytes from the chat plugin's route (`ENTRY_IMAGE_PATH`).
-import type { ImageContent } from "@earendil-works/pi-ai";
-import type { EntryRecord } from "@earendil-works/pi-durable";
+import type { ImageContent } from "@nycode/ai";
+import type { EntryRecord } from "@nycode/durable";
 import { imageSize } from "./image-size.ts";
 
 /** An image part of an entry's message as the chat view carries it: `src` loads its bytes; its pixel size when known. */

@@ -3,8 +3,8 @@
 
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
-import type { AssistantMessage } from "@earendil-works/pi-ai";
-import type { ConversationView, LiveState } from "@earendil-works/pi-durable";
+import type { AssistantMessage } from "@nycode/ai";
+import type { ConversationView, LiveState } from "@nycode/durable";
 import { BACKGROUND_CONTEXT, statusOf } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { Models } from "../../plugins/models/contract.ts";
@@ -21,7 +21,7 @@ const assistants = (view: ConversationView | null | undefined): AssistantMessage
 const answerText = (message: AssistantMessage | undefined): string =>
 	(message?.content ?? []).flatMap((part) => (part.type === "text" ? [part.text] : [])).join("");
 const live = (view: ConversationView | null | undefined): LiveState | undefined =>
-	view?.docs["pi.live"] as unknown as LiveState | undefined;
+	view?.docs["nycode.live"] as unknown as LiveState | undefined;
 const partial = (view: ConversationView | null | undefined): string =>
 	answerText(live(view)?.generation?.message as unknown as AssistantMessage | undefined);
 
@@ -89,7 +89,7 @@ describe("M1: a working chat (fake provider)", () => {
 		);
 		await until(
 			chat.view,
-			(value) => (value?.docs["pi.agent"] as { thinkingLevel?: string })?.thinkingLevel === "off",
+			(value) => (value?.docs["nycode.agent"] as { thinkingLevel?: string })?.thinkingLevel === "off",
 		);
 		await assert.rejects(
 			chat.configure({ model: { provider: "faux", modelId: "missing" } }, BACKGROUND_CONTEXT),

@@ -1,7 +1,7 @@
 // The `word_count` tool: what the model sees (name, description, parameters) and what it does. Nothing here says how
 // a call looks: that is the web and TUI facets' business.
-import { defineExtension, defineTool } from "@earendil-works/pi-durable";
-import { obj, str } from "@earendil-works/pi-schema";
+import { defineExtension, defineTool } from "@nycode/durable";
+import { obj, str } from "@nycode/schema";
 
 /** What a call's result keeps for the UI, beside the text the model reads: the counts. */
 export type WordCountDetails = { words: number; lines: number };

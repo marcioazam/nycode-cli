@@ -5,7 +5,7 @@
  *
  *   node --conditions=source --experimental-strip-types test/document-append-bench.ts [N,...]
  */
-import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context";
+import { BACKGROUND_CONTEXT as context } from "@nycode/chord/context";
 import { defineDoc, defineDocFamily } from "../src/documents.ts";
 import { MemoryStorage } from "../src/index.ts";
 import { createSession } from "../src/session/session.ts";

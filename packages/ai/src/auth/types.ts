@@ -212,7 +212,7 @@ export interface LoginOptions {
 	getDeviceId?: () => string;
 	/**
 	 * Name this app introduces itself with during login, e.g. OpenAI's agent name hint and
-	 * Codex originator. Defaults to pi's own name.
+	 * Codex originator. Defaults to nycode's own name.
 	 */
 	agentName?: string;
 }

@@ -2,7 +2,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import type * as FsPromises from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
+import { BACKGROUND_CONTEXT } from "@nycode/chord/context";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { getOrThrow } from "../src/env/index.ts";
 import { NodeExecutionEnv } from "../src/env/node.ts";
@@ -38,7 +38,7 @@ afterEach(() => {
 
 describe("NodeExecutionEnv.listDir under concurrent changes", () => {
 	it("leaves out an entry removed between enumeration and lstat", async () => {
-		const dir = join(tmpdir(), `pi-durable-list-race-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+		const dir = join(tmpdir(), `nycode-durable-list-race-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 		mkdirSync(dir, { recursive: true });
 		tempDirs.push(dir);
 		writeFileSync(join(dir, "doc-1.jsonl"), "kept\n");

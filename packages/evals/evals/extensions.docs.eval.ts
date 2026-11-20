@@ -1,12 +1,12 @@
-import { contentText } from "@earendil-works/pi-ai";
+import { contentText } from "@nycode/ai";
 import { describeEval, StructuredOutputJudge, ToolCallJudge } from "vitest-evals";
-import { createPiDocumentationEvalHarness, DOCUMENTATION_EVAL_TOOLS } from "../src/harness.ts";
+import { createNycodeDocumentationEvalHarness, DOCUMENTATION_EVAL_TOOLS } from "../src/harness.ts";
 
 const TOOL_NAME = "hello";
 const TOOL_ARGUMENTS = { name: "Bob" };
 const TOOL_RESULT = "Hello, Bob!";
 
-const harness = createPiDocumentationEvalHarness({
+const harness = createNycodeDocumentationEvalHarness({
 	tools: [...DOCUMENTATION_EVAL_TOOLS, TOOL_NAME],
 	output: ({ response, session }) => {
 		const extensions = session.resourceLoader.getExtensions();
@@ -45,7 +45,7 @@ describeEval(
 				{
 					type: "prompt",
 					content:
-						"Configure this running Pi installation with an extension containing a hello tool that takes a name and returns a greeting. Do not create project source. For example, passing Bob should return `Hello, Bob!`.",
+						"Configure this running Nycode installation with an extension containing a hello tool that takes a name and returns a greeting. Do not create project source. For example, passing Bob should return `Hello, Bob!`.",
 				},
 				{ type: "reload" },
 				{

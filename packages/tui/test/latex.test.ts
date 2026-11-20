@@ -76,7 +76,7 @@ describe("renderLatex", () => {
 = \boxed{1\ \text{kW}}`,
 				"P_electric = 5 kW × 0.2 = [1 kW]",
 			],
-			[String.raw`\pi(2.5\ \text{km})^2 = 19.6\ \text{km}^2`, "π(2.5 km)² = 19.6 km²"],
+			[String.raw`\nycode(2.5\ \text{km})^2 = 19.6\ \text{km}^2`, "π(2.5 km)² = 19.6 km²"],
 			[
 				String.raw`0.001\ \text{W/m}^2 \times 19.6 \times 10^6\ \text{m}^2
 \approx \boxed{20\ \text{kW optical}}`,
@@ -166,7 +166,7 @@ f_3 = x\,(2 - 3u - t)
 
 	describe("extended formulas from a renderer stress-test session", () => {
 		defineCases([
-			[String.raw`e^{i\pi}+1=0`, "e^(iπ)+1 = 0"],
+			[String.raw`e^{i\nycode}+1=0`, "e^(iπ)+1 = 0"],
 			[
 				String.raw`\boxed{
 \mathcal{Z}(\beta)
@@ -191,14 +191,14 @@ f_3 = x\,(2 - 3u - t)
 =0, \\[4pt]
 R_{\mu\nu}-\frac12 Rg_{\mu\nu}+\Lambda g_{\mu\nu}
 &=
-\frac{8\pi G}{c^4}T_{\mu\nu}.
+\frac{8\nycode G}{c^4}T_{\mu\nu}.
 \end{aligned}`,
 				"∇_μ T^(μν) = 1/(√(-g)) ∂_μ(√(-g) T^(μν)) +Γ^ν_(μλ)T^(μλ) = 0,\nR_(μν)-1/2 Rg_(μν)+Λ g_(μν) = (8π G)/(c⁴)T_(μν).",
 			],
 			[
 				String.raw`f(z)
 =
-\frac{1}{2\pi i}
+\frac{1}{2\nycode i}
 \oint_{\gamma}
 \frac{f(\zeta)}{\zeta-z}\,d\zeta,
 \qquad
@@ -220,9 +220,9 @@ R_{\mu\nu}-\frac12 Rg_{\mu\nu}+\Lambda g_{\mu\nu}
 \underbrace{
 c_n
 \sqrt{\frac{2}{L}}
-\sin\!\left(\frac{n\pi x}{L}\right)
+\sin\!\left(\frac{n\nycode x}{L}\right)
 }_{\text{spatial eigenmode}}
-\exp\!\left(-\frac{i\hbar n^2\pi^2}{2mL^2}t\right),
+\exp\!\left(-\frac{i\hbar n^2\nycode^2}{2mL^2}t\right),
 \qquad
 |\Psi(x,t)|^2
 =
@@ -233,9 +233,9 @@ c_n
 				`${" ".repeat(97)}⎧ Ψ^∗Ψ if 0 < x < L,\nΨ(x,t) = ∑ₙ₌₁^∞ cₙ √(2/L) sin((nπ x)/L)_(spatial eigenmode) exp(-(iℏ n²π²)/(2mL²)t), |Ψ(x,t)|² = ⎨\n${" ".repeat(97)}⎩ 0    otherwise.`,
 			],
 			[String.raw`x=\frac{-b\pm\sqrt{b^2-4ac}}{2a}`, "x = (-b±√(b²-4ac))/(2a)"],
-			[String.raw`\int_0^\infty e^{-x^2}\,dx=\frac{\sqrt{\pi}}{2}`, "∫₀^∞ e^(-x²) dx = (√π)/2"],
+			[String.raw`\int_0^\infty e^{-x^2}\,dx=\frac{\sqrt{\nycode}}{2}`, "∫₀^∞ e^(-x²) dx = (√π)/2"],
 			[String.raw`e^{i\theta}=\cos\theta+i\sin\theta`, "e^(iθ) = cos θ+i sin θ"],
-			[String.raw`\sum_{n=1}^{\infty}\frac{1}{n^2}=\frac{\pi^2}{6}`, "∑ₙ₌₁^∞1/(n²) = π²/6"],
+			[String.raw`\sum_{n=1}^{\infty}\frac{1}{n^2}=\frac{\nycode^2}{6}`, "∑ₙ₌₁^∞1/(n²) = π²/6"],
 			[String.raw`\lim_{x\to 0}\frac{\sin x}{x}=1`, "lim[x→0] (sin x)/x = 1"],
 			[
 				String.raw`\lim_{n\to\infty}
@@ -294,7 +294,7 @@ c_n
 
 	it("renders common symbols, roots, sums, and integrals", () => {
 		assert.strictEqual(
-			renderLatex(String.raw`\sum_{i=0}^n \alpha_i + \int_0^\infty e^{-x^2}\,dx = \sqrt{\pi}`),
+			renderLatex(String.raw`\sum_{i=0}^n \alpha_i + \int_0^\infty e^{-x^2}\,dx = \sqrt{\nycode}`),
 			"∑ᵢ₌₀ⁿ αᵢ + ∫₀^∞ e^(-x²) dx = √π",
 		);
 	});
@@ -379,7 +379,7 @@ c_n
 	it("composes matrices with fractions and adjacent matrices", () => {
 		assert.strictEqual(
 			renderLatex(
-				String.raw`R\left(\frac{\pi}{4}\right)
+				String.raw`R\left(\frac{\nycode}{4}\right)
 =
 \begin{pmatrix}
 \frac{\sqrt{2}}{2} & -\frac{\sqrt{2}}{2}\\
@@ -393,7 +393,7 @@ c_n
 			renderLatex(
 				String.raw`\mathbf w
 =
-R\left(\frac{\pi}{4}\right)
+R\left(\frac{\nycode}{4}\right)
 \begin{pmatrix}1\\0\end{pmatrix}
 =
 \begin{pmatrix}\frac{\sqrt{2}}{2}\\\frac{\sqrt{2}}{2}\end{pmatrix}.`,
@@ -403,7 +403,7 @@ R\left(\frac{\pi}{4}\right)
 		);
 		assert.strictEqual(
 			renderLatex(
-				String.raw`A\mathbf e_1=\begin{pmatrix}\pi\\0\end{pmatrix},\qquad A\mathbf e_2=\begin{pmatrix}0\\\frac{1}{\pi}\end{pmatrix}.`,
+				String.raw`A\mathbf e_1=\begin{pmatrix}\nycode\\0\end{pmatrix},\qquad A\mathbf e_2=\begin{pmatrix}0\\\frac{1}{\nycode}\end{pmatrix}.`,
 				{ display: true },
 			),
 			"Ae₁ = ⎛ π ⎞, Ae₂ = ⎛ 0   ⎞\n      ⎝ 0 ⎠        ⎝ 1/π ⎠.",
@@ -421,7 +421,7 @@ R\left(\frac{\pi}{4}\right)
 		assert.strictEqual(renderLatex("x_{i=0}"), "xᵢ₌₀");
 		assert.strictEqual(renderLatex(String.raw`x\neq0`), "x ≠ 0");
 		assert.strictEqual(renderLatex(String.raw`A\to B`), "A → B");
-		assert.strictEqual(renderLatex(String.raw`\pi\cdot\frac{1}{\pi}`), "π · 1/π");
+		assert.strictEqual(renderLatex(String.raw`\nycode\cdot\frac{1}{\nycode}`), "π · 1/π");
 		assert.strictEqual(renderLatex(String.raw`\sin\theta`), "sin θ");
 		assert.strictEqual(renderLatex(String.raw`\sin^2 x`), "sin² x");
 		assert.strictEqual(renderLatex(String.raw`-\sin\theta`), "-sin θ");

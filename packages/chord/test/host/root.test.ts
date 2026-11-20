@@ -1,5 +1,5 @@
 import { getEventListeners } from "node:events";
-import { InMemoryTelemetryContext } from "@earendil-works/pi-telemetry";
+import { InMemoryTelemetryContext } from "@nycode/telemetry";
 import { describe, expect, it } from "vitest";
 import { BACKGROUND_CONTEXT as context, withAbortSignal, withCancel } from "../../src/context/index.ts";
 import { hostKind, int, local, method, remote, str } from "../../src/contracts/index.ts";

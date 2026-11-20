@@ -3,8 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setFlagsFromString } from "node:v8";
 import { runInNewContext } from "node:vm";
-import { applyImmutable, type Op } from "@earendil-works/chord/delta";
-import { type AssistantMessage, type FauxResponseStep, fauxAssistantMessage, fauxText } from "@earendil-works/pi-ai";
+import { type AssistantMessage, type FauxResponseStep, fauxAssistantMessage, fauxText } from "@nycode/ai";
+import { applyImmutable, type Op } from "@nycode/chord/delta";
 import {
 	AgentDoc,
 	type Conversation,
@@ -18,7 +18,7 @@ import {
 	MemoryStorage,
 	ProviderDoc,
 	UsageDoc,
-} from "@earendil-works/pi-durable";
+} from "@nycode/durable";
 import { describe, expect, it } from "vitest";
 import { openNodeSqliteStorage } from "../src/storage/sqlite/node.ts";
 import { allEntries, chatSetup, openChat, waitFor } from "./chat-support.ts";
@@ -27,7 +27,7 @@ import { aborted, deferred } from "./task-support.ts";
 
 type Frame = { value: ConversationView; ops: readonly Op[] };
 
-const MOUNTED = ["pi.agent", "pi.inbox", "pi.live", "pi.provider", "pi.usage"];
+const MOUNTED = ["nycode.agent", "nycode.inbox", "nycode.live", "nycode.provider", "nycode.usage"];
 
 /** Start a watch of `conversation` that records its acquisition revision and every delivered frame. */
 async function record(conversation: Conversation, window?: ConversationWindow) {
@@ -120,8 +120,8 @@ describe("conversation view", () => {
 		expect(view.entries).toEqual(await allEntries(root));
 		expect(view.before).toBeUndefined();
 		expect(Object.keys(view.docs).sort()).toEqual(MOUNTED);
-		expect(view.docs["pi.live"]).toEqual({});
-		expect(view.docs["pi.inbox"]).toEqual({ items: [] });
+		expect(view.docs["nycode.live"]).toEqual({});
+		expect(view.docs["nycode.inbox"]).toEqual({ items: [] });
 		await harness.close(context);
 	});
 
@@ -137,7 +137,9 @@ describe("conversation view", () => {
 		const { initial, frames, stop } = await record(root);
 		const touching = touches(harness, root);
 		const submission = await root.submit({ type: "input", content: "hi" }, context);
-		await waitFor(() => frames.some((frame) => (frame.value.docs["pi.live"] as { generation?: unknown }).generation));
+		await waitFor(() =>
+			frames.some((frame) => (frame.value.docs["nycode.live"] as { generation?: unknown }).generation),
+		);
 		release.resolve();
 		await submission.wait(context);
 		await harness.waitForIdle(context);
@@ -146,11 +148,17 @@ describe("conversation view", () => {
 		expect(frames).toHaveLength(touching.count + 1);
 		const last = replay(initial, frames);
 		expect(last).toEqual(await committed(harness, root, initial.conversation, last.entries.length));
-		expect(frames[0]!.ops).toContainEqual(["p", ["entries"], 0, 0, [expect.objectContaining({ kind: "pi.user" })]]);
+		expect(frames[0]!.ops).toContainEqual([
+			"p",
+			["entries"],
+			0,
+			0,
+			[expect.objectContaining({ kind: "nycode.user" })],
+		]);
 		// Document operations keep their exact shape under the mount path.
 		expect(frames.flatMap((frame) => frame.ops)).toContainEqual([
 			"s",
-			["docs", "pi.live", "generation"],
+			["docs", "nycode.live", "generation"],
 			{ attempt: 1 },
 		]);
 		await stop();
@@ -167,9 +175,9 @@ describe("conversation view", () => {
 		await root.commit((tx) => tx.appendEntry(root.id, { kind: "note" }), context);
 		await drained();
 		expect(frames).toHaveLength(2);
-		expect(frames[0]!.ops).toEqual([["s", ["docs", "pi.agent", "thinkingLevel"], "high"]]);
+		expect(frames[0]!.ops).toEqual([["s", ["docs", "nycode.agent", "thinkingLevel"], "high"]]);
 		expect(frames[0]!.value.entries).toBe(initial.entries);
-		expect(frames[0]!.value.docs["pi.live"]).toBe(initial.docs["pi.live"]);
+		expect(frames[0]!.value.docs["nycode.live"]).toBe(initial.docs["nycode.live"]);
 		expect(frames[1]!.value.docs).toBe(frames[0]!.value.docs);
 		await stop();
 		await harness.close(context);
@@ -190,7 +198,7 @@ describe("conversation view", () => {
 		expect(kinds).toEqual([
 			["a", "b", "c", "summary"],
 			["a", "b", "c", "summary", "d"],
-			["a", "b", "c", "summary", "d", "pi.reset"],
+			["a", "b", "c", "summary", "d", "nycode.reset"],
 		]);
 		expect(frames[0]!.ops).toEqual([["p", ["entries"], 3, 0, [summary]]]);
 		// The summary's `head` tells a renderer where the entries it summarizes end.
@@ -240,10 +248,10 @@ describe("conversation view", () => {
 		}, context);
 		await drained();
 		expect(frames.map((frame) => frame.ops)).toEqual([
-			[["d", ["docs", "pi.live"]]],
-			[["s", ["docs", "pi.live"], { tools: [] }]],
+			[["d", ["docs", "nycode.live"]]],
+			[["s", ["docs", "nycode.live"], { tools: [] }]],
 		]);
-		expect(frames[0]!.value.docs["pi.live"]).toBeUndefined();
+		expect(frames[0]!.value.docs["nycode.live"]).toBeUndefined();
 		await stop();
 		await harness.close(context);
 	});
@@ -569,7 +577,7 @@ describe("conversation view window", () => {
 
 	it("lets a long-lived watch drop the entries that left its window", async () => {
 		// On SQLite, which keeps no entry objects, so only the watch can hold the first one.
-		const directory = await mkdtemp(join(tmpdir(), "pi-durable-view-"));
+		const directory = await mkdtemp(join(tmpdir(), "nycode-durable-view-"));
 		const storage = await openNodeSqliteStorage(join(directory, "session.sqlite"));
 		const { harness, root } = await openChat(storage, chatSetup());
 		const watch = await root.watch(context, { min: 5, max: 10 });

@@ -1,4 +1,4 @@
-// What tests of renderers' state read: every `pi.live` value of a conversation, and the results of nested calls.
+// What tests of renderers' state read: every `nycode.live` value of a conversation, and the results of nested calls.
 import {
 	type ConversationId,
 	type ConversationView,
@@ -12,12 +12,12 @@ import {
 	type TaskGraphNode,
 	type TaskId,
 	type ToolSlot,
-} from "@earendil-works/pi-durable";
+} from "@nycode/durable";
 import { context, documentChanges, followCommits } from "./session-support.ts";
 
 /**
  * Every view of `conversationId` from now on, one per commit that changes it, unfolded: a synchronous observer, so no
- * transition is skipped. `live()` lists their `pi.live` values.
+ * transition is skipped. `live()` lists their `nycode.live` values.
  */
 export async function viewHistory(harness: Harness, conversationId: ConversationId) {
 	const views: ConversationView[] = [];
@@ -29,7 +29,7 @@ export async function viewHistory(harness: Harness, conversationId: Conversation
 	views.push(observation.value);
 	return {
 		views,
-		live: (): LiveState[] => views.map((view) => (view.docs["pi.live"] ?? {}) as LiveState),
+		live: (): LiveState[] => views.map((view) => (view.docs["nycode.live"] ?? {}) as LiveState),
 		detach: () => observation.detach(),
 	};
 }
@@ -37,7 +37,7 @@ export async function viewHistory(harness: Harness, conversationId: Conversation
 /** A model-issued or nested slot, read through the fields of both. */
 type Slot = ToolSlot & Partial<Pick<NestedToolSlot, "parentCallId" | "parentTaskId" | "arguments" | "summary">>;
 
-/** The slots of tool call `callId`, model-issued or nested, in each `pi.live` value; `undefined` where it is absent. */
+/** The slots of tool call `callId`, model-issued or nested, in each `nycode.live` value; `undefined` where it is absent. */
 export function slotsOf(history: readonly LiveState[], callId: string): (Slot | undefined)[] {
 	return history.map(
 		(live) => [...(live.tools ?? []), ...(live.nestedTools ?? [])].find((slot) => slot.callId === callId) as Slot,
@@ -102,9 +102,9 @@ export async function graphHistory(harness: Harness) {
 	return { graphs, detach: () => observation.detach() };
 }
 
-/** The live `pi.generation` nodes of `graph`, in task ID order. */
+/** The live `nycode.generation` nodes of `graph`, in task ID order. */
 export function generations(graph: TaskGraph): TaskGraphNode[] {
 	return Object.values(graph.tasks)
-		.filter((node) => node.kind === "pi.generation")
+		.filter((node) => node.kind === "nycode.generation")
 		.sort((a, b) => a.id - b.id);
 }

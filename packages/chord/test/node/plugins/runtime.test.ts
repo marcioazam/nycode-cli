@@ -24,7 +24,7 @@ async function plugin(root: string, dir: string, label: string, source?: string)
 		"worker.ts":
 			source ??
 			[
-				'import { constant, defineFacet, local, str } from "@earendil-works/chord";',
+				'import { constant, defineFacet, local, str } from "@nycode/chord";',
 				`const Item = local("test.${dir}", { version: 1, params: {}, members: { label: str() } });`,
 				`export default defineFacet((host) => host.serve(Item, () => ({ label: constant(${JSON.stringify(label)}) })));`,
 			].join("\n"),

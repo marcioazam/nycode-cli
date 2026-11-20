@@ -1,14 +1,14 @@
 // Telemetry (Chord §29), on (settings.json `telemetry: true`; off: telemetry-off.test.ts): the server records to
 // `<data>/telemetry.sqlite` (src/runtime/host-dirs.ts); a session worker's
-// spans (Chord's, Durable's, pi-ai's) reach it over the worker's link, stamped with its host; owners' pages may send
+// spans (Chord's, Durable's, nycode-ai's) reach it over the worker's link, stamped with its host; owners' pages may send
 // theirs and are marked to record, guests' may not; what a span records about its principal is p2's hook, never a name
 // or an email. Fake provider, disposable data.
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
-import { PageTelemetry } from "@earendil-works/chord/telemetry-ingest";
-import { openTelemetryStore } from "@earendil-works/chord/telemetry-sqlite/node";
-import type { ConversationView, LiveState } from "@earendil-works/pi-durable";
-import type { StoredSpan } from "@earendil-works/pi-telemetry";
+import { PageTelemetry } from "@nycode/chord/telemetry-ingest";
+import { openTelemetryStore } from "@nycode/chord/telemetry-sqlite/node";
+import type { ConversationView, LiveState } from "@nycode/durable";
+import type { StoredSpan } from "@nycode/telemetry";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { Models } from "../../plugins/models/contract.ts";
@@ -19,7 +19,7 @@ import { type GuestPrincipal, principalAttributes } from "../../src/runtime/prin
 import { Browser, browserTests } from "./browser.ts";
 import { type Fixture, holdIn, poll, startFixture, until } from "./helpers.ts";
 
-const live = (view: ConversationView | null | undefined) => view?.docs["pi.live"] as LiveState | undefined;
+const live = (view: ConversationView | null | undefined) => view?.docs["nycode.live"] as LiveState | undefined;
 
 const GUEST: GuestPrincipal = {
 	kind: "guest",
@@ -63,14 +63,14 @@ describe("telemetry", () => {
 		}
 	};
 
-	it("stores the session worker's spans, Durable's and pi-ai's among them, stamped with its host", async () => {
+	it("stores the session worker's spans, Durable's and nycode-ai's among them, stamped with its host", async () => {
 		const worker = Session({ id: session }).key;
 		let spans: StoredSpan[] = [];
 		await poll(
 			async () => {
 				spans = (await stored({ "chord.host": worker })).filter((span) => span.attributes["chord.host"] === worker);
 				const names = new Set(spans.map((span) => span.name));
-				return names.has("pi.durable.submit") && names.has("pi.ai.request") && names.has("chord.method");
+				return names.has("nycode.durable.submit") && names.has("nycode.ai.request") && names.has("chord.method");
 			},
 			20_000,
 			"the worker's spans in the store",

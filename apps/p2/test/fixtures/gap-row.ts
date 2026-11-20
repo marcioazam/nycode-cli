@@ -1,6 +1,6 @@
 // Browser-only component fixture, bundled by `Browser.loadFixture` into a disposable localhost page: a transcript with
 // a gap, whose row asks to fill it (`FillGap`), recorded in `window.filled`.
-import type { TranscriptView } from "@earendil-works/pi-durable";
+import type { TranscriptView } from "@nycode/durable";
 import { createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { FillGap } from "../../src/web/Chat.tsx";

@@ -1,6 +1,6 @@
 // A session's Discord link (its Session sheet → Discord). Linked: the bot, channel and sandbox (fixed), who may wake
-// Pi and what the session may use (editable, saved in place and applied at once), and Unlink. Not linked: the form that
-// links it: the bot, its server, a channel no other session has, who may wake Pi, the sandbox the session moves into,
+// Nycode and what the session may use (editable, saved in place and applied at once), and Unlink. Not linked: the form that
+// links it: the bot, its server, a channel no other session has, who may wake Nycode, the sandbox the session moves into,
 // and what it may use there; Link stays disabled, saying what is missing, until every choice is made.
 import { BACKGROUND_CONTEXT, LOCK_CAPABILITIES, type LockCapability, type SessionLock } from "@p2/app/v1";
 import { closeLayers, errorText, openLayer, Sheet, useObject, useReadable } from "@p2/app/v1/web";
@@ -18,7 +18,7 @@ const CAPABILITY_LABELS: Record<LockCapability, string> = {
 	conversations: "Message other sessions",
 };
 
-/** Who may wake Pi and what the session may use, as the form edits them. */
+/** Who may wake Nycode and what the session may use, as the form edits them. */
 type Access = {
 	who: "anyone" | "roles";
 	roles: string[];
@@ -74,7 +74,7 @@ function lockOf(access: Access): SessionLock {
 	};
 }
 
-/** What is missing for `access` to be saved: someone who may wake Pi. */
+/** What is missing for `access` to be saved: someone who may wake Nycode. */
 const nobody = (access: Access) => access.who === "roles" && !access.roles.length && !ids(access.users).length;
 
 const toggle = <T,>(list: readonly T[], value: T, on: boolean): T[] =>
@@ -131,7 +131,7 @@ function useMcpServers(): string[] {
 	return servers;
 }
 
-/** Who may wake Pi: anyone, or the server's roles picked and user IDs. */
+/** Who may wake Nycode: anyone, or the server's roles picked and user IDs. */
 function WakeFields({
 	access,
 	update,
@@ -148,7 +148,7 @@ function WakeFields({
 	const unknown = access.roles.filter((role) => !server?.roles.some((each) => each.id === role));
 	return (
 		<>
-			<span className="label">Who may wake Pi</span>
+			<span className="label">Who may wake Nycode</span>
 			<label className="check">
 				<input type="radio" checked={access.who === "anyone"} onChange={() => update({ who: "anyone" })} />
 				Anyone in the channel
@@ -224,7 +224,7 @@ function ResourceFields({
 					checked={access.projectMcp}
 					onChange={(event) => update({ projectMcp: event.target.checked })}
 				/>
-				The project's MCP servers (.pi/mcp.json)
+				The project's MCP servers (.nycode/mcp.json)
 			</label>
 			<label className="check">
 				<input
@@ -280,7 +280,7 @@ function Linked({ binding }: { binding: Binding }) {
 }
 
 /**
- * A linked session: the bot, channel and sandbox (fixed), who may wake Pi and what the session may use (edited, saved
+ * A linked session: the bot, channel and sandbox (fixed), who may wake Nycode and what the session may use (edited, saved
  * in place by `onSave`, applied at once), and Unlink. `lock` undefined: not read yet.
  */
 export function LinkedView({
@@ -380,7 +380,7 @@ export function LinkedView({
 					</button>
 				)}
 			</div>
-			{changed && nobody(access) && <p className="muted small">Pick who may wake Pi.</p>}
+			{changed && nobody(access) && <p className="muted small">Pick who may wake Nycode.</p>}
 			<div className="list">
 				<button
 					type="button"
@@ -426,7 +426,7 @@ function LinkForm({ session, bindings }: { session: string; bindings: readonly B
 		!bot && "a bot",
 		bot && !guild && "a server",
 		guild && (!choice.channel || takenBy(choice.channel)) && "a channel",
-		nobody(access) && "who may wake Pi",
+		nobody(access) && "who may wake Nycode",
 		!sandbox && "a sandbox",
 	].filter((entry): entry is string => Boolean(entry));
 	return (

@@ -6,7 +6,7 @@ import {
 	Spacer,
 	Text,
 	truncateToWidth,
-} from "@earendil-works/pi-tui";
+} from "@nycode/tui";
 import { theme } from "../theme/theme.ts";
 import { DynamicBorder } from "./dynamic-border.ts";
 

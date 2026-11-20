@@ -1,5 +1,5 @@
 // A session's shared counter: its count (state), who looks at it now (state), waves (an event).
-import { arr, int, obj, str } from "@earendil-works/pi-schema";
+import { arr, int, obj, str } from "@nycode/schema";
 import { method, param, remote, serverHost } from "@p2/app/v1";
 
 export const Counter = remote("counter.board", {

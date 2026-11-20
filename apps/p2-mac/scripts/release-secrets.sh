@@ -11,15 +11,15 @@
 #   ./scripts/release-secrets.sh sparkle                make (or reuse) Sparkle's update key, store it
 #   ./scripts/release-secrets.sh status                 list what the environment holds (names only)
 #
-# REPO overrides the repository (default earendil-works/pi).
+# REPO overrides the repository (default marcioazam/nycode-cli).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-REPO="${REPO:-earendil-works/pi}"
+REPO="${REPO:-marcioazam/nycode-cli}"
 ENVIRONMENT=p2-mac-release
 # Between certificate-request and certificate: the private key waits here, readable by you only.
 PENDING="$HOME/.p2-mac-signing"
-SPARKLE_ACCOUNT=pi-mac
+SPARKLE_ACCOUNT=nycode-mac
 OPENSSL=/usr/bin/openssl
 
 secret() { gh secret set "$1" --env "$ENVIRONMENT" --repo "$REPO" >/dev/null; echo "  secret $1 set"; }

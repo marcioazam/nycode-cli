@@ -1,10 +1,10 @@
 // A Worker whose Durable Object runs codemode the way an agent session would: tools run here, in the
-// session object, and scripts run in the separately deployed pi-codemode-sandbox Worker.
+// session object, and scripts run in the separately deployed nycode-codemode-sandbox Worker.
 //
 //   curl -X POST http://localhost:8787 --data 'const n = await tools.count({ add: 2 }); text("n=" + n); return n'
-import type { CodemodeSandboxDurableObject } from "@earendil-works/pi-codemode/cloudflare";
+import type { CodemodeSandboxDurableObject } from "@nycode/codemode/cloudflare";
 // The portable entry has no QuickJS module: the WebAssembly lives only in the sandbox Worker.
-import { type CodemodeTool, RemoteCodemodeSandbox } from "@earendil-works/pi-codemode/portable";
+import { type CodemodeTool, RemoteCodemodeSandbox } from "@nycode/codemode/portable";
 import { DurableObject } from "cloudflare:workers";
 
 interface Env {

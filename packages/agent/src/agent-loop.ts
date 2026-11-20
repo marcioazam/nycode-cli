@@ -10,14 +10,14 @@ import {
 	getCurrentTools,
 	getToolStateChanges,
 	mergeClientIdentity,
+	NYCODE_ATTRIBUTION,
 	normalizeContext,
-	PI_ATTRIBUTION,
 	type SystemMessage,
 	type ToolResultMessage,
 	type ToolStateChanges,
 	toToolDeclaration,
 	validateToolArguments,
-} from "@earendil-works/pi-ai";
+} from "@nycode/ai";
 import { getDefaultStreamFn } from "./stream-fn.ts";
 import type {
 	AgentContext,
@@ -35,10 +35,10 @@ import type {
 export type AgentEventSink = (event: AgentEvent) => Promise<void> | void;
 
 /**
- * Request identity of agent loops: pi-ai's defaults with provider attribution to pi. `AgentLoopConfig.identity`
+ * Request identity of agent loops: nycode-ai's defaults with provider attribution to nycode. `AgentLoopConfig.identity`
  * overrides it field by field.
  */
-export const DEFAULT_AGENT_IDENTITY: ClientIdentity = { attribution: PI_ATTRIBUTION };
+export const DEFAULT_AGENT_IDENTITY: ClientIdentity = { attribution: NYCODE_ATTRIBUTION };
 
 /**
  * Start an agent loop with a new prompt message.

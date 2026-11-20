@@ -187,7 +187,7 @@ describe("workspace plugin (fake provider, temporary git repository)", () => {
 		const bytes = await fixture.http(url("src/hello.ts"));
 		assert.equal(bytes.status, 200, bytes.body);
 		assert.equal(bytes.body, "const hello = 'after';\n");
-		// As Pi Mobile: only media keeps its type; anything else is an opaque download.
+		// As Nycode Mobile: only media keeps its type; anything else is an opaque download.
 		assert.equal(bytes.headers["content-type"], "application/octet-stream");
 		const head = await fixture.http(url("clip.mp3"), { method: "HEAD" });
 		assert.equal(head.status, 200);
@@ -208,7 +208,7 @@ describe("workspace plugin (fake provider, temporary git repository)", () => {
 			(await fixture.http(url("src/hello.ts"), { headers: { "Sec-Fetch-Site": "cross-site" } })).status,
 			403,
 		);
-		// A whole file over 25 MiB is refused (Pi Mobile's limit); a sparse file keeps the fixture small on disk.
+		// A whole file over 25 MiB is refused (Nycode Mobile's limit); a sparse file keeps the fixture small on disk.
 		await writeFile(join(fixture.workspace, "huge.bin"), "");
 		await truncate(join(fixture.workspace, "huge.bin"), 25 * 1024 * 1024 + 1);
 		const huge = await fixture.http(url("huge.bin"));
@@ -247,7 +247,7 @@ describe("workspace plugin (fake provider, temporary git repository)", () => {
 		assert.equal((await upload("../bad.txt", "x")).status, 400);
 		assert.equal((await upload("bad.txt", "x", "", {})).status, 403);
 		assert.equal((await upload("oversized.txt", Buffer.alloc(25 * 1024 * 1024 + 1))).status, 400);
-		assert(!(await readdir(fixture.workspace)).some((name) => name.startsWith(".pi-upload-")));
+		assert(!(await readdir(fixture.workspace)).some((name) => name.startsWith(".nycode-upload-")));
 	});
 
 	it("only owner and read/write guests access their workspace; HTTP reauthorizes after removal", async () => {
@@ -290,7 +290,7 @@ describe("workspace plugin (fake provider, temporary git repository)", () => {
 		const view = await until(chat.view, (value) =>
 			Boolean(
 				value?.entries.some(
-					(entry) => entry.kind === "pi.assistant" && JSON.stringify(entry).includes("clearer name"),
+					(entry) => entry.kind === "nycode.assistant" && JSON.stringify(entry).includes("clearer name"),
 				),
 			),
 		);

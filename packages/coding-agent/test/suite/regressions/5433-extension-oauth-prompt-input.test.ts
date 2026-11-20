@@ -1,4 +1,4 @@
-import { setKeybindings, type TUI } from "@earendil-works/pi-tui";
+import { setKeybindings, type TUI } from "@nycode/tui";
 import { beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 import { KeybindingsManager } from "../../../src/core/keybindings.ts";
 import { LoginDialogComponent } from "../../../src/modes/interactive/components/login-dialog.ts";
@@ -19,7 +19,7 @@ function createDialog(): LoginDialogComponent {
 }
 
 function renderDialog(dialog: LoginDialogComponent): string[] {
-	// stripAnsi keeps APC sequences, so drop the TUI's zero-width cursor markers (e.g. \x1b_pi:fc\x07) first
+	// stripAnsi keeps APC sequences, so drop the TUI's zero-width cursor markers (e.g. \x1b_nycode:fc\x07) first
 	return stripAnsi(
 		dialog
 			.render(120)
@@ -79,13 +79,13 @@ describe("LoginDialogComponent OAuth prompts", () => {
 	test("preserves neutral information and links when showing a prompt", () => {
 		const dialog = createDialog();
 
-		dialog.showInfo("Configure credentials outside pi.", [
+		dialog.showInfo("Configure credentials outside nycode.", [
 			{ label: "Provider documentation", url: "https://example.invalid/docs" },
 		]);
 		dialog.showPrompt("Press Enter to continue:");
 
 		const output = renderDialog(dialog).join("\n");
-		expect(output).toContain("Configure credentials outside pi.");
+		expect(output).toContain("Configure credentials outside nycode.");
 		expect(output).toContain("Provider documentation: https://example.invalid/docs");
 		expect(output).toContain("Press Enter to continue:");
 	});

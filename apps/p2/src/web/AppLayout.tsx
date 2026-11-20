@@ -29,7 +29,7 @@ function Layout() {
 	const dragDepth = useRef(0);
 	const swipe = useDrawerSwipe();
 	// Docked width (from 900px), dragged at the inline end and remembered per browser; the phone drawer ignores it.
-	const width = useDragSize("pi-sidebar-width", "--sidebar-width");
+	const width = useDragSize("nycode-sidebar-width", "--sidebar-width");
 	const startResize = (event: ReactPointerEvent<HTMLButtonElement>) => {
 		const element = event.currentTarget.parentElement;
 		if (!element) return;

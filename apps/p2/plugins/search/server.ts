@@ -1,6 +1,6 @@
 // The message index, the workers' feed into it, and owner search over sessions and messages.
 
-import { arr, num, obj, str } from "@earendil-works/pi-schema";
+import { arr, num, obj, str } from "@nycode/schema";
 import { defineFacet, defineJob, defineState, deriveTyped, forbidden, isOwner, isWorker, record } from "@p2/app/v1";
 import { Server, serverOf } from "@p2/app/v1/server";
 import { ArchivedStarts, Catalog, type Session } from "../sessions/contract.ts";
@@ -19,7 +19,7 @@ const Markers = defineState("p2.search-index", {
 	initial: () => ({ answers: {}, reads: {} }),
 });
 
-/** Pi Mobile's rebuildIndex as a job: a rebuild interrupted by a restart runs again (it starts over). */
+/** Nycode Mobile's rebuildIndex as a job: a rebuild interrupted by a restart runs again (it starts over). */
 const RebuildJob = defineJob("p2.search.rebuild", {
 	version: 1,
 	args: obj({ session: str() }),

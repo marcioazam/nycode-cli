@@ -2,7 +2,7 @@
 // server's route, as the sessions plugin's), and the TUI's client host above it running a TuiRuntime with the given
 // TUI facets on a virtual terminal.
 
-import { TuiAltScreen } from "@earendil-works/pi-tui";
+import { TuiAltScreen } from "@nycode/tui";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { VirtualTerminal } from "../../../../packages/tui/test/virtual-terminal.ts";
 import { type Session, Sessions } from "../../plugins/sessions/contract.ts";

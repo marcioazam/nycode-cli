@@ -1,4 +1,4 @@
-# Pi on Discord
+# Nycode on Discord
 
 `plugins/discord` lets people in a Discord channel wake a p2 session by mentioning a bot. The session reads what was
 said since its last turn, works in its sandbox, and its answer goes back to the channel as a reply.
@@ -25,15 +25,15 @@ name it. A bot that cannot reach Discord tries again every minute; a refused tok
 The Session sheet's **Discord** row shows the session's channel, or "Not linked". Its sheet:
 
 - Not linked: pick the **bot** (connected ones), the **server** (the bot's), the **channel** (that server's text
-  channels; one linked to another session shows as taken), **who may wake Pi** (anyone in the channel, or members
+  channels; one linked to another session shows as taken), **who may wake Nycode** (anyone in the channel, or members
   with picked roles, plus optional user IDs), the **sandbox** (existing ones), and **what the session may use** (MCP
   servers of `mcp.json`, the project's MCP servers, the global instructions, forwarding ports, messaging other
   sessions). **Link** stays disabled and says what is still to pick. Linking moves the session into the sandbox (as
   the owner's Relocate does, into the sandbox's first folder, else `/root`; a busy session refuses, nothing changes),
   stores its lock and the link, and starts listening after the channel's newest message.
-- Linked: the bot, server › channel and sandbox (fixed), then who may wake Pi and what the session may use, editable:
-  **Save** (enabled once something changed and someone may still wake Pi) stores them in place (`Discord.updateLink`,
-  contract version 3; version 2 pages still bind) and they apply at once: who may wake Pi is read at each message, the
+- Linked: the bot, server › channel and sandbox (fixed), then who may wake Nycode and what the session may use, editable:
+  **Save** (enabled once something changed and someone may still wake Nycode) stores them in place (`Discord.updateLink`,
+  contract version 3; version 2 pages still bind) and they apply at once: who may wake Nycode is read at each message, the
   lock is mirrored into the running session. **Unlink** stops listening and lifts the lock; the session stays in its
   sandbox.
 - **The agent knows:** a linked session's main agent and its threads' subagents get a two-sentence `discord` prompt
@@ -48,14 +48,14 @@ A session has at most one link and a channel at most one session (its threads fo
 ## How a channel talks to its session
 
 - **Waking:** a message that mentions the link's bot, by someone allowed, in a linked channel; other messages only
-  accumulate. Other bots count as people (in batches, and waking Pi by the same rules); the link's own bot never
+  accumulate. Other bots count as people (in batches, and waking Nycode by the same rules); the link's own bot never
   counts. Loop guard: at most 3 turns in a row started by bots per channel or thread; the next bot mention gets one
   short notice ("Not answering more bots here until a person writes"), later ones nothing (logged), until a person
   writes there (any message). The count is in memory.
 - **Batch:** every message after the link's cursor up to the mention (paged through Discord's history 100 at a time;
   a thread's first batch starts at the thread's start), oldest first, one `Name (<@id>): text` paragraph each (bots
   `Name (bot, <@id>)`, so the agent can mention them as `<@id>`; replies ping users, never roles or @everyone), the
-  mention written `@Pi`, under a header naming the channel and the count. At most the newest 200 go into the input; the header
+  mention written `@Nycode`, under a header naming the channel and the count. At most the newest 200 go into the input; the header
   says how many earlier ones were left out. It is
   one input of the session's main conversation by a guest author `Name · Discord` (entry kind `discord.batch`), steering
   the turn under way when the session is busy (the batch joins it). A turn that took several inputs has one answer
@@ -64,7 +64,7 @@ A session has at most one link and a channel at most one session (its threads fo
   and per thread (a queue each): a second mention right after the first waits for it and starts at the cursor it
   left, so no message is in two batches and a new thread forks one subagent.
 - **Catch-up:** when a bot connects (p2 starting, a new token, a new gateway session after an outage), it reads each of
-  its links and their known threads after the cursor. The newest mention there by someone allowed to wake Pi is the
+  its links and their known threads after the cursor. The newest mention there by someone allowed to wake Nycode is the
   trigger: one batch per channel or thread with every message from the cursor up to it (earlier missed mentions are
   just messages of the batch), and the reply goes to that newest mention. Its events and live
   messages are handled one at a time, and a mention at or before the cursor never delivers twice. Threads created
@@ -76,7 +76,7 @@ A session has at most one link and a channel at most one session (its threads fo
   listed, images inline). Larger ones are listed as links.
 - **Reply:** when the input's turn ends (checked on every status change of the session and every 16 s), the answer's
   text is posted as a reply to the waking message, split at 2000 characters. A turn without an answer posts why. While
-  a reply is pending (queued or not) the channel shows "Pi is typing": sent the moment a mention is recognized, before the
+  a reply is pending (queued or not) the channel shows "Nycode is typing": sent the moment a mention is recognized, before the
   wait for an earlier delivery and the history's pages, refreshed every 8 s (Discord shows it about 10 s) through the
   delivery and while the reply is pending, and over once the reply is posted, the turn stopped or failed, or the
   delivery failed. Commands never type. A turn not done after 6 hours is given up.
@@ -86,8 +86,8 @@ A session has at most one link and a channel at most one session (its threads fo
   (`DiscordIngress.read`) and uploaded with the reply (multipart): at most 10 a message, together within the server's
   per-message limit (10 MiB; 50 MiB and 100 MiB on boosted servers). Larger files are named in the reply only. A turn
   with files and no text posts the files alone.
-- **Commands:** a mention of the bot by someone allowed to wake Pi whose remaining text is exactly `stop`, `status`
-  or `compact` (any case, an optional leading slash: `@Pi /stop`) is a command, run at once (not behind a delivery
+- **Commands:** a mention of the bot by someone allowed to wake Nycode whose remaining text is exactly `stop`, `status`
+  or `compact` (any case, an optional leading slash: `@Nycode /stop`) is a command, run at once (not behind a delivery
   under way) on the main conversation, or in a thread on its subagent. `stop` is the web's Stop: queued inputs are
   withdrawn, the run is aborted; it also aborts running compactions (tasks of their own, which Stop leaves running:
   the web's Escape path), read from Durable since a compaction just started may not be in the view yet. It answers
@@ -110,10 +110,10 @@ A session has at most one link and a channel at most one session (its threads fo
 ## The session lock
 
 Linking locks the session (`SessionLock`, kept by the sessions plugin as `p2.session-locks`, mirrored into the
-session's Durable state as `p2.session-lock`). Everyone who may wake Pi can use everything the lock allows, so it lists
+session's Durable state as `p2.session-lock`). Everyone who may wake Nycode can use everything the lock allows, so it lists
 exactly what the owner picked:
 
-- **MCP servers:** only the picked servers of `mcp.json`; the project's `.pi/mcp.json` servers only when picked.
+- **MCP servers:** only the picked servers of `mcp.json`; the project's `.nycode/mcp.json` servers only when picked.
 - **Instructions:** the global AGENTS.md, skills and prompt templates only when picked (the project's own always).
 - **Capabilities:** `ports` (forwarding) and `conversations` (messaging other sessions) only when picked. Other
   tools pass: what they reach is already confined (location tools, bash and `reload_plugins` by the sandbox).
@@ -126,7 +126,7 @@ The lock holds for everyone, the owner too (p2 has no per-turn authority). Unlin
 - The bots' avatars reach the sheets through `GET /discord/avatar?bot=<id>` (owner only, fetched from Discord's CDN by
   the server and kept per avatar): the page's CSP loads only its own images.
 - Server state `p2.discord-bindings` (persisted; version 2 adds the bot): links by channel (bot, session, who may wake
-  Pi, cursor, threads with their subagent conversation and cursor) and pending replies by waking message (bot,
+  Nycode, cursor, threads with their subagent conversation and cursor) and pending replies by waking message (bot,
   session, reply channel, submission).
 - The bots (discord.js, a server host package: plugins cannot bundle from the app's hoisted `node_modules`) run in the
   server's host-lifetime `DiscordStore` (`fleet.ts`, one `Bot` each, `bot.ts`); the relay logic (`relay.ts`) is plain
@@ -138,4 +138,4 @@ The lock holds for everyone, the owner too (p2 has no per-turn authority). Unlin
 ## Not done
 
 - The transcript shows a batch as one guest message; there is no folded view of the channel's messages.
-- No `@Pi stop`, no per-link secrets (secrets are per sandbox), no DMs.
+- No `@Nycode stop`, no per-link secrets (secrets are per sandbox), no DMs.

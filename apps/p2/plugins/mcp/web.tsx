@@ -1,5 +1,5 @@
 // The MCP sheet (owners): the running servers with their status, errors and tools, restart, and signing in and out of
-// HTTP servers that use OAuth (signing in again is signing out, then in, as in pi). Sign in opens `/mcp/sign-in/<server>` in a new tab (it finds out where the browser runs);
+// HTTP servers that use OAuth (signing in again is signing out, then in, as in nycode). Sign in opens `/mcp/sign-in/<server>` in a new tab (it finds out where the browser runs);
 // while a sign-in waits, the final redirect URL can be pasted here, for a browser that cannot reach where it returns.
 // Until the servers load it says so; a view that failed or ended shows why, with Retry.
 
@@ -163,7 +163,7 @@ function ServerEntry({
 }) {
 	const oauth = instances.some((instance) => instance.auth === "oauth");
 	const mayNeedSignIn = instances.some((instance) => instance.status === "sign-in" || instance.status === "failed");
-	// Signing in again (another account, a grant the server refuses) is signing out, then in, as in pi: any instance
+	// Signing in again (another account, a grant the server refuses) is signing out, then in, as in nycode: any instance
 	// not waiting for a sign-in may hold credentials (a failed or reconnecting one too), so it offers the sign-out.
 	const mayHoldCredentials = instances.some((instance) => instance.status !== "sign-in");
 	return (

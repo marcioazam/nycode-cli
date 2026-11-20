@@ -5,20 +5,15 @@
  * They provide a unified system for extensions, custom tools, commands, and more.
  *
  * By default, extension files are discovered from:
- * - ~/.pi/agent/extensions/
- * - <cwd>/.pi/extensions/
+ * - ~/.nycode/agent/extensions/
+ * - <cwd>/.nycode/extensions/
  * - Paths specified in settings.json "extensions" array
  *
  * An extension is a TypeScript file that exports a default function:
- *   export default function (pi: ExtensionAPI) { ... }
+ *   export default function (nycode: ExtensionAPI) { ... }
  */
 
-import {
-	createAgentSession,
-	DefaultResourceLoader,
-	getAgentDir,
-	SessionManager,
-} from "@earendil-works/pi-coding-agent";
+import { createAgentSession, DefaultResourceLoader, getAgentDir, SessionManager } from "@nycode/coding-agent";
 
 // Extensions are discovered automatically from standard locations.
 // You can also add paths via settings.json or DefaultResourceLoader options.
@@ -28,8 +23,8 @@ const resourceLoader = new DefaultResourceLoader({
 	agentDir: getAgentDir(),
 	additionalExtensionPaths: ["./my-logging-extension.ts", "./my-safety-extension.ts"],
 	extensionFactories: [
-		(pi) => {
-			pi.on("agent_start", () => {
+		(nycode) => {
+			nycode.on("agent_start", () => {
 				console.log("[Inline Extension] Agent starting");
 			});
 		},
@@ -57,25 +52,25 @@ try {
 
 // Example extension file (./my-logging-extension.ts):
 /*
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI } from "@nycode/coding-agent";
 
-export default function (pi: ExtensionAPI) {
-	pi.on("agent_start", async () => {
+export default function (nycode: ExtensionAPI) {
+	nycode.on("agent_start", async () => {
 		console.log("[Extension] Agent starting");
 	});
 
-	pi.on("tool_call", async (event) => {
+	nycode.on("tool_call", async (event) => {
 		console.log(\`[Extension] Tool: \${event.toolName}\`);
 		// Return { block: true, reason: "..." } to block execution
 		return undefined;
 	});
 
-	pi.on("agent_end", async (event) => {
+	nycode.on("agent_end", async (event) => {
 		console.log(\`[Extension] Low-level run ended, \${event.messages.length} messages\`);
 	});
 
 	// Register a custom tool
-	pi.registerTool({
+	nycode.registerTool({
 		name: "my_tool",
 		label: "My Tool",
 		description: "Does something useful",
@@ -89,7 +84,7 @@ export default function (pi: ExtensionAPI) {
 	});
 
 	// Register a command
-	pi.registerCommand("mycommand", {
+	nycode.registerCommand("mycommand", {
 		description: "Do something",
 		handler: async (args, ctx) => {
 			ctx.ui.notify(\`Command executed with: \${args}\`);

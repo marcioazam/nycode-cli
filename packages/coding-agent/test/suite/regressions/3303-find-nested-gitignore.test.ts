@@ -38,7 +38,7 @@ describe("issue #3303 nested .gitignore rules leak into sibling directories", ()
 
 	describe("flat sibling case", () => {
 		beforeEach(() => {
-			tempRoot = mkdtempSync(join(tmpdir(), "pi-3303-flat-"));
+			tempRoot = mkdtempSync(join(tmpdir(), "nycode-3303-flat-"));
 			mkdirSync(join(tempRoot, "a"), { recursive: true });
 			mkdirSync(join(tempRoot, "b"), { recursive: true });
 			writeFileSync(join(tempRoot, "a", ".gitignore"), "ignored.txt\n");
@@ -57,7 +57,7 @@ describe("issue #3303 nested .gitignore rules leak into sibling directories", ()
 
 	describe("deeply nested case", () => {
 		beforeEach(() => {
-			tempRoot = mkdtempSync(join(tmpdir(), "pi-3303-deep-"));
+			tempRoot = mkdtempSync(join(tmpdir(), "nycode-3303-deep-"));
 			mkdirSync(join(tempRoot, "a", "deep"), { recursive: true });
 			mkdirSync(join(tempRoot, "b"), { recursive: true });
 			writeFileSync(join(tempRoot, "a", ".gitignore"), "ignored.txt\n");

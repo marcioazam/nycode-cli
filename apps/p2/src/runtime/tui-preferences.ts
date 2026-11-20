@@ -1,8 +1,8 @@
 // Server-side TUI defaults (p2-tui-port.md section 4.2). Guest-local preferences from the launcher override them;
 // privileged-action bindings never come from the server. Browser/worker-safe: types and schemas only.
 
-import { method, remote } from "@earendil-works/chord";
-import { arr, bool, int, map, num, obj, opt, type Schema, type Static, str, union } from "@earendil-works/pi-schema";
+import { method, remote } from "@nycode/chord";
+import { arr, bool, int, map, num, obj, opt, type Schema, type Static, str, union } from "@nycode/schema";
 import { keyedRegistry, serverHost } from "./chord.ts";
 import { literal, record } from "./schema.ts";
 
@@ -16,7 +16,7 @@ const PluginSettingsSchema: Schema<Record<string, Record<string, PluginSettingVa
 };
 
 const Bool = opt(bool());
-/** pi `settings.json` keys marked G in section 1.14, spelled (and nested) as pi spells them. */
+/** nycode `settings.json` keys marked G in section 1.14, spelled (and nested) as nycode spells them. */
 export const TuiSettingsSchema = obj({
 	quietStartup: opt(union([bool(), literal("header")])),
 	editorPaddingX: opt(int({ minimum: 0, maximum: 3 })),
@@ -74,7 +74,7 @@ export function pluginSetting(settings: TuiSettings | undefined, field: TuiSetti
 
 export const TuiPreferencesSchema = obj({
 	keybindings: record(union([str(), arr(str())])),
-	/** pi theme setting: a built-in name, "system" or a "light/dark" pair. Custom theme files are guest-local. */
+	/** nycode theme setting: a built-in name, "system" or a "light/dark" pair. Custom theme files are guest-local. */
 	theme: opt(str()),
 	settings: TuiSettingsSchema,
 });

@@ -5,7 +5,7 @@
 // component's own answers, throwing routes and wraps, a reload swapping a route while a request runs, `close` (also
 // while authenticating), a mounted handler, and requests' scopes collected.
 
-import { InMemoryTelemetryContext, type TelemetryCarrier, type TelemetryContext } from "@earendil-works/pi-telemetry";
+import { InMemoryTelemetryContext, type TelemetryCarrier, type TelemetryContext } from "@nycode/telemetry";
 import { describe, expect, it, vi } from "vitest";
 import { withAbortSignal } from "../../../src/context/index.ts";
 import { arr, local, method, str } from "../../../src/contracts/index.ts";

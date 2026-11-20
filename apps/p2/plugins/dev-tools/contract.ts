@@ -1,6 +1,6 @@
 // Reloading plugins (docs/agent-plugins.md): a session's worker asks the server to build and roll out plugins, and
 // gets per plugin what happened.
-import { arr, obj, oneOf, opt, type Static, str } from "@earendil-works/pi-schema";
+import { arr, obj, oneOf, opt, type Static, str } from "@nycode/schema";
 import { method, remote, serverHost } from "@p2/app/v1";
 
 /** What a reload did to one plugin. */

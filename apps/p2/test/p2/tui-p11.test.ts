@@ -2,12 +2,7 @@
 // chip, chat/mention entries, replies); the later P11 groups append below.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import {
-	type ConversationView,
-	type EntryId,
-	type EntryRecord,
-	ROOT_CONVERSATION_ID,
-} from "@earendil-works/pi-durable";
+import { type ConversationView, type EntryId, type EntryRecord, ROOT_CONVERSATION_ID } from "@nycode/durable";
 import type { JsonValue } from "@p2/app/v1";
 import { Artifacts } from "../../plugins/artifacts/contract.ts";
 import artifactsTui from "../../plugins/artifacts/tui.ts";
@@ -36,7 +31,7 @@ import { type Child, SubagentControl, Subagents } from "../../plugins/subagents/
 import subagentsTui from "../../plugins/subagents/tui.ts";
 import { Workspace } from "../../plugins/workspace/contract.ts";
 import type { WorkspaceQuery, WorkspaceResult } from "../../plugins/workspace/protocol.ts";
-import workspaceTui, { piDiff } from "../../plugins/workspace/tui.ts";
+import workspaceTui, { nycodeDiff } from "../../plugins/workspace/tui.ts";
 import type { Ctx, defineFacet } from "../../src/runtime/chord.ts";
 import { tuiCoreFacet } from "../../src/tui/core-commands.ts";
 import { type Cell, poll } from "./helpers.ts";
@@ -72,7 +67,7 @@ const entry = (id: number, record: Omit<EntryRecord, "id" | "conversationId">): 
 const viewOf = (entries: EntryRecord[] = []): ConversationView => ({
 	conversation: { id: ROOT_CONVERSATION_ID } as ConversationView["conversation"],
 	entries,
-	docs: { "pi.agent": { model: { provider: "faux", modelId: "faux-1" } } } as ConversationView["docs"],
+	docs: { "nycode.agent": { model: { provider: "faux", modelId: "faux-1" } } } as ConversationView["docs"],
 });
 const typed = (send: (data: string) => void, text: string) => {
 	for (const char of text) send(char);
@@ -179,7 +174,7 @@ function fixture(
 			(_input, _principal, self) => {
 				const enabledState = self.state(options.chatMode ?? false);
 				const waiting = self.state(0);
-				const name = self.state("Pi");
+				const name = self.state("Nycode");
 				mode = enabledState;
 				return {
 					variant: "owner",
@@ -242,7 +237,7 @@ test("/agents opens subagent conversations with their own drafts; the footer cru
 		views: (conversation) =>
 			viewOf([
 				entry(1, {
-					kind: "pi.assistant",
+					kind: "nycode.assistant",
 					model: [
 						{
 							role: "assistant",
@@ -301,7 +296,7 @@ test("/agents opens subagent conversations with their own drafts; the footer cru
 	assert.match(shown, /Conversations · with archived/);
 });
 
-test("chat mode: chip, quoted replies and notes, /chat-mode (owner), /reply, @pi first", async (t) => {
+test("chat mode: chip, quoted replies and notes, /chat-mode (owner), /reply, @nycode first", async (t) => {
 	const alice = { kind: "guest" as const, id: "alice", name: "Alice" };
 	const { screen, send, runtime, calls } = await setup(t, {
 		chatMode: true,
@@ -319,7 +314,7 @@ test("chat mode: chip, quoted replies and notes, /chat-mode (owner), /reply, @pi
 				}),
 				entry(3, {
 					kind: "chat.mention",
-					data: { author: alice, text: "@pi summarize", attachments: [], included: [1, 2] },
+					data: { author: alice, text: "@nycode summarize", attachments: [], included: [1, 2] },
 				}),
 			]),
 	});
@@ -341,11 +336,11 @@ test("chat mode: chip, quoted replies and notes, /chat-mode (owner), /reply, @pi
 	await poll(() => (calls.send?.length ?? 0) === 1);
 	assert.equal((calls.send?.[0] as { replyTo?: number }).replyTo, 3);
 	await poll(async () => !(await screen()).includes("↪ Replying to"));
-	// @pi is offered first while chat mode is on.
+	// @nycode is offered first while chat mode is on.
 	typed(send, "ask @p");
-	await poll(async () => (await screen()).includes("mention Pi"));
+	await poll(async () => (await screen()).includes("mention Nycode"));
 	send("\t");
-	await poll(() => runtime.drafts.get("s#1") === "ask @pi ");
+	await poll(() => runtime.drafts.get("s#1") === "ask @nycode ");
 	send("\x15");
 	// The owner switches chat mode off; replies end with it.
 	runtime.role = "owner";
@@ -792,7 +787,7 @@ test("/files, /changes and /grep read the workspace (participants); guests and r
 		worker: [workspace],
 		facets: [tuiCoreFacet, chatTui, statusTui, workspaceTui],
 	});
-	// pi's footer: `cwd (branch)`, asked again when files change; a detached HEAD says so.
+	// nycode's footer: `cwd (branch)`, asked again when files change; a detached HEAD says so.
 	await poll(async () => (await screen()).includes("/work (main) • Fixture"));
 	branch = "feature";
 	const bump = async () =>
@@ -868,12 +863,12 @@ test("view-only guests get no workspace commands and never acquire Workspace", a
 	assert.equal(calls.workspace, undefined);
 });
 
-test("piDiff turns a unified patch into pi's numbered diff lines", () => {
+test("nycodeDiff turns a unified patch into nycode's numbered diff lines", () => {
 	assert.equal(
-		piDiff(
+		nycodeDiff(
 			"--- a/x\n+++ b/x\n@@ -3,3 +3,3 @@\n keep\n-old\n+new\n@@ -20 +20 @@\n-a\n+b\n\\ No newline at end of file\n",
 		),
-		// Numbers are padded to the widest one, as pi's edit diffs are.
+		// Numbers are padded to the widest one, as nycode's edit diffs are.
 		["  3 keep", "- 4 old", "+ 4 new", "    ...", "-20 a", "+20 b"].join("\n"),
 	);
 });
@@ -954,7 +949,7 @@ test("a view-only guest sees under which name it joined instead of the editor", 
 
 const resultEntry = (id: number, toolCallId: string, toolName: string, details: JsonValue, text: string): EntryRecord =>
 	entry(id, {
-		kind: "pi.tool-result",
+		kind: "nycode.tool-result",
 		model: [
 			{
 				role: "toolResult",
@@ -969,7 +964,7 @@ const resultEntry = (id: number, toolCallId: string, toolName: string, details: 
 	});
 const callEntry = (id: number, toolCallId: string, name: string, args: { [key: string]: JsonValue }): EntryRecord =>
 	entry(id, {
-		kind: "pi.assistant",
+		kind: "nycode.assistant",
 		model: [
 			{
 				role: "assistant",

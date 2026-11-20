@@ -130,9 +130,9 @@ file (not part of this page).</p>
 </ol></nav>
 
 <section class="chapter" id="the-model"><header class="opener"><div class="numeral">I</div><h2>The Model</h2></header>
-<p>Each person has one Pi. An org configures its members&#39; Pis through a <strong>deployment profile</strong>: a list of Earendil
+<p>Each person has one Nycode. An org configures its members&#39; Pis through a <strong>deployment profile</strong>: a list of Earendil
 plugins plus their settings, each preset (the member may change it) or locked. The machine&#39;s admin writes a root-owned
-<strong>enrollment file</strong> (&quot;this machine belongs to Acme, its server is this Radius URL, its key is this&quot;). An enrolled Pi
+<strong>enrollment file</strong> (&quot;this machine belongs to Acme, its server is this Radius URL, its key is this&quot;). An enrolled Nycode
 stays locked until its first sync with Radius has delivered and applied the signed profile; after that it starts from
 its cached copy and follows changes live. Radius shows the plugins as features with forms generated from their declared
 settings, so Acme&#39;s admin configures &quot;Agent sandboxes&quot; and &quot;Sharing&quot;, not plugins. p2 already has the hard parts
@@ -141,7 +141,7 @@ that lets an org set them.</p>
 </section>
 
 <section class="chapter" id="the-base"><header class="opener"><div class="numeral">II</div><h2>The Base</h2></header>
-<p>Three mechanisms, none of which knows about orgs. A personal Pi uses them too.</p>
+<p>Three mechanisms, none of which knows about orgs. A personal Nycode uses them too.</p>
 <h3 id="1-settings-declared-by-plugins-preset-or-locked-one-write-path">1. Settings: declared by plugins, preset or locked, one write path</h3>
 <p>A plugin declares each setting once. A trusted plugin (the <code>org</code> plugin, installed by the admin) provides one managed
 layer over the member&#39;s values. Every write, from the page, the agent&#39;s tools or another plugin, goes through
@@ -177,7 +177,7 @@ managed entries read-only); while the startup is held → the initial value. Loc
 }</code></pre>
 <p>Installs, writes and Apply go only through the base&#39;s <code>Plugins</code> service, which installs pinned entries into the org
 root and keeps them only if their tree hash matches.</p>
-<h3 id="3-startup-gate-a-trusted-plugin-holds-the-pi-until-it-is-ready">3. Startup gate: a trusted plugin holds the Pi until it is ready</h3>
+<h3 id="3-startup-gate-a-trusted-plugin-holds-the-nycode-until-it-is-ready">3. Startup gate: a trusted plugin holds the Nycode until it is ready</h3>
 <pre><code><span class="tk-c">// PROPOSED · app/v1/startup.ts (base). Only system-root plugins' holds count.</span>
 <span class="tk-k">export</span> <span class="tk-k">const</span> <span class="tk-t">Hold</span> = <span class="tk-f">obj</span>({ title: <span class="tk-f">str</span>(), why: <span class="tk-f">str</span>() });
 <span class="tk-k">export</span> <span class="tk-k">const</span> <span class="tk-t">StartupHolds</span> = defineRegistry&lt;<span class="tk-t">Hold</span> | <span class="tk-k">null</span>, <span class="tk-k">readonly</span> <span class="tk-t">TableItem</span>&lt;<span class="tk-t">Hold</span> | <span class="tk-k">null</span>&gt;[]&gt;(<span class="tk-s">"p3.startup-holds"</span>, { version: <span class="tk-n">1</span> });
@@ -190,10 +190,10 @@ page shows the hold (&quot;Connect to Acme&quot;, with a Radius sign-in). When t
 
 <section class="chapter" id="acme-s-deployment-profile"><header class="opener"><div class="numeral">III</div><h2>Acme&#39;s Deployment Profile</h2></header>
 <p>What Acme&#39;s admin sees in Radius as a few feature forms is, underneath, this signed document:</p>
-<pre><code><span class="tk-c">// PROPOSED · served by Radius to Dana's Pi</span>
+<pre><code><span class="tk-c">// PROPOSED · served by Radius to Dana's Nycode</span>
 {
   <span class="tk-s">"payload"</span>: {
-    <span class="tk-s">"org"</span>: <span class="tk-s">"acme"</span>, <span class="tk-s">"orgName"</span>: <span class="tk-s">"Acme"</span>, <span class="tk-s">"member"</span>: <span class="tk-s">"dana@acme.com"</span>, <span class="tk-s">"pi"</span>: <span class="tk-s">"pi_7f3a"</span>, <span class="tk-s">"revision"</span>: <span class="tk-n">42</span>,
+    <span class="tk-s">"org"</span>: <span class="tk-s">"acme"</span>, <span class="tk-s">"orgName"</span>: <span class="tk-s">"Acme"</span>, <span class="tk-s">"member"</span>: <span class="tk-s">"dana@acme.com"</span>, <span class="tk-s">"nycode"</span>: <span class="tk-s">"nycode_7f3a"</span>, <span class="tk-s">"revision"</span>: <span class="tk-n">42</span>,
     <span class="tk-s">"plugins"</span>: {
       <span class="tk-s">"org"</span>:           { <span class="tk-s">"mode"</span>: <span class="tk-s">"required"</span>, <span class="tk-s">"source"</span>: { <span class="tk-s">"system"</span>: <span class="tk-k">true</span> } },
       <span class="tk-s">"device-key"</span>:    { <span class="tk-s">"mode"</span>: <span class="tk-s">"required"</span>, <span class="tk-s">"source"</span>: { <span class="tk-s">"system"</span>: <span class="tk-k">true</span> } },
@@ -219,7 +219,7 @@ page shows the hold (&quot;Connect to Acme&quot;, with a Radius sign-in). When t
   },
   <span class="tk-s">"signature"</span>: { <span class="tk-s">"alg"</span>: <span class="tk-s">"ed25519"</span>, <span class="tk-s">"key"</span>: <span class="tk-s">"acme-2026-11"</span>, <span class="tk-s">"value"</span>: <span class="tk-s">"Zm9v…"</span> }
 }</code></pre>
-<p>The <code>org</code> plugin checks the signature and the binding to Dana and her Pi, then turns this into the managed layer: the
+<p>The <code>org</code> plugin checks the signature and the binding to Dana and her Nycode, then turns this into the managed layer: the
 plugin entries become <code>p3.plugins</code>, <code>ownPlugins</code> becomes <code>p3.plugins.own</code>, each plugin&#39;s settings go in as they are.
 Radius builds the admin forms from each catalog plugin&#39;s manifest: its feature title and its <code>defineSetting</code> metadata
 (title, description, JSON schema), with a &quot;members choose / preset / locked&quot; control per setting.</p>
@@ -289,7 +289,7 @@ for another way; tell the user to ask Acme's admin.</code></pre>
 <li><strong>Installing anything else, or the agent writing a plugin:</strong> <code>p3.plugins.own</code> is locked off, so <code>Plugins</code> refuses, and
 <code>admits</code> would leave the files out anyway.</li>
 <li><strong>Sharing with <code>sam@partner.example</code>:</strong> the sharing plugin refuses (not an Acme member), and Radius refuses the invite
-from the same profile even if a modified Pi skipped the check.</li>
+from the same profile even if a modified Nycode skipped the check.</li>
 <li><strong>Acme removes Linear:</strong> the new revision changes the layer, the MCP plugin&#39;s routine on its effective setting closes
 the connection, and running sessions lose Linear&#39;s tools at their next request.</li>
 <li><strong>Acme locks <code>deploy.targets</code>:</strong> its own plugin reads the setting through <code>setting()</code> and never learns it is locked.</li>
@@ -298,10 +298,10 @@ the connection, and running sessions lose Linear&#39;s tools at their next reque
 </section>
 
 <section class="chapter" id="what-really-holds"><header class="opener"><div class="numeral">V</div><h2>What Really Holds</h2></header>
-<p>In the Pi, all of this is a guardrail. It becomes a wall where the operating system or Radius enforces it: on an Org
-Device the Pi runs as its own service user from a root-owned, signed install; the agent&#39;s tools run in sandboxes; Radius
-serves Acme&#39;s resources only to a Pi proving its device key. Answering Armin&#39;s &quot;can&#39;t I just patch out the check?&quot;: not
-in the managed Pi, which he cannot write or debug; a patched copy he runs himself gets nothing from Acme.</p>
+<p>In the Nycode, all of this is a guardrail. It becomes a wall where the operating system or Radius enforces it: on an Org
+Device the Nycode runs as its own service user from a root-owned, signed install; the agent&#39;s tools run in sandboxes; Radius
+serves Acme&#39;s resources only to a Nycode proving its device key. Answering Armin&#39;s &quot;can&#39;t I just patch out the check?&quot;: not
+in the managed Nycode, which he cannot write or debug; a patched copy he runs himself gets nothing from Acme.</p>
 <table>
 <thead>
 <tr>
@@ -317,18 +317,18 @@ in the managed Pi, which he cannot write or debug; a patched copy he runs himsel
 </tr>
 <tr>
 <td>Dana with a shell</td>
-<td>the service user and root-owned install (cannot edit or debug the Pi), the device key (a copy gets nothing from Acme)</td>
-<td>running her own unmanaged Pi with her own keys, unless the MDM&#39;s execution control stops it</td>
+<td>the service user and root-owned install (cannot edit or debug the Nycode), the device key (a copy gets nothing from Acme)</td>
+<td>running her own unmanaged Nycode with her own keys, unless the MDM&#39;s execution control stops it</td>
 </tr>
 <tr>
 <td>Dana with admin rights</td>
 <td>Radius only: sharing audience, peers, what the model gateway and MCP accounts allow</td>
-<td>everything on that machine, including using the device key from a patched Pi</td>
+<td>everything on that machine, including using the device key from a patched Nycode</td>
 </tr>
 <tr>
 <td>A third-party plugin</td>
 <td>the plugin list: unlisted code never loads</td>
-<td>everything once admitted: it runs inside the Pi</td>
+<td>everything once admitted: it runs inside the Nycode</td>
 </tr>
 </tbody></table>
 </section>
@@ -338,7 +338,7 @@ in the managed Pi, which he cannot write or debug; a patched copy he runs himsel
 <li>Who holds the org key: the admin in the browser (Radius cannot forge profiles) or Radius per org (simpler).</li>
 <li>A default <code>maxOffline</code> for Org Devices, or none (offline work always continues).</li>
 <li>Which Gondolin backend per platform (krun on macOS arm64 and Linux x64, QEMU elsewhere), and what to do where neither has hardware virtualization (Windows; cloud machines without KVM, where QEMU falls back to slow software emulation): SSH environments, no tools, or tools as the member.</li>
-<li>Laptops: a per-member service and signed install like Org Devices, or a Pi under the member&#39;s own user with Radius-side checks only.</li>
+<li>Laptops: a per-member service and signed install like Org Devices, or a Nycode under the member&#39;s own user with Radius-side checks only.</li>
 <li>What <code>revoked</code> does to a member&#39;s data on an Org Device: keep, export to the org, or delete.</li>
 <li>Which Earendil plugins ship in the system root by default, and which are installed only when a profile requires them.</li>
 </ol>

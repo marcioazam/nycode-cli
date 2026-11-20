@@ -418,7 +418,7 @@ function selectionIn(element: Element | undefined): { selection?: string } {
 /** How long "Sent" stays. */
 const SENT_FOR = 4000;
 
-/** "Sent to Chat", or "Sent to Ask Pi" with a link that opens it, at the bottom. */
+/** "Sent to Chat", or "Sent to Ask Nycode" with a link that opens it, at the bottom. */
 function SentNote({ sent, onDone }: { sent: Sent; onDone: () => void }) {
 	useEffect(() => {
 		const timer = setTimeout(onDone, SENT_FOR);

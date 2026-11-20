@@ -1,8 +1,8 @@
-import type { EditorTheme, MarkdownTheme, SelectListTheme, SettingsListTheme } from "@earendil-works/pi-tui";
+import type { EditorTheme, MarkdownTheme, SelectListTheme, SettingsListTheme } from "@nycode/tui";
 import type { Theme } from "./theme.ts";
 
 /**
- * A runtime-owned, swappable theme (p2-tui-port.md section 5.3). Derived pi-tui themes are created once per ref and
+ * A runtime-owned, swappable theme (p2-tui-port.md section 5.3). Derived nycode-tui themes are created once per ref and
  * dereference `ref.current` on every call, so a swap never leaves stale derived objects. Components that bake colors
  * into strings subscribe (or implement `themeChanged()`) and rebuild; caches key on `version`.
  */

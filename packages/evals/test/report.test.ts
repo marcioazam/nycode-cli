@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { EvalTask } from "../src/plan.ts";
-import { PI_SESSION_SNAPSHOT_ARTIFACT, readTaskObservation } from "../src/report.ts";
+import { NYCODE_SESSION_SNAPSHOT_ARTIFACT, readTaskObservation } from "../src/report.ts";
 
 const temporaryDirectories: string[] = [];
 afterEach(async () => {
@@ -28,7 +28,7 @@ type ReportAssertion = {
 };
 
 async function writeTaskReport(assertions: ReportAssertion[]) {
-	const directory = await mkdtemp(join(tmpdir(), "pi-eval-report-test-"));
+	const directory = await mkdtemp(join(tmpdir(), "nycode-eval-report-test-"));
 	temporaryDirectories.push(directory);
 	const reportPath = join(directory, "vitest.json");
 	const results = assertions.map(({ caseId = task.caseId, status = "passed", meta = {} }) => ({
@@ -91,7 +91,7 @@ function scoredMeta(overrides?: {
 					metadata: { cacheReadTokens: 2, cacheWriteTokens: 3, estimatedCostUsd: 0.01 },
 				},
 				timings: { totalMs: 1234 },
-				artifacts: overrides?.artifacts ?? { runId: "run-1", [PI_SESSION_SNAPSHOT_ARTIFACT]: SESSION },
+				artifacts: overrides?.artifacts ?? { runId: "run-1", [NYCODE_SESSION_SNAPSHOT_ARTIFACT]: SESSION },
 				errors: overrides?.errors ?? [],
 			},
 		},

@@ -62,7 +62,7 @@ type State = {
 	/** Whether this conversation accepts replies now; a plugin turns it on (chat-mode, while chat mode is on). */
 	canReply: boolean;
 	setCanReply: Dispatch<SetStateAction<boolean>>;
-	/** The agent's name to mention here (chat-mode's setting, "Pi" by default), offered as `@name` with replies. */
+	/** The agent's name to mention here (chat-mode's setting, "Nycode" by default), offered as `@name` with replies. */
 	mentionName: string;
 	setMentionName: Dispatch<SetStateAction<string>>;
 	/** Focuses the composer now, for an action in the conversation shown (a reply, restored text, dropped files). */
@@ -85,7 +85,7 @@ export function ComposerState({ children }: { children: ReactNode }) {
 	const viewer = useRef(crypto.randomUUID());
 	const [replyTo, setReplyTo] = useState<ReplyTarget>();
 	const [canReply, setCanReply] = useState(false);
-	const [mentionName, setMentionName] = useState("Pi");
+	const [mentionName, setMentionName] = useState("Nycode");
 	const [composerFocus] = useState(() => new ComposerFocus());
 	const input = useRef<DraftInput | null>(null);
 	const registerInput = useCallback(
@@ -101,7 +101,7 @@ export function ComposerState({ children }: { children: ReactNode }) {
 	// A reply target is an entry of one conversation: switching conversations drops it.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: runs when the conversation changes.
 	useEffect(() => setReplyTo(undefined), [key]);
-	// The Stop notice belongs to the conversation it was given in, as in Pi Mobile: another conversation clears it.
+	// The Stop notice belongs to the conversation it was given in, as in Nycode Mobile: another conversation clears it.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: runs when the conversation changes.
 	useEffect(() => setStopped(undefined), [key]);
 	useEffect(() => {

@@ -39,7 +39,7 @@ function row(id: string, change: Partial<SidebarRow> = {}): SidebarRow {
 }
 
 const CONTEXT: RollupContext = {
-	projects: [{ name: "pi", places: [{ env: null, path: "/w/pi" }] }],
+	projects: [{ name: "nycode", places: [{ env: null, path: "/w/nycode" }] }],
 	memberships: {},
 	folderName: (_env, cwd) => cwd,
 	sandboxes: new Set(["box"]),
@@ -106,7 +106,7 @@ describe("customRollup", () => {
 				layout: "groups",
 				groups: [
 					{ key: "a/b", name: "Box", members: ["recent"], target: { kind: "folder", env: "box", cwd: "/x" } },
-					{ key: "pi", name: "Pi", members: ["old"], target: { kind: "project", project: "pi" } },
+					{ key: "nycode", name: "Nycode", members: ["old"], target: { kind: "project", project: "nycode" } },
 					{
 						key: "none",
 						name: "Nowhere",
@@ -124,11 +124,11 @@ describe("customRollup", () => {
 			groups.map((group) => [group.key, group.sandboxed, group.target?.kind]),
 			[
 				[`rollup:mine:${keyPart("a/b")}`, true, "folder"],
-				[`rollup:mine:${keyPart("pi")}`, false, "project"],
+				[`rollup:mine:${keyPart("nycode")}`, false, "project"],
 				[`rollup:mine:${keyPart("none")}`, false, undefined],
 			],
 		);
-		// "Pi" has no session within the window: hidden; "Nowhere" is kept.
+		// "Nycode" has no session within the window: hidden; "Nowhere" is kept.
 		assert.deepEqual(short(sectionsOf([rollup], ROWS, CONTEXT, VIEW)[0]!), [
 			"groups",
 			[
@@ -137,8 +137,8 @@ describe("customRollup", () => {
 			],
 		]);
 		// A group's list page, by its key.
-		const page = listPageOf(`rollup:mine:${keyPart("pi")}`, [rollup], ROWS, CONTEXT, VIEW);
-		assert.equal(page?.name, "Pi");
+		const page = listPageOf(`rollup:mine:${keyPart("nycode")}`, [rollup], ROWS, CONTEXT, VIEW);
+		assert.equal(page?.name, "Nycode");
 	});
 
 	it("collects nothing before its first good run, and only a link for a link", () => {

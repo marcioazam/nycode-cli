@@ -63,7 +63,7 @@ const Summary = local("example.summary", { version: 1, params: {}, members: { te
 const Status = local("example.status", { version: 1, params: {}, members: { text: str() } });
 
 // The host packages: this process's Chord.
-const modules = { "@earendil-works/chord": chord };
+const modules = { "@nycode/chord": chord };
 const plugins = createPlugins(
 	{
 		roots: [root],

@@ -1,9 +1,10 @@
-// `@earendil-works/pi-durable/images/fit`: images entering a conversation, fitted to its model's limits by any
+// `@nycode/durable/images/fit`: images entering a conversation, fitted to its model's limits by any
 // `ImageProcessor` before they are stored, so the transcript (and the provider's prompt cache) never changes later: a
 // host's input before it is submitted (`fitImage`, `fitImages`), and the results of the model's tool calls
 // (`createFitImagesExtension`). Photon is not loaded from here; pass a processor.
-import type { Context } from "@earendil-works/chord/context";
-import type { ImageContent, TextContent } from "@earendil-works/pi-ai";
+
+import type { ImageContent, TextContent } from "@nycode/ai";
+import type { Context } from "@nycode/chord/context";
 import { errorMessage } from "../errors.ts";
 import { AgentDoc } from "../harness/agent.ts";
 import { defineExtension, hook } from "../harness/define.ts";

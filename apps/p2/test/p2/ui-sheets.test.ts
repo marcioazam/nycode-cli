@@ -6,8 +6,8 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
-import { createModels } from "@earendil-works/pi-ai/models";
-import { fauxProvider } from "@earendil-works/pi-ai/providers/faux";
+import { createModels } from "@nycode/ai/models";
+import { fauxProvider } from "@nycode/ai/providers/faux";
 import { BACKGROUND_CONTEXT, follow } from "@p2/app/v1";
 import { WebSocket } from "ws";
 import { Envs } from "../../plugins/envs/contract.ts";
@@ -160,7 +160,7 @@ describe("sheet parity", { skip: !browserTests }, () => {
 			await click("Done");
 			await wait(`document.querySelector('[role=dialog] [aria-label=Providers] .row-button')`);
 			await until(login.login, (state) => state === null);
-			// Done went back onto the list's own history entry (the provider screen replaced the list's layer, as in Pi
+			// Done went back onto the list's own history entry (the provider screen replaced the list's layer, as in Nycode
 			// Mobile): one more Back leaves the list instead of showing an identical list (to Settings' list on phones).
 			await evaluate("history.back()");
 			await wait(`!document.querySelector('[role=dialog] [aria-label=Providers]')`);

@@ -1,8 +1,8 @@
 // The agent's plugins (worker, docs/agent-plugins.md): the skill on writing p2 plugins, for conversations on the
 // server's own machine (`PluginSkills`), and for conversations on other environments a hint instead: the skill's
 // files stay on the server, so writing a plugin starts a subagent there.
-import { pluginFile } from "@earendil-works/chord/plugins";
-import { defineExtension, section } from "@earendil-works/pi-durable";
+import { pluginFile } from "@nycode/chord/plugins";
+import { defineExtension, section } from "@nycode/durable";
 import { contribute, defineFacet } from "@p2/app/v1";
 import { userPluginsDirectory } from "@p2/app/v1/node";
 import { Extensions, harnessOf, PluginSkills, workerOf } from "@p2/app/v1/worker";

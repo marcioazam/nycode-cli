@@ -2,7 +2,7 @@
 // the Cloud Brain build (scripts/cloud-bundle.ts) and the test that it reads no package's `dist/`.
 
 import { fileURLToPath } from "node:url";
-import type { BaseResolution } from "@earendil-works/chord/surfaces";
+import type { BaseResolution } from "@nycode/chord/surfaces";
 
 /** The pages' start code (it calls `startP2Page`). */
 export const WEB_ENTRY = fileURLToPath(new URL("./entry.ts", import.meta.url));

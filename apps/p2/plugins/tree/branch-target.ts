@@ -1,6 +1,6 @@
 // A `/tree` branch as the command menu's target (docs/tree.md, Labels): the tree panel's branch labels are targets,
 // "Rename branch…" (the sessions plugin's sheet) acts on them. Host packages only, so either plugin's web facet copies it.
-import { compile, int, str, tuple } from "@earendil-works/pi-schema";
+import { compile, int, str, tuple } from "@nycode/schema";
 import type { CommandTarget } from "@p2/app/v1/web";
 
 /** A branch of a session, as its command target and the rename sheet's locator name it. */

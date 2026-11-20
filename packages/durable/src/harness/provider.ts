@@ -1,5 +1,5 @@
-import type { Context } from "@earendil-works/chord/context";
-import { uuidv7 } from "@earendil-works/pi-ai/utils/uuid";
+import { uuidv7 } from "@nycode/ai/utils/uuid";
+import type { Context } from "@nycode/chord/context";
 import { defineDoc } from "../documents.ts";
 import type { TaskRuntime } from "../types.ts";
 
@@ -10,7 +10,7 @@ export type ProviderState = {
 
 /** Built-in provider state; every fork starts with a fresh identity instead of copying its parent. */
 export const ProviderDoc = defineDoc<ProviderState>({
-	kind: "pi.provider",
+	kind: "nycode.provider",
 	version: 1,
 	scope: "conversation",
 	history: "latest",
@@ -24,7 +24,7 @@ export const providerSessionsByRuntime = new WeakMap<object, Set<string>>();
 
 /**
  * Return and record the persisted provider identity without writing in the normal path. A legacy conversation without
- * `pi.provider` gets one migration commit whose `tx.doc()` runs `initial()` before the provider request starts.
+ * `nycode.provider` gets one migration commit whose `tx.doc()` runs `initial()` before the provider request starts.
  */
 export async function ensureProviderSessionId<I, S, R, H extends object>(
 	runtime: TaskRuntime<I, S, R, H>,

@@ -1,18 +1,18 @@
 // Builds p2's web UI for Radius Cloud Brain into `<out>/<sha>/`: one script, one stylesheet, their assets, and a
-// manifest.json naming them. Radius serves the `pi-ui` bucket under `/pi/ui/` and puts the Chord URL in the page's
-// `#root` `data-pi-bootstrap`. The page is static (`startPage({ follow: false })`, src/hosts/web/main.tsx): built here
+// manifest.json naming them. Radius serves the `nycode-ui` bucket under `/nycode/ui/` and puts the Chord URL in the page's
+// `#root` `data-nycode-bootstrap`. The page is static (`startPage({ follow: false })`, src/hosts/web/main.tsx): built here
 // with Chord's builders as a p2 page is, its script being Chord's page bootstrap, the plugins' web scripts (registered
 // as the web surface registers them) and the base bundle, in that order, and its stylesheet the base's and the
-// plugins' in order. Assets are named by their content under `/pi/ui/<sha>/assets/`.
+// plugins' in order. Assets are named by their content under `/nycode/ui/<sha>/assets/`.
 //
 //   node --import ./src/source.ts scripts/cloud-bundle.ts <full commit sha> <out dir>
 
 import { createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { registeredSource } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import { buildBase, pageBootstrap } from "@earendil-works/chord/surfaces";
+import { registeredSource } from "@nycode/chord";
+import { BACKGROUND_CONTEXT } from "@nycode/chord/context";
+import { buildBase, pageBootstrap } from "@nycode/chord/surfaces";
 import { createP2Plugins } from "../src/hosts/plugins.ts";
 import { WEB_ENTRY, WEB_RESOLUTION } from "../src/hosts/web/base.ts";
 
@@ -25,7 +25,7 @@ const SOURCE_MAP = /\n\/\/# sourceMappingURL=[^\n]*/g;
 const [sha, out] = process.argv.slice(2);
 if (!sha || !/^[0-9a-f]{40}$/.test(sha) || !out) throw new Error("usage: cloud-bundle.ts <full commit sha> <out dir>");
 
-const prefix = `/pi/ui/${sha}/`;
+const prefix = `/nycode/ui/${sha}/`;
 const dir = join(out, sha);
 await mkdir(join(dir, "assets"), { recursive: true });
 
@@ -65,6 +65,6 @@ const scriptFile = named(page, "js");
 const styleFile = named(style, "css");
 await writeFile(join(dir, scriptFile), page);
 await writeFile(join(dir, styleFile), style);
-const manifest = { version: `pi-${sha}`, script: scriptFile, stylesheets: [styleFile], commit: sha };
+const manifest = { version: `nycode-${sha}`, script: scriptFile, stylesheets: [styleFile], commit: sha };
 await writeFile(join(dir, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
 console.log(`built ${dir}`);

@@ -2,8 +2,8 @@
 // and the OAuth sign-ins) and its view per principal (`Mcp`: a session worker sets its locations and calls tools; the
 // owner sees and restarts instances and signs in and out of HTTP servers).
 
-import type { CallToolResult, ToolAnnotations } from "@earendil-works/pi-mcp";
-import { arr, int, nul, obj, oneOf, opt, type Static, str, union, unknown } from "@earendil-works/pi-schema";
+import type { CallToolResult, ToolAnnotations } from "@nycode/mcp";
+import { arr, int, nul, obj, oneOf, opt, type Static, str, union, unknown } from "@nycode/schema";
 import {
 	type AcceptsTable,
 	evolve,
@@ -115,7 +115,7 @@ const LeaseViewSchema = obj({ session: str(), location: LocationSchema, instance
 export const PROJECT_FILE_MAX_CHARS = 256 * 1024;
 
 /**
- * A project's `<cwd>/.pi/mcp.json` at one of the locations, as the worker read it there: its text (checked by the
+ * A project's `<cwd>/.nycode/mcp.json` at one of the locations, as the worker read it there: its text (checked by the
  * manager: a trust boundary), or why it could not be read.
  */
 const ProjectFileSchema = union([

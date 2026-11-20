@@ -1,11 +1,4 @@
-import type {
-	ExecutionEnv,
-	FileError,
-	FileInfo,
-	FileWatcher,
-	Result,
-	WatchTarget,
-} from "@earendil-works/pi-durable/env";
+import type { ExecutionEnv, FileError, FileInfo, FileWatcher, Result, WatchTarget } from "@nycode/durable/env";
 import type { Context } from "@p2/app/v1";
 import { withCancel } from "@p2/app/v1";
 import {
@@ -327,7 +320,7 @@ export class Workspace {
 	 * folders and not following symlinks.
 	 *
 	 * The walk is breadth first with each directory's entries in name order (UTF-16 code units; byte order for names
-	 * without astral characters, as pi-env's `listDir` and `listFiles`), so a truncated walk keeps the same files on
+	 * without astral characters, as nycode-env's `listDir` and `listFiles`), so a truncated walk keeps the same files on
 	 * every filesystem: shallow directories, and earlier names among siblings. Directory order (`openDirReader`) is
 	 * the filesystem's hash or creation order and would keep an arbitrary subset.
 	 */
@@ -624,12 +617,12 @@ export class Workspace {
 	async write(upload: WorkspaceUpload, context: Context): Promise<void> {
 		if (!/^[0-9a-f-]{36}$/.test(upload.token)) throw new Error("Invalid upload");
 		const name = upload.name;
-		if (!name || name.includes("/") || workspacePath(name) === undefined || name.startsWith(".pi-upload-"))
+		if (!name || name.includes("/") || workspacePath(name) === undefined || name.startsWith(".nycode-upload-"))
 			throw new Error("Invalid file name");
 		const directory = await this.resolve(upload.path, context);
 		const prefix = directory === "/" ? "" : directory;
 		const target = `${prefix}/${name}`;
-		const temp = `${prefix}/.pi-upload-${upload.token}`;
+		const temp = `${prefix}/.nycode-upload-${upload.token}`;
 		if (upload.abort) {
 			await this.env.remove(temp, { force: true }, context);
 			return;

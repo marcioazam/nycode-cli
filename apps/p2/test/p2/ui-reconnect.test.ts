@@ -213,7 +213,7 @@ export default defineFacet((host) => host.serve(Delay, (_params, self) => {
 			const failed = await browser.evaluate<{ noticeId: string }>(`fetch('/__p2_dev').then(r=>r.json())`);
 			assert.equal(
 				await browser.evaluate<string>(
-					`localStorage.getItem('pi-owner-notice-dismissed:dev:'+${JSON.stringify(failed.noticeId)})`,
+					`localStorage.getItem('nycode-owner-notice-dismissed:dev:'+${JSON.stringify(failed.noticeId)})`,
 				),
 				"1",
 			);

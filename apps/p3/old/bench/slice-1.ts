@@ -3,7 +3,7 @@
 //    installed release. Process launch to listening (cold: an empty compile cache; warm), what the start spends on
 //    building plugins and the worker base, the server's memory, a session worker's start (cold: the first after the
 //    server's start; warm) and what idle workers need (`RssAnon`, USS: the memory no other process shares, PSS), and
-//    the owner's list over the WebSocket at 1,000, 10,000 and 100,000 sessions. Then the commands on a named Pi:
+//    the owner's list over the WebSocket at 1,000, 10,000 and 100,000 sessions. Then the commands on a named Nycode:
 //    plain `p3` (a background start), `p3` again (the server found), `status`, `stop`, and the supervisor's memory.
 // 2. Source only, in this process: where the list's time goes. Beside a trivial call and a trivial object on the same
 //    link (the round trip alone), the same without a link (on the server's host), the store's page reads alone, and a
@@ -16,9 +16,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import type { Contract, Host, ParamsOf, Reference } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context";
-import { int, method, type P3Principal, remote, Server, str } from "@earendil-works/p3/v1";
+import type { Contract, Host, ParamsOf, Reference } from "@nycode/chord";
+import { BACKGROUND_CONTEXT as context } from "@nycode/chord/context";
+import { int, method, type P3Principal, remote, Server, str } from "@nycode/p3/v1";
 import { SessionsStore } from "../plugins/sessions/contract.server.ts";
 import { CODING, Sessions, SessionsList, SessionWorker } from "../plugins/sessions/contract.ts";
 import { PRINCIPALS } from "../src/app.ts";
@@ -45,7 +45,7 @@ const Ping = remote("bench.ping", {
 
 /** A single-file plugin serving `Ping`: its contract is the one above, written again (the two must stay equal). */
 const PING_PLUGIN = [
-	'import { constant, defineFacet, int, method, remote, Server, str } from "@earendil-works/p3/v1";',
+	'import { constant, defineFacet, int, method, remote, Server, str } from "@nycode/p3/v1";',
 	'const Ping = remote("bench.ping", { version: 1, params: { view: str() }, hostAddress: () => Server(),',
 	"\tvariants: { any: { state: { value: int() }, methods: { ping: method() } } } });",
 	"export default defineFacet((host) =>",
@@ -201,7 +201,7 @@ async function baseBytes(dataDir: string): Promise<number> {
 const COMMANDS = 20;
 
 /**
- * Part 1, the commands of `command` on a named Pi under a home directory in `dir`, the compile cache warm: how long
+ * Part 1, the commands of `command` on a named Nycode under a home directory in `dir`, the compile cache warm: how long
  * each takes from its launch to its exit, and what the background server's supervisor needs.
  */
 async function commands(command: readonly string[], dir: string): Promise<void> {
@@ -209,7 +209,7 @@ async function commands(command: readonly string[], dir: string): Promise<void> 
 	await mkdir(home);
 	const env = { ...process.env, HOME: home, NODE_COMPILE_CACHE: join(dir, "compile-cache-0") };
 	const p3 = async (...args: string[]) => {
-		const [ms, ran] = await timed(() => runCommand(command, [...args, "--pi", "bench"], { env, cwd: dir }));
+		const [ms, ran] = await timed(() => runCommand(command, [...args, "--nycode", "bench"], { env, cwd: dir }));
 		if (ran.code !== 0) throw new Error(`p3 ${args.join(" ")}: ${ran.stdout}${ran.stderr}`);
 		return ms;
 	};
@@ -224,18 +224,18 @@ async function commands(command: readonly string[], dir: string): Promise<void> 
 		const start = await p3();
 		const found = await p3();
 		const status = await p3("status");
-		const record = join(home, ".pi", "p3", "pis", "bench", "supervisor.json");
+		const record = join(home, ".nycode", "p3", "pis", "bench", "supervisor.json");
 		const { pid } = JSON.parse(await readFile(record, "utf8")) as { pid: number };
 		supervisor = (await memory(pid)).uss;
 		const stop = await p3("stop");
-		// The first round is the Pi's first start (its directory made, its port taken): not counted.
+		// The first round is the Nycode's first start (its directory made, its port taken): not counted.
 		if (i > 0)
 			for (const [name, ms] of Object.entries({ start, found, status, stop })) times[name as "start"].push(ms);
 	}
 	// The supervisor once more, settled.
 	await p3();
 	await new Promise((resolve) => setTimeout(resolve, SETTLE_MS));
-	const record = join(home, ".pi", "p3", "pis", "bench", "supervisor.json");
+	const record = join(home, ".nycode", "p3", "pis", "bench", "supervisor.json");
 	const settled = (await memory((JSON.parse(await readFile(record, "utf8")) as { pid: number }).pid)).uss;
 	await p3("stop");
 	const ms = (values: number[]) => `${median(values).toFixed(0)} ms (median of ${COMMANDS})`;
@@ -309,7 +309,7 @@ const PROFILED = 200;
 const PARTS: readonly (readonly [string, RegExp])[] = [
 	["SQLite: the statements", /^ (all|get|run|prepare|iterate|exec)$|^node:sqlite/],
 	["the store: reads, row decoding, skip test", /\/chord\/src\/(sqlite|store)\//],
-	["the plugin's mapping of rows", /@earendil-works\/p3-sessions\//],
+	["the plugin's mapping of rows", /@nycode\/p3-sessions\//],
 	["the list: pages, bookmarks, readers", /\/host\/(list|tiling|named-query|query-reader|read-declarations)\.ts/],
 	["objects: activation, references, admission", /\/chord\/src\/(host|registries|documents|state|context)\//],
 	[

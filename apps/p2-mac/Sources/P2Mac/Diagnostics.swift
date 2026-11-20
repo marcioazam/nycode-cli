@@ -26,7 +26,7 @@ enum Diagnostics {
 			theme: document.documentElement.dataset.theme ?? null,
 			colorScheme: document.documentElement.dataset.colorScheme ?? null,
 			prefersDark: matchMedia("(prefers-color-scheme: dark)").matches,
-			piHost: !!window.webkit?.messageHandlers?.piHost,
+			nycodeHost: !!window.webkit?.messageHandlers?.nycodeHost,
 		}))()
 		"""
 
@@ -65,13 +65,13 @@ enum Diagnostics {
 	// The bridge from the page world: the preference, a change to `preference` and its event, then the refusals of an
 	// invalid preference and of a frame inside the page.
 	private static let bridgeProbe = """
-		const host = window.webkit.messageHandlers.piHost;
+		const host = window.webkit.messageHandlers.nycodeHost;
 		const call = async (message, target = host) => {
 			try { return { reply: await target.postMessage(message) }; } catch (error) { return { error: String(error) }; }
 		};
 		const state = () => ({ theme: document.documentElement.dataset.theme ?? null, prefersDark: matchMedia("(prefers-color-scheme: dark)").matches });
 		const events = [];
-		addEventListener("pi-host-theme", (event) => events.push(event.detail));
+		addEventListener("nycode-host-theme", (event) => events.push(event.detail));
 		const before = { ...state(), get: await call({ type: "theme" }) };
 		const set = await call({ type: "set-theme", preference });
 		await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -81,17 +81,17 @@ enum Diagnostics {
 		const frame = document.createElement("iframe");
 		frame.srcdoc = "<p>probe</p>";
 		await new Promise((resolve) => { frame.onload = resolve; document.body.append(frame); });
-		const fromFrame = await call({ type: "set-theme", preference: "light" }, frame.contentWindow.webkit.messageHandlers.piHost);
+		const fromFrame = await call({ type: "set-theme", preference: "light" }, frame.contentWindow.webkit.messageHandlers.nycodeHost);
 		frame.remove();
 		return { before, set, after, events, invalid, unknown, fromFrame };
 		"""
 
 	// A main frame on an origin the brain does not own, with the page's configuration (and so its bridge).
 	private static let foreignProbe = """
-		const host = window.webkit?.messageHandlers?.piHost;
-		if (!host) return { piHost: false };
-		try { return { piHost: true, origin: location.origin, reply: await host.postMessage({ type: "set-theme", preference: "light" }) }; }
-		catch (error) { return { piHost: true, origin: location.origin, error: String(error) }; }
+		const host = window.webkit?.messageHandlers?.nycodeHost;
+		if (!host) return { nycodeHost: false };
+		try { return { nycodeHost: true, origin: location.origin, reply: await host.postMessage({ type: "set-theme", preference: "light" }) }; }
+		catch (error) { return { nycodeHost: true, origin: location.origin, error: String(error) }; }
 		"""
 
 	private static var bridgePreference = ProcessInfo.processInfo.environment["P2MAC_DIAG_BRIDGE"]
@@ -113,7 +113,7 @@ enum Diagnostics {
 		record["appAppearanceAfterRefusals"] = NSApp.effectiveAppearance.name.rawValue
 		await snapshot(controller, name: "\(index)-bridge", in: directory)
 		// The other windows too: one may show a placeholder, which has no page load to record it.
-		for (number, window) in NSApp.windows.filter({ $0.delegate is PiWindowController && $0 !== controller.webView.window }).enumerated() {
+		for (number, window) in NSApp.windows.filter({ $0.delegate is NycodeWindowController && $0 !== controller.webView.window }).enumerated() {
 			snapshot(window, to: directory.appending(path: "window-\(index)-bridge-other-\(number + 1).png"))
 		}
 		record["menu"] = await probeMenu(webView)
@@ -123,7 +123,7 @@ enum Diagnostics {
 		// A stale forced value in the page's own storage, the opposite of what it shows: the reload (page-N+1.json)
 		// must ignore it. That record removes it again, so the run leaves no state in the brain's data store.
 		_ = try? await webView.evaluateJavaScript(
-			"localStorage.setItem('pi-theme', document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark')")
+			"localStorage.setItem('nycode-theme', document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark')")
 		staleTheme = true
 		webView.reload()
 	}
@@ -163,7 +163,7 @@ enum Diagnostics {
 	// ran, ready, finished), theme events, `data-theme` writes and scheme media changes; returns what the engine supports.
 	private static let fadeHook = """
 		const now = () => performance.timeOrigin + performance.now();
-		const log = window.piDiagFade = { transitions: [], events: [], themeWrites: [], mediaChanges: [] };
+		const log = window.nycodeDiagFade = { transitions: [], events: [], themeWrites: [], mediaChanges: [] };
 		const start = document.startViewTransition?.bind(document);
 		if (start) document.startViewTransition = (argument) => {
 			const entry = { called: now(), form: typeof argument === "function" ? "function" : "object", types: argument?.types ?? null };
@@ -176,7 +176,7 @@ enum Diagnostics {
 			transition.finished.then(() => { entry.finished = now(); });
 			return transition;
 		};
-		addEventListener("pi-host-theme", (event) => log.events.push({ at: now(), preference: event.detail?.preference }));
+		addEventListener("nycode-host-theme", (event) => log.events.push({ at: now(), preference: event.detail?.preference }));
 		new MutationObserver(() => log.themeWrites.push({ at: now(), theme: document.documentElement.dataset.theme }))
 			.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 		matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (event) => log.mediaChanges.push({ at: now(), dark: event.matches }));
@@ -189,7 +189,7 @@ enum Diagnostics {
 		return {
 			startViewTransition: typeof start === "function",
 			types: typeof ViewTransition !== "undefined" && "types" in ViewTransition.prototype,
-			typeSelector: CSS.supports("selector(:active-view-transition-type(pi-theme))"),
+			typeSelector: CSS.supports("selector(:active-view-transition-type(nycode-theme))"),
 			reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
 			visibility: document.visibilityState,
 		};
@@ -198,17 +198,17 @@ enum Diagnostics {
 	// The triggers, after the switch probe left the page on Light: p2's own button (the page fades at once,
 	// optimistically) and the app's change through the bridge (the page fades on the event), each way.
 	private static let fadeTriggers: [(name: String, script: String)] = {
-		let mark = "window.piDiagFade.posted = performance.timeOrigin + performance.now(); "
+		let mark = "window.nycodeDiagFade.posted = performance.timeOrigin + performance.now(); "
 		let click = mark + "document.querySelector('.theme-toggle').click()"
 		let bridge = { (preference: String) in
-			mark + "window.webkit.messageHandlers.piHost.postMessage({ type: 'set-theme', preference: '\(preference)' })"
+			mark + "window.webkit.messageHandlers.nycodeHost.postMessage({ type: 'set-theme', preference: '\(preference)' })"
 		}
 		return [("button-to-dark", click), ("bridge-to-light", bridge("light")), ("bridge-to-dark", bridge("dark")), ("button-to-system", click)]
 	}()
 
 	/// Changes the theme with each of `fadeTriggers` and grabs the windows with `screencapture` 0, 80, 160 and
 	/// 300 ms after each (`fade-N-<trigger>-<ms>[-other-K].png`). Records when each grab was launched, when the page's view
-	/// transitions ran, and when the `pi-host-theme` event arrived, which the app sends right after it starts its
+	/// transitions ran, and when the `nycode-host-theme` event arrived, which the app sends right after it starts its
 	/// native fade; all in epoch milliseconds.
 	private static func probeFade(_ controller: BrainPage, index: Int, in directory: URL) async -> [String: Any] {
 		let webView = controller.webView
@@ -217,12 +217,12 @@ enum Diagnostics {
 		// is not the active app, so the window goes in front of other apps' windows without activating.
 		window.orderFrontRegardless()
 		try? await Task.sleep(for: .milliseconds(500))
-		let others = NSApp.windows.filter { $0.delegate is PiWindowController && $0 !== window && $0.isVisible }
+		let others = NSApp.windows.filter { $0.delegate is NycodeWindowController && $0 !== window && $0.isVisible }
 		let tabBar = window.contentView?.subviews.first { $0 is BrainTabBar }
 		var record: [String: Any] = ["support": (try? await webView.callAsyncJavaScript(fadeHook, contentWorld: .page)) ?? NSNull()]
 		let epoch = { Date().timeIntervalSince1970 * 1000 }
 		for trigger in fadeTriggers {
-			_ = try? await webView.callAsyncJavaScript("window.piDiagFade.transitions = []; window.piDiagFade.events = []", contentWorld: .page)
+			_ = try? await webView.callAsyncJavaScript("window.nycodeDiagFade.transitions = []; window.nycodeDiagFade.events = []", contentWorld: .page)
 			let start = epoch()
 			webView.evaluateJavaScript(trigger.script, in: nil, in: .page)
 			var grabs: [[String: Any]] = []
@@ -240,7 +240,7 @@ enum Diagnostics {
 			}
 			let fading = tabBar?.layer?.animationKeys() ?? []
 			try? await Task.sleep(for: .milliseconds(700))
-			let page = try? await webView.callAsyncJavaScript("return window.piDiagFade", contentWorld: .page)
+			let page = try? await webView.callAsyncJavaScript("return window.nycodeDiagFade", contentWorld: .page)
 			record[trigger.name] = [
 				"start": start, "grabs": grabs, "page": page ?? NSNull(), "appPreference": controller.app.appearance.rawValue,
 				"tabBarAnimationsAt300": fading, "tabBarAnimationsAt1000": tabBar?.layer?.animationKeys() ?? [],
@@ -259,12 +259,12 @@ enum Diagnostics {
 		}
 		var record: [String: Any] = ["checked": checked()]
 		_ = try? await webView.evaluateJavaScript(
-			"window.piDiagEvents = []; addEventListener('pi-host-theme', (event) => window.piDiagEvents.push(event.detail))")
+			"window.nycodeDiagEvents = []; addEventListener('nycode-host-theme', (event) => window.nycodeDiagEvents.push(event.detail))")
 		if let menu, let system = menu.items.firstIndex(where: { $0.title == "System" }) { menu.performActionForItem(at: system) }
 		try? await Task.sleep(for: .milliseconds(500))
 		record["checkedAfterSystem"] = checked()
 		record["appAppearanceAfterSystem"] = NSApp.appearance?.name.rawValue ?? "nil (system)"
-		record["eventsAfterSystem"] = try? await webView.evaluateJavaScript("window.piDiagEvents")
+		record["eventsAfterSystem"] = try? await webView.evaluateJavaScript("window.nycodeDiagEvents")
 		return record
 	}
 
@@ -322,10 +322,10 @@ enum Diagnostics {
 				write(record, to: directory.appending(path: "page-\(index).json"))
 				if staleTheme {
 					staleTheme = false
-					_ = try? await webView.evaluateJavaScript("localStorage.removeItem('pi-theme')")
+					_ = try? await webView.evaluateJavaScript("localStorage.removeItem('nycode-theme')")
 				}
 				await snapshot(controller, name: "\(index)", in: directory)
-				if let preference = bridgePreference, record["piHost"] as? Bool == true {
+				if let preference = bridgePreference, record["nycodeHost"] as? Bool == true {
 					bridgePreference = nil
 					await probeBridge(controller, preference: preference, index: index, in: directory)
 				}

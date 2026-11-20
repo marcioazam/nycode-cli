@@ -1,11 +1,11 @@
-// `@` and Tab file completion (p2-tui-port.md sections 8.2-8.4): the shared text helpers (copies of pi-tui's), the
+// `@` and Tab file completion (p2-tui-port.md sections 8.2-8.4): the shared text helpers (copies of nycode-tui's), the
 // TUI provider over a FileIndex, the editor integration, and the index's bounds on a large directory (P7a, P7b).
 
 import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
-import { ROOT_CONVERSATION_ID } from "@earendil-works/pi-durable";
+import { ROOT_CONVERSATION_ID } from "@nycode/durable";
 import { BACKGROUND_CONTEXT, whenLive } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import chatTui from "../../plugins/chat/tui.ts";
@@ -26,7 +26,7 @@ import { tuiCoreFacet } from "../../src/tui/core-commands.ts";
 import { holdIn, poll, startFixture } from "./helpers.ts";
 import { SESSION, type Stub, sessionsStub, topology } from "./tui-fixture.ts";
 
-test("prefix extraction, quoting and insertion follow pi-tui", () => {
+test("prefix extraction, quoting and insertion follow nycode-tui", () => {
 	assert.equal(extractAtPrefix("look at @src/ma"), "@src/ma");
 	assert.equal(extractAtPrefix('see @"my fi'), '@"my fi');
 	assert.equal(extractAtPrefix("mail me@example"), null, "not at a token start");

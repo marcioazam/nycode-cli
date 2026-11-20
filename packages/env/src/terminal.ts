@@ -24,7 +24,7 @@ export interface TerminalForeground {
 }
 
 /**
- * A program running in a pseudo-terminal of a pi-env daemon. It ends when the program exits, `close()` kills it, or
+ * A program running in a pseudo-terminal of a nycode-env daemon. It ends when the program exits, `close()` kills it, or
  * the connection is lost (the daemon then kills it).
  */
 export class RemoteTerminal {

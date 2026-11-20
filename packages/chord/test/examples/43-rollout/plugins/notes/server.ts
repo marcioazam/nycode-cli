@@ -1,6 +1,6 @@
 // The notes plugin's server facet.
 
-import { constant, defineFacet } from "@earendil-works/chord";
+import { constant, defineFacet } from "@nycode/chord";
 import { Banner } from "./contract.ts";
 import { label } from "./label.ts";
 

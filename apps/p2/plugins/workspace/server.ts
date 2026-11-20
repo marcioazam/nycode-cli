@@ -123,7 +123,7 @@ export default defineFacet((host) => {
 							response.end();
 							return;
 						}
-						// As Pi Mobile: a whole file over 25 MiB is refused (media players page through ranges instead).
+						// As Nycode Mobile: a whole file over 25 MiB is refused (media players page through ranges instead).
 						if (!header && size > WORKSPACE_DOWNLOAD_LIMIT) {
 							response.writeHead(413, { "Content-Type": "text/plain" });
 							response.end("File too large");

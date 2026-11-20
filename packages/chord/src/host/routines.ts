@@ -3,7 +3,7 @@
 // each call gets its own ctx and its own `chord.routine` root span; a call that throws is reported and called again
 // after a backoff.
 
-import type { TelemetryContext } from "@earendil-works/pi-telemetry";
+import type { TelemetryContext } from "@nycode/telemetry";
 import { type Context, withTelemetry } from "../context/index.ts";
 import type { Principal } from "../data/index.ts";
 import { type Op, PendingOps } from "../delta/index.ts";

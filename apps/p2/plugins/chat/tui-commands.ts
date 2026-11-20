@@ -1,4 +1,4 @@
-// Chat's TUI commands (p2-tui-port.md section 6.3), ported from the p2.* actions to pi's ids. They reach the live
+// Chat's TUI commands (p2-tui-port.md section 6.3), ported from the p2.* actions to nycode's ids. They reach the live
 // surface through `ctx.surface("chat")`, so a facet reload never leaves a stale handler.
 import type { TuiCommand, TuiContext } from "@p2/app/v1/tui";
 import { ChatSurface } from "./tui.ts";
@@ -12,14 +12,14 @@ export const CHAT_COMMANDS: Record<string, TuiCommand> = {
 	"app.interrupt": {
 		title: "Stop the agent",
 		category: "Chat",
-		// pi: Escape closes the editor's autocomplete first, and aborts a running compaction.
+		// nycode: Escape closes the editor's autocomplete first, and aborts a running compaction.
 		when: "chat && participant && !autocomplete && !overlay",
 		run: (ctx) => chat(ctx)?.interrupt(),
 	},
 	"app.clear": {
 		title: "Clear editor",
 		category: "Chat",
-		// pi: Ctrl+C clears the editor; a second press within 500 ms exits (ChatSurface.clear).
+		// nycode: Ctrl+C clears the editor; a second press within 500 ms exits (ChatSurface.clear).
 		when: "chat && editorFocused && !autocomplete && !overlay",
 		run: (ctx) => chat(ctx)?.clear(),
 	},
@@ -43,7 +43,7 @@ export const CHAT_COMMANDS: Record<string, TuiCommand> = {
 		slash: { name: "compact", argumentHint: "[instructions]" },
 		run: (ctx, args) => chat(ctx)?.compact(args),
 	},
-	// pi's /tree: the session's branches (docs/tree.md).
+	// nycode's /tree: the session's branches (docs/tree.md).
 	"app.session.tree": {
 		title: "Continue the session from an earlier message",
 		category: "Session",
@@ -51,7 +51,7 @@ export const CHAT_COMMANDS: Record<string, TuiCommand> = {
 		slash: { name: "tree" },
 		run: (ctx) => chat(ctx)?.openTree(),
 	},
-	// pi's /fork and /clone as new sessions (Sessions.fork/clone; the server copies the store).
+	// nycode's /fork and /clone as new sessions (Sessions.fork/clone; the server copies the store).
 	"app.session.fork": {
 		title: "Fork from a message into a new session",
 		category: "Session",
@@ -100,7 +100,7 @@ export const CHAT_COMMANDS: Record<string, TuiCommand> = {
 		slash: { name: "detach" },
 		run: (ctx) => chat(ctx)?.detach(true),
 	},
-	// pi's /copy (P5): the launcher shows the full text and copies only after a local confirmation (C grant).
+	// nycode's /copy (P5): the launcher shows the full text and copies only after a local confirmation (C grant).
 	"p2.chat.copy": {
 		title: "Copy the last answer",
 		category: "Chat",

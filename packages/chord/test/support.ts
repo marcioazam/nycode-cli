@@ -4,7 +4,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { setFlagsFromString } from "node:v8";
 import { runInNewContext } from "node:vm";
-import { InMemoryTelemetryContext, type TelemetryContext } from "@earendil-works/pi-telemetry";
+import { InMemoryTelemetryContext, type TelemetryContext } from "@nycode/telemetry";
 import { afterEach, beforeAll, beforeEach, describe, expect, vi } from "vitest";
 import { BACKGROUND_CONTEXT, type Context, withTelemetry } from "../src/context/index.ts";
 import {

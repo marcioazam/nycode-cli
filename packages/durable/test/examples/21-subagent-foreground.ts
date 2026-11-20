@@ -5,13 +5,13 @@
 // Run from packages/durable:
 //   node --conditions=source --experimental-strip-types test/examples/21-subagent-foreground.ts
 
-import type { Context } from "@earendil-works/chord/context";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import type { AssistantMessage, FauxResponseStep } from "@earendil-works/pi-ai";
-import { createModels } from "@earendil-works/pi-ai/models";
-import { fauxAssistantMessage, fauxProvider, fauxText, fauxToolCall } from "@earendil-works/pi-ai/providers/faux";
-import { openaiProvider } from "@earendil-works/pi-ai/providers/openai";
-import { obj, str } from "@earendil-works/pi-schema";
+import type { AssistantMessage, FauxResponseStep } from "@nycode/ai";
+import { createModels } from "@nycode/ai/models";
+import { fauxAssistantMessage, fauxProvider, fauxText, fauxToolCall } from "@nycode/ai/providers/faux";
+import { openaiProvider } from "@nycode/ai/providers/openai";
+import type { Context } from "@nycode/chord/context";
+import { BACKGROUND_CONTEXT } from "@nycode/chord/context";
+import { obj, str } from "@nycode/schema";
 import {
 	AssistantEntry,
 	type ConversationId,
@@ -106,7 +106,7 @@ const root = await harness.root(context, { agent: { model } });
 /** Print an assistant entry's text and tool calls. */
 const print = (indent: string, entry: EntryRecord): void => {
 	const message = entry.model?.[0];
-	if (entry.kind !== "pi.assistant" || message?.role !== "assistant") return;
+	if (entry.kind !== "nycode.assistant" || message?.role !== "assistant") return;
 	for (const block of (message as AssistantMessage).content) {
 		if (block.type === "text" && block.text !== "") console.log(`${indent}assistant: ${block.text}`);
 		if (block.type === "toolCall") console.log(`${indent}tool ${block.name}(${JSON.stringify(block.arguments)})`);
@@ -123,7 +123,7 @@ const attach = async (id: ConversationId, indent: string): Promise<void> => {
 		for (const entry of value.entries) if (entry.id > newest) print(indent, entry);
 		newest = value.entries.at(-1)?.id ?? newest;
 		// A running subagent call names its child conversation in its details.
-		for (const slot of (value.docs["pi.live"] as LiveState).tools ?? []) {
+		for (const slot of (value.docs["nycode.live"] as LiveState).tools ?? []) {
 			const child = (slot.details as { conversationId?: ConversationId } | undefined)?.conversationId;
 			if (child !== undefined && !attached.has(child)) await attach(child, `${indent}  `);
 		}

@@ -4,14 +4,14 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { JsonValue } from "@earendil-works/chord/json";
 import {
 	type AssistantMessage,
 	fauxAssistantMessage,
 	fauxText,
 	fauxToolCall,
 	type ToolResultMessage,
-} from "@earendil-works/pi-ai";
+} from "@nycode/ai";
+import type { JsonValue } from "@nycode/chord/json";
 import {
 	defineTool,
 	type EntryRecord,
@@ -28,8 +28,8 @@ import {
 	type ToolRegistration,
 	ToolResultEntry,
 	ToolTask,
-} from "@earendil-works/pi-durable";
-import { bool, obj, opt, str } from "@earendil-works/pi-schema";
+} from "@nycode/durable";
+import { bool, obj, opt, str } from "@nycode/schema";
 import { afterEach, describe, expect, it } from "vitest";
 import { openNodeSqliteStorage } from "../src/storage/sqlite/node.ts";
 import { commitWrites } from "../src/testing/commit-writes.ts";
@@ -50,7 +50,7 @@ afterEach(async () => {
 });
 
 async function sqlitePath(): Promise<string> {
-	const directory = await mkdtemp(join(tmpdir(), "pi-durable-tool-hooks-"));
+	const directory = await mkdtemp(join(tmpdir(), "nycode-durable-tool-hooks-"));
 	directories.add(directory);
 	return join(directory, "session.sqlite");
 }
@@ -644,7 +644,7 @@ describe("calls to tools the request did not offer", () => {
 		await (await root.submit({ type: "input", content: "go" }, context)).wait(context);
 		expect(seen.map((each) => each.id)).toEqual(["c1"]);
 		expect(await harness.getTask(seen[0]!.taskId, context)).toMatchObject({
-			kind: "pi.tool",
+			kind: "nycode.tool",
 			input: { kind: "model", callId: "c1", unoffered: true },
 		});
 		const entries = await allEntries(root);

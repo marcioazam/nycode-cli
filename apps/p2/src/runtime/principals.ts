@@ -1,6 +1,6 @@
 // Principals of p2 (browser-safe). Links stamp them; plugins check them in factories and methods.
 
-import type { PrincipalAttributes } from "@earendil-works/chord";
+import type { PrincipalAttributes } from "@nycode/chord";
 
 /** The person running this p2 (one today). */
 export type OwnerPrincipal =

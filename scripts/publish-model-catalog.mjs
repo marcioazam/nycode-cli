@@ -13,7 +13,7 @@ import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { isDeepStrictEqual } from "node:util";
 import {
-	compareModelCatalogPiVersions,
+	compareModelCatalogNycodeVersions,
 	getModelCatalogArtifactKey,
 	getModelCatalogProviderKey,
 	MODEL_CATALOG_INDEX_KEY,
@@ -236,7 +236,7 @@ function validateIndex(index) {
 
 function buildIndex(existingIndex, publication) {
 	const entry = {
-		minimumPiVersion: MINIMUM_PI_VERSION,
+		minimumNycodeVersion: MINIMUM_PI_VERSION,
 		revision: publication.revision,
 		sourceCommit: publication.sourceCommit,
 		publishedAt: new Date().toISOString(),
@@ -249,9 +249,9 @@ function buildIndex(existingIndex, publication) {
 		modelTypes: publication.modelTypes,
 	};
 	const catalogs = (existingIndex?.catalogs || [])
-		.filter((catalog) => catalog.minimumPiVersion !== MINIMUM_PI_VERSION)
+		.filter((catalog) => catalog.minimumNycodeVersion !== MINIMUM_PI_VERSION)
 		.concat(entry)
-		.sort((left, right) => compareModelCatalogPiVersions(left.minimumPiVersion, right.minimumPiVersion));
+		.sort((left, right) => compareModelCatalogNycodeVersions(left.minimumNycodeVersion, right.minimumNycodeVersion));
 	return validateIndex({
 		schemaVersion: MODEL_CATALOG_SCHEMA_VERSION,
 		defaultRevision: publication.revision,
@@ -265,7 +265,7 @@ async function main() {
 	const bundle = validateBundle(inputDir);
 	const publication = {
 		schemaVersion: MODEL_CATALOG_SCHEMA_VERSION,
-		minimumPiVersion: MINIMUM_PI_VERSION,
+		minimumNycodeVersion: MINIMUM_PI_VERSION,
 		revision: bundle.revision,
 		sourceCommit: options.sourceCommit || gitSourceCommit(),
 		providerCount: bundle.providerCount,
@@ -286,13 +286,13 @@ async function main() {
 		return;
 	}
 
-	const temporaryDir = mkdtempSync(join(tmpdir(), "pi-model-catalog-"));
+	const temporaryDir = mkdtempSync(join(tmpdir(), "nycode-model-catalog-"));
 	try {
 		const currentIndexPath = join(temporaryDir, "index-current.json");
 		const hasCurrentIndex = downloadIndex(options.bucket, options.endpoint, currentIndexPath);
 		const currentIndex = hasCurrentIndex ? validateIndex(readJson(currentIndexPath)) : undefined;
 		const currentEntry = currentIndex?.catalogs.find(
-			(catalog) => catalog.minimumPiVersion === MINIMUM_PI_VERSION,
+			(catalog) => catalog.minimumNycodeVersion === MINIMUM_PI_VERSION,
 		);
 		if (currentIndex?.defaultRevision === bundle.revision && currentEntry?.revision === bundle.revision) {
 			console.log(`Model catalog ${bundle.revision} is already current; no objects uploaded.`);

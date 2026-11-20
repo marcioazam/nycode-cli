@@ -1,4 +1,4 @@
-// The data directory: one fixed layout, made private at every start. `pi.json` is the Pi's config, `server/` holds the
+// The data directory: one fixed layout, made private at every start. `nycode.json` is the Nycode's config, `server/` holds the
 // server's store and its cookie secret, `workers/<kind>/<address>/` each worker's store, `cache/` what only saves time
 // (`worker/`, the session workers' base, written again at every start; `node/`, the workers' compile cache), `logs/`
 // what a background server prints, `owner-token` the owner's token for command-line clients; `server.json` and
@@ -9,12 +9,12 @@ import { createHash } from "node:crypto";
 import { chmod, mkdir, open, realpath, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join, parse } from "node:path";
-import type { Address } from "@earendil-works/chord";
+import type { Address } from "@nycode/chord";
 
 /** The paths of a data directory. */
 export type Layout = {
 	readonly dataDir: string;
-	/** The Pi's config (`config.ts`). */
+	/** The Nycode's config (`config.ts`). */
 	readonly config: string;
 	readonly serverStore: string;
 	readonly cookieSecret: string;
@@ -27,9 +27,9 @@ export type Layout = {
 	readonly log: string;
 };
 
-/** The data directory unless the start script names one: `~/.pi/p3`. */
+/** The data directory unless the start script names one: `~/.nycode/p3`. */
 export function defaultDataDir(): string {
-	return join(homedir(), ".pi", "p3");
+	return join(homedir(), ".nycode", "p3");
 }
 
 /**
@@ -56,7 +56,7 @@ export async function openDataDir(path: string): Promise<string> {
 export function layoutOf(dataDir: string): Layout {
 	return {
 		dataDir,
-		config: join(dataDir, "pi.json"),
+		config: join(dataDir, "nycode.json"),
 		serverStore: join(dataDir, "server", "store.sqlite"),
 		cookieSecret: join(dataDir, "server", "cookie-secret"),
 		workerBase: join(dataDir, "cache", "worker"),

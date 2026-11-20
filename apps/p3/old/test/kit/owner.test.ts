@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import { readFile, stat, writeFile } from "node:fs/promises";
 import { afterEach, describe, it, mock } from "node:test";
-import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context";
+import { BACKGROUND_CONTEXT as context } from "@nycode/chord/context";
 import { OwnerLink } from "../../src/kit/owner.ts";
 import { SignIns } from "../../src/kit/sign-ins.ts";
 import { kitApp, send, WHOAMI } from "./support.ts";

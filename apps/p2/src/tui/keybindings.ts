@@ -1,18 +1,12 @@
-// pi's keybinding ids and defaults, copied from coding-agent core/keybindings.ts (APP_KEYBINDINGS, the KEYBINDINGS
+// nycode's keybinding ids and defaults, copied from coding-agent core/keybindings.ts (APP_KEYBINDINGS, the KEYBINDINGS
 // platform overrides and the legacy-name migration) and core/key-id-schema.ts. Pure data: the platform is the
 // guest's (from the launcher's `capabilities`), never this process's. Shared by the launcher and the worker.
-import {
-	Key,
-	type KeybindingDefinitions,
-	type KeybindingsConfig,
-	type KeyId,
-	TUI_KEYBINDINGS,
-} from "@earendil-works/pi-tui";
+import { Key, type KeybindingDefinitions, type KeybindingsConfig, type KeyId, TUI_KEYBINDINGS } from "@nycode/tui";
 
 export type KeyPlatform = { platform: string; windowsKeys: boolean };
 export const DEFAULT_KEY_PLATFORM: KeyPlatform = { platform: "linux", windowsKeys: false };
 
-/** pi's `app.*` table for one guest platform (coding-agent `APP_KEYBINDINGS`). */
+/** nycode's `app.*` table for one guest platform (coding-agent `APP_KEYBINDINGS`). */
 export function appKeybindings({ platform, windowsKeys }: KeyPlatform) {
 	return {
 		"app.interrupt": { defaultKeys: "escape", description: "Cancel or abort" },
@@ -82,11 +76,11 @@ export function appKeybindings({ platform, windowsKeys }: KeyPlatform) {
 }
 export type AppKeybinding = keyof ReturnType<typeof appKeybindings>;
 type AppBindings = { [K in AppKeybinding]: true };
-declare module "@earendil-works/pi-tui" {
+declare module "@nycode/tui" {
 	interface Keybindings extends AppBindings {}
 }
 
-/** pi's full built-in table (`KEYBINDINGS`): pi-tui ids with coding-agent's platform overrides, then `app.*`. */
+/** nycode's full built-in table (`KEYBINDINGS`): nycode-tui ids with coding-agent's platform overrides, then `app.*`. */
 export function builtinKeybindings(keyPlatform: KeyPlatform = DEFAULT_KEY_PLATFORM): KeybindingDefinitions {
 	const { platform, windowsKeys } = keyPlatform;
 	return {
@@ -197,8 +191,8 @@ export function isKeyId(value: unknown): value is KeyId {
 }
 
 /**
- * Validate one keybindings document (pi `keybindings.json` or the `keybindings` object of p2 prefs): migrate legacy
- * names, keep only well-formed ids with valid key ids (pi's KeyIdSchema), and report what was dropped.
+ * Validate one keybindings document (nycode `keybindings.json` or the `keybindings` object of p2 prefs): migrate legacy
+ * names, keep only well-formed ids with valid key ids (nycode's KeyIdSchema), and report what was dropped.
  */
 export function sanitizeKeybindings(raw: unknown): { config: KeybindingsConfig; invalid: string[] } {
 	const config: KeybindingsConfig = {};
@@ -208,7 +202,7 @@ export function sanitizeKeybindings(raw: unknown): { config: KeybindingsConfig; 
 	for (const [key, value] of entries) {
 		if (key === "$schema") continue;
 		const id = KEYBINDING_NAME_MIGRATIONS[key] ?? key;
-		// pi: an explicit new-style name wins over its legacy alias.
+		// nycode: an explicit new-style name wins over its legacy alias.
 		if (id !== key && Object.hasOwn(raw, id)) continue;
 		const keys = Array.isArray(value) ? value : [value];
 		if (!KEYBINDING_ID.test(id) || id.length > 128 || keys.length > MAX_KEYS || !keys.every(isKeyId)) {
@@ -232,7 +226,7 @@ export type PrivilegedResolution = {
 
 /**
  * Section 6.2 "privileged vs anything": a privileged key colliding with any non-privileged binding keeps the key only
- * when pi has the same default collision (pi resolves it by mode, e.g. Ctrl+G = external editor / search next, where
+ * when nycode has the same default collision (nycode resolves it by mode, e.g. Ctrl+G = external editor / search next, where
  * the worker suspends interception while searching). Otherwise the privileged action loses the key.
  */
 export function resolvePrivilegedKeys(

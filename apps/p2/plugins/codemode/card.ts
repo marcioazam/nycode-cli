@@ -1,8 +1,8 @@
 // Code mode's card in the TUI, copied from coding-agent extensions/codemode/renderer.ts. The call shows the script; the
-// result lists the nested tool calls (`context.calls`: live `pi.live.nestedTools` slots while running, with depth and
+// result lists the nested tool calls (`context.calls`: live `nycode.live.nestedTools` slots while running, with depth and
 // running output, then the settled `details.calls`, as nested.ts reads them), followed by the script output without
 // Durable's "Script completed|failed / Wall time / Output:" header (durable/src/codemode/output.ts).
-import { Container, Spacer, Text } from "@earendil-works/pi-tui";
+import { Container, Spacer, Text } from "@nycode/tui";
 import {
 	getTextOutput,
 	lineText,
@@ -43,7 +43,7 @@ function statusIcon(call: NestedCall, theme: Theme): string {
 	}
 }
 
-/** One line of a call's arguments: its JSON (as pi), or the cut JSON text a settled list keeps. */
+/** One line of a call's arguments: its JSON (as nycode), or the cut JSON text a settled list keeps. */
 function argsText(args: NestedCall["args"]): string {
 	const text = typeof args === "string" ? args : JSON.stringify(args);
 	return text === "{}" ? "" : lineText(text);

@@ -12,7 +12,7 @@
 // 14 §2.2), what a change of its admission does to it: its attempt sealed at once and a new one admitted, a denial
 // shown as `failed { denied }`, its holders listed in presence only while it is allowed.
 
-import type { TelemetryContext } from "@earendil-works/pi-telemetry";
+import type { TelemetryContext } from "@nycode/telemetry";
 import { awaitWithContext, type Context } from "../context/index.ts";
 import type { Contract, ParamsOf } from "../contracts/index.ts";
 import type { ContractShape } from "../contracts/internal.ts";

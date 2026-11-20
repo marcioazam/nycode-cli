@@ -1,5 +1,5 @@
-import type { ConversationId } from "@earendil-works/pi-durable";
-import type { ExecutionEnv } from "@earendil-works/pi-durable/env";
+import type { ConversationId } from "@nycode/durable";
+import type { ExecutionEnv } from "@nycode/durable/env";
 import { type Ctx, canSend, defineFacet, FileIndex, FileIndexCache, type FileItem, forbidden } from "@p2/app/v1";
 import { conversationEnvironment, harnessOf, workerOf } from "@p2/app/v1/worker";
 import { WorkspaceBackend, workspacePath } from "../workspace/contract.ts";

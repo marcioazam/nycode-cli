@@ -1,4 +1,4 @@
-// Per-connection limits of Chord client sockets, as Pi Mobile's: 1 MiB frames and 4 MiB unsent output (the socket is
+// Per-connection limits of Chord client sockets, as Nycode Mobile's: 1 MiB frames and 4 MiB unsent output (the socket is
 // cut off).
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";

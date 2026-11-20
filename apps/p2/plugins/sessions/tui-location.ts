@@ -2,7 +2,7 @@
 // environments to choose from (`Envs`, owner) and directory completion from `Envs.listDirectory`, as the web's
 // DirectoryPicker lists folders. Used by `/cd` (relocate), `/new` and the "+ New session" prompt.
 
-import { type AutocompleteItem, type Component, type Focusable, Input, truncateToWidth } from "@earendil-works/pi-tui";
+import { type AutocompleteItem, type Component, type Focusable, Input, truncateToWidth } from "@nycode/tui";
 import type { Held } from "@p2/app/v1";
 import {
 	BACKGROUND_CONTEXT,
@@ -132,7 +132,7 @@ export async function completeLocation(
 	return all.length ? all : null;
 }
 
-/** Replaces an input's text with the cursor at its end (pi-tui's `setValue` keeps the cursor where it was). */
+/** Replaces an input's text with the cursor at its end (nycode-tui's `setValue` keeps the cursor where it was). */
 export function fillInput(input: Input, text: string): void {
 	input.setValue("");
 	for (const char of text) input.handleInput(char);

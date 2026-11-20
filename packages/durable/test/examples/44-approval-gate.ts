@@ -3,11 +3,12 @@
 // since the whole `call` phase runs again. Denial and expiry end the call as blocks.
 // Run from packages/durable:
 //   node --conditions=source --experimental-strip-types test/examples/44-approval-gate.ts
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import type { ToolResultMessage } from "@earendil-works/pi-ai";
-import { createModels } from "@earendil-works/pi-ai/models";
-import { fauxAssistantMessage, fauxProvider, fauxToolCall } from "@earendil-works/pi-ai/providers/faux";
-import { bool, obj, str } from "@earendil-works/pi-schema";
+
+import type { ToolResultMessage } from "@nycode/ai";
+import { createModels } from "@nycode/ai/models";
+import { fauxAssistantMessage, fauxProvider, fauxToolCall } from "@nycode/ai/providers/faux";
+import { BACKGROUND_CONTEXT } from "@nycode/chord/context";
+import { bool, obj, str } from "@nycode/schema";
 import {
 	createRegistry,
 	defineExtension,

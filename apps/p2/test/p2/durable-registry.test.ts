@@ -2,8 +2,8 @@
 // `tool_search` installed once while code mode is off and deferred tools need it.
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { defineExtension, defineTool, section } from "@earendil-works/pi-durable";
-import { bool, obj } from "@earendil-works/pi-schema";
+import { defineExtension, defineTool, section } from "@nycode/durable";
+import { bool, obj } from "@nycode/schema";
 import { BACKGROUND_CONTEXT, local, method, whenLive } from "@p2/app/v1";
 import { defineFacet, type Facet, Session } from "../../src/runtime/chord.ts";
 import { durableRegistry, ExtensionSwitches } from "../../src/runtime/durable.ts";

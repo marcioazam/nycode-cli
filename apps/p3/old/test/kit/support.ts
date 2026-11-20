@@ -8,7 +8,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach } from "node:test";
 import { fileURLToPath } from "node:url";
-import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context";
+import { BACKGROUND_CONTEXT as context } from "@nycode/chord/context";
 import type { App, AppError } from "../../src/kit/app.ts";
 import type { WorkerOptions } from "../../src/kit/session-workers.ts";
 import { type ServerOptions, startServer } from "../../src/kit/start-server.ts";
@@ -24,16 +24,16 @@ export const WORKER: WorkerOptions = {
  * named `closed`.
  */
 export const ROUTE = [
-	'import { constant, defineFacet } from "@earendil-works/p3/v1";',
-	'import { SessionRoute } from "@earendil-works/p3/v1/server";',
+	'import { constant, defineFacet } from "@nycode/p3/v1";',
+	'import { SessionRoute } from "@nycode/p3/v1/server";',
 	"export default defineFacet((host) =>",
 	'\thost.serve(SessionRoute, ({ session }) => ({ exists: constant(session !== "closed") })));',
 ].join("\n");
 
 /** A plugin's server facet with a route (not public) answering who it runs as: `GET /whoami`. */
 export const WHOAMI = [
-	'import { defineFacet } from "@earendil-works/p3/v1";',
-	'import { Http } from "@earendil-works/p3/v1/server";',
+	'import { defineFacet } from "@nycode/p3/v1";',
+	'import { Http } from "@nycode/p3/v1/server";',
 	'export default defineFacet((_host, self) => self.contribute(Http, { routes: { "GET /whoami": async (_request, ctx) => ({ kind: "json", value: ctx.principal ?? null }) } }));',
 ].join("\n");
 

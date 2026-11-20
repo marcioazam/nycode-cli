@@ -1,5 +1,5 @@
-import { type AssistantMessage, type Model, type Models, normalizeContext, uuidv7 } from "@earendil-works/pi-ai";
-import { builtinModels } from "@earendil-works/pi-ai/providers/all";
+import { type AssistantMessage, type Model, type Models, normalizeContext, uuidv7 } from "@nycode/ai";
+import { builtinModels } from "@nycode/ai/providers/all";
 import {
 	AssistantEntry,
 	type ConversationId,
@@ -8,7 +8,7 @@ import {
 	Harness,
 	MemoryStorage,
 	ProviderDoc,
-} from "@earendil-works/pi-durable";
+} from "@nycode/durable";
 import { describe, expect, it } from "vitest";
 import { streamSimple as streamSimpleOpenAICodexResponses } from "../../ai/src/api/openai-codex-responses.ts";
 import { resolveApiKey } from "../../ai/test/oauth.ts";
@@ -23,7 +23,7 @@ function cacheProbe(nonce: string): string {
 	];
 	for (let index = 0; index < 180; index++) {
 		lines.push(
-			`${nonce} immutable cache record ${String(index).padStart(3, "0")}: alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu nu xi omicron pi rho sigma tau upsilon phi chi psi omega.`,
+			`${nonce} immutable cache record ${String(index).padStart(3, "0")}: alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu nu xi omicron nycode rho sigma tau upsilon phi chi psi omega.`,
 		);
 	}
 	return lines.join("\n");
@@ -44,7 +44,7 @@ function cacheHitRate(usage: AssistantMessage["usage"]): number {
 }
 
 describe("Durable provider session cache e2e", () => {
-	// Live regression coverage for #10424; skipped without ~/.pi/agent/auth.json credentials.
+	// Live regression coverage for #10424; skipped without ~/.nycode/agent/auth.json credentials.
 	it.skipIf(!codexToken)(
 		"reuses the Codex prompt cache across Durable turns",
 		{ retry: 2, timeout: 120_000 },

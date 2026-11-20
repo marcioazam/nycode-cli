@@ -64,7 +64,7 @@ const facet = defineFacet<{ kind: string; session?: string }>((host) => {
 const plugins = createPlugins(
 	{
 		roots: [],
-		kinds: { worker: { platform: "node", hostPackages: ["@earendil-works/chord"] } },
+		kinds: { worker: { platform: "node", hostPackages: ["@nycode/chord"] } },
 		onError: console.error,
 	},
 	context,

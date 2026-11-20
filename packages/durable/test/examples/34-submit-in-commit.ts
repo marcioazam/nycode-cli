@@ -4,10 +4,10 @@
 // Run from packages/durable:
 //   node --conditions=source --experimental-strip-types test/examples/34-submit-in-commit.ts
 
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import { createModels } from "@earendil-works/pi-ai/models";
-import { fauxAssistantMessage, fauxProvider, fauxToolCall } from "@earendil-works/pi-ai/providers/faux";
-import { obj } from "@earendil-works/pi-schema";
+import { createModels } from "@nycode/ai/models";
+import { fauxAssistantMessage, fauxProvider, fauxToolCall } from "@nycode/ai/providers/faux";
+import { BACKGROUND_CONTEXT } from "@nycode/chord/context";
+import { obj } from "@nycode/schema";
 import {
 	ConversationIdle,
 	createRegistry,

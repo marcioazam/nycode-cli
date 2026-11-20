@@ -83,7 +83,7 @@ tool, a model provider); its **owner** is a user or the instance. **Bringing** p
 **list**. The **policy** answers "may this user do this". A **lock** is p2's per-session pick of resources. A
 **view** is a pane on screen showing an **item** (an artifact, a file, a terminal) of a **view kind**; a **layout**
 arranges views; a **placement** is one view in a layout. A **worker** is the process running one session; its
-**harness** is pi-durable's `Harness`; an **extension** is a Durable bundle of tools and prompt sections; a
+**harness** is nycode-durable's `Harness`; an **extension** is a Durable bundle of tools and prompt sections; a
 **namespace** groups an extension's tools for code mode.
 
 # The Rule Under Everything {#chord-rule lede="Part 1 starts with Chord, because every question about users, resources and locks ends at the same rule: what a factory may know when it runs."}
@@ -347,7 +347,7 @@ export const LOCK_CAPABILITIES = ["ports", "conversations"] as const;
 export const SessionLockSchema = obj({
 	/** Picked MCP servers of the owner's mcp.json, by name. */
 	mcp: arr(str({ maxLength: 200 }), { maxItems: 200 }),
-	/** Servers of `.pi/mcp.json` at the session's locations. */
+	/** Servers of `.nycode/mcp.json` at the session's locations. */
 	projectMcp: bool(),
 	/** The global AGENTS.md, skills and prompt templates. */
 	instructions: bool(),
@@ -1284,7 +1284,7 @@ sessions they may see. Both agree that hiding a pane protects nothing; the objec
 
 Each session runs in its own worker process, started by the server through Chord's workers component and reached
 over a route whose links stamp `{ kind: "worker", session, generation }`. The worker is a Chord host that loads every
-plugin's worker facet. Its core opens pi-durable's `Harness` on the session's store, and the harness reads its
+plugin's worker facet. Its core opens nycode-durable's `Harness` on the session's store, and the harness reads its
 extensions from a Chord registry that host-lifetime objects and facets contribute to:
 
 ```ts
@@ -1502,7 +1502,7 @@ decision assumes a p3 list that leaves both out, or p2 should mark `reload_plugi
   main agent once its turn ended (`location_move`, `plugins/locations`); environments are local, SSH or gondolin
   sandboxes, and a conversation in a sandbox cannot leave it.
 - **MCP follows locations.** The worker leases the conversations' locations to the server's MCP plugin, which runs the
-  server processes there (project `.pi/mcp.json` included); *"No MCP process or credential is ever in a worker"*
+  server processes there (project `.nycode/mcp.json` included); *"No MCP process or credential is ever in a worker"*
   (`plugins/mcp/worker.ts`).
 - **Agent-written plugins** need the server's machine: a session elsewhere spawns a subagent with `env: null` and
   `cwd: <data>/plugins` (`docs/agent-plugins.md`).

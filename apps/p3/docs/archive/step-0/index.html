@@ -202,7 +202,7 @@ declare for itself:</p>
 <pre><code><span class="tk-c">// apps/p3/src/api/v1/web.ts</span>
 <span class="tk-c">/** What draws the page: the first contribution by plugin name (the shell). */</span>
 <span class="tk-k">export</span> <span class="tk-k">const</span> <span class="tk-t">Page</span> = <span class="tk-f">defineRegistry</span>&lt;<span class="tk-t">ComponentType</span>, <span class="tk-t">ComponentType</span> | <span class="tk-k">undefined</span>&gt;(<span class="tk-s">"p3.page"</span>, { version: <span class="tk-n">1</span> });
-<span class="tk-k">export</span> { <span class="tk-t">HostProvider</span>, useHold, useHost, useMessages, usePageState, useRegistry, useWatch } <span class="tk-k">from</span> <span class="tk-s">"@earendil-works/chord/react"</span>;
+<span class="tk-k">export</span> { <span class="tk-t">HostProvider</span>, useHold, useHost, useMessages, usePageState, useRegistry, useWatch } <span class="tk-k">from</span> <span class="tk-s">"@nycode/chord/react"</span>;
 
 <span class="tk-c">// apps/p3/src/web/main.tsx</span>
 <span class="tk-k">const</span> core = <span class="tk-f">defineFacet</span>((host) =&gt; host.<span class="tk-f">serve</span>(<span class="tk-t">Page</span>, { compose: (table) =&gt; table[<span class="tk-n">0</span>]?.value }));

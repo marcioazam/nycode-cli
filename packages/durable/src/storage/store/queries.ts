@@ -2,9 +2,9 @@
 // into SQL over the declared tables: no SQL is rendered per call, and a read selects only the record cell (by id, an
 // entry's commit seq too; each column returned costs) and parses one JSON text per record, as `SqliteStorage`'s do.
 
-import type { Order, OwnerTable, WhereNode } from "@earendil-works/chord";
-import type { Context } from "@earendil-works/chord/context";
-import type { SqliteExecutor, SqliteValue } from "@earendil-works/chord/sqlite";
+import type { Order, OwnerTable, WhereNode } from "@nycode/chord";
+import type { Context } from "@nycode/chord/context";
+import type { SqliteExecutor, SqliteValue } from "@nycode/chord/sqlite";
 import type { CommitTables } from "./commit.ts";
 
 /**

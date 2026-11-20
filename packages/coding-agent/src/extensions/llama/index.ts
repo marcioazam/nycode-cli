@@ -39,9 +39,9 @@ async function configuredClient(ctx: ExtensionCommandContext): Promise<LlamaClie
 	return new LlamaClient(serverUrl, result.auth.apiKey);
 }
 
-export default function llamaExtension(pi: ExtensionAPI): void {
+export default function llamaExtension(nycode: ExtensionAPI): void {
 	const provider = createLlamaProvider();
-	pi.registerProvider(provider.provider);
+	nycode.registerProvider(provider.provider);
 
 	const syncCatalog = async (
 		ctx: ExtensionCommandContext,
@@ -53,7 +53,7 @@ export default function llamaExtension(pi: ExtensionAPI): void {
 		provider.setCatalog(current, client.serverUrl);
 		const result = await ctx.modelRegistry.refresh({
 			providers: [LLAMA_PROVIDER_ID],
-			// /llama already contacted the configured llama.cpp server, so keep this refresh live even in PI_OFFLINE.
+			// /llama already contacted the configured llama.cpp server, so keep this refresh live even in NYCODE_OFFLINE.
 			allowNetwork: true,
 			signal,
 		});
@@ -180,7 +180,7 @@ export default function llamaExtension(pi: ExtensionAPI): void {
 		ctx.ui.notify(`Downloaded ${model}`);
 	};
 
-	pi.registerCommand("llama", {
+	nycode.registerCommand("llama", {
 		description: "Manage llama.cpp router models",
 		handler: async (_args, ctx) => {
 			if (ctx.mode !== "tui") {

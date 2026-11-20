@@ -1,13 +1,13 @@
-// pi's footer (coding-agent interactive/components/footer.ts) on p2 data, registered as the runtime's `footer` slot.
-// Provenance (p2-tui-port.md section 1.16): token and cost stats are the viewed conversation's (`pi.usage`), the cache
+// nycode's footer (coding-agent interactive/components/footer.ts) on p2 data, registered as the runtime's `footer` slot.
+// Provenance (p2-tui-port.md section 1.16): token and cost stats are the viewed conversation's (`nycode.usage`), the cache
 // hit rate is its latest committed response's, context tokens are its active-context estimate, and the context window
 // comes from the owner's model catalog, else from the conversation's guest-safe model metadata (`Chat.model`, P3);
 // without either, tokens show without a percentage. The session total (children and tools included,
 // `SessionMetrics`) is labeled "session". `/session` lists the same numbers with their scopes.
 
-import type { Usage } from "@earendil-works/pi-ai";
-import type { AgentState, ConversationView, UsageState } from "@earendil-works/pi-durable";
-import { truncateToWidth } from "@earendil-works/pi-tui";
+import type { Usage } from "@nycode/ai";
+import type { AgentState, ConversationView, UsageState } from "@nycode/durable";
+import { truncateToWidth } from "@nycode/tui";
 import { BACKGROUND_CONTEXT, followRegistry, liveIn } from "@p2/app/v1";
 import {
 	cacheHitRate,
@@ -31,9 +31,9 @@ import { SessionMetrics, SessionStatus, WorkerControl } from "./contract.ts";
 
 export { formatTokens };
 
-/** Conversation totals of `pi.usage` (DTUI `totalUsage`): its models' and tools' usage. */
+/** Conversation totals of `nycode.usage` (DTUI `totalUsage`): its models' and tools' usage. */
 export function conversationUsage(view: ConversationView | null | undefined) {
-	const state = view?.docs["pi.usage"] as unknown as UsageState | undefined;
+	const state = view?.docs["nycode.usage"] as unknown as UsageState | undefined;
 	const total = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0 };
 	for (const usage of [...Object.values(state?.models ?? {}), ...Object.values(state?.tools ?? {})]) {
 		total.input += usage.input;
@@ -144,9 +144,9 @@ export class FooterSurface implements TuiSurface {
 		this.stop = () => runtime.listeners.delete(changed);
 		changed();
 	}
-	/** The viewed conversation's model and thinking level (`pi.agent`). */
+	/** The viewed conversation's model and thinking level (`nycode.agent`). */
 	private agent(): AgentState | undefined {
-		return this.view?.docs["pi.agent"] as AgentState | undefined;
+		return this.view?.docs["nycode.agent"] as AgentState | undefined;
 	}
 	render(width: number): string[] {
 		const theme = this.runtime.theme.current;
@@ -155,7 +155,7 @@ export class FooterSurface implements TuiSurface {
 		const stats = this.stats;
 		// Line 1: where (env:cwd), the session title, and a subagent's conversation.
 		let where = session ? `${session.env ? `${session.env}:` : ""}${session.cwd}` : "";
-		// pi's `cwd (branch)`: the git branch from a plugin's `footer:` slot (the workspace's), when one is mounted.
+		// nycode's `cwd (branch)`: the git branch from a plugin's `footer:` slot (the workspace's), when one is mounted.
 		const branch = session ? this.runtime.slots("footer:").flatMap((surface) => surface.render(width))[0] : undefined;
 		if (branch) where += ` (${branch})`;
 		if (session?.title) where += `${where ? " • " : ""}${session.title}`;

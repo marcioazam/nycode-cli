@@ -8,7 +8,7 @@ import {
 	type ModelsPublication,
 	type Provider,
 	type RefreshModelsContext,
-} from "@earendil-works/pi-ai";
+} from "@nycode/ai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { VERSION } from "../src/config.ts";
 import {
@@ -97,7 +97,7 @@ describe("remote catalog provider", () => {
 		expect((await store.read(provider.id))?.models.map((entry) => entry.id)).toEqual(["dynamic"]);
 		expect(fetchSpy).toHaveBeenCalledTimes(2);
 		expect(fetchSpy.mock.calls[0]?.[1]?.headers).toMatchObject({
-			"User-Agent": expect.stringContaining(`pi/${VERSION}`),
+			"User-Agent": expect.stringContaining(`nycode/${VERSION}`),
 		});
 		const requested = new URL(String(fetchSpy.mock.calls[0]?.[0]));
 		expect(requested.pathname).toBe("/api/models/providers/test-provider");
@@ -372,7 +372,7 @@ describe("personalized catalog provider", () => {
 		const store = new InMemoryModelsStore();
 		const provider = withPersonalizedCatalog(builtinProvider(), personalize);
 
-		// pi versions before per-key lists stored the plain pi.dev catalog here, and saved an empty list
+		// nycode versions before per-key lists stored the plain pi.dev catalog here, and saved an empty list
 		// after a missing pi.dev catalog or a failed first request. Only such an entry can be empty.
 		await store.write(provider.id, { models: [], checkedAt: 1 });
 		await refreshProvider(provider, store, { allowNetwork: false });

@@ -2,7 +2,7 @@
 import { randomBytes } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { domainToASCII } from "node:url";
-import { arr, nul, obj, str, union } from "@earendil-works/pi-schema";
+import { arr, nul, obj, str, union } from "@nycode/schema";
 import {
 	type Ctx,
 	contribute,

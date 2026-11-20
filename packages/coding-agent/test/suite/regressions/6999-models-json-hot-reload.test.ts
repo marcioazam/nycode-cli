@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { setKeybindings, type TUI } from "@earendil-works/pi-tui";
+import { setKeybindings, type TUI } from "@nycode/tui";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { AuthStorage } from "../../../src/core/auth-storage.ts";
 import { KeybindingsManager } from "../../../src/core/keybindings.ts";
@@ -57,7 +57,7 @@ describe("issue #6999 models.json hot reload", () => {
 	});
 
 	it("reloads models.json when opening /model", async () => {
-		tempDir = mkdtempSync(join(tmpdir(), "pi-models-json-hot-reload-"));
+		tempDir = mkdtempSync(join(tmpdir(), "nycode-models-json-hot-reload-"));
 		const modelsPath = join(tempDir, "models.json");
 		writeFileSync(modelsPath, JSON.stringify(modelsJson("old-provider", "old-model")));
 		const modelRuntime = getModelRuntime(await createModelRegistry(AuthStorage.inMemory(), modelsPath));

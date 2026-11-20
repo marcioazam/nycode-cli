@@ -5,10 +5,10 @@ the path from the issue to the nightly.
 
 ## Where the work is planned: Linear
 
-Project "Pi next" in team Earendil (issue keys `ERNDL-…`), three levels:
+Project "Nycode next" in team Earendil (issue keys `ERNDL-…`), three levels:
 
 - **Area:** a parent issue per area (UI/UX and UI tech, Services, AuthZ and sharing, Net and storage, Harness,
-  Distribution, Apps, Voice, Efficiency, Comms, ...), naming its owners; a label per area in the group "Pi area"
+  Distribution, Apps, Voice, Efficiency, Comms, ...), naming its owners; a label per area in the group "Nycode area"
   (`area:ui`, `area:services`, ...).
 - **Item = package:** a sub-issue of its area, with the area's label. It holds the scope, the old p3 slices and p3
   sources in its area, the p2 plugins, docs and screenshots to look at, the open points, and the plan (step 3).
@@ -17,7 +17,7 @@ Project "Pi next" in team Earendil (issue keys `ERNDL-…`), three levels:
 Statuses are Linear's: Backlog, Todo, In Progress, In Review, Done. Decisions taken inside the package are recorded
 in its item issue as they are taken.
 
-The stage of a package is a label in the group "Pi stage", one at a time, set on the item issue: **Design** (steps
+The stage of a package is a label in the group "Nycode stage", one at a time, set on the item issue: **Design** (steps
 1 to 3), **Implementation** (steps 4 to 7), **Review** (step 8). Every package starts in Design. Whoever moves the
 package to the next stage changes the label in the same moment and says why in a comment on the issue.
 
@@ -48,7 +48,7 @@ Then tell your user to take it to Mario (or to the other package's owner). Never
 
 ## The steps
 
-Three stages, each with its label in the group "Pi stage" on the item issue. At every step: a guide that was wrong or
+Three stages, each with its label in the group "Nycode stage" on the item issue. At every step: a guide that was wrong or
 silent is fixed in the commit that shows it, and a mistake you made and its fix go into `chord-practices.md`, "Mistakes
 we made".
 

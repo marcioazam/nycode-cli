@@ -10,7 +10,7 @@
 // stalled (a suspended context never ends its sources), and an underrun re-buffers (pibot scheduled every later chunk
 // 20 ms ahead, so one late chunk made the rest of the answer choppy). Voice rooms add the other people's microphones:
 // each plays on its own schedule (16 kHz chunks, a jitter buffer that grows with each underrun), and the barge-in
-// reference is one bus that hears both Pi and the people (pibot's tap moved from the stream to that bus), so voices
+// reference is one bus that hears both Nycode and the people (pibot's tap moved from the stream to that bus), so voices
 // from the speaker are not taken for yours.
 
 const pcmInitialPrebufferSeconds = 0.4;
@@ -63,7 +63,7 @@ export class SpeechPlayback {
 	#audioContext: AudioContext | undefined;
 	#ttsGeneration = 0;
 	#activePcmStream: ActivePcmStream | undefined;
-	/** What plays into the barge-in reference (Pi and people); created with the context. */
+	/** What plays into the barge-in reference (Nycode and people); created with the context. */
 	#reference: AudioNode | undefined;
 	/** People's audio: their bus, and when each one's next chunk starts (on the context's clock). */
 	#humans: { bus: GainNode; next: Map<string, number>; delay: Map<string, number> } | undefined;

@@ -1,4 +1,4 @@
-// A brain the app shows: one Pi server, as a tab of the window's tab bar and a page under it.
+// A brain the app shows: one Nycode server, as a tab of the window's tab bar and a page under it.
 import CryptoKit
 import Foundation
 
@@ -18,7 +18,7 @@ struct Brain: Equatable {
 	enum Route: Equatable {
 		/// This Mac's server, on loopback, signed in with the owner key of its data directory.
 		case direct(origin: URL, dataDir: URL)
-		/// Another Pi: its UI from Radius's forwarded origin for it (`https://<label>.rdtun.com`), loaded as the page
+		/// Another Nycode: its UI from Radius's forwarded origin for it (`https://<label>.rdtun.com`), loaded as the page
 		/// itself through a one-minute grant the app gets with the shared Radius credential.
 		case remote(organization: String, server: String)
 	}

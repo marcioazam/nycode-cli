@@ -3,11 +3,11 @@
 // snapshots producers (send_file) save. Node: the server and the session worker; plugins reach `Files` through
 // `self.get(Files, {})` or `ctx.get(Files, {})` on the session's worker, never a path.
 import { randomUUID } from "node:crypto";
-import type { FileInfo, Files } from "@earendil-works/chord/app/files";
+import type { FileInfo, Files } from "@nycode/chord/app/files";
 import type { Ctx, Ref } from "./chord.ts";
 import { type DownloadInfo, safeFileName } from "./files.ts";
 
-export { type FileInfo, Files, FilesFolder, type SpaceSummary } from "@earendil-works/chord/app/files";
+export { type FileInfo, Files, FilesFolder, type SpaceSummary } from "@nycode/chord/app/files";
 
 /** The space of a session's uploads (POST /upload): path `<id>-<name>`, key = the upload's id. */
 export const UPLOADS = "uploads";

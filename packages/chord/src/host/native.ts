@@ -1,7 +1,7 @@
 // Natives (§13): the handle `self.open` returns, a value opened during activation and closed with a reason when its
 // attempt ends; `within`, which bounds a close or a drain by a timeout; and the drain's admission of running work.
 
-import type { TelemetryContext } from "@earendil-works/pi-telemetry";
+import type { TelemetryContext } from "@nycode/telemetry";
 import { type Context, withAbortSignal, withTelemetry } from "../context/index.ts";
 import { ChordError } from "../data/index.ts";
 import { chordSpans, ended, spanFailed, untraced } from "../telemetry.ts";

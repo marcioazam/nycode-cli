@@ -7,7 +7,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { isAbsolute, resolve } from "node:path";
-import { arr, bool, nul, obj, str, union, unknown } from "@earendil-works/pi-schema";
+import { arr, bool, nul, obj, str, union, unknown } from "@nycode/schema";
 import {
 	type AcceptsTable,
 	type Context,
@@ -672,7 +672,7 @@ export default defineFacet((host) => {
 				const fallback = models.summary.value.defaultModel;
 				const chosen = model ?? fallback;
 				if (!chosen) throw new Error("Select a model or configure P2_PROVIDER and P2_MODEL");
-				// As Pi Mobile and setDefault: a model the configuration does not know never reaches a worker.
+				// As Nycode Mobile and setDefault: a model the configuration does not know never reaches a worker.
 				if (!resources().resources.models.getModel(chosen.provider, chosen.modelId))
 					throw new Error("Unknown model");
 				const level = thinkingLevel ?? fallback?.thinkingLevel;
@@ -776,7 +776,7 @@ export default defineFacet((host) => {
 							await catalog.update({ id, title: cleanTitle(title) }, ctx);
 							return { previous };
 						},
-						// Either field alone updates the entry; the other keeps its value (Pi Mobile's configure).
+						// Either field alone updates the entry; the other keeps its value (Nycode Mobile's configure).
 						configureSelf: async ({ model, thinkingLevel }, ctx) => {
 							await catalog.update(
 								{ id, ...(model ? { model } : {}), ...(thinkingLevel ? { thinkingLevel } : {}) },

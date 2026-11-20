@@ -1,10 +1,10 @@
 // The active context's numbers kept from appended entries (src/runtime/conversation-stats.ts `ContextTally`): equal to
-// pi-ai's estimate over the whole context, and asking for a whole context when the range changes otherwise.
+// nycode-ai's estimate over the whole context, and asking for a whole context when the range changes otherwise.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { AssistantMessage, Message, Usage } from "@earendil-works/pi-ai";
-import { estimateContextTokens } from "@earendil-works/pi-ai/utils/estimate";
-import type { ContextView, ConversationView, EntryId, EntryRecord } from "@earendil-works/pi-durable";
+import type { AssistantMessage, Message, Usage } from "@nycode/ai";
+import { estimateContextTokens } from "@nycode/ai/utils/estimate";
+import type { ContextView, ConversationView, EntryId, EntryRecord } from "@nycode/durable";
 import { ContextTally } from "../../src/runtime/conversation-stats.ts";
 
 const usage = (total: number): Usage => ({
@@ -52,7 +52,7 @@ const contextOf = (entries: EntryRecord[]): ContextView =>
 		),
 	}) as unknown as ContextView;
 
-test("appended entries give what pi-ai's estimate gives over the whole context", () => {
+test("appended entries give what nycode-ai's estimate gives over the whole context", () => {
 	const all = [
 		entry(1, user("first question")),
 		entry(2, answer("first answer", 1000)),

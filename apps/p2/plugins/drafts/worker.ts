@@ -1,4 +1,4 @@
-import { num, obj } from "@earendil-works/pi-schema";
+import { num, obj } from "@nycode/schema";
 import { authorIdOf, canSend, defineFacet, defineState, forbidden, isGuest, isOwner } from "@p2/app/v1";
 import { DraftStore, Drafts, DraftsByKeySchema, draftKey } from "./contract.ts";
 

@@ -46,7 +46,7 @@ export type LauncherActionOptions = {
 	role: "owner" | "guest";
 	/** Download folder (launcher-only preference; default ~/Downloads/p2). */
 	downloads?: string;
-	/** External editor argv (launcher-only: pi's `externalEditor`, else $VISUAL/$EDITOR); never sent to the worker. */
+	/** External editor argv (launcher-only: nycode's `externalEditor`, else $VISUAL/$EDITOR); never sent to the worker. */
 	editor?: readonly string[];
 	/** Injectable for tests. */
 	clipboard?: (text: string, writeTerminal: (data: string) => void) => Promise<void>;
@@ -60,7 +60,7 @@ export type LauncherActionOptions = {
 	};
 	/** Where the launcher's file picker starts (default: the launcher's working directory). */
 	pickerStart?: string;
-	/** The directory of p2's own `prefs.json` (default: `P2_TUI_CONFIG_DIR` or `~/.pi/p2-tui`). */
+	/** The directory of p2's own `prefs.json` (default: `P2_TUI_CONFIG_DIR` or `~/.nycode/p2-tui`). */
 	prefsDirectory?: string;
 	/** Stops this process group (SIGTSTP) and resolves on SIGCONT. */
 	suspendProcess?: () => Promise<void>;
@@ -410,7 +410,7 @@ export function launcherActions(options: LauncherActionOptions): Record<string, 
 			},
 		},
 		/**
-		 * K (Ctrl+V, pi's app.clipboard.pasteImage): copied files (macOS) and images upload after a confirmation; plain
+		 * K (Ctrl+V, nycode's app.clipboard.pasteImage): copied files (macOS) and images upload after a confirmation; plain
 		 * text is pasted into the worker as a bracketed paste (the visitor's own paste key).
 		 */
 		"paste.key": {
@@ -458,10 +458,10 @@ export function launcherActions(options: LauncherActionOptions): Record<string, 
 			},
 		},
 		/**
-		 * pi-tui's copy-on-select (pi's `fullscreenCopyOnSelect`): the worker's TuiAltScreen hands the selected text to
+		 * nycode-tui's copy-on-select (nycode's `fullscreenCopyOnSelect`): the worker's TuiAltScreen hands the selected text to
 		 * its `copySelection` callback, which requests this. Accepted only right after the launcher itself saw the
 		 * mouse release ending a drag or multi-click in the raw input (one copy per gesture); no consent screen.
-		 * pi-tui then flashes "Copied!" (or the failure) from the answer.
+		 * nycode-tui then flashes "Copied!" (or the failure) from the answer.
 		 */
 		"copy.selection": {
 			kind: "gesture",
@@ -566,7 +566,7 @@ export function launcherActions(options: LauncherActionOptions): Record<string, 
 				const argv = options.editor;
 				if (!argv?.length) {
 					await context.ui.notice(
-						"No external editor: set externalEditor in pi's settings.json, $VISUAL or $EDITOR",
+						"No external editor: set externalEditor in nycode's settings.json, $VISUAL or $EDITOR",
 						3000,
 					);
 					return;

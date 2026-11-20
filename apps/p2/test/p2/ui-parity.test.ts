@@ -1,4 +1,4 @@
-// Browser regressions for the reported Pi Mobile port failures. Only isolated fake-provider fixtures are used.
+// Browser regressions for the reported Nycode Mobile port failures. Only isolated fake-provider fixtures are used.
 
 import assert from "node:assert/strict";
 import { type ChildProcess, spawn } from "node:child_process";
@@ -105,7 +105,7 @@ class Browser {
 	}
 }
 
-describe("Pi Mobile UI regressions", { skip: !browserTests }, () => {
+describe("Nycode Mobile UI regressions", { skip: !browserTests }, () => {
 	let fixture: Fixture;
 	let browser: Browser;
 	let process: ChildProcess;

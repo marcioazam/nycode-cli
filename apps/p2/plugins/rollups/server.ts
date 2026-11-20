@@ -3,8 +3,8 @@
 // changed; `every`: on its interval, when that changed; by hand always), and serving them to the owner's sidebar and to
 // the Familiar's tool.
 import { randomUUID } from "node:crypto";
-import { CodemodeSandbox, type CodemodeTool } from "@earendil-works/pi-codemode";
-import { obj } from "@earendil-works/pi-schema";
+import { CodemodeSandbox, type CodemodeTool } from "@nycode/codemode";
+import { obj } from "@nycode/schema";
 import {
 	type Ctx,
 	defineFacet,

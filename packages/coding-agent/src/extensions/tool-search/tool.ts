@@ -8,7 +8,7 @@
  * like any other tool change and survives `/tree`, resume, and fork on that branch.
  */
 
-import { resolveSchemaRef } from "@earendil-works/pi-codemode/declarations";
+import { resolveSchemaRef } from "@nycode/codemode/declarations";
 import { type Static, Type } from "typebox";
 import type {
 	ExtensionAPI,

@@ -36,7 +36,7 @@ Concrete traces:
 - prompt: the same problem exists through closures in `prompt/worker.ts:84-106`, `environment.ts:89-97` and `context-files.ts:64`. A fix to skill discovery never applies; even a session move reuses the old closure (`worker.ts:154-158`).
 - logs: the `setInterval(collect)` closure in `logs/server.ts:21-67` keeps running the first version of `collect`.
 - Each such resource pins its first code generation, working against loader D's generation-GC goal.
-- The old rule “keep logic out of the resource” could not actually be met by models: pi-ai's `MutableModels` is a native whose content is plugin closures.
+- The old rule “keep logic out of the resource” could not actually be met by models: nycode-ai's `MutableModels` is a native whose content is plugin closures.
 
 Original recommendation:
 
@@ -330,7 +330,7 @@ The object list below was a **RECOMMENDATION**, not an owner decision. It was de
 | --- | --- | --- | --- |
 | `settings {}` | server | native file watch/lock | `settings.json`; validates schema, keeps last valid state, serializes writes |
 | `credentials {}` | server | native locked file | `auth.json`; fail-closed parsing, metadata, token refresh/modification, no secret state exposure |
-| `model-catalog {}` | server | native pi-ai model catalog/file watch | `models.json`, `models-store.json`, provider metadata, defaults/scope resolution, login/logout/refresh operations |
+| `model-catalog {}` | server | native nycode-ai model catalog/file watch | `models.json`, `models-store.json`, provider metadata, defaults/scope resolution, login/logout/refresh operations |
 | `models {}` | server | pure per-owner view | owner-visible catalog/default/scope/errors derived from the catalog owner |
 | `log-store {}` | server | native stdout capture/collector | bounded source buffers, notices and secret redactor |
 | `logs {source}`, `log-notices {}` | server | pure owner views | query/filter state and dismiss operations over the log owner |

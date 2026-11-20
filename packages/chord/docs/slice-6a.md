@@ -12,7 +12,7 @@ store", S1-S17, W1-W14, P2, P3, "Flat columns", "Query runner", "Index definitio
 "Slice 6 first decisions", "One retirement mechanism", "Text is plain UTF-8, in code point order", and every entry of
 2026-10-26 and 2026-10-27 from "The host's store and how it is opened" to "Slice 6a small items"; the feature map and
 the carry-over of `slices.md` (slice 6a); the root `AGENTS.md` section "Chord v2 Code Style". Builds on slice 5
-(`4a5b45c45`), the adaptation to the shared `watch.ts` (`cc2d61f53`) and pi `8025c414d` (`runCounted`).
+(`4a5b45c45`), the adaptation to the shared `watch.ts` (`cc2d61f53`) and nycode `8025c414d` (`runCounted`).
 
 6a builds the store and puts Chord's persisted data on it (tables, persisted documents, keyed state members), and
 reworks three parts of the built slices that the store needs: facets only declare, objects own their documents, line
@@ -247,7 +247,7 @@ their calls into it fail.
   `BEGIN`. A backend error on a read is `storage_failed` unless the read's `ctx` was aborted (`aborted`); invalid
   arguments (a foreign cursor, a bad key) are checked before the backend (`invalid/args`). An `adopt` that throws is
   `storage_failed`. Accepted: integer overflow past 2^63 in a bulk `add` is fatal.
-- **Counts** through `chord/sqlite`'s `runCounted` (pi `8025c414d`), only where a count matters: bulk writes, the
+- **Counts** through `chord/sqlite`'s `runCounted` (nycode `8025c414d`), only where a count matters: bulk writes, the
   engine's conditional `UPDATE`, single `update`/`delete`.
 - **Statements per commit:** a delta commit of one document is about three statements (revision, the record's
   `UPDATE … WHERE id = ? AND version = ?` counted, `lastSeq`), plus one `INSERT` with an outbox, plus one `DELETE` on a
@@ -314,7 +314,7 @@ take the object's line
   the tie-break.
 - **SQL** is generated from the query data; values always bound, identifiers quoted; `limit` and cursor values bound,
   `inArray` one JSON parameter through `json_each` (no 32,766-parameter limit; `inArray([])` matches nothing). Query
-  shapes are unbounded (any `and`/`or` tree), so the facade's prepared-statement cache is bounded (pi change, a fixed
+  shapes are unbounded (any `and`/`or` tree), so the facade's prepared-statement cache is bounded (nycode change, a fixed
   LRU in `chord/sqlite/node`, section 15).
 - **Outside a transaction** the handle reads committed state: `page(q, limit, ctx, { after? })` → `{ items, next? }`,
   `rows(q, ctx)` (all pages), `get(key, ctx)`, `count(q, ctx)`. A key is an object with exactly the key columns
@@ -584,7 +584,7 @@ where a section above says otherwise, this section wins.
 17. **Pages:** `limit` is a positive safe integer; `rows()` pages internally by 100; `next` comes from fetching
     `limit + 1`; a cursor is a position in the order (one from another `where` with the same order is accepted);
     duplicate `orderBy` columns are refused and the key tie-break is not repeated.
-18. **The prepared-statement cache** of `chord/sqlite/node` is a fixed LRU (pi change, upstream first, before the
+18. **The prepared-statement cache** of `chord/sqlite/node` is a fixed LRU (nycode change, upstream first, before the
     build): arbitrary query shapes cannot grow it without bound.
 
 **Documents and keyed members**

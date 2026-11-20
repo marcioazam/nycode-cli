@@ -7,7 +7,7 @@ import { capturePublishedLogs } from "../src/runtime/logs.ts";
 
 // Source saves never restart this process or its child. The private channel/SIGUSR2 request explicit restarts.
 const root = process.cwd();
-const dataDir = process.env.P2_DATA_DIR ?? join(homedir(), ".pi", "p2");
+const dataDir = process.env.P2_DATA_DIR ?? join(homedir(), ".nycode", "p2");
 capturePublishedLogs("dev", dataDir);
 const resume = JSON.parse(process.env.P2_DEV_RESUME ?? "[]");
 if (!Array.isArray(resume) || !resume.every((id) => typeof id === "string")) throw new Error("Invalid dev resume list");

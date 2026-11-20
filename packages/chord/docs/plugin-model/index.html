@@ -202,7 +202,7 @@ API must not silently get the new one. So every API module has a version in its 
 it still provides:</p>
 <pre><code><span class="tk-c">// plugins/stats/worker.ts</span>
 <span class="tk-k">import</span> { defineFacet, <span class="tk-t">Session</span>, <span class="tk-t">Panels</span> } <span class="tk-k">from</span> <span class="tk-s">"@acme/app/v3"</span>;
-<span class="tk-k">import</span> { remote, str } <span class="tk-k">from</span> <span class="tk-s">"@earendil-works/chord/v2"</span>;</code></pre>
+<span class="tk-k">import</span> { remote, str } <span class="tk-k">from</span> <span class="tk-s">"@nycode/chord/v2"</span>;</code></pre>
 <ul>
 <li>The app provides <code>/v3</code>, its current API. If version 2 plugins still work unchanged against it, <code>/v2</code> is listed too,
 pointing to the same module. An app that needs a compatibility layer makes <code>/v2</code> a thin module over <code>/v3</code>.</li>
@@ -210,7 +210,7 @@ pointing to the same module. An app that needs a compatibility layer makes <code
 v3, v2&quot;. The plugin keeps its old code, and the message tells an agent exactly what to change.</li>
 <li>Nothing to fill in elsewhere: no <code>package.json</code> field, no npm ranges. Skeletons and examples import the current
 version, so an agent copies it without thinking.</li>
-<li>Chord&#39;s own surface is versioned the same way (<code>@earendil-works/chord/v2</code>).</li>
+<li>Chord&#39;s own surface is versioned the same way (<code>@nycode/chord/v2</code>).</li>
 </ul>
 <p>Decided: &quot;the API version must be declared by the plugin in code&quot; (owner, 2026-10-31); the import path is how.</p>
 </section>
@@ -246,7 +246,7 @@ facet contributing to a web registry is a type error and a load error, not a sil
 <td>the plugin itself</td>
 </tr>
 <tr>
-<td>host packages (<code>@acme/app/v3</code>, <code>@earendil-works/chord/v2</code>, <code>react</code>)</td>
+<td>host packages (<code>@acme/app/v3</code>, <code>@nycode/chord/v2</code>, <code>react</code>)</td>
 <td>the running process&#39;s instance, shared</td>
 <td>the path&#39;s version; the app lists what it provides</td>
 </tr>

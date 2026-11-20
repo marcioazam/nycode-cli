@@ -1,8 +1,8 @@
 // Browser runtime: the client host in React, slots that plugins fill, object hooks, connection state, navigation.
 
-import type { Contract, Held, ParamsOf } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import type { NativeWatchable, Watchable } from "@earendil-works/chord/watch";
+import type { Contract, Held, ParamsOf } from "@nycode/chord";
+import { BACKGROUND_CONTEXT } from "@nycode/chord/context";
+import type { NativeWatchable, Watchable } from "@nycode/chord/watch";
 import {
 	createContext,
 	type ReactNode,
@@ -196,7 +196,7 @@ export function ModalSheet({ title, onClose, onBack, className, testId, children
 		return () => window.removeEventListener("keydown", key);
 	}, [onClose]);
 	// Footer sheets may be mounted inside the translated phone drawer. A portal keeps their fixed layout
-	// relative to the viewport, as in Pi Mobile's app-level sheets, instead of the hidden drawer.
+	// relative to the viewport, as in Nycode Mobile's app-level sheets, instead of the hidden drawer.
 	return createPortal(
 		<div className="sheet-layer">
 			<button type="button" className="scrim" aria-label="Close" onClick={onClose} ref={scrim} />
@@ -397,7 +397,7 @@ function subscribeOnline(listener: () => void): () => void {
 let shareEnded = false;
 const shareEndedListeners = new Set<() => void>();
 
-/** A guest's access ended (link reset, removal, archive): the page stops reconnecting and shows Pi Mobile's notice. */
+/** A guest's access ended (link reset, removal, archive): the page stops reconnecting and shows Nycode Mobile's notice. */
 export function setShareEnded(ended: boolean): void {
 	if (shareEnded === ended) return;
 	shareEnded = ended;

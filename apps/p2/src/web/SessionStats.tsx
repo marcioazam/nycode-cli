@@ -1,4 +1,4 @@
-import type { Usage } from "@earendil-works/pi-ai";
+import type { Usage } from "@nycode/ai";
 import type { ReactNode } from "react";
 import { ContextUsage } from "./Chat.tsx";
 import { UsersIcon } from "./icons.tsx";

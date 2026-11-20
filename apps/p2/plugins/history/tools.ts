@@ -1,8 +1,8 @@
 // The history tools (docs/history-tool.md): an agent finds and re-reads its own conversation's earlier entries after a
 // compaction or handoff, and hands off deliberately. Everything is scoped to the calling conversation
-// (`api.conversationId`); no tool takes a session or conversation id. Interface after pi-history, not its code.
+// (`api.conversationId`); no tool takes a session or conversation id. Interface after nycode-history, not its code.
 
-import type { AssistantMessage } from "@earendil-works/pi-ai";
+import type { AssistantMessage } from "@nycode/ai";
 import {
 	type Cursor,
 	defineExtension,
@@ -13,8 +13,8 @@ import {
 	section,
 	type ToolExecutionApi,
 	type Tx,
-} from "@earendil-works/pi-durable";
-import { arr, int, obj, opt, str, union } from "@earendil-works/pi-schema";
+} from "@nycode/durable";
+import { arr, int, obj, opt, str, union } from "@nycode/schema";
 import type { Context, JsonValue } from "@p2/app/v1";
 import { agentMessage, literal, messageData, peerMessage, SHELL_ENTRY, shellData } from "@p2/app/v1";
 import type { HistoryHits } from "../search/contract.ts";
@@ -62,9 +62,9 @@ const textOf = (content: unknown): string =>
  */
 export function renderEntry(entry: EntryRecord, results: ReadonlyMap<string, boolean>): HistoryEntry | undefined {
 	const id = Number(entry.id);
-	if (entry.kind === "pi.compaction") return { entry: id, role: "marker", text: "[context compacted here]" };
+	if (entry.kind === "nycode.compaction") return { entry: id, role: "marker", text: "[context compacted here]" };
 	const message = entry.model?.[0];
-	if (entry.kind === "pi.reset")
+	if (entry.kind === "nycode.reset")
 		return {
 			entry: id,
 			role: "marker",
@@ -225,7 +225,7 @@ export async function readEntries(
 	}
 	const requested = [...new Set(args.entries ?? [])];
 	if (!requested.length) throw new Error("items needs entries");
-	// `around: 0` is exactly the requested entries (pi-history's slice(-0) returned everything).
+	// `around: 0` is exactly the requested entries (nycode-history's slice(-0) returned everything).
 	const around = args.around ?? 0;
 	const found = new Map<number, EntryRecord>();
 	for (const id of requested) {

@@ -1,7 +1,7 @@
 // Radius's Chord sync adapter: request shape and terminal conflict mapping.
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { SYNC_PROTOCOL } from "@earendil-works/chord/sync";
+import { SYNC_PROTOCOL } from "@nycode/chord/sync";
 import { isTerminalSyncError, RadiusSyncRemote } from "../../plugins/sync/radius-remote.ts";
 import { TEST } from "./helpers.ts";
 
@@ -56,7 +56,7 @@ describe("Radius sync remote", () => {
 			`https://radius.example/v1/servers/${SERVER}/sync/sessions/${SESSION}/batches/0?to=4&archive=1`,
 		);
 		assert.equal(request.headers.get("authorization"), "Bearer radius-token");
-		assert.equal(request.headers.get("pi-sync-protocol"), String(SYNC_PROTOCOL));
+		assert.equal(request.headers.get("nycode-sync-protocol"), String(SYNC_PROTOCOL));
 		assert.deepEqual(new Uint8Array(await request.arrayBuffer()), new Uint8Array([1, 2, 3]));
 	});
 
@@ -89,7 +89,7 @@ describe("Radius sync remote", () => {
 		await remote(Response.json({ batches: [], snapshots: [] }), requests).list(SESSION, TEST);
 		await remote(new Response(null, { status: 204 }), requests).putMeta(SESSION, { title: "t" }, TEST);
 		assert.deepEqual(
-			requests.map((request) => request.headers.get("pi-sync-protocol")),
+			requests.map((request) => request.headers.get("nycode-sync-protocol")),
 			[String(SYNC_PROTOCOL), String(SYNC_PROTOCOL)],
 		);
 	});

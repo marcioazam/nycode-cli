@@ -15,7 +15,7 @@ afterAll(() => {
 });
 
 function connect(): { connection: Connection; cwd: string } {
-	const cwd = mkdtempSync(join(tmpdir(), "pi-env-process-"));
+	const cwd = mkdtempSync(join(tmpdir(), "nycode-env-process-"));
 	dirs.push(cwd);
 	const connection = new Connection({ command: [daemon] });
 	connections.push(connection);
@@ -118,13 +118,13 @@ describe("openProcess", () => {
 		const stdout = collector();
 		const program = await openProcess(connection, {
 			cwd,
-			argv: node("process.stdout.write(JSON.stringify([process.cwd(), process.env.PI_ENV_PROCESS_TEST]))"),
-			env: { PI_ENV_PROCESS_TEST: "set" },
+			argv: node("process.stdout.write(JSON.stringify([process.cwd(), process.env.NYCODE_ENV_PROCESS_TEST]))"),
+			env: { NYCODE_ENV_PROCESS_TEST: "set" },
 			onStdout: stdout.onData,
 		});
 		expect(await program.exited).toBe(0);
 		const [where, variable] = JSON.parse(stdout.bytes().toString("utf8")) as [string, string];
-		expect(where.toLowerCase()).toContain("pi-env-process-");
+		expect(where.toLowerCase()).toContain("nycode-env-process-");
 		expect(variable).toBe("set");
 	});
 });
@@ -361,7 +361,7 @@ describe("failures to start", () => {
 	});
 
 	it("fails for a program that does not exist", async () => {
-		await expect(start({ argv: ["pi-env-no-such-program"] })).rejects.toMatchObject({ code: "spawn_error" });
+		await expect(start({ argv: ["nycode-env-no-such-program"] })).rejects.toMatchObject({ code: "spawn_error" });
 	});
 
 	it("rejects an empty argv", async () => {
@@ -369,7 +369,7 @@ describe("failures to start", () => {
 	});
 
 	it("reports daemons released before the operation as not supported", async () => {
-		const cwd = mkdtempSync(join(tmpdir(), "pi-env-process-"));
+		const cwd = mkdtempSync(join(tmpdir(), "nycode-env-process-"));
 		dirs.push(cwd);
 		const connection = new Connection({ command: [process.execPath, join(import.meta.dirname, "old-daemon.ts")] });
 		connections.push(connection);

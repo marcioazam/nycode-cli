@@ -3,7 +3,7 @@
 // and the owner's `Discord` view. Linking moves the session into a sandbox and locks it to the picked resources;
 // unlinking lifts the lock.
 import { join } from "node:path";
-import { obj } from "@earendil-works/pi-schema";
+import { obj } from "@nycode/schema";
 import {
 	type AcceptsTable,
 	BACKGROUND_CONTEXT,
@@ -254,7 +254,7 @@ export default defineFacet((host) => {
 			updateLink: async ({ session, wake, lock }, ctx) => {
 				if (!Object.values(state.value.bindings).some((binding) => binding.session === session))
 					throw new Error("This session is not linked");
-				// Both apply at once: who may wake Pi is read at each message, the lock is mirrored into the session.
+				// Both apply at once: who may wake Nycode is read at each message, the lock is mirrored into the session.
 				await locks.set({ session, lock }, ctx);
 				await state.change((draft) => {
 					for (const binding of Object.values(draft.bindings))

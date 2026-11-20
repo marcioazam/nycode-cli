@@ -6,10 +6,10 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import { createModels } from "@earendil-works/pi-ai/models";
-import { fauxAssistantMessage, fauxProvider, fauxToolCall } from "@earendil-works/pi-ai/providers/faux";
-import { arr, obj, str } from "@earendil-works/pi-schema";
+import { createModels } from "@nycode/ai/models";
+import { fauxAssistantMessage, fauxProvider, fauxToolCall } from "@nycode/ai/providers/faux";
+import { BACKGROUND_CONTEXT } from "@nycode/chord/context";
+import { arr, obj, str } from "@nycode/schema";
 import { NodeExecutionEnv } from "../../src/env/node.ts";
 import {
 	createRegistry,
@@ -65,7 +65,7 @@ const leavePlanMode = { extensions: null, tools: null };
 
 // ─── Host setup ─────────────────────────────────────────────────────────────
 
-const directory = await mkdtemp(join(tmpdir(), "pi-durable-plan-"));
+const directory = await mkdtemp(join(tmpdir(), "nycode-durable-plan-"));
 await writeFile(join(directory, "server.ts"), "app.listen(3000);\n");
 
 const faux = fauxProvider();

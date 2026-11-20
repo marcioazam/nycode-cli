@@ -10,7 +10,7 @@ import {
 	type StaticObject,
 	str,
 	union,
-} from "@earendil-works/pi-schema";
+} from "@nycode/schema";
 import { openObject as object } from "./schema-builders.ts";
 
 export const THINKING_LEVELS = ["minimal", "low", "medium", "high", "xhigh", "max"] as const;
@@ -46,7 +46,7 @@ export const ModelPromptCacheSchema = object(
 	{ short: opt(PromptCacheLifetimeSchema), long: opt(PromptCacheLifetimeSchema) },
 	{
 		description:
-			"Best-effort prompt cache lifetime in seconds for the short and long retention tiers. Pi warms only tiers with a known lifetime.",
+			"Best-effort prompt cache lifetime in seconds for the short and long retention tiers. Nycode warms only tiers with a known lifetime.",
 	},
 );
 

@@ -1,5 +1,5 @@
-import type { AuthInteraction, AuthPrompt, AuthType, Provider } from "@earendil-works/pi-ai";
-import { replaceControlCharacters } from "@earendil-works/pi-tui";
+import type { AuthInteraction, AuthPrompt, AuthType, Provider } from "@nycode/ai";
+import { replaceControlCharacters } from "@nycode/tui";
 import { APP_NAME, getAuthPath } from "../config.ts";
 import { CredentialSynchronizationError, type ModelRuntime } from "../core/model-runtime.ts";
 import { findMatchingProviders } from "../core/provider-matching.ts";
@@ -23,7 +23,7 @@ export interface AuthLoginOptions {
 
 const AUTH_LOGIN_USAGE = `${APP_NAME} auth login <provider> [--api-key] [--no-browser]`;
 
-/** Parsed `pi auth login` arguments. */
+/** Parsed `nycode auth login` arguments. */
 interface LoginRequest {
 	providerRef: string;
 	/** Log in with an API key instead of an account. */
@@ -32,7 +32,7 @@ interface LoginRequest {
 	browser: boolean;
 }
 
-/** Run `pi auth login <provider>` in the terminal and return the process exit code. */
+/** Run `nycode auth login <provider>` in the terminal and return the process exit code. */
 export async function runAuthLogin(args: string[], options: AuthLoginOptions): Promise<number> {
 	const { modelRuntime, terminal, signal } = options;
 	const parsed = parseLoginRequest(args);

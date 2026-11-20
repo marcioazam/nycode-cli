@@ -22,28 +22,28 @@ how p2 uses it: **Chord v2** below.
 
 ```sh
 cd apps/p2
-P2_FAKE=1 npm start          # http://127.0.0.1:8788, data in ~/.pi/p2
+P2_FAKE=1 npm start          # http://127.0.0.1:8788, data in ~/.nycode/p2
 ```
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `P2_DATA_DIR` | `~/.pi/p2` | data directory: `server/` and `sessions/<id>/` (see **Host stores and files**), `settings.json`, `models.json`, `envs.json`, `projects.json` (imported once, see Projects), `mcp.json`, `mcp-auth.json`, `auth.json`, `radius.json`, `forwards.json` |
-| `PORT` | `8788` | listen port (loopback only), so p2 never collides with pi-mobile on 8787 |
+| `P2_DATA_DIR` | `~/.nycode/p2` | data directory: `server/` and `sessions/<id>/` (see **Host stores and files**), `settings.json`, `models.json`, `envs.json`, `projects.json` (imported once, see Projects), `mcp.json`, `mcp-auth.json`, `auth.json`, `radius.json`, `forwards.json` |
+| `PORT` | `8788` | listen port (loopback only), so p2 never collides with nycode-mobile on 8787 |
 | `P2_FAKE` | unset | `1`: the faux provider (`faux/faux-1`, echoes the prompt; `slow …` streams long; `rename-session <title>` calls the tool; `subagent`, `subagent-bad`, `subagent-answer`, `subagent-configure`, `subagent-send`, `subagent-archive`, `subagent-status` exercise subagents, `subagent <json>` calls the tool with those arguments, as do `team <json>`, `history_search|read|handoff <json>`, `location_envs|dirs|move <json>`, `tool_search <json>`, `terminal <json>` and `mcp__<server>__<tool> <json>`; `codemode` runs a script calling bash and read, `codemode-restart` one whose slow middle call a restart interrupts, `codemode <script>` runs that script; `artifact` runs a script writing the html artifact `demo` and showing it; `view_<name> <json>` and `artifact_<name> <json>` call those tools directly (refused: they are code mode only); `steps` makes a turn of thinking, calls and words, `inline-steps` one with an inline artifact between two calls; `json <text>` answers exactly `<text>`; a one-shot agent whose task is not `json …`/`slow…` answers a small value matching its schema) |
 | `P2_IDLE_MS` | `300000` | idle time before a session worker stops |
-| `P2_PROVIDER`, `P2_MODEL` | unset | default model for new sessions after settings.json's `defaultModel` (both or neither; Pi Mobile's `PI_MOBILE_PROVIDER`/`PI_MOBILE_MODEL` work too) |
+| `P2_PROVIDER`, `P2_MODEL` | unset | default model for new sessions after settings.json's `defaultModel` (both or neither; Nycode Mobile's `NYCODE_MOBILE_PROVIDER`/`NYCODE_MOBILE_MODEL` work too) |
 | `P2_RADIUS` | unset | `0`: disable the outbound Radius brain connection even when signed in |
-| `PI_RADIUS_GATEWAY` | production Radius | gateway selected by `npm run radius:login` |
-| `P2_TERMINAL_DAEMON` | unset | optional local pi-env daemon binary; otherwise use packages/env release/development builds |
+| `NYCODE_RADIUS_GATEWAY` | production Radius | gateway selected by `npm run radius:login` |
+| `P2_TERMINAL_DAEMON` | unset | optional local nycode-env daemon binary; otherwise use packages/env release/development builds |
 
 - **Web UI** (Chord's web surface, slice 11; `src/hosts/server.ts`, `src/hosts/web.ts`): `webSurface` with
   `routes: false` builds the pages' base bundle from `src/hosts/web/entry.ts` (`main.tsx`: Chord's `startPage` with
   p2's API modules, core facet, React root, connection state and error reports; `themes: false`, p2 styles itself)
   right after the listen, resolving workspace packages through p2's tsconfig `paths` as the server's source resolver
-  does (`src/hosts/web/base.ts`, Chord's `tsconfig`): their sources, never a `dist/` (pi-ai's `./utils/*` exports
+  does (`src/hosts/web/base.ts`, Chord's `tsconfig`): their sources, never a `dist/` (nycode-ai's `./utils/*` exports
   only `dist/`, which the phone never builds; `web-sources.test.ts` fails on any `dist/` input); the
   plugins' web facets are Chord plugin builds of kind `web` (host packages `src/hosts/web/packages.ts`: the API's
-  kind-neutral and web modules, React, react-dom, pi-schema), served as scripts that register themselves, the current
+  kind-neutral and web modules, React, react-dom, nycode-schema), served as scripts that register themselves, the current
   set as one combined file. `web.ts` serves them with p2's access rules: the page (p2's template with `pageScripts`,
   `data-web-version` the base hash), `/_chord/web/…` files (named by content, `immutable`; guests too: it is the
   app's code), and `/_chord/web/base` (public, `no-store`). A failed base build is an owner notice and pages answer
@@ -62,10 +62,10 @@ P2_FAKE=1 npm start          # http://127.0.0.1:8788, data in ~/.pi/p2
   `plugin-practices.md`. The TUI launcher still polls `/__p2_tui` (p2's own TUI bundle). There is no Vite,
   source-module server or `index.html`.
 - **Radius Cloud Brain** (`scripts/cloud-bundle.ts`, `.github/workflows/p2-cloud-bundle.yml` after CI passes on main;
-  the R2 bucket `pi-ui` under the commit's full SHA, served by Radius under `/pi/ui/`): a static page built with
+  the R2 bucket `nycode-ui` under the commit's full SHA, served by Radius under `/nycode/ui/`): a static page built with
   Chord's builders as a p2 page is (`buildBase`, the plugins' web scripts registered with `registeredSource`,
   `pageBootstrap`), written as one script (the bootstrap, the plugins, the base bundle) and one stylesheet, assets
-  under `/pi/ui/<sha>/assets/`. `main.tsx` sees Radius's `data-pi-bootstrap` on `#root`: it connects to its Chord URL
+  under `/nycode/ui/<sha>/assets/`. `main.tsx` sees Radius's `data-nycode-bootstrap` on `#root`: it connects to its Chord URL
   (adding `client=cloud`; the brain forwards the relayed path with its query) and starts static (`startPage({ follow: false })`: no updates, never outdated). Test: `ui-cloud-bundle.test.ts`.
 - `npm run dev` also watches plugins and supervises runtime restarts; see **Dev mode** below. Under `npm start`,
   code changes (web included) take effect only after a restart.
@@ -73,7 +73,7 @@ P2_FAKE=1 npm start          # http://127.0.0.1:8788, data in ~/.pi/p2
   conversations with their entry counts and newest entry IDs, subagents, share modes, artifacts, uploads and
   downloads, plus environment and forward names; never secrets. `--compare before.json` lists differences (exit 1).
   `scripts/verify-sessions.ts [url]` checks a running p2 against it as the local owner (signed in with the data
-  directory's owner key: `--data`, P2_DATA_DIR or ~/.pi/p2): the session list, and the
+  directory's owner key: `--data`, P2_DATA_DIR or ~/.nycode/p2): the session list, and the
   newest entry of every conversation through `Chat` for the 10 newest sessions and all with subagents or shares
   (stopping workers it started). `test/fixtures/v1-data` is a data directory p2 wrote on Chord v1 (generated at
   aee97d3a9; the generator went with v1); `v1-data.test.ts` opens a copy and checks both tools and the contracts.
@@ -107,11 +107,11 @@ P2_FAKE=1 npm start          # http://127.0.0.1:8788, data in ~/.pi/p2
 ## Dev mode
 
 ```sh
-cd /home/badlogic/pi/apps/p2
+cd /home/badlogic/nycode/apps/p2
 export PATH=/home/badlogic/node-v24.4.1-linux-x64/bin:$PATH
 # The proxy sets X-P2-Proxy-Secret: 1 on every request (never an owner grant).
 P2_ALLOWED_HOSTS=p2.mariozechner.at P2_PUBLIC_URL=https://p2.mariozechner.at \
-  P2_DATA_DIR="$HOME/.pi/p2" PORT=8788 npm run dev
+  P2_DATA_DIR="$HOME/.nycode/p2" PORT=8788 npm run dev
 ```
 
 Do not launch this beside another server using the same data directory or port. Moving a standalone server into
@@ -149,7 +149,7 @@ Use a temporary `P2_DATA_DIR` and a different `PORT` for experiments.
 
 ### Agents: apply edits explicitly
 
-Run from `apps/p2`, with `P2_DATA_DIR` matching the running server (default `~/.pi/p2`):
+Run from `apps/p2`, with `P2_DATA_DIR` matching the running server (default `~/.nycode/p2`):
 
 ```sh
 npm run reload                       # all dirty plugins, including additions/removals
@@ -184,13 +184,13 @@ failure results.
 
 ```sh
 npm run tui                         # local owner on http://127.0.0.1:$PORT, default 8788
-npm run tui -- https://pi.example    # prompts for an owner link unless its saved cookie is valid
-npm run owner-link -- https://pi.example   # on the server machine, print a private fragment link
+npm run tui -- https://nycode.example    # prompts for an owner link unless its saved cookie is valid
+npm run owner-link -- https://nycode.example   # on the server machine, print a private fragment link
 # Paste that link at the TUI prompt, or supply --owner-link '<link>' / P2_TUI_OWNER_LINK.
 ```
 
 On direct HTTP loopback the launcher first tries a valid saved owner cookie, then signs in as the local owner with
-the owner key of `P2_DATA_DIR` (default `~/.pi/p2`; `src/runtime/local-owner.ts`) and saves nothing. Without a
+the owner key of `P2_DATA_DIR` (default `~/.nycode/p2`; `src/runtime/local-owner.ts`) and saves nothing. Without a
 readable key, against a server with another data directory, or behind a proxy marker, it prints why and prompts for a
 link. When every owner is signed out while it runs, a local sign-in signs in again with the new key. The default is always `http://127.0.0.1:$PORT` (8788 unset), not `P2_PUBLIC_URL`.
 Remote URLs require HTTPS. `--owner-link <link>` (or `P2_TUI_OWNER_LINK`) redeems only a same-origin `/owner#<token>`
@@ -199,23 +199,23 @@ the prompt) asks for a display name and redeems it with `POST /join`; the guest 
 owner cookie and reused after a `HEAD /__p2_tui` check. If the server stops admitting it (link reset, guest removed,
 session archived) the TUI exits with a notice and forgets it. Loopback stays the local owner unless `--join` is given.
 Basic-auth options/environment/passwords are removed. Prefer the prompt to command-line credentials, which can
-appear in shell history/process listings. Only the cookie is saved per origin in `~/.pi/p2-tui/config.json`
+appear in shell history/process listings. Only the cookie is saved per origin in `~/.nycode/p2-tui/config.json`
 (0600, directory 0700); the consumed invitation is never saved. Local configuration stores only cookies;
 `P2_TUI_CONFIG_DIR` isolates tests. No provider credentials are read by the launcher. Keybindings, theme and display
-settings are the visitor's (p2-tui-port.md 4.3): the launcher reads pi's `keybindings.json`, `settings.json` and
-`themes/*.json` (`PI_CODING_AGENT_DIR` or `~/.pi/agent`, never written) and `prefs.json` beside `config.json`, keeps a
+settings are the visitor's (p2-tui-port.md 4.3): the launcher reads nycode's `keybindings.json`, `settings.json` and
+`themes/*.json` (`NYCODE_CODING_AGENT_DIR` or `~/.nycode/agent`, never written) and `prefs.json` beside `config.json`, keeps a
 validated whitelist and posts it as data; it watches them, so custom themes and bindings hot-reload. `--theme` and
-`--no-themes` work as in pi. The launcher also queries the terminal's colors (OSC 10/11/4, mode 2031) and posts
+`--no-themes` work as in nycode. The launcher also queries the terminal's colors (OSC 10/11/4, mode 2031) and posts
 them with its color depth and platform. `<P2_DATA_DIR>/tui.json` (`TuiPreferences`) only holds server defaults, e.g.
 `{"keybindings":{"app.model.select":"ctrl+k"},"theme":"light","settings":{"hideThinkingBlock":true}}`; privileged
-(launcher-owned) bindings are dropped. `hideThinkingBlock` (unset = hidden, unlike pi) sets the thinking view whenever
+(launcher-owned) bindings are dropped. `hideThinkingBlock` (unset = hidden, unlike nycode) sets the thinking view whenever
 its effective value changes; `app.thinking.toggle` overrides it until then, and a reload snapshot keeps the toggle. Themes are per-runtime instances (`src/tui/theme/`); keys and commands go
-through the `TuiCommands` registry (pi ids, contexts, `/hotkeys`, F1 palette, `/` completion).
+through the `TuiCommands` registry (nycode ids, contexts, `/hotkeys`, F1 palette, `/` completion).
 
 The unrestricted launcher (`src/hosts/tui.ts`, `tui-client.ts`) owns terminal input/resize, the same `/chord`
 WebSocket as the browser and its cookie. It downloads only a same-origin `/__p2_tui` manifest and bounded,
 SHA-256-verified bundle; redirects and server-chosen origins/paths are refused. Owners and currently admitted
-share guests may fetch this code, strangers cannot. `buildTuiBundle` in `src/hosts/bundles.ts` bundles pi-tui,
+share guests may fetch this code, strangers cannot. `buildTuiBundle` in `src/hosts/bundles.ts` bundles nycode-tui,
 Chord, the runtime and every loaded plugin's `tui.ts` into one self-contained ESM. Listing and esbuild run on the
 server, not the visitor. The captured bundle inputs participate in dirty/reload decisions.
 Backend reload prepares a new bundle before commit and publishes it only after success; failed builds retain the
@@ -231,7 +231,7 @@ All fs/fs-promises functions are also disabled before evaluation: inherited nume
 permission checks, so raw fd reads/writes must not reach stdin or the real terminal. Built-in aliases share the
 closed facade; drops independently protect native JSON/require/file module loading.
 The bootstrap gives the runtime only copied messages and a send function, not a port or Worker handle. Native
-pi-tui clipboard/platform helpers are disabled at bundle time. Inside, `tui-worker-runtime.ts` implements pi-tui's
+nycode-tui clipboard/platform helpers are disabled at bundle time. Inside, `tui-worker-runtime.ts` implements nycode-tui's
 Terminal interface through the bridge and loads the TUI facets plus `tuiCoreFacet` (which serves the TUI's
 registries) on a Chord client host whose parent link is relayed as binary messages; it has no Node socket or local
 module loader.
@@ -243,22 +243,22 @@ registered launcher actions, which run only under a grant: the visitor's own pri
 launcher-drawn consent screen (worker IO suspended meanwhile). Unknown requests are denied. Worker-set terminal modes
 (autowrap, mouse only by the visitor's `prefs.json` `mouse` policy) are tracked and undone on exit, crash and swap. WebSocket frames are relayed unchanged with 4 MiB
 frame/queue limits. Every output write passes `tui-filter.ts` (64 KiB UTF-8/frame): text, CR/LF/tab, SGR, cursor
-movement/position, erase, cursor visibility, autowrap, synchronized output, bracketed paste, pi-tui alternate screen
+movement/position, erase, cursor visibility, autowrap, synchronized output, bracketed paste, nycode-tui alternate screen
 and scroll region. OSC 52/title/hyperlinks, DCS, APC/PM/SOS, kitty graphics, C1 controls, unknown CSI/private modes and malformed
 or incomplete escapes are stripped. No partial escape can cross a frame boundary. Raw worker streams never reach the
 terminal. A crash (an uncaught exception or a throwing message handler) is printed by the launcher after it restored
 the terminal: the stack (frames name `p2-tui-bundle.mjs`), controls removed, at most 8 KiB (the bundle keeps function
 and class names for this); a heap overrun says so instead. Rendering is copied from coding-agent's interactive mode and DurableTui (p2-tui-port.md P0c/P2;
 p2 imports neither coding-agent nor mobile): a fullscreen layout (transcript `ScrollView` over a dock of status lines,
-pending area, pi's editor with the working indicator in its border, and pi's footer), incremental transcript
-components keyed by the shared display items (`src/tui/components/`), pi's tool card (`src/tui/components/
-tool-execution.ts`, pi's generic card for a tool without renderers, the shared shell card in `src/tui/tools/shell.ts`),
+pending area, nycode's editor with the working indicator in its border, and nycode's footer), incremental transcript
+components keyed by the shared display items (`src/tui/components/`), nycode's tool card (`src/tui/components/
+tool-execution.ts`, nycode's generic card for a tool without renderers, the shared shell card in `src/tui/tools/shell.ts`),
 and plugin contributions through `TuiToolRenderers` (the tools' own cards, from the plugins that own them: bash, read,
 write, edit (the result's diff), grep/find/ls in `coding-tools`, `powershell`, code mode in `codemode`),
 `TuiToolRendererResolvers`, `TuiEntryRenderers` and `TuiMarkdownTransformers` (`src/runtime/tui-renderers.ts`). Drafts, pending send IDs and reading positions are kept per viewed
 (session, conversation); the reading position stays put while output grows or older history is prepended.
 
-pi's defaults (rebindable in pi's `keybindings.json` or p2 prefs; `/hotkeys` lists all with conflicts):
+nycode's defaults (rebindable in nycode's `keybindings.json` or p2 prefs; `/hotkeys` lists all with conflicts):
 
 | Key | Action |
 | --- | --- |
@@ -268,14 +268,14 @@ pi's defaults (rebindable in pi's `keybindings.json` or p2 prefs; `/hotkeys` lis
 | Escape / Alt+Up | Stop / restore the last queued input to the editor |
 | Ctrl+C / Ctrl+D | Clear the editor (twice: exit) / exit when the editor is empty (`/quit`) |
 | Ctrl+T / Ctrl+O | Show thinking / expand tool output |
-| PageUp / PageDown / Ctrl+Home / Ctrl+End | Scroll the transcript (pi-tui's alt-screen keys; Ctrl+End follows again) |
+| PageUp / PageDown / Ctrl+Home / Ctrl+End | Scroll the transcript (nycode-tui's alt-screen keys; Ctrl+End follows again) |
 | F1 / `/hotkeys` / `/reload` | Command palette / shortcuts / fetch the server TUI bundle into a fresh worker |
 | F2 / `/close-panel` | Move the focus into the side panel and back (Escape also returns) / close it |
 
 **Side panel.** `ctx.panel.open(id, content, title)` shows one component to the right of the screen's body (about 40%
 of the width, behind a bar; the dock stays full width), in a `ScrollView` the runtime owns. Plugins open it (Enter in
 `/artifacts` shows an artifact there when the terminal fits it; it follows new versions through `Artifacts`). The editor keeps
-the focus; F2 (`p2.panel.focus`) moves it into the panel, where the runtime sets pi-tui's `capturesViewportInput` and
+the focus; F2 (`p2.panel.focus`) moves it into the panel, where the runtime sets nycode-tui's `capturesViewportInput` and
 scrolls the panel with the viewport and select keys, keeps other keys from the editor and returns the focus on Escape.
 Search stays on the transcript (the primary scroll view). Hidden below 100 columns; closed on navigation to another
 conversation and whenever the command registry changes (a facet reload), like overlays.
@@ -304,10 +304,10 @@ escape attempts on Node 26 (permission drop before evaluation, fs/JSON/require/f
 child/worker/bindings, env, inspector, snapshots, environment data/BroadcastChannel, signaling/report/priority,
 loader registration, inherited descriptors, raw streams, huge
 heap/ArrayBuffer allocations), plus deterministic adversarial/fuzz output filtering. `tui-launcher.test.ts` covers
-web-equivalent admission, a real server/bundled-worker/pi-tui session with fake replies, server defaults under local preferences,
+web-equivalent admission, a real server/bundled-worker/nycode-tui session with fake replies, server defaults under local preferences,
 queues/stop, resized rendering, replacement/state preservation, failed build rollback, reconnect, denied capability
 requests/cookie secrecy and concurrent shutdown during worker preparation. `tui-commands.test.ts` covers the
-command registry (when grammar, privileged/transcript/plugin/slash collisions, pi `keybindings.json` overrides, registry
+command registry (when grammar, privileged/transcript/plugin/slash collisions, nycode `keybindings.json` overrides, registry
 reload, overlay precedence, palette, `/hotkeys`); `tui-theme.test.ts` per-runtime themes, terminal colors, the launcher's
 preference loader and hot reload, and the data-only `preferences`/`capabilities`/`terminalColors` messages. Run these
 with Node 26.11.1; Node 24 remains valid for the server but cannot execute the sandbox tests.
@@ -376,7 +376,7 @@ p2 runs on Chord v2 (`packages/chord`, `docs/design.md` there); the port's notes
   nothing while not connected to a sync; turning it on starts at the current commit, and a first sync uploads an
   archive) and `<data>/sessions/<id>/files/`.
   Projects will be another host kind of the same shape. Both hosts load the app kit's `Files` (`chord.app.files`,
-  `filesFacet` from `@earendil-works/chord/app/files`); a session's Durable runs on its store through `StoreStorage`
+  `filesFacet` from `@nycode/chord/app/files`); a session's Durable runs on its store through `StoreStorage`
   under the owner name `p2.durable` (`src/runtime/session-store.ts`), beside `Files`' tables. Plugins reach `Files`
   with `self.get(Files, {})` / `ctx.get(Files, {})` (`@p2/app/v1/node`), never a path; a session's spaces are
   `uploads` and `downloads` (`src/runtime/session-files.ts`; artifacts written before 2026-11-12 stay in a space
@@ -413,10 +413,10 @@ p2 runs on Chord v2 (`packages/chord`, `docs/design.md` there); the port's notes
   either layout: a report before and `--compare` after shows any difference. Tests: `pre-files-data.test.ts` (a data
   directory made by p2 just before this change), `v1-data.test.ts`.
 - **Worker base:** session workers fork from Chord's worker base of `src/hosts/worker.ts` (split at dynamic imports).
-  The entry imports only the worker's side (`@earendil-works/chord/workers/child`, `src/hosts/host-packages.ts`), so a
-  fork loads no esbuild and no server API; pi-ai's provider SDKs load with their first request. It registers pi-ai's
+  The entry imports only the worker's side (`@nycode/chord/workers/child`, `src/hosts/host-packages.ts`), so a
+  fork loads no esbuild and no server API; nycode-ai's provider SDKs load with their first request. It registers nycode-ai's
   lazy OAuth flows and Bedrock (`registerLazyOAuthFlows`, `registerLazyBedrockProvider`): chunks of the snapshot, not
-  pi-ai's source files (`test/p2/worker-base.test.ts`, `worker-oauth.test.ts`).
+  nycode-ai's source files (`test/p2/worker-base.test.ts`, `worker-oauth.test.ts`).
 - **Worker failures:** a failed start stays failed (status error, Retry) and its holders wait (`failed { waiting }`,
   `whenLive` does not reject: tests use `failureOf`). A running worker that crashes is restarted for its holders, at
   most five times a minute per session; the next crash waits for Retry. A worker stays alive while objects
@@ -440,7 +440,7 @@ p2 runs on Chord v2 (`packages/chord`, `docs/design.md` there); the port's notes
   `ctx.get`/`host.get` one once live. UIs use `src/runtime/refs.ts`: `follow` (a value with its current one first),
   `followRegistry`, `whenLive`, `statusOf`, `liveIn(ref, ...variants)` (`HeldIn`), `UI_LINGER`. A held reference's
   variant may be `undefined` until it binds, so `inVariant`/`expectVariant` do not narrow it: use `liveIn`.
-- **Objects and state:** factories declare state with `defineState` (`defineTypedState` where pi-schema's optional
+- **Objects and state:** factories declare state with `defineState` (`defineTypedState` where nycode-schema's optional
   fields are not JSON to TypeScript) and change it with `change(fn, ctx)`; derived members are `self.derive`; a
   `self.writable` is exposed through a derive. Natives (a Durable Harness, a database, a socket) are `self.open`
   values; another object reaches one through a single-native registry (`serveNative`, `nativeOf`): `WorkerProcess`
@@ -479,7 +479,7 @@ npm start
   exists; absent config is checked again every 30 seconds. The private file contains gateway, stable brain ID,
   OAuth credential and the last brain origin. Credentials refresh before connecting. `P2_RADIUS=0` disables it.
   Relay v4 HTTP uses credit and uplink backpressure; WebSocket channels work too. End-to-end `stream` channels
-  remain unsupported. Only the credential's authenticated owner can reach Pi. Relayed loopback requests carry
+  remain unsupported. Only the credential's authenticated owner can reach Nycode. Relayed loopback requests carry
   a per-resource secret checked by the plugin's `RequestResolvers` contribution; the host stamps an owner
   principal with `access: "relay"`, a remote origin, and normal same-origin checks. They may sign in to model providers,
   but cannot mint local tokens or receive a local owner cookie. Credentials never reach web state.
@@ -492,17 +492,17 @@ npm start
   forwards and confirms public opt-in. Every forward is private by default and has an isolated
   `https://fwd--<brain label>--<random id>.rdtun.com/` address. Public forwards additionally have
   `https://pub--<brain label>--<id>.rdtun.com/`; anonymous channels can reach only currently-public forwards,
-  never Pi. Removed IDs stop working. Radius forwards HTTP and WebSockets to `localhost:<port>` with local
-  Host/Origin, public `X-Forwarded-*` and rewritten localhost redirects, without the relay secret. Pi's own
-  port cannot be forwarded. Links appear after the owner opens Pi through Radius and survive restart;
+  never Nycode. Removed IDs stop working. Radius forwards HTTP and WebSockets to `localhost:<port>` with local
+  Host/Origin, public `X-Forwarded-*` and rewritten localhost redirects, without the relay secret. Nycode's own
+  port cannot be forwarded. Links appear after the owner opens Nycode through Radius and survive restart;
   on-device Open uses localhost. Radius sees forwarded traffic; this is not a sandbox.
-- **Shell page and share links**: the brain keeps its page in the Radius shell, `<shell>/pi/<organization ID>/<brain>`,
-  from the relayed requests' shell origin (`radius.json` `shellPage`; one saved in the older `/pi/brains/…` form is
+- **Shell page and share links**: the brain keeps its page in the Radius shell, `<shell>/nycode/<organization ID>/<brain>`,
+  from the relayed requests' shell origin (`radius.json` `shellPage`; one saved in the older `/nycode/brains/…` form is
   read in the current one). People a session is shared with by email get `<shell page>/s/<session>`. The shell names
   the organization by its slug once it opens; a kept link names it by ID, which a slug change leaves valid.
 - The worker's root-only `ports` tool has `list/open/close`, fixes owner/peer attribution at its calling assistant
   entry, and denies guest/unattributed turns. It lists every forward and explicitly names all public endpoints,
-  asks the model to obtain confirmation before publishing. As in Pi Mobile (67cdb4ca4) it may change or close any
+  asks the model to obtain confirmation before publishing. As in Nycode Mobile (67cdb4ca4) it may change or close any
   forward: open on an already forwarded port keeps its address and opener and takes the new name and visibility,
   whoever opened it; close stops any forward. Archiving awaits the `SessionArchived` cleanup contributions; startup
   removes any archived-session forwards left by an interrupted archive. A remote-environment session cannot open
@@ -516,9 +516,9 @@ npm start
 ### TUI through Radius
 
 `npm run tui -- --radius [<server-id>]` reaches the server through Radius, without a tunnel or owner link. The
-launcher signs in to Radius itself (device code, saved in `~/.pi/p2-tui/radius.json`, separate from any server's
+launcher signs in to Radius itself (device code, saved in `~/.nycode/p2-tui/radius.json`, separate from any server's
 `radius.json`), picks the given server or the user's only online one (`GET /v1/servers`), and connects to
-`/v1/servers/<id>/connect` with its bearer token (`pi-server.client.v2`). Radius admits only the server's owner and
+`/v1/servers/<id>/connect` with its bearer token (`nycode-server.client.v2`). Radius admits only the server's owner and
 opens a `ws` channel without a request; the brain ("Client channels" in `brain.ts`) reads the request from the
 client's first message and makes it a loopback request marked like the owner's browser requests, without a shell
 origin (`access: "relay"`: no owner links). The launcher's requests go through a transport (`tui-transport.ts`,
@@ -534,7 +534,7 @@ taking turns with the chord link so a download cannot hold up live output. Then 
 
 ## Browser navigation
 
-`src/web/navigation.ts` is an independent, minimized copy of Pi Mobile's stack. `src/runtime/web.tsx` exposes
+`src/web/navigation.ts` is an independent, minimized copy of Nycode Mobile's stack. `src/runtime/web.tsx` exposes
 `useNavigation()` and `useRoute()` to plugins. Routes contain a session/conversation, named sheet/viewer layers
 (with small string locators), the workspace location, and an optional bottom terminal; or, instead of a session, a
 sidebar rollup's or group's list (`page`). Only the top modal shows. The stack and per-area scroll positions persist in this
@@ -552,41 +552,41 @@ tab's sessionStorage; URLs identify conversations (`/s/<id>` and `/s/<id>/c/<con
   links: the "Back to main conversation" and parent-session buttons, peer-message attributions, Discord's bound
   sessions.
 - **Framed by the Radius shell** (`src/web/shell-bridge.ts`). Through Radius the app runs in a frame of the shell
-  (`radius.earendil.com/pi/<organization>/<brain>`) on the brain's origin. The page names the shell's origin
+  (`radius.earendil.com/nycode/<organization>/<brain>`) on the brain's origin. The page names the shell's origin
   (`<meta name="p2-shell-origin">`, relayed requests only), and the bridge speaks the frame's side of the shell's
-  `pi-shell` channel: `ready` on load, the route's `routeHref` as `location` after every navigation, and the shell's
+  `nycode-shell` channel: `ready` on load, the route's `routeHref` as `location` after every navigation, and the shell's
   `hello` base becomes the base of `linkHref`, so a link opened in another tab, or copied, is the shell's URL
-  (`…/pi/acme/<brain>/s/<id>`), not the frame's. The shell only replaces its URL with each report; the app's history
+  (`…/nycode/acme/<brain>/s/<id>`), not the frame's. The shell only replaces its URL with each report; the app's history
   entries stay the tab's, so Back moves the frame. Messages go to the shell's origin only; nothing is posted when the
   page is not framed or not relayed. The shell's side and the contract: Radius,
-  `client/src/views/pi-shell/frame-bridge.ts`. `test/p2/shell-bridge.test.ts` (origins, reports, base, theme
+  `client/src/views/nycode-shell/frame-bridge.ts`. `test/p2/shell-bridge.test.ts` (origins, reports, base, theme
   messages) and `test/p2/ui-shell-frame.test.ts` (the real bundle framed by a stand-in shell on another site:
   mirrored URL, links, one history entry per step, Back and Forward, the shell's theme).
 - **Theme** (`src/web/theme.ts`). The light/dark preference lives in the outermost host, and the page picks a backend at
-  startup: `native` when p2-mac's `window.webkit.messageHandlers.piHost` exists (the app's `appearance`; `theme` and
-  `set-theme` messages with replies, `pi-host-theme` events; "system" resolves with `matchMedia`, which follows the
+  startup: `native` when p2-mac's `window.webkit.messageHandlers.nycodeHost` exists (the app's `appearance`; `theme` and
+  `set-theme` messages with replies, `nycode-host-theme` events; "system" resolves with `matchMedia`, which follows the
   app's appearance), `shell` when the Radius shell frames the page (the meta, a plain origin, and a parent) and its
-  `hello` carries `theme` (the shell's `pi-theme`; the page applies the shell's resolved `scheme`, sends `set-theme`,
-  takes the `theme` echo), else `local` (the origin's localStorage `pi-theme`, as before). Hosted pages never read or
+  `hello` carries `theme` (the shell's `nycode-theme`; the page applies the shell's resolved `scheme`, sends `set-theme`,
+  takes the `theme` echo), else `local` (the origin's localStorage `nycode-theme`, as before). Hosted pages never read or
   write their own stored value; the first-paint scripts skip it by the same rule (the app page's in `src/hosts/web.ts`;
   the server pages' in `src/runtime/page.ts` skip it in any frame, since the CSP lets only the shell frame them). Picks
   apply at once and the host's answer wins; two quick picks never flicker back: the shell answers each `set-theme`
   with one `theme`, and the page drops `theme` messages until its last pick's answer (the count resets on `hello`);
-  with p2-mac it ignores `pi-host-theme` while a `set-theme` is unanswered and takes the latest request's answer.
+  with p2-mac it ignores `nycode-host-theme` while a `set-theme` is unanswered and takes the latest request's answer.
   Before `hello` a framed page follows the system, ignores its storage and `storage` events and keeps a pick in
   memory: a `hello` with `theme` sends that pick as `set-theme` (else takes the shell's preference), a `hello` without
   `theme` (an older shell) stores the pick or, without one, reads the stored value; without any `hello` the pick stays
   in memory. Before `hello` a framed page shows the scheme the shell hinted in the URL it framed
-  (`#pi-shell-scheme=light|dark`): WebKit (26.6) resolves a cross-site frame's `prefers-color-scheme` with the
+  (`#nycode-shell-scheme=light|dark`): WebKit (26.6) resolves a cross-site frame's `prefers-color-scheme` with the
   system's, not the embedder's `color-scheme` as Chrome does, so a shell forcing the opposite of the system would
   otherwise paint the frame wrong until `hello`. The app page's first-paint script reads the hint only in a shell
-  frame (exactly that fragment; any other stays), paints it, keeps it for `theme.ts` as `<html data-pi-shell-scheme>`
+  frame (exactly that fragment; any other stays), paints it, keeps it for `theme.ts` as `<html data-nycode-shell-scheme>`
   and removes the fragment with `history.replaceState(history.state, "", pathname + search)` before the app reads the
   URL (navigation.ts reads `location` when the bundle starts; nothing reads the fragment). Without a hint: the
   system's scheme. A change of the shown scheme after load cross-fades: `theme.ts` makes the DOM change in
-  `document.startViewTransition({ update, types: ["pi-theme"] })` (the function form where types are missing), the
+  `document.startViewTransition({ update, types: ["nycode-theme"] })` (the function form where types are missing), the
   browser's default cross-fade of the page, about 250 ms; no CSS of its own (scope any to
-  `:active-view-transition-type(pi-theme)`). Each document fades its own pixels: the Radius shell keeps its frame out
+  `:active-view-transition-type(nycode-theme)`). Each document fades its own pixels: the Radius shell keeps its frame out
   of its snapshot, p2-mac fades only its native views. No fade for what the page shows while starting (first paint,
   hint, before the first frame, `hello`, p2-mac's first answer), an unchanged scheme, a hidden page, reduced motion or
   without the API; a change during a fade starts a new one, and a fade's late DOM change shows the latest scheme.
@@ -712,7 +712,7 @@ and `Traces` answers `unavailable` "telemetry is off (settings.json telemetry)" 
 `telemetry-off.test.ts`). On: the server records to `<data>/telemetry.sqlite`
 (`openTelemetry`, `src/runtime/host-dirs.ts`; Chord's SQLite store, 7 days, a queue of 10,000 spans, a flush every
 second; its own private file, never in a backup), its only writer. Each session worker records in memory (its host's
-spans and metrics, and Durable's `pi.durable.*` and pi-ai's `pi.ai.*`: the Harness gets the same adapter) and sends
+spans and metrics, and Durable's `nycode.durable.*` and nycode-ai's `nycode.ai.*`: the Harness gets the same adapter) and sends
 to the server's `WorkerTelemetry` every second and when it closes (`src/hosts/worker.ts`), stamped `chord.host:
 session|<id>`. Owners' pages record too (`#root` `data-p2-telemetry`, set by `web.ts` for owners; `startPage({
 telemetry: true })`) and send to `PageTelemetry` every 3 s and when hidden; the server admits owners only
@@ -737,9 +737,9 @@ call, hold, method, relay and activation; nothing is measured or walked for it. 
 
 ## Decisions
 
-- **Where p2 differs from Pi Mobile on purpose** (from the parity audit before Pi Mobile was retired):
+- **Where p2 differs from Nycode Mobile on purpose** (from the parity audit before Nycode Mobile was retired):
   - **Section and tool order:** p2 offers sections and tools in plugin load order, which is alphabetical
-    (`src/hosts/plugins.ts`). Pi Mobile's order is its hand-written install sequence in `worker/main.ts` (coding
+    (`src/hosts/plugins.ts`). Nycode Mobile's order is its hand-written install sequence in `worker/main.ts` (coding
     tools, artifact, send_file, subagent, conversations, ports, session title; then preamble, cwd, the app guide,
     AGENTS.md, skills; then code mode and PowerShell). Reproducing it would need a hand-maintained rank of every
     plugin's extensions, which is the manifest p2 avoids (no plugin declares an order). The sections' relative order
@@ -753,16 +753,16 @@ call, hold, method, relay and activation; nothing is measured or walked for it. 
     subagent messages (search hits open their conversation), and their activity counts as the session's.
   - Items the reports mark intentional (owner links, sharing revisions, no heartbeat lease, sticky failed starts, the
     "Session unavailable" screen, the Devices sheet, `/s/<id>/c/<n>` URLs, the extra p2 fake triggers) stay as decided.
-- **Beyond Pi Mobile:**
+- **Beyond Nycode Mobile:**
   - **Composer file completion** (p2-tui-port.md P7c, `src/web/file-completion.tsx`, `src/runtime/completion.ts`): in a
     session's composer, `@` after a token boundary opens a list of the session directory's files and folders (the
-    `file-index` plugin, ranked like pi's `@`), and Tab on a path-like token completes it from that directory. While the
+    `file-index` plugin, ranked like nycode's `@`), and Tab on a path-like token completes it from that directory. While the
     list is open, Enter/Tab apply, the arrows move and Escape closes it, ahead of send and stop; closed, the composer
-    behaves as before. IME composition never opens it. `@pi` (chat mode's mention) is never completed as a file; in chat
-    mode "@pi — mention Pi" comes first. `~`, absolute and `..` paths complete nothing (the hint says so). The
-    new-session composer has none (the session does not exist yet). Pi Mobile has no composer completion; this is the
+    behaves as before. IME composition never opens it. `@nycode` (chat mode's mention) is never completed as a file; in chat
+    mode "@nycode — mention Nycode" comes first. `~`, absolute and `..` paths complete nothing (the hint says so). The
+    new-session composer has none (the session does not exist yet). Nycode Mobile has no composer completion; this is the
     shared behavior of p2's TUI and web. Test: `ui-file-completion.test.ts`.
-  - **`enabledModels`** in settings.json (p2-tui-port.md P3): the TUI's scoped model cycling; Pi Mobile has no such key.
+  - **`enabledModels`** in settings.json (p2-tui-port.md P3): the TUI's scoped model cycling; Nycode Mobile has no such key.
   - **Chat version 3** (P3): `compact`, `abortCompaction`, `reset` (owner) and `dequeueOwn`, and the guest-safe `model`
     state, used by the TUI; the web UI is unchanged.
 
@@ -770,15 +770,15 @@ call, hold, method, relay and activation; nothing is measured or walked for it. 
   `p2.subagent-anchor`, `p2.subagent-reporter`; entries `p2.input`, `p2.peer-message`; extensions `p2-artifacts`, `p2-downloads` (and the
   unprefixed `subagent-tools`, which subagent conversations store in their agent state). No `mobile.*` name is read.
   p2 sessions created before the rename (with `mobile.*` documents) are not migrated: their subagent registry,
-  one-shot agents and artifact index look empty (owner decision). Pi Mobile sessions were converted to these names by a one-time
-  importer when the phone switched to p2 (removed afterwards; see git history). Old `pi.user` inputs that carry
+  one-shot agents and artifact index look empty (owner decision). Nycode Mobile sessions were converted to these names by a one-time
+  importer when the phone switched to p2 (removed afterwards; see git history). Old `nycode.user` inputs that carry
   their author only in a `<mobile-speaker>` text block are not read back (no reader for them is left): they show
   as plain text without an author and attribute no tool call.
 - **Hosts are thin.** `src/hosts/*` only accept connections, spawn workers and load facets. Everything app-level is a
   plugin under `plugins/<name>/{contract,server,worker,web}.ts(x)`. `src/hosts/plugins.ts` lists the plugin
   directories (alphabetical load order) and records type ownership and references from actual `serve`/`get` calls at
   runtime; the server bundles the selected web facets with the browser host (`src/hosts/bundles.ts`).
-- **Plugin layout** (for Chord v2's plugin builder, `@earendil-works/chord/plugins`): every plugin directory is a
+- **Plugin layout** (for Chord v2's plugin builder, `@nycode/chord/plugins`): every plugin directory is a
   package (`package.json` named after the directory). Plugins import p2 and Chord only through p2's plugin API
   `@p2/app/v1` (`src/api/v1`): `@p2/app/v1` for every kind (browser-safe: contracts, principals, schemas, entry
   kinds, owner notices), `/node` for server and worker (configuration files, logs, Durable contexts, downloads,
@@ -950,7 +950,7 @@ call, hold, method, relay and activation; nothing is measured or walked for it. 
   - **Places** are never resolved on the server: the sessions TUI resolves them with `Envs.listDirectory` (which
     expands `~` there and fails when the machine is unreachable). The project rows probe every place each time the
     selector is shown (picks made with left/right reset then). A failed probe is classified from the error's message,
-    the only part that crosses the link (`placeFailure`): Node's and the pi-env daemon's `ENOENT`/`ENOTDIR` and the SSH
+    the only part that crosses the link (`placeFailure`): Node's and the nycode-env daemon's `ENOENT`/`ENOTDIR` and the SSH
     manager's "Working directory is not a directory" are `?` (no folder), "Environment … is not configured" is `✗`
     "no such environment", anything else `✗` with its message; the selected row shows these reasons on a line below
     it. Only `✓` places are used: Enter waits for the places in preference order and creates the session at the first
@@ -999,8 +999,8 @@ call, hold, method, relay and activation; nothing is measured or walked for it. 
     chevron right after the label), details and controls (⋯, "+", an item's action), all one control whose hover and
     selected backgrounds (Elanor's ghost fills) span the row; the label's hit area covers it. Labels are one line, cut
     with "…" at the end (`.nav-label`). No leading disclosure column, so nothing is indented by it. The owner's list
-    starts with the rows plugins put there (the `sidebar-start:<name>` slots, each a list item: the Familiar's "Ask Pi")
-    and a "New session" row, 16px above the first rollup (rollups are 24px apart); the header holds the Pi logo and the
+    starts with the rows plugins put there (the `sidebar-start:<name>` slots, each a list item: the Familiar's "Ask Nycode")
+    and a "New session" row, 16px above the first rollup (rollups are 24px apart); the header holds the Nycode logo and the
     collapse trigger. A session and each of its subagents are the same item (`AgentItem`): status, name, detail. The
     detail is how long ago its last message was (`ago`); under a fine pointer, on hover or keyboard focus, the item's
     one action (`ItemAction`, an icon button, its name saying whose: "Stop <name>", "Archive <name>") shows over it:
@@ -1031,8 +1031,8 @@ call, hold, method, relay and activation; nothing is measured or walked for it. 
     its sessions (`Search` 3's `sessions`), kept with its scroll position across Back, its "+" for groups, and the
     error toast (`ErrorToast`, shared with the chat).
   - **State marks** (`marks.tsx`, `run-state.ts`, the top of `style.css`): an item's status is in its marker column.
-    Working is pi's dots (`PiDots`): the terminal UI's braille loader frames, one at a time, a strip of the ten stepped
-    by a CSS animation at 160ms a frame (pi's is 80ms), in the icons' colour, so a list of running agents stays calm.
+    Working is nycode's dots (`NycodeDots`): the terminal UI's braille loader frames, one at a time, a strip of the ten stepped
+    by a CSS animation at 160ms a frame (nycode's is 80ms), in the icons' colour, so a list of running agents stays calm.
     Every strip's delay puts it on the page's clock, so running items step together; with reduced motion it stays on
     its first frame, in the phone's closed drawer it pauses. That is the sidebar's only motion (the Familiar's row still
     frames its logo, `IconMarker`). Wanting the owner is steady: a blue dot for an unread answer (`UnreadMark`; the name
@@ -1042,13 +1042,13 @@ call, hold, method, relay and activation; nothing is measured or walked for it. 
     reset, nothing to answer). A session's is what wants the owner first: `failureOf`, then unread, then working (any
     of its conversations, its subagents' too, as the Familiar's row; owner decision: a running subagent must not hide
     that the session waits for the owner). While the status shows a failure or an unread answer and some conversation
-    runs, pi's dots (and the count of running conversations, when more than one) show before the age (`BackgroundWork`,
+    runs, nycode's dots (and the count of running conversations, when more than one) show before the age (`BackgroundWork`,
     `.background-work`). The
     open session's main conversation says the same above its composer (the chat's `RunningAgents`, `.running-agents`):
-    pi's dots and the running subagents' and one-shot agents' names, each opening its conversation; on a phone the
+    nycode's dots and the running subagents' and one-shot agents' names, each opening its conversation; on a phone the
     drawer is closed, and an idle main conversation shows no wheel. Its main
     conversation's last run failure comes from the session worker (`SessionStatus` 3's `failure`, below). A collapsed
-    group or rollup sums up what it hides (`hidden`, `activityOf` in `model.ts`): pi's dots with the working count, a
+    group or rollup sums up what it hides (`hidden`, `activityOf` in `model.ts`): nycode's dots with the working count, a
     warning sign with the failed count (`FailedMark`), a blue unread count. The top bars' menu button (`menu-badge`
     slot, `MenuBadge` in `web.tsx`, rendered by the chat's and the list page's bar) counts the other live sessions that
     want the owner (`wantingOf`: a failure or an unread answer, the open one left out), red when one failed. The
@@ -1154,7 +1154,7 @@ call, hold, method, relay and activation; nothing is measured or walked for it. 
   `<sender kind="owner|guest|session|subagent" …/>` block (`src/runtime/sender.ts`, values escaped; a subagent's
   text follows as `[<intent>] <text>`), which the preamble explains and nothing reads back: readers use the entry data.
   Stop/dequeue restore text only to its author; removing a queued input (×,
-  no restore) discards it, as in Pi Mobile. Stop is Durable's `Conversation.abort()`, which withdraws the queue in the
+  no restore) discards it, as in Nycode Mobile. Stop is Durable's `Conversation.abort()`, which withdraws the queue in the
   commit that marks the run; people's text it withdrew goes back to its authors (the caller's to the composer,
   others' to their drafts; `conversations stop`, which has no author, gives all to drafts). Peer and subagent messages
   are submitted with `onAbort: "keep"`, since their senders cannot take them back: they stay queued, as after a failed
@@ -1173,8 +1173,8 @@ call, hold, method, relay and activation; nothing is measured or walked for it. 
   the viewport) and on a tap; in the TUI a muted "Load more" line, filled while it is in view. Reply quotes and search
   hits load earlier pages or gaps until their entry is there (`loadThrough`). The active context's numbers (context
   tokens, latest usage) are `Chat.stats`, kept in the worker by `ContextTally` (`src/runtime/conversation-stats.ts`)
-  from the entries the window appends: the latest counted response's reported usage plus pi-ai's estimate of what
-  follows it, about 4 µs per appended entry. Partials are `pi.live` changes and append no entry, so streaming costs
+  from the entries the window appends: the latest counted response's reported usage plus nycode-ai's estimate of what
+  follows it, about 4 µs per appended entry. Partials are `nycode.live` changes and append no entry, so streaming costs
   nothing here. It reads the whole context (`Conversation.context()`, a scan of every active entry: 13 to 18 ms at
   3,000 entries) only at the start, after a compaction, reset or edit, and when the window skipped entries. The cost
   sheet reads `ChatCosts`, from `context()` when it opens. Measured with 3,000 seeded entries (fake provider, slayer):
@@ -1188,7 +1188,7 @@ call, hold, method, relay and activation; nothing is measured or walked for it. 
   socket closed on it and the page reconnected in a loop. Clients read image parts through `shownImage` (inline parts
   of kept copies become data URLs). Pages take parts up to 32 MiB from the server (`SERVER_PART_LIMITS`, Chord's
   default is 16 MiB); Radius's relay limits one data message to 32 MiB by default (Radius ee560a41; 16 MiB before).
-- **Run failures** (`pi.live.runFailure`): why the newest run ended without an answer shows as a failure notice at the
+- **Run failures** (`nycode.live.runFailure`): why the newest run ended without an answer shows as a failure notice at the
   end of the transcript (web and TUI, the error notice style) until the next run starts: `model_error` and `no_model`
   "The model could not answer this input. <detail>", `faulted` "The run failed: <detail>", `orphaned` "The run could
   not continue: <detail>", `interrupted` "The answer was interrupted: the server stopped while the model was
@@ -1238,7 +1238,7 @@ call, hold, method, relay and activation; nothing is measured or walked for it. 
   pinned at the bottom. Every folder and machine change is a history entry (the layer's locator `{ env, path }`);
   listings are cached by machine and path (`QueryCache`) and requested with the tap; loading and errors show inline.
   Type and rhythm are the sidebar's (Elanor's UI text, 28px rows a list gap apart). The command menu's New session…
-  page lists folders by name with the machine and parent folder as suffix (`This device · ~/pi/apps`).
+  page lists folders by name with the machine and parent folder as suffix (`This device · ~/nycode/apps`).
 - **Conversations kept on the device** (`src/web/conversation-cache.ts`, IndexedDB, the owner's browser only): the
   transcript's newest entries without a gap among them (up to 4 MB) as a window (`before` the entry just before them),
   with the documents but without the live run and queue, and the measured row heights, of the 20 most recently used
@@ -1254,7 +1254,7 @@ call, hold, method, relay and activation; nothing is measured or walked for it. 
 - **Elanor** (Earendil's design system): `@earendil-works/elanor-react`, `design-tokens` and `elanor-fonts` from npm
   (`elanor-react` brings `elanor-icons-react`, and Base UI). The repository's `.npmrc` exempts `@earendil-works/*`
   from its two-day `min-release-age`, so a new Elanor release installs at once.
-  `src/web/elanor.css` loads the fonts (Mallos Serif, Commit Mono), the pi brand's tokens and the components' styles,
+  `src/web/elanor.css` loads the fonts (Mallos Serif, Commit Mono), the nycode brand's tokens and the components' styles,
   before `style.css`. Cascade layers: `p2-reset` (p2's element resets in `style.css`), then `elanor` (all of
   Elanor's styles), then p2's unlayered rules. The tokens follow `<html data-color-scheme>`, set with `data-theme`
   (`theme.ts`, and the page's inline script). Fonts are files of the base bundle's assets (`.woff2`, `font/woff2`).
@@ -1262,13 +1262,13 @@ call, hold, method, relay and activation; nothing is measured or walked for it. 
   (`MarkdownComponents`, `MarkdownComponentsContext`; `{}` renders plain elements), Elanor's by default: `Prose` with
   its flow spacing, `Text`, `Heading`, `List`, `Link`, `Table`, `CodeSnippet` with Copy, a read-only `Checkbox` for
   task items. p2's parser, its safety (raw HTML as text) and its streaming are unchanged. `elanor-markdown.css` sets
-  the font family to the interface's sans (`--sans`) instead of the pi brand's prose serif, keeping Elanor's sizes and
+  the font family to the interface's sans (`--sans`) instead of the nycode brand's prose serif, keeping Elanor's sizes and
   code font; the streaming dot and a marker's spacing are there too.
 - **Service worker** (`public/sw.js`, served at `/sw.js` with `no-cache`): the app starts without the network once it
   was opened. App pages come from the network first and fall back to the last app page kept (on failure, or after 3
   seconds); the web surface's content-named files (`/_chord/web/…`, not `/_chord/web/base`) come from the cache first (the newest
   two base versions are kept);
-  everything else goes to the network untouched. Pi Mobile had none because it would have kept stale code across Vite
+  everything else goes to the network untouched. Nycode Mobile had none because it would have kept stale code across Vite
   HMR and restarts; p2 serves no source modules (dev mode included), so every kept file is content-named and the page
   never wins over the network. Signing out deletes its caches.
 - **Sending never waits** (`plugins/chat/outbox.ts`): Send clears the composer and the message shows at once as it
@@ -1359,8 +1359,8 @@ call, hold, method, relay and activation; nothing is measured or walked for it. 
   upload is cancelled) and answers `{ id, name, size, mimeType? }`. `Chat.send({ attachments: [ids] })` resolves IDs
   through the worker's `Attachments` local (only uploads of that session): each is materialized before admission into
   the data directory's `uploads/<session>/` on this machine (for the default data directory that is
-  `~/.pi/p2/uploads/<session>/`) and, when the receiving conversation works on another environment, into
-  `~/.pi/p2/uploads/<session>/` there. The message's text places its files: a reference
+  `~/.nycode/p2/uploads/<session>/`) and, when the receiving conversation works on another environment, into
+  `~/.nycode/p2/uploads/<session>/` there. The message's text places its files: a reference
   `![name](attachment:<upload id>)` (images) or `[name](attachment:<upload id>)` (other files) counts when its ID is one
   of the message's attachments (`src/runtime/references.ts`). The model reads each file where it is referenced, marked
   as Codex marks local images: `<image name=[Image #N] path="<copy>">`, the image (from this machine's copy, when the
@@ -1384,7 +1384,7 @@ call, hold, method, relay and activation; nothing is measured or walked for it. 
   (Office apps add a picture of the copied text, Chrome on macOS a Finder file's icon); a paste with only images
   attaches them.
 - **File index** (`plugins/file-index`): `FileIndex({ session, conversation })` (participants, as `Workspace`) answers
-  `@` completion (`complete`, ranked like pi's `@`) and Tab completion (`list`, one directory) for the TUI and the web
+  `@` completion (`complete`, ranked like nycode's `@`) and Tab completion (`list`, one directory) for the TUI and the web
   composer. A worker-local cache per conversation (`FileIndexCache`) builds from `WorkspaceBackend`'s `files` query
   (git ls-files or the bounded walk, `truncated` surfaced), derives directories from paths,
   and rebuilds lazily when `changes` advanced (at most once a second). Cwd-relative only (`~`, absolute and `..`
@@ -1417,17 +1417,17 @@ call, hold, method, relay and activation; nothing is measured or walked for it. 
 - **Remote environments** (`plugins/envs`, [guide](remote-envs.md)): owner-only `Envs` lists environments with their
   last test, saves/deletes/tests configs, accepts/forgets host keys and browses local/remote directories. Key generation,
   public-key retrieval and private-key upload are available to every owner (including associated and Radius owners),
-  as in Pi Mobile, never guests (owner decision; formerly device-only). A proxy alone grants no ownership. Uploads
+  as in Nycode Mobile, never guests (owner decision; formerly device-only). A proxy alone grants no ownership. Uploads
   pass through the tunnel/relay, which must be trusted with the private key. `envs.json` has independent server/worker observers; invalid edits
   retain the last valid state. Sessions persist `env` beside raw cwd and display `gpu:/path`; subagents with their own
   location carry its `env` (see **Agent locations**). Deletion checks all sessions and subagent locations, archived
   ones included. Valid edits stop idle workers using the environment; busy ones keep their captured environment until
   idle. `HarnessEnvironments` supplies a lazy machine per environment (`open(env)`: environments at its directories
   over one connection); missing/unreachable envs never use local tools. Attachments copy to remote
-  `~/.pi/p2/uploads/<session>/` of the machine where the receiving conversation works, before admission; inline
+  `~/.nycode/p2/uploads/<session>/` of the machine where the receiving conversation works, before admission; inline
   images retain the local upload copy. Project instructions, skills, workspace and downloads use the conversation's
   environment. The local global AGENTS.md stays
-  local; remote skills use `~/.pi/p2/skills/`. New-session Browse directories and environment editors use route-owned
+  local; remote skills use `~/.nycode/p2/skills/`. New-session Browse directories and environment editors use route-owned
   locators (Back/reload); read/write remote shares require explicit confirmation at the API and in the browser.
   `envs.test.ts` uses a fake provider and disposable loopback sshd with private fixture keys/HOME (skips without sshd
   or a daemon). It covers host trust, key storage, directories, no local fallback, tools, workspace, uploads, prompt
@@ -1435,7 +1435,7 @@ call, hold, method, relay and activation; nothing is measured or walked for it. 
 - **Terminals** (`plugins/terminals`): owner-only `Terminals({ session, view })` controls list/open/attach/close/resize/theme,
   acknowledgements and explicit host restart. A resource holds one connection to the data directory's detached terminal
   host through a host manager's `detachedSocketDriver`; stopping the manager detaches, never kills the host or its PTYs.
-  The host has its own process lock and ten-minute idle exit, owns local/SSH pi-env daemons, and keeps a headless
+  The host has its own process lock and ten-minute idle exit, owns local/SSH nycode-env daemons, and keeps a headless
   libghostty terminal per shell. Server and worker restarts leave programs running; reattach starts from a VT snapshot.
   A one-use, 30-second channel grant from the held owner object admits `/terminal` (owner + normal Host/Origin checks).
   Input/output bytes and ordered output metadata use this separate channel; incoming control JSON is refused. Slow
@@ -1454,7 +1454,7 @@ call, hold, method, relay and activation; nothing is measured or walked for it. 
   a selection in it. Copy joins soft-wrapped rows and drops the blanks that fill rows. `terminal-clipboard.test.ts`
   covers this as far as CDP can (headless Chromium has no long-press gesture, selection handles or native menus).
   SSH configuration comes from the envs plugin and the conversation's location environment; the separate `terminal-sessions.json`
-  mapping is no longer read. Host keys use `ssh/known_hosts` and `pi-env-<name>` aliases. `envs.test.ts` exercises a
+  mapping is no longer read. Host keys use `ssh/known_hosts` and `nycode-env-<name>` aliases. `envs.test.ts` exercises a
   remote terminal against a disposable localhost SSH fixture; no real remote host is used. Windows PTYs remain unsupported. The workspace has an owner-only
   Terminal tab through the terminals plugin's `workspace-terminal` slot. Side and bottom panels are remembered per
   session (Browser navigation, Panels per session): another session opens with its own, never starting a terminal.
@@ -1464,7 +1464,7 @@ call, hold, method, relay and activation; nothing is measured or walked for it. 
   agent's calls to an outdated host fail with that advice (`OUTDATED_HOST`); archiving closes its terminals with the
   viewer protocol every host speaks (list, then attach and force-close each).
   Each terminal has a number in its session (`index`: the lowest free one from 1, kept while it lives), an optional
-  name and an `agent` mark; tabs show the name, else the title, else "Terminal N", agent terminals with a "Pi" badge.
+  name and an `agent` mark; tabs show the name, else the title, else "Terminal N", agent terminals with a "Nycode" badge.
   Every connection that listed a session hears its list change (`terminals`: opened, closed, exited, renamed, by any
   viewer or the agent); a panel showing a terminal keeps it, one showing none attaches the newest new one. Archiving a
   session closes its terminals (`SessionArchived`, a host-lifetime contribution; no host is started for it).
@@ -1513,7 +1513,7 @@ call, hold, method, relay and activation; nothing is measured or walked for it. 
   committed it, and the cursor sent stays put until the last page of a range, so an interrupted scan repeats the
   range (idempotent by entry ID). It runs at start and after every commit adding entries (Durable
   `observeCommits`), and retries after an error (server unreachable, reload) from a fresh cursor. The speaker and
-  peer-sender blocks are not indexed. Owner-only `Search.rebuildIndex({ session })` (Pi Mobile's) starts a persisted job on `SearchIndex` (stop the worker, reset its entries, scan from a fresh worker; an archived session's starts without resuming its work and stops again) and answers once it started; `Search.rebuilds` shows it running and why it failed (`rebuild-index.test.ts`). Owner-only `Search.search({ query, archived, sessions })`: sessions whose title or
+  peer-sender blocks are not indexed. Owner-only `Search.rebuildIndex({ session })` (Nycode Mobile's) starts a persisted job on `SearchIndex` (stop the worker, reset its entries, scan from a fresh worker; an archived session's starts without resuming its work and stops again) and answers once it started; `Search.rebuilds` shows it running and why it failed (`rebuild-index.test.ts`). Owner-only `Search.search({ query, archived, sessions })`: sessions whose title or
   cwd contains the query (sidebar order) and up to 41 message hits (literal terms, all required) in the archive scope,
   within `sessions` when given (3; a sidebar list's own sessions, applied before ranking and the limit).
   Search hits include conversation IDs, and a hit opens that conversation (a subagent's too); default titles derive from the first root user message, explicit titles
@@ -1592,7 +1592,7 @@ call, hold, method, relay and activation; nothing is measured or walked for it. 
   code; OpenAI ChatGPT may land on an unreachable localhost page, whose full address must be copied from the address
   bar and pasted into Providers. The manual prompt explains that the page need not load. A device-code event with
   `openBrowserOnConfirm: false` (a provider asking clients not to offer opening its page) shows the verification
-  address as text instead of the Open link (web), and the TUI offers no "open in browser" for it. No pi-ai changes or custom
+  address as text instead of the Open link (web), and the TUI offers no "open in browser" for it. No nycode-ai changes or custom
   callback URL. API keys and pasted codes pass through the tunnel/relay; use a trusted transport. Once no browser
   holds the sheet (no reference to its owner's `ProviderLogin` left, `host.references`), its unfinished login is
   cancelled. Tests use fake providers (login.test.ts and remote-login.test.ts).
@@ -1645,9 +1645,9 @@ call, hold, method, relay and activation; nothing is measured or walked for it. 
 - **Familiar** (`plugins/familiar`): one long-running session above the others that keeps track of them and starts,
   steers, stops, archives and restores them. The server's `FamiliarStore` holds which session it is (persisted; the
   ID is chosen before the row is made, so a crash makes the same one); the owner's `Familiar.open` makes it on first
-  use (home directory, default model, title "Ask Pi", its name for the owner) or restores it when archived, one open at a time. Workers learn
+  use (home directory, default model, title "Ask Nycode", its name for the owner) or restores it when archived, one open at a time. Workers learn
   whether they are it from their start data (`WorkerInitValues` key `familiar`). In its worker, the main conversation's
-  `pi.agent` gets `modelTools` (conversations, codemode, history_search/read/handoff, sidebar_rollups) and `tools` (those plus `agent`,
+  `nycode.agent` gets `modelTools` (conversations, codemode, history_search/read/handoff, sidebar_rollups) and `tools` (those plus `agent`,
   `bash` and `read`, so scripts and one-shot agents can look at the file system) at each start; its extension adds the
   `familiar` prompt section (role, notes in the code mode store key `familiar.notes`, finding folders).
   **Compaction by cost** (`cold.ts`): while its prompt cache is warm a turn reads the context at about a tenth of the
@@ -1660,7 +1660,7 @@ call, hold, method, relay and activation; nothing is measured or walked for it. 
   worker runs; an idle worker stops after 5 minutes without viewers or warming) and at each start, else in an
   `InputGate` before the next input is admitted, which waits for the summary. Web: home (the `home` slot: `/` replaces
   itself with its session, made on first use; while the owner has it archived, with the new-session screen) and the
-  `sidebar-start:familiar` slot, the "Ask Pi" row above the owner's "New session" (the Pi logo as its icon, framed
+  `sidebar-start:familiar` slot, the "Ask Nycode" row above the owner's "New session" (the Nycode logo as its icon, framed
   while its session works; bold with a dot for an unread answer; it opens the session, restoring it when archived); the
   sessions plugin's web contract (`plugins/sessions/contract.web.tsx`) gives it the rows and `listApart`
   (`DrawerRowsContext`), which leaves its session out of the rollups, and the row's shape and marks (`NavRow`,
@@ -1742,32 +1742,32 @@ call, hold, method, relay and activation; nothing is measured or walked for it. 
   reload during a script, SIGKILL and graceful restarts mid-call (finished calls do not rerun; the interrupted unsafe
   `bash` call returns an error the script catches); the removal mid-script (prompt error, turn ends, the script's thread goes); `codemode-plugin.test.ts` the
   sandbox across reload/removal.
-- **Cache warming** (`plugins/cache-warming`, policy in pi-ai's `cache-warming.ts`, as pi-coding-agent's): a hook-only
+- **Cache warming** (`plugins/cache-warming`, policy in nycode-ai's `cache-warming.ts`, as nycode-coding-agent's): a hook-only
   Durable extension; each `afterResponse` starts the conversation's run, replacing the last one. The request comes from
   the core: the Harness's `Models` proxy remembers each `streamSimple` request by the message `result()` resolved with
   (`WeakMap`); `HarnessParts.requestOf(message)` takes it once as a read-only `ModelRequest` (Durable's frozen entry
   messages; never mutate, copy or freeze it; resending skips `beforeProviderRequest`). `completeSimple` (compaction,
-  the refreshes) is not remembered. Each refresh: no phase while `pi.live.generation` exists, streaming while
-  `pi.live.run` exists, idle only for top-level conversations, none once the model or the context's start changed;
-  usage goes to `pi.usage`. Timers live in the plugin's native (a reload ends them); liveness kind `cacheWarming`.
+  the refreshes) is not remembered. Each refresh: no phase while `nycode.live.generation` exists, streaming while
+  `nycode.live.run` exists, idle only for top-level conversations, none once the model or the context's start changed;
+  usage goes to `nycode.usage`. Timers live in the plugin's native (a reload ends them); liveness kind `cacheWarming`.
   Setting `cacheWarming` (`"idle"`, `"streaming"`, `"off"`). Tests: `cache-warming.test.ts`,
   `harness-requests.test.ts` (pins that the hook's message is the object `result()` resolved with).
 - **MCP servers** (`plugins/mcp`, plan `docs/mcp-durable.md`, WP6-8): the server's `McpManager` (local,
   host lifetime) owns every MCP process and connection; workers never spawn one or hold a credential. `<P2_DATA_DIR>/mcp.json`
-  is the owner's `mcpServers` (pi-mcp's `validateMcpServerConfig`, plus p2's `shared` and `runOn`; invalid entries are
+  is the owner's `mcpServers` (nycode-mcp's `validateMcpServerConfig`, plus p2's `shared` and `runOn`; invalid entries are
   skipped and listed in `errors`, `${VAR}` in headers and env values from the p2 host's environment; watched: an edited
   server restarts, a removed one closes; an invalid save keeps the last valid servers, also across a reload). Instances (`placement.ts`): stdio per session and location (key: session,
   location, server, hash of command, args, env, cwd and timeout; roots the location's cwd), `"shared": true` once on
   the host, HTTP shared unless `"shared": false` (one per session); a 401 of a server without an `Authorization` header shows `sign-in` (OAuth below). Stdio
-  servers on an environment (`runOn: "location"` on a remote location, or `{ env }`) start through its pi-env daemon
-  (`openProcess` behind pi-mcp's `PipeTransport`, `transports.ts`): one connection per environment and revision of its
+  servers on an environment (`runOn: "location"` on a remote location, or `{ env }`) start through its nycode-env daemon
+  (`openProcess` behind nycode-mcp's `PipeTransport`, `transports.ts`): one connection per environment and revision of its
   `envs.json` entry, shared by its instances and closed with the last (`environments.ts`), opened through the envs
   plugin's SSH manager (`EnvManager.connection`); `~` is the remote home, relative paths are relative to the location's
   cwd when it is on that machine (also the root), else to the home; on Windows everything but `.exe`/`.com` runs through
   `cmd.exe` with cross-spawn's quoting, the line passed in a variable (`windows-command.ts`); a daemon without the
   `process` operation fails for good with "update it"; an environment missing from `envs.json` shows `failed`. A lease
   gets servers only on an environment its session works on as the server records it (the catalog's session, the
-  subagent store's own locations; else "not where this session works"). Projects: the worker reads `<cwd>/.pi/mcp.json`
+  subagent store's own locations; else "not where this session works"). Projects: the worker reads `<cwd>/.nycode/mcp.json`
   at each location through that location's environment and sends the text with `setLocations` (256 KiB at most); the
   manager checks it (`project.ts`): stdio servers only, run at that location for that session alone (no `runOn`,
   `shared`, `auth`, `oauth`, no HTTP, `${VAR}` never expanded), an entry without `command`/`url`/`type` only sets
@@ -1798,45 +1798,45 @@ call, hold, method, relay and activation; nothing is measured or walked for it. 
   lease at the conversation's location only, each as its own namespace `mcp__<server>` with that instance's summary
   and instructions. A server only another location has is not there (the main conversation's prompt does not change
   when a subagent works elsewhere), a variant another location's instance describes is not there, and a call reaches
-  the caller's instance only as the variant it describes (else `MCP tool … is not offered at …`). Names as pi's, the
+  the caller's instance only as the variant it describes (else `MCP tool … is not offered at …`). Names as nycode's, the
   variant the session's lease uses keeping the plain name, other variants of a tool suffixed with a hash of their
   descriptor. Still the union: Durable's own agent (hooks, `Conversation.agent()`, nested-call resolution, subagent tool
-  choice), and without code mode a loaded tool stays declared after a move. The namespace's description is pi's
+  choice), and without code mode a loaded tool stays declared after a move. The namespace's description is nycode's
   one-line summary (`mcpServerSummary`: the configured `description` (`Mcp` version 4, the instance's `description`),
   else the first line of the server's `instructions` (version 3), at most 250 characters), then where the tools are and
   the sign-in hint for OAuth servers; it changes once when a server without a `description` first sends instructions (a
   reloaded manager keeps the instructions it listed). The full
   instructions come from `describeNamespace()`. Without code mode, the `mcp` extension's `mcp_servers` section lists
-  the conversation's servers with their summaries, as pi's does for `tool_search` servers. Deferred
-  tools named by `createMcpToolName` (every tool of a colliding name gets the hash suffix, as in pi), results through
+  the conversation's servers with their summaries, as nycode's does for `tool_search` servers. Deferred
+  tools named by `createMcpToolName` (every tool of a colliding name gets the hash suffix, as in nycode), results through
   `toLlmContent` and `limitMcpContent`, `structuredOutput` only for tools with an output schema. Without code mode,
   `tool_search` is installed by the worker's registry (`durableRegistry`: once, while code mode is off and any extension
   has a deferred tool the model may call; MCP's and the terminal tool share it). Tests: `mcp.test.ts` (manager and views on a bare host with `test/fixtures/mcp-server.mjs` and
-  an HTTP fixture; projects, where sessions work, and an environment through the debug pi-env daemon, skipped without
-  it: `npm run build:daemon` in `packages/env`, or `PI_ENV_DAEMON`), `mcp-instances.test.ts` (the supervisor with a
+  an HTTP fixture; projects, where sessions work, and an environment through the debug nycode-env daemon, skipped without
+  it: `npm run build:daemon` in `packages/env`, or `NYCODE_ENV_DAEMON`), `mcp-instances.test.ts` (the supervisor with a
   short backoff), `mcp-leases.test.ts`, `mcp-environments.test.ts`, `mcp-project.test.ts`,
   `mcp-windows-command.test.ts`, `mcp-tools.test.ts`, `mcp-worker.test.ts` (fake provider: a project file, `tool_search`,
   a call, a relocation, a subagent's project server kept out of the main conversation, the `mcp_servers` section).
 - **MCP sign-in** (`plugins/mcp/sign-in.ts`, `routes.ts`, `probe.ts`, `pages.ts`, `credentials.ts`; as built:
-  `docs/mcp-durable.md` section 4.7): HTTP servers without an `Authorization` header use OAuth with pi-mcp's auth
+  `docs/mcp-durable.md` section 4.7): HTTP servers without an `Authorization` header use OAuth with nycode-mcp's auth
   provider (stored tokens, refreshed, never a browser) and credentials in `<P2_DATA_DIR>/mcp-auth.json` (0600, keyed like
-  pi's). Owners sign in at `GET /mcp/sign-in/<server>` (the web MCP sheet opens it in a new tab): the local owner's
+  nycode's). Owners sign in at `GET /mcp/sign-in/<server>` (the web MCP sheet opens it in a new tab): the local owner's
   browser returns to a loopback callback on the p2 host; for a relayed or public owner a probe page first fetches a
   nonce URL from a 127.0.0.1 listener of p2 (CORS for that origin only), and returns to loopback when it answers, else to
   `GET /mcp/callback` on the origin p2 is reached through. Pasting the final redirect URL (web sheet, TUI `/mcp paste`)
   always completes a waiting sign-in. One flow per server, in memory, 10 minutes; a pending one keeps the manager held.
   Tests: `mcp-sign-in.test.ts` (a fake authorization server and MCP server).
-- **One-shot agents** (`plugins/agent`, port of Pi Mobile a9335ebea and 0e238b29f): code mode scripts' `tools.agent({
+- **One-shot agents** (`plugins/agent`, port of Nycode Mobile a9335ebea and 0e238b29f): code mode scripts' `tools.agent({
   prompt, schema, label?, model?, thinkingLevel?, tools? })` (`callers: ["tools"]`, replay-safe). One conversation per
   call, owned by the tool task (abort cascades) and recorded in the task-scoped `p2.agent-run` doc, so a rerun
   reattaches; it does so before validating the model, so a model removed from the configuration since does not fail
   it. Submissions use `agent:<attempt>` request IDs. Workflow patterns with example scripts:
   [workflows.md](workflows.md); `workflows.test.ts` runs each of its scripts in fake mode (real model names replaced
   by the fake one) and checks its claim that a failed `tools.bash` rejects with `structuredOutput`. The answer is parsed as JSON (a fenced block is accepted) and checked
-  with pi-schema's `compile` (formats checked, as TypeBox's compiler did) against `schema`; failures go back to the
+  with nycode-schema's `compile` (formats checked, as TypeBox's compiler did) against `schema`; failures go back to the
   same conversation, up to 3 attempts. The result's
   `structuredOutput` is the value, `details` `{ conversationId, attempts }`; nothing is reported to the parent. It has no
-  prompt section (as Pi Mobile 1b763d912): its description, Pi Mobile's verbatim, carries the usage notes, and code
+  prompt section (as Nycode Mobile 1b763d912): its description, Nycode Mobile's verbatim, carries the usage notes, and code
   mode's section lists it with the other tools scripts call. Model/thinking/tool
   validation is the subagent tool's `resolveChoice` (one-shot agents get no `team`): from the script's conversation's
   tools, `codemode` and `agent` included, so a one-shot agent's scripts may start one-shot agents again (owner
@@ -1864,10 +1864,10 @@ call, hold, method, relay and activation; nothing is measured or walked for it. 
   bar (Tools, Archive/Restore). The TUI lists no subagents, so archived ones need nothing there.
   `subagents.test.ts` covers tool archive, status, browser restore/archive-with-abort, send restoring and guest
   refusal; `ui-agents.test.ts` the bar and the sidebar row.
-- **Subagent cwd** (port of Pi Mobile 24e3fccdd; see **Agent locations**): `spawn` takes `cwd` (description and errors
+- **Subagent cwd** (port of Nycode Mobile 24e3fccdd; see **Agent locations**): `spawn` takes `cwd` (description and errors
   verbatim), an existing directory resolved relative to the caller's cwd through the caller's environment
   (`absolutePath`, `canonicalPath`, `fileInfo` must be a directory; else "cwd X is not an existing directory."),
-  configured as the child's `pi.agent` cwd and stored as `location: { env: the caller's environment, cwd }` on its
+  configured as the child's `nycode.agent` cwd and stored as `location: { env: the caller's environment, cwd }` on its
   `p2.subagents` agent (fixed; any other action with a cwd: "Only spawn takes a cwd."). Spawn details carry `cwd`
   and, on a remote environment, `env`; `status` shows "· in env:/path"; `Child.location` reaches the sidebar list
   (`ChildStore`). The Harness (`src/runtime/worker.ts`) gives Durable each conversation's environment at its location
@@ -1875,8 +1875,8 @@ call, hold, method, relay and activation; nothing is measured or walked for it. 
   session's). `WorkspaceBackend` opens at the viewed conversation's location, and uploads write through
   `WorkspaceWrites.write({ location, upload })` (one workspace per environment, still serialized). The watch locates
   the git directory with `git rev-parse --git-dir --git-common-dir`, so a linked worktree's index/HEAD are watched.
-  With Pi Mobile 78056b34e: at every worker start and every in-place relocation the Harness moves the root and every
-  conversation that follows the session whose `pi.agent` cwd differs to the session's cwd, in one commit, before it
+  With Nycode Mobile 78056b34e: at every worker start and every in-place relocation the Harness moves the root and every
+  conversation that follows the session whose `nycode.agent` cwd differs to the session's cwd, in one commit, before it
   is live (so nothing runs or resumes in a stale cwd). The followers come from the `ConversationLocations` local
   (`src/runtime/worker.ts`), served lazily by the subagents plugin (`placeSubagents`: subagents without a registry
   `location`, one-shot agents) and without a Harness dependency (it gets the opening Durable Harness as an
@@ -1892,18 +1892,18 @@ call, hold, method, relay and activation; nothing is measured or walked for it. 
   a cwd-less subagent's bash in the remote cwd, after moving local and back; an own local location kept),
   `workspace-environment.test.ts` (linked worktree index watch), `ui-agents.test.ts` (bar, card, sidebar row,
   workspace panel).
-- **Code mode setting (owner decision, differs from Pi Mobile):** `settings.json` accepts Pi Mobile's `codemode`
+- **Code mode setting (owner decision, differs from Nycode Mobile):** `settings.json` accepts Nycode Mobile's `codemode`
   boolean, but p2 defaults it to on (mobile: off). `false` uninstalls the `codemode` extension live in every worker
   without unloading the plugin: the worker's `WorkerModels` exposes its current settings, and the codemode facet
   registers a switch in `ExtensionSwitches` (`src/runtime/durable.ts`), which leaves switched-off extensions out of
-  the Durable registry snapshots (a running script keeps its pinned tool). The `agent` tool stays installed (Pi Mobile
+  the Durable registry snapshots (a running script keeps its pinned tool). The `agent` tool stays installed (Nycode Mobile
   uninstalls it with code mode); it is described only in code mode's listing. Durable 8bb180bec's code mode (prompt section
-  listing callable tools, `models.*` through internal `pi.codemode.*` tools, coding-agent result layout) uses its
+  listing callable tools, `models.*` through internal `nycode.codemode.*` tools, coding-agent result layout) uses its
   defaults (`inlineBudget` 3000, `models` on, no namespaces). p2 lists tools only from the subagents' fixed coding-tool
   set, so internal tools never appear; nested-call rows show them by their script name (`models.classify`).
   `codemode-setting.test.ts` toggles it live; `durable-registry.test.ts` covers switches.
-- **Code mode's calls** (copied from Pi Mobile): the core knows nested calls only as Durable shows them
-  (`ToolView.calls` in `src/web/transcript.ts`: live from `pi.live.nestedTools`, grouped by the model-issued call,
+- **Code mode's calls** (copied from Nycode Mobile): the core knows nested calls only as Durable shows them
+  (`ToolView.calls` in `src/web/transcript.ts`: live from `nycode.live.nestedTools`, grouped by the model-issued call,
   depth from the `parentCallId` chain, then the last list this browser saw). Code mode's contributions read the rest
   (`plugins/codemode/nested.ts`, `nestedCalls` in `ToolActivity` and the TUI's `ToolRenderers`): settled from the
   result's `details.calls` (Durable's `CodemodeToolDetails`), live ones of internal tools by their script name. On the
@@ -2011,7 +2011,7 @@ call, hold, method, relay and activation; nothing is measured or walked for it. 
   asks again after a page that grew the loaded history (`history.size`, the transcript's item count), not only after
   one that added rows. Before, a long turn could leave only its row under "Earlier messages", with nothing to scroll.
   `ui-mobile-fixes.test.ts` covers it.
-- **Security limits (as Pi Mobile):** for static UI requests, guests may load their session's pages, the installable
+- **Security limits (as Nycode Mobile):** for static UI requests, guests may load their session's pages, the installable
   app's `public/` files, the bundle manifest and files from the current or briefly retained bundle generations
   (`src/hosts/web.ts`); other web-host paths are 403. Authorized plugin routes retain their own guest permissions.
   Raw filesystem source paths are never served directly; bundle source maps are available as bundle files. `/chord`
@@ -2024,10 +2024,10 @@ call, hold, method, relay and activation; nothing is measured or walked for it. 
   in `src/runtime`, shared browser code in `src/web`. p2 is an independent npm workspace with pinned dependencies.
   `src/web/style.css` is a copy of mobile's stylesheet; terminal and environment styles live beside their plugins.
   Web tests verify guest access to bundle files and rejection of raw backend, mobile and private-data paths.
-- **Pi Mobile UI parity:** the web UI copies Pi Mobile's components, markup and styles; native Chord
+- **Nycode Mobile UI parity:** the web UI copies Nycode Mobile's components, markup and styles; native Chord
   locators/references, leases, permission checks and byte channels replace mobile's transport (no mobile imports, no
   protocol compatibility client). Not exercised against live services: real terminal programs/SSH without a
-  packaged/local pi-env daemon build (offline terminal layout tests do not prove shell integration), external provider
+  packaged/local nycode-env daemon build (offline terminal layout tests do not prove shell integration), external provider
   sign-in, physical device sign-in/clipboard and Radius. Parity comparisons (390×844, 1280×900) covered representative
   screens, not every provider/tool/media/error combination.
 - **Voice mode** (`plugins/voice`, `voice-server/`; README "Voice mode"): hands-free talk with a conversation, like

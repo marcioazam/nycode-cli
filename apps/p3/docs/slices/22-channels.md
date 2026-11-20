@@ -1,6 +1,6 @@
 # Slice 22: Discord, chat mode and voice
 
-**Goal.** Sessions talked to from elsewhere and in other ways: Discord (a session per channel, locked down, closed until the owner opens it), chat mode (chat messages without a turn, `@pi` mentions with a digest, reply quotes), voice (speech in and out, the robot's hold to talk).
+**Goal.** Sessions talked to from elsewhere and in other ways: Discord (a session per channel, locked down, closed until the owner opens it), chat mode (chat messages without a turn, `@nycode` mentions with a digest, reply quotes), voice (speech in and out, the robot's hold to talk).
 
 **Depends on:** slices 3, 6.
 

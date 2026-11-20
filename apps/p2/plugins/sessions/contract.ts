@@ -1,4 +1,4 @@
-import { arr, bool, int, nul, num, obj, opt, type Static, str, union, unknown } from "@earendil-works/pi-schema";
+import { arr, bool, int, nul, num, obj, opt, type Static, str, union, unknown } from "@nycode/schema";
 import type { Ctx } from "@p2/app/v1";
 import {
 	evolve,
@@ -80,7 +80,7 @@ export const SessionArchived = keyedRegistry<(session: string, ctx: Ctx) => Prom
 export const SessionCopied =
 	keyedRegistry<(source: string, copy: string, ctx: Ctx) => Promise<void>>("p2.session-copied");
 
-/** Pi Mobile's MAX_SESSION_TITLE. */
+/** Nycode Mobile's MAX_SESSION_TITLE. */
 export const MAX_TITLE = 120;
 const Id = obj({ id: str() });
 const Title = str({ minLength: 1, maxLength: MAX_TITLE });
@@ -141,7 +141,7 @@ export const SessionIndex = local("p2.session-index", {
 
 /**
  * Archived sessions whose worker may start anyway, without resuming Durable work: rebuilding their search index
- * (server, host-internal; the search plugin's `rebuildIndex`, as Pi Mobile's).
+ * (server, host-internal; the search plugin's `rebuildIndex`, as Nycode Mobile's).
  */
 export const ArchivedStarts = local("p2.archived-starts", {
 	version: 1,
@@ -261,12 +261,12 @@ const SessionsV3 = remote("p2.sessions", {
 				archive: method(Id),
 				restore: method(Id),
 				/**
-				 * A copy of the session as it is now (pi's `/clone`): its store with every conversation, and its artifacts,
+				 * A copy of the session as it is now (nycode's `/clone`): its store with every conversation, and its artifacts,
 				 * downloads and uploads, under a new ID. Refused while the session's worker has work running.
 				 */
 				clone: method(Id, SessionSchemaV3),
 				/**
-				 * A new session holding the active context of `conversation` before the entry `before` (pi's `/fork` from a
+				 * A new session holding the active context of `conversation` before the entry `before` (nycode's `/fork` from a
 				 * user message: that message is not part of it). The main conversation or one of its `/tree` branches.
 				 */
 				fork: method(

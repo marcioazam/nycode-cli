@@ -222,12 +222,12 @@ test("the relayed app page names the Radius shell that frames it", { timeout: 60
 test("a shell page saved before the shell's URLs dropped /brains is read in the current form", () => {
 	const server = randomUUID();
 	assert.equal(
-		currentShellPage(`https://radius.earendil.com/pi/brains/org_1/${server}`),
-		`https://radius.earendil.com/pi/org_1/${server}`,
+		currentShellPage(`https://radius.earendil.com/nycode/brains/org_1/${server}`),
+		`https://radius.earendil.com/nycode/org_1/${server}`,
 	);
 	assert.equal(
-		currentShellPage(`https://radius.earendil.com/pi/org_1/${server}`),
-		`https://radius.earendil.com/pi/org_1/${server}`,
+		currentShellPage(`https://radius.earendil.com/nycode/org_1/${server}`),
+		`https://radius.earendil.com/nycode/org_1/${server}`,
 	);
 });
 
@@ -255,7 +255,7 @@ test("Radius admits people sessions are shared with by email, across organizatio
 	);
 	assert.equal(
 		await until(sharing.peopleUrl, Boolean),
-		`https://radius.earendil.com/pi/org_1/${config.serverId}/s/${first.id}`,
+		`https://radius.earendil.com/nycode/org_1/${config.serverId}/s/${first.id}`,
 	);
 	await poll(() => f.radius.shares.at(-1)?.[0] === "annexample@gmail.com", 10_000, "Radius learns the email");
 	const secondSharing = owner.hold(Sharing, { session: second.id }, BACKGROUND_CONTEXT);
@@ -590,7 +590,7 @@ test(
  * with `PUT /v1/servers/<id>/name`, which answers `renameStatus`. The brain starts under `name`.
  */
 async function flakyRelay(t: TestContext, name?: string) {
-	const sockets = new WebSocketServer({ noServer: true, handleProtocols: () => "pi-server.host.v4" });
+	const sockets = new WebSocketServer({ noServer: true, handleProtocols: () => "nycode-server.host.v4" });
 	const server = createServer((request, response) => {
 		if (request.method === "PUT" && /^\/v1\/servers\/[^/]+\/name$/.test(request.url ?? "")) {
 			let body = "";
@@ -831,7 +831,7 @@ test("Radius brain without a name connects without one, and sends its first name
 	assert.deepEqual(f.state.renames, ["Studio"]);
 });
 
-test("Radius status lines as Pi Mobile logs them, retries with their error", () => {
+test("Radius status lines as Nycode Mobile logs them, retries with their error", () => {
 	assert.equal(
 		radiusStatusText({ status: "connected", serverId: "brain-1", organizationId: "org", name: "Studio" }),
 		'connected as brain "Studio" (brain-1)',

@@ -1,7 +1,7 @@
 // The session catalog's rows (server): what the sidebar and the server need about each session while its worker is
 // off, as rows of the server's Chord store keyed by the session's address (decision "Documents and table rows can belong
 // to a host"), so a session's export, import and delete carry them. Durable owns transcripts.
-import { arr } from "@earendil-works/pi-schema";
+import { arr } from "@nycode/schema";
 import {
 	columnBool,
 	columnInt,
@@ -29,7 +29,7 @@ const SessionRowsV1 = defineTable("sessions", {
 		cwd: columnStr(),
 		env: columnOpt(columnStr()),
 		title: columnStr(),
-		/** An explicit title (given at creation or renamed): automatic titles never replace it (Pi Mobile's). */
+		/** An explicit title (given at creation or renamed): automatic titles never replace it (Nycode Mobile's). */
 		titleEdited: columnBool(),
 		createdAt: columnInt(),
 		updatedAt: columnInt(),
@@ -64,7 +64,7 @@ export const BY_ACTIVITY = query(SessionRows).orderBy((row) => row.updatedAt, "d
  */
 export const CATALOG_WINDOW = 100_000;
 
-/** An automatic title: the first user message, line breaks as spaces, its first 100 characters (as Pi Mobile). */
+/** An automatic title: the first user message, line breaks as spaces, its first 100 characters (as Nycode Mobile). */
 const AUTO_TITLE = 100;
 
 /** A row as the contract's `Session`. */
@@ -106,7 +106,7 @@ export type CatalogChange = {
 
 /**
  * Writes `change` to the row of session `id` in `tx` and returns the row as written; throws when there is none. A
- * rename is explicit; a new location counts as activity (Pi Mobile's setLocation).
+ * rename is explicit; a new location counts as activity (Nycode Mobile's setLocation).
  */
 export async function updateRow(
 	tx: Tx,

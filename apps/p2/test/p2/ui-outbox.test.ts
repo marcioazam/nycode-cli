@@ -4,7 +4,7 @@
 
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
-import type { ConversationView } from "@earendil-works/pi-durable";
+import type { ConversationView } from "@nycode/durable";
 import type { Host } from "@p2/app/v1";
 import { BACKGROUND_CONTEXT, follow } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";

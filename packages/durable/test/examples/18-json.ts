@@ -1,6 +1,6 @@
-// JSON mode: stream one prompt's run as JSON lines, like `pi --mode json`. Two modes, both of the ConversationView:
+// JSON mode: stream one prompt's run as JSON lines, like `nycode --mode json`. Two modes, both of the ConversationView:
 //   --ops (default): the raw frames, starting with the view itself; each later line holds the ops of the commits since.
-//   --state: per call, the entries appended since the previous one and the current `pi.live`, state a renderer draws.
+//   --state: per call, the entries appended since the previous one and the current `nycode.live`, state a renderer draws.
 // --storage sqlite (default) | jsonl | memory: sqlite writes a temporary database file, jsonl a temporary directory;
 // neither is deleted, and the path is printed to stderr at the end.
 // Uses OpenAI when OPENAI_API_KEY is set, and a scripted faux model otherwise.
@@ -9,10 +9,10 @@
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import { createModels } from "@earendil-works/pi-ai/models";
-import { fauxAssistantMessage, fauxProvider, fauxText, fauxToolCall } from "@earendil-works/pi-ai/providers/faux";
-import { openaiProvider } from "@earendil-works/pi-ai/providers/openai";
+import { createModels } from "@nycode/ai/models";
+import { fauxAssistantMessage, fauxProvider, fauxText, fauxToolCall } from "@nycode/ai/providers/faux";
+import { openaiProvider } from "@nycode/ai/providers/openai";
+import { BACKGROUND_CONTEXT } from "@nycode/chord/context";
 import { NodeExecutionEnv } from "../../src/env/node.ts";
 import { createRegistry, defineExtension, Harness, MemoryStorage, type Storage, section } from "../../src/index.ts";
 import { openNodeJsonlStorage } from "../../src/storage/jsonl/node.ts";
@@ -31,10 +31,10 @@ const prompt =
 let storage: Storage;
 let location: string | undefined;
 if (storageKind === "sqlite") {
-	location = join(tmpdir(), `pi-durable-json-${Date.now()}.sqlite`);
+	location = join(tmpdir(), `nycode-durable-json-${Date.now()}.sqlite`);
 	storage = await openNodeSqliteStorage(location);
 } else if (storageKind === "jsonl") {
-	location = await mkdtemp(join(tmpdir(), "pi-durable-json-"));
+	location = await mkdtemp(join(tmpdir(), "nycode-durable-json-"));
 	storage = await openNodeJsonlStorage(location, context);
 } else if (storageKind === "memory") {
 	storage = new MemoryStorage();
@@ -78,13 +78,13 @@ if (mode === "ops") {
 	});
 } else {
 	let newest = watch.value.entries.at(-1)?.id ?? 0;
-	print({ entries: watch.value.entries, live: watch.value.docs["pi.live"] });
+	print({ entries: watch.value.entries, live: watch.value.docs["nycode.live"] });
 	watch.start(async (call) => {
 		if (call.kind !== "value") return;
 		const { value } = call;
 		const entries = value.entries.filter((entry) => entry.id > newest);
 		newest = value.entries.at(-1)?.id ?? newest;
-		print({ ...(entries.length === 0 ? {} : { entries }), live: value.docs["pi.live"] });
+		print({ ...(entries.length === 0 ? {} : { entries }), live: value.docs["nycode.live"] });
 	});
 }
 

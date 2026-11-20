@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { stripTerminalSequences, TuiAltScreen } from "@earendil-works/pi-tui";
+import { stripTerminalSequences, TuiAltScreen } from "@nycode/tui";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { VirtualTerminal } from "../../../../packages/tui/test/virtual-terminal.ts";
 import quietToolsTui from "../../plugins/quiet-tools/tui.ts";
@@ -140,7 +140,7 @@ test("/settings collects changes and proposes one patch; the theme preview never
 	assert.deepEqual(grants[0], ["savePrefs", { patch: { settings: { hideThinkingBlock: false }, theme: "light" } }]);
 });
 
-test("/settings filters its rows as you type, like pi's settings", async (t) => {
+test("/settings filters its rows as you type, like nycode's settings", async (t) => {
 	const { runtime, grants, screen, send } = await runtimeWith(t, [quietToolsTui]);
 	runtime.ctx.commands.runSlash("/settings");
 	await poll(async () => (await screen()).includes("Hide thinking"));

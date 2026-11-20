@@ -11,7 +11,7 @@ import { type ChildProcess, spawn } from "node:child_process";
 import { openSync, writeSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
-import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context";
+import { BACKGROUND_CONTEXT as context } from "@nycode/chord/context";
 import { layoutOf } from "../kit/layout.ts";
 import { removeRecord, takeLock, writeRecord } from "../kit/running.ts";
 

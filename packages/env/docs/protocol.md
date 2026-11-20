@@ -1,6 +1,6 @@
-# pi-env wire protocol
+# nycode-env wire protocol
 
-Version 1. The client starts `pi-env serve --token <hex>` (over `ssh`, or directly in tests) and talks to it over the
+Version 1. The client starts `nycode-env serve --token <hex>` (over `ssh`, or directly in tests) and talks to it over the
 process's stdin and stdout. stderr is diagnostic text for logs only.
 
 ## Sync

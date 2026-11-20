@@ -2,8 +2,8 @@
 // warm a turn reads the context at about a tenth of the input price, and a summary (never cached) costs the whole
 // context at full price; once cold, the next turn rewrites the cache at full price or more anyway, so compacting first
 // costs about the same and makes every later turn cheaper.
-import type { AssistantMessage, Usage } from "@earendil-works/pi-ai";
-import type { ContextView } from "@earendil-works/pi-durable";
+import type { AssistantMessage, Usage } from "@nycode/ai";
+import type { ContextView } from "@nycode/durable";
 
 /** Context size from which a cold Familiar compacts, unless the model's regular cutoff is lower. */
 export const COLD_COMPACT_TOKENS = 150_000;
@@ -37,7 +37,7 @@ export function lastAnswer(view: ContextView): { message: AssistantMessage; toke
 	return undefined;
 }
 
-/** The context size a response reports, as pi-ai's `calculateContextTokens` (a module plugins cannot import). */
+/** The context size a response reports, as nycode-ai's `calculateContextTokens` (a module plugins cannot import). */
 function contextTokens(usage: Usage): number {
 	return usage.totalTokens || usage.input + usage.output + usage.cacheRead + usage.cacheWrite;
 }

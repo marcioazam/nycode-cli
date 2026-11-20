@@ -7,7 +7,7 @@ and today's source path side by side.
 
 State: all three parts built (2026-11-16), with the fixes of review rounds 1, 2 and 3; the next review round
 follows. Not committed. It comes after slice 1 and before slice 25. The first part (the release build) was built on the
-recommendations of "Decisions"; the **second part** (owner's scope additions: the API named `@earendil-works/p3/v1`,
+recommendations of "Decisions"; the **second part** (owner's scope additions: the API named `@nycode/p3/v1`,
 the release shipping types for third-party plugins) and the **third part** (owner: the commands, the background server
 as supervisor, `server.json`, several Pis on one machine) are specified below and followed it. **"As built" is the
 current statement of what the slice is**; the first part's plan is folded into it, and the second and third parts'
@@ -29,12 +29,12 @@ features in this area and what p3 does with each:
 
 **coding-agent** is the model for packaging (read for this brief: `packages/coding-agent/package.json`,
 `scripts/build-coding-agent-bundle.mjs`, `scripts/package-files.mjs`, `scripts/local-release.mjs` with
-`package-artifacts.mjs`, `local-package-install.mjs` and `npm-command.mjs`, `.pi/skills/release.md`,
+`package-artifacts.mjs`, `local-package-install.mjs` and `npm-command.mjs`, `.nycode/skills/release.md`,
 `scripts/generate-coding-agent-install-lock.mjs`). What p3 takes from it, and what not:
 
 | coding-agent | p3 |
 | --- | --- |
-| `bin: { pi: "dist/bundle/cli.js" }`: a launcher of five lines that calls `enableCompileCache()`, then loads the bundle | the same: `dist/p3.js` enables Node's compile cache, then imports `dist/main.js` |
+| `bin: { nycode: "dist/bundle/cli.js" }`: a launcher of five lines that calls `enableCompileCache()`, then loads the bundle | the same: `dist/p3.js` enables Node's compile cache, then imports `dist/main.js` |
 | `tsc` to `dist/`, then esbuild bundles the compiled files (`splitting`, `minifySyntax`, `minifyWhitespace`, no source maps, `tsconfigRaw: {}` so no monorepo path alias applies) | esbuild bundles the TypeScript sources directly with the condition `source` (workspace packages resolve to their `src/`); no `tsc` step, because p3 emits nothing (`npm run check` type-checks) |
 | a list of allowed external packages, checked against the bundle's metafile; anything else left external fails the build | the same check; allowed: `esbuild`, and `ws`'s two optional accelerators |
 | `files: ["dist", …]` in the package's own `package.json` | the same: the workspace's `package.json` is the shipped one (second part) |
@@ -105,14 +105,14 @@ condition); Node's `module.enableCompileCache`.
 
 **Built on these recommendations (owner's answer pending, 2026-11-16):**
 
-- **A.** The package is `@earendil-works/p3`, its command `p3`, its version `apps/p3/package.json`'s (0.0.1),
+- **A.** The package is `@nycode/p3`, its command `p3`, its version `apps/p3/package.json`'s (0.0.1),
   `"private": true` until publishing is decided.
 - **B.** (Superseded by the second part's section 1: the shipped manifest is the workspace package's own.) The
   shipped `package.json` is generated into the package directory by the build. The workspace package stays
   `@p3/app`, private; no `package.json` of a package and no lockfile changed (the root `package.json` gained the
   script `release:p3:local`). esbuild is pinned to the version the repository runs (0.28.2).
 - **C.** `ws` is inlined into the bundle. (Its second half, "esbuild is the only package installed beside p3", is
-  superseded: the second part installs Chord, pi-schema and pi-telemetry for the types, and review round 2 made `ws`
+  superseded: the second part installs Chord, nycode-schema and nycode-telemetry for the types, and review round 2 made `ws`
   a dependency, at Chord's version 8.21.0, owner's decision, for the compiled `/v1/server` outside the server.)
 - **D.** Minified (`minifySyntax`, `minifyWhitespace`, names kept), no source maps.
 - **E.** The release test is not in `npm test`; `release:p3:local` runs it (`npm run test:release` with `P3_RELEASE`).
@@ -122,10 +122,10 @@ dependency; no lifecycle scripts run at install (`--ignore-scripts`; esbuild wor
 
 ## Second part: the API's name, and types for third-party plugins (owner, 2026-11-16; built)
 
-### 1. The API is `@earendil-works/p3/v1`
+### 1. The API is `@nycode/p3/v1`
 
-No shorthand: plugins import `@earendil-works/p3/v1`, `/v1/server`, `/v1/worker`. The workspace package
-`apps/p3/package.json` is renamed from `@p3/app` to `@earendil-works/p3`; every import (base code, the sessions
+No shorthand: plugins import `@nycode/p3/v1`, `/v1/server`, `/v1/worker`. The workspace package
+`apps/p3/package.json` is renamed from `@p3/app` to `@nycode/p3`; every import (base code, the sessions
 plugin, tests, the bench, the test plugins written as text), the module map `API` in `src/app.ts`, and the docs
 change with it.
 
@@ -135,7 +135,7 @@ says the same in development and in the release, as Chord's and coding-agent's d
 
 ```json
 {
-	"name": "@earendil-works/p3",
+	"name": "@nycode/p3",
 	"version": "0.0.1",
 	"private": true,
 	"type": "module",
@@ -148,7 +148,7 @@ says the same in development and in the release, as Chord's and coding-agent's d
 	"files": ["dist", "plugins", "!plugins/**/*.test.ts", "src/api", "src/kit/forward.ts", "src/kit/contribute.ts", "src/kit/info.ts", "src/principals.ts", "README.md"],
 	"engines": { "node": ">=24.4.0" },
 	"dependencies": {
-		"@earendil-works/chord": "1.5.2", "@earendil-works/pi-schema": "1.5.2", "@earendil-works/pi-telemetry": "1.5.2",
+		"@nycode/chord": "1.5.2", "@nycode/schema": "1.5.2", "@nycode/telemetry": "1.5.2",
 		"esbuild": "0.28.2"
 	}
 }
@@ -160,36 +160,36 @@ says the same in development and in the release, as Chord's and coding-agent's d
   the generated manifest go.
 - **The lockfile changes:** the workspace's entry is renamed and gains esbuild as a dependency (0.28.2, the version
   the lockfile has). Refreshed with `npm install --package-lock-only --ignore-scripts`; the diff goes to the owner,
-  who allows it at commit time (`PI_ALLOW_LOCKFILE_CHANGE=1`).
+  who allows it at commit time (`NYCODE_ALLOW_LOCKFILE_CHANGE=1`).
 
 ### 2. The release ships types
 
 What a third-party plugin's `tsc` resolves in an install:
 
 ```text
-node_modules/@earendil-works/p3/
+node_modules/@nycode/p3/
   dist/api/v1/index.js, .d.ts, .d.ts.map      the API modules, compiled by tsc: their imports of Chord stay imports
-  dist/api/v1/server.*, worker.*              (`from "@earendil-works/chord"`), resolved from the dependency
+  dist/api/v1/server.*, worker.*              (`from "@nycode/chord"`), resolved from the dependency
   dist/kit/forward.*, contribute.*, info.*    what the API modules import of the kit
   dist/principals.*
   src/api/v1/*.ts, src/kit/{forward,contribute,info}.ts, src/principals.ts
                                               the API's source: the declaration maps point here, so "go to
                                               definition" lands in real code
   dist/main.js, worker.js, chunks/, p3.js     the server, bundled with Chord inlined, as in the first part
-node_modules/@earendil-works/chord/           1.5.2, with its own .d.ts: the types the API's declarations import
-node_modules/@earendil-works/pi-schema/, pi-telemetry/
+node_modules/@nycode/chord/           1.5.2, with its own .d.ts: the types the API's declarations import
+node_modules/@nycode/schema/, nycode-telemetry/
 ```
 
 - **The API is compiled by `tsc -p tsconfig.build.json`** (as coding-agent's and Chord's builds: `declaration`,
   `declarationMap`, `rootDir: src`, `outDir: dist`), over the three API modules and what they import. It compiles
   against the dependencies' built declarations (`packages/chord/dist`, without the condition `source`), so the
-  emitted declarations name Chord's types as an install does: `import("@earendil-works/chord").Contract<…>`.
+  emitted declarations name Chord's types as an install does: `import("@nycode/chord").Contract<…>`.
   Checked: this emits today's API without an error.
 - **Two instances, one version.** The server process passes plugins its own API modules, the ones in its bundle
   (Chord inlined, for the start time). The compiled modules in `dist/api/` are for type-checking and for code that
   runs outside the server (a plugin's own tests). Both are built from the same commit; a test compares the bundle's
   Chord version with the dependency's.
-- **The local release packs four packages:** p3 and, from the workspace, Chord, pi-schema and pi-telemetry (built
+- **The local release packs four packages:** p3 and, from the workspace, Chord, nycode-schema and nycode-telemetry (built
   with their `npm run build`), and installs p3's tarball with the other three as overrides, as `release:local`
   wires its consumers. npm's 1.5.2 of Chord predates what p3 uses (named queries, admission, `memberNames`), so the
   real dependency exists only once the next lockstep version is published; that is a publishing matter (Carried).
@@ -200,7 +200,7 @@ p3's `tsconfig.json` sets `declaration: false`, because with declarations on, si
 
 ```text
 plugins/sessions/contract.ts(61,14): error TS2883: The inferred type of 'Sessions' cannot be named without a
-reference to 'Method' from '../../../../node_modules/@earendil-works/chord/src/contracts/schema.ts'.
+reference to 'Method' from '../../../../node_modules/@nycode/chord/src/contracts/schema.ts'.
 ```
 
 The cause is not the workspace symlink. Chord declares the types `Method` (what `method(...)` returns) and
@@ -236,7 +236,7 @@ only an `npm install --ignore-scripts` of the local tarballs:
    the error at that member.
 3. "Go to definition" has a target: the declaration map of `dist/api/v1/index.d.ts` names
    `src/api/v1/index.ts`, and that file is in the install.
-4. The plugin copied into the installed server's plugin root (`node_modules/@earendil-works/p3/plugins/hello/`)
+4. The plugin copied into the installed server's plugin root (`node_modules/@nycode/p3/plugins/hello/`)
    loads: the launched release serves `Hello` to a client, which reads `text` and calls `greet`.
 
 Node's own types are not p3's to ship: a plugin that uses Node APIs depends on `@types/node` itself, as with any
@@ -246,24 +246,24 @@ package; the test's plugin uses none (`types: []`).
 
 - **F (owner, 2026-11-16: yes), a Chord change:** Chord exports the types `Method` and `LiteralsSchema` (section 3),
   with its test, README line and CHANGELOG entry; p3's `tsconfig.json` turns declarations on.
-- **G (owner, 2026-11-16: yes):** the built-in plugin's package is `@earendil-works/p3-sessions`.
+- **G (owner, 2026-11-16: yes):** the built-in plugin's package is `@nycode/p3-sessions`.
 - **The lockfile change** is allowed (owner, 2026-11-16); the diff is shown before the commit.
 - Decided here, as asked: the shipped manifest is the workspace package's own (section 1).
 
 ## Third part: commands, the background server, several Pis (owner, 2026-11-16; built)
 
-The basics of running a Pi, so that we can iterate on the rest.
+The basics of running a Nycode, so that we can iterate on the rest.
 
 ### 1. Commands
 
 ```text
-p3 [--pi <name> | --dir <path>]            start the Pi's server in the background unless it runs; print its port and
+p3 [--nycode <name> | --dir <path>]            start the Nycode's server in the background unless it runs; print its port and
                                            a fresh owner link (the terminal client replaces this in slice 27)
-p3 server  [--pi … | --dir …] [--port <n>] run the server in the foreground (what `bin.ts` does today)
-p3 status  [--pi … | --dir …]              running or not; its port, pid, data directory, version, start time
-p3 stop    [--pi … | --dir …]              stop it cleanly; returns once the data directory's lock is free
-p3 restart [--pi … | --dir …]              stop, then start in the background
-p3 list                                    the default Pi and the named ones, each with its state
+p3 server  [--nycode … | --dir …] [--port <n>] run the server in the foreground (what `bin.ts` does today)
+p3 status  [--nycode … | --dir …]              running or not; its port, pid, data directory, version, start time
+p3 stop    [--nycode … | --dir …]              stop it cleanly; returns once the data directory's lock is free
+p3 restart [--nycode … | --dir …]              stop, then start in the background
+p3 list                                    the default Nycode and the named ones, each with its state
 p3 --version, p3 --help
 ```
 
@@ -294,7 +294,7 @@ slice 2's: it will be an exit code the supervisor restarts on.
 Written into the data directory by the kit after the listen, removed at a clean exit:
 
 ```json
-{ "pi": "7f3a…", "pid": 41234, "port": 8789, "version": "0.0.1", "startedAt": 1794900000000 }
+{ "nycode": "7f3a…", "pid": 41234, "port": 8789, "version": "0.0.1", "startedAt": 1794900000000 }
 ```
 
 A crashed server leaves it behind, so nobody trusts the file alone. `status` (and everything that asks "does it
@@ -304,14 +304,14 @@ file) **and the process exists** (`kill(pid, 0)`).
 
 ### 4. Several Pis on one machine
 
-- **A Pi is its data directory.** `p3` uses `~/.pi/p3`; `--pi <name>` (lower case letters, digits, `-`, `_`, at most
-  32) uses `~/.pi/p3/pis/<name>`; `--dir <path>` uses any directory. `p3 list` shows the default Pi and every
+- **A Nycode is its data directory.** `p3` uses `~/.nycode/p3`; `--nycode <name>` (lower case letters, digits, `-`, `_`, at most
+  32) uses `~/.nycode/p3/pis/<name>`; `--dir <path>` uses any directory. `p3 list` shows the default Nycode and every
   directory under `pis/`.
-- **Each Pi has a config,** `pi.json` in its data directory, made at its first start: `{ "id": "<random>", "port": n
-  }`. The default Pi's port is 8789; any other Pi takes a free port at its first start and keeps it. `--port` is for
+- **Each Nycode has a config,** `nycode.json` in its data directory, made at its first start: `{ "id": "<random>", "port": n
+  }`. The default Nycode's port is 8789; any other Nycode takes a free port at its first start and keeps it. `--port` is for
   that start only.
-- **The sign-in cookie is named after the Pi** (`p3-<id>`): a browser shares cookies between the ports of one host,
-  so with one name the second Pi's sign-in would replace the first's.
+- **The sign-in cookie is named after the Nycode** (`p3-<id>`): a browser shares cookies between the ports of one host,
+  so with one name the second Nycode's sign-in would replace the first's.
 - **Locks cannot collide across data directories, checked:** p3's lock names contain the data directory's real path
   (`p3-server:<dataDir>`, `p3-worker:<dataDir>:<address>`), and Chord's `processLock` hashes the whole name (SHA-256,
   128 bits of it) into the abstract socket's name (`packages/chord/src/node/workers/lock.ts`). Two data directories
@@ -323,38 +323,38 @@ file) **and the process exists** (`kill(pid, 0)`).
 
 ```text
 apps/p3/
-  bin.ts                     the command line: which command, which Pi, the flags; dispatch
-  src/pi.ts                  a Pi: its data directory from --pi or --dir, its config (id, port), the named Pis
+  bin.ts                     the command line: which command, which Nycode, the flags; dispatch
+  src/nycode.ts                  a Nycode: its data directory from --nycode or --dir, its config (id, port), the named Pis
   src/commands.ts            status, stop, restart, the background start, list, the fresh owner link
   src/supervisor.ts          the background server: runs `p3 server` as a child, restarts it after a crash
   src/kit/running.ts         server.json: written after the listen, removed at exit; whether a server runs (the
                              file, the lock, the process)
   src/kit/owner.ts           + POST /_p3/owner/link (the owner's: a fresh link)
-  src/kit/sign-ins.ts        the cookie's name comes from the Pi's id
-  src/kit/start-server.ts    reads the Pi's config, writes server.json; a busy port is a clear error
-  src/kit/layout.ts          + pi.json, server.json, logs/
+  src/kit/sign-ins.ts        the cookie's name comes from the Nycode's id
+  src/kit/start-server.ts    reads the Nycode's config, writes server.json; a busy port is a clear error
+  src/kit/layout.ts          + nycode.json, server.json, logs/
 ```
 
 ### 6. Tests (all against launched commands; in `npm test` from source, a subset again in the release test)
 
-1. `status` of a Pi that never ran: not running, exit 1. `server` in the foreground: `status` shows its port, pid,
+1. `status` of a Nycode that never ran: not running, exit 1. `server` in the foreground: `status` shows its port, pid,
    data directory, version and start time; after `SIGTERM`, `server.json` is gone and `status` says not running.
 2. Plain `p3` starts the server in the background and prints its port and an owner link that signs in once; a
    second `p3` starts nothing (the same pid) and prints another link that works, while the first no longer does.
 3. `stop` returns only when the lock is free (a `server` started right after it does not wait); `stop` of a stopped
-   Pi is 0; `restart` gives a new pid on the same port, the sessions kept.
+   Nycode is 0; `restart` gives a new pid on the same port, the sessions kept.
 4. **A crash:** `SIGKILL` of the server under a supervisor: `status` meanwhile says not running and removes the stale
    file (no lock holder); the supervisor starts a new server (a new pid, the same port, the sessions kept). `stop`
    then ends the server and the supervisor.
-5. **A stale `server.json`** whose pid exists but is another process (the file copied from a running Pi): not
+5. **A stale `server.json`** whose pid exists but is another process (the file copied from a running Nycode): not
    trusted, because the lock is free.
 6. **A busy port:** exit 1 with the message, within a second, no `server.json`, the lock free. `--port ""` and
    `--port x`: exit 2.
-7. **Two Pis side by side** (`--pi a`, `--pi b`, `HOME` pointed at a temporary directory): different ports and ids;
+7. **Two Pis side by side** (`--nycode a`, `--nycode b`, `HOME` pointed at a temporary directory): different ports and ids;
    a session created in one is not in the other; a browser's cookie jar signed in to both (two cookies of different
    names on `127.0.0.1`) is the owner at both; `stop` of one leaves the other serving, its workers running; `list`
-   shows both states. A named Pi keeps its port across restarts.
-8. `--pi` with a name that is none, and `--pi` with `--dir`: exit 2.
+   shows both states. A named Nycode keeps its port across restarts.
+8. `--nycode` with a name that is none, and `--nycode` with `--dir`: exit 2.
 
 Mutation check for the rules of this part (the lock check of `status`, the cookie's name, the supervisor's restart
 and its exit on a clean stop, the kept port).
@@ -368,11 +368,11 @@ directory are theirs; the release's files (`dist/main.js`, `worker.js`, `supervi
 ### What ships
 
 ```text
-@earendil-works/p3/                     apps/p3/package.json, as it is in the workspace (private until publishing)
+@nycode/p3/                     apps/p3/package.json, as it is in the workspace (private until publishing)
   package.json                          bin { p3: dist/p3.js }; exports ./v1, ./v1/server, ./v1/worker (source, types,
-                                        import); dependencies: Chord, pi-schema, pi-telemetry, esbuild, ws (exact)
+                                        import); dependencies: Chord, nycode-schema, nycode-telemetry, esbuild, ws (exact)
   dist/p3.js                            the launcher: the compile cache, the experimental-warning filter, main.js
-  dist/main.js                          the command (src/bootstrap/bin.ts) and the server: kit, Chord, pi-schema, pi-telemetry, ws inlined
+  dist/main.js                          the command (src/bootstrap/bin.ts) and the server: kit, Chord, nycode-schema, nycode-telemetry, ws inlined
   dist/worker.js                        a session worker's entry: a bundle of its own, none of the server's code
   dist/supervisor.js                    the background server's supervisor: a bundle of its own
   dist/api/v1/*.{js,d.ts,d.ts.map}      the API compiled by tsc, importing Chord from the dependency
@@ -387,7 +387,7 @@ How p3 runs from it:
 - **The server** loads `dist/main.js`: JavaScript only, compiled once and then read from Node's compile cache. Its Chord is the one in the bundle; the installed Chord is for the types and for code that runs
   outside the server (a plugin's own tests import the compiled API).
 - **Plugins** are built at start by Chord's plugins component, as from source: esbuild bundles each facet;
-  `@earendil-works/p3/v1` and its per-kind modules are host packages (left out of the plugin's bundle, the process
+  `@nycode/p3/v1` and its per-kind modules are host packages (left out of the plugin's bundle, the process
   passes its own instances). That is why esbuild is a run-time dependency.
 - **The worker base** is built at start by Chord's workers component from `dist/worker.js` (it bundles the entry
   again, see "What a start builds"); workers get `--disable-warning=ExperimentalWarning`,
@@ -406,7 +406,7 @@ How p3 runs from it:
   Node's HTTP, no `ws`, none of Chord's HTTP component, the server side of its workers or its plugin builds); the
   launcher; then `tsc -p tsconfig.build.json` for the API. `scripts/` is TypeScript, run by Node, so `npm run check` covers it.
 - **`scripts/release-local.ts`** (`npm run release:p3:local -- --out <dir> [--force] [--skip-test] [--bench]` from the
-  repository root): the output directory checked (below), Chord, pi-schema and pi-telemetry built, p3 built, the four
+  repository root): the output directory checked (below), Chord, nycode-schema and nycode-telemetry built, p3 built, the four
   packed with `--ignore-scripts`, p3's tarball installed into a private consumer with the three as `overrides`, a link
   `<out>/p3`, then `npm run test:release` with `P3_RELEASE`, and with `--bench` the bench.
 - **Tests** in three places: `npm test` (the build and its guards on a temporary directory, the output directory,
@@ -418,7 +418,7 @@ How p3 runs from it:
   `test/gate.ts`, holds a launched server at a point of its start for the cases of what commands do meanwhile.
 - **Start timings** are printed with `NODE_DEBUG=p3` (Node's `util.debuglog`), for the bench, until slice 2's
   startup spans replace them. The bench (`bench/slice-1.ts`, `--release <install>` for the release) launches the
-  server as a process in both paths and runs the commands on a named Pi; the in-process breakdown of the list runs only
+  server as a process in both paths and runs the commands on a named Nycode; the in-process breakdown of the list runs only
   from source.
 
 ### Review round 1's findings, fixed
@@ -428,7 +428,7 @@ workers component takes `dist/worker.js` as its entry.
 
 - **`--force` (Sol, Astra: blocking; Fable).** `prepareOutput` in `release-local.ts` refuses, before it removes
   anything, the repository, every directory above it (a file system's root among them) and every directory inside it,
-  by path segments (not `startsWith("..")`: `pi/..p3-release` is inside) and by real paths (the part of `--out` that
+  by path segments (not `startsWith("..")`: `nycode/..p3-release` is inside) and by real paths (the part of `--out` that
   exists is resolved through links, so a link to the repository's parent is refused too). It writes a marker file,
   `.p3-release`, into its output; a directory that is not empty and has no marker is never touched, and `--force`
   removes only what a run makes there (`.p3-release`, `tarballs/`, `install/`, `p3`); without `--force` a previous
@@ -466,7 +466,7 @@ workers component takes `dist/worker.js` as its entry.
 
 - **The server's record is written in two steps (Sol, Astra).** The moment the server holds the data directory's
   lock, before anything else, `server.json` says `{ state: "starting", pid, start }`; once it listens and its owner
-  link knows the address, `{ state: "running", pid, start, pi, port, version, startedAt }`. Before, the record came only
+  link knows the address, `{ state: "running", pid, start, nycode, port, version, startedAt }`. Before, the record came only
   after the listen and before the owner link was ready: plain `p3` could read it and get a 500 for the link (Sol). A
   failed start removes the record with the lock. The supervisor's record (`starting`, then `running` once its server
   listened) is also written right after its lock.
@@ -485,7 +485,7 @@ workers component takes `dist/worker.js` as its entry.
   own supervisor left and nobody holds either lock). `status` says `starting` while a server holds the lock and
   `starting (pid …)` once its record names it; `list` says `starting`.
 - **`ws` is a dependency (Sol; owner's decision: pinned to Chord's version, 8.21.0).** The compiled
-  `@earendil-works/p3/v1/server` re-exports `Http` from `@earendil-works/chord/http`, whose module loads Chord's HTTP
+  `@nycode/p3/v1/server` re-exports `Http` from `@nycode/chord/http`, whose module loads Chord's HTTP
   component and `ws`, an optional peer of Chord's: the package that imports it supplies it, as p2 does. The bundle
   keeps its own inlined copy (decision C). The lockfile gains that one line (refreshed with npm 11.20, the version
   that wrote it: npm 11.4.2 would also drop the `libc` fields of 30 entries). The release test imports the three API
@@ -526,15 +526,15 @@ workers component takes `dist/worker.js` as its entry.
   server listens (between restarts), and only when its record proves who it is; a supervisor whose server answered is
   not signalled. While a server or a supervisor starts, `stop` waits as before. A refusal is an error (exit 1).
 - **The command ends a supervisor of its own that lost the directory** (found by these runs: two `p3` at once, then
-  `stop`; the loser waited a second for its lock, took it once the winner had stopped, and started the Pi again, so
+  `stop`; the loser waited a second for its lock, took it once the winner had stopped, and started the Nycode again, so
   `stop` waited 30 s and failed). The command that started a supervisor which did not win (another supervisor's
   server, or a foreground server, is the one that listens) ends it (`SIGTERM` to its own child, no record needed)
   before it returns. Its first version waited for that child's exit with the child `unref`'d, and the command ended
   on an empty event loop (exit 13): the wait now counts the child again. A second guard, the supervisor leaving at
   once when another supervisor's record names the lock's holder, was built and removed again: with the command's end
   no test could tell it from none.
-- **The tests no longer need port 8789 free** (found under load: the default Pi's case started on the default Pi's
-  own port, so it failed whenever another run, or a real Pi, had it). It starts with `--port 0`.
+- **The tests no longer need port 8789 free** (found under load: the default Nycode's case started on the default Nycode's
+  own port, so it failed whenever another run, or a real Nycode, had it). It starts with `--port 0`.
 - **Under load.** Before these fixes, 4 suites at once, three times: 11 of 12 runs failed (the waits on the extra
   supervisor's lifetime, port 8789). After them: 12 of 12 pass, and 10 serial runs pass.
 - **Regression tests:** the stop route (`test/kit/stop.test.ts`); unknown identities, both ways, a command name with
@@ -551,7 +551,7 @@ workers component takes `dist/worker.js` as its entry.
 
 - **A run id and a proof.** A server makes a random run id at each start (16 bytes, hex) and writes it into its
   record from the `starting` step on. `GET /_p3/identity?nonce=<32 hex digits>` (`src/kit/identity.ts`) answers
-  anyone `{ run, pid, pi, proof }`, `proof` being HMAC-SHA256 of the nonce keyed by the owner token (owner's choice
+  anyone `{ run, pid, nycode, proof }`, `proof` being HMAC-SHA256 of the nonce keyed by the owner token (owner's choice
   B: proof of possession). A command believes a `running` record only once the server on the record's port answers
   that record's run id and pid and the proof for a fresh nonce of the command's own; the question carries no token,
   and the owner token goes (owner link, stop) only to a server proven so. `holder` calls such a record `claimed`; the
@@ -573,29 +573,29 @@ workers component takes `dist/worker.js` as its entry.
   fresh run id at each start, proofs replayed from another nonce or made with another token refused); a command case
   with programs of the test's own on the recorded port: one that echoes the run id without a proof, with a wrong
   proof, with a proof replayed for another nonce, one with the token but another pid (all refused, none ever got a
-  token), one with the right proof (believed, the control), a new server of another Pi on the port, and this Pi's own
+  token), one with the right proof (believed, the control), a new server of another Nycode on the port, and this Nycode's own
   server under a record naming an earlier run (both refused), and `stop` meanwhile, which signals and stops nothing
   it did not prove; `holder` for a running record and for pids that are none; PowerShell's branch.
 
 ### The second part, against its specification
 
-- **The rename.** `apps/p3/package.json` is `@earendil-works/p3` and is the shipped manifest, as section 1 shows it
+- **The rename.** `apps/p3/package.json` is `@nycode/p3` and is the shipped manifest, as section 1 shows it
   (`bin`, `exports` with `source`, `types` and `import`, `files`, the four dependencies pinned); the sessions plugin is
-  `@earendil-works/p3-sessions`. Every import, the module map `API` in `src/app.ts` and the docs changed with it
+  `@nycode/p3-sessions`. Every import, the module map `API` in `src/app.ts` and the docs changed with it
   (slice 1's walkthrough is left as it was, the record of slice 1). The staging directory and the generated manifest
   are gone: the build writes `apps/p3/dist/` (ignored by git) and `npm pack` runs in `apps/p3`.
 - **The lockfile:** the workspace's entry renamed, with esbuild 0.28.2 as its dependency and its `bin`; the link
-  `node_modules/@earendil-works/p3` instead of `node_modules/@p3/app`. Nothing else.
+  `node_modules/@nycode/p3` instead of `node_modules/@p3/app`. Nothing else.
 - **The API's compile.** `tsc -p tsconfig.build.json` (declarations and declaration maps from `tsconfig.base.json`,
   no source maps) over `src/api/v1/*.ts`, which brings in `src/kit/{forward,contribute,info}.ts` and
   `src/principals.ts`. It compiles against the workspace's sources (`customConditions: ["source"]`), not against
   `packages/chord/dist` as section 2 planned: the emitted declarations name Chord through the package all the same
-  (`import("@earendil-works/chord").Contract<…>`), and the build needs no Chord build first. The build test checks
+  (`import("@nycode/chord").Contract<…>`), and the build needs no Chord build first. The build test checks
   that no declaration names a path into `node_modules` or `packages/chord`.
 - **One version, checked (`checkVersions`):** the build fails unless every dependency in p3's `package.json` is pinned
   to the version the workspace has, because the bundle inlines the workspace's Chord while a plugin's types come from
   the dependency. The release test checks that the install has those versions, each a real directory in the install.
-- **The local release** builds Chord, pi-schema and pi-telemetry with their `npm run build`, packs the four packages
+- **The local release** builds Chord, nycode-schema and nycode-telemetry with their `npm run build`, packs the four packages
   and installs p3's tarball into a private consumer, the three as `overrides` pointing at their tarballs.
 - **Chord (decision F)** exports `Method`, `LiteralsSchema`, and also `HostKeyed` (a keyed member with a host kind:
   found by Chord's test, which emits the declaration of contracts with every member kind and checks that it names no
@@ -628,21 +628,21 @@ workers component takes `dist/worker.js` as its entry.
 - **Plain `p3`** asks the server's record first; with none it starts a supervisor and waits for whichever server
   listens on the directory (its own supervisor's, or that of one already starting or restarting it). The supervised
   server prints no owner link into the log; the command asks the server for a fresh one.
-- **`pi.json`** is `src/kit/config.ts`: `{ id, port }`, the id 16 hex digits (it becomes the cookie's name `p3-<id>`;
-  the file is checked when read, a trust boundary). The Pi's port is written at its first start unless that start
+- **`nycode.json`** is `src/kit/config.ts`: `{ id, port }`, the id 16 hex digits (it becomes the cookie's name `p3-<id>`;
+  the file is checked when read, a trust boundary). The Nycode's port is written at its first start unless that start
   named one (`--port` is for one start only).
-- **`p3 start`** is accepted as plain `p3`; `p3 list` shows the default Pi once it started (it has its config) and the
+- **`p3 start`** is accepted as plain `p3`; `p3 list` shows the default Nycode once it started (it has its config) and the
   named Pis.
 - **Two races found by this slice's runs, fixed:** a second `p3` during the first one's start called the directory
   "restarting after a crash" and failed (a supervisor without a server was read as a crash; now its record's state
   says which); the busy-port case expected the next free port to differ from the closed one, which the system may
-  give again (now it checks the Pi's config).
+  give again (now it checks the Nycode's config).
 - **The tests run in the release too:** all sixteen command cases, not a subset.
 
 ### Tests and checks
 
 - `npm test` (from `apps/p3`): 134 tests in about 12 s (the command's eighteen cases, `stop` without identities, the
-  launched server, the build, the output directory, the Pi, who runs, the config, the owner's stop, the identity, the
+  launched server, the build, the output directory, the Nycode, who runs, the config, the owner's stop, the identity, the
   oldest Node, besides slice 1's): runs in a row and runs with four suites at once pass. The release tests
   (`release:p3:local`): 33 in about 91 s, the memory test's 80 s among them (the install's contents and files, the
   three API modules imported at run time, `--version` and `--help`, the warnings, the end-to-end case, `SIGTERM` with
@@ -654,7 +654,7 @@ workers component takes `dist/worker.js` as its entry.
   time, 89 runs, 18 of them through a rebuilt, repacked and reinstalled release, 5 through `tsc` or Chord's test; the
   whole list run on review round 3's code. 78 are caught by a failing test:
   - the output directory (7), the launcher (4), the `ws` banner, the busy port (2), a blank `--port`, `--version`
-    starting a Pi, the layout read wrongly (both ways), `SIGTERM` (source and release), a signal during the start, the
+    starting a Nycode, the layout read wrongly (both ways), `SIGTERM` (source and release), a signal during the start, the
     version, the build's three guards;
   - Chord's three exports, the declaration maps, the manifest (the API's source, `types`, `private`, plugin tests,
     `ws`), the API's name and its per-kind modules;
@@ -662,13 +662,13 @@ workers component takes `dist/worker.js` as its entry.
     unknown starts taken for a match, the start read from the wrong field, `ps` in the caller's time zone), the
     record's two steps (`running` before the owner link is ready, no `starting` at the lock, a record left by a
     failed start), `server.json` at close, the cookie's name, the config's id, the ports (kept, one start's kept,
-    the default), Pi names, `--pi` with `--dir`;
+    the default), Nycode names, `--nycode` with `--dir`;
   - the supervisor (no restart, a restart after a clean stop, retrying a start that never listened, running beside
     another, never saying its server runs, the owner link in its log);
   - plain `p3` (a supervisor beside a running server or a starting holder, its losing supervisor not ended, giving
     up on another supervisor's start or a starting foreground server, a starting server taken for a running one),
     `status` (a starting supervisor called crashed, a starting server called not running), `list` (its names, a
-    starting Pi called stopped), the owner link route;
+    starting Nycode called stopped), the owner link route;
   - the owner's stop (served to anyone, not served, doing nothing in `bin.ts`) and `stop` (no HTTP ask, source and
     release; returning once the server answered; "not running" while a lock is held; signalling a server that
     answered, or the supervisor of one; no signal to a supervisor at all).
@@ -677,7 +677,7 @@ workers component takes `dist/worker.js` as its entry.
     before it answers (Chord's close drains the running request, so the answer still goes out). The waits and the
     answer-first order stay as the owner asked.
   - Review round 1's check found: a failed case kept the test runner alive for ever; two survivors that became tests;
-    a test that wrongly passed outside a checkout named `pi`. Round 2's: three new rules no test caught at first (a
+    a test that wrongly passed outside a checkout named `nycode`. Round 2's: three new rules no test caught at first (a
     command started and released at once never saw the held server; a failed start right after the lock; a
     supervisor restarting its server) and the signal during the start. Round 3's: the supervisor's fast exit, which
     no test could tell from none beside the command's end (removed), and that `stop` between a crash and the restart
@@ -713,7 +713,7 @@ the first part's table above holds three runs):
 - The first part's numbers hold. A command's time is mostly Node's start and p3's code: `status` from the release is
   about 110 ms, of which the answer itself (two lock probes, a file) is a few milliseconds.
 - **The install grew with the types:** p3's tarball is 279 kB (1.2 MB installed, `dist/` 1.1 MB with the compiled API),
-  and Chord, pi-schema and pi-telemetry are now installed beside it for the declarations a plugin's `tsc` reads:
+  and Chord, nycode-schema and nycode-telemetry are now installed beside it for the declarations a plugin's `tsc` reads:
   15 MB, 1.2 MB and 0.3 MB (Chord's package ships its sources and declarations whole). The server loads none of them
   (its Chord is in the bundle). Shipping types without that cost would mean bundling the declarations into p3's
   package: not done, for the owner to decide if it matters.
@@ -782,7 +782,7 @@ restored in a copy for the comparison); "settled" is after 40 s (V8's memory red
 - **The worker-only entry with splitting** (above): each process's own build; what an entry imports lazily stays a
   chunk of its own (`bundleOptions`), loaded when asked for. `checkLean` checks the worker's lazy chunks too.
 - **The provider SDKs bundled by p3's release build**, not loaded from `node_modules`: the build leaves nothing but
-  esbuild and `ws`'s accelerators external (`checkExternals`), so a worker that imports pi-ai gets its SDKs inside
+  esbuild and `ws`'s accelerators external (`checkExternals`), so a worker that imports nycode-ai gets its SDKs inside
   its bundle, in lazy chunks per API.
 - **Chord's worker base minified** (`packages/chord/src/node/workers/base.ts`: whitespace and syntax, names kept),
   with its test, a README line and a CHANGELOG line.
@@ -830,13 +830,13 @@ restored in a copy for the comparison); "settled" is after 40 s (V8's memory red
 **The memory test** (`test/release/memory.test.ts`, run by `release:p3:local`; `test/memory/`): a server and a worker
 entry built with the release's own options and checks; the installed release's plugins; in each of 4 workers at once
 a real Durable `Harness` on the worker's store with the coding tools (Photon images), a `NodeExecutionEnv`, a prompt
-section, a subagent tool and pi-ai's real Anthropic and OpenAI providers against a local HTTPS stub (a certificate
+section, a subagent tool and nycode-ai's real Anthropic and OpenAI providers against a local HTTPS stub (a certificate
 made by OpenSSL for the test, trusted through `NODE_EXTRA_CA_CERTS`; Anthropic Messages and OpenAI Responses SSE),
 with telemetry recorded and sent to the server every second. The schedule: idle; one streamed answer (8 KB over
 15 s); a burst of 20 turns with read and bash tool calls, five of them on OpenAI; five subagent conversations
 streaming at once; idle after each phase. USS every 250 ms from `/proc/<pid>/smaps_rollup` (skipped, saying so,
 where there is none). It fails when a worker's USS ever exceeds **55 MiB**, naming the phase, the peak and the
-settled values. pi-ai and Durable are p3's dev dependencies (the lockfile gains that entry).
+settled values. nycode-ai and Durable are p3's dev dependencies (the lockfile gains that entry).
 
 - **The budget is 55 MiB, one for every Node** (owner). Not 50: Node 26's workers settle about 7 MiB above Node
   24's (after the burst 42.5 against 35.0, Opus's round 5), and 50 failed one run in five there. Not 45 (owner,
@@ -844,7 +844,7 @@ settled values. pi-ai and Durable are p3's dev dependencies (the lockfile gains 
   glibc keeps about 10 MiB it freed (`malloc_info`: 10 to 11 MiB kept free, against 4 to 6 after the burst); the
   session's data is about 4 MiB of the heap. Measured, 40 s after the phase: V8's heap 27.4 MiB committed (24.5 used;
   by kind: code, closures, contexts and shapes 13.0, our bundles' source text 2.4, data 4.1: Durable's conversations,
-  the transcripts, pi-ai's state); malloc live 6.6, kept free 10.8. It does not fall after Durable's 10-minute
+  the transcripts, nycode-ai's state); malloc live 6.6, kept free 10.8. It does not fall after Durable's 10-minute
   retention (46.4 → 44.2 over 11 minutes, from a major GC at 200 to 300 s; glibc's 11 MiB stay); a forced `gc()`
   changes the USS by −0.2, only `malloc_trim` returns 3 to 4 MiB. Telemetry off: 42.2 after the phase (its sender
   every second keeps the young generation from shrinking, +2 MiB); the subagents before the burst move the peak (the
@@ -936,11 +936,11 @@ unminified, no compile cache flush), 3 runs × 4 workers. After: 10 runs × 4 wo
 Packaging: its own package, later; decision "Packaging is its own work, later"; the measurements are in
 `/home/badlogic/chord-notes/research/p3-sea-2026-11-18/`.
 
-Publishing the lockstep version of Chord, pi-schema and pi-telemetry that p3's types need (npm's 1.5.2 predates
+Publishing the lockstep version of Chord, nycode-schema and nycode-telemetry that p3's types need (npm's 1.5.2 predates
 them), and p3's own version joining the lockstep; a build cache on disk (decided against for now, decision "No build cache"), or a ready worker base in the release (the
 numbers are under "What a start builds"; a Chord change); a Bun or single-file binary; publishing from CI (trusted publishing, the `private` flag, lockstep versions, a
 CHANGELOG for p3); an install lock for installers (`packages/coding-agent/install-lock/`'s counterpart); the
-terminal client behind plain `p3` (slice 27); a restart requested from the page (slice 2); starting a Pi at boot
+terminal client behind plain `p3` (slice 27); a restart requested from the page (slice 2); starting a Nycode at boot
 (a service unit); the web and terminal base bundles in the package (slice 16); slice 3 replaces `startWorker({
 session })`, the memory test's hook, with the harness as an object in the worker's core facet (design §24), and the
 memory test's session with it; whether `--managed-zone-memory` can go once V8 turns it on by default (it is behind `--future` there). **Windows, not run natively:** the

@@ -3,8 +3,8 @@
  * Uses Kitty keyboard protocol for smooth movement (press/release detection)
  */
 
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { isKeyRelease, Key, matchesKey, visibleWidth } from "@earendil-works/pi-tui";
+import type { ExtensionAPI } from "@nycode/coding-agent";
+import { isKeyRelease, Key, matchesKey, visibleWidth } from "@nycode/tui";
 
 const GAME_WIDTH = 60;
 const GAME_HEIGHT = 24;
@@ -524,8 +524,8 @@ class SpaceInvadersComponent {
 
 const INVADERS_SAVE_TYPE = "space-invaders-save";
 
-export default function (pi: ExtensionAPI) {
-	pi.registerCommand("invaders", {
+export default function (nycode: ExtensionAPI) {
+	nycode.registerCommand("invaders", {
 		description: "Play Space Invaders!",
 
 		handler: async (_args, ctx) => {
@@ -550,7 +550,7 @@ export default function (pi: ExtensionAPI) {
 					tui,
 					() => done(undefined),
 					(state) => {
-						pi.appendEntry(INVADERS_SAVE_TYPE, state);
+						nycode.appendEntry(INVADERS_SAVE_TYPE, state);
 					},
 					savedState,
 				);

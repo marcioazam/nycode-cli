@@ -5,8 +5,8 @@
 import { readFile } from "node:fs/promises";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { posix } from "node:path";
-import type { HttpResponse } from "@earendil-works/chord/http";
-import { type PageAssets, pageScripts, WEB_PREFIX, type WebSurface } from "@earendil-works/chord/surfaces";
+import type { HttpResponse } from "@nycode/chord/http";
+import { type PageAssets, pageScripts, WEB_PREFIX, type WebSurface } from "@nycode/chord/surfaces";
 import type { Ctx } from "../runtime/chord.ts";
 import { type GuestPrincipal, isOwner, type P2Principal } from "../runtime/principals.ts";
 
@@ -86,14 +86,14 @@ function page(nonce: string, base: string, assets: PageAssets, viewer: Viewer, t
 		<link rel="manifest" href="/manifest.webmanifest" />
 		<link rel="icon" href="/icons/favicon.svg" type="image/svg+xml" />
 		<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-		<meta name="apple-mobile-web-app-title" content="Pi" />
+		<meta name="apple-mobile-web-app-title" content="Nycode" />
 		<meta name="mobile-web-app-capable" content="yes" />
 		<meta name="apple-mobile-web-app-capable" content="yes" />${
 			shellOrigin === undefined
 				? ""
 				: `\n\t\t<!-- The Radius shell framing this page (src/web/shell-bridge.ts). -->\n\t\t<meta name="p2-shell-origin" content="${escapeAttribute(shellOrigin)}" />`
 		}
-		<title>Pi</title>
+		<title>Nycode</title>
 		<style>
 			:root {
 				color-scheme: light;
@@ -114,18 +114,18 @@ function page(nonce: string, base: string, assets: PageAssets, viewer: Viewer, t
 				try {
 					framed = window.parent !== window && new URL(shell).origin === shell;
 				} catch {}
-				const hosted = framed || Boolean(window.webkit?.messageHandlers?.piHost);
+				const hosted = framed || Boolean(window.webkit?.messageHandlers?.nycodeHost);
 				// The shell's scheme when it framed the page, in the frame's URL: WebKit does not resolve a frame's
 				// prefers-color-scheme with the embedder's color-scheme. A colour only; kept for theme.ts until the shell's
 				// hello, and removed before the app reads the URL. Any other fragment stays.
-				const hint = framed ? /^#pi-shell-scheme=(light|dark)$/.exec(location.hash)?.[1] : undefined;
+				const hint = framed ? /^#nycode-shell-scheme=(light|dark)$/.exec(location.hash)?.[1] : undefined;
 				if (hint) {
-					document.documentElement.dataset.piShellScheme = hint;
+					document.documentElement.dataset.nycodeShellScheme = hint;
 					history.replaceState(history.state, "", location.pathname + location.search);
 				}
 				let theme;
 				try {
-					if (!hosted) theme = localStorage.getItem("pi-theme");
+					if (!hosted) theme = localStorage.getItem("nycode-theme");
 				} catch {}
 				document.documentElement.dataset.theme = document.documentElement.dataset.colorScheme =
 					theme === "light" || theme === "dark"

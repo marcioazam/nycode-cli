@@ -9,7 +9,7 @@ import test from "node:test";
 const script = fileURLToPath(new URL("./check-runtime-deps.mjs", import.meta.url));
 
 async function check(t, manifest, source, extraFiles = {}) {
-	const root = await mkdtemp(join(tmpdir(), "pi-runtime-deps-"));
+	const root = await mkdtemp(join(tmpdir(), "nycode-runtime-deps-"));
 	t.after(() => rm(root, { recursive: true, force: true }));
 	const files = {
 		"packages/example/package.json": JSON.stringify({ name: "example", version: "1.0.0", ...manifest }),

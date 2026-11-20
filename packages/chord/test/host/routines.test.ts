@@ -2,7 +2,7 @@
 // with the whole value, retirements, the source ending or failing, native sources, facets), `onLive` (returning,
 // retries, the backoff reset after a long run, aborts), the drain and `host.close`, and what routines leave behind.
 
-import { InMemoryTelemetryContext } from "@earendil-works/pi-telemetry";
+import { InMemoryTelemetryContext } from "@nycode/telemetry";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { type Context, BACKGROUND_CONTEXT as context, withTelemetry } from "../../src/context/index.ts";
 import { int, local, method, obj, remote } from "../../src/contracts/index.ts";

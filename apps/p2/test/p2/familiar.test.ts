@@ -6,8 +6,8 @@ import { writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
-import type { AssistantMessage, Message } from "@earendil-works/pi-ai";
-import type { AgentState, ContextView, ConversationView, EntryRecord } from "@earendil-works/pi-durable";
+import type { AssistantMessage, Message } from "@nycode/ai";
+import type { AgentState, ContextView, ConversationView, EntryRecord } from "@nycode/durable";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { coldAt, coldThreshold, lastAnswer } from "../../plugins/familiar/cold.ts";
@@ -16,7 +16,7 @@ import { Sessions } from "../../plugins/sessions/contract.ts";
 import type { Host, RefIn } from "../../src/runtime/chord.ts";
 import { type Fixture, holdIn, startFixture, until } from "./helpers.ts";
 
-const agentOf = (view: ConversationView | null | undefined) => view?.docs["pi.agent"] as AgentState | undefined;
+const agentOf = (view: ConversationView | null | undefined) => view?.docs["nycode.agent"] as AgentState | undefined;
 
 /** The prompt sections in effect at the end of a conversation's view: its system messages replayed in order. */
 function sections(view: ConversationView | null | undefined): Record<string, string> {
@@ -147,7 +147,7 @@ describe("the Familiar once cold", () => {
 		const sessions = await holdIn(owner, Sessions, {}, "owner");
 		const familiar = await holdIn(owner, Familiar, {}, "owner");
 		const compacted = (view: ConversationView | null | undefined) =>
-			(view?.entries ?? []).some((entry) => entry.kind === "pi.compaction");
+			(view?.entries ?? []).some((entry) => entry.kind === "nycode.compaction");
 		const { id } = await familiar.open(BACKGROUND_CONTEXT);
 		const chat = await holdIn(owner, Chat, { session: id, conversation: 1 }, "participant");
 		await chat.send({ text: "a first question", requestId: "first" }, BACKGROUND_CONTEXT);

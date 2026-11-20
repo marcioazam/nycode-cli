@@ -1,7 +1,7 @@
 import { readFile, stat } from "node:fs/promises";
 import type { IncomingMessage } from "node:http";
 import { join } from "node:path";
-import { arr, compile, obj, str } from "@earendil-works/pi-schema";
+import { arr, compile, obj, str } from "@nycode/schema";
 import { contribute, defineFacet, deriveTyped, followNative, forbidden, isGuest, isOwner } from "@p2/app/v1";
 import { captureProcessLogs, type LogSnapshot, processLogs } from "@p2/app/v1/node";
 import { fromOrigin, Routes, Server } from "@p2/app/v1/server";

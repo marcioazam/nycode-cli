@@ -6,8 +6,8 @@ import type {
 	ToolCall,
 	ToolResultMessage,
 	UserMessage,
-} from "@earendil-works/pi-ai";
-import { createModels } from "@earendil-works/pi-ai";
+} from "@nycode/ai";
+import { createModels } from "@nycode/ai";
 import {
 	type AnyTask,
 	createRegistry,
@@ -22,8 +22,8 @@ import {
 	type Storage,
 	section,
 	type ToolRegistration,
-} from "@earendil-works/pi-durable";
-import { obj } from "@earendil-works/pi-schema";
+} from "@nycode/durable";
+import { obj } from "@nycode/schema";
 import { context } from "./session-support.ts";
 
 export function tool(name: string, description = `${name} tool`): ToolRegistration {

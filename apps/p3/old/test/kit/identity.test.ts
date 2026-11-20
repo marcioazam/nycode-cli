@@ -1,27 +1,27 @@
-// Tests of a server's identity (`GET /_p3/identity`): its run id, pid and Pi's id, and the proof that it holds the
+// Tests of a server's identity (`GET /_p3/identity`): its run id, pid and Nycode's id, and the proof that it holds the
 // owner token for the nonce asked, which nothing without the token can give.
 
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, it } from "node:test";
-import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context";
+import { BACKGROUND_CONTEXT as context } from "@nycode/chord/context";
 import { readConfig } from "../../src/kit/config.ts";
 import { proofOf, proves } from "../../src/kit/identity.ts";
 import { kitApp, send } from "./support.ts";
 
 describe("a server's identity", () => {
-	it("answers anyone its run id, pid and Pi, with the proof for the nonce asked; a nonce that is none gets 400", async () => {
+	it("answers anyone its run id, pid and Nycode, with the proof for the nonce asked; a nonce that is none gets 400", async () => {
 		const { app, dataDir, port } = await kitApp();
 		const token = (await readFile(app.ownerTokenFile, "utf8")).trim();
 		const record = JSON.parse(await readFile(join(dataDir, "server.json"), "utf8")) as { run: string };
-		const { id } = (await readConfig(join(dataDir, "pi.json")))!;
+		const { id } = (await readConfig(join(dataDir, "nycode.json")))!;
 		const nonce = "0123456789abcdef0123456789abcdef";
 		// No sign-in: the answer tells nothing secret, and its proof is good for this nonce only.
 		const answer = await send(port, "GET", `/_p3/identity?nonce=${nonce}`);
 		assert.equal(answer.status, 200);
-		const said = JSON.parse(answer.body) as { run: string; pid: number; pi: string; proof: string };
-		assert.deepEqual(said, { run: record.run, pid: process.pid, pi: id, proof: proofOf(token, nonce) });
+		const said = JSON.parse(answer.body) as { run: string; pid: number; nycode: string; proof: string };
+		assert.deepEqual(said, { run: record.run, pid: process.pid, nycode: id, proof: proofOf(token, nonce) });
 		assert.match(record.run, /^[0-9a-f]{32}$/);
 		for (const bad of ["", "?nonce=", "?nonce=xyz", `?nonce=${nonce}0`, `?nonce=${nonce.toUpperCase()}`]) {
 			assert.equal((await send(port, "GET", `/_p3/identity${bad}`)).status, 400, bad);

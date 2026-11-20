@@ -51,8 +51,8 @@ import {
 	resolvePath,
 } from "../utils/paths.ts";
 import { stripBom } from "../utils/text.ts";
+import { type NycodeManifest, readNycodeManifest } from "./nycode-manifest.ts";
 import { isStdoutTakenOver } from "./output-guard.ts";
-import { type PiManifest, readPiManifest } from "./pi-manifest.ts";
 import type { PackageSource, SettingsManager } from "./settings-manager.ts";
 import { BUILTIN_PATH_PREFIX, getResourcePathKey } from "./source-info.ts";
 
@@ -66,7 +66,7 @@ const GIT_PROMPT_FAILURE =
 	/terminal prompts disabled|could not read (Username|Password)|Permission denied \(publickey|Host key verification failed|passphrase/i;
 
 const GIT_CREDENTIALS_HINT =
-	"git cannot ask for a password or passphrase while pi runs. Set up a git credential helper or an ssh agent, or install the package once from the shell with `pi install <source>`.";
+	"git cannot ask for a password or passphrase while nycode runs. Set up a git credential helper or an ssh agent, or install the package once from the shell with `nycode install <source>`.";
 
 /** Make git and ssh fail instead of prompting on the terminal, which a captured command cannot answer. */
 function getNonInteractiveGitEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
@@ -80,9 +80,9 @@ function getNonInteractiveGitEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
 const UPDATE_CHECK_CONCURRENCY = 4;
 const GIT_UPDATE_CONCURRENCY = 4;
 
-/** Whether PI_OFFLINE is set; package installs and updates then skip all network access. */
+/** Whether NYCODE_OFFLINE is set; package installs and updates then skip all network access. */
 export function isOfflineModeEnabled(): boolean {
-	const value = process.env.PI_OFFLINE;
+	const value = process.env.NYCODE_OFFLINE;
 	if (!value) return false;
 	return value === "1" || value.toLowerCase() === "true" || value.toLowerCase() === "yes";
 }
@@ -178,7 +178,7 @@ export interface PackageManager {
 /**
  * Where git and npm output goes while packages are installed, updated or refreshed.
  *
- * - `inherit`: the terminal, live (`pi install`, `pi update`).
+ * - `inherit`: the terminal, live (`nycode install`, `nycode update`).
  * - `capture`: nothing is written to the terminal and git and ssh never prompt, for hosts that draw on it
  *   (the interactive TUI). A failure carries the end of the output.
  */
@@ -436,7 +436,7 @@ function collectFiles(
 	return files;
 }
 
-type SkillDiscoveryMode = "pi" | "agents";
+type SkillDiscoveryMode = "nycode" | "agents";
 
 function collectSkillEntries(
 	dir: string,
@@ -499,7 +499,7 @@ function collectSkillEntries(
 				isFile &&
 				entry.name.endsWith(".md") &&
 				!ig.ignores(relPath) &&
-				((mode === "pi" && dir === root) || (mode === "agents" && dir !== root));
+				((mode === "nycode" && dir === root) || (mode === "agents" && dir !== root));
 			if (shouldIncludeMarkdownFile) {
 				entries.push(fullPath);
 				continue;
@@ -633,7 +633,7 @@ function collectAutoThemeEntries(dir: string): string[] {
 function resolveExtensionEntries(dir: string): string[] | null {
 	const packageJsonPath = join(dir, "package.json");
 	if (existsSync(packageJsonPath)) {
-		const manifest = readPiManifest(packageJsonPath);
+		const manifest = readNycodeManifest(packageJsonPath);
 		if (manifest?.extensions?.length) {
 			const entries: string[] = [];
 			for (const extPath of manifest.extensions) {
@@ -720,7 +720,7 @@ function collectAutoExtensionEntries(dir: string): string[] {
  */
 function collectResourceFiles(dir: string, resourceType: ResourceType): string[] {
 	if (resourceType === "skills") {
-		return collectSkillEntries(dir, "pi");
+		return collectSkillEntries(dir, "nycode");
 	}
 	if (resourceType === "extensions") {
 		return collectAutoExtensionEntries(dir);
@@ -728,9 +728,9 @@ function collectResourceFiles(dir: string, resourceType: ResourceType): string[]
 	return collectFiles(dir, FILE_PATTERNS[resourceType]);
 }
 
-// A `pi` object counts as an explicit resource manifest only when it lists resources. Packages whose
-// `pi` object holds only metadata (changelogPath, gallery image/video) still use directory auto-discovery.
-function hasManifestResourceFields(manifest: PiManifest): boolean {
+// A `nycode` object counts as an explicit resource manifest only when it lists resources. Packages whose
+// `nycode` object holds only metadata (changelogPath, gallery image/video) still use directory auto-discovery.
+function hasManifestResourceFields(manifest: NycodeManifest): boolean {
 	return RESOURCE_TYPES.some((resourceType) => manifest[resourceType] !== undefined);
 }
 
@@ -741,7 +741,7 @@ function isPathInside(parent: string, child: string): boolean {
 	);
 }
 
-function resolvePackageChangelogPath(packageRoot: string, manifest: PiManifest | null): string | undefined {
+function resolvePackageChangelogPath(packageRoot: string, manifest: NycodeManifest | null): string | undefined {
 	const changelogPath = manifest?.changelogPath ?? "CHANGELOG.md";
 	if (!changelogPath) return undefined;
 
@@ -1513,8 +1513,8 @@ export class DefaultPackageManager implements PackageManager {
 					!parsed.pinned &&
 					(await this.npmHasAvailableUpdate(parsed, installedPath))
 				) {
-					// Temporary (-e) sources have no `pi update` path, so refresh unpinned ones on load like
-					// temporary git sources. Like `pi update`, install `name@latest` for unversioned specs because a bare
+					// Temporary (-e) sources have no `nycode update` path, so refresh unpinned ones on load like
+					// temporary git sources. Like `nycode update`, install `name@latest` for unversioned specs because a bare
 					// `npm install name` keeps the range already saved in the temporary package.json.
 					const spec = parsed.version ? parsed.spec : `${parsed.name}@latest`;
 					try {
@@ -2054,10 +2054,10 @@ export class DefaultPackageManager implements PackageManager {
 		// npm writes broken nested package-lock.json paths when --prefix goes through a symlink.
 		const installRoot = existsSync(root) ? realpathSync(root) : root;
 		const packageManagerName = this.getPackageManagerName();
-		// Extension packages run inside pi and resolve pi APIs through loader aliases/virtual modules.
+		// Extension packages run inside nycode and resolve nycode APIs through loader aliases/virtual modules.
 		// Disable peer dependency resolution for managed installs (npm's --legacy-peer-deps, and
 		// equivalent bun/pnpm settings) so package managers do not install or solve host-provided
-		// @earendil-works/pi-* peers. Stale auto-installed pi peers can otherwise block updates.
+		// @nycode/nycode-* peers. Stale auto-installed nycode peers can otherwise block updates.
 		if (packageManagerName === "bun") {
 			return ["install", ...specs, "--cwd", installRoot, "--omit=peer"];
 		}
@@ -2072,7 +2072,7 @@ export class DefaultPackageManager implements PackageManager {
 				"--config.strict-dep-builds=false",
 			];
 		}
-		// npm audit fix would run without --legacy-peer-deps and install pi peers, so skip audit advice.
+		// npm audit fix would run without --legacy-peer-deps and install nycode peers, so skip audit advice.
 		return ["install", ...specs, "--prefix", installRoot, "--legacy-peer-deps", "--no-audit", "--no-fund"];
 	}
 
@@ -2182,12 +2182,12 @@ export class DefaultPackageManager implements PackageManager {
 	}
 
 	private getGitUpdateMarkerPath(targetDir: string): string {
-		return join(dirname(targetDir), `.${basename(targetDir)}.pi-update-incomplete`);
+		return join(dirname(targetDir), `.${basename(targetDir)}.nycode-update-incomplete`);
 	}
 
 	private async cleanAndInstallGitDependencies(targetDir: string, markerPath: string): Promise<void> {
 		// Clean untracked files (extensions should be pristine). On Windows, files loaded by
-		// another process (e.g. a native module of this extension in another pi session) cannot
+		// another process (e.g. a native module of this extension in another nycode session) cannot
 		// be deleted, so git clean fails. Still install dependencies for the new commit, but keep
 		// the marker so the next update retries the clean.
 		let cleaned = true;
@@ -2200,7 +2200,7 @@ export class DefaultPackageManager implements PackageManager {
 				type: "progress",
 				action: "update",
 				source: targetDir,
-				message: `Could not remove all untracked files in ${targetDir} (${reason}). Files may be in use by another pi session; close it and run the update again.`,
+				message: `Could not remove all untracked files in ${targetDir} (${reason}). Files may be in use by another nycode session; close it and run the update again.`,
 			});
 		}
 
@@ -2302,7 +2302,7 @@ export class DefaultPackageManager implements PackageManager {
 		this.ensureGitIgnore(installRoot);
 		const packageJsonPath = join(installRoot, "package.json");
 		if (!existsSync(packageJsonPath)) {
-			const pkgJson = { name: "pi-extensions", private: true };
+			const pkgJson = { name: "nycode-extensions", private: true };
 			writeFileSync(packageJsonPath, JSON.stringify(pkgJson, null, 2), "utf-8");
 		}
 	}
@@ -2452,7 +2452,7 @@ export class DefaultPackageManager implements PackageManager {
 		filter: PackageFilter | undefined,
 		metadata: PathMetadata,
 	): boolean {
-		const manifest = readPiManifest(join(packageRoot, "package.json"));
+		const manifest = readNycodeManifest(join(packageRoot, "package.json"));
 		const changelogPath = resolvePackageChangelogPath(packageRoot, manifest);
 		if (changelogPath) {
 			metadata.changelogPath = changelogPath;
@@ -2510,7 +2510,7 @@ export class DefaultPackageManager implements PackageManager {
 		target: Map<string, { metadata: PathMetadata; enabled: boolean }>,
 		metadata: PathMetadata,
 	): void {
-		const manifest = readPiManifest(join(packageRoot, "package.json"));
+		const manifest = readNycodeManifest(join(packageRoot, "package.json"));
 		const entries = manifest?.[resourceType];
 		if (entries) {
 			this.addManifestEntries(entries, packageRoot, resourceType, target, metadata);
@@ -2579,7 +2579,7 @@ export class DefaultPackageManager implements PackageManager {
 		packageRoot: string,
 		resourceType: ResourceType,
 	): { allFiles: string[]; enabledByManifest: Set<string> } {
-		const manifest = readPiManifest(join(packageRoot, "package.json"));
+		const manifest = readNycodeManifest(join(packageRoot, "package.json"));
 		const entries = manifest?.[resourceType];
 		if (entries && entries.length > 0) {
 			const allFiles = this.collectFilesFromManifestEntries(entries, packageRoot, resourceType);
@@ -2718,7 +2718,7 @@ export class DefaultPackageManager implements PackageManager {
 		};
 
 		if (projectTrusted) {
-			// Project extensions from .pi/
+			// Project extensions from .nycode/
 			addResources(
 				"extensions",
 				collectAutoExtensionEntries(projectDirs.extensions),
@@ -2727,10 +2727,10 @@ export class DefaultPackageManager implements PackageManager {
 				projectBaseDir,
 			);
 
-			// Project skills from .pi/
+			// Project skills from .nycode/
 			addResources(
 				"skills",
-				collectAutoSkillEntries(projectDirs.skills, "pi"),
+				collectAutoSkillEntries(projectDirs.skills, "nycode"),
 				projectMetadata,
 				projectOverrides.skills,
 				projectBaseDir,
@@ -2770,7 +2770,7 @@ export class DefaultPackageManager implements PackageManager {
 			);
 		}
 
-		// User extensions from ~/.pi/agent/
+		// User extensions from ~/.nycode/agent/
 		addResources(
 			"extensions",
 			collectAutoExtensionEntries(userDirs.extensions),
@@ -2779,10 +2779,10 @@ export class DefaultPackageManager implements PackageManager {
 			globalBaseDir,
 		);
 
-		// User skills from ~/.pi/agent/
+		// User skills from ~/.nycode/agent/
 		addResources(
 			"skills",
-			collectAutoSkillEntries(userDirs.skills, "pi"),
+			collectAutoSkillEntries(userDirs.skills, "nycode"),
 			userMetadata,
 			userOverrides.skills,
 			globalBaseDir,

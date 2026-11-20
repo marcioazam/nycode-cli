@@ -634,7 +634,7 @@ describe("reviewer probes (Sol)", () => {
 		// Type.BigInt and Type.Undefined have no JSON form: arguments convert to them, as TypeBox converted them.
 		["BigInt from a JSON string", Type.Object({ n: Type.BigInt() }), { n: "42" }, 'ok {"n":"42n"}'],
 		["Undefined from JSON null", Type.Object({ n: Type.Undefined() }), { n: null }, "ok {}"],
-		// TypeBox-only: its additionalProperties also converted declared properties; pi-schema converts only undeclared ones.
+		// TypeBox-only: its additionalProperties also converted declared properties; nycode-schema converts only undeclared ones.
 		[
 			"additionalProperties on declared properties",
 			Type.Object({ amount: Type.Number(), label: Type.String() }, { additionalProperties: Type.Integer() }),

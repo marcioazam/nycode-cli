@@ -1,4 +1,4 @@
-// The app's light/dark preference. In a Pi window the app is the outermost host, so it owns the preference for every
+// The app's light/dark preference. In a Nycode window the app is the outermost host, so it owns the preference for every
 // brain page (direct and remote): p2's own switch asks the app through the page bridge (HostBridge.swift) instead of
 // storing a value of its own. Setting `NSApp.appearance` is all the native side needs: the tab bar, the placeholder
 // and WKWebView's `prefers-color-scheme` follow the effective appearance, so a page in "system" mode needs no message.
@@ -54,7 +54,7 @@ enum Appearance: String, CaseIterable {
 		fade.type = .fade
 		fade.duration = fadeDuration
 		fade.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-		view.layer?.add(fade, forKey: "pi-appearance")
+		view.layer?.add(fade, forKey: "nycode-appearance")
 	}
 
 	/// Remembers this preference as the user default `appearance` (absent: system).

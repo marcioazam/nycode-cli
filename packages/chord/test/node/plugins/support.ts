@@ -14,7 +14,7 @@ import type { HostPackages, KindDefinition } from "../../../src/node/plugins/ind
 export const FIXTURES = fileURLToPath(new URL("../fixtures/plugins/", import.meta.url));
 
 /** The host packages the fixtures import: this process's Chord. */
-export const HOST_PACKAGES: HostPackages = { "@earendil-works/chord": chord };
+export const HOST_PACKAGES: HostPackages = { "@nycode/chord": chord };
 
 /** The facet kinds of the fixtures' app. */
 export const KINDS = ["server", "worker", "web"] as const;

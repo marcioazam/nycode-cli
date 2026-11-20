@@ -1,6 +1,6 @@
 // A local stand-in for Anthropic's Messages API and OpenAI's Responses API over HTTPS (a self-signed certificate made
 // for the test), streaming server-sent events, for the memory test (`release/memory.test.ts`). No real provider, no
-// keys, no network: pi-ai's providers, their SDKs and Node's `fetch` (undici, TLS) run as they would. The last user
+// keys, no network: nycode-ai's providers, their SDKs and Node's `fetch` (undici, TLS) run as they would. The last user
 // text picks the answer: `[stream]` a slow 8 KB text (about 15 s), `[spawn:N]` N calls of the `subagent` tool,
 // `[tool:read]` or `[tool:bash]` a call of that tool (then text once its result came back), else a fast 2 KB text.
 

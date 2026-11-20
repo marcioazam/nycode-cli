@@ -1,7 +1,7 @@
 // Artifacts in the TUI: `/artifacts` lists the session's artifacts (`Artifacts`); Enter shows one (Markdown rendered,
 // an html page as its source) over the chat, or in the side panel when the terminal is wide enough, where it follows
 // new versions; Ctrl+B opens an html page in the browser (launcher `openUrl`; the browser needs its own sign-in).
-import { Markdown } from "@earendil-works/pi-tui";
+import { Markdown } from "@nycode/tui";
 import { BACKGROUND_CONTEXT, contribute, defineFacet, follow, liveIn, whenLive } from "@p2/app/v1";
 import {
 	grantNotice,

@@ -8,8 +8,8 @@
 // the store after what the backup holds (Chord's archive slot), and the backup goes on from there.
 import { createHash } from "node:crypto";
 import { join } from "node:path";
-import { PluginError, type Store } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT, type Context } from "@earendil-works/chord/context";
+import { PluginError, type Store } from "@nycode/chord";
+import { BACKGROUND_CONTEXT, type Context } from "@nycode/chord/context";
 import {
 	FileSyncStateStore,
 	FileSystemSyncRemote,
@@ -24,9 +24,9 @@ import {
 	type SyncBody,
 	type SyncFileSystem,
 	uploadSession,
-} from "@earendil-works/chord/sync";
-import type { CommitPublication } from "@earendil-works/pi-durable";
-import { NodeExecutionEnv } from "@earendil-works/pi-durable/env/node";
+} from "@nycode/chord/sync";
+import type { CommitPublication } from "@nycode/durable";
+import { NodeExecutionEnv } from "@nycode/durable/env/node";
 import { INPUT_ENTRY } from "./input.ts";
 
 export type {
@@ -41,7 +41,7 @@ export type {
 };
 
 /** The sync rules' version a remote adapter sends with every request (Chord's `SYNC_PROTOCOL`). */
-export { SYNC_PROTOCOL } from "@earendil-works/chord/sync";
+export { SYNC_PROTOCOL } from "@nycode/chord/sync";
 
 /**
  * Where this instance backs up to: a folder (a local disk, a mounted bucket or NAS; tests), or a plugin's target by its
@@ -101,7 +101,7 @@ export const SERVER_STORE = "server";
 export const sessionStoreName = (session: string): string => `session-${session}`;
 
 /** Entries that should leave the machine soon: what a person sent (p2's input, Durable's user entry) and an answer. */
-const URGENT_ENTRIES: ReadonlySet<string> = new Set([INPUT_ENTRY, "pi.user", "pi.assistant"]);
+const URGENT_ENTRIES: ReadonlySet<string> = new Set([INPUT_ENTRY, "nycode.user", "nycode.assistant"]);
 
 /**
  * Whether a session commit should be uploaded soon (about 200 ms) rather than with the next ordinary flush (5 s): what

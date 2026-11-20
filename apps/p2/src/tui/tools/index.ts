@@ -1,5 +1,5 @@
 // How a tool call is drawn: plugins register their tools' renderers (`TuiToolRenderers`, by tool name) and resolvers
-// (`TuiToolRendererResolvers`, wrapping all of them); a tool without any gets pi's generic card.
+// (`TuiToolRendererResolvers`, wrapping all of them); a tool without any gets nycode's generic card.
 import type { TuiSettings } from "../../runtime/tui-preferences.ts";
 import type { ToolRendererResolver, ToolRenderers } from "./types.ts";
 

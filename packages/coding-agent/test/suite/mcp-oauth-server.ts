@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import { LATEST_PROTOCOL_VERSION } from "@earendil-works/pi-mcp";
+import { LATEST_PROTOCOL_VERSION } from "@nycode/mcp";
 
 async function readBody(request: IncomingMessage): Promise<string> {
 	const chunks: Buffer[] = [];
@@ -171,7 +171,7 @@ export async function startOAuthMcpServer(
 		stall,
 		/** Requests to stalled paths, still open unless the client gave up. */
 		stalled,
-		/** A valid access token issued without a sign-in, like one of a pi provider. */
+		/** A valid access token issued without a sign-in, like one of a nycode provider. */
 		issueAccessToken: () => issueTokens().access_token,
 		/** Simulates access token expiry. */
 		expireAccessTokens: () => validTokens.clear(),

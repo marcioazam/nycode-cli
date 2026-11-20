@@ -18,7 +18,7 @@ async function runExternalEditor(fixtureFlag?: "--fail" | "--empty"): Promise<{
 	result: ExternalEditorResult;
 	capture: EditorCapture;
 }> {
-	const testDirectory = mkdtempSync(join(tmpdir(), "pi-external-editor-test-"));
+	const testDirectory = mkdtempSync(join(tmpdir(), "nycode-external-editor-test-"));
 	const capturePath = join(testDirectory, "capture.json");
 	try {
 		const result = await editInExternalEditor({
@@ -39,7 +39,7 @@ describe("editInExternalEditor", () => {
 
 		expect(result).toEqual({ status: "complete", content: "edited" });
 		expect(dirname(directory)).toBe(tmpdir());
-		expect(basename(directory)).toMatch(/^pi-editor-.+$/);
+		expect(basename(directory)).toMatch(/^nycode-editor-.+$/);
 		expect(basename(capture.filePath)).toBe("prompt.md");
 		expect(capture.entries).toEqual(["prompt.md"]);
 		expect(capture.content).toBe("original");
@@ -63,7 +63,7 @@ describe("editInExternalEditor", () => {
 
 	// #11592: launch failures must be reported, not silently ignored.
 	it.skipIf(process.platform === "win32")("reports an editor that cannot be launched", async () => {
-		const command = "pi-external-editor-does-not-exist";
+		const command = "nycode-external-editor-does-not-exist";
 		expect(await editInExternalEditor({ command, content: "original" })).toEqual({
 			status: "failed",
 			message: `Failed to launch external editor: ${command}`,

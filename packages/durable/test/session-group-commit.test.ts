@@ -1,6 +1,6 @@
 // Group commit on the Session line (docs/group-commit.md): batching, gates, outcome fences, publication, failures per
 // part, upkeep through the writer, backpressure, bounds, and a randomized interleaving against an oracle.
-import type { Context } from "@earendil-works/chord/context";
+import type { Context } from "@nycode/chord/context";
 import {
 	type CommitOptions,
 	type CommitResult,
@@ -11,7 +11,7 @@ import {
 	SessionFailed,
 	type StorageWrite,
 	type TaskId,
-} from "@earendil-works/pi-durable";
+} from "@nycode/durable";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { idFromNumber } from "../src/ids.ts";
 import { CachedStorage } from "../src/session/cached-storage.ts";

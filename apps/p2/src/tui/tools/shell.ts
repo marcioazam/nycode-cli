@@ -1,7 +1,7 @@
 // A shell command's card, for plugins whose tools run commands (`createShellRenderers(prompt)`), copied from
 // coding-agent core/tools/renderers/bash.ts. Durable's shell result carries no `details` (the spill path is a
 // diagnostic), so the truncation footer is not shown; the recorded duration comes from the result.
-import { Container, Spacer, Text } from "@earendil-works/pi-tui";
+import { Container, Spacer, Text } from "@nycode/tui";
 import { VisualLinePreview } from "../components/visual-truncate.ts";
 import { keyHint, safeText } from "../render-context.ts";
 import type { Theme } from "../theme/theme.ts";

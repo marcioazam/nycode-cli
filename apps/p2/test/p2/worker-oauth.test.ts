@@ -1,5 +1,5 @@
-// OAuth flows and Bedrock must resolve inside the relocated worker base: the worker registers pi-ai's lazy loaders, so
-// they load from the snapshot's chunks, never from pi-ai's source files (pi-ai's default variable-specifier imports
+// OAuth flows and Bedrock must resolve inside the relocated worker base: the worker registers nycode-ai's lazy loaders, so
+// they load from the snapshot's chunks, never from nycode-ai's source files (nycode-ai's default variable-specifier imports
 // would load them from there, outside the snapshot).
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
@@ -70,7 +70,7 @@ process.on("exit", () => writeFileSync(${JSON.stringify(loadedFile)}, JSON.strin
 				bedrock: "aborted",
 			});
 			const loaded = JSON.parse(await readFile(loadedFile, "utf8")) as string[];
-			// The flow and Bedrock came from the bundle: nothing loaded from pi-ai's sources, the AWS SDK did load.
+			// The flow and Bedrock came from the bundle: nothing loaded from nycode-ai's sources, the AWS SDK did load.
 			assert.deepEqual(
 				loaded.filter((url) => url.startsWith(pathToFileURL(ai).href)),
 				[],

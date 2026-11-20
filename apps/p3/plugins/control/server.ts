@@ -2,9 +2,9 @@
 // `SIGTERM` does; the command uses it, so it needs no signal); `POST /_p3/apply` builds the changed plugins and rolls
 // them out (the server, then the running workers).
 
-import { contribute, defineFacet, type JsonValue } from "@earendil-works/p3/v1";
-import type { RolloutHost } from "@earendil-works/p3/v1/server";
-import { Http, ServerRuntime } from "@earendil-works/p3/v1/server";
+import { contribute, defineFacet, type JsonValue } from "@nycode/p3/v1";
+import type { RolloutHost } from "@nycode/p3/v1/server";
+import { Http, ServerRuntime } from "@nycode/p3/v1/server";
 
 /** The path the owner posts to for the server to stop. */
 export const STOP_PATH = "/_p3/stop";

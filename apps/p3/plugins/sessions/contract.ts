@@ -18,7 +18,7 @@ import {
 	type Static,
 	str,
 	union,
-} from "@earendil-works/p3/v1";
+} from "@nycode/p3/v1";
 
 /** Who made a session: the owner, or a person (by id). */
 export const Creator = union([obj({ kind: lit("owner") }), obj({ kind: lit("person"), id: str() })]);

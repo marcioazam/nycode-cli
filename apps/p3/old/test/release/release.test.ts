@@ -8,7 +8,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { describe, it, type TestContext } from "node:test";
 import { fileURLToPath } from "node:url";
-import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context";
+import { BACKGROUND_CONTEXT as context } from "@nycode/chord/context";
 import { Sessions, SessionWorker } from "../../plugins/sessions/contract.ts";
 import { ownerClient } from "../client.ts";
 import { CASES, cli } from "../commands.ts";
@@ -23,11 +23,11 @@ if (P3_RELEASE === undefined)
 const INSTALL: string = P3_RELEASE;
 
 /** The installed package, and the packages it depends on. */
-const PACKAGE = join(INSTALL, "node_modules", "@earendil-works", "p3");
+const PACKAGE = join(INSTALL, "node_modules", "@nycode", "p3");
 const DEPENDENCIES = [
-	"@earendil-works/chord",
-	"@earendil-works/pi-schema",
-	"@earendil-works/pi-telemetry",
+	"@nycode/chord",
+	"@nycode/schema",
+	"@nycode/telemetry",
 	"esbuild",
 	"ws",
 ];
@@ -65,13 +65,13 @@ describe("the installed release", { concurrency: true, timeout: CASE_MS }, () =>
 	it("is outside the repository and resolves nothing from it: p3, its dependencies at the pinned versions, real directories", async () => {
 		assert.ok(relative(REPOSITORY, INSTALL).startsWith(`..${sep}`), "the install is inside the repository");
 		const installed = (await readdir(join(INSTALL, "node_modules"))).filter((name) => !name.startsWith("."));
-		assert.deepEqual(installed.sort(), ["@earendil-works", "@esbuild", "esbuild", "ws"]);
-		const scoped = await readdir(join(INSTALL, "node_modules", "@earendil-works"));
-		assert.deepEqual(scoped.sort(), ["chord", "p3", "pi-schema", "pi-telemetry"]);
+		assert.deepEqual(installed.sort(), ["@nycode", "@esbuild", "esbuild", "ws"]);
+		const scoped = await readdir(join(INSTALL, "node_modules", "@nycode"));
+		assert.deepEqual(scoped.sort(), ["chord", "p3", "nycode-schema", "nycode-telemetry"]);
 		const manifest = await json<Manifest>(join(PACKAGE, "package.json"));
 		assert.deepEqual(
 			[manifest.name, manifest.bin, manifest.private],
-			["@earendil-works/p3", { p3: "dist/p3.js" }, true],
+			["@nycode/p3", { p3: "dist/p3.js" }, true],
 		);
 		assert.deepEqual(Object.keys(manifest.dependencies).sort(), DEPENDENCIES);
 		for (const name of DEPENDENCIES) {
@@ -232,7 +232,7 @@ const HELLO = {
 		include: ["contract.ts", "server.ts"],
 	}),
 	"contract.ts": [
-		'import { method, obj, oneOf, remote, Server, str } from "@earendil-works/p3/v1";',
+		'import { method, obj, oneOf, remote, Server, str } from "@nycode/p3/v1";',
 		"",
 		"/** A greeting the server has for its owner, plain or loud. */",
 		'export const Hello = remote("hello.greeting", {',
@@ -243,7 +243,7 @@ const HELLO = {
 		"});",
 	].join("\n"),
 	"server.ts": [
-		'import { constant, defineFacet, forbidden } from "@earendil-works/p3/v1";',
+		'import { constant, defineFacet, forbidden } from "@nycode/p3/v1";',
 		'import { Hello } from "./contract.ts";',
 		"",
 		"export default defineFacet((host) => {",
@@ -259,7 +259,7 @@ const HELLO = {
 	].join("\n"),
 	// The plugin's own client, outside the server: the compiled API modules run it.
 	"client.mjs": [
-		'import { BACKGROUND_CONTEXT as context, createHost, webSocketLink } from "@earendil-works/p3/v1";',
+		'import { BACKGROUND_CONTEXT as context, createHost, webSocketLink } from "@nycode/p3/v1";',
 		'import { Hello } from "./contract.ts";',
 		"",
 		"const [port, token] = process.argv.slice(2);",
@@ -294,7 +294,7 @@ describe("a third-party plugin against the installed release", { timeout: CASE_M
 		assert.deepEqual(emitted, { code: 0, stdout: "", stderr: "" });
 		const declaration = await readFile(join(dir, "types", "contract.d.ts"), "utf8");
 		// The contract's whole type is there, written with imports a consumer of the plugin resolves.
-		assert.match(declaration, /readonly greet: import\("@earendil-works\/[^"]+"\)\.Method</);
+		assert.match(declaration, /readonly greet: import\("@nycode\/[^"]+"\)\.Method</);
 		assert.match(declaration, /\.LiteralsSchema<"loud" \| "plain">/);
 		assert.doesNotMatch(declaration, /node_modules|\bany\b/);
 	});
@@ -318,9 +318,9 @@ describe("a third-party plugin against the installed release", { timeout: CASE_M
 	it("imports the three API modules at run time, as a plugin's own tests outside the server do", async (t) => {
 		const dir = await hello(t);
 		const script = [
-			'const v1 = await import("@earendil-works/p3/v1");',
-			'const server = await import("@earendil-works/p3/v1/server");',
-			'const worker = await import("@earendil-works/p3/v1/worker");',
+			'const v1 = await import("@nycode/p3/v1");',
+			'const server = await import("@nycode/p3/v1/server");',
+			'const worker = await import("@nycode/p3/v1/worker");',
 			"const names = (module, ...names) => names.map((name) => typeof module[name]);",
 			'console.log(JSON.stringify([names(v1, "defineFacet", "Server", "Session", "forward", "remote"),',
 			'	names(server, "Http", "SessionRoute", "AppInfo"), names(worker, "WorkerInfo")]));',
@@ -341,7 +341,7 @@ describe("a third-party plugin against the installed release", { timeout: CASE_M
 		// A copy of the install, so the one the release script made stays as it was packed.
 		const install = join(await tempDir(t), "install");
 		await cp(INSTALL, install, { recursive: true, verbatimSymlinks: true });
-		const root = join(install, "node_modules", "@earendil-works", "p3", "plugins", "hello");
+		const root = join(install, "node_modules", "@nycode", "p3", "plugins", "hello");
 		await mkdir(root);
 		for (const name of ["package.json", "contract.ts", "server.ts"] as const) {
 			await writeFile(join(root, name), HELLO[name]);

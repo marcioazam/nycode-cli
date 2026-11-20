@@ -303,7 +303,7 @@ describe("sidebar rollups", { skip: !browserTests }, () => {
 		);
 	});
 
-	it("shows what sessions do: pi's dots while working, bold with a dot when unread, summed up when hidden", async () => {
+	it("shows what sessions do: nycode's dots while working, bold with a dot when unread, summed up when hidden", async () => {
 		const place = folder("work");
 		await setProjects({ work: place });
 		const runs = await createIn("Runs", place, "work");
@@ -314,11 +314,11 @@ describe("sidebar rollups", { skip: !browserTests }, () => {
 		await browser.wait(`Boolean(${item})`);
 		const chat = await holdIn(fixture.browser(), Chat, { session: runs.id, conversation: 1 }, "participant");
 		await chat.send({ text: "slow-tool", requestId: "working" }, BACKGROUND_CONTEXT);
-		// Working: pi's dots in the status column, named "Working".
-		await browser.wait(`Boolean(${item}.querySelector('.nav-marker .pi-dots'))`);
+		// Working: nycode's dots in the status column, named "Working".
+		await browser.wait(`Boolean(${item}.querySelector('.nav-marker .nycode-dots'))`);
 		assert.deepEqual(
 			await browser.evaluate(
-				`(e=>[e.getAttribute('role'),e.getAttribute('aria-label')])(${item}.querySelector('.pi-dots'))`,
+				`(e=>[e.getAttribute('role'),e.getAttribute('aria-label')])(${item}.querySelector('.nycode-dots'))`,
 			),
 			["img", "Working"],
 		);
@@ -339,7 +339,7 @@ describe("sidebar rollups", { skip: !browserTests }, () => {
 		await settings.setCollapsed({ key: "projects", collapsed: false }, BACKGROUND_CONTEXT);
 		await settings.setCollapsed({ key: projectKey("work"), collapsed: false }, BACKGROUND_CONTEXT);
 		await browser.wait(`Boolean(${item}?.querySelector('.nav-marker .unread-dot'))`);
-		assert.equal(await browser.evaluate(`Boolean(${item}.querySelector('.pi-dots'))`), false);
+		assert.equal(await browser.evaluate(`Boolean(${item}.querySelector('.nycode-dots'))`), false);
 		assert.ok(
 			await browser.evaluate<boolean>(`${item}.querySelector('.session-title').classList.contains('unread')`),
 		);
@@ -565,7 +565,7 @@ describe("sidebar rollups", { skip: !browserTests }, () => {
 		const touch = (type: string, point?: { x: number; y: number }) =>
 			browser.call("Input.dispatchTouchEvent", { type, touchPoints: point ? [point] : [] });
 		const title = `${itemTitled("Touch me")}.querySelector('.session-title')`;
-		/** Waits until the drawer stopped moving (pi's dots run forever). */
+		/** Waits until the drawer stopped moving (nycode's dots run forever). */
 		const still = () =>
 			browser.wait(
 				`!document.getAnimations().some((a) => a.playState === 'running' && a.effect?.getTiming().iterations !== Infinity)`,

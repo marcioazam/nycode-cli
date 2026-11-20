@@ -1,4 +1,4 @@
-import { pluginFile } from "@earendil-works/chord/plugins";
+import { pluginFile } from "@nycode/chord/plugins";
 import { contribute, defineFacet } from "@p2/app/v1";
 import { HarnessEnvironments, workerOf } from "@p2/app/v1/worker";
 import { isSandbox, loadEnvs } from "./config.ts";

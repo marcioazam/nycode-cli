@@ -77,14 +77,14 @@ vi.mock("openai", () => {
 const azure = azureProvider();
 
 const originalBaseUrl = process.env.AZURE_OPENAI_BASE_URL;
-const originalCacheRetention = process.env.PI_CACHE_RETENTION;
+const originalCacheRetention = process.env.NYCODE_CACHE_RETENTION;
 const originalDeploymentMap = process.env.AZURE_OPENAI_DEPLOYMENT_NAME_MAP;
 
 beforeEach(() => {
 	mockState.lastParams = undefined;
 	mockState.lastClientOptions = undefined;
 	mockState.dispatchedTo = undefined;
-	delete process.env.PI_CACHE_RETENTION;
+	delete process.env.NYCODE_CACHE_RETENTION;
 	delete process.env.AZURE_OPENAI_DEPLOYMENT_NAME_MAP;
 	process.env.AZURE_OPENAI_BASE_URL = "https://my-resource.services.ai.azure.com";
 });
@@ -92,8 +92,8 @@ beforeEach(() => {
 afterEach(() => {
 	if (originalBaseUrl === undefined) delete process.env.AZURE_OPENAI_BASE_URL;
 	else process.env.AZURE_OPENAI_BASE_URL = originalBaseUrl;
-	if (originalCacheRetention === undefined) delete process.env.PI_CACHE_RETENTION;
-	else process.env.PI_CACHE_RETENTION = originalCacheRetention;
+	if (originalCacheRetention === undefined) delete process.env.NYCODE_CACHE_RETENTION;
+	else process.env.NYCODE_CACHE_RETENTION = originalCacheRetention;
 	if (originalDeploymentMap === undefined) delete process.env.AZURE_OPENAI_DEPLOYMENT_NAME_MAP;
 	else process.env.AZURE_OPENAI_DEPLOYMENT_NAME_MAP = originalDeploymentMap;
 });
@@ -129,8 +129,8 @@ describe("azure deepseek-v4-pro over Chat Completions", () => {
 		expect(mockState.lastParams?.thinking).toBeUndefined();
 	});
 
-	it("omits prompt cache parameters when long retention comes from PI_CACHE_RETENTION", async () => {
-		process.env.PI_CACHE_RETENTION = "long";
+	it("omits prompt cache parameters when long retention comes from NYCODE_CACHE_RETENTION", async () => {
+		process.env.NYCODE_CACHE_RETENTION = "long";
 
 		await azure.stream(deepSeekModel(), context, { apiKey: "test-key", sessionId: "session-env" }).result();
 
@@ -146,7 +146,7 @@ describe("azure deepseek-v4-pro over Chat Completions", () => {
 		expect(mockState.lastParams?.messages?.[0]).toMatchObject({ role: "system", content: "sys" });
 	});
 
-	// The deployment honours system messages sent mid-conversation, so pi must not collapse them.
+	// The deployment honours system messages sent mid-conversation, so nycode must not collapse them.
 	it("keeps mid-conversation system messages in place", async () => {
 		const resumed = normalizeContext({
 			systemPrompt: "first",

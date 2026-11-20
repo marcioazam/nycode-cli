@@ -1,6 +1,6 @@
 // What the chat's screens and its command menu pages share about models: the new-session screen's model, and thinking
 // levels as stored.
-import type { ModelThinkingLevel } from "@earendil-works/pi-ai";
+import type { ModelThinkingLevel } from "@nycode/ai";
 import { isThinkingLevel } from "@p2/app/v1";
 import type { ModelChoice } from "@p2/app/v1/web";
 import type { ResourceSnapshot } from "../models/contract.ts";

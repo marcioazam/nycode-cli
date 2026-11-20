@@ -1,8 +1,8 @@
 // Trusted launcher side of `terminalColors` (p2-tui-port.md sections 1.6, 3.2): the launcher queries the visitor's
-// terminal (OSC 10/11/4 + DA1, as pi-tui's TUI.queryTerminalColors) and follows light/dark reports (mode 2031). Replies
+// terminal (OSC 10/11/4 + DA1, as nycode-tui's TUI.queryTerminalColors) and follows light/dark reports (mode 2031). Replies
 // are consumed here, never forwarded; the worker receives validated colors as data. The worker's own query
 // sequences would be stripped by the output filter.
-import type { RgbColor } from "@earendil-works/pi-tui";
+import type { RgbColor } from "@nycode/tui";
 import type { TerminalState, TerminalTheme } from "../tui/theme/theme.ts";
 
 const PALETTE_SIZE = 16;
@@ -21,7 +21,7 @@ function channel(hex: string): number | undefined {
 	if (!/^[0-9a-f]{1,4}$/i.test(hex)) return undefined;
 	return Math.round((Number.parseInt(hex, 16) / (16 ** hex.length - 1)) * 255);
 }
-/** Copy of pi-tui terminal-colors.ts `parseOscColorValue` (`#rrggbb`, `#rrrrggggbbbb`, `rgb:r/g/b`). */
+/** Copy of nycode-tui terminal-colors.ts `parseOscColorValue` (`#rrggbb`, `#rrrrggggbbbb`, `rgb:r/g/b`). */
 export function parseOscColor(raw: string): RgbColor | undefined {
 	const value = raw.trim();
 	const hex = value.startsWith("#") ? value.slice(1) : undefined;

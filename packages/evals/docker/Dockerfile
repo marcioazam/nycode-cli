@@ -13,10 +13,10 @@ RUN --mount=type=bind,source=.,target=/repo,rw \
 # coding-agent documentation whose effect the experiment measures.
 FROM builder AS without-docs-install
 RUN rm -rf \
-    /opt/evaluator/install/node_modules/@earendil-works/pi-coding-agent/README.md \
-    /opt/evaluator/install/node_modules/@earendil-works/pi-coding-agent/CHANGELOG.md \
-    /opt/evaluator/install/node_modules/@earendil-works/pi-coding-agent/docs \
-    /opt/evaluator/install/node_modules/@earendil-works/pi-coding-agent/examples
+    /opt/evaluator/install/node_modules/@nycode/coding-agent/README.md \
+    /opt/evaluator/install/node_modules/@nycode/coding-agent/CHANGELOG.md \
+    /opt/evaluator/install/node_modules/@nycode/coding-agent/docs \
+    /opt/evaluator/install/node_modules/@nycode/coding-agent/examples
 
 FROM node:24-slim AS evaluator
 COPY --from=builder /opt/evaluator/root /repo
@@ -31,14 +31,14 @@ RUN chmod -R go-rwx \
     && chmod go-rwx \
       /repo/vitest.base.ts \
       /repo/packages/evals/vitest.evals.config.ts \
-    && mkdir -p /run/pi-eval-secrets \
-    && chmod 0700 /run/pi-eval-secrets
+    && mkdir -p /run/nycode-eval-secrets \
+    && chmod 0700 /run/nycode-eval-secrets
 ENTRYPOINT ["node", "--experimental-strip-types", "docker/entrypoint.ts"]
 
 FROM evaluator AS without_docs
 COPY --from=without-docs-install /opt/evaluator/install/node_modules /repo/node_modules
-ENV PI_EVAL_VARIANT=without_docs
+ENV NYCODE_EVAL_VARIANT=without_docs
 
 FROM evaluator AS with_docs
 COPY --from=builder /opt/evaluator/install/node_modules /repo/node_modules
-ENV PI_EVAL_VARIANT=with_docs
+ENV NYCODE_EVAL_VARIANT=with_docs

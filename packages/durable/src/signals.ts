@@ -1,5 +1,5 @@
 // Signals: typed JSON values delivered to a live task from outside, kept in its memos until a wake uses them.
-import { isJsonValue, type JsonValue } from "@earendil-works/chord/json";
+import { isJsonValue, type JsonValue } from "@nycode/chord/json";
 import {
 	compile,
 	int,
@@ -12,7 +12,7 @@ import {
 	union,
 	unsafe,
 	type Validator,
-} from "@earendil-works/pi-schema";
+} from "@nycode/schema";
 import type { SettledSubmissionRecord } from "./harness/types.ts";
 import type { SubmissionRecord, TaskRecord, TaskState, WakeReason } from "./types.ts";
 
@@ -33,7 +33,7 @@ export type SignalDefinition<S extends object> = {
 	readonly name: string;
 	/** Positive integer version of the value shape. */
 	readonly version: number;
-	/** A pi-schema schema of a JSON value; the value type is `Static<S>`. */
+	/** A nycode-schema schema of a JSON value; the value type is `Static<S>`. */
 	readonly schema: S;
 	/** A value stored by an older version, to the current shape. */
 	readonly migrate?: (value: JsonValue, fromVersion: number) => Static<S>;
@@ -50,7 +50,7 @@ export type SignalState<T> = { readonly kind: "value"; readonly value: T } | { r
 export type SignalResult = "delivered" | "duplicate" | "invalid" | "closed" | "not_found";
 
 /**
- * Stored state of one key, in the task's memo `pi.signal.<name>/<key>`, told apart by `expired`: the stored shape stays
+ * Stored state of one key, in the task's memo `nycode.signal.<name>/<key>`, told apart by `expired`: the stored shape stays
  * as records already hold it.
  */
 type SignalMemo = (ValueMemo & { readonly expired?: never }) | { readonly expired: true };
@@ -120,7 +120,7 @@ const SCHEMA_MAP_KEYWORDS = [
 	"definitions",
 ] as const;
 
-/** A non-JSON type a schema accepts anywhere (pi-schema's `bytes`, `bigint`, TypeBox's `undefined`), if any. */
+/** A non-JSON type a schema accepts anywhere (nycode-schema's `bytes`, `bigint`, TypeBox's `undefined`), if any. */
 function nonJsonType(schema: unknown): string | undefined {
 	if (typeof schema !== "object" || schema === null) return undefined;
 	const node = schema as Readonly<Record<string, unknown>>;
@@ -167,7 +167,7 @@ function settled(type: "input" | "write" | "continue", status: "done" | "unanswe
  * delivery cannot take the key with something else.
  */
 export const SubmissionSettled = defineSignal({
-	name: "pi.submission-settled",
+	name: "nycode.submission-settled",
 	version: 1,
 	schema: unsafe<SettledSubmissionRecord>(
 		union([
@@ -188,7 +188,7 @@ export function isSettled(record: SubmissionRecord): record is SettledSubmission
 
 /** The memo holding a key's state. Signal names contain no "/", so names never collide. */
 function signalMemoName(signal: string, key: string): string {
-	return `pi.signal.${signal}/${key}`;
+	return `nycode.signal.${signal}/${key}`;
 }
 
 /**

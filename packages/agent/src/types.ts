@@ -13,8 +13,8 @@ import type {
 	ToolResultMessage,
 	TranscriptContext,
 	Usage,
-} from "@earendil-works/pi-ai";
-import type { Static } from "@earendil-works/pi-schema";
+} from "@nycode/ai";
+import type { Static } from "@nycode/schema";
 
 /**
  * Stream function used by the agent loop. `Models.streamSimple` satisfies
@@ -344,7 +344,7 @@ export interface AgentLoopConfig extends SimpleStreamOptions {
 /**
  * Thinking/reasoning level for models that support it.
  * Note: "xhigh" and "max" are only supported by selected model families. Use model
- * thinking-level metadata from @earendil-works/pi-ai to detect support for a concrete model.
+ * thinking-level metadata from @nycode/ai to detect support for a concrete model.
  */
 export type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
 
@@ -463,7 +463,7 @@ export interface AgentToolCallOutcome {
 export type AgentToolUpdateCallback<T = any> = (partialResult: AgentToolResult<T>) => void;
 
 /**
- * The arguments type of a tool with parameter schema `TParameters`: pi-schema's `Static<TParameters>` (the builders'
+ * The arguments type of a tool with parameter schema `TParameters`: nycode-schema's `Static<TParameters>` (the builders'
  * type, TypeBox's for the common TypeBox kinds, else `unknown`), and `any` for `AgentTool<any>`.
  */
 export type AgentToolParams<TParameters> = IsAny<TParameters> extends true ? any : Static<TParameters>;

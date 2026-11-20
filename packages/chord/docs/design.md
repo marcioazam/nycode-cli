@@ -1,6 +1,6 @@
 # Chord v2: target design
 
-The design of Chord v2 (`packages/chord/src`, the package's root export `@earendil-works/chord`) and of how apps (the playground, p3) use it: **the one current statement of every rule** (owner,
+The design of Chord v2 (`packages/chord/src`, the package's root export `@nycode/chord`) and of how apps (the playground, p3) use it: **the one current statement of every rule** (owner,
 2026-10-24). Every decision is recorded in the decision log `packages/chord/docs/decisions.md` (the history and the
 reasons, kept complete) and folded into this document in the same commit. Where a rule is built, the slice is named
 (`slices.md`); the code follows this document. It replaces `apps/p2/docs/target-design.md`.
@@ -297,7 +297,7 @@ their mechanisms: a restart's old attempt is bounded by `reloadDrainTimeout` (de
 section 21), a job `finish` backs off 1 s to 60 s, provider-side `linger` is per type; a reload has no install timeout
 (it takes the app's context, slice 7b); a per-type drain override only if a case needs it (section 26). A route's `resolve` is bounded by the app.
 
-- **Incarnations** are minted by Chord (uuidv7, code copied from pi-ai, no dependency), never passed in, and carried
+- **Incarnations** are minted by Chord (uuidv7, code copied from nycode-ai, no dependency), never passed in, and carried
   in the link handshake (`hello`): the other side sees a restart as a new incarnation of the same identity;
   references to it re-hold.
 - **Entry points vary** (loopback or tunnel WebSocket servers, Radius dialing out and delivering channels, a DO edge,
@@ -581,7 +581,7 @@ drops, folds or resets.
 - **JSON plus `Uint8Array` leaves**, with a bytes schema type, defined independently of the transport. Every link
   carries the same `Message` through its codec (section 22); parts are encoded at their origin; byte segments travel
   raw, never base64. Same-host calls (no link) pass values by reference.
-- Schemas are plain JSON Schema built with `@earendil-works/pi-schema` (decision "The schema switch") and must
+- Schemas are plain JSON Schema built with `@nycode/schema` (decision "The schema switch") and must
   describe data (no callbacks, no native types, no runtime codecs); `format` is an annotation, never checked. Method arguments are
   validated at the provider for every caller against closed schemas (section 5, R7, Q12, Q15); results and state are
   never validated (section 30). Values are immutable by convention once handed over (Delta's rule): nobody mutates a
@@ -744,7 +744,7 @@ host.serve(Notes, ({ session }, principal, self) =>
   (`invalid/member` outside it).
 - **Params** (owner, 2026-10-21/22): a flat record of required fields, each `str()`, `int()`, `bool()` or `oneOf(...)`
   of string literals, constraints allowed (`str({ pattern })`, `int({ min: 0 })`); no defaults, optional, nested or
-  unknown fields. Checked for every caller with one compiled closed-object pi-schema check (a missing or extra field
+  unknown fields. Checked for every caller with one compiled closed-object nycode-schema check (a missing or extra field
   fails `invalid/params`). The identity key is the field values in declared order, each escaped, joined with `|`.
   Params are never copied or frozen: the object keeps the caller's object, immutable by convention.
 - **Arguments (R7, Q12, Q15):** always validated with the provider's schema, whoever the caller is (trusted code is
@@ -764,8 +764,8 @@ host.serve(Notes, ({ session }, principal, self) =>
   link protocol (adding one bumps the protocol version; a receiver rejects unknown reasons; a test pins the list):
   `invalid` (`args`, `params`, `member`, `host_address`, `reentrant`, `read_after_bulk`, `cycle`), `contract_mismatch`
   (`updating`), `forbidden` (`revoked`), `gone`, `not_ready`, `released` (`ended`, `closed`, `settled`, `version`, `discarded`; none for a holder's own release), `too_large` (`part`), `unavailable` (`locked`,
-  `park_timeout`, `busy`, `storage_failed`, `undeclared`: a registry no plugin serves here, slice 8), `aborted`. A failed check names pi-schema's JSON Pointer path ("unknown field", "missing", else
-  pi-schema's message; `~` and `/` in keys escaped as `~0`, `~1`). Plugins throw `PluginError(code, message,
+  `park_timeout`, `busy`, `storage_failed`, `undeclared`: a registry no plugin serves here, slice 8), `aborted`. A failed check names nycode-schema's JSON Pointer path ("unknown field", "missing", else
+  nycode-schema's message; `~` and `/` in keys escaped as `~0`, `~1`). Plugins throw `PluginError(code, message,
   details?)` for codes of their own; anything else crosses a link as the plugin code `internal` with its message, never
   a stack or a cause; plugin errors never use Chord's codes. An error rebuilt from the wire is not copied and only its
   envelope is checked; a malformed envelope is a protocol error. Chord's root exports `invalid` and `forbidden`, which an
@@ -1522,7 +1522,7 @@ host.serve(DraftStore, (_, self) => {               // local, empty params: may 
   `listener` with the new `lastSeq` once commits are durable and adopted (a commit, a group, a series, an applied
   batch), in a microtask of its own, never inside a commit, once for however many commits it covers; a listener that
   throws is removed and its error handed to `onError`, never to the commit. Returns its removal.
-- **Session sync** (`@earendil-works/chord/sync`, experimental): uploads of a store's outbox batches to a remote, pulls
+- **Session sync** (`@nycode/chord/sync`, experimental): uploads of a store's outbox batches to a remote, pulls
   applied with `applyBatch` (one transaction per chunk), restores from an archive. A batch is applied with the host
   stopped (decision "Sync applies batches with the host stopped", 2026-11-02): `applyBatch` refuses (`invalid/args`)
   while an owner holds a claim on the store.
@@ -1837,7 +1837,7 @@ whoever read it in between. A throwing derive fails only its member (`broken`). 
   visits per change) sets the documented limit.
 - **The footgun:** a derive that builds new objects for unchanged data makes every commit cost O(size of the value),
   per view, because the diff must compare contents. Unchanged parts must be the same objects as last time.
-- **`mapShared(f)`** (from `@earendil-works/chord` state; it moves into Delta when v2 goes upstream): an identity cache per source element: `f` runs only for new or
+- **`mapShared(f)`** (from `@nycode/chord` state; it moves into Delta when v2 goes upstream): an identity cache per source element: `f` runs only for new or
   changed source elements, unchanged ones return their previous result object. With it a list derive costs pointer
   comparisons, not content comparisons:
 
@@ -2304,7 +2304,7 @@ answer({ id, step, value }, ctx)  → ok | "step no longer active"
 cancel({ id }, ctx)
 ```
 
-The UI watches the state; a late or second answer to a step that is gone is refused; a promise-based callback (pi-ai's
+The UI watches the state; a late or second answer to a step that is gone is refused; a promise-based callback (nycode-ai's
 `prompt`) stays inside the owner (its job keeps the resolver). Imperative consumers (tests, scripts, a CLI, an agent
 tool) use a generic client helper over the same state, not a second protocol:
 
@@ -2627,7 +2627,7 @@ rule underneath: a plugin carries what it was written against, never the running
   (`../notes/contract.ts`, the same commit holds both sides), by package name across repositories (`@bob/notes`,
   `@bob/notes/web`, pinned by an npm version or a git ref `github:bob/notes#<commit>`; a plugin inside a
   multi-plugin repository through a dependency on the whole repository, by path into it or its `exports`). A package
-  lists the plugins it provides in `chord.plugins` (as pi's manifest). One facet imports one API version only.
+  lists the plugins it provides in `chord.plugins` (as nycode's manifest). One facet imports one API version only.
 - **Versions:** the app lists the API versions it provides; an unlisted one is a build error naming the available ones.
   The process runs one Chord: an older API version is a layer over today's, re-exporting Chord's compatibility module
   for its previous API while Chord keeps one; contracts bind through `accepts` whatever Chord runs.
@@ -2670,7 +2670,7 @@ validation, no clone of snapshots or ops.
 - **The protocol version** travels in `hello`; hosts of different versions refuse each other (a web page reloads for
   a newer server). Error reasons and message kinds are part of it. Until p3 ships, changes keep `PROTOCOL_VERSION` 1
   (nothing is deployed); after that every message or reason change bumps it.
-- **One typed `Message`** (owner, 2026-10-22, "Wire protocol"): a pi-schema schema `MESSAGE`, a tagged union over
+- **One typed `Message`** (owner, 2026-10-22, "Wire protocol"): a nycode-schema schema `MESSAGE`, a tagged union over
   `kind`, from which the protocol types derive; every decoded message is checked against it (compiled once) unless
   the link is trusted (section 3). Kinds:
 
@@ -2837,7 +2837,7 @@ The app kit's Node components (slice 10, `slice-10.md`, decision "Slice 10's poi
 `chord/workers` in `src/node/`; the web page host and the TUI are slice 11. Each is ordinary code on Chord's
 public API; nothing in the kernel depends on them.
 
-### HTTP (`@earendil-works/chord/http`)
+### HTTP (`@nycode/chord/http`)
 
 The core is one Web-standard handler built from the registry `Http` (decision "The HTTP core is a fetch handler"):
 
@@ -2933,7 +2933,7 @@ route's checks, never instead of them.
 - **Cost** (decision "a route's overhead accepted"): +20-21 µs per request over a plain Node handler (standard bench),
   +12-13 µs warmed. `ws` is an optional peer dependency (D7).
 
-### Workers (`@earendil-works/chord/workers`)
+### Workers (`@nycode/chord/workers`)
 
 `await createWorkers(host, Kind, { kind, entry, execArgv?, env?, authorize, admit?, principal, start, lock, idleMs?,
 store, plugins, onOutput?, onError }, ctx)` (`admit`: the route's admission, passed through, slice 14: no worker starts
@@ -2971,7 +2971,7 @@ draining old holder without polling).
   and 50 MiB of a p2 session worker's heap for its life; stack traces name the bundle's files and functions, and an app
   that wants them mapped passes the flag in `execArgv`, at that cost. `execArgv` and `env` apply to every fork as before (modules an `--import` names load from disk at each fork).
   The files live in one private temporary directory (0700, written again into a new one when a cleaner removed one of
-  them), removed at `close`. The worker's side alone is `@earendil-works/chord/workers/child` (`workerMain`,
+  them), removed at `close`. The worker's side alone is `@nycode/chord/workers/child` (`workerMain`,
   `processLock`): a worker entry importing it loads no esbuild. Plugins are unaffected: workers evaluate the server's
   built scripts. Cost: a build at start (the kit's test worker 55-100 ms, p2's session worker 215-250 ms, 4.2 MB of
   code); a fork then loads the entry and its static chunks (the kit's test worker 60 ms instead of 360 ms from source,
@@ -3154,7 +3154,7 @@ Decision "Slice 11's points", "Slice 11, P3" to "P9", and "Tutorial gaps" (1) (p
   one `changed` callback for the
   app's redraw; `pageState(key, initial)`, the host's page state shared with `usePageState`; `optimistic(read, reduce?)`,
   a reader showing optimistic actions while their calls are pending, with `add` and `pending`, React's `useOptimistic`,
-  §3), no pi-tui dependency.
+  §3), no nycode-tui dependency.
 
 ### Messages and languages (built after slice 11)
 
@@ -3249,7 +3249,7 @@ loop. Chord has no stream type (it would need its own rules for drops, cancellat
 - Durable keeps importing today's Chord's `context`, `delta`, `json`, `output` and `sqlite`; `next/` imports the same
   modules, so `Context`, `Draft` and `JsonValue` are one type. Durable's conversation view, task graph and documents
   are `Watchable`s through Durable's watches (Durable's `WatchHandle` now lives in Chord); Durable adopts and dispatches
-  them synchronously inside the storage's commit (S1, W1; with `StoreStorage` that is the store's commit step), so a derive over a Durable view travels with it. This needs Durable to publish a commit when it adopts it (owner, 2026-10-26; a pi change, upstream first; explainer `durable-observers/`): inside `adopt`, its trackers, telemetry events and internal observers (view mounts, task graph, scheduler, submissions) run, and the host `observeCommits` observers are dispatched in one microtask queued before the observers, so they run before every wait the commit resolves and every abort it queues, but after the storage's synchronous step, never inside Chord's batch; host listeners and watch listeners have no order between them (owner, 2026-10-26). Durable's public primitive for adapters is a synchronous observer, `observeConversation`, `observeTaskGraph`, `observeDoc` (its `advance(call, ctx)` gets a `WatchCall` and runs inside `adopt`: record only, no awaits, no Session calls, no throws); `watchXXX` is built on it for app code. Chord's `self.follow(attach)` (slice 6b D9) is a source over it. Otherwise a derive over two Durable views computes between their frames of one commit. With `StoreStorage`, Durable's `adopt` runs inside the host's batch; the store knows nothing of Durable (no special cases) and needs only its step and flush to stay synchronous. Durable's
+  them synchronously inside the storage's commit (S1, W1; with `StoreStorage` that is the store's commit step), so a derive over a Durable view travels with it. This needs Durable to publish a commit when it adopts it (owner, 2026-10-26; a nycode change, upstream first; explainer `durable-observers/`): inside `adopt`, its trackers, telemetry events and internal observers (view mounts, task graph, scheduler, submissions) run, and the host `observeCommits` observers are dispatched in one microtask queued before the observers, so they run before every wait the commit resolves and every abort it queues, but after the storage's synchronous step, never inside Chord's batch; host listeners and watch listeners have no order between them (owner, 2026-10-26). Durable's public primitive for adapters is a synchronous observer, `observeConversation`, `observeTaskGraph`, `observeDoc` (its `advance(call, ctx)` gets a `WatchCall` and runs inside `adopt`: record only, no awaits, no Session calls, no throws); `watchXXX` is built on it for app code. Chord's `self.follow(attach)` (slice 6b D9) is a source over it. Otherwise a derive over two Durable views computes between their frames of one commit. With `StoreStorage`, Durable's `adopt` runs inside the host's batch; the store knows nothing of Durable (no special cases) and needs only its step and flush to stay synchronous. Durable's
   state getters (`documentState`, `viewState`, `taskGraph()`) and the `replicatedState` family are removed (W14). Only
   plain data crosses between Durable and v2 objects.
 - **The harness is an object in the core facet** (base code): a `Harness` `local` object with empty params, so host lifetime (it runs for the worker's whole life,
@@ -3268,7 +3268,7 @@ loop. Chord has no stream type (it would need its own rules for drops, cancellat
   }, context), (h, _reason, context) => h.close(context));
   ```
 
-  Durable's `models` and `settings` accept functions (pi `7ec1f648e`). Durable opens with scheduling paused; base code
+  Durable's `models` and `settings` accept functions (nycode `7ec1f648e`). Durable opens with scheduling paused; base code
   calls `harness.resume()` after `await host.load(...)`; the worker connects to its parent first (W6), so host-lifetime
   stores can reference server types during the barrier; requests arriving during `load` park like any call to a
   loading object (refines R17). A missing tool gives its call an error result the model sees; a missing model makes the generation
@@ -3292,7 +3292,7 @@ loop. Chord has no stream type (it would need its own rules for drops, cancellat
   user goes through an owner's state, e.g. the Questions service (`apps/p2/docs/questions.md`): the model-facing
   `ask_user` tool and any other tool call `Questions.ask`/`wait`, tabs render the open questions and `answer` them.
   Documented with this example.
-- **Code mode** (a plugin) keeps owning its `pi-codemode` sandbox; its tool entry looks up the current sandbox when
+- **Code mode** (a plugin) keeps owning its `nycode-codemode` sandbox; its tool entry looks up the current sandbox when
   `execute()` starts, so a call pinned by a phase before a reload (e.g. waiting in an approval hook) starts on the new
   sandbox; on `reload` and `close` its `close` detaches the old sandbox, returns at once and disposes of it when its
   scripts finish or after `closeTimeout` (30 s at most, R16, Q7); after a worker stop Durable replays as today.
@@ -3436,8 +3436,8 @@ const accepted = checkAccepts(NotesV2, {
 Chord v2 is built in vertical slices; the plan, the feature map (every feature of this document assigned to the slice
 that builds it) and the carry-over of deferred obligations are in `slices.md`. Slice specs (`slice-N.md`) stay as the
 history of how each slice was specified; this document states the current rules. The first layered build (kernel steps
-1-6) was deleted on 2026-10-22 and survives only in git history. Done in pi: `pi-telemetry` (propagation, links,
-metrics, the store interface, the renderer), `chord/context` (`Context.telemetry`), pi-ai and Durable telemetry,
+1-6) was deleted on 2026-10-22 and survives only in git history. Done in nycode: `nycode-telemetry` (propagation, links,
+metrics, the store interface, the renderer), `chord/context` (`Context.telemetry`), nycode-ai and Durable telemetry,
 `chord/telemetry-sqlite` (section 29), Chord's shared `Watch`/`NativeWatch`/`PendingOps`, Delta's `appendText`.
 
 **Rules for every slice** (owner, 2026-10-22): the code follows the root `AGENTS.md` section "Chord v2 Code Style";
@@ -3463,13 +3463,13 @@ revisions).
 
 ## 29. Telemetry
 
-Chord reports traces, events and metrics through `@earendil-works/pi-telemetry`; one adapter per host
+Chord reports traces, events and metrics through `@nycode/telemetry`; one adapter per host
 (`createHost({ telemetry })`, NOOP by default) decides sampling, buffering, export and filtering.
 
 - **Types:** the adapter is a `TelemetryContext` (`startSpan` plus optional readonly `metrics` and `propagation`
   capabilities); only hosts hold it, to start roots. `Context.telemetry` is always a `TelemetrySpan` (the NOOP span by
   default); every span carries its adapter's `metrics` and `propagation`, so code with a context can record metrics
-  and inject carriers. `withTelemetry(span, context)`, `traceIn(options, fn, context)` (context last; pi change with S1); `value()` and keys stay.
+  and inject carriers. `withTelemetry(span, context)`, `traceIn(options, fn, context)` (context last; nycode change with S1); `value()` and keys stay.
   `Ctx` extends `Context`, so `ctx.telemetry` is the current span; app values such as the principal stay out of
   Durable's context. `ctx.trace(name, attributes, fn)` creates a child span and gives `fn` a child `ctx`.
 - **Adapters trust typed inputs:** no validation of malformed caller values and no try/catch around recording; only
@@ -3494,19 +3494,19 @@ Chord reports traces, events and metrics through `@earendil-works/pi-telemetry`;
   attributes of spans, never of metrics.
 - **Nothing is measured or walked for telemetry:** only sizes the code already has. Errors carry a fixed category and
   a message truncated to 500 characters; cancelling is not an error.
-- **A typed telemetry schema** ships with Chord, as pi-ai (`AI_TELEMETRY_SCHEMA`) and Durable
+- **A typed telemetry schema** ships with Chord, as nycode-ai (`AI_TELEMETRY_SCHEMA`) and Durable
   (`DURABLE_TELEMETRY_SCHEMA`) have; call sites that only have a context use the generic `addEvent`.
-- **Storage and reading:** `@earendil-works/chord/telemetry-sqlite` over `chord/sqlite` (Node and Cloudflare): one
+- **Storage and reading:** `@nycode/chord/telemetry-sqlite` over `chord/sqlite` (Node and Cloudflare): one
   row per settled span (events and links inline), metrics aggregated per series per 10 s, a 1 s batched flush with
   retention (7 days), a bounded queue (dropped and counted). The shared read interface `TelemetryStore` (Jaeger
   style): `findTraces` (name, attributes, errors, time window, limit, cursor) returns complete traces, `getTrace`,
   `findMetrics`. Spans carry global ids and a trace id; links carry trace and span id. One renderer
-  (`pi-telemetry/render`) prints links and never follows them. A web trace viewer in the playground reads the store.
+  (`nycode-telemetry/render`) prints links and never follows them. A web trace viewer in the playground reads the store.
 - **Durable** (done): submit and phase spans, stored carriers on submissions and tasks (`TaskOptions.trace`, creation
-  links), events after commit, report events; pi-ai emits `pi.ai.request`/`pi.ai.poll` from one observer in
+  links), events after commit, report events; nycode-ai emits `nycode.ai.request`/`nycode.ai.poll` from one observer in
   `lazyStream`. Persisted Chord jobs store their start carrier. A worker's Harness gets its host's adapter
   (`HarnessOptions.telemetry`) and a method that submits input passes its `ctx` (its `telemetry` the `chord.method`
-  span), so `pi.durable.submit` links to it and starts its own trace, as decided.
+  span), so `nycode.durable.submit` links to it and starts its own trace, as decided.
 
 **Built (slice 9, `slice-9.md`; `src/telemetry.ts`):**
 
@@ -3581,7 +3581,7 @@ Chord reports traces, events and metrics through `@earendil-works/pi-telemetry`;
   chooses the trace its requests join. `startServer({ telemetry })` passes the store to its host and HTTP and serves
   the ingest objects; workers and recording pages send it their spans (below). The SQLite store orders spans of one
   microsecond as their recorder started them (by start time, then id length and id).
-- **Span times (after slice 9):** a span's start is `telemetryNow()` (pi-telemetry): wall-clock milliseconds at
+- **Span times (after slice 9):** a span's start is `telemetryNow()` (nycode-telemetry): wall-clock milliseconds at
   microsecond resolution from `performance.now()` anchored to the wall clock, anchored anew when the two part by more
   than 10 ms (a clock set, a sleep the monotonic clock did not count); its end and its events' times are the monotonic
   clock's from there. The in-memory adapter and the SQLite store share it, and `renderTrace` prints lengths to the
@@ -3590,7 +3590,7 @@ Chord reports traces, events and metrics through `@earendil-works/pi-telemetry`;
   share one file and a new store version would strand the rows already there.
 - **The server is the one place telemetry is stored** (decisions "Telemetry from browser pages", "The server is the
   one place telemetry is stored", "Who a span was for"; `src/telemetry-ingest/`, exported as
-  `@earendil-works/chord/telemetry-ingest` for an app with its own hosts): the server's store is the only
+  `@nycode/chord/telemetry-ingest` for an app with its own hosts): the server's store is the only
   writer of its file. Pages and workers record with Chord's in-memory `TelemetryRecorder` (the SQLite store records
   with it too: one carrier format, one bounded queue of settled spans and metric aggregates per 10 s) and send finished
   spans in batches over the link they already have to the server's `PageTelemetry` and `WorkerTelemetry`
@@ -3618,7 +3618,7 @@ Chord reports traces, events and metrics through `@earendil-works/pi-telemetry`;
   its results, any caching is the hook's own; the kit passes `startServer`'s and `startWorker`'s to their hosts, and
   the server stamps a page's spans with it for the link's principal. `Host` exposes `principalAttributes`,
   `incarnation` and `address` for the kit and the page recorder.
-- **Reading a shared file:** `openTelemetryStore(path)` (`@earendil-works/chord/telemetry-sqlite/node`) implements
+- **Reading a shared file:** `openTelemetryStore(path)` (`@nycode/chord/telemetry-sqlite/node`) implements
   `TelemetryStore` only, on a read-only SQLite connection (`openNodeSqliteDatabase(path, { mode: "read-only" })`:
   deferred transactions, nothing configured or checkpointed): it never writes, creates or migrates the file, and
   refuses one without a store or with a store of another version.

@@ -1,4 +1,4 @@
-// Tests of compiled checks: pi-schema validators of Chord-owned schemas and the `invalid` error of a failed check.
+// Tests of compiled checks: nycode-schema validators of Chord-owned schemas and the `invalid` error of a failed check.
 
 import { describe, expect, it } from "vitest";
 import { BACKGROUND_CONTEXT } from "../../src/context/index.ts";

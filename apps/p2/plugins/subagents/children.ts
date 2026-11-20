@@ -1,6 +1,6 @@
 // Each session's subagents as rows of the server's Chord store (`ChildStore`'s table), one row per session keyed by its
 // address (decision "Documents and table rows can belong to a host"): a session's export, import and delete carry them.
-import { arr } from "@earendil-works/pi-schema";
+import { arr } from "@nycode/schema";
 import {
 	defineTable,
 	evolveTable,

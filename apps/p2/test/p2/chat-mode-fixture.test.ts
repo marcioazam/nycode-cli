@@ -7,7 +7,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
-import type { ConversationView, LiveState } from "@earendil-works/pi-durable";
+import type { ConversationView, LiveState } from "@nycode/durable";
 import { BACKGROUND_CONTEXT, follow } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { ChatMode } from "../../plugins/chat-mode/contract.ts";
@@ -21,7 +21,7 @@ import { expectChord, type Fixture, holdIn, http, poll, startFixture, until } fr
 const TUNNEL = { Host: "share.test", Origin: "https://share.test" };
 type Logged = { role: string; content: string | { type: string; text?: string }[] };
 const live = (view: ConversationView | null | undefined): LiveState | undefined =>
-	view?.docs["pi.live"] as unknown as LiveState | undefined;
+	view?.docs["nycode.live"] as unknown as LiveState | undefined;
 const chatEntries = (view: ConversationView | null | undefined) =>
 	(view?.entries ?? []).filter((entry) => entry.kind === "chat.message");
 const textOf = (message: Logged): string =>
@@ -185,7 +185,7 @@ describe("chat mode (server, sharing, fake provider)", () => {
 		await expectChord(
 			aliceChat.send(
 				{
-					text: "@Pi, what do you think?",
+					text: "@Nycode, what do you think?",
 					requestId: "m0",
 					author: { kind: "owner", id: "owner", name: "Owner" },
 				} as never,
@@ -193,7 +193,7 @@ describe("chat mode (server, sharing, fake provider)", () => {
 			),
 			"invalid",
 		);
-		await aliceChat.send({ text: "@Pi, what do you think?", requestId: "m1" }, BACKGROUND_CONTEXT);
+		await aliceChat.send({ text: "@Nycode, what do you think?", requestId: "m1" }, BACKGROUND_CONTEXT);
 		await poll(() => requests().length > before, 20_000, "the mention's request");
 		const asked = requests()[before]!.at(-1)!;
 		assert.equal(asked.role, "user");
@@ -201,7 +201,7 @@ describe("chat mode (server, sharing, fake provider)", () => {
 		assert.match(text, /<sender kind="guest" id="[^"]+" name="Alice"\/>/);
 		assert.match(text, /^Alice \(guest\): screenshots \[attached: a\.png, b\.png, c\.png\]$/m);
 		assert.match(text, /^Owner: my notes \[attached: notes\.txt, d\.png, e\.png\]$/m);
-		assert.match(text, /Alice \(guest\) mentioned you:\n@Pi, what do you think\?/);
+		assert.match(text, /Alice \(guest\) mentioned you:\n@Nycode, what do you think\?/);
 		assert.match(text, /^Owner: hello people$/m, "chat never passed on goes with the first mention");
 		for (const name of ["a.png", "b.png", "c.png", "notes.txt", "d.png", "e.png"]) assert(text.includes(`(${name},`));
 		const inlined = (asked.content as { type: string }[]).filter((part) => part.type === "image");
@@ -211,7 +211,7 @@ describe("chat mode (server, sharing, fake provider)", () => {
 		const placed = view?.entries.find((entry) => entry.kind === "chat.mention");
 		const data = placed?.data as { author: unknown; text: string; included: number[] };
 		assert.deepEqual(data.author, { kind: "guest", id: alice.id, name: "Alice" });
-		assert.equal(data.text, "@Pi, what do you think?");
+		assert.equal(data.text, "@Nycode, what do you think?");
 		assert.equal(data.included.length, 4);
 	});
 

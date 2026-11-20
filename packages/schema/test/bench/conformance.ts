@@ -1,6 +1,6 @@
 // Conformance of every candidate on the vendored JSON-Schema-Test-Suite (drafts 2020-12 and 7), by section:
 // core, optional and optional/format. Every candidate gets the remote documents and meta-schemas; format tests run
-// with pi-schema's format checks (the other libraries check formats on their own or not at all). Zod goes through
+// with nycode-schema's format checks (the other libraries check formats on their own or not at all). Zod goes through
 // z.fromJSONSchema, which refuses some keywords and every remote $ref: a schema it refuses fails all its tests.
 // Run: node test/bench/conformance.ts [--json <file>]
 

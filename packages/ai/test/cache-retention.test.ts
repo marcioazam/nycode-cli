@@ -29,18 +29,18 @@ function stopAfterPayload<TPayload>(capture: (payload: TPayload) => void): (payl
 	};
 }
 
-describe("Cache Retention (PI_CACHE_RETENTION)", () => {
-	const originalEnv = process.env.PI_CACHE_RETENTION;
+describe("Cache Retention (NYCODE_CACHE_RETENTION)", () => {
+	const originalEnv = process.env.NYCODE_CACHE_RETENTION;
 
 	beforeEach(() => {
-		delete process.env.PI_CACHE_RETENTION;
+		delete process.env.NYCODE_CACHE_RETENTION;
 	});
 
 	afterEach(() => {
 		if (originalEnv !== undefined) {
-			process.env.PI_CACHE_RETENTION = originalEnv;
+			process.env.NYCODE_CACHE_RETENTION = originalEnv;
 		} else {
-			delete process.env.PI_CACHE_RETENTION;
+			delete process.env.NYCODE_CACHE_RETENTION;
 		}
 	});
 
@@ -51,7 +51,7 @@ describe("Cache Retention (PI_CACHE_RETENTION)", () => {
 
 	describe("Anthropic Provider", () => {
 		it.skipIf(!process.env.ANTHROPIC_API_KEY)(
-			"should use default cache TTL (no ttl field) when PI_CACHE_RETENTION is not set",
+			"should use default cache TTL (no ttl field) when NYCODE_CACHE_RETENTION is not set",
 			async () => {
 				const model = getModel("anthropic", "claude-haiku-4-5");
 				let capturedPayload: any = null;
@@ -74,30 +74,33 @@ describe("Cache Retention (PI_CACHE_RETENTION)", () => {
 			},
 		);
 
-		it.skipIf(!process.env.ANTHROPIC_API_KEY)("should use 1h cache TTL when PI_CACHE_RETENTION=long", async () => {
-			process.env.PI_CACHE_RETENTION = "long";
-			const model = getModel("anthropic", "claude-haiku-4-5");
-			let capturedPayload: any = null;
+		it.skipIf(!process.env.ANTHROPIC_API_KEY)(
+			"should use 1h cache TTL when NYCODE_CACHE_RETENTION=long",
+			async () => {
+				process.env.NYCODE_CACHE_RETENTION = "long";
+				const model = getModel("anthropic", "claude-haiku-4-5");
+				let capturedPayload: any = null;
 
-			const s = stream(model, context, {
-				onPayload: stopAfterPayload((payload) => {
-					capturedPayload = payload;
-				}),
-			});
+				const s = stream(model, context, {
+					onPayload: stopAfterPayload((payload) => {
+						capturedPayload = payload;
+					}),
+				});
 
-			// Consume the stream to trigger the request
-			for await (const _ of s) {
-				// Just consume
-			}
+				// Consume the stream to trigger the request
+				for await (const _ of s) {
+					// Just consume
+				}
 
-			expect(capturedPayload).not.toBeNull();
-			// System prompt should have cache_control with ttl: "1h"
-			expect(capturedPayload.system).toBeDefined();
-			expect(capturedPayload.system[0].cache_control).toEqual({ type: "ephemeral", ttl: "1h" });
-		});
+				expect(capturedPayload).not.toBeNull();
+				// System prompt should have cache_control with ttl: "1h"
+				expect(capturedPayload.system).toBeDefined();
+				expect(capturedPayload.system[0].cache_control).toEqual({ type: "ephemeral", ttl: "1h" });
+			},
+		);
 
 		it("should add ttl for non-api.anthropic.com baseUrl by default", async () => {
-			process.env.PI_CACHE_RETENTION = "long";
+			process.env.NYCODE_CACHE_RETENTION = "long";
 
 			// Create a model with a different baseUrl (simulating a proxy)
 			const baseModel = getModel("anthropic", "claude-haiku-4-5");
@@ -255,7 +258,7 @@ describe("Cache Retention (PI_CACHE_RETENTION)", () => {
 		});
 
 		it.skipIf(!process.env.OPENAI_API_KEY)(
-			"should not set prompt_cache_retention when PI_CACHE_RETENTION is not set",
+			"should not set prompt_cache_retention when NYCODE_CACHE_RETENTION is not set",
 			async () => {
 				const model = getModel("openai", "gpt-4o-mini");
 				let capturedPayload: any = null;
@@ -277,9 +280,9 @@ describe("Cache Retention (PI_CACHE_RETENTION)", () => {
 		);
 
 		it.skipIf(!process.env.OPENAI_API_KEY)(
-			"should set prompt_cache_retention to 24h when PI_CACHE_RETENTION=long",
+			"should set prompt_cache_retention to 24h when NYCODE_CACHE_RETENTION=long",
 			async () => {
-				process.env.PI_CACHE_RETENTION = "long";
+				process.env.NYCODE_CACHE_RETENTION = "long";
 				const model = getModel("openai", "gpt-4o-mini");
 				let capturedPayload: any = null;
 
@@ -300,7 +303,7 @@ describe("Cache Retention (PI_CACHE_RETENTION)", () => {
 		);
 
 		it("should set prompt_cache_retention for non-api.openai.com baseUrl by default", async () => {
-			process.env.PI_CACHE_RETENTION = "long";
+			process.env.NYCODE_CACHE_RETENTION = "long";
 
 			// Create a model with a different baseUrl (simulating a proxy)
 			const baseModel = getModel("openai", "gpt-4o-mini");

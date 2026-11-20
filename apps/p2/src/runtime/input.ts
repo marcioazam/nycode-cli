@@ -3,7 +3,7 @@
 // `chat.message`) carry the same data. The model message of an input starts with the sender block (`sender.ts`), which
 // nothing reads back: readers use the data.
 
-import { arr, compile, obj, type Static, str, union } from "@earendil-works/pi-schema";
+import { arr, compile, obj, type Static, str, union } from "@nycode/schema";
 import { literal } from "./schema.ts";
 
 /** Entry kind of a person's ordinary input. */

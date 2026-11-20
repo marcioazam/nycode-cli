@@ -1,6 +1,6 @@
 // The sessions plugin's worker facet: its process id, and `crash`, which ends the process (a bug, an out-of-memory).
 
-import { constant, defineFacet } from "@earendil-works/chord";
+import { constant, defineFacet } from "@nycode/chord";
 import { Process } from "./contract.ts";
 
 export default defineFacet((host) =>

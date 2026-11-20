@@ -31,8 +31,8 @@ async function until(ready: () => boolean): Promise<void> {
 
 // 1. The component: the roots, and the facet kinds, each built for Node with Chord as a host package (kept external in
 //    the builds). The hosts give the modules themselves when they load (this process's Chord: a plugin's
-//    `import { defineFacet } from "@earendil-works/chord"` is the app's own instance).
-const modules = { "@earendil-works/chord": chord };
+//    `import { defineFacet } from "@nycode/chord"` is the app's own instance).
+const modules = { "@nycode/chord": chord };
 const node = { platform: "node", hostPackages: Object.keys(modules) } as const;
 const plugins = createPlugins(
 	{

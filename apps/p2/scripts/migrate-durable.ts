@@ -12,8 +12,8 @@
 // earlier states were never readable. A retired latest-only document kept no content and is created with an empty
 // base: retired, it is never read. Ids stay; the allocator is raised past the old storage's next id.
 import { DatabaseSync } from "node:sqlite";
-import type { ChordStore, Store } from "@earendil-works/chord";
-import type { Context } from "@earendil-works/chord/context";
+import type { ChordStore, Store } from "@nycode/chord";
+import type { Context } from "@nycode/chord/context";
 import type {
 	ConversationRecord,
 	Cursor,
@@ -30,7 +30,7 @@ import type {
 	SubmissionRecord,
 	TaskId,
 	TaskRecord,
-} from "@earendil-works/pi-durable";
+} from "@nycode/durable";
 
 /** Old seq to new seq. */
 export type SeqMap = ReadonlyMap<number, number>;

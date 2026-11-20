@@ -7,8 +7,8 @@ meaning from `packages/chord/docs/design.md` §2.
 
 | Name | Means | Not |
 | --- | --- | --- |
-| Pi | one installation of p3, with one owner | instance |
-| owner | the person who owns the Pi and installs its plugins | admin |
+| Nycode | one installation of p3, with one owner | instance |
+| owner | the person who owns the Nycode and installs its plugins | admin |
 | person | anyone else the owner lets in | user, guest, member |
 | app | a plugin with its own layout, views and sessions; coding is the built-in app | |
 | session | one agent workspace, with its own worker and store; belongs to exactly one app | chat, thread |
@@ -25,7 +25,7 @@ meaning from `packages/chord/docs/design.md` §2.
 | environment | a machine the agent works on: this device, SSH, a sandbox | env, hands |
 | location | where a session works: an environment and a folder | place |
 | lock | something a plugin lets be switched off or limited | session lock, setting |
-| layer | where a lock's value is set: org, Pi, app, session | scope |
+| layer | where a lock's value is set: org, Nycode, app, session | scope |
 | sheet | the screen where one layer's locks are set | |
 | org | a company that manages its members' Pis | company |
 | view | a kind of pane | |

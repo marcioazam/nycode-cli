@@ -8,7 +8,7 @@ describe("compact directory labels", () => {
 		for (const home of ["/Users/armin", "/home/armin", "/root", "/data/data/com.termux/files/home"]) {
 			assert.equal(shortPath(home), "~", home);
 			assert.equal(shortPath(`${home}/`), "~/", home);
-			assert.equal(shortPath(`${home}/Development/pi-mono`), "~/Development/pi-mono", home);
+			assert.equal(shortPath(`${home}/Development/nycode-mono`), "~/Development/nycode-mono", home);
 		}
 	});
 
@@ -31,7 +31,7 @@ describe("compact directory labels", () => {
 	});
 
 	it("uses compact paths for both local and remote sidebar locations", () => {
-		assert.equal(locationLabel(null, "/Users/armin/Development/pi-mono"), "~/Development/pi-mono");
+		assert.equal(locationLabel(null, "/Users/armin/Development/nycode-mono"), "~/Development/nycode-mono");
 		assert.equal(locationLabel(undefined, "/home/armin/project"), "~/project");
 		assert.equal(locationLabel("gpu", "/home/armin/project"), "gpu:~/project");
 		assert.equal(locationLabel("mac", "/Users/armin/project"), "mac:~/project");

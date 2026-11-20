@@ -7,7 +7,7 @@
 // (`admission.ts`): it parks on the decision as on a dependency, hands its factory the admitted value, and follows
 // the decision until its seal.
 
-import type { TelemetryContext, TelemetrySpan } from "@earendil-works/pi-telemetry";
+import type { TelemetryContext, TelemetrySpan } from "@nycode/telemetry";
 import { awaitWithContext, type Context, withAbortSignal, withContextValue, withTelemetry } from "../context/index.ts";
 import type {
 	AdmittedOf,

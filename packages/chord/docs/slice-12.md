@@ -29,7 +29,7 @@ const plugins = createPlugins({
   a version not listed is a build error naming the listed ones ("@acme/app/v1 is not available: this app provides v3,
   v2"); a listed one that the kind's `hostPackages` lacks (`@acme/app/v3/web` from a worker facet) is a build error
   naming the kind. One facet's imports of the API all use one version (a mix is a build error naming both).
-- Chord itself (`@earendil-works/chord` and its subpaths other than `/plugins`, which stays as in 7c for
+- Chord itself (`@nycode/chord` and its subpaths other than `/plugins`, which stays as in 7c for
   `pluginFile`) is not importable by plugins: a build error pointing to the app's API. Apps that do not set `api` keep
   7c's behaviour (host packages as listed), so Chord's own tests and examples keep importing Chord directly where they
   model base code.

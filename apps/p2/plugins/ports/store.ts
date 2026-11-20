@@ -98,7 +98,7 @@ export class Forwards {
 		options: { public?: boolean; session?: string } = {},
 	): Promise<Forward> {
 		validateForwardPort(port);
-		if (reserved.includes(port)) throw new Error("This is Pi's own port; it is already reachable through Radius");
+		if (reserved.includes(port)) throw new Error("This is Nycode's own port; it is already reachable through Radius");
 		if (this.#forwards.size >= MAX_FORWARDS) throw new Error(`At most ${MAX_FORWARDS} forwards`);
 		const validName = validateForwardName(name);
 		let id = "";

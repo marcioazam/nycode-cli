@@ -9,7 +9,7 @@
 //   base versions are kept. Not `/_chord/web/base`, the server's current base hash, which an outdated page asks.
 // - everything else (the base hash, the WebSocket, uploads, routes): the network, untouched.
 //
-// Pi Mobile had no service worker because one would have kept stale code across Vite's hot reloads and restarts. p2
+// Nycode Mobile had no service worker because one would have kept stale code across Vite's hot reloads and restarts. p2
 // serves no source modules: every file it would keep is content-named, and the page is never preferred to the network.
 
 const PREFIX = "p2-app-";

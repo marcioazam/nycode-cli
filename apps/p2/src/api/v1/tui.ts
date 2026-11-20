@@ -1,5 +1,5 @@
 // p2's plugin API, version 1, for TUI facets (`@p2/app/v1/tui`): the TUI runtime, its context, commands and renderers,
-// the chat surface other facets use, the shared transcript model and pi's components as p2 copied them.
+// the chat surface other facets use, the shared transcript model and nycode's components as p2 copied them.
 export * from "../../runtime/tui.ts";
 export * from "../../runtime/tui-chat.ts";
 export * from "../../runtime/tui-commands.ts";

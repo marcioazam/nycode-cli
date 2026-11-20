@@ -1,9 +1,9 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Connection, RemoteError } from "@earendil-works/pi-env";
+import { Connection, RemoteError } from "@nycode/env";
 
-// Terminals need a pi-env daemon with the `pty` operation (packages/env): a shipped or development build, or
+// Terminals need a nycode-env daemon with the `pty` operation (packages/env): a shipped or development build, or
 // P2_TERMINAL_DAEMON for this machine.
 
 const envPackage = fileURLToPath(new URL("../../../../packages/env/", import.meta.url));
@@ -18,7 +18,7 @@ const TARGETS: Record<string, string> = {
 	"darwin-arm64": "aarch64-apple-darwin",
 };
 
-/** This machine, as pi-env names systems. */
+/** This machine, as nycode-env names systems. */
 export function localSystem(): { platform: string; arch: string } {
 	return { platform: process.platform === "win32" ? "windows" : process.platform, arch: process.arch };
 }
@@ -31,10 +31,10 @@ export async function terminalDaemon(platform: string, arch: string, local: bool
 	const native = platform === localSystem().platform && arch === process.arch;
 	const candidates = [
 		local ? process.env.P2_TERMINAL_DAEMON : undefined,
-		target ? join(envPackage, "daemon", "target", target, "release", "pi-env") : undefined,
-		native ? join(envPackage, "daemon", "target", "release", "pi-env") : undefined,
-		native ? join(envPackage, "daemon", "target", "debug", "pi-env") : undefined,
-		join(envPackage, "bin", `pi-env-${system}`, "pi-env"),
+		target ? join(envPackage, "daemon", "target", target, "release", "nycode-env") : undefined,
+		native ? join(envPackage, "daemon", "target", "release", "nycode-env") : undefined,
+		native ? join(envPackage, "daemon", "target", "debug", "nycode-env") : undefined,
+		join(envPackage, "bin", `nycode-env-${system}`, "nycode-env"),
 	];
 	const failures: string[] = [];
 	for (const candidate of candidates) {
@@ -53,8 +53,8 @@ export async function terminalDaemon(platform: string, arch: string, local: bool
 	}
 	throw new Error(
 		local
-			? `No pi-env daemon with terminal support: run \`npm run build:daemon\` in packages/env, or set P2_TERMINAL_DAEMON${failures.length ? ` (${failures.join("; ")})` : ""}`
-			: `No pi-env daemon with terminal support for ${system}: build packages/env/daemon with \`cargo build --release --target ${target ?? "<target>"}\``,
+			? `No nycode-env daemon with terminal support: run \`npm run build:daemon\` in packages/env, or set P2_TERMINAL_DAEMON${failures.length ? ` (${failures.join("; ")})` : ""}`
+			: `No nycode-env daemon with terminal support for ${system}: build packages/env/daemon with \`cargo build --release --target ${target ?? "<target>"}\``,
 	);
 }
 
@@ -65,7 +65,7 @@ export async function requireTerminalSupport(connection: Pick<Connection, "reque
 		await Promise.race([
 			connection.request("pty", { cwd: "", cols: 0, rows: 0 }).then(
 				() => {
-					throw new Error("pi-env accepted an invalid terminal size");
+					throw new Error("nycode-env accepted an invalid terminal size");
 				},
 				(error: unknown) => {
 					if (
@@ -78,7 +78,7 @@ export async function requireTerminalSupport(connection: Pick<Connection, "reque
 				},
 			),
 			new Promise<never>((_resolve, reject) => {
-				timer = setTimeout(() => reject(new Error("pi-env terminal capability probe timed out")), 5000);
+				timer = setTimeout(() => reject(new Error("nycode-env terminal capability probe timed out")), 5000);
 			}),
 		]);
 	} finally {

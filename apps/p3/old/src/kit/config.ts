@@ -1,4 +1,4 @@
-// A Pi's own config, `pi.json` in its data directory: its id (random, made at its first start: what tells this Pi from
+// A Nycode's own config, `nycode.json` in its data directory: its id (random, made at its first start: what tells this Nycode from
 // another on the same machine, for instance in the name of its sign-in cookie) and the port it listens on (kept from
 // its first start, so its address stays the same).
 
@@ -7,11 +7,11 @@ import { readFile } from "node:fs/promises";
 import { ifExists } from "./layout.ts";
 import { writeSecret } from "./secrets.ts";
 
-/** A Pi's config: its id, and its port once it listened on one of its own. */
-export type PiConfig = { readonly id: string; readonly port?: number };
+/** A Nycode's config: its id, and its port once it listened on one of its own. */
+export type NycodeConfig = { readonly id: string; readonly port?: number };
 
 /** The config in the file `path`, made with a fresh id when the file is missing. */
-export async function openConfig(path: string): Promise<PiConfig> {
+export async function openConfig(path: string): Promise<NycodeConfig> {
 	const existing = await readConfig(path);
 	if (existing !== undefined) return existing;
 	const config = { id: randomBytes(8).toString("hex") };
@@ -19,8 +19,8 @@ export async function openConfig(path: string): Promise<PiConfig> {
 	return config;
 }
 
-/** The config in the file `path`; `undefined` when the Pi never started. */
-export async function readConfig(path: string): Promise<PiConfig | undefined> {
+/** The config in the file `path`; `undefined` when the Nycode never started. */
+export async function readConfig(path: string): Promise<NycodeConfig | undefined> {
 	const text = await ifExists(readFile(path, "utf8"));
 	if (text === undefined) return undefined;
 	// A trust boundary: a file people edit. The id becomes part of a cookie's name.
@@ -34,6 +34,6 @@ export async function readConfig(path: string): Promise<PiConfig | undefined> {
 }
 
 /** Writes `config` to the file `path`, in one step. */
-export async function writeConfig(path: string, config: PiConfig): Promise<void> {
+export async function writeConfig(path: string, config: NycodeConfig): Promise<void> {
 	await writeSecret(path, JSON.stringify(config, null, "\t"), "replace");
 }

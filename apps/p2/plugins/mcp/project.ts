@@ -1,13 +1,8 @@
-// A project's MCP configuration, `<cwd>/.pi/mcp.json` as a session's worker read it at one location (a trust boundary:
+// A project's MCP configuration, `<cwd>/.nycode/mcp.json` as a session's worker read it at one location (a trust boundary:
 // a repository wrote it, and the agent can edit it). It may add stdio servers, which run at that location only, and
 // turn the owner's servers on or off there; everything else is refused and reported.
 
-import {
-	isMcpServerOverride,
-	type McpStdioServerConfig,
-	mcpNamespace,
-	validateMcpServerConfig,
-} from "@earendil-works/pi-mcp";
+import { isMcpServerOverride, type McpStdioServerConfig, mcpNamespace, validateMcpServerConfig } from "@nycode/mcp";
 import { isRecord, type OwnerConfig, serverEntries } from "./config.ts";
 
 /** One stdio server a project adds, validated; it runs where the project is. */
@@ -23,7 +18,7 @@ export type ProjectConfig = {
 /**
  * The project configuration in `text`, checked against `owner`'s servers:
  *
- * - an entry without `command`, `url` or `type` overrides only `enabled` of the owner's server of that name (as in pi);
+ * - an entry without `command`, `url` or `type` overrides only `enabled` of the owner's server of that name (as in nycode);
  * - an entry defining a server the owner defines is refused (the owner's entry wins);
  * - stdio servers only, without `runOn` and `shared`: a project's server runs at its location, where the agent already
  *   runs commands, never on the p2 host or another machine for a repository's sake;
@@ -33,7 +28,7 @@ export type ProjectConfig = {
 export function parseProjectConfig(text: string, owner: OwnerConfig): ProjectConfig {
 	let entries: Record<string, unknown>;
 	try {
-		entries = serverEntries(text, ".pi/mcp.json");
+		entries = serverEntries(text, ".nycode/mcp.json");
 	} catch (error) {
 		return { servers: [], enabled: new Map(), errors: [error instanceof Error ? error.message : String(error)] };
 	}
@@ -43,12 +38,12 @@ export function parseProjectConfig(text: string, owner: OwnerConfig): ProjectCon
 	const namespaces = new Map(owner.servers.map((server) => [mcpNamespace(server.name), server.name]));
 	for (const [name, raw] of Object.entries(entries)) {
 		const entry = projectEntry(name, raw, owner);
-		if (entry.kind === "invalid") errors.push(`.pi/mcp.json: ${entry.error}`);
+		if (entry.kind === "invalid") errors.push(`.nycode/mcp.json: ${entry.error}`);
 		else if (entry.kind === "override" && entry.enabled !== undefined) enabled.set(name, entry.enabled);
 		if (entry.kind !== "server") continue;
 		const taken = namespaces.get(mcpNamespace(name));
 		if (taken !== undefined) {
-			errors.push(`.pi/mcp.json: server "${name}": its tools would be named like those of "${taken}"`);
+			errors.push(`.nycode/mcp.json: server "${name}": its tools would be named like those of "${taken}"`);
 			continue;
 		}
 		namespaces.set(mcpNamespace(name), name);

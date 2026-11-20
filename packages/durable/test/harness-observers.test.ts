@@ -2,8 +2,8 @@
 // document) and for task document watches, which end with their task.
 import { setFlagsFromString } from "node:v8";
 import { runInNewContext } from "node:vm";
-import { withAbortSignal } from "@earendil-works/chord/context";
-import type { WatchCall } from "@earendil-works/chord/watch";
+import { withAbortSignal } from "@nycode/chord/context";
+import type { WatchCall } from "@nycode/chord/watch";
 import {
 	type ConversationView,
 	defineDoc,
@@ -12,7 +12,7 @@ import {
 	type Observer,
 	type TaskGraph,
 	type TaskId,
-} from "@earendil-works/pi-durable";
+} from "@nycode/durable";
 import { describe, expect, it } from "vitest";
 import type { SessionImpl } from "../src/session/session.ts";
 import { ControlledStorage, context, flush, onValue } from "./session-support.ts";

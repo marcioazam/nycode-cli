@@ -1,16 +1,16 @@
 import { setFlagsFromString } from "node:v8";
 import { runInNewContext } from "node:vm";
-import type { Context } from "@earendil-works/chord/context";
+import type { Context } from "@nycode/chord/context";
 import {
 	BACKGROUND_CONTEXT,
 	createContextKey,
 	withAbortSignal,
 	withCancel,
 	withContextValue,
-} from "@earendil-works/chord/context";
-import { applyImmutable } from "@earendil-works/chord/delta";
-import type { WatchCall, WatchEnd } from "@earendil-works/chord/watch";
-import { type DocumentWatch, defineDoc, defineDocFamily, MemoryStorage } from "@earendil-works/pi-durable";
+} from "@nycode/chord/context";
+import { applyImmutable } from "@nycode/chord/delta";
+import type { WatchCall, WatchEnd } from "@nycode/chord/watch";
+import { type DocumentWatch, defineDoc, defineDocFamily, MemoryStorage } from "@nycode/durable";
 import { describe, expect, it } from "vitest";
 import { SessionImpl } from "../src/session/session.ts";
 import { context, createConversation, documentValues, flush, onValue, openTestSession } from "./session-support.ts";

@@ -6,21 +6,21 @@ Status: **draft for the build** (owner, 2026-11-03: "build i18n, then slice 9 (w
 metrics (cost counters such as `chord.data.validations`, `chord.link.encodes`) and stores a persisted job run's start
 carrier (slice 6b). This slice adds the spans, events and metrics of §29, carriers across links, and Chord's telemetry
 schema, so one trace follows a call from a page through the server's relay into a worker's method, Durable's phases
-and pi-ai's model request.
+and nycode-ai's model request.
 
 Read in full before writing code: this spec; `decisions.md` (the telemetry decisions of 2026-10-18, R5 in "R4 and R5,
 protocol header schema", and every later entry that touches telemetry, links, relays, workers or jobs); `design.md`
 (all of it; §22 wire, §29 telemetry and §30 cost model in particular); `slices.md` (the feature map rows for §8
-`ctx.trace`, §12 the container-width benchmark, §22 trace carriers, §29; the carry-over "Slice 9"); pi-telemetry
+`ctx.trace`, §12 the container-width benchmark, §22 trace carriers, §29; the carry-over "Slice 9"); nycode-telemetry
 (`packages/telemetry/src`: `TelemetrySpan`, `TelemetryContext`, propagation, links, metrics, typed schemas, the in-memory
 adapter, `render.ts`, the conformance tests); Chord's `src/telemetry-sqlite/`; Durable's `harness/telemetry.ts` and how
-Durable starts its spans (the model for a typed schema); pi-ai's `pi.ai.request` wrapper; Chord's `src/context`,
+Durable starts its spans (the model for a typed schema); nycode-ai's `nycode.ai.request` wrapper; Chord's `src/context`,
 `src/host` (ctx, object, attempt, root, host, routines, jobs), `src/link`, `src/remote`, `src/node/http`,
 `src/node/workers`. Root `AGENTS.md` "Chord v2 Code Style" (binding).
 
 ## 1. Chord's telemetry schema
 
-`CHORD_TELEMETRY_SCHEMA` (`src/telemetry.ts`, exported from the root), typed with pi-telemetry's
+`CHORD_TELEMETRY_SCHEMA` (`src/telemetry.ts`, exported from the root), typed with nycode-telemetry's
 `defineTelemetrySchema` like `DURABLE_TELEMETRY_SCHEMA`: every span, event and metric name Chord emits with its
 attributes. The existing cost counters (`chord.data.*`, `chord.link.*`, `chord.store.*`, `chord.query.runs`,
 `chord.cycle.visits`) are declared in it and recorded through it. Ids (object identity, hold, call, address key) are
@@ -66,8 +66,8 @@ All spans are short and in one process (decision "Durable and AI spans"). Names 
 - **HTTP** (`chord/http`): a request is a `chord.http` span (method, route pattern, status; the path never, it may
   carry ids or secrets), its handler's `ctx` under it; an incoming W3C `traceparent` header is extracted only from a
   contributed relay that `verify`s (never from browsers).
-- **Durable and pi-ai** already accept a span (`HarnessOptions.telemetry`, pi-ai's `telemetry` option): a worker's
-  Harness gets its host's adapter, and a method that submits input passes its `ctx.telemetry`, so `pi.durable.submit`
+- **Durable and nycode-ai** already accept a span (`HarnessOptions.telemetry`, nycode-ai's `telemetry` option): a worker's
+  Harness gets its host's adapter, and a method that submits input passes its `ctx.telemetry`, so `nycode.durable.submit`
   is a child of `chord.method` (Durable starts its own trace per input submission and links to the trigger, as decided).
 
 ## 4. Events and metrics
@@ -89,7 +89,7 @@ SQLite file per data directory is the app's choice, documented with a short exam
 ## 6. Cost
 
 With the NOOP adapter every span site costs one call and an empty object; no carrier is injected (no propagation),
-no attribute objects are built when the adapter cannot record (check pi-telemetry's API for the cheapest form; no
+no attribute objects are built when the adapter cannot record (check nycode-telemetry's API for the cheapest form; no
 `isRecording` exists: decided). Cost guards: the slice's tests assert through the in-memory adapter that a call over a
 relay produces exactly the spans of §2 and no extra encodes; a benchmark (`test/bench/telemetry.ts`, by hand) measures
 a call over a link with the NOOP adapter versus without the span code (target: within noise) and with the in-memory

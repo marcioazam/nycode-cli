@@ -13,7 +13,7 @@ const aiDistDir = join(repoRoot, "packages", "ai", "dist");
 const codingAgentDistDir = join(codingAgentDir, "dist");
 const bundleDir = join(codingAgentDistDir, "bundle");
 const banner = {
-	js: 'import { createRequire as __piCreateRequire } from "node:module"; const require = __piCreateRequire(import.meta.url);',
+	js: 'import { createRequire as __nycodeCreateRequire } from "node:module"; const require = __nycodeCreateRequire(import.meta.url);',
 };
 const allowedExternalPackages = new Set([
 	"@silvia-odwyer/photon-node",
@@ -80,7 +80,7 @@ function commonBuildOptions() {
 		absWorkingDir: repoRoot,
 		banner,
 		bundle: true,
-		define: { PI_BUNDLED_NODE: "true" },
+		define: { NYCODE_BUNDLED_NODE: "true" },
 		external: ["@silvia-odwyer/photon-node"],
 		format: "esm",
 		legalComments: "none",

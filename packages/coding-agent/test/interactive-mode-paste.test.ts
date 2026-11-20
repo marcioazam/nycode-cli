@@ -7,7 +7,7 @@ import {
 	setKeybindings,
 	type TUI,
 	TuiMainScreen,
-} from "@earendil-works/pi-tui";
+} from "@nycode/tui";
 import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 import { VirtualTerminal } from "../../tui/test/virtual-terminal.ts";
 import type { EditorFactory } from "../src/core/extensions/types.ts";

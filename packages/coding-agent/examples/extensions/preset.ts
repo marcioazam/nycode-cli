@@ -6,8 +6,8 @@
  * and can be activated via CLI flag, /preset command, or Ctrl+Shift+U to cycle.
  *
  * Config files (merged, project takes precedence):
- * - ~/.pi/agent/presets.json (global)
- * - <cwd>/.pi/presets.json (project-local)
+ * - ~/.nycode/agent/presets.json (global)
+ * - <cwd>/.nycode/presets.json (project-local)
  *
  * Example presets.json:
  * ```json
@@ -30,7 +30,7 @@
  * ```
  *
  * Usage:
- * - `pi --preset plan` - start with plan preset
+ * - `nycode --preset plan` - start with plan preset
  * - `/preset` - show selector to switch presets mid-session
  * - `/preset implement` - switch to implement preset directly
  * - `Ctrl+Shift+U` - cycle through presets
@@ -40,10 +40,10 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { Api, Model } from "@earendil-works/pi-ai";
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { CONFIG_DIR_NAME, DynamicBorder, getAgentDir } from "@earendil-works/pi-coding-agent";
-import { Container, Key, type SelectItem, SelectList, Text } from "@earendil-works/pi-tui";
+import type { Api, Model } from "@nycode/ai";
+import type { ExtensionAPI, ExtensionContext } from "@nycode/coding-agent";
+import { CONFIG_DIR_NAME, DynamicBorder, getAgentDir } from "@nycode/coding-agent";
+import { Container, Key, type SelectItem, SelectList, Text } from "@nycode/tui";
 
 // Preset configuration
 interface Preset {
@@ -104,14 +104,14 @@ interface OriginalState {
 	tools: string[];
 }
 
-export default function presetExtension(pi: ExtensionAPI) {
+export default function presetExtension(nycode: ExtensionAPI) {
 	let presets: PresetsConfig = {};
 	let activePresetName: string | undefined;
 	let activePreset: Preset | undefined;
 	let originalState: OriginalState | undefined;
 
 	// Register --preset CLI flag
-	pi.registerFlag("preset", {
+	nycode.registerFlag("preset", {
 		description: "Preset configuration to use",
 		type: "string",
 	});
@@ -124,8 +124,8 @@ export default function presetExtension(pi: ExtensionAPI) {
 		if (activePresetName === undefined) {
 			originalState = {
 				model: ctx.model,
-				thinkingLevel: pi.getThinkingLevel(),
-				tools: pi.getActiveTools(),
+				thinkingLevel: nycode.getThinkingLevel(),
+				tools: nycode.getActiveTools(),
 			};
 		}
 
@@ -133,7 +133,7 @@ export default function presetExtension(pi: ExtensionAPI) {
 		if (preset.provider && preset.model) {
 			const model = ctx.modelRegistry.find(preset.provider, preset.model);
 			if (model) {
-				const success = await pi.setModel(model);
+				const success = await nycode.setModel(model);
 				if (!success) {
 					ctx.ui.notify(`Preset "${name}": No API key for ${preset.provider}/${preset.model}`, "warning");
 				}
@@ -144,12 +144,12 @@ export default function presetExtension(pi: ExtensionAPI) {
 
 		// Apply thinking level if specified
 		if (preset.thinkingLevel) {
-			pi.setThinkingLevel(preset.thinkingLevel);
+			nycode.setThinkingLevel(preset.thinkingLevel);
 		}
 
 		// Apply tools if specified
 		if (preset.tools && preset.tools.length > 0) {
-			const allToolNames = pi.getAllTools().map((t) => t.name);
+			const allToolNames = nycode.getAllTools().map((t) => t.name);
 			const validTools = preset.tools.filter((t) => allToolNames.includes(t));
 			const invalidTools = preset.tools.filter((t) => !allToolNames.includes(t));
 
@@ -158,7 +158,7 @@ export default function presetExtension(pi: ExtensionAPI) {
 			}
 
 			if (validTools.length > 0) {
-				pi.setActiveTools(validTools);
+				nycode.setActiveTools(validTools);
 			}
 		}
 
@@ -275,12 +275,12 @@ export default function presetExtension(pi: ExtensionAPI) {
 			activePreset = undefined;
 			if (originalState) {
 				if (originalState.model) {
-					await pi.setModel(originalState.model);
+					await nycode.setModel(originalState.model);
 				}
-				pi.setThinkingLevel(originalState.thinkingLevel);
-				pi.setActiveTools(originalState.tools);
+				nycode.setThinkingLevel(originalState.thinkingLevel);
+				nycode.setActiveTools(originalState.tools);
 			} else {
-				pi.setActiveTools(["read", "bash", "edit", "write"]);
+				nycode.setActiveTools(["read", "bash", "edit", "write"]);
 			}
 			ctx.ui.notify("Preset cleared, defaults restored", "info");
 			updateStatus(ctx);
@@ -331,12 +331,12 @@ export default function presetExtension(pi: ExtensionAPI) {
 			activePreset = undefined;
 			if (originalState) {
 				if (originalState.model) {
-					await pi.setModel(originalState.model);
+					await nycode.setModel(originalState.model);
 				}
-				pi.setThinkingLevel(originalState.thinkingLevel);
-				pi.setActiveTools(originalState.tools);
+				nycode.setThinkingLevel(originalState.thinkingLevel);
+				nycode.setActiveTools(originalState.tools);
 			} else {
-				pi.setActiveTools(["read", "bash", "edit", "write"]);
+				nycode.setActiveTools(["read", "bash", "edit", "write"]);
 			}
 			ctx.ui.notify("Preset cleared, defaults restored", "info");
 			updateStatus(ctx);
@@ -351,7 +351,7 @@ export default function presetExtension(pi: ExtensionAPI) {
 		updateStatus(ctx);
 	}
 
-	pi.registerShortcut(Key.ctrlShift("u"), {
+	nycode.registerShortcut(Key.ctrlShift("u"), {
 		description: "Cycle presets",
 		handler: async (ctx) => {
 			await cyclePreset(ctx);
@@ -359,7 +359,7 @@ export default function presetExtension(pi: ExtensionAPI) {
 	});
 
 	// Register /preset command
-	pi.registerCommand("preset", {
+	nycode.registerCommand("preset", {
 		description: "Switch preset configuration",
 		handler: async (args, ctx) => {
 			// If preset name provided, apply directly
@@ -385,7 +385,7 @@ export default function presetExtension(pi: ExtensionAPI) {
 	});
 
 	// Inject preset instructions into system prompt
-	pi.on("before_agent_start", async (event) => {
+	nycode.on("before_agent_start", async (event) => {
 		if (activePreset?.instructions) {
 			return {
 				systemPrompt: `${event.systemPrompt}\n\n${activePreset.instructions}`,
@@ -394,12 +394,12 @@ export default function presetExtension(pi: ExtensionAPI) {
 	});
 
 	// Initialize on session start
-	pi.on("session_start", async (_event, ctx) => {
+	nycode.on("session_start", async (_event, ctx) => {
 		// Load presets from config files
 		presets = loadPresets(ctx.cwd);
 
 		// Check for --preset flag
-		const presetFlag = pi.getFlag("preset");
+		const presetFlag = nycode.getFlag("preset");
 		if (typeof presetFlag === "string" && presetFlag) {
 			const preset = presets[presetFlag];
 			if (preset) {
@@ -430,9 +430,9 @@ export default function presetExtension(pi: ExtensionAPI) {
 	});
 
 	// Persist preset state
-	pi.on("turn_start", async () => {
+	nycode.on("turn_start", async () => {
 		if (activePresetName) {
-			pi.appendEntry("preset-state", { name: activePresetName });
+			nycode.appendEntry("preset-state", { name: activePresetName });
 		}
 	});
 }

@@ -206,13 +206,13 @@ export function isFocusable(component: Component | null): component is Component
  * Components emit this at the cursor position when focused.
  * TUI finds and strips this marker, then positions the hardware cursor there.
  */
-export const CURSOR_MARKER = "\x1b_pi:c\x07";
+export const CURSOR_MARKER = "\x1b_nycode:c\x07";
 
 /** Fake cursor markers - zero-width APC sequences around the text drawn as the cursor. See resolveFakeCursors(). */
-export const FAKE_CURSOR_START = "\x1b_pi:fc\x07";
-export const FAKE_CURSOR_END = "\x1b_pi:/fc\x07";
+export const FAKE_CURSOR_START = "\x1b_nycode:fc\x07";
+export const FAKE_CURSOR_END = "\x1b_nycode:/fc\x07";
 // CURSOR_MARKER + FAKE_CURSOR_START + text + FAKE_CURSOR_END. Truncating the line right after the cursor cell drops the end.
-const FOCUSED_FAKE_CURSOR = /(\x1b_pi:c\x07)\x1b_pi:fc\x07(.*?)(?:\x1b_pi:\/fc\x07|$)/s;
+const FOCUSED_FAKE_CURSOR = /(\x1b_nycode:c\x07)\x1b_nycode:fc\x07(.*?)(?:\x1b_nycode:\/fc\x07|$)/s;
 
 /** Wrap text in fake cursor markers. */
 export function renderFakeCursor(text: string): string {
@@ -581,7 +581,7 @@ export interface TUI extends Component {
 	}): Promise<TerminalColors>;
 }
 
-export const VIEWPORT_TUI = Symbol.for("@earendil-works/pi-tui/viewport");
+export const VIEWPORT_TUI = Symbol.for("@nycode/tui/viewport");
 
 export interface ViewportTUI extends TUI {
 	readonly [VIEWPORT_TUI]: true;

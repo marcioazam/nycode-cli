@@ -1,7 +1,7 @@
 # surfaces (server side)
 
 The web and terminal surfaces' server side (slice 11 §1, §4; decisions "Slice 11, P3" and "P5"):
-`@earendil-works/chord/surfaces`. The app kit (`startServer({ web, tui })`) creates them; by hand:
+`@nycode/chord/surfaces`. The app kit (`startServer({ web, tui })`) creates them; by hand:
 
 ```ts
 const web = webSurface(server, { plugins, entry: "./src/web/main.ts", page: (request, assets) => shell(request.nonce, assets), paths: ["/"], public: false });

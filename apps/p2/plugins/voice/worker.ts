@@ -4,8 +4,8 @@
 // (objects are per grant; leaving, a revoked grant or the linger time ends it): the prompt section is on while the
 // owner's switch or any guest's is, since that guest talks by voice too.
 
-import { type ConversationId, defineDoc, defineExtension, section } from "@earendil-works/pi-durable";
-import { bool, obj, type Static } from "@earendil-works/pi-schema";
+import { type ConversationId, defineDoc, defineExtension, section } from "@nycode/durable";
+import { bool, obj, type Static } from "@nycode/schema";
 import {
 	type Ctx,
 	canSend,

@@ -1,5 +1,5 @@
 /**
- * Tool output benchmark: drives the real tool task, adaptive progress throttle, and `pi.live` commits.
+ * Tool output benchmark: drives the real tool task, adaptive progress throttle, and `nycode.live` commits.
  *
  *   node --conditions=source --experimental-strip-types --expose-gc test/tool-output-bench.ts
  *
@@ -14,10 +14,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
-import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context";
-import { createModels } from "@earendil-works/pi-ai/models";
-import { fauxAssistantMessage, fauxProvider, fauxText, fauxToolCall } from "@earendil-works/pi-ai/providers/faux";
-import { obj } from "@earendil-works/pi-schema";
+import { createModels } from "@nycode/ai/models";
+import { fauxAssistantMessage, fauxProvider, fauxText, fauxToolCall } from "@nycode/ai/providers/faux";
+import { BACKGROUND_CONTEXT as context } from "@nycode/chord/context";
+import { obj } from "@nycode/schema";
 import { NodeExecutionEnv } from "../src/env/node.ts";
 import { createRegistry, defineTool, Harness, LiveDoc, MemoryStorage, type Storage } from "../src/index.ts";
 import { openNodeJsonlStorage } from "../src/storage/jsonl/node.ts";
@@ -35,7 +35,7 @@ type Scenario =
 const RATE_SECONDS = 3;
 const GIB = 1 << 30;
 const LINE = "The quick brown fox jumps over the lazy dog. Unique identifier";
-const BIG_FILE = join(tmpdir(), "pi-durable-bench-1gib.txt");
+const BIG_FILE = join(tmpdir(), "nycode-durable-bench-1gib.txt");
 
 /** Output one tool writes per tick, and the pause between ticks. */
 const RATES: Record<Rate, { readonly lines: number; readonly pauseMs: number }> = {
@@ -126,7 +126,7 @@ type Metrics = {
 };
 
 async function runScenario(scenario: Scenario): Promise<Metrics> {
-	const directory = await mkdtemp(join(tmpdir(), "pi-durable-tool-bench-"));
+	const directory = await mkdtemp(join(tmpdir(), "nycode-durable-tool-bench-"));
 	try {
 		const path = join(directory, scenario.backend === "sqlite" ? "session.sqlite" : "session");
 		const latencies: number[] = [];
@@ -199,7 +199,7 @@ async function runScenario(scenario: Scenario): Promise<Metrics> {
 			target.observeCommits({
 				advance: (publication) => {
 					for (const change of publication.changes) {
-						if (change.type !== "document" || change.kind !== "change" || change.record.kind !== "pi.live")
+						if (change.type !== "document" || change.kind !== "change" || change.record.kind !== "nycode.live")
 							continue;
 						liveCommits++;
 						liveOpBytes += JSON.stringify(change.ops).length;

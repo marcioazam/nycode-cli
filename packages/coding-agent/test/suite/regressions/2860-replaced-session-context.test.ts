@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fauxAssistantMessage, registerFauxProvider } from "@earendil-works/pi-ai/compat";
+import { fauxAssistantMessage, registerFauxProvider } from "@nycode/ai/compat";
 import { afterEach, describe, expect, it } from "vitest";
 import type { AgentSession } from "../../../src/core/agent-session.ts";
 import {
@@ -37,7 +37,7 @@ describe("regression #2860: replaced session callbacks", () => {
 	});
 
 	async function createRuntimeForTest(extensionFactory: ExtensionFactory, responses: string[]) {
-		const tempDir = join(tmpdir(), `pi-2860-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+		const tempDir = join(tmpdir(), `nycode-2860-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 		mkdirSync(tempDir, { recursive: true });
 
 		const faux = registerFauxProvider({
@@ -59,8 +59,8 @@ describe("regression #2860: replaced session callbacks", () => {
 				modelRuntime,
 				resourceLoaderOptions: {
 					extensionFactories: [
-						(pi: ExtensionAPI) => {
-							pi.registerProvider(faux.getModel().provider, {
+						(nycode: ExtensionAPI) => {
+							nycode.registerProvider(faux.getModel().provider, {
 								baseUrl: faux.getModel().baseUrl,
 								apiKey: "faux-key",
 								api: faux.api,
@@ -75,7 +75,7 @@ describe("regression #2860: replaced session callbacks", () => {
 									maxTokens: registeredModel.maxTokens,
 								})),
 							});
-							extensionFactory(pi);
+							extensionFactory(nycode);
 						},
 					],
 					noSkills: true,
@@ -144,29 +144,29 @@ describe("regression #2860: replaced session callbacks", () => {
 		return { runtime, faux };
 	}
 
-	it("rebinds before withSession, targets the replacement session, and invalidates stale pi/ctx", async () => {
+	it("rebinds before withSession, targets the replacement session, and invalidates stale nycode/ctx", async () => {
 		const events: string[] = [];
 		let oldCtx: ExtensionCommandContext | undefined;
-		let oldPi: ExtensionAPI | undefined;
+		let oldNycode: ExtensionAPI | undefined;
 		let oldSessionFile: string | undefined;
 		let staleCtxThrows = false;
-		let stalePiThrows = false;
+		let staleNycodeThrows = false;
 		let replacementSessionFile: string | undefined;
 		let instanceId = 0;
 		const { runtime } = await createRuntimeForTest(
-			(pi) => {
+			(nycode) => {
 				const currentInstance = ++instanceId;
-				pi.on("session_start", () => {
+				nycode.on("session_start", () => {
 					events.push(`start:${currentInstance}`);
 				});
-				pi.on("session_shutdown", () => {
+				nycode.on("session_shutdown", () => {
 					events.push(`shutdown:${currentInstance}`);
 				});
-				pi.registerCommand("repro", {
+				nycode.registerCommand("repro", {
 					description: "repro",
 					handler: async (_args, ctx) => {
 						oldCtx = ctx;
-						oldPi = pi;
+						oldNycode = nycode;
 						oldSessionFile = ctx.sessionManager.getSessionFile();
 						await ctx.newSession({
 							parentSession: oldSessionFile,
@@ -179,9 +179,9 @@ describe("regression #2860: replaced session callbacks", () => {
 									staleCtxThrows = true;
 								}
 								try {
-									oldPi?.sendUserMessage("stale message");
+									oldNycode?.sendUserMessage("stale message");
 								} catch {
-									stalePiThrows = true;
+									staleNycodeThrows = true;
 								}
 								await replacedCtx.sendUserMessage("Hello from the new session!");
 							},
@@ -200,7 +200,7 @@ describe("regression #2860: replaced session callbacks", () => {
 		expect(replacementSessionFile).toBeDefined();
 		expect(replacementSessionFile).not.toBe(oldSessionFile);
 		expect(staleCtxThrows).toBe(true);
-		expect(stalePiThrows).toBe(true);
+		expect(staleNycodeThrows).toBe(true);
 		expect(
 			runtime.session.messages
 				.filter((message) => message.role !== "system")
@@ -210,8 +210,8 @@ describe("regression #2860: replaced session callbacks", () => {
 
 	it("supports withSession for fork", async () => {
 		const { runtime } = await createRuntimeForTest(
-			(pi) => {
-				pi.registerCommand("fork-it", {
+			(nycode) => {
+				nycode.registerCommand("fork-it", {
 					description: "fork-it",
 					handler: async (_args, ctx) => {
 						const leafId = ctx.sessionManager.getLeafId();
@@ -243,8 +243,8 @@ describe("regression #2860: replaced session callbacks", () => {
 	it("supports withSession for switchSession", async () => {
 		let targetSessionPath = "";
 		const { runtime } = await createRuntimeForTest(
-			(pi) => {
-				pi.registerCommand("switch-it", {
+			(nycode) => {
+				nycode.registerCommand("switch-it", {
 					description: "switch-it",
 					handler: async (_args, ctx) => {
 						await ctx.switchSession(targetSessionPath, {

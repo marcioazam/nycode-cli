@@ -1,4 +1,4 @@
-// Chord v2's app kit (`@earendil-works/chord/app`; slice 13): `startServer` on the server and `startWorker` in a
+// Chord v2's app kit (`@nycode/chord/app`; slice 13): `startServer` on the server and `startWorker` in a
 // worker's entry, the start-data objects, sign-ins and the owner's sign-in, device pairing, the files of each host,
 // export, import and delete per address, and the optional plugins (users, invites, ephemeral login).
 

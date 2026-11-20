@@ -2,8 +2,8 @@
 // so what two contracts both use lives here: attachments (files, chat), model references and thinking levels (sessions,
 // chat), pages of a conversation's entries (chat, the clients' transcripts) and directory listings (envs, locations).
 
-import type { EntryRecord } from "@earendil-works/pi-durable";
-import { arr, bool, int, nul, num, obj, opt, type Static, str, union, unknown } from "@earendil-works/pi-schema";
+import type { EntryRecord } from "@nycode/durable";
+import { arr, bool, int, nul, num, obj, opt, type Static, str, union, unknown } from "@nycode/schema";
 import { literal, unsafe } from "./schema.ts";
 
 /**
@@ -29,11 +29,11 @@ export const ModelRefSchema = obj({
 	modelId: str({ minLength: 1 }),
 });
 
-/** Thinking levels a session or conversation may ask for (clamped to the model when it runs), as Pi Mobile accepts. */
+/** Thinking levels a session or conversation may ask for (clamped to the model when it runs), as Nycode Mobile accepts. */
 export const THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh", "max"] as const;
 export type ThinkingLevel = (typeof THINKING_LEVELS)[number];
 /**
- * A string enum (pi-ai's `StringEnum` shape), validated wherever a thinking level is set. Its static type stays
+ * A string enum (nycode-ai's `StringEnum` shape), validated wherever a thinking level is set. Its static type stays
  * `string`, so callers that hold a level as a string (pickers, the TUI) need no casts; the value is checked at the call.
  */
 export const ThinkingLevelSchema = unsafe<string>({ type: "string", enum: [...THINKING_LEVELS] });

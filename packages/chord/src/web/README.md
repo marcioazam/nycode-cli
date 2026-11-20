@@ -1,7 +1,7 @@
 # web (browser side)
 
-`startPage` (slice 11 §2) for the app's web entry, the base bundle the server builds: `@earendil-works/chord/web`. The
-server side is `@earendil-works/chord/surfaces` (`webSurface`).
+`startPage` (slice 11 §2) for the app's web entry, the base bundle the server builds: `@nycode/chord/web`. The
+server side is `@nycode/chord/surfaces` (`webSurface`).
 
 ```ts
 startPage<P>({

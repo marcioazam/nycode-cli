@@ -3,7 +3,7 @@
  * execute.lazy.ts so the sandbox runtime only loads when a script runs.
  */
 
-import type { AgentTool, AgentToolCallOutcome, AgentToolResult } from "@earendil-works/pi-agent-core";
+import type { AgentTool, AgentToolCallOutcome, AgentToolResult } from "@nycode/agent-core";
 import type {
 	AnyModel,
 	ClassifierContext,
@@ -13,7 +13,7 @@ import type {
 	ModelTypeMap,
 	TextContent,
 	Usage,
-} from "@earendil-works/pi-ai";
+} from "@nycode/ai";
 import {
 	type CodemodeOutputItem,
 	type CodemodeResult,
@@ -23,7 +23,7 @@ import {
 	parseCodemodeSource,
 	renderToolSample,
 	toCodemodeIdentifier,
-} from "@earendil-works/pi-codemode";
+} from "@nycode/codemode";
 import { getCodemodeWorkerSpecifier, getQuickJSWasmPath } from "../../config.ts";
 import type { ExtensionToolContext, ToolNamespace } from "../../core/extensions/types.ts";
 import type { SessionEntry } from "../../core/session-manager.ts";
@@ -49,7 +49,7 @@ const ERROR_PREVIEW_CHARS = 500;
 /** `models.classify()` and `models.generateImages()` calls one script may have in flight; `Promise.all` over many items queues the rest. */
 const MAX_CONCURRENT_MODEL_CALLS = 4;
 /**
- * Heap limit for the QuickJS VM. The worker shares pi's process, so without a limit a runaway
+ * Heap limit for the QuickJS VM. The worker shares nycode's process, so without a limit a runaway
  * script can grow to wasm32's 4 GiB and take the session down. Overruns throw
  * `InternalError: out of memory` inside the script.
  */
@@ -57,9 +57,9 @@ const CODEMODE_MEMORY_LIMIT_BYTES = 256 * 1024 * 1024;
 // Shared across calls and sessions. Allow one replacement while a cancelled worker is still exiting.
 const DEFAULT_MAX_CODEMODE_WORKERS = 2;
 
-/** `PI_CODEMODE_MAX_WORKERS` if it is a positive integer. Read per call so SDK hosts can set it at runtime. */
+/** `NYCODE_CODEMODE_MAX_WORKERS` if it is a positive integer. Read per call so SDK hosts can set it at runtime. */
 function maxCodemodeWorkers(): number {
-	const value = Number(process.env.PI_CODEMODE_MAX_WORKERS);
+	const value = Number(process.env.NYCODE_CODEMODE_MAX_WORKERS);
 	return Number.isInteger(value) && value > 0 ? value : DEFAULT_MAX_CODEMODE_WORKERS;
 }
 /**
@@ -392,7 +392,7 @@ function formatError(result: Extract<CodemodeResult, { ok: false }>, calls: read
 /** Write the full text output to a temp file, like bash does for truncated output. */
 async function spillOutput(text: string): Promise<{ path: string } | { error: string }> {
 	try {
-		return { path: await writeOutputFile("pi-codemode", ".txt", text) };
+		return { path: await writeOutputFile("nycode-codemode", ".txt", text) };
 	} catch (error) {
 		return { error: error instanceof Error ? error.message : String(error) };
 	}
@@ -421,7 +421,7 @@ async function saveImages(items: (TextContent | ImageContent)[]): Promise<(TextC
 		// A failed write (disk full, unwritable temp dir) must not discard the result of a script whose
 		// tool calls already ran, so it becomes part of the label.
 		try {
-			const path = await writeOutputFile("pi-codemode", extension, bytes);
+			const path = await writeOutputFile("nycode-codemode", extension, bytes);
 			return `[Image saved to ${path} (${kind})]`;
 		} catch (error) {
 			return `[Image (${kind}) could not be saved: ${error instanceof Error ? error.message : String(error)}]`;
@@ -620,7 +620,7 @@ export async function executeCodemode(
 		if (Object.keys(set).length > 0 || deleted.length > 0) {
 			options.appendEntry?.(CODEMODE_STORE_ENTRY_TYPE, { set, delete: deleted });
 		}
-		// pi extension: a returned value is appended like text().
+		// nycode extension: a returned value is appended like text().
 		if (result.value !== undefined) scriptOutput.push({ type: "text", text: valueText(result.value) });
 	}
 	const items = formatOutput(scriptOutput);

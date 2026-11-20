@@ -1,10 +1,8 @@
-// What a renderer sees of a run through the conversation view: the transcript window and `pi.live`, every change a
+// What a renderer sees of a run through the conversation view: the transcript window and `nycode.live`, every change a
 // commit makes, rebuilt from operations alone. This replaced the event stream (`watchEvents`, #11327).
 
 import { GCProfiler, getHeapStatistics, setFlagsFromString } from "node:v8";
 import { runInNewContext } from "node:vm";
-import type { Draft } from "@earendil-works/chord/delta";
-import { applyImmutable, type Op } from "@earendil-works/chord/delta";
 import {
 	type AssistantMessage,
 	type FauxResponseStep,
@@ -12,7 +10,9 @@ import {
 	fauxText,
 	fauxThinking,
 	fauxToolCall,
-} from "@earendil-works/pi-ai";
+} from "@nycode/ai";
+import type { Draft } from "@nycode/chord/delta";
+import { applyImmutable, type Op } from "@nycode/chord/delta";
 import {
 	type Conversation,
 	type ConversationView,
@@ -21,8 +21,8 @@ import {
 	LiveDoc,
 	type LiveState,
 	MemoryStorage,
-} from "@earendil-works/pi-durable";
-import { num, obj } from "@earendil-works/pi-schema";
+} from "@nycode/durable";
+import { num, obj } from "@nycode/schema";
 import { describe, expect, it } from "vitest";
 import { type ChatSetup, chatSetup, openChat, textOf, waitFor } from "./chat-support.ts";
 import { addTool } from "./harness-support.ts";
@@ -53,7 +53,7 @@ async function listen(conversation: Conversation, check = true) {
 	return { watch, frames, mismatches: () => mismatches };
 }
 
-const liveOf = (view: ConversationView) => (view.docs["pi.live"] ?? {}) as LiveState;
+const liveOf = (view: ConversationView) => (view.docs["nycode.live"] ?? {}) as LiveState;
 
 async function drained(): Promise<void> {
 	await new Promise((resolve) => setTimeout(resolve, 0));
@@ -69,7 +69,7 @@ function partialsOf(harness: Harness): AssistantMessage[] {
 	followCommits(harness, (publication) => {
 		for (const change of documentValues(publication)) {
 			const message = (change.value as LiveState)?.generation?.message as AssistantMessage | undefined;
-			if (change.record.kind === "pi.live" && message !== undefined) partials.push(message);
+			if (change.record.kind === "nycode.live" && message !== undefined) partials.push(message);
 		}
 	});
 	return partials;
@@ -110,7 +110,7 @@ describe("a run as the conversation view shows it", () => {
 			turns: 0,
 			first: expect.any(Number),
 		});
-		expect(history.views[started]!.entries.at(-1)!.kind).toBe("pi.user");
+		expect(history.views[started]!.entries.at(-1)!.kind).toBe("nycode.user");
 		const ended = states.findIndex((state, index) => index > started && state.run === undefined);
 		expect(states[ended]!.generation).toBeUndefined();
 		expect(textOf(history.views[ended]!.entries.at(-1)!.model![0])).toBe(text);
@@ -152,7 +152,7 @@ describe("a run as the conversation view shows it", () => {
 		const listed = slots.findIndex((slot) => slot !== undefined);
 		// Listed pending with the tool-calling answer, in the same commit.
 		expect(slots[listed]).toEqual({ callId: "c1", name: "print", status: "pending", taskId: expect.any(Number) });
-		expect(history.views[listed]!.entries.at(-1)!.kind).toBe("pi.assistant");
+		expect(history.views[listed]!.entries.at(-1)!.kind).toBe("nycode.assistant");
 		const outputs = slots.flatMap((slot) => (slot?.status === "running" ? [slot.output ?? ""] : []));
 		expect([...new Set(outputs)]).toEqual(["", "one\n", "one\ntwo\n"]);
 		// Done with its result entry, appended in the same commit.
@@ -186,7 +186,7 @@ describe("a run as the conversation view shows it", () => {
 		const first = await root.submit({ type: "input", content: "a" }, context);
 		const followUp = await root.submit({ type: "input", content: "f" }, context);
 		const inbox = (view: ConversationView) =>
-			(view.docs["pi.inbox"] as { items: { id: number; mode: string }[] }).items;
+			(view.docs["nycode.inbox"] as { items: { id: number; mode: string }[] }).items;
 		expect(inbox(history.views.at(-1)!)).toEqual([expect.objectContaining({ id: followUp.id, mode: "followUp" })]);
 		release.resolve();
 		await followUp.wait(context);
@@ -281,7 +281,7 @@ describe("a run as the conversation view shows it", () => {
 		followCommits(harness, (publication) => {
 			for (const change of documentValues(publication)) {
 				const output = (change.value as LiveState)?.tools?.[0]?.output;
-				if (change.record.kind === "pi.live" && output !== undefined && output !== outputs.at(-1)) {
+				if (change.record.kind === "nycode.live" && output !== undefined && output !== outputs.at(-1)) {
 					outputs.push(output);
 				}
 			}
@@ -326,10 +326,10 @@ describe("a run as the conversation view shows it", () => {
 		const after = history.views[boundary]!;
 		const appended = after.entries.slice(before.entries.length);
 		expect(appended.map((entry) => [entry.kind, textOf(entry.model?.[0])])).toEqual([
-			["pi.assistant", "first"],
-			["pi.user", "f"],
+			["nycode.assistant", "first"],
+			["nycode.user", "f"],
 		]);
-		expect((after.docs["pi.inbox"] as { items: unknown[] }).items).toEqual([]);
+		expect((after.docs["nycode.inbox"] as { items: unknown[] }).items).toEqual([]);
 		await harness.close(context);
 	});
 
@@ -363,7 +363,7 @@ describe("a run as the conversation view shows it", () => {
 		const listed = slotsOf(states, "c1").findIndex((slot) => slot !== undefined);
 		expect(slotsOf(states, "c1")[listed]).toMatchObject({ status: "pending", unoffered: true });
 		expect(slotsOf(states, "c1")[listed]!.taskId).toBeDefined();
-		expect(history.views[listed]!.entries.at(-1)!.kind).toBe("pi.assistant");
+		expect(history.views[listed]!.entries.at(-1)!.kind).toBe("nycode.assistant");
 		const ended = slotsOf(states, "c1").findIndex((slot) => slot?.status === "done");
 		expect(slotsOf(states, "c1")[ended]!.entry).toBe(history.views[ended]!.entries.at(-1)!.id);
 		// The aborted tool ends with its result entry, then the run ends without an answer.
@@ -411,7 +411,7 @@ describe("a run as the conversation view shows it", () => {
 		expect([...runs]).toEqual([input.id]);
 		expect(states.some((state) => state.run?.inputs.includes(steer.id))).toBe(true);
 		// The reset is appended in place, with no run.
-		expect(history.views.at(-1)!.entries.at(-1)!.kind).toBe("pi.reset");
+		expect(history.views.at(-1)!.entries.at(-1)!.kind).toBe("nycode.reset");
 		expect(states.at(-1)!.run).toBeUndefined();
 		await harness.close(context);
 	});
@@ -431,7 +431,7 @@ describe("a run as the conversation view shows it", () => {
 		const ended = states.findIndex((state, index) => index > 0 && state.run === undefined);
 		expect(states[ended - 1]!.generation?.message).toBeDefined();
 		const appended = history.views[ended]!.entries.slice(history.views[ended - 1]!.entries.length);
-		expect(appended.map((entry) => entry.kind)).toEqual(["pi.assistant"]);
+		expect(appended.map((entry) => entry.kind)).toEqual(["nycode.assistant"]);
 		expect(appended[0]!.model![0]).toMatchObject({ role: "assistant", stopReason: "aborted" });
 		expect(states[ended]!.runFailure).toMatchObject({ reason: "aborted" });
 		await harness.close(context);
@@ -463,7 +463,7 @@ describe("a run as the conversation view shows it", () => {
 		});
 		await drained();
 		const update = frames.at(-1)!;
-		expect(update.ops).toEqual([["a", ["docs", "pi.live", "generation", "message", "content", 0, "text"], "lo"]]);
+		expect(update.ops).toEqual([["a", ["docs", "nycode.live", "generation", "message", "content", 0, "text"], "lo"]]);
 		const rebuilt = applyImmutable(frames[0]!.value, update.ops);
 		expect(liveOf(rebuilt).generation?.message?.content).toEqual([{ type: "text", text: "hello" }]);
 		await watch.stop();
@@ -520,7 +520,7 @@ describe("streamed partials", () => {
 		);
 		await (await root.submit({ type: "input", content: "go" }, context)).wait(context);
 		observation.detach();
-		const MESSAGE = ["docs", "pi.live", "generation", "message"];
+		const MESSAGE = ["docs", "nycode.live", "generation", "message"];
 		// Operations on the in-flight message, with their paths relative to it.
 		const onMessage = ops.flatMap((op) => {
 			const path = op[0] === "r" ? [] : (op[1] as readonly (string | number)[]);
@@ -549,7 +549,7 @@ describe("streamed partials", () => {
 		const stream = async (size: number) => {
 			const setup = chatSetup({ tokensPerSecond: 64_000, tokenSize: { min: 64, max: 64 } });
 			setup.settings.progress = { partialIntervalMs: 1, outputIntervalMs: 100 };
-			// Keep `pi.live` cached between commits, as the default retention does. Evicted after each use (the suite's
+			// Keep `nycode.live` cached between commits, as the default retention does. Evicted after each use (the suite's
 			// evicting run), every commit replays the document's delta chain: a cost of eviction, not of appending.
 			setup.settings.documentRetentionMs = 60_000;
 			const text = 'streamed text with "quotes" and \\ escapes\n'.repeat(size / 40);

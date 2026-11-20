@@ -1,9 +1,9 @@
-import type { Context } from "@earendil-works/chord/context";
-import type { Draft, Op } from "@earendil-works/chord/delta";
-import type { JsonValue } from "@earendil-works/chord/json";
-import type { WatchCall, WatchEnd, WatchHandle } from "@earendil-works/chord/watch";
-import type { Message, Models } from "@earendil-works/pi-ai";
-import type { TelemetryCarrier } from "@earendil-works/pi-telemetry";
+import type { Message, Models } from "@nycode/ai";
+import type { Context } from "@nycode/chord/context";
+import type { Draft, Op } from "@nycode/chord/delta";
+import type { JsonValue } from "@nycode/chord/json";
+import type { WatchCall, WatchEnd, WatchHandle } from "@nycode/chord/watch";
+import type { TelemetryCarrier } from "@nycode/telemetry";
 import type { ExecutionEnv } from "./env/index.ts";
 import type {
 	Agent,
@@ -1039,7 +1039,7 @@ export interface Tx {
 		limit: number,
 		cursor?: Cursor,
 	): Promise<Page<TaskRecord<JsonValue, JsonValue, JsonValue>, Cursor>>;
-	/** Committed submission record, such as one of `pi.live.run.inputs`; a placed input's `entry` is its transcript entry. */
+	/** Committed submission record, such as one of `nycode.live.run.inputs`; a placed input's `entry` is its transcript entry. */
 	submission(id: SubmissionId): Promise<SubmissionRecord | undefined>;
 	/** Committed submission with a conversation-scoped request ID. */
 	submissionByRequest(conversationId: ConversationId, requestId: string): Promise<SubmissionRecord | undefined>;

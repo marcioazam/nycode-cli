@@ -1,6 +1,6 @@
-// `pi.live.runFailure`: why the newest run ended without an answer, as state a renderer shows (#11327).
+// `nycode.live.runFailure`: why the newest run ended without an answer, as state a renderer shows (#11327).
 
-import { type FauxResponseStep, fauxAssistantMessage, fauxText, fauxToolCall } from "@earendil-works/pi-ai";
+import { type FauxResponseStep, fauxAssistantMessage, fauxText, fauxToolCall } from "@nycode/ai";
 import {
 	type AfterFailedRun,
 	type Conversation,
@@ -10,8 +10,8 @@ import {
 	type LiveState,
 	MemoryStorage,
 	type RunFailure,
-} from "@earendil-works/pi-durable";
-import { obj } from "@earendil-works/pi-schema";
+} from "@nycode/durable";
+import { obj } from "@nycode/schema";
 import { describe, expect, it } from "vitest";
 import { chatSetup, openChat, unanswered } from "./chat-support.ts";
 import { addTool } from "./harness-support.ts";
@@ -34,7 +34,7 @@ function failingOnce() {
 	return { step, gate, reached };
 }
 
-describe("pi.live.runFailure", () => {
+describe("nycode.live.runFailure", () => {
 	it("records a model error with its text, and a later run clears it", async () => {
 		const setup = chatSetup();
 		setup.faux.setResponses([

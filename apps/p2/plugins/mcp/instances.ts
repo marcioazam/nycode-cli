@@ -11,8 +11,8 @@ import {
 	PipeTransport,
 	StdioTransport,
 	type Tool,
-} from "@earendil-works/pi-mcp";
-import { McpOAuthAuthorizationRequiredError } from "@earendil-works/pi-mcp/oauth";
+} from "@nycode/mcp";
+import { McpOAuthAuthorizationRequiredError } from "@nycode/mcp/oauth";
 import { PluginError } from "@p2/app/v1";
 import { type Instance, type McpTool, signInLink } from "./contract.ts";
 import { type ConnectEnv, EnvConnections } from "./environments.ts";

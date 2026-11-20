@@ -1,4 +1,4 @@
-import { arr, bool, int, obj, opt, type Static, str, union } from "@earendil-works/pi-schema";
+import { arr, bool, int, obj, opt, type Static, str, union } from "@nycode/schema";
 import { literal, record } from "@p2/app/v1";
 
 /** Browser-safe configuration shape. No credentials are kept in envs.json. */

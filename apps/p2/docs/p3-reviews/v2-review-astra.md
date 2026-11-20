@@ -6,7 +6,7 @@ Reviewed committed `private` HEAD `e5864dd826b145fc78d2165ed78a580dfa0fe9d5`. Co
 
 ## Evidence and scope
 
-- Committed Chord next suite: **412 tests passed in 53 files**. Command: `node /home/badlogic/pi-private/node_modules/vitest/dist/cli.js --run test`, from the snapshot's `packages/chord`, using Node 24.4.1.
+- Committed Chord next suite: **412 tests passed in 53 files**. Command: `node /home/badlogic/nycode-private/node_modules/vitest/dist/cli.js --run test`, from the snapshot's `packages/chord`, using Node 24.4.1.
 - Committed playground: **19 tests passed**, including its shared SQLite cases and five playground cases. Command: `node --conditions=source --test test/playground.test.ts test/document-storage.test.ts`. A playground-local package symlink resolved Chord to the snapshot, not the concurrently edited workspace.
 - Separate bounded probes reproduced findings 1–10 below. Probe files are `/tmp/chord-astra-head/astra-probe.ts`, `astra-probe2.ts`, `astra-bindings.ts`, and `astra-performance.ts`; their essential setups/results are recorded below so the findings do not depend on those temporary files surviving.
 - Read the v2 design, decision log, walkthrough, implementation notes, kernel/storage/transport code and relevant tests; compared the old Chord specification and guide, p3 functionality map, p2 runtime and representative chat/workspace/sharing/terminals/subagents/codemode integrations, plus Durable's harness, registry and phase-snapshot integration. This is not a full audit of Durable or every p2 plugin.

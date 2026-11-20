@@ -1,7 +1,7 @@
 // Chat mode: the people viewing a conversation talk to each other in its transcript. The agent reads along only
 // when someone mentions it. Served by each session worker.
 
-import { arr, bool, compile, int, num, obj, opt, type Static, str, union } from "@earendil-works/pi-schema";
+import { arr, bool, compile, int, num, obj, opt, type Static, str, union } from "@nycode/schema";
 import { literal, local, MessageDataSchema, method, param, propertiesOf, remote, sessionHost } from "@p2/app/v1";
 
 /** Entry kind of a chat message: display-only, it carries no model message. */
@@ -10,7 +10,7 @@ export const CHAT_ENTRY = "chat.message";
 export const MENTION_ENTRY = "chat.mention";
 /**
  * The message a reply answers: an entry of the same conversation, with its author and the start of its text. The
- * worker derives author and excerpt from that entry; a client only names the entry. Pi's answers can be replied to.
+ * worker derives author and excerpt from that entry; a client only names the entry. Nycode's answers can be replied to.
  */
 export const ReplyToSchema = obj(
 	{
@@ -42,7 +42,7 @@ export const ChatMessageSchema = obj(
 );
 export type ChatMessage = Static<typeof ChatMessageSchema>;
 
-/** A mention entry's data: what the person wrote, and the IDs of the chat entries its digest passed on to Pi. */
+/** A mention entry's data: what the person wrote, and the IDs of the chat entries its digest passed on to Nycode. */
 export const MentionSchema = obj(
 	{
 		...propertiesOf(ChatMessageSchema),
@@ -61,19 +61,19 @@ export const mention = (data: unknown): Mention | undefined => (isMention(data) 
 
 /**
  * The name people call the agent by in a conversation (chat mode's setting): one word, as it is spoken and mentioned
- * ("Pi", "Claude"). Letters, digits, `_` and `-`, starting with a letter.
+ * ("Nycode", "Claude"). Letters, digits, `_` and `-`, starting with a letter.
  */
-export const DEFAULT_AGENT_NAME = "Pi";
+export const DEFAULT_AGENT_NAME = "Nycode";
 export const AgentNameSchema = str({ pattern: "^[A-Za-z][A-Za-z0-9_-]{0,31}$" });
 
-/** The mention of the agent called `name`: `@` and the name in lower case ("@pi", "@claude"). */
+/** The mention of the agent called `name`: `@` and the name in lower case ("@nycode", "@claude"). */
 export const mentionToken = (name: string): string => `@${name.toLowerCase()}`;
 
 /** The name as a regular expression, matched literally (a valid name holds no special character; `-` is literal). */
 const escapeName = (name: string): string => name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /**
- * `@<name>` in any case, as a word of its own: with the default, "@pi", "@Pi," and "(@PI)" mention; "@pizza" and "me@pi"
+ * `@<name>` in any case, as a word of its own: with the default, "@nycode", "@Nycode," and "(@PI)" mention; "@pizza" and "me@nycode"
  * do not.
  */
 export const mentionPattern = (name = DEFAULT_AGENT_NAME): RegExp =>
@@ -83,16 +83,16 @@ export const mentionsAgent = (text: string, name = DEFAULT_AGENT_NAME): boolean 
 
 /**
  * The agent's name spoken anywhere in an utterance, as speech recognition writes it (no "@"): a whole word in any case,
- * whatever punctuation surrounds it. With the default: "Hey Pi, …", "can Pi summarize this", "what do you think,
- * Pi?". Not "pie", "piano", "pip" or "Pi-hole"; and not "Pi's": a possessive or contraction talks about the agent more
- * often than to it ("Pi's answer was odd"), and is cheap to say again.
+ * whatever punctuation surrounds it. With the default: "Hey Nycode, …", "can Nycode summarize this", "what do you think,
+ * Nycode?". Not "pie", "piano", "pip" or "Nycode-hole"; and not "Nycode's": a possessive or contraction talks about the agent more
+ * often than to it ("Nycode's answer was odd"), and is cheap to say again.
  */
 const spokenName = (name: string): RegExp =>
 	new RegExp(`(?<![\\p{L}\\p{N}_'’@-])${escapeName(name)}(?![\\p{L}\\p{N}_'’-])`, "iu");
 
 /**
  * A spoken message as chat mode reads it: one that names the agent gets its mention in front (what was said is kept
- * whole, for the context: "@pi can Pi summarize this"). One already holding the mention stays as it is.
+ * whole, for the context: "@nycode can Nycode summarize this"). One already holding the mention stays as it is.
  */
 export function spokenMention(text: string, name = DEFAULT_AGENT_NAME): string {
 	if (mentionsAgent(text, name)) return text;

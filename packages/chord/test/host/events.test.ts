@@ -2,7 +2,7 @@
 // listeners in entry then subscription order outside the fence, who gets an event (the emit counter per binding), GC
 // and the cost of an emit.
 
-import { InMemoryTelemetryContext } from "@earendil-works/pi-telemetry";
+import { InMemoryTelemetryContext } from "@nycode/telemetry";
 import { describe, expect, it, vi } from "vitest";
 import { BACKGROUND_CONTEXT as context, withCancel } from "../../src/context/index.ts";
 import { currentVariants, variantNames } from "../../src/contracts/internal.ts";

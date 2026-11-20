@@ -1,4 +1,4 @@
-// A session's subagent items in the sidebar, in Chromium, end to end: pi's working dots while a subagent works, a red
+// A session's subagent items in the sidebar, in Chromium, end to end: nycode's working dots while a subagent works, a red
 // dot after a provider error (its label says why), nothing once stopped or idle; the age of its newest message in the
 // session's age column; its model and where it works as its tooltip. Its action on hover: Cancel stops only its run,
 // Archive moves it under "N archived". The fake provider answers; a local provider that refuses every request
@@ -88,7 +88,7 @@ describe("subagent rows in the sidebar", { skip: !browserTests }, () => {
 		`[...document.querySelectorAll('.sidebar-section[data-key=other] .nav-row:has(> .subagent-row)')].find(e=>e.querySelector('.session-title').textContent===${JSON.stringify(name)})`;
 	const shown = (name: string) =>
 		browser.evaluate<Shown>(
-			`(() => { const e = ${row(name)}; const m = e.querySelector('.nav-marker > *'); return { details: e.querySelector('.nav-details')?.textContent ?? '', status: !m ? '' : m.classList.contains('pi-dots') ? 'dots' : m.classList.contains('failed-dot') ? 'failed: ' + m.getAttribute('aria-label') : m.className, tooltip: e.querySelector('.subagent-row').title }; })()`,
+			`(() => { const e = ${row(name)}; const m = e.querySelector('.nav-marker > *'); return { details: e.querySelector('.nav-details')?.textContent ?? '', status: !m ? '' : m.classList.contains('nycode-dots') ? 'dots' : m.classList.contains('failed-dot') ? 'failed: ' + m.getAttribute('aria-label') : m.className, tooltip: e.querySelector('.subagent-row').title }; })()`,
 		);
 	/** Moves the mouse over item `name`, which shows its action instead of its age. */
 	const hover = async (name: string) => {
@@ -121,14 +121,14 @@ describe("subagent rows in the sidebar", { skip: !browserTests }, () => {
 		});
 	});
 
-	it("shows pi's dots while a subagent works; its Cancel stops its run only", async () => {
+	it("shows nycode's dots while a subagent works; its Cancel stops its run only", async () => {
 		const owner = fixture.browser();
 		const sub = await holdIn(owner, Chat, { session, conversation: helper().conversationId }, "participant");
 		const main = await holdIn(owner, Chat, { session, conversation: 1 }, "participant");
 		const status = await holdIn(owner, SessionStatus, {}, "reader");
 		await main.send({ text: "slow main", requestId: "slow-main" }, BACKGROUND_CONTEXT);
 		await sub.send({ text: "slow rows", requestId: "slow" }, BACKGROUND_CONTEXT);
-		await browser.wait(`${row("helper")}.querySelector('.nav-marker > .pi-dots[role=img][aria-label=Working]')`);
+		await browser.wait(`${row("helper")}.querySelector('.nav-marker > .nycode-dots[role=img][aria-label=Working]')`);
 		assert.equal((await shown("helper")).tooltip, "faux-1 · off\nFollows the session");
 		await hover("helper");
 		const cancel = `.sidebar-section[data-key=other] .conversation-row > button.item-action[data-action=cancel][aria-label="Stop helper"]`;
@@ -141,14 +141,14 @@ describe("subagent rows in the sidebar", { skip: !browserTests }, () => {
 		await browser.click(cancel);
 		await until(status.statuses, (states) => !states?.[session]?.busy.includes(helper().conversationId));
 		// Stopped, not finished on its own.
-		const last = await until(sub.view, (view) => !(view?.docs["pi.live"] as { run?: unknown } | undefined)?.run);
+		const last = await until(sub.view, (view) => !(view?.docs["nycode.live"] as { run?: unknown } | undefined)?.run);
 		assert.doesNotMatch(JSON.stringify(last?.entries ?? []), /Echo: slow rows/);
 		// A stopped run shows nothing; the main conversation still runs, and the session's item says so.
 		await browser.wait(`!${row("helper")}.querySelector('.nav-marker > *')`);
 		assert.ok(status.statuses.value?.[session]?.busy.includes(1), "the main conversation still runs");
 		assert.ok(
 			await browser.evaluate<boolean>(
-				`Boolean(${row("helper")}.closest('.session-row').querySelector('.session-header .nav-marker > .pi-dots'))`,
+				`Boolean(${row("helper")}.closest('.session-row').querySelector('.session-header .nav-marker > .nycode-dots'))`,
 			),
 		);
 		// The failed one keeps its failure while the other one works and stops.

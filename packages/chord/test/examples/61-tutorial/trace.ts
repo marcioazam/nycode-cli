@@ -6,7 +6,7 @@
 //   node --conditions=source --experimental-strip-types test/examples/61-tutorial/trace.ts <data directory> [--name <span>] [--principal <key>]
 //   node --conditions=source --experimental-strip-types test/examples/61-tutorial/trace.ts <data directory> <trace id>
 import { parseArgs } from "node:util";
-import { renderTrace } from "@earendil-works/pi-telemetry/render";
+import { renderTrace } from "@nycode/telemetry/render";
 import { openTelemetryStore } from "../../../src/telemetry-sqlite/node.ts";
 import { telemetryFile } from "./src/telemetry.ts";
 

@@ -33,7 +33,7 @@ Outbox:
 { seq: 57, ops: [
   { op: "update", table: "file-history/edits", where: { prefix: ["path", "a/"] },
     set: { path: { replacePrefix: ["a/", "b/"] } }, count: 10000 },
-  { op: "delete", table: "pi-durable/revisions", where: { eq: ["document", 41] }, count: 300 } ] }
+  { op: "delete", table: "nycode-durable/revisions", where: { eq: ["document", 41] }, count: 300 } ] }
 ```
 
 - `where` is the query DSL's predicate (S12 scope); `set` takes values or expressions from a fixed set:

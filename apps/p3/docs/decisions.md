@@ -4,11 +4,11 @@ The owner's decisions for p3, newest last. Chord decisions are in `packages/chor
 rules are in `workflow.md`. An entry marked **(Superseded …)** is kept as the record; the entry it names wins. Paths in
 older entries that say `docs/<file>` or `apps/p3/docs/<file>` now are `apps/p3/docs/archive/<file>` (moved 2026-11-14).
 
-- **(Superseded by "p3 lives on main", 2026-11-07.)** **Work on branch `p3` in `/home/badlogic/pi`, no worktrees (owner, 2026-11-06: "no worktree. work in a branch in the
-  pi folder"):** the shared checkout is switched to `p3`; p3 work, and Chord changes p3 needs, are committed there and
+- **(Superseded by "p3 lives on main", 2026-11-07.)** **Work on branch `p3` in `/home/badlogic/nycode`, no worktrees (owner, 2026-11-06: "no worktree. work in a branch in the
+  nycode folder"):** the shared checkout is switched to `p3`; p3 work, and Chord changes p3 needs, are committed there and
   pushed to `origin/p3`; Chord changes are brought to main afterwards. Build subagents work in the same checkout.
 - **p3 lives on main (owner, 2026-11-07: "switch to main, p3 can live there too, branch sucks"; supersedes "Work on
-  branch p3"):** `apps/p3/` on main of earendil-works/pi; commit only your own files, never `git add -A`.
+  branch p3"):** `apps/p3/` on main of marcioazam/nycode-cli; commit only your own files, never `git add -A`.
 - **Reloads first (owner, 2026-11-06: "first order is actually the whole reload shit. that needs to be smooth and
   perfect ... keep [server restarts] to its absolute minimum"):** base code is vocabulary (the API re-exports Chord's
   plugin surface once; the principal, `defineFacet`, host kinds; the start script, the worker entry, a web entry
@@ -155,7 +155,7 @@ older entries that say `docs/<file>` or `apps/p3/docs/<file>` now are `apps/p3/d
   the single user may do everything). No pretend user appears in lists, presence or audit.
 - **(Withdrawn later on 2026-11-13: "settings are garbage"; replaced by "Apps are plugins; users and guests are the confined people" below; org-managed Pis to be redone on apps.)** **Org-managed Pis through managed settings (owner, 2026-11-13: "I'm in favor of the Opus model ... it just needs to
   be flexible"; supersedes the policy plugin of "Resource model direction" and the company resources of "Instance
-  resources"):** one Pi per person; everything an org wants is a setting. Plugins declare their configuration with
+  resources"):** one Nycode per person; everything an org wants is a setting. Plugins declare their configuration with
   `defineSetting` (a name, a schema, an initial value, merge `value` or `entries`) in their contract file; the base keeps
   the member's values and every write goes through `Settings.set` (the page, the agent's tools, other plugins). The
   org's values form one managed layer that gives any setting a value with lock `default` (a starting point; org
@@ -163,9 +163,9 @@ older entries that say `docs/<file>` or `apps/p3/docs/<file>` now are `apps/p3/d
   and ignored); `set` refuses a locked setting or an org entry with the error code `managed` ("Managed by Acme").
   Provisioning and deny lists are the same data; there are no operations, levels, rule tables or policy functions.
   A machine is enrolled by a root-owned file at a fixed path (`/etc/p3/enrollment.json`: org, server, org key,
-  allowed plugin sources; no secrets); an enrolled Pi stays locked (gate `pending`: no sessions, only the app root
+  allowed plugin sources; no secrets); an enrolled Nycode stays locked (gate `pending`: no sessions, only the app root
   loads, settings at their initial values) until its first sync with the org server (Radius) delivered a profile
-  signed with the org key and bound to the member and the Pi, the required plugins installed at pinned refs and
+  signed with the org key and bound to the member and the Nycode, the required plugins installed at pinned refs and
   hashes, and the profile was written as the cache; later starts open from the cache and follow updates live
   (settings first, plugin additions once installed). Gate states `unmanaged`, `pending`, `ready`, `stale` (optional
   `maxOffline`), `revoked`. "No agent-written plugins" means only approved builds load (`p3.plugins.own`). In-process
@@ -178,7 +178,7 @@ older entries that say `docs/<file>` or `apps/p3/docs/<file>` now are `apps/p3/d
 - **(Superseded in its principals and session check by "People, apps and locks" and "The principal is identity only"; apps as trusted plugins stand.)** **Apps are plugins; users and guests are the confined people (owner, 2026-11-13: "an app is code, which creates
   layouts/views/objects it needs, and can reuse existing shit"; "the point of apps is that I the owner can construct
   it such that members (users) can only access what I give the app and its sessions"; "no defensive shit" for privacy
-  against the owner; supersedes "Org-managed Pis through managed settings" of the same day):** one Pi, one owner, who installs every plugin; apps (the robot for his son, family, a football
+  against the owner; supersedes "Org-managed Pis through managed settings" of the same day):** one Nycode, one owner, who installs every plugin; apps (the robot for his son, family, a football
   club, coding as the built-in app) are plugins and trusted: they call each other and any plugin freely. Only people
   are confined, by their principal: `owner`, `user { app, id }` (a member of one app's own user pool: invited by the
   owner, signs up on the app's page, configured by the owner per app), `guest { id, sessions: read | write, revision }`
@@ -200,16 +200,16 @@ older entries that say `docs/<file>` or `apps/p3/docs/<file>` now are `apps/p3/d
   (verified email; Google/GitHub at Radius) and this device; more devices by pairing. A session belongs to exactly
   one app; any app may show any session; the owner always passes. Lockdown is **locks**: a plugin declares a switch or
   a limit (`defineSwitch`, `defineLimit`: schema, open, closed, narrow), registers it with the server (`Locks`), and
-  enforces it where it hands things out; layers company (the org profile: initial copy on disk, then Radius) > Pi >
+  enforces it where it hands things out; layers company (the org profile: initial copy on disk, then Radius) > Nycode >
   app (the app's code defaults, then the owner's app sheet) > session, only narrowing; one sheet per scope for
-  technical owners, with the agent's help (`locks` tools). Plugins outside Pi's own root get a plugin switch per app
+  technical owners, with the agent's help (`locks` tools). Plugins outside Nycode's own root get a plugin switch per app
   (`otherPlugins: "on" | "off"` in the app, the owner chooses the apps on install); base plugins declare locks. Radius
   learns the locks from member Pis' reports and by loading selected plugins' server facets in a sandbox. Design, kit
   changes, open questions: `people/book.md` (second edition). The owner: "this still seems overly complex".
 
-- **Direction (owner, 2026-11-13):** one Pi per person, one owner who installs every plugin; plugins (apps among them)
-  are trusted code; only people are confined. Pi must be "super malleable, with basic primitives that allow almost
-  everything": keep extension points cheap. Colin's plan: Dec 1 Pi Roam, Dec 18 Org Devices (each member their own Pi
+- **Direction (owner, 2026-11-13):** one Nycode per person, one owner who installs every plugin; plugins (apps among them)
+  are trusted code; only people are confined. Nycode must be "super malleable, with basic primitives that allow almost
+  everything": keep extension points cheap. Colin's plan: Dec 1 Nycode Roam, Dec 18 Org Devices (each member their own Nycode
   on an org machine), February hosted.
 - **The principal is identity only (owner, 2026-11-13, late; supersedes the person principal with roles, sessions and
   revision of "People, apps and locks", the stamped principals, session lists in the principal and string-encoded
@@ -223,7 +223,7 @@ older entries that say `docs/<file>` or `apps/p3/docs/<file>` now are `apps/p3/d
 - **Apps and sessions (owner, 2026-11-13):** an app is a plugin (its layouts, views, objects; it reuses any other
   plugin's); coding is the built-in app. A session belongs to exactly one app; any app may show any session; moving a
   session to another app is allowed (its app is a fact admissions read live; the locks of the new app's layer apply
-  from the next turn). `defaultApp`: a Pi setting, per person a preference; new sessions without a choice and the start
+  from the next turn). `defaultApp`: a Nycode setting, per person a preference; new sessions without a choice and the start
   page go there; fallback coding. An app may admit another app's people (the robot lets family members watch).
 - **Admission before the factory (owner, 2026-11-13; Chord):** `host.serve(Type, factory, { admit })`; `admit`
   declares references, registries and derives and returns a watchable `allow(level) | deny(reason)`; the factory gets
@@ -234,10 +234,10 @@ older entries that say `docs/<file>` or `apps/p3/docs/<file>` now are `apps/p3/d
 - **Locks (owner, 2026-11-13; refines "People, apps and locks"):** design in `archive/locks/design.md` (with Fable's
   review, slice 6). A plugin declares a lock (id, title and description as `MessageData`, schema, open, closed,
   `narrow`), registers it with the server (`Locks`), reads it (`lockValue`, `lockValueFor`) and enforces it where it
-  hands things out; locks are static declarations, runtime things are values. Layers org > Pi > app (the app's code
+  hands things out; locks are static declarations, runtime things are values. Layers org > Nycode > app (the app's code
   defaults, then the owner's app configuration) > session, only narrowing; one sheet per layer; `LockEditors`; the
   agent's `locks_*` tools from the owner's sessions. Locks take effect from the next turn: a running turn keeps its
-  snapshot, no check at the call ("that's not a security boundary we need"). Plugins outside Pi's own root have a
+  snapshot, no check at the call ("that's not a security boundary we need"). Plugins outside Nycode's own root have a
   plugin switch per app and session (`otherPlugins: "on" | "off"` per app, the install dialog chooses the apps; an
   app's own plugin is always on); base plugins have none; an org's ban is the loader's admission. Every user-visible
   text in p3 is a message (`MessageData`, rendered per viewer); Radius gets the texts in reports. Radius learns locks
@@ -260,7 +260,7 @@ older entries that say `docs/<file>` or `apps/p3/docs/<file>` now are `apps/p3/d
   one owner on the server, others follow its state and write through its methods. Third parties integrate sign-in and
   accounts; a plugin uses an account for an MCP sign-in or a provider (`archive/accounts/book.md`).
 - **No per-user environments (owner, 2026-11-10, repeated 2026-11-13):** a session in any app may use every
-  environment of the Pi; an app may limit its sessions to one; separation beyond that is a separate Pi.
+  environment of the Nycode; an app may limit its sessions to one; separation beyond that is a separate Nycode.
 - **Rejected (owner, 2026-11-13; do not propose again):** managed settings (`defineSetting`, a managed layer), a plugin
   manifest in `package.json`, per-plugin "features", permission levels, operation registries and policy rule tables,
   resource rows, a `plugins: { only }` list in app code, a generic "pick plugins per session" sheet, per-app user pools
@@ -277,7 +277,7 @@ older entries that say `docs/<file>` or `apps/p3/docs/<file>` now are `apps/p3/d
   an input to its answer, a turn one assistant answer plus its tool calls. Fast and low memory is a goal: every slice
   measures worker start, idle RSS, server start and bytes on the wire (p2's worker starts take seconds on the phone).
   The kit's plugin loading is kept.
-- **No worktree (owner, 2026-11-14):** p3 is built in the shared checkout `/home/badlogic/pi` on main, as decided on
+- **No worktree (owner, 2026-11-14):** p3 is built in the shared checkout `/home/badlogic/nycode` on main, as decided on
   2026-11-06 for the then branch; commit only your own files. The resource model stays superseded by locks: Fable's comparison
   (2026-11-14, private: `research/p3-people-2026-11-13/resources-vs-locks-adm-fable.md`) recommends locks (one owner
   leaves only restriction; several times smaller to build and for plugin authors) and three of its ideas for locks,
@@ -298,7 +298,7 @@ older entries that say `docs/<file>` or `apps/p3/docs/<file>` now are `apps/p3/d
   never their principal. The principal kinds stay `owner`, `person`, `worker`, `server` (no `guest` kind: a kind of its
   own would make every plugin care). Two kinds of rows point at a person: an app membership (person, app, role) and a
   session share (person, session, read or write); anyone may have both. A session shared with someone already on the
-  Pi needs no invite: a share row is added. One link mechanism with a target and a use rule: an app invite (join app
+  Nycode needs no invite: a share row is added. One link mechanism with a target and a use rule: an app invite (join app
   X as role R, single use by default) and a session share link (session S, read or write, reusable until revoked, as
   p2's share link). Opening a link: sign in as yourself, or pick a name, which creates a temporary person (device
   only, marked as made by that link). Every share made from a link points back to it; revoking the link deletes them
@@ -350,7 +350,7 @@ older entries that say `docs/<file>` or `apps/p3/docs/<file>` now are `apps/p3/d
   need). `forward(store, Remote, variant, own?)` takes the members a view implements itself as a fourth argument. A
   session's state and last touch have no writer before the harness (slice 3). p3's own names in the kit (`p3.info`,
   `p3.sign-ins`, cookie `p3-sign-in`, `/_p3/owner`): a browser shares cookies across ports of one host. p3's default
-  data directory is `~/.pi/p3`. `forward` reads a contract's member names through Chord's `memberNames(contract,
+  data directory is `~/.nycode/p3`. `forward` reads a contract's member names through Chord's `memberNames(contract,
   variant)`.
 - **p2's plugin patterns, fixed (owner, 2026-11-15; reviewed by Fable, Sol and Astra):** views of a store are
   explicit remote contracts filled by `forward` (never a public contract derived from a store); a contribution that
@@ -374,17 +374,17 @@ older entries that say `docs/<file>` or `apps/p3/docs/<file>` now are `apps/p3/d
   through the close function Chord's HTTP component now hands `links.opened(request, principal, close)`; not through
   `host.revoke`, which ends objects by principal and so would end the owner's shared objects for every device.
 - **The basics before iterating (owner, 2026-11-15):** slice 26 (the release build, the shipped package
-  `@earendil-works/p3` with types third-party plugins type-check against, the `p3` command with `server`, `status`,
-  `stop`, `restart`, a background supervisor, and several Pis on one machine by `--pi`/`--dir`), then slice 27 (a
+  `@nycode/p3` with types third-party plugins type-check against, the `p3` command with `server`, `status`,
+  `stop`, `restart`, a background supervisor, and several Pis on one machine by `--nycode`/`--dir`), then slice 27 (a
   terminal client scaffold that `p3` connects to), then slice 25 (sign-in with Radius); further arguments (mirroring
-  coding-agent's where sensible) are iterations on that base. The API is `@earendil-works/p3/v1`, no shorthand; the
-  built-in plugin is `@earendil-works/p3-sessions`; Chord exports the `Method` and `LiteralsSchema` types so
+  coding-agent's where sensible) are iterations on that base. The API is `@nycode/p3/v1`, no shorthand; the
+  built-in plugin is `@nycode/p3-sessions`; Chord exports the `Method` and `LiteralsSchema` types so
   contracts can be named in declarations. The lockfile change of the rename is OK.
 - **Fable plans and reviews, never builds (owner, 2026-11-15):** builders are Opus; Fable writes designs, briefs and
   reviews only. (Slice 14, the frame fixes, slice 1's redo and slice 26's first part were built by Fable before this
   rule; each went through review rounds by Opus, Sol and Astra with mutation checks.)
-- **Correction (2026-11-15):** p3's sign-in cookie is `p3-<id>`, named after the Pi's random id (slice 26, several
-  Pis on one machine), not `p3-sign-in` as the slice 1 redo entry says. The API package is `@earendil-works/p3`.
+- **Correction (2026-11-15):** p3's sign-in cookie is `p3-<id>`, named after the Nycode's random id (slice 26, several
+  Pis on one machine), not `p3-sign-in` as the slice 1 redo entry says. The API package is `@nycode/p3`.
 - **Stack traces in the release: names kept, no source maps (owner, 2026-11-16):** the release bundle keeps
   identifiers (`minifySyntax` and `minifyWhitespace` only), as coding-agent's bundle does, so a raw stack names real
   functions; no source maps ship. Mapping stacks to source positions (maps beside the bundle, a short-lived mapper
@@ -395,8 +395,8 @@ older entries that say `docs/<file>` or `apps/p3/docs/<file>` now are `apps/p3/d
   browser or terminal without a sign-in gets the sign-in screen with the registered identity providers: Radius, and
   pairing. Pairing shows a short single-use code on the new device (`K7QM-2PXF`); the owner approves it on a device
   already signed in (`p3 pair <code>`, the local page, the terminal client), and the waiting device gets its own
-  sign-in, revocable on its own. No link travels, so the Pi never needs to know the address it is reached by (a
-  tunnel's domain, a LAN address). Passwords for the owner are out: a Pi exposed to the web would make them phishable
+  sign-in, revocable on its own. No link travels, so the Nycode never needs to know the address it is reached by (a
+  tunnel's domain, a LAN address). Passwords for the owner are out: a Nycode exposed to the web would make them phishable
   and guessable. The owner link printed at start stays as the first sign-in. Remote requests are accepted for any host name
   (owner, 2026-11-16, same day): authority comes only from host-bound sign-ins; pairing codes expire within minutes,
   the approval shows everything needed to judge the request, and pairing is rate-limited (slice 25, "Decided since").
@@ -423,14 +423,14 @@ older entries that say `docs/<file>` or `apps/p3/docs/<file>` now are `apps/p3/d
   (`flushCompileCache()` after start), and `--liftoff-only`, `--optimize-for-size` and `--max-semi-space-size=4` in
   their `execArgv`; background recompilation stays on (turning it off saves 1.5 to 2.5 MiB for up to 25% more CPU).
   p3 enforces its minimum Node version at start, and every flag is checked in the supported versions. A memory test
-  in the release tests runs a real worker with Durable and pi-ai (stub provider), a burst and five parallel subagents,
+  in the release tests runs a real worker with Durable and nycode-ai (stub provider), a burst and five parallel subagents,
   and fails if the worker's USS ever exceeds 55 MiB, one budget for every supported Node (owner, same day: raised
   from 45 to 50, because after five parallel streams glibc keeps about 10 MiB it freed, the session's own data is
   about 4 MiB, and the glibc setting that removes it only helps on Linux; then to 55, because Node 26's workers settle
   about 7 MiB above Node 24's and 50 failed one run in five on Node 26).
 - **p3 ships as a single executable, likely (owner, 2026-11-17):** p3 itself is likely distributed as a Node single
   executable application (SEA: one binary per platform with Node and p3's code inside), not installed from npm; the
-  packages (the API `@earendil-works/p3` that plugins type-check against, Chord and the others) still go to npm. First
+  packages (the API `@nycode/p3` that plugins type-check against, Chord and the others) still go to npm. First
   step: the local release build (`release:p3:local`) also makes the executable, and the release tests, the memory test
   and the bench run against it beside the npm install, measured overnight. Later the release uploads the executables.
 - **Base entries live in `src/bootstrap/` (owner, 2026-11-18; refines "Base entries are named after what they are"):**

@@ -4,7 +4,7 @@
 
 **Depends on:** slice 6.
 
-**From the archive:** `archive/org-managed/book.md` and its `details.md`, `archive/locks/design.md` §8 (companies and Radius), `archive/direction-pi-roam.md`.
+**From the archive:** `archive/org-managed/book.md` and its `details.md`, `archive/locks/design.md` §8 (companies and Radius), `archive/direction-nycode-roam.md`.
 
 **Read first:** the private org consultations on slayer (`/home/badlogic/chord-notes/research/p3-people-2026-11-13/org-consult-*.md`, `org-session-*.md`); `archive/org-managed/details.md` (its open decisions); `archive/people/book.md` (Companies).
 
@@ -19,7 +19,7 @@ The brief is filled out when the slice is next.
 
 **Open or to carry (docs audit):**
 
-- A failure never makes an enrolled Pi unmanaged and never opens what the last good profile closed
+- A failure never makes an enrolled Nycode unmanaged and never opens what the last good profile closed
   (`archive/org-managed/details.md` 2160-2161); the profile cache is a file (needed before the store opens);
   `pluginSources` bounds what a stolen org key can push.
 - Roots: the locks design's two kinds (base, user) against org-managed's four (app, system, org, member, pinned hashes):

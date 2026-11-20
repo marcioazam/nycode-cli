@@ -1,7 +1,7 @@
 ---
-title: Pi Roam: what the base must enable
+title: Nycode Roam: what the base must enable
 cover: Everything / As a Plugin
-kicker: An explainer · Pi Roam base inventory · second edition · 2026-11-09
+kicker: An explainer · Nycode Roam base inventory · second edition · 2026-11-09
 subtitle: The smallest set of base pieces with which chat assistants, orchestrators, triage apps, automations, stats, Discord and backups are all plugins
 stats:
   - 200+ | use cases from three independent inventories
@@ -14,18 +14,18 @@ note: |
   discussion on 2026-11-09. Sources: `apps/p3/docs/base-inventory/` (the three reports and `merged.md`),
   `apps/p3/docs/status-2026-11-09.md`, `apps/p3/docs/decisions.md`. Code is illustrative: names and shapes are
   proposals, Durable and Chord APIs are real. Nothing is built.
-colophon: Pi Roam base inventory · explainer, second edition (types and worked features) · 2026-11-09
+colophon: Nycode Roam base inventory · explainer, second edition (types and worked features) · 2026-11-09
 ---
 
 # Before we begin {.preface}
 
 Mario wants a personal assistant he talks to through iMessage, with almost no screen. Armin wants a Home conversation
 that sends work off to sessions in the background and shows an inbox of what needs him. The team wants the triage
-agent's issue analysis inside Pi, one tap from "continue in a session". Someone wants cost statistics across every
+agent's issue analysis inside Nycode, one tap from "continue in a session". Someone wants cost statistics across every
 session, someone else a Discord channel that gets its own locked-down session on its first message. And everyone wants
 backups, so a dead laptop costs nothing.
 
-None of these should be built into Pi. The question the owner set as the guiding light is the opposite one: **does the
+None of these should be built into Nycode. The question the owner set as the guiding light is the opposite one: **does the
 base offer everything needed to build each of them as a plugin?** Three subagents went broad, from different angles,
 and listed more than two hundred use cases with the base pieces each needs. This book is the merge: seventeen pieces,
 sorted into what must be base code, what can be a reloadable core plugin, and what is an ordinary plugin.
@@ -70,7 +70,7 @@ The three inventories overlapped heavily once deduplicated. The themes, each a f
 | Assistants over chat apps | iMessage, WhatsApp, Slack, Discord, email; almost no UI |
 | Orchestrator, Home, inbox | one conversation spawning background sessions; cards; "needs you" |
 | Questions and approvals | typed asks, approvals around tools, review loops, sign-in codes, camera or file requests |
-| Bespoke apps | the triage agent inside Pi, dashboards, boards, projects that become their own screens, agent-built views |
+| Bespoke apps | the triage agent inside Nycode, dashboards, boards, projects that become their own screens, agent-built views |
 | Coding workflows | per-checkout sessions, diffs, worktrees, parallel helpers, PRs and CI cards, browsers |
 | Automations | timers, cron reports, webhooks, watchers, scheduled sessions, hour-long jobs |
 | Stats, analysis, search, memory | usage and cost, reading session content, search, knowledge across sessions, replay |
@@ -92,7 +92,7 @@ defines both: the session metadata store, then the session service.
 
 Names are proposals; Chord (`local`, `remote`, `keyed`, `defineRegistry`, `defineState`, `self.writable`), Durable
 (`Extension`, `ToolRegistration`, `PromptSection`, `ExecutionEnv`, `defineExtension`, `hook`, `ToolTask`,
-`GenerationTask`) and pi-ai (`Model`, `Models`) are real. Every block names its file, so it is clear which facets can
+`GenerationTask`) and nycode-ai (`Model`, `Models`) are real. Every block names its file, so it is clear which facets can
 import it: a plugin's `contract.ts` is bundled into all its facets, `contract.server.ts` only into server facets,
 `contract.worker.ts` only into worker facets, `contract.web.ts` only into page facets.
 
@@ -200,7 +200,7 @@ export type SessionOrigin<T extends JsonValue> = { readonly name: string; readon
 export function defineSessionOrigin<S extends Schema>(name: string, schema: S): SessionOrigin<Static<S>>;
 export const OriginData = obj({ name: str(), value: unknown() });
 
-/** A model by provider and id, and a thinking level: the schemas of Durable's `ModelRef` and pi-ai's levels. */
+/** A model by provider and id, and a thinking level: the schemas of Durable's `ModelRef` and nycode-ai's levels. */
 export const ModelRef = obj({ provider: str(), modelId: str() });
 export const ThinkingLevel = oneOf("off", "minimal", "low", "medium", "high", "xhigh");
 
@@ -811,7 +811,7 @@ instead).
 
 **What was cut:** compulsory resources, ACLs, projects, Home, inbox or ticket types in the base; a policy provider; a
 central event log; a second workflow engine; a stringly action bus; fixed UI slots per product; mandatory payload
-logging; compatibility with old pi's file formats and mutable events; live session sync.
+logging; compatibility with old nycode's file formats and mutable events; live session sync.
 
 # Open Questions {.epilogue lede="Fifteen, five of them only the owner can decide."}
 

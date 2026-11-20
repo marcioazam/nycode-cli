@@ -11,7 +11,7 @@
 // decoded by what its consumer had applied when it sent them: one binding fence per unacknowledged `bound` (design
 // §22; slice 14, where an admission may rebind a hold several times before the first `ack`).
 
-import type { TelemetryContext } from "@earendil-works/pi-telemetry";
+import type { TelemetryContext } from "@nycode/telemetry";
 import type { Context } from "../context/index.ts";
 import { type VariantData, type VariantNames, variantNames, variantOrder, variantsAt } from "../contracts/internal.ts";
 import { ChordError, type FailureCause, isChordError, type Principal } from "../data/index.ts";

@@ -6,6 +6,6 @@ vi.mock("quickjs-wasi", () => {
 	throw new Error("the Code Mode extension loaded quickjs-wasi");
 });
 
-test("the Code Mode extension loads without pi-codemode's WASM runtime", () => {
+test("the Code Mode extension loads without nycode-codemode's WASM runtime", () => {
 	expect(createCodemodeExtension).toBeTypeOf("function");
 });

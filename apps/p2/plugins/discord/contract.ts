@@ -1,7 +1,7 @@
-// Pi on Discord (browser-safe contracts): the owner's bots run on the p2 server; a session linked to a channel through
-// one of them gets, at a mention by someone allowed to wake Pi, the messages since the link's cursor as one input, and
+// Nycode on Discord (browser-safe contracts): the owner's bots run on the p2 server; a session linked to a channel through
+// one of them gets, at a mention by someone allowed to wake Nycode, the messages since the link's cursor as one input, and
 // its answer goes back as a reply. A thread of a linked channel gets a subagent forked from the main conversation.
-import { arr, bool, bytes, int, nul, num, obj, opt, type Static, str, union } from "@earendil-works/pi-schema";
+import { arr, bool, bytes, int, nul, num, obj, opt, type Static, str, union } from "@nycode/schema";
 import {
 	evolve,
 	literal,
@@ -19,7 +19,7 @@ import {
 /** Entry kind of a delivered batch: a person's message (its data is message data) with the Discord details. */
 export const DISCORD_BATCH = "discord.batch";
 
-/** Who may wake Pi in a channel: anyone, or the listed Discord user and role IDs. */
+/** Who may wake Nycode in a channel: anyone, or the listed Discord user and role IDs. */
 export const WakeSchema = obj({
 	anyone: bool(),
 	users: arr(str({ maxLength: 32 }), { maxItems: 100 }),
@@ -51,7 +51,7 @@ export const BindingSchema = obj({
 });
 export type Binding = Static<typeof BindingSchema>;
 
-/** A delivered batch waiting for its turn's answer, to go back as a reply to the message that woke Pi. */
+/** A delivered batch waiting for its turn's answer, to go back as a reply to the message that woke Nycode. */
 export const PendingSchema = obj({
 	botId: str(),
 	session: str(),
@@ -95,7 +95,7 @@ export const ServerDetailsSchema = obj({
 export type ServerDetails = Static<typeof ServerDetailsSchema>;
 
 /**
- * Linking a session to a channel: the bot and channel, who may wake Pi, the sandbox the session moves into (where it
+ * Linking a session to a channel: the bot and channel, who may wake Nycode, the sandbox the session moves into (where it
  * works from then on), and its lock (the resources it may use).
  */
 export const LinkSchema = obj({
@@ -109,7 +109,7 @@ export const LinkSchema = obj({
 });
 export type Link = Static<typeof LinkSchema>;
 
-/** What a link's owner may change in place: who may wake Pi, and what the session may use (applied at once). */
+/** What a link's owner may change in place: who may wake Nycode, and what the session may use (applied at once). */
 export const LinkUpdateSchema = obj({ session: str(), wake: WakeSchema, lock: SessionLockSchema });
 
 const Token = str({ minLength: 10, maxLength: 200 });
@@ -143,7 +143,7 @@ export const DiscordStore = local("p2.discord-store", {
 		bots: arr(BotSchema),
 		bindings: arr(BindingSchema),
 		...OWNER_METHODS,
-		/** Changes who may wake Pi and what the session may use, in place. */
+		/** Changes who may wake Nycode and what the session may use, in place. */
 		updateLink: method(LinkUpdateSchema),
 	},
 });

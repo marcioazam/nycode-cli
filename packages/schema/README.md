@@ -1,4 +1,4 @@
-# @earendil-works/pi-schema
+# @nycode/schema
 
 JSON Schema builders and validation without `eval`. A schema compiles once into plain closures, so it checks values
 at close to the speed of validators that generate code, also under a strict Content Security Policy, and needs no
@@ -14,13 +14,13 @@ dependencies.
 ## Installation
 
 ```bash
-npm install @earendil-works/pi-schema
+npm install @nycode/schema
 ```
 
 ## Usage
 
 ```typescript
-import { compile, int, obj, oneOf, opt, type Static, str } from "@earendil-works/pi-schema";
+import { compile, int, obj, oneOf, opt, type Static, str } from "@nycode/schema";
 
 const Read = obj({
 	path: str({ description: "Path to the file", minLength: 1 }),
@@ -89,7 +89,7 @@ type Tree = { name: string; children: Tree[] };
 const Tree = recursive<Tree>("Tree", (self) => obj({ name: str(), children: arr(self) }));
 ```
 
-`Static` also types schemas built with TypeBox 1.x, read from TypeBox's type shapes (pi-schema does not import
+`Static` also types schemas built with TypeBox 1.x, read from TypeBox's type shapes (nycode-schema does not import
 TypeBox): `String`, `Number`, `Integer`, `Boolean`, `Null`, `Literal`, `Array`, `Object` (with `Type.Optional` and
 `Type.Readonly` properties), `Union`, `Record`, `Enum`, `Tuple`, `BigInt`, `Undefined`, `Unsafe`, `Unknown` and `Any`
 give TypeBox's own static type, so `Static<typeof Type.Object({ path: Type.String() })>` is `{ path: string }`. Other
@@ -99,7 +99,7 @@ TypeBox kinds (`Intersect`, `Cyclic`, `Ref`, ...) give `unknown` where they stan
 ### Options
 
 ```typescript
-import { formats } from "@earendil-works/pi-schema/formats";
+import { formats } from "@nycode/schema/formats";
 
 const validator = compile(schema, {
 	draft: "7", // "2020-12" (default) or "7"
@@ -219,13 +219,13 @@ Node 24.4.1 on one core of an i9-13900. The other libraries:
 - @cfworker/json-schema 4.1.1;
 - @oh-my-pi/omptype 18.13.3, through `fromJsonSchema`.
 
-| test suite (tests passed) | pi-schema | ata | ata interpreter | Ajv | Zod | TypeBox | cfworker | omptype |
+| test suite (tests passed) | nycode-schema | ata | ata interpreter | Ajv | Zod | TypeBox | cfworker | omptype |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | draft 2020-12 core (1,298) | 1,297 | 1,298 | 1,298 | 1,236 | 693 | 1,276 | 1,249 | 863 |
 | draft 7 core (925) | 925 | 925 | 925 | 917 | 632 | 924 | 918 | 659 |
 | draft 2020-12 format (895), with format checks | 895 | 814 | 814 | 750 | 412 | 895 | 740 | 412 |
 
-| check, valid value | pi-schema | ata | ata interpreter | Ajv | Zod | TypeBox | cfworker | omptype |
+| check, valid value | nycode-schema | ata | ata interpreter | Ajv | Zod | TypeBox | cfworker | omptype |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | nested object with tagged unions | 410 ns | 180 ns | 836 ns | 627 ns | 1.3 µs | 475 ns | 43 µs | 730 ns |
 | union of 5 messages | 86 ns | 37 ns | 212 ns | 70 ns | 297 ns | 95 ns | 11 µs | 96 ns |
@@ -233,14 +233,14 @@ Node 24.4.1 on one core of an i9-13900. The other libraries:
 | MCP tool schema with `$ref` | 161 ns | 64 ns | 314 ns | 136 ns | 927 ns | 87 ns | 15 µs | 1.9 µs |
 | recursive `$ref` schema | 755 ns | 307 ns | 1.9 µs | 378 ns | 2.7 µs | 1.2 µs | 41 µs | 7.5 µs |
 
-| same, without eval (strict CSP) | pi-schema | ata | ata interpreter | Ajv | Zod | TypeBox | cfworker | omptype |
+| same, without eval (strict CSP) | nycode-schema | ata | ata interpreter | Ajv | Zod | TypeBox | cfworker | omptype |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | nested object with tagged unions | 411 ns | 1.6 µs | 844 ns | fails | 3.4 µs | 44 µs | 44 µs | 2.7 µs |
 | union of 5 messages | 87 ns | 396 ns | 209 ns | fails | 652 ns | 10 µs | 11 µs | 501 ns |
 | MCP tool schema with `$ref` | 164 ns | 484 ns | 326 ns | fails | 2.0 µs | 39 µs | 13 µs | 2.2 µs |
 | recursive `$ref` schema | 746 ns | 2.8 µs | 1.9 µs | fails | 7.3 µs | 130 µs | 42 µs | 9.0 µs |
 
-| cost | pi-schema | ata | ata interpreter | Ajv | Zod | TypeBox | cfworker | omptype |
+| cost | nycode-schema | ata | ata interpreter | Ajv | Zod | TypeBox | cfworker | omptype |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | compile a new schema | 20 µs | 4.9 µs | 1.3 µs | 1.4 ms | 151 µs | 210 µs | 22 µs | 28 µs |
 | its first check | 0.8 µs | 335 µs | 87 µs | 195 µs | 466 µs | 41 µs | 7.1 µs | 109 µs |
@@ -308,7 +308,7 @@ deal:
   - importing all 3,200 generated validators took 40 MB of heap (Ajv, one module) and 68 MB (ata, one module per
     schema).
 
-pi-schema compiles at run time in 25 µs per schema, generates no code, and covers schemas known at build time and
+nycode-schema compiles at run time in 25 µs per schema, generates no code, and covers schemas known at build time and
 schemas that arrive later.
 
 ## Development

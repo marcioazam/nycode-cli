@@ -25,7 +25,7 @@ const roots: string[] = [];
 const DIRECTORY_LINK_TYPE = process.platform === "win32" ? "junction" : "dir";
 
 function fixture(): string {
-	const root = join(tmpdir(), `pi-ext-realpath-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+	const root = join(tmpdir(), `nycode-ext-realpath-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 	mkdirSync(root, { recursive: true });
 	roots.push(root);
 	return root;

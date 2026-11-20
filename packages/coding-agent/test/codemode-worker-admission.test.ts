@@ -1,5 +1,5 @@
 import { Worker } from "node:worker_threads";
-import * as codemode from "@earendil-works/pi-codemode";
+import * as codemode from "@nycode/codemode";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { executeCodemode } from "../src/extensions/codemode/execute.ts";
 
@@ -147,8 +147,8 @@ describe("codemode worker admission", () => {
 	});
 
 	// #11184: in-process hosts with many sessions can raise the limit.
-	it("reads the limit from PI_CODEMODE_MAX_WORKERS", async () => {
-		vi.stubEnv("PI_CODEMODE_MAX_WORKERS", "3");
+	it("reads the limit from NYCODE_CODEMODE_MAX_WORKERS", async () => {
+		vi.stubEnv("NYCODE_CODEMODE_MAX_WORKERS", "3");
 		const results: Awaited<ReturnType<typeof run>>[] = [];
 		const pending = Array.from({ length: 4 }, () => run("return 1").then((result) => results.push(result)));
 		await vi.waitFor(() => expect(results).toHaveLength(3));
@@ -160,8 +160,8 @@ describe("codemode worker admission", () => {
 		expect(results.every((result) => result.isError === undefined)).toBe(true);
 	});
 
-	it("ignores an invalid PI_CODEMODE_MAX_WORKERS", async () => {
-		vi.stubEnv("PI_CODEMODE_MAX_WORKERS", "0");
+	it("ignores an invalid NYCODE_CODEMODE_MAX_WORKERS", async () => {
+		vi.stubEnv("NYCODE_CODEMODE_MAX_WORKERS", "0");
 		const results: Awaited<ReturnType<typeof run>>[] = [];
 		const pending = Array.from({ length: 3 }, () => run("return 1").then((result) => results.push(result)));
 		await vi.waitFor(() => expect(results).toHaveLength(2));

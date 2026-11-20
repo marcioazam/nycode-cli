@@ -1,5 +1,5 @@
 // Secrets of the kit: tokens from `crypto.randomBytes`, kept only as their SHA-256 hashes and compared in constant
-// time, and secret files (the cookie key, the owner token file; the Pi's config and the records use the same write)
+// time, and secret files (the cookie key, the owner token file; the Nycode's config and the records use the same write)
 // put in place with mode 0600 in one rename, so no other OS user and no half-written file ever reads them.
 
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
@@ -49,9 +49,9 @@ export async function readSecret(path: string): Promise<string | undefined> {
  * Writes `text` to `path` with mode 0600 in one step: into a temporary file of the same directory (made exclusively,
  * 0600), synced, then renamed into place. `replace` replaces what is there; `create` never does: when `path` exists
  * (a link too) it returns `"exists"` and writes nothing. No hard link: Android's app sandbox refuses them (EACCES), and a
- * Pi's first start failed there making its cookie secret. `create` checks, then renames: a second writer between the
+ * Nycode's first start failed there making its cookie secret. `create` checks, then renames: a second writer between the
  * two would be overwritten, so every caller of `create` holds the data directory's server lock (the server's start
- * makes the cookie secret and the owner token file; the Pi's config and the records only replace). The directory is
+ * makes the cookie secret and the owner token file; the Nycode's config and the records only replace). The directory is
  * not synced after the rename: a power loss right after it may lose the file, which the next start writes again (a new
  * cookie secret signs every device out), and syncing a directory has no portable form (Windows opens none).
  */

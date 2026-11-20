@@ -85,7 +85,7 @@ function referenceRead(
 
 type ReadOutcome = { text: string; details: unknown } | { error: string };
 
-const FILE_PATH = join(tmpdir(), "pi-read-streaming-test-missing", "file.txt");
+const FILE_PATH = join(tmpdir(), "nycode-read-streaming-test-missing", "file.txt");
 
 function referenceOutcome(text: string, offset: number | undefined, limit: number | undefined): ReadOutcome {
 	try {
@@ -155,7 +155,7 @@ const TEXT_CASES: Record<string, string> = {
 };
 
 describe("read tool streaming", () => {
-	const tempDir = mkdtempSync(join(tmpdir(), "pi-read-streaming-"));
+	const tempDir = mkdtempSync(join(tmpdir(), "nycode-read-streaming-"));
 	afterAll(() => rmSync(tempDir, { recursive: true, force: true }));
 
 	it("gives the same output as the whole-file algorithm", async () => {

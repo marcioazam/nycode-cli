@@ -1,4 +1,4 @@
-import type { Box, TuiMouseEvent } from "@earendil-works/pi-tui";
+import type { Box, TuiMouseEvent } from "@nycode/tui";
 import { beforeAll, describe, expect, test } from "vitest";
 import type { MarkdownTransformContext, MarkdownTransformer } from "../src/core/extensions/types.ts";
 import { BranchSummaryMessageComponent } from "../src/modes/interactive/components/branch-summary-message.ts";
@@ -136,19 +136,22 @@ describe("collapsible message components", () => {
 						"entry-1",
 					),
 			},
-		])("runs as $messageType on expanded $kind content without Pi's header", ({ messageType, header, create }) => {
-			seen.length = 0;
-			const component = create();
-			component.setExpanded(true);
+		])(
+			"runs as $messageType on expanded $kind content without Nycode's header",
+			({ messageType, header, create }) => {
+				seen.length = 0;
+				const component = create();
+				component.setExpanded(true);
 
-			const rendered = renderText(component);
-			expect(rendered).toContain(header);
-			expect(rendered).toContain("transformed");
-			expect(rendered).not.toContain("details");
-			expect(seen[0]).toMatchObject({
-				markdown: "details",
-				context: { messageType, messageId: "entry-1" },
-			});
-		});
+				const rendered = renderText(component);
+				expect(rendered).toContain(header);
+				expect(rendered).toContain("transformed");
+				expect(rendered).not.toContain("details");
+				expect(seen[0]).toMatchObject({
+					markdown: "details",
+					context: { messageType, messageId: "entry-1" },
+				});
+			},
+		);
 	});
 });

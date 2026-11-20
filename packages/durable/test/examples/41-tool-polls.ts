@@ -2,11 +2,12 @@
 // poll count in the park's checkpoint. A host that wakes the process itself sees only the next deadline.
 // Run from packages/durable:
 //   node --conditions=source --experimental-strip-types test/examples/41-tool-polls.ts
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import type { ToolResultMessage } from "@earendil-works/pi-ai";
-import { createModels } from "@earendil-works/pi-ai/models";
-import { fauxAssistantMessage, fauxProvider, fauxToolCall } from "@earendil-works/pi-ai/providers/faux";
-import { obj, str } from "@earendil-works/pi-schema";
+
+import type { ToolResultMessage } from "@nycode/ai";
+import { createModels } from "@nycode/ai/models";
+import { fauxAssistantMessage, fauxProvider, fauxToolCall } from "@nycode/ai/providers/faux";
+import { BACKGROUND_CONTEXT } from "@nycode/chord/context";
+import { obj, str } from "@nycode/schema";
 import {
 	createRegistry,
 	defineExtension,

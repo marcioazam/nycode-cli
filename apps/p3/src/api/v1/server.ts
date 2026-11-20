@@ -1,4 +1,4 @@
-// p3's API v1 for server facets (`@earendil-works/p3/v1/server`): Chord's HTTP surface (routes, authenticators,
+// p3's API v1 for server facets (`@nycode/p3/v1/server`): Chord's HTTP surface (routes, authenticators,
 // cookies), the registries the base serves (`ServerRuntime`: the server's process values; `WorkerRunners`: how a session's
 // worker runs; `LinkOpened`: hooks on each accepted `/chord` link), and the contract the session route asks
 // (`SessionRoute`), which a plugin serves.
@@ -13,20 +13,20 @@ import {
 	local,
 	type RouteHandle,
 	str,
-} from "@earendil-works/chord";
-import type { Context } from "@earendil-works/chord/context";
-import type { HttpRequest, ListenAddress } from "@earendil-works/chord/http";
-import type { PluginScript, RolloutResult, RolloutStep } from "@earendil-works/chord/plugins";
+} from "@nycode/chord";
+import type { Context } from "@nycode/chord/context";
+import type { HttpRequest, ListenAddress } from "@nycode/chord/http";
+import type { PluginScript, RolloutResult, RolloutStep } from "@nycode/chord/plugins";
 import type { P3Principal } from "../../principals.ts";
 import type { Session } from "./index.ts";
 
-export * from "@earendil-works/chord/http";
-export type { PluginScript, RolloutHost, RolloutResult, RolloutStep } from "@earendil-works/chord/plugins";
+export * from "@nycode/chord/http";
+export type { PluginScript, RolloutHost, RolloutResult, RolloutStep } from "@nycode/chord/plugins";
 export * from "./control.ts";
 
 /** The server's process values, for plugins: what only the base has. */
 export type ServerRuntime = {
-	/** The Pi's data directory (a real path, private). */
+	/** The Nycode's data directory (a real path, private). */
 	readonly dataDir: string;
 	readonly host: Host<P3Principal>;
 	readonly store: ChordStore;

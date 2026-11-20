@@ -1,12 +1,12 @@
 # Durable: deferred storage of throttled commits
 
-Status: **proposal for review** (2026-10-24). Replaces the `pi.run`/`pi.progress` split
-(`durable-run-progress.md`, kept for its reviews). A pi change in `packages/durable`, upstream first. No schema change,
+Status: **proposal for review** (2026-10-24). Replaces the `nycode.run`/`nycode.progress` split
+(`durable-run-progress.md`, kept for its reviews). A nycode change in `packages/durable`, upstream first. No schema change,
 no change for renderers.
 
 ## Problem
 
-Durable commits a streaming answer's partial (`pi.live.generation.message`) and running tool output (`pi.live` tool
+Durable commits a streaming answer's partial (`nycode.live.generation.message`) and running tool output (`nycode.live` tool
 slots' `output`, `details`, `diagnostics`) about every 100 ms per conversation. Each commit is a full storage
 transaction: SQLite writes ~17.7 KB per commit (page granularity) for a ~150-byte change, and p3's store adds an
 outbox record per commit. With 32 streams (a real case): ~270-320 commits/s, ~4.7 MB/s of disk writes (~17 GB/hour),
@@ -19,7 +19,7 @@ rejected (2-4x less disk only at >= 8 streams, no CPU gain, a few ms latency on 
 Only the two throttles (the generation's partial throttle in `harness/generation.ts`, the tool output throttle in
 `harness/tool.ts`) mark their commits **deferrable**. Such a commit is adopted in memory and published to watchers
 at once, as today, but not stored: its ops wait, folded, in a `PendingOps` per document (Chord's
-`@earendil-works/chord/delta`, upstream `d8d99950a`). They are stored by the first of:
+`@nycode/chord/delta`, upstream `d8d99950a`). They are stored by the first of:
 
 1. the next **normal** commit that writes the **same document** (it stores the held ops first, in its own storage
    transaction);
@@ -31,15 +31,15 @@ retirement) is stored at once: the mark is a permission, not an order.
 
 ## Why storage stays consistent
 
-- Held ops belong to one document, `pi.live`, and only to its streaming fields.
-- Everything that consumes or clears streamed content writes `pi.live` in the same commit: converting a partial into an
+- Held ops belong to one document, `nycode.live`, and only to its streaming fields.
+- Everything that consumes or clears streamed content writes `nycode.live` in the same commit: converting a partial into an
   aborted entry deletes `generation`; ending an answer clears the partial and sets `tools`; settling a tool builds its
   result from the slot's output and sets the slot `done`; steering, run start and run end change `run`. So each of
   these commits stores the held ops first, together with its own changes.
-- Commits that do not write `pi.live` (a task's own state, a display-only entry, a submission record, another
+- Commits that do not write `nycode.live` (a task's own state, a display-only entry, a submission record, another
   document) do not depend on the partial; they need not flush it.
 - Guarantee: every document in storage is a state it really had; every commit that writes a held document stores it
-  together with its own changes. Interleaving is low: control changes of `pi.live` happen at phase boundaries (run
+  together with its own changes. Interleaving is low: control changes of `nycode.live` happen at phase boundaries (run
   start, answer end, tool start and end, run end); streaming happens in between.
 - Order: held ops are older than the normal commit that stores them, so they come first in the stored delta; with
   folding, a later write of the same field absorbs the held one (deleting `generation` drops the held appends).
@@ -74,7 +74,7 @@ commit only the first, a flush only the second.
 
 ## Restrictions and edges
 
-- The option applies only to documents with `history: "latest"` and `fork: "initial"` (`pi.live` qualifies): "as of"
+- The option applies only to documents with `history: "latest"` and `fork: "initial"` (`nycode.live` qualifies): "as of"
   reads and forks of the current state read storage by seq and would miss held ops.
 - Creation, migration and retirement of a document are never held.
 - Checkpoints: `checkpointWhen` counts stored deltas; a base write includes everything held.
@@ -85,7 +85,7 @@ commit only the first, a flush only the second.
 
 ## Crash and resume
 
-After a crash or a Cloudflare eviction, held ops are lost with the process; storage has `pi.live` with control as of its
+After a crash or a Cloudflare eviction, held ops are lost with the process; storage has `nycode.live` with control as of its
 last normal commit and streaming fields as of the last flush (up to ~1 s older, or absent if the stream started less
 than a second before).
 
@@ -99,7 +99,7 @@ than a second before).
 | clean `close()` | stores everything held first | none |
 | restart counter (#11139) | partial commits never counted as progress | none |
 
-At open nothing is held; every resume step that consumes progress is a normal commit writing `pi.live`, so a second
+At open nothing is held; every resume step that consumes progress is a normal commit writing `nycode.live`, so a second
 crash cannot convert the same partial twice.
 
 ## Expected effect
@@ -115,15 +115,15 @@ migration note: skip or handle `kind: "memory"`); the crash window for streamed 
 
 ## What the reviewers check (against Durable's code, in full)
 
-1. The consistency argument: is there any commit that stores data derived from `pi.live`'s streaming fields without
-   writing `pi.live` in the same commit? Any reader of storage (scheduler, resume, inspect, forks, copies, events,
+1. The consistency argument: is there any commit that stores data derived from `nycode.live`'s streaming fields without
+   writing `nycode.live` in the same commit? Any reader of storage (scheduler, resume, inspect, forks, copies, events,
    view builds after eviction) that would see an inconsistent combination?
 2. The adoption split, the tagged publication, the flush path, pinning, the timer, `close`, failures: feasible as
    described in `session.ts`, `transaction.ts`, the documents and storages? Every consumer of `CommitPublication` and
    `seq`.
 3. Resume: every path in the table, plus double crashes.
 4. Interleaving: measure on a real Durable conversation with tools (parallel tools included) how many normal commits
-   write `pi.live` per second against held ones; and the disk, outbox and CPU effect at 1 and 32 streams.
+   write `nycode.live` per second against held ones; and the disk, outbox and CPU effect at 1 and 32 streams.
 5. Size of the change and anything simpler.
 
 ## Decided (owner, 2026-10-24), after the reviews (`/tmp/ddc-review-{astra,fable,opus}.md`)

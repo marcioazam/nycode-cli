@@ -9,7 +9,7 @@ function printUsage() {
 	console.log(`Usage: node scripts/use-local-packages.mjs --manifest <path> --consumer <dir> --package <name> [--package <name> ...] [--package-manager npm|pnpm]
 
 Updates an external project's package configuration to use direct packages and
-all transitive Pi packages from a local package artifact set. Defaults to npm.
+all transitive Nycode packages from a local package artifact set. Defaults to npm.
 `);
 }
 

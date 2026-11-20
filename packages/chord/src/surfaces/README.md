@@ -2,7 +2,7 @@
 
 The client surfaces' portable part (slice 11; design §23 "Web and TUI"; decisions "Slice 11's points", "Slice 11, P3"
 to "P9", "Looks and themes", "Messages and languages in the app kit"). What a page and a terminal's sandbox run alike, and what the server serves them: exported
-from `@earendil-works/chord`.
+from `@nycode/chord`.
 
 - **Scripts objects** (`scripts.ts`): `WebScripts` and `TuiScripts`, remote objects on the server (`hostKind("server")()`,
   the kit's server address), params `{}`, served to any principal; their state `set` is the kind's `ScriptSet`: `base`

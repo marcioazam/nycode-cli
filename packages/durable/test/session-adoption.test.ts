@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
-import type { Context } from "@earendil-works/chord/context";
+import type { Context } from "@nycode/chord/context";
 import {
 	type CommitPublication,
 	type CommitResult,
@@ -9,7 +9,7 @@ import {
 	MemoryStorage,
 	type Seq,
 	type StorageWrite,
-} from "@earendil-works/pi-durable";
+} from "@nycode/durable";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { FileError, Result } from "../src/env/index.ts";
 import { NodeExecutionEnv } from "../src/env/node.ts";
@@ -355,7 +355,7 @@ describe("publication after storage", () => {
 			scope: "session",
 			initial: () => ({ count: 0 }),
 		});
-		const directory = await mkdtemp(join(tmpdir(), "pi-durable-adoption-"));
+		const directory = await mkdtemp(join(tmpdir(), "nycode-durable-adoption-"));
 		const env = new RenameLog({ cwd: directory });
 		const session = new SessionImpl(await JsonlStorage.open(directory, env, context));
 		const count = () =>

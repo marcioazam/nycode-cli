@@ -5,8 +5,8 @@
 
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
-import type { AssistantMessage } from "@earendil-works/pi-ai";
-import { estimateContextTokens } from "@earendil-works/pi-ai/utils/estimate";
+import type { AssistantMessage } from "@nycode/ai";
+import { estimateContextTokens } from "@nycode/ai/utils/estimate";
 import { BACKGROUND_CONTEXT, follow, UI_LINGER, whenLive } from "@p2/app/v1";
 import { Chat, ChatCosts } from "../../plugins/chat/contract.ts";
 import { Sessions, SessionTransfer } from "../../plugins/sessions/contract.ts";

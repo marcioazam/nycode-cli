@@ -1,8 +1,8 @@
 // The file index contract (plugins/file-index serves it) lives here, not in the plugin: the chat UIs use it when the
 // plugin is installed and must not make chat depend on it (chat works without the plugin loaded).
 
-import { local, method, remote } from "@earendil-works/chord";
-import { arr, bool, int, num, obj, opt, type Static, str, union } from "@earendil-works/pi-schema";
+import { local, method, remote } from "@nycode/chord";
+import { arr, bool, int, num, obj, opt, type Static, str, union } from "@nycode/schema";
 import { param, sessionHost } from "./chord.ts";
 import { literal } from "./schema.ts";
 
@@ -41,7 +41,7 @@ export const FileIndexCache = local("p2.file-index-cache", {
 
 /**
  * `@` and Tab file completion (p2-tui-port.md section 8.3): the session directory's files and directories, ranked
- * like pi's `@` completion. Cwd-relative only, the workspace's confinement and private-path exclusion; participants
+ * like nycode's `@` completion. Cwd-relative only, the workspace's confinement and private-path exclusion; participants
  * only (holding it leases the workspace watch). `changes` advances when files change: clients query again.
  */
 export const FileIndex = remote("p2.file-index", {

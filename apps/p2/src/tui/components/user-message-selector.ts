@@ -2,7 +2,7 @@
 // Changes: the instance theme and keymap (section 5.4) instead of the globals; message text is server text
 // (`lineText`); the selector is the focused overlay component itself (`handleInput`), and "No user messages found"
 // is the caller's status line instead of an auto-cancel timer.
-import { type Component, Container, type Focusable, Spacer, Text, truncateToWidth } from "@earendil-works/pi-tui";
+import { type Component, Container, type Focusable, Spacer, Text, truncateToWidth } from "@nycode/tui";
 import { lineText } from "../render-context.ts";
 import { DynamicBorder, type SelectorContext } from "./selectors.ts";
 

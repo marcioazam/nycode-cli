@@ -1,5 +1,5 @@
 // The workspace in the TUI (p2-tui-port.md P11i), after the web's Workspace panel, read-only: `/files` browses the
-// session directory and shows a file, `/changes` lists git changes and shows a change's diff (pi's diff renderer),
+// session directory and shows a file, `/changes` lists git changes and shows a change's diff (nycode's diff renderer),
 // `/grep` searches text and opens a match at its line. Participants only: holding `Workspace` leases the worker's
 // filesystem watch, which read-only guests cannot get. Comments, commits and uploads stay on the web for now.
 
@@ -44,10 +44,10 @@ async function query<K extends WorkspaceResult["kind"]>(
 }
 
 /**
- * Git's unified patch in pi's diff line format ("+12 text", "-12 text", " 12 text", "     ..."), so the copied
+ * Git's unified patch in nycode's diff line format ("+12 text", "-12 text", " 12 text", "     ..."), so the copied
  * renderer (intra-line highlighting) applies. File headers are dropped; a hunk boundary becomes "...".
  */
-export function piDiff(patch: string): string {
+export function nycodeDiff(patch: string): string {
 	const out: string[] = [];
 	let oldLine = 0;
 	let newLine = 0;
@@ -122,7 +122,7 @@ function showDiff(ctx: TuiContext, ref: Held<typeof Workspace>, path: string): v
 	);
 	void query(ref, { kind: "diff", path }, "diff")
 		.then((diff) => {
-			const converted = piDiff(diff.patch);
+			const converted = nycodeDiff(diff.patch);
 			lines = converted ? renderDiff(converted, ctx.theme.current).split("\n") : ["No textual changes"];
 			if (diff.truncated) lines.push(ctx.theme.current.fg("warning", "… truncated"));
 		})
@@ -297,8 +297,8 @@ export const WORKSPACE_COMMANDS: Record<string, TuiCommand> = {
 };
 
 /**
- * The viewed conversation's git branch for the footer (pi's `cwd (branch)`), from `Workspace.query({kind: "status"})`,
- * asked again when files change (debounced). "detached" for a detached HEAD, as pi. Only for those who may hold
+ * The viewed conversation's git branch for the footer (nycode's `cwd (branch)`), from `Workspace.query({kind: "status"})`,
+ * asked again when files change (debounced). "detached" for a detached HEAD, as nycode. Only for those who may hold
  * `Workspace` (the owner, full-access guests): view-only guests are refused, so they never ask.
  */
 export class GitBranch implements TuiSurface {

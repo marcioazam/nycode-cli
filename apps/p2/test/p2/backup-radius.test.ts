@@ -5,10 +5,10 @@
 import assert from "node:assert/strict";
 import { join } from "node:path";
 import { type TestContext, test } from "node:test";
-import { openStore, type Store, sqliteBackend } from "@earendil-works/chord";
-import { openNodeSqliteDatabase } from "@earendil-works/chord/sqlite/node";
-import { FileSyncStateStore, pullSession } from "@earendil-works/chord/sync";
-import type { ConversationView, LiveState } from "@earendil-works/pi-durable";
+import { openStore, type Store, sqliteBackend } from "@nycode/chord";
+import { openNodeSqliteDatabase } from "@nycode/chord/sqlite/node";
+import { FileSyncStateStore, pullSession } from "@nycode/chord/sync";
+import type { ConversationView, LiveState } from "@nycode/durable";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { Backup } from "../../plugins/backup/contract.ts";
 import { Chat } from "../../plugins/chat/contract.ts";
@@ -20,7 +20,7 @@ import { clientHost, holdIn, localOwner, until } from "./helpers.ts";
 import { radiusFixture } from "./radius-fixture.ts";
 
 const answered = (view: ConversationView | null | undefined) =>
-	JSON.stringify(view?.entries ?? []).includes("Echo:") && !(view?.docs["pi.live"] as LiveState | undefined)?.run;
+	JSON.stringify(view?.entries ?? []).includes("Echo:") && !(view?.docs["nycode.live"] as LiveState | undefined)?.run;
 
 async function contents(store: Store): Promise<string> {
 	const parts: string[] = [];

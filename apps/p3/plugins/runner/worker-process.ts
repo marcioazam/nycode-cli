@@ -6,9 +6,9 @@
 // it reported lands after it.
 
 import { type ChildProcess, fork } from "node:child_process";
-import { type ChordStore, type IpcPort, ipcLink, type Link, type ReloadReport } from "@earendil-works/p3/v1";
-import type { PluginScript, RolloutHost } from "@earendil-works/p3/v1/server";
-import { type FromWorker, workerControl, workerMessage } from "@earendil-works/p3/v1/server";
+import { type ChordStore, type IpcPort, ipcLink, type Link, type ReloadReport } from "@nycode/p3/v1";
+import type { PluginScript, RolloutHost } from "@nycode/p3/v1/server";
+import { type FromWorker, workerControl, workerMessage } from "@nycode/p3/v1/server";
 
 /** How long a stopping worker gets before its process group is killed. */
 const GRACE_MS = 5000;

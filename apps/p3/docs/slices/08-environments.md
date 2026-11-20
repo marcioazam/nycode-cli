@@ -29,10 +29,10 @@ The brief is filled out when the slice is next.
 
 Measured by mem-audit (private: `/home/badlogic/chord-notes/research/p3-memory.md`, "Code mode and remote
 environments"): an SSH environment as p2's envs plugin connects costs the worker 0.3 to 0.8 MiB; the `ssh` client
-process on the Pi's machine 1.6 to 1.7 MiB, the far side (sshd and the `pi-env` daemon) about 2.1 MiB; CPU the same as
-the local environment. pi-env already uses one connection per worker for everything, subagents included.
+process on the Nycode's machine 1.6 to 1.7 MiB, the far side (sshd and the `nycode-env` daemon) about 2.1 MiB; CPU the same as
+the local environment. nycode-env already uses one connection per worker for everything, subagents included.
 
 **To build (decided):** one connection per worker, reused for everything. Connections shared on the server across the
-workers of one host would save about 1.7 MiB on the Pi's machine and 2.1 MiB on the host per further worker (10
+workers of one host would save about 1.7 MiB on the Nycode's machine and 2.1 MiB on the host per further worker (10
 workers: about 17 and 21 MiB), against a relay hop: only when many workers use one host, not now. p2 opens three SSH
 connections one after another before remote tools work (about two seconds on the phone): the slice removes that wait.

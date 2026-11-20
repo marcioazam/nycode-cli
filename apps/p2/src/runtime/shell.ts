@@ -1,9 +1,9 @@
 // User shell commands (`!cmd`, `!!cmd`; p2-tui-port.md section 10.8) as Durable entries (browser-safe). A finished
 // command is placed as a `p2.shell` entry through a write submission: it never starts a run. With `includeInContext`
-// (`!`) the entry also carries a user model message, pi's `bashExecutionToText`, so the agent sees it on its next run;
+// (`!`) the entry also carries a user model message, nycode's `bashExecutionToText`, so the agent sees it on its next run;
 // `!!` entries are display-only. The data never has a `text` field, so readers never take it for a person's message.
 
-import { bool, compile, num, obj, opt, type Static, str } from "@earendil-works/pi-schema";
+import { bool, compile, num, obj, opt, type Static, str } from "@nycode/schema";
 import { AuthorSchema } from "./input.ts";
 
 /** Entry kind of a finished user shell command. */
@@ -39,7 +39,7 @@ const isShellData = compile(ShellDataSchema).check;
 
 export const shellData = (data: unknown): ShellData | undefined => (isShellData(data) ? data : undefined);
 
-/** pi's `bashExecutionToText` (coding-agent core/messages.ts): what the model reads for an included command. */
+/** nycode's `bashExecutionToText` (coding-agent core/messages.ts): what the model reads for an included command. */
 export function shellContextText(data: ShellData): string {
 	let text = `Ran \`${data.command}\`\n`;
 	text += data.output ? `\`\`\`\n${data.output}\n\`\`\`` : "(no output)";

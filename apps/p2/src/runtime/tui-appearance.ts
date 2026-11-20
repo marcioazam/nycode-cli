@@ -1,6 +1,6 @@
 // Per-runtime preference state (p2-tui-port.md sections 4.2, 5.3): server defaults, the launcher's guest-local
 // preferences, terminal colors and capabilities in; effective keybindings, settings and a ThemeRef out.
-import type { KeybindingsConfig, TerminalColorMode } from "@earendil-works/pi-tui";
+import type { KeybindingsConfig, TerminalColorMode } from "@nycode/tui";
 import { DEFAULT_KEY_PLATFORM, type KeyPlatform } from "../tui/keybindings.ts";
 import { EMPTY_PREFERENCES, effectivePreferences, type TuiLocalPreferences } from "../tui/preferences.ts";
 import { ThemeRef } from "../tui/theme/ref.ts";

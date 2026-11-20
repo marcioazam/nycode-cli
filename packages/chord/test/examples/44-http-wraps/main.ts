@@ -12,7 +12,7 @@ import { createPlugins } from "../../../src/node/plugins/index.ts";
 
 const server = createHost({ principal: { kind: "server" }, onError: console.error });
 const http = chordHttp.createHttp(server, { listen: { host: "127.0.0.1", port: 0 }, onError: console.error }, context);
-const modules = { "@earendil-works/chord": chord, "@earendil-works/chord/http": chordHttp };
+const modules = { "@nycode/chord": chord, "@nycode/chord/http": chordHttp };
 const plugins = createPlugins(
 	{
 		roots: [fileURLToPath(new URL("./plugins/", import.meta.url))],

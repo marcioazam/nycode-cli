@@ -13,9 +13,9 @@ note: |
   ourselves, but p3 must allow 3rd parties to integrate them and associate external accounts with the p3 account AND let
   a plugin that provides that integration use that account info to do stuff like mcp sign in, or providers, or
   whatever." Nothing here is decided or built; every name is a proposal. Chord names (remote, local, registries,
-  references, the kit's `Sessions` and `Http`) are real. pi-ai's provider auth follows its `ApiKeyAuth`
+  references, the kit's `Sessions` and `Http`) are real. nycode-ai's provider auth follows its `ApiKeyAuth`
   (`packages/ai/src/auth/types.ts`). The decisions needed are listed at the end.
-colophon: p3 users, accounts and access · design proposal, first edition · 2026-11-07 · sources: Chord design §4, §6, §7, §17, §23; the app kit; pi-ai auth types; the Radius API's members, groups and context operations
+colophon: p3 users, accounts and access · design proposal, first edition · 2026-11-07 · sources: Chord design §4, §6, §7, §17, §23; the app kit; nycode-ai auth types; the Radius API's members, groups and context operations
 ---
 
 # Before we begin {.preface}
@@ -56,7 +56,7 @@ policy. The `@acme/p3-radius` plugin fills them; a Gmail, Notion, Slack or Disco
 8. **A session uses an account only when its owner brought it in.** Bringing an account into a session is a grant the
    account's user makes; the server checks it when the session's worker asks for credentials. Nothing personal comes
    into a shared session by itself.
-9. **Models and MCP use the same path.** A model-provider plugin contributes a pi-ai provider whose auth reads the
+9. **Models and MCP use the same path.** A model-provider plugin contributes a nycode-ai provider whose auth reads the
    followed token; the MCP plugin connects to a server with an `auth: { account }` setting the same way.
 :::
 
@@ -441,7 +441,7 @@ view --> worker: state: token T2
 
 # Models {#models lede="A model-provider plugin whose auth reads the followed token."}
 
-The Radius integration (or a separate plugin) contributes a pi-ai provider to the session worker's `ModelProviders`
+The Radius integration (or a separate plugin) contributes a nycode-ai provider to the session worker's `ModelProviders`
 registry (the harness's, from the map). Its auth resolves the token from the followed `AccountCredentials`, so each
 request uses the current token and the refresh is the server's business:
 

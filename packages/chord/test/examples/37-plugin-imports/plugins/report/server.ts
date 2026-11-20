@@ -1,11 +1,11 @@
 // The report plugin's server facet: one of each import a facet may have.
 
 import { readFileSync } from "node:fs";
-import { constant, defineFacet } from "@earendil-works/chord";
-import { pluginFile } from "@earendil-works/chord/plugins";
 // Host packages: an ES module (default and named imports) and a CommonJS one, the app's own instances.
 import app, { currency } from "@example/app";
 import legacy from "@example/legacy";
+import { constant, defineFacet } from "@nycode/chord";
+import { pluginFile } from "@nycode/chord/plugins";
 // An npm dependency: inlined into this script by the build (installed first).
 import { greet } from "example-greeting";
 // A `chord.external` package: left external, loaded from this plugin's node_modules when the script runs.

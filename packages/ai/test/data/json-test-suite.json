@@ -284,7 +284,7 @@
 		"y_string_nonCharacterInUTF-8_U+FFFF.json": "WyLvv78iXQ==",
 		"y_string_null_escape.json": "WyJcdTAwMDAiXQ==",
 		"y_string_one-byte-utf-8.json": "WyJcdTAwMmMiXQ==",
-		"y_string_pi.json": "WyLPgCJd",
+		"y_string_nycode.json": "WyLPgCJd",
 		"y_string_reservedCharacterInUTF-8_U+1BFFF.json": "WyLwm7+/Il0=",
 		"y_string_simple_ascii.json": "WyJhc2QgIl0=",
 		"y_string_space.json": "IiAi",

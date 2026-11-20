@@ -68,7 +68,7 @@ export function DirectoryPicker({
 }) {
 	const service = useObject(Envs, {});
 	const envs = useReadable(service?.envs);
-	// The environments' connections start now, as in Pi Mobile: the first listing need not wait for ssh.
+	// The environments' connections start now, as in Nycode Mobile: the first listing need not wait for ssh.
 	useEffect(() => {
 		void service?.warm(BACKGROUND_CONTEXT).catch(() => {});
 	}, [service]);

@@ -1,10 +1,10 @@
-// `@` and Tab file completion in the web composer (p2-tui-port.md section 8.4, P7c; a p2 addition, Pi Mobile has
+// `@` and Tab file completion in the web composer (p2-tui-port.md section 8.4, P7c; a p2 addition, Nycode Mobile has
 // none). The same rules as the TUI (src/runtime/completion.ts): `@` after a token boundary opens a popover of the
 // session's FileIndex matches; a Tab on a path-like token lists that directory. While the popover is open, Enter/Tab
 // apply, arrows move and Escape closes, ahead of send and stop. Keys during IME composition are ignored and the popover
-// never opens mid-composition. `@pi` (chat mode's agent mention) is never completed as a file; in chat mode a
-// synthetic "@pi — mention Pi" item comes first.
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
+// never opens mid-composition. `@nycode` (chat mode's agent mention) is never completed as a file; in chat mode a
+// synthetic "@nycode — mention Nycode" item comes first.
+import { BACKGROUND_CONTEXT } from "@nycode/chord/context";
 import { type KeyboardEvent, type RefObject, useEffect, useRef, useState } from "react";
 import {
 	applyFileCompletion,
@@ -136,7 +136,7 @@ export function useFileCompletion(
 			.then((listed) => {
 				if (id !== request.current) return;
 				const items = pathItems(listed.entries, rawPrefix, { isAtPrefix, isQuotedPrefix });
-				// pi: a single match is applied at once.
+				// nycode: a single match is applied at once.
 				if (items.length === 1) apply(items[0]!, prefix);
 				else setPopover(items.length ? { items, prefix, selected: 0 } : undefined);
 			})

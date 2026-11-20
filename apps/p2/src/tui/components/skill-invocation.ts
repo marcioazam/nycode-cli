@@ -1,12 +1,12 @@
 // Copied from coding-agent interactive/components/skill-invocation-message.ts and core/agent-session.ts
 // (`parseSkillBlock`): a user message that invokes a skill (`/skill:name`, p2-tui-port.md 10.8) shows the skill as a
 // collapsed block in the custom-message colors; the user's own text follows as a normal user message.
-import { Box, Container, Markdown, Text } from "@earendil-works/pi-tui";
+import { Box, Container, Markdown, Text } from "@nycode/tui";
 import { lineText, type RenderContext, safeText } from "../render-context.ts";
 
 export type ParsedSkillBlock = { name: string; location: string; content: string; userMessage: string | undefined };
 
-/** pi's `parseSkillBlock`: the whole text is a skill block, optionally followed by the user's text. */
+/** nycode's `parseSkillBlock`: the whole text is a skill block, optionally followed by the user's text. */
 export function parseSkillBlock(text: string): ParsedSkillBlock | null {
 	const match = text.match(/^<skill name="([^"]+)" location="([^"]+)">\n([\s\S]*?)\n<\/skill>(?:\n\n([\s\S]+))?$/);
 	if (!match) return null;

@@ -1,6 +1,6 @@
 // Bundled on the server, evaluated inside the locked-down worker. No Node transports or local facet loader.
-import type { Link, PluginFacet } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
+import type { Link, PluginFacet } from "@nycode/chord";
+import { BACKGROUND_CONTEXT } from "@nycode/chord/context";
 import {
 	type Component,
 	type ProgramStatus,
@@ -8,7 +8,7 @@ import {
 	setKittyProtocolActive,
 	type Terminal,
 	TuiAltScreen,
-} from "@earendil-works/pi-tui";
+} from "@nycode/tui";
 import { Access } from "../runtime/access.ts";
 import { createHost, hostErrorText, newerPeerProtocol } from "../runtime/chord.ts";
 import { type P2Principal, SERVER } from "../runtime/principals.ts";
@@ -78,10 +78,10 @@ class BridgeTerminal implements Terminal {
 }
 
 /**
- * pi-tui's alternate screen, except that a click inside the layout keeps keyboard focus on the runtime. pi-tui focuses
+ * nycode-tui's alternate screen, except that a click inside the layout keeps keyboard focus on the runtime. nycode-tui focuses
  * the clicked component (an editor click answers `focus: true`); the runtime is the layout's focus owner (commands
  * first, then the active screen), so a focused editor would bypass Escape, Ctrl+C, Ctrl+D, Ctrl+T and every other
- * command, and keep getting keys after the screen changed. Clicks that pi-tui maps to an overlay keep that overlay.
+ * command, and keep getting keys after the screen changed. Clicks that nycode-tui maps to an overlay keep that overlay.
  */
 class RuntimeAltScreen extends TuiAltScreen {
 	focusOwner: Component | undefined;
@@ -152,8 +152,8 @@ class BridgeLink implements Link {
 export async function setupTui(bridge: Bridge, facets: readonly PluginFacet<P2Principal>[]): Promise<void> {
 	setCapabilityOverrides({ images: null, hyperlinks: false });
 	const terminal = new BridgeTerminal(bridge);
-	// pi's fullscreen, as is: the mouse is captured (wheel scrolling, selection, copy on select) unless the visitor's
-	// launcher policy turns it off. Only the clipboard write differs: pi-tui's OSC 52 would be filtered, so its
+	// nycode's fullscreen, as is: the mouse is captured (wheel scrolling, selection, copy on select) unless the visitor's
+	// launcher policy turns it off. Only the clipboard write differs: nycode-tui's OSC 52 would be filtered, so its
 	// `copySelection` hook asks the launcher, which accepts only right after it saw the release itself.
 	let requestCopy: (text: string) => Promise<boolean | string> = async () => "Copy unavailable";
 	const tui = new RuntimeAltScreen(terminal, true, undefined, {
@@ -214,7 +214,7 @@ export async function setupTui(bridge: Bridge, facets: readonly PluginFacet<P2Pr
 	let reported: { target?: string; suspend?: boolean; busy?: boolean } = {};
 	let wheelLines: unknown;
 	const report = (): void => {
-		// pi's fullscreenWheelScrollLines and fullscreenCopyOnSelect settings, applied as pi does.
+		// nycode's fullscreenWheelScrollLines and fullscreenCopyOnSelect settings, applied as nycode does.
 		const settings = runtime.appearance.settings;
 		const lines = settings.fullscreenWheelScrollLines ?? "auto";
 		if (lines !== wheelLines) {
@@ -313,7 +313,7 @@ export async function setupTui(bridge: Bridge, facets: readonly PluginFacet<P2Pr
 		} else if (message.kind === "link" && message.data instanceof Uint8Array) link.deliver(message.data);
 		else if (message.kind === "input" && typeof message.data === "string") {
 			terminal.onInput(message.data);
-			// After pi-tui handled the key (it may have opened or closed the transcript search).
+			// After nycode-tui handled the key (it may have opened or closed the transcript search).
 			report();
 		} else if (message.kind === "resize" && typeof message.columns === "number" && typeof message.rows === "number") {
 			terminal.columns = message.columns;

@@ -31,15 +31,15 @@ nothing; `reload_plugins` does.
 ```
 
 Imports: only `@p2/app/v1` (any facet), `@p2/app/v1/server` (server), `@p2/app/v1/worker` (worker),
-`@p2/app/v1/web` (web), `@earendil-works/pi-schema`, `@earendil-works/pi-durable` (worker, for
+`@p2/app/v1/web` (web), `@nycode/schema`, `@nycode/durable` (worker, for
 `defineExtension`), `react` (web), and the plugin's own files by relative path. No other packages, no top-level
-await, no `import.meta`. `pluginFile(path)` from `@earendil-works/chord/plugins` gives a facet the absolute path of
+await, no `import.meta`. `pluginFile(path)` from `@nycode/chord/plugins` gives a facet the absolute path of
 a file of its own plugin.
 
 ## The pieces
 
 - **Contract** (`contract.ts`): `remote(name, { version, params, hostAddress: serverHost, variants })`. Each variant
-  has `state` (JSON schemas from `@earendil-works/pi-schema`), `methods` (`method(args, result)`) and `events`
+  has `state` (JSON schemas from `@nycode/schema`), `methods` (`method(args, result)`) and `events`
   (fire-and-forget values for motion: pointers, drags, game inputs; never kept or replayed). Every change of a
   contract's shape bumps its `version`.
 - **Server object** (`server.ts`): `export default defineFacet((host) => { host.serve(Contract, (params, principal,

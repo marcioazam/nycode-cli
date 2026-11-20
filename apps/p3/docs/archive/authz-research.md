@@ -139,7 +139,7 @@ export default defineFacet((host) => {
 import { defineFacet, local, Policy, allow, deny, type PolicyProvider, type UserId } from "@p3/app/v1/server";
 import { AcmeMembers } from "@acme/p3-sso/contract"; // SCIM-synced members and groups, followed as state
 
-const APPROVED = new Set(["p3", "@pi/mcp", "@pi/coding-tools", "@someone/p3-todos"]);
+const APPROVED = new Set(["p3", "@nycode/mcp", "@nycode/coding-tools", "@someone/p3-todos"]);
 
 const AcmePolicy = local("acme.policy", { version: 1, params: {}, members: {} });
 
@@ -167,7 +167,7 @@ function build(groupsByUser: Readonly<Record<UserId, readonly string[]>>): Polic
 			if (request.owner === "instance" && request.level === "write" && request.operation !== "p3:bring")
 				return deny("Company resources are read-only for you.");
 			// One specific rule: names an operation, as an AWS policy names s3:PutObject.
-			if (request.operation === "@pi/mcp:configure" && !groups.includes("engineering"))
+			if (request.operation === "@nycode/mcp:configure" && !groups.includes("engineering"))
 				return deny("Only engineering adds MCP servers.");
 			return baseline;
 		},

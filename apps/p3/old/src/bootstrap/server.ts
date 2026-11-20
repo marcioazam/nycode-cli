@@ -2,15 +2,15 @@
 // decides (the data directory, the plugins root, the port, the session worker's entry), the kit does the rest. The
 // command that calls it is `bin.ts`.
 
-import type { Context } from "@earendil-works/chord/context";
+import type { Context } from "@nycode/chord/context";
 import { PLUGINS, version, WORKER } from "../install.ts";
 import type { App } from "../kit/app.ts";
 import { startServer } from "../kit/start-server.ts";
-import { firstPort } from "../pi.ts";
+import { firstPort } from "../nycode.ts";
 
 /**
- * Starts p3 on `dataDir` (`~/.pi/p3` by default) with its built-in plugins from `root`, listening on `port` for this
- * start, else on the Pi's own port (`firstPort`); `onStop` is what the owner's stop over HTTP does.
+ * Starts p3 on `dataDir` (`~/.nycode/p3` by default) with its built-in plugins from `root`, listening on `port` for this
+ * start, else on the Nycode's own port (`firstPort`); `onStop` is what the owner's stop over HTTP does.
  */
 export function startP3(
 	context: Context,

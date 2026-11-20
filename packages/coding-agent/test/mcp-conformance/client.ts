@@ -3,12 +3,12 @@
  * and runs this script with the server URL as the last argument, the scenario name in
  * `MCP_CONFORMANCE_SCENARIO`, and scenario data in `MCP_CONFORMANCE_CONTEXT`.
  *
- * It drives the code pi runs for an `mcp.json` HTTP server: `McpServerConnection` connects and calls
+ * It drives the code nycode runs for an `mcp.json` HTTP server: `McpServerConnection` connects and calls
  * tools, and `signInMcpServer` runs the OAuth sign-in that `/mcp` starts. The browser is simulated: the
- * authorization URL is fetched without following its redirect, and the redirect is delivered to pi's
+ * authorization URL is fetched without following its redirect, and the redirect is delivered to nycode's
  * loopback callback server. Credentials stay in memory.
  *
- * Run through run.ts, which writes the outcome to `PI_MCP_CONFORMANCE_REPORT`.
+ * Run through run.ts, which writes the outcome to `NYCODE_MCP_CONFORMANCE_REPORT`.
  */
 
 import { writeFileSync } from "node:fs";
@@ -24,7 +24,7 @@ import {
 } from "../../src/extensions/mcp/runtime.ts";
 
 /**
- * Sign-ins pi asks the user for are not limited, so a user who keeps approving them would loop
+ * Sign-ins nycode asks the user for are not limited, so a user who keeps approving them would loop
  * forever against a server that never accepts the granted scope. This simulated user gives up after
  * three, the limit `auth/scope-retry-limit` checks.
  */
@@ -60,7 +60,7 @@ function toolCalls(scenario: string, connection: McpServerConnection): ToolCall[
 }
 
 function log(message: string): void {
-	process.stderr.write(`[pi-conformance] ${message}\n`);
+	process.stderr.write(`[nycode-conformance] ${message}\n`);
 }
 
 function errorMessage(error: unknown): string {
@@ -179,7 +179,7 @@ async function run(serverUrl: string, scenario: string): Promise<void> {
 async function main(): Promise<number> {
 	const serverUrl = process.argv.at(-1);
 	const scenario = process.env.MCP_CONFORMANCE_SCENARIO;
-	const reportPath = process.env.PI_MCP_CONFORMANCE_REPORT;
+	const reportPath = process.env.NYCODE_MCP_CONFORMANCE_REPORT;
 	let report: { success: boolean; error?: string };
 	if (!serverUrl || !scenario || process.argv.length < 3) {
 		report = { success: false, error: "Usage: MCP_CONFORMANCE_SCENARIO=<scenario> client.ts <server-url>" };

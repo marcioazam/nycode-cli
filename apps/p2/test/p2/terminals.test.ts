@@ -21,7 +21,7 @@ try {
 	const system = localSystem();
 	await terminalDaemon(system.platform, system.arch, true);
 } catch (error) {
-	noDaemon = error instanceof Error ? error.message : "No pi-env daemon with terminal support";
+	noDaemon = error instanceof Error ? error.message : "No nycode-env daemon with terminal support";
 }
 
 test("terminals objects deny guests before acquiring a detached-host resource", async (t) => {

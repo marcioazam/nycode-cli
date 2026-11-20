@@ -1,23 +1,23 @@
 // What p3 is to its kit, its entries and its tests: its name, its API (the package, its versions, this process's
 // instances of the modules), its facet kinds and its principals as links stamp them.
 
-import type { Address } from "@earendil-works/chord";
-import * as v1 from "@earendil-works/p3/v1";
-import * as v1server from "@earendil-works/p3/v1/server";
-import * as v1worker from "@earendil-works/p3/v1/worker";
+import type { Address } from "@nycode/chord";
+import * as v1 from "@nycode/p3/v1";
+import * as v1server from "@nycode/p3/v1/server";
+import * as v1worker from "@nycode/p3/v1/worker";
 import type { P3Principal } from "./principals.ts";
 
-/** p3's name: its default data directory is `~/.pi/p3`. */
+/** p3's name: its default data directory is `~/.nycode/p3`. */
 export const NAME = "p3";
 
 /** p3's API: its package, its versions (newest first) and this process's modules by specifier. */
 export const API = {
-	name: "@earendil-works/p3",
+	name: "@nycode/p3",
 	versions: ["v1"],
 	modules: {
-		"@earendil-works/p3/v1": v1,
-		"@earendil-works/p3/v1/server": v1server,
-		"@earendil-works/p3/v1/worker": v1worker,
+		"@nycode/p3/v1": v1,
+		"@nycode/p3/v1/server": v1server,
+		"@nycode/p3/v1/worker": v1worker,
 	},
 };
 

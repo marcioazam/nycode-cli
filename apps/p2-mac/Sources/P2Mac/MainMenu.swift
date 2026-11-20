@@ -4,21 +4,21 @@ import AppKit
 
 @MainActor
 enum MainMenu {
-	/// The app's main menu: Pi (with Settings…, which p2's page opens), File, Edit, View (with Appearance: the app's
+	/// The app's main menu: Nycode (with Settings…, which p2's page opens), File, Edit, View (with Appearance: the app's
 	/// light/dark preference), Window.
 	static func build() -> NSMenu {
 		let main = NSMenu()
-		main.addItem(submenu("Pi", [
-			item("About Pi", "orderFrontStandardAboutPanel:"),
+		main.addItem(submenu("Nycode", [
+			item("About Nycode", "orderFrontStandardAboutPanel:"),
 			item("Check for Updates…", "checkForUpdates:"),
 			.separator(),
 			item("Settings…", "openSettings:", ","),
 			.separator(),
-			item("Hide Pi", "hide:", "h"),
+			item("Hide Nycode", "hide:", "h"),
 			item("Hide Others", "hideOtherApplications:", "h", [.command, .option]),
 			item("Show All", "unhideAllApplications:"),
 			.separator(),
-			item("Quit Pi", "terminate:", "q"),
+			item("Quit Nycode", "terminate:", "q"),
 		]))
 		main.addItem(submenu("File", [
 			item("New Window", "newWindow:", "n", [.command, .shift]),

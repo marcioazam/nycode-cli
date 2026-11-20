@@ -68,7 +68,7 @@ for (const via of ["token", "relay", "proxy"] as const)
 			);
 			assert.equal(await readFile(stored.identityFile, "utf8"), key);
 			assert(!(await readdir(join(fixture.dataDir, "ssh", "keys"))).some((name) => name.startsWith(".upload-")));
-			// Key generation and the public key are available to every owner too, as in Pi Mobile.
+			// Key generation and the public key are available to every owner too, as in Nycode Mobile.
 			const generated = await envs.generateKey({ name: "generated" }, BACKGROUND_CONTEXT);
 			assert.match(generated.publicKey, /^ssh-ed25519 /);
 			assert.equal(await envs.publicKey({ name: "generated" }, BACKGROUND_CONTEXT), generated.publicKey);

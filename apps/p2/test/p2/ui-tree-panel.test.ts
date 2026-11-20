@@ -12,7 +12,7 @@ import { Browser, browserTests } from "./browser.ts";
 import { type Fixture, holdIn, startFixture, until } from "./helpers.ts";
 
 const idle = (view: { docs: Record<string, unknown> } | null | undefined) =>
-	!(view?.docs["pi.live"] as { run?: unknown } | undefined)?.run;
+	!(view?.docs["nycode.live"] as { run?: unknown } | undefined)?.run;
 
 /** A page function: the panel's turns as "depth current|inset [refs] message / answer". */
 const TURNS = `[...document.querySelectorAll('[data-testid=tree-panel] .tree-toc a')].map((link) => { const item = link.parentElement; let depth = -1; for (let at = item; at; at = at.parentElement) if (at.tagName === 'OL') depth++; return depth + ' ' + item.className.split(' ').filter((name) => name === 'current' || name === 'inset').join('') + [...link.querySelectorAll('.tree-ref')].map((ref) => ' [' + ref.textContent + ']').join('') + ' ' + link.querySelector('.tree-text').textContent + (link.querySelector('.tree-answer') ? ' / ' + link.querySelector('.tree-answer').textContent : ''); })`;

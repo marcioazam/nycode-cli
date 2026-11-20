@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fauxAssistantMessage, registerFauxProvider } from "@earendil-works/pi-ai/compat";
+import { fauxAssistantMessage, registerFauxProvider } from "@nycode/ai/compat";
 import { afterEach, describe, expect, it } from "vitest";
 import {
 	type CreateAgentSessionRuntimeFactory,
@@ -36,7 +36,7 @@ describe("AgentSessionRuntime session lifecycle events", () => {
 	});
 
 	async function createRuntimeHost(extensionFactory: ExtensionFactory) {
-		const tempDir = join(tmpdir(), `pi-runtime-events-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+		const tempDir = join(tmpdir(), `nycode-runtime-events-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 		mkdirSync(tempDir, { recursive: true });
 
 		const faux = registerFauxProvider();
@@ -114,14 +114,14 @@ describe("AgentSessionRuntime session lifecycle events", () => {
 
 	it("emits session_before_switch and session_start for new and resume flows", async () => {
 		const events: RecordedSessionEvent[] = [];
-		const { runtimeHost } = await createRuntimeHost((pi) => {
-			pi.on("session_before_switch", (event) => {
+		const { runtimeHost } = await createRuntimeHost((nycode) => {
+			nycode.on("session_before_switch", (event) => {
 				events.push(event);
 			});
-			pi.on("session_shutdown", (event) => {
+			nycode.on("session_shutdown", (event) => {
 				events.push(event);
 			});
-			pi.on("session_start", (event) => {
+			nycode.on("session_start", (event) => {
 				events.push(event);
 			});
 		});
@@ -158,12 +158,12 @@ describe("AgentSessionRuntime session lifecycle events", () => {
 
 	it("honors session_before_switch cancellation", async () => {
 		const events: RecordedSessionEvent[] = [];
-		const { runtimeHost } = await createRuntimeHost((pi) => {
-			pi.on("session_before_switch", (event) => {
+		const { runtimeHost } = await createRuntimeHost((nycode) => {
+			nycode.on("session_before_switch", (event) => {
 				events.push(event);
 				return { cancel: true };
 			});
-			pi.on("session_start", (event) => {
+			nycode.on("session_start", (event) => {
 				events.push(event);
 			});
 		});
@@ -182,8 +182,8 @@ describe("AgentSessionRuntime session lifecycle events", () => {
 
 	it("runs beforeSessionInvalidate after session_shutdown and before rebindSession", async () => {
 		const phases: string[] = [];
-		const { runtimeHost } = await createRuntimeHost((pi) => {
-			pi.on("session_shutdown", () => {
+		const { runtimeHost } = await createRuntimeHost((nycode) => {
+			nycode.on("session_shutdown", () => {
 				phases.push("session_shutdown");
 			});
 		});
@@ -200,7 +200,7 @@ describe("AgentSessionRuntime session lifecycle events", () => {
 
 		expect(phases).toEqual(["session_shutdown", "beforeSessionInvalidate", "rebindSession"]);
 		expect(() => oldSession.extensionRunner.createContext().cwd).toThrow(
-			"This extension ctx is stale after session replacement or reload. Do not use a captured pi or command ctx after ctx.newSession(), ctx.fork(), ctx.switchSession(), or ctx.reload(). For newSession, fork, and switchSession, move post-replacement work into withSession and use the ctx passed to withSession. For reload, do not use the old ctx after await ctx.reload().",
+			"This extension ctx is stale after session replacement or reload. Do not use a captured nycode or command ctx after ctx.newSession(), ctx.fork(), ctx.switchSession(), or ctx.reload(). For newSession, fork, and switchSession, move post-replacement work into withSession and use the ctx passed to withSession. For reload, do not use the old ctx after await ctx.reload().",
 		);
 		runtimeHost.setBeforeSessionInvalidate(undefined);
 		runtimeHost.setRebindSession(undefined);
@@ -208,11 +208,11 @@ describe("AgentSessionRuntime session lifecycle events", () => {
 
 	it("emits session_start after reload when extensions were bound without bindings", async () => {
 		const events: RecordedSessionEvent[] = [];
-		const { runtimeHost } = await createRuntimeHost((pi) => {
-			pi.on("session_shutdown", (event) => {
+		const { runtimeHost } = await createRuntimeHost((nycode) => {
+			nycode.on("session_shutdown", (event) => {
 				events.push(event);
 			});
-			pi.on("session_start", (event) => {
+			nycode.on("session_start", (event) => {
 				events.push(event);
 			});
 		});
@@ -229,18 +229,18 @@ describe("AgentSessionRuntime session lifecycle events", () => {
 	it("emits session_before_fork and session_start and honors cancellation", async () => {
 		const events: RecordedSessionEvent[] = [];
 		let cancelNextFork = false;
-		const { runtimeHost } = await createRuntimeHost((pi) => {
-			pi.on("session_before_fork", (event) => {
+		const { runtimeHost } = await createRuntimeHost((nycode) => {
+			nycode.on("session_before_fork", (event) => {
 				events.push(event);
 				if (cancelNextFork) {
 					cancelNextFork = false;
 					return { cancel: true };
 				}
 			});
-			pi.on("session_shutdown", (event) => {
+			nycode.on("session_shutdown", (event) => {
 				events.push(event);
 			});
-			pi.on("session_start", (event) => {
+			nycode.on("session_start", (event) => {
 				events.push(event);
 			});
 		});

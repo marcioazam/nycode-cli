@@ -1,7 +1,7 @@
 // Rollups made from code: a saved script over every session that returns a sidebar section (a flat list of sessions,
 // groups of sessions, or only a link to its list), refreshed automatically, on an interval or by hand. The sidebar
 // applies the rollup's window to what the script returned, as it does for the built-in rollups.
-import { arr, bool, int, nul, num, obj, opt, type Static, str, union } from "@earendil-works/pi-schema";
+import { arr, bool, int, nul, num, obj, opt, type Static, str, union } from "@nycode/schema";
 import { literal, local, method, remote, serverHost } from "@p2/app/v1";
 
 /**

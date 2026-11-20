@@ -162,7 +162,7 @@
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
-/* A path cut at its start ("…/pi/apps/p2"): the box runs right to left, so it overflows and shows "…" on the left;
+/* A path cut at its start ("…/nycode/apps/p2"): the box runs right to left, so it overflows and shows "…" on the left;
    the path inside stays left to right. */
 .location-name-tail {
 	direction: rtl;

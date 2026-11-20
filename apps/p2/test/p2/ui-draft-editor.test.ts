@@ -4,7 +4,7 @@
 
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
-import type { UserMessage } from "@earendil-works/pi-ai";
+import type { UserMessage } from "@nycode/ai";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { Sessions } from "../../plugins/sessions/contract.ts";

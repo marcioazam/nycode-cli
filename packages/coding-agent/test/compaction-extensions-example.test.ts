@@ -5,7 +5,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ExtensionAPI, SessionBeforeCompactEvent, SessionCompactEvent } from "../src/core/extensions/index.ts";
 
-vi.mock("@earendil-works/pi-coding-agent", () => ({
+vi.mock("@nycode/coding-agent", () => ({
 	convertToLlm: (messages: unknown) => messages,
 	serializeConversation: () => "conversation",
 }));
@@ -15,8 +15,8 @@ const { default: customCompactionExtension } = await import("../examples/extensi
 describe("Documentation example", () => {
 	it("custom compaction example should type-check correctly", () => {
 		// This is the example from extensions.md - verify it compiles
-		const exampleExtension = (pi: ExtensionAPI) => {
-			pi.on("session_before_compact", async (event: SessionBeforeCompactEvent, ctx) => {
+		const exampleExtension = (nycode: ExtensionAPI) => {
+			nycode.on("session_before_compact", async (event: SessionBeforeCompactEvent, ctx) => {
 				// All these should be accessible on the event
 				const { preparation, branchEntries } = event;
 				// sessionManager, modelRegistry, and model come from ctx
@@ -134,8 +134,8 @@ describe("Documentation example", () => {
 	});
 
 	it("compact event should have correct fields", () => {
-		const checkCompactEvent = (pi: ExtensionAPI) => {
-			pi.on("session_compact", async (event: SessionCompactEvent) => {
+		const checkCompactEvent = (nycode: ExtensionAPI) => {
+			nycode.on("session_compact", async (event: SessionCompactEvent) => {
 				// These should all be accessible
 				const entry = event.compactionEntry;
 				const fromExtension = event.fromExtension;

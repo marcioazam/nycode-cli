@@ -1,4 +1,4 @@
-import { fauxAssistantMessage } from "@earendil-works/pi-ai";
+import { fauxAssistantMessage } from "@nycode/ai";
 import { afterEach, describe, expect, it } from "vitest";
 import { createHarness, type Harness } from "../harness.ts";
 
@@ -14,8 +14,8 @@ describe("regression #3982: message_end cost override", () => {
 	it("allows extensions to replace finalized assistant usage cost", async () => {
 		const harness = await createHarness({
 			extensionFactories: [
-				(pi) => {
-					pi.on("message_end", (event) => {
+				(nycode) => {
+					nycode.on("message_end", (event) => {
 						if (event.message.role !== "assistant") return;
 
 						return {

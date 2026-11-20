@@ -1,4 +1,4 @@
-export type { SqliteDatabase, SqliteExecutor, SqliteValue } from "@earendil-works/chord/sqlite";
+export type { SqliteDatabase, SqliteExecutor, SqliteValue } from "@nycode/chord/sqlite";
 export {
 	applySqliteMigrations,
 	CURRENT_SQLITE_SCHEMA_VERSION,

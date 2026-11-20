@@ -123,7 +123,7 @@ test("privileged keys: only registered actions are intercepted, with the visitor
 	const rebound = new PrivilegedKeys({ "app.message.copy": "f9" }, platform, ["app.message.copy"]);
 	assert.equal(rebound.match(CTRL_X), undefined);
 	assert.equal(rebound.match("\x1b[20~")?.id, "app.message.copy");
-	// Ctrl+Y is pi's yank: a privileged action bound there loses it.
+	// Ctrl+Y is nycode's yank: a privileged action bound there loses it.
 	assert.equal(
 		new PrivilegedKeys({ "app.message.copy": "ctrl+y" }, platform, ["app.message.copy"]).match("\x19"),
 		undefined,

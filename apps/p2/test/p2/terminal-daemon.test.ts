@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { RemoteError } from "@earendil-works/pi-env";
+import { RemoteError } from "@nycode/env";
 import { requireTerminalSupport } from "../../plugins/terminals/daemon.ts";
 
 test("terminal capability probe validates PTY support without starting a shell", async () => {

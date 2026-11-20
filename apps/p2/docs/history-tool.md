@@ -7,8 +7,8 @@ coding-agent extension over `sessionManager.getBranch()`, with a `slice(-0)` bug
 
 ## 1. Why it works in p2
 
-Durable keeps every entry. A compaction only appends `pi.compaction` (a summary plus `head`, the first retained
-entry); a reset or handoff appends `pi.reset` (the handoff text as a user message, nothing retained). The model then
+Durable keeps every entry. A compaction only appends `nycode.compaction` (a summary plus `head`, the first retained
+entry); a reset or handoff appends `nycode.reset` (the handoff text as a user message, nothing retained). The model then
 sees the system prompt, the summary or handoff, the retained entries (none after a handoff) and new entries. Older
 entries leave the model's context, not the store. p2 already indexes root and subagent user and assistant text in the
 server's FTS5 index (`plugins/search`, `search.sqlite`), across compactions and resets.
@@ -28,8 +28,8 @@ All three are registered by a new plugin `plugins/history/` (worker facet) as on
 - **Keyword search through the existing FTS index**, no regex. Query rules (built by the tool, never raw FTS syntax
   from the model): every term is required; a term containing punctuation (`tx.draft`, `next/diff.ts`, `R6`) becomes a
   phrase (`"tx draft"`); `term*` is a prefix; `"…"` is a phrase. Results ranked by FTS rank.
-- **Default bound:** only entries before the current context boundary (the latest `pi.compaction` `head` or
-  `pi.reset`), since everything after it is in context. `before` overrides it (any entry id of this conversation).
+- **Default bound:** only entries before the current context boundary (the latest `nycode.compaction` `head` or
+  `nycode.reset`), since everything after it is in context. `before` overrides it (any entry id of this conversation).
 - The index updates asynchronously (seconds); the result says so when `before` is later than the indexed cursor.
 - Indexed content is user and assistant text; tool results, thinking and summaries are not searchable.
 
@@ -44,7 +44,7 @@ All three are registered by a new plugin `plugins/history/` (worker facet) as on
 
 - Read through Durable's entries API of the calling conversation (fork-aware, the same view the transcript uses);
   never by opening SQLite.
-- `around: 0` returns exactly the requested entries (regression test for pi-history's `slice(-0)` bug).
+- `around: 0` returns exactly the requested entries (regression test for nycode-history's `slice(-0)` bug).
 - `tail` cuts at the boundary (`head` for a compaction, the reset entry for a handoff), not at the compaction entry
   itself, because entries from `head` on are still in context.
 - **Rendering of an entry:** user and assistant text with the structured author (`p2.input` / `chat.mention` data);
@@ -75,7 +75,7 @@ All three are registered by a new plugin `plugins/history/` (worker facet) as on
   - session, conversation and `entryId < before` are restricted **in SQL, before** ranking and `LIMIT`;
   - returns entry ids, roles and bounded snippets (as `messages` does today).
 - **Boundary:** the tool finds the current boundary from the conversation's active context (Durable's view of the
-  latest `pi.compaction`/`pi.reset`), once per call.
+  latest `nycode.compaction`/`nycode.reset`), once per call.
 - No Durable change, no JSONL export.
 
 ## 4. Policy
@@ -102,7 +102,7 @@ On the web each call is a step of its turn's activity (`src/web/activity/`: its 
 | `history_read` | mode and range ("10 entries before the handoff"); collapsed list of the entries read, each clickable to reveal it | mode, count, `truncated` marker; expanded: the entry lines |
 | `history_handoff` | the handoff text (collapsible, markdown) and the line "New context started; earlier history stays searchable" | the same, collapsed by default |
 
-- The `pi.reset` marker that follows a handoff already renders in the transcript; it gets the note "handoff" when its
+- The `nycode.reset` marker that follows a handoff already renders in the transcript; it gets the note "handoff" when its
   model message came from `history_handoff`.
 - Cards are read-only and visible to every viewer of the conversation.
 

@@ -161,7 +161,7 @@ archives and restores sessions. This is everything it consists of. Sizes are lin
 <tr>
 <td><code>apps/p3/bin.ts</code> (slice 26)</td>
 <td>43</td>
-<td>the command: starts the server on <code>~/.pi/p3</code>, port 8789, prints the owner link, closes on a signal</td>
+<td>the command: starts the server on <code>~/.nycode/p3</code>, port 8789, prints the owner link, closes on a signal</td>
 </tr>
 <tr>
 <td><code>src/install.ts</code> (slice 26)</td>
@@ -404,7 +404,7 @@ filled from the store with <code>forward</code>.</li>
 type check, failed.</li>
 </ol>
 <h3 id="words-used-throughout">Words used throughout</h3>
-<p>The <strong>owner</strong> owns the Pi; a <strong>person</strong> is anyone else (none is let in yet). A <strong>principal</strong> says who calls; the
+<p>The <strong>owner</strong> owns the Nycode; a <strong>person</strong> is anyone else (none is let in yet). A <strong>principal</strong> says who calls; the
 link a call arrives on stamps it. A <strong>session</strong> is one agent workspace with its own <strong>worker</strong> process and store; its
 <strong>address</strong> is <code>Session({ id })</code>. A <strong>contract</strong> declares an object type: its members and who it is for. A <strong>store</strong>
 is a <code>local</code> object that owns data; a <strong>view</strong> is a <code>remote</code> object that shows one audience part of a store. A
@@ -434,7 +434,7 @@ another session&#39;s.</p>
 <pre><code><span class="tk-c">// What p3 is to its kit, its entries and its tests: its name, its API (the package, its versions, this process's</span>
 <span class="tk-c">// instances of the modules), its facet kinds and its principals as links stamp them.</span>
 
-<span class="tk-c">/** p3's name: its default data directory is `~/.pi/p3`. */</span>
+<span class="tk-c">/** p3's name: its default data directory is `~/.nycode/p3`. */</span>
 <span class="tk-k">export</span> <span class="tk-k">const</span> NAME = <span class="tk-s">"p3"</span>;
 
 <span class="tk-c">/** p3's API: its package, its versions (newest first) and this process's modules by specifier. */</span>
@@ -469,8 +469,8 @@ passes its own instance in, so contracts and helpers are the same objects everyw
 
 <span class="tk-c">// Everything of Chord's root; the names this module defines itself (`defineFacet`, `Server`, `Session`) win over a</span>
 <span class="tk-c">// same-named export of Chord's.</span>
-<span class="tk-k">export</span> * <span class="tk-k">from</span> <span class="tk-s">"@earendil-works/chord"</span>;
-<span class="tk-k">export</span> { BACKGROUND_CONTEXT, <span class="tk-k">type</span> <span class="tk-t">Context</span> } <span class="tk-k">from</span> <span class="tk-s">"@earendil-works/chord/context"</span>;
+<span class="tk-k">export</span> * <span class="tk-k">from</span> <span class="tk-s">"@nycode/chord"</span>;
+<span class="tk-k">export</span> { BACKGROUND_CONTEXT, <span class="tk-k">type</span> <span class="tk-t">Context</span> } <span class="tk-k">from</span> <span class="tk-s">"@nycode/chord/context"</span>;
 <span class="tk-k">export</span> { contribute } <span class="tk-k">from</span> <span class="tk-s">"../../kit/contribute.ts"</span>;
 <span class="tk-k">export</span> { forward } <span class="tk-k">from</span> <span class="tk-s">"../../kit/forward.ts"</span>;
 <span class="tk-k">export</span> <span class="tk-k">type</span> { <span class="tk-t">P3Principal</span> } <span class="tk-k">from</span> <span class="tk-s">"../../principals.ts"</span>;
@@ -480,7 +480,7 @@ passes its own instance in, so contracts and helpers are the same objects everyw
 	<span class="tk-k">return</span> <span class="tk-f">chordFacet</span>&lt;<span class="tk-t">P3Principal</span>&gt;(setup);
 }
 
-<span class="tk-c">/** The server: one per Pi. */</span>
+<span class="tk-c">/** The server: one per Nycode. */</span>
 <span class="tk-k">export</span> <span class="tk-k">const</span> <span class="tk-t">Server</span> = <span class="tk-f">hostKind</span>(<span class="tk-s">"server"</span>);
 
 <span class="tk-c">/** A session: a worker process of its own, with its own store. */</span>
@@ -491,7 +491,7 @@ sessions plugin. The reason is in its comment; chapter VII uses it.</p>
 <span class="tk-c">// server (`AppInfo`), the registry of HTTP routes (`Http`), and the contracts base code reads and a plugin serves</span>
 <span class="tk-c">// (`SessionRoute`).</span>
 
-<span class="tk-k">export</span> { <span class="tk-t">Http</span> } <span class="tk-k">from</span> <span class="tk-s">"@earendil-works/chord/http"</span>;
+<span class="tk-k">export</span> { <span class="tk-t">Http</span> } <span class="tk-k">from</span> <span class="tk-s">"@nycode/chord/http"</span>;
 <span class="tk-k">export</span> { <span class="tk-t">AppInfo</span> } <span class="tk-k">from</span> <span class="tk-s">"../../kit/info.ts"</span>;
 
 <span class="tk-c">/**
@@ -516,7 +516,7 @@ sessions plugin. The reason is in its comment; chapter VII uses it.</p>
 <span class="tk-c">/** p3's port: p2 keeps 8788. */</span>
 <span class="tk-k">const</span> PORT = <span class="tk-n">8789</span>;
 
-<span class="tk-c">/** Starts p3 on `dataDir` (`~/.pi/p3` by default) with its built-in plugins from `root`, listening on `port`. */</span>
+<span class="tk-c">/** Starts p3 on `dataDir` (`~/.nycode/p3` by default) with its built-in plugins from `root`, listening on `port`. */</span>
 <span class="tk-k">export</span> <span class="tk-k">function</span> <span class="tk-f">startP3</span>(
 	context: <span class="tk-t">Context</span>,
 	options: { <span class="tk-k">readonly</span> dataDir?: string; <span class="tk-k">readonly</span> root?: string; <span class="tk-k">readonly</span> port?: number } = {},
@@ -541,7 +541,7 @@ command. Whole:</p>
 
 <span class="tk-k">const</span> USAGE = <span class="tk-s">`Usage: p3 [dataDir] [--port &lt;n&gt;]
 
-Starts the p3 server on dataDir (default: ~/.pi/p3) and prints the owner link.
+Starts the p3 server on dataDir (default: ~/.nycode/p3) and prints the owner link.
 
 Options:
   --port &lt;n&gt;   The port to listen on, on 127.0.0.1 (default: 8789; 0: a free one)
@@ -615,7 +615,7 @@ path. In a checkout the worker&#39;s entry is <code>worker.ts</code>, run with t
 
 <span class="tk-c">/** What `startServer` takes: what the start script decides. */</span>
 <span class="tk-k">export</span> <span class="tk-k">type</span> <span class="tk-t">ServerOptions</span> = {
-	<span class="tk-c">/** The data directory (no environment variables): `~/.pi/p3` by default. */</span>
+	<span class="tk-c">/** The data directory (no environment variables): `~/.nycode/p3` by default. */</span>
 	<span class="tk-k">readonly</span> dataDir?: string;
 	<span class="tk-c">/** p3's built-in plugins root: a plugin of it failing stops the start. */</span>
 	<span class="tk-k">readonly</span> root: string;
@@ -847,7 +847,7 @@ base cost at a start; without it nothing is formatted.</p>
 	<span class="tk-k">return</span> host.<span class="tk-f">includes</span>(<span class="tk-s">":"</span>) ? <span class="tk-s">`[${host}]`</span> : host;
 }</code></pre>
 <p>The data directory, as <code>src/kit/layout.ts</code> makes it (the file is in the appendix):</p>
-<pre class="plain"><code>~/.pi/p3/                        0700, like every directory below
+<pre class="plain"><code>~/.nycode/p3/                        0700, like every directory below
   server/store.sqlite            the server's store, 0600 (sessions, sign-ins)
   server/cookie-secret           0600
   workers/session/&lt;address&gt;/     one per session: store.sqlite
@@ -1735,7 +1735,7 @@ the server sees the worker as started. The start data both hosts serve, <code>sr
 <span class="tk-c">// start script. `AppInfo` on the server (the data directory, p3's name, its newest API version), `WorkerInfo` on a</span>
 <span class="tk-c">// worker (its address).</span>
 
-<span class="tk-c">/** What the server knows of the Pi: its data directory, its name, its newest API version. */</span>
+<span class="tk-c">/** What the server knows of the Nycode: its data directory, its name, its newest API version. */</span>
 <span class="tk-k">export</span> <span class="tk-k">const</span> <span class="tk-t">AppInfo</span> = <span class="tk-f">local</span>(<span class="tk-s">"p3.info"</span>, {
 	version: <span class="tk-n">1</span>,
 	params: {},
@@ -2258,7 +2258,7 @@ mistakes with their fix (<code>docs/chord-practices.md</code>).</p>
 <td>&quot;serves a page reading the fragment, signs the owner in once…&quot;</td>
 </tr>
 <tr>
-<td><code>join(homedir(), &quot;.pi&quot;, NAME)</code></td>
+<td><code>join(homedir(), &quot;.nycode&quot;, NAME)</code></td>
 <td>another default data directory</td>
 <td>&quot;makes the layout&#39;s directories with mode 0700…&quot;</td>
 </tr>
@@ -2478,7 +2478,7 @@ Nothing dominates, and nothing grows with the number of sessions.</p>
 <section class="chapter epilogue" id="open-points"><header class="opener"><div class="numeral">∴</div><h2>Open Points</h2><p class="lede">What the owner decided, what the slice leaves for later, and what to look at in the review.</p></header>
 <p class="dropcap"><strong>Decided for the redo (owner, 2026-11-15):</strong> the kit is typed to p3; <code>forward</code> takes the view&#39;s own members as a
 fourth argument; state and last touch get their writers with the harness (slice 3); the kit&#39;s names are p3&#39;s
-(<code>p3.info</code>, <code>p3.sign-ins</code>, the cookie <code>p3-sign-in</code>, <code>/_p3/owner</code>); the default data directory is <code>~/.pi/p3</code>; Chord
+(<code>p3.info</code>, <code>p3.sign-ins</code>, the cookie <code>p3-sign-in</code>, <code>/_p3/owner</code>); the default data directory is <code>~/.nycode/p3</code>; Chord
 exports <code>memberNames</code>; a sign-in that ends closes its own links through Chord&#39;s <code>links.opened</code> close.</p>
 <p><strong>Carried to later slices:</strong></p>
 <ul>
@@ -2495,7 +2495,7 @@ exports <code>memberNames</code>; a sign-in that ends closes its own links throu
 gives reliably.</li>
 <li>The kit closes only links its own authenticator signed in. A later authenticator (Radius sign-in) must close its
 own links when its credential ends.</li>
-<li>A <code>~/.p3</code> from the first build is not read any more; the data directory is <code>~/.pi/p3</code>.</li>
+<li>A <code>~/.p3</code> from the first build is not read any more; the data directory is <code>~/.nycode/p3</code>.</li>
 </ul>
 </section>
 
@@ -2519,9 +2519,9 @@ own links when its credential ends.</li>
 	<span class="tk-k">readonly</span> ownerToken: string;
 };
 
-<span class="tk-c">/** The data directory unless the start script names one: `~/.pi/p3`. */</span>
+<span class="tk-c">/** The data directory unless the start script names one: `~/.nycode/p3`. */</span>
 <span class="tk-k">export</span> <span class="tk-k">function</span> <span class="tk-f">defaultDataDir</span>(): string {
-	<span class="tk-k">return</span> <span class="tk-f">join</span>(<span class="tk-f">homedir</span>(), <span class="tk-s">".pi"</span>, NAME);
+	<span class="tk-k">return</span> <span class="tk-f">join</span>(<span class="tk-f">homedir</span>(), <span class="tk-s">".nycode"</span>, NAME);
 }
 
 <span class="tk-c">/**

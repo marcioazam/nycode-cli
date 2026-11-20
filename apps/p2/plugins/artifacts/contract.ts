@@ -2,7 +2,7 @@
 // an html page's state, kept on the server per session (data of the server's store belonging to the session's host
 // address: a session's export, import and delete carry them). People list, open and remove them; the
 // session's worker writes them for its agent; an open html page reports its errors and logs, and runs the agent's code.
-import { arr, int, nullable, num, obj, oneOf, opt, type Static, str, union, unknown } from "@earendil-works/pi-schema";
+import { arr, int, nullable, num, obj, oneOf, opt, type Static, str, union, unknown } from "@nycode/schema";
 import { type JsonValue, literal, method, param, remote, serverHost, unsafe } from "@p2/app/v1";
 
 /** An artifact's ID: a lowercase slug, unique in its session. */

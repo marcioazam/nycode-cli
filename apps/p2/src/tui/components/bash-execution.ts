@@ -1,8 +1,8 @@
 // Copied from coding-agent interactive/components/bash-execution.ts (p2-tui-port.md section 10.8, `!cmd`/`!!cmd`).
 // Changes: the instance theme and key hints (section 5.4) instead of globals; the output is server text, sanitized
-// (`safeText`) instead of `stripAnsi`; pi's `truncateTail` is `shellTail` (src/runtime/shell.ts, the same limits); the
+// (`safeText`) instead of `stripAnsi`; nycode's `truncateTail` is `shellTail` (src/runtime/shell.ts, the same limits); the
 // loader exists only for a live command (an entry renderer has no TUI); the author is named for others' commands.
-import { Container, Loader, Spacer, Text, type TUI } from "@earendil-works/pi-tui";
+import { Container, Loader, Spacer, Text, type TUI } from "@nycode/tui";
 import { shellData, shellTail } from "../../runtime/shell.ts";
 import type { TuiEntryRenderer } from "../../runtime/tui-renderers.ts";
 import { keyHint, lineText, type RenderContext, safeText } from "../render-context.ts";

@@ -26,8 +26,8 @@ The server builds one ESM bundle through esbuild and serves it only to web-admit
 are never imported from the visitor's checkout. Successful server plugin reloads rebuild/publish the bundle;
 the launcher swaps to a fresh worker only after readiness and terminates its predecessor. TUI-only source/import
 changes count as dirty plugins. TUI imports gate facet inclusion without expanding server/worker selection.
-Keybindings, theme and display settings are guest-local: the launcher reads pi's `~/.pi/agent` files
-(`PI_CODING_AGENT_DIR`) and `~/.pi/p2-tui/prefs.json`, validates them and posts data to the worker, watching for
+Keybindings, theme and display settings are guest-local: the launcher reads nycode's `~/.nycode/agent` files
+(`NYCODE_CODING_AGENT_DIR`) and `~/.nycode/p2-tui/prefs.json`, validates them and posts data to the worker, watching for
 changes; `<P2_DATA_DIR>/tui.json` (`TuiPreferences`) holds only server defaults below them. Launcher `config.json`
 holds only per-origin cookies.
 

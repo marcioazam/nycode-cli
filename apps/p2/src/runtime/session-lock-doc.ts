@@ -1,7 +1,7 @@
 // The session's lock in its Durable state (worker): written by the sessions plugin's worker facet from the server's
 // `SessionLock`, read by the tool guard and the prompt sections at each use. Absent or null: the session is not locked.
-import type { Context } from "@earendil-works/chord/context";
-import { type DocumentReader, defineDoc } from "@earendil-works/pi-durable";
+import type { Context } from "@nycode/chord/context";
+import { type DocumentReader, defineDoc } from "@nycode/durable";
 import type { SessionLock } from "./session-lock.ts";
 
 export const SessionLockDoc = defineDoc<{ lock: SessionLock | null }>({

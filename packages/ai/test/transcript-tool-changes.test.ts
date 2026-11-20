@@ -161,7 +161,7 @@ describe("transcript system messages", () => {
 		// deferred placeholder; later tools never appear there.
 		expect(payload.tools).toMatchObject([
 			{ name: "base_tool", cache_control: { type: "ephemeral" } },
-			{ name: "__pi_deferred_placeholder__", defer_loading: true },
+			{ name: "__nycode_deferred_placeholder__", defer_loading: true },
 		]);
 		expect(payload.tools).toHaveLength(2);
 		expect(payload.tools?.[0]?.defer_loading).toBeUndefined();
@@ -191,7 +191,7 @@ describe("transcript system messages", () => {
 		const initial = await capturePayload<AnthropicPayload>(anthropicNativeModel, {
 			messages: context.messages.slice(0, 2),
 		});
-		expect(initial.tools?.map((tool) => tool.name)).toEqual(["base_tool", "__pi_deferred_placeholder__"]);
+		expect(initial.tools?.map((tool) => tool.name)).toEqual(["base_tool", "__nycode_deferred_placeholder__"]);
 	});
 
 	test("redefines an Anthropic tool by value under the same name", async () => {
@@ -214,7 +214,7 @@ describe("transcript system messages", () => {
 		// The top-level declaration keeps the original definition, so the cached prefix survives.
 		expect(payload.tools).toMatchObject([
 			{ name: "base_tool", description: "base_tool tool" },
-			{ name: "__pi_deferred_placeholder__" },
+			{ name: "__nycode_deferred_placeholder__" },
 		]);
 		// The new definition replaces the old one in place; no removal block is sent for it.
 		expect(payload.messages.at(-1)).toMatchObject({

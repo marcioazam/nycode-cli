@@ -28,7 +28,7 @@ export function setBedrockProviderModule(module: ProviderStreams): void {
 /**
  * Overrides how the bedrock implementation is imported, loaded on the first
  * bedrock request. Used by Node bundles that split at dynamic imports (see
- * `@earendil-works/pi-ai/lazy-bedrock-provider`): the loader's literal
+ * `@nycode/ai/lazy-bedrock-provider`): the loader's literal
  * `import()` lets the bundler keep the implementation in a lazy chunk.
  */
 export function setBedrockProviderLoader(load: () => Promise<ProviderStreams>): void {

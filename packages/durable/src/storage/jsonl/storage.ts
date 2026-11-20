@@ -1,5 +1,5 @@
-import type { Context } from "@earendil-works/chord/context";
-import type { JsonValue } from "@earendil-works/chord/json";
+import type { Context } from "@nycode/chord/context";
+import type { JsonValue } from "@nycode/chord/json";
 import type { FileError, FileSystem } from "../../env/index.ts";
 import { StorageRequestError } from "../../errors.ts";
 import { idFromNumber, seqFromNumber } from "../../ids.ts";

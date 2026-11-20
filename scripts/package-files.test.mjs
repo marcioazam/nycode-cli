@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 const script = fileURLToPath(new URL("./package-files.mjs", import.meta.url));
 
 function workspace(t) {
-	const directory = mkdtempSync(join(tmpdir(), "pi-package-files-"));
+	const directory = mkdtempSync(join(tmpdir(), "nycode-package-files-"));
 	t.after(() => rmSync(directory, { recursive: true, force: true }));
 	return directory;
 }

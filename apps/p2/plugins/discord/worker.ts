@@ -1,7 +1,7 @@
 // The discord plugin's worker facet: what the server hands a session's worker. A batch becomes one input of the main
 // conversation (or a thread's subagent), its attachments downloaded into the session's uploads first; a turn's answer is
 // read from Durable when the server asks; a thread gets a subagent forked from the main conversation.
-import type { AssistantMessage } from "@earendil-works/pi-ai";
+import type { AssistantMessage } from "@nycode/ai";
 import {
 	AgentDoc,
 	type AgentState,
@@ -16,7 +16,7 @@ import {
 	ROOT_CONVERSATION_ID,
 	type SubmissionId,
 	section,
-} from "@earendil-works/pi-durable";
+} from "@nycode/durable";
 import {
 	type Context,
 	type Ctx,

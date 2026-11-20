@@ -1,6 +1,6 @@
 // Write-through cache of hot Storage record reads for the Session that owns the Storage.
-import type { Context } from "@earendil-works/chord/context";
-import type { JsonValue } from "@earendil-works/chord/json";
+import type { Context } from "@nycode/chord/context";
+import type { JsonValue } from "@nycode/chord/json";
 import type {
 	CommitResult,
 	ConversationId,

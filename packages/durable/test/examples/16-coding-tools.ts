@@ -6,10 +6,10 @@
 import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import type { ToolResultMessage } from "@earendil-works/pi-ai";
-import { createModels } from "@earendil-works/pi-ai/models";
-import { fauxAssistantMessage, fauxProvider, fauxText, fauxToolCall } from "@earendil-works/pi-ai/providers/faux";
+import type { ToolResultMessage } from "@nycode/ai";
+import { createModels } from "@nycode/ai/models";
+import { fauxAssistantMessage, fauxProvider, fauxText, fauxToolCall } from "@nycode/ai/providers/faux";
+import { BACKGROUND_CONTEXT } from "@nycode/chord/context";
 import { NodeExecutionEnv } from "../../src/env/node.ts";
 import {
 	AssistantEntry,
@@ -24,7 +24,7 @@ import { openNodeJsonlStorage } from "../../src/storage/jsonl/node.ts";
 import { type BashToolInput, CodingTools } from "../../src/tools/index.ts";
 
 const context = BACKGROUND_CONTEXT;
-const directory = await mkdtemp(join(tmpdir(), "pi-durable-example-"));
+const directory = await mkdtemp(join(tmpdir(), "nycode-durable-example-"));
 await writeFile(join(directory, "notes.txt"), "hello world\n");
 
 // The faux provider plays the model: four tool-calling answers, then a final answer.
@@ -75,7 +75,7 @@ const harness = await Harness.open(
 );
 const root = await harness.root(context, { agent: { model: { provider: "faux", modelId: "faux-1" }, cwd: directory } });
 
-// Each tool call runs as a durable pi.tool task owned by the generation, which waits for them and continues the run with the next generation.
+// Each tool call runs as a durable nycode.tool task owned by the generation, which waits for them and continues the run with the next generation.
 const settled = await (await root.submit({ type: "input", content: "Greet durable instead." }, context)).wait(context);
 console.log("status:", settled.status);
 const transcript = await root.entries({}, 20, undefined, context);

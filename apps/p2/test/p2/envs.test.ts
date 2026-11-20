@@ -6,8 +6,8 @@ import { createServer, Socket } from "node:net";
 import { tmpdir, userInfo } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import type { ConversationView } from "@earendil-works/pi-durable";
-import { localDaemon } from "@earendil-works/pi-env";
+import type { ConversationView } from "@nycode/durable";
+import { localDaemon } from "@nycode/env";
 import { BACKGROUND_CONTEXT, statusOf, whenLive } from "@p2/app/v1";
 import { WebSocket } from "ws";
 import { Chat } from "../../plugins/chat/contract.ts";
@@ -47,13 +47,13 @@ let noTerminal: string | undefined;
 try {
 	await terminalDaemon(process.platform, process.arch, true);
 } catch (error) {
-	noTerminal = error instanceof Error ? error.message : "No pi-env daemon with terminal support";
+	noTerminal = error instanceof Error ? error.message : "No nycode-env daemon with terminal support";
 }
 function answered(view: ConversationView | null | undefined, text: string): boolean {
 	return (
 		view?.entries.some(
 			(entry) =>
-				entry.kind === "pi.assistant" &&
+				entry.kind === "nycode.assistant" &&
 				entry.model?.some(
 					(message) =>
 						message.role === "assistant" &&
@@ -90,7 +90,7 @@ test("env configuration validates SSH fields, revisions are canonical, sessions 
 		const session = remoteSession(directory, "gpu", config, "/project");
 		assert.equal(session.remote(), undefined, "constructing a remote session never connects");
 		assert.equal(session.env.cwd, "/project");
-		assert.equal(sshOptions(directory, "gpu", config).hostKeyAlias, "pi-env-gpu");
+		assert.equal(sshOptions(directory, "gpu", config).hostKeyAlias, "nycode-env-gpu");
 		session.connection.close();
 		await Promise.all([saveEnv(directory, "one", config), saveEnv(directory, "two", config)]);
 		assert.deepEqual(Object.keys(await loadEnvs(directory)).sort(), ["one", "two"]);
@@ -135,7 +135,7 @@ test(
 			.hold(Envs, {}, BACKGROUND_CONTEXT);
 		await expectChord(whenLive(guest), "forbidden");
 		guest.release();
-		// Remote owners manage keys too (Pi Mobile's rule): generate, then read the public key back.
+		// Remote owners manage keys too (Nycode Mobile's rule): generate, then read the public key back.
 		const tunnelOwner = fixture.as({ kind: "owner", access: "relay" }).hold(Envs, {}, BACKGROUND_CONTEXT);
 		const generated = await tunnelOwner.generateKey({ name: "remote-key" }, BACKGROUND_CONTEXT);
 		assert.match(generated.publicKey, /^ssh-ed25519 /);
@@ -217,7 +217,7 @@ test(
 		skip: !sshd
 			? "no local sshd"
 			: !existsSync(localDaemon())
-				? `no packaged pi-env daemon at ${localDaemon()} (see apps/mobile/README Tests)`
+				? `no packaged nycode-env daemon at ${localDaemon()} (see apps/mobile/README Tests)`
 				: (noTerminal ?? false),
 	},
 	async (t) => {
@@ -281,7 +281,7 @@ test(
 		const trusted = await envs.test({ name: "box" }, BACKGROUND_CONTEXT);
 		assert(trusted.ok, trusted.ok ? "" : trusted.error);
 		assert.equal(trusted.home, home);
-		// The folder picker warms every environment's connection first (Pi Mobile's `envs` with `warm`).
+		// The folder picker warms every environment's connection first (Nycode Mobile's `envs` with `warm`).
 		assert.equal(await envs.warm(BACKGROUND_CONTEXT), null);
 		assert.equal((await envs.listDirectory({ env: "box", path: "~" }, BACKGROUND_CONTEXT)).path, home);
 		const uploadedKey = await envs.uploadKey(
@@ -304,9 +304,9 @@ test(
 		assert.equal(session.cwd, join(home, "project"));
 		await writeFile(join(fixture.dataDir, "AGENTS.md"), "LOCAL GLOBAL sentinel");
 		await writeFile(join(session.cwd, "AGENTS.md"), "REMOTE PROJECT sentinel");
-		await mkdir(join(home, ".pi", "p2", "skills", "remote"), { recursive: true });
+		await mkdir(join(home, ".nycode", "p2", "skills", "remote"), { recursive: true });
 		await writeFile(
-			join(home, ".pi", "p2", "skills", "remote", "SKILL.md"),
+			join(home, ".nycode", "p2", "skills", "remote", "SKILL.md"),
 			"---\nname: remote\ndescription: Remote skill sentinel.\n---\nRemote instructions.",
 		);
 		const chat = await holdIn(owner, Chat, { session: session.id, conversation: 1 }, "participant");
@@ -331,7 +331,7 @@ test(
 			BACKGROUND_CONTEXT,
 		);
 		await until(chat.view, (view) => answered(view, "Echo: see attachment"), 60000);
-		const remoteUploads = join(home, ".pi", "p2", "uploads", session.id);
+		const remoteUploads = join(home, ".nycode", "p2", "uploads", session.id);
 		const files = await readdir(remoteUploads);
 		assert.equal(files.length, 1);
 		assert.equal(await readFile(join(remoteUploads, files[0]!), "utf8"), "remote attachment");
@@ -348,7 +348,7 @@ test(
 					.map((message) => JSON.stringify(message)),
 			)
 			.join("\n");
-		// The raw remote cwd and its SSH host (Pi Mobile's text, adapted), never the `box:/path` display form.
+		// The raw remote cwd and its SSH host (Nycode Mobile's text, adapted), never the `box:/path` display form.
 		const sections: Record<string, string> = {};
 		for (const entry of view?.entries ?? [])
 			for (const message of entry.model ?? [])
@@ -359,7 +359,7 @@ test(
 		const cwdSection = `${session.cwd}\nTools run on the remote environment "box" (SSH host 127.0.0.1), not on the machine running p2.`;
 		assert.ok(sections.cwd?.includes(cwdSection), sections.cwd);
 		assert.doesNotMatch(system, /box:\//);
-		assert.match(sections.app ?? "", /skills: "~\/\.pi\/p2\/skills" on the remote environment "box"/);
+		assert.match(sections.app ?? "", /skills: "~\/\.nycode\/p2\/skills" on the remote environment "box"/);
 		assert.match(sections.app ?? "", /owner keys\/tokens/);
 		assert.match(system, /REMOTE PROJECT sentinel/);
 		assert.match(system, /LOCAL GLOBAL sentinel/);
@@ -431,7 +431,7 @@ test(
 		await until(status.statuses, (statuses) => statuses?.[session.id]?.tasks === 0);
 		reopened.release();
 
-		// Pi Mobile 78056b34e: a subagent spawned without a cwd works in the session's remote cwd, and follows the
+		// Nycode Mobile 78056b34e: a subagent spawned without a cwd works in the session's remote cwd, and follows the
 		// session when it moves (to this machine and back), never resolving a path of the other machine.
 		const agents = await holdIn(owner, Subagents, {}, "reader");
 		let sent = 0;
@@ -478,7 +478,7 @@ test(
 		const local = join(root, "local");
 		mkdirSync(local);
 		await sessions.relocate({ id: session.id, cwd: local, env: null }, BACKGROUND_CONTEXT);
-		await until(viewer.view, (view) => (view?.docs["pi.agent"] as { cwd?: string })?.cwd === local);
+		await until(viewer.view, (view) => (view?.docs["nycode.agent"] as { cwd?: string })?.cwd === local);
 		assert.equal(await subagentPwd("follow-local"), local);
 		// The owner's case: a subagent spawned with its own directory on this machine keeps working here when the
 		// session moves to the remote environment.
@@ -517,7 +517,10 @@ test(
 		};
 		assert.equal(await ownPwd("own-local"), own);
 		await sessions.relocate({ id: session.id, cwd: "~/project", env: "box" }, BACKGROUND_CONTEXT);
-		await until(viewer.view, (view) => (view?.docs["pi.agent"] as { cwd?: string })?.cwd === join(home, "project"));
+		await until(
+			viewer.view,
+			(view) => (view?.docs["nycode.agent"] as { cwd?: string })?.cwd === join(home, "project"),
+		);
 		assert.equal(statusOf(viewer), "live");
 		assert.equal(await generation(), before, "the same worker throughout");
 		const moved = await until(sessions.sessions, (rows) => rows?.find((row) => row.id === session.id)?.env === "box");

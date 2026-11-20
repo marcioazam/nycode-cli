@@ -1,7 +1,7 @@
 // Unrestricted launcher: authentication, terminal and fixed-origin transport stay outside downloaded code.
 import { stdin, stdout } from "node:process";
 import { createInterface } from "node:readline/promises";
-import { ProcessTerminal } from "@earendil-works/pi-tui";
+import { ProcessTerminal } from "@nycode/tui";
 import { editorArgv, launcherActions } from "./tui-actions.ts";
 import { startTuiClient, type TuiClient } from "./tui-client.ts";
 import {
@@ -64,7 +64,7 @@ try {
 	requireTuiNode();
 	let options = parseTuiArgs(process.argv.slice(2));
 	const config = readConfig();
-	// The visitor's own pi keybindings/settings/themes and p2 prefs, read here and sent to the worker as data.
+	// The visitor's own nycode keybindings/settings/themes and p2 prefs, read here and sent to the worker as data.
 	const sources = localPreferenceSources({ theme: options.theme, noThemes: options.noThemes });
 	const current = loadLocalPreferences(sources);
 	const radius = options.radius && (await connectRadius(options.radius.server, stopped.signal));

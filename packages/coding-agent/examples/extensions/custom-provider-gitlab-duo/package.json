@@ -1,5 +1,5 @@
 {
-  "name": "pi-extension-custom-provider-gitlab-duo",
+  "name": "nycode-extension-custom-provider-gitlab-duo",
   "private": true,
   "version": "1.5.2",
   "type": "module",
@@ -8,7 +8,7 @@
     "build": "echo 'nothing to build'",
     "check": "echo 'nothing to check'"
   },
-  "pi": {
+  "nycode": {
     "extensions": [
       "./index.ts"
     ]

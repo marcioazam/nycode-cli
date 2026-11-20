@@ -9,8 +9,8 @@ import type { AddressInfo } from "node:net";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 import { setTimeout as sleep } from "node:timers/promises";
-import type { AssistantMessage } from "@earendil-works/pi-ai";
-import type { ConversationView, LiveState } from "@earendil-works/pi-durable";
+import type { AssistantMessage } from "@nycode/ai";
+import type { ConversationView, LiveState } from "@nycode/durable";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { Sessions } from "../../plugins/sessions/contract.ts";
@@ -27,7 +27,7 @@ const texts = (view: ConversationView | null | undefined): string[] =>
 				: message.content.flatMap((part) => (part.type === "text" ? [part.text] : [])),
 		),
 	);
-const live = (view: ConversationView | null | undefined) => view?.docs["pi.live"] as LiveState | undefined;
+const live = (view: ConversationView | null | undefined) => view?.docs["nycode.live"] as LiveState | undefined;
 
 /** A models.json with the local provider (an OpenAI-compatible API at `port`) or without it. */
 const modelsJson = (port: number | undefined) =>
@@ -59,7 +59,7 @@ describe("subagent failures (fake provider)", () => {
 	const failingSeen: (Child["failure"] | "absent")[] = [];
 
 	before(async () => {
-		// The local provider refuses every request: HTTP 400, an error pi-ai does not retry.
+		// The local provider refuses every request: HTTP 400, an error nycode-ai does not retry.
 		provider = createServer((_request, response) => {
 			response.writeHead(400, { "Content-Type": "application/json" });
 			response.end(JSON.stringify({ error: { message: "fixture bad request", type: "invalid_request_error" } }));

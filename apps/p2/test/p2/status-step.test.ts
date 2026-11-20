@@ -2,7 +2,7 @@
 // not done yet first, then a compaction, the model's answer, other work.
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { LiveState } from "@earendil-works/pi-durable";
+import type { LiveState } from "@nycode/durable";
 import { stepOf } from "../../plugins/status/worker.ts";
 
 type Slot = NonNullable<LiveState["tools"]>[number];
@@ -13,7 +13,7 @@ describe("stepOf", () => {
 		const live: LiveState = {
 			tools: [slot("read", "done"), slot("bash", "running"), slot("edit", "pending"), slot("sleep", "sleeping")],
 		};
-		assert.deepEqual(stepOf(live, new Set(["pi.generation", "pi.compaction"])), {
+		assert.deepEqual(stepOf(live, new Set(["nycode.generation", "nycode.compaction"])), {
 			kind: "tools",
 			names: ["bash", "edit", "sleep"],
 		});
@@ -21,11 +21,11 @@ describe("stepOf", () => {
 
 	it("is compacting with a compaction task once every call is done", () => {
 		const live: LiveState = { tools: [slot("read", "done")] };
-		assert.deepEqual(stepOf(live, new Set(["pi.generation", "pi.compaction"])), { kind: "compacting" });
+		assert.deepEqual(stepOf(live, new Set(["nycode.generation", "nycode.compaction"])), { kind: "compacting" });
 	});
 
 	it("is thinking with a generation task and no compaction", () => {
-		assert.deepEqual(stepOf({}, new Set(["pi.generation"])), { kind: "thinking" });
+		assert.deepEqual(stepOf({}, new Set(["nycode.generation"])), { kind: "thinking" });
 	});
 
 	it("is working with other tasks only, or without a live document", () => {

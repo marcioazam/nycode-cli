@@ -8,9 +8,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { AgentDoc, type ConversationId, configure, ROOT_CONVERSATION_ID } from "@earendil-works/pi-durable";
-import type { ExecutionEnv } from "@earendil-works/pi-durable/env";
-import { NodeExecutionEnv } from "@earendil-works/pi-durable/env/node";
+import { AgentDoc, type ConversationId, configure, ROOT_CONVERSATION_ID } from "@nycode/durable";
+import type { ExecutionEnv } from "@nycode/durable/env";
+import { NodeExecutionEnv } from "@nycode/durable/env/node";
 import { BACKGROUND_CONTEXT, type Context, type Held, whenLive } from "@p2/app/v1";
 import fileIndexWorker from "../../plugins/file-index/worker.ts";
 import { createP2Models } from "../../plugins/models/models.ts";
@@ -350,7 +350,7 @@ test("conversations on different machines run concurrently, one connection per m
 	assert.equal(await run((await w.environment(1)).env, "pwd"), next);
 });
 
-// PowerShell follows each agent's machine (Pi Mobile's offerPowerShell, per agent): the main agent and each subagent are
+// PowerShell follows each agent's machine (Nycode Mobile's offerPowerShell, per agent): the main agent and each subagent are
 // offered it where they work on Windows and have the shell tool, independently, again after every move.
 test("PowerShell is offered to each agent working on Windows, independently", async (t) => {
 	const win: Machine = { os: "windows", gate: Promise.resolve(), failures: 0 };

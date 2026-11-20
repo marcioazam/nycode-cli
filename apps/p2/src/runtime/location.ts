@@ -1,4 +1,4 @@
-import { nul, obj, type Static, str, union } from "@earendil-works/pi-schema";
+import { nul, obj, type Static, str, union } from "@nycode/schema";
 // Where a conversation works, shared by every process (no Node imports: the web and TUI bundles use it too).
 
 export const LocationSchema = obj({ cwd: str(), env: union([str(), nul()]) });

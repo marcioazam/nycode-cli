@@ -8,8 +8,8 @@ import assert from "node:assert/strict";
 import { cpSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
-import type { ToolResultMessage } from "@earendil-works/pi-ai";
-import type { ConversationView } from "@earendil-works/pi-durable";
+import type { ToolResultMessage } from "@nycode/ai";
+import type { ConversationView } from "@nycode/durable";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { LogNotices } from "../../plugins/logs/contract.ts";
@@ -60,7 +60,7 @@ describe("page recovery and old state", { skip: !browserTests }, () => {
 		await chat.send({ text, requestId: `run-${++sent}` }, BACKGROUND_CONTEXT);
 		const view = await until(
 			chat.view,
-			(value) => results(value).length > before && !(value?.docs["pi.live"] as { run?: unknown })?.run,
+			(value) => results(value).length > before && !(value?.docs["nycode.live"] as { run?: unknown })?.run,
 		);
 		chat.release();
 		const result = results(view).at(-1);

@@ -1,5 +1,5 @@
 // Cache warming (plugins/cache-warming): a conversation's last request is sent again with one output token before its
-// prompt cache entry expires, while pi's policy says it pays off. The warmers run on mocked timers with fake models;
+// prompt cache entry expires, while nycode's policy says it pays off. The warmers run on mocked timers with fake models;
 // a worker runs them end to end with the fake provider given a short cache lifetime.
 
 import assert from "node:assert/strict";
@@ -15,9 +15,9 @@ import type {
 	ModelsSimpleStreamOptions,
 	SimpleStreamOptions,
 	StopReason,
-} from "@earendil-works/pi-ai";
-import { fauxAssistantMessage } from "@earendil-works/pi-ai/providers/faux";
-import type { ConversationId, ConversationView, LiveState, UsageState } from "@earendil-works/pi-durable";
+} from "@nycode/ai";
+import { fauxAssistantMessage } from "@nycode/ai/providers/faux";
+import type { ConversationId, ConversationView, LiveState, UsageState } from "@nycode/durable";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import type { ModelRequest } from "@p2/app/v1/worker";
 import { type CacheWarmingMode, ConversationWarmers } from "../../plugins/cache-warming/warmer.ts";
@@ -25,10 +25,10 @@ import { Chat } from "../../plugins/chat/contract.ts";
 import { Sessions } from "../../plugins/sessions/contract.ts";
 import { holdIn, startFixture, until } from "./helpers.ts";
 
-const MODEL: Model<"pi-messages"> = {
+const MODEL: Model<"nycode-messages"> = {
 	id: "claude-opus-5-5",
 	name: "Claude Opus 5.5",
-	api: "pi-messages",
+	api: "nycode-messages",
 	provider: "radius",
 	baseUrl: "https://radius.example/v1",
 	reasoning: true,
@@ -56,7 +56,11 @@ function setup(t: { after(fn: () => void): void }, mode: CacheWarmingMode = "idl
 		recorded: 0,
 	};
 	const models = {
-		completeSimple: async (_model: Model<"pi-messages">, context: Context, options: ModelsSimpleStreamOptions) => {
+		completeSimple: async (
+			_model: Model<"nycode-messages">,
+			context: Context,
+			options: ModelsSimpleStreamOptions,
+		) => {
 			assert.deepEqual(context.messages, REQUEST.messages);
 			state.sent.push(options);
 			return { ...fauxAssistantMessage([]), stopReason: options.signal?.aborted ? "aborted" : "length" };
@@ -223,9 +227,9 @@ test(
 		).id;
 		const chat = await holdIn(owner, Chat, { session, conversation: 1 }, "participant");
 		await chat.send({ text: "hello", requestId: "m1" }, BACKGROUND_CONTEXT);
-		const live = (view: ConversationView | null | undefined) => view?.docs["pi.live"] as LiveState | undefined;
+		const live = (view: ConversationView | null | undefined) => view?.docs["nycode.live"] as LiveState | undefined;
 		const tokens = (view: ConversationView | null | undefined) =>
-			Object.values((view?.docs["pi.usage"] as unknown as UsageState | undefined)?.models ?? {}).reduce(
+			Object.values((view?.docs["nycode.usage"] as unknown as UsageState | undefined)?.models ?? {}).reduce(
 				(total, model) => total + model.totalTokens,
 				0,
 			);

@@ -1,5 +1,5 @@
-import type { AgentTool } from "@earendil-works/pi-agent-core";
-import { type FauxResponseStep, fauxAssistantMessage, fauxToolCall } from "@earendil-works/pi-ai";
+import type { AgentTool } from "@nycode/agent-core";
+import { type FauxResponseStep, fauxAssistantMessage, fauxToolCall } from "@nycode/ai";
 import { Type } from "typebox";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ExtensionContext } from "../../src/core/extensions/index.ts";
@@ -47,8 +47,8 @@ describe("AgentSession virtual models", () => {
 			tools: [echoTool],
 			extensionFactories: [
 				...(options.extensionFactories ?? []),
-				(pi) => {
-					pi.registerVirtualModel({
+				(nycode) => {
+					nycode.registerVirtualModel({
 						provider: "router",
 						id: "auto",
 						name: "Auto",
@@ -125,8 +125,8 @@ describe("AgentSession virtual models", () => {
 		const { harness, requests, reasons } = await createRoutedHarness(defaultRoute, {
 			settings: { compaction: { keepRecentTokens: 1, reserveTokens: 0 } },
 			extensionFactories: [
-				(pi) => {
-					pi.on("session_before_compact", async ({ preparation: { firstKeptEntryId, tokensBefore } }) => ({
+				(nycode) => {
+					nycode.on("session_before_compact", async ({ preparation: { firstKeptEntryId, tokensBefore } }) => ({
 						compaction: { summary: "overflow compacted", firstKeptEntryId, tokensBefore },
 					}));
 				},
@@ -149,9 +149,9 @@ describe("AgentSession virtual models", () => {
 	it("routes requests after extension messages as continuations", async () => {
 		const { harness, reasons } = await createRoutedHarness(defaultRoute, {
 			extensionFactories: [
-				(pi) => {
+				(nycode) => {
 					let continued = false;
-					pi.on("agent_before_settle", () => {
+					nycode.on("agent_before_settle", () => {
 						if (continued) return undefined;
 						continued = true;
 						return {
@@ -173,8 +173,8 @@ describe("AgentSession virtual models", () => {
 	it("routes the first request of a prompt as a user turn when extension messages follow the prompt", async () => {
 		const { harness, reasons } = await createRoutedHarness(defaultRoute, {
 			extensionFactories: [
-				(pi) => {
-					pi.on("before_agent_start", () => ({
+				(nycode) => {
+					nycode.on("before_agent_start", () => ({
 						message: { customType: "context", content: "Extra context.", display: false },
 					}));
 				},
@@ -229,8 +229,8 @@ describe("AgentSession virtual models", () => {
 		const { harness, dispatched } = await createRoutedHarness(defaultRoute, {
 			settings: { compaction: { keepRecentTokens: 1, reserveTokens: 0 } },
 			extensionFactories: [
-				(pi) => {
-					pi.on("session_before_compact", async ({ preparation: { firstKeptEntryId, tokensBefore } }) => ({
+				(nycode) => {
+					nycode.on("session_before_compact", async ({ preparation: { firstKeptEntryId, tokensBefore } }) => ({
 						compaction: { summary: "compacted", firstKeptEntryId, tokensBefore },
 					}));
 				},
@@ -264,8 +264,8 @@ describe("AgentSession virtual models", () => {
 		const { harness, dispatched } = await createRoutedHarness(route, {
 			settings: { compaction: { keepRecentTokens: 1, reserveTokens: 0 } },
 			extensionFactories: [
-				(pi) => {
-					pi.on("session_before_compact", async ({ preparation: { firstKeptEntryId, tokensBefore } }) => ({
+				(nycode) => {
+					nycode.on("session_before_compact", async ({ preparation: { firstKeptEntryId, tokensBefore } }) => ({
 						compaction: { summary: "compacted", firstKeptEntryId, tokensBefore },
 					}));
 				},
@@ -351,8 +351,8 @@ describe("AgentSession virtual models", () => {
 		const { harness, reasons } = await createRoutedHarness(route, {
 			settings: { compaction: { keepRecentTokens: 1 } },
 			extensionFactories: [
-				(pi) => {
-					pi.on("session_before_compact", async ({ preparation: { firstKeptEntryId, tokensBefore } }) => ({
+				(nycode) => {
+					nycode.on("session_before_compact", async ({ preparation: { firstKeptEntryId, tokensBefore } }) => ({
 						compaction: { summary: "extension summary", firstKeptEntryId, tokensBefore },
 					}));
 				},

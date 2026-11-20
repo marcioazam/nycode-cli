@@ -1,6 +1,6 @@
-import type { AssistantMessage } from "@earendil-works/pi-ai";
-import { AssistantEntry, type Cursor, defineExtension, LiveDoc, section } from "@earendil-works/pi-durable";
-import { bool, obj, opt, type Static, str, union } from "@earendil-works/pi-schema";
+import type { AssistantMessage } from "@nycode/ai";
+import { AssistantEntry, type Cursor, defineExtension, LiveDoc, section } from "@nycode/durable";
+import { bool, obj, opt, type Static, str, union } from "@nycode/schema";
 import {
 	defineFacet,
 	expectVariant,

@@ -64,19 +64,19 @@ vi.mock("openai", () => {
 });
 
 describe("openai-completions prompt caching", () => {
-	const originalEnv = process.env.PI_CACHE_RETENTION;
+	const originalEnv = process.env.NYCODE_CACHE_RETENTION;
 
 	beforeEach(() => {
 		mockState.lastParams = undefined;
 		mockState.lastClientOptions = undefined;
-		delete process.env.PI_CACHE_RETENTION;
+		delete process.env.NYCODE_CACHE_RETENTION;
 	});
 
 	afterEach(() => {
 		if (originalEnv === undefined) {
-			delete process.env.PI_CACHE_RETENTION;
+			delete process.env.NYCODE_CACHE_RETENTION;
 		} else {
-			process.env.PI_CACHE_RETENTION = originalEnv;
+			process.env.NYCODE_CACHE_RETENTION = originalEnv;
 		}
 	});
 
@@ -185,7 +185,7 @@ describe("openai-completions prompt caching", () => {
 	});
 
 	it("respects disabled caching on an opted-in proxy", async () => {
-		process.env.PI_CACHE_RETENTION = "long";
+		process.env.NYCODE_CACHE_RETENTION = "long";
 		const model = createModel({
 			baseUrl: "https://proxy.example.com/v1",
 			compat: { promptCacheKeyMode: "enabled" },
@@ -235,8 +235,8 @@ describe("openai-completions prompt caching", () => {
 		expect(payload?.prompt_cache_key).toBe("𐐀".repeat(64));
 	});
 
-	it("uses PI_CACHE_RETENTION for direct OpenAI requests", async () => {
-		process.env.PI_CACHE_RETENTION = "long";
+	it("uses NYCODE_CACHE_RETENTION for direct OpenAI requests", async () => {
+		process.env.NYCODE_CACHE_RETENTION = "long";
 		const { payload } = await captureRequest({ sessionId: "session-env" });
 
 		expect(payload?.prompt_cache_key).toBe("session-env");

@@ -4,7 +4,7 @@
 
 **I found an implemented explicit Context/cancellation system, and a written design for distributed tracing, but no implementation that propagated trace identity across Chord links.** The distinction matters:
 
-- Old Chord passed the caller's **actual Context object** through local service calls and its in-process loopback transport. Application values, including a pi-telemetry parent, could survive that path.
+- Old Chord passed the caller's **actual Context object** through local service calls and its in-process loopback transport. Application values, including a nycode-telemetry parent, could survive that path.
 - Its real remote transport forwarded **cancellation only**, using request IDs and cancel messages. It discarded arbitrary Context values. The receiving server and worker constructed new contexts rooted at `TODO_CONTEXT` or `BACKGROUND_CONTEXT`, not an extracted trace parent.
 - The August RPC/telemetry documents describe exactly the remembered client → server trace propagation, but explicitly call it design input and say carrier injection/extraction was missing.
 - Today's main Chord runtime and `src` both propagate cancellation across relays. Neither call-frame schema defines trace IDs, span IDs, W3C headers, baggage, or an invocation deadline.
@@ -13,7 +13,7 @@ This is a finding about the fetched, reachable repository history and the additi
 
 ## Scope and reproducibility
 
-Research baseline: `private` at `e5864dd82` (2026-10-17). `git fetch --all` completed for `origin` (`pi-private`) and `upstream` (`pi`); it updated only `upstream/feat/durable-timer`. `git log --all` covered 7,657 reachable commits and 95 remote-tracking refs. No branch was checked out, no source was changed, and no tests were run. Only this report was written.
+Research baseline: `private` at `e5864dd82` (2026-10-17). `git fetch --all` completed for `origin` (`nycode-private`) and `upstream` (`nycode`); it updated only `upstream/feat/durable-timer`. `git log --all` covered 7,657 reachable commits and 95 remote-tracking refs. No branch was checked out, no source was changed, and no tests were run. Only this report was written.
 
 The working tree already contained unrelated Chord v2/playground edits. Current-source citations below use **committed `e5864dd82`**, unless explicitly stated. The uncommitted cancellation paths inspected agree with the descriptions; one additional implementation detail is noted below.
 
@@ -42,7 +42,7 @@ Additional locations checked:
 - `/home/badlogic/p2-verify`: detached `7e7893b2e`.
 - `/home/badlogic/research/chord-wt` and `chord-patched`: source snapshots, not independent Git repositories; no trace/telemetry carrier implementation in their Chord sources.
 - `/home/badlogic/research/experiments/chord-{retire-order,leaks,leaks-patched}.ts`: experiment locations inventoried; the adjacent Chord copies concern lifecycle work, not a separate historical tracing runtime.
-- Other Git repositories under `~/research` are Cordis, OpenCode, and DeepSeek Harness, not additional pi/Chord history. They were not mistaken for branches of this repository.
+- Other Git repositories under `~/research` are Cordis, OpenCode, and DeepSeek Harness, not additional nycode/Chord history. They were not mistaken for branches of this repository.
 
 ## Timeline and where to recover it
 
@@ -55,13 +55,13 @@ Dates below are Git author dates, as displayed by `git log --date=short`.
 | `68a9341ae` | 2026-08-17 | Added invocation Context primitives to `packages/agent/src/harness/context.ts`. |
 | `397673eb2` | 2026-08-17 | Added **design-only** `packages/agent/docs/rpc.md` and `telemetry.md`, including trace injection/extraction and `rpc.client`/`rpc.server`. |
 | `fb33e0db2`, `f8a6e670d`, `8222adee8` | 2026-08-18–20 | Remote-session and routed-service predecessors under `packages/agent` and the experimental coding-agent stack. |
-| `28b49a6b3` | 2026-08-28 | Chord foundation: `packages/chord/src/context.ts`, `PLANNING.md`; agent Context became a Chord adapter with a local pi-telemetry key. |
+| `28b49a6b3` | 2026-08-28 | Chord foundation: `packages/chord/src/context.ts`, `PLANNING.md`; agent Context became a Chord adapter with a local nycode-telemetry key. |
 | `34dc9d055` | 2026-08-29 | Moved services/facets into Chord. Predecessors included `packages/agent/src/plugins/services/{namespace,provider}.ts` and `packages/coding-agent/src/experimental/facets.ts`; destinations included `packages/chord/src/services/{consumer,provider}.ts` and `facets/host.ts`. |
 | `e6dc574d1` | 2026-08-29 | Isolated the Context API under `packages/chord/src/context/index.ts`. |
 | `45d0174ee` | 2026-08-30 | Added/hardened service lifecycle and `services/loopback.ts`, retaining Context directly in process. |
 | `1a7bc80e7` | 2026-09-01 | Moved service wire grammar into `packages/chord/src/services/wire.ts`; outer routing/framing remained in `packages/protocol`, client and server. |
 | `fa5036836` | 2026-09-01 | Consolidated the remote adapter into `createClientServiceTransport()` in `packages/client/src/client.ts`; still forwarded only `context.abortSignal`. |
-| `7fd478a2e`, `48dd1e2f0` | 2026-10-01 | Removed old agent harness/telemetry schemas and ported experimental client/server to Durable. `pi-telemetry` itself remained. |
+| `7fd478a2e`, `48dd1e2f0` | 2026-10-01 | Removed old agent harness/telemetry schemas and ported experimental client/server to Durable. `nycode-telemetry` itself remained. |
 | `a0c602f36` | 2026-10-09 | Added private p2's object-based Chord2 in `apps/p2/src/chord2`, with its own links and cancellation. |
 | `7472cda0d` | 2026-10-12 | Deleted `packages/{client,protocol,server}` and most experimental coding-agent stack. Last complete old transport snapshot: `7472cda0d^`. |
 | `0104fef1e` | 2026-10-12 | Replaced old Chord facets/services with p2's Chord2 host runtime. Last old Chord snapshot: `0104fef1e^`. |
@@ -85,10 +85,10 @@ export interface Context {
 
 A key was an object containing a unique symbol. `withContextValue()` created a parent-linked layer; lookup compared symbol identity and delegated to the parent. `withAbortSignal()` layered a signal, combining it with the parent's signal using `AbortSignal.any()`. `withCancel()` created a child controller. `awaitWithContext()` canceled only the waiter, not the underlying promise.
 
-The pi adapter deliberately lived outside Chord. From `28b49a6b3:packages/agent/src/harness/context.ts` (also present after the service move):
+The nycode adapter deliberately lived outside Chord. From `28b49a6b3:packages/agent/src/harness/context.ts` (also present after the service move):
 
 ```ts
-const TELEMETRY_CONTEXT_KEY = createContextKey<TelemetryContext>("pi.telemetryContext");
+const TELEMETRY_CONTEXT_KEY = createContextKey<TelemetryContext>("nycode.telemetryContext");
 
 export function getTelemetryContext(context: Context): TelemetryContext {
   return context.value(TELEMETRY_CONTEXT_KEY) ?? NOOP_TELEMETRY_CONTEXT;
@@ -99,7 +99,7 @@ export function withTelemetryContext(telemetryContext: TelemetryContext, context
 }
 ```
 
-Thus old Chord could carry a **pi-telemetry object locally**, without importing or understanding pi-telemetry. This was not trace-ID serialization.
+Thus old Chord could carry a **nycode-telemetry object locally**, without importing or understanding nycode-telemetry. This was not trace-ID serialization.
 
 ### Service calls removed Context from business arguments, then supplied it out of band
 
@@ -132,7 +132,7 @@ Concrete consequence: local caller → facade → loopback → provider preserve
 
 Local state delivery also retained Context. The provider buffered `{ update, context: deliveryContext }` (`provider.ts`, `#emit`, lines 445 onward), including through snapshot-overflow resets. This preserved the source of local state updates; it did not place a Context or trace carrier in a wire update.
 
-### Local spans reused pi-telemetry
+### Local spans reused nycode-telemetry
 
 At `34dc9d055:packages/agent/src/harness/telemetry.ts`, `startHarnessSpan()` delegated to the parent and derived the context supplied to lower work:
 
@@ -142,7 +142,7 @@ return getTelemetryContext(context).startSpan({ name, attributes }, (span: Telem
 );
 ```
 
-That implementation used domain names such as `pi.harness.run`, `pi.harness.turn`, `pi.harness.hook` and `pi.session.write` (see the same file's schemas). It did not define or emit Chord RPC/relay spans. Chord itself had no built-in telemetry spans.
+That implementation used domain names such as `nycode.harness.run`, `nycode.harness.turn`, `nycode.harness.hook` and `nycode.session.write` (see the same file's schemas). It did not define or emit Chord RPC/relay spans. Chord itself had no built-in telemetry spans.
 
 ## 2. The actual remote boundary lost trace/context values
 
@@ -187,7 +187,7 @@ state.activeRequests.set(envelope.id, active);
 const context = withAbortSignal(controller.signal, TODO_CONTEXT);
 ```
 
-It passed this fresh context through `sessions.executeServiceCall()` or `serverServices.invokeService()` to provider dispatch. `TODO_CONTEXT` has no caller telemetry value. The same behavior is visible at `1a7bc80e7`; `48dd1e2f0` changed imports from the agent adapter to `@earendil-works/chord/context`, not trace semantics.
+It passed this fresh context through `sessions.executeServiceCall()` or `serverServices.invokeService()` to provider dispatch. `TODO_CONTEXT` has no caller telemetry value. The same behavior is visible at `1a7bc80e7`; `48dd1e2f0` changed imports from the agent adapter to `@nycode/chord/context`, not trace semantics.
 
 ### Cancellation did cross the old remote boundaries
 
@@ -377,7 +377,7 @@ On an inbound remote call, `Connection.#call()` supplies **only `{ signal }`**, 
 
 Working-tree note: the uncommitted v2 object implementation additionally races against linked object/activation cancellation, whereas the baseline races its caller wait against `ctx.signal`. Neither version adds a trace carrier or changes the described cancel-frame chain.
 
-## 6. What pi-telemetry offers and lacks
+## 6. What nycode-telemetry offers and lacks
 
 Current `packages/telemetry/src/index.ts` retains this deliberately small backend-neutral interface:
 
@@ -423,6 +423,6 @@ I found **no commit message or decision explaining a choice to drop working cros
 3. **Keep cancellation independent.** The existing request-local controller plus `cancel(id)` path already reaches the provider through relays. Reuse it; tracing metadata must not grant authority, cancel other calls, or trigger durable business cancellation.
 4. **Choose relay trace semantics explicitly.** Either forward one opaque carrier unchanged through routing relays, or create a documented client/server span pair per hop. Current relays rebuild outbound calls from explicit fields, so merely adding a wire-schema field is insufficient: `Connection.#call()`/`call()` must carry it too. Do not reinterpret old `rootId` as a trace ID.
 5. **Reuse source-context delivery for state only if required.** Old local provider queues retained `{ update, context }`; the design proposed a separate carrier per emitted event. State replication currently has no such carrier. Do not accidentally parent all streaming updates to the subscription-open span.
-6. **Test real boundary behavior with an adapter fixture.** Assert caller → client → provider parentage, concurrent caller isolation, nested remote calls, multiple relays, cancel/disconnect, missing/malformed carriers, and metadata size limits. A same-process Context-key test alone is not proof of network propagation. pi-telemetry's current in-memory recorder needs a test propagation adapter or extension before it can model an imported remote parent.
+6. **Test real boundary behavior with an adapter fixture.** Assert caller → client → provider parentage, concurrent caller isolation, nested remote calls, multiple relays, cancel/disconnect, missing/malformed carriers, and metadata size limits. A same-process Context-key test alone is not proof of network propagation. nycode-telemetry's current in-memory recorder needs a test propagation adapter or extension before it can model an imported remote parent.
 
 **Bottom line:** there is reusable local Context/telemetry composition and working distributed cancellation, plus a clear design for the missing tracing boundary. There is no discovered old implementation of trace IDs/spans/baggage propagating over Chord links to transplant.

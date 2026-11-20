@@ -4,8 +4,8 @@ import {
 	type EntryDraft,
 	type EntryId,
 	ROOT_CONVERSATION_ID,
-} from "@earendil-works/pi-durable";
-import { obj, str } from "@earendil-works/pi-schema";
+} from "@nycode/durable";
+import { obj, str } from "@nycode/schema";
 import { defineFacet, expectVariant, forbidden, local } from "@p2/app/v1";
 import {
 	defineP2Tool,
@@ -35,7 +35,7 @@ const renameSession = (root: () => WorkerParts["root"]) =>
 				description: [
 					"Rename the current session: its title in the session list, which is how the user finds it again.",
 					"Keep the title naming the overall task of the session. Call this whenever that overall task changes: the user moves on to a different piece of work, or the work turns out to be something other than what the title says. Also call it when the current title does not describe the task, for example when it is just the start of the first message.",
-					'Do not rename for sub-steps, follow-up questions, fixes or progress within the same task. Example: "Migrate pi-mobile to the monorepo" stays while you fix its build and push it; it becomes "Fix the terminal on Android" when the user turns to the terminal.',
+					'Do not rename for sub-steps, follow-up questions, fixes or progress within the same task. Example: "Migrate nycode-mobile to the monorepo" stays while you fix its build and push it; it becomes "Fix the terminal on Android" when the user turns to the terminal.',
 					`The title: a short noun or verb phrase of 3 to 8 words, at most ${MAX_TITLE} characters, in the user's language, no trailing period, no quotes.`,
 				].join("\n"),
 				parameters: obj({ title: str({ minLength: 1, maxLength: MAX_TITLE }) }, { open: true }),

@@ -89,7 +89,7 @@ export default defineProvider({
 			// Mercury 2 in instant mode (reasoning_effort: "none") disables tool calling.
 			// Mark "off" unsupported so the openai-completions provider omits the reasoning param
 			// instead of defaulting to {reasoning:{effort:"none"}}.
-			// Pi's low/medium/high pass through verbatim; OpenRouter normalizes to Mercury's vocabulary.
+			// Nycode's low/medium/high pass through verbatim; OpenRouter normalizes to Mercury's vocabulary.
 			mergeThinking(model, { off: null });
 		}
 		if (model.id === "z-ai/glm-5.2") mergeThinking(model, { xhigh: "xhigh" });

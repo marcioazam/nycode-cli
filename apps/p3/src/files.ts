@@ -7,9 +7,9 @@ import { chmod, mkdir, open, realpath, rename, rm, stat } from "node:fs/promises
 import { homedir } from "node:os";
 import { dirname, join, parse } from "node:path";
 
-/** The default Pi's data directory: `~/.pi/p3`. */
+/** The default Nycode's data directory: `~/.nycode/p3`. */
 export function defaultDataDir(): string {
-	return join(homedir(), ".pi", "p3");
+	return join(homedir(), ".nycode", "p3");
 }
 
 /**

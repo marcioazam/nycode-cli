@@ -1,4 +1,4 @@
-// Browser checks of the "wrong behavior" fixes from the Pi Mobile parity audit: entries kept as they leave the view's
+// Browser checks of the "wrong behavior" fixes from the Nycode Mobile parity audit: entries kept as they leave the view's
 // window and autoloaded earlier pages, the composer while the chat is not live, subagent search hits, the
 // ports card, the Stop notice per conversation and composer focus after a restore. Fake provider, disposable data.
 
@@ -7,8 +7,8 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
-import { fauxAssistantMessage } from "@earendil-works/pi-ai/providers/faux";
-import type { ConversationView, EntryDraft, LiveState } from "@earendil-works/pi-durable";
+import { fauxAssistantMessage } from "@nycode/ai/providers/faux";
+import type { ConversationView, EntryDraft, LiveState } from "@nycode/durable";
 import { BACKGROUND_CONTEXT, follow } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { Models } from "../../plugins/models/contract.ts";
@@ -21,7 +21,7 @@ import { bigSessionEntries } from "../fixtures/big-session.ts";
 import { Browser, browserTests, COMPOSER, composerText, setComposer } from "./browser.ts";
 import { type Fixture, holdIn, startFixture, until } from "./helpers.ts";
 
-const live = (view: ConversationView | null | undefined) => view?.docs["pi.live"] as LiveState | undefined;
+const live = (view: ConversationView | null | undefined) => view?.docs["nycode.live"] as LiveState | undefined;
 const answered = (text: string) => (view: ConversationView | null | undefined) =>
 	JSON.stringify(view?.entries ?? []).includes(text) && !live(view)?.run;
 const input = (selector: string, value: string) =>
@@ -55,7 +55,7 @@ const FROM_START = "document.querySelector('.scroller').scrollTop";
 /** Whether the transcript is scrolled to its top. */
 const atTop = "document.querySelector('.scroller').scrollTop < 2";
 
-describe("Pi Mobile audit fixes in the browser", { skip: !browserTests }, () => {
+describe("Nycode Mobile audit fixes in the browser", { skip: !browserTests }, () => {
 	let fixture: Fixture;
 	let browser: Browser;
 	let owner: Host;
@@ -150,7 +150,7 @@ describe("Pi Mobile audit fixes in the browser", { skip: !browserTests }, () => 
 			const id = `check-${call}`;
 			entries.push(
 				{
-					kind: "pi.assistant",
+					kind: "nycode.assistant",
 					model: [
 						{
 							...fauxAssistantMessage([]),
@@ -161,7 +161,7 @@ describe("Pi Mobile audit fixes in the browser", { skip: !browserTests }, () => 
 					],
 				} as EntryDraft,
 				{
-					kind: "pi.tool-result",
+					kind: "nycode.tool-result",
 					model: [
 						{
 							role: "toolResult",
@@ -176,7 +176,7 @@ describe("Pi Mobile audit fixes in the browser", { skip: !browserTests }, () => 
 			);
 		}
 		entries.push({
-			kind: "pi.assistant",
+			kind: "nycode.assistant",
 			model: [
 				{
 					...fauxAssistantMessage([]),

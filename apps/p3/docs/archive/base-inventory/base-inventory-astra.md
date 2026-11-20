@@ -1,4 +1,4 @@
-# Pi Roam base inventory — Astra
+# Nycode Roam base inventory — Astra
 
 ## Scope and first conclusions
 
@@ -6,7 +6,7 @@ Angle: products and UX variants first, then the runtime and integration mechanis
 
 The key product test is replacement, not adding another sidebar item. A plugin must be able to make Home, a triage queue, an inventory application, a dashboard, or no visual UI at all the primary experience. Sessions remain addressable work and history underneath; neither the transcript nor a project/resource model should be mandatory navigation or authority machinery in the base.
 
-The latest direction is exploratory. `apps/p3/docs/direction-pi-roam.md:1–30` explicitly says it is not decided, treats the instance as the trust boundary, retains environments, and leaves session restrictions open. The older resource model is therefore one candidate policy plugin, not the fixed vocabulary every application must import. Likewise Armin's narrow folder-lending promises and Cristina's trusted-viewer bundle are product proposals that need capabilities the base enables; they are not automatically delivered by installing a layout.
+The latest direction is exploratory. `apps/p3/docs/direction-nycode-roam.md:1–30` explicitly says it is not decided, treats the instance as the trust boundary, retains environments, and leaves session restrictions open. The older resource model is therefore one candidate policy plugin, not the fixed vocabulary every application must import. Likewise Armin's narrow folder-lending promises and Cristina's trusted-viewer bundle are product proposals that need capabilities the base enables; they are not automatically delivered by installing a layout.
 
 ## Product evidence that changes the inventory
 
@@ -18,7 +18,7 @@ The latest direction is exploratory. `apps/p3/docs/direction-pi-roam.md:1–30` 
 
 ### The real triage product is richer than an issue-summary bot
 
-Found `earendil-works/pi-triagent`, inspected at commit `d8c290c70b29b1b5f51d1de1a4df6711a4737e6e`. References written as `triagent:<path>` below mean that repository at this commit, not a file in pi. Its README was read in full, along with the implementation files cited later. Repository: https://github.com/earendil-works/pi-triagent/tree/d8c290c70b29b1b5f51d1de1a4df6711a4737e6e .
+Found `earendil-works/pi-triagent`, inspected at commit `d8c290c70b29b1b5f51d1de1a4df6711a4737e6e`. References written as `triagent:<path>` below mean that repository at this commit, not a file in nycode. Its README was read in full, along with the implementation files cited later. Repository: https://github.com/earendil-works/pi-triagent/tree/d8c290c70b29b1b5f51d1de1a4df6711a4737e6e .
 
 Concrete behavior from `triagent:README.md`:
 
@@ -29,7 +29,7 @@ Concrete behavior from `triagent:README.md`:
 - One conversation per research run, research/fix mode-specific tools, user chat that revises saved findings, a concurrency-limited background queue, and interactive replies that bypass that background queue.
 - Disposable VMs with no GitHub token, costs/time limits, review subagents, captured patches, and optional fix restoration into a later VM.
 - A human-confirmed server-side Open PR operation using separate credentials; repeatable publication steps and a distinction between local decisions and upstream side effects.
-- Continue in pi exports history with an explicit environment-change note. It does not pretend the disposed VM, its files or its tools came along.
+- Continue in nycode exports history with an explicit environment-change note. It does not pretend the disposed VM, its files or its tools came along.
 
 This demonstrates why the base needs typed tools with structured UI/program outputs, durable task/input orchestration, observation and application-owned state. It does **not** justify putting GitHub, triage categories, six-second undo, a fix queue, an approval database or VM allocation in the base.
 
@@ -55,7 +55,7 @@ Legend: B02 persistent application state; B03 sessions service; B04 conversation
 
 #### U01 — iMessage personal assistant
 
-**Experience.** The owner texts Pi a question or a photograph and receives a normal reply in the same conversation. A long-running request produces a short progress update and a later result without requiring the Pi page to stay open.
+**Experience.** The owner texts Nycode a question or a photograph and receives a normal reply in the same conversation. A long-running request produces a short progress update and a later result without requiring the Nycode page to stay open.
 
 **Plugin.** A server plugin owns an authenticated bridge to a Mac-side iMessage adapter, records external-message IDs, and maps a thread to a session. It calls session creation and input submission, follows committed responses, and records outbound delivery attempts; the session worker owns reasoning and tasks. Access to iMessage itself is an OS/integration requirement, not something a browser plugin can conjure.
 
@@ -63,7 +63,7 @@ Legend: B02 persistent application state; B03 sessions service; B04 conversation
 
 #### U02 — WhatsApp assistant with voice notes
 
-**Experience.** A user sends a voice note or document in WhatsApp and gets an answer there. Pi can ask a follow-up question and preserve the thread when the phone disconnects.
+**Experience.** A user sends a voice note or document in WhatsApp and gets an answer there. Nycode can ask a follow-up question and preserve the thread when the phone disconnects.
 
 **Plugin.** The server adapter validates provider webhooks, stores message/delivery IDs and attachments, and submits normalized content to a mapped session worker. Speech providers and outgoing media formatting are plugin choices; durable questions are rendered as chat replies or provider buttons rather than web-only dialogs.
 
@@ -71,7 +71,7 @@ Legend: B02 persistent application state; B03 sessions service; B04 conversation
 
 #### U03 — Discord channel creates a closed session from a template
 
-**Experience.** The first eligible message in a configured channel creates its Pi conversation automatically. It runs without appearing as an open tab; the owner can later open its full transcript and change its permitted tools.
+**Experience.** The first eligible message in a configured channel creates its Nycode conversation automatically. It runs without appearing as an open tab; the owner can later open its full transcript and change its permitted tools.
 
 **Plugin.** A server gateway object owns the connection, channel/thread mapping, dedupe and a versioned template. It creates/configures the session before admitting input; a worker policy plugin filters tools/sections/models/environments and checks execution through hooks/wrappers. A page plugin optionally supplies the channel's own transcript and grouping; opening is a per-user UI preference, not permission to run.
 
@@ -79,7 +79,7 @@ Legend: B02 persistent application state; B03 sessions service; B04 conversation
 
 #### U04 — Slack team assistant
 
-**Experience.** A team mentions Pi in a Slack thread and receives a scoped answer with links to work it performed. A follow-up in the same thread continues that work rather than creating an unrelated chat.
+**Experience.** A team mentions Nycode in a Slack thread and receives a scoped answer with links to work it performed. A follow-up in the same thread continues that work rather than creating an unrelated chat.
 
 **Plugin.** The server adapter owns Slack installation credentials, event verification, thread routing and outbound receipts. Worker tools implement repository/internal-system access; the integration's own policy decides which thread can address which existing session and whether a mention, command or every message starts work.
 
@@ -87,7 +87,7 @@ Legend: B02 persistent application state; B03 sessions service; B04 conversation
 
 #### U05 — One assistant across several chat apps
 
-**Experience.** The owner starts a task in iMessage and checks it later in Discord or the web page. Pi does not accidentally merge a public channel into the owner's private conversation because the displayed names match.
+**Experience.** The owner starts a task in iMessage and checks it later in Discord or the web page. Nycode does not accidentally merge a public channel into the owner's private conversation because the displayed names match.
 
 **Plugin.** An identity/routing plugin owns explicit account associations and maps verified connector identities to chosen work targets. Separate connectors call its typed methods; observations fan out through an outbox with per-destination receipts and loop suppression. Conversation context, viewer access and delivery destinations remain different facts.
 
@@ -95,7 +95,7 @@ Legend: B02 persistent application state; B03 sessions service; B04 conversation
 
 #### U06 — Armin's Home-first entry point
 
-**Experience.** The first screen is one question and one input, with no empty project tree. Pi chooses a place for substantial work, shows a changeable place chip, and keeps Home available for quick unrelated questions.
+**Experience.** The first screen is one question and one input, with no empty project tree. Nycode chooses a place for substantial work, shows a changeable place chip, and keeps Home available for quick unrelated questions.
 
 **Plugin.** A Home page plugin replaces the root layout and owns per-user navigation preferences. Its worker orchestration tools call the server session service, store parent/child and project links in plugin state, submit work, and turn observations into concise cards; choosing a project is orchestration policy rather than a base router side effect.
 
@@ -103,7 +103,7 @@ Legend: B02 persistent application state; B03 sessions service; B04 conversation
 
 #### U07 — Background helpers and one consolidated result
 
-**Experience.** One request launches several helpers while the user continues talking to the coordinator. Pi combines their findings and asks only for the unresolved decision, with each helper's transcript still available.
+**Experience.** One request launches several helpers while the user continues talking to the coordinator. Nycode combines their findings and asks only for the unresolved decision, with each helper's transcript still available.
 
 **Plugin.** A worker plugin registers a task definition and orchestration tools, creates owned child conversations or separate sessions as isolation requires, and waits on their durable receipts. The server holds only the workers that need to run; parent ownership, background cancellation and explicit detach are represented rather than inferred from open tabs.
 
@@ -121,7 +121,7 @@ Legend: B02 persistent application state; B03 sessions service; B04 conversation
 
 #### U09 — Roastery inventory becomes the primary screen
 
-**Experience.** The owner points Pi at a spreadsheet and gets a stock list, not another permanent chat tab. Asking for a roast log adds a domain-specific screen, while the conversation remains one level down.
+**Experience.** The owner points Nycode at a spreadsheet and gets a stock list, not another permanent chat tab. Asking for a roast log adds a domain-specific screen, while the conversation remains one level down.
 
 **Plugin.** A business-app plugin owns inventory/order tables, spreadsheet import/sync, schema migrations and typed methods. Its page facet contributes a target view with stock/order/roast panels; its worker tools call the same methods, and files remain in the spreadsheet environment or managed storage according to the plugin's explicit ownership choice. Generating new executable plugin code is a separate install/apply action, not ordinary model output.
 
@@ -135,7 +135,7 @@ Legend: B02 persistent application state; B03 sessions service; B04 conversation
 
 **Needs:** B02 [EXISTS], B04 [NEEDED], B05 [NEEDED], B07 [NEEDED], B09 [NEEDED], B10 [NEEDED], B13 [EXISTS].
 
-#### U11 — Daily triage inbox inside Pi Roam
+#### U11 — Daily triage inbox inside Nycode Roam
 
 **Experience.** A maintainer opens an inbox grouped by suggested action, reviews the report, duplicates and changed comments, and accepts or overrides the recommendation. The issue, not its chat transcript, is the main object on screen.
 
@@ -145,9 +145,9 @@ Legend: B02 persistent application state; B03 sessions service; B04 conversation
 
 #### U12 — Pull an issue analysis into personal work
 
-**Experience.** “Continue with Pi” opens a new editable session containing the analysis and relevant patch. The UI says which repository/environment will now be used and does not imply that the old disposable VM is still present.
+**Experience.** “Continue with Nycode” opens a new editable session containing the analysis and relevant patch. The UI says which repository/environment will now be used and does not imply that the old disposable VM is still present.
 
-**Plugin.** The triage server calls a session copy/seed operation with an explicit source snapshot, attaches the report/patch, and applies a destination configuration before input is enabled. A handoff entry states changed tools, environment and missing files; permissions and connector bindings are deliberately not cloned by default. The existing export implementation is `triagent:src/pi-session.ts`; p2's transfer contract is `apps/p2/plugins/sessions/contract.ts:354–391`.
+**Plugin.** The triage server calls a session copy/seed operation with an explicit source snapshot, attaches the report/patch, and applies a destination configuration before input is enabled. A handoff entry states changed tools, environment and missing files; permissions and connector bindings are deliberately not cloned by default. The existing export implementation is `triagent:src/nycode-session.ts`; p2's transfer contract is `apps/p2/plugins/sessions/contract.ts:354–391`.
 
 **Needs:** B02 [EXISTS], B03 [NEEDED], B04 [NEEDED], B06 [NEEDED], B09 [NEEDED], B10 [NEEDED], B13 [EXISTS], B14 [NEEDED].
 
@@ -225,7 +225,7 @@ Legend: B02 persistent application state; B03 sessions service; B04 conversation
 
 **Needs:** B02 [EXISTS], B04 [NEEDED], B06 [NEEDED], B09 [NEEDED], B12 [EXISTS], B13 [EXISTS].
 
-#### U22 — Signed-in collaborator can ask Pi
+#### U22 — Signed-in collaborator can ask Nycode
 
 **Experience.** A named collaborator joins shared work, sees who is present and submits messages. The invitation states which configured environment and accounts the shared session can reach, regardless of whose message starts a run.
 
@@ -251,7 +251,7 @@ Legend: B02 persistent application state; B03 sessions service; B04 conversation
 
 #### U25 — One preconfigured team instance
 
-**Experience.** Fifteen to twenty teammates share a persistent Pi instance with the same configured repository, mail and internal-system access. Each sees personal recents and read marks, while team work can start from Discord or the page.
+**Experience.** Fifteen to twenty teammates share a persistent Nycode instance with the same configured repository, mail and internal-system access. Each sees personal recents and read marks, while team work can start from Discord or the page.
 
 **Plugin.** Provisioning installs the instance and selected plugins; a team plugin owns membership, shared templates and default views, while external login plugins own account credentials. The server/session services handle concurrent callers and per-user preferences separately from shared work. A shared instance does not silently promise confidential per-person secrets against its administrator or installed server code.
 
@@ -259,7 +259,7 @@ Legend: B02 persistent application state; B03 sessions service; B04 conversation
 
 #### U26 — A smaller trust circle gets another instance
 
-**Experience.** Finance or a small project group gets a separate Pi instance rather than a complicated hidden compartment in the large team instance. Radius lists both and makes their identities unmistakable.
+**Experience.** Finance or a small project group gets a separate Nycode instance rather than a complicated hidden compartment in the large team instance. Radius lists both and makes their identities unmistakable.
 
 **Plugin.** A provisioning service creates an OS/container/VM boundary and installs a chosen plugin/configuration set; a Radius plugin connects it and a fleet page navigates between instances. Import/export supplies approved seed data, not an implicit copy of all credentials and grants. This product needs deployment infrastructure outside the instance in addition to plugins inside it.
 
@@ -267,7 +267,7 @@ Legend: B02 persistent application state; B03 sessions service; B04 conversation
 
 #### U27 — Shared project with its own screen and work
 
-**Experience.** Cristina opens Roastery, edits its stock view and asks Pi about its orders without seeing another person's Home. The invitation names the project's visible work and the accounts/environments it permits.
+**Experience.** Cristina opens Roastery, edits its stock view and asks Nycode about its orders without seeing another person's Home. The invitation names the project's visible work and the accounts/environments it permits.
 
 **Plugin.** A project plugin owns membership and target grouping; a policy plugin derives admitted session tools/environments and server views from that membership and configuration. The project's page layout is independent of its policy. The old one-resource-list model can implement this, but ordinary display-only project grouping must not force its installation.
 
@@ -275,7 +275,7 @@ Legend: B02 persistent application state; B03 sessions service; B04 conversation
 
 #### U28 — Lend a folder or machine for one task
 
-**Experience.** Pi asks the machine's owner for a particular folder or environment, explaining the requester and purpose. An active chip offers Stop, and the lease ends when the defined work finishes or its deadline expires.
+**Experience.** Nycode asks the machine's owner for a particular folder or environment, explaining the requester and purpose. An active chip offers Stop, and the lease ends when the defined work finishes or its deadline expires.
 
 **Plugin.** A server lending plugin owns the lease and a durable question; worker environment/tool gates check current admission at use and reconcile withdrawal independently of open pages. A confined environment adapter enforces actual filesystem/process boundaries. An unrestricted shell on the same machine cannot honestly satisfy “only this folder, read-only”; `cwd` and a filtered tool list alone do not provide that isolation.
 
@@ -285,7 +285,7 @@ Legend: B02 persistent application state; B03 sessions service; B04 conversation
 
 #### U29 — Parallel coding worktrees on different machines
 
-**Experience.** Pi investigates three failing tests in separate checkouts and presents a combined result. One helper runs on the build machine while the others stay local, without overwriting each other's files.
+**Experience.** Nycode investigates three failing tests in separate checkouts and presents a combined result. One helper runs on the build machine while the others stay local, without overwriting each other's files.
 
 **Plugin.** A coding orchestration worker contributes tools/tasks that allocate worktrees through an environment service and create configured child sessions. It records the relationship between work, checkout and machine, cleans up through durable jobs, and reports summaries to Home. Worktree allocation and merging are coding-plugin behavior, not base session creation side effects.
 
@@ -301,7 +301,7 @@ Legend: B02 persistent application state; B03 sessions service; B04 conversation
 
 #### U31 — Human and agent share an interactive terminal
 
-**Experience.** The user opens the exact terminal Pi is using and can type into it. Resizing or closing that view does not secretly create another shell or cancel unrelated work.
+**Experience.** The user opens the exact terminal Nycode is using and can type into it. Resizing or closing that view does not secretly create another shell or cancel unrelated work.
 
 **Plugin.** A terminal backend owns PTY lifetime and command/input attribution, using an environment-specific adapter and an authenticated socket for bytes. Worker tools and page/TUI panels address that same terminal; bounded state summaries link it to work. A socket already exists in kit HTTP, so a new Chord stream primitive is not necessary to build the product.
 
@@ -309,7 +309,7 @@ Legend: B02 persistent application state; B03 sessions service; B04 conversation
 
 #### U32 — CI failure creates follow-up work
 
-**Experience.** A failed check appears beside the earlier fix, and Pi begins a follow-up on the right branch. Publishing a second change follows the same confirmation rules as the first.
+**Experience.** A failed check appears beside the earlier fix, and Nycode begins a follow-up on the right branch. Publishing a second change follows the same confirmation rules as the first.
 
 **Plugin.** A server webhook adapter verifies signatures and deduplicates run/check IDs into durable events. An automation plugin creates or addresses a session from its stored repository/branch association, holds the worker, submits the event and records completion; coding tools and policy perform diagnosis/publication.
 
@@ -349,7 +349,7 @@ Legend: B02 persistent application state; B03 sessions service; B04 conversation
 
 #### U37 — Persistent human approval
 
-**Experience.** Pi pauses before sending a purchase order or pushing a change, and the user answers later from another device. A stale approval cannot authorize a different action after the parameters changed.
+**Experience.** Nycode pauses before sending a purchase order or pushing a change, and the user answers later from another device. A stale approval cannot authorize a different action after the parameters changed.
 
 **Plugin.** An approval plugin persists a question containing the proposed operation identity, arguments digest/revision, audience and deadline. A hook/task waits durably and rechecks authorization and the operation revision before invoking the effect; page, TUI and chat adapters call the same answer method. The approval service is an ordinary plugin built from state/jobs/tasks, not a magical process-local callback.
 
@@ -365,7 +365,7 @@ Legend: B02 persistent application state; B03 sessions service; B04 conversation
 
 #### U39 — Code mode and nested tool calls
 
-**Experience.** Pi writes a small script to compose several installed tools and returns a concise result. Tools hidden from the model can remain callable from the script, while disallowed tools remain unavailable everywhere.
+**Experience.** Nycode writes a small script to compose several installed tools and returns a concise result. Tools hidden from the model can remain callable from the script, while disallowed tools remain unavailable everywhere.
 
 **Plugin.** A worker contributes the code-mode tool and owns its sandbox native. Nested calls go through the harness's typed execution API, with structured results, progress and the same execution gates; the script never receives a privileged bypass to an underlying tool implementation. Durable already distinguishes model-visible `tools` and nested `callable` tools and executes nested calls as tool tasks.
 
@@ -373,7 +373,7 @@ Legend: B02 persistent application state; B03 sessions service; B04 conversation
 
 #### U40 — Untrusted research in disposable sandboxes
 
-**Experience.** Pi can investigate an issue, attachment or unfamiliar repository without handing it the host's credentials. When its VM is replaced, Pi says what state was lost and restores only explicitly retained artifacts.
+**Experience.** Nycode can investigate an issue, attachment or unfamiliar repository without handing it the host's credentials. When its VM is replaced, Nycode says what state was lost and restores only explicitly retained artifacts.
 
 **Plugin.** An environment plugin owns VM/container allocation, network restrictions and teardown; worker tools run through that environment, while a server connector performs privileged publication separately. Persisted patch/checkpoint metadata drives restoration. A local process with a different `cwd` is not a sandbox, and cancellation must actually stop guest processes or report its limits (`triagent:src/agent-runs.ts:703–710`).
 
@@ -381,9 +381,9 @@ Legend: B02 persistent application state; B03 sessions service; B04 conversation
 
 ### Additional products and interfaces
 
-#### U41 — Voice-first Pi
+#### U41 — Voice-first Nycode
 
-**Experience.** The phone acts like a radio: Pi speaks one question or result at a time and accepts an interrupted spoken answer. The user can tap through to the underlying work when speech is insufficient.
+**Experience.** The phone acts like a radio: Nycode speaks one question or result at a time and accepts an interrupted spoken answer. The user can tap through to the underlying work when speech is insufficient.
 
 **Plugin.** A page/native client captures audio under platform consent; server/worker speech adapters transcribe, submit normal input and synthesize selected output. Question answers carry stable question IDs, and barge-in explicitly cancels playback or a run according to product policy. Audio transport uses managed files or sockets, not transcript text polling.
 
@@ -391,7 +391,7 @@ Legend: B02 persistent application state; B03 sessions service; B04 conversation
 
 #### U42 — Mobile capture, lock-screen actions and ambient widgets
 
-**Experience.** A person shares a photo or document to Pi and later answers a needs-you notification without hunting for a session. A notification that has expired opens the current question rather than executing an obsolete action.
+**Experience.** A person shares a photo or document to Nycode and later answers a needs-you notification without hunting for a session. A notification that has expired opens the current question rather than executing an obsolete action.
 
 **Plugin.** A native companion, PWA or browser extension supplies OS-specific capture/notification integration and invokes authenticated server methods. A page/client-request adapter uploads files, submits target context and answers a revisioned question; a server notification plugin owns subscriptions and delivery receipts. An installed web facet alone cannot add every platform's share extension or background service capability.
 
@@ -407,7 +407,7 @@ Legend: B02 persistent application state; B03 sessions service; B04 conversation
 
 #### U44 — Browser assistant and visible browser automation
 
-**Experience.** A user sends the current page selection to Pi or watches the browser Pi is driving. Screenshots and downloads remain linked to the work that produced them.
+**Experience.** A user sends the current page selection to Nycode or watches the browser Nycode is driving. Screenshots and downloads remain linked to the work that produced them.
 
 **Plugin.** A browser extension can answer explicit client requests; alternatively an environment plugin owns a server-side browser native. Worker Tools register navigation/inspection actions and a page panel renders screenshots or a separately transported stream. Browser login profiles, allowed sites and confirmation for purchases belong to that plugin's policy.
 
@@ -423,7 +423,7 @@ Legend: B02 persistent application state; B03 sessions service; B04 conversation
 
 #### U46 — Long-term memory and decisions graph
 
-**Experience.** Pi remembers selected project facts and can show the source and later correction of a remembered decision. The owner can inspect or delete memories rather than trusting an invisible summary appended forever.
+**Experience.** Nycode remembers selected project facts and can show the source and later correction of a remembered decision. The owner can inspect or delete memories rather than trusting an invisible summary appended forever.
 
 **Plugin.** A memory plugin owns records, provenance, retention and derived search/graph indexes; worker hooks extract candidates after committed work and Sections retrieve the permitted ones for a request. Page tools expose review/correction/deletion, with supersession represented explicitly. Durable context compaction and application-wide memory have different lifetimes and must not share one implicit state bucket.
 
@@ -431,7 +431,7 @@ Legend: B02 persistent application state; B03 sessions service; B04 conversation
 
 #### U47 — Radius backup and restore onto a fresh machine
 
-**Experience.** The owner connects Radius, sees backup progress and restores the instance after replacing a machine. Pi explains missing external machines, plugin packages and logins instead of claiming the backup recreated the whole operating environment.
+**Experience.** The owner connects Radius, sees backup progress and restores the instance after replacing a machine. Nycode explains missing external machines, plugin packages and logins instead of claiming the backup recreated the whole operating environment.
 
 **Plugin.** A server backup plugin consumes consistent store export/outbox facilities and managed-file manifests, uploads encrypted snapshots/batches and tracks checkpoints. A provisioning/import workflow restores to unused addresses, reinstalls matching plugin versions and reconciles external references before resuming automation. Radius transport, encryption/key recovery and restore policy are plugins/services; exposing the app-owned stores safely is a platform seam.
 
@@ -447,7 +447,7 @@ Legend: B02 persistent application state; B03 sessions service; B04 conversation
 
 #### U49 — Custom providers, virtual models and failover
 
-**Experience.** A user selects a company model gateway or a virtual “fast” model without changing the rest of Pi. The UI records which actual model answered and distinguishes authentication failure from a rate-limit retry.
+**Experience.** A user selects a company model gateway or a virtual “fast” model without changing the rest of Nycode. The UI records which actual model answered and distinguishes authentication failure from a rate-limit retry.
 
 **Plugin.** Model plugins own catalog entries, credentials/refresh and routing; worker Models contributions provide the current resolver and request wrappers, with selection separate from secrets. Observations record physical model, attempt and usage, and the page provides login/configuration flows. This covers old `registerProvider` and `registerVirtualModel` demands without exposing Durable `Extension`.
 
@@ -487,15 +487,15 @@ Legend: B02 persistent application state; B03 sessions service; B04 conversation
 
 #### U54 — Mail/calendar concierge
 
-**Experience.** The owner asks Pi to find time, draft a reply or prepare a meeting brief. Sending mail or modifying an event is visibly distinct from reading calendars and drafting text.
+**Experience.** The owner asks Nycode to find time, draft a reply or prepare a meeting brief. Sending mail or modifying an event is visibly distinct from reading calendars and drafting text.
 
-**Plugin.** Login/connectors own account-specific credentials and expose typed read/write tools plus their own server methods. Worker orchestration uses those tools, approval hooks pause external writes, and server watch/schedule routines create follow-up work; the page may show a calendar rather than chat. External-provider OAuth is not Pi session authentication.
+**Plugin.** Login/connectors own account-specific credentials and expose typed read/write tools plus their own server methods. Worker orchestration uses those tools, approval hooks pause external writes, and server watch/schedule routines create follow-up work; the page may show a calendar rather than chat. External-provider OAuth is not Nycode session authentication.
 
 **Needs:** B02 [EXISTS], B03 [NEEDED], B04 [NEEDED], B05 [NEEDED], B06 [NEEDED], B08 [NEEDED], B09 [NEEDED], B11 [NEEDED], B12 [EXISTS].
 
 #### U55 — Tutor with exercises and a learner model
 
-**Experience.** A learner works through an exercise screen while Pi asks one question at a time. Progress resumes on another device, and the explanation transcript remains available without dominating the lesson.
+**Experience.** A learner works through an exercise screen while Nycode asks one question at a time. Progress resumes on another device, and the explanation transcript remains available without dominating the lesson.
 
 **Plugin.** A tutor store owns exercise state, answers and learner progress; page/terminal views render the lesson and worker tools update it through typed methods. Durable questions or normal submissions resume the right exercise, and Sections retrieve permitted learner context. Grading, lesson sequencing and accessibility-specific presentation are plugin behavior.
 
@@ -782,6 +782,6 @@ These are proposed tests, not tests run in this analysis.
 
 ## Reading and verification scope
 
-Read the brief, direction notes, Armin and Cristina texts in full; the full Durable harness types; Chord design §§3–11,14–18,20,23–24 as cited; p3 decisions; the coding walkthrough body; all layout concept captions and selected mock content; the relevant resource-model grouping/view sections; p2 plugin practices and the sessions/workspace/conversations contracts. The old coding-agent extension types and documentation were inspected as an API/lifecycle catalogue (UI, registration, inputs, hooks, providers), not audited end-to-end. Triagent's full README and complete `src/agent-runs.ts`, `src/pi-session.ts`, and `src/fix-pr.ts` were inspected at the pinned commit. The dsh-context README introduction/dashboard sections were read as product evidence, not its implementation.
+Read the brief, direction notes, Armin and Cristina texts in full; the full Durable harness types; Chord design §§3–11,14–18,20,23–24 as cited; p3 decisions; the coding walkthrough body; all layout concept captions and selected mock content; the relevant resource-model grouping/view sections; p2 plugin practices and the sessions/workspace/conversations contracts. The old coding-agent extension types and documentation were inspected as an API/lifecycle catalogue (UI, registration, inputs, hooks, providers), not audited end-to-end. Triagent's full README and complete `src/agent-runs.ts`, `src/nycode-session.ts`, and `src/fix-pr.ts` were inspected at the pinned commit. The dsh-context README introduction/dashboard sections were read as product evidence, not its implementation.
 
 No repository files were edited, no tests were run, and no commits were made. All proposed p3 API names above are sketches, explicitly separated from existing library APIs.

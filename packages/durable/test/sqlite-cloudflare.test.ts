@@ -1,6 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import { registerStorageConformance } from "@earendil-works/pi-durable/testing";
+import { BACKGROUND_CONTEXT } from "@nycode/chord/context";
+import { registerStorageConformance } from "@nycode/durable/testing";
 import { describe, expect, it } from "vitest";
 import { durableObjectStorage } from "../../chord/test/sqlite/helpers.ts";
 import { idFromNumber } from "../src/ids.ts";
@@ -9,7 +9,7 @@ import { commitWrites } from "../src/testing/commit-writes.ts";
 import { type EntryId, ROOT_CONVERSATION_ID } from "../src/types.ts";
 
 registerStorageConformance({ describe, expect, it }, "SqliteStorage on a prefixed Durable Object", async (use) =>
-	use(await openDurableObjectSqliteStorage(durableObjectStorage(), { prefix: "pi_" })),
+	use(await openDurableObjectSqliteStorage(durableObjectStorage(), { prefix: "nycode_" })),
 );
 
 describe("Durable Object SQLite adapter", () => {
@@ -17,28 +17,30 @@ describe("Durable Object SQLite adapter", () => {
 		const sqlite = new DatabaseSync(":memory:");
 		await openDurableObjectSqliteStorage(durableObjectStorage(sqlite));
 		expect(sqlite.prepare("SELECT version FROM durable_schema").get()).toEqual({ version: 2 });
-		expect(sqlite.prepare("SELECT name FROM sqlite_master WHERE name = 'pi_durable_schema'").get()).toBeUndefined();
+		expect(
+			sqlite.prepare("SELECT name FROM sqlite_master WHERE name = 'nycode_durable_schema'").get(),
+		).toBeUndefined();
 	});
 
-	it("prefixes pi's tables and indexes without changing host tables", async () => {
+	it("prefixes nycode's tables and indexes without changing host tables", async () => {
 		const sqlite = new DatabaseSync(":memory:");
 		const storage = durableObjectStorage(sqlite);
 		const database = new DurableObjectSqliteDatabase(storage);
 		await database.exec("CREATE TABLE host_notes (text TEXT)");
 		await database.exec("CREATE TABLE tasks (text TEXT)");
-		await openDurableObjectSqliteStorage(storage, { prefix: "pi_" });
+		await openDurableObjectSqliteStorage(storage, { prefix: "nycode_" });
 		const names = sqlite
 			.prepare("SELECT name FROM sqlite_master WHERE type IN ('table', 'index') AND name NOT LIKE 'sqlite_%'")
 			.all()
 			.map((row) => String(row.name));
 		expect(names).toContain("host_notes");
 		expect(names).toContain("tasks");
-		expect(names).not.toContain("pi_host_notes");
-		const piNames = names.filter((name) => !["host_notes", "tasks"].includes(name));
-		expect(piNames.length).toBeGreaterThan(10);
-		expect(piNames.every((name) => name.startsWith("pi_"))).toBe(true);
-		expect(piNames).toContain("pi_tasks");
-		expect(piNames).toContain("pi_durable_schema");
+		expect(names).not.toContain("nycode_host_notes");
+		const nycodeNames = names.filter((name) => !["host_notes", "tasks"].includes(name));
+		expect(nycodeNames.length).toBeGreaterThan(10);
+		expect(nycodeNames.every((name) => name.startsWith("nycode_"))).toBe(true);
+		expect(nycodeNames).toContain("nycode_tasks");
+		expect(nycodeNames).toContain("nycode_durable_schema");
 	});
 
 	it("isolates concurrently opened prefixes on one Durable Object", async () => {
@@ -76,8 +78,8 @@ describe("Durable Object SQLite adapter", () => {
 		await expect(openDurableObjectSqliteStorage(durableObjectStorage(), { prefix: "bad-prefix" })).rejects.toThrow(
 			"Invalid",
 		);
-		await expect(openDurableObjectSqliteStorage(durableObjectStorage(), { prefix: "sqlite_pi_" })).rejects.toThrow(
-			"reserved",
-		);
+		await expect(
+			openDurableObjectSqliteStorage(durableObjectStorage(), { prefix: "sqlite_nycode_" }),
+		).rejects.toThrow("reserved");
 	});
 });

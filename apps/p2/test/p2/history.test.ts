@@ -3,7 +3,7 @@
 // transcript kept on the device, and what is kept of it.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { ConversationView, EntryId, EntryRecord, TranscriptView } from "@earendil-works/pi-durable";
+import type { ConversationView, EntryId, EntryRecord, TranscriptView } from "@nycode/durable";
 import type { Watchable } from "@p2/app/v1";
 import type { EntriesPage } from "../../plugins/chat/contract.ts";
 import { type EntriesSource, type Gap, keptWindow, TranscriptStore } from "../../src/web/history.ts";
@@ -201,7 +201,7 @@ test(
 				entry: {
 					id,
 					conversationId: 1,
-					kind: "pi.assistant",
+					kind: "nycode.assistant",
 					model: [
 						{
 							role: "assistant",

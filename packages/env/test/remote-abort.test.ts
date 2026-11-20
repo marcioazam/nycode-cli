@@ -1,5 +1,5 @@
 // Aborts and timeouts against a remote host that does not answer: the call settles on time, whatever the host does.
-import { BACKGROUND_CONTEXT, withAbortSignal } from "@earendil-works/chord/context";
+import { BACKGROUND_CONTEXT, withAbortSignal } from "@nycode/chord/context";
 import { afterAll, describe, expect, it } from "vitest";
 import { Connection, RemoteError } from "../src/connection.ts";
 import { RemoteExecutionEnv } from "../src/remote-env.ts";
@@ -50,7 +50,7 @@ function connect(script: string): Connection {
 }
 
 function environment(connection: Connection): RemoteExecutionEnv {
-	return new RemoteExecutionEnv({ connection, id: "pi-env:test", cwd: "/" });
+	return new RemoteExecutionEnv({ connection, id: "nycode-env:test", cwd: "/" });
 }
 
 /** How long `promise` takes to settle, and its rejection, if any. */

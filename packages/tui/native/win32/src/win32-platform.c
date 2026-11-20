@@ -1,4 +1,4 @@
-#define PI_CLIPBOARD_WRITE
+#define NYCODE_CLIPBOARD_WRITE
 #include "../../clipboard.h"
 
 #ifndef BI_ALPHABITFIELDS
@@ -231,7 +231,7 @@ BOOL WINAPI _DllMainCRTStartup(HINSTANCE instance, DWORD reason, LPVOID reserved
     return TRUE;
 }
 
-PI_NAPI_EXPORT napi_value PI_NAPI_CALL napi_register_module_v1(napi_env env, napi_value exports) {
+NYCODE_NAPI_EXPORT napi_value NYCODE_NAPI_CALL napi_register_module_v1(napi_env env, napi_value exports) {
     set_function_export(env, exports, "enableVirtualTerminalInput", enable_virtual_terminal_input);
     set_function_export(env, exports, "isModifierPressed", is_modifier_pressed);
     set_function_export(env, exports, "getText", get_clipboard_text);

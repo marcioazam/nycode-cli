@@ -89,7 +89,7 @@ describe("share links on loopback", () => {
 		assert.equal(check.status, 401, "a guest is not the owner on loopback");
 		const page = await http(port, "/", { headers: { ...host, Cookie: guest, "Sec-Fetch-Site": "none" } });
 		assert.equal(cookieOf(page.headers, `p2_owner_${port}`), undefined, "a guest never gets the owner cookie");
-		// The owner's browser with a guest cookie too: its owner cookie wins (Pi Mobile: owner before guest).
+		// The owner's browser with a guest cookie too: its owner cookie wins (Nycode Mobile: owner before guest).
 		const both = await http(port, "/owner/check", { headers: { ...host, Cookie: `${guest}; ${device}` } });
 		assert.equal(both.status, 200);
 		// Cookieless loopback clients are nobody: the TUI and owner-link sign in with the data directory's key.

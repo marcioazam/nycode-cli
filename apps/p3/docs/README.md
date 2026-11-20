@@ -1,6 +1,6 @@
-# p3 (Pi Roam): start here
+# p3 (Nycode Roam): start here
 
-p3 is one Pi per person: a server on the person's machine, one worker process per session, and everything else as
+p3 is one Nycode per person: a server on the person's machine, one worker process per session, and everything else as
 plugins, built on Chord (`packages/chord`) and Durable (`packages/durable`). It lives in `apps/p3/` on main. Plans,
 package briefs and decisions about packages live in Linear, one issue per package. This folder holds the guides an
 agent needs while building, and the record of how p3 got here.
@@ -32,11 +32,11 @@ surfaces) and its plugin guide (`packages/chord/docs/plugin-authoring.md`).
 | Path | What |
 | --- | --- |
 | `apps/p3/plugins/<name>/` | the built-in plugins; `sessions` is the model plugin |
-| `apps/p3/src/api/v1/` | the API plugins import: `@earendil-works/p3/v1`, `/v1/server`, `/v1/worker` |
-| `apps/p3/src/` | the base: `bin.ts` (the `p3` command), `server.ts`, `worker.ts`, `supervisor.ts`, the data directory (`files.ts`, `pi.ts`, `records.ts`) |
+| `apps/p3/src/api/v1/` | the API plugins import: `@nycode/p3/v1`, `/v1/server`, `/v1/worker` |
+| `apps/p3/src/` | the base: `bin.ts` (the `p3` command), `server.ts`, `worker.ts`, `supervisor.ts`, the data directory (`files.ts`, `nycode.ts`, `records.ts`) |
 | `apps/p3/test/` | the tests, their harness (`support.ts`, `until.ts`) and the tests' plugin root (`test/plugins/`) |
 | `apps/p3/bench/` | benchmarks, one per slice or package |
-| `apps/p2/` | p2 (Pi Mobile), today's app: inspiration for what to build, never a source to copy |
+| `apps/p2/` | p2 (Nycode Mobile), today's app: inspiration for what to build, never a source to copy |
 
 Rules for this folder: the guides stay current (fix one the moment it is wrong or silent, in the commit that shows
 it); the reference is not edited except to correct a fact.

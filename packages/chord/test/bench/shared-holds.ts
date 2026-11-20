@@ -10,7 +10,7 @@
 //   node --conditions=source --experimental-strip-types --expose-gc test/bench/shared-holds.ts
 
 import { performance } from "node:perf_hooks";
-import { InMemoryTelemetryContext } from "@earendil-works/pi-telemetry";
+import { InMemoryTelemetryContext } from "@nycode/telemetry";
 import { BACKGROUND_CONTEXT as context } from "../../src/context/index.ts";
 import { hostKind, int, method, obj, remote, str } from "../../src/contracts/index.ts";
 import { defineState } from "../../src/documents/index.ts";

@@ -44,9 +44,9 @@
 | function | data | Dur | Who | Where | depends on |
 |---|---|---|---|---|---|
 | Global AGENTS.md (data directory, always local) plus AGENTS.md from the filesystem root down to cwd, read in the session's environment | ≤ tens of KB | R | S | Wk, RE | environment files |
-| Discover skills: `<data>/skills` or `~/.pi/p2/skills` on a remote, plus `<cwd>/.pi/skills`. Rules: a SKILL.md directory is one skill; root `.md` files count; frontmatter name and description; skip hidden and node_modules; first of a name wins | list of skills | R | S | Wk, RE | environment |
+| Discover skills: `<data>/skills` or `~/.nycode/p2/skills` on a remote, plus `<cwd>/.nycode/skills`. Rules: a SKILL.md directory is one skill; root `.md` files count; frontmatter name and description; skip hidden and node_modules; first of a name wins | list of skills | R | S | Wk, RE | environment |
 | Skills block in the system prompt; `disable-model-invocation` skills hidden from the model | KB | R | S | Wk | discovery |
-| Prompt templates: global and `<cwd>/.pi/prompts` `.md` files, `description`, `argument-hint` | list | R | S | Wk, RE | environment |
+| Prompt templates: global and `<cwd>/.nycode/prompts` `.md` files, `description`, `argument-hint` | list | R | S | Wk, RE | environment |
 | Watch all of these (recursive, directory creation); poll fallback 30 s remote, 2 s local; 60 s load timeout; keep the last valid state plus an error | — | R | S | Wk, RE | file watch |
 | Reload from the new cwd and machine after a relocation | — | R | S | Wk | location |
 | A local session's first message waits for the first load | — | E | S | Wk | input gate |
@@ -126,9 +126,9 @@
 | Fetch a bounded, SHA-256-checked bundle; run it in a permission-dropped worker (no fs, net or env); watchdog at 512 MiB RSS | ≤8 MiB | E | O, admitted guests | L, TUI | bundles |
 | Filter output (safe sequences, 64 KiB frames); track terminal modes and restore them on exit, crash and swap | — | E | S | L | — |
 | Actions under a grant (own key or consent screen): upload a file or clipboard image, paste, copy, open URL, download, external editor, suspend, save prefs (diff), dev reload, sign out (this or all owner devices) | — | E | O (guests some) | L | — |
-| Visitor preferences: pi keybindings, settings and themes (read only), p2 prefs.json, watched; server defaults (tui.json) below them; privileged bindings never from the server | KB | P (visitor, server) | visitor, O | L, Sv | — |
+| Visitor preferences: nycode keybindings, settings and themes (read only), p2 prefs.json, watched; server defaults (tui.json) below them; privileged bindings never from the server | KB | P (visitor, server) | visitor, O | L, Sv | — |
 | Query terminal colors (OSC 10/11/4, mode 2031) | — | E | S | L | theme |
-| Commands: pi ids, contexts, rebinding, conflict check, F1 palette, `/hotkeys`, `/settings`, `/keybindings`, `/quit`, `/reload`, thinking and tool-output toggles | — | E | all | TUI | — |
+| Commands: nycode ids, contexts, rebinding, conflict check, F1 palette, `/hotkeys`, `/settings`, `/keybindings`, `/quit`, `/reload`, thinking and tool-output toggles | — | E | all | TUI | — |
 | Fullscreen layout; reading position kept while output grows; drafts per (session, conversation) | — | E | all | TUI | — |
 | Reconnect with backoff; references rebind | — | E | all | L, TUI | — |
 

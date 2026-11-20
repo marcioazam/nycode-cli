@@ -2,7 +2,7 @@
 // workers' start data saying whether a session is it, and the owner's view.
 import { randomUUID } from "node:crypto";
 import { homedir } from "node:os";
-import { nul, obj, str, union } from "@earendil-works/pi-schema";
+import { nul, obj, str, union } from "@nycode/schema";
 import { type Ctx, defineFacet, defineState, forbidden, isOwner } from "@p2/app/v1";
 import { WorkerInitValues } from "@p2/app/v1/server";
 import { Catalog, SessionOperations } from "../sessions/contract.ts";

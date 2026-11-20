@@ -53,7 +53,7 @@
   head?: EntryRecord;               // the current compaction summary, if any
   entries: readonly EntryRecord[];  // the window: active entries with id >= from
   earlier: boolean;                 // older active entries exist before it
-  docs: { "pi.live", "pi.agent", "pi.inbox", "pi.provider", "pi.usage" };
+  docs: { "nycode.live", "nycode.agent", "nycode.inbox", "nycode.provider", "nycode.usage" };
 };
 conversation.watch(context, { from?: EntryId, tail?: number });          // default: the last `tail`
 conversation.entries({ before, order: "descending" }, limit, cursor, ctx); // exists today</pre>
@@ -86,7 +86,7 @@ conversation.entries({ before, order: "descending" }, limit, cursor, ctx); // ex
     <tr><th>step</th><th>wire</th></tr>
     <tr><td>a new entry</td><td>one append splice: <code>p entries &lt;len&gt; 0 [entry]</code></td></tr>
     <tr><td>window reaches 2 × tail</td><td>one splice removing the oldest half: <code>p entries 0 &lt;tail&gt; []</code>, once every <code>tail</code> entries</td></tr>
-    <tr><td>streaming into the newest message</td><td>appends on <code>docs["pi.live"].generation.message</code>, unchanged</td></tr>
+    <tr><td>streaming into the newest message</td><td>appends on <code>docs["nycode.live"].generation.message</code>, unchanged</td></tr>
     <tr><td>hold, re-hold, overflow</td><td>a snapshot of at most 2 × tail entries plus the live documents, never the whole transcript</td></tr>
     <tr><td>scroll up</td><td>a page from <code>entries()</code>, outside the view: the client keeps it, the view never grows</td></tr>
     <tr><td>reconnect with <code>from: lastSeen + 1</code></td><td>only the entries it missed plus the documents (issue #11327)</td></tr>

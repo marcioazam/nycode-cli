@@ -3,7 +3,7 @@
 // (a page's strict: every field bounded, ids printable ASCII, no control characters; a worker's, the server's own
 // child, generous), and the two remote objects on the server that take them, `PageTelemetry` and `WorkerTelemetry`.
 
-import type { AttributeValue, StoredMetric, StoredSpan } from "@earendil-works/pi-telemetry";
+import type { AttributeValue, StoredMetric, StoredSpan } from "@nycode/telemetry";
 import { arr, hostKind, int, lit, method, num, obj, opt, remote, type Schema, str, union } from "../contracts/index.ts";
 
 /** At most this many spans in a page's batch. */

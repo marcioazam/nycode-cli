@@ -1,6 +1,6 @@
-import type { Context } from "@earendil-works/chord/context";
-import { characterEnd } from "@earendil-works/chord/output";
-import { lit, num, obj, opt, type Static, str, union } from "@earendil-works/pi-schema";
+import type { Context } from "@nycode/chord/context";
+import { characterEnd } from "@nycode/chord/output";
+import { lit, num, obj, opt, type Static, str, union } from "@nycode/schema";
 import {
 	type BinaryReader,
 	type FileInfo,
@@ -57,7 +57,7 @@ export type ReadToolDetails = {
 	truncation?: Omit<TruncationResult, "content">;
 	/**
 	 * Id of the conversation's model when the image was read, if it has no image input. For UIs only: the model gets
-	 * pi-ai's placeholder per request, so the stored result stays right after a switch to a vision model.
+	 * nycode-ai's placeholder per request, so the stored result stays right after a switch to a vision model.
 	 */
 	imageUnsupportedByModel?: string;
 };
@@ -152,7 +152,7 @@ export function createReadTool(options: ReadToolOptions = {}): ToolRegistration<
 /**
  * One image block, prepared by `processor` or, without one, as it is when its format is inline and it fits the limits
  * (its size is checked before reading it, its dimensions from its header); otherwise an error result saying why. What happened to the image is an `info` diagnostic, so programs get the
- * bare `ImageContent`. A model without image input sees pi-ai's placeholder instead, decided per request; `details`
+ * bare `ImageContent`. A model without image input sees nycode-ai's placeholder instead, decided per request; `details`
  * names it for UIs.
  */
 async function readImage(

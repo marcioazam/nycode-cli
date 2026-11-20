@@ -5,7 +5,7 @@
 // every matching row. `page` reads without a live read.
 // Run from packages/chord:
 //   node --conditions=source --experimental-strip-types test/examples/70-named-queries.ts
-import { InMemoryTelemetryContext } from "@earendil-works/pi-telemetry";
+import { InMemoryTelemetryContext } from "@nycode/telemetry";
 import { BACKGROUND_CONTEXT, withTelemetry } from "../../src/context/index.ts";
 import { arr, bool, int, local, method, obj, queries, str } from "../../src/contracts/index.ts";
 import { createHost, defineFacet } from "../../src/host/index.ts";

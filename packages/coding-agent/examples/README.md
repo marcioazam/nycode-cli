@@ -1,10 +1,10 @@
 # Examples
 
-Example code for the pi-coding-agent SDK, process integration, and extensions.
+Example code for the nycode-coding-agent SDK, process integration, and extensions.
 
 ## CLI integration
 
-[`rpc-client.ts`](rpc-client.ts) uses the typed `RpcClient` to run Pi in a child process, stream events, and wait for the run to settle.
+[`rpc-client.ts`](rpc-client.ts) uses the typed `RpcClient` to run Nycode in a child process, stream events, and wait for the run to settle.
 
 Build the coding-agent package before running it from a repository checkout:
 

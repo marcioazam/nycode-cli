@@ -1,4 +1,4 @@
-import { bool, obj, str } from "@earendil-works/pi-schema";
+import { bool, obj, str } from "@nycode/schema";
 import { defineRegistry, local, method, remote, serverHost } from "@p2/app/v1";
 import type { OwnerAccess } from "./owner-access.ts";
 

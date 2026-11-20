@@ -9,7 +9,7 @@ import type { Context, Model } from "../src/types.ts";
 import { formatUserAgent } from "../src/utils/identity.ts";
 import { normalizeContext } from "../src/utils/transcript.ts";
 
-const PI_USER_AGENT = formatUserAgent();
+const NYCODE_USER_AGENT = formatUserAgent();
 
 type CapturedRequest = {
 	url: string;
@@ -170,7 +170,7 @@ describe("xAI Responses provider", () => {
 			},
 			{
 				apiKey: "xai-test-token",
-				sessionId: "pi-session-123",
+				sessionId: "nycode-session-123",
 				cacheRetention: "long",
 				reasoningEffort: "medium",
 			},
@@ -178,14 +178,14 @@ describe("xAI Responses provider", () => {
 
 		expect(captured.url).toBe("https://api.x.ai/v1/responses");
 		expect(captured.headers.get("authorization")).toBe("Bearer xai-test-token");
-		expect(captured.headers.get("user-agent")).toBe(PI_USER_AGENT);
-		expect(captured.headers.get("session-id")).toBe("pi-session-123");
+		expect(captured.headers.get("user-agent")).toBe(NYCODE_USER_AGENT);
+		expect(captured.headers.get("session-id")).toBe("nycode-session-123");
 		expect(captured.headers.get("session_id")).toBeNull();
 		expect(captured.body).toMatchObject({
 			model: "grok-4.5",
 			store: false,
 			stream: true,
-			prompt_cache_key: "pi-session-123",
+			prompt_cache_key: "nycode-session-123",
 			reasoning: { effort: "medium" },
 			include: ["reasoning.encrypted_content"],
 		});
@@ -259,7 +259,7 @@ describe("xAI Responses provider", () => {
 		});
 	});
 
-	it("uses pi's User-Agent by default for Responses requests", async () => {
+	it("uses nycode's User-Agent by default for Responses requests", async () => {
 		let userAgent: string | null = null;
 		vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
 			userAgent = new Request(input, init).headers.get("user-agent");
@@ -278,7 +278,7 @@ describe("xAI Responses provider", () => {
 		).result();
 
 		expect(result.stopReason, result.errorMessage).toBe("stop");
-		expect(userAgent).toBe(PI_USER_AGENT);
+		expect(userAgent).toBe(NYCODE_USER_AGENT);
 	});
 
 	it("lets explicit headers override the default Responses User-Agent", async () => {
@@ -291,8 +291,8 @@ describe("xAI Responses provider", () => {
 		expect(captured.headers.get("user-agent")).toBe("custom-agent");
 	});
 
-	it("uses pi's User-Agent by default for Completions requests", async () => {
-		expect(await captureCompletionsUserAgent()).toBe(PI_USER_AGENT);
+	it("uses nycode's User-Agent by default for Completions requests", async () => {
+		expect(await captureCompletionsUserAgent()).toBe(NYCODE_USER_AGENT);
 	});
 
 	it("lets explicit headers override the default Completions User-Agent", async () => {

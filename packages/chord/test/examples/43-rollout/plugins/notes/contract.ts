@@ -1,6 +1,6 @@
 // The notes' contracts: a label on the server, and one in each session's worker.
 
-import { hostKind, local, remote, str } from "@earendil-works/chord";
+import { hostKind, local, remote, str } from "@nycode/chord";
 
 export const Session = hostKind("session", { id: str() });
 

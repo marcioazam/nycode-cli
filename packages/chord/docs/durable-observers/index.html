@@ -109,7 +109,7 @@ table{max-width:100%}
 </head>
 <body><div class="book">
 <section class="cover">
-  <div class="kicker">An explainer · Chord v2 slice 6 and pi-durable · 2026-10-26</div>
+  <div class="kicker">An explainer · Chord v2 slice 6 and nycode-durable · 2026-10-26</div>
   <h1>In the<br>Step</h1>
   <p class="subtitle">Why Durable&#39;s views must change inside the storage&#39;s commit, why the first build broke hosts, and what the &quot;publication at adoption&quot; proposal changes</p>
   <div class="cover-stats"><div class="stat"><b>1</b><span>Durable commit, seen as one change</span></div><div class="stat"><b>4</b><span>regressions the first build had, all in one gap</span></div><div class="stat"><b>7</b><span>things that change for hosts compared with HEAD</span></div><div class="stat"><b>5</b><span>decisions for the owner</span></div></div>
@@ -159,7 +159,7 @@ problem for Chord.</li>
 variant).</li>
 </ol>
 <h3 id="words-used-throughout">Words used throughout</h3>
-<p><strong>Durable</strong> is pi&#39;s agent harness; a <strong>Session</strong> is its one line of atomic commits. <strong>Storage</strong> is Durable&#39;s storage
+<p><strong>Durable</strong> is nycode&#39;s agent harness; a <strong>Session</strong> is its one line of atomic commits. <strong>Storage</strong> is Durable&#39;s storage
 interface; <code>Storage.commit(writes, adopt, context)</code> stores a batch and calls <strong><code>adopt(seq)</code></strong> once it is durable.
 Durable&#39;s <strong>trackers</strong> hold each loaded document&#39;s value in memory. <strong>Internal observers</strong> are Durable&#39;s own commit
 listeners (<code>observeCommits</code>): the conversation <strong>view</strong> mounts, the <strong>task graph</strong>, the <strong>scheduler</strong> and the
@@ -254,7 +254,7 @@ patches each reviewer suggested were more <code>afterPublish</code>. The owner c
 <pre><code><span class="tk-k">const</span> adopt = (seq: <span class="tk-t">Seq</span>): <span class="tk-k">void</span> =&gt; {
   <span class="tk-k">const</span> documents = tx.<span class="tk-f">adopt</span>(seq);                              <span class="tk-c">// trackers, as today</span>
   <span class="tk-k">const</span> publication = <span class="tk-k">this</span>.#<span class="tk-f">publication</span>(seq, writes, documents);
-  <span class="tk-k">this</span>.#<span class="tk-f">events</span>(writes);                                         <span class="tk-c">// pi.durable.entry / .submission, contained</span>
+  <span class="tk-k">this</span>.#<span class="tk-f">events</span>(writes);                                         <span class="tk-c">// nycode.durable.entry / .submission, contained</span>
   <span class="tk-k">this</span>.#<span class="tk-f">notifyInternal</span>(publication);                            <span class="tk-c">// views, graph, scheduler, submissions</span>
   <span class="tk-k">this</span>.#<span class="tk-f">notifyHosts</span>(publication);                               <span class="tk-c">// subscribeCommits</span>
 };

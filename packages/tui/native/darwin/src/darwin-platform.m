@@ -3,7 +3,7 @@
 #import <Foundation/Foundation.h>
 #include <stdlib.h>
 #include <string.h>
-#define PI_CLIPBOARD_WRITE
+#define NYCODE_CLIPBOARD_WRITE
 #include "../../clipboard.h"
 
 static CGEventFlags modifier_mask_for_name(const char* name) {
@@ -118,11 +118,11 @@ static void clipboard_execute(clipboard_job* job) {
     }
 }
 
-static napi_value PI_NAPI_CALL get_clipboard_file_paths(napi_env env, napi_callback_info info) {
+static napi_value NYCODE_NAPI_CALL get_clipboard_file_paths(napi_env env, napi_callback_info info) {
     return queue_clipboard(env, info, CLIPBOARD_FILES);
 }
 
-PI_NAPI_EXPORT napi_value napi_register_module_v1(napi_env env, napi_value exports) {
+NYCODE_NAPI_EXPORT napi_value napi_register_module_v1(napi_env env, napi_value exports) {
     set_function_export(env, exports, "isModifierPressed", is_modifier_pressed);
     set_function_export(env, exports, "getText", get_clipboard_text);
     set_function_export(env, exports, "setText", set_clipboard_text);

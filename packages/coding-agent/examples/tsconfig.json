@@ -1,79 +1,79 @@
 // Type-checks the example extensions against the modules extensions see at run time (core/extensions/virtual-modules.ts):
-// "@earendil-works/pi-ai" is the extension view, which adds TypeBox's Type, Static and TSchema to the compat entry (the
-// view imports "@earendil-works/pi-ai/compat", so that path stays the package's own).
+// "@nycode/ai" is the extension view, which adds TypeBox's Type, Static and TSchema to the compat entry (the
+// view imports "@nycode/ai/compat", so that path stays the package's own).
 // The other paths repeat the root tsconfig.json; keep them in sync.
 // Also the test that imports the subagent example: it type-checks only against the extension view.
 {
 	"extends": "../../../tsconfig.json",
 	"compilerOptions": {
 		"paths": {
-			"@earendil-works/chord": [
+			"@nycode/chord": [
 				"../../../packages/chord/src/index.ts"
 			],
-			"@earendil-works/chord/context": [
+			"@nycode/chord/context": [
 				"../../../packages/chord/src/context/index.ts"
 			],
-			"@earendil-works/chord/delta": [
+			"@nycode/chord/delta": [
 				"../../../packages/chord/src/delta/index.ts"
 			],
-			"@earendil-works/chord/json": [
+			"@nycode/chord/json": [
 				"../../../packages/chord/src/json.ts"
 			],
-			"@earendil-works/chord/watch": [
+			"@nycode/chord/watch": [
 				"../../../packages/chord/src/watch.ts"
 			],
-			"@earendil-works/chord/output": [
+			"@nycode/chord/output": [
 				"../../../packages/chord/src/output.ts"
 			],
-			"@earendil-works/chord/sqlite": [
+			"@nycode/chord/sqlite": [
 				"../../../packages/chord/src/sqlite/index.ts"
 			],
-			"@earendil-works/chord/sqlite/node": [
+			"@nycode/chord/sqlite/node": [
 				"../../../packages/chord/src/sqlite/node.ts"
 			],
-			"@earendil-works/chord/sqlite/cloudflare": [
+			"@nycode/chord/sqlite/cloudflare": [
 				"../../../packages/chord/src/sqlite/cloudflare.ts"
 			],
-			"@earendil-works/chord/telemetry-sqlite": [
+			"@nycode/chord/telemetry-sqlite": [
 				"../../../packages/chord/src/telemetry-sqlite/index.ts"
 			],
-			"@earendil-works/chord/http": [
+			"@nycode/chord/http": [
 				"../../../packages/chord/src/node/http/index.ts"
 			],
-			"@earendil-works/chord/workers": [
+			"@nycode/chord/workers": [
 				"../../../packages/chord/src/node/workers/index.ts"
 			],
-			"@earendil-works/chord/workers/child": [
+			"@nycode/chord/workers/child": [
 				"../../../packages/chord/src/node/workers/child.ts"
 			],
-			"@earendil-works/chord/plugins": [
+			"@nycode/chord/plugins": [
 				"../../../packages/chord/src/node/plugins/index.ts"
 			],
-			"@earendil-works/chord/plugins/runtime": [
+			"@nycode/chord/plugins/runtime": [
 				"../../../packages/chord/src/node/plugins/runtime.ts"
 			],
-			"@earendil-works/chord/app": [
+			"@nycode/chord/app": [
 				"../../../packages/chord/src/node/app/index.ts"
 			],
-			"@earendil-works/chord/app/files": [
+			"@nycode/chord/app/files": [
 				"../../../packages/chord/src/node/app/files-entry.ts"
 			],
-			"@earendil-works/chord/web": [
+			"@nycode/chord/web": [
 				"../../../packages/chord/src/web/index.ts"
 			],
-			"@earendil-works/chord/surfaces": [
+			"@nycode/chord/surfaces": [
 				"../../../packages/chord/src/node/surfaces/index.ts"
 			],
-			"@earendil-works/chord/react": [
+			"@nycode/chord/react": [
 				"../../../packages/chord/src/react/index.ts"
 			],
-			"@earendil-works/chord/tui": [
+			"@nycode/chord/tui": [
 				"../../../packages/chord/src/tui/index.ts"
 			],
-			"@earendil-works/chord/tui/launcher": [
+			"@nycode/chord/tui/launcher": [
 				"../../../packages/chord/src/node/tui/index.ts"
 			],
-			"@earendil-works/chord/sync": [
+			"@nycode/chord/sync": [
 				"../../../packages/chord/src/sync/index.ts"
 			],
 			"@test/contracts/*": [
@@ -94,94 +94,94 @@
 			"@example/shared/*": [
 				"../../chord/test/examples/38-watch-and-rollout/plugins/contracts/*.ts"
 			],
-			"@earendil-works/pi-telemetry": [
+			"@nycode/telemetry": [
 				"../../../packages/telemetry/src/index.ts"
 			],
-			"@earendil-works/pi-telemetry/testing": [
+			"@nycode/telemetry/testing": [
 				"../../../packages/telemetry/src/testing/index.ts"
 			],
-			"@earendil-works/pi-telemetry/render": [
+			"@nycode/telemetry/render": [
 				"../../../packages/telemetry/src/render.ts"
 			],
-			"@earendil-works/pi-codemode": [
+			"@nycode/codemode": [
 				"../../../packages/codemode/src/index.ts"
 			],
-			"@earendil-works/pi-codemode/cloudflare": [
+			"@nycode/codemode/cloudflare": [
 				"../../../packages/codemode/src/cloudflare.ts"
 			],
-			"@earendil-works/pi-codemode/declarations": [
+			"@nycode/codemode/declarations": [
 				"../../../packages/codemode/src/declarations.ts"
 			],
-			"@earendil-works/pi-codemode/portable": [
+			"@nycode/codemode/portable": [
 				"../../../packages/codemode/src/portable.ts"
 			],
-			"@earendil-works/pi-codemode/source": [
+			"@nycode/codemode/source": [
 				"../../../packages/codemode/src/source.ts"
 			],
-			"@earendil-works/pi-codemode/worker": [
+			"@nycode/codemode/worker": [
 				"../../../packages/codemode/src/runtime/worker.ts"
 			],
-			"@earendil-works/pi-schema": [
+			"@nycode/schema": [
 				"../../../packages/schema/src/index.ts"
 			],
-			"@earendil-works/pi-schema/formats": [
+			"@nycode/schema/formats": [
 				"../../../packages/schema/src/formats/index.ts"
 			],
-			"@earendil-works/pi-mcp": [
+			"@nycode/mcp": [
 				"../../../packages/mcp/src/index.ts"
 			],
-			"@earendil-works/pi-mcp/oauth": [
+			"@nycode/mcp/oauth": [
 				"../../../packages/mcp/src/oauth/index.ts"
 			],
-			"@earendil-works/pi-mcp/testing": [
+			"@nycode/mcp/testing": [
 				"../../../packages/mcp/src/testing/index.ts"
 			],
-			"@earendil-works/pi-ai": [
-				"../../../packages/coding-agent/src/core/extensions/pi-ai-extension-view.ts"
+			"@nycode/ai": [
+				"../../../packages/coding-agent/src/core/extensions/nycode-ai-extension-view.ts"
 			],
-			"@earendil-works/pi-ai/oauth": [
+			"@nycode/ai/oauth": [
 				"../../../packages/ai/src/oauth.ts"
 			],
-			"@earendil-works/pi-ai/*": [
+			"@nycode/ai/*": [
 				"../../../packages/ai/src/*.ts",
 				"../../../packages/ai/src/providers/*.ts"
 			],
-			"@earendil-works/pi-ai/dist/*": [
+			"@nycode/ai/dist/*": [
 				"../../../packages/ai/src/*"
 			],
-			"@earendil-works/pi-durable": [
+			"@nycode/durable": [
 				"../../../packages/durable/src/index.ts"
 			],
-			"@earendil-works/pi-durable/testing": [
+			"@nycode/durable/testing": [
 				"../../../packages/durable/src/testing/index.ts"
 			],
-			"@earendil-works/pi-durable/*": [
+			"@nycode/durable/*": [
 				"../../../packages/durable/src/*.ts",
 				"../../../packages/durable/src/*/index.ts",
 				"../../../packages/durable/src/*"
 			],
-			"@earendil-works/pi-env": [
+			"@nycode/env": [
 				"../../../packages/env/src/index.ts"
 			],
-			"@earendil-works/pi-agent-core": [
+			"@nycode/agent-core": [
 				"../../../packages/agent/src/index.ts"
 			],
-			"@earendil-works/pi-coding-agent": [
+			"@nycode/coding-agent": [
 				"../../../packages/coding-agent/src/index.ts"
 			],
-			"@earendil-works/pi-coding-agent/hooks": [
+			"@nycode/coding-agent/hooks": [
 				"../../../packages/coding-agent/src/core/hooks/index.ts"
 			],
-			"@earendil-works/pi-coding-agent/*": [
+			"@nycode/coding-agent/*": [
 				"../../../packages/coding-agent/src/*"
 			],
 			"typebox": [
 				"../../../node_modules/typebox"
 			],
-			"@earendil-works/pi-tui": [
+			"@nycode/tui": [
 				"../../../packages/tui/src/index.ts"
 			],
-			"@earendil-works/pi-tui/*": [
+			"@nycode/tui/*": [
 				"../../../packages/tui/src/*"
 			],
 			"@earendil-works/pi-agent-old": [
@@ -191,7 +191,7 @@
 				"../../../packages/agent-old/src/*"
 			],
 			"@mariozechner/pi-ai": [
-				"../../../packages/coding-agent/src/core/extensions/pi-ai-extension-view.ts"
+				"../../../packages/coding-agent/src/core/extensions/nycode-ai-extension-view.ts"
 			]
 		}
 	},

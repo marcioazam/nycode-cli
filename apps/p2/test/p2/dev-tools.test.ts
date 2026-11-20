@@ -3,7 +3,7 @@
 // agent-plugins.test.ts.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { ToolExecutionApi } from "@earendil-works/pi-durable";
+import type { ToolExecutionApi } from "@nycode/durable";
 import { createReloadExtension } from "../../plugins/dev-tools/tool.ts";
 import { durableContext } from "../../src/runtime/durable.ts";
 import { guardTool } from "../../src/runtime/tool-access.ts";

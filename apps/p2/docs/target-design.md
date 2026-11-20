@@ -218,7 +218,7 @@ conversation documents that fork and rewind with it) belongs in Durable's storag
   Durable's `Storage` (SQLite): `kind = "<definition>.<objectHash>"`, `key` = the author's key, so `scan` maps to
   Durable's `scanDocuments`; tags need a small index of the adapter's own. Worker: storage per session; server: one
   shared storage. Chord gets no Durable dependency.
-- **Conformance suite:** `@earendil-works/chord/testing` exports
+- **Conformance suite:** `@nycode/chord/testing` exports
   `registerDocumentStorageConformance(runner, name, withStorage)`: atomic commits, ordering and incarnations, base plus
   deltas, versions, scans, tags, `mintId`, reopen, failed commits change nothing. Chord runs it on its memory storage,
   p2 on its adapter.
@@ -293,7 +293,7 @@ return {
   outcome unknown; nothing is rerun automatically.
 - **Keep-alive and relocation:** running and unsettled runs count as activity.
 - **No write amplification**, as in Durable: a bounded output window (`OutputBuffer`), adaptive throttling (`Progress`),
-  deltas only; both are in `@earendil-works/chord/output` (B: pi `4a5d37291`).
+  deltas only; both are in `@nycode/chord/output` (B: nycode `4a5d37291`).
 - **Shorthands** for single steps: `job.start(args, ctx, opts?)`, `handle.change(ctx, key?, fn)` (one document,
   loaded before the synchronous `fn`), `handle.retire(ctx, key?)`. Several of them atomically together: `self.tx`.
 - **Not jobs:** request and response work that may die with its caller is a method call (an env test); input into

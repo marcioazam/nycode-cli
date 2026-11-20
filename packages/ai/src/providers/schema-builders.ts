@@ -1,14 +1,7 @@
-// Builders for pi-ai's own configuration schemas (model metadata, compat settings): pi-schema's builders, shaped like the
+// Builders for nycode-ai's own configuration schemas (model metadata, compat settings): nycode-schema's builders, shaped like the
 // TypeBox schemas they replace, so models.json and the catalog validate exactly as before.
 
-import {
-	type Annotations,
-	obj,
-	type Properties,
-	type Schema,
-	type Static,
-	type StaticObject,
-} from "@earendil-works/pi-schema";
+import { type Annotations, obj, type Properties, type Schema, type Static, type StaticObject } from "@nycode/schema";
 
 /** An object that allows other properties; `additionalProperties: true` says so explicitly. */
 export function openObject<const P extends Properties>(

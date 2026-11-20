@@ -91,7 +91,7 @@ interface InMemoryParent {
 }
 
 function carrierId(carrier: Readonly<TelemetryCarrier>): string {
-	return `${carrier["pi-memory-scope"]}:${carrier["pi-memory-span"]}`;
+	return `${carrier["nycode-memory-scope"]}:${carrier["nycode-memory-span"]}`;
 }
 
 // The clock of span times: wall-clock milliseconds at microsecond resolution, from the monotonic high-resolution
@@ -177,9 +177,9 @@ function createSpan(
 		id,
 		parentId: parent?.localId ?? null,
 		context: {
-			"pi-memory-scope": state.scope,
-			"pi-memory-span": String(id),
-			"pi-memory-trace": parent?.context["pi-memory-trace"] ?? `${state.scope}:${id}`,
+			"nycode-memory-scope": state.scope,
+			"nycode-memory-span": String(id),
+			"nycode-memory-trace": parent?.context["nycode-memory-trace"] ?? `${state.scope}:${id}`,
 		},
 		parentContext: parent ? { ...parent.context } : null,
 		links,
@@ -337,11 +337,11 @@ export class InMemoryTelemetryContext
 
 	/** Missing or non-string carrier identities fall back to this recorder's root context. */
 	extract(carrier: TelemetryCarrier | undefined): TelemetryContext {
-		const scope = carrier?.["pi-memory-scope"];
-		const span = carrier?.["pi-memory-span"];
-		const traceId = carrier?.["pi-memory-trace"];
+		const scope = carrier?.["nycode-memory-scope"];
+		const span = carrier?.["nycode-memory-span"];
+		const traceId = carrier?.["nycode-memory-trace"];
 		if (typeof scope !== "string" || typeof span !== "string" || typeof traceId !== "string") return this;
-		const context = { "pi-memory-scope": scope, "pi-memory-span": span, "pi-memory-trace": traceId };
+		const context = { "nycode-memory-scope": scope, "nycode-memory-span": span, "nycode-memory-trace": traceId };
 		const localId = scope === this.state.scope ? Number(span) : null;
 		const parent: TelemetryContext = {
 			metrics: this,
@@ -370,7 +370,7 @@ export class InMemoryTelemetryContext
 			.filter((span) => span.settled)
 			.map((span) => ({
 				id: carrierId(span.context),
-				traceId: span.context["pi-memory-trace"]!,
+				traceId: span.context["nycode-memory-trace"]!,
 				...(span.parentContext ? { parentId: carrierId(span.parentContext) } : {}),
 				name: span.name,
 				startedMs: span.startedMs,
@@ -382,7 +382,7 @@ export class InMemoryTelemetryContext
 					attributes: copyAttributes(event.attributes),
 				})),
 				links: span.links.map((link) => ({
-					traceId: link.context["pi-memory-trace"]!,
+					traceId: link.context["nycode-memory-trace"]!,
 					spanId: carrierId(link.context),
 					attributes: copyAttributes(link.attributes),
 				})),

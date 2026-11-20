@@ -1,5 +1,5 @@
-import type { AgentTool } from "@earendil-works/pi-agent-core";
-import { fauxAssistantMessage, fauxToolCall } from "@earendil-works/pi-ai";
+import type { AgentTool } from "@nycode/agent-core";
+import { fauxAssistantMessage, fauxToolCall } from "@nycode/ai";
 import { Type } from "typebox";
 import { afterEach, describe, expect, it } from "vitest";
 import { createHarness, getMessageText, type Harness } from "../harness.ts";
@@ -32,13 +32,13 @@ describe("#8935 parallel preflight abort", () => {
 		const harness = await createHarness({
 			tools: [externalWrite],
 			extensionFactories: [
-				(pi) => {
-					pi.on("tool_call", async (event, ctx) => {
+				(nycode) => {
+					nycode.on("tool_call", async (event, ctx) => {
 						const value = "value" in event.input ? String(event.input.value) : "";
 						preflights.push(value);
 						if (value === "second") ctx.abort();
 					});
-					pi.on("tool_result", async (event) => {
+					nycode.on("tool_result", async (event) => {
 						resultHooks.push(event.toolCallId);
 					});
 				},

@@ -1,13 +1,13 @@
 // The first-paint theme scripts, run as served: the app page's (src/hosts/web.ts) and the server pages' (sign-in, join,
-// ended share: src/runtime/page.ts). Both apply this origin's stored `pi-theme` unless a host owns the preference
+// ended share: src/runtime/page.ts). Both apply this origin's stored `nycode-theme` unless a host owns the preference
 // (src/web/theme.ts): the Radius shell framing the page (the app page also needs the server's shell meta, a plain
-// origin) or p2-mac's bridge. A shell frame paints the scheme the shell hinted in its URL (`#pi-shell-scheme=`). A fake
+// origin) or p2-mac's bridge. A shell frame paints the scheme the shell hinted in its URL (`#nycode-shell-scheme=`). A fake
 // window stands in for the browser.
 import assert from "node:assert/strict";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { describe, it } from "node:test";
 import { runInNewContext } from "node:vm";
-import type { WebSurface } from "@earendil-works/chord/surfaces";
+import type { WebSurface } from "@nycode/chord/surfaces";
 import { createWeb } from "../../src/hosts/web.ts";
 import { page } from "../../src/runtime/page.ts";
 import type { P2Principal } from "../../src/runtime/principals.ts";
@@ -37,14 +37,14 @@ const themeScript = (html: string): string => /<script nonce="n0nce">([\s\S]*?)<
 type Options = { framed?: boolean; native?: boolean; meta?: string; hash?: string };
 
 /**
- * Runs `script` with `pi-theme` stored dark and a light system, at `/s/x?y=1` plus `hash`: `<html>`'s data and the
+ * Runs `script` with `nycode-theme` stored dark and a light system, at `/s/x?y=1` plus `hash`: `<html>`'s data and the
  * address after it, with each `replaceState` call.
  */
 function run(script: string, options: Options) {
 	const html = { dataset: {} as Record<string, string> };
 	const window: Record<string, unknown> = {};
 	window.parent = options.framed ? {} : window;
-	if (options.native) window.webkit = { messageHandlers: { piHost: { postMessage: () => {} } } };
+	if (options.native) window.webkit = { messageHandlers: { nycodeHost: { postMessage: () => {} } } };
 	const location = { pathname: "/s/x", search: "?y=1", hash: options.hash ?? "" };
 	const replaced: unknown[][] = [];
 	const state = { route: "kept" };
@@ -59,7 +59,7 @@ function run(script: string, options: Options) {
 				location.hash = "";
 			},
 		},
-		localStorage: { getItem: (key: string) => (key === "pi-theme" ? "dark" : null) },
+		localStorage: { getItem: (key: string) => (key === "nycode-theme" ? "dark" : null) },
 		matchMedia: () => ({ matches: false }),
 		document: {
 			documentElement: html,
@@ -85,7 +85,7 @@ describe("first paint", () => {
 		assert.equal(firstPaint(relayed, { meta: SHELL, framed: true }), "light");
 		assert.equal(firstPaint(plain, { native: true }), "light");
 		// A meta that is not a plain origin names no shell, as for the shell bridge.
-		assert.equal(firstPaint(relayed, { meta: `${SHELL}/pi`, framed: true }), "dark");
+		assert.equal(firstPaint(relayed, { meta: `${SHELL}/nycode`, framed: true }), "dark");
 		assert.equal(firstPaint(relayed, { meta: "", framed: true }), "dark");
 	});
 
@@ -93,32 +93,37 @@ describe("first paint", () => {
 		const relayed = themeScript(await appPage(SHELL));
 		const frame = { meta: SHELL, framed: true };
 		for (const scheme of ["light", "dark"]) {
-			const painted = run(relayed, { ...frame, hash: `#pi-shell-scheme=${scheme}` });
+			const painted = run(relayed, { ...frame, hash: `#nycode-shell-scheme=${scheme}` });
 			assert.equal(painted.dataset.theme, scheme);
 			assert.equal(painted.dataset.colorScheme, scheme);
 			// Kept for theme.ts until the shell's hello.
-			assert.equal(painted.dataset.piShellScheme, scheme);
+			assert.equal(painted.dataset.nycodeShellScheme, scheme);
 			assert.equal(painted.hash, "");
 			assert.deepEqual(painted.replaced, [[painted.state, "", "/s/x?y=1"]]);
 		}
 		// Any other fragment stays, and the system's scheme counts.
-		for (const hash of ["#pi-shell-scheme=blue", "#pi-shell-scheme=dark&x", "#other", "#pi-shell-scheme=DARK"]) {
+		for (const hash of [
+			"#nycode-shell-scheme=blue",
+			"#nycode-shell-scheme=dark&x",
+			"#other",
+			"#nycode-shell-scheme=DARK",
+		]) {
 			const painted = run(relayed, { ...frame, hash });
 			assert.deepEqual([painted.dataset.theme, painted.hash, painted.replaced], ["light", hash, []], hash);
-			assert.equal(painted.dataset.piShellScheme, undefined);
+			assert.equal(painted.dataset.nycodeShellScheme, undefined);
 		}
 		// Not a shell frame: the hint is ignored and left in place.
 		for (const options of [
 			{ meta: SHELL },
-			{ meta: `${SHELL}/pi`, framed: true },
+			{ meta: `${SHELL}/nycode`, framed: true },
 			{ framed: true },
 			{ native: true },
 		]) {
 			const script = options.meta === undefined ? themeScript(await appPage(undefined)) : relayed;
-			const painted = run(script, { ...options, hash: "#pi-shell-scheme=light" });
+			const painted = run(script, { ...options, hash: "#nycode-shell-scheme=light" });
 			assert.deepEqual(
-				[painted.hash, painted.replaced, painted.dataset.piShellScheme],
-				["#pi-shell-scheme=light", [], undefined],
+				[painted.hash, painted.replaced, painted.dataset.nycodeShellScheme],
+				["#nycode-shell-scheme=light", [], undefined],
 				JSON.stringify(options),
 			);
 			// Stored dark where the page owns its theme; the system's light in p2-mac.

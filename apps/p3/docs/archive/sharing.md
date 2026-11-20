@@ -96,5 +96,5 @@ guest's principal; nothing else needs per-view rules.
   tags the sessions it creates as its own and records who created each and whether it is private or public (or
   shared with named users), and enforces that in its own objects' variants. No access-control lists in the base.
 - **No per-user environments.** A session in any app may use every environment of the instance; an app may lock its
-  sessions to one environment it chooses. Separation of machines, accounts or people beyond that means a separate Pi
+  sessions to one environment it chooses. Separation of machines, accounts or people beyond that means a separate Nycode
   instance, not a resource model (the resource-model plugin stays shelved).

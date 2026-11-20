@@ -6,7 +6,7 @@ are slice 7b's; folded into `design.md` §3, §5, §6, §7, §17, §21's start b
 history below is kept as it was. Sources: the owner's direction
 ("park until resolved"; "no difference between local and remote resolution: a link going is like a plugin
 unloading"), the reviews (`/tmp/dep-mechanism-*.md`, `/tmp/dep-graph-*.md`, `/tmp/barrier-*.md`,
-`/tmp/model/review{1,2}-*.md`), the code at pi `358f7d46a`. **Owner** marks an open decision.
+`/tmp/model/review{1,2}-*.md`), the code at nycode `358f7d46a`. **Owner** marks an open decision.
 
 Draft 7 (round 6): (A) also retries in lockstep without finding the cycle (Fable); the probe's recovery after a
 suppressed search becomes a choice between (B1) a re-search backoff for probes only (recommended) and (B2) a full

@@ -27,7 +27,7 @@ if ! command -v "$compiler" >/dev/null 2>&1; then
     echo "Linux C compiler not found: $compiler" >&2
     exit 1
 fi
-build_dir="$(mktemp -d "${TMPDIR:-/tmp}/pi-tui-linux.XXXXXX")"
+build_dir="$(mktemp -d "${TMPDIR:-/tmp}/nycode-tui-linux.XXXXXX")"
 trap 'rm -rf "$build_dir"' EXIT
 
 common_flags=(

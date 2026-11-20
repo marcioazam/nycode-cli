@@ -1,5 +1,5 @@
 // Chat mode in the browser: the composer's "Chat" chip, and chat entries in the transcript. While chat mode is on, a
-// second chip shows how the agent is mentioned (`@pi`); the owner taps it to rename the agent for this conversation
+// second chip shows how the agent is mentioned (`@nycode`); the owner taps it to rename the agent for this conversation
 // (what people type after `@`, and what voice mode listens for).
 
 import { BACKGROUND_CONTEXT, contribute, defineFacet } from "@p2/app/v1";

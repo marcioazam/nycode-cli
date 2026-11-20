@@ -5,8 +5,8 @@ import assert from "node:assert/strict";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
-import type { ToolResultMessage, UserMessage } from "@earendil-works/pi-ai";
-import type { ConversationView } from "@earendil-works/pi-durable";
+import type { ToolResultMessage, UserMessage } from "@nycode/ai";
+import type { ConversationView } from "@nycode/durable";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { Sessions } from "../../plugins/sessions/contract.ts";
@@ -26,7 +26,7 @@ const scriptAfter = (view: ConversationView | null | undefined, said: string): T
 			(message): message is ToolResultMessage => message.role === "toolResult" && message.toolName === "codemode",
 		);
 };
-const idle = (view: ConversationView | null | undefined) => !(view?.docs["pi.live"] as { run?: unknown })?.run;
+const idle = (view: ConversationView | null | undefined) => !(view?.docs["nycode.live"] as { run?: unknown })?.run;
 const text = (message: ToolResultMessage | undefined) =>
 	(message?.content ?? []).map((part) => (part.type === "text" ? part.text : "")).join("");
 /** What a completed script returned, as its result's text gives it. */

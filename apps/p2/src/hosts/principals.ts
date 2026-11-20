@@ -96,7 +96,7 @@ export function pageNavigation(request: IncomingMessage): boolean {
 }
 
 /**
- * The CSP of every response (as Pi Mobile's): the app's own scripts (the page's inline ones carry the nonce), its
+ * The CSP of every response (as Nycode Mobile's): the app's own scripts (the page's inline ones carry the nonce), its
  * WebSocket, and frames only from its own origin (artifact previews). Nothing may frame it but the Radius shell
  * that relays it.
  */

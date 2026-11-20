@@ -182,7 +182,7 @@ restarts finished&quot; would close it (option B, rejected for now).</p>
 
 <section class="chapter" id="conditions"><header class="opener"><div class="numeral">II</div><h2>Base Bundles Resolve as the Server Does</h2><p class="lede">Where the page&#39;s Chord comes from.</p></header>
 <p class="dropcap"><strong>Today</strong> (<code>src/node/surfaces/bundle.ts</code>, <code>buildBase</code>): esbuild bundles the page&#39;s and the terminal&#39;s base with its
-default conditions, so in this monorepo <code>@earendil-works/chord</code> resolves to its built <code>dist/</code>, while the server,
+default conditions, so in this monorepo <code>@nycode/chord</code> resolves to its built <code>dist/</code>, while the server,
 started with <code>--conditions=source</code>, runs Chord&#39;s source. The page may then run other Chord code than the server, and
 every <code>npm run build</code> changes files the base was built from. The worker base already resolves as its process will
 (<code>conditionsOf(execArgv)</code> in <code>src/node/workers/base.ts</code>).</p>

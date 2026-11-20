@@ -51,7 +51,7 @@ Look at the top of Bob's `worker.ts`:
 ```ts
 import countWords from "words-count";                       // 1. an npm package
 import { defineFacet, Project } from "@acme/app";           // 2. the app's base code
-import { obj, num, remote } from "@earendil-works/chord";   // 3. Chord
+import { obj, num, remote } from "@nycode/chord";   // 3. Chord
 import { Notes } from "@acme/notes/contract";               // 4. another plugin
 ```
 
@@ -61,7 +61,7 @@ Each import is a different kind of dependency, and they behave differently over 
 | --- | --- | --- |
 | `words-count` | its npm author | the version installed in Bob's plugin directory, copied into his script: frozen until Bob updates it |
 | `@acme/app` | Acme, when it releases the app | whatever the running app is: always the newest |
-| `@earendil-works/chord` | Chord, through Acme's upgrade | whatever the running app ships: always the newest |
+| `@nycode/chord` | Chord, through Acme's upgrade | whatever the running app ships: always the newest |
 | `@acme/notes/contract` | Acme, whenever it edits `notes` | the running `notes` plugin's file, copied at Bob's next build: always the newest |
 
 The first row is safe: npm packages are copied into the script at the version Bob installed, so they never change
@@ -180,14 +180,14 @@ leaving the plugin's root stays a build error.
 
 ## 2. What the app's API is, and Chord in it
 
-**Problem:** a plugin imports two host packages that both change, `@acme/app/v3` and `@earendil-works/chord/v2`.
+**Problem:** a plugin imports two host packages that both change, `@acme/app/v3` and `@nycode/chord/v2`.
 Acme must then say which combinations work: does a plugin importing app v3 and Chord v1 still run? Two version
 numbers per plugin, and a matrix nobody tests.
 **Proposal:** plugins import only the app's API. The app re-exports the part of Chord it supports:
 
 ```ts
 // src/api/v3/index.ts (Acme's base code)
-export { obj, arr, str, int, remote, local, defineRegistry } from "@earendil-works/chord";
+export { obj, arr, str, int, remote, local, defineRegistry } from "@nycode/chord";
 export { Workspace, Panels, defineFacet } from "../../core.ts";
 ```
 

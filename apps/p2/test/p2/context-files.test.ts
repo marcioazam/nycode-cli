@@ -1,4 +1,4 @@
-// Prompt resources (Pi Mobile's context files): the global AGENTS.md of the data directory is always local; a remote
+// Prompt resources (Nycode Mobile's context files): the global AGENTS.md of the data directory is always local; a remote
 // environment's file at the same path is another file and is read too, a local session's (also below the data
 // directory, or through a link to it) is not read twice.
 import assert from "node:assert/strict";
@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import * as nodePath from "node:path";
 import { basename, dirname, join, resolve } from "node:path";
 import { test } from "node:test";
-import { NodeExecutionEnv } from "@earendil-works/pi-durable/env/node";
+import { NodeExecutionEnv } from "@nycode/durable/env/node";
 import { loadPromptResources, localFiles, type PromptFiles } from "../../plugins/prompt/context-files.ts";
 import { envFiles } from "../../plugins/prompt/environment.ts";
 
@@ -55,7 +55,7 @@ test("a local session working below the data directory gets the global AGENTS.md
 	assert.equal(linked.agents.match(/LOCAL GLOBAL/g)?.length, 1, linked.agents);
 });
 
-test("skills follow pi's discovery: root .md files, SKILL.md directories, invalid files skipped", async (t) => {
+test("skills follow nycode's discovery: root .md files, SKILL.md directories, invalid files skipped", async (t) => {
 	const directory = mkdtempSync(join(tmpdir(), "p2-skills-"));
 	t.after(() => rmSync(directory, { recursive: true, force: true }));
 	const skills = join(directory, "skills");
@@ -69,7 +69,7 @@ test("skills follow pi's discovery: root .md files, SKILL.md directories, invali
 	write("deploy/SKILL.md", "---\ndescription: Directory skill, named after its directory.\n---\n");
 	write("deploy/notes.md", "---\nname: notes\ndescription: Inside a skill directory: not a skill.\n---\n");
 	write("group/nested.md", "---\nname: nested\ndescription: Below the root without SKILL.md: not a skill.\n---\n");
-	write("group/odd/SKILL.md", "---\nname: Odd Name\ndescription: pi only warns about the name.\n---\n");
+	write("group/odd/SKILL.md", "---\nname: Odd Name\ndescription: nycode only warns about the name.\n---\n");
 	write("node_modules/dep/SKILL.md", "---\nname: dep\ndescription: Skipped.\n---\n");
 	write(".hidden/SKILL.md", "---\nname: hidden\ndescription: Skipped.\n---\n");
 	const loaded = await loadPromptResources(directory, directory);

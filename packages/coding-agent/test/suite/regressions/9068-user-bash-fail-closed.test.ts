@@ -84,7 +84,7 @@ function createRuntimeHost(harness: Harness): AgentSessionRuntime {
 	} as unknown as AgentSessionRuntime;
 }
 
-async function startRpcHarness(extension: (pi: ExtensionAPI) => void): Promise<{
+async function startRpcHarness(extension: (nycode: ExtensionAPI) => void): Promise<{
 	harness: Harness;
 	send(command: Record<string, unknown>): void;
 	cleanup(): void;
@@ -143,14 +143,14 @@ const localResult = {
 
 const rpcCases: Array<{
 	name: string;
-	extension: (pi: ExtensionAPI) => void;
+	extension: (nycode: ExtensionAPI) => void;
 	error?: string;
 	executeCount: number;
 }> = [
 	{
 		name: "fails the request without executing bash when a handler throws",
-		extension: (pi) => {
-			pi.on("user_bash", async () => {
+		extension: (nycode) => {
+			nycode.on("user_bash", async () => {
 				throw new Error("Routing failed");
 			});
 		},
@@ -159,16 +159,16 @@ const rpcCases: Array<{
 	},
 	{
 		name: "fails the request without executing bash when a handler returns an empty result",
-		extension: (pi) => {
-			pi.on("user_bash", async () => ({}) as unknown as UserBashEventResult);
+		extension: (nycode) => {
+			nycode.on("user_bash", async () => ({}) as unknown as UserBashEventResult);
 		},
 		error: "Invalid user_bash handler result",
 		executeCount: 0,
 	},
 	{
 		name: "executes bash normally when a handler returns undefined",
-		extension: (pi) => {
-			pi.on("user_bash", async () => undefined);
+		extension: (nycode) => {
+			nycode.on("user_bash", async () => undefined);
 		},
 		executeCount: 1,
 	},
@@ -227,8 +227,8 @@ describe("Interactive user_bash failure handling (#9068)", () => {
 		const events: UserBashEvent[] = [];
 		const harness = await createHarness({
 			extensionFactories: [
-				(pi) => {
-					pi.on("user_bash", async (event) => {
+				(nycode) => {
+					nycode.on("user_bash", async (event) => {
 						events.push(event);
 						return {} as unknown as UserBashEventResult;
 					});

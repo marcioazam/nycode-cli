@@ -1,5 +1,5 @@
 // Copied from coding-agent interactive/components/{status-indicator,countdown-timer,custom-editor}.ts with the instance
-// theme and key hints (section 5.4). The editor keeps pi's embedded working status in its top border and its
+// theme and key hints (section 5.4). The editor keeps nycode's embedded working status in its top border and its
 // empty-editor Ctrl+D rule; the paste-image hook and extension shortcuts are gone (launcher-owned, section 3).
 import {
 	Editor,
@@ -10,7 +10,7 @@ import {
 	type TUI,
 	truncateToWidth,
 	visibleWidth,
-} from "@earendil-works/pi-tui";
+} from "@nycode/tui";
 import type { RenderContext } from "../render-context.ts";
 
 export class StatusIndicator extends Loader {
@@ -81,7 +81,7 @@ export class RetryStatusIndicator extends StatusIndicator {
 
 export class CompactionStatusIndicator extends StatusIndicator {
 	constructor(ui: TUI, ctx: RenderContext, trigger: "manual" | "threshold" | "overflow", retry?: number) {
-		// pi: Escape cancels a compaction (Chat.abortCompaction).
+		// nycode: Escape cancels a compaction (Chat.abortCompaction).
 		const cancel = ctx.keyText("app.interrupt") ? ` (${ctx.keyText("app.interrupt")} to cancel)` : "";
 		const label =
 			retry !== undefined
@@ -99,7 +99,7 @@ export class CompactionStatusIndicator extends StatusIndicator {
 	}
 }
 
-/** pi's CustomEditor: app actions by binding id, Escape and the empty-editor exit rule, embedded working status. */
+/** nycode's CustomEditor: app actions by binding id, Escape and the empty-editor exit rule, embedded working status. */
 export class CustomEditor extends Editor {
 	private workingStatusIndicator: StatusIndicator | undefined;
 	readonly actionHandlers = new Map<string, () => void>();

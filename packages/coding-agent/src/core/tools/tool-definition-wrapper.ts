@@ -1,10 +1,10 @@
-import type { AgentTool, AgentToolResult, AgentToolUpdateCallback } from "@earendil-works/pi-agent-core";
+import type { AgentTool, AgentToolResult, AgentToolUpdateCallback } from "@nycode/agent-core";
 import type { Static, TSchema } from "typebox";
 import type { ExtensionToolContext, ToolDefinition } from "../extensions/types.ts";
 
 /**
  * An `AgentTool` with a TypeBox parameter schema whose `execute` and `prepareArguments` are typed by TypeBox's
- * `Static`, as the built-in tools are (pi-agent-core types `params` through pi-schema, which maps only the common
+ * `Static`, as the built-in tools are (nycode-agent-core types `params` through nycode-schema, which maps only the common
  * TypeBox kinds). Spreads into a `ToolDefinition` of the same schema.
  */
 export type TypeBoxAgentTool<TParams extends TSchema = TSchema, TDetails = any> = Omit<

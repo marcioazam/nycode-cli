@@ -3,7 +3,7 @@
 // engine, voice and speed everyone hears. A read/write guest switches only its own microphone (its transcripts are its
 // messages) and sees the owner's choice; it never changes what the owner set.
 
-import { bool, nul, num, obj, opt, str, union } from "@earendil-works/pi-schema";
+import { bool, nul, num, obj, opt, str, union } from "@nycode/schema";
 import { local, method, param, remote, serverHost, sessionHost } from "@p2/app/v1";
 import { LanguageSchema, VoicesSchema } from "./protocol.ts";
 

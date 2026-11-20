@@ -6,8 +6,8 @@
  * (with its description) whether or not it has tools yet, so the section stays the same when an extension's deferred
  * tools come and go (an MCP server connecting); the tool's description never changes.
  */
-import type { CodemodeJsonSchema } from "@earendil-works/pi-codemode";
-import { renderToolSample, toCodemodeIdentifier } from "@earendil-works/pi-codemode/declarations";
+import type { CodemodeJsonSchema } from "@nycode/codemode";
+import { renderToolSample, toCodemodeIdentifier } from "@nycode/codemode/declarations";
 import type { Extension, ToolNamespace, ToolRegistration } from "../harness/types.ts";
 import { MODELS_DESCRIPTION } from "./models.ts";
 

@@ -1,6 +1,6 @@
 // Browser-only component fixture, bundled by `Browser.loadFixture`: a conversation view rendered with p2's plugins'
 // tool contributions plus the example plugin's (`plugins/word-count`, docs/tool-ui.md).
-import type { ConversationView } from "@earendil-works/pi-durable";
+import type { ConversationView } from "@nycode/durable";
 import { createElement } from "react";
 import { createRoot } from "react-dom/client";
 import type { ToolActivityTable } from "../../src/web/activity/model.ts";

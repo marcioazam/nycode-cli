@@ -4,16 +4,16 @@
 
 **Builds:** plugin `harness` (Durable's `Harness` in the worker on the session's store, opened paused and resumed
 after the load; the extensions, models and environments registries; design §24; the `chord(fn, context)` helper with
-its context key, §24 Q6), plugin `models` with the faux provider only (pi-ai's `fauxProvider`, scripted per test: an
+its context key, §24 Q6), plugin `models` with the faux provider only (nycode-ai's `fauxProvider`, scripted per test: an
 unscripted request fails the test, decision "Tests are isolated and deterministic"), plugin `transcript` (a
-conversation's entries, send, the queue while a run is busy, stop); the worker kind's host packages include pi-ai and
-pi-durable.
+conversation's entries, send, the queue while a run is busy, stop); the worker kind's host packages include nycode-ai and
+nycode-durable.
 
 **Depends on:** slices 1 and 2.
 
 **Read first, in full:** design.md §17 (registries), §20, §24; `packages/chord/src/registries/README.md`;
 `packages/durable/docs/spec.md`; Durable's `src/harness/harness.ts`, `src/harness/registry-reader.ts`,
-`src/storage/store/storage.ts`; pi-ai's `src/providers/faux.ts`; p2's `src/runtime/durable.ts`, `src/hosts/worker.ts`
+`src/storage/store/storage.ts`; nycode-ai's `src/providers/faux.ts`; p2's `src/runtime/durable.ts`, `src/hosts/worker.ts`
 and `docs/tree.md` as a reference of what is needed. From the archive: `map/book.md` (The Harness and its decision 1,
 The Fake Model, Chat, Reloads and Restarts), `base-inventory/explainer/book.md` (The Harness, What Is Offered),
 `status-2026-11-09.md` §3 (the harness direction of 2026-11-09), `rundown/book.md` (What a Session's Worker Runs, The
@@ -29,7 +29,7 @@ Filters). Chord decision on subagents and `/tree` branches (`packages/chord/docs
   due wake starts it), here or in slice 11.
 - Whether the 2026-11-09 harness direction stands (hooks and wraps always apply; phases security, transform,
   observe; a filter registry), or locks replace the filters (slice 6).
-- pi-ai has no `source` export condition: the worker loads its `dist/` or a resolver like p2's.
+- nycode-ai has no `source` export condition: the worker loads its `dist/` or a resolver like p2's.
 
 **Done when:** a run's answer arrives in order; a message during a run is queued; reloading `transcript` during a run
 loses nothing (the run continues, the view catches up); reloading `harness` during a run recovers it from its last
@@ -46,7 +46,7 @@ commit; a server restart keeps the transcript; branches as forks in the session'
 - **source:** `packages/durable/src/harness/types.ts`, `registry.ts`; `packages/chord/src/node/app/worker.ts:30`
   (`busy`).
 - **archive:** `handoff.md:65-67` (tool access), `map/book.md:239-265` (`chord()`/`ChordRoot`), `:290-295`
-  (providers shape), `:853-856` (pi-ai and Durable as worker host packages), `merged.md` §2 #6, #7, §4 Q4-Q6, Q9,
+  (providers shape), `:853-856` (nycode-ai and Durable as worker host packages), `merged.md` §2 #6, #7, §4 Q4-Q6, Q9,
   `rundown/book.md:1524-1608` (the worker acts as itself, `authorOf`, the `<sender>` block).
 - **p2:** `apps/p2/plugins/chat/`, `drafts/`, `tree/`, `status/`; `apps/p2/src/runtime/tool-access.ts`.
 - **decide:** filters versus locks (2.2 #10), `scope` and new tool fields (2.2 #11).

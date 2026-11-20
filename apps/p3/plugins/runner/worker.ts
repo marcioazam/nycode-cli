@@ -2,8 +2,8 @@
 // jobs or lingering objects on its host, every `WorkerBusy` count 0). Any work in between starts the wait again. How
 // long, and whether to stop at all, is the runner's choice; the base only closes (`WorkerRuntime.close`).
 
-import { contribute, defineFacet } from "@earendil-works/p3/v1";
-import { WorkerBusy, WorkerRuntime } from "@earendil-works/p3/v1/worker";
+import { contribute, defineFacet } from "@nycode/p3/v1";
+import { WorkerBusy, WorkerRuntime } from "@nycode/p3/v1/worker";
 
 export default defineFacet((host) => {
 	contribute(host, "runner.idle", (self) => {

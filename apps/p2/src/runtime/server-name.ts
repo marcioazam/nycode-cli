@@ -1,8 +1,8 @@
 // The server's name for the owner's Settings (browser-safe contract): what this p2 calls itself, the device's name it
 // falls back to, and a rename. The server host serves it from its `ServerName` (src/runtime/server.ts).
 
-import { method, remote } from "@earendil-works/chord";
-import { nul, obj, str, union } from "@earendil-works/pi-schema";
+import { method, remote } from "@nycode/chord";
+import { nul, obj, str, union } from "@nycode/schema";
 import { serverHost } from "./chord.ts";
 
 /**

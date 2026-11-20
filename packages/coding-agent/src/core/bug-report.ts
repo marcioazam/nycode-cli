@@ -1,9 +1,9 @@
 import * as os from "node:os";
-import type { AgentMessage, StreamFn, ThinkingLevel } from "@earendil-works/pi-agent-core";
-import { contentText, normalizeContext, type RetryPolicy, uuidv7 } from "@earendil-works/pi-ai";
-import type { Api, Model, Provider, SimpleStreamOptions } from "@earendil-works/pi-ai/compat";
+import type { AgentMessage, StreamFn, ThinkingLevel } from "@nycode/agent-core";
+import { contentText, normalizeContext, type RetryPolicy, uuidv7 } from "@nycode/ai";
+import type { Api, Model, Provider, SimpleStreamOptions } from "@nycode/ai/compat";
 import { VERSION } from "../config.ts";
-import { getPiUserAgent } from "../utils/pi-user-agent.ts";
+import { getNycodeUserAgent } from "../utils/nycode-user-agent.ts";
 import { writeZipArchive } from "../utils/zip.ts";
 import { completeSummarization, estimateTokens, getSummarizationFailure } from "./compaction/compaction.ts";
 import { serializeConversation } from "./compaction/utils.ts";
@@ -14,7 +14,7 @@ import type { ModelRuntime } from "./model-runtime.ts";
 import type { ReadonlySessionManager } from "./session-manager.ts";
 import type { Settings } from "./settings-manager.ts";
 
-export const BUG_REPORT_CUSTOM_ENTRY_TYPE = "pi.bug-report";
+export const BUG_REPORT_CUSTOM_ENTRY_TYPE = "nycode.bug-report";
 const BUG_REPORT_SCHEMA_VERSION = 1;
 const REDACTED = "<redacted>";
 const SENSITIVE_KEY = /(?:^|[-_])(api[-_]?key|secret|token|password|passwd|credential|authorization|cookie)(?:$|[-_])/i;
@@ -67,7 +67,7 @@ function collectEnvironment() {
 	const env = (name: string): string | null => process.env[name] || null;
 	return {
 		version: VERSION,
-		userAgent: getPiUserAgent(VERSION),
+		userAgent: getNycodeUserAgent(VERSION),
 		runtime: process.versions.bun ? `bun/${process.versions.bun}` : `node/${process.version}`,
 		platform: process.platform,
 		arch: process.arch,
@@ -84,7 +84,7 @@ function collectEnvironment() {
 			ci: Boolean(process.env.CI),
 		},
 		// Names help diagnose configuration; values never leave the machine.
-		piEnvironmentVariables: Object.keys(process.env)
+		nycodeEnvironmentVariables: Object.keys(process.env)
 			.filter((name) => name.startsWith("PI_"))
 			.sort(),
 	};
@@ -276,10 +276,10 @@ export function writeBugReportArchive(bundle: BugReportBundle, filePath: string)
 }
 
 export function bugReportArchiveFileName(id: string): string {
-	return `pi-bug-report-${id}.zip`;
+	return `nycode-bug-report-${id}.zip`;
 }
 
-const BUG_SUMMARY_SYSTEM_PROMPT = `You are helping a user file a bug report about pi, the coding agent they are talking to. You will be shown the conversation transcript. Write a report for the pi developers describing what the user was doing and what went wrong.
+const BUG_SUMMARY_SYSTEM_PROMPT = `You are helping a user file a bug report about nycode, the coding agent they are talking to. You will be shown the conversation transcript. Write a report for the nycode developers describing what the user was doing and what went wrong.
 
 Do NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the report.`;
 

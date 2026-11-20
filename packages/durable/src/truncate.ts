@@ -1,4 +1,4 @@
-import { utf8ByteLength } from "@earendil-works/chord/output";
+import { utf8ByteLength } from "@nycode/chord/output";
 /**
  * Shared truncation utilities for tool outputs.
  *
@@ -6,7 +6,7 @@ import { utf8ByteLength } from "@earendil-works/chord/output";
  * - Line limit (default: 2000 lines)
  * - Byte limit (default: 50KB)
  *
- * Never returns partial lines. Tool output streams are bounded by `OutputBuffer` from `@earendil-works/chord/output` instead.
+ * Never returns partial lines. Tool output streams are bounded by `OutputBuffer` from `@nycode/chord/output` instead.
  */
 
 export const DEFAULT_MAX_LINES = 2000;

@@ -1,5 +1,5 @@
 // `@` and Tab file completion text handling, shared by the TUI provider and the web composers (p2-tui-port.md section
-// 8.4). Pure copies of pi-tui autocomplete.ts helpers (token boundaries, quoting, `@`/path prefix extraction,
+// 8.4). Pure copies of nycode-tui autocomplete.ts helpers (token boundaries, quoting, `@`/path prefix extraction,
 // completion insertion, forced-Tab gating) without its filesystem and `fd` parts: suggestions come from the session's
 // `FileIndex`. Completion is cwd-relative only: `~`, absolute and `..` prefixes complete nothing (section 8.2).
 
@@ -16,10 +16,10 @@ const PATH_WRAPPERS: Record<string, string> = { "(": ")", "[": "]", "{": "}", "<
 export type CompletionItem = { value: string; label: string; description?: string };
 
 /**
- * Chat mode's agent mention as a whole token (plugins/chat-mode/contract.ts `mentionPattern`): `@pi`, or the agent's
+ * Chat mode's agent mention as a whole token (plugins/chat-mode/contract.ts `mentionPattern`): `@nycode`, or the agent's
  * name in the conversation. Never completed as a file.
  */
-export const isMentionToken = (at: string, name = "Pi"): boolean => at.toLowerCase() === `@${name.toLowerCase()}`;
+export const isMentionToken = (at: string, name = "Nycode"): boolean => at.toLowerCase() === `@${name.toLowerCase()}`;
 
 /** The mention offered first while chat mode is on (`name`: the agent's name there), when the typed prefix starts it. */
 export function mentionItems(rawPrefix: string, name: string | undefined): CompletionItem[] {
@@ -118,7 +118,7 @@ export function extractPathPrefix(text: string, force = false): string | null {
 	return null;
 }
 
-/** pi-tui: forced Tab completes files unless a slash command name is being typed. */
+/** nycode-tui: forced Tab completes files unless a slash command name is being typed. */
 export function shouldTriggerFileCompletion(textBeforeCursor: string): boolean {
 	const trimmed = textBeforeCursor.trim();
 	return !(trimmed.startsWith("/") && !trimmed.includes(" "));
@@ -129,7 +129,7 @@ export function outOfScope(rawPrefix: string): boolean {
 	return /^(?:\/|~|\.\.(?:\/|$))/.test(rawPrefix);
 }
 
-/** Items for `@` completion (pi's `getFuzzyFileSuggestions` labels: the name, the path as description). */
+/** Items for `@` completion (nycode's `getFuzzyFileSuggestions` labels: the name, the path as description). */
 export function atItems(
 	results: readonly { path: string; dir: boolean }[],
 	options: { isQuotedPrefix: boolean },
@@ -149,7 +149,7 @@ export function atItems(
 }
 
 /**
- * Tab path completion over one directory's entries (pi-tui `getFileSuggestions`, cwd-relative): `dir` is the listed
+ * Tab path completion over one directory's entries (nycode-tui `getFileSuggestions`, cwd-relative): `dir` is the listed
  * directory ("" for the root), `name` the typed part of the last segment. Directories first, then names.
  */
 export function pathCompletion(rawPrefix: string): { dir: string; name: string; display: string } {
@@ -180,7 +180,7 @@ export function pathItems(
 }
 
 /**
- * pi-tui `applyCompletion` for file items: replaces `prefix` before the cursor with the item's value; files get a
+ * nycode-tui `applyCompletion` for file items: replaces `prefix` before the cursor with the item's value; files get a
  * trailing space after `@` items, directories none (completion continues), a closing quote is not doubled.
  */
 export function applyFileCompletion(

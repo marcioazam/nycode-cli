@@ -2,7 +2,7 @@
 // (`plugins/subagents/contract.worker.ts`): checked before each call, resolved from the caller's own tools.
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { ToolExecutionApi, ToolExecutionResult, ToolPark, ToolRegistration, Tx } from "@earendil-works/pi-durable";
+import type { ToolExecutionApi, ToolExecutionResult, ToolPark, ToolRegistration, Tx } from "@nycode/durable";
 import type { SessionLock } from "@p2/app/v1";
 import { resolveTools } from "../../plugins/subagents/contract.worker.ts";
 import { guardTool, type P2Tool } from "../../src/runtime/tool-access.ts";
@@ -23,7 +23,7 @@ const api = (conversationId: number, data: unknown, lock?: SessionLock): ToolExe
 	({
 		conversationId,
 		snapshot: async (doc: { definition: { kind: string } }) =>
-			doc.definition.kind === "pi.live"
+			doc.definition.kind === "nycode.live"
 				? { run: { inputs: [1] } }
 				: doc.definition.kind === "p2.session-lock" && lock
 					? { lock }

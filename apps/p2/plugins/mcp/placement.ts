@@ -6,7 +6,7 @@ import { createHash } from "node:crypto";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import type { McpStdioServerConfig } from "@earendil-works/pi-mcp";
+import type { McpStdioServerConfig } from "@nycode/mcp";
 import { type Location, locationText, type SessionLock } from "@p2/app/v1";
 import type { EnvConfig } from "../envs/config.ts";
 import { connectionRevision } from "../envs/connection-revision.ts";
@@ -16,7 +16,7 @@ import type { Lease } from "./leases.ts";
 import { type ProjectConfig, type ProjectServer, parseProjectConfig } from "./project.ts";
 import type { OAuthServer } from "./sign-in.ts";
 
-/** A program on an environment, started through its pi-env daemon; paths resolve once the daemon tells its system. */
+/** A program on an environment, started through its nycode-env daemon; paths resolve once the daemon tells its system. */
 export type RemoteConnect = {
 	readonly kind: "remote";
 	/** The environment's name in envs.json, and its configuration there. */
@@ -53,7 +53,7 @@ export type Connect =
 			readonly kind: "http";
 			readonly url: string;
 			readonly headers: Readonly<Record<string, string>>;
-			/** Signs in with OAuth (no `Authorization` header configured), as in pi. */
+			/** Signs in with OAuth (no `Authorization` header configured), as in nycode. */
 			readonly oauth: OAuthServer | undefined;
 	  }
 	| { readonly kind: "unplaced"; readonly reason: string };
@@ -141,7 +141,7 @@ function projectOf(lease: Lease, config: OwnerConfig): ProjectConfig {
 	return {
 		servers: [],
 		enabled: new Map(),
-		errors: project.kind === "unreadable" ? [`.pi/mcp.json: ${project.error}`] : [],
+		errors: project.kind === "unreadable" ? [`.nycode/mcp.json: ${project.error}`] : [],
 	};
 }
 
@@ -175,7 +175,7 @@ function ownerSpec(
 	return stdioSpec(placed, runsOn, server.config, timeoutMs, envs);
 }
 
-/** How owner server `server` signs in with OAuth: as in pi, an HTTP server without an `Authorization` header. */
+/** How owner server `server` signs in with OAuth: as in nycode, an HTTP server without an `Authorization` header. */
 export function oauthServerOf(server: OwnerServer): OAuthServer | undefined {
 	if (server.kind !== "http") return undefined;
 	const { url, headers = {}, oauth } = server.config;
@@ -265,7 +265,7 @@ function descriptionOf(config: { readonly description?: string }): string | unde
 	return config.description?.trim() || undefined;
 }
 
-/** `~` and `~/…` name the home directory, as in a shell (and in pi). */
+/** `~` and `~/…` name the home directory, as in a shell (and in nycode). */
 function expandHome(value: string): string {
 	if (value === "~") return homedir();
 	return value.startsWith("~/") ? join(homedir(), value.slice(2)) : value;

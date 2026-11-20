@@ -1,4 +1,4 @@
-import { type Component, Container, Text } from "@earendil-works/pi-tui";
+import { type Component, Container, Text } from "@nycode/tui";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { InteractiveMode } from "../src/modes/interactive/interactive-mode.ts";
 import { initTheme } from "../src/modes/interactive/theme/theme.ts";

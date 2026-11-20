@@ -1,4 +1,4 @@
-// The frame's side of the Radius shell's `pi-shell` channel (src/web/shell-bridge.ts): it reports the app's address to
+// The frame's side of the Radius shell's `nycode-shell` channel (src/web/shell-bridge.ts): it reports the app's address to
 // the shell that frames it, takes the shell's base for link addresses, passes the shell's theme on and sends the user's
 // pick, and does nothing for anyone else. A fake window stands in for the browser: the page itself, its parent (the
 // shell) and an unrelated window. theme.test.ts runs the theme module behind it.
@@ -9,7 +9,7 @@ import { startShellBridge } from "../../src/web/shell-bridge.ts";
 import type { ShellTheme, ShellThemeLink, ThemePreference } from "../../src/web/theme.ts";
 
 const SHELL = "https://radius.earendil.com";
-const BASE = `${SHELL}/pi/acme/11111111-0000-4000-8000-000000000000`;
+const BASE = `${SHELL}/nycode/acme/11111111-0000-4000-8000-000000000000`;
 const SESSION = "0b0e6f1c-1d2e-4f00-9a7a-3c1e2f1a0b0c";
 
 type Posted = { message: Record<string, unknown>; origin: string };
@@ -72,14 +72,14 @@ function fakeTheme() {
 }
 
 const hello = (base: string, extra: Record<string, unknown> = {}) => ({
-	channel: "pi-shell",
+	channel: "nycode-shell",
 	type: "hello",
 	version: 1,
 	base,
 	...extra,
 });
 const themeMessage = (preference: unknown, scheme: unknown) => ({
-	channel: "pi-shell",
+	channel: "nycode-shell",
 	type: "theme",
 	version: 1,
 	preference,
@@ -112,10 +112,10 @@ describe("shell bridge", () => {
 		});
 		assert.ok(page.posted.every(({ origin }) => origin === SHELL));
 		assert.deepEqual(messages(page.posted), [
-			{ channel: "pi-shell", version: 1, type: "ready" },
-			{ channel: "pi-shell", version: 1, type: "location", path: `/s/${SESSION}` },
-			{ channel: "pi-shell", version: 1, type: "location", path: `/s/${SESSION}/c/2` },
-			{ channel: "pi-shell", version: 1, type: "location", path: `/s/${SESSION}/c/2?viewer=artifacts&at=x` },
+			{ channel: "nycode-shell", version: 1, type: "ready" },
+			{ channel: "nycode-shell", version: 1, type: "location", path: `/s/${SESSION}` },
+			{ channel: "nycode-shell", version: 1, type: "location", path: `/s/${SESSION}/c/2` },
+			{ channel: "nycode-shell", version: 1, type: "location", path: `/s/${SESSION}/c/2?viewer=artifacts&at=x` },
 		]);
 	});
 
@@ -128,7 +128,12 @@ describe("shell bridge", () => {
 		assert.equal(linkHref(route), `${BASE}/s/${SESSION}`);
 		assert.equal(linkHref(HOME), BASE);
 		assert.equal(linkHref({ ...HOME, layers: [{ kind: "viewer", name: "artifacts" }] }), `${BASE}?viewer=artifacts`);
-		assert.deepEqual(messages(page.posted).at(-1), { channel: "pi-shell", version: 1, type: "location", path: "/" });
+		assert.deepEqual(messages(page.posted).at(-1), {
+			channel: "nycode-shell",
+			version: 1,
+			type: "location",
+			path: "/",
+		});
 		stop();
 		stop = undefined;
 		assert.equal(linkHref(route), `/s/${SESSION}`);
@@ -139,7 +144,7 @@ describe("shell bridge", () => {
 		stop = startShellBridge(fakeNavigation(), fakeTheme().link);
 		page.send(hello(BASE), "https://evil.test");
 		page.send(hello(BASE), SHELL, {});
-		page.send(hello("https://evil.test/pi/acme/x"));
+		page.send(hello("https://evil.test/nycode/acme/x"));
 		page.send(hello(`${BASE}?x=1`));
 		page.send({ ...hello(BASE), channel: "other" });
 		page.send("hello");
@@ -150,7 +155,7 @@ describe("shell bridge", () => {
 		for (const options of [
 			{},
 			{ meta: "javascript:alert(1)" },
-			{ meta: `${SHELL}/pi` },
+			{ meta: `${SHELL}/nycode` },
 			{ meta: SHELL, framed: false },
 		]) {
 			const page = framedPage(options);
@@ -200,7 +205,7 @@ describe("shell bridge", () => {
 				{ changed: { preference: "system", scheme: "dark" } },
 			]);
 			assert.deepEqual(page.posted.at(-1), {
-				message: { channel: "pi-shell", version: 1, type: "set-theme", preference: "light" },
+				message: { channel: "nycode-shell", version: 1, type: "set-theme", preference: "light" },
 				origin: SHELL,
 			});
 		});

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
-import type { ToolResultMessage } from "@earendil-works/pi-ai";
-import type { ConversationView } from "@earendil-works/pi-durable";
+import type { ToolResultMessage } from "@nycode/ai";
+import type { ConversationView } from "@nycode/durable";
 import { BACKGROUND_CONTEXT, whenLive } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import {
@@ -66,7 +66,7 @@ describe("conversations (fake provider)", () => {
 		);
 		const view = await until(
 			chat.view,
-			(view) => results(view).length > count && !(view?.docs["pi.live"] as { run?: unknown })?.run,
+			(view) => results(view).length > count && !(view?.docs["nycode.live"] as { run?: unknown })?.run,
 		);
 		return results(view).at(-1)!;
 	};
@@ -93,7 +93,7 @@ describe("conversations (fake provider)", () => {
 		assert.equal(sent.isError, false);
 		const view = await until(
 			b.view,
-			(view) => peers(view).length === 1 && !(view?.docs["pi.live"] as { run?: unknown })?.run,
+			(view) => peers(view).length === 1 && !(view?.docs["nycode.live"] as { run?: unknown })?.run,
 		);
 		assert.deepEqual(peers(view)[0]?.model?.[0]?.content, [
 			{ type: "text", text: `<sender kind="session" id="${alpha}" title="Alpha"/>` },
@@ -138,14 +138,14 @@ describe("conversations (fake provider)", () => {
 		const previous = await broker(alpha, "previous", { action: "answer", to: beta });
 		assert.equal(previous.action, "answer");
 		await b.send({ text: "slow-tool", requestId: "busy" }, BACKGROUND_CONTEXT);
-		await until(b.view, (view) => JSON.stringify(view?.docs["pi.live"]).includes("tool-running"));
+		await until(b.view, (view) => JSON.stringify(view?.docs["nycode.live"]).includes("tool-running"));
 		const working = await broker(alpha, "working", { action: "answer", to: beta });
 		assert.equal(working.action, "answer");
 		assert.ok(
 			working.action === "answer" && previous.action === "answer" && working.busy && working.text === previous.text,
 		);
 		await broker(alpha, "queued", { action: "send", to: beta, message: "queued peer", followUp: true });
-		await until(b.view, (view) => JSON.stringify(view?.docs["pi.inbox"]).includes("queued peer"));
+		await until(b.view, (view) => JSON.stringify(view?.docs["nycode.inbox"]).includes("queued peer"));
 		await until(status.statuses, (value) => value?.[beta]?.tasks === 0);
 		for (const query of [
 			{ action: "send", to: alpha, message: "self" },
@@ -160,11 +160,11 @@ describe("conversations (fake provider)", () => {
 	it("Stop keeps queued peer messages queued for the next input and gives people their text back", async () => {
 		const gamma = (await sessions.create({ cwd: fixture.workspace, title: "Gamma" }, BACKGROUND_CONTEXT)).id;
 		const chat = await holdIn(owner, Chat, { session: gamma, conversation: 1 }, "participant");
-		const inbox = (view: ConversationView | null | undefined) => JSON.stringify(view?.docs["pi.inbox"] ?? {});
+		const inbox = (view: ConversationView | null | undefined) => JSON.stringify(view?.docs["nycode.inbox"] ?? {});
 		const running = (view: ConversationView | null | undefined) =>
-			(view?.docs["pi.live"] as { run?: unknown } | undefined)?.run !== undefined;
+			(view?.docs["nycode.live"] as { run?: unknown } | undefined)?.run !== undefined;
 		await chat.send({ text: "slow-tool", requestId: "busy" }, BACKGROUND_CONTEXT);
-		await until(chat.view, (view) => JSON.stringify(view?.docs["pi.live"]).includes("tool-running"));
+		await until(chat.view, (view) => JSON.stringify(view?.docs["nycode.live"]).includes("tool-running"));
 		await chat.send({ text: "owner queued", requestId: "queued", whenBusy: "followUp" }, BACKGROUND_CONTEXT);
 		await broker(alpha, "kept", { action: "send", to: gamma, message: "kept peer", followUp: true });
 		await until(chat.view, (view) => inbox(view).includes("kept peer"));
@@ -179,17 +179,17 @@ describe("conversations (fake provider)", () => {
 		const answered = await until(
 			chat.view,
 			(view) =>
-				!running(view) && !inbox(view).includes("kept peer") && view?.entries.at(-1)?.kind === "pi.assistant",
+				!running(view) && !inbox(view).includes("kept peer") && view?.entries.at(-1)?.kind === "nycode.assistant",
 		);
-		const kinds = (answered?.entries ?? []).map((entry) => entry.kind).filter((kind) => kind !== "pi.assistant");
+		const kinds = (answered?.entries ?? []).map((entry) => entry.kind).filter((kind) => kind !== "nycode.assistant");
 		assert.deepEqual(kinds.slice(-2), [PEER_MESSAGE_ENTRY, "p2.input"]);
 		assert.deepEqual(peers(answered)[0]?.data, { from: { id: alpha, title: "Alpha" }, text: "kept peer" });
 		// A stop from another session gives people's queued text to their drafts, which their composer claims.
 		await until(status.statuses, (value) => value?.[gamma]?.tasks === 0);
 		await chat.send({ text: "slow-tool", requestId: "busy-again" }, BACKGROUND_CONTEXT);
-		await until(chat.view, (view) => JSON.stringify(view?.docs["pi.live"]).includes("tool-running"));
+		await until(chat.view, (view) => JSON.stringify(view?.docs["nycode.live"]).includes("tool-running"));
 		await chat.send({ text: "owner draft", requestId: "draft", whenBusy: "followUp" }, BACKGROUND_CONTEXT);
-		await until(chat.view, (view) => JSON.stringify(view?.docs["pi.inbox"]).includes("owner draft"));
+		await until(chat.view, (view) => JSON.stringify(view?.docs["nycode.inbox"]).includes("owner draft"));
 		await broker(alpha, "stop-gamma", { action: "stop", to: gamma });
 		const drafts = await holdIn(owner, Drafts, { session: gamma, conversation: 1 }, "author");
 		const pending = await until(drafts.drafts, (value) => Boolean(value?.length));
@@ -241,13 +241,13 @@ describe("conversations (fake provider)", () => {
 
 		await until(status.statuses, (value) => value?.[fresh]?.tasks === 0);
 		await broker(alpha, "busy-fresh", { action: "send", to: fresh, message: "slow-tool" });
-		await until(chat.view, (view) => JSON.stringify(view?.docs["pi.live"]).includes("tool-running"));
+		await until(chat.view, (view) => JSON.stringify(view?.docs["nycode.live"]).includes("tool-running"));
 		assert.deepEqual(await broker(alpha, "stop-fresh", { action: "stop", to: fresh }), {
 			action: "stop",
 			to: fresh,
 			stopped: true,
 		});
-		await until(chat.view, (view) => !(view?.docs["pi.live"] as { run?: unknown })?.run);
+		await until(chat.view, (view) => !(view?.docs["nycode.live"] as { run?: unknown })?.run);
 		assert.deepEqual(await broker(alpha, "stop-idle", { action: "stop", to: fresh }), {
 			action: "stop",
 			to: fresh,

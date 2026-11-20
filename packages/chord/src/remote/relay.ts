@@ -4,7 +4,7 @@
 // untouched. Forwarding a hold or a call is a `chord.relay` span under the arriving carrier, whose own carrier goes
 // upstream (slice 9).
 
-import type { TelemetryCarrier, TelemetrySpan } from "@earendil-works/pi-telemetry";
+import type { TelemetryCarrier, TelemetrySpan } from "@nycode/telemetry";
 import { ChordError, type FailureCause } from "../data/index.ts";
 import { type Caller, revoked } from "../host/internal.ts";
 import { errorFromWire, type Message, type OriginMessage, wireError } from "../link/internal.ts";

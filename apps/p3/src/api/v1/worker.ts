@@ -1,7 +1,7 @@
-// p3's API v1 for worker facets (`@earendil-works/p3/v1/worker`): the worker's process values (`WorkerRuntime`) and
+// p3's API v1 for worker facets (`@nycode/p3/v1/worker`): the worker's process values (`WorkerRuntime`) and
 // what keeps it alive (`WorkerBusy`), both served by the base.
 
-import { type ChordStore, defineRegistry, type Host } from "@earendil-works/chord";
+import { type ChordStore, defineRegistry, type Host } from "@nycode/chord";
 import type { P3Principal } from "../../principals.ts";
 
 /** A session worker's process values, for plugins: what only the base has. */

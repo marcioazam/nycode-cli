@@ -1,7 +1,7 @@
 // Test only (ui-recovery.test.ts): writes the views document as p2 before 2026-11-12 wrote it (custom views, `path`,
 // view errors, an arrangement naming a custom view), and a composer slot that can fail (web.tsx).
-import { defineDoc, defineExtension } from "@earendil-works/pi-durable";
-import { obj } from "@earendil-works/pi-schema";
+import { defineDoc, defineExtension } from "@nycode/durable";
+import { obj } from "@nycode/schema";
 import { contribute, defineFacet, type JsonValue } from "@p2/app/v1";
 import { defineP2Tool, Extensions, harnessOf, type P2Tool } from "@p2/app/v1/worker";
 

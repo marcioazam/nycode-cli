@@ -7,7 +7,7 @@ import type { RelayUser } from "@p2/app/v1/server";
 export const RELAY_SECRET_HEADER = "x-p2-relay";
 /** The brain's browser-facing origin (its cortex origin), e.g. `https://<label>.rdtun.com`. */
 export const RELAY_ORIGIN_HEADER = "x-p2-relay-origin";
-/** The Radius shell origin that frames the brain UI; absent for a Pi client of the owner, which no page frames. */
+/** The Radius shell origin that frames the brain UI; absent for a Nycode client of the owner, which no page frames. */
 export const RELAY_SHELL_HEADER = "x-p2-relay-shell";
 /** A Radius user other than the owner: base64url JSON `{ id, email }`. Absent for the owner. */
 export const RELAY_USER_HEADER = "x-p2-relay-user";
@@ -32,7 +32,7 @@ const ORIGIN = /^https?:\/\/[^/\s]+$/;
  * p2's sharing decides what they may reach, as for a guest cookie on a tunnel
  * host. Without the secret the marker headers mean nothing, so neither
  * browsers nor other local processes can claim them. Without the shell header
- * it is the owner's Pi client, the TUI launcher through Radius (brain.ts,
+ * it is the owner's Nycode client, the TUI launcher through Radius (brain.ts,
  * "Client channels").
  */
 export class RelayAccess {

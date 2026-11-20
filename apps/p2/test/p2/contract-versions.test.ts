@@ -10,9 +10,9 @@
 
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
-import type { Usage } from "@earendil-works/pi-ai";
-import type { ConversationView } from "@earendil-works/pi-durable";
-import { arr, bool, int, nul, num, obj, opt, str, union, unknown } from "@earendil-works/pi-schema";
+import type { Usage } from "@nycode/ai";
+import type { ConversationView } from "@nycode/durable";
+import { arr, bool, int, nul, num, obj, opt, str, union, unknown } from "@nycode/schema";
 import {
 	BACKGROUND_CONTEXT,
 	DirectoryListingSchema,

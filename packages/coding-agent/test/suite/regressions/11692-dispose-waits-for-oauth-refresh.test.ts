@@ -1,4 +1,4 @@
-import type { Model, OAuthCredential, Provider } from "@earendil-works/pi-ai";
+import type { Model, OAuthCredential, Provider } from "@nycode/ai";
 import { afterEach, describe, expect, it } from "vitest";
 import {
 	AgentSessionRuntime,

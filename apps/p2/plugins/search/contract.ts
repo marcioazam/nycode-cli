@@ -1,4 +1,4 @@
-import { arr, bool, int, nul, num, obj, opt, type Static, str, union } from "@earendil-works/pi-schema";
+import { arr, bool, int, nul, num, obj, opt, type Static, str, union } from "@nycode/schema";
 import {
 	evolve,
 	literal,
@@ -154,7 +154,7 @@ const SearchV1 = remote("p2.search", {
 			methods: {
 				search: method(QuerySchema, SearchResultsSchema),
 				/**
-				 * Re-indexes one session from the start (Pi Mobile's `rebuildIndex`): its worker stops, its index entries
+				 * Re-indexes one session from the start (Nycode Mobile's `rebuildIndex`): its worker stops, its index entries
 				 * go, and a fresh worker scans its history; an archived session's worker scans without resuming work and
 				 * stops again.
 				 */

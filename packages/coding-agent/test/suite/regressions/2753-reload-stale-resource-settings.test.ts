@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { registerFauxProvider } from "@earendil-works/pi-ai/compat";
+import { registerFauxProvider } from "@nycode/ai/compat";
 import { afterEach, describe, expect, it } from "vitest";
 import {
 	type CreateAgentSessionRuntimeFactory,
@@ -23,7 +23,7 @@ describe("issue #2753 reload stale resource settings", () => {
 	});
 
 	it("applies updated top-level prompt settings on reload after startup", async () => {
-		const tempDir = join(tmpdir(), `pi-2753-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+		const tempDir = join(tmpdir(), `nycode-2753-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 		const agentDir = join(tempDir, "agent");
 		const promptsDir = join(agentDir, "prompts");
 		mkdirSync(promptsDir, { recursive: true });
@@ -46,8 +46,8 @@ describe("issue #2753 reload stale resource settings", () => {
 				modelRuntime,
 				resourceLoaderOptions: {
 					extensionFactories: [
-						(pi) => {
-							pi.registerProvider(faux.getModel().provider, {
+						(nycode) => {
+							nycode.registerProvider(faux.getModel().provider, {
 								baseUrl: faux.getModel().baseUrl,
 								apiKey: "faux-key",
 								api: faux.api,

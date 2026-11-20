@@ -1,8 +1,8 @@
-import { awaitWithContext, BACKGROUND_CONTEXT, type Context, withoutAbortSignal } from "@earendil-works/chord/context";
-import { type Op, PendingOps, track } from "@earendil-works/chord/delta";
-import type { JsonValue } from "@earendil-works/chord/json";
-import { Watch, type WatchEnd } from "@earendil-works/chord/watch";
-import type { SpanAttributes } from "@earendil-works/pi-telemetry";
+import { awaitWithContext, BACKGROUND_CONTEXT, type Context, withoutAbortSignal } from "@nycode/chord/context";
+import { type Op, PendingOps, track } from "@nycode/chord/delta";
+import type { JsonValue } from "@nycode/chord/json";
+import { Watch, type WatchEnd } from "@nycode/chord/watch";
+import type { SpanAttributes } from "@nycode/telemetry";
 import {
 	type AnyDocToken,
 	addressId,
@@ -1338,13 +1338,17 @@ export class SessionImpl implements Session {
 		for (const write of writes) {
 			switch (write.type) {
 				case "entry":
-					this.#event("pi.durable.entry", { "entry.id": write.value.id, "entry.kind": write.value.kind }, context);
+					this.#event(
+						"nycode.durable.entry",
+						{ "entry.id": write.value.id, "entry.kind": write.value.kind },
+						context,
+					);
 					changes?.push(write);
 					break;
 				case "submission":
 					if (write.value.status === "done" || write.value.status === "unanswered") {
 						this.#event(
-							"pi.durable.submission",
+							"nycode.durable.submission",
 							{
 								"submission.id": write.value.id,
 								status: write.value.status,

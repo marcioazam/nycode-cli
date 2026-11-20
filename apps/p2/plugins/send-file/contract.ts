@@ -1,4 +1,4 @@
-import { bool, nul, num, obj, str, union } from "@earendil-works/pi-schema";
+import { bool, nul, num, obj, str, union } from "@nycode/schema";
 import { method, param, remote, sessionHost } from "@p2/app/v1";
 
 /** A text preview reads at most this many bytes of a sent file (the rest is a download). */

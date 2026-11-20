@@ -5,9 +5,9 @@ import assert from "node:assert/strict";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
-import type { ToolResultMessage } from "@earendil-works/pi-ai";
-import type { Models } from "@earendil-works/pi-ai/models";
-import type { ConversationView, LiveState } from "@earendil-works/pi-durable";
+import type { ToolResultMessage } from "@nycode/ai";
+import type { Models } from "@nycode/ai/models";
+import type { ConversationView, LiveState } from "@nycode/durable";
 import { BACKGROUND_CONTEXT, follow } from "@p2/app/v1";
 import { createAgentExtension } from "../../plugins/agent/tool.ts";
 import { Chat } from "../../plugins/chat/contract.ts";
@@ -34,7 +34,7 @@ const codemodeResult = (view: ConversationView | null | undefined) =>
 	messages(view).find(
 		(message): message is ToolResultMessage => message.role === "toolResult" && message.toolName === "codemode",
 	);
-const live = (view: ConversationView | null | undefined) => view?.docs["pi.live"] as LiveState | undefined;
+const live = (view: ConversationView | null | undefined) => view?.docs["nycode.live"] as LiveState | undefined;
 
 /** A code mode result's text after its "Script completed" header (Durable's coding-agent layout). */
 const scriptOutput = (text: string): string => {
@@ -43,7 +43,7 @@ const scriptOutput = (text: string): string => {
 	return text.slice(match[0].length);
 };
 
-/** How the agent tool describes itself (Pi Mobile's words): code mode's section lists it, there is no section of its own. */
+/** How the agent tool describes itself (Nycode Mobile's words): code mode's section lists it, there is no section of its own. */
 const AGENT_DESCRIPTION =
 	"Run a one-shot subagent in your cwd and resolve to its final answer, parsed as JSON and validated against `schema` (a JSON Schema object). Rejects when the subagent fails, or when its answer still does not validate after 3 attempts. Its answer is not reported to you, only what the script returns. Run many at once with `Promise.all`.";
 

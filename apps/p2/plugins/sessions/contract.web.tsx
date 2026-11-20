@@ -13,7 +13,7 @@ export {
 	useOpenFromMenu,
 	useSessions,
 } from "./command-session.tsx";
-export { IconMarker, PiDots, UnreadMark } from "./sidebar/marks.tsx";
+export { IconMarker, NycodeDots, UnreadMark } from "./sidebar/marks.tsx";
 export type { SidebarRow } from "./sidebar/model.ts";
 export { NavRow } from "./sidebar/NavRow.tsx";
 

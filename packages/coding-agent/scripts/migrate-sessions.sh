@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 #
-# Migrate sessions from ~/.pi/agent/*.jsonl to proper session directories.
+# Migrate sessions from ~/.nycode/agent/*.jsonl to proper session directories.
 # This fixes sessions created by the bug in v0.30.0 where sessions were
-# saved to ~/.pi/agent/ instead of ~/.pi/agent/sessions/<encoded-cwd>/.
+# saved to ~/.nycode/agent/ instead of ~/.nycode/agent/sessions/<encoded-cwd>/.
 #
 # Usage: ./migrate-sessions.sh [--dry-run]
 #
 
 set -e
 
-AGENT_DIR="${PI_AGENT_DIR:-$HOME/.pi/agent}"
+AGENT_DIR="${NYCODE_AGENT_DIR:-$HOME/.nycode/agent}"
 DRY_RUN=false
 
 if [[ "$1" == "--dry-run" ]]; then

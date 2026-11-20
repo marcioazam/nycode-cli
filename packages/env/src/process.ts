@@ -18,7 +18,7 @@ export interface ProcessOptions {
 }
 
 /**
- * A program running with plain pipes in a pi-env daemon, for programs that speak a protocol on stdin and stdout. It
+ * A program running with plain pipes in a nycode-env daemon, for programs that speak a protocol on stdin and stdout. It
  * ends when the program exits, `close()` kills it, or the connection is lost (the daemon then kills it). When the
  * program exits, the daemon kills whatever it started in its process group, so a wrapper such as `npx` that exits
  * leaves nothing running.
@@ -80,7 +80,10 @@ export class RemoteProcess {
  */
 export async function openProcess(connection: Connection, options: ProcessOptions): Promise<RemoteProcess> {
 	if (!(await connection.info()).features?.includes("process")) {
-		throw new RemoteError({ code: "not_supported", message: "The pi-env daemon cannot run processes; update it" });
+		throw new RemoteError({
+			code: "not_supported",
+			message: "The nycode-env daemon cannot run processes; update it",
+		});
 	}
 	const abort = new AbortController();
 	const started = Promise.withResolvers<RemoteProcess>();

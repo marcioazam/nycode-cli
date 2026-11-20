@@ -7,7 +7,7 @@
 // of this host's `event` messages unacknowledged (a full window drops a flush's events) and a FIFO of tickets naming
 // each message's sender. A served call's method runs under the call's carrier (slice 9).
 
-import type { TelemetryContext } from "@earendil-works/pi-telemetry";
+import type { TelemetryContext } from "@nycode/telemetry";
 import { type Context, withAbortSignal } from "../context/index.ts";
 import { ChordError, type FailureCause, isChordError, type Principal } from "../data/index.ts";
 import { asChordError } from "../data/internal.ts";

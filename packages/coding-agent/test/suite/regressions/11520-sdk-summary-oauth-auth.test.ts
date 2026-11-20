@@ -1,12 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-	type Api,
-	createAssistantMessageEventStream,
-	type Model,
-	type SimpleStreamOptions,
-} from "@earendil-works/pi-ai";
+import { type Api, createAssistantMessageEventStream, type Model, type SimpleStreamOptions } from "@nycode/ai";
 import { afterEach, describe, expect, it } from "vitest";
 import { AuthStorage } from "../../../src/core/auth-storage.ts";
 import { ModelRuntime } from "../../../src/core/model-runtime.ts";
@@ -25,7 +20,7 @@ describe("issue #11520 SDK summary OAuth auth", () => {
 	});
 
 	it("lets the runtime resolve stored OAuth for branch summaries", async () => {
-		const cwd = mkdtempSync(join(tmpdir(), "pi-11520-"));
+		const cwd = mkdtempSync(join(tmpdir(), "nycode-11520-"));
 		tempDirs.push(cwd);
 		const credentials = AuthStorage.inMemory({
 			"oauth-only-provider": {

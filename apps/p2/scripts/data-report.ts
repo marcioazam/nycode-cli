@@ -270,7 +270,7 @@ function main(args: readonly string[]): void {
 		const index = args.indexOf(name);
 		return index === -1 ? undefined : args[index + 1];
 	};
-	const dataDir = option("--data") ?? process.env.P2_DATA_DIR ?? join(homedir(), ".pi", "p2");
+	const dataDir = option("--data") ?? process.env.P2_DATA_DIR ?? join(homedir(), ".nycode", "p2");
 	const report = dataReport(dataDir);
 	const compare = option("--compare");
 	if (compare === undefined) {

@@ -1,4 +1,4 @@
-// The Harness moves the root and the conversations following the session's cwd (Pi Mobile 78056b34e) in the same start,
+// The Harness moves the root and the conversations following the session's cwd (Nycode Mobile 78056b34e) in the same start,
 // before it is live, with the followers its plugin's placement lists. The same start places own cwds a version 1
 // registry stored without their environment.
 import assert from "node:assert/strict";
@@ -13,7 +13,7 @@ import {
 	Harness as DurableHarness,
 	defineDoc,
 	ROOT_CONVERSATION_ID,
-} from "@earendil-works/pi-durable";
+} from "@nycode/durable";
 import { BACKGROUND_CONTEXT, whenLive } from "@p2/app/v1";
 import { createP2Models } from "../../plugins/models/models.ts";
 import { Subagents as Registry } from "../../plugins/subagents/contract.worker.ts";

@@ -8,7 +8,7 @@ hours (commit `2993f25d8`). This brief measures what p2 writes and why, and turn
 State: brief with measurements (2026-11-16). Nothing is built in p3: the p3 kit has no telemetry (`src/kit/start-server.ts`,
 `src/kit/worker.ts` take none). It comes after slice 25 in build order. It is base plumbing: every later slice's
 "Numbers" can then read its own metrics, and the decision "Startup building is measured with telemetry"
-(2026-11-06) needs it. Most of the work is in Chord and pi-telemetry, and each Chord change needs its own Chord
+(2026-11-06) needs it. Most of the work is in Chord and nycode-telemetry, and each Chord change needs its own Chord
 decision (below).
 
 **When the slice starts** (owner, 2026-11-16: the decisions wait for the slice): take the ten decisions below with
@@ -27,16 +27,16 @@ From p2's code (`plugins/telemetry/`, `src/hosts/server.ts`, `src/hosts/worker.t
 
 | p2 (BUILT) | p3 (PROPOSED) |
 | --- | --- |
-| `settings.json` `telemetry` (boolean, default off), read once at the server's start; a change needs a restart | no switch for the default: metrics and the traces worth keeping (decision 1) are always on. Full tracing is switched at run time, per session or for the Pi, for a limited time (decision 4) |
+| `settings.json` `telemetry` (boolean, default off), read once at the server's start; a change needs a restart | no switch for the default: metrics and the traces worth keeping (decision 1) are always on. Full tracing is switched at run time, per session or for the Nycode, for a limited time (decision 4) |
 | The server records to `<data>/telemetry.sqlite` (Chord's SQLite store: 7 days, a queue of 10,000 spans, a flush every second), its only writer, a private file never in a backup | the same file and the same rule (one writer, not in backups); a size budget replaces the 7 days (decision 5) |
-| Each worker records in memory (its host's spans, Durable's `pi.durable.*`, pi-ai's `pi.ai.*`) and sends everything to `WorkerTelemetry` every second and when it closes | each worker decides which of its spans to keep and sends only those, with its metrics (decisions 1 to 3) |
+| Each worker records in memory (its host's spans, Durable's `nycode.durable.*`, nycode-ai's `nycode.ai.*`) and sends everything to `WorkerTelemetry` every second and when it closes | each worker decides which of its spans to keep and sends only those, with its metrics (decisions 1 to 3) |
 | Owners' pages record (`data-p2-telemetry`, `startPage({ telemetry: true })`), send every 3 s and when hidden; only owners are admitted; 1,200 spans per page and minute | owners' pages record by the same keep rule; owners only (decision 8) |
 | `principalAttributes`: `p2.principal` (`owner:<access>`, `guest`, `worker`, `server`), a guest's id or a worker's session, never a name or email | `p3.principal` (`owner`, `person`, `worker`, `server`), a person's id, a worker's session; never a name or email |
 | `Traces` (server): reads with bounds (50 traces, 2,000 spans a trace, 1,000 metric rows, 8 filters); variant `owner`, variant `agent` for a session's worker, refused while the session is shared or locked | the same object in p3's `telemetry` plugin, plus the mode and the budget (Files). The agent's access follows a lock of slice 6 (`telemetry.read`, PROPOSED), not a hand-written check |
 | The Traces pane (search, a trace as a span tree on a timeline) and the command "Show traces" | carried to the views slice (14) and the web slice (16): this slice has no page UI |
 | The agent's code-mode tools `telemetry_find_traces`, `telemetry_get_trace`, `telemetry_find_metrics` (namespace `telemetry`, deferred) | the same three, plus `telemetry_trace` (start or stop full tracing of its own session, decision 4); they need code mode, so they land with slice 10, or here if slice 10 is built first |
 | `scripts/traces.ts` (read-only, from the checkout) | `p3 traces` (slice 26's command set): the same filters, read-only on the file |
-| `telemetry-off.test.ts`: off, nothing is opened and every read says "telemetry is off" | dropped: there is no off. A Pi with `--telemetry none` (PROPOSED, for benchmarks) uses Chord's NOOP adapter |
+| `telemetry-off.test.ts`: off, nothing is opened and every read says "telemetry is off" | dropped: there is no off. A Nycode with `--telemetry none` (PROPOSED, for benchmarks) uses Chord's NOOP adapter |
 
 ## Measurements: what p2 writes
 
@@ -96,12 +96,12 @@ Share of spans over the five runs (7,471 spans):
 | `chord.method` + `chord.call` | 32.2% | plugins telling the server things. One status report is three spans: the worker's call, the server's `p2.session-status.report` and the local forward to `p2.status-store.report` (12.6% together). The search feed's `cursor` and `index` are 11.7%; `p2.catalog.activity`, `markRead` |
 | `chord.activate`, `chord.open`, `chord.close` | 19.7% | objects activating, once per object, mostly at the worker's start and the page's load |
 | `chord.hold`, `chord.relay`, `chord.resolve` | 4.4% | the page's holds, relays |
-| `pi.durable.submit`, `pi.durable.phase`, `pi.ai.request` | **4.3%** | the run itself: what a person would look at |
+| `nycode.durable.submit`, `nycode.durable.phase`, `nycode.ai.request` | **4.3%** | the run itself: what a person would look at |
 
 - **The volume is granularity.** Chord records a span for every reaction and every internal hop, so a turn costs
   about 70 spans. Of those, about 3 describe the turn itself (the phase and the model request).
 - **Retention multiplied it:** 7 days at the phone's rate is about 7 GB.
-- **Idle costs nothing.** An idle Pi records no spans, only metrics.
+- **Idle costs nothing.** An idle Nycode records no spans, only metrics.
 
 ### Traces have no clean end
 
@@ -131,7 +131,7 @@ process can decide about alone.
 | every span but routines | 2,717 | 57% |
 
 - **A healthy turn keeps nothing.**
-- **A single time threshold keeps the wrong things.** With real models, a `pi.ai.request` takes 2 to 30 s, so a 1 s
+- **A single time threshold keeps the wrong things.** With real models, a `nycode.ai.request` takes 2 to 30 s, so a 1 s
   rule would keep every turn, and the routines that wait by design are always "slow".
 - **"Slow" must be a budget per span name.**
 
@@ -200,15 +200,15 @@ process can decide about alone.
 - **Histograms keep count, sum, min and max per 10 s** (`StoredMetric`, `packages/telemetry/src/index.ts`, BUILT): no
   buckets, so no percentiles.
 - **What the metrics answer today:**
-  - tokens and cost per model (`pi.ai.tokens`, `pi.ai.cost`);
-  - request and first-chunk durations (`pi.ai.request.duration`, `pi.ai.first_chunk.duration`);
-  - phase durations (`pi.durable.phase.duration`);
-  - reports (`pi.durable.reports`);
+  - tokens and cost per model (`nycode.ai.tokens`, `nycode.ai.cost`);
+  - request and first-chunk durations (`nycode.ai.request.duration`, `nycode.ai.first_chunk.duration`);
+  - phase durations (`nycode.durable.phase.duration`);
+  - reports (`nycode.durable.reports`);
   - Chord's cost counters.
 - **What they do not answer:**
   - failures by category: a failed span is only a span;
   - tool calls by tool name: `tool.name` is a span attribute only;
-  - the processes' memory: pi-telemetry has no gauge;
+  - the processes' memory: nycode-telemetry has no gauge;
   - a worker's start duration.
 
 ## The strategy, against the data
@@ -231,7 +231,7 @@ The owner's proposal (2026-11-16), point by point.
      exempt (decision 3).
    - **The buffer needs a cap:** a tree still open past it is dropped, counted.
    - **Recording stays on:** spans are still built in memory (3 µs each), so that the decision can be made.
-3. **Full tracing on demand, per session or for the Pi, for a limited time. Supported, and needed.** The keep rule
+3. **Full tracing on demand, per session or for the Nycode, for a limited time. Supported, and needed.** The keep rule
    loses the healthy path ("why was this turn slow?" when no span went over its budget). The cost of full mode is p2's
    measured one (70 spans, 43 KB a turn), bounded by its time and the size budget.
    - **New: the mode must change at run time.** p2 reads the switch once at the start and fixes each host's adapter at
@@ -246,13 +246,13 @@ The owner's proposal (2026-11-16), point by point.
 ## Decisions
 
 Postponed to the slice's start (owner, 2026-11-16). Each goes to the owner one at a time. His answers are recorded in `../decisions.md`. Those marked **Chord** also go
-into `packages/chord/docs/decisions.md`, since they change Chord or pi-telemetry.
+into `packages/chord/docs/decisions.md`, since they change Chord or nycode-telemetry.
 
 ### 1. What is recorded by default (Chord)
 
 **Problem.** p2 had two settings: everything (1 GB in 15 h) or nothing.
 
-**Example.** A `steps` prompt stores 211 spans. Of those, the 3 `pi.ai.request` spans and the 10 `pi.durable.phase`
+**Example.** A `steps` prompt stores 211 spans. Of those, the 3 `nycode.ai.request` spans and the 10 `nycode.durable.phase`
 spans describe the turns.
 
 **Options.**
@@ -281,19 +281,19 @@ to receive and hold every span to judge it, which keeps the link traffic the str
 **Recommendation: (b).** A failure or a slow callee shows up in the caller's own tree. Carriers still join the kept
 parts into one trace in the store.
 
-### 3. What "slow" means (pi-telemetry, Chord, Durable, pi-ai)
+### 3. What "slow" means (nycode-telemetry, Chord, Durable, nycode-ai)
 
 **Problem.** One threshold for every span keeps the wrong things.
 
 **Example.** With "≥ 1 s", the only trees kept are server routines that waited 81 s by design. With real models every
-`pi.ai.request` (2 to 30 s) would be kept.
+`nycode.ai.request` (2 to 30 s) would be kept.
 
 **Options.**
 - **(a) One threshold.**
 - **(b) A budget per span name in the schema:** PROPOSED `slowMs` on `TelemetrySpanDefinition`, and `waits: true` for
   spans whose length is waiting (`chord.routine`, `chord.hold`, `chord.relay`). Examples:
-  `chord.method` 1,000, `chord.activate` 2,000, `pi.durable.phase` 60,000, `pi.ai.request` 120,000, and a first-chunk
-  rule on the `pi.ai.first_chunk` event's time, 20,000.
+  `chord.method` 1,000, `chord.activate` 2,000, `nycode.durable.phase` 60,000, `nycode.ai.request` 120,000, and a first-chunk
+  rule on the `nycode.ai.first_chunk` event's time, 20,000.
 - **(c) Relative to each name's own history** (its 99th percentile): needs histogram buckets, which the store does
   not have.
 
@@ -307,13 +307,13 @@ parts into one trace in the store.
 server's work for it.
 
 **Options.**
-- **Scope:** a session, the Pi, or both.
+- **Scope:** a session, the Nycode, or both.
 - **Length:** a default of 30 minutes or 1 hour; a maximum of 24 hours or none.
 - **Who switches it:** the owner only, or also the agent of an owner's session for its own session (tool
   `telemetry_trace`, PROPOSED).
 - **How the mode travels (Chord):**
   - the worker follows its session's mode from a server object (`TelemetryMode`, PROPOSED);
-  - a carrier gains a flag (PROPOSED key `pi-trace-all`) so that every process records the rest of that trace fully;
+  - a carrier gains a flag (PROPOSED key `nycode-trace-all`) so that every process records the rest of that trace fully;
   - the recorder's mode becomes switchable (`tail` or `all`, PROPOSED).
 
 **Recommendation:** both scopes, 30 minutes by default, at most 24 hours, the owner and the owner's own agent, the
@@ -387,11 +387,11 @@ unbounded tree of decision 2.
 
 **Proposed metrics:**
 - `chord.failures { category }`: Chord's fixed error categories;
-- `pi.durable.tool.duration { tool, outcome }`;
+- `nycode.durable.tool.duration { tool, outcome }`;
 - `chord.worker.start.duration`;
 - `chord.telemetry.dropped { reason: "healthy" | "cap" | "queue" }`;
 - the process's memory, sampled every 10 s into a histogram (`process.memory { kind: "rss" | "heap" }`), since
-  pi-telemetry has no gauge.
+  nycode-telemetry has no gauge.
 
 **Options:** (a) all of them, (b) failures and tools only.
 
@@ -418,7 +418,7 @@ TelemetryRecorder, mode tail|all        SqliteTelemetry (maxBytes, rollups)     
  local trees buffered (cap 2,000)        own local trees decided the same way       same rule, spans only
  kept tree -> queue; dropped -> count    ingest: kept trees and metric rows,        PageTelemetry (owners only)
  metrics per series per 10 s              chord.host.kind stamped on metrics
-        |  WorkerTelemetry.ingest              ^ TelemetryMode: per session and Pi, with expiry
+        |  WorkerTelemetry.ingest              ^ TelemetryMode: per session and Nycode, with expiry
         +--------------------------------------+ (worker follows its session's mode)
 ```
 
@@ -441,7 +441,7 @@ TelemetryRecorder, mode tail|all        SqliteTelemetry (maxBytes, rollups)     
    - each worker makes a recorder and a sender, as Chord's kit worker does (`packages/chord/src/node/app/worker.ts`,
      BUILT).
 5. **The plugin** `apps/p3/plugins/telemetry/` (PROPOSED):
-   - the server object `Telemetry`: the owner's reads with p2's bounds, the mode per session and for the Pi with
+   - the server object `Telemetry`: the owner's reads with p2's bounds, the mode per session and for the Nycode with
      expiry, and the budget and the store's size;
    - `TelemetryMode`, which the worker reads with its admission;
    - the agent's tools come with code mode.
@@ -452,7 +452,7 @@ TelemetryRecorder, mode tail|all        SqliteTelemetry (maxBytes, rollups)     
 | --- | --- |
 | `packages/telemetry/src/index.ts` | `TelemetrySpanDefinition` gains `slowMs`, `waits`, `keep` |
 | `packages/chord/src/telemetry.ts` | Chord's spans get their budgets; new metrics (decision 9) |
-| `packages/durable/src/harness/telemetry.ts`, `packages/ai/src/telemetry.ts` | budgets of `pi.durable.*` and `pi.ai.*`; `pi.durable.tool.duration` |
+| `packages/durable/src/harness/telemetry.ts`, `packages/ai/src/telemetry.ts` | budgets of `nycode.durable.*` and `nycode.ai.*`; `nycode.durable.tool.duration` |
 | `packages/chord/src/telemetry-ingest/recorder.ts` | local trees, keep rule, mode, cap, drop counts |
 | `packages/chord/src/telemetry-ingest/facet.ts` | `chord.host.kind` on metric rows |
 | `packages/chord/src/telemetry-sqlite/index.ts`, `schema.ts`, `store.ts` | `maxBytes`, rollups, version 3 (incremental vacuum) |
@@ -461,11 +461,11 @@ TelemetryRecorder, mode tail|all        SqliteTelemetry (maxBytes, rollups)     
 | `apps/p3/plugins/telemetry/contract.ts`, `contract.server.ts`, `server.ts`, `worker.ts` | `Telemetry`, `TelemetryMode` |
 | `apps/p3/src/commands.ts` | `p3 traces` |
 | `apps/p3/bench/slice-28.ts` | the numbers below |
-| `apps/p3/test/telemetry*.test.ts`, Chord's and pi-telemetry's tests | below |
+| `apps/p3/test/telemetry*.test.ts`, Chord's and nycode-telemetry's tests | below |
 
 ## Tests, case by case (PROPOSED)
 
-Chord and pi-telemetry (each in the test file of its source):
+Chord and nycode-telemetry (each in the test file of its source):
 
 1. A healthy local tree is dropped and counted (`chord.telemetry.dropped { reason: "healthy" }`); nothing reaches the
    queue.
@@ -490,9 +490,9 @@ p3 (topology tier, then end to end):
 12. A healthy `steps` prompt stores 0 spans; the worker's link carries no spans for it.
 13. A tool that throws stores its phase's tree, and the server's tree for the same call when it failed there too.
 14. The owner switches full tracing on for one session: its next turn stores its whole trace (Chord's, Durable's and
-    pi-ai's spans, and the server's under it); another session stays on the keep rule; at the expiry the mode returns
+    nycode-ai's spans, and the server's under it); another session stays on the keep rule; at the expiry the mode returns
     by itself.
-15. Full tracing for the Pi, then a worker restart: the new worker reads the mode.
+15. Full tracing for the Nycode, then a worker restart: the new worker reads the mode.
 16. Reads: the owner's `Telemetry` finds traces and metrics with p2's bounds; a person is refused; a session's agent
     gets the variant its lock allows.
 17. `p3 traces` reads the file while the server writes it.
@@ -507,7 +507,7 @@ p3 (topology tier, then end to end):
 | a worker's telemetry bytes on its link per turn, keep rule | none beyond its metrics | about 22 KB |
 | metrics on the wire per process | ≤ 1 KB per 10 s | 5.7 KB/min for the worker |
 | metric rows on disk, one active session | ≤ 1.3 MB per hour of 10 s rows; rollups after 2 days | the same, kept 7 days |
-| disk written per hour, a Pi with one busy agent | ≤ 10 MB | 2.7 GiB at the phone's rate on a 1 GB file |
+| disk written per hour, a Nycode with one busy agent | ≤ 10 MB | 2.7 GiB at the phone's rate on a 1 GB file |
 | the store file | ≤ the budget (256 MB) plus one flush | grew without a size limit |
 | worker and server CPU per prompt, keep rule against no telemetry | within noise (medians of 20) | within noise |
 | recording a span (slayer) | ≤ 4 µs | 3.0 µs |
@@ -525,8 +525,8 @@ p3 (topology tier, then end to end):
 - Chord: `packages/chord/src/telemetry.ts`; `src/telemetry-ingest/` (`batch.ts`, `facet.ts`, `recorder.ts`,
   `sender.ts`); `src/telemetry-sqlite/` (`index.ts`, `schema.ts`, `store.ts`, `node.ts`); `src/sqlite/node.ts` (WAL,
   checkpoints); `src/node/app/app.ts` and `worker.ts` (the kit's telemetry path).
-- pi-telemetry: `packages/telemetry/README.md`, `src/index.ts`, `src/memory.ts`, `src/metrics.ts`.
-- Durable `packages/durable/src/harness/telemetry.ts`; pi-ai `packages/ai/src/telemetry.ts`.
+- nycode-telemetry: `packages/telemetry/README.md`, `src/index.ts`, `src/memory.ts`, `src/metrics.ts`.
+- Durable `packages/durable/src/harness/telemetry.ts`; nycode-ai `packages/ai/src/telemetry.ts`.
 - p2: `apps/p2/docs/p2-notes.md` "Telemetry"; `apps/p2/src/hosts/server.ts` (the telemetry parts), `worker.ts`,
   `web.ts`, `src/runtime/principals.ts`, `settings.ts`; `apps/p2/plugins/telemetry/` (all); `scripts/traces.ts`;
   `test/p2/telemetry.test.ts`, `telemetry-off.test.ts`, `telemetry-traces.test.ts`.
@@ -539,4 +539,4 @@ p3 (topology tier, then end to end):
 - **The agent's tools:** to slice 10, if code mode is not built first.
 - **The agent's read access:** as a lock, in slice 6.
 - **Export to an external backend** (an OpenTelemetry adapter): not planned.
-- **Histogram buckets for percentiles:** a pi-telemetry change, only when a decision needs percentiles.
+- **Histogram buckets for percentiles:** a nycode-telemetry change, only when a decision needs percentiles.

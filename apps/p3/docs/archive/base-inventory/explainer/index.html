@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Pi Roam: what the base must enable</title>
+<title>Nycode Roam: what the base must enable</title>
 <style>
 
 :root{--paper:#fbf8f2;--ink:#2a2723;--muted:#7b7468;--rule:#e3dbcc;--accent:#b4472f;--blue:#2e6a8a;--sand:#c2b18c;--soft:#f4eee2}
@@ -109,7 +109,7 @@ table{max-width:100%}
 </head>
 <body><div class="book">
 <section class="cover">
-  <div class="kicker">An explainer · Pi Roam base inventory · second edition · 2026-11-09</div>
+  <div class="kicker">An explainer · Nycode Roam base inventory · second edition · 2026-11-09</div>
   <h1>Everything<br>As a Plugin</h1>
   <p class="subtitle">The smallest set of base pieces with which chat assistants, orchestrators, triage apps, automations, stats, Discord and backups are all plugins</p>
   <div class="cover-stats"><div class="stat"><b>200+</b><span>use cases from three independent inventories</span></div><div class="stat"><b>17</b><span>base pieces after merging</span></div><div class="stat"><b>3</b><span>tiers: base code, core plugins, ordinary plugins</span></div><div class="stat"><b>0</b><span>permission engines in the base</span></div></div>
@@ -140,10 +140,10 @@ proposals, Durable and Chord APIs are real. Nothing is built.</p>
 <h2>Before we begin</h2>
 <p class="dropcap">Mario wants a personal assistant he talks to through iMessage, with almost no screen. Armin wants a Home conversation
 that sends work off to sessions in the background and shows an inbox of what needs him. The team wants the triage
-agent&#39;s issue analysis inside Pi, one tap from &quot;continue in a session&quot;. Someone wants cost statistics across every
+agent&#39;s issue analysis inside Nycode, one tap from &quot;continue in a session&quot;. Someone wants cost statistics across every
 session, someone else a Discord channel that gets its own locked-down session on its first message. And everyone wants
 backups, so a dead laptop costs nothing.</p>
-<p>None of these should be built into Pi. The question the owner set as the guiding light is the opposite one: <strong>does the
+<p>None of these should be built into Nycode. The question the owner set as the guiding light is the opposite one: <strong>does the
 base offer everything needed to build each of them as a plugin?</strong> Three subagents went broad, from different angles,
 and listed more than two hundred use cases with the base pieces each needs. This book is the merge: seventeen pieces,
 sorted into what must be base code, what can be a reloadable core plugin, and what is an ordinary plugin.</p>
@@ -199,7 +199,7 @@ while its worker is off.</p>
 </tr>
 <tr>
 <td>Bespoke apps</td>
-<td>the triage agent inside Pi, dashboards, boards, projects that become their own screens, agent-built views</td>
+<td>the triage agent inside Nycode, dashboards, boards, projects that become their own screens, agent-built views</td>
 </tr>
 <tr>
 <td>Coding workflows</td>
@@ -251,7 +251,7 @@ that must be readable while its worker is off (a Discord channel binding, a titl
 defines both: the session metadata store, then the session service.</p>
 <p>Names are proposals; Chord (<code>local</code>, <code>remote</code>, <code>keyed</code>, <code>defineRegistry</code>, <code>defineState</code>, <code>self.writable</code>), Durable
 (<code>Extension</code>, <code>ToolRegistration</code>, <code>PromptSection</code>, <code>ExecutionEnv</code>, <code>defineExtension</code>, <code>hook</code>, <code>ToolTask</code>,
-<code>GenerationTask</code>) and pi-ai (<code>Model</code>, <code>Models</code>) are real. Every block names its file, so it is clear which facets can
+<code>GenerationTask</code>) and nycode-ai (<code>Model</code>, <code>Models</code>) are real. Every block names its file, so it is clear which facets can
 import it: a plugin&#39;s <code>contract.ts</code> is bundled into all its facets, <code>contract.server.ts</code> only into server facets,
 <code>contract.worker.ts</code> only into worker facets, <code>contract.web.ts</code> only into page facets.</p>
 <h3 id="session-metadata">Session metadata</h3>
@@ -335,7 +335,7 @@ That is the snapshot filters receive below; there is no separate reader type.</p
 <span class="tk-k">export</span> <span class="tk-k">function</span> <span class="tk-f">defineSessionOrigin</span>&lt;S <span class="tk-k">extends</span> <span class="tk-t">Schema</span>&gt;(name: string, schema: S): <span class="tk-t">SessionOrigin</span>&lt;<span class="tk-t">Static</span>&lt;S&gt;&gt;;
 <span class="tk-k">export</span> <span class="tk-k">const</span> <span class="tk-t">OriginData</span> = <span class="tk-f">obj</span>({ name: <span class="tk-f">str</span>(), value: <span class="tk-k">unknown</span>() });
 
-<span class="tk-c">/** A model by provider and id, and a thinking level: the schemas of Durable's `ModelRef` and pi-ai's levels. */</span>
+<span class="tk-c">/** A model by provider and id, and a thinking level: the schemas of Durable's `ModelRef` and nycode-ai's levels. */</span>
 <span class="tk-k">export</span> <span class="tk-k">const</span> <span class="tk-t">ModelRef</span> = <span class="tk-f">obj</span>({ provider: <span class="tk-f">str</span>(), modelId: <span class="tk-f">str</span>() });
 <span class="tk-k">export</span> <span class="tk-k">const</span> <span class="tk-t">ThinkingLevel</span> = <span class="tk-f">oneOf</span>(<span class="tk-s">"off"</span>, <span class="tk-s">"minimal"</span>, <span class="tk-s">"low"</span>, <span class="tk-s">"medium"</span>, <span class="tk-s">"high"</span>, <span class="tk-s">"xhigh"</span>);
 
@@ -820,7 +820,7 @@ isolation (an OS, a VM or a remote service, never a hook); exactly-once external
 instead).</p>
 <p><strong>What was cut:</strong> compulsory resources, ACLs, projects, Home, inbox or ticket types in the base; a policy provider; a
 central event log; a second workflow engine; a stringly action bus; fixed UI slots per product; mandatory payload
-logging; compatibility with old pi&#39;s file formats and mutable events; live session sync.</p>
+logging; compatibility with old nycode&#39;s file formats and mutable events; live session sync.</p>
 </section>
 
 <section class="chapter epilogue" id="open-questions"><header class="opener"><div class="numeral">∴</div><h2>Open Questions</h2><p class="lede">Fifteen, five of them only the owner can decide.</p></header>
@@ -972,7 +972,7 @@ screen says plainly that plugins run in every session, locked or not.</p>
 </ol>
 </section>
 
-<p class="colophon">Pi Roam base inventory · explainer, second edition (types and worked features) · 2026-11-09</p>
+<p class="colophon">Nycode Roam base inventory · explainer, second edition (types and worked features) · 2026-11-09</p>
 </div></div>
 <script>(function activate(root) {
 	const replay = (f) => {

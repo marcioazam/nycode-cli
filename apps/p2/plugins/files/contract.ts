@@ -1,4 +1,4 @@
-import { arr, bytes, int, lit, nul, num, obj, opt, type Static, str, union } from "@earendil-works/pi-schema";
+import { arr, bytes, int, lit, nul, num, obj, opt, type Static, str, union } from "@nycode/schema";
 import { AttachmentSchema, local, MAX_ATTACHMENTS, method, param, remote, sessionHost } from "@p2/app/v1";
 
 export { type Attachment, AttachmentSchema, MAX_ATTACHMENTS } from "@p2/app/v1";
@@ -10,7 +10,7 @@ export const Attachments = local("p2.attachments", {
 	params: {},
 	members: {
 		/**
-		 * The files for a message to `conversation`, written to `~/.pi/p2/uploads/<session>/` of the machine where it
+		 * The files for a message to `conversation`, written to `~/.nycode/p2/uploads/<session>/` of the machine where it
 		 * works (this machine: the data directory's `uploads/<session>/`), before the message is admitted. Throws
 		 * "Unknown attachment" for an ID that is not an upload of this session.
 		 */

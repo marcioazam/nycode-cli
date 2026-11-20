@@ -1,6 +1,6 @@
 // Worker-side contracts of the location tools: the Durable document other worker plugins read (the workspace reopens
 // its backend when a pending move lands).
-import { defineDoc } from "@earendil-works/pi-durable";
+import { defineDoc } from "@nycode/durable";
 import type { Location } from "@p2/app/v1";
 
 /**

@@ -4,15 +4,7 @@
 // no tool entries), so there are no filters, folding or copying; labels are branch labels, shown on each branch's first
 // own message and edited for the branch holding the selected message; the instance theme and keymap (section 5.4)
 // replace the globals; message text and labels are server text (`lineText`).
-import {
-	type Component,
-	Container,
-	type Focusable,
-	Input,
-	Spacer,
-	Text,
-	truncateToWidth,
-} from "@earendil-works/pi-tui";
+import { type Component, Container, type Focusable, Input, Spacer, Text, truncateToWidth } from "@nycode/tui";
 import { keyHint, lineText } from "../render-context.ts";
 import { DynamicBorder, type SelectorContext } from "./selectors.ts";
 
@@ -203,7 +195,7 @@ function buildTree(nodes: readonly TreeSelectorNode[]): TreeNode[] {
 	return roots;
 }
 
-/** pi's label input, for a branch: Enter saves the trimmed text (empty: see `TreeSelectorComponent`), Escape cancels. */
+/** nycode's label input, for a branch: Enter saves the trimmed text (empty: see `TreeSelectorComponent`), Escape cancels. */
 class LabelInput implements Component, Focusable {
 	private readonly input = new Input();
 	private readonly ctx: SelectorContext;
@@ -253,7 +245,7 @@ class LabelInput implements Component, Focusable {
 }
 
 /**
- * pi's `/tree` selector over the session's branches: Enter continues the session at the chosen message; the label key
+ * nycode's `/tree` selector over the session's branches: Enter continues the session at the chosen message; the label key
  * renames the branch holding the selected message (`onRename`; empty resets conversation 1 to the session title). The
  * owner of the selector shows a saved label with `setLabel`.
  */

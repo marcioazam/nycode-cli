@@ -226,7 +226,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "pi-env"
+name = "nycode-env"
 version = "0.1.0"
 dependencies = [
  "encoding_rs",

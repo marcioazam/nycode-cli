@@ -1,9 +1,9 @@
-// The chat editor's completion (p2-tui-port.md section 8.4, P7b): pi-tui's CombinedAutocompleteProvider behavior over
+// The chat editor's completion (p2-tui-port.md section 8.4, P7b): nycode-tui's CombinedAutocompleteProvider behavior over
 // p2 sources. `/` goes to the command registry's slash completion; `@prefix` asks the session's FileIndex (ranked like
-// pi's `@`); a forced Tab on a path-like token lists that directory (`FileIndex.list`) and filters it locally. Never
-// pi-tui's own provider: it reads the local filesystem and spawns fd. Requests are aborted when superseded (the
+// nycode's `@`); a forced Tab on a path-like token lists that directory (`FileIndex.list`) and filters it locally. Never
+// nycode-tui's own provider: it reads the local filesystem and spawns fd. Requests are aborted when superseded (the
 // editor's signal) and debounced by the editor for `@`.
-import type { AutocompleteItem, AutocompleteProvider, AutocompleteSuggestions } from "@earendil-works/pi-tui";
+import type { AutocompleteItem, AutocompleteProvider, AutocompleteSuggestions } from "@nycode/tui";
 import {
 	applyFileCompletion,
 	atItems,
@@ -64,7 +64,7 @@ export class FileCompletionProvider implements AutocompleteProvider {
 		if (at !== null) {
 			this.lastKind = "file";
 			const { rawPrefix, isQuotedPrefix } = parsePathPrefix(at);
-			// `@pi` is chat mode's mention, never a file; in chat mode it is offered first (section 8.4).
+			// `@nycode` is chat mode's mention, never a file; in chat mode it is offered first (section 8.4).
 			if (isMentionToken(at, this.mentions())) return null;
 			const mention: AutocompleteItem[] = mentionItems(rawPrefix, this.mentions());
 			if (outOfScope(rawPrefix)) {
@@ -85,7 +85,7 @@ export class FileCompletionProvider implements AutocompleteProvider {
 			return this.slash.getSuggestions(lines, cursorLine, cursorCol, options);
 		}
 		if (!options.force) return null;
-		// Tab in a command's argument (`/cd sr`): the command's own completion first (pi's argument completions), then
+		// Tab in a command's argument (`/cd sr`): the command's own completion first (nycode's argument completions), then
 		// files as anywhere else.
 		if (/^\s*\/\S+\s/.test(before)) {
 			const own = await this.slash.getSuggestions(lines, cursorLine, cursorCol, options);

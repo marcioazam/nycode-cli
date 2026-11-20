@@ -1,5 +1,5 @@
 {
-	"name": "@earendil-works/chord",
+	"name": "@nycode/chord",
 	"version": "1.6.0",
 	"description": "Object runtime for apps across processes: contracts, documents, a store, links, plugins with hot reload, HTTP, workers, web and terminal clients",
 	"type": "module",
@@ -163,15 +163,15 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/earendil-works/pi.git",
+		"url": "git+https://github.com/marcioazam/nycode-cli.git",
 		"directory": "packages/chord"
 	},
 	"engines": {
 		"node": ">=22.19.0"
 	},
 	"dependencies": {
-		"@earendil-works/pi-schema": "1.6.0",
-		"@earendil-works/pi-telemetry": "1.6.0"
+		"@nycode/schema": "1.6.0",
+		"@nycode/telemetry": "1.6.0"
 	},
 	"peerDependencies": {
 		"esbuild": "^0.28.2",

@@ -7,7 +7,7 @@ export interface AuthOutput {
 	error(line: string): void;
 }
 
-/** Line-based terminal I/O for `pi auth login`. Prompts reject when `signal` aborts. */
+/** Line-based terminal I/O for `nycode auth login`. Prompts reject when `signal` aborts. */
 export interface LoginTerminal extends AuthOutput {
 	/** Whether stdin and stdout are a terminal; login prompts need one. */
 	interactive: boolean;

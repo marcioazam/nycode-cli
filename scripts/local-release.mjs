@@ -47,24 +47,24 @@ function buildBunBinaryRelease(targetDirectory, archiveDirectory) {
 	], { stdio: "inherit" });
 	rmSync(targetDirectory, { force: true, recursive: true });
 	cpSync(join(binaryBuildDirectory, platform), targetDirectory, { recursive: true });
-	const archiveName = platform.startsWith("windows-") ? `pi-${platform}.zip` : `pi-${platform}.tar.gz`;
+	const archiveName = platform.startsWith("windows-") ? `nycode-${platform}.zip` : `nycode-${platform}.tar.gz`;
 	cpSync(join(binaryBuildDirectory, archiveName), join(archiveDirectory, archiveName));
 	return platform;
 }
 
-function createPiShim(installDirectory) {
+function createNycodeShim(installDirectory) {
 	const binDirectory = join(installDirectory, "node_modules", ".bin");
 	if (process.platform === "win32") {
-		if (existsSync(join(binDirectory, "pi.cmd"))) {
-			writeFileSync(join(installDirectory, "pi.cmd"), '@ECHO off\r\n"%~dp0node_modules\\.bin\\pi.cmd" %*\r\n');
-			writeFileSync(join(installDirectory, "pi.ps1"), '& "$PSScriptRoot/node_modules/.bin/pi.ps1" @args\n');
+		if (existsSync(join(binDirectory, "nycode.cmd"))) {
+			writeFileSync(join(installDirectory, "nycode.cmd"), '@ECHO off\r\n"%~dp0node_modules\\.bin\\nycode.cmd" %*\r\n');
+			writeFileSync(join(installDirectory, "nycode.ps1"), '& "$PSScriptRoot/node_modules/.bin/nycode.ps1" @args\n');
 			return;
 		}
-		writeFileSync(join(installDirectory, "pi.cmd"), '@ECHO off\r\n"%~dp0node_modules\\.bin\\pi.exe" %*\r\n');
-		writeFileSync(join(installDirectory, "pi.ps1"), '& "$PSScriptRoot/node_modules/.bin/pi.exe" @args\n');
+		writeFileSync(join(installDirectory, "nycode.cmd"), '@ECHO off\r\n"%~dp0node_modules\\.bin\\nycode.exe" %*\r\n');
+		writeFileSync(join(installDirectory, "nycode.ps1"), '& "$PSScriptRoot/node_modules/.bin/nycode.exe" @args\n');
 		return;
 	}
-	symlinkSync(join("node_modules", ".bin", "pi"), join(installDirectory, "pi"));
+	symlinkSync(join("node_modules", ".bin", "nycode"), join(installDirectory, "nycode"));
 }
 
 const { values } = parseArgs({
@@ -92,7 +92,7 @@ const options = {
 };
 const repoRoot = process.cwd();
 const rootPackageJson = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
-if (rootPackageJson.name !== "pi-monorepo") throw new Error("Run this script from the repository root");
+if (rootPackageJson.name !== "nycode-monorepo") throw new Error("Run this script from the repository root");
 
 execNpmSync(["run", "generate:models"], { cwd: repoRoot, stdio: "inherit" });
 if (!options.skipCheck) execNpmSync(["run", "check"], { cwd: repoRoot, stdio: "inherit" });
@@ -114,7 +114,7 @@ if (!options.skipTest) execFileSync("bash", ["./test.sh"], { cwd: repoRoot, stdi
 let binaryPlatform;
 if (!options.skipInstall) {
 	binaryPlatform = buildBunBinaryRelease(binaryDirectory, outDir);
-	const validationRoot = mkdtempSync(join(tmpdir(), "pi-local-release-consumers-"));
+	const validationRoot = mkdtempSync(join(tmpdir(), "nycode-local-release-consumers-"));
 	try {
 		for (const pkg of artifactSet.packages) {
 			const directory = pkg.name === codingAgentName
@@ -124,12 +124,12 @@ if (!options.skipInstall) {
 			smokeTestNpmConsumer({ artifactSet, directory, packageName: pkg.name });
 			if (pkg.name === codingAgentName) smokeTestCodingAgent(directory);
 		}
-		createPiShim(nodeInstallDirectory);
+		createNycodeShim(nodeInstallDirectory);
 
 		if (!options.skipBunInstall) {
 			installConsumer({ artifactSet, directory: bunInstallDirectory, packageManager: "bun", packageNames: [codingAgentName] });
 			smokeTestCodingAgent(bunInstallDirectory, "bun");
-			createPiShim(bunInstallDirectory);
+			createNycodeShim(bunInstallDirectory);
 		}
 	} finally {
 		rmSync(validationRoot, { force: true, recursive: true });
@@ -144,19 +144,19 @@ for (const pkg of artifactSet.packages) console.log(`  ${pkg.tarballPath}`);
 if (!options.skipInstall) {
 	console.log("\nLocal Bun binary release:");
 	console.log(`  ${binaryDirectory}`);
-	console.log(`  ${join(outDir, `pi-${binaryPlatform}.${String(binaryPlatform).startsWith("windows-") ? "zip" : "tar.gz"}`)}`);
+	console.log(`  ${join(outDir, `nycode-${binaryPlatform}.${String(binaryPlatform).startsWith("windows-") ? "zip" : "tar.gz"}`)}`);
 	console.log("\nRun the local Bun binary release from outside the repository:");
-	console.log(`  ${join(binaryDirectory, String(binaryPlatform).startsWith("windows-") ? "pi.exe" : "pi")} --help`);
+	console.log(`  ${join(binaryDirectory, String(binaryPlatform).startsWith("windows-") ? "nycode.exe" : "nycode")} --help`);
 
 	console.log("\nIsolated npm install:");
 	console.log(`  ${nodeInstallDirectory}`);
 	console.log("\nRun the locally packed npm CLI from outside the repository:");
-	console.log(`  ${join(nodeInstallDirectory, process.platform === "win32" ? "pi.cmd" : "pi")} --help`);
+	console.log(`  ${join(nodeInstallDirectory, process.platform === "win32" ? "nycode.cmd" : "nycode")} --help`);
 
 	if (!options.skipBunInstall) {
 		console.log("\nIsolated Bun package install:");
 		console.log(`  ${bunInstallDirectory}`);
 		console.log("\nRun the locally packed Bun package CLI from outside the repository:");
-		console.log(`  ${join(bunInstallDirectory, process.platform === "win32" ? "pi.cmd" : "pi")} --help`);
+		console.log(`  ${join(bunInstallDirectory, process.platform === "win32" ? "nycode.cmd" : "nycode")} --help`);
 	}
 }

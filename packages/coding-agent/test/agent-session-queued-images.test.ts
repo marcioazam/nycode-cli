@@ -1,5 +1,5 @@
 import { deflateSync } from "node:zlib";
-import type { ImageContent, TextContent } from "@earendil-works/pi-ai";
+import type { ImageContent, TextContent } from "@nycode/ai";
 import { afterEach, describe, expect, it } from "vitest";
 import { createHarness, type Harness } from "./test-harness.ts";
 

@@ -1,5 +1,5 @@
 // Browser-only component fixture, bundled by `Browser.loadFixture` into a disposable localhost page.
-import type { ConversationView } from "@earendil-works/pi-durable";
+import type { ConversationView } from "@nycode/durable";
 import { createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { buildTranscript } from "../../src/web/transcript.ts";

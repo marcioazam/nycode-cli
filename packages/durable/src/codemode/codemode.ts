@@ -7,7 +7,7 @@
  *
  * waits for the last of 200 reads would lose the script and every read it made.
  *
- * Solution: deterministic replay (`CodemodeSandboxBase.start()` in pi-codemode). The VM only runs when the host hands
+ * Solution: deterministic replay (`CodemodeSandboxBase.start()` in nycode-codemode). The VM only runs when the host hands
  * it a result; given the same start data, clock, seed, and results in the same order, it makes the same calls with
  * the same arguments. The tool is replay-safe: after a restart, `execute()` runs again, starts the script again from
  * the stored start data, and hands it the results it got before, in the order it got them, from a journal written
@@ -15,9 +15,9 @@
  * unless their own replay policy reruns them; their results come from `NestedCallDoc`. Then the script continues live.
  *
  * Documents, scoped to the code mode call's task and gone when it settles:
- * - `pi.codemode.run`: the start data, written once before the VM starts, and the outcome, written once when the call
+ * - `nycode.codemode.run`: the start data, written once before the VM starts, and the outcome, written once when the call
  *   decides it (with the store writes, in one transaction), so a rerun after that returns it without a VM.
- * - `pi.codemode.journal`: one entry per delivered result, in delivery order: the VM call ID, the clock value, the
+ * - `nycode.codemode.journal`: one entry per delivered result, in delivery order: the VM call ID, the clock value, the
  *   calls the VM had issued after processing it (once acknowledged), and a global's outcome, which nothing else stores.
  *
  * Each result's acknowledged call count is recorded with the next journal commit, or at once when the VM has processed
@@ -34,20 +34,21 @@
  * or when the script diverges: it makes another call, or calls in another order, than the journal says. Each ends the
  * call with an error result.
  */
-import type { Context } from "@earendil-works/chord/context";
-import { ownedSlice } from "@earendil-works/chord/delta";
-import { copyJson, type JsonValue } from "@earendil-works/chord/json";
-import type { TextContent } from "@earendil-works/pi-ai";
-import { toCodemodeIdentifier } from "@earendil-works/pi-codemode/declarations";
+
+import type { TextContent } from "@nycode/ai";
+import type { Context } from "@nycode/chord/context";
+import { ownedSlice } from "@nycode/chord/delta";
+import { copyJson, type JsonValue } from "@nycode/chord/json";
+import { toCodemodeIdentifier } from "@nycode/codemode/declarations";
 import type {
 	CodemodeHostCall,
 	CodemodeOutcome,
 	CodemodeResult,
 	CodemodeRun,
 	CodemodeSandboxBase,
-} from "@earendil-works/pi-codemode/portable";
-import { CODEMODE_SOURCE_GRAMMAR, parseCodemodeSource } from "@earendil-works/pi-codemode/source";
-import { obj, type Static, str } from "@earendil-works/pi-schema";
+} from "@nycode/codemode/portable";
+import { CODEMODE_SOURCE_GRAMMAR, parseCodemodeSource } from "@nycode/codemode/source";
+import { obj, type Static, str } from "@nycode/schema";
 import { defineDoc } from "../documents.ts";
 import type { ExecutionEnv } from "../env/index.ts";
 import { errorMessage } from "../errors.ts";
@@ -92,7 +93,7 @@ export const CODEMODE_TOOL_NAME = "codemode";
 /** One tool as the script sees it: `tools.<jsName>`. */
 /**
  * `structured`: the tool declares `structuredOutputSchema`, so an error result with a value resolves with it.
- * `hidden`: an internal tool of this extension (`pi.codemode.*`), which scripts reach only through a global such as
+ * `hidden`: an internal tool of this extension (`nycode.codemode.*`), which scripts reach only through a global such as
  * `models.classify()`; never in `tools`, `ALL_TOOLS`, or tool search.
  */
 type DeclaredTool = { name: string; jsName: string; description: string; structured?: true; hidden?: true };
@@ -127,7 +128,7 @@ type RunState = {
 };
 
 export const CodemodeRunDoc = defineDoc<RunState>({
-	kind: "pi.codemode.run",
+	kind: "nycode.codemode.run",
 	version: 1,
 	scope: "task",
 	initial: () => ({}),
@@ -153,7 +154,7 @@ type JournalState = {
 };
 
 export const CodemodeJournalDoc = defineDoc<JournalState>({
-	kind: "pi.codemode.journal",
+	kind: "nycode.codemode.journal",
 	version: 1,
 	scope: "task",
 	initial: () => ({ entries: [] }),
@@ -166,7 +167,7 @@ export const CodemodeJournalDoc = defineDoc<JournalState>({
  * point, so a fork sees the values as they were when its entry was committed.
  */
 export const CodemodeStoreDoc = defineDoc<{ values: Record<string, JsonValue> }>({
-	kind: "pi.codemode.store",
+	kind: "nycode.codemode.store",
 	version: 1,
 	scope: "conversation",
 	history: "rewindable",
@@ -190,7 +191,7 @@ export type CodemodeNestedCall = {
 
 /**
  * The code mode call's details, in its result: its tool calls in the order it made them, with their status. Calls to
- * globals are not listed. While the script runs, UIs show its nested calls from `pi.live.nestedTools`, so the list is
+ * globals are not listed. While the script runs, UIs show its nested calls from `nycode.live.nestedTools`, so the list is
  * written once, with the result.
  */
 export type CodemodeToolDetails = {
@@ -243,7 +244,7 @@ export function createCodemodeTool(options: CodemodeToolOptions): ToolRegistrati
 		description: codemodeDescription(options.models !== false),
 		parameters: codemodeSchema,
 		outputLimits: OUTPUT_LIMITS,
-		// Capable models write the script as raw text instead of a JSON-escaped string; pi-ai applies it only for them.
+		// Capable models write the script as raw text instead of a JSON-escaped string; nycode-ai applies it only for them.
 		constrainedSampling: { type: "grammar", variants: { openai_lark: CODEMODE_SOURCE_GRAMMAR } },
 		callers: ["model"],
 		replay: "safe",
@@ -602,7 +603,7 @@ class CodemodeCall {
 			this.context,
 		);
 		if (recorded !== undefined) return recorded;
-		const created = await env.createTempDir("pi-codemode-", this.context);
+		const created = await env.createTempDir("nycode-codemode-", this.context);
 		if (!created.ok) throw new Error(created.error.message);
 		return this.api.commit(async (tx) => {
 			const run = await tx.doc(CodemodeRunDoc, this.api.taskId);

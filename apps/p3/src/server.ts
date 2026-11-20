@@ -17,20 +17,14 @@ import {
 	openStore,
 	orderedEntries,
 	sqliteBackend,
-} from "@earendil-works/chord";
-import { type Context, withAbortSignal } from "@earendil-works/chord/context";
-import { createHttp, type HttpError, HttpListener, type ListenAddress } from "@earendil-works/chord/http";
-import { createPlugins, type PluginsError } from "@earendil-works/chord/plugins";
-import { openNodeSqliteDatabase } from "@earendil-works/chord/sqlite/node";
-import { processLock } from "@earendil-works/chord/workers/child";
-import { Server, Session } from "@earendil-works/p3/v1";
-import {
-	LinkOpened,
-	type LinkOpenedHook,
-	ServerRuntime,
-	SessionRoute,
-	WorkerRunners,
-} from "@earendil-works/p3/v1/server";
+} from "@nycode/chord";
+import { type Context, withAbortSignal } from "@nycode/chord/context";
+import { createHttp, type HttpError, HttpListener, type ListenAddress } from "@nycode/chord/http";
+import { createPlugins, type PluginsError } from "@nycode/chord/plugins";
+import { openNodeSqliteDatabase } from "@nycode/chord/sqlite/node";
+import { processLock } from "@nycode/chord/workers/child";
+import { Server, Session } from "@nycode/p3/v1";
+import { LinkOpened, type LinkOpenedHook, ServerRuntime, SessionRoute, WorkerRunners } from "@nycode/p3/v1/server";
 import { API, KINDS, SERVER, workerPrincipal } from "./app.ts";
 import { openDataDir, privateDirectory, privateStore, writePrivate } from "./files.ts";
 import { SERVER_MODULES } from "./modules-server.ts";

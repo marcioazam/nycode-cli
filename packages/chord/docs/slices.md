@@ -76,7 +76,7 @@ slice spec's section citations are for orientation, not a reading limit (owner, 
   (`remote/hold.ts`), a route's admission (`host/route-admission.ts`, the gated path and its fence in
   `remote/path.ts`, `Channel.fence`, `createWorkers`' `admit`), `deleteHostData(address, ctx, { plugin })`; example
   69.
-- **Chord's shared code** (upstream pi): `src/watch.ts` (`Watch`, `NativeWatch`, `WatchHandle`, `WatchEnd`,
+- **Chord's shared code** (upstream nycode): `src/watch.ts` (`Watch`, `NativeWatch`, `WatchHandle`, `WatchEnd`,
   `NativeWatchable`), Delta (`track`, `diffRevisions`, `applyImmutable`, encoders, `PendingOps`, `appendText`),
   context, JSON, output, SQLite drivers.
 
@@ -243,7 +243,7 @@ deleted (the slice's spec and code are the record). Moved here from `carry-over.
 - **The park deadline's per-type override** is not built: a parked call waits the reference's `readyTimeout`. Build
   it only if a real case needs it. (Slice 3b spec.)
 - No CBOR; revisit only if benchmarks show encoding as a bottleneck (slice 3a's and 4a's do not). (L2 decisions.)
-- **The Durable conversation view's size on re-hold** is a known cost until pi #11327 (windowed view) lands. (Slice 4.)
+- **The Durable conversation view's size on re-hold** is a known cost until nycode #11327 (windowed view) lands. (Slice 4.)
 
 ### Any slice (lifetimes)
 
@@ -364,7 +364,7 @@ Left by the first part itself:
 ### When v2 goes upstream
 
 - `mapShared` lives in `src/state/derive.ts` and moves into Delta. (L2 decisions.)
-- `withLinkedAbortSignal` lives in `src/host/ctx.ts` and moves next to `withAbortSignal` in `src/context` (pi
+- `withLinkedAbortSignal` lives in `src/host/ctx.ts` and moves next to `withAbortSignal` in `src/context` (nycode
   first): a call's context linked to long-lived abort signals until the call settles, instead of `AbortSignal.any`,
   which keeps cleanup entries per call while its sources live before Node 24.16.0 (nodejs/node#62367). (Slice 4a.)
 

@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
-import { getSystemMessageText, renderSystemMessageUpdate, type SystemMessage } from "@earendil-works/pi-ai";
+import { getSystemMessageText, renderSystemMessageUpdate, type SystemMessage } from "@nycode/ai";
 import { describe, expect, it } from "vitest";
 
 interface SystemHelpers {

@@ -3,8 +3,9 @@
 // demand. A client that drops resumes after the newest entry it has.
 // Run from packages/durable:
 //   node --conditions=source --experimental-strip-types test/examples/31-transcript.ts
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import { createModels } from "@earendil-works/pi-ai/models";
+
+import { createModels } from "@nycode/ai/models";
+import { BACKGROUND_CONTEXT } from "@nycode/chord/context";
 import {
 	ConversationTranscript,
 	createRegistry,

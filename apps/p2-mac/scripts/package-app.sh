@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Packages Pi.app as a release that needs nothing installed: this commit's p2 with its production dependencies and
+# Packages Nycode.app as a release that needs nothing installed: this commit's p2 with its production dependencies and
 # the Node it runs on go into Contents/Resources (ServerConfig.bundled finds them there). Then it signs the app,
 # checks that the signed server starts, builds a DMG, notarizes it and signs it for Sparkle. Output in build/dist:
 # the DMG and build.json, the fields pkg.earendil.com's app upload takes.
@@ -19,11 +19,11 @@ root="$(cd ../.. && pwd)"
 NODE_VERSION=v26.13.1
 NODE_SHA256=af6202f5370a3a5209e85dc543758dfd9f44c8726626a236730cd603a67a8559
 MINIMUM_SYSTEM_VERSION=14.0
-FEED_URL="${FEED_URL:-https://pkg.earendil.com/-/apps/pi-mac/nightly/appcast.xml}"
+FEED_URL="${FEED_URL:-https://pkg.earendil.com/-/apps/nycode-mac/nightly/appcast.xml}"
 SIGN_IDENTITY="${SIGN_IDENTITY:--}"
 
 work=build/package
-app=build/Pi.app
+app=build/Nycode.app
 dist=build/dist
 rm -rf "$work" "$dist"
 mkdir -p "$work" "$dist" build/cache
@@ -64,8 +64,8 @@ cp "$node_dir/LICENSE" "$resources/node/LICENSE"
 # The source resolver (apps/p2/src/source-resolver.ts) reads the root tsconfig's paths; packages resolve through it.
 cp "$src/package.json" "$src/tsconfig.json" "$src/tsconfig.base.json" "$resources/p2/"
 cp -R "$src/node_modules" "$resources/p2/node_modules"
-# The workspace packages p2 uses are the ones npm linked: node_modules/@earendil-works/x -> ../../packages/x.
-for link in "$src"/node_modules/@earendil-works/*; do
+# The workspace packages p2 uses are the ones npm linked: node_modules/@nycode/x -> ../../packages/x.
+for link in "$src"/node_modules/@nycode/*; do
 	[ -L "$link" ] || continue
 	package="$(readlink "$link")"
 	package="${package#../../}"
@@ -83,12 +83,12 @@ set_plist() { /usr/libexec/PlistBuddy -c "Delete :$1" "$plist" >/dev/null 2>&1 |
 set_plist CFBundleVersion string "$version"
 set_plist CFBundleShortVersionString string "$short_version"
 set_plist LSMinimumSystemVersion string "$MINIMUM_SYSTEM_VERSION"
-set_plist PiCommit string "$sha"
+set_plist NycodeCommit string "$sha"
 if [ -n "${SPARKLE_PUBLIC_KEY:-}" ]; then
 	set_plist SUFeedURL string "$FEED_URL"
 	set_plist SUPublicEDKey string "$SPARKLE_PUBLIC_KEY"
 	set_plist SUEnableAutomaticChecks bool true
-	# Downloads in the background and installs when Pi quits.
+	# Downloads in the background and installs when Nycode quits.
 	set_plist SUAutomaticallyUpdate bool true
 fi
 
@@ -118,14 +118,14 @@ codesign --verify --deep --strict "$app"
 
 ./scripts/smoke-app.sh "$app"
 
-file="Pi-$short_version-$version.dmg"
+file="Nycode-$short_version-$version.dmg"
 dmg="$dist/$file"
 staging="$work/dmg"
 mkdir -p "$staging"
-ditto "$app" "$staging/Pi.app"
+ditto "$app" "$staging/Nycode.app"
 ln -s /Applications "$staging/Applications"
 # HFS+: an APFS image of the same app compresses to more than twice the size.
-hdiutil create -quiet -volname Pi -srcfolder "$staging" -fs HFS+ -format ULMO -ov "$dmg"
+hdiutil create -quiet -volname Nycode -srcfolder "$staging" -fs HFS+ -format ULMO -ov "$dmg"
 if [ "$SIGN_IDENTITY" != "-" ]; then codesign --force --sign "$SIGN_IDENTITY" --timestamp "$dmg"; fi
 
 if [ -n "${NOTARY_KEY:-}" ]; then

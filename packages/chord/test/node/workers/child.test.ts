@@ -1,4 +1,4 @@
-// Tests of the worker's side as its own entry point (`@earendil-works/chord/workers/child`): importing it loads no
+// Tests of the worker's side as its own entry point (`@nycode/chord/workers/child`): importing it loads no
 // esbuild, so a forked worker does not pay for the server's worker base build.
 
 import { execFileSync } from "node:child_process";

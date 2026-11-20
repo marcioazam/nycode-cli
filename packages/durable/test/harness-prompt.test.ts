@@ -1,5 +1,5 @@
-import type { SystemMessage, Tool } from "@earendil-works/pi-ai";
-import { getCurrentTools, toToolDeclaration } from "@earendil-works/pi-ai/utils/transcript";
+import type { SystemMessage, Tool } from "@nycode/ai";
+import { getCurrentTools, toToolDeclaration } from "@nycode/ai/utils/transcript";
 import {
 	type Conversation,
 	createRegistry,
@@ -11,8 +11,8 @@ import {
 	SystemEntry,
 	type ToolRegistration,
 	wrapSection,
-} from "@earendil-works/pi-durable";
-import { obj } from "@earendil-works/pi-schema";
+} from "@nycode/durable";
+import { obj } from "@nycode/schema";
 import { describe, expect, it } from "vitest";
 import { resolveAgent, resolveSettings } from "../src/harness/agent.ts";
 import { planSystemEntries, renderSections, replaySections } from "../src/harness/prompt.ts";
@@ -47,7 +47,7 @@ async function root(): Promise<Conversation> {
 
 async function lastSystemId(conversation: Conversation): Promise<EntryId> {
 	const page = await conversation.entries({}, 100, undefined, context);
-	return page.items.find((entry) => entry.kind === "pi.system")!.id;
+	return page.items.find((entry) => entry.kind === "nycode.system")!.id;
 }
 
 async function marker(conversation: Conversation, head: EntryId | "self"): Promise<EntryId> {
@@ -171,7 +171,7 @@ describe("system prompt preparation", () => {
 		const conversation = await root();
 		await apply(conversation, { a: "1", b: "2" });
 		await conversation.commit(
-			(tx) => tx.appendEntry(conversation.id, { kind: "pi.user", model: [user("hi")] }),
+			(tx) => tx.appendEntry(conversation.id, { kind: "nycode.user", model: [user("hi")] }),
 			context,
 		);
 		await apply(conversation, { a: "1", b: "20" });

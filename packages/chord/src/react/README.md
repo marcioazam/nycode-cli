@@ -1,6 +1,6 @@
 # react
 
-React bindings (slice 11 §3, decision "Slice 11, P7"): `@earendil-works/chord/react`; optional (React is an optional
+React bindings (slice 11 §3, decision "Slice 11, P7"): `@nycode/chord/react`; optional (React is an optional
 peer), non-React apps never load it. No components, no styling.
 
 - `HostProvider({ host })`, `useHost()`.

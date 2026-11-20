@@ -1,6 +1,6 @@
 // The sessions plugin's worker facet: each worker greets with its process id.
 
-import { constant, defineFacet } from "@earendil-works/chord";
+import { constant, defineFacet } from "@nycode/chord";
 import { Greeting } from "./contract.ts";
 
 export default defineFacet((host) =>

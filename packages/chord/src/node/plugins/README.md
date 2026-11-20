@@ -5,9 +5,9 @@ plugin directories and single-file plugins found, each facet built into a script
 the app's versioned API) and evaluated on Node, loaded and reloaded per plugin, watched, rolled out, installed from git
 or npm, and tested alone. A Chord app modifies itself (the owner or an agent edits a plugin while it runs), so this is
 core machinery, no dev mode. Node-only (`fs`, esbuild, `vm`); the kernel stays portable and takes facets however they
-were made. esbuild is an optional peer dependency of `@earendil-works/chord`, imported only here. Exported as
-`@earendil-works/chord/plugins`; the plugin runtime alone (no esbuild, no watcher: what a worker evaluates with) as
-`@earendil-works/chord/plugins/runtime`.
+were made. esbuild is an optional peer dependency of `@nycode/chord`, imported only here. Exported as
+`@nycode/chord/plugins`; the plugin runtime alone (no esbuild, no watcher: what a worker evaluates with) as
+`@nycode/chord/plugins/runtime`.
 
 ## For apps (`index.ts`)
 
@@ -29,7 +29,7 @@ await plugins.rollout([plugins.step("server", server), workers.step("workers")],
   bundled, `peerDependencies` are host packages, `"chord": { "external": [...] }` keeps named packages external in
   Node builds (loaded from the plugin's `node_modules`, native addons included; they stay in Node's module cache until
   a restart). A package's `"chord": { "plugins": ["./notes", "plugins/*", "!plugins/draft"] }` lists the plugin
-  folders it provides (paths, globs and `!` exclusions, as pi's `pi.extensions`; `.` the package itself); without it
+  folders it provides (paths, globs and `!` exclusions, as nycode's `nycode.extensions`; `.` the package itself); without it
   the package is one plugin when its top has facet files, else its subfolders with a `package.json` (decision
   "`chord.plugins` is a package's manifest of plugins"); a listed folder inside another listed one is a problem. One file per facet kind the app names (`server.ts`, `worker.ts`,
   `web.tsx`, `tui.ts`; `.ts`, `.tsx`, `.js` or `.mjs`), its default export a facet; a plugin with no facet file holds
@@ -52,13 +52,13 @@ await plugins.rollout([plugins.step("server", server), workers.step("workers")],
   naming the file; a package file must lie, by its real path, in the plugin's own `node_modules` (a `file:` link out,
   a package's relative import or link leaving it: refused), and a facet file linked elsewhere must be its plugin's and
   of its kind. With `api` (slice 12 §1): an API import at a version the app does not list, a module the kind's
-  `hostPackages` lack, two versions in one facet, and Chord itself (`@earendil-works/chord`, but `/next/plugins`) are
+  `hostPackages` lack, two versions in one facet, and Chord itself (`@nycode/chord`, but `/next/plugins`) are
   refused. With `kinds`: a plugin file named `<name>.<kind>.<ext>` (compared without case), or a facet file
   `<kind>.<ext>` at a plugin's top, is of that kind, and reaching it from a facet of another kind (directly, through
   other files, copied files, or a package that is plugin code: a `chord` field in its `package.json` or one above
   it; an ordinary library names files as it likes) is refused naming the chain. A plugin's root may lie under a
   `node_modules` (an app installed from npm with its plugins): only the path below a plugin's directory counts. A copied file imports host packages and its own plugin's files only, no builtins. A single-file plugin
-  imports host packages only. External: host packages, `@earendil-works/chord/plugins`, `chord.external`
+  imports host packages only. External: host packages, `@nycode/chord/plugins`, `chord.external`
   packages and Node builtins (Node builds; a browser build refuses both). Browser builds collect CSS into one stylesheet (`css`; a `*.module.css` file scoped to its
   plugin and file: its classes renamed `chord_<hash>_<file>_<class>`, its import esbuild's mapping, `composes` and
   escaped names included, `css-modules.ts`; a stylesheet's `url()` is an asset, an `@import`ed file plain CSS) and
@@ -72,7 +72,7 @@ await plugins.rollout([plugins.step("server", server), workers.step("workers")],
 - `evaluateFacet(built, { hostPackages, plugin })`: `vm.Script` in this context under a stable filename per (plugin,
   kind, digest), the default export checked to be a facet. Its `require` answers the host packages (a CommonJS
   package's exports as they are, an ESM namespace wrapped once with `__esModule` so default and named imports both
-  work), `@earendil-works/chord/plugins` with `pluginFile` bound to the plugin's directory, `chord.external`
+  work), `@nycode/chord/plugins` with `pluginFile` bound to the plugin's directory, `chord.external`
   packages and Node builtins from the plugin's directory; anything else throws naming the facet. A computed
   `require` is refused what the build refuses: another API version than the script's (the first one required pins it
   when the build saw none), Chord under an app's API, anything but host packages in a single-file plugin. No module

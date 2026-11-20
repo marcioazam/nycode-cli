@@ -53,7 +53,7 @@ describe("SQLite migrations", () => {
 				expect(() => validateSqliteSchemaPrefix(prefix)).toThrow();
 				await expect(applySqliteMigrations(database, [], { table: prefix })).rejects.toThrow();
 			}
-			for (const prefix of ["pi_", "_private", "app2"])
+			for (const prefix of ["nycode_", "_private", "app2"])
 				expect(() => validateSqliteSchemaPrefix(prefix)).not.toThrow();
 			expect(await database.all("SELECT name FROM sqlite_schema")).toEqual([]);
 		} finally {

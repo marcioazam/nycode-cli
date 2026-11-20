@@ -9,10 +9,10 @@ import {
 	type Provider,
 	type ProviderStreamOptions,
 	type RefreshModelsContext,
-} from "@earendil-works/pi-ai";
-import { llamaCppClassifyApi } from "@earendil-works/pi-ai/api/llama-cpp-classify.lazy";
-import { typesafeSystemOneApi } from "@earendil-works/pi-ai/api/typesafe-system-one.lazy";
-import { stream, streamSimple } from "@earendil-works/pi-ai/compat";
+} from "@nycode/ai";
+import { llamaCppClassifyApi } from "@nycode/ai/api/llama-cpp-classify.lazy";
+import { typesafeSystemOneApi } from "@nycode/ai/api/typesafe-system-one.lazy";
+import { stream, streamSimple } from "@nycode/ai/compat";
 import {
 	LlamaClient,
 	type LlamaModelInfo,
@@ -100,7 +100,7 @@ function isChatModel(model: LlamaModelInfo): boolean {
  * answers from next-token label probabilities and takes no images. llama.cpp reads System One images
  * from the `images` list of data URLs, not from TypeSafe's `assets`.
  */
-function toPiClassifierModel(
+function toNycodeClassifierModel(
 	model: LlamaModelInfo,
 	serverUrl: string,
 	cachedContextWindow?: number,
@@ -127,7 +127,7 @@ function isLlamaClassifierModel(model: AnyModel): model is ClassifierModel<Llama
 	);
 }
 
-function toPiModel(
+function toNycodeModel(
 	model: LlamaModelInfo,
 	serverUrl: string,
 	props?: LlamaServerProps,
@@ -177,8 +177,8 @@ export function createLlamaProvider(): LlamaProviderController {
 		options: { routerAutoload?: boolean } = {},
 	): void => {
 		const selectable = catalog.filter((model) => modelIsSelectable(model, options.routerAutoload === true));
-		models = selectable.filter(isChatModel).map((model) => toPiModel(model, serverUrl));
-		classifiers = selectable.map((model) => toPiClassifierModel(model, serverUrl));
+		models = selectable.filter(isChatModel).map((model) => toNycodeModel(model, serverUrl));
+		classifiers = selectable.map((model) => toNycodeClassifierModel(model, serverUrl));
 	};
 
 	const provider: Provider<"openai-completions"> = {
@@ -270,13 +270,14 @@ export function createLlamaProvider(): LlamaProviderController {
 			const refreshed = await Promise.all(
 				selectable.filter(isChatModel).map(async (model) => {
 					const cachedContextWindow = cachedContextWindows.get(model.id);
-					if (model.status.value !== "loaded") return toPiModel(model, serverUrl, undefined, cachedContextWindow);
+					if (model.status.value !== "loaded")
+						return toNycodeModel(model, serverUrl, undefined, cachedContextWindow);
 					const props = await client.props({ model: model.id, signal: context.signal });
-					return toPiModel(model, serverUrl, props, cachedContextWindow);
+					return toNycodeModel(model, serverUrl, props, cachedContextWindow);
 				}),
 			);
 			const refreshedClassifiers = selectable.map((model) =>
-				toPiClassifierModel(model, serverUrl, cachedContextWindows.get(model.id)),
+				toNycodeClassifierModel(model, serverUrl, cachedContextWindows.get(model.id)),
 			);
 			if (context.signal.aborted) return;
 			await context.publish({

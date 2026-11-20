@@ -15,7 +15,7 @@ workerMain(
 		return {};
 	},
 	{
-		hostPackages: { "@earendil-works/chord": chord },
+		hostPackages: { "@nycode/chord": chord },
 		redact: (error) => ({ message: String(error) }),
 		onError: console.error,
 	},

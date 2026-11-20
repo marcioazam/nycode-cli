@@ -1,6 +1,6 @@
-import type { Draft } from "@earendil-works/chord/delta";
-import { copyJson, type JsonRepresentation } from "@earendil-works/chord/json";
-import type { Usage } from "@earendil-works/pi-ai";
+import type { Usage } from "@nycode/ai";
+import type { Draft } from "@nycode/chord/delta";
+import { copyJson, type JsonRepresentation } from "@nycode/chord/json";
 import { defineDoc } from "../documents.ts";
 import type { ConversationId, Tx } from "../types.ts";
 
@@ -13,7 +13,7 @@ export type UsageState = {
 };
 
 export const UsageDoc = defineDoc<UsageState>({
-	kind: "pi.usage",
+	kind: "nycode.usage",
 	version: 1,
 	scope: "conversation",
 	history: "latest",
@@ -22,7 +22,7 @@ export const UsageDoc = defineDoc<UsageState>({
 	checkpointWhen: () => true,
 });
 
-/** Add `usage` to one bucket of the conversation's `pi.usage`, in the commit that records the response. */
+/** Add `usage` to one bucket of the conversation's `nycode.usage`, in the commit that records the response. */
 export async function recordUsage(
 	tx: Tx,
 	conversationId: ConversationId,

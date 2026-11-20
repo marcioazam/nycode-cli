@@ -5,13 +5,13 @@
  * Requires: npm install in this directory
  */
 
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI } from "@nycode/coding-agent";
 import ms from "ms";
 import { Type } from "typebox";
 
-export default function (pi: ExtensionAPI) {
+export default function (nycode: ExtensionAPI) {
 	// Register a tool that uses ms
-	pi.registerTool({
+	nycode.registerTool({
 		name: "parse_duration",
 		label: "Parse Duration",
 		description: "Parse a human-readable duration string (e.g., '2 days', '1h', '5m') to milliseconds",

@@ -179,8 +179,8 @@ workers component, then loads its plugins:</p>
 <span class="tk-k">const</span> plugins = <span class="tk-f">createPlugins</span>({
 	roots: [<span class="tk-s">"./plugins"</span>],
 	kinds: {
-		server: { platform: <span class="tk-s">"node"</span>, hostPackages: [<span class="tk-s">"@earendil-works/chord"</span>, <span class="tk-s">"@app/core"</span>] },
-		worker: { platform: <span class="tk-s">"node"</span>, hostPackages: [<span class="tk-s">"@earendil-works/chord"</span>, <span class="tk-s">"@app/core"</span>] },
+		server: { platform: <span class="tk-s">"node"</span>, hostPackages: [<span class="tk-s">"@nycode/chord"</span>, <span class="tk-s">"@app/core"</span>] },
+		worker: { platform: <span class="tk-s">"node"</span>, hostPackages: [<span class="tk-s">"@nycode/chord"</span>, <span class="tk-s">"@app/core"</span>] },
 	},
 	onError,
 }, ctx);

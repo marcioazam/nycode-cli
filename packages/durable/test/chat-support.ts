@@ -1,4 +1,3 @@
-import type { Context } from "@earendil-works/chord/context";
 import {
 	createModels,
 	type FauxProviderHandle,
@@ -7,7 +6,8 @@ import {
 	type Message,
 	type Models,
 	type RegisterFauxProviderOptions,
-} from "@earendil-works/pi-ai";
+} from "@nycode/ai";
+import type { Context } from "@nycode/chord/context";
 import {
 	type Conversation,
 	createRegistry,
@@ -19,7 +19,7 @@ import {
 	type ReportInfo,
 	type Storage,
 	type ToolRegistration,
-} from "@earendil-works/pi-durable";
+} from "@nycode/durable";
 import type { ExecutionEnv } from "../src/env/index.ts";
 import { context } from "./session-support.ts";
 

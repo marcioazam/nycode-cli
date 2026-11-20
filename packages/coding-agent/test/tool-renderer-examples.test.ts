@@ -1,8 +1,8 @@
 import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { getModel } from "@earendil-works/pi-ai/compat";
-import type { TUI } from "@earendil-works/pi-tui";
+import { getModel } from "@nycode/ai/compat";
+import type { TUI } from "@nycode/tui";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { ToolDefinition } from "../src/core/extensions/types.ts";
 import { DefaultResourceLoader } from "../src/core/resource-loader.ts";
@@ -23,7 +23,10 @@ describe("tool renderer examples", () => {
 	});
 
 	beforeEach(() => {
-		tempDir = join(tmpdir(), `pi-tool-renderer-example-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+		tempDir = join(
+			tmpdir(),
+			`nycode-tool-renderer-example-test-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+		);
 		agentDir = join(tempDir, "agent");
 		mkdirSync(agentDir, { recursive: true });
 	});

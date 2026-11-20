@@ -1,4 +1,4 @@
-import type { Usage } from "@earendil-works/pi-ai/compat";
+import type { Usage } from "@nycode/ai/compat";
 import { describe, expect, it } from "vitest";
 import { combineUsage } from "../src/core/usage-totals.ts";
 

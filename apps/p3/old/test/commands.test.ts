@@ -9,7 +9,7 @@ import { mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
-import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context";
+import { BACKGROUND_CONTEXT as context } from "@nycode/chord/context";
 import { stop } from "../src/commands.ts";
 import { recordFile, takeLock, writeRecord } from "../src/kit/running.ts";
 import { CASES, cli } from "./commands.ts";

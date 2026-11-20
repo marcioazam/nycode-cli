@@ -1,11 +1,11 @@
-// Code mode card rows (owner decision 6, also in Pi Mobile): a call a restart cut short shows as interrupted, not as an
+// Code mode card rows (owner decision 6, also in Nycode Mobile): a call a restart cut short shows as interrupted, not as an
 // error; and a list opened with "Show all" while the script ran collapses to its summary once the script settles.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { AssistantMessage, ToolResultMessage } from "@earendil-works/pi-ai";
-import { fauxAssistantMessage } from "@earendil-works/pi-ai/providers/faux";
-import type { ConversationView, EntryId, LiveState } from "@earendil-works/pi-durable";
-import type { CodemodeToolDetails } from "@earendil-works/pi-durable/codemode";
+import type { AssistantMessage, ToolResultMessage } from "@nycode/ai";
+import { fauxAssistantMessage } from "@nycode/ai/providers/faux";
+import type { ConversationView, EntryId, LiveState } from "@nycode/durable";
+import type { CodemodeToolDetails } from "@nycode/durable/codemode";
 import { scriptCalls } from "../../plugins/codemode/nested.ts";
 import { buildTranscript } from "../../src/web/transcript.ts";
 import { wholeView } from "../fixtures/whole-view.ts";
@@ -20,7 +20,7 @@ type NestedSlot = NonNullable<LiveState["nestedTools"]>[number];
 const assistant: ConversationView["entries"][number] = {
 	id: 2 as EntryId,
 	conversationId: conversation.id,
-	kind: "pi.assistant",
+	kind: "nycode.assistant",
 	model: [
 		{
 			...fauxAssistantMessage([]),
@@ -60,7 +60,7 @@ function running(count: number): ConversationView {
 		conversation,
 		entries: [assistant],
 		docs: {
-			"pi.live": {
+			"nycode.live": {
 				run: { taskId: 1, inputs: [] },
 				tools: [{ callId: CALL, name: "codemode", taskId: 1, status: "running" }],
 				nestedTools,
@@ -90,7 +90,7 @@ function settled(): ConversationView {
 		conversation,
 		entries: [
 			assistant,
-			{ id: 3 as EntryId, conversationId: conversation.id, kind: "pi.tool-result", model: [result] },
+			{ id: 3 as EntryId, conversationId: conversation.id, kind: "nycode.tool-result", model: [result] },
 		],
 		docs: {},
 	};

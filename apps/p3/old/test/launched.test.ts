@@ -9,7 +9,7 @@ import { mkdtemp, readdir, readFile, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it, type TestContext } from "node:test";
-import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context";
+import { BACKGROUND_CONTEXT as context } from "@nycode/chord/context";
 import { Sessions, SessionWorker } from "../plugins/sessions/contract.ts";
 import { ownerClient } from "./client.ts";
 import { endToEnd } from "./end-to-end.ts";

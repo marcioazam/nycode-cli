@@ -5,7 +5,7 @@ import {
 	type KeyId,
 	TUI_KEYBINDINGS,
 	KeybindingsManager as TuiKeybindingsManager,
-} from "@earendil-works/pi-tui";
+} from "@nycode/tui";
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import { Compile } from "typebox/compile";
@@ -173,7 +173,7 @@ const APP_KEYBINDINGS = {
 export type AppKeybinding = keyof typeof APP_KEYBINDINGS;
 export type AppKeybindings = { [K in AppKeybinding]: true };
 
-declare module "@earendil-works/pi-tui" {
+declare module "@nycode/tui" {
 	interface Keybindings extends AppKeybindings {}
 }
 

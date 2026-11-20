@@ -2270,7 +2270,7 @@ describe("Editor component", () => {
 		});
 
 		it("completes Chinese path prefixes after whitespace or CJK punctuation with Tab", async (t) => {
-			const baseDir = mkdtempSync(join(tmpdir(), "pi-editor-autocomplete-"));
+			const baseDir = mkdtempSync(join(tmpdir(), "nycode-editor-autocomplete-"));
 			t.after(() => rmSync(baseDir, { recursive: true, force: true }));
 			mkdirSync(join(baseDir, "文档"));
 			writeFileSync(join(baseDir, "文档", "说明.md"), "text");

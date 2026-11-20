@@ -3,7 +3,7 @@
 
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
-import type { ConversationView } from "@earendil-works/pi-durable";
+import type { ConversationView } from "@nycode/durable";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { ConversationBroker, type Query } from "../../plugins/conversations/contract.ts";
@@ -20,7 +20,7 @@ const delivered = (view: ConversationView | null | undefined, message: string): 
 	);
 const answered = (view: ConversationView | null | undefined, message: string): boolean =>
 	JSON.stringify(view?.entries ?? []).includes(`Echo: ${message}`) &&
-	!(view?.docs["pi.live"] as { run?: unknown } | undefined)?.run;
+	!(view?.docs["nycode.live"] as { run?: unknown } | undefined)?.run;
 
 describe("conversations to a restarted worker (fake provider)", () => {
 	let fixture: Fixture;

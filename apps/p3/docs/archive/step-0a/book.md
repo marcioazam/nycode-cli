@@ -75,7 +75,7 @@ restarts finished" would close it (option B, rejected for now).
 # Base Bundles Resolve as the Server Does {#conditions lede="Where the page's Chord comes from."}
 
 **Today** (`src/node/surfaces/bundle.ts`, `buildBase`): esbuild bundles the page's and the terminal's base with its
-default conditions, so in this monorepo `@earendil-works/chord` resolves to its built `dist/`, while the server,
+default conditions, so in this monorepo `@nycode/chord` resolves to its built `dist/`, while the server,
 started with `--conditions=source`, runs Chord's source. The page may then run other Chord code than the server, and
 every `npm run build` changes files the base was built from. The worker base already resolves as its process will
 (`conditionsOf(execArgv)` in `src/node/workers/base.ts`).

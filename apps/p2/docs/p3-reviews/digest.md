@@ -181,7 +181,7 @@ The existing hand-maintained version list is precedent for explicit code depende
 
 ### Environment and graph output
 
-- Workspace: `/home/badlogic/pi-private/apps/p2` on slayer.
+- Workspace: `/home/badlogic/nycode-private/apps/p2` on slayer.
 - Installed esbuild version observed: `0.28.2`.
 - Script: `/tmp/digest-exp/build.mjs`; it used `bundle: true`, `write: false`, `format: "cjs"`, `platform: "node"` and `metafile: true`.
 - Node was absent from the default PATH. `/home/badlogic/node-v26.11.1-linux-x64/bin/node` failed with `libatomic.so.1: cannot open shared object file`. `/home/badlogic/node-v24.4.1-linux-x64/bin/node` worked (`v24.4.1`).
@@ -212,9 +212,9 @@ codemode/worker.ts
 ```
 
 - `radius/brain.ts` alone had a 2-file internal closure; `terminals/service.ts` had a 3-file closure; `terminals/detached.ts` had a 2-file closure; `codemode/calls.ts` had a 1-file closure.
-- Radius external leaves included pi-ai Radius provider/config, `ws`, Node builtins, runtime Chord/server/logs modules, Chord and TypeBox.
+- Radius external leaves included nycode-ai Radius provider/config, `ws`, Node builtins, runtime Chord/server/logs modules, Chord and TypeBox.
 - Terminals external leaves included Chord and Chord/node, `ws`, Node builtins, runtime Chord/principals/server modules and TypeBox.
-- Codemode external leaves included pi-codemode, Durable/codemode, Durable, Chord/context, runtime worker/durable/Chord modules, Chord and TypeBox.
+- Codemode external leaves included nycode-codemode, Durable/codemode, Durable, Chord/context, runtime worker/durable/Chord modules, Chord and TypeBox.
 - The metafile demonstrates static runtime edges and erased type-only imports. It does not establish behavior equivalence, runtime closure freshness, successful native preservation, close/open ordering or GC behavior.
 
 ### History evidence

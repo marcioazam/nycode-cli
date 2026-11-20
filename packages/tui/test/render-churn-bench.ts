@@ -2,7 +2,7 @@
  * Alt-screen render churn benchmark.
  *
  * Measures cumulative JS allocation and wall time for repeated TuiAltScreen
- * frames on a layout mirroring pi's fullscreen interactive mode:
+ * frames on a layout mirroring nycode's fullscreen interactive mode:
  * VStack [ ScrollView(transcript), dock VStack [status, editor, footer] ].
  *
  * Two scenarios:
@@ -159,7 +159,7 @@ function report(name: string, result: ScenarioResult): void {
 
 async function main(): Promise<void> {
 	const terminal = new NullTerminal();
-	const tui = new TuiAltScreen(terminal, false, "/tmp/pi-tui-bench");
+	const tui = new TuiAltScreen(terminal, false, "/tmp/nycode-tui-bench");
 
 	const transcript = buildTranscript();
 	const editor = new EditorSim();
@@ -170,7 +170,7 @@ async function main(): Promise<void> {
 		scrollbar: "auto",
 	});
 	const status = new Text("\x1b[2mstatus: idle\x1b[22m", 1, 0);
-	const footer = new Text("\x1b[2m~/workspaces/pi  main  100k tokens\x1b[22m", 1, 0);
+	const footer = new Text("\x1b[2m~/workspaces/nycode  main  100k tokens\x1b[22m", 1, 0);
 	const dock = new VStack([
 		{ component: status, shrink: 1, minSize: 0 },
 		{ component: editor, shrink: 1, minSize: 3 },

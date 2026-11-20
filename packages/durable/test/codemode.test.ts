@@ -1,9 +1,9 @@
 import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import type { Context } from "@earendil-works/chord/context";
-import { type AssistantMessage, fauxAssistantMessage, fauxText, fauxToolCall } from "@earendil-works/pi-ai";
-import { type CodemodeRun, CodemodeSandbox } from "@earendil-works/pi-codemode";
+import { type AssistantMessage, fauxAssistantMessage, fauxText, fauxToolCall } from "@nycode/ai";
+import type { Context } from "@nycode/chord/context";
+import { type CodemodeRun, CodemodeSandbox } from "@nycode/codemode";
 import {
 	defineExtension,
 	defineTool,
@@ -13,8 +13,8 @@ import {
 	ToolResultEntry,
 	ToolTask,
 	type ToolTaskInput,
-} from "@earendil-works/pi-durable";
-import { bool, num, obj, opt, str } from "@earendil-works/pi-schema";
+} from "@nycode/durable";
+import { bool, num, obj, opt, str } from "@nycode/schema";
 import { afterEach, describe, expect, it } from "vitest";
 import {
 	type CodemodeGlobal,
@@ -54,7 +54,7 @@ afterEach(async () => {
 });
 
 async function sqlitePath(): Promise<string> {
-	const directory = await mkdtemp(join(tmpdir(), "pi-durable-codemode-"));
+	const directory = await mkdtemp(join(tmpdir(), "nycode-durable-codemode-"));
 	directories.add(directory);
 	return join(directory, "session.sqlite");
 }
@@ -896,7 +896,7 @@ describe("durable code mode", () => {
 		]);
 		const { harness, root } = await openChat(await openNodeSqliteStorage(await sqlitePath()), chat.setup);
 		await (await root.submit({ type: "input", content: "first" }, context)).wait(context);
-		const firstUser = (await allEntries(root)).find((entry) => entry.kind === "pi.user")!;
+		const firstUser = (await allEntries(root)).find((entry) => entry.kind === "nycode.user")!;
 		await (await root.submit({ type: "input", content: "second" }, context)).wait(context);
 		const results = (await allEntries(root)).filter((entry) => ToolResultEntry.is(entry));
 		const texts = results.map((entry) => (entry.model![0] as { content: { text: string }[] }).content[1]!.text);
@@ -933,7 +933,7 @@ describe("durable code mode", () => {
 		harness.observeCommits({
 			advance: (publication) => {
 				for (const change of publication.changes) {
-					if (change.type === "document" && change.record.kind === "pi.codemode.journal") journalCommits++;
+					if (change.type === "document" && change.record.kind === "nycode.codemode.journal") journalCommits++;
 				}
 			},
 			end: () => {},
@@ -950,7 +950,7 @@ describe("durable code mode output and tool search", () => {
 	/** Run `code` once in a chat with a Node environment; the result's content and details. */
 	async function runScript(code: string, chat = codemodeChat()) {
 		chat.holds.block = false;
-		const cwd = await mkdtemp(join(tmpdir(), "pi-codemode-env-"));
+		const cwd = await mkdtemp(join(tmpdir(), "nycode-codemode-env-"));
 		directories.add(cwd);
 		chat.setup.faux.setResponses([script(code), DONE]);
 		const { harness, root } = await openChat(await openNodeSqliteStorage(await sqlitePath()), chat.setup, {
@@ -1009,7 +1009,7 @@ describe("durable code mode output and tool search", () => {
 	it("writes the result's files to the same paths when it reruns after a crash", async () => {
 		const chat = codemodeChat();
 		chat.holds.block = false;
-		const cwd = await mkdtemp(join(tmpdir(), "pi-codemode-env-"));
+		const cwd = await mkdtemp(join(tmpdir(), "nycode-codemode-env-"));
 		directories.add(cwd);
 		const written = deferred<string>();
 		// The process dies after the full output was written and before the result was committed.
@@ -1052,7 +1052,7 @@ describe("durable code mode output and tool search", () => {
 	// #11015
 	it("resolves the built-in read with an image's block, which image() shows, and with a text file's text", async () => {
 		const png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
-		const files = await mkdtemp(join(tmpdir(), "pi-codemode-read-"));
+		const files = await mkdtemp(join(tmpdir(), "nycode-codemode-read-"));
 		directories.add(files);
 		await writeFile(join(files, "pixel.png"), Buffer.from(png, "base64"));
 		await writeFile(join(files, "note.txt"), "hello");

@@ -1,5 +1,5 @@
-import type { Context } from "@earendil-works/chord/context";
-import { BACKGROUND_CONTEXT, withAbortSignal } from "@earendil-works/chord/context";
+import type { Context } from "@nycode/chord/context";
+import { BACKGROUND_CONTEXT, withAbortSignal } from "@nycode/chord/context";
 import {
 	type ExecutionEnv,
 	type FileChange,
@@ -319,16 +319,16 @@ export function createEnvConformance(options: EnvConformanceOptions): readonly E
 		}),
 
 		watchCase("watch keeps watching a path whose parent is renamed and recreated", async (env) => {
-			getOrThrow(await env.writeFile("proj/.pi/skills/x.md", "x", context));
-			await watching(env, [{ path: "proj/.pi/skills", recursive: true }], async ({ expectChange }) => {
-				await expectChange("proj/.pi/skills", async () => {
-					getOrThrow(await env.renameFile("proj/.pi", "proj/old", context));
+			getOrThrow(await env.writeFile("proj/.nycode/skills/x.md", "x", context));
+			await watching(env, [{ path: "proj/.nycode/skills", recursive: true }], async ({ expectChange }) => {
+				await expectChange("proj/.nycode/skills", async () => {
+					getOrThrow(await env.renameFile("proj/.nycode", "proj/old", context));
 				});
-				await expectChange("proj/.pi/skills/y.md", async () => {
-					getOrThrow(await env.writeFile("proj/.pi/skills/y.md", "y", context));
+				await expectChange("proj/.nycode/skills/y.md", async () => {
+					getOrThrow(await env.writeFile("proj/.nycode/skills/y.md", "y", context));
 				});
-				await expectChange("proj/.pi/skills/y.md", async () => {
-					getOrThrow(await env.writeFile("proj/.pi/skills/y.md", "yy", context));
+				await expectChange("proj/.nycode/skills/y.md", async () => {
+					getOrThrow(await env.writeFile("proj/.nycode/skills/y.md", "yy", context));
 				});
 			});
 		}),
@@ -429,7 +429,7 @@ export function createEnvConformance(options: EnvConformanceOptions): readonly E
 
 		createCase("argv exec reports missing programs and empty argv as spawn errors", async (env) => {
 			assert.strictEqual(
-				errorCode(await env.exec(["pi-durable-conformance-missing-program"], undefined, context)),
+				errorCode(await env.exec(["nycode-durable-conformance-missing-program"], undefined, context)),
 				"spawn_error",
 			);
 			assert.strictEqual(errorCode(await env.exec([], undefined, context)), "spawn_error");

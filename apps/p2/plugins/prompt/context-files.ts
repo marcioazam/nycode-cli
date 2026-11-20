@@ -7,7 +7,7 @@ import { type PromptTemplate, parseFrontmatter, parseTemplate, type SkillFile } 
 
 /**
  * A session's loaded prompt resources: the instructions and skills sections, every skill (including those hidden from
- * the model with `disable-model-invocation`, which `/skill:` still invokes, as in pi) and the prompt templates.
+ * the model with `disable-model-invocation`, which `/skill:` still invokes, as in nycode) and the prompt templates.
  */
 export type LoadedPrompt = {
 	agents: string;
@@ -65,9 +65,9 @@ function escapeXml(text: string): string {
 }
 
 /**
- * pi's discovery (coding-agent core/skills.ts `loadSkillsFromDir`): a directory holding `SKILL.md` is one skill and is
+ * nycode's discovery (coding-agent core/skills.ts `loadSkillsFromDir`): a directory holding `SKILL.md` is one skill and is
  * not searched further; otherwise `.md` files directly in the skills root are skills, and subdirectories are searched
- * for `SKILL.md`. Hidden entries and `node_modules` are skipped. Unlike pi, symbolic links are not followed (the watch
+ * for `SKILL.md`. Hidden entries and `node_modules` are skipped. Unlike nycode, symbolic links are not followed (the watch
  * does not follow them either, and there is no cycle to guard against) and `.gitignore`-style files are not read.
  */
 async function skillFiles(files: PromptFiles, path: string, root = true): Promise<string[]> {
@@ -100,7 +100,7 @@ export function agentsCandidates(paths: Pick<PlatformPath, "join" | "dirname" | 
 
 /**
  * Instructions and skills for a session: the global `AGENTS.md` of the data directory (always local), then the
- * project's `AGENTS.md` files and skills under `<directory>/skills` and `<cwd>/.pi/skills` on the local filesystem,
+ * project's `AGENTS.md` files and skills under `<directory>/skills` and `<cwd>/.nycode/skills` on the local filesystem,
  * then the plugins' skills (`pluginSkillRoots`, given only where they are files of `files`: the server's own machine).
  * The first skill of a name wins: the environment's and the project's before a plugin's.
  */
@@ -129,7 +129,7 @@ export async function loadPromptResources(
 		if (globalFile === undefined || (await canonical(path)) !== globalFile) await read(path, files);
 	const skills = new Map<string, Skill>();
 	const environmentSkills = await skillFiles(files, skillsRoot);
-	const projectSkills = await skillFiles(files, files.paths.join(cwd, ".pi", "skills"));
+	const projectSkills = await skillFiles(files, files.paths.join(cwd, ".nycode", "skills"));
 	const pluginSkills = (await Promise.all(pluginSkillRoots.map((root) => skillFiles(files, root)))).flat();
 	// Plugins' skills count as global ones: a locked session gets them only with the global instructions.
 	const globalSkills = new Set([...environmentSkills, ...pluginSkills]);
@@ -138,9 +138,9 @@ export async function loadPromptResources(
 		const content = await files.readText(path);
 		if (content === undefined) continue;
 		fingerprint.push(`${path}\n${content}`);
-		// pi's rules (`loadSkillFromFile`): a file whose frontmatter does not parse or has no description is skipped (a
+		// nycode's rules (`loadSkillFromFile`): a file whose frontmatter does not parse or has no description is skipped (a
 		// README next to the skills, say); other spec violations, such as the name's characters or lengths, only warn in
-		// pi and load here too. The name defaults to the parent directory's; the first skill of a name wins.
+		// nycode and load here too. The name defaults to the parent directory's; the first skill of a name wins.
 		let frontmatter: Record<string, unknown>;
 		try {
 			({ frontmatter } = parseFrontmatter(content));
@@ -162,12 +162,12 @@ export async function loadPromptResources(
 				global: globalSkills.has(path),
 			});
 	}
-	// Prompt templates (pi's format): `.md` files directly in the global and the project's prompts directory. An
-	// unreadable or invalid template is skipped (pi warns and goes on); symbolic links are not followed.
+	// Prompt templates (nycode's format): `.md` files directly in the global and the project's prompts directory. An
+	// unreadable or invalid template is skipped (nycode warns and goes on); symbolic links are not followed.
 	const templates: PromptTemplate[] = [];
 	for (const [root, source] of [
 		[promptsRoot, "global"],
-		[files.paths.join(cwd, ".pi", "prompts"), "project"],
+		[files.paths.join(cwd, ".nycode", "prompts"), "project"],
 	] as const) {
 		const entries = (await files.entries(root)) ?? [];
 		for (const entry of entries

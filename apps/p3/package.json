@@ -1,8 +1,8 @@
 {
-	"name": "@earendil-works/p3",
+	"name": "@nycode/p3",
 	"version": "0.0.1",
 	"private": true,
-	"description": "p3: one Pi per person (the server, its command `p3`, and the API plugins import)",
+	"description": "p3: one Nycode per person (the server, its command `p3`, and the API plugins import)",
 	"type": "module",
 	"bin": {
 		"p3": "dist/p3.js"
@@ -43,14 +43,14 @@
 		"node": ">=26.3.1"
 	},
 	"dependencies": {
-		"@earendil-works/chord": "1.6.0",
-		"@earendil-works/pi-schema": "1.6.0",
-		"@earendil-works/pi-telemetry": "1.6.0",
+		"@nycode/chord": "1.6.0",
+		"@nycode/schema": "1.6.0",
+		"@nycode/telemetry": "1.6.0",
 		"esbuild": "0.28.2",
 		"ws": "8.21.0"
 	},
 	"devDependencies": {
-		"@earendil-works/pi-ai": "1.6.0",
-		"@earendil-works/pi-durable": "1.6.0"
+		"@nycode/ai": "1.6.0",
+		"@nycode/durable": "1.6.0"
 	}
 }

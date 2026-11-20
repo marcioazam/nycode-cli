@@ -114,7 +114,7 @@ table{max-width:100%}
   <p class="subtitle">The package, the command, the background server and the worker&#39;s memory, every file with its code, followed through real runs on slayer</p>
   <div class="cover-stats"><div class="stat"><b>252 ms</b><span>plain <code>p3</code>, nothing running, to its owner link (release)</span></div><div class="stat"><b>18.5 MiB</b><span>an idle session worker, settled (was 30.3)</span></div><div class="stat"><b>167</b><span>tests: 134 from source, 33 against the install</span></div><div class="stat"><b>101</b><span>rules undone one at a time (mutation check)</span></div></div>
   <div class="cover-note"><p>For the owner, who reviews slice 26 before it is committed. Self-contained: every piece of code that matters is
-printed here, from the uncommitted tree in <code>/home/badlogic/pi</code> (on top of <code>4afe78de1</code>; slice 1&#39;s redo is in the same
+printed here, from the uncommitted tree in <code>/home/badlogic/nycode</code> (on top of <code>4afe78de1</code>; slice 1&#39;s redo is in the same
 tree, approved, also uncommitted). The brief is <code>apps/p3/docs/slices/26-release.md</code>; its &quot;As built&quot; is what this
 walkthrough follows. The traces are real runs of the installed release (<code>/tmp/p3-release</code>, built from this tree),
 Node 24.4.1 on slayer, with <code>HOME</code> pointed at a scratch directory. Code blocks are the files&#39; text; imports are left
@@ -143,9 +143,9 @@ out where they say nothing.</p>
 
 <section class="preface" id="every-file">
 <h2>Every File</h2>
-<p>Slice 26 packages p3 as it would ship to npm: one package, <code>@earendil-works/p3</code>, with a command <code>p3</code>, the server&#39;s
+<p>Slice 26 packages p3 as it would ship to npm: one package, <code>@nycode/p3</code>, with a command <code>p3</code>, the server&#39;s
 base code bundled (no TypeScript at run time), the built-in plugins as source, and the API with its types for
-third-party plugins. The command runs a Pi in the background under a supervisor, says whether it runs, stops it, and
+third-party plugins. The command runs a Nycode in the background under a supervisor, says whether it runs, stops it, and
 keeps several Pis apart. A local command builds the package, packs it, installs it outside the repository and runs the
 release tests there. On the way the session worker lost a third of its memory.</p>
 <p>These are all the files the slice created or changed. Sizes are lines, as the files are now.</p>
@@ -179,9 +179,9 @@ release tests there. On the way the session worker lost a third of its memory.</
 <td>how a command talks to a running server: the identity proof, then the owner&#39;s request on the same connection</td>
 </tr>
 <tr>
-<td><code>src/pi.ts</code></td>
+<td><code>src/nycode.ts</code></td>
 <td>46</td>
-<td>a Pi is its data directory: <code>--pi</code>, <code>--dir</code>, the default; the first port; the named Pis</td>
+<td>a Nycode is its data directory: <code>--nycode</code>, <code>--dir</code>, the default; the first port; the named Pis</td>
 </tr>
 <tr>
 <td><code>src/install.ts</code></td>
@@ -223,12 +223,12 @@ starting one foreground server is this slice&#39;s.</p>
 <tr>
 <td><code>config.ts</code></td>
 <td>39</td>
-<td>created: <code>pi.json</code>, the Pi&#39;s id and port</td>
+<td>created: <code>nycode.json</code>, the Nycode&#39;s id and port</td>
 </tr>
 <tr>
 <td><code>start-server.ts</code></td>
 <td>224</td>
-<td>changed (149 in slice 1): the record in two steps, the Pi&#39;s port, a busy port fails at once, the identity and stop facets, more core facets for tests</td>
+<td>changed (149 in slice 1): the record in two steps, the Nycode&#39;s port, a busy port fails at once, the identity and stop facets, more core facets for tests</td>
 </tr>
 <tr>
 <td><code>owner.ts</code></td>
@@ -238,7 +238,7 @@ starting one foreground server is this slice&#39;s.</p>
 <tr>
 <td><code>layout.ts</code></td>
 <td>125</td>
-<td>changed (104): <code>pi.json</code>, <code>logs/server.log</code>, the workers&#39; compile cache</td>
+<td>changed (104): <code>nycode.json</code>, <code>logs/server.log</code>, the workers&#39; compile cache</td>
 </tr>
 <tr>
 <td><code>worker.ts</code></td>
@@ -248,7 +248,7 @@ starting one foreground server is this slice&#39;s.</p>
 <tr>
 <td><code>sign-ins.ts</code></td>
 <td>308</td>
-<td>changed (300): the cookie is named after the Pi (<code>p3-&lt;id&gt;</code>)</td>
+<td>changed (300): the cookie is named after the Nycode (<code>p3-&lt;id&gt;</code>)</td>
 </tr>
 <tr>
 <td><code>app.ts</code></td>
@@ -283,7 +283,7 @@ starting one foreground server is this slice&#39;s.</p>
 <tr>
 <td><code>package.json</code></td>
 <td>59</td>
-<td>changed: renamed <code>@earendil-works/p3</code>; <code>bin</code>, <code>exports</code>, <code>files</code>, the five dependencies, two dev ones, the scripts</td>
+<td>changed: renamed <code>@nycode/p3</code>; <code>bin</code>, <code>exports</code>, <code>files</code>, the five dependencies, two dev ones, the scripts</td>
 </tr>
 <tr>
 <td><code>tsconfig.json</code></td>
@@ -303,17 +303,17 @@ starting one foreground server is this slice&#39;s.</p>
 <tr>
 <td><code>src/app.ts</code></td>
 <td>36</td>
-<td>changed: the API&#39;s name and module map, <code>@earendil-works/p3/v1</code></td>
+<td>changed: the API&#39;s name and module map, <code>@nycode/p3/v1</code></td>
 </tr>
 <tr>
 <td><code>plugins/sessions/package.json</code></td>
 <td>5</td>
-<td>changed: the plugin is <code>@earendil-works/p3-sessions</code></td>
+<td>changed: the plugin is <code>@nycode/p3-sessions</code></td>
 </tr>
 <tr>
 <td><code>server.ts</code>, <code>worker.ts</code></td>
 <td>37, 9</td>
-<td>changed: <code>startP3</code> takes <code>onStop</code> and the Pi&#39;s port; the start script moved to <code>bin.ts</code></td>
+<td>changed: <code>startP3</code> takes <code>onStop</code> and the Nycode&#39;s port; the start script moved to <code>bin.ts</code></td>
 </tr>
 <tr>
 <td>root <code>package.json</code></td>
@@ -323,10 +323,10 @@ starting one foreground server is this slice&#39;s.</p>
 <tr>
 <td><code>package-lock.json</code></td>
 <td>+21 −4</td>
-<td>the workspace&#39;s entry renamed, with esbuild, <code>ws</code>, its <code>bin</code>, pi-ai and Durable as dev dependencies</td>
+<td>the workspace&#39;s entry renamed, with esbuild, <code>ws</code>, its <code>bin</code>, nycode-ai and Durable as dev dependencies</td>
 </tr>
 </tbody></table>
-<p>Every import of <code>@p3/app</code> (base code, the plugin, tests, bench) became <code>@earendil-works/p3</code>. Those changes are one line
+<p>Every import of <code>@p3/app</code> (base code, the plugin, tests, bench) became <code>@nycode/p3</code>. Those changes are one line
 each and are not listed.</p>
 <h3 id="tests-and-the-bench">Tests and the bench</h3>
 <table>
@@ -375,10 +375,10 @@ each and are not listed.</p>
 <tr>
 <td><code>test/kit/start-server.test.ts</code>, <code>owner</code>, <code>sign-ins</code></td>
 <td>172, 126, 320</td>
-<td>changed: busy port, the Pi&#39;s port, a failed start&#39;s record; the owner link route; the cookie&#39;s name</td>
+<td>changed: busy port, the Nycode&#39;s port, a failed start&#39;s record; the owner link route; the cookie&#39;s name</td>
 </tr>
 <tr>
-<td><code>test/pi.test.ts</code>, <code>minimum-node.test.ts</code></td>
+<td><code>test/nycode.test.ts</code>, <code>minimum-node.test.ts</code></td>
 <td>51, 21</td>
 <td>Pis and their names; the oldest Node</td>
 </tr>
@@ -400,7 +400,7 @@ each and are not listed.</p>
 <tr>
 <td><code>test/release/memory.test.ts</code>, <code>test/memory/*</code></td>
 <td>294; 42, 155, 209, 12</td>
-<td>a session worker&#39;s memory with a real Durable harness and pi-ai against a local stub</td>
+<td>a session worker&#39;s memory with a real Durable harness and nycode-ai against a local stub</td>
 </tr>
 <tr>
 <td><code>bench/slice-1.ts</code></td>
@@ -431,7 +431,7 @@ each and are not listed.</p>
 <p>The other Chord changes in the tree (<code>memberNames</code>, <code>links.opened(…, close)</code>) are slice 1&#39;s.</p>
 <h3 id="ten-things-to-know">Ten things to know</h3>
 <ol class="findings">
-<li><strong>One package, <code>@earendil-works/p3</code>.</strong> Its <code>package.json</code> in the workspace is the one that ships: <code>bin</code>, <code>exports</code>
+<li><strong>One package, <code>@nycode/p3</code>.</strong> Its <code>package.json</code> in the workspace is the one that ships: <code>bin</code>, <code>exports</code>
 with <code>source</code>, <code>types</code> and <code>import</code>, <code>files</code>, exact dependencies.</li>
 <li><strong>Three bundles, one per process.</strong> <code>main.js</code> (the command and the server), <code>worker.js</code>, <code>supervisor.js</code>; Chord,
 the kit and <code>ws</code> inlined; only esbuild left to <code>node_modules</code>. A worker holds none of the server&#39;s code.</li>
@@ -443,7 +443,7 @@ wrote it; a running server must also prove itself over HTTP.</li>
 cannot answer it; the owner token is sent only over the connection the proof came over.</li>
 <li><strong><code>stop</code> asks first.</strong> <code>POST /_p3/stop</code> as the owner; a signal only for a process that does not answer, or a
 supervisor between restarts, and only one whose record proves who it is. It waits for a server that starts.</li>
-<li><strong>A Pi is its data directory.</strong> Its own id, port, cookie name and locks; two Pis on one machine share nothing.</li>
+<li><strong>A Nycode is its data directory.</strong> Its own id, port, cookie name and locks; two Pis on one machine share nothing.</li>
 <li><strong>Types for third-party plugins ship,</strong> compiled by <code>tsc</code> against the workspace, naming Chord through the package;
 Chord exports three more types so a contract&#39;s declaration can be written down.</li>
 <li><strong>An idle worker went from 30 to 18.5 MiB,</strong> its peak under load from 77 to 45: a bundle of its own, SDKs bundled,
@@ -452,8 +452,8 @@ three V8 flags, Chord&#39;s base minified, a warm compile cache. The budget is 5
 equivalent.</li>
 </ol>
 <h3 id="words-used-throughout">Words used throughout</h3>
-<p>A <strong>Pi</strong> is one p3 installation&#39;s data: a <strong>data directory</strong> (<code>~/.pi/p3</code>, <code>~/.pi/p3/pis/&lt;name&gt;</code>, or any <code>--dir</code>) with
-its store, its sign-ins and its config. The <strong>server</strong> is the process that serves a Pi; a <strong>worker</strong> is a session&#39;s
+<p>A <strong>Nycode</strong> is one p3 installation&#39;s data: a <strong>data directory</strong> (<code>~/.nycode/p3</code>, <code>~/.nycode/p3/pis/&lt;name&gt;</code>, or any <code>--dir</code>) with
+its store, its sign-ins and its config. The <strong>server</strong> is the process that serves a Nycode; a <strong>worker</strong> is a session&#39;s
 process, forked by the server. The <strong>supervisor</strong> is the background process that runs the server as its child. A
 <strong>record</strong> is <code>server.json</code> or <code>supervisor.json</code>, what a process says about itself; a <strong>lock</strong> is Chord&#39;s
 <code>processLock</code>, an abstract Unix socket held while the process lives. A record is <strong>believed</strong> only under the rules of
@@ -467,7 +467,7 @@ link</strong> is the one-time link that signs a browser in. The <strong>release<
 <p><code>apps/p3/package.json</code> is the shipped manifest (the second part&#39;s decision: before it, the build generated one). A
 checkout resolves <code>source</code>; an install resolves <code>types</code> and <code>import</code>.</p>
 <pre><code>{
-	<span class="tk-s">"name"</span>: <span class="tk-s">"@earendil-works/p3"</span>,
+	<span class="tk-s">"name"</span>: <span class="tk-s">"@nycode/p3"</span>,
 	<span class="tk-s">"version"</span>: <span class="tk-s">"0.0.1"</span>,
 	<span class="tk-s">"private"</span>: <span class="tk-k">true</span>,
 	<span class="tk-s">"type"</span>: <span class="tk-s">"module"</span>,
@@ -486,10 +486,10 @@ checkout resolves <code>source</code>; an install resolves <code>types</code> an
 	},
 	<span class="tk-s">"engines"</span>: { <span class="tk-s">"node"</span>: <span class="tk-s">"&gt;=24.4.0"</span> },
 	<span class="tk-s">"dependencies"</span>: {
-		<span class="tk-s">"@earendil-works/chord"</span>: <span class="tk-s">"1.5.2"</span>, <span class="tk-s">"@earendil-works/pi-schema"</span>: <span class="tk-s">"1.5.2"</span>, <span class="tk-s">"@earendil-works/pi-telemetry"</span>: <span class="tk-s">"1.5.2"</span>,
+		<span class="tk-s">"@nycode/chord"</span>: <span class="tk-s">"1.5.2"</span>, <span class="tk-s">"@nycode/schema"</span>: <span class="tk-s">"1.5.2"</span>, <span class="tk-s">"@nycode/telemetry"</span>: <span class="tk-s">"1.5.2"</span>,
 		<span class="tk-s">"esbuild"</span>: <span class="tk-s">"0.28.2"</span>, <span class="tk-s">"ws"</span>: <span class="tk-s">"8.21.0"</span>
 	},
-	<span class="tk-s">"devDependencies"</span>: { <span class="tk-s">"@earendil-works/pi-ai"</span>: <span class="tk-s">"1.5.2"</span>, <span class="tk-s">"@earendil-works/pi-durable"</span>: <span class="tk-s">"1.5.2"</span> }
+	<span class="tk-s">"devDependencies"</span>: { <span class="tk-s">"@nycode/ai"</span>: <span class="tk-s">"1.5.2"</span>, <span class="tk-s">"@nycode/durable"</span>: <span class="tk-s">"1.5.2"</span> }
 }</code></pre>
 <p>Why each dependency is there, although the server&#39;s bundle inlines most of it:</p>
 <table>
@@ -506,27 +506,27 @@ checkout resolves <code>source</code>; an install resolves <code>types</code> an
 <td>Chord&#39;s plugins component bundles every plugin facet at start, and the worker base after the listen</td>
 </tr>
 <tr>
-<td>Chord, pi-schema, pi-telemetry</td>
+<td>Chord, nycode-schema, nycode-telemetry</td>
 <td>no (inlined)</td>
 <td>the declarations a third-party plugin&#39;s <code>tsc</code> reads, and the compiled API for code outside the server</td>
 </tr>
 <tr>
 <td><code>ws</code></td>
 <td>no (inlined)</td>
-<td>the compiled <code>@earendil-works/p3/v1/server</code> re-exports Chord&#39;s <code>Http</code>, whose module loads <code>ws</code> (review round 2, owner: pinned to Chord&#39;s 8.21.0)</td>
+<td>the compiled <code>@nycode/p3/v1/server</code> re-exports Chord&#39;s <code>Http</code>, whose module loads <code>ws</code> (review round 2, owner: pinned to Chord&#39;s 8.21.0)</td>
 </tr>
 <tr>
-<td>pi-ai, Durable (dev)</td>
+<td>nycode-ai, Durable (dev)</td>
 <td>no</td>
 <td>the memory test&#39;s real harness</td>
 </tr>
 </tbody></table>
 <h3 id="the-install">The install</h3>
-<p>What <code>npm run release:p3:local -- --out /tmp/p3-release</code> leaves in <code>install/node_modules/@earendil-works/p3/</code>, this
+<p>What <code>npm run release:p3:local -- --out /tmp/p3-release</code> leaves in <code>install/node_modules/@nycode/p3/</code>, this
 tree&#39;s build:</p>
 <pre class="plain"><code>dist/p3.js                      472 B    the launcher (#!/usr/bin/env node)
 dist/minimum-node.js            442 B    the oldest-Node check, no imports
-dist/main.js                995 KiB      the command and the server: kit, Chord, pi-schema, pi-telemetry, ws inlined
+dist/main.js                995 KiB      the command and the server: kit, Chord, nycode-schema, nycode-telemetry, ws inlined
 dist/worker.js              792 KiB      a session worker's entry, none of the server's code
 dist/supervisor.js            9 KiB      the supervisor
 dist/api/v1/{index,server,worker}.{js,d.ts,d.ts.map}     the API, compiled by tsc
@@ -535,12 +535,12 @@ src/api/v1/*.ts, src/kit/{contribute,forward,info}.ts, src/principals.ts      th
 plugins/sessions/{contract,contract.server,server,worker}.ts, package.json     the built-in plugin, as source
 package.json, README.md</code></pre>
 <p>The tarball is 486 kB, <code>dist/</code> 1.9 MB installed. Beside it: Chord 15 MB (its package ships sources and declarations
-whole), pi-schema 1.2 MB, pi-telemetry 0.3 MB, esbuild 11 MB (its binary for the platform). The server loads none of
+whole), nycode-schema 1.2 MB, nycode-telemetry 0.3 MB, esbuild 11 MB (its binary for the platform). The server loads none of
 Chord&#39;s installed files: its Chord is the one in <code>main.js</code>.</p>
 <h3 id="the-build">The build</h3>
 <p><code>scripts/build-release.ts</code>, the entry point. Real output of <code>npm run build</code> in <code>apps/p3</code> (0.48 s):</p>
 <pre class="plain"><code>&gt; node --disable-warning=ExperimentalWarning scripts/build-release.ts
-Built /home/badlogic/pi/apps/p3/dist: 26 files, 1797 KiB of bundles</code></pre>
+Built /home/badlogic/nycode/apps/p3/dist: 26 files, 1797 KiB of bundles</code></pre>
 <pre><code><span class="tk-k">export</span> <span class="tk-k">async</span> <span class="tk-k">function</span> <span class="tk-f">buildRelease</span>(dist: string = <span class="tk-f">join</span>(<span class="tk-t">P3</span>, <span class="tk-s">"dist"</span>)): <span class="tk-t">Promise</span>&lt;<span class="tk-t">Built</span>&gt; {
 	<span class="tk-k">const</span> manifest = JSON.<span class="tk-f">parse</span>(<span class="tk-k">await</span> <span class="tk-f">readFile</span>(<span class="tk-f">join</span>(<span class="tk-t">P3</span>, <span class="tk-s">"package.json"</span>), <span class="tk-s">"utf8"</span>)) <span class="tk-k">as</span> <span class="tk-t">Manifest</span>;
 	<span class="tk-f">checkVersions</span>(manifest, <span class="tk-k">await</span> <span class="tk-f">workspaceVersions</span>(<span class="tk-t">Object</span>.<span class="tk-f">keys</span>(manifest.dependencies)));
@@ -603,7 +603,7 @@ type-checks.</li>
 <li><strong>Minified, names kept:</strong> <code>minifySyntax</code> and <code>minifyWhitespace</code>, never <code>minifyIdentifiers</code>: Chord and the kit read
 <code>name</code> of functions and classes (decision D). No source maps.</li>
 <li><strong><code>splitting</code>:</strong> a lazy <code>import()</code> stays a chunk loaded only when asked for. This tree&#39;s bundles have none, but a
-worker that imports pi-ai gets each provider&#39;s SDK as a chunk of its own (the memory test&#39;s worker does).</li>
+worker that imports nycode-ai gets each provider&#39;s SDK as a chunk of its own (the memory test&#39;s worker does).</li>
 <li><strong>The banner:</strong> without it <code>ws</code> fails at its first <code>require(&quot;events&quot;)</code>. A mutation removing it is caught by every
 release test that starts the command.</li>
 </ul>
@@ -728,8 +728,8 @@ exit 1</code></pre>
 (<code>src/kit/{forward,contribute,info}.ts</code>, <code>src/principals.ts</code>) and writes JavaScript, <code>.d.ts</code> and <code>.d.ts.map</code> for each.
 It compiles against the workspace&#39;s sources, yet the declarations name Chord through the package, as an install
 resolves it. Part of <code>dist/api/v1/index.d.ts</code>:</p>
-<pre><code><span class="tk-k">export</span> * <span class="tk-k">from</span> <span class="tk-s">"@earendil-works/chord"</span>;
-<span class="tk-k">export</span> { BACKGROUND_CONTEXT, <span class="tk-k">type</span> <span class="tk-t">Context</span> } <span class="tk-k">from</span> <span class="tk-s">"@earendil-works/chord/context"</span>;
+<pre><code><span class="tk-k">export</span> * <span class="tk-k">from</span> <span class="tk-s">"@nycode/chord"</span>;
+<span class="tk-k">export</span> { BACKGROUND_CONTEXT, <span class="tk-k">type</span> <span class="tk-t">Context</span> } <span class="tk-k">from</span> <span class="tk-s">"@nycode/chord/context"</span>;
 <span class="tk-k">export</span> { contribute } <span class="tk-k">from</span> <span class="tk-s">"../../kit/contribute.ts"</span>;
 <span class="tk-k">export</span> { forward } <span class="tk-k">from</span> <span class="tk-s">"../../kit/forward.ts"</span>;</code></pre>
 <p>A build test checks that no emitted declaration names a path into <code>node_modules</code> or <code>packages/chord</code>. <strong>Two instances
@@ -801,7 +801,7 @@ Chord as a tarball (Carried).</p>
 <td>refused: above or the repository itself</td>
 </tr>
 <tr>
-<td><code>~/pi/..p3-release</code></td>
+<td><code>~/nycode/..p3-release</code></td>
 <td>allowed: a sibling named <code>..p3-release</code>, not inside (<code>startsWith(&quot;..&quot;)</code> would have said inside)</td>
 </tr>
 <tr>
@@ -875,7 +875,7 @@ worker&#39;s V8 flags and the version. In a checkout its file is <code>src/insta
 <tr>
 <td><code>ROOT</code></td>
 <td><code>apps/p3</code></td>
-<td><code>node_modules/@earendil-works/p3</code></td>
+<td><code>node_modules/@nycode/p3</code></td>
 </tr>
 <tr>
 <td>the worker</td>
@@ -902,23 +902,23 @@ what that costs and why it stays for now.</p>
 
 <section class="chapter" id="bin"><header class="opener"><div class="numeral">III</div><h2>The Command Line</h2><p class="lede">One file reads the command line, refuses what does not fit, and either serves or dispatches.</p></header>
 <p class="dropcap"><code>bin.ts</code>, the whole file but the usage text. The real usage:</p>
-<pre class="plain"><code>Usage: p3 [command] [--pi &lt;name&gt; | --dir &lt;path&gt;] [--port &lt;n&gt;]
+<pre class="plain"><code>Usage: p3 [command] [--nycode &lt;name&gt; | --dir &lt;path&gt;] [--port &lt;n&gt;]
 
-A Pi is its data directory: ~/.pi/p3 (the default Pi), ~/.pi/p3/pis/&lt;name&gt; (--pi) or any directory (--dir).
+A Nycode is its data directory: ~/.nycode/p3 (the default Nycode), ~/.nycode/p3/pis/&lt;name&gt; (--nycode) or any directory (--dir).
 
 Commands:
-  (none)     Start the Pi's server in the background unless it runs; print its port and an owner link (also: start)
-  server     Run the Pi's server in the foreground
-  status     Say whether the Pi's server runs: its port, pid, data directory, version and start time
-  stop       Stop the Pi's server; returns once it is gone
+  (none)     Start the Nycode's server in the background unless it runs; print its port and an owner link (also: start)
+  server     Run the Nycode's server in the foreground
+  status     Say whether the Nycode's server runs: its port, pid, data directory, version and start time
+  stop       Stop the Nycode's server; returns once it is gone
   restart    Stop, then start in the background
   list       The Pis on this machine and their state
 
 Options:
-  --pi &lt;name&gt;   A named Pi (lower case letters, digits, - and _)
-  --dir &lt;path&gt;  A Pi in any directory
-  --port &lt;n&gt;    The port for this start, on 127.0.0.1 (0: a free one). Without it a Pi listens on its own port:
-                8789 for the default Pi, else a free one taken at its first start and kept
+  --nycode &lt;name&gt;   A named Nycode (lower case letters, digits, - and _)
+  --dir &lt;path&gt;  A Nycode in any directory
+  --port &lt;n&gt;    The port for this start, on 127.0.0.1 (0: a free one). Without it a Nycode listens on its own port:
+                8789 for the default Nycode, else a free one taken at its first start and kept
   --version     Print p3's version
   --help        Print this help</code></pre>
 <pre><code><span class="tk-c">// First: a Node too old for p3 ends here, before any other module runs.</span>
@@ -931,11 +931,11 @@ Options:
 
 <span class="tk-k">async</span> <span class="tk-k">function</span> <span class="tk-f">run</span>([command = <span class="tk-s">"start"</span>, ...rest]: <span class="tk-k">readonly</span> string[], flags: <span class="tk-t">Flags</span>): <span class="tk-t">Promise</span>&lt;<span class="tk-k">void</span>&gt; {
 	<span class="tk-k">const</span> starts = command === <span class="tk-s">"start"</span> || command === <span class="tk-s">"server"</span> || command === <span class="tk-s">"restart"</span>;
-	<span class="tk-k">if</span> (rest.length &gt; <span class="tk-n">0</span> || (flags.pi !== <span class="tk-k">undefined</span> &amp;&amp; flags.dir !== <span class="tk-k">undefined</span>)) <span class="tk-f">usage</span>();
-	<span class="tk-k">if</span> (flags.pi !== <span class="tk-k">undefined</span> &amp;&amp; !<span class="tk-f">isPiName</span>(flags.pi)) <span class="tk-f">usage</span>();
+	<span class="tk-k">if</span> (rest.length &gt; <span class="tk-n">0</span> || (flags.nycode !== <span class="tk-k">undefined</span> &amp;&amp; flags.dir !== <span class="tk-k">undefined</span>)) <span class="tk-f">usage</span>();
+	<span class="tk-k">if</span> (flags.nycode !== <span class="tk-k">undefined</span> &amp;&amp; !<span class="tk-f">isNycodeName</span>(flags.nycode)) <span class="tk-f">usage</span>();
 	<span class="tk-c">// Digits only: a blank is no port (`Number("")` is 0, a free one).</span>
 	<span class="tk-k">if</span> (flags.port !== <span class="tk-k">undefined</span> &amp;&amp; !(starts &amp;&amp; /^\d{<span class="tk-n">1</span>,<span class="tk-n">5</span>}$/.<span class="tk-f">test</span>(flags.port) &amp;&amp; <span class="tk-t">Number</span>(flags.port) &lt;= <span class="tk-n">65535</span>)) <span class="tk-f">usage</span>();
-	<span class="tk-k">if</span> (command === <span class="tk-s">"list"</span> &amp;&amp; (flags.pi !== <span class="tk-k">undefined</span> || flags.dir !== <span class="tk-k">undefined</span>)) <span class="tk-f">usage</span>();
+	<span class="tk-k">if</span> (command === <span class="tk-s">"list"</span> &amp;&amp; (flags.nycode !== <span class="tk-k">undefined</span> || flags.dir !== <span class="tk-k">undefined</span>)) <span class="tk-f">usage</span>();
 	<span class="tk-k">const</span> dataDir = <span class="tk-f">dataDirOf</span>(flags);
 	<span class="tk-k">const</span> port = flags.port === <span class="tk-k">undefined</span> ? <span class="tk-k">undefined</span> : <span class="tk-t">Number</span>(flags.port);
 	<span class="tk-k">try</span> {
@@ -957,7 +957,7 @@ Options:
 }</code></pre>
 <p>Exit codes: 0; 1 for a failure (<code>status</code>: not running; <code>stop</code> of nothing is 0); 2 for a command line p3 does not
 understand. <code>--port &quot;&quot;</code>, <code> </code>, <code>x</code>, <code>-1</code>, <code>1.5</code> and a missing value are 2 (before round 1 <code>--port &quot;&quot;</code> was a free port).
-<code>--pi Bad</code> and <code>--pi a --dir b</code> are 2.</p>
+<code>--nycode Bad</code> and <code>--nycode a --dir b</code> are 2.</p>
 <h3 id="the-foreground-server">The foreground server</h3>
 <pre><code><span class="tk-c">/**
  * Runs the server on `dataDir` in the foreground until a signal or the owner's stop over HTTP closes it. A signal
@@ -1014,26 +1014,26 @@ understand. <code>--port &quot;&quot;</code>, <code> </code>, <code>x</code>, <c
 		context,
 	);
 }</code></pre>
-<h3 id="which-pi">Which Pi</h3>
-<p><code>src/pi.ts</code>:</p>
-<pre><code><span class="tk-c">/** The default Pi's port (p2 keeps 8788). Every other Pi takes a free one at its first start. */</span>
+<h3 id="which-nycode">Which Nycode</h3>
+<p><code>src/nycode.ts</code>:</p>
+<pre><code><span class="tk-c">/** The default Nycode's port (p2 keeps 8788). Every other Nycode takes a free one at its first start. */</span>
 <span class="tk-k">export</span> <span class="tk-k">const</span> DEFAULT_PORT = <span class="tk-n">8789</span>;
 
-<span class="tk-k">export</span> <span class="tk-k">function</span> <span class="tk-f">isPiName</span>(name: string): boolean {
+<span class="tk-k">export</span> <span class="tk-k">function</span> <span class="tk-f">isNycodeName</span>(name: string): boolean {
 	<span class="tk-k">return</span> /^[a-z0-<span class="tk-n">9</span>][a-z0-<span class="tk-n">9_</span>-]{<span class="tk-n">0</span>,<span class="tk-n">31</span>}$/.<span class="tk-f">test</span>(name);
 }
 
-<span class="tk-k">export</span> <span class="tk-k">function</span> <span class="tk-f">dataDirOf</span>(choice: <span class="tk-t">PiChoice</span>): string {
+<span class="tk-k">export</span> <span class="tk-k">function</span> <span class="tk-f">dataDirOf</span>(choice: <span class="tk-t">NycodeChoice</span>): string {
 	<span class="tk-k">if</span> (choice.dir !== <span class="tk-k">undefined</span>) <span class="tk-k">return</span> <span class="tk-f">resolve</span>(choice.dir);
-	<span class="tk-k">return</span> choice.pi === <span class="tk-k">undefined</span> ? <span class="tk-f">defaultDataDir</span>() : <span class="tk-f">join</span>(<span class="tk-f">pisRoot</span>(), choice.pi);
+	<span class="tk-k">return</span> choice.nycode === <span class="tk-k">undefined</span> ? <span class="tk-f">defaultDataDir</span>() : <span class="tk-f">join</span>(<span class="tk-f">pisRoot</span>(), choice.nycode);
 }
 
-<span class="tk-c">/** The port the Pi on `dataDir` (the default one when `undefined`) takes at its first start; 0 is a free one. */</span>
+<span class="tk-c">/** The port the Nycode on `dataDir` (the default one when `undefined`) takes at its first start; 0 is a free one. */</span>
 <span class="tk-k">export</span> <span class="tk-k">function</span> <span class="tk-f">firstPort</span>(dataDir: string | <span class="tk-k">undefined</span>): number {
 	<span class="tk-k">return</span> dataDir === <span class="tk-k">undefined</span> || <span class="tk-f">resolve</span>(dataDir) === <span class="tk-f">defaultDataDir</span>() ? DEFAULT_PORT : <span class="tk-n">0</span>;
 }</code></pre>
 <p>A name is a directory name as it is: no <code>/</code>, no <code>..</code>, no capital (two names differing in case would share a directory
-on macOS). <code>namedPis()</code> lists the directories under <code>~/.pi/p3/pis/</code> that can name one.</p>
+on macOS). <code>namedPis()</code> lists the directories under <code>~/.nycode/p3/pis/</code> that can name one.</p>
 </section>
 
 <section class="chapter" id="running"><header class="opener"><div class="numeral">IV</div><h2>Who Runs</h2><p class="lede">A record says who a process is; a lock says it still lives; a start time says it is still the same process.</p></header>
@@ -1041,7 +1041,7 @@ on macOS). <code>namedPis()</code> lists the directories under <code>~/.pi/p3/pi
 cannot answer it alone. A crashed server leaves <code>server.json</code> behind; its pid may belong to another process by now; its
 port may be someone else&#39;s.</p>
 <h3 id="the-two-records">The two records</h3>
-<p><code>src/kit/running.ts</code>. Each of the two processes of a Pi (the server and its supervisor) holds a lock and writes a
+<p><code>src/kit/running.ts</code>. Each of the two processes of a Nycode (the server and its supervisor) holds a lock and writes a
 record:</p>
 <pre><code><span class="tk-k">export</span> <span class="tk-k">type</span> <span class="tk-t">ProcessId</span> = { <span class="tk-k">readonly</span> pid: number; <span class="tk-k">readonly</span> start?: string };
 
@@ -1050,8 +1050,8 @@ record:</p>
 	| {
 			<span class="tk-k">readonly</span> state: <span class="tk-s">"running"</span>;
 			<span class="tk-k">readonly</span> run: string;
-			<span class="tk-c">/** The Pi's id (`pi.json`). */</span>
-			<span class="tk-k">readonly</span> pi: string;
+			<span class="tk-c">/** The Nycode's id (`nycode.json`). */</span>
+			<span class="tk-k">readonly</span> nycode: string;
 			<span class="tk-k">readonly</span> port: number;
 			<span class="tk-k">readonly</span> version: string;
 			<span class="tk-c">/** When it listened, in ms since the epoch. */</span>
@@ -1062,7 +1062,7 @@ record:</p>
 <p>Real records of this walkthrough&#39;s first run (chapter V):</p>
 <pre class="plain"><code>{"pid":2012381,"start":"96471968","state":"starting"}                                                  supervisor.json
 {"pid":2012392,"start":"96471971","state":"starting","run":"089edf69f04d5c8b3d4f372855a02a2b"}           server.json
-{"pid":2012392,"start":"96471971","state":"running","run":"089edf69…","pi":"af475c34a374804c",
+{"pid":2012392,"start":"96471971","state":"running","run":"089edf69…","nycode":"af475c34a374804c",
  "port":8789,"version":"0.0.1","startedAt":1794915760822}                                               server.json
 {"pid":2012381,"start":"96471968","state":"running"}                                                   supervisor.json</code></pre>
 <p><code>start</code> is the process&#39;s start time in clock ticks since boot, field 22 of <code>/proc/&lt;pid&gt;/stat</code>; <code>run</code> a random id the
@@ -1181,9 +1181,9 @@ own server (Astra, round 3; a test asks from three zones).</li>
 <li><strong>An unknown start names nobody.</strong> Round 3&#39;s blocking finding (Astra): two unknown starts compared equal, so on a
 machine without <code>ps</code> <code>stop</code> signalled whatever process a crashed record&#39;s pid now was. Now <code>undefined</code> never matches.</li>
 </ul>
-<h3 id="the-other-new-file-pi-json">The other new file: <code>pi.json</code></h3>
-<p><code>src/kit/config.ts</code>. The Pi&#39;s id becomes part of a cookie&#39;s name, so the file is checked when read:</p>
-<pre><code><span class="tk-k">export</span> <span class="tk-k">async</span> <span class="tk-k">function</span> <span class="tk-f">openConfig</span>(path: string): <span class="tk-t">Promise</span>&lt;<span class="tk-t">PiConfig</span>&gt; {
+<h3 id="the-other-new-file-nycode-json">The other new file: <code>nycode.json</code></h3>
+<p><code>src/kit/config.ts</code>. The Nycode&#39;s id becomes part of a cookie&#39;s name, so the file is checked when read:</p>
+<pre><code><span class="tk-k">export</span> <span class="tk-k">async</span> <span class="tk-k">function</span> <span class="tk-f">openConfig</span>(path: string): <span class="tk-t">Promise</span>&lt;<span class="tk-t">NycodeConfig</span>&gt; {
 	<span class="tk-k">const</span> existing = <span class="tk-k">await</span> <span class="tk-f">readConfig</span>(path);
 	<span class="tk-k">if</span> (existing !== <span class="tk-k">undefined</span>) <span class="tk-k">return</span> existing;
 	<span class="tk-k">const</span> config = { id: <span class="tk-f">randomBytes</span>(<span class="tk-n">8</span>).<span class="tk-f">toString</span>(<span class="tk-s">"hex"</span>) };
@@ -1191,7 +1191,7 @@ machine without <code>ps</code> <code>stop</code> signalled whatever process a c
 	<span class="tk-k">return</span> config;
 }
 
-<span class="tk-k">export</span> <span class="tk-k">async</span> <span class="tk-k">function</span> <span class="tk-f">readConfig</span>(path: string): <span class="tk-t">Promise</span>&lt;<span class="tk-t">PiConfig</span> | <span class="tk-k">undefined</span>&gt; {
+<span class="tk-k">export</span> <span class="tk-k">async</span> <span class="tk-k">function</span> <span class="tk-f">readConfig</span>(path: string): <span class="tk-t">Promise</span>&lt;<span class="tk-t">NycodeConfig</span> | <span class="tk-k">undefined</span>&gt; {
 	<span class="tk-k">const</span> text = <span class="tk-k">await</span> <span class="tk-f">ifExists</span>(<span class="tk-f">readFile</span>(path, <span class="tk-s">"utf8"</span>));
 	<span class="tk-k">if</span> (text === <span class="tk-k">undefined</span>) <span class="tk-k">return</span> <span class="tk-k">undefined</span>;
 	<span class="tk-c">// A trust boundary: a file people edit. The id becomes part of a cookie's name.</span>
@@ -1203,35 +1203,35 @@ machine without <code>ps</code> <code>stop</code> signalled whatever process a c
 	}
 	<span class="tk-k">return</span> { id, port };
 }</code></pre>
-<p>The layout gained three paths (<code>src/kit/layout.ts</code>): <code>config: pi.json</code>, <code>compileCache: cache/node</code>, <code>log: logs/server.log</code>. Every file is written with <code>writeSecret</code> (mode 0600, written to a temporary file and renamed: the
+<p>The layout gained three paths (<code>src/kit/layout.ts</code>): <code>config: nycode.json</code>, <code>compileCache: cache/node</code>, <code>log: logs/server.log</code>. Every file is written with <code>writeSecret</code> (mode 0600, written to a temporary file and renamed: the
 <code>.WLbb3mtM4mqA.tmp</code> lines in the traces below).</p>
 </section>
 
-<section class="chapter" id="trace"><header class="opener"><div class="numeral">V</div><h2>From Nothing to an Owner Link</h2><p class="lede">Plain p3 on a machine where no Pi ever ran: three processes, 247 ms, through every file of the slice.</p></header>
+<section class="chapter" id="trace"><header class="opener"><div class="numeral">V</div><h2>From Nothing to an Owner Link</h2><p class="lede">Plain p3 on a machine where no Nycode ever ran: three processes, 247 ms, through every file of the slice.</p></header>
 <p class="dropcap">The run: <code>HOME</code> an empty directory, the installed release, <code>NODE_DEBUG=p3</code> for the kit&#39;s two timing lines. A second
 process polled the data directory every 2 ms and printed each change; times are milliseconds after the command
 started.</p>
 <pre class="plain"><code>$ p3
-p3 on /tmp/s26w/home/.pi/p3, port 8789. Open http://127.0.0.1:8789/_p3/owner#qn4J8bloUzmkg2-UkmEgLTuWITcjSMGCkM7O98iS57I
+p3 on /tmp/s26w/home/.nycode/p3, port 8789. Open http://127.0.0.1:8789/_p3/owner#qn4J8bloUzmkg2-UkmEgLTuWITcjSMGCkM7O98iS57I
                                                                                (the command took 247 ms)
    86 ms  .WLbb3mtM4mqA.tmp: 54 bytes
    90 ms  logs/
    90 ms  supervisor.json: {"pid":2012381,"start":"96471968","state":"starting"}
   141 ms  cache/  server/  workers/
   141 ms  server.json: {"pid":2012392,"start":"96471971","state":"starting","run":"089edf69f04d5c8b3d4f372855a02a2b"}
-  143 ms  pi.json: { "id": "af475c34a374804c" }
+  143 ms  nycode.json: { "id": "af475c34a374804c" }
   197 ms  owner-token: 61 bytes
-  197 ms  pi.json: { "id": "af475c34a374804c", "port": 8789 }
-  200 ms  server.json: {"pid":2012392,…,"state":"running","run":"089edf69…","pi":"af475c34a374804c","port":8789,…}
+  197 ms  nycode.json: { "id": "af475c34a374804c", "port": 8789 }
+  200 ms  server.json: {"pid":2012392,…,"state":"running","run":"089edf69…","nycode":"af475c34a374804c","port":8789,…}
   200 ms  supervisor.json: {"pid":2012381,"start":"96471968","state":"running"}
 
 logs/server.log:
 P3 2012392: server plugins built and loaded in 43 ms
-p3 on /tmp/s26w/home/.pi/p3, port 8789
+p3 on /tmp/s26w/home/.nycode/p3, port 8789
 P3 2012392: worker base built in 111 ms</code></pre>
-<figure class="fig anim"><svg viewBox="0 0 720 534" width="100%" role="img" aria-label="Plain p3 with nothing running. Three processes; the command never talks to the supervisor, only to the server, and only once the server proved itself." xmlns="http://www.w3.org/2000/svg" style="font-family:'Avenir Next','Helvetica Neue',Helvetica,Arial,sans-serif;max-width:760px"><defs><marker id="f1m" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#7b7468"/></marker><marker id="f1a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#b4472f"/></marker><marker id="f1b" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#2e6a8a"/></marker></defs><line x1="102" y1="52" x2="102" y2="526" stroke="#c9bfae" stroke-dasharray="3 3"/><rect x="23" y="10" width="158" height="42" rx="4" fill="#fff" stroke="#2e6a8a" stroke-width="1.5"/><text x="102" y="27" font-size="11" fill="#2a2723" text-anchor="middle">p3</text><text x="102" y="41" font-size="9.5" fill="#7b7468" text-anchor="middle">the command</text><line x1="274" y1="52" x2="274" y2="526" stroke="#c9bfae" stroke-dasharray="3 3"/><rect x="195" y="10" width="158" height="42" rx="4" fill="#fff" stroke="#c9bfae"/><text x="274" y="27" font-size="11" fill="#2a2723" text-anchor="middle">supervisor</text><text x="274" y="41" font-size="9.5" fill="#7b7468" text-anchor="middle">detached</text><line x1="446" y1="52" x2="446" y2="526" stroke="#c9bfae" stroke-dasharray="3 3"/><rect x="367" y="10" width="158" height="42" rx="4" fill="#fff" stroke="#b4472f" stroke-width="1.5"/><text x="446" y="27" font-size="11" fill="#2a2723" text-anchor="middle">p3 server</text><text x="446" y="41" font-size="9.5" fill="#7b7468" text-anchor="middle">the supervisor's child</text><line x1="618" y1="52" x2="618" y2="526" stroke="#c9bfae" stroke-dasharray="3 3"/><rect x="539" y="10" width="158" height="42" rx="4" fill="#efe9dd" stroke="#c9bfae"/><text x="618" y="27" font-size="11" fill="#2a2723" text-anchor="middle">data directory</text><text x="618" y="41" font-size="9.5" fill="#7b7468" text-anchor="middle">locks, records</text><g class="step edge" style="--i:1"><line x1="102" y1="78" x2="615" y2="78" stroke="#7b7468" marker-end="url(#f1m)"/><text x="360" y="72" font-size="10" fill="#2a2723" text-anchor="middle">holder(server), holder(supervisor): both free</text></g><g class="step edge" style="--i:2"><line x1="102" y1="110" x2="271" y2="110" stroke="#7b7468" marker-end="url(#f1m)"/><text x="188" y="104" font-size="10" fill="#2a2723" text-anchor="middle">spawn, detached (SUPERVISOR + COMMAND server --dir …)</text></g><g class="step edge" style="--i:3"><line x1="274" y1="142" x2="615" y2="142" stroke="#7b7468" marker-end="url(#f1m)"/><text x="446" y="136" font-size="10" fill="#2a2723" text-anchor="middle">lock p3-supervisor, supervisor.json starting (90 ms)</text></g><g class="step edge" style="--i:4"><line x1="274" y1="174" x2="443" y2="174" stroke="#7b7468" marker-end="url(#f1m)"/><text x="360" y="168" font-size="10" fill="#2a2723" text-anchor="middle">spawn p3 server, IPC channel</text></g><g class="step edge" style="--i:5"><line x1="446" y1="206" x2="615" y2="206" stroke="#b4472f" marker-end="url(#f1a)"/><text x="532" y="200" font-size="10" fill="#b4472f" text-anchor="middle">lock p3-server, server.json starting, run id (141 ms)</text></g><g class="step edge" style="--i:6"><path d="M446 232 h-34 v14 h32" fill="none" stroke="#7b7468" marker-end="url(#f1m)"/><text x="404" y="242" font-size="10" fill="#2a2723" text-anchor="end">layout, pi.json, cookie, store, plugins (43 ms)</text></g><g class="step edge" style="--i:7"><line x1="446" y1="278" x2="615" y2="278" stroke="#7b7468" marker-end="url(#f1m)"/><text x="532" y="272" font-size="10" fill="#2a2723" text-anchor="middle">owner-token, listen 8789, pi.json port, server.json running (200 ms)</text></g><g class="step edge" style="--i:8"><line x1="446" y1="310" x2="277" y2="310" stroke="#7b7468" stroke-dasharray="4 3" marker-end="url(#f1m)"/><text x="360" y="304" font-size="10" fill="#2a2723" text-anchor="middle">&quot;listening&quot; over IPC</text></g><g class="step edge" style="--i:9"><line x1="274" y1="342" x2="615" y2="342" stroke="#7b7468" marker-end="url(#f1m)"/><text x="446" y="336" font-size="10" fill="#2a2723" text-anchor="middle">supervisor.json running</text></g><g class="step edge" style="--i:10"><line x1="102" y1="374" x2="615" y2="374" stroke="#7b7468" marker-end="url(#f1m)"/><text x="360" y="368" font-size="10" fill="#2a2723" text-anchor="middle">holder(server): claimed</text></g><g class="step edge" style="--i:11"><line x1="102" y1="406" x2="443" y2="406" stroke="#b4472f" marker-end="url(#f1a)"/><text x="274" y="400" font-size="10" fill="#b4472f" text-anchor="middle">GET /_p3/identity?nonce=… (no token)</text></g><g class="step edge" style="--i:12"><line x1="446" y1="438" x2="105" y2="438" stroke="#7b7468" stroke-dasharray="4 3" marker-end="url(#f1m)"/><text x="274" y="432" font-size="10" fill="#2a2723" text-anchor="middle">run, pid, proof = HMAC(owner token, nonce)</text></g><g class="step edge" style="--i:13"><line x1="102" y1="470" x2="443" y2="470" stroke="#b4472f" marker-end="url(#f1a)"/><text x="274" y="464" font-size="10" fill="#b4472f" text-anchor="middle">same connection: POST /_p3/owner/link, Bearer owner token</text></g><g class="step edge" style="--i:14"><line x1="446" y1="502" x2="105" y2="502" stroke="#7b7468" stroke-dasharray="4 3" marker-end="url(#f1m)"/><text x="274" y="496" font-size="10" fill="#2a2723" text-anchor="middle">{ link } (247 ms)</text></g></svg><figcaption><button class="replay" type="button">Replay</button><span class="fignum">Figure 1.</span> Plain <code>p3</code> with nothing running. Three processes; the command never talks to the supervisor, only to the server, and only once the server proved itself.</figcaption></figure>
-<div class="steps"><div class="steps-head"><span class="title">Every stop, with its code</span><span class="count"></span><button class="prev" type="button">Back</button><button class="next" type="button">Next</button></div><div class="step-panel"><h4>1. <code>bin.ts</code>: plain <code>p3</code> is <code>start</code></h4><p><code>run([command = &quot;start&quot;, ...rest], flags)</code>: no positional is <code>start</code>; no <code>--pi</code>, no <code>--dir</code>, so <code>dataDirOf</code> gives
-<code>~/.pi/p3</code>; no <code>--port</code>, so <code>port</code> is <code>undefined</code>. Then <code>start(dataDir, undefined, context)</code> from <code>src/commands.ts</code>.</p>
+<figure class="fig anim"><svg viewBox="0 0 720 534" width="100%" role="img" aria-label="Plain p3 with nothing running. Three processes; the command never talks to the supervisor, only to the server, and only once the server proved itself." xmlns="http://www.w3.org/2000/svg" style="font-family:'Avenir Next','Helvetica Neue',Helvetica,Arial,sans-serif;max-width:760px"><defs><marker id="f1m" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#7b7468"/></marker><marker id="f1a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#b4472f"/></marker><marker id="f1b" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#2e6a8a"/></marker></defs><line x1="102" y1="52" x2="102" y2="526" stroke="#c9bfae" stroke-dasharray="3 3"/><rect x="23" y="10" width="158" height="42" rx="4" fill="#fff" stroke="#2e6a8a" stroke-width="1.5"/><text x="102" y="27" font-size="11" fill="#2a2723" text-anchor="middle">p3</text><text x="102" y="41" font-size="9.5" fill="#7b7468" text-anchor="middle">the command</text><line x1="274" y1="52" x2="274" y2="526" stroke="#c9bfae" stroke-dasharray="3 3"/><rect x="195" y="10" width="158" height="42" rx="4" fill="#fff" stroke="#c9bfae"/><text x="274" y="27" font-size="11" fill="#2a2723" text-anchor="middle">supervisor</text><text x="274" y="41" font-size="9.5" fill="#7b7468" text-anchor="middle">detached</text><line x1="446" y1="52" x2="446" y2="526" stroke="#c9bfae" stroke-dasharray="3 3"/><rect x="367" y="10" width="158" height="42" rx="4" fill="#fff" stroke="#b4472f" stroke-width="1.5"/><text x="446" y="27" font-size="11" fill="#2a2723" text-anchor="middle">p3 server</text><text x="446" y="41" font-size="9.5" fill="#7b7468" text-anchor="middle">the supervisor's child</text><line x1="618" y1="52" x2="618" y2="526" stroke="#c9bfae" stroke-dasharray="3 3"/><rect x="539" y="10" width="158" height="42" rx="4" fill="#efe9dd" stroke="#c9bfae"/><text x="618" y="27" font-size="11" fill="#2a2723" text-anchor="middle">data directory</text><text x="618" y="41" font-size="9.5" fill="#7b7468" text-anchor="middle">locks, records</text><g class="step edge" style="--i:1"><line x1="102" y1="78" x2="615" y2="78" stroke="#7b7468" marker-end="url(#f1m)"/><text x="360" y="72" font-size="10" fill="#2a2723" text-anchor="middle">holder(server), holder(supervisor): both free</text></g><g class="step edge" style="--i:2"><line x1="102" y1="110" x2="271" y2="110" stroke="#7b7468" marker-end="url(#f1m)"/><text x="188" y="104" font-size="10" fill="#2a2723" text-anchor="middle">spawn, detached (SUPERVISOR + COMMAND server --dir …)</text></g><g class="step edge" style="--i:3"><line x1="274" y1="142" x2="615" y2="142" stroke="#7b7468" marker-end="url(#f1m)"/><text x="446" y="136" font-size="10" fill="#2a2723" text-anchor="middle">lock p3-supervisor, supervisor.json starting (90 ms)</text></g><g class="step edge" style="--i:4"><line x1="274" y1="174" x2="443" y2="174" stroke="#7b7468" marker-end="url(#f1m)"/><text x="360" y="168" font-size="10" fill="#2a2723" text-anchor="middle">spawn p3 server, IPC channel</text></g><g class="step edge" style="--i:5"><line x1="446" y1="206" x2="615" y2="206" stroke="#b4472f" marker-end="url(#f1a)"/><text x="532" y="200" font-size="10" fill="#b4472f" text-anchor="middle">lock p3-server, server.json starting, run id (141 ms)</text></g><g class="step edge" style="--i:6"><path d="M446 232 h-34 v14 h32" fill="none" stroke="#7b7468" marker-end="url(#f1m)"/><text x="404" y="242" font-size="10" fill="#2a2723" text-anchor="end">layout, nycode.json, cookie, store, plugins (43 ms)</text></g><g class="step edge" style="--i:7"><line x1="446" y1="278" x2="615" y2="278" stroke="#7b7468" marker-end="url(#f1m)"/><text x="532" y="272" font-size="10" fill="#2a2723" text-anchor="middle">owner-token, listen 8789, nycode.json port, server.json running (200 ms)</text></g><g class="step edge" style="--i:8"><line x1="446" y1="310" x2="277" y2="310" stroke="#7b7468" stroke-dasharray="4 3" marker-end="url(#f1m)"/><text x="360" y="304" font-size="10" fill="#2a2723" text-anchor="middle">&quot;listening&quot; over IPC</text></g><g class="step edge" style="--i:9"><line x1="274" y1="342" x2="615" y2="342" stroke="#7b7468" marker-end="url(#f1m)"/><text x="446" y="336" font-size="10" fill="#2a2723" text-anchor="middle">supervisor.json running</text></g><g class="step edge" style="--i:10"><line x1="102" y1="374" x2="615" y2="374" stroke="#7b7468" marker-end="url(#f1m)"/><text x="360" y="368" font-size="10" fill="#2a2723" text-anchor="middle">holder(server): claimed</text></g><g class="step edge" style="--i:11"><line x1="102" y1="406" x2="443" y2="406" stroke="#b4472f" marker-end="url(#f1a)"/><text x="274" y="400" font-size="10" fill="#b4472f" text-anchor="middle">GET /_p3/identity?nonce=… (no token)</text></g><g class="step edge" style="--i:12"><line x1="446" y1="438" x2="105" y2="438" stroke="#7b7468" stroke-dasharray="4 3" marker-end="url(#f1m)"/><text x="274" y="432" font-size="10" fill="#2a2723" text-anchor="middle">run, pid, proof = HMAC(owner token, nonce)</text></g><g class="step edge" style="--i:13"><line x1="102" y1="470" x2="443" y2="470" stroke="#b4472f" marker-end="url(#f1a)"/><text x="274" y="464" font-size="10" fill="#b4472f" text-anchor="middle">same connection: POST /_p3/owner/link, Bearer owner token</text></g><g class="step edge" style="--i:14"><line x1="446" y1="502" x2="105" y2="502" stroke="#7b7468" stroke-dasharray="4 3" marker-end="url(#f1m)"/><text x="274" y="496" font-size="10" fill="#2a2723" text-anchor="middle">{ link } (247 ms)</text></g></svg><figcaption><button class="replay" type="button">Replay</button><span class="fignum">Figure 1.</span> Plain <code>p3</code> with nothing running. Three processes; the command never talks to the supervisor, only to the server, and only once the server proved itself.</figcaption></figure>
+<div class="steps"><div class="steps-head"><span class="title">Every stop, with its code</span><span class="count"></span><button class="prev" type="button">Back</button><button class="next" type="button">Next</button></div><div class="step-panel"><h4>1. <code>bin.ts</code>: plain <code>p3</code> is <code>start</code></h4><p><code>run([command = &quot;start&quot;, ...rest], flags)</code>: no positional is <code>start</code>; no <code>--nycode</code>, no <code>--dir</code>, so <code>dataDirOf</code> gives
+<code>~/.nycode/p3</code>; no <code>--port</code>, so <code>port</code> is <code>undefined</code>. Then <code>start(dataDir, undefined, context)</code> from <code>src/commands.ts</code>.</p>
 </div><div class="step-panel"><h4>2. <code>commands.ts</code>: who runs now</h4><pre><code><span class="tk-k">export</span> <span class="tk-k">async</span> <span class="tk-k">function</span> <span class="tk-f">start</span>(path: string, port: number | <span class="tk-k">undefined</span>, context: <span class="tk-t">Context</span>): <span class="tk-t">Promise</span>&lt;number&gt; {
 	<span class="tk-k">const</span> dataDir = <span class="tk-k">await</span> <span class="tk-f">openDataDir</span>(path);
 	<span class="tk-k">const</span> deadline = <span class="tk-t">Date</span>.<span class="tk-f">now</span>() + START_MS;                        <span class="tk-c">// 30 s</span>
@@ -1246,7 +1246,7 @@ P3 2012392: worker base built in 111 ms</code></pre>
 	console.<span class="tk-f">log</span>(<span class="tk-s">`p3 on ${dataDir}, port ${server.port}. Open ${link}`</span>);
 	<span class="tk-k">return</span> <span class="tk-n">0</span>;
 }</code></pre>
-<p><code>openDataDir</code> makes <code>~/.pi/p3</code> (mode 0700) and resolves its real path; it refuses the home directory, a file system&#39;s
+<p><code>openDataDir</code> makes <code>~/.nycode/p3</code> (mode 0700) and resolves its real path; it refuses the home directory, a file system&#39;s
 root and another user&#39;s directory. <code>running</code> asks <code>holder</code> for both roles. Both locks are free here, so <code>idle</code>: the
 command starts a supervisor. Only where nobody holds the directory (round 3): a server or supervisor that starts
 already holds a lock, and its server is the one to wait for.</p>
@@ -1267,7 +1267,7 @@ already holds a lock, and its server is the one to wait for.</p>
 	<span class="tk-c">// … `exited()` and `end()` for the command's own child (below)</span>
 	spawned.<span class="tk-f">unref</span>();
 }</code></pre>
-<p>In the release this spawns <code>node …/dist/supervisor.js /tmp/s26w/home/.pi/p3 …/dist/p3.js server --dir /tmp/s26w/home/.pi/p3</code>. Detached: the supervisor outlives the command. <code>COMMAND</code> and <code>SUPERVISOR</code> come from
+<p>In the release this spawns <code>node …/dist/supervisor.js /tmp/s26w/home/.nycode/p3 …/dist/p3.js server --dir /tmp/s26w/home/.nycode/p3</code>. Detached: the supervisor outlives the command. <code>COMMAND</code> and <code>SUPERVISOR</code> come from
 <code>src/install.ts</code>, so the release runs its own bundles and a checkout its TypeScript.</p>
 </div><div class="step-panel"><h4>4. <code>supervisor.ts</code>: its lock, its record, its log (90 ms)</h4><pre><code><span class="tk-k">const</span> [dataDir, ...command] = process.argv.<span class="tk-f">slice</span>(<span class="tk-n">2</span>);
 <span class="tk-k">const</span> lock = <span class="tk-k">await</span> <span class="tk-f">takeLock</span>(dataDir, <span class="tk-s">"supervisor"</span>, LOCK_MS, context);   <span class="tk-c">// 1 s</span>
@@ -1302,7 +1302,7 @@ the log, and it gets an IPC channel (chapter VIII has the loop).</p>
 		<span class="tk-k">throw</span> error;
 	}
 }</code></pre>
-<p>In the trace: <code>server.json</code> <code>starting</code> and the layout&#39;s directories at 141 ms, <code>pi.json</code> with a fresh id at 143. The
+<p>In the trace: <code>server.json</code> <code>starting</code> and the layout&#39;s directories at 141 ms, <code>nycode.json</code> with a fresh id at 143. The
 record comes first so that a command asking meanwhile sees <code>starting</code>, not &quot;not running&quot; (round 2: <code>stop</code> answered
 &quot;not running&quot; exit 0 while a server held the lock, and that server went on to run). A failed start right after the
 lock leaves no record (tested: &quot;leaves no record and frees the lock when the start fails right after it took the
@@ -1313,7 +1313,7 @@ lock&quot;).</p>
 	{ name: <span class="tk-s">"p3.sign-ins"</span>, facet: signIns.facet },
 	{ name: <span class="tk-s">"p3.owner"</span>, facet: <span class="tk-f">ownerFacet</span>(link) },
 	{ name: <span class="tk-s">"p3.stop"</span>, facet: <span class="tk-f">stopFacet</span>(options.onStop) },
-	{ name: <span class="tk-s">"p3.identity"</span>, facet: <span class="tk-f">identityFacet</span>({ run, pid: process.pid, pi: config.id }, () =&gt; ownerToken) },
+	{ name: <span class="tk-s">"p3.identity"</span>, facet: <span class="tk-f">identityFacet</span>({ run, pid: process.pid, nycode: config.id }, () =&gt; ownerToken) },
 	...(options.facets ?? []),
 ];
 <span class="tk-k">const</span> app = <span class="tk-k">new</span> <span class="tk-t">RunningApp</span>({ host, http, workers, store, plugins, lock }, layout);
@@ -1333,18 +1333,18 @@ owner link route.</p>
 	app.<span class="tk-f">started</span>(link.<span class="tk-f">renew</span>(), listening);
 	<span class="tk-c">// Last: a command that reads `running` asks for an owner link at once.</span>
 	<span class="tk-k">const</span> { version } = options;
-	<span class="tk-k">const</span> running = { state: <span class="tk-s">"running"</span>, run, pi: config.id, port: listening.port, version, startedAt: <span class="tk-t">Date</span>.<span class="tk-f">now</span>() } <span class="tk-k">as</span> <span class="tk-k">const</span>;
+	<span class="tk-k">const</span> running = { state: <span class="tk-s">"running"</span>, run, nycode: config.id, port: listening.port, version, startedAt: <span class="tk-t">Date</span>.<span class="tk-f">now</span>() } <span class="tk-k">as</span> <span class="tk-k">const</span>;
 	<span class="tk-k">await</span> <span class="tk-f">writeRecord</span>(layout.dataDir, <span class="tk-s">"server"</span>, running);
 } <span class="tk-k">catch</span> (error) {
 	<span class="tk-k">await</span> app.<span class="tk-f">close</span>(context);
 	<span class="tk-k">throw</span> error;
 }</code></pre>
-<p>The order is the rule: <code>owner-token</code> (197), the listen, the port into <code>pi.json</code> (197, because this start named no port
-and the Pi had none), the owner link made, and only then <code>server.json</code> says <code>running</code> (200). Round 2 (Sol): the record
+<p>The order is the rule: <code>owner-token</code> (197), the listen, the port into <code>nycode.json</code> (197, because this start named no port
+and the Nycode had none), the owner link made, and only then <code>server.json</code> says <code>running</code> (200). Round 2 (Sol): the record
 used to come before the owner link was ready, and plain <code>p3</code> got a 500. <code>unheard</code> is the busy-port race (chapter
 VIII).</p>
 <p>Right after, off the start&#39;s path, the worker base builds (<code>worker base built in 111 ms</code>); a worker start waits for it.</p>
-</div><div class="step-panel"><h4>8. <code>bin.ts</code> and <code>supervisor.ts</code>: &quot;listening&quot;</h4><p>The server prints <code>p3 on /tmp/s26w/home/.pi/p3, port 8789</code> into the log (no owner link: it is supervised) and sends
+</div><div class="step-panel"><h4>8. <code>bin.ts</code> and <code>supervisor.ts</code>: &quot;listening&quot;</h4><p>The server prints <code>p3 on /tmp/s26w/home/.nycode/p3, port 8789</code> into the log (no owner link: it is supervised) and sends
 <code>&quot;listening&quot;</code> over its IPC channel. The supervisor&#39;s <code>once(&quot;message&quot;)</code> writes <code>supervisor.json</code> <code>running</code> (200 ms):
 from now on a supervisor without a server means a crash.</p>
 </div><div class="step-panel"><h4>9. <code>commands.ts</code>: the command waits for <code>running</code></h4><pre><code><span class="tk-k">async</span> <span class="tk-k">function</span> <span class="tk-f">serverOf</span>(dataDir, ours, logged, deadline, context) {
@@ -1388,18 +1388,18 @@ exits 0, 247 ms after it began.</p>
 </div></div>
 <h3 id="the-second-p3">The second <code>p3</code></h3>
 <pre class="plain"><code>$ time p3
-p3 on /tmp/s26w/home/.pi/p3, port 8789. Open http://127.0.0.1:8789/_p3/owner#PSpQCkx8gI1xKx3JWsIAyzaGsNTTIPVjVQ-gRovcy0w
+p3 on /tmp/s26w/home/.nycode/p3, port 8789. Open http://127.0.0.1:8789/_p3/owner#PSpQCkx8gI1xKx3JWsIAyzaGsNTTIPVjVQ-gRovcy0w
 real	0m0.127s
 "pid":2012392                          (the same server)</code></pre>
 <p><code>holder(server)</code> is <code>claimed</code> at once, the proof passes, <code>listening</code> gives the record, no supervisor is started, and
 the link is fresh: the first one no longer signs in. The test (&quot;plain p3 starts the server in the background once,
 and prints a fresh owner link each time&quot;) starts two <code>p3</code> at once, then a third, and checks that the first two links
 are refused (403), the third signs in once, and the log holds no <code>Open </code>.</p>
-<h3 id="status-and-list-on-that-pi"><code>status</code> and <code>list</code> on that Pi</h3>
+<h3 id="status-and-list-on-that-nycode"><code>status</code> and <code>list</code> on that Nycode</h3>
 <pre class="plain"><code>$ p3 status
 running
-  pi              af475c34a374804c
-  data directory  /tmp/s26w/home/.pi/p3
+  nycode              af475c34a374804c
+  data directory  /tmp/s26w/home/.nycode/p3
   port            8789
   pid             2012392
   version         0.0.1
@@ -1408,7 +1408,7 @@ running
 exit 0
 
 $ p3 list
-(default)  running  8789  /tmp/s26w/home/.pi/p3</code></pre>
+(default)  running  8789  /tmp/s26w/home/.nycode/p3</code></pre>
 <p>What <code>status</code> says while no server listens, from the code:</p>
 <pre><code><span class="tk-k">function</span> <span class="tk-f">notListening</span>(server: <span class="tk-t">ServerHolder</span>, supervisor: <span class="tk-t">Holder</span>&lt;<span class="tk-s">"supervisor"</span>&gt;): string {
 	<span class="tk-k">if</span> (server.kind === <span class="tk-s">"named"</span>) <span class="tk-k">return</span> <span class="tk-s">`starting (pid ${server.record.pid})`</span>;
@@ -1420,12 +1420,12 @@ $ p3 list
 }</code></pre>
 <p>The data directory afterwards, every entry 0700 or 0600:</p>
 <pre class="plain"><code>drwx------  cache/{node,worker}   logs/server.log   server/{cookie-secret,store.sqlite*}   workers/
--rw-------  owner-token   pi.json   server.json   supervisor.json</code></pre>
+-rw-------  owner-token   nycode.json   server.json   supervisor.json</code></pre>
 </section>
 
 <section class="chapter" id="identity"><header class="opener"><div class="numeral">VI</div><h2>The Identity Proof</h2><p class="lede">A record names a port; only the server on it can prove it is that record&#39;s, and the owner token goes nowhere else.</p></header>
 <h3 id="the-attack">The attack</h3>
-<p>A server crashed and left <code>server.json</code> naming port 8789. The Pi starts again: the new server holds the lock but has
+<p>A server crashed and left <code>server.json</code> naming port 8789. The Nycode starts again: the new server holds the lock but has
 not written its record yet. Meanwhile another user on the machine has a program listening on 8789. A command that
 believed the record would ask that program for an owner link, with the owner token as the bearer: the other user now
 has the owner&#39;s sign-in. <code>stop</code> would send it the owner&#39;s stop, or signal the pid the record names.</p>
@@ -1436,7 +1436,7 @@ has the owner&#39;s sign-in. <code>stop</code> would send it the owner&#39;s sto
 <span class="tk-k">const</span> NONCE = /^[<span class="tk-n">0</span>-9a-f]{<span class="tk-n">32</span>}$/;
 
 <span class="tk-k">export</span> <span class="tk-k">function</span> <span class="tk-f">identityFacet</span>(
-	server: { <span class="tk-k">readonly</span> run: string; <span class="tk-k">readonly</span> pid: number; <span class="tk-k">readonly</span> pi: string },
+	server: { <span class="tk-k">readonly</span> run: string; <span class="tk-k">readonly</span> pid: number; <span class="tk-k">readonly</span> nycode: string },
 	ownerToken: () =&gt; string,
 ): <span class="tk-t">Facet</span>&lt;<span class="tk-t">P3Principal</span>&gt; {
 	<span class="tk-k">return</span> <span class="tk-f">defineFacet</span>&lt;<span class="tk-t">P3Principal</span>&gt;((_host, self) =&gt;
@@ -1471,7 +1471,7 @@ has the owner&#39;s sign-in. <code>stop</code> would send it the owner&#39;s sto
 <p>The route is public: it tells nothing secret. The proof is possession of the owner token without sending it (owner&#39;s
 choice B, after round 3). Against the running server of chapter V, with <code>curl</code> and <code>openssl</code>:</p>
 <pre class="plain"><code>$ curl "http://127.0.0.1:8789/_p3/identity?nonce=2b2a8611b3445f78e234694b43ba0813"
-{"run":"089edf69f04d5c8b3d4f372855a02a2b","pid":2012392,"pi":"af475c34a374804c",
+{"run":"089edf69f04d5c8b3d4f372855a02a2b","pid":2012392,"nycode":"af475c34a374804c",
  "proof":"471bc87f1b7c5a26ce5c653de7aac3e3b8904b031fe604951010af983e36ecac"}
 $ echo -n 2b2a8611b3445f78e234694b43ba0813 | openssl dgst -sha256 -hmac "$(cat owner-token)"
 471bc87f1b7c5a26ce5c653de7aac3e3b8904b031fe604951010af983e36ecac
@@ -1493,13 +1493,13 @@ $ curl -X POST …/_p3/owner/link          → 401</code></pre>
 		token !== <span class="tk-k">undefined</span> &amp;&amp; said?.run === record.run &amp;&amp; said.pid === record.pid &amp;&amp; <span class="tk-f">proves</span>(said.proof, token, nonce)
 	);
 }</code></pre>
-<p>Three things must match: the record&#39;s run id (so a new server of this Pi under an old record, or another Pi&#39;s server
+<p>Three things must match: the record&#39;s run id (so a new server of this Nycode under an old record, or another Nycode&#39;s server
 on the port, is not taken for it), the record&#39;s pid (which <code>stop</code> would signal), and the proof for a nonce this
 command just made (so a replayed answer fails).</p>
 <h3 id="the-attack-run">The attack, run</h3>
-<p>A script held the server&#39;s lock of a Pi <code>victim</code> (as a starting server would), wrote a <code>running</code> record naming a port,
+<p>A script held the server&#39;s lock of a Nycode <code>victim</code> (as a starting server would), wrote a <code>running</code> record naming a port,
 and listened on that port with four programs in turn, each answering the identity question its own way. Each line is
-what the installed <code>p3 status --pi victim</code> printed, and every request the program received:</p>
+what the installed <code>p3 status --nycode victim</code> printed, and every request the program received:</p>
 <pre class="plain"><code>echoes the run id, no proof                  status: starting   got: GET /_p3/identity?nonce=a83af2af… authorization=-
 a made-up proof                              status: starting   got: GET /_p3/identity?nonce=7c134412… authorization=-
 a proof replayed from another nonce          status: starting   got: GET /_p3/identity?nonce=25c6c309… authorization=-
@@ -1507,7 +1507,7 @@ the right proof (only the token's holder)    status: running    got: GET /_p3/id
 <p><code>starting</code> means <code>unnamed</code>: the lock is held and nobody is believed. No program ever saw an <code>authorization</code> header:
 <code>status</code> sends none, and plain <code>p3</code> and <code>stop</code> would send the token only to the last. The case &quot;a running record is
 the server&#39;s only once it proves itself: another program, a replayed proof, another run&quot; runs this with five programs
-and two real servers (also a program with the right proof but another pid, a new server of another Pi on the port, and this Pi&#39;s own server under
+and two real servers (also a program with the right proof but another pid, a new server of another Nycode on the port, and this Nycode&#39;s own server under
 a record naming an earlier run), then runs <code>stop</code> meanwhile and checks that nothing was signalled or stopped.</p>
 <p>What it does not cover: the owner&#39;s own processes can read the owner token file anyway (the data directory is 0700);
 the proof is against other users.</p>
@@ -1697,35 +1697,35 @@ own and does not wait. Whom it signals:</p>
 <td>waits, never signals</td>
 </tr>
 </tbody></table>
-<h3 id="stopping-a-running-pi">Stopping a running Pi</h3>
+<h3 id="stopping-a-running-nycode">Stopping a running Nycode</h3>
 <pre class="plain"><code>$ time p3 stop
 stopped
 real	0m0.154s
 exit 0
 server gone, supervisor gone
-$ ls ~/.pi/p3
-cache  logs  owner-token  pi.json  server  workers         (no server.json, no supervisor.json)
+$ ls ~/.nycode/p3
+cache  logs  owner-token  nycode.json  server  workers         (no server.json, no supervisor.json)
 $ p3 stop
 not running
 exit 0
 $ p3 status
 not running
-  data directory  /tmp/s26w/home/.pi/p3
+  data directory  /tmp/s26w/home/.nycode/p3
 exit 1</code></pre>
 <h3 id="stopping-a-server-that-is-starting">Stopping a server that is starting</h3>
-<p>The gate preload (<code>test/gate.ts</code>) holds a launched server still at a point of its start. Here: <code>p3 server --pi held</code>,
+<p>The gate preload (<code>test/gate.ts</code>) holds a launched server still at a point of its start. Here: <code>p3 server --nycode held</code>,
 held at its plugins (its record says <code>starting</code>), then <code>status</code>, <code>list</code> and <code>stop</code> against it, then the gate opened.
 Real run, times from the server&#39;s launch:</p>
 <pre class="plain"><code>  108 ms  server 2012884 held at its plugins
           server.json: {"pid":2012884,"start":"96476761","state":"starting","run":"ec274282e3fff31432bb95066409a781"}
-          p3 status --pi held   →  starting (pid 2012884)
-          p3 list               →  held  starting  -  /tmp/s26w/home/.pi/p3/pis/held
-          p3 stop --pi held     …  started, waiting
+          p3 status --nycode held   →  starting (pid 2012884)
+          p3 list               →  held  starting  -  /tmp/s26w/home/.nycode/p3/pis/held
+          p3 stop --nycode held     …  started, waiting
  1772 ms  stop still waiting; server alive
  1778 ms  gate opened
           (server finishes its start, record says running; stop proves it, posts /_p3/stop, the server closes)
  1934 ms  stop returned: "stopped", exit 0
-          server 2012884 gone; only pi.json left</code></pre>
+          server 2012884 gone; only nycode.json left</code></pre>
 <p><code>stop</code> polled <code>holder</code> every 25 ms for 1.7 s and did nothing but wait: <code>named</code> with <code>starting</code> is never signalled.
 Once the record said <code>running</code> it asked over HTTP, the server answered <code>&quot;stopping&quot;</code> and closed, and <code>stop</code> returned
 156 ms after the gate opened, when both locks were free. The case &quot;a server that holds the lock is starting: status
@@ -1829,7 +1829,7 @@ process.<span class="tk-f">exit</span>(code);
 </tr>
 </tbody></table>
 <h3 id="a-crash-traced">A crash, traced</h3>
-<p>The default Pi running, then <code>SIGKILL</code> to its server. Times from the watcher&#39;s start:</p>
+<p>The default Nycode running, then <code>SIGKILL</code> to its server. Times from the watcher&#39;s start:</p>
 <pre class="plain"><code>   22 ms  server.json: {"pid":2012725,…,"state":"running","run":"450e96338e3fa49f51b4c205cdebda8b",…,"port":8789,…}
           supervisor.json: {"pid":2012714,…,"state":"running"}
    31 ms  kill -9 2012725
@@ -1844,16 +1844,16 @@ running
   supervisor      2012714
 
 logs/server.log:
-p3 on /tmp/s26w/home/.pi/p3, port 8789
+p3 on /tmp/s26w/home/.nycode/p3, port 8789
 2026-11-17T11:43:12.708Z supervisor: the server exited with 1; starting it again in 1000 ms
-p3 on /tmp/s26w/home/.pi/p3, port 8789</code></pre>
+p3 on /tmp/s26w/home/.nycode/p3, port 8789</code></pre>
 <ul>
 <li>At 234 ms the server&#39;s lock is free (the kernel let go of the dead process&#39;s socket), so <code>holder(server)</code> is <code>free</code>;
 the supervisor&#39;s record says <code>running</code>, so <code>status</code> knows this is a crash, not a first start.</li>
 <li>At 296 ms <code>server.json</code> is gone: <code>status</code>&#39;s <code>holder</code> removed it, under the free lock. A stale record is never left
 for the next reader.</li>
 <li>At 1107 ms, a second after the crash, the new server holds the lock and says <code>starting</code> with a new run id; 40 ms
-later it listens on the same port (the Pi&#39;s own, from <code>pi.json</code>). Its start is warm: Node&#39;s compile cache.</li>
+later it listens on the same port (the Nycode&#39;s own, from <code>nycode.json</code>). Its start is warm: Node&#39;s compile cache.</li>
 </ul>
 <p>&quot;a crashed server is started again by its supervisor; stop ends both&quot; checks the same with the supervisor frozen
 (<code>SIGSTOP</code>) so the gap lasts as long as the test looks, and then a <code>stop</code> between a crash and the restart: the frozen
@@ -1862,11 +1862,11 @@ would have to wait a minute).</p>
 <h3 id="a-start-that-never-listened">A start that never listened</h3>
 <p>The supervisor learns that its child listened over IPC. A start that fails before that (here, a busy port) is not a
 crash:</p>
-<pre class="plain"><code>$ p3 server --pi busy --port 41234           (something else holds 41234)
+<pre class="plain"><code>$ p3 server --nycode busy --port 41234           (something else holds 41234)
 p3: port 41234 is in use; pass --port &lt;n&gt; or stop what uses it
 exit 1                                        (0.13 s)
-$ p3 --pi busy --port 41234
-p3: the server on /tmp/s26w/home/.pi/p3/pis/busy did not start:
+$ p3 --nycode busy --port 41234
+p3: the server on /tmp/s26w/home/.nycode/p3/pis/busy did not start:
 p3: port 41234 is in use; pass --port &lt;n&gt; or stop what uses it
 exit 1</code></pre>
 <p>Chord&#39;s HTTP component retries a failed listen for as long as it takes, so <code>startServer</code> races the listen against the
@@ -1894,7 +1894,7 @@ record, the lock free.</p>
 <h3 id="two-p3-at-once">Two <code>p3</code> at once</h3>
 <p>Both find the directory idle and start a supervisor. One wins the supervisor&#39;s lock; the other waits a second for it
 (<code>LOCK_MS</code>) and exits 1. Found by this slice&#39;s runs: when the winner was stopped right after, the loser took the lock
-and started the Pi again, and <code>stop</code> waited 30 s. Now the command that started a supervisor which did not win ends it
+and started the Nycode again, and <code>stop</code> waited 30 s. Now the command that started a supervisor which did not win ends it
 in <code>serverOf</code> (<code>await ours.end()</code>):</p>
 <pre><code>end: <span class="tk-k">async</span> () =&gt; {
 	<span class="tk-c">// Our own child: its pid is its, no record needed to know. It stops a server it started meanwhile. Waited</span>
@@ -1909,20 +1909,20 @@ in <code>serverOf</code> (<code>await ours.end()</code>):</p>
 p3 at once leave one supervisor: a stop right after leaves nothing that starts again&quot;.</p>
 </section>
 
-<section class="chapter" id="pis"><header class="opener"><div class="numeral">IX</div><h2>Several Pis</h2><p class="lede">A Pi is its data directory: its own id, port, cookie and locks.</p></header>
-<pre class="plain"><code>$ p3 --pi a
-p3 on /tmp/s26w/home/.pi/p3/pis/a, port 40499. Open http://127.0.0.1:40499/_p3/owner#2qutG8lZ…
-$ p3 --pi b
-p3 on /tmp/s26w/home/.pi/p3/pis/b, port 43475. Open http://127.0.0.1:43475/_p3/owner#ytoFEYXa…
+<section class="chapter" id="pis"><header class="opener"><div class="numeral">IX</div><h2>Several Pis</h2><p class="lede">A Nycode is its data directory: its own id, port, cookie and locks.</p></header>
+<pre class="plain"><code>$ p3 --nycode a
+p3 on /tmp/s26w/home/.nycode/p3/pis/a, port 40499. Open http://127.0.0.1:40499/_p3/owner#2qutG8lZ…
+$ p3 --nycode b
+p3 on /tmp/s26w/home/.nycode/p3/pis/b, port 43475. Open http://127.0.0.1:43475/_p3/owner#ytoFEYXa…
 $ p3 list
-(default)  stopped  8789   /tmp/s26w/home/.pi/p3
-a          running  40499  /tmp/s26w/home/.pi/p3/pis/a
-b          running  43475  /tmp/s26w/home/.pi/p3/pis/b
-busy       stopped  -      /tmp/s26w/home/.pi/p3/pis/busy
-held       stopped  -      /tmp/s26w/home/.pi/p3/pis/held
-$ cat ~/.pi/p3/pis/a/pi.json
+(default)  stopped  8789   /tmp/s26w/home/.nycode/p3
+a          running  40499  /tmp/s26w/home/.nycode/p3/pis/a
+b          running  43475  /tmp/s26w/home/.nycode/p3/pis/b
+busy       stopped  -      /tmp/s26w/home/.nycode/p3/pis/busy
+held       stopped  -      /tmp/s26w/home/.nycode/p3/pis/held
+$ cat ~/.nycode/p3/pis/a/nycode.json
 { "id": "31af24d5a1441a73", "port": 40499 }
-$ p3 stop --pi a &amp;&amp; p3 list
+$ p3 stop --nycode a &amp;&amp; p3 list
 stopped
 (default)  stopped  8789   …
 a          stopped  40499  …
@@ -1930,13 +1930,13 @@ b          running  43475  …</code></pre>
 <table>
 <thead>
 <tr>
-<th>Per Pi</th>
+<th>Per Nycode</th>
 <th>How</th>
 </tr>
 </thead>
 <tbody><tr>
 <td>its port</td>
-<td>the default Pi 8789; any other a free one at its first start, kept in <code>pi.json</code>; <code>--port</code> for one start only, not kept</td>
+<td>the default Nycode 8789; any other a free one at its first start, kept in <code>nycode.json</code>; <code>--port</code> for one start only, not kept</td>
 </tr>
 <tr>
 <td>its locks</td>
@@ -1944,7 +1944,7 @@ b          running  43475  …</code></pre>
 </tr>
 <tr>
 <td>its sign-in cookie</td>
-<td><code>p3-&lt;id&gt;</code>: a browser shares cookies between the ports of one host, so one name would let the second Pi&#39;s sign-in replace the first&#39;s</td>
+<td><code>p3-&lt;id&gt;</code>: a browser shares cookies between the ports of one host, so one name would let the second Nycode&#39;s sign-in replace the first&#39;s</td>
 </tr>
 <tr>
 <td>everything else</td>
@@ -1953,18 +1953,18 @@ b          running  43475  …</code></pre>
 </tbody></table>
 <p>The cookie&#39;s name, in <code>src/kit/sign-ins.ts</code>:</p>
 <pre><code><span class="tk-c">/**
- * The sign-in cookie of one Pi: its name, which holds the Pi's id (a browser shares cookies between the ports of one
+ * The sign-in cookie of one Nycode: its name, which holds the Nycode's id (a browser shares cookies between the ports of one
  * host, so two Pis on a machine need two names), and the secret that signs it.
  */</span>
 <span class="tk-k">export</span> <span class="tk-k">type</span> <span class="tk-t">SignInCookie</span> = { <span class="tk-k">readonly</span> name: string; <span class="tk-k">readonly</span> secret: string };
 
-<span class="tk-c">/** The sign-in cookie of the Pi `id`, signed with `secret`. */</span>
+<span class="tk-c">/** The sign-in cookie of the Nycode `id`, signed with `secret`. */</span>
 <span class="tk-k">export</span> <span class="tk-k">function</span> <span class="tk-f">signInCookieOf</span>(id: string, secret: string): <span class="tk-t">SignInCookie</span> {
 	<span class="tk-k">return</span> { name: <span class="tk-s">`p3-${id}`</span>, secret };
 }</code></pre>
 <p>&quot;two Pis run side by side: their own ports, sessions and sign-in cookies; stopping one leaves the other&quot;: a session
 made in one is not in the other; one cookie jar signed in to both (two cookies of different names on <code>127.0.0.1</code>) is
-the owner at both; <code>stop</code> of one leaves the other serving with its workers. Undone, &quot;one name for every Pi&quot; fails it
+the owner at both; <code>stop</code> of one leaves the other serving with its workers. Undone, &quot;one name for every Nycode&quot; fails it
 from source and from the release.</p>
 </section>
 
@@ -1972,7 +1972,7 @@ from source and from the release.</p>
 <h3 id="the-error-that-hid-behind-declaration-false">The error that hid behind <code>declaration: false</code></h3>
 <p>p3&#39;s <code>tsconfig.json</code> used to set <code>declaration: false</code>. With declarations on, six exported contracts failed:</p>
 <pre class="plain"><code>plugins/sessions/contract.ts(61,14): error TS2883: The inferred type of 'Sessions' cannot be named without a
-reference to 'Method' from '../../../../node_modules/@earendil-works/chord/src/contracts/schema.ts'.</code></pre>
+reference to 'Method' from '../../../../node_modules/@nycode/chord/src/contracts/schema.ts'.</code></pre>
 <p>A contract&#39;s type is inferred and holds the types <code>method(...)</code> and <code>oneOf(...)</code> return. Chord declared them and did
 not export them from its entry point, so no import a consumer could write names them. A third-party plugin that emits
 declarations would hit the same error in an install. The fix is in Chord (decision F, owner: yes),
@@ -1998,7 +1998,7 @@ now fails for any exported contract whose type cannot be named.</p>
 <p><code>test/release/release.test.ts</code> writes a plugin into a directory under <code>/tmp</code>, whose <code>node_modules</code> is the install&#39;s,
 and type-checks it with <code>strict</code>, <code>NodeNext</code>, <code>declaration</code> on and <code>types: []</code>:</p>
 <pre><code><span class="tk-c">// contract.ts</span>
-<span class="tk-k">import</span> { method, obj, oneOf, remote, <span class="tk-t">Server</span>, str } <span class="tk-k">from</span> <span class="tk-s">"@earendil-works/p3/v1"</span>;
+<span class="tk-k">import</span> { method, obj, oneOf, remote, <span class="tk-t">Server</span>, str } <span class="tk-k">from</span> <span class="tk-s">"@nycode/p3/v1"</span>;
 
 <span class="tk-c">/** A greeting the server has for its owner, plain or loud. */</span>
 <span class="tk-k">export</span> <span class="tk-k">const</span> <span class="tk-t">Hello</span> = <span class="tk-f">remote</span>(<span class="tk-s">"hello.greeting"</span>, {
@@ -2008,7 +2008,7 @@ and type-checks it with <code>strict</code>, <code>NodeNext</code>, <code>declar
 	variants: { owner: { state: { text: <span class="tk-f">str</span>() }, methods: { greet: <span class="tk-f">method</span>(<span class="tk-f">obj</span>({ name: <span class="tk-f">str</span>() }), <span class="tk-f">str</span>()) } } },
 });</code></pre>
 <pre><code><span class="tk-c">// server.ts</span>
-<span class="tk-k">import</span> { constant, defineFacet, forbidden } <span class="tk-k">from</span> <span class="tk-s">"@earendil-works/p3/v1"</span>;
+<span class="tk-k">import</span> { constant, defineFacet, forbidden } <span class="tk-k">from</span> <span class="tk-s">"@nycode/p3/v1"</span>;
 <span class="tk-k">import</span> { <span class="tk-t">Hello</span> } <span class="tk-k">from</span> <span class="tk-s">"./contract.ts"</span>;
 
 <span class="tk-k">export</span> <span class="tk-k">default</span> <span class="tk-f">defineFacet</span>((host) =&gt; {
@@ -2066,7 +2066,7 @@ and type-checks it with <code>strict</code>, <code>NodeNext</code>, <code>declar
 <tr>
 <td><strong>provider SDKs bundled</strong> by the release build</td>
 <td><code>checkExternals</code></td>
-<td>nothing but esbuild and <code>ws</code>&#39;s accelerators is left to <code>node_modules</code>, so a worker that imports pi-ai gets each API&#39;s SDK inside its bundle, in a lazy chunk per API, instead of loading them from <code>node_modules</code> file by file</td>
+<td>nothing but esbuild and <code>ws</code>&#39;s accelerators is left to <code>node_modules</code>, so a worker that imports nycode-ai gets each API&#39;s SDK inside its bundle, in a lazy chunk per API, instead of loading them from <code>node_modules</code> file by file</td>
 </tr>
 <tr>
 <td><strong>Chord&#39;s worker base minified</strong> (names kept)</td>
@@ -2164,7 +2164,7 @@ copy). &quot;Settled&quot; is after 40 s, when V8&#39;s memory reducer has run.<
 <h3 id="the-memory-test">The memory test</h3>
 <p><code>test/release/memory.test.ts</code>, run by <code>release:p3:local</code>. A server and a worker entry built with the release&#39;s own
 options and checks, the installed release&#39;s plugins, and in each of 4 workers at once a real Durable <code>Harness</code> on the
-worker&#39;s store with the coding tools, a <code>NodeExecutionEnv</code>, a prompt section, a subagent tool, and pi-ai&#39;s real
+worker&#39;s store with the coding tools, a <code>NodeExecutionEnv</code>, a prompt section, a subagent tool, and nycode-ai&#39;s real
 Anthropic and OpenAI providers against a local HTTPS stub (a certificate made by OpenSSL, trusted through
 <code>NODE_EXTRA_CA_CERTS</code>), with telemetry sent to the server every second. The schedule: idle; one streamed answer (8 KB
 over 15 s); a burst of 20 turns with read and bash tool calls, five of them on OpenAI; five subagent conversations
@@ -2491,7 +2491,7 @@ second what happens without it, the third the test that fails.</p>
 <tr>
 <td><code>said.run === record.run</code></td>
 <td>an earlier run&#39;s record is believed</td>
-<td>the same case (&quot;this Pi&#39;s own server under a record naming an earlier run&quot;)</td>
+<td>the same case (&quot;this Nycode&#39;s own server under a record naming an earlier run&quot;)</td>
 </tr>
 <tr>
 <td>the question carries no token</td>
@@ -2506,7 +2506,7 @@ second what happens without it, the third the test that fails.</p>
 <tr>
 <td><code>NONCE.test(nonce)</code></td>
 <td>the route signs anything</td>
-<td>&quot;answers anyone its run id, pid and Pi, with the proof for the nonce asked; a nonce that is none gets 400&quot;</td>
+<td>&quot;answers anyone its run id, pid and Nycode, with the proof for the nonce asked; a nonce that is none gets 400&quot;</td>
 </tr>
 <tr>
 <td>the token on the proven connection</td>
@@ -2550,7 +2550,7 @@ second what happens without it, the third the test that fails.</p>
 </tr>
 <tr>
 <td>the stop route is the owner&#39;s</td>
-<td>anyone stops the Pi</td>
+<td>anyone stops the Nycode</td>
 <td>&quot;is refused without a sign-in and to anyone but the owner, and runs nothing then&quot;</td>
 </tr>
 <tr>
@@ -2570,12 +2570,12 @@ second what happens without it, the third the test that fails.</p>
 </tr>
 <tr>
 <td><code>await ours.end()</code> for a losing supervisor</td>
-<td>it starts the Pi again after a stop</td>
+<td>it starts the Nycode again after a stop</td>
 <td>&quot;two plain p3 at once leave one supervisor: …&quot;</td>
 </tr>
 <tr>
 <td>the supervisor restarts after a crash</td>
-<td>a crash ends the Pi</td>
+<td>a crash ends the Nycode</td>
 <td>&quot;a crashed server is started again by its supervisor; …&quot;</td>
 </tr>
 <tr>
@@ -2611,16 +2611,16 @@ second what happens without it, the third the test that fails.</p>
 <tr>
 <td><code>p3-&lt;id&gt;</code> for the cookie</td>
 <td>two Pis&#39; sign-ins replace each other</td>
-<td>&quot;two Pis run side by side: …&quot; (source and release); &quot;holds the Pi&#39;s id: two Pis on one host keep two cookies&quot;</td>
+<td>&quot;two Pis run side by side: …&quot; (source and release); &quot;holds the Nycode&#39;s id: two Pis on one host keep two cookies&quot;</td>
 </tr>
 <tr>
-<td>the Pi&#39;s port kept; one start&#39;s <code>--port</code> not kept</td>
-<td>a Pi&#39;s address moves</td>
-<td>&quot;listens on the Pi&#39;s own port: the first start&#39;s, kept in its config; a port named for one start is not kept&quot;</td>
+<td>the Nycode&#39;s port kept; one start&#39;s <code>--port</code> not kept</td>
+<td>a Nycode&#39;s address moves</td>
+<td>&quot;listens on the Nycode&#39;s own port: the first start&#39;s, kept in its config; a port named for one start is not kept&quot;</td>
 </tr>
 <tr>
-<td><code>isPiName</code></td>
-<td>a path as a Pi&#39;s name</td>
+<td><code>isNycodeName</code></td>
+<td>a path as a Nycode&#39;s name</td>
 <td>&quot;is named by lower case letters, digits, - and _, at most 32, and never by a path&quot;</td>
 </tr>
 </tbody></table>
@@ -2672,7 +2672,7 @@ goes out. The answer-first order stays.</li>
 by at most one question.</li>
 </ul>
 <p>What the check found besides: a failed case kept the test runner alive for ever (now <code>--test-force-exit</code>, bounded
-waits, <code>t.after</code> kills what a case launched); a test that wrongly passed outside a checkout named <code>pi</code>; the
+waits, <code>t.after</code> kills what a case launched); a test that wrongly passed outside a checkout named <code>nycode</code>; the
 supervisor&#39;s fast-exit guard, which no test could tell from none once the command ends a losing supervisor (removed);
 <code>stop</code> between a crash and the restart was the same with no signal at all (the case now freezes the supervisor and
 looks for the pending signal). Untested: the supervisor&#39;s backoff beyond its first wait.</p>
@@ -2719,7 +2719,7 @@ that runs <code>p3</code>. <code>commands.test.ts</code> gives it the source com
 
 <span class="tk-c">/** The command that starts the release installed in `install` (a directory with `node_modules/`). */</span>
 <span class="tk-k">export</span> <span class="tk-k">function</span> <span class="tk-f">releaseOf</span>(install: string): <span class="tk-k">readonly</span> string[] {
-	<span class="tk-k">return</span> [process.execPath, <span class="tk-f">join</span>(install, <span class="tk-s">"node_modules"</span>, <span class="tk-s">"@earendil-works"</span>, <span class="tk-s">"p3"</span>, <span class="tk-s">"dist"</span>, <span class="tk-s">"p3.js"</span>)];
+	<span class="tk-k">return</span> [process.execPath, <span class="tk-f">join</span>(install, <span class="tk-s">"node_modules"</span>, <span class="tk-s">"@nycode"</span>, <span class="tk-s">"p3"</span>, <span class="tk-s">"dist"</span>, <span class="tk-s">"p3.js"</span>)];
 }</code></pre>
 <p>The races are made deterministic by holding a process still, never by sleeping. <code>test/gate.ts</code> is a preload
 (<code>node --import</code>) that patches <code>fs.promises</code> where the kit finds it:</p>
@@ -2767,8 +2767,8 @@ and the release: Node loads it, not p3. Chapter VII&#39;s held run used it again
 <li>a command line p3 does not understand is refused with the usage</li>
 </ol>
 <p>Under load (four suites at once, three times) 11 of 12 runs failed before round 3&#39;s fixes (waits on an extra
-supervisor&#39;s lifetime; the default Pi&#39;s case on port 8789, which another run or a real Pi may hold). After them 12 of
-12 pass, and 10 serial runs pass. The default Pi&#39;s case now starts with <code>--port 0</code>.</p>
+supervisor&#39;s lifetime; the default Nycode&#39;s case on port 8789, which another run or a real Nycode may hold). After them 12 of
+12 pass, and 10 serial runs pass. The default Nycode&#39;s case now starts with <code>--port 0</code>.</p>
 </section>
 
 <section class="chapter" id="numbers"><header class="opener"><div class="numeral">XIV</div><h2>The Numbers</h2><p class="lede">Source and release side by side, on slayer, Node 24.4.1.</p></header>
@@ -2881,7 +2881,7 @@ paths because Chord bundles the entry again even when it already is a bundle; a 
 <section class="chapter epilogue" id="open-points"><header class="opener"><div class="numeral">∴</div><h2>Open Points</h2><p class="lede">What the owner decided, what is carried, and what to look at in the review.</p></header>
 <h3 id="decided-by-the-owner-during-the-slice">Decided by the owner during the slice</h3>
 <ul>
-<li>The package name, <code>@earendil-works/p3</code>, private until publishing; the built-in plugin <code>@earendil-works/p3-sessions</code>.</li>
+<li>The package name, <code>@nycode/p3</code>, private until publishing; the built-in plugin <code>@nycode/p3-sessions</code>.</li>
 <li>The workspace&#39;s <code>package.json</code> is the shipped one; the lockfile change is allowed (shown before the commit).</li>
 <li>Chord exports the types a contract&#39;s declaration needs (decision F).</li>
 <li><code>ws</code> a dependency, pinned to Chord&#39;s 8.21.0.</li>
@@ -2892,11 +2892,11 @@ paths because Chord bundles the entry again even when it already is a bundle; a 
 </ul>
 <h3 id="carried">Carried</h3>
 <ul>
-<li>Publishing the lockstep version of Chord, pi-schema and pi-telemetry that p3&#39;s types need (npm&#39;s 1.5.2 predates
+<li>Publishing the lockstep version of Chord, nycode-schema and nycode-telemetry that p3&#39;s types need (npm&#39;s 1.5.2 predates
 them), and p3&#39;s own version joining it; publishing from CI, a CHANGELOG for p3; an install lock for installers.</li>
 <li>A build cache on disk (decided against for now), or a ready worker base in the release (a Chord change).</li>
 <li>A Bun or single-file binary; the terminal client behind plain <code>p3</code> (slice 27); a restart requested from the page
-(slice 2); starting a Pi at boot; the web and terminal bundles in the package (slice 16).</li>
+(slice 2); starting a Nycode at boot; the web and terminal bundles in the package (slice 16).</li>
 <li>Slice 3 replaces <code>startWorker({ session })</code> with the harness as an object in the worker&#39;s core facet.</li>
 <li>What Node 26 holds after a burst (about 7 MiB above Node 24).</li>
 <li><strong>Windows, not run natively:</strong> the Windows branches (PowerShell&#39;s start time, <code>windowsHide</code>, HTTP stop) were run on
@@ -2916,16 +2916,16 @@ sources and declarations for the types alone. Bundling the declarations into p3&
 
 <section class="chapter appendix" id="how-to-run-it"><header class="opener"><div class="numeral">A</div><h2>How to Run It</h2></header>
 <pre><code><span class="tk-k">export</span> PATH=/home/badlogic/node-v24.<span class="tk-n">4.1</span>-linux-x64/bin:$PATH
-cd /home/badlogic/pi
+cd /home/badlogic/nycode
 
 # <span class="tk-k">from</span> source
 node --conditions=source --disable-warning=<span class="tk-t">ExperimentalWarning</span> apps/p3/bin.ts            # plain p3
-node --conditions=source --disable-warning=<span class="tk-t">ExperimentalWarning</span> apps/p3/bin.ts server --dir /tmp/pi-a
+node --conditions=source --disable-warning=<span class="tk-t">ExperimentalWarning</span> apps/p3/bin.ts server --dir /tmp/nycode-a
 
 # the release: build, pack, install outside the repository, run the release tests
 npm run release:p3:local -- --out /tmp/p3-release --force      # [--skip-test] [--bench]
 /tmp/p3-release/p3 --version
-/tmp/p3-release/p3                 # start the <span class="tk-k">default</span> <span class="tk-t">Pi</span> <span class="tk-k">in</span> the background, print its owner link
+/tmp/p3-release/p3                 # start the <span class="tk-k">default</span> <span class="tk-t">Nycode</span> <span class="tk-k">in</span> the background, print its owner link
 /tmp/p3-release/p3 status
 /tmp/p3-release/p3 list
 /tmp/p3-release/p3 stop
@@ -2936,8 +2936,8 @@ cd apps/p3 &amp;&amp; npm test                                          # <span 
 npm run build                                                   # dist/ only
 
 # start timings
-NODE_DEBUG=p3 /tmp/p3-release/p3 server --dir /tmp/pi-a</code></pre>
-<p>The traces in this walkthrough ran with <code>HOME=/tmp/s26w/home</code> so that no real Pi was touched.</p>
+NODE_DEBUG=p3 /tmp/p3-release/p3 server --dir /tmp/nycode-a</code></pre>
+<p>The traces in this walkthrough ran with <code>HOME=/tmp/s26w/home</code> so that no real Nycode was touched.</p>
 </section>
 
 <p class="colophon">p3 slice 26 walkthrough · first edition · 2026-11-17 · apps/p3, packages/chord</p>

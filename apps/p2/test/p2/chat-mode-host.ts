@@ -3,8 +3,8 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createRegistry, Harness as DurableHarness } from "@earendil-works/pi-durable";
-import { openNodeSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite/node";
+import { createRegistry, Harness as DurableHarness } from "@nycode/durable";
+import { openNodeSqliteStorage } from "@nycode/durable/storage/sqlite/node";
 import chatWorker from "../../plugins/chat/worker.ts";
 import chatModeWorker from "../../plugins/chat-mode/worker.ts";
 import { Attachments } from "../../plugins/files/contract.ts";

@@ -143,7 +143,7 @@ carried over. Chord APIs are real and checked against the source (<code>self.tx(
 <section class="preface" id="before-we-begin">
 <h2>Before we begin</h2>
 <p class="dropcap">Mario runs p3 on his laptop. Every session he opens has his models, his MCP servers, his machines and every tool the
-installed plugins offer, and he never configured any of it. At Earendil, Colin, Cristina and Charlotta share project pi:
+installed plugins offer, and he never configured any of it. At Earendil, Colin, Cristina and Charlotta share project nycode:
 its sessions use exactly what the three brought, each with its owner&#39;s login. A session fed by the #support Discord
 channel may read the answers of one other session for an hour and has no shell at all.</p>
 <p>Two questions were mixed up in every earlier model: <em>where does something appear</em> and <em>what may a session use</em>.
@@ -488,7 +488,7 @@ asking the plugin that owns it, never through the users plugin.</p>
 <ol>
 <li><strong>Sign-in ends:</strong> the kit&#39;s sessions for that user are revoked; <code>signIn</code> refuses the user&#39;s identities.</li>
 <li><strong>Their resources stop counting:</strong> the resources plugin&#39;s <code>usable</code> drops entries whose owner is disabled, so
-Colin&#39;s Linear server leaves project pi&#39;s effective list the moment Colin is disabled. The rows stay, so an admin
+Colin&#39;s Linear server leaves project nycode&#39;s effective list the moment Colin is disabled. The rows stay, so an admin
 can re-enable without anyone re-bringing anything.</li>
 <li><strong>Their sessions stay</strong> visible to the people who could see them (shared with, members of the source grouping);
 who owns them from then on is an admin&#39;s choice (reassign or archive), not automatic.</li>
@@ -655,7 +655,7 @@ owner&#39;s own defaults sessions stop using it through <code>exclude</code>.</l
 <li><strong>Set source</strong> needs the session side (its owner by baseline) and the destination side (a grouping&#39;s <code>mayJoin</code>);
 the policy sees <code>{ kind: &quot;set-source&quot;, ... }</code>.</li>
 <li><strong>Lock down</strong> switches a session to its own list, from a snapshot: from defaults, the same session&#39;s current
-entries; from a grouping, only the entries the actor may bring themselves, <code>until</code> kept. Cristina locking down a pi
+entries; from a grouping, only the entries the actor may bring themselves, <code>until</code> kept. Cristina locking down a nycode
 session cannot keep Colin&#39;s server.</li>
 <li><strong>Copies</strong> (clone, fork) re-run these rules before the copy&#39;s worker starts; content is copied, consent is not.</li>
 </ul>
@@ -781,7 +781,7 @@ project down, so no two projects can both equip a session.</p>
 session&#39;s own people list), or they are a member of its source grouping (<code>Members</code>). Seeing is not every operation:
 the sessions plugin keeps <code>mayView</code>, <code>maySend</code> (owner, shared with send, members of the source grouping) and <code>isOwner</code>
 per session and user, and uses them as baselines for its typed operations (send, shell, reset, configure, set source).</p>
-<div class="note review"><b class="tag">Decision for the owner: showing sessions a project does not equip</b><p>Linking a pi session to Discord makes it use the channel&#39;s list, and it leaves pi. Both reviewers propose that a
+<div class="note review"><b class="tag">Decision for the owner: showing sessions a project does not equip</b><p>Linking a nycode session to Discord makes it use the channel&#39;s list, and it leaves nycode. Both reviewers propose that a
 project may also keep plain &quot;shown here&quot; references to such sessions, granting nothing.</p>
 </div>
 </section>
@@ -912,7 +912,7 @@ file tools is the plugin&#39;s choice: two resources, two extensions.</p>
 <span class="tk-k">export</span> <span class="tk-k">const</span> <span class="tk-t">Transport</span> = <span class="tk-f">union</span>([
 	<span class="tk-f">obj</span>({ kind: <span class="tk-f">lit</span>(<span class="tk-s">"http"</span>), url: <span class="tk-f">str</span>() }),                                               <span class="tk-c">// no location</span>
 	<span class="tk-f">obj</span>({ kind: <span class="tk-f">lit</span>(<span class="tk-s">"server-stdio"</span>), command: <span class="tk-f">str</span>(), args: <span class="tk-f">arr</span>(<span class="tk-f">str</span>()) }),                 <span class="tk-c">// the p3 machine; admin by baseline</span>
-	<span class="tk-f">obj</span>({ kind: <span class="tk-f">lit</span>(<span class="tk-s">"checkout"</span>), env: <span class="tk-t">ResourceRef</span>, dir: <span class="tk-f">str</span>(), entry: <span class="tk-f">str</span>(), digest: <span class="tk-f">str</span>() }),   <span class="tk-c">// an enabled .pi/mcp.json entry</span>
+	<span class="tk-f">obj</span>({ kind: <span class="tk-f">lit</span>(<span class="tk-s">"checkout"</span>), env: <span class="tk-t">ResourceRef</span>, dir: <span class="tk-f">str</span>(), entry: <span class="tk-f">str</span>(), digest: <span class="tk-f">str</span>() }),   <span class="tk-c">// an enabled .nycode/mcp.json entry</span>
 ]);
 <span class="tk-k">export</span> <span class="tk-k">const</span> <span class="tk-t">McpConfig</span> = <span class="tk-f">obj</span>({ name: <span class="tk-f">str</span>(), transport: <span class="tk-t">Transport</span>, lifetime: <span class="tk-f">oneOf</span>(<span class="tk-s">"session"</span>, <span class="tk-s">"shared"</span>) });
 
@@ -1036,10 +1036,10 @@ file tools is the plugin&#39;s choice: two resources, two extensions.</p>
 		<span class="tk-k">return</span> {};
 	});
 });</code></pre>
-<h3 id="when-colin-withdraws-linear-from-project-pi">When Colin withdraws Linear from project pi</h3>
+<h3 id="when-colin-withdraws-linear-from-project-nycode">When Colin withdraws Linear from project nycode</h3>
 <ol>
 <li><code>MyResources.withdraw</code> raises Linear&#39;s revision in the index and asks the projects plugin to remove the entry.</li>
-<li><code>SessionList</code> for every pi session recomputes without Linear; <code>SessionMcp.servers</code> recomputes and is pushed.</li>
+<li><code>SessionList</code> for every nycode session recomputes without Linear; <code>SessionMcp.servers</code> recomputes and is pushed.</li>
 <li>The worker&#39;s <code>self.on</code> replaces the extensions; the harness also stops admitting Linear&#39;s.</li>
 <li>A call already on its way reaches <code>SessionMcp.call</code> and is refused there. Output already in the transcript stays.</li>
 </ol>
@@ -1180,7 +1180,7 @@ resource owned by Mario.</li>
 the list side passes (Mario made the link).</li>
 <li>S2&#39;s <code>SessionList</code> gains the entry; <code>SessionConversations.targets</code> lists one session with <code>answer</code>; the tool shows
 one target.</li>
-<li>Tom (Discord) asks Pi to tell the release session to hurry up: <code>send</code> is refused by <code>authorize</code>; Lena&#39;s question is
+<li>Tom (Discord) asks Nycode to tell the release session to hurry up: <code>send</code> is refused by <code>authorize</code>; Lena&#39;s question is
 answered from the release session&#39;s latest answer.</li>
 <li>At the deadline the entry leaves the list; a call a second later is refused by <code>authorize</code> against the current
 time, whatever the worker still shows.</li>
@@ -1259,7 +1259,7 @@ and policy the methods check, so buttons match what the server will accept.</p>
 	<span class="tk-k">return</span> (
 		&lt;<span class="tk-t">Sheet</span> title={info.label}&gt;
 			&lt;<span class="tk-t">OwnerLine</span> owner={info.owner} /&gt;
-			&lt;<span class="tk-t">UsedIn</span> lists={info.lists} /&gt;                                  {<span class="tk-c">/* "pi · until Fri", "Support bot" */</span>}
+			&lt;<span class="tk-t">UsedIn</span> lists={info.lists} /&gt;                                  {<span class="tk-c">/* "nycode · until Fri", "Support bot" */</span>}
 			&lt;<span class="tk-t">HeaderActions</span> resource={resource} actions={info.actions} /&gt;  {<span class="tk-c">/* Withdraw everywhere, Exclude from my defaults */</span>}
 			&lt;<span class="tk-t">Tabs</span>&gt;{panels.<span class="tk-f">map</span>((p) =&gt; &lt;<span class="tk-t">Tab</span> key={p.title.key} title={p.title}&gt;&lt;p.<span class="tk-t">Panel</span> resource={resource} /&gt;&lt;/<span class="tk-t">Tab</span>&gt;)}&lt;/<span class="tk-t">Tabs</span>&gt;
 		&lt;/<span class="tk-t">Sheet</span>&gt;
@@ -1272,7 +1272,7 @@ and policy the methods check, so buttons match what the server will accept.</p>
 	<span class="tk-k">if</span> (view === <span class="tk-k">null</span> || view === <span class="tk-k">undefined</span>) <span class="tk-k">return</span> <span class="tk-k">null</span>;
 	<span class="tk-k">return</span> (
 		&lt;<span class="tk-t">Panel</span>&gt;
-			&lt;<span class="tk-t">SourceChip</span> source={view.source} /&gt;                               {<span class="tk-c">/* "from project pi", "from #support", "your defaults" */</span>}
+			&lt;<span class="tk-t">SourceChip</span> source={view.source} /&gt;                               {<span class="tk-c">/* "from project nycode", "from #support", "your defaults" */</span>}
 			{view.list.kind === <span class="tk-s">"ready"</span>
 				? view.list.entries.<span class="tk-f">map</span>((e) =&gt; &lt;<span class="tk-t">EntryRow</span> key={<span class="tk-f">keyOf</span>(e.resource)} entry={e} actions={view.actions} /&gt;)
 				: &lt;<span class="tk-t">Unavailable</span> reason={view.list.reason} /&gt;}
@@ -1339,7 +1339,7 @@ and policy the methods check, so buttons match what the server will accept.</p>
 	<span class="tk-k">const</span> server = servers.<span class="tk-f">find</span>((s) =&gt; s.id === resource.id);
 	<span class="tk-k">return</span> server ? &lt;<span class="tk-t">Row</span> icon={<span class="tk-t">PlugIcon</span>} title={server.name} detail={<span class="tk-s">`${server.tools.length} tools · ${server.status}`</span>} /&gt; : &lt;<span class="tk-t">PlainRow</span> resource={resource} /&gt;;
 }</code></pre>
-<p>A project member who is not the owner sees Colin&#39;s server in pi with the MCP plugin&#39;s row and panels; the panels read
+<p>A project member who is not the owner sees Colin&#39;s server in nycode with the MCP plugin&#39;s row and panels; the panels read
 <code>McpServers</code>, whose view for that member shows the server (it is on a list they see) without secrets and without the
 owner&#39;s methods&#39; effect: <code>configure</code>, <code>signIn</code> and <code>remove</code> refuse anyone but the owner, and the panel shows them only
 when <code>actions</code> says so.</p>
@@ -1351,8 +1351,8 @@ data it shows is whatever its own views allow.</p>
 
 <section class="chapter" id="kinds"><header class="opener"><div class="numeral">XI</div><h2>Models, Machines, Drives</h2><p class="lede">Three more definitions, each the same pattern: a row, a store keyed by id, a per-session view.</p></header>
 <ul>
-<li><strong>Model providers</strong> (<code>models.provider</code>, created): the store keeps pi-ai credentials and refreshes on the server;
-<code>SessionModels</code> pushes, per provider on the list, its models and pi-ai <code>AuthResult</code> with expiry; the worker&#39;s
+<li><strong>Model providers</strong> (<code>models.provider</code>, created): the store keeps nycode-ai credentials and refreshes on the server;
+<code>SessionModels</code> pushes, per provider on the list, its models and nycode-ai <code>AuthResult</code> with expiry; the worker&#39;s
 provider auth reads the latest push and refuses when the list is not ready, the provider left it or the auth
 expired. Logouts and edits push at once. Bedrock and Vertex with ambient credentials get a server-side stream or are
 unsupported.</li>
@@ -1381,14 +1381,14 @@ open with Armin and Vegard.</p>
 <section class="chapter" id="scenarios"><header class="opener"><div class="numeral">XIII</div><h2>Six Scenarios</h2><p class="lede">The cases every change must keep working.</p></header>
 <ol>
 <li><strong>Mario on a laptop:</strong> defaults everywhere; installing a plugin with a tool puts it in the next turn.</li>
-<li><strong>Project pi:</strong> Colin creates it, adds Cristina and Charlotta, each brings their own resource (plus tools, decision
+<li><strong>Project nycode:</strong> Colin creates it, adds Cristina and Charlotta, each brings their own resource (plus tools, decision
 1); Charlotta&#39;s message uses Colin&#39;s Linear, Cristina&#39;s machine, Charlotta&#39;s key. Colin withdraws Linear: chapter
 VIII.</li>
 <li><strong>Discord for an hour:</strong> chapter IX.</li>
 <li><strong>SAML:</strong> engineering may create MCP servers; Cristina in research does not see the creator but uses Colin&#39;s server
-in pi; adding research to the rule shows her the creator without a reload.</li>
+in nycode; adding research to the rule shows her the creator without a reload.</li>
 <li><strong>A new tool:</strong> in defaults sessions at once; never in the Discord channel&#39;s list.</li>
-<li><strong>Drives:</strong> the company drive and Mario&#39;s drive in pi; the agent gets drive tools for both.</li>
+<li><strong>Drives:</strong> the company drive and Mario&#39;s drive in nycode; the agent gets drive tools for both.</li>
 </ol>
 </section>
 

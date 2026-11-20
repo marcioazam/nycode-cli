@@ -5,9 +5,9 @@
 // command-line clients on the same machine; with it, the `p3` command asks a running server for a fresh link.
 
 import { chmod } from "node:fs/promises";
-import { defineFacet, type Facet, type Host } from "@earendil-works/chord";
-import type { Context } from "@earendil-works/chord/context";
-import { Http, type ListenAddress } from "@earendil-works/chord/http";
+import { defineFacet, type Facet, type Host } from "@nycode/chord";
+import type { Context } from "@nycode/chord/context";
+import { Http, type ListenAddress } from "@nycode/chord/http";
 import { PRINCIPALS } from "../app.ts";
 import type { P3Principal } from "../principals.ts";
 import { hashToken, matchesHash, newToken, readSecret, writeSecret } from "./secrets.ts";

@@ -805,4 +805,4 @@ These do not exist in `packages/chord` or p3 today:
   guest principals carrying a link.
 - **Directory:** `groupsOf` on the Directory provider.
 - **Smaller ones:** the MCP plugin's `McpServers`/`McpResource` shapes (adapted from the resource-model book), and
-  `mcpNamespace` reused from `@earendil-works/pi-mcp` for the namespace slugs.
+  `mcpNamespace` reused from `@nycode/mcp` for the namespace slugs.

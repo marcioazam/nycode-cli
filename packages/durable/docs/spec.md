@@ -1,13 +1,13 @@
 # Durable specification
 
-`@earendil-works/pi-durable` is a durable, extensible agent harness. This document is normative.
+`@nycode/durable` is a durable, extensible agent harness. This document is normative.
 It uses existing package types as follows:
 
 ```ts
-import type { Context } from "@earendil-works/chord/context";
-import type { Draft, Op } from "@earendil-works/chord/delta";
-import type { JsonRepresentation, JsonValue } from "@earendil-works/chord/json";
-import type { WatchCall, WatchEnd, WatchHandle } from "@earendil-works/chord/watch";
+import type { Context } from "@nycode/chord/context";
+import type { Draft, Op } from "@nycode/chord/delta";
+import type { JsonRepresentation, JsonValue } from "@nycode/chord/json";
+import type { WatchCall, WatchEnd, WatchHandle } from "@nycode/chord/watch";
 import type {
   AssistantMessage,
   CacheRetention,
@@ -22,14 +22,14 @@ import type {
   ToolResultMessage,
   Transport,
   UserMessage,
-} from "@earendil-works/pi-ai";
-import type { ExecutionEnv } from "@earendil-works/pi-durable/env";
+} from "@nycode/ai";
+import type { ExecutionEnv } from "@nycode/durable/env";
 
 type JsonObject = { [key: string]: JsonValue };
 type TaskOutcomeError = { message: string; detail?: JsonValue };
 ```
 
-Durable targets the transcript `SystemMessage` contract from pi-ai PR
+Durable targets the transcript `SystemMessage` contract from nycode-ai PR
 [#9548](https://github.com/earendil-works/pi/pull/9548). `Message` includes that
 type once the PR lands.
 
@@ -132,7 +132,7 @@ type ConversationRecord = {
 };
 ```
 
-The referenced pi-ai member is:
+The referenced nycode-ai member is:
 
 ```ts
 interface SystemMessage {
@@ -145,7 +145,7 @@ interface SystemMessage {
 }
 ```
 
-In pi-ai, `content` is the base prompt on the leading message and additional
+In nycode-ai, `content` is the base prompt on the leading message and additional
 instruction text on later messages. `sections` is an ordered named patch: a
 string adds or replaces a section, while `null` removes it. `toolsRemoved` is
 applied before `toolsAdded` within one message. Replaying every system message
@@ -327,10 +327,10 @@ Context derivation:
 9. Exclude model-less entries and assistant messages with `aborted`, `error`, or
    `deferred` stop reasons from future provider requests.
 10. Move the first system message to the front when only user messages
-    precede it, or when it is the baseline's: the first `pi.system` entry after
+    precede it, or when it is the baseline's: the first `nycode.system` entry after
     `H`, unless an edit targets it. Generation writes it with every section and
     tool in effect before the first request after a compaction or reset, and
-    omits the retained `pi.system` entries. Without `H`, the first `pi.system`
+    omits the retained `nycode.system` entries. Without `H`, the first `nycode.system`
     entry is the baseline unless an earlier entry carries a system message, in
     its messages or an edit's replacement, even one an edit omits later: only
     then did generation write it with every section and tool in effect, before
@@ -421,7 +421,7 @@ type AnyTask = {
 };
 
 type HarnessOptions<Tool extends ToolRegistration = ToolRegistration> = {
-  /** The pi-ai Models interface, or a function returning the current one, called at each use. */
+  /** The nycode-ai Models interface, or a function returning the current one, called at each use. */
   readonly models: Models | (() => Models);
   readonly registry: RegistryReader<Tool>; // section 7.1
   /** Run settings, or a function returning the current ones; read at each use either way. */
@@ -461,7 +461,7 @@ type HarnessOptions<Tool extends ToolRegistration = ToolRegistration> = {
   readonly onReport?: (report: Report) => void;
 };
 
-/** Curated pi-ai request options; absent fields use pi-ai defaults. */
+/** Curated nycode-ai request options; absent fields use nycode-ai defaults. */
 type ConversationStreamOptions = {
   transport?: Transport;
   timeoutMs?: number;
@@ -474,7 +474,7 @@ type ConversationStreamOptions = {
   deferred?: boolean | { window?: "15m" | "1h" | "24h" };
 };
 
-/** Durable generation attempt retries; the JSON shape of pi-ai `RetryPolicy`. */
+/** Durable generation attempt retries; the JSON shape of nycode-ai `RetryPolicy`. */
 type ConversationRetryPolicy = {
   enabled: boolean;
   maxRetries: number;
@@ -791,7 +791,7 @@ interface Harness extends Session {
   signal<T>(taskId: TaskId, token: SignalToken<T>, key: string, value: T, context: Context): Promise<SignalResult>;
   waitForTask<R>(id: TaskId<R>, context: Context): Promise<SettledTask<R>>;
   waitForIdle(context: Context): Promise<void>;
-  /** Session total of every conversation's `pi.usage` (section 8.6). */
+  /** Session total of every conversation's `nycode.usage` (section 8.6). */
   usage(context: Context): Promise<UsageState>;
   /** Live tasks as a structural view (section 9.4), as a watch. */
   watchTaskGraph(context: Context): Promise<TaskGraphWatch>;
@@ -878,17 +878,17 @@ creation hook in the same commit, whether through the conveniences or through
 raw `tx.createConversation()` and `tx.forkConversation()`, for example inside a
 tool commit. It runs inside `tx.createConversation()` and
 `tx.forkConversation()`, before they return, so a `configure()` later in the
-same callback overrides its copy. It creates empty `pi.live`, `pi.inbox`, and
-`pi.usage`, creates `pi.provider` with a fresh provider-facing UUIDv7, and handles
-`pi.agent`:
+same callback overrides its copy. It creates empty `nycode.live`, `nycode.inbox`, and
+`nycode.usage`, creates `nycode.provider` with a fresh provider-facing UUIDv7, and handles
+`nycode.agent`:
 
-- A fork keeps the `asOf` copy of its parent's `pi.agent` (section 3.7),
+- A fork keeps the `asOf` copy of its parent's `nycode.agent` (section 3.7),
   whatever its ownership.
-- A new task-owned conversation gets a copy of the stored `pi.agent` of the
+- A new task-owned conversation gets a copy of the stored `nycode.agent` of the
   owner task's conversation, every field, `instructions` included. A later
   change to the owner does not reach the child. Fields the owner leaves unset
   stay unset and follow the host.
-- A new ownerless conversation gets an empty `pi.agent`, `{}`.
+- A new ownerless conversation gets an empty `nycode.agent`, `{}`.
 
 `HarnessOptions.conversationCreated`, if given, then runs in the same commit
 with the new record, for every creation path, so the host can create the
@@ -915,13 +915,13 @@ The built-in agent document is final at version 1:
 
 | field | value |
 |---|---|
-| kind | `pi.agent` |
+| kind | `nycode.agent` |
 | version | `1` (no migration) |
 | scope/history/fork | conversation, `rewindable`, `asOf` |
 | schema | `AgentState` |
 | `initial()` | `{}` |
 | checkpoint | complete base on every change |
-| view mount | `docs["pi.agent"]` |
+| view mount | `docs["nycode.agent"]` |
 
 It stores only what someone chose for the conversation: extension and tool
 names, never code, and no prompt text other than `instructions`. Code comes
@@ -963,19 +963,19 @@ The built-in provider document is final at version 1:
 
 | field | value |
 |---|---|
-| kind | `pi.provider` |
+| kind | `nycode.provider` |
 | version | `1` (no migration) |
 | scope/history/fork | conversation, `latest`, `initial` |
 | schema | `{ sessionId: string }` |
 | `initial()` | `{ sessionId: uuidv7() }` |
 | checkpoint | complete base on every change |
-| view mount | `docs["pi.provider"]` |
+| view mount | `docs["nycode.provider"]` |
 
 The UUID is a provider-facing conversation identity, not the numeric Durable
 `ConversationId` and not an enclosing application's Session ID. Every new,
 task-owned, raw-created, and forked conversation receives its own UUID in its
 creating commit; a fork never copies its parent's UUID. Generation requests and
-compaction summarization pass it to pi-ai as `options.sessionId`. Reset,
+compaction summarization pass it to nycode-ai as `options.sessionId`. Reset,
 compaction, model changes, and reopen do not change it. A legacy conversation without the document creates and persists it
 on the Session line before its first generation or compaction provider request.
 Concurrent callers therefore observe one winner. Provider behavior still
@@ -1087,7 +1087,7 @@ so `Conversation.abort()` cancels it and idle waits include it. It does not take
 run control, so it does not make the conversation busy: the conversation keeps
 working while it summarizes, and its summary is placed through a write
 submission, at once when idle, otherwise at the next boundary (section 8.7). `reset()` durably admits a write submission of a
-`pi.reset` entry (section 8.1) with `head: "self"`, carrying the handoff text as
+`nycode.reset` entry (section 8.1) with `head: "self"`, carrying the handoff text as
 a user message when given, and then resolves; while busy, placement follows
 section 6 and may occur later. Observe its placement through the conversation
 watch. An idle wait does not guarantee placement of queued passive writes.
@@ -1494,7 +1494,7 @@ interface Tx {
   settleSubmission(id: SubmissionId, settlement: SubmissionSettlement): void;
   /** Newest visible entry of the conversation that carries a `head`. */
   latestHeadMarker(conversationId: ConversationId): Promise<(EntryRecord & { readonly head: EntryId }) | undefined>;
-  /** Record a queued submission's placement at `entry`: an input becomes `placed`, a write `done` (section 6). The caller appends the entry and edits `pi.inbox` and `pi.live`. */
+  /** Record a queued submission's placement at `entry`: an input becomes `placed`, a write `done` (section 6). The caller appends the entry and edits `nycode.inbox` and `nycode.live`. */
   placeSubmission(id: SubmissionId, entry: EntryId): void;
   /** Deliver a signal to a task (section 5.7); reads the task, so it comes before the commit's first table write. */
   signal<T>(taskId: TaskId, token: SignalToken<T>, key: string, value: T): Promise<SignalResult>;
@@ -1907,7 +1907,7 @@ commit's publication inside a scope of its own: the store backend runs it in its
 attached host's batch, so Chord sources over Durable's views are marked in one
 batch per commit. Its publication applies it to the Session's read caches and
 adopts it in memory; then come the commit's telemetry
-events (`pi.durable.entry`, `pi.durable.submission`), then the Session's own
+events (`nycode.durable.entry`, `nycode.durable.submission`), then the Session's own
 observers, synchronously: document watches, conversation view mounts, the task
 graph, the scheduler, and submission waits, with the observers adapters attach
 (`observeDoc()`, `observeConversation()`, `observeTaskGraph()`, section 9.1). They
@@ -2092,7 +2092,7 @@ export, see held changes once they are stored.
 
 The Harness defers exactly two kinds of commits: generation partials (section
 8.3) and running tool progress (section 7.3). Every commit that consumes or
-clears them reads `pi.live` and so stores them first (section 8.2).
+clears them reads `nycode.live` and so stores them first (section 8.2).
 
 ## 5. Tasks
 
@@ -2600,9 +2600,9 @@ task for it), the task ends visibly instead of running again:
 
 | task | at the limit |
 |---|---|
-| tool call (`pi.tool`) | ends with an error result, diagnostic code `restart_limit` ("Tool X was interrupted 3 times in a row; it is not run again"), built from its slot like an interrupted call's; its task fails with detail `{ reason: "restart_limit" }` |
-| compaction | fails with that error and detail, recorded in `pi.live.compactionFailure` |
-| generation | ends its run `unanswered` with `pi.live.runFailure` reason `restart_limit`, failing with that detail; a run that answered already, in `finish`, `drain`, or `yield`, ends without a failure, its inputs `done` with that answer, and the generation completes (section 8.3) |
+| tool call (`nycode.tool`) | ends with an error result, diagnostic code `restart_limit` ("Tool X was interrupted 3 times in a row; it is not run again"), built from its slot like an interrupted call's; its task fails with detail `{ reason: "restart_limit" }` |
+| compaction | fails with that error and detail, recorded in `nycode.live.compactionFailure` |
+| generation | ends its run `unanswered` with `nycode.live.runFailure` reason `restart_limit`, failing with that detail; a run that answered already, in `finish`, `drain`, or `yield`, ends without a failure, its inputs `done` with that answer, and the generation completes (section 8.3) |
 | a kind of an extension | the scheduler ends it `faulted` with detail `{ reason: "restart_limit" }`, reported as `task_faulted` with reason `restart_limit` |
 
 A built-in task that ends itself this way, and a generation whose run ends
@@ -2701,18 +2701,18 @@ The scheduler knows nothing about runs or task kinds. The Harness, which owns
 submissions, run control, and the built-in tasks, gives it one hook that the
 scheduler calls in the commit that makes an outcome it wrote itself (`faulted`
 and `orphaned`) terminal, which is the final commit after a hold. The hook ignores tasks whose kind is not a built-in
-run, tool, or compaction kind, so it never creates `pi.live` elsewhere. It settles the run when
-`pi.live.run` names the task (section 8): a committed generation partial becomes
-an aborted `pi.assistant` entry, exactly as the generation abort handler converts
-it, so the transcript keeps what the model produced and `pi.usage` counts its
+run, tool, or compaction kind, so it never creates `nycode.live` elsewhere. It settles the run when
+`nycode.live.run` names the task (section 8): a committed generation partial becomes
+an aborted `nycode.assistant` entry, exactly as the generation abort handler converts
+it, so the transcript keeps what the model produced and `nycode.usage` counts its
 spend (the scheduler's commit has no task scope, so the entry has no
 `byTaskId`); its inputs become `unanswered` with reason `faulted` (detail: the error
 message) or the blocked reason; and `run`, `generation`, and `tools` are
 removed. Faults come from task bugs or malformed provider data, such as a
 non-JSON value in a response. A storage failure fails the Session and writes no
-outcome (section 10.1). For a `pi.tool` task it marks the task's tool slot `done`
+outcome (section 10.1). For a `nycode.tool` task it marks the task's tool slot `done`
 without an entry; the run continues, and context derivation synthesizes the
-missing result (section 2.1). For a `pi.compaction` task it removes the task's
+missing result (section 2.1). For a `nycode.compaction` task it removes the task's
 compaction status (section 8.7). Outcomes a task commits for itself do their own settlement.
 The Harness also supplies the per-phase agent resolution behind `runtime.hooks`
 and `runtime.agent()` (section 7.1); the scheduler only passes each phase's
@@ -2778,7 +2778,7 @@ its ordinary owned work drained:
    record's terminal state, task-document retirement, and task waiters are
    deferred to the final commit. A scheduler-written outcome writes only the
    record at hold; its Harness cleanup (section 5.4) runs in the final commit,
-   so a faulted run task keeps `pi.live.run` until its tools drained.
+   so a faulted run task keeps `nycode.live.run` until its tools drained.
 5. Waiters, idle waits, inspection, and ordinary traversal see a `completing`
    task as live until its final commit.
 
@@ -2960,7 +2960,7 @@ function defineSignal<S extends object>(definition: {
   readonly name: string;
   /** A positive integer. */
   readonly version: number;
-  /** A pi-schema schema of a JSON value; the value type is `Static<S>`. */
+  /** A nycode-schema schema of a JSON value; the value type is `Static<S>`. */
   readonly schema: S;
   /** A value stored by an older version, to the current shape. */
   readonly migrate?: (value: JsonValue, fromVersion: number) => Static<S>;
@@ -2981,12 +2981,12 @@ type SignalState<T> = { readonly kind: "value"; readonly value: T } | { readonly
 
 type SignalResult = "delivered" | "duplicate" | "invalid" | "closed" | "not_found";
 
-/** Built in, named `pi.submission-settled`: what `Submission.wait()` resolves to, delivered to `notify`. */
+/** Built in, named `nycode.submission-settled`: what `Submission.wait()` resolves to, delivered to `notify`. */
 declare const SubmissionSettled: SignalToken<SettledSubmissionRecord>;
 ```
 
 `defineSignal()` throws for a name with `/`, a version that is not a positive
-integer, and a schema that admits non-JSON values (pi-schema's `bigint()`,
+integer, and a schema that admits non-JSON values (nycode-schema's `bigint()`,
 `bytes()`).
 
 **Delivery.** `tx.signal(taskId, token, key, value)` reads the task record and,
@@ -3011,9 +3011,9 @@ provisional until the commit is stored. `Harness.signal()` runs it in a commit
 of its own (section 2.2). Neither checks who calls it.
 
 **Storage.** A key's state lives in the task's memos (section 5.2) under
-`pi.signal.<signal name>/<key>`: `{ version, value }`, with `consumed: true`
+`nycode.signal.<signal name>/<key>`: `{ version, value }`, with `consumed: true`
 once a wake used it, or `{ expired: true }`. Signal names contain no `/`, so
-names never collide; the `pi.` memo prefix belongs to the Harness. Memos have
+names never collide; the `nycode.` memo prefix belongs to the Harness. Memos have
 the lifetime a signal needs: kept through checkpoints, reconciliation,
 handover, and migration, dropped with the terminal or `completing` state.
 Within one transaction every write to a task record (a delivery, the consumed
@@ -3108,21 +3108,21 @@ type InboxState = { items: InboxItem[] };
 
 | field | value |
 |---|---|
-| kind | `pi.inbox` |
+| kind | `nycode.inbox` |
 | version | `1` |
 | scope/history/fork | conversation, `latest`, `initial` |
 | `initial()` | `{ items: [] }` |
 | checkpoint | complete base whenever `items` is empty |
-| view mount | `docs["pi.inbox"]` |
+| view mount | `docs["nycode.inbox"]` |
 | created | with every Harness conversation (section 2.2) |
 
 Items are in ID order. A queued input stores its content and its entry's kind
 and data; its entry gets the Harness clock's timestamp at placement.
 
 An input is placed as one entry whose `model` is the user message of its
-`content`: a `pi.user` entry, or, with `entry: { kind, data }`, an entry of that
+`content`: a `nycode.user` entry, or, with `entry: { kind, data }`, an entry of that
 kind carrying that data. Only `kind` and `data` are taken from `entry`; admission
-rejects a kind that is not a non-empty string or starts with `pi.`. Nothing in
+rejects a kind that is not a non-empty string or starts with `nycode.`. Nothing in
 the Harness reads input entries by kind; context, compaction, and run
 accounting go by `model` and the submission records.
 
@@ -3136,14 +3136,14 @@ starts, so a display-only write queues behind a queued reset and is placed after
 it at the same boundary. Queued submissions belong to
 their conversation, so a fork starts with an empty inbox.
 
-Run control lives in the built-in live document `pi.live` (section 8). Its
+Run control lives in the built-in live document `nycode.live` (section 8). Its
 optional `run` value names the task currently responsible for the run and its
 placed input-submission IDs. `run !== undefined` defines `busy`; get-or-create
 of the idle document does not. The value remains while generation, tools, and
 tools hand work to one another: `taskId` names the generation that settles the
 inputs, including while its tool round runs, then the next
 generation. Tool tasks never own the run; the current round's tool tasks are
-listed in `pi.live.tools`. The ID list is mutable state because a
+listed in `nycode.live.tools`. The ID list is mutable state because a
 boundary adds placed steering inputs to an active run; every terminal path
 settles exactly the listed inputs. A run that answered while `afterRun` hooks
 are selected (section 8.3) settles its inputs `done` at the answer and keeps
@@ -3185,11 +3185,11 @@ mode `steer` when `whenBusy` is `steer` and `followUp` otherwise.
 `Conversation.admit(tx, draft)` runs the same admission inside the caller's
 commit instead of one of its own and returns the submission's ID; a task or tool
 does so through `ConversationHandle.admit(tx, draft)` in its own commit. The
-Harness supplies the clock, queue modes, the `pi.durable.submit` span (same
+Harness supplies the clock, queue modes, the `nycode.durable.submit` span (same
 parent, links, and trace carrier as `submit(draft, context)`), and the request
 for progress a started run needs. The admission's writes, a started run
 included, are stored with the caller's other writes in that commit, or not at
-all: a host can check its own documents and `pi.live`, admit, and record the
+all: a host can check its own documents and `nycode.live`, admit, and record the
 submission in one commit. A rejection throws before any write. Admission must
 precede the commit's first table write, another admission's included: it throws
 `ReadAfterWrite` otherwise, on every path, also where it would read no table (a
@@ -3197,8 +3197,8 @@ busy input without request ID or trace). Entries it appends inside a task's or
 tool's commit carry that task's `byTaskId`, as the commit's own appends do. The
 span covers the admission only: it ends before the caller's commit is stored,
 its `result` is provisional (a later throw in the callback or a storage failure
-leaves no submission), and the commit's events (`pi.durable.entry`,
-`pi.durable.submission`) go to the caller's commit context. A first argument
+leaves no submission), and the commit's events (`nycode.durable.entry`,
+`nycode.durable.submission`) go to the caller's commit context. A first argument
 that is not a draft is taken as a transaction; one of another Session throws.
 
 A continue starts a run on the context as it is, without a user message, for
@@ -3215,7 +3215,7 @@ system messages aside, ends the run without a request, `unanswered` with
 answer, so a text answer is not continued; one with tool calls is, because its
 calls never ran and the context ends in their synthesized `missing_result`
 error results (section 2.1). A host offers continue while the conversation is
-idle and `pi.live.runFailure` is set (section 8.2); a stale failure (one a later
+idle and `nycode.live.runFailure` is set (section 8.2); a stale failure (one a later
 run started in its commit kept) settles `nothing_to_answer`. Each continue starts
 a run with its own turn budget.
 
@@ -3312,7 +3312,7 @@ Failure, a run task's abort handler, fault, and orphan settle the run's inputs
 after-run tasks its inputs are `done`, and while its `onYield` tasks run
 (`yield`) they stay `placed`, and an abort, fault, orphaning, or the restart
 limit settles them `done` with that answer. These paths leave the inbox alone (`Conversation.abort()` separately withdraws queued user items); the queued items stay visible in
-`pi.inbox` until the next input or queued write runs a boundary, or their withdrawal.
+`nycode.inbox` until the next input or queued write runs a boundary, or their withdrawal.
 
 Selected and stale items are removed positionally while retained item order is
 preserved. Chord's Astra operation generator must express scattered removals
@@ -3328,7 +3328,7 @@ extensions. An extension is a named bundle of tools, prompt sections, hooks,
 tool and section wrappers, and task definitions. The registry is process-local,
 may outlive a Harness, and is not persisted; durable state stays in
 conversations, entries, tasks, and documents. A conversation selects extensions
-by name in its `pi.agent` document (section 2.2).
+by name in its `nycode.agent` document (section 2.2).
 
 ```ts
 type DocumentReader = Pick<Session, "snapshot" | "snapshotAsOf">;
@@ -3416,7 +3416,7 @@ The `Tool` parameter lets an application attach metadata, such as prompt
 snippets, to its tools and read it typed in its section renderers. The Harness
 only relies on `ToolRegistration`; its own surfaces, such as `runtime.agent()`,
 use the default. Metadata fields must be optional: the registry does not check
-them, and a default-typed extension may be installed. Pi-ai declarations derived from a tool keep only pi-ai `Tool`
+them, and a default-typed extension may be installed. Nycode-ai declarations derived from a tool keep only nycode-ai `Tool`
 fields (`toToolDeclaration`), so application metadata never enters the
 transcript.
 
@@ -3503,7 +3503,7 @@ still-running call fail with an ordinary error result. Extensions that need
 graceful disposal manage their resources' lifetime themselves, for example by
 reference counting.
 
-**Resolution.** A conversation's `Agent` is resolved from its stored `pi.agent`
+**Resolution.** A conversation's `Agent` is resolved from its stored `nycode.agent`
 (absent: every field unset), a registry snapshot, and the resolved settings:
 
 ```text
@@ -3566,7 +3566,7 @@ await conversation.configure({ extensions: { add: [Venv] } }, context);
 | reader | resolves | when |
 |---|---|---|
 | generation `prepare` | agent (tools, sections, model, thinking level), stream options, compaction thresholds for that conversation and model | once per request; model, stream options, and offered tools are fixed in the request checkpoint (section 8.3) |
-| every task phase | extension selection for hooks; `runtime.agent()` | at most once per phase handler, at its first hook dispatch or `agent()` call, from that phase's snapshot and the committed `pi.agent`, off the Session line, with the invocation's context; fixed for the rest of the phase |
+| every task phase | extension selection for hooks; `runtime.agent()` | at most once per phase handler, at its first hook dispatch or `agent()` call, from that phase's snapshot and the committed `nycode.agent`, off the Session line, with the invocation's context; fixed for the rest of the phase |
 | tool task | the implementation of an accepted call | at `call` and `execute`: the name among the phase agent's `tools`, the current selection after the tools filter; no such tool, for example one removed after preparation, or a call flagged `unoffered` (section 8.3): `tool_unavailable`. Replay policy on reopen uses the same lookup (section 7.3) |
 | generation, when a tool round starts | tool execution mode | once per round (section 8.3) |
 | generation, compaction | retry policy | at each attempt's classification |
@@ -3641,7 +3641,7 @@ interface GenerationHooks {
     api: HookApi,
     context: Context,
   ): HookResult<{ readonly messages: readonly Message[] }>;
-  /** After pi-ai builds the provider request body, before it is sent; replaces the body for that request only. */
+  /** After nycode-ai builds the provider request body, before it is sent; replaces the body for that request only. */
   beforeProviderRequest(
     request: { readonly model: Model<Api>; readonly payload: unknown },
     api: HookApi,
@@ -3678,7 +3678,7 @@ type AfterToolsDecision = { readonly terminate?: true };
 type RunSummary = {
   /** A final answer, or a tool round whose every call asked to `terminate`. */
   readonly reason: "answer" | "terminate";
-  /** The run's first entry (`pi.live.run.first`, section 8.2), or the answer for a run without one. */
+  /** The run's first entry (`nycode.live.run.first`, section 8.2), or the answer for a run without one. */
   readonly first: EntryId;
   /** The answer, or the terminating round's tool-calling answer. */
   readonly answer: EntryId;
@@ -3919,7 +3919,7 @@ type ToolExecutionResult<TDetails extends JsonValue = JsonValue> = {
   readonly isError?: boolean;
   readonly details?: TDetails;
   readonly diagnostics?: readonly ToolDiagnostic[];
-  /** Spend of the execution itself, such as a model call; stored on the result and in `pi.usage.tools`. */
+  /** Spend of the execution itself, such as a model call; stored on the result and in `nycode.usage.tools`. */
   readonly usage?: Usage;
   readonly control?: ToolControl;
   /** A result is no park: only parks have a `kind`. */
@@ -4071,10 +4071,10 @@ and `retain: "head"`. Omitted `executionMode` follows the settings'
 (section 8.3).
 
 A running tool calls another tool with `api.executeTool()`, as a codemode
-script or an MCP bridge does. The nested call is its own `pi.tool` task, owned
+script or an MCP bridge does. The nested call is its own `nycode.tool` task, owned
 by the calling tool's task, so it has its own task ID for idempotence and
 ownership, runs the whole tool pipeline (section 8.4) including the `ToolTask`
-hooks, which see `call.parent`, and reports progress in `pi.live.nestedTools`
+hooks, which see `call.parent`, and reports progress in `nycode.live.nestedTools`
 (section 8.2). Its result returns to the caller as a `NestedToolExecutionResult` and
 never enters the transcript; the model sees only what the caller puts in its
 own result. Its tool resolves among the agent's `callable` tools: the enabled
@@ -4089,7 +4089,7 @@ invocation's nested calls, `1`, `2`, ... An explicit `key` must be non-empty,
 without `/`, not `__proto__`, and not a positive integer, so call IDs never
 collide. After a wake (`api.wake` set) the same position may mean another call,
 so a key is required there. One commit creates the nested task, its slot, and its member of
-`NestedCallDoc` (`pi.tool.nested-call`), a task-scoped document family of the
+`NestedCallDoc` (`nycode.tool.nested-call`), a task-scoped document family of the
 caller keyed by the call's key, holding `{ kind: "nested", taskId }` (a member
 without `kind` is a nested call's); it retires with the caller. One document per call, so admitting a call rewrites no other call's. A caller that is not replay-safe creates its nested
 calls, and the child tasks it creates through `api.createTask()` unless the
@@ -4140,7 +4140,7 @@ once `execute()` has returned, and rejects when the caller is aborted or the
 Harness closes; cancelling its `context` stops only the wait. An abort that
 arrives during this cleanup still aborts the caller, whose finished result is
 then replaced by the `aborted` one. The caller's result message lists none
-of its nested calls (no pi-ai `nestedCalls`): their task records keep every
+of its nested calls (no nycode-ai `nestedCalls`): their task records keep every
 call and its arguments, and a tool that wants a list in its result, as code
 mode does, writes one into its own `details`. A crash between the
 caller's return and its result commit leaves it in `execute`: a replay-safe
@@ -4298,11 +4298,11 @@ widen what `tools` enables.
 A `deferred` tool is not offered to the model until it is loaded: `modelTools`
 must name it, in its array or its `add`. Other tools can call it any time. A
 tool loads deferred tools with `control.addTools`, which writes their names to
-`modelTools` (section 8.5); since `pi.agent` is rewindable and forks as of the
+`modelTools` (section 8.5); since `nycode.agent` is rewindable and forks as of the
 fork's entry, loaded tools are per branch, and a baseline after a head marker
 declares them, built from the resolved tools. Loaded tools follow the other
 tools in load order, so a load appends declarations to the transcript and the
-cached prefix holds. `@earendil-works/pi-durable/tool-search` provides the
+cached prefix holds. `@nycode/durable/tool-search` provides the
 coding agent's `tool_search` (`createToolSearchExtension()`): it ranks
 `Agent.deferred` with the coding agent's tool ranking and loads the matches.
 The ranking is BM25 over the tools' descriptions and parameter names and
@@ -4341,7 +4341,7 @@ its final result, plus diagnostics (below):
 Neither is sent to the model while the tool runs. `output()` synchronously
 accepts UTF-8 output into that invocation-owned bounded buffer and throws after
 invocation end. Throttled commits publish the retained output, dropped
-byte/line counts, and the current details and diagnostics in its `pi.live.tools`
+byte/line counts, and the current details and diagnostics in its `nycode.live.tools`
 slot. The throttle is adaptive, like the environment's shell output capture: the
 first change after an idle period commits at once; each commit then delays the
 next by at least `settings.progress.outputIntervalMs` (default 100 ms) and by
@@ -4350,7 +4350,7 @@ pause. Changes made during the delay
 coalesce into the next commit. The throttle is Harness policy, not part of
 `outputLimits`, which only bounds what is retained. Explicit
 text in explicit result content is bounded by the same limits before transcript
-persistence; non-text content is retained as declared by its pi-ai type. When
+persistence; non-text content is retained as declared by its nycode-ai type. When
 bounding drops text, the Harness adds a `warn` diagnostic with code `truncated`
 stating the dropped lines and bytes.
 
@@ -4371,7 +4371,7 @@ When there are any, the result content ends with one text item:
 </harness>
 ```
 
-with one `[severity] message` line per diagnostic, and the `pi.tool-result`
+with one `[severity] message` line per diagnostic, and the `nycode.tool-result`
 entry stores the structured list, possibly empty, as `data: { diagnostics }`
 (section 8.1). The
 stored message is exactly what the model saw, while UIs and code read the list.
@@ -4454,7 +4454,7 @@ symlink swap, so callers that restrict paths do so for hygiene, not security.
 
 The `details()` promise resolves after the corresponding or coalesced document
 commit, which memory adopts at once and Storage gets with the next commit that
-reads `pi.live` or within `settings.progress.persistWithinMs` (section 4.1). During normal settlement the tool task stops its throttle and awaits the
+reads `nycode.live` or within `settings.progress.persistWithinMs` (section 4.1). During normal settlement the tool task stops its throttle and awaits the
 commit in flight; the terminal commit, which appends the result entry, is the
 final flush and settles any `details()` promise still pending. Abort and close obey
 invocation and Session admission gates: uncommitted buffered updates may be
@@ -4511,7 +4511,7 @@ ordinary transaction writes for passive entries.
 
 A tool executes in a durable task. It may:
 
-- publish bounded running output and details to its `pi.live.tools` slot;
+- publish bounded running output and details to its `nycode.live.tools` slot;
 - commit memos;
 - create and wait for tasks;
 - park on a deadline, signals, or tasks its task owns, and run again when woken;
@@ -4651,7 +4651,7 @@ the answer once. The reporter therefore needs no transaction-level admission;
 `tx.createSubmission()` writes a raw record without admission rules. The
 application's name document uses
 `fork: "initial"` so forks of the parent do not inherit it. A UI lists
-subagents from that document; a child is working while its `pi.live.run` is
+subagents from that document; a child is working while its `nycode.live.run` is
 set. Owner edges alone drive abort and idle traversal. The anchor and reporter
 task definitions come with the subagent extension, so pending reporters resume
 after a restart once the host installs it again:
@@ -4673,10 +4673,10 @@ A tool result may request `addTools`, `terminate`, or `handoff`. The
 generation's `tools` phase (section 8.5) adds the named tools to the
 conversation's stored tools filter; they take effect at the next preparation. The round
 terminates only when every result of the round requests `terminate`, as in the
-pi agent loop, or when an `afterTools` task completes with `{ terminate: true }`
+nycode agent loop, or when an `afterTools` task completes with `{ terminate: true }`
 (section 8.3); the `tools` phase then uses a final boundary. Any
 `handoff` in the round, the last one in call order when several ask, appends a
-`pi.reset` entry with `head: "self"` and the handoff text as a user message
+`nycode.reset` entry with `head: "self"` and the handoff text as a user message
 (section 8.1), exactly what `reset(handoff)` writes, and the run continues: the
 next generation answers in the new context, and the run's inputs settle with
 that eventual answer or error, not with the tool-calling answer. A later round
@@ -4684,9 +4684,9 @@ may hand off again. A round that also terminates writes the reset and then ends
 the run as `terminate` does.
 
 A result's `usage` is stored on the tool-result message and added to the
-conversation's `pi.usage.tools[toolName]` in the result commit (section 8.6). A
+conversation's `nycode.usage.tools[toolName]` in the result commit (section 8.6). A
 tool that runs an owned conversation must not report that conversation's spend
-again: the child's own `pi.usage` already counts it (section 12).
+again: the child's own `nycode.usage` already counts it (section 12).
 
 On reopen, a tool reruns only when both its stored intent policy and the current
 declaration, resolved as at `call`, say `safe`. A current `unsafe` declaration
@@ -4706,7 +4706,7 @@ diagnostic with one of the codes `tool_unavailable`, `invalid_arguments`,
 and the error text as its message. Their content is the durable partial output,
 if any, and `details` is the tool's last reported value, if any.
 
-`@earendil-works/pi-durable/tools` provides `read`, `write`, `edit`, and `bash`
+`@nycode/durable/tools` provides `read`, `write`, `edit`, and `bash`
 factories, ported from the agent harness tools, the `CodingTools` extension
 with all four, and `createCodingTools({ images })`, the same with an image
 processor for `read`. They use only `api.env`; nothing installs them
@@ -4726,12 +4726,12 @@ With one, `await processor.prepare(bytes, mimeType, limits)` returns the image f
 diagnostic says when its format changed or it was resized, with the factor that
 maps coordinates back. The Photon processor decodes every image, returns it as
 it is when it is upright, inline, and within the limits, and otherwise
-re-encodes it as PNG or JPEG (JPEG first for JPEG sources). `@earendil-works/pi-durable/images` provides `createPhotonImages(wasm)`,
+re-encodes it as PNG or JPEG (JPEG first for JPEG sources). `@nycode/durable/images` provides `createPhotonImages(wasm)`,
 on Photon's WebAssembly, given its module or bytes; `/images/node` reads the
 wasm from the installed package and prepares images in a worker thread, which
 exits after 30 s without images (`{ worker: false }` prepares them inline);
 `/images/cloudflare` imports it as a Workers module and prepares inline. Neither is loaded unless imported. A conversation whose model
-does not take images still gets the image; pi-ai replaces it with a placeholder
+does not take images still gets the image; nycode-ai replaces it with a placeholder
 in requests, and the diagnostic says so.
 
 Images reach the model in two other ways, which `/images/fit` fits with any
@@ -4770,14 +4770,14 @@ is not a lock against `bash` or other processes.
 ### 7.4 System prompt and dynamic tools
 
 Durable has no durable prompt sections. The conversation's resolved agent produces
-the desired sections for each request; the transcript's `pi.system` entries are
+the desired sections for each request; the transcript's `nycode.system` entries are
 the only durable record of what the model saw. Durable stores prompt and tool
 changes directly as PR #9548 `SystemMessage` values at their transcript
 positions, always with empty `content`:
 
 ```ts
 type SystemEntry = EntryRecord & {
-  readonly kind: "pi.system";
+  readonly kind: "nycode.system";
   readonly model: readonly [SystemMessage];
 };
 
@@ -4810,7 +4810,7 @@ Generation preparation takes these steps against its phase snapshot:
    committed documents (the task runtime). The results are the desired
    sections.
 4. Compare desired sections and tool declarations with the replayed state and
-   append one positional `pi.system` entry when they differ.
+   append one positional `nycode.system` entry when they differ.
 
 Preparation does not recheck the transcript before appending: only the Harness
 writes model context to a busy conversation, through submissions, run tasks,
@@ -4861,7 +4861,7 @@ so a same-name replacement gets the new declaration and position.
 
 Preparation compares both values and order. If values can be patched without
 changing order, it emits the minimal patch. If shown and desired section order
-differ, one commit appends two `pi.system` entries: the first removes every
+differ, one commit appends two `nycode.system` entries: the first removes every
 shown section with `null`, and the second re-adds every desired section in
 desired order. This makes order-only changes and deletion/re-addition between
 requests replay exactly; merely restating equal values is insufficient.
@@ -4869,14 +4869,14 @@ requests replay exactly; merely restating equal values is insufficient.
 A PR #9548 `SystemMessage` is always a patch, not a reset: it cannot remove
 previous `content` or restore section order merely by restating current values.
 Therefore, when a head removes the previous request-visible baseline, which is
-the case when the active context has a head marker and no `pi.system` entry
+the case when the active context has a head marker and no `nycode.system` entry
 was appended after that marker (has a higher ID), the new
-`pi.system` entry adds `ContextEdit` omissions for every earlier `pi.system`
+`nycode.system` entry adds `ContextEdit` omissions for every earlier `nycode.system`
 entry still retained after the cut. Its own message is then a complete baseline
 containing every desired section in order and every effective tool declaration.
 Model-context replay sees the new baseline instead of the omitted retained
 deltas. Preparation writes this baseline even when it restates the replayed
-values, so every later preparation finds a `pi.system` entry after the marker.
+values, so every later preparation finds a `nycode.system` entry after the marker.
 Head rebaselining takes precedence over ordinary order/value patching.
 Without a head cut, an order mismatch uses the two-entry remove/re-add sequence
 above; only when order already matches does preparation emit the minimal changed
@@ -4884,7 +4884,7 @@ values and `null` removals.
 
 Tool changes are planned separately and ride on the last planned entry, or on
 one entry of their own when sections are unchanged. Declarations are compared
-with pi-ai `declarationsEqual()` and written with `toToolDeclaration()`, so
+with nycode-ai `declarationsEqual()` and written with `toToolDeclaration()`, so
 application metadata never enters the transcript. A changed declaration is
 removed and re-added in the same message. Replay keeps retained tools in place
 and appends additions; when that would not yield the desired order, the message
@@ -4892,7 +4892,7 @@ removes every offered tool and re-adds the desired tools in order. A head
 rebaseline adds every desired tool.
 
 The rendered strings stored in historical `SystemMessage.sections` remain
-authoritative even if the current renderer changes. Pi-ai decides whether to
+authoritative even if the current renderer changes. Nycode-ai decides whether to
 send the messages positionally to a capable provider or fold them into one
 leading system message; Durable does not rewrite its stored transcript for provider
 compatibility.
@@ -4938,9 +4938,9 @@ any more (section 2.2).
 
 ### 7.6 Code mode
 
-`@earendil-works/pi-durable/codemode` provides the `codemode` tool (`createCodemodeExtension({ sandbox })`):
+`@nycode/durable/codemode` provides the `codemode` tool (`createCodemodeExtension({ sandbox })`):
 `callers: ["model"]`, `replay: "safe"`. Its argument is a script, run with
-pi-codemode's deterministic `sandbox.start()`. The script calls the agent's
+nycode-codemode's deterministic `sandbox.start()`. The script calls the agent's
 `callable` tools as `tools.<name>(args)`; each call is a nested call with key
 `c<id>`, the VM's own number for the call. As in the coding agent, a tool that
 declares `structuredOutputSchema` resolves with its `structuredOutput`, also on an
@@ -4985,11 +4985,11 @@ With `models` (default on), scripts get the model catalog
 (`models.getModelsOfType`, `getAvailableOfType`, `getModelOfType`; journaled
 globals, configured `headers` removed) and `models.classify()` and
 `models.generateImages()`. Those two are paid effects, so each runs as an
-internal tool of the extension, `pi.codemode.models.classify` and
-`pi.codemode.models.generateImages` (`callers: ["tools"]`): the code mode tool
+internal tool of the extension, `nycode.codemode.models.classify` and
+`nycode.codemode.models.generateImages` (`callers: ["tools"]`): the code mode tool
 turns the script's call of the global into a nested call of the tool, which then
 has its own task, live row, abort, usage accounting, and replay policy. Tools
-named `pi.codemode.*` are recorded in the start data as `hidden`: never in the
+named `nycode.codemode.*` are recorded in the start data as `hidden`: never in the
 section, `tools`, `ALL_TOOLS`, or tool search. They declare a schema, so like any
 such tool they resolve with the model's result whatever its `stopReason`, which
 the script checks; their rows show a failed one as an error. At most four such
@@ -4997,26 +4997,26 @@ calls of one script run at once, and a call waiting for a slot when the script
 has ended is not started. A script that
 received generated images and showed none gets a note in its result. The tool's
 declaration carries the Lark grammar of the script source as
-`constrainedSampling`, which pi-ai applies for models that support it.
+`constrainedSampling`, which nycode-ai applies for models that support it.
 
 The result's \`details\` list the script's tool calls in call order
 (\`CodemodeToolDetails\`: id, name, cut arguments, status \`ok\`/\`error\`/
 \`cancelled\`, duration, cut error), written once with the result; a call still
 running or not yet launched when the script ended is \`cancelled\`. While the
-script runs, UIs show its nested calls from \`pi.live.nestedTools\`.
+script runs, UIs show its nested calls from \`nycode.live.nestedTools\`.
 
 Three documents, two of them scoped to the code mode call's task:
 
-- `pi.codemode.run`: `start`, written once before the VM starts (module
+- `nycode.codemode.run`: `start`, written once before the VM starts (module
   version, `startedAt`, seed, the VM's fingerprint once reported, the deadline
   from `timeout_ms`, the tools and globals the script sees, the store
   snapshot), and `result`, the outcome, written once.
-- `pi.codemode.journal`: `entries`, one per result delivered to the VM, in
+- `nycode.codemode.journal`: `entries`, one per result delivered to the VM, in
   delivery order: the call's ID, the clock value, `issuedAfter` (the calls the VM
   had issued after processing it, from its acknowledgment), and for a global its
   name, arguments, and outcome; and `firstIssued`, the calls the VM had issued
   after the script's first run.
-- `pi.codemode.store`: conversation-scoped, `history: "rewindable"`,
+- `nycode.codemode.store`: conversation-scoped, `history: "rewindable"`,
   `fork: "asOf"`; a successful script's `store()` writes are applied per key in
   the transaction that writes its `result`.
 
@@ -5066,22 +5066,22 @@ The initial implementation provides:
 
 | kind | responsibility |
 |---|---|
-| `pi.generation` | prepare system prompt and tools, request or poll model, retry, classify response |
-| `pi.tool` | validate, hook, execute, persist output and details, append result |
-| `pi.compaction` | select a transcript range, summarize, place a headed summary |
+| `nycode.generation` | prepare system prompt and tools, request or poll model, retry, classify response |
+| `nycode.tool` | validate, hook, execute, persist output and details, append result |
+| `nycode.compaction` | select a transcript range, summarize, place a headed summary |
 
 Generation uses `HarnessOptions.models` without a Durable-specific model adapter. It
-resolves `models.getModel(ref.provider, ref.modelId)`, builds a pi-ai `Context`
+resolves `models.getModel(ref.provider, ref.modelId)`, builds a nycode-ai `Context`
 from the prepared prompt/messages/tools, and calls `models.streamSimple()` with
 the task invocation's abort signal, the agent's thinking level, and the
 settings' stream options. Deferred
 continuation calls `models.fetchDeferred()` and `models.cancelDeferred()` with
-that same model and signal. Missing models and synchronous/streamed pi-ai errors
+that same model and signal. Missing models and synchronous/streamed nycode-ai errors
 are classified into the durable generation outcomes below.
 
 Generation and tool progress are throttled document commits, deferred
 (section 4.1): watches see each at once, and Storage gets them with the next
-commit that reads `pi.live` or within `settings.progress.persistWithinMs`
+commit that reads `nycode.live` or within `settings.progress.persistWithinMs`
 (default 1,000 ms). A crash may lose the throttle window plus what was not
 stored yet: a stream that crashes before its first store leaves no aborted entry,
 and that attempt's usage is not recorded. Recovery converts stored partials
@@ -5096,22 +5096,22 @@ does not delete transcript history.
 
 ### 8.1 Built-in entries
 
-Built-in entry kinds carry no `data`, except `pi.tool-result`, whose token is
+Built-in entry kinds carry no `data`, except `nycode.tool-result`, whose token is
 `Entry<{ diagnostics: ToolDiagnostic[] }>`; every tool result carries `data`,
 with an empty list when it has no diagnostics (section 7.3), and
-`pi.compaction`, whose token is `Entry<{ reason: CompactionReason }>`. Each kind
+`nycode.compaction`, whose token is `Entry<{ reason: CompactionReason }>`. Each kind
 is exported as an `Entry` token.
 
 | kind | `model` | written by |
 |---|---|---|
-| `pi.user` | `[UserMessage]`, timestamp from the Harness clock at admission or placement | submissions, `onYield` continuations |
-| `pi.assistant` | `[AssistantMessage]` with any stop reason | generation |
-| `pi.system` | `[SystemMessage]` with `content: ""` (section 7.4) | generation preparation |
-| `pi.tool-result` | `[ToolResultMessage]` | tool tasks; generation for calls an aborted round never started |
-| `pi.reset` | absent, or `[UserMessage]` with the handoff text; always `head: "self"` | `reset()`, generation `tools` phase for `handoff` |
-| `pi.compaction` | `[UserMessage]` with the wrapped summary; `head` is the first kept entry | compaction tasks (section 8.7) |
+| `nycode.user` | `[UserMessage]`, timestamp from the Harness clock at admission or placement | submissions, `onYield` continuations |
+| `nycode.assistant` | `[AssistantMessage]` with any stop reason | generation |
+| `nycode.system` | `[SystemMessage]` with `content: ""` (section 7.4) | generation preparation |
+| `nycode.tool-result` | `[ToolResultMessage]` | tool tasks; generation for calls an aborted round never started |
+| `nycode.reset` | absent, or `[UserMessage]` with the handoff text; always `head: "self"` | `reset()`, generation `tools` phase for `handoff` |
+| `nycode.compaction` | `[UserMessage]` with the wrapped summary; `head` is the first kept entry | compaction tasks (section 8.7) |
 
-Every generation response becomes a `pi.assistant` entry: answers, failed attempts
+Every generation response becomes a `nycode.assistant` entry: answers, failed attempts
 with their error text and usage, and converted partials with stop reason
 `aborted`. Context derivation (section 2.1, rule 9) keeps failed and aborted
 messages out of later requests, so no separate usage or notice kind exists.
@@ -5261,13 +5261,13 @@ type CompactionStatus = {
 
 | field | value |
 |---|---|
-| kind | `pi.live` |
+| kind | `nycode.live` |
 | version | `3` |
 | scope/history/fork | conversation, `latest`, `initial` |
 | `initial()` | `{}` |
 | `migrate()` | from version 1: `reason` of each `compactions` status and of `compactionFailure` renamed `trigger`; from versions 1 and 2: `run.turns` set to `0` where it is missing (section 3.6); `run.first`, `run.afterRun`, `run.yield`, `runFailure.first`, and the parked slot statuses are additions and need no step |
 | checkpoint | complete base whenever nothing runs: `generation` absent and no `running` tool or nested slot |
-| view mount | `docs["pi.live"]` |
+| view mount | `docs["nycode.live"]` |
 | created | with every Harness conversation (section 2.2) |
 
 Nothing runs while idle, at a final boundary, in the commit where generation
@@ -5298,7 +5298,7 @@ with the arguments the caller passed, runs like a tool slot, gets the arguments
 it executes with in its intent commit when they differ (a model-issued call's
 are in its assistant entry), and in its terminal commit becomes `done`, with its progress
 removed like a tool slot's and its `summary` set, enough for a status line; its
-result is in the caller's `NestedCallDoc`, never in `pi.live` (section 7.3). When any call settles, its terminal commit
+result is in the caller's `NestedCallDoc`, never in `nycode.live` (section 7.3). When any call settles, its terminal commit
 removes the nested slots below it, transitively by `parentTaskId`; its
 left-running nested calls were aborted first. `endRun` and the generation's
 `tools` phase remove `nestedTools` with `tools`.
@@ -5355,10 +5355,10 @@ so it is not a caller table read and works after the commit's first table write.
 The streamed fields, `generation.message` and a running slot's `output`,
 `droppedBytes`, `droppedLines`, `details`, and `diagnostics`, are written by
 deferred commits (section 4.1). Every commit that derives anything from them or
-clears them acquires `pi.live`: converting a partial into an aborted entry,
+clears them acquires `nycode.live`: converting a partial into an aborted entry,
 settling a tool from its slot, handing a generation over to its tool round,
 ending a run, and clearing a safe rerun's progress. It therefore stores them
-first, with its own changes, and after a crash Storage holds a `pi.live` its
+first, with its own changes, and after a crash Storage holds a `nycode.live` its
 memory had: control fields as of the last normal commit, streamed fields as of
 the last store. Recovery's own conversions and clears are normal commits, so a
 second crash never converts the same partial twice.
@@ -5433,14 +5433,14 @@ type GenerationCheckpoint =
 type GenerationResult = { entryId: EntryId };
 ```
 
-`pi.generation` is version 3 and starts at `{ phase: "prepare", attempt: 1 }`;
+`nycode.generation` is version 3 and starts at `{ phase: "prepare", attempt: 1 }`;
 `migrate` keeps older records as they are. Version 2 keeps calls to tools not offered
 in a sequential round's `pending`, flagged `unoffered` in their slots (section
 8.5), which a version 1 Harness would start as tool tasks without the flag, so
 it leaves version 2 blocked (`task_too_old`); the `finish` and `drain` phases
 below are version 2 as well. Version 3 adds the `afterTools` and `yield`
 phases.
-The run's inputs live in `pi.live.run`, not in the task input.
+The run's inputs live in `nycode.live.run`, not in the task input.
 
 - `prepare` runs section 7.4 with the phase's agent resolution and resolves
   the settings once. When the agent has no model or `models.getModel()` does
@@ -5453,7 +5453,7 @@ The run's inputs live in `pi.live.run`, not in the task input.
   sent. Only roles count: a `length` answer with only text ends the context,
   while one with tool calls is followed by the error results synthesized for
   its calls (section 2.1), so a continue answers those. Otherwise one commit appends
-  the planned `pi.system` entries and moves to `request` with the new tail as
+  the planned `nycode.system` entries and moves to `request` with the new tail as
   `cutoff`, the agent's model and thinking level, and the settings' stream
   options. These stay fixed for this request attempt; a retry prepares again. `compacted` carries over to
   `request`, `retry`, `poll`, and the next `prepare`.
@@ -5462,7 +5462,7 @@ The run's inputs live in `pi.live.run`, not in the task input.
   `contextWindow` is positive, and `compacted` is absent. The estimate starts at
   the newest assistant message in the committed model context whose entry was
   appended after the head marker (all qualify without one) and whose usage is
-  nonzero: pi-ai `calculateContextTokens()` of its usage, plus pi-ai
+  nonzero: nycode-ai `calculateContextTokens()` of its usage, plus nycode-ai
   `estimateMessageTokens()` of every context message after it and of the planned
   system messages. Its request included the marker, because a head is placed
   only while no request is in flight. Without such a message, every message is
@@ -5480,7 +5480,7 @@ The run's inputs live in `pi.live.run`, not in the task input.
     abort). A failed compaction leaves a context above the blocking threshold,
     where a request would at best leave no room for the answer.
   - Above `contextWindow - reserveTokens - backgroundTokens` with
-    `backgroundTokens > 0` and no compaction status in `pi.live`: the commit that
+    `backgroundTokens > 0` and no compaction status in `nycode.live`: the commit that
     moves to `request` also creates a background compaction, owned by the
     conversation, with reason `threshold`, and adds its status. The generation
     does not wait for it. The settings' retry policy is read when the
@@ -5490,13 +5490,13 @@ The run's inputs live in `pi.live.run`, not in the task input.
   `models.getModel()`; an unknown model fails the task with `no_model`, like
   `prepare`. `request` converts a leftover partial (below) before it resolves
   the model.
-- `request` first converts a committed partial left in `pi.live` by an
-  interrupted attempt into an aborted `pi.assistant` entry, and sets
-  `pi.live.generation` to the attempt with a deferred commit (section 4.1), which
+- `request` first converts a committed partial left in `nycode.live` by an
+  interrupted attempt into an aborted `nycode.assistant` entry, and sets
+  `nycode.live.generation` to the attempt with a deferred commit (section 4.1), which
   the conversion makes immediate. When the host died
   while this request was in flight (the record's `restarts`, section 5.4), the
   attempt failed: that commit also either sleeps at `retry` until
-  `now + retryDelayMs(policy, attempt)`, with `pi.live.generation.retry` saying
+  `now + retryDelayMs(policy, attempt)`, with `nycode.live.generation.retry` saying
   "The host stopped while the model was answering, on attempt N", when the
   retry policy allows another attempt, or settles the inputs `unanswered` and
   ends the run with `runFailure` reason `interrupted` and that text, failing the
@@ -5513,12 +5513,12 @@ The run's inputs live in `pi.live.run`, not in the task input.
   as `reasoning` (omitted for `off`), the conversation's persisted provider
   `sessionId`, and the pinned `streamOptions`, committing throttled partials at
   most every `settings.progress.partialIntervalMs` (default 100 ms), deferred
-  (section 4.1), so Storage gets them at the next commit that reads `pi.live`
+  (section 4.1), so Storage gets them at the next commit that reads `nycode.live`
   or within `settings.progress.persistWithinMs`.
   Before streaming, the `beforeRequest` chain may
-  replace the messages for this request only. Once pi-ai has built the provider
+  replace the messages for this request only. Once nycode-ai has built the provider
   request body, the `beforeProviderRequest` chain may replace it, again for this
-  request only; it runs each time pi-ai builds a body. After a close, recovery resends
+  request only; it runs each time nycode-ai builds a body. After a close, recovery resends
   the same committed messages with the same pinned model, thinking level, and
   stream options, and reruns `beforeRequest`; after a crash the attempt is
   charged instead, as above.
@@ -5536,11 +5536,11 @@ The run's inputs live in `pi.live.run`, not in the task input.
     the tasks read the answer's entry from `run.yield.answer`, since the hook
     ran before it existed. Otherwise the commit appends the answer and applies the final
     boundary (section 6). With a continuation and no selected user item or
-    reset, it appends a `pi.user` entry with the continuation content, creates a
-    successor generation, and hands it `pi.live.run`, keeping the inputs open and
+    reset, it appends a `nycode.user` entry with the continuation content, creates a
+    successor generation, and hands it `nycode.live.run`, keeping the inputs open and
     setting its `turns` to `0`: each stretch a continuation starts gets the whole
     turn budget, and bounding `onYield` loops is the extension's job (it reads
-    `pi.live.run.turns` and `pi.agent.maxTurns` with `api.snapshot`). The chain runs
+    `nycode.live.run.turns` and `nycode.agent.maxTurns` with `api.snapshot`). The chain runs
     whatever the count.
     Otherwise it settles the run's inputs `done`, removes `run` and
     `generation`, and starts a successor run for the selected user items, if
@@ -5557,7 +5557,7 @@ The run's inputs live in `pi.live.run`, not in the task input.
   - `toolUse` with at least one tool call: the commit appends the assistant
     entry and starts the tool round described below, moving to `waiting` in the
     `tools` phase. A `toolUse` message without calls is classified like `stop`.
-  - `error` that pi-ai `isContextOverflow()` recognizes, while the
+  - `error` that nycode-ai `isContextOverflow()` recognizes, while the
     compaction policy (section 8.7) is enabled, `compacted` is absent, and range selection finds a cut:
     the commit appends the error entry, removes `generation`, creates a
     compaction owned by the generation with reason `overflow`, adds its status,
@@ -5586,7 +5586,7 @@ The run's inputs live in `pi.live.run`, not in the task input.
 - `finish` asks the `afterRun` hooks with its `run` (section 7.2) and checks
   each requested task off the line, as for every task a hook requests
   (`afterTools`, `onYield`, `afterRun`): its kind must be an installed task that is
-  not built-in (`pi.*`), its input JSON, and the installed definition's
+  not built-in (`nycode.*`), its input JSON, and the installed definition's
   `initial()` must return a JSON checkpoint of one of its phases. A request
   that fails a check is skipped and reported as an `extension_error` of the
   hook that asked for it; the run never fails for one. The task is
@@ -5640,10 +5640,10 @@ hook's tasks concatenated, and they can only start new work.
 
 A tool round starts in the commit that appends the tool-calling answer:
 
-1. The offered tools are replayed with pi-ai `getCurrentTools()` from the
+1. The offered tools are replayed with nycode-ai `getCurrentTools()` from the
    committed model context through `cutoff`: `request` already holds it, and
    `poll` derives it again.
-2. Every call gets a `pi.tool` task owned by the generation, in call order, with
+2. Every call gets a `nycode.tool` task owned by the generation, in call order, with
    input `{ assistant, callId }`, plus `unoffered: true` (also on its slot) for a
    call to a tool not offered, which settles `tool_unavailable` without resolving
    the name (section 8.4). The round is sequential when the settings'
@@ -5655,16 +5655,16 @@ A tool round starts in the commit that appends the tool-calling answer:
    created so far and grows by one per started sequential call, while
    `pending` shrinks.
 3. The generation commits `waiting` on its tool tasks with `allSettled` and the
-   `tools` checkpoint (section 8.5); `pi.live.run` stays with it.
-4. `pi.live.tools` receives the round's slots (section 8.2), `generation` is
-   removed, and `pi.live.run.turns` grows by one; a run without `first` gets the
+   `tools` checkpoint (section 8.5); `nycode.live.run` stays with it.
+4. `nycode.live.tools` receives the round's slots (section 8.2), `generation` is
+   removed, and `nycode.live.run.turns` grows by one; a run without `first` gets the
    tool-calling answer as its first entry.
 
 Input and continue submissions settle `unanswered` with one of these reasons:
 `no_model`, `model_error` (detail: provider error text), `nothing_to_answer`,
 `turn_limit` (detail: the turn count, section 8.5), `aborted`, `faulted` (detail: error message), or an orphaning blocked reason
 (section 5.4). Fault and orphan
-settlement convert a committed partial into an aborted `pi.assistant` entry,
+settlement convert a committed partial into an aborted `nycode.assistant` entry,
 like the abort handler.
 
 ### 8.4 Tool
@@ -5682,7 +5682,7 @@ type ToolTaskCheckpoint =
 type ToolTaskResult = { kind: "model"; entryId: EntryId; control?: ToolControl } | { kind: "nested" };
 ```
 
-`pi.tool` is version 4 and starts at `{ phase: "call" }`; `migrate` gives a
+`nycode.tool` is version 4 and starts at `{ phase: "call" }`; `migrate` gives a
 version 1 input `kind: "model"` and keeps a version 2 input (version 3 added
 `unoffered`) and older checkpoints (version 4 added `parked` and the optional
 fields of `execute`), and readers treat a terminal result without `kind` as a
@@ -5699,7 +5699,7 @@ Below, `{ entryId }` is a model-issued call's result.
 
 - `call` reads the call with `runtime.entry()`, resolves the tool among the
   phase's agent `tools` (section 7.3), validates
-  the arguments with pi-ai
+  the arguments with nycode-ai
   `validateToolArguments()`, runs the `beforeTool` chain, and validates again
   (section 7.3). A `sleep` from the chain parks the call at its gates: one
   commit sets the slot `sleeping` and commits `sleeping` at `{ phase: "call" }`,
@@ -5750,7 +5750,7 @@ Below, `{ entryId }` is a model-issued call's result.
   repeated. Either way, a task cut off `settings.restartLimit` times ends with a
   `restart_limit` result instead (section 5.4), also after the chain.
 - The result commit bounds the content, appends the diagnostics block (section
-  7.3), appends one `pi.tool-result` entry with `model: [{ role: "toolResult",
+  7.3), appends one `nycode.tool-result` entry with `model: [{ role: "toolResult",
   toolCallId, toolName, content, details, isError, durationMs, timestamp }]` and
   `data: { diagnostics }`, marks the slot `done`, and
   completes with `{ entryId, control }`. An `isError` result still completes.
@@ -5809,13 +5809,13 @@ The generation resumes in its `tools` phase once every tool task it waits on is
 terminal. In a sequential round with calls left in `pending`, one commit creates
 the next call's owned tool task and waits on it again with the shorter `pending`.
 Otherwise it asks the `afterTools` hooks with the round's result entries from
-the `pi.live.tools` slots. When they request tasks, one commit creates them as
+the `nycode.live.tools` slots. When they request tasks, one commit creates them as
 children of the generation and waits for them with `allSettled` at
 `{ phase: "afterTools", assistant, tools, tasks }` (section 8.3), which ends
 the round below once they are terminal. Otherwise, and in that phase, it reads
 the tool records with `runtime.getTask()` and commits once:
 
-- It edits the conversation's stored `pi.agent` `tools` and `modelTools` for
+- It edits the conversation's stored `nycode.agent` `tools` and `modelTools` for
   every `addTools` name: an array gets the name appended unless it holds it
   already, and `{ remove }` loses the name. An unset `tools` already enables
   every tool, and nothing is written for it. An unset or object `modelTools`
@@ -5823,7 +5823,7 @@ the tool records with `runtime.getTask()` and commits once:
   no effect for others. Names are written without consulting the registry, so a
   tool that is not registered now is offered once it is again. The next
   preparation offers the tool when it resolves and the model may call it.
-- When any result requests `handoff`, it first appends the `pi.reset` entry of
+- When any result requests `handoff`, it first appends the `nycode.reset` entry of
   the last one in call order and advances the boundary's active range start to
   it, so the boundary below places its writes and user items after the handoff
   text, and a queued head write targeting an entry before it is stale.
@@ -5845,7 +5845,7 @@ the tool records with `runtime.getTask()` and commits once:
   boundary placed a queued reset, which wins over a handoff written before it,
   the run's inputs settle `unanswered` with `reset` and selected user items
   start a successor run (section 6). Otherwise selected steer IDs join
-  `pi.live.run`, and it creates the next generation, owned by the conversation,
+  `nycode.live.run`, and it creates the next generation, owned by the conversation,
   and hands it the run; after a handoff, that generation prepares and requests
   in the new context.
 
@@ -5871,18 +5871,18 @@ type UsageState = {
 
 | field | value |
 |---|---|
-| kind | `pi.usage` |
+| kind | `nycode.usage` |
 | version | `1` |
 | scope/history/fork | conversation, `latest`, `initial` |
 | `initial()` | `{ models: {}, tools: {} }` |
 | checkpoint | complete base on every change |
-| view mount | `docs["pi.usage"]` |
+| view mount | `docs["nycode.usage"]` |
 | created | with every Harness conversation (section 2.2) |
 
-`pi.usage` is the ledger of the conversation's own spend. Every built-in writer
-of a `pi.assistant` entry adds its message's `usage` to `models` under the
+`nycode.usage` is the ledger of the conversation's own spend. Every built-in writer
+of a `nycode.assistant` entry adds its message's `usage` to `models` under the
 message's own `provider/model`, and every writer of
-a `pi.tool-result` entry with `usage` adds it to `tools`, in the same commit, as
+a `nycode.tool-result` entry with `usage` adds it to `tools`, in the same commit, as
 does the result commit of a nested call (section 7.3) with `usage`.
 Every summarization attempt of a compaction task adds its response's `usage` to
 `models` in the commit that classifies it (section 8.7); that spend has no entry,
@@ -5920,7 +5920,7 @@ type CompactionCheckpoint =
 type CompactionResult = { entryId?: EntryId; submissionId?: SubmissionId };
 ```
 
-`pi.compaction` is version 1 and starts at `{ phase: "select" }`. Compaction
+`nycode.compaction` is version 1 and starts at `{ phase: "select" }`. Compaction
 replaces an old prefix of the model context with a summary entry whose `head` is
 the first kept entry (section 2.1). Raw history stays in storage. There are three
 ways to start one; the task is the same, only ownership and placement differ:
@@ -5966,7 +5966,7 @@ markers, and the resolved `keepRecentTokens`.
    candidates, so a kept assistant message keeps its tool results. A user entry
    is not a candidate either while a result for a call of the assistant before
    it follows it, before the next assistant (section 2.1, rule 7).
-2. Walk the non-marker entries from newest to oldest, adding pi-ai
+2. Walk the non-marker entries from newest to oldest, adding nycode-ai
    `estimateMessageTokens()` of each contribution. At the first entry where the
    sum reaches `keepRecentTokens`, the cut is the first candidate at or after
    that entry in transcript order, or the newest candidate when none follows.
@@ -6015,7 +6015,7 @@ Phases:
   `cacheRetention: "none"` and the pinned `maxTokens`. Providers such as Codex
   may suppress that identity when caching is disabled. Recovery resends the same
   request, until the task was cut off `restartLimit` times in a row (section 5.4). The response is classified in one commit
-  that adds its usage to `pi.usage` (section 8.6):
+  that adds its usage to `nycode.usage` (section 8.6):
   - `stop` with non-empty text and no tool call: the text is the summary, placed
     as below.
   - `error` that `isRetryableAssistantError()` accepts while the settings'
@@ -6034,7 +6034,7 @@ the conversation.
 
 ```ts
 {
-  kind: "pi.compaction",
+  kind: "nycode.compaction",
   head: firstKept,
   model: [{ role: "user", content: [{ type: "text", text: wrapped }], timestamp: now }],
   data: { reason },
@@ -6044,7 +6044,7 @@ the conversation.
 where `wrapped` is `"The conversation history before this point was compacted
 into the following summary:\n\n<summary>\n"`, the summary, and
 `"\n</summary>"`. The commit that places it also removes the task's status,
-removes `pi.live.compactionFailure`, and commits the task's `completed` outcome:
+removes `nycode.live.compactionFailure`, and commits the task's `completed` outcome:
 
 - A blocking compaction appends the entry directly and completes with
   `{ entryId }`. Its generation holds the run and waits, so nothing else writes
@@ -6058,7 +6058,7 @@ removes `pi.live.compactionFailure`, and commits the task's `completed` outcome:
   `Harness.submission()` observes the placement.
 
 The next generation's preparation finds a head marker without a later
-`pi.system` entry and writes a complete system baseline (section 7.4).
+`nycode.system` entry and writes a complete system baseline (section 7.4).
 
 **Cancellation.** The abort handler removes the task's status and ends
 `aborted`; it writes no entry. An attempt cut short by abort or a crash has no
@@ -6071,7 +6071,7 @@ aborted with its generation, before the generation's abort handler runs
 conversation abort keeps it, and `Submission.abort()` withdraws it.
 
 **Failure.** The commit that fails a compaction (`model_error`, `no_model`)
-removes its status and sets `pi.live.compactionFailure` to its task, trigger,
+removes its status and sets `nycode.live.compactionFailure` to its task, trigger,
 and error message, replacing an older failure; the Harness cleanup does the
 same for a compaction the scheduler faults or orphans, with the fault's
 message or the orphan reason. Only a compaction that produces a summary
@@ -6089,7 +6089,7 @@ aborted directly (section 8.3).
 ### 9.1 Watches
 
 Durable exposes committed state only through watches: Chord's `WatchHandle`
-and its end type `WatchEnd`, exported by `@earendil-works/chord/watch` (Durable
+and its end type `WatchEnd`, exported by `@nycode/chord/watch` (Durable
 re-exports both):
 
 ```ts
@@ -6321,7 +6321,7 @@ type ConversationView = {
   readonly entries: readonly EntryRecord[];
   /** ID of the entry just before the window; absent when the window starts the transcript. */
   readonly before?: EntryId;
-  /** `pi.agent`, `pi.live`, `pi.inbox`, `pi.provider`, and `pi.usage`, keyed by kind; absent documents are absent. */
+  /** `nycode.agent`, `nycode.live`, `nycode.inbox`, `nycode.provider`, and `nycode.usage`, keyed by kind; absent documents are absent. */
   readonly docs: Readonly<Record<string, JsonObject>>;
 };
 
@@ -6348,9 +6348,9 @@ interface Harness {
 These kinds and their fields are public protocol. Third-party documents are
 exposed through their own Chord objects, not mounted. Everything a renderer
 draws is state in this value: the transcript in `entries`, the run and its
-presentation in `pi.live` (`run`, `generation`, `tools`, `nestedTools`,
+presentation in `nycode.live` (`run`, `generation`, `tools`, `nestedTools`,
 `compactions`, `compactionFailure`, `runFailure`, section 8.2), the queue in
-`pi.inbox`, the agent in `pi.agent`, spend in `pi.usage`. A run that answered
+`nycode.inbox`, the agent in `nycode.agent`, spend in `nycode.usage`. A run that answered
 and waits for its after-run tasks shows as `run` with `run.afterRun` and no
 `generation`. A renderer renders the newest value; it never assembles state
 from a stream of events.
@@ -6405,7 +6405,7 @@ shared, then that observer's entry splices:
 
 ```text
 document op ["s", ["generation", "message"], value]
--> view op ["s", ["docs", "pi.live", "generation", "message"], value]
+-> view op ["s", ["docs", "nycode.live", "generation", "message"], value]
 ```
 
 Document creation and retirement set and delete the `docs` key. Parent entries
@@ -7098,13 +7098,13 @@ These are contracts, not invitations to add defensive machinery:
   commit's own `appendEntry()`, `createTask()`, or `createSubmission()`. The
   admission is provisional until the commit is stored: a later throw in the
   callback, or a storage failure, discards it with the rest of the commit,
-  though its `pi.durable.submit` span already ended with a `result`.
+  though its `nycode.durable.submit` span already ended with a `result`.
 - **Writing to a busy conversation:** only the Harness appends to a conversation
   with an active run. Raw entries appended by `Harness.commit()` or a custom
   task while a generation prepares its request can misplace its system prompt entries;
   use a write submission.
 - **Queued items after a failed run:** failure and task abort leave the inbox alone.
-  Queued follow-ups wait in `pi.inbox`, and their `wait()` does not settle, until
+  Queued follow-ups wait in `nycode.inbox`, and their `wait()` does not settle, until
   the next input or queued write's boundary places them or the host withdraws
   them; a display-only write runs no boundary. A
   compaction summary is such a submission: when a manual or background
@@ -7122,14 +7122,14 @@ These are contracts, not invitations to add defensive machinery:
   that summary still describes 10-84. Place such writes before compacting.
 - **Summary timestamps:** a queued summary's user message carries the time its
   compaction finished, not its placement. Code that judges usage staleness by
-  message timestamps, such as pi-ai `estimateContextTokens()` over view
+  message timestamps, such as nycode-ai `estimateContextTokens()` over view
   messages, can misjudge; the Harness estimate uses entry order (section 8.3).
 - **Raw head writes into the past:** a head written directly with `tx.appendEntry()`
   that targets an entry before the conversation's active range changes model
   context in ways a queued write would not. Use a write submission, whose stale
   check rejects it.
 - **Double-counted subagent spend:** a tool that runs an owned conversation must
-  not report that conversation's usage in its result; the child's `pi.usage`
+  not report that conversation's usage in its result; the child's `nycode.usage`
   already counts it, and subtree sums would count it twice.
 - **Owned work holds its owner:** a task that owns live ordinary work stays
   `completing` until that work ends (section 5.5). Foreground work an extension
@@ -7173,7 +7173,7 @@ These are contracts, not invitations to add defensive machinery:
   `admit(tx, draft)`, before its table writes; one submitted outside a commit
   should carry a stable `requestId`, as a rerun after a crash submits it again.
 - **Hook memo names:** hooks share the asking task's memo namespace with the
-  task and other hooks. Prefix memo names; `pi.` is the Harness's.
+  task and other hooks. Prefix memo names; `nycode.` is the Harness's.
 - **Work before a park:** a crash after a tool's external call and before its
   park is stored reruns a replay-safe `execute()`. Use an idempotency key the
   tool owns, memoized before the call.
@@ -7245,9 +7245,9 @@ These are contracts, not invitations to add defensive machinery:
   outcome. Never reference a task-scoped document retired by that same outcome.
 - **Raw transcript:** view entries are not model context. Rendering edits,
   display-only entries, and model filtering require the appropriate reducer.
-- **Reserved `pi.` names:** task names, document kinds, and entry kinds starting
-  with `pi.` belong to built-ins by convention. Nothing enforces it; reusing one
-  collides with Harness behavior, such as `pi.system` entries being replayed as
+- **Reserved `nycode.` names:** task names, document kinds, and entry kinds starting
+  with `nycode.` belong to built-ins by convention. Nothing enforces it; reusing one
+  collides with Harness behavior, such as `nycode.system` entries being replayed as
   system messages.
 - **Early resource disposal:** uninstalling or replacing an extension only stops
   new use. Freeing resources immediately can fail calls that are still running.
@@ -7260,14 +7260,14 @@ These are contracts, not invitations to add defensive machinery:
   gets the host default with the edit, not the owner's selection. Compute the child's array from the resolved agent
   instead (section 7.3).
 - **Copies are one-time:** a new task-owned conversation copies its owner's
-  `pi.agent` at creation; later owner changes do not reach it. A fork keeps its
+  `nycode.agent` at creation; later owner changes do not reach it. A fork keeps its
   `asOf` copy instead (section 2.2).
 - **Environment on recovery:** a tool rerun after recovery builds its
   environment again, with the conversation's current `cwd`, which may differ
   from the first attempt's.
 - **Moving default selections:** a conversation on the default selection changes
   whenever the settings or the installed extensions change; each change appends
-  `pi.system` entries and misses the provider prompt cache.
+  `nycode.system` entries and misses the provider prompt cache.
 - **Unstable prompt text:** a section renderer whose output changes without a
   real content change, for example by embedding the time, appends system deltas
   and defeats provider prompt caching.

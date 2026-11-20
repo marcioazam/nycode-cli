@@ -1,6 +1,6 @@
-// Prompt cache warming for the session's conversations, as pi-coding-agent does it for its one session: before the
+// Prompt cache warming for the session's conversations, as nycode-coding-agent does it for its one session: before the
 // cache entry a conversation's last request wrote expires, send that request again with a one-token output cap, for as
-// long as that is expected to pay off. The policy is pi-ai's; this file schedules it per conversation.
+// long as that is expected to pay off. The policy is nycode-ai's; this file schedules it per conversation.
 import {
 	type AssistantMessage,
 	CACHE_WARMING_MAX_AGE_MS,
@@ -12,8 +12,8 @@ import {
 	getPromptCacheTtlMs,
 	isCacheWarmingReplayable,
 	type Models,
-} from "@earendil-works/pi-ai";
-import type { ConversationId } from "@earendil-works/pi-durable";
+} from "@nycode/ai";
+import type { ConversationId } from "@nycode/durable";
 import type { ModelRequest } from "@p2/app/v1/worker";
 
 /** The `cacheWarming` setting: "idle" also warms after a run settled, "streaming" only while it runs. */
@@ -47,7 +47,7 @@ type Run = {
 /**
  * One warming run per conversation, started by each response and replaced by the next one. Each refresh asks the host
  * for the conversation's phase and refreshes while the request is at most an hour old (30 minutes once idle) and the
- * refresh pays off by pi-ai's `evaluateCacheWarming()`.
+ * refresh pays off by nycode-ai's `evaluateCacheWarming()`.
  */
 export class ConversationWarmers {
 	readonly #host: WarmerHost;

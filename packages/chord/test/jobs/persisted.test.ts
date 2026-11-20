@@ -6,7 +6,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { InMemoryTelemetryContext } from "@earendil-works/pi-telemetry";
+import { InMemoryTelemetryContext } from "@nycode/telemetry";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { BACKGROUND_CONTEXT as context, withCancel, withTelemetry } from "../../src/context/index.ts";
 import { arr, int, local, num, obj, str } from "../../src/contracts/index.ts";
@@ -322,7 +322,7 @@ describe("trace (slice 9)", () => {
 				["finish", intent!.id, true],
 			],
 		);
-		expect(new Set(phases.map(({ context: carrier }) => carrier["pi-memory-trace"])).size).toBe(1);
+		expect(new Set(phases.map(({ context: carrier }) => carrier["nycode-memory-trace"])).size).toBe(1);
 		await jobs.close();
 	});
 });

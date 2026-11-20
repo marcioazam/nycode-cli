@@ -1,4 +1,4 @@
-// The coding tools' TUI facet: their cards in the transcript, as pi draws them (cards.ts; bash with the shared shell
+// The coding tools' TUI facet: their cards in the transcript, as nycode draws them (cards.ts; bash with the shared shell
 // card).
 import { contribute, defineFacet } from "@p2/app/v1";
 import { createShellRenderers, TuiToolRenderers } from "@p2/app/v1/tui";

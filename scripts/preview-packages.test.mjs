@@ -13,10 +13,10 @@ const script = join(dirname(fileURLToPath(import.meta.url)), "preview-packages.m
 const sha = "a".repeat(40);
 const newerSha = "b".repeat(40);
 const mainSha = "c".repeat(40);
-const REPO_API = "/repos/earendil-works/pi/";
+const REPO_API = "/repos/marcioazam/nycode-cli/";
 
 function temporaryDirectory(t) {
-	const directory = mkdtempSync(join(tmpdir(), "pi-preview-packages-test-"));
+	const directory = mkdtempSync(join(tmpdir(), "nycode-preview-packages-test-"));
 	t.after(() => rmSync(directory, { recursive: true, force: true }));
 	return directory;
 }
@@ -89,7 +89,7 @@ function publish(server, dir, args = ["--event", "pull_request", "--ref", "pr-1"
 			ACTIONS_ID_TOKEN_REQUEST_URL: `${server.url}/token`,
 			ACTIONS_ID_TOKEN_REQUEST_TOKEN: "runner",
 			GITHUB_API_URL: server.url,
-			GITHUB_REPOSITORY: "earendil-works/pi",
+			GITHUB_REPOSITORY: "marcioazam/nycode-cli",
 			GH_TOKEN: "job-token",
 		},
 	});
@@ -111,7 +111,7 @@ test("pack points internal dependencies at the commit's builds and restores pack
 	writePackage(repo, "a", { name: "@scope/a", version: "1.0.0", dependencies: { "@scope/b": "1.0.0", other: "2.0.0" } });
 	writePackage(repo, "b", { name: "@scope/b", version: "1.0.0" });
 	writePackage(repo, "internal", { name: "@scope/internal", version: "1.0.0", private: true });
-	writePackage(repo, "env", { name: "@earendil-works/pi-env", version: "1.0.0" });
+	writePackage(repo, "env", { name: "@nycode/env", version: "1.0.0" });
 	const original = readFileSync(join(repo, "packages/a/package.json"), "utf8");
 
 	const out = join(repo, "out");

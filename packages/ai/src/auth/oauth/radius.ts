@@ -1,7 +1,7 @@
 /**
  * Radius gateway OAuth flow.
  *
- * Radius is a pi-messages gateway. OAuth client APIs live on the configured
+ * Radius is a nycode-messages gateway. OAuth client APIs live on the configured
  * gateway; only the interactive browser authorization endpoint is discovered.
  * Model catalog loading is owned by the Radius provider.
  *
@@ -23,7 +23,7 @@ const REDIRECT_URI = `http://${CALLBACK_HOST}:${CALLBACK_PORT}${CALLBACK_PATH}`;
 const TOKEN_EXPIRY_SKEW_MS = 60_000;
 const LOGIN_METHOD_BROWSER = "browser";
 const LOGIN_METHOD_DEVICE_CODE = "device-code";
-const OAUTH_CLIENT_ID = "pi-gateway";
+const OAUTH_CLIENT_ID = "nycode-gateway";
 const OAUTH_SCOPE = "gateway offline_access";
 const OAUTH_DEVICE_CODE_GRANT_TYPE = "urn:ietf:params:oauth:grant-type:device_code";
 

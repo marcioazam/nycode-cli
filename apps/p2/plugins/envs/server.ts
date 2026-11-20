@@ -1,5 +1,5 @@
-import { pluginFile } from "@earendil-works/chord/plugins";
-import { nul, num, obj, str, union } from "@earendil-works/pi-schema";
+import { pluginFile } from "@nycode/chord/plugins";
+import { nul, num, obj, str, union } from "@nycode/schema";
 import {
 	type AcceptsTable,
 	contribute,
@@ -240,7 +240,7 @@ export default defineFacet((host) => {
 						await manager().manager.forgetHostKey(name);
 						return null;
 					},
-					// Every owner (device, associated device, Radius) manages keys, as in Pi Mobile; Envs' factory excludes guests.
+					// Every owner (device, associated device, Radius) manages keys, as in Nycode Mobile; Envs' factory excludes guests.
 					generateKey: async ({ name }, ctx) => {
 						const publicKey = await manager().manager.generateKey(name);
 						await service.reload(ctx);

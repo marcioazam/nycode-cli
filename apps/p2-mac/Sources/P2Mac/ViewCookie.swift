@@ -1,9 +1,9 @@
-// The view cookie of a remote Pi's forwarded origin (`https://<label>.rdtun.com`), renewed while its page is open.
+// The view cookie of a remote Nycode's forwarded origin (`https://<label>.rdtun.com`), renewed while its page is open.
 //
-// A grant leaves a view cookie that lasts 12 hours (Radius's CORTEX_VIEW_TTL_SECONDS), but a Pi's page stays open for
+// A grant leaves a view cookie that lasts 12 hours (Radius's CORTEX_VIEW_TTL_SECONDS), but a Nycode's page stays open for
 // days. Its live connection outlasts the cookie, so the page keeps working, but every request it makes after that (a
 // chat image, a file, an artifact) gets the origin's 401 page. A navigation would recover (the origin sends it to
-// `/pi/forward`, and BrainPage gets a new grant), but those requests are no navigations. So BrainPage renews the cookie
+// `/nycode/forward`, and BrainPage gets a new grant), but those requests are no navigations. So BrainPage renews the cookie
 // every half lifetime with a fresh grant from Radius, which checks the user's access each time; the origin never
 // extends a cookie on its own. The page itself never reloads.
 import Foundation
@@ -19,7 +19,7 @@ enum ViewCookie {
 
 		var errorDescription: String? {
 			switch self {
-			case .refused(let status): "The Pi's origin set no view cookie (\(status))"
+			case .refused(let status): "The Nycode's origin set no view cookie (\(status))"
 			}
 		}
 	}

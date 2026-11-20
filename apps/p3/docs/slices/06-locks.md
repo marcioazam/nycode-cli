@@ -1,7 +1,7 @@
 # Slice 6: locks
 
 **Goal.** A plugin declares what can be switched off or limited, registers it, and enforces it where it hands things
-out; values per layer (org, Pi, app, session) only narrow; one sheet per layer; the agent's lock tools.
+out; values per layer (org, Nycode, app, session) only narrow; one sheet per layer; the agent's lock tools.
 
 **Builds:** plugin `locks` (the registry, the stored values, each session's values computed live, the sheet, the
 candidates), the plugin switch, Chord's rendering of another plugin's messages.
@@ -38,11 +38,11 @@ the ids change).
   groups A-J; e.g. p2's `views/worker.ts` opens a pane of any kind).
 - A lock that closes mid-session: each plugin stops what it started (`archive/model-stress/report.md` 864-886).
 - From `archive/people/book.md`: value formats `glob()` and `ref(kind)`; `terminals.use` hides the button; the owner may
-  change an app's defaults in either direction within the org and Pi values.
+  change an app's defaults in either direction within the org and Nycode values.
 - The one check at the call: the server checks `locks.manage` in `set` (locks review S3), against "no check at the
   call": an owner call.
 - Whether locks carry `version`/`migrate` is open (decisions.md's "Locks" entry lists no version).
 - From the resource model, per Fable's comparison (`research/resources-vs-locks-adm-fable.md`): the harness enforces
   (a tool or extension names its lock and is left out when composed) instead of each plugin; fail closed (an unknown
   lock reads closed); one allow/deny shape and one `allows(value, name)` for every lock that is a set of names. Not
-  covered by locks: several people's logins in one session, giving (how an org's shared login reaches a Pi), expiry.
+  covered by locks: several people's logins in one session, giving (how an org's shared login reaches a Nycode), expiry.

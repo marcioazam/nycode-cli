@@ -1,5 +1,5 @@
-import type { AssistantMessage } from "@earendil-works/pi-ai";
-import type { ProgramStatus, Terminal } from "@earendil-works/pi-tui";
+import type { AssistantMessage } from "@nycode/ai";
+import type { ProgramStatus, Terminal } from "@nycode/tui";
 import { describe, expect, it } from "vitest";
 import type { AgentSessionEvent } from "../src/core/agent-session.ts";
 import { ProgramStatusReporter } from "../src/modes/interactive/program-status-reporter.ts";
@@ -51,7 +51,7 @@ describe("ProgramStatusReporter", () => {
 	it("reports idle, working during a run, and done once it settles", () => {
 		const { reporter, reports, send, last } = setup("Fix login");
 		reporter.report();
-		expect(reports.at(-1)).toEqual({ state: "idle", app: "pi" });
+		expect(reports.at(-1)).toEqual({ state: "idle", app: "nycode" });
 
 		send({ type: "agent_start" });
 		expect(last()).toEqual({ state: "working", message: "Fix login" });

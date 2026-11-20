@@ -1,5 +1,5 @@
 // The session's top-level conversations (the main conversation and its `/tree` branches) and which one is current.
-import type { Context } from "@earendil-works/chord/context";
+import type { Context } from "@nycode/chord/context";
 import {
 	type ConversationId,
 	type ConversationRecord,
@@ -7,7 +7,7 @@ import {
 	defineDoc,
 	ROOT_CONVERSATION_ID,
 	type Session,
-} from "@earendil-works/pi-durable";
+} from "@nycode/durable";
 
 /**
  * A top-level conversation and its label, what the sidebar and `/tree` call it. Null shows the session title:

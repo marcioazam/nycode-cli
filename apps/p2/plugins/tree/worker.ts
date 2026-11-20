@@ -2,7 +2,7 @@
 // current main conversation (forking a new branch where none ends at the chosen point), and the rules that come with
 // it: older branches are read-only, branches carry stored labels, and the session catalog follows `p2.main`, pushed by
 // the worker inside the method that changed it.
-import type { AssistantMessage } from "@earendil-works/pi-ai";
+import type { AssistantMessage } from "@nycode/ai";
 import {
 	AgentDoc,
 	type ConversationId,
@@ -13,7 +13,7 @@ import {
 	type Harness,
 	type JsonObject,
 	ROOT_CONVERSATION_ID,
-} from "@earendil-works/pi-durable";
+} from "@nycode/durable";
 import {
 	type AcceptsTable,
 	agentMessage,
@@ -269,7 +269,7 @@ function oneLine(text: string): string {
 
 function roleOf(entry: EntryRecord): TreeNode["role"] | undefined {
 	const message = entry.model?.[0];
-	if (entry.kind === "pi.assistant") return "assistant";
+	if (entry.kind === "nycode.assistant") return "assistant";
 	// Head markers (resets, compaction summaries) carry user messages that no one typed.
 	return message?.role === "user" && entry.head === undefined ? "user" : undefined;
 }

@@ -1,13 +1,8 @@
 // The location tools: an agent lists the environments it may work on and their directories, and moves itself. Every main
 // agent has them, and the subagents and one-shot agents it gives them to. A session in a sandbox stays in it.
 
-import {
-	type ConversationId,
-	type DocumentReader,
-	defineExtension,
-	ROOT_CONVERSATION_ID,
-} from "@earendil-works/pi-durable";
-import { nul, obj, opt, str, union } from "@earendil-works/pi-schema";
+import { type ConversationId, type DocumentReader, defineExtension, ROOT_CONVERSATION_ID } from "@nycode/durable";
+import { nul, obj, opt, str, union } from "@nycode/schema";
 import type { Context, DirectoryListing } from "@p2/app/v1";
 import { type Location, locationText, parseLocation, sameLocation } from "@p2/app/v1";
 import { defineP2Tool, isTopLevel, type P2Tool } from "@p2/app/v1/worker";

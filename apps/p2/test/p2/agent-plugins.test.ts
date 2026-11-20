@@ -8,9 +8,9 @@ import assert from "node:assert/strict";
 import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, it } from "node:test";
-import type { ToolResultMessage } from "@earendil-works/pi-ai";
-import type { ConversationView } from "@earendil-works/pi-durable";
-import { arr, int, obj, str } from "@earendil-works/pi-schema";
+import type { ToolResultMessage } from "@nycode/ai";
+import type { ConversationView } from "@nycode/durable";
+import { arr, int, obj, str } from "@nycode/schema";
 import { BACKGROUND_CONTEXT, method, param, remote, serverHost } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { Sessions } from "../../plugins/sessions/contract.ts";
@@ -49,7 +49,7 @@ const Notes = remote("notes.file", {
 
 const NOTES: Record<string, string> = {
 	"package.json": '{ "name": "notes", "private": true, "type": "module" }\n',
-	"contract.ts": `import { obj, str } from "@earendil-works/pi-schema";
+	"contract.ts": `import { obj, str } from "@nycode/schema";
 import { method, remote, serverHost } from "@p2/app/v1";
 export const Notes = remote("notes.file", {
 	version: 1,
@@ -59,7 +59,7 @@ export const Notes = remote("notes.file", {
 });
 `,
 	"server.ts": `import { readFileSync } from "node:fs";
-import { pluginFile } from "@earendil-works/chord/plugins";
+import { pluginFile } from "@nycode/chord/plugins";
 import { defineFacet } from "@p2/app/v1";
 import { Notes } from "./contract.ts";
 export default defineFacet((host) => {
@@ -69,7 +69,7 @@ export default defineFacet((host) => {
 	}));
 });
 `,
-	"worker.ts": `import { pluginFile } from "@earendil-works/chord/plugins";
+	"worker.ts": `import { pluginFile } from "@nycode/chord/plugins";
 import { contribute, defineFacet } from "@p2/app/v1";
 import { PluginSkills } from "@p2/app/v1/worker";
 export default defineFacet((host) => {
@@ -85,7 +85,7 @@ const results = (view: ConversationView | null | undefined): ToolResultMessage[]
 	(view?.entries ?? []).flatMap((entry) =>
 		(entry.model ?? []).filter((message): message is ToolResultMessage => message.role === "toolResult"),
 	);
-const idle = (view: ConversationView | null | undefined) => !(view?.docs["pi.live"] as { run?: unknown })?.run;
+const idle = (view: ConversationView | null | undefined) => !(view?.docs["nycode.live"] as { run?: unknown })?.run;
 const textOf = (message: ToolResultMessage | undefined) =>
 	(message?.content ?? []).map((part) => (part.type === "text" ? part.text : "")).join("");
 /** The prompt sections in effect at the end of a conversation's view: its system messages replayed in order. */
@@ -187,7 +187,7 @@ describe("the agent's plugins", () => {
 		await board.wave(BACKGROUND_CONTEXT);
 		await poll(() => waves.length === 1, 10_000, "a wave");
 		// Its tool is for code mode only, in its extension's namespace: a script calls it.
-		const tools = (chat.view.value?.docs["pi.agent"] as { modelTools?: unknown } | undefined) ?? {};
+		const tools = (chat.view.value?.docs["nycode.agent"] as { modelTools?: unknown } | undefined) ?? {};
 		assert.doesNotMatch(JSON.stringify(tools), /counter_add/);
 		const script = await call(chat, "codemode", "return await tools.counter_add({ by: 3 });");
 		assert.match(textOf(script), /The count is/);
@@ -287,9 +287,9 @@ describe("the agent's plugins", () => {
 			writeFileSync(join(root, "notes", path), content);
 		}
 		// The project's skill of the same name wins over the plugin's.
-		mkdirSync(join(fixture.workspace, ".pi/skills/clashing"), { recursive: true });
+		mkdirSync(join(fixture.workspace, ".nycode/skills/clashing"), { recursive: true });
 		writeFileSync(
-			join(fixture.workspace, ".pi/skills/clashing/SKILL.md"),
+			join(fixture.workspace, ".nycode/skills/clashing/SKILL.md"),
 			"---\nname: clashing\ndescription: The project's clashing skill.\n---\n",
 		);
 		assert.match(textOf(await call(chat, "reload_plugins", {})), /^notes: applied$/m);

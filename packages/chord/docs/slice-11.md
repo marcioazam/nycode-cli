@@ -55,7 +55,7 @@ startPage<P>({
   visibility, `online` and network change, replace a silent socket, stop on an outdated protocol (reload the page) or
   when `canRetry` says no); `onConnection` reports `connecting | connected | waiting`.
 - Loads the combined plugins file, evaluates each registered facet with `modules` (the `require` they get answers only
-  host packages and `@earendil-works/chord/plugins`'s browser half if any), loads them with `core` in one
+  host packages and `@nycode/chord/plugins`'s browser half if any), loads them with `core` in one
   `host.load`, then holds `WebScripts`: on a new set it fetches the changed scripts (`<script src>`, one each), and
   calls `host.reload` with the complete set (P4: in place; a failed plugin keeps its old facet, reported to the app);
   a changed `base` hash reloads the page.
@@ -80,7 +80,7 @@ releases, presence is the app's. No components, no styling.
   to the sandbox (clipboard, open URL), each confirmed by the launcher's own UI when it touches the machine.
 - **Runtime** (inside the sandbox, in the base bundle): a client host like the page's, the same connection loop over
   the bridged link, in-place reloads through a `TuiScripts` object as the web.
-- **`TuiScope`** (P9): `new TuiScope(host, changed)` with `hold`, `watch`, `registry`, `dispose`; no pi-tui dependency.
+- **`TuiScope`** (P9): `new TuiScope(host, changed)` with `hold`, `watch`, `registry`, `dispose`; no nycode-tui dependency.
 
 ## 4b. Looks and themes (decision "Looks and themes", `docs/theming/`)
 

@@ -1,6 +1,6 @@
 // The Providers sheet (any owner): sign in to model providers, refresh their catalogs, sign out.
 
-import type { AuthEvent } from "@earendil-works/pi-ai";
+import type { AuthEvent } from "@nycode/ai";
 import { BACKGROUND_CONTEXT, contribute, defineFacet, type Held } from "@p2/app/v1";
 import {
 	CheckIcon,
@@ -134,7 +134,7 @@ function PromptForm({ state, onAnswer }: { state: LoginState; onAnswer: (promptI
 
 /** The provider list, one provider's actions, or the running login. Closing the sheet cancels an unfinished one. */
 function ProvidersSheet({ login, onClose }: { login: Held<typeof ProviderLogin> | undefined; onClose: () => void }) {
-	// Provider errors go to the app's toast, as in Pi Mobile.
+	// Provider errors go to the app's toast, as in Nycode Mobile.
 	const { fail } = useComposerState();
 	const known = useReadable(login?.providers);
 	// Signing out shows at once; a refused sign-out puts the provider back.
@@ -159,7 +159,7 @@ function ProvidersSheet({ login, onClose }: { login: Held<typeof ProviderLogin> 
 	current.current = state;
 	const host = useHost();
 	// Keep a hold through cleanup: useObject releases its own handle first on ×/Escape.
-	// Back leaves the sheet mounted, but must still end the provider's flow as in Pi Mobile.
+	// Back leaves the sheet mounted, but must still end the provider's flow as in Nycode Mobile.
 	useEffect(() => {
 		if (!login || !selected) return;
 		const held = host.hold(ProviderLogin, {}, BACKGROUND_CONTEXT);
@@ -339,7 +339,7 @@ function ProvidersSheet({ login, onClose }: { login: Held<typeof ProviderLogin> 
 						className="row-button"
 						onClick={() => {
 							setResult(undefined);
-							// The provider screen replaces the list's layer (one step), as in Pi Mobile: Back closes onto
+							// The provider screen replaces the list's layer (one step), as in Nycode Mobile: Back closes onto
 							// the entry before it, which shows the list.
 							const top = route.layers.at(-1);
 							if (top?.kind !== "sheet" || top.name !== "providers") return;

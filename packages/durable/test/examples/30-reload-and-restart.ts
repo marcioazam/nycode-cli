@@ -6,11 +6,11 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import type { ToolResultMessage } from "@earendil-works/pi-ai";
-import { createModels } from "@earendil-works/pi-ai/models";
-import { fauxAssistantMessage, fauxProvider, fauxToolCall } from "@earendil-works/pi-ai/providers/faux";
-import { obj } from "@earendil-works/pi-schema";
+import type { ToolResultMessage } from "@nycode/ai";
+import { createModels } from "@nycode/ai/models";
+import { fauxAssistantMessage, fauxProvider, fauxToolCall } from "@nycode/ai/providers/faux";
+import { BACKGROUND_CONTEXT } from "@nycode/chord/context";
+import { obj } from "@nycode/schema";
 import { createRegistry, defineExtension, defineTool, Harness, ToolResultEntry } from "../../src/index.ts";
 import { openNodeSqliteStorage } from "../../src/storage/sqlite/node.ts";
 
@@ -43,7 +43,7 @@ models.setProvider(faux.provider);
 const callVersion = () => fauxAssistantMessage(fauxToolCall("version", {}), { stopReason: "toolUse" });
 faux.setResponses([callVersion(), fauxAssistantMessage("Done."), callVersion(), fauxAssistantMessage("Done.")]);
 
-const directory = await mkdtemp(join(tmpdir(), "pi-durable-reload-"));
+const directory = await mkdtemp(join(tmpdir(), "nycode-durable-reload-"));
 const open = async (registry: ReturnType<typeof createRegistry>) =>
 	Harness.open(await openNodeSqliteStorage(join(directory, "session.sqlite")), { models, registry }, context);
 

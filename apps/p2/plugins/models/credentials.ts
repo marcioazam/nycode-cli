@@ -1,7 +1,7 @@
 // CredentialStore semantics and validation adapted from earendil-works/pi
 // auth-storage.ts (MIT); see third-party/pi.LICENSE. Locking lives in LockedFile.
 import { statSync } from "node:fs";
-import type { AuthOperationOptions, Credential, CredentialInfo, CredentialStore } from "@earendil-works/pi-ai";
+import type { AuthOperationOptions, Credential, CredentialInfo, CredentialStore } from "@nycode/ai";
 import { LockedFile, normalizePath, stripBom } from "@p2/app/v1/node";
 import { resolveConfigValueUncached } from "./config-value.ts";
 

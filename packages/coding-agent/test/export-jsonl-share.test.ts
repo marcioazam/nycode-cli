@@ -1,8 +1,8 @@
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { AssistantMessage, ToolResultMessage } from "@earendil-works/pi-ai/compat";
-import { getModel } from "@earendil-works/pi-ai/compat";
+import type { AssistantMessage, ToolResultMessage } from "@nycode/ai/compat";
+import { getModel } from "@nycode/ai/compat";
 import { Type } from "typebox";
 import { afterEach, describe, expect, it } from "vitest";
 import { defineTool } from "../src/core/extensions/types.ts";
@@ -22,7 +22,7 @@ describe("JSONL share export", () => {
 	});
 
 	it("adds presentation data without changing conversation IDs or links", async () => {
-		const tempDir = mkdtempSync(join(tmpdir(), "pi-jsonl-share-"));
+		const tempDir = mkdtempSync(join(tmpdir(), "nycode-jsonl-share-"));
 		tempDirs.push(tempDir);
 		const sessionManager = SessionManager.inMemory(tempDir);
 		const { session } = await createAgentSession({
@@ -69,7 +69,7 @@ describe("JSONL share export", () => {
 				.trim()
 				.split("\n")
 				.map((line) => JSON.parse(line) as Record<string, unknown>);
-			expect(normalRecords.some((record) => record.type === "custom" && record.customType === "pi.share")).toBe(
+			expect(normalRecords.some((record) => record.type === "custom" && record.customType === "nycode.share")).toBe(
 				false,
 			);
 
@@ -93,7 +93,7 @@ describe("JSONL share export", () => {
 			};
 			expect(shareEntry).toMatchObject({
 				type: "custom",
-				customType: "pi.share",
+				customType: "nycode.share",
 				parentId: resultId,
 				timestamp: expect.any(String),
 			});

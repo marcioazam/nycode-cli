@@ -4,7 +4,7 @@
 // picker) within the viewed session's stored project.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { type ConversationView, ROOT_CONVERSATION_ID } from "@earendil-works/pi-durable";
+import { type ConversationView, ROOT_CONVERSATION_ID } from "@nycode/durable";
 import { Chat, type ModelMeta } from "../../plugins/chat/contract.ts";
 import chatTui from "../../plugins/chat/tui.ts";
 import { Envs } from "../../plugins/envs/contract.ts";
@@ -26,7 +26,7 @@ const RIGHT = "\x1b[C";
 const TAB = "\t";
 const SESSION: Session = {
 	id: "s",
-	cwd: "/home/me/projects/pi/pi/apps",
+	cwd: "/home/me/projects/nycode/nycode/apps",
 	env: null,
 	title: "Fixture",
 	createdAt: 1,
@@ -40,10 +40,10 @@ const SESSION: Session = {
 };
 const PROJECTS: Project[] = [
 	{
-		name: "pi",
+		name: "nycode",
 		places: [
-			{ env: "mac", path: "~/projects/pi/pi" },
-			{ env: null, path: "~/projects/pi/pi" },
+			{ env: "mac", path: "~/projects/nycode/nycode" },
+			{ env: null, path: "~/projects/nycode/nycode" },
 		],
 	},
 	{ name: "dead", places: [{ env: "gpu", path: "/srv/dead" }] },
@@ -55,13 +55,13 @@ const PROJECTS: Project[] = [
 		],
 	},
 ];
-/** Other rows of the catalog: one more in pi, one of no project, one of a project archived or deleted. */
+/** Other rows of the catalog: one more in nycode, one of no project, one of a project archived or deleted. */
 const ROWS: Session[] = [
-	{ ...SESSION, id: "s2", title: "Second pi", cwd: "/home/me/projects/pi/pi", updatedAt: 4 },
+	{ ...SESSION, id: "s2", title: "Second nycode", cwd: "/home/me/projects/nycode/nycode", updatedAt: 4 },
 	{ ...SESSION, id: "free", title: "Free work", cwd: "/tmp/free", updatedAt: 3 },
 	{ ...SESSION, id: "old", title: "Old one", cwd: "/srv/old", updatedAt: 2 },
 ];
-const MEMBERS: Record<string, string> = { s: "pi", s2: "pi", old: "gone" };
+const MEMBERS: Record<string, string> = { s: "nycode", s2: "nycode", old: "gone" };
 const HOMES: Record<string, string> = { "": "/home/me", mac: "/Users/me" };
 const unused = () => {
 	throw new Error("not in this test");
@@ -83,7 +83,7 @@ const typed = (send: (data: string) => void, text: string) => {
 /**
  * Owner stubs: `mac` answers once `macGate` resolves and has no `missing` directory; the machines in `down` (gpu at
  * first) are unreachable; `nope` is not configured; `~` is each machine's home. The errors are the ones
- * `Envs.listDirectory` gives (the SSH manager, the pi-env daemon).
+ * `Envs.listDirectory` gives (the SSH manager, the nycode-env daemon).
  */
 function stubs(macGate: Promise<void>, down: Set<string>) {
 	const calls: Record<string, unknown[]> = {};
@@ -233,7 +233,7 @@ async function setup(t: { after(fn: () => unknown): void }) {
 		columns: 100,
 	});
 	fixture.runtime.navigate("chat", "s");
-	await poll(async () => (await fixture.screen()).includes("/home/me/projects/pi/pi/apps • Fixture"));
+	await poll(async () => (await fixture.screen()).includes("/home/me/projects/nycode/nycode/apps • Fixture"));
 	/** Moves the selection down until the selected row matches `row`. */
 	const select = async (row: RegExp) => {
 		await poll(async () => {
@@ -249,7 +249,7 @@ test("project rows: places probed on showing the selector; Enter takes the first
 	const { screen, send, runtime, calls, openMac, select } = await setup(t);
 	runtime.navigate("sessions");
 	// mac is still checking, this device and gpu answered.
-	await poll(async () => /› pi {3}mac … {3}test-host ✓/.test(await screen()));
+	await poll(async () => /› nycode {3}mac … {3}test-host ✓/.test(await screen()));
 	await poll(async () => /dead {3}gpu ✗/.test(await screen()));
 	// The selected row says why a place cannot be used (none yet: mac is checking, this device answered).
 	assert.doesNotMatch(await screen(), /test-host:/);
@@ -257,32 +257,32 @@ test("project rows: places probed on showing the selector; Enter takes the first
 	const probes = calls.list?.length ?? 0;
 	// Enter waits for mac (preferred), then creates there at its resolved path.
 	send(ENTER);
-	await poll(async () => (await screen()).includes("Checking pi's places…"));
+	await poll(async () => (await screen()).includes("Checking nycode's places…"));
 	openMac();
 	await poll(() => (calls.create?.length ?? 0) === 1);
-	assert.deepEqual(calls.create?.[0], { env: "mac", cwd: "/Users/me/projects/pi/pi" });
+	assert.deepEqual(calls.create?.[0], { env: "mac", cwd: "/Users/me/projects/nycode/nycode" });
 	assert.equal(runtime.screen, "chat");
 	// The new session belongs to the project, recorded before its row exists.
-	assert.deepEqual(calls.assign, [{ session: runtime.session, project: "pi" }]);
+	assert.deepEqual(calls.assign, [{ session: runtime.session, project: "nycode" }]);
 	// Showing the selector again probes every place again; right picks this device.
 	runtime.navigate("sessions", "s");
 	await poll(() => (calls.list?.length ?? 0) >= probes + 5);
-	await poll(async () => /› pi {3}mac ✓ {3}test-host ✓/.test(await screen()));
+	await poll(async () => /› nycode {3}mac ✓ {3}test-host ✓/.test(await screen()));
 	send(RIGHT);
 	send(ENTER);
 	await poll(() => (calls.create?.length ?? 0) === 2);
-	assert.deepEqual(calls.create?.[1], { env: null, cwd: "/home/me/projects/pi/pi" });
+	assert.deepEqual(calls.create?.[1], { env: null, cwd: "/home/me/projects/nycode/nycode" });
 	// Showing the selector again forgets the pick: left twice from mac comes back to mac.
 	runtime.navigate("sessions", "s");
-	await poll(async () => /› pi {3}mac ✓ {3}test-host ✓/.test(await screen()));
+	await poll(async () => /› nycode {3}mac ✓ {3}test-host ✓/.test(await screen()));
 	send(LEFT);
 	send(LEFT);
 	send(ENTER);
 	await poll(() => (calls.create?.length ?? 0) === 3);
-	assert.deepEqual(calls.create?.[2], { env: "mac", cwd: "/Users/me/projects/pi/pi" });
+	assert.deepEqual(calls.create?.[2], { env: "mac", cwd: "/Users/me/projects/nycode/nycode" });
 	// No reachable place: the reason under the row, and on Enter; no session.
 	runtime.navigate("sessions", "s");
-	await poll(async () => /› pi/.test(await screen()));
+	await poll(async () => /› nycode/.test(await screen()));
 	await select(/› dead/);
 	await poll(async () => /› dead {3}gpu ✗ *\n {4}gpu: connect ECONNREFUSED/.test(await screen()));
 	send(ENTER);
@@ -308,7 +308,7 @@ test("grouped by project: every session under its project, then Other; no scope;
 	// Every project with its sessions (newest first), then Other: the sessions of no project and the one whose
 	// project is gone, dimmed with its old name.
 	await poll(async () =>
-		/› pi {3}mac ✓ {3}test-host ✓ *\n {6}Second pi.*\n {6}Fixture.*\n {2}dead {3}gpu ✗ *\n {2}tri .*\n {2}Other *\n {6}\+ New session *\n {6}Free work.*\n {6}Old one \(gone\)/.test(
+		/› nycode {3}mac ✓ {3}test-host ✓ *\n {6}Second nycode.*\n {6}Fixture.*\n {2}dead {3}gpu ✗ *\n {2}tri .*\n {2}Other *\n {6}\+ New session *\n {6}Free work.*\n {6}Old one \(gone\)/.test(
 			await screen(),
 		),
 	);
@@ -337,7 +337,7 @@ test("grouped by project: every session under its project, then Other; no scope;
 
 test("a failed listing reads as no folder, no such environment or unreachable, from its message", () => {
 	const place = { env: "mac", path: "~/x" };
-	// The messages Envs.listDirectory gives: this device (Node), an SSH environment (the pi-env daemon, the manager).
+	// The messages Envs.listDirectory gives: this device (Node), an SSH environment (the nycode-env daemon, the manager).
 	for (const message of [
 		"ENOENT: no such file or directory, scandir '/home/me/x'",
 		"ENOTDIR: not a directory, scandir '/home/me/x'",
@@ -361,26 +361,26 @@ test("/move <env> follows the stored project, keeps the subfolder, works while t
 	send(TAB);
 	await poll(() => runtime.drafts.get("s#1") === "/move mac");
 	send(ENTER);
-	await poll(async () => (await screen()).includes("Move this session to mac:/Users/me/projects/pi/pi/apps?"));
+	await poll(async () => (await screen()).includes("Move this session to mac:/Users/me/projects/nycode/nycode/apps?"));
 	typed(send, "y");
 	await poll(() => (calls.relocate?.length ?? 0) === 1);
-	assert.deepEqual(calls.relocate?.[0], { id: "s", env: "mac", cwd: "/Users/me/projects/pi/pi/apps" });
-	await poll(async () => (await screen()).includes("mac:/Users/me/projects/pi/pi/apps • Fixture"));
+	assert.deepEqual(calls.relocate?.[0], { id: "s", env: "mac", cwd: "/Users/me/projects/nycode/nycode/apps" });
+	await poll(async () => (await screen()).includes("mac:/Users/me/projects/nycode/nycode/apps • Fixture"));
 	// The Mac goes away: back by this device's label, without asking the Mac anything.
 	down.add("mac");
 	const listed = calls.list?.length ?? 0;
 	typed(send, "/move test-host");
 	send(ENTER);
-	await poll(async () => (await screen()).includes("Move this session to /home/me/projects/pi/pi/apps?"));
+	await poll(async () => (await screen()).includes("Move this session to /home/me/projects/nycode/nycode/apps?"));
 	typed(send, "y");
 	await poll(() => (calls.relocate?.length ?? 0) === 2);
-	assert.deepEqual(calls.relocate?.[1], { id: "s", env: null, cwd: "/home/me/projects/pi/pi/apps" });
+	assert.deepEqual(calls.relocate?.[1], { id: "s", env: null, cwd: "/home/me/projects/nycode/nycode/apps" });
 	assert(!calls.list?.slice(listed).some((each) => String(each).startsWith("mac:")));
-	await poll(async () => /^\/home\/me\/projects\/pi\/pi\/apps • Fixture/m.test(await screen()));
+	await poll(async () => /^\/home\/me\/projects\/nycode\/nycode\/apps • Fixture/m.test(await screen()));
 	for (const [command, notice] of [
-		["/move gpu", "Project pi has no place on gpu"],
+		["/move gpu", "Project nycode has no place on gpu"],
 		["/move mac", "mac is unreachable: connect ECONNREFUSED"],
-		["/move local", "The session is already at /home/me/projects/pi/pi/apps"],
+		["/move local", "The session is already at /home/me/projects/nycode/nycode/apps"],
 	] as const) {
 		typed(send, command);
 		send(ENTER);
@@ -388,7 +388,7 @@ test("/move <env> follows the stored project, keeps the subfolder, works while t
 	}
 	// A subfolder the target does not have: the target's root, and the notice says so.
 	down.delete("mac");
-	typed(send, "/cd /home/me/projects/pi/pi/missing");
+	typed(send, "/cd /home/me/projects/nycode/nycode/missing");
 	send(ENTER);
 	await poll(() => (calls.relocate?.length ?? 0) === 3);
 	typed(send, "/move mac");
@@ -396,20 +396,20 @@ test("/move <env> follows the stored project, keeps the subfolder, works while t
 	await poll(() =>
 		runtime.notices.some((each) => each.text === "missing does not exist on mac; moving to the project's root"),
 	);
-	await poll(async () => (await screen()).includes("Move this session to mac:/Users/me/projects/pi/pi?"));
+	await poll(async () => (await screen()).includes("Move this session to mac:/Users/me/projects/nycode/nycode?"));
 	typed(send, "y");
 	await poll(() => (calls.relocate?.length ?? 0) === 4);
-	assert.deepEqual(calls.relocate?.[3], { id: "s", env: "mac", cwd: "/Users/me/projects/pi/pi" });
+	assert.deepEqual(calls.relocate?.[3], { id: "s", env: "mac", cwd: "/Users/me/projects/nycode/nycode" });
 	// `/cd` outside the project's place keeps the project: `/move` goes to the target place's root.
 	typed(send, "/cd /tmp");
 	send(ENTER);
 	await poll(() => (calls.relocate?.length ?? 0) === 5);
 	typed(send, "/move test-host");
 	send(ENTER);
-	await poll(async () => (await screen()).includes("Move this session to /home/me/projects/pi/pi?"));
+	await poll(async () => (await screen()).includes("Move this session to /home/me/projects/nycode/nycode?"));
 	typed(send, "y");
 	await poll(() => (calls.relocate?.length ?? 0) === 6);
-	assert.deepEqual(calls.relocate?.[5], { id: "s", env: null, cwd: "/home/me/projects/pi/pi" });
+	assert.deepEqual(calls.relocate?.[5], { id: "s", env: null, cwd: "/home/me/projects/nycode/nycode" });
 	// No project, or an archived or deleted one: nothing moves.
 	for (const [membership, notice] of [
 		[{}, "This session belongs to no project: start one from a project's row in /sessions"],
@@ -432,11 +432,11 @@ test("/move without an argument: a picker of the project's places, the current o
 	openMac();
 	projects().replace(undefined, [
 		{
-			name: "pi",
+			name: "nycode",
 			places: [
-				{ env: "gpu", path: "~/projects/pi/pi" },
-				{ env: null, path: "~/projects/pi/pi" },
-				{ env: "mac", path: "~/projects/pi/pi" },
+				{ env: "gpu", path: "~/projects/nycode/nycode" },
+				{ env: null, path: "~/projects/nycode/nycode" },
+				{ env: "mac", path: "~/projects/nycode/nycode" },
 			],
 		},
 	]);
@@ -447,11 +447,11 @@ test("/move without an argument: a picker of the project's places, the current o
 	send(ENTER);
 	// Every place in the project's order, this device marked current; the cursor skips gpu (unreachable) for mac.
 	await poll(async () =>
-		/ {2}✗ gpu {2}~\/projects\/pi\/pi +connect ECONNREFUSED *\n {2}• test-host {2}~\/projects\/pi\/pi +current *\n→ ✓ mac {2}~\/projects\/pi\/pi/.test(
+		/ {2}✗ gpu {2}~\/projects\/nycode\/nycode +connect ECONNREFUSED *\n {2}• test-host {2}~\/projects\/nycode\/nycode +current *\n→ ✓ mac {2}~\/projects\/nycode\/nycode/.test(
 			await screen(),
 		),
 	);
-	assert.match(await screen(), /Move within pi/);
+	assert.match(await screen(), /Move within nycode/);
 	// An unreachable place cannot be chosen.
 	send(UP);
 	send(UP);
@@ -461,31 +461,31 @@ test("/move without an argument: a picker of the project's places, the current o
 	send(DOWN);
 	send(ENTER);
 	await poll(() => runtime.notices.some((each) => each.text === "Already here"));
-	await poll(async () => !(await screen()).includes("Move within pi"));
+	await poll(async () => !(await screen()).includes("Move within nycode"));
 	assert.equal(calls.relocate, undefined);
 	// Escape cancels.
 	typed(send, "/move");
 	send(ENTER);
 	await poll(async () => /→ ✓ mac/.test(await screen()));
 	send("\x1b");
-	await poll(async () => !(await screen()).includes("Move within pi"));
+	await poll(async () => !(await screen()).includes("Move within nycode"));
 	assert.equal(calls.relocate, undefined);
 	// Enter on a reachable place is `/move <it>`: the subfolder kept, the move confirmed.
 	typed(send, "/move");
 	send(ENTER);
 	await poll(async () => /→ ✓ mac/.test(await screen()));
 	send(ENTER);
-	await poll(async () => (await screen()).includes("Move this session to mac:/Users/me/projects/pi/pi/apps?"));
+	await poll(async () => (await screen()).includes("Move this session to mac:/Users/me/projects/nycode/nycode/apps?"));
 	typed(send, "y");
 	await poll(() => (calls.relocate?.length ?? 0) === 1);
-	assert.deepEqual(calls.relocate?.[0], { id: "s", env: "mac", cwd: "/Users/me/projects/pi/pi/apps" });
+	assert.deepEqual(calls.relocate?.[0], { id: "s", env: "mac", cwd: "/Users/me/projects/nycode/nycode/apps" });
 	// Only the current place, or no project: today's errors, no picker.
-	projects().replace(undefined, [{ name: "pi", places: [{ env: "mac", path: "~/projects/pi/pi" }] }]);
+	projects().replace(undefined, [{ name: "nycode", places: [{ env: "mac", path: "~/projects/nycode/nycode" }] }]);
 	await poll(() => surface.projects[0]?.places.length === 1);
-	await poll(async () => (await screen()).includes("mac:/Users/me/projects/pi/pi/apps • Fixture"));
+	await poll(async () => (await screen()).includes("mac:/Users/me/projects/nycode/nycode/apps • Fixture"));
 	typed(send, "/move");
 	send(ENTER);
-	await poll(() => runtime.notices.some((each) => each.text === "Project pi has no place on another machine"));
+	await poll(() => runtime.notices.some((each) => each.text === "Project nycode has no place on another machine"));
 	members().replace(undefined, {});
 	await poll(() => surface.projectOf("s") === undefined);
 	typed(send, "/move");

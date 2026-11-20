@@ -7,7 +7,7 @@ import { once } from "node:events";
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, it, type TestContext } from "node:test";
-import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context";
+import { BACKGROUND_CONTEXT as context } from "@nycode/chord/context";
 import { holder, processStart, recordFile, removeRecord, takeLock, writeRecord } from "../../src/kit/running.ts";
 import { tempDir } from "./support.ts";
 
@@ -15,7 +15,7 @@ import { tempDir } from "./support.ts";
 const RUNNING = {
 	state: "running",
 	run: "00112233445566778899aabbccddeeff",
-	pi: "0123456789abcdef",
+	nycode: "0123456789abcdef",
 	port: 4567,
 	version: "1.2.3",
 	startedAt: 1,

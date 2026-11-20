@@ -17,11 +17,11 @@
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, renameSync, rmSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { encodeJsonl, openStore, sqliteBackend } from "@earendil-works/chord";
-import { filesFacet } from "@earendil-works/chord/app/files";
-import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context";
-import { openNodeSqliteDatabase } from "@earendil-works/chord/sqlite/node";
-import { openNodeSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite/node";
+import { encodeJsonl, openStore, sqliteBackend } from "@nycode/chord";
+import { filesFacet } from "@nycode/chord/app/files";
+import { BACKGROUND_CONTEXT as context } from "@nycode/chord/context";
+import { openNodeSqliteDatabase } from "@nycode/chord/sqlite/node";
+import { openNodeSqliteStorage } from "@nycode/durable/storage/sqlite/node";
 import { type Ctx, createHost, type Ref } from "../src/runtime/chord.ts";
 import { hostFiles, hostStore, openHostStore, serverDirectory, sessionDirectory } from "../src/runtime/host-dirs.ts";
 import { HOST } from "../src/runtime/principals.ts";
@@ -275,7 +275,7 @@ async function main(args: readonly string[]): Promise<void> {
 		return index === -1 ? undefined : args[index + 1];
 	};
 	// As the server finds it.
-	const dataDir = option("--data") ?? process.env.P2_DATA_DIR ?? join(homedir(), ".pi", "p2");
+	const dataDir = option("--data") ?? process.env.P2_DATA_DIR ?? join(homedir(), ".nycode", "p2");
 	const summary = await migrateData({ dataDir, dryRun: args.includes("--dry-run") });
 	console.log(JSON.stringify(summary, null, "\t"));
 	if (summary.sessions.failed.length) process.exitCode = 1;

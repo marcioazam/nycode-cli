@@ -1,6 +1,6 @@
 import { stripVTControlCharacters } from "node:util";
-import type { AgentToolResult } from "@earendil-works/pi-agent-core";
-import type { Component, TUI } from "@earendil-works/pi-tui";
+import type { AgentToolResult } from "@nycode/agent-core";
+import type { Component, TUI } from "@nycode/tui";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { ToolRenderContext } from "../src/core/extensions/types.ts";
 import { codemodeRenderers } from "../src/extensions/codemode/renderer.ts";

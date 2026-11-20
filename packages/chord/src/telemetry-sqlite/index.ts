@@ -1,4 +1,4 @@
-// The SQLite telemetry store (`@earendil-works/chord/telemetry-sqlite`, decision "Telemetry store", §29): a recorder
+// The SQLite telemetry store (`@nycode/chord/telemetry-sqlite`, decision "Telemetry store", §29): a recorder
 // (`TelemetryRecorder`) whose batches are written every second, settled spans one row each (events and links inline,
 // times in microseconds) and metrics per series per 10 s, with retention; spans and metrics other processes recorded
 // join the same batches (`ingest`, never overwriting a stored span); and the `TelemetryStore` reads over it.
@@ -10,7 +10,7 @@ import type {
 	TelemetryMetrics,
 	TelemetryPropagation,
 	TelemetryStore,
-} from "@earendil-works/pi-telemetry";
+} from "@nycode/telemetry";
 import type { SqliteDatabase, SqliteExecutor } from "../sqlite/index.ts";
 import { seriesKey, sortedAttributes, type TelemetryBatch, TelemetryRecorder } from "../telemetry-ingest/recorder.ts";
 import { migrateTelemetryStore } from "./schema.ts";

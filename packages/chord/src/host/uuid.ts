@@ -1,4 +1,4 @@
-// UUIDv7 (§3, code copied from pi-ai's `uuidv7`): time-ordered ids, minted for host incarnations.
+// UUIDv7 (§3, code copied from nycode-ai's `uuidv7`): time-ordered ids, minted for host incarnations.
 
 const MAX_SEQUENCE = (1n << 41n) - 1n;
 

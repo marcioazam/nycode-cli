@@ -1,4 +1,4 @@
-// Chord v2's plugins component (`@earendil-works/chord/plugins`; slices 7c, 12): plugin directories and single-file
+// Chord v2's plugins component (`@nycode/chord/plugins`; slices 7c, 12): plugin directories and single-file
 // plugins found, built into scripts checked against the app's API, evaluated, loaded and reloaded per plugin, watched,
 // rolled out and installed, and a plugin tested alone. Node-only (`fs`, esbuild, `vm`); esbuild is an optional peer
 // dependency, imported only here.

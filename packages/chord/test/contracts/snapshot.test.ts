@@ -1,6 +1,6 @@
 // Tests of schema snapshots: the vocabulary, closed arguments, copies and their normal forms, bytes leaves.
 
-import { compile } from "@earendil-works/pi-schema";
+import { compile } from "@nycode/schema";
 import { describe, expect, it } from "vitest";
 import { arr, bytes, int, map, obj, opt, str, union } from "../../src/contracts/schema.ts";
 import { snapshotArguments, snapshotSchema } from "../../src/contracts/snapshot.ts";

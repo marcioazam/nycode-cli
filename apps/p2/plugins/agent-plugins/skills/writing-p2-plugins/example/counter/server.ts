@@ -1,7 +1,7 @@
 // The counter's server side: one store keeps every session's count (persisted) and emits waves; each person's (and
 // the session's agent's) Counter object shows the session's count and who is there, and adds and waves for those who
 // may send.
-import { int, obj, str } from "@earendil-works/pi-schema";
+import { int, obj, str } from "@nycode/schema";
 import {
 	canSend,
 	canView,

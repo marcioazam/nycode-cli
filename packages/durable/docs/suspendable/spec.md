@@ -1,4 +1,4 @@
-# Suspendable work in pi-durable
+# Suspendable work in nycode-durable
 
 Status: draft, fifth revision, 2026-11-09. Nothing here is built. It extends
 `packages/durable/docs/spec.md` (cited as "spec §n") and records the
@@ -118,11 +118,11 @@ way to read a signal.
 
 ### 2.3 Example
 
-Examples build schemas with `@earendil-works/pi-schema` (`obj`, `str`, `bool`,
+Examples build schemas with `@nycode/schema` (`obj`, `str`, `bool`,
 `oneOf`), as Durable's tools do.
 
 ```ts
-import { obj, str } from "@earendil-works/pi-schema";
+import { obj, str } from "@nycode/schema";
 
 const HOUR = 60 * 60 * 1000;
 const Answer = defineSignal({ name: "app.answer", version: 1, schema: obj({ text: str() }) });
@@ -225,7 +225,7 @@ function defineSignal<S extends object>(definition: {
   /** Unique like a task or document kind; must not contain "/". */
   readonly name: string;
   readonly version: number;
-  /** A pi-schema schema of a JSON value; the value type is Static<S>. */
+  /** A nycode-schema schema of a JSON value; the value type is Static<S>. */
   readonly schema: S;
   /** A value stored by an older version, to the current shape. */
   readonly migrate?: (value: JsonValue, fromVersion: number) => Static<S>;
@@ -243,7 +243,7 @@ type SignalKey<T> = { readonly signal: string; readonly key: string; readonly "~
 ```
 
 Keys are non-empty strings. Signal values are JSON: a schema that admits
-non-JSON values (pi-schema's `bigint()`, `bytes()`) is rejected by
+non-JSON values (nycode-schema's `bigint()`, `bytes()`) is rejected by
 `defineSignal`, and a delivery that is not JSON returns `invalid`. Values are
 read with `readSignal()` (section 3.3), which migrates a value stored by an
 older version with `migrate` and checks it against the schema; a missing
@@ -293,11 +293,11 @@ calls it: authenticating the sender is the host's job.
 ### 3.3 Storage and reading
 
 A key's state lives in the task's memos under the reserved prefix
-`pi.signal.`: `pi.signal.<signal name>/<key>` (signal names contain no `/`),
+`nycode.signal.`: `nycode.signal.<signal name>/<key>` (signal names contain no `/`),
 holding `{ version, value }`, `{ expired: true }`, and, once a wake used it,
 `consumed: true`. Memos already have the needed lifetime (spec §5.2): kept
 through checkpoints, reconciliation, handover, and migration, dropped with the
-terminal or `completing` state. The `pi.` memo prefix is reserved for the
+terminal or `completing` state. The `nycode.` memo prefix is reserved for the
 Harness; hooks already prefix their memo names (spec §7.2).
 
 Within one transaction, every write to a task record (a signal, the expiry and
@@ -384,7 +384,7 @@ runs again by `execute()` being called again with the same arguments and
 `invalid_park`).
 
 ```ts
-import { obj, oneOf, str } from "@earendil-works/pi-schema";
+import { obj, oneOf, str } from "@nycode/schema";
 
 const HOUR = 60 * 60 * 1000;
 
@@ -436,7 +436,7 @@ const runCi = defineTool<typeof CiParameters, JsonValue, { buildId: string }>({
 
 ### 4.2 Tool task
 
-`pi.tool` becomes version 4:
+`nycode.tool` becomes version 4:
 
 ```ts
 type ToolTaskCheckpoint =
@@ -579,7 +579,7 @@ without an explicit key, and an unkeyed `createTask()`, throw when `api.wake`
 is set.
 
 ```ts
-import { obj, str } from "@earendil-works/pi-schema";
+import { obj, str } from "@nycode/schema";
 
 type ResearchCheckpoint = { done: TaskId[] };
 const ResearchParameters = obj({ x: str(), y: str() });
@@ -633,7 +633,7 @@ not fail the settling commit. A submission that settles before the tool sleeps
 is an early signal, and the sleep wakes at once.
 
 ```ts
-import { obj, str } from "@earendil-works/pi-schema";
+import { obj, str } from "@nycode/schema";
 
 // The answer entry's text, read from the settled record's answer entry.
 declare function answerText(api: ToolExecutionApi, settled: SettledSubmissionRecord, context: Context): Promise<string>;
@@ -716,7 +716,7 @@ whole pass ends without a block or sleep; once intent is committed,
 sleep; a violation ends the call with `invalid_park`.
 
 ```ts
-import { bool, obj } from "@earendil-works/pi-schema";
+import { bool, obj } from "@nycode/schema";
 
 const Approval = defineSignal({ name: "approvals.decision", version: 1, schema: obj({ allow: bool() }) });
 const DAY = 24 * 60 * 60 * 1000;
@@ -810,7 +810,7 @@ type YieldDecision = { readonly continue?: UserInput };
 type AfterToolsDecision = { readonly terminate?: true };
 ```
 
-`pi.generation` becomes version 3 with two phases.
+`nycode.generation` becomes version 3 with two phases.
 
 **`afterTools`.** In the `tools` phase, once the round is complete, the hooks
 are asked. When they request tasks, one commit creates them and waits at
@@ -831,7 +831,7 @@ scheduler's cleanup end the run as in `tools`.
 
 **`yield`.** When the first `onYield` result is `{ tasks }`, the commit that
 classifies a `stop` or `length` answer appends the answer, keeps `run` with its
-inputs open, records `run.yield = { answer, tasks }` in `pi.live`, applies no
+inputs open, records `run.yield = { answer, tasks }` in `nycode.live`, applies no
 boundary, creates the tasks, and waits at `{ phase: "yield"; answer; tasks }`.
 The tasks read the answer's entry from `run.yield.answer` (the hook runs before
 the entry exists). Once all of them are terminal, the first task in creation
@@ -861,7 +861,7 @@ subagent's report is `afterRun` work, which sees only reviewed answers.
   `waiting` nodes show `policy`.
 - **Tool slots** (spec §8.2): the `status` of tool and nested slots gains
   `"sleeping"` and `"waiting"`; `run` gains `yield?`. A parked slot holds no
-  output, so `pi.live` bases stay small. `pi.live` gets no version bump: the
+  output, so `nycode.live` bases stay small. `nycode.live` gets no version bump: the
   new values are additions, and rollback is not a goal.
 - What a parked task waits for, beyond keys and deadlines (a question's text,
   an approval's arguments), is kept by whoever started the wait, in its own
@@ -915,7 +915,7 @@ passes a park through unchanged.
   handle `sleeping` and `waiting`.
 - **Behavior:** `durationMs` reports the whole span; registry publications and
   open wake calls parked at `call`.
-- **Versions:** `pi.tool` 4, `pi.generation` 3. No SQLite schema change.
+- **Versions:** `nycode.tool` 4, `nycode.generation` 3. No SQLite schema change.
   Rollback to an older Harness is not supported.
 - **Error codes:** spec §7.3's list gains `invalid_park`.
 - **Changelog:** the implementation adds `### Breaking Changes` entries to
@@ -956,7 +956,7 @@ None left.
 Decided (owner, 2026-11-09): an `afterTools` task can end the run with
 `{ terminate: true }` (section 6), as a round whose calls all asked to
 `terminate` ends; `RunEndTask`/`runEndTask` (released in 1.5.0) are renamed
-`HookTask`/`hookTask`, a task spawned by a hook; `run.yield` stays in `pi.live`; gating a model
+`HookTask`/`hookTask`, a task spawned by a hook; `run.yield` stays in `nycode.live`; gating a model
 request (`beforeRequest` sleeping) is deferred; code mode parking its VM is
 separate work, earendil-works/pi#11981.
 
@@ -1012,7 +1012,7 @@ claude-opus-5-5 against spec.md and the code. Fixed here:
   instead of sleeping" was not implementable (commit, then wake at once);
   `HookApi` had no `now()`; the rejected-park `cancel` ran in an aborted
   context; recovery dropped carried details; old key-map members lacked
-  `kind`; pi-schema admits non-JSON values; the self-signal throw conflicted
+  `kind`; nycode-schema admits non-JSON values; the self-signal throw conflicted
   with `notify` (dropped, writes compose); the subagent example replaced the
   parent's selection with host defaults; a removed tool's wake left owned work
   unsupervised (now `failed`); `read()` failures; aborting a parked call whose
@@ -1021,7 +1021,7 @@ claude-opus-5-5 against spec.md and the code. Fixed here:
   result.
 - `defineSignal` could not infer its value type, sleeps were typed with records
   while examples passed tokens, and `is()` could not migrate an immutable wake
-  (all three): `defineSignal<S extends object>` over a pi-schema schema, `SignalKey` is the JSON record,
+  (all three): `defineSignal<S extends object>` over a nycode-schema schema, `SignalKey` is the JSON record,
   `readSignal()` is the one way to read a value (owner, after the review: the
   wake names the key only, no `token.read()`).
 - `HookApi` lacked `readSignal`, and gates could not tell expired from not yet
@@ -1039,7 +1039,7 @@ claude-opus-5-5 against spec.md and the code. Fixed here:
   inactivity check, p2 consumers of slot status, the error code, and wording
   (book and spec).
 - Dropped as unneeded (opus): `cancel`'s checkpoint parameter (it reads
-  `api.checkpoint`) and the `pi.live` version bump. Opus also proposed merging
+  `api.checkpoint`) and the `nycode.live` version bump. Opus also proposed merging
   the `expired` wake reason into `time`; the owner kept both reasons.
 - After review, the owner: the wake names the key only; `readSignal()` is the
   one way to read a value, `token.read()` is gone.

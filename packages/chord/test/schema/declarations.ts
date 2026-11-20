@@ -1,4 +1,4 @@
-// The declarations of the schema switch's proofs (TypeBox to pi-schema): one of every schema helper and option in a
+// The declarations of the schema switch's proofs (TypeBox to nycode-schema): one of every schema helper and option in a
 // contract, persisted documents, tables with defaults, an optional and a `json(...)` column, an evolved table and a
 // persisted job. Their fingerprints were recorded with the TypeBox helpers; the stored data in `stored/` was written
 // by that code (`write-stored.ts`).

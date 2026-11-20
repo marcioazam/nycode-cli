@@ -1,5 +1,5 @@
 // The TUI facet: the tool's card in the terminal transcript.
-import { Text } from "@earendil-works/pi-tui";
+import { Text } from "@nycode/tui";
 import { contribute, defineFacet } from "@p2/app/v1";
 import { getTextOutput, lineText, record, str, type ToolRenderers, TuiToolRenderers } from "@p2/app/v1/tui";
 

@@ -4,8 +4,8 @@
 
 import { chmod } from "node:fs/promises";
 import { join } from "node:path";
-import { contribute, type FacetHost, type P3Principal } from "@earendil-works/p3/v1";
-import { Http, ServerRuntime } from "@earendil-works/p3/v1/server";
+import { contribute, type FacetHost, type P3Principal } from "@nycode/p3/v1";
+import { Http, ServerRuntime } from "@nycode/p3/v1/server";
 import { SignIns } from "./contract.ts";
 import { hashToken, matchesHash, newToken, readSecret, writeSecret } from "./secrets.ts";
 

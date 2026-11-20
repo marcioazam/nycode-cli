@@ -11,12 +11,12 @@ import {
 	type Provider,
 	type ProviderHeaders,
 	type ProviderStreams,
-} from "@earendil-works/pi-ai";
-import { anthropicMessagesApi } from "@earendil-works/pi-ai/api/anthropic-messages.lazy";
-import { googleGenerativeAIApi } from "@earendil-works/pi-ai/api/google-generative-ai.lazy";
-import { openAICompletionsApi } from "@earendil-works/pi-ai/api/openai-completions.lazy";
-import { openAIResponsesApi } from "@earendil-works/pi-ai/api/openai-responses.lazy";
-import type { MutableModels } from "@earendil-works/pi-ai/models";
+} from "@nycode/ai";
+import { anthropicMessagesApi } from "@nycode/ai/api/anthropic-messages.lazy";
+import { googleGenerativeAIApi } from "@nycode/ai/api/google-generative-ai.lazy";
+import { openAICompletionsApi } from "@nycode/ai/api/openai-completions.lazy";
+import { openAIResponsesApi } from "@nycode/ai/api/openai-responses.lazy";
+import type { MutableModels } from "@nycode/ai/models";
 import {
 	getConfigValueEnvVarNames,
 	isCommandConfigValue,

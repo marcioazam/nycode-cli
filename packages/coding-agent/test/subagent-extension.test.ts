@@ -2,8 +2,8 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync,
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { AgentToolResult } from "@earendil-works/pi-agent-core";
-import { fauxAssistantMessage, fauxToolCall, type Message } from "@earendil-works/pi-ai";
+import type { AgentToolResult } from "@nycode/agent-core";
+import { fauxAssistantMessage, fauxToolCall, type Message } from "@nycode/ai";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import subagentExtension from "../examples/extensions/subagent/index.ts";
 import { CONFIG_DIR_NAME } from "../src/config.ts";
@@ -140,7 +140,7 @@ function singleTask(task: string, overrides: Record<string, unknown> = {}): Reco
 }
 
 async function withFixtureInvocation<T>(run: () => Promise<T>): Promise<T> {
-	// The example re-executes process.argv[1] as Pi. Point that invocation at
+	// The example re-executes process.argv[1] as Nycode. Point that invocation at
 	// the deterministic fixture while retaining the real child_process.spawn.
 	const originalScript = process.argv[1];
 	process.argv[1] = SUBAGENT_FIXTURE_PATH;
@@ -232,7 +232,7 @@ describe("subagent example extension", () => {
 	}
 
 	beforeEach(() => {
-		tempDir = mkdtempSync(join(tmpdir(), "pi-subagent-test-"));
+		tempDir = mkdtempSync(join(tmpdir(), "nycode-subagent-test-"));
 		createProjectAgent(tempDir);
 		tool = createTool();
 		ctx = createContext(tempDir);
@@ -453,19 +453,19 @@ describe("subagent example extension", () => {
 		});
 	});
 
-	describe("pi invocation", () => {
+	describe("nycode invocation", () => {
 		it("does not pass a Windows Bun virtual entry path to the child", async () => {
-			// Inside a Windows Bun-compiled binary, argv[1] is "B:/~BUN/root/pi.exe" and
+			// Inside a Windows Bun-compiled binary, argv[1] is "B:/~BUN/root/nycode.exe" and
 			// fs.existsSync() reports it as present. Recreate that relative path under the
 			// cwd so existsSync() also succeeds here.
-			const virtualScript = "B:/~BUN/root/pi.exe";
+			const virtualScript = "B:/~BUN/root/nycode.exe";
 			mkdirSync(join(tempDir, "B:", "~BUN", "root"), { recursive: true });
 			writeFileSync(join(tempDir, virtualScript), readFileSync(SUBAGENT_FIXTURE_PATH));
-			// The test runs under node, so the fallback spawns "pi" from PATH.
+			// The test runs under node, so the fallback spawns "nycode" from PATH.
 			const binDir = join(tempDir, "bin");
 			mkdirSync(binDir);
 			writeFileSync(
-				join(binDir, "pi"),
+				join(binDir, "nycode"),
 				`#!/bin/sh\nexec ${JSON.stringify(process.execPath)} ${JSON.stringify(SUBAGENT_FIXTURE_PATH)} "$@"\n`,
 				{ mode: 0o755 },
 			);

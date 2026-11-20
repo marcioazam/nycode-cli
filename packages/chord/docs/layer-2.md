@@ -18,7 +18,7 @@ publication once, completely, in order. No objects, no storage, no links: L3 (st
 through it, L4 (objects) builds members from it, L6 (links) encodes what it flushes, L9 (registries) composes from it.
 
 Source: `packages/chord/src/next/watch/` (one directory; files by concept). Reused unchanged: Chord's shared
-`src/watch.ts` (the watch-handle types **and implementation**, moved there from Durable's `CommittedWatch` by a pi change
+`src/watch.ts` (the watch-handle types **and implementation**, moved there from Durable's `CommittedWatch` by a nycode change
 first, owner 2026-10-22; Durable uses the same implementation), `src/delta/` (`Op`, `diffRevisions`), `src/context/`,
 `src/json.ts`, and L1's `data` errors (`invalid/reentrant`). Nothing from `next-frozen/`.
 
@@ -118,7 +118,7 @@ const visible = derive([notes, settings], ([n, s]) => ({ list: n.list.filter(...
 ## 5. Watch handles (W2, W3; Chord's shared implementation)
 
 L2 does not implement watch handles: it uses the one implementation in Chord's `src/watch.ts` (Durable's semantics,
-moved there by the pi change). Sources create a handle per `watch(context)` and feed it: `advance` per publication
+moved there by the nycode change). Sources create a handle per `watch(context)` and feed it: `advance` per publication
 (during the flush, by reference), `retire`, `end`, `end({ error })`, cancellation from the context's signal.
 
 - `watch(context)` returns the handle at once (the Promise resolves immediately for local sources; L5 reference

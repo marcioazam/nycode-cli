@@ -730,7 +730,7 @@ self.derive("public", [list], ([l]) => ({ items: l.items.map((n) => ({ text: n.t
 // one note added: 2,001 new objects, all compared by content
 ```
 
-**`mapShared(f)`** (from `@earendil-works/chord/delta`) keeps one result per source element: `f` runs only for new or
+**`mapShared(f)`** (from `@nycode/chord/delta`) keeps one result per source element: `f` runs only for new or
 changed elements; unchanged ones return their previous result object.
 
 ```ts
@@ -1341,7 +1341,7 @@ that no longer exists, with its native values closed. Instead: a registry entry,
 **The problem.** Every plugin that serves a download would repeat ranges, HEAD requests, download headers, streaming
 and abort on disconnect, and get some of it wrong.
 
-**The idea.** HTTP is an optional Chord component (`@earendil-works/chord/http`) with a registry. It is built
+**The idea.** HTTP is an optional Chord component (`@nycode/chord/http`) with a registry. It is built
 after the kernel and a first real proof (harness, one tool with an approval pause, a code mode reload); until then the
 playground serves its pages with plain app code. The design below is the target. A route gets a
 plain request summary (method, path params, query, principal, provenance such as local or relayed, selected headers,
@@ -1445,7 +1445,7 @@ cancel({ id }, ctx)
 ```
 
 - The UI watches the state; a late or second answer to a step that is gone is refused.
-- A promise-based callback (pi-ai's `prompt`) stays **inside** the owner (its job keeps the resolver); nothing crosses
+- A promise-based callback (nycode-ai's `prompt`) stays **inside** the owner (its job keeps the resolver); nothing crosses
   an object boundary.
 - **Imperative consumers** (tests, scripts, a CLI, an agent tool) use a generic client helper over the same state, not
   a second protocol:
@@ -1715,7 +1715,7 @@ entry's value must not be kept beyond a use. The next generation gets the new ru
 **The problem.** A guest's `add` is slow. The call crossed the browser, the server and the worker. Where did the time
 go?
 
-**The idea.** Chord reports traces, events and metrics through `@earendil-works/pi-telemetry`. Each host gets one
+**The idea.** Chord reports traces, events and metrics through `@nycode/telemetry`. Each host gets one
 adapter (`createHost({ telemetry })`, nothing by default) that decides sampling, buffering, export and filtering.
 
 - **The trace travels with the call.** `ctx.telemetry` is the current span. `call` and `hold` frames carry the

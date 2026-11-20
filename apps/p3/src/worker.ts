@@ -17,12 +17,12 @@ import {
 	ipcLink,
 	openStore,
 	sqliteBackend,
-} from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context";
-import { createPluginRuntime, type PluginScript } from "@earendil-works/chord/plugins/runtime";
-import { openNodeSqliteDatabase } from "@earendil-works/chord/sqlite/node";
-import { Session } from "@earendil-works/p3/v1";
-import { WorkerBusy, WorkerRuntime } from "@earendil-works/p3/v1/worker";
+} from "@nycode/chord";
+import { BACKGROUND_CONTEXT as context } from "@nycode/chord/context";
+import { createPluginRuntime, type PluginScript } from "@nycode/chord/plugins/runtime";
+import { openNodeSqliteDatabase } from "@nycode/chord/sqlite/node";
+import { Session } from "@nycode/p3/v1";
+import { WorkerBusy, WorkerRuntime } from "@nycode/p3/v1/worker";
 import { type FromWorker, type ToWorker, workerControl, workerMessage } from "./api/v1/control.ts";
 import { SERVER, workerPrincipal } from "./app.ts";
 import { privateDirectory, privateStore } from "./files.ts";

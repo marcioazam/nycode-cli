@@ -16,7 +16,7 @@ import {
 	union,
 	unknown,
 	type ValidationError,
-} from "@earendil-works/pi-schema";
+} from "@nycode/schema";
 import { literal, record } from "@p2/app/v1";
 import { normalizePath, stripBom, stripJsonComments } from "@p2/app/v1/node";
 

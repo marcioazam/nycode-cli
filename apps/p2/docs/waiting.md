@@ -59,7 +59,7 @@ Nothing else is needed for merging or ordering:
 
 ```ts
 // src/runtime/durable.ts
-import { type Extension, type HookRegistration } from "@earendil-works/pi-durable";
+import { type Extension, type HookRegistration } from "@nycode/durable";
 
 /** Where a hook runs among all plugins' hooks; the order of the values is the order of the stages. */
 export type HookStage = "transform" | "check" | "claim" | "observe";
@@ -137,8 +137,8 @@ used in extension names.
 
 ```ts
 // plugins/approvals/worker.ts: a check on the arguments that will run
-import { bool, obj } from "@earendil-works/pi-schema";
-import { defineSignal, hook, ToolTask } from "@earendil-works/pi-durable";
+import { bool, obj } from "@nycode/schema";
+import { defineSignal, hook, ToolTask } from "@nycode/durable";
 import { contribute, defineFacet } from "@p2/app/v1";
 import { Extensions, Signals, workerOf } from "@p2/app/v1/worker";
 import { Waits } from "../waits/contract.worker.ts";
@@ -236,7 +236,7 @@ so they are one mechanism with two kinds of answerer.
 
 ```ts
 // plugins/waits/contract.ts
-import { arr, int, lit, num, obj, oneOf, opt, str, union, unknown, type Static } from "@earendil-works/pi-schema";
+import { arr, int, lit, num, obj, oneOf, opt, str, union, unknown, type Static } from "@nycode/schema";
 import { method, param, remote, serverHost, sessionHost } from "@p2/app/v1";
 
 /** Who answers a wait: a person (shown by the asking plugin's renderer) or a service (found by its match). */

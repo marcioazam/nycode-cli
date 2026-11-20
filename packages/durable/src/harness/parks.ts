@@ -12,7 +12,7 @@ export function isPark(returned: ToolExecutionResult | ToolPark): returned is To
  * The parks a wrapped base returned in one run of a tool, carried by that run's api under this key. An own enumerable
  * symbol property, so a wrapper that spreads the api, as wrappers do, passes it on to the base.
  */
-export const BASE_PARKS: unique symbol = Symbol("pi.tool.baseParks");
+export const BASE_PARKS: unique symbol = Symbol("nycode.tool.baseParks");
 
 /** A run's api with the parks its wrapped base returned. */
 export type ParkCarrier = { readonly [BASE_PARKS]?: Set<ToolPark> };

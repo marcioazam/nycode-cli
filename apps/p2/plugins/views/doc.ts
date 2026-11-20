@@ -1,6 +1,6 @@
 // The views' Durable document (session scope, worker) and the changes and texts the `view_*` tools, the `Views` object
 // and the send router share: adding and removing views, annotations, and the context a person's message carries.
-import { type DocumentReader, defineDoc, type Tx } from "@earendil-works/pi-durable";
+import { type DocumentReader, defineDoc, type Tx } from "@nycode/durable";
 import type { Context } from "@p2/app/v1";
 import {
 	type Annotation,

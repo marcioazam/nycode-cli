@@ -2,7 +2,7 @@
 // two tables of the server's store (store.ts), `projects.json` imported into them once), `Projects` per owner with this
 // device's label, the server's hostname, and a copy of a session (`/clone`, `/fork`) joining its source's project.
 import { hostname } from "node:os";
-import { bool, obj, str } from "@earendil-works/pi-schema";
+import { bool, obj, str } from "@nycode/schema";
 import {
 	type AcceptsTable,
 	type Context,

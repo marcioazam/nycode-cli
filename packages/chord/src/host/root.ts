@@ -2,7 +2,7 @@
 // (a Durable tool, a CLI), sealed when `fn` settles, when `context` aborts and when the host closes: its signal aborted,
 // its `ctx.get` refused `released`, every reference it took released.
 
-import type { SpanAttributes } from "@earendil-works/pi-telemetry";
+import type { SpanAttributes } from "@nycode/telemetry";
 import { awaitWithContext, type Context, withAbortSignal, withoutAbortSignal } from "../context/index.ts";
 import { ChordError, type Principal } from "../data/index.ts";
 import { CallContext, type Ctx } from "./ctx.ts";

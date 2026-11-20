@@ -21,12 +21,12 @@ describe("regression #5996: session names do not contain newlines", () => {
 		expect(harness.eventsOfType("session_info_changed").map((event) => event.name)).toEqual(["hello world again"]);
 	});
 
-	it("filters newlines when an extension calls pi.setSessionName", async () => {
+	it("filters newlines when an extension calls nycode.setSessionName", async () => {
 		let api: ExtensionAPI | undefined;
 		const harness = await createHarness({
 			extensionFactories: [
-				(pi) => {
-					api = pi;
+				(nycode) => {
+					api = nycode;
 				},
 			],
 		});

@@ -6,7 +6,7 @@
 
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { arr, int, obj, str, union, unknown } from "@earendil-works/pi-schema";
+import { arr, int, obj, str, union, unknown } from "@nycode/schema";
 import {
 	type Ctx,
 	contribute,

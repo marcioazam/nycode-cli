@@ -8,17 +8,17 @@ import { setPointing, usePointing } from "./mode.ts";
 export const SCOPE_COMMANDS: Readonly<Record<string, Command>> = {
 	"scope-prompt.start": {
 		title: "Prompt anywhere",
-		group: "Ask Pi",
+		group: "Ask Nycode",
 		order: 70,
 		icon: CommentIcon,
-		keywords: ["point", "scope", "ask pi", "familiar", "pick"],
+		keywords: ["point", "scope", "ask nycode", "familiar", "pick"],
 		owner: true,
 		Shown: NotPointing,
 		action: { kind: "run", run: () => setPointing(true) },
 	},
 	"scope-prompt.stop": {
 		title: "Stop prompting anywhere",
-		group: "Ask Pi",
+		group: "Ask Nycode",
 		order: 70,
 		icon: CommentIcon,
 		keywords: ["point", "scope"],

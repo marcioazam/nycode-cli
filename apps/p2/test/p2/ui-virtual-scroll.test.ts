@@ -6,7 +6,7 @@
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
 import { deflateSync } from "node:zlib";
-import type { EntryDraft } from "@earendil-works/pi-durable";
+import type { EntryDraft } from "@nycode/durable";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { Sessions, SessionTransfer } from "../../plugins/sessions/contract.ts";
 import { bigSessionEntries } from "../fixtures/big-session.ts";

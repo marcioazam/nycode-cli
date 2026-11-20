@@ -1,6 +1,6 @@
 // The terminal as the app's terminal code sees it inside the sandbox (slice 11 §4): its size, writing frames, and
 // input and resizes, all through the bridge; the launcher holds the real terminal. Library-agnostic: an app adapts it
-// to its terminal UI library (pi-tui's `Terminal` in a few lines).
+// to its terminal UI library (nycode-tui's `Terminal` in a few lines).
 
 import type { SandboxChannel } from "./channel.ts";
 

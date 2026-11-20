@@ -154,7 +154,7 @@ is built (slices 7c and 10).</p>
 <p class="dropcap">Look at the top of Bob&#39;s <code>worker.ts</code>:</p>
 <pre><code><span class="tk-k">import</span> countWords <span class="tk-k">from</span> <span class="tk-s">"words-count"</span>;                       <span class="tk-c">// 1. an npm package</span>
 <span class="tk-k">import</span> { defineFacet, <span class="tk-t">Project</span> } <span class="tk-k">from</span> <span class="tk-s">"@acme/app"</span>;           <span class="tk-c">// 2. the app's base code</span>
-<span class="tk-k">import</span> { obj, num, remote } <span class="tk-k">from</span> <span class="tk-s">"@earendil-works/chord"</span>;   <span class="tk-c">// 3. Chord</span>
+<span class="tk-k">import</span> { obj, num, remote } <span class="tk-k">from</span> <span class="tk-s">"@nycode/chord"</span>;   <span class="tk-c">// 3. Chord</span>
 <span class="tk-k">import</span> { <span class="tk-t">Notes</span> } <span class="tk-k">from</span> <span class="tk-s">"@acme/notes/contract"</span>;               <span class="tk-c">// 4. another plugin</span></code></pre>
 <p>Each import is a different kind of dependency, and they behave differently over time:</p>
 <table>
@@ -176,7 +176,7 @@ is built (slices 7c and 10).</p>
 <td>whatever the running app is: always the newest</td>
 </tr>
 <tr>
-<td><code>@earendil-works/chord</code></td>
+<td><code>@nycode/chord</code></td>
 <td>Chord, through Acme&#39;s upgrade</td>
 <td>whatever the running app ships: always the newest</td>
 </tr>
@@ -270,12 +270,12 @@ leaving the plugin&#39;s root stays a build error.
 <strong>Recommendation:</strong> do it, in the plugin slice (slice 10 is committed with by-name imports; the change is small:
 <code>build.ts</code> and the examples&#39; imports).</p>
 <h3 id="2-what-the-app-39-s-api-is-and-chord-in-it">2. What the app&#39;s API is, and Chord in it</h3>
-<p><strong>Problem:</strong> a plugin imports two host packages that both change, <code>@acme/app/v3</code> and <code>@earendil-works/chord/v2</code>.
+<p><strong>Problem:</strong> a plugin imports two host packages that both change, <code>@acme/app/v3</code> and <code>@nycode/chord/v2</code>.
 Acme must then say which combinations work: does a plugin importing app v3 and Chord v1 still run? Two version
 numbers per plugin, and a matrix nobody tests.
 <strong>Proposal:</strong> plugins import only the app&#39;s API. The app re-exports the part of Chord it supports:</p>
 <pre><code><span class="tk-c">// src/api/v3/index.ts (Acme's base code)</span>
-<span class="tk-k">export</span> { obj, arr, str, int, remote, local, defineRegistry } <span class="tk-k">from</span> <span class="tk-s">"@earendil-works/chord"</span>;
+<span class="tk-k">export</span> { obj, arr, str, int, remote, local, defineRegistry } <span class="tk-k">from</span> <span class="tk-s">"@nycode/chord"</span>;
 <span class="tk-k">export</span> { <span class="tk-t">Workspace</span>, <span class="tk-t">Panels</span>, defineFacet } <span class="tk-k">from</span> <span class="tk-s">"../../core.ts"</span>;</code></pre>
 <p>One number, the app&#39;s, describes everything a plugin gets from its host. When Acme upgrades Chord in a way that
 breaks plugins, Acme bumps its API version, and decides whether <code>/v2</code> survives as a thin layer.

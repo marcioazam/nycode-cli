@@ -50,7 +50,7 @@ describe("chat mode in the browser", { skip: !browserTests }, () => {
 		await browser.wait(`document.querySelector('.composer button.chat-mode')?.getAttribute('aria-pressed')==='true'`);
 		await browser.wait(`document.querySelector('.chat-message .bubble')?.textContent.includes('Lunch first?')`);
 
-		await browser.evaluate(input(".composer textarea", "@pi where should we go?"));
+		await browser.evaluate(input(".composer textarea", "@nycode where should we go?"));
 		await browser.click("button[aria-label=Send]");
 		await browser.wait(`document.querySelector('.messages .assistant')?.textContent.includes('Owner: Lunch first?')`);
 		// The mention shows what the owner wrote, from its entry's data, and how much chat went with it.
@@ -59,7 +59,7 @@ describe("chat mode in the browser", { skip: !browserTests }, () => {
 			await browser.evaluate<string>(`${mention}.querySelector('.bubble-note')?.textContent`),
 			"with 1 chat message",
 		);
-		assert.match(await browser.evaluate<string>(`${mention}.textContent`), /^Owner@pi where should we go\?/);
+		assert.match(await browser.evaluate<string>(`${mention}.textContent`), /^Owner@nycode where should we go\?/);
 		await browser.wait(`document.querySelector('.composer button.chat-mode')?.textContent==='Chat'`);
 	});
 
@@ -90,7 +90,7 @@ describe("chat mode in the browser", { skip: !browserTests }, () => {
 		await browser.click(".reply-quote");
 		await browser.wait(`document.querySelector('[data-entry="${original}"]').classList.contains('flash')`);
 
-		// Phone: a long press on Pi's answer starts a reply to it.
+		// Phone: a long press on Nycode's answer starts a reply to it.
 		await browser.metrics(390, 844);
 		await browser.call("Emulation.setTouchEmulationEnabled", { enabled: true });
 		const answer = await browser.evaluate<{ x: number; y: number }>(
@@ -99,11 +99,11 @@ describe("chat mode in the browser", { skip: !browserTests }, () => {
 		await browser.call("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [answer] });
 		await new Promise((resolve) => setTimeout(resolve, 1000)); // the long press needs 500 ms; leave room under load
 		await browser.call("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
-		await browser.wait(`document.querySelector('.composer .replying')?.textContent==='Replying to Pi'`);
+		await browser.wait(`document.querySelector('.composer .replying')?.textContent==='Replying to Nycode'`);
 		await browser.evaluate(input(".composer textarea", "Agreed"));
 		await browser.click("button[aria-label=Send]");
 		await browser.wait(
-			`[...document.querySelectorAll('.reply-quote')].some(e=>e.textContent.startsWith('Pi Echo:'))`,
+			`[...document.querySelectorAll('.reply-quote')].some(e=>e.textContent.startsWith('Nycode Echo:'))`,
 		);
 		await browser.call("Emulation.setTouchEmulationEnabled", { enabled: false });
 	});

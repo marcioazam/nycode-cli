@@ -1,7 +1,7 @@
 // `fitImage`, `fitImages` and the `fit-images` extension (src/images/fit.ts): images fitted to the model's limits as
 // they enter a conversation, before they are stored.
-import type { ImageContent, TextContent, ToolResultMessage } from "@earendil-works/pi-ai";
-import { fauxAssistantMessage, fauxText, fauxToolCall } from "@earendil-works/pi-ai";
+import type { ImageContent, TextContent, ToolResultMessage } from "@nycode/ai";
+import { fauxAssistantMessage, fauxText, fauxToolCall } from "@nycode/ai";
 import {
 	defineTool,
 	type HookApi,
@@ -12,10 +12,10 @@ import {
 	type ToolHooks,
 	ToolResultEntry,
 	ToolTask,
-} from "@earendil-works/pi-durable";
-import { createFitImagesExtension, fitImage, fitImages } from "@earendil-works/pi-durable/images/fit";
-import { createNodePhotonImages } from "@earendil-works/pi-durable/images/node";
-import { obj } from "@earendil-works/pi-schema";
+} from "@nycode/durable";
+import { createFitImagesExtension, fitImage, fitImages } from "@nycode/durable/images/fit";
+import { createNodePhotonImages } from "@nycode/durable/images/node";
+import { obj } from "@nycode/schema";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
 	DEFAULT_IMAGE_LIMITS,

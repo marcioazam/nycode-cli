@@ -1,7 +1,7 @@
-import type { Context } from "@earendil-works/chord/context";
-import { apply, type Op } from "@earendil-works/chord/delta";
-import type { JsonValue } from "@earendil-works/chord/json";
-import type { SqliteDatabase, SqliteExecutor, SqliteValue } from "@earendil-works/chord/sqlite";
+import type { Context } from "@nycode/chord/context";
+import { apply, type Op } from "@nycode/chord/delta";
+import type { JsonValue } from "@nycode/chord/json";
+import type { SqliteDatabase, SqliteExecutor, SqliteValue } from "@nycode/chord/sqlite";
 import { StorageRequestError } from "../../errors.ts";
 import { idFromNumber, seqFromNumber } from "../../ids.ts";
 import type {

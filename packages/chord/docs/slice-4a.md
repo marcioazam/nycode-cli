@@ -242,8 +242,8 @@ own 2), each worker's window bounding its own.
 - a hold whose object leaves `live` while its `bound` waits goes back to pending (no `bound` is built for it; slice
   7's reload).
 
-**The pending queue** is shared Chord code (`src/delta/`); the shared watch handle uses it too, in the same pi change
-(carry-over; pi first).
+**The pending queue** is shared Chord code (`src/delta/`); the shared watch handle uses it too, in the same nycode change
+(carry-over; nycode first).
 
 **The relay** folds, drops and resets nothing: it forwards each upstream `bound`/`state` at once and returns its
 `ack` when the downstream acknowledges it. A slow tab stalls only its origin at each worker, whose pending queues fold
@@ -356,7 +356,7 @@ Links and heartbeat:
 | trusted link | no `MESSAGE` schema check |
 
 Producer-side string diffs are not 4a's: a provider whose documents grow by plain string assignment pays Delta's
-O(length) append detection per commit until it writes through `appendText` (pi #9265).
+O(length) append detection per commit until it writes through `appendText` (nycode #9265).
 
 ## Benchmarks
 
@@ -370,7 +370,7 @@ encode); 10,000 calls from one tab with another tab's latency (p95) through the 
 
 L6: trusted links skip the message check; a second `bound` on a bound hold (now in 4a: upstream re-holds);
 `PROTOCOL_VERSION` unchanged. L7: `placement` (`invalid/placement`, not in the fingerprint). Decided: C12 (no call
-credits; the call window). The pending queue and the shared watch handle change (pi first). §18's core facet pattern
+credits; the call window). The pending queue and the shared watch handle change (nycode first). §18's core facet pattern
 (start data from the start message), shown in example 13. Left for 4b: revocation, cross-host cycles,
 `host.references`, `host.activity`, size limits, compression (carry-over section 4b). Left as it is: L6's
 `map(bytes())` declaration bug. From the 4a reviews (owner, 2026-10-24): an activation's `readyTimeout` covers its wait for the
@@ -415,4 +415,4 @@ previous instance's teardown too (an attempt abandoned there has opened nothing)
 ## Size
 
 About 2,500-3,000 changed or new source lines (two-sided links, routes, principals, the relay with origins, opaque parts in both codecs, flow control with the pending queue and the call queue, two transports, the
-heartbeat), plus the pi change for the pending queue and the watch handle. Tests and examples about as much again.
+heartbeat), plus the nycode change for the pending queue and the watch handle. Tests and examples about as much again.

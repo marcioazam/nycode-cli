@@ -4,8 +4,8 @@ import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
-import type { ToolResultMessage } from "@earendil-works/pi-ai";
-import type { ConversationView } from "@earendil-works/pi-durable";
+import type { ToolResultMessage } from "@nycode/ai";
+import type { ConversationView } from "@nycode/durable";
 import type { Held } from "@p2/app/v1";
 import { BACKGROUND_CONTEXT, follow, liveIn, statusOf, whenLive, withAbortSignal } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
@@ -81,8 +81,8 @@ describe("session relocation (fake provider)", () => {
 			status = await holdIn(owner, SessionStatus, {}, "reader");
 		const session = await sessions.create({ cwd: fixture.workspace }, BACKGROUND_CONTEXT);
 		// A project template that exists only at the destination: the prompt resources load from the new cwd.
-		mkdirSync(join(target, ".pi", "prompts"), { recursive: true });
-		writeFileSync(join(target, ".pi", "prompts", "moved.md"), "Moved here: $@");
+		mkdirSync(join(target, ".nycode", "prompts"), { recursive: true });
+		writeFileSync(join(target, ".nycode", "prompts", "moved.md"), "Moved here: $@");
 		writeFileSync(join(target, "only-at-destination.txt"), "x");
 		const chat = await holdIn(owner, Chat, { session: session.id, conversation: 1 }, "participant");
 		const prompts = owner.hold(PromptResources, { session: session.id, conversation: 1 }, BACKGROUND_CONTEXT);
@@ -103,7 +103,7 @@ describe("session relocation (fake provider)", () => {
 
 		await sessions.relocate({ id: session.id, cwd: target, env: null }, BACKGROUND_CONTEXT);
 		// The same handles: nothing went gone, and the worker was not restarted.
-		const view = await until(chat.view, (view) => (view?.docs["pi.agent"] as { cwd?: string })?.cwd === target);
+		const view = await until(chat.view, (view) => (view?.docs["nycode.agent"] as { cwd?: string })?.cwd === target);
 		assert(text(view).includes("Echo: before move"));
 		assert.equal(statusOf(chat), "live");
 		assert.deepEqual(await worker(session.id), generation);
@@ -115,7 +115,7 @@ describe("session relocation (fake provider)", () => {
 		assert.equal(bashResults(settled)[0], target);
 		for (const ref of [chat, prompts, workspace]) ref.release();
 	});
-	// Pi Mobile 24e3fccdd: subagents that followed the session move with it; one spawned with its own location stays,
+	// Nycode Mobile 24e3fccdd: subagents that followed the session move with it; one spawned with its own location stays,
 	// with its prompt resources.
 	it("moves following subagents with the session, not one with its own location", async () => {
 		const owner = fixture.browser(),
@@ -131,8 +131,8 @@ describe("session relocation (fake provider)", () => {
 			[own, "mine"],
 			[next, "theirs"],
 		] as const) {
-			mkdirSync(join(directory, ".pi", "prompts"), { recursive: true });
-			writeFileSync(join(directory, ".pi", "prompts", `${name}.md`), `${name}: $@`);
+			mkdirSync(join(directory, ".nycode", "prompts"), { recursive: true });
+			writeFileSync(join(directory, ".nycode", "prompts", `${name}.md`), `${name}: $@`);
 		}
 		const session = await sessions.create({ cwd: start }, BACKGROUND_CONTEXT);
 		const root = await holdIn(owner, Chat, { session: session.id, conversation: 1 }, "participant");
@@ -146,7 +146,7 @@ describe("session relocation (fake provider)", () => {
 		await sessions.relocate({ id: session.id, cwd: next, env: null }, BACKGROUND_CONTEXT);
 		root.release();
 		const current = await holdIn(owner, Chat, { session: session.id, conversation: 1 }, "participant");
-		await until(current.view, (view) => (view?.docs["pi.agent"] as { cwd?: string })?.cwd === next);
+		await until(current.view, (view) => (view?.docs["nycode.agent"] as { cwd?: string })?.cwd === next);
 		const children = await until(agents.children, (value) => value?.[session.id]?.length === 2);
 		const pwd = async (name: string, requestId: string) => {
 			const child = children?.[session.id]?.find((entry) => entry.name === name);
@@ -178,10 +178,10 @@ describe("session relocation (fake provider)", () => {
 					current.view,
 					(value) =>
 						text(value).includes(`<sender kind="subagent" name="${name}"/>`) &&
-						!(value?.docs["pi.live"] as { run?: unknown } | undefined)?.run,
+						!(value?.docs["nycode.live"] as { run?: unknown } | undefined)?.run,
 				);
 				await until(status.statuses, (value) => value?.[session.id]?.tasks === 0);
-				return { child, agent: settled?.docs["pi.agent"] as { cwd?: string }, settled };
+				return { child, agent: settled?.docs["nycode.agent"] as { cwd?: string }, settled };
 			} finally {
 				view.release();
 			}
@@ -263,7 +263,8 @@ describe("session relocation (fake provider)", () => {
 				await until((await ctx.get(Hosts, {})).workers, (value) => value?.[session.id]?.running === false);
 			}, BACKGROUND_CONTEXT);
 		};
-		const cwdOf = (view: ConversationView | null | undefined) => (view?.docs["pi.agent"] as { cwd?: string })?.cwd;
+		const cwdOf = (view: ConversationView | null | undefined) =>
+			(view?.docs["nycode.agent"] as { cwd?: string })?.cwd;
 		return { owner, sessions, session, chat, start, next, before, answers, gone, kill, cwdOf };
 	};
 	type Steps = RelocationSteps;
@@ -432,7 +433,7 @@ describe("session relocation (fake provider)", () => {
 			s.chat.view,
 			(view) =>
 				text(view).includes('<sender kind="subagent" name="mine"/>') &&
-				!(view?.docs["pi.live"] as { run?: unknown } | undefined)?.run,
+				!(view?.docs["nycode.live"] as { run?: unknown } | undefined)?.run,
 		);
 		await s.answers();
 		await fixture.server.host.root(async (ctx) => {
@@ -641,7 +642,7 @@ describe("session relocation: a move that hangs", () => {
 		assert((await generation()) > before, "a new worker");
 		chat.release();
 		const current = await holdIn(owner, Chat, { session: session.id, conversation: 1 }, "participant");
-		await until(current.view, (view) => (view?.docs["pi.agent"] as { cwd?: string })?.cwd === next);
+		await until(current.view, (view) => (view?.docs["nycode.agent"] as { cwd?: string })?.cwd === next);
 		current.release();
 	});
 });

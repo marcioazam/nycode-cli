@@ -6,12 +6,12 @@
 //   node --import ./src/source.ts scripts/verify-sessions.ts [url] [--report <report.json>] [--data <dir>]
 //
 // `url` defaults to http://127.0.0.1:$PORT (8788); it must be loopback: the script signs in as the local owner with the
-// owner key of the server's data directory (`--data`, P2_DATA_DIR or ~/.pi/p2). Without `--report` that directory is
+// owner key of the server's data directory (`--data`, P2_DATA_DIR or ~/.nycode/p2). Without `--report` that directory is
 // also reported now. Exits 1 on a difference.
 import { readFileSync } from "node:fs";
-import { type Contract, type Held, type WebSocketLike, webSocketLink } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import type { ConversationView } from "@earendil-works/pi-durable";
+import { type Contract, type Held, type WebSocketLike, webSocketLink } from "@nycode/chord";
+import { BACKGROUND_CONTEXT } from "@nycode/chord/context";
+import type { ConversationView } from "@nycode/durable";
 import { WebSocket } from "ws";
 import { Chat } from "../plugins/chat/contract.ts";
 import { Sessions } from "../plugins/sessions/contract.ts";

@@ -30,7 +30,7 @@ function describe(host: RolloutHost): string {
 const root = await mkdtemp(join(tmpdir(), "chord-example-43-"));
 await cp(fileURLToPath(new URL("./plugins/", import.meta.url)), root, { recursive: true });
 
-const node = { platform: "node", hostPackages: ["@earendil-works/chord"] } as const;
+const node = { platform: "node", hostPackages: ["@nycode/chord"] } as const;
 const plugins = createPlugins(
 	{ roots: [root], kinds: { server: node, worker: node }, onError: console.error },
 	context,
@@ -54,7 +54,7 @@ const workers = createWorkers(
 	},
 	context,
 );
-await plugins.load(server, { kind: "server", core: [], modules: { "@earendil-works/chord": chord } }, context);
+await plugins.load(server, { kind: "server", core: [], modules: { "@nycode/chord": chord } }, context);
 
 // 1. The server's banner and two running sessions.
 const banner = await server.get(Banner, {}, context);

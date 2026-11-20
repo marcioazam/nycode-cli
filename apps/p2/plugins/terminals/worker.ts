@@ -2,7 +2,7 @@
 // session's worker, at the calling conversation's location. It follows the code mode switch as MCP tools do: for
 // scripts while code mode is on, loaded with `tool_search` while it is off.
 
-import type { Extension } from "@earendil-works/pi-durable";
+import type { Extension } from "@nycode/durable";
 import { type Context, type Ctx, contribute, defineFacet, expectVariant } from "@p2/app/v1";
 import { ExtensionSwitches } from "@p2/app/v1/node";
 import { Extensions, harnessOf, workerOf } from "@p2/app/v1/worker";

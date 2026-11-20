@@ -99,7 +99,7 @@ describe("proxy marking is never authentication (including the loopback Unix-soc
 	it("a bridge request without a cookie is a stranger, not the machine owner", async () => {
 		const response = await viaBridge("/");
 		assert.equal(response.status, 401);
-		assert(response.body.includes("Sign in to Pi"));
+		assert(response.body.includes("Sign in to Nycode"));
 		assert(!response.body.includes("PRIVATE") && !response.body.includes("/_chord/web/"));
 		assert.equal((await viaBridge("/owner-token")).status, 403);
 	});

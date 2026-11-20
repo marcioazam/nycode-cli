@@ -1,5 +1,5 @@
 /**
- * Runs the official MCP client conformance suite against pi (client.ts) and compares every check with
+ * Runs the official MCP client conformance suite against nycode (client.ts) and compares every check with
  * the committed baseline (baseline.json). Fails when a check that passed in the baseline no longer
  * passes, or when a check fails that the baseline does not list. Known failures stay visible in the
  * output. See README.md.
@@ -23,7 +23,7 @@ import { parseArgs } from "node:util";
 
 /** The pinned upstream suite. Bumping it requires reviewing and regenerating the baseline. */
 const CONFORMANCE_PACKAGE = "@modelcontextprotocol/conformance@0.2.0-alpha.11";
-/** Protocol versions pi negotiates. 2026-07-28 is a different (stateless) protocol pi does not speak. */
+/** Protocol versions nycode negotiates. 2026-07-28 is a different (stateless) protocol nycode does not speak. */
 const MODES = ["2025-03-26", "2025-06-18", "2025-11-25"] as const;
 const SCENARIO_TIMEOUT_MS = 30_000;
 /** Checks that are part of the suite's HTTP trace, not assertions. */
@@ -138,7 +138,7 @@ async function runScenario(
 ): Promise<ScenarioResult> {
 	const scenarioDir = join(workDir, mode, scenario.replace(/[^A-Za-z0-9_.-]+/g, "-"));
 	mkdirSync(scenarioDir, { recursive: true });
-	const reportPath = join(scenarioDir, "pi-client.json");
+	const reportPath = join(scenarioDir, "nycode-client.json");
 	const result: ScenarioResult = { mode, scenario, checks: new Map(), messages: new Map() };
 	const run = await runCommand(
 		"npx",
@@ -159,7 +159,7 @@ async function runScenario(
 		],
 		{
 			cwd: workDir,
-			env: { ...conformanceEnv(), PI_MCP_CONFORMANCE_REPORT: reportPath },
+			env: { ...conformanceEnv(), NYCODE_MCP_CONFORMANCE_REPORT: reportPath },
 			timeoutMs: SCENARIO_TIMEOUT_MS + 30_000,
 		},
 	);
@@ -178,11 +178,11 @@ async function runScenario(
 		const message = String(check.errorMessage ?? check.description ?? "");
 		record(result, id, status === "SUCCESS" ? "pass" : "fail", message);
 	}
-	// Whether pi completed the scenario. Some scenarios expect the client to give up, so this is
+	// Whether nycode completed the scenario. Some scenarios expect the client to give up, so this is
 	// baselined like any other check.
 	let client: { success?: unknown; error?: unknown } = { error: "client.ts wrote no report" };
 	if (existsSync(reportPath)) client = JSON.parse(readFileSync(reportPath, "utf8")) as typeof client;
-	record(result, "pi-client", client.success === true ? "pass" : "fail", String(client.error ?? ""));
+	record(result, "nycode-client", client.success === true ? "pass" : "fail", String(client.error ?? ""));
 	return result;
 }
 
@@ -300,10 +300,10 @@ Options:
 		return 1;
 	}
 
-	const workDir = mkdtempSync(join(tmpdir(), "pi-mcp-conformance-"));
+	const workDir = mkdtempSync(join(tmpdir(), "nycode-mcp-conformance-"));
 	try {
 		// The upstream runner splits --command on spaces, so use a launcher path without any.
-		const launcher = join(workDir, "pi-client");
+		const launcher = join(workDir, "nycode-client");
 		writeFileSync(
 			launcher,
 			`#!/bin/sh\nexec ${JSON.stringify(process.execPath)} --import ${JSON.stringify(resolverUrl)} ${JSON.stringify(clientPath)} "$@"\n`,

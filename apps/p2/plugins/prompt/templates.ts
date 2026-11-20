@@ -9,7 +9,7 @@ export type PromptTemplate = {
 	description: string;
 	argumentHint?: string;
 	content: string;
-	/** Where it came from: p2's data directory (`global`) or the project's `.pi/prompts`. */
+	/** Where it came from: p2's data directory (`global`) or the project's `.nycode/prompts`. */
 	source: "global" | "project";
 	path: string;
 };
@@ -23,7 +23,7 @@ export type SkillFile = {
 
 const normalizeNewlines = (value: string): string => value.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 
-/** pi's `parseFrontmatter`: YAML between leading `---` lines, the rest is the body (trimmed). */
+/** nycode's `parseFrontmatter`: YAML between leading `---` lines, the rest is the body (trimmed). */
 export function parseFrontmatter(content: string): { frontmatter: Record<string, unknown>; body: string } {
 	const normalized = normalizeNewlines(content.replace(/^\uFEFF/, ""));
 	if (!normalized.startsWith("---")) return { frontmatter: {}, body: normalized };
@@ -37,7 +37,7 @@ export function parseFrontmatter(content: string): { frontmatter: Record<string,
 	};
 }
 
-/** pi's template file: name from the file, `description` (or the first line, 60 characters) and `argument-hint`. */
+/** nycode's template file: name from the file, `description` (or the first line, 60 characters) and `argument-hint`. */
 export function parseTemplate(
 	fileName: string,
 	content: string,
@@ -55,7 +55,7 @@ export function parseTemplate(
 	return { name, description, ...(argumentHint ? { argumentHint } : {}), content: body, source, path };
 }
 
-/** Bash-style argument splitting with quotes (pi's `parseCommandArgs`). */
+/** Bash-style argument splitting with quotes (nycode's `parseCommandArgs`). */
 export function parseCommandArgs(argsString: string): string[] {
 	const args: string[] = [];
 	let current = "";
@@ -77,7 +77,7 @@ export function parseCommandArgs(argsString: string): string[] {
 }
 
 /**
- * pi's `substituteArgs`: `$1`…, `$@`/`$ARGUMENTS`, `${N:-default}`, `${@:-default}`/`${ARGUMENTS:-default}`,
+ * nycode's `substituteArgs`: `$1`…, `$@`/`$ARGUMENTS`, `${N:-default}`, `${@:-default}`/`${ARGUMENTS:-default}`,
  * `${@:N}` and `${@:N:L}`. Values are not substituted again.
  */
 export function substituteArgs(content: string, args: string[]): string {
@@ -104,7 +104,7 @@ export function substituteArgs(content: string, args: string[]): string {
 	);
 }
 
-/** pi's skill block: the skill's body with its name and location, then the user's arguments. */
+/** nycode's skill block: the skill's body with its name and location, then the user's arguments. */
 export function skillBlock(skill: SkillFile, fileContent: string, args: string): string {
 	const body = parseFrontmatter(fileContent).body.trim();
 	const block = `<skill name="${skill.name}" location="${skill.path}">\nReferences are relative to ${skill.baseDir}.\n\n${body}\n</skill>`;
@@ -112,7 +112,7 @@ export function skillBlock(skill: SkillFile, fileContent: string, args: string):
 }
 
 /**
- * pi's order: `/skill:name args` becomes the skill block, then `/name args` the first template of that name (global
+ * nycode's order: `/skill:name args` becomes the skill block, then `/name args` the first template of that name (global
  * before project). Anything else, unknown names and unreadable skills stay as typed.
  */
 export async function expandPrompt(

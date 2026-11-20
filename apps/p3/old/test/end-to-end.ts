@@ -4,8 +4,8 @@
 // starts none, and a restart on the same directory keeps what was created.
 
 import assert from "node:assert/strict";
-import { isChordError } from "@earendil-works/chord";
-import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context";
+import { isChordError } from "@nycode/chord";
+import { BACKGROUND_CONTEXT as context } from "@nycode/chord/context";
 import { CODING, Sessions, SessionsList, SessionWorker } from "../plugins/sessions/contract.ts";
 import { ownerClient, type Reachable } from "./client.ts";
 

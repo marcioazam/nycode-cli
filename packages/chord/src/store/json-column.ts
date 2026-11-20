@@ -2,7 +2,7 @@
 // cell with its own version, typed when read, migrated on access (the result checked once, R8), never walked on write
 // (R9).
 
-import type { JsonSchema } from "@earendil-works/pi-schema";
+import type { JsonSchema } from "@nycode/schema";
 import type { Context } from "../context/index.ts";
 import type { Schema, Static } from "../contracts/index.ts";
 import { fingerprintOf } from "../contracts/internal.ts";

@@ -1,4 +1,4 @@
-import { arr, bool, num, obj, opt, type Static, str, union } from "@earendil-works/pi-schema";
+import { arr, bool, num, obj, opt, type Static, str, union } from "@nycode/schema";
 import { literal } from "@p2/app/v1";
 // Voice mode's wire shapes, shared by the server routes and the browser.
 
@@ -37,7 +37,7 @@ export type Voices = Static<typeof VoicesSchema>;
 /**
  * `WS /voice/room?session=…&conversation=…` (bridged to the service's `/room`): what a browser may send as text.
  * Everyone: `reset` (its own microphone's VAD) and `vad` (its own pause before an utterance ends). The owner also the
- * room's voice (`config`), what Pi says (`speak`, with a stable ID: repeats from other tabs are the service's
+ * room's voice (`config`), what Nycode says (`speak`, with a stable ID: repeats from other tabs are the service's
  * duplicates) and `cancel`. Microphone audio goes up as binary 16 kHz PCM16.
  */
 export const MIN_PAUSE = 0.5;

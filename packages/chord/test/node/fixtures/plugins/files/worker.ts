@@ -1,8 +1,8 @@
 // Fixture plugin (slice 7c): a facet reading a file of its own plugin through `pluginFile`.
 
 import { readFileSync } from "node:fs";
-import { constant, defineFacet } from "@earendil-works/chord";
-import { pluginFile } from "@earendil-works/chord/plugins";
+import { constant, defineFacet } from "@nycode/chord";
+import { pluginFile } from "@nycode/chord/plugins";
 import { Files } from "../contracts/contract.ts";
 
 export default defineFacet((host) =>

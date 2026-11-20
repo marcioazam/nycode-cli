@@ -2,7 +2,7 @@
 // instance, the server origin, the session/conversation the worker named, and an expiry. Results of a grant that was
 // cancelled (worker swap, navigation away, close) are dropped.
 import { randomUUID } from "node:crypto";
-import { isKeyRelease, type KeybindingsConfig, type KeyId, matchesKey } from "@earendil-works/pi-tui";
+import { isKeyRelease, type KeybindingsConfig, type KeyId, matchesKey } from "@nycode/tui";
 import { builtinKeybindings, isPrivileged, type KeyPlatform, resolvePrivilegedKeys } from "../tui/keybindings.ts";
 import type { ConsentRequest, TrustedUi } from "./tui-trusted-ui.ts";
 

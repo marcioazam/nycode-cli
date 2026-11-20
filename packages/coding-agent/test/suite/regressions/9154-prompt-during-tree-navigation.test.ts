@@ -1,4 +1,4 @@
-import { fauxAssistantMessage } from "@earendil-works/pi-ai";
+import { fauxAssistantMessage } from "@nycode/ai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { assistantMsg, userMsg } from "../../utilities.ts";
 import { createHarness, getMessageText, getUserTexts, type Harness } from "../harness.ts";
@@ -35,8 +35,8 @@ describe("issue #9154: prompt during tree navigation", () => {
 
 		const harness = await createHarness({
 			extensionFactories: [
-				(pi) => {
-					pi.on("session_before_tree", async () => {
+				(nycode) => {
+					nycode.on("session_before_tree", async () => {
 						summaryStarted.resolve();
 						await summaryReleased.promise;
 						return { summary: { summary: "abandoned branch summary" } };
@@ -90,14 +90,14 @@ describe("issue #9154: prompt during tree navigation", () => {
 		const treeReleased = deferred();
 		const harness = await createHarness({
 			extensionFactories: [
-				(pi) => {
+				(nycode) => {
 					const pause = async () => {
 						promptStarted.resolve();
 						await promptReleased.promise;
 					};
-					if (hook === "input") pi.on("input", pause);
-					else pi.on("before_agent_start", pause);
-					pi.on("session_before_tree", async () => {
+					if (hook === "input") nycode.on("input", pause);
+					else nycode.on("before_agent_start", pause);
+					nycode.on("session_before_tree", async () => {
 						treeStarted.resolve();
 						await treeReleased.promise;
 					});
@@ -138,8 +138,8 @@ describe("issue #9154: prompt during tree navigation", () => {
 			const harness = await createHarness({
 				withConfiguredAuth: outcome !== "rejected",
 				extensionFactories: [
-					(pi) => {
-						if (outcome === "handled") pi.on("input", async () => ({ action: "handled" }));
+					(nycode) => {
+						if (outcome === "handled") nycode.on("input", async () => ({ action: "handled" }));
 					},
 				],
 			});
@@ -157,8 +157,8 @@ describe("issue #9154: prompt during tree navigation", () => {
 		const released = deferred();
 		const harness = await createHarness({
 			extensionFactories: [
-				(pi) => {
-					pi.on("input", async (event) => {
+				(nycode) => {
+					nycode.on("input", async (event) => {
 						if (event.text === "waiting prompt") {
 							started.resolve();
 							await released.promise;
@@ -188,8 +188,8 @@ describe("issue #9154: prompt during tree navigation", () => {
 		const errors: string[] = [];
 		const harness = await createHarness({
 			extensionFactories: [
-				(pi) => {
-					pi.on("session_tree", async () => {
+				(nycode) => {
+					nycode.on("session_tree", async () => {
 						await harness.session.sendUserMessage("continue on the selected branch");
 					});
 				},
@@ -212,14 +212,14 @@ describe("issue #9154: prompt during tree navigation", () => {
 		let continuation: Promise<unknown> | undefined;
 		const harness = await createHarness({
 			extensionFactories: [
-				(pi) => {
-					pi.on("session_before_tree", async (event) => {
+				(nycode) => {
+					nycode.on("session_before_tree", async (event) => {
 						if (event.preparation.targetId === nextTargetId) {
 							started.resolve();
 							await released.promise;
 						}
 					});
-					pi.on("session_tree", () => {
+					nycode.on("session_tree", () => {
 						continuation ??= harness.session.navigateTree(nextTargetId).then(
 							() => undefined,
 							(error: unknown) => error,
@@ -253,13 +253,13 @@ describe("issue #9154: prompt during tree navigation", () => {
 		let navigated = false;
 		const harness = await createHarness({
 			extensionFactories: [
-				(pi) => {
+				(nycode) => {
 					const navigate = async () => {
 						await harness.session.navigateTree(targetId);
 						navigated = true;
 					};
-					if (event === "command") pi.registerCommand("rewind", { handler: navigate });
-					else pi.on("agent_settled", navigate);
+					if (event === "command") nycode.registerCommand("rewind", { handler: navigate });
+					else nycode.on("agent_settled", navigate);
 				},
 			],
 		});

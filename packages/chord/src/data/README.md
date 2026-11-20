@@ -52,7 +52,7 @@ Rules:
 - A method without arguments (argument schema `null`) omits the argument in references and implementations; `null`
   is its internal and wire form, which `checkArgs` checks. Unknown fields fail.
 - A failed check is `invalid/args`, `invalid/params` or `invalid/host_address` with `details.path`, the JSON Pointer of
-  the first error pi-schema explains (`~` and `/` in keys escaped as `~0` and `~1`); a missing field is reported at its
+  the first error nycode-schema explains (`~` and `/` in keys escaped as `~0` and `~1`); a missing field is reported at its
   own path ("missing"), an unknown one too ("unknown field"), the value itself at `/`.
 - `checkArgs` refuses an unknown method with `invalid/member` and an unaccepted version or a refused method with
   `contract_mismatch`. It never invokes a `call` replacement.

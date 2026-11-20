@@ -1,5 +1,5 @@
 // A local release of p3 (`docs/slices/26-release.md`): builds p3 and the three workspace packages it depends on (Chord,
-// pi-schema, pi-telemetry: their published versions do not have what p3 uses yet), packs the four and installs p3's
+// nycode-schema, nycode-telemetry: their published versions do not have what p3 uses yet), packs the four and installs p3's
 // tarball, the three as overrides, into a directory outside the repository, as a user installing from npm would (no
 // lifecycle script of a dependency runs), so nothing there resolves a workspace source. Then the release test runs
 // against the install, and with `--bench` the bench.

@@ -1,5 +1,5 @@
-import type { ConversationView } from "@earendil-works/pi-durable";
-import { arr, bool, int, nul, num, obj, opt, type Static, str, union, unknown } from "@earendil-works/pi-schema";
+import type { ConversationView } from "@nycode/durable";
+import { arr, bool, int, nul, num, obj, opt, type Static, str, union, unknown } from "@nycode/schema";
 import type { Author, Ctx } from "@p2/app/v1";
 import {
 	AttachmentSchema,
@@ -102,7 +102,7 @@ export type LiveShell = Static<typeof LiveShellSchema>;
 /** The conversation's user shell command; null when none. */
 export const ShellStateSchema = union([LiveShellSchema, nul()]);
 export type ShellState = Static<typeof ShellStateSchema>;
-/** pi's text when a second command is started while one runs (interactive-mode `isBashRunning`). */
+/** nycode's text when a second command is started while one runs (interactive-mode `isBashRunning`). */
 export const SHELL_BUSY = "A bash command is already running. Press Esc to cancel it first.";
 export const ShellSchema = obj({
 	command: str({ minLength: 1, maxLength: 100_000 }),
@@ -204,7 +204,7 @@ export const Conversation = local("p2.conversation", {
 		/** An image part of an entry (`ChatImages`); throws when there is none there. */
 		image: method(ImagePlaceSchema, ImageBytesSchema),
 		configure: method(ConversationConfigureSchema),
-		/** The current model's metadata (see `ModelMetaSchema`), following the view's `pi.agent` and the catalog. */
+		/** The current model's metadata (see `ModelMetaSchema`), following the view's `nycode.agent` and the catalog. */
 		model: ModelStateSchema,
 		/** Admits a manual compaction task (Durable `Conversation.compact`). */
 		compact: method(CompactSchema, obj({ taskId: num() })),
@@ -250,9 +250,9 @@ export const Chat = remote("p2.chat", {
 				/** Withdraws a queued input; with `restore`, returns its text if the caller wrote it. */
 				dequeue: method(obj({ submissionId: num(), restore: opt(bool()) }), obj({ text: union([str(), nul()]) })),
 				configure: method(ConfigureSchema),
-				/** Summarizes earlier context now (pi's `/compact [instructions]`); returns the compaction task. */
+				/** Summarizes earlier context now (nycode's `/compact [instructions]`); returns the compaction task. */
 				compact: method(CompactSchema, obj({ taskId: num() })),
-				/** Aborts running compactions (pi: Escape while compacting); returns how many were marked. */
+				/** Aborts running compactions (nycode: Escape while compacting); returns how many were marked. */
 				abortCompaction: method(undefined, obj({ aborted: int({ minimum: 0 }) })),
 				/** Starts a new context with an optional handoff (owner only: it changes the context for everyone). */
 				reset: method(ResetSchema),
@@ -262,7 +262,7 @@ export const Chat = remote("p2.chat", {
 				 */
 				dequeueOwn: method(undefined, DequeueOwnResultSchema),
 				/**
-				 * Runs a shell command in this conversation's working directory on the session's environment (pi's `!cmd`;
+				 * Runs a shell command in this conversation's working directory on the session's environment (nycode's `!cmd`;
 				 * `!!cmd` without context). It never starts a run: the finished command becomes a `p2.shell` entry. One
 				 * command at a time per conversation.
 				 */

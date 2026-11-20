@@ -7,7 +7,7 @@
 // person who will be denied. The principal is identity only; what a person may do is data.
 // Run from packages/chord:
 //   node --conditions=source --experimental-strip-types test/examples/69-admission.ts
-import { InMemoryTelemetryContext } from "@earendil-works/pi-telemetry";
+import { InMemoryTelemetryContext } from "@nycode/telemetry";
 import { BACKGROUND_CONTEXT, withTelemetry } from "../../src/context/index.ts";
 import { hostKind, int, local, method, obj, oneOf, queries, remote, str } from "../../src/contracts/index.ts";
 import type { ChordError } from "../../src/data/index.ts";

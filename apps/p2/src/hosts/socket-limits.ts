@@ -1,6 +1,6 @@
-// Per-connection limits of browser and TUI Chord sockets (`/chord`), as Pi Mobile's (apps/mobile/src/server/app.ts).
+// Per-connection limits of browser and TUI Chord sockets (`/chord`), as Nycode Mobile's (apps/mobile/src/server/app.ts).
 
-import type { WebSocketLike } from "@earendil-works/chord";
+import type { WebSocketLike } from "@nycode/chord";
 import type { WebSocket } from "ws";
 
 /** Largest frame a client may send. Uploads go over HTTP; a 1,000,000-character message fits. */

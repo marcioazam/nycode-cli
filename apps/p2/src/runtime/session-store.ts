@@ -1,9 +1,9 @@
 // A session's Durable records in its Chord store: `StoreStorage` under p2's owner name, beside the kit's `Files`
 // (tables `p2.durable:*` and `chord.app.files:*` in one store). The worker opens it over the store its host runs on;
 // offline tools (the migration, tests, reports) open a stopped session's store with `openSessionStorage`.
-import type { Store } from "@earendil-works/chord";
-import type { Context } from "@earendil-works/chord/context";
-import { StoreStorage } from "@earendil-works/pi-durable/storage/store";
+import type { Store } from "@nycode/chord";
+import type { Context } from "@nycode/chord/context";
+import { StoreStorage } from "@nycode/durable/storage/store";
 import { openHostStore, sessionDirectory } from "./host-dirs.ts";
 
 /** The owner name of a session's Durable records in its store: its tables and document namespaces are claimed under it. */

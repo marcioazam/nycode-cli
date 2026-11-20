@@ -2,7 +2,7 @@
 // `{ "<name>": [{ "env"?: "<environment>", "path": "<directory>" }, ...] }`, object order the display order, array
 // order preference, a place without `env` this device. The store imports it once (server.ts); nothing writes it.
 import { join } from "node:path";
-import { compile, obj, opt, str } from "@earendil-works/pi-schema";
+import { compile, obj, opt, str } from "@nycode/schema";
 import { isRooted } from "@p2/app/v1";
 import { optionalText, stripBom, stripJsonComments } from "@p2/app/v1/node";
 import type { Project } from "./contract.ts";

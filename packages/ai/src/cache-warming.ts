@@ -1,4 +1,4 @@
-// Prompt cache warming policy shared by pi's hosts: when a refresh is due, whether a request can be replayed, and
+// Prompt cache warming policy shared by nycode's hosts: when a refresh is due, whether a request can be replayed, and
 // whether a refresh pays for itself. Hosts own the scheduling; this module owns the numbers.
 import { calculateCost } from "./models.ts";
 import type { Api, Model, SimpleStreamOptions, Usage } from "./types.ts";
@@ -55,7 +55,7 @@ export function getCacheWarmingDelayMs(ttlMs: number): number | undefined {
 export function getPromptCacheTtlMs(model: Model<Api>, options: SimpleStreamOptions | undefined): number | undefined {
 	const retention =
 		options?.cacheRetention ??
-		(getProviderEnvValue("PI_CACHE_RETENTION", options?.env) === "long" ? "long" : "short");
+		(getProviderEnvValue("NYCODE_CACHE_RETENTION", options?.env) === "long" ? "long" : "short");
 	if (retention === "none") return undefined;
 	const seconds = model.promptCache?.[retention];
 	return seconds === undefined ? undefined : seconds * 1000;

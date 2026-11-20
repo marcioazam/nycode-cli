@@ -36,9 +36,9 @@ type Pending = { text: string; requestId: string; attempted: boolean; interrupts
 const messageOf = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
 /**
- * What a transcript becomes as a message. With chat mode on, people talk with each other and Pi answers only when
- * addressed: "Pi, …" becomes an `@pi` mention, and only a mention interrupts Pi (its speech and its run). Without chat
- * mode every message is for Pi.
+ * What a transcript becomes as a message. With chat mode on, people talk with each other and Nycode answers only when
+ * addressed: "Nycode, …" becomes an `@nycode` mention, and only a mention interrupts Nycode (its speech and its run). Without chat
+ * mode every message is for Nycode.
  */
 export function voiceMessage(
 	text: string,
@@ -173,7 +173,7 @@ export class PendingTranscripts {
 					log(`waiting for the conversation (${this.#items.length} transcripts)`);
 					return;
 				}
-				// As typing and pressing Stop: a message for Pi while it works stops that run first (a retry does not stop
+				// As typing and pressing Stop: a message for Nycode while it works stops that run first (a retry does not stop
 				// again: its first attempt may have been placed).
 				const stopFirst = item.interrupts && !item.attempted && busy();
 				const retry = item.attempted;

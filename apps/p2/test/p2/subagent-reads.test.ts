@@ -12,8 +12,8 @@ import type {
 	LiveState,
 	Observer,
 	TaskGraph,
-} from "@earendil-works/pi-durable";
-import { LiveDoc } from "@earendil-works/pi-durable";
+} from "@nycode/durable";
+import { LiveDoc } from "@nycode/durable";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { Subagents } from "../../plugins/subagents/contract.ts";
 import { Subagents as Registry, type SubagentState } from "../../plugins/subagents/contract.worker.ts";
@@ -77,7 +77,7 @@ function durableDouble() {
 		entries.get(conversation)?.push({
 			id: id(nextEntry++),
 			conversationId: conversation as ConversationId,
-			kind: "pi.user",
+			kind: "nycode.user",
 			model: [{ role: "user", content: text, timestamp: nextEntry }],
 		});
 	};

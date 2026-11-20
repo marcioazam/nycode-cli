@@ -4,10 +4,10 @@
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { test } from "node:test";
-import type { AssistantMessage, ToolResultMessage } from "@earendil-works/pi-ai";
-import { fauxAssistantMessage } from "@earendil-works/pi-ai/providers/faux";
-import type { ConversationView, EntryId, ToolExecutionApi } from "@earendil-works/pi-durable";
-import { stripTerminalSequences } from "@earendil-works/pi-tui";
+import type { AssistantMessage, ToolResultMessage } from "@nycode/ai";
+import { fauxAssistantMessage } from "@nycode/ai/providers/faux";
+import type { ConversationView, EntryId, ToolExecutionApi } from "@nycode/durable";
+import { stripTerminalSequences } from "@nycode/tui";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { transcriptComponent } from "../../src/tui/messages.ts";
 import { buildTranscript } from "../../src/web/transcript.ts";
@@ -85,10 +85,10 @@ async function view(): Promise<ConversationView> {
 	return {
 		conversation,
 		entries: [
-			entry(2, "pi.assistant", calls),
-			entry(3, "pi.tool-result", await result("w1", TEXT)),
-			entry(4, "pi.tool-result", await result("w2", " ")),
-			entry(5, "pi.assistant", answer),
+			entry(2, "nycode.assistant", calls),
+			entry(3, "nycode.tool-result", await result("w1", TEXT)),
+			entry(4, "nycode.tool-result", await result("w2", " ")),
+			entry(5, "nycode.assistant", answer),
 		],
 		docs: {},
 	};

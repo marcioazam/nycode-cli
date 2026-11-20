@@ -1,15 +1,10 @@
-// P0c (identities, layout, reading position, snapshot, Ctrl+C/Ctrl+D) and P2 (pi's message/tool rendering, footer
+// P0c (identities, layout, reading position, snapshot, Ctrl+C/Ctrl+D) and P2 (nycode's message/tool rendering, footer
 // provenance) of p2-tui-port.md, on a bare host; the sandboxed run is in the last test.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { AssistantMessage } from "@earendil-works/pi-ai";
-import {
-	type ConversationView,
-	type EntryId,
-	type EntryRecord,
-	ROOT_CONVERSATION_ID,
-} from "@earendil-works/pi-durable";
-import { stripTerminalSequences, Text, TuiAltScreen, visibleWidth } from "@earendil-works/pi-tui";
+import type { AssistantMessage } from "@nycode/ai";
+import { type ConversationView, type EntryId, type EntryRecord, ROOT_CONVERSATION_ID } from "@nycode/durable";
+import { stripTerminalSequences, Text, TuiAltScreen, visibleWidth } from "@nycode/tui";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { VirtualTerminal } from "../../../../packages/tui/test/virtual-terminal.ts";
 import { Chat, type EntriesPage } from "../../plugins/chat/contract.ts";
@@ -84,11 +79,11 @@ const viewOf = (entries: EntryRecord[], docs: Record<string, unknown> = {}): Con
 	docs: docs as ConversationView["docs"],
 });
 const userEntry = (id: number, text: string) =>
-	entry(id, { kind: "pi.user", model: [{ role: "user", content: text, timestamp: id }] });
+	entry(id, { kind: "nycode.user", model: [{ role: "user", content: text, timestamp: id }] });
 const answerEntry = (id: number, text: string, timestamp = id) =>
-	entry(id, { kind: "pi.assistant", model: [assistant([{ type: "text", text }], { timestamp })] });
+	entry(id, { kind: "nycode.assistant", model: [assistant([{ type: "text", text }], { timestamp })] });
 
-test("pi's message components: Markdown, hidden thinking, error notices, sanitized text", () => {
+test("nycode's message components: Markdown, hidden thinking, error notices, sanitized text", () => {
 	const message = assistant([
 		{ type: "thinking", thinking: "private reasoning" },
 		{ type: "text", text: "**Answer** with `code`\x1b]52;c;evil\x07" },
@@ -120,7 +115,7 @@ test("pi's message components: Markdown, hidden thinking, error notices, sanitiz
 	assert.equal(safeText("safe\x1b]52;c;evil\x07\x1b[2J\x00 text"), "safe text");
 });
 
-test("tool cards: pi's bash, read, edit diff, generic fallback, code mode with nested calls, theme swap", () => {
+test("tool cards: nycode's bash, read, edit diff, generic fallback, code mode with nested calls, theme swap", () => {
 	const output = Array.from({ length: 15 }, (_, i) => `output-${i}`).join("\n");
 	const tool = (patch: Partial<ToolView>): ToolView => ({
 		id: "call",
@@ -150,7 +145,7 @@ test("tool cards: pi's bash, read, edit diff, generic fallback, code mode with n
 	);
 	assert.match(plain(running.render(60)), /partial[\s\S]*Elapsed/);
 	running.dispose();
-	// Unknown tools: pi's generic call line and the first 10 result lines.
+	// Unknown tools: nycode's generic call line and the first 10 result lines.
 	const generic = plain(
 		new ToolExecutionComponent(tool({ name: "mcp_thing", args: { q: 1 } }), undefined, ctx()).render(80),
 	);
@@ -234,7 +229,7 @@ test("tool cards: pi's bash, read, edit diff, generic fallback, code mode with n
 test("transcript: streaming answer becomes its entry in place, tool lifecycle, markers and p2 notices", () => {
 	const call = { type: "toolCall" as const, id: "t1", name: "bash", arguments: { command: "ls" } };
 	const streaming = viewOf([userEntry(1, "hi")], {
-		"pi.live": {
+		"nycode.live": {
 			run: { taskId: 1 },
 			generation: { message: assistant([{ type: "text", text: "Work" }, call], { timestamp: 7 }) },
 		},
@@ -245,16 +240,19 @@ test("transcript: streaming answer becomes its entry in place, tool lifecycle, m
 	const first = plain(component.render(80));
 	assert.match(first, /hi[\s\S]*Work[\s\S]*\$ ls/);
 	const answer = entry(2, {
-		kind: "pi.assistant",
+		kind: "nycode.assistant",
 		model: [assistant([{ type: "text", text: "Work" }, call], { timestamp: 7, stopReason: "toolUse" })],
 	});
 	const running = viewOf([userEntry(1, "hi"), answer], {
-		"pi.live": { run: { taskId: 1 }, tools: [{ callId: "t1", name: "bash", status: "running", output: "a.txt" }] },
+		"nycode.live": {
+			run: { taskId: 1 },
+			tools: [{ callId: "t1", name: "bash", status: "running", output: "a.txt" }],
+		},
 	});
 	component.sync(buildTranscript(wholeView(running)));
 	assert.match(plain(component.render(80)), /\$ ls[\s\S]*a\.txt[\s\S]*Elapsed/);
 	const result = entry(3, {
-		kind: "pi.tool-result",
+		kind: "nycode.tool-result",
 		model: [
 			{
 				role: "toolResult",
@@ -275,11 +273,11 @@ test("transcript: streaming answer becomes its entry in place, tool lifecycle, m
 					answer,
 					result,
 					entry(4, {
-						kind: "pi.compaction",
+						kind: "nycode.compaction",
 						model: [{ role: "user", content: "Summary of earlier work", timestamp: 10 }],
 					}),
 					entry(5, { kind: "app.model-error", data: { detail: "provider down" } }),
-					entry(6, { kind: "pi.reset", model: [{ role: "user", content: "Handoff note", timestamp: 11 }] }),
+					entry(6, { kind: "nycode.reset", model: [{ role: "user", content: "Handoff note", timestamp: 11 }] }),
 				]),
 			),
 		),
@@ -294,7 +292,9 @@ test("transcript: streaming answer becomes its entry in place, tool lifecycle, m
 	// An answer that never ran its calls: interrupted cards.
 	const interrupted = transcriptComponent(
 		buildTranscript(
-			wholeView(viewOf([entry(1, { kind: "pi.assistant", model: [assistant([call], { stopReason: "aborted" })] })])),
+			wholeView(
+				viewOf([entry(1, { kind: "nycode.assistant", model: [assistant([call], { stopReason: "aborted" })] })]),
+			),
 		),
 		false,
 		false,
@@ -303,7 +303,7 @@ test("transcript: streaming answer becomes its entry in place, tool lifecycle, m
 	assert.match(plain(interrupted.render(80)), /Not run: the answer was interrupted\./);
 	// Compaction failures are state notices.
 	const failed = transcriptComponent(
-		buildTranscript(wholeView(viewOf([], { "pi.live": { compactionFailure: { taskId: 3, error: "too big" } } }))),
+		buildTranscript(wholeView(viewOf([], { "nycode.live": { compactionFailure: { taskId: 3, error: "too big" } } }))),
 		false,
 		false,
 		{ renderers: PLUGIN_TUI_RENDERERS },
@@ -417,7 +417,7 @@ test("history prepend keeps the visible content; ctrl+home reaches the conversat
 	const older = Array.from({ length: 20 }, (_, i) => answerEntry(i + 1, `older-${i}`, i + 1));
 	let pages = 0;
 	const marker = entry(30, {
-		kind: "pi.compaction",
+		kind: "nycode.compaction",
 		head: 21 as EntryId,
 		model: [{ role: "user", content: "S", timestamp: 30 }],
 	});
@@ -572,7 +572,7 @@ test("plugin contributions: tool renderers, entry renderers and Markdown transfo
 			viewOf([
 				answerEntry(1, "answer with TOKEN"),
 				entry(2, { kind: "test.note", data: { n: 1 } }),
-				entry(3, { kind: "pi.assistant", model: [assistant([call], { stopReason: "toolUse", timestamp: 3 })] }),
+				entry(3, { kind: "nycode.assistant", model: [assistant([call], { stopReason: "toolUse", timestamp: 3 })] }),
 			]),
 		{ facets: [contributions] },
 	);
@@ -597,8 +597,8 @@ test("footer provenance: owner sees context against the model window, guests get
 		branches: [],
 	};
 	const view = viewOf([answerEntry(1, "hello")], {
-		"pi.agent": { model: { provider: "faux", modelId: "faux-1" }, thinkingLevel: "medium" },
-		"pi.usage": {
+		"nycode.agent": { model: { provider: "faux", modelId: "faux-1" }, thinkingLevel: "medium" },
+		"nycode.usage": {
 			models: { "faux/faux-1": { ...usage, cacheRead: 30, cost: { ...usage.cost, total: 0.25 } } },
 			tools: {},
 		},
@@ -719,7 +719,7 @@ test(
 		// quiet-tools draws the call as one line; Ctrl+O expands it into the full card.
 		await poll(async () => /› codemode 2 calls: bash, read ✓/.test(await screen()), 30000, "quiet code mode line");
 		terminal.sendInput("\x0f");
-		// pi's code mode card: the script, its nested bash/read calls and the output.
+		// nycode's code mode card: the script, its nested bash/read calls and the output.
 		// Live rows can settle before the result commits; the output comes with the result.
 		await poll(async () => /✓ bash[\s\S]*✓ read[\s\S]*bash: written/.test(await screen()), 30000, "code mode card");
 		const shown = await screen();

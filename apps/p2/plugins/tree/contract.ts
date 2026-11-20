@@ -1,6 +1,6 @@
 // `/tree` (`docs/tree.md`): the session's branches as one tree of messages, switching the branch the session continues
 // in, and the branches' labels. Each branch is a top-level Durable conversation forked from another at an entry.
-import { arr, int, nul, obj, type Static, str, union } from "@earendil-works/pi-schema";
+import { arr, int, nul, obj, type Static, str, union } from "@nycode/schema";
 import { evolve, literal, method, param, remote, sessionHost } from "@p2/app/v1";
 
 /** How much of a message a node previews, and the longest branch label. */
@@ -55,7 +55,7 @@ const SessionTreeV1 = remote("p2.tree", {
 			methods: {
 				tree: method(undefined, obj({ nodes: arr(obj(NODE_FIELDS)), ...TREE_FIELDS })),
 				/**
-				 * Continues the session at `entry` (pi's `/tree`): after it for an answer, before it for a user message, whose
+				 * Continues the session at `entry` (nycode's `/tree`): after it for an answer, before it for a user message, whose
 				 * text comes back for the editor (null otherwise). Switches to the branch ending there, else forks a new one
 				 * (a new empty conversation before the first message), labelled with the chosen message's start. A run of
 				 * the conversation left goes on in the background. Returns the new main conversation.

@@ -50,7 +50,7 @@ import { getModel, normalizeContext } from "../src/compat.ts";
 import type { Model } from "../src/types.ts";
 import { formatUserAgent } from "../src/utils/identity.ts";
 
-const PI_USER_AGENT = formatUserAgent();
+const NYCODE_USER_AGENT = formatUserAgent();
 const model = getModel("google-vertex", "gemini-3-flash-preview");
 const context = normalizeContext({
 	messages: [{ role: "user", content: "hello", timestamp: Date.now() }],
@@ -158,7 +158,7 @@ describe("google-vertex api key resolution", () => {
 		expect(googleGenAiMock.constructorCalls).toHaveLength(1);
 		expect(googleGenAiMock.constructorCalls[0]?.httpOptions).toEqual({
 			fetch: globalThis.fetch,
-			headers: { "User-Agent": PI_USER_AGENT },
+			headers: { "User-Agent": NYCODE_USER_AGENT },
 		});
 	});
 

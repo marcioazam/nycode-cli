@@ -1,4 +1,4 @@
-import { NodeExecutionEnv } from "@earendil-works/pi-durable/env/node";
+import { NodeExecutionEnv } from "@nycode/durable/env/node";
 import { Observer } from "@p2/app/v1/node";
 import { type EnvsConfig, envsPath, loadEnvs } from "./config.ts";
 

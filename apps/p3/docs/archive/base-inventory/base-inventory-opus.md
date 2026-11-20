@@ -1,10 +1,10 @@
-# What the Pi Roam base must enable: an inventory (opus)
+# What the Nycode Roam base must enable: an inventory (opus)
 
 Angle: first the areas nobody listed in detail yet (automations, stats, memory, search, approvals, multi-device,
 voice, TUI, browsers and computer use, sandboxes, MCP, backups and moving, team instances, plugin distribution,
 agent-built UI, notifications, files and drives, email and calendar, long-running jobs), then the rest.
 
-Sources read: `apps/p3/docs/direction-pi-roam.md`, `apps/p3/docs/decisions.md`, `apps/p3/docs/handoff.md`,
+Sources read: `apps/p3/docs/direction-nycode-roam.md`, `apps/p3/docs/decisions.md`, `apps/p3/docs/handoff.md`,
 `apps/p3/docs/map/book.md` (API and registries proposed for step 0), `packages/durable/src/harness/types.ts` (all),
 `packages/durable/src/types.ts` (task runtime, observers), `packages/durable/docs/spec.md` (hook selection),
 `packages/chord/docs/design.md` §1-§5, §14-§20, §23-§24, `packages/chord/src/node/app/README.md`,
@@ -55,7 +55,7 @@ Two facts shape almost every answer below:
 | D-WRAP | `wrapTool`, `wrapSection` | `harness/types.ts` `Wrap`; selected extensions only |
 | D-TASKS | tasks: `sleepUntil`, waits on tasks, background, ownership, `abortTask`, restart limit | `src/types.ts:340-362`, `harness/types.ts` |
 | D-WAKE | `Harness.wake(): { active, at? }`, `onWake` | `harness/types.ts` `Wake`, `HarnessOptions.onWake` |
-| D-OBS | `observeConversation`, `observeTaskGraph`, `observeDoc`, `observeCommits`; `ConversationView`; `pi.usage` per conversation, `Harness.usage()` | `harness/types.ts`, `src/types.ts:1101-1130`, `harness/usage.ts` |
+| D-OBS | `observeConversation`, `observeTaskGraph`, `observeDoc`, `observeCommits`; `ConversationView`; `nycode.usage` per conversation, `Harness.usage()` | `harness/types.ts`, `src/types.ts:1101-1130`, `harness/usage.ts` |
 | D-CONV | `createConversation({ ownership })`, `fork(at)`, `submit` (`input` with `entry: { kind, data }`, `whenBusy`, `whenIdle: "reject"`; `write`; `continue`), `reset(handoff)`, `compact`, `abort`, `context({ at })`, `inspect()` | `harness/types.ts` |
 | D-AGENT | per-conversation `AgentState`: `extensions`, `tools`, `modelTools`, `instructions`, `cwd`, `maxTurns`, `compaction` | `harness/types.ts` |
 | D-TOOL | `ToolRegistration`: `callers`, `deferred`, `replay`, `structuredOutputSchema`, `executeTool` (nested), `control` (`terminate`, `handoff`, `addTools`), images in results | `harness/types.ts` |
@@ -167,7 +167,7 @@ file of the plugin that serves them"): not base.
 - **Experience:** "When a background session finishes, put a two-line summary into Home." "When any run fails with a
   model error, notify me."
 - **Build:** worker: the plugin's worker facet runs in every session; an object follows the root conversation's view
-  through `HarnessNative` (`observeConversation`), detects settled runs and failures (`pi.live.runFailure`), and
+  through `HarnessNative` (`observeConversation`), detects settled runs and failures (`nycode.live.runFailure`), and
   pushes `{ session, outcome, answerEntry }` to its own server store (push, never pull). Server: the store calls
   `SessionService.submit(home, { type: "write", entry: { kind: "home.card", data } })`.
 - **Needs:** N-NATIVE, D-OBS, N-SESSIONS (cross-session `write`), N-CATALOG (which session is Home: a label),
@@ -191,19 +191,19 @@ file of the plugin that serves them"): not base.
 
 - **Experience:** A Usage screen: spend per day for 30 days, per model, per session, per origin (Discord, automations,
   Home), per user on a team instance; cache hit rate; the top 10 expensive sessions, each one tap from its transcript.
-- **Build:** worker: an object follows `pi.usage` of every conversation (`observeDoc(UsageDoc)` through
+- **Build:** worker: an object follows `nycode.usage` of every conversation (`observeDoc(UsageDoc)` through
   `HarnessNative`) and each assistant entry's `usage` (`observeConversation`), and pushes deltas `{ session, day,
   model, origin, user, usage }` to the server. Server: a `UsageStore` table with live queries per range; per-user
   attribution reads the submitting principal from the input entry's data. Page: a view with charts; a footer slot
   showing the session's spend.
-- **Needs:** N-NATIVE, D-OBS (`pi.usage`, entries' usage), N-FACTS (origin, owner), N-CATALOG (usage column for
+- **Needs:** N-NATIVE, D-OBS (`nycode.usage`, entries' usage), N-FACTS (origin, owner), N-CATALOG (usage column for
   sorting, titles), X-OBJ (tables, live queries), N-VIEWS, N-RENDER (footer slot), and **attribution of inputs**:
   the person who sent an input must be on its entry (D-CONV `InputEntry.data` EXISTS; the base's chat must always
   write it, so stats need not guess).
 - **Gap named:** sessions that never run again are never re-observed; a backfill needs to read stopped sessions'
   stores (start the worker by holding, or D-RO on the server).
 
-### U8. Context insight (dsh-context in Pi Roam)
+### U8. Context insight (dsh-context in Nycode Roam)
 
 - **Experience:** A Context tab per session: what fills the context (system prompt sections, tool results, images,
   summaries), its trend per request, compactions, file reads and commands; a Fleet tab with the agent, its parent and
@@ -218,7 +218,7 @@ file of the plugin that serves them"): not base.
 
 - **Experience:** "No session may spend more than 5 USD without asking; guests 0.50 USD a day; the Discord bot 20 USD
   a day in total." When a cap is reached the run pauses with a card asking to raise it.
-- **Build:** worker: a chain `beforeRequest` that reads the session's `pi.usage` and the plugin's server-side daily
+- **Build:** worker: a chain `beforeRequest` that reads the session's `nycode.usage` and the plugin's server-side daily
   totals (cached, pushed), and when over the cap asks `Questions` (or blocks with an error the model sees). Server:
   totals per user and per origin from U7's feed.
 - **Needs:** N-CHAIN (must hold whatever the session selects), N-QUESTIONS, N-FACTS (origin, owner), D-OBS, a way for
@@ -255,7 +255,7 @@ file of the plugin that serves them"): not base.
 
 ### U13. Long-term memory across sessions
 
-- **Experience:** Pi remembers that he prefers Biome over Prettier, that Cristina's roastery reorders at 20 kg, and
+- **Experience:** Nycode remembers that he prefers Biome over Prettier, that Cristina's roastery reorders at 20 kg, and
   that the Hetzner box is called slayer, across all sessions. A Memory screen lists, edits and forgets entries.
 - **Build:** server: `MemoryStore` table `{ id, owner, scope: "user" | "project" | "instance", text, source: {
   session, entry } }`. Worker: tools `remember`/`forget` (N-TOOLS), a prompt section rendering relevant memories
@@ -264,7 +264,7 @@ file of the plugin that serves them"): not base.
 - **Needs:** N-TOOLS, N-SECTIONS, N-TASKS, N-CHAIN (`afterRun` capture for every session, unless memory is a selected
   extension), N-FACTS (owner and project to scope reads), N-MODELS (a cheap model for extraction), N-POLICY (Discord
   sessions must not read the owner's private memories: a filter on the section by origin, N-FILTER).
-- **Gap named:** embeddings. pi-ai has no embedding API; semantic recall needs a provider contract (plugin contract
+- **Gap named:** embeddings. nycode-ai has no embedding API; semantic recall needs a provider contract (plugin contract
   is enough) or full-text ranking (`packages/durable/src/search.ts` `rankDocuments` EXISTS).
 
 ### U14. Knowledge base over documents (RAG)
@@ -344,7 +344,7 @@ file of the plugin that serves them"): not base.
 
 ### U21. Personal assistant over iMessage, WhatsApp, Telegram, Signal (the owner's OpenClaw case)
 
-- **Experience:** He texts Pi from WhatsApp or iMessage; one long-running Home conversation answers, remembers, runs
+- **Experience:** He texts Nycode from WhatsApp or iMessage; one long-running Home conversation answers, remembers, runs
   automations, sends reminders back to the same chat. Almost no UI; the page is for settings and looking back.
 - **Build:** server: one bridge plugin per network owning the connection as a native (Telegram long poll or webhook;
   WhatsApp Cloud API webhook; Signal via `signal-cli` on a hand; iMessage via a Mac hand running BlueBubbles or
@@ -377,7 +377,7 @@ file of the plugin that serves them"): not base.
 
 ### U23. Slack team bot
 
-- **Experience:** In the team's Slack, threads become sessions; `/pi summarize` runs a template; approvals are Block
+- **Experience:** In the team's Slack, threads become sessions; `/nycode summarize` runs a template; approvals are Block
   Kit buttons that only the session's owner may press.
 - **Build:** as U22; Slack Events API needs a public route (or Socket Mode: an outbound WebSocket native in a server
   object, no public route needed); slash commands are routes; buttons answer `Questions` as the mapped user.
@@ -387,7 +387,7 @@ file of the plugin that serves them"): not base.
 
 ### U24. Email as a channel
 
-- **Experience:** He forwards a mail to pi@his-domain or labels it "Pi" in Gmail; a session works on it and replies
+- **Experience:** He forwards a mail to nycode@his-domain or labels it "Nycode" in Gmail; a session works on it and replies
   by mail (after approval).
 - **Build:** server: Gmail push (Pub/Sub webhook) or IMAP IDLE in an `onLive` routine; mail → session by thread id as
   key; replies through the draft/undo pattern (U20). Mail content is untrusted: N-INPUT marks it as such.
@@ -395,9 +395,9 @@ file of the plugin that serves them"): not base.
 
 ### U25. A phone number for the assistant (voice calls)
 
-- **Experience:** He calls a number from the car; Pi answers with voice, uses Home's memory, can start work.
+- **Experience:** He calls a number from the car; Nycode answers with voice, uses Home's memory, can start work.
 - **Build:** server: a Twilio plugin: a public webhook answering TwiML and a WebSocket media stream (`sockets`
-  contribution) bridged to the speech service; transcribed turns are submitted into Home; Pi's text answers are
+  contribution) bridged to the speech service; transcribed turns are submitted into Home; Nycode's text answers are
   synthesized back; barge-in aborts (`SessionService.abort`).
 - **Needs:** X-HTTP (`sockets`, public routes), N-ORIGIN, N-INGRESS (a socket through Radius), N-SESSIONS (submit,
   abort, `whenBusy: "steer"`), N-NATIVE (streamed answer text), N-SECRETS.
@@ -408,7 +408,7 @@ file of the plugin that serves them"): not base.
 
 ### U26. Home orchestrator with cards (Armin's walkthrough)
 
-- **Experience:** One Home conversation. Pi decides where work goes, starts sessions in the background, shows each as
+- **Experience:** One Home conversation. Nycode decides where work goes, starts sessions in the background, shows each as
   a live card (progress line, run 31 of 50), and brings results back with buttons. Tapping a card makes it the target
   of the next message; opening it goes one level down to the full transcript.
 - **Build:** worker (Home's): tools `start_work({ prompt, project, location })` → `SessionService.create` + `submit`
@@ -422,7 +422,7 @@ file of the plugin that serves them"): not base.
 
 ### U27. Projects that become screens; groupings
 
-- **Experience:** "Roastery" appears from a sentence; it opens as a stock screen; Ask Pi in the bar works in the
+- **Experience:** "Roastery" appears from a sentence; it opens as a stock screen; Ask Nycode in the bar works in the
   project's context; later a board, a roast log tab.
 - **Build:** server: a projects plugin with a table of projects and memberships (p2: `plugins/projects`), a grouping
   kind; the project's screen is either a canvas (U33) or a plugin the agent wrote (U34). Project sessions get the
@@ -446,7 +446,7 @@ file of the plugin that serves them"): not base.
 
 # G. Bespoke apps
 
-### U29. Triage inside Pi Roam (triagent rebuilt as a plugin)
+### U29. Triage inside Nycode Roam (triagent rebuilt as a plugin)
 
 - **Experience:** A Triage screen: the inbox of untriaged issues on the left grouped by suggestion, the research on
   the right with Accept / p0 / p1 / none (6-second undo), tabs for report, comments, draft reply, fix diff, agent log.
@@ -455,7 +455,7 @@ file of the plugin that serves them"): not base.
 - **Build:** server: `TriageStore` with tables `issues`, `research`, `decisions`; an `onLive` routine syncing GitHub
   every 20 minutes (or a webhook, U2); a job queue (`concurrency: 2`) whose run creates a research session:
   `SessionService.create({ origin: { plugin: "triage", key: "issue:123:run:4" }, template: "triage-research",
-  location: { kind: "gondolin", image: "pi-research" }, open: false })` + `submit(prompt)`. Worker: the triage
+  location: { kind: "gondolin", image: "nycode-research" }, open: false })` + `submit(prompt)`. Worker: the triage
   plugin's tools `submit_research`, `submit_fix`, `save_reply` (offered only in triage sessions: N-FILTER on
   `facts.origin.plugin`), which call the server store through `chord()`; a chain `beforeRequest` enforcing the run's
   cost cap (`RESEARCH_MAX_COST`) and a server routine aborting after `RESEARCH_MINUTES`. Page: a view kind `triage`,
@@ -477,7 +477,7 @@ file of the plugin that serves them"): not base.
 
 ### U31. Small data apps from a spreadsheet (Roastery)
 
-- **Experience:** "Track green coffee; warn me a week before we run out." Pi builds a stock screen from the
+- **Experience:** "Track green coffee; warn me a week before we run out." Nycode builds a stock screen from the
   spreadsheet, keeps it in sync, adds a roast log tab when asked; selecting two lots and pressing Reorder starts work
   with the selection attached.
 - **Build:** either a canvas spec (U33) over a table the agent created through a generic data plugin, or a real
@@ -500,7 +500,7 @@ file of the plugin that serves them"): not base.
 
 ### U33. The agent composes a view (canvas)
 
-- **Experience:** "Show me a table of my sessions this week with cost, and a button to archive the cheap ones." Pi
+- **Experience:** "Show me a table of my sessions this week with cost, and a button to archive the cheap ones." Nycode
   answers with a small live view inside the conversation; "Open" makes it a full screen; it stays live (rows update),
   and its buttons do real things with a confirmation.
 - **Build:** server: a canvas plugin keeps view specs as documents (`{ components: [{ kind: "table", source: {
@@ -516,7 +516,7 @@ file of the plugin that serves them"): not base.
 
 ### U34. The agent writes a real plugin ("projects become apps")
 
-- **Experience:** "Make Roastery its own app." Pi writes a plugin (server store, page view), shows a preview, he
+- **Experience:** "Make Roastery its own app." Nycode writes a plugin (server store, page view), shows a preview, he
   accepts, it is live without a restart; "how did this get here?" opens the session that wrote it; a bad change rolls
   back with one tap.
 - **Build:** worker: tools that write files into a plugin directory and call `apply`; the session's environment must
@@ -533,7 +533,7 @@ file of the plugin that serves them"): not base.
 
 ### U35. Artifacts with live data
 
-- **Experience:** Pi makes an HTML report or chart (as p2's artifacts); it previews inline, opens full screen, can be
+- **Experience:** Nycode makes an HTML report or chart (as p2's artifacts); it previews inline, opens full screen, can be
   shared by link; optionally it reads live data (a dashboard that refreshes).
 - **Build:** worker: `artifact` tool writing to `Files` space `artifacts`; server: a route serving versions as
   `bytes` with `inline` and the sandbox CSP; live data through a `postMessage` bridge the page offers the frame, which
@@ -547,7 +547,7 @@ file of the plugin that serves them"): not base.
 
 ### U36. A coding session with review (the coding walkthrough)
 
-- **Experience:** Say what is broken; Pi picks the checkout and machine (a chip); the card is live; one level down
+- **Experience:** Say what is broken; Nycode picks the checkout and machine (a chip); the card is live; one level down
   are the transcript, a live terminal, Changes, Files, Git; comments sit on diff lines; Accept keeps the change.
 - **Build:** worker: coding tools (Durable `tools/`), environment from the location; workspace plugin (git status,
   diff) as objects in the worker using the environment. Page: a session view assembled from panels (Transcript,
@@ -557,8 +557,8 @@ file of the plugin that serves them"): not base.
 
 ### U37. Machines asked for once, lent for one task
 
-- **Experience:** "Run the full suite on slayer." slayer is not on pi-mono's list; Pi asks once (for this work /
-  always for pi-mono / don't); while lent, a chip with a light shows it and has Stop.
+- **Experience:** "Run the full suite on slayer." slayer is not on nycode-mono's list; Nycode asks once (for this work /
+  always for nycode-mono / don't); while lent, a chip with a light shows it and has Stop.
 - **Build:** the resources/policy plugin: a tool requesting a location raises a question; the answer adds a list entry
   (with expiry "this task"); the session's env wrap reads the list at each call; the bar slot shows active lends with
   usage lights from the env wrap's call counts.
@@ -567,7 +567,7 @@ file of the plugin that serves them"): not base.
 
 ### U38. Live shared terminal, previews and port forwards
 
-- **Experience:** The terminal Pi types into is live on the page; he can type too and Pi sees it. A dev server Pi
+- **Experience:** The terminal Nycode types into is live on the page; he can type too and Nycode sees it. A dev server Nycode
   starts is previewed at a URL (through Radius when remote).
 - **Build:** worker or server: terminals plugin (p2: PTYs via the daemon, ghostty-vt in the page) over a `sockets`
   route; previews through `Http` proxy routes and Radius forwards.
@@ -622,7 +622,7 @@ file of the plugin that serves them"): not base.
 
 ### U43. Computer use on a desktop
 
-- **Experience:** Pi operates his Mac (screenshot, mouse, keyboard) for an app without an API; a panel shows the
+- **Experience:** Nycode operates his Mac (screenshot, mouse, keyboard) for an app without an API; a panel shows the
   screen; a big Stop.
 - **Build:** a hand capability `screen` (capture, input) on macOS; worker tools using it; a VNC/WebRTC view on the
   page.
@@ -631,7 +631,7 @@ file of the plugin that serves them"): not base.
 
 ### U44. His own browser as a tool (extension or WebMCP)
 
-- **Experience:** With the Pi extension installed, the agent can read the page he is looking at, fill a form in his
+- **Experience:** With the Nycode extension installed, the agent can read the page he is looking at, fill a form in his
   logged-in session, or grab a selection.
 - **Build:** the extension signs in as a device (pairing) and connects as a client; clients serve no objects (design
   §3: "No client providers for now"), so it answers requests: a server object queues `BrowserRequest`s for that
@@ -646,7 +646,7 @@ file of the plugin that serves them"): not base.
 ### U45. MCP servers as tools
 
 - **Experience:** He adds Linear, GitHub and a local stdio server; signs in with OAuth on the page; tools appear in
-  sessions of the projects that have them; a checkout's `.pi/mcp.json` suggests a server once.
+  sessions of the projects that have them; a checkout's `.nycode/mcp.json` suggests a server once.
 - **Build:** server: an MCP manager (p2: `plugins/mcp/server.ts`: configuration, instances, OAuth sign-ins, leases per
   session); routes for the OAuth callback. Worker: an extension whose tools follow the server's per-session view
   (`self.writable` contribution changed by a routine), tools as `callers: ["tools"]` + `deferred` behind code mode or
@@ -655,7 +655,7 @@ file of the plugin that serves them"): not base.
   per user), N-FACTS (owner and project decide which servers), N-POLICY (resource lists), N-ENVS (stdio servers run
   in an environment), N-KEEP (leases), D-TOOL (`callers`, `deferred`), D-CODEMODE.
 
-### U46. Pi Roam as an MCP server
+### U46. Nycode Roam as an MCP server
 
 - **Experience:** Claude Desktop or Cursor on his laptop can list his sessions, start one in a checkout, read results,
   and answer the needs-you tray.
@@ -669,7 +669,7 @@ file of the plugin that serves them"): not base.
 
 ### U47. Email triage assistant
 
-- **Experience:** Every morning Pi sorts the inbox: drafts replies for approval, archives newsletters, lists what
+- **Experience:** Every morning Nycode sorts the inbox: drafts replies for approval, archives newsletters, lists what
   needs him. Sending needs his tap.
 - **Build:** server: a mail plugin (Gmail API or `gog` on a machine) with an account per user in `Secrets`; an
   automation (U1) runs a template; tools read and draft; sending through the draft/undo pattern (U20). Untrusted
@@ -687,7 +687,7 @@ file of the plugin that serves them"): not base.
 
 ### U49. File drops and drives
 
-- **Experience:** He shares a PDF from the phone's share sheet to Pi; it lands in Home with "file it?"; drag and drop
+- **Experience:** He shares a PDF from the phone's share sheet to Nycode; it lands in Home with "file it?"; drag and drop
   into the composer attaches files; a Drive view shows the instance's files and synced Google Drive or Dropbox
   folders; sessions can read them as a mounted folder.
 - **Build:** page: the PWA's `share_target` posts to a route that stores the file in `Files` (space `inbox`) and
@@ -700,10 +700,10 @@ file of the plugin that serves them"): not base.
 
 ### U50. Meetings and audio
 
-- **Experience:** He drops a meeting recording; Pi transcribes, summarizes, extracts tasks, drafts follow-up mails.
+- **Experience:** He drops a meeting recording; Nycode transcribes, summarizes, extracts tasks, drafts follow-up mails.
 - **Build:** upload to `Files`; a server job calls a transcription service; the transcript is submitted into a
   session from a template.
-- **Needs:** X-FILES, X-OBJ (jobs), N-SESSIONS, N-SECRETS; transcription as a plugin contract (no pi-ai API).
+- **Needs:** X-FILES, X-OBJ (jobs), N-SESSIONS, N-SECRETS; transcription as a plugin contract (no nycode-ai API).
 
 ---
 
@@ -711,8 +711,8 @@ file of the plugin that serves them"): not base.
 
 ### U51. Voice mode
 
-- **Experience:** Tap the mic; talk; Pi talks back; interrupt it mid-sentence (barge-in); in a shared session others
-  hear Pi too (p2's voice rooms).
+- **Experience:** Tap the mic; talk; Nycode talks back; interrupt it mid-sentence (barge-in); in a shared session others
+  hear Nycode too (p2's voice rooms).
 - **Build:** server: a socket route bridging browsers to the speech service (p2: `plugins/voice/server.ts`, token kept
   on the server); worker: a prompt section on while voice is on (p2: `plugins/voice/worker.ts`) and submissions with
   `whenBusy: "steer"`; page: a composer button and playback.
@@ -722,7 +722,7 @@ file of the plugin that serves them"): not base.
 
 ### U52. Mobile PWA
 
-- **Experience:** Installed on the home screen; push notifications for needs-you items; share sheet into Pi; works on
+- **Experience:** Installed on the home screen; push notifications for needs-you items; share sheet into Nycode; works on
   flaky networks with optimistic sends and drafts kept.
 - **Build:** page base: manifest and service worker; a push plugin keeps subscriptions (VAPID keys in `Secrets`);
   drafts plugin keeps composer drafts per user and conversation (p2: `plugins/drafts`).
@@ -777,7 +777,7 @@ file of the plugin that serves them"): not base.
 
 ### U57. Team instance on a cloud machine (Earendil's 15-20 people)
 
-- **Experience:** One click in Radius makes a persistent machine with Pi Roam; the admin installs plugins, adds the
+- **Experience:** One click in Radius makes a persistent machine with Nycode Roam; the admin installs plugins, adds the
   GitHub CLI login, mail and drive accounts, internal systems; people sign in with Radius or Google; each has a Home;
   a smaller circle has its own instance; the instance also sits in the team's Discord.
 - **Build:** server: users (kit `defineUsers`), sign-in plugins (Radius, Google: `Authenticators` + routes), a policy
@@ -832,7 +832,7 @@ file of the plugin that serves them"): not base.
 ### U61. Plugin catalog, install, update, rollback
 
 - **Experience:** A Plugins screen: installed plugins with version, source, what each contributes (tools, routes,
-  views), failures; a catalog (npm search for `pi-roam-plugin`, a curated list, the team's own); Install / Update /
+  views), failures; a catalog (npm search for `nycode-roam-plugin`, a curated list, the team's own); Install / Update /
   Disable / Roll back; "updates available" weekly.
 - **Build:** server: a plugin manager plugin over `PluginManager`; a routine checking npm and git for updates; the
   contribution list from the registries' tables (each entry keeps its plugin name: design §17).
@@ -874,7 +874,7 @@ file of the plugin that serves them"): not base.
 
 ### U65. Import, export and move sessions
 
-- **Experience:** Import a pi coding-agent `.jsonl`, a Claude Code session, or triagent's "Continue in pi" link as a
+- **Experience:** Import a nycode coding-agent `.jsonl`, a Claude Code session, or triagent's "Continue in nycode" link as a
   session; export a session as Markdown/HTML or as an archive; move one session to another instance.
 - **Build:** server: `SessionService.create({ init })` writing model entries (`EntryDraft` carries model messages);
   export through `exportData(Session({ id }))`; import with `importData` at a new address.

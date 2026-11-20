@@ -35,7 +35,7 @@ struct ServerConfig: Equatable {
 	/// Whether the server runs from the p2 and Node this app carries.
 	var runsBundled: Bool { checkout != nil && checkout == Self.bundled?.checkout }
 
-	static let defaultDataDir = FileManager.default.homeDirectoryForCurrentUser.appending(path: ".pi/p2")
+	static let defaultDataDir = FileManager.default.homeDirectoryForCurrentUser.appending(path: ".nycode/p2")
 
 	/// The p2 and Node a packaged app carries in its resources (scripts/package-app.sh); nil in a development build.
 	static let bundled: (checkout: URL, node: String)? = {

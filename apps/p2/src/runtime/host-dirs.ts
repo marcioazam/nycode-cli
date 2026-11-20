@@ -4,11 +4,11 @@
 // two host kinds: projects become a third directory of the same shape.
 import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { openStore, type Store, sqliteBackend } from "@earendil-works/chord";
-import { privateDirectory, privateStore } from "@earendil-works/chord/app/files";
-import type { Context } from "@earendil-works/chord/context";
-import { openNodeSqliteDatabase } from "@earendil-works/chord/sqlite/node";
-import { createSqliteTelemetry, type SqliteTelemetry } from "@earendil-works/chord/telemetry-sqlite";
+import { openStore, type Store, sqliteBackend } from "@nycode/chord";
+import { privateDirectory, privateStore } from "@nycode/chord/app/files";
+import type { Context } from "@nycode/chord/context";
+import { openNodeSqliteDatabase } from "@nycode/chord/sqlite/node";
+import { createSqliteTelemetry, type SqliteTelemetry } from "@nycode/chord/telemetry-sqlite";
 
 /** A session id as a directory name: the catalog's UUIDs (anything else would name another directory). */
 const SESSION_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;

@@ -9,7 +9,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { hostname, tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, describe, it, test } from "node:test";
-import { obj, str } from "@earendil-works/pi-schema";
+import { obj, str } from "@nycode/schema";
 import { BACKGROUND_CONTEXT, defineFacet, defineState, local, method, record, whenLive } from "@p2/app/v1";
 import { parseProjects } from "../../plugins/projects/config.ts";
 import { below, Projects, placeOn } from "../../plugins/projects/contract.ts";
@@ -18,20 +18,20 @@ import { type P2Server, startServer } from "../../src/hosts/server.ts";
 import type { RefIn } from "../../src/runtime/chord.ts";
 import { clientHost, expectChord, type Fixture, holdIn, localOwner, startFixture, until } from "./helpers.ts";
 
-const PI = { pi: [{ env: "mac", path: "~/projects/pi/pi" }, { path: "~/projects/pi/pi" }] };
+const PI = { nycode: [{ env: "mac", path: "~/projects/nycode/nycode" }, { path: "~/projects/nycode/nycode" }] };
 
 test("projects.json: order kept, a place without env is this device, invalid files say why", () => {
 	const projects = parseProjects(
 		`// comments and trailing commas, as in the other configuration files
-		{ "web": [{ "path": "/srv/web" }], "pi": [{ "env": "mac", "path": "~/projects/pi/pi" }, { "path": "~/projects/pi/pi" },], }`,
+		{ "web": [{ "path": "/srv/web" }], "nycode": [{ "env": "mac", "path": "~/projects/nycode/nycode" }, { "path": "~/projects/nycode/nycode" },], }`,
 	);
 	assert.deepEqual(projects, [
 		{ name: "web", places: [{ env: null, path: "/srv/web" }] },
 		{
-			name: "pi",
+			name: "nycode",
 			places: [
-				{ env: "mac", path: "~/projects/pi/pi" },
-				{ env: null, path: "~/projects/pi/pi" },
+				{ env: "mac", path: "~/projects/nycode/nycode" },
+				{ env: null, path: "~/projects/nycode/nycode" },
 			],
 		},
 	]);
@@ -39,13 +39,13 @@ test("projects.json: order kept, a place without env is this device, invalid fil
 	for (const [content, error] of [
 		["{", /syntax/],
 		["[]", /must be an object/],
-		['{ "pi": [] }', /pi: a list of places/],
-		['{ "pi": [{ "env": "mac" }] }', /pi: a place is/],
-		['{ "pi": [{ "path": "/a", "host": "x" }] }', /pi: a place is/],
-		['{ "pi": [{ "env": "Mac", "path": "/a" }] }', /invalid environment name Mac/],
-		['{ "pi": [{ "path": "projects/pi" }] }', /absolute or start with ~/],
-		['{ "pi": [{ "env": "mac", "path": "/a" }, { "env": "mac", "path": "/b" }] }', /two places on mac/],
-		['{ "pi": [{ "path": "/a" }, { "path": "~/b" }] }', /two places on this device/],
+		['{ "nycode": [] }', /nycode: a list of places/],
+		['{ "nycode": [{ "env": "mac" }] }', /nycode: a place is/],
+		['{ "nycode": [{ "path": "/a", "host": "x" }] }', /nycode: a place is/],
+		['{ "nycode": [{ "env": "Mac", "path": "/a" }] }', /invalid environment name Mac/],
+		['{ "nycode": [{ "path": "projects/nycode" }] }', /absolute or start with ~/],
+		['{ "nycode": [{ "env": "mac", "path": "/a" }, { "env": "mac", "path": "/b" }] }', /two places on mac/],
+		['{ "nycode": [{ "path": "/a" }, { "path": "~/b" }] }', /two places on this device/],
 		['{ "": [{ "path": "/a" }] }', /Invalid project name/],
 	] as const)
 		assert.throws(() => parseProjects(content), error, content);
@@ -53,29 +53,29 @@ test("projects.json: order kept, a place without env is this device, invalid fil
 
 test("a directory's subpath below a place, from the paths alone", () => {
 	// `~/rel`: `/rel` at segment boundaries after the (unknown, non-empty) home.
-	assert.equal(below("/home/me/projects/pi/pi", "~/projects/pi/pi"), "");
-	assert.equal(below("/Users/someone/projects/pi/pi/apps/p2", "~/projects/pi/pi"), "apps/p2");
-	assert.equal(below("/home/me/projects/pi/pi2", "~/projects/pi/pi"), undefined);
-	assert.equal(below("/home/me/old-projects/pi/pi", "~/projects/pi/pi"), undefined);
-	assert.equal(below("/projects/pi/pi", "~/projects/pi/pi"), undefined);
+	assert.equal(below("/home/me/projects/nycode/nycode", "~/projects/nycode/nycode"), "");
+	assert.equal(below("/Users/someone/projects/nycode/nycode/apps/p2", "~/projects/nycode/nycode"), "apps/p2");
+	assert.equal(below("/home/me/projects/nycode/pi2", "~/projects/nycode/nycode"), undefined);
+	assert.equal(below("/home/me/old-projects/nycode/nycode", "~/projects/nycode/nycode"), undefined);
+	assert.equal(below("/projects/nycode/nycode", "~/projects/nycode/nycode"), undefined);
 	// Absolute places: the path itself or below it.
 	assert.equal(below("/srv/app/src", "/srv/app"), "src");
 	assert.equal(below("/srv/app/src", "/srv/app/"), "src");
 	assert.equal(below("/srv/application", "/srv/app"), undefined);
 	// Windows machines: either separator, the subpath as written there.
-	assert.equal(below("C:\\Users\\me\\code\\pi\\src\\lib", "~/code/pi"), "src\\lib");
-	assert.equal(below("C:\\work\\pi\\src", "C:\\work\\pi"), "src");
+	assert.equal(below("C:\\Users\\me\\code\\nycode\\src\\lib", "~/code/nycode"), "src\\lib");
+	assert.equal(below("C:\\work\\nycode\\src", "C:\\work\\nycode"), "src");
 	// `~` contains every directory, its subpath unknown without the home.
 	assert.equal(below("/home/me/x", "~"), "");
 	assert.equal(below("/a/b", "/a/b/"), "");
 	assert.equal(below("/a/bc", "/a/b"), undefined);
 
-	const [pi] = parseProjects(JSON.stringify(PI));
-	assert(pi);
-	assert.deepEqual(placeOn(pi, "mac", "david-pi"), { env: "mac", path: "~/projects/pi/pi" });
-	assert.deepEqual(placeOn(pi, "local", "david-pi"), { env: null, path: "~/projects/pi/pi" });
-	assert.deepEqual(placeOn(pi, "David-pi", "david-pi"), { env: null, path: "~/projects/pi/pi" });
-	assert.equal(placeOn(pi, "gpu", "david-pi"), undefined);
+	const [nycode] = parseProjects(JSON.stringify(PI));
+	assert(nycode);
+	assert.deepEqual(placeOn(nycode, "mac", "david-nycode"), { env: "mac", path: "~/projects/nycode/nycode" });
+	assert.deepEqual(placeOn(nycode, "local", "david-nycode"), { env: null, path: "~/projects/nycode/nycode" });
+	assert.deepEqual(placeOn(nycode, "David-nycode", "david-nycode"), { env: null, path: "~/projects/nycode/nycode" });
+	assert.equal(placeOn(nycode, "gpu", "david-nycode"), undefined);
 });
 
 /**
@@ -122,11 +122,11 @@ describe("the one-time import", () => {
 		const root = mkdtempSync(join(tmpdir(), "p2-projects-import-"));
 		const dataDir = join(root, "data");
 		const ws = join(root, "ws");
-		for (const folder of ["pi/src", "web", "other"]) mkdirSync(join(ws, folder), { recursive: true });
+		for (const folder of ["nycode/src", "web", "other"]) mkdirSync(join(ws, folder), { recursive: true });
 		mkdirSync(dataDir, { recursive: true, mode: 0o700 });
 		writeFileSync(
 			join(dataDir, "projects.json"),
-			JSON.stringify({ pi: [{ path: join(ws, "pi") }], web: [{ path: join(ws, "web") }] }),
+			JSON.stringify({ nycode: [{ path: join(ws, "nycode") }], web: [{ path: join(ws, "web") }] }),
 		);
 		let server: P2Server | undefined;
 		t.after(async () => {
@@ -154,7 +154,7 @@ describe("the one-time import", () => {
 		const before = await holdIn(client, Sessions, {}, "owner");
 		const create = async (cwd: string) =>
 			(await before.create({ cwd: join(ws, cwd), title: cwd }, BACKGROUND_CONTEXT)).id;
-		const inPi = await create("pi/src");
+		const inNycode = await create("nycode/src");
 		const joined = await create("web");
 		const goneJoined = await create("other");
 		const goneInWeb = await create("web");
@@ -163,7 +163,7 @@ describe("the one-time import", () => {
 		await whenLive(earlier);
 		// "gone" is in no projects.json any more: its sessions go by their folders.
 		await earlier.seed(
-			{ sessions: { [joined]: "pi", [goneJoined]: "gone", [goneInWeb]: "gone" } },
+			{ sessions: { [joined]: "nycode", [goneJoined]: "gone", [goneInWeb]: "gone" } },
 			BACKGROUND_CONTEXT,
 		);
 		earlier.release();
@@ -172,16 +172,16 @@ describe("the one-time import", () => {
 		client = await start();
 		let projects = await holdIn(client, Projects, {}, "owner");
 		const imported = await until(projects.sessions, (map) => Object.keys(map ?? {}).length > 0);
-		assert.deepEqual(imported, { [inPi]: "pi", [joined]: "pi", [goneInWeb]: "web" });
+		assert.deepEqual(imported, { [inNycode]: "nycode", [joined]: "nycode", [goneInWeb]: "web" });
 		assert.deepEqual(await until(projects.projects, (list) => list !== undefined), [
-			{ name: "pi", places: [{ env: null, path: join(ws, "pi") }] },
+			{ name: "nycode", places: [{ env: null, path: join(ws, "nycode") }] },
 			{ name: "web", places: [{ env: null, path: join(ws, "web") }] },
 		]);
 		assert.deepEqual(await until(projects.archived, (list) => list !== undefined), []);
 		assert.equal(outside in imported, false);
 		// After the import a session joins a project only when the owner puts it there, wherever it works.
 		const sessions = await holdIn(client, Sessions, {}, "owner");
-		const later = (await sessions.create({ cwd: join(ws, "pi"), title: "Later" }, BACKGROUND_CONTEXT)).id;
+		const later = (await sessions.create({ cwd: join(ws, "nycode"), title: "Later" }, BACKGROUND_CONTEXT)).id;
 		await projects.rename({ name: "web", to: "site" }, BACKGROUND_CONTEXT);
 		await until(projects.projects, (list) => list?.[1]?.name === "site");
 		assert.equal(projects.sessions.value?.[later], undefined);
@@ -193,9 +193,9 @@ describe("the one-time import", () => {
 		projects = await holdIn(client, Projects, {}, "owner");
 		assert.deepEqual(
 			(await until(projects.projects, (list) => list !== undefined)).map((project) => project.name),
-			["pi", "site"],
+			["nycode", "site"],
 		);
-		assert.deepEqual(projects.sessions.value, { [inPi]: "pi", [joined]: "pi", [goneInWeb]: "site" });
+		assert.deepEqual(projects.sessions.value, { [inNycode]: "nycode", [joined]: "nycode", [goneInWeb]: "site" });
 		await stop(client);
 	});
 
@@ -203,7 +203,7 @@ describe("the one-time import", () => {
 		const root = mkdtempSync(join(tmpdir(), "p2-projects-invalid-"));
 		const dataDir = join(root, "data");
 		mkdirSync(dataDir, { recursive: true, mode: 0o700 });
-		writeFileSync(join(dataDir, "projects.json"), '{ "pi": [{ "path": "relative" }] }');
+		writeFileSync(join(dataDir, "projects.json"), '{ "nycode": [{ "path": "relative" }] }');
 		const server = await startServer({ dataDir, port: 0, fake: true, web: false });
 		const client = clientHost(await localOwner(server));
 		t.after(async () => {
@@ -214,8 +214,8 @@ describe("the one-time import", () => {
 		const projects = await holdIn(client, Projects, {}, "owner");
 		assert.deepEqual(await until(projects.projects, (list) => list !== undefined), []);
 		// The owner starts over from the web: the store takes projects at once.
-		await projects.create({ name: "pi", place: { env: null, path: "/pi" } }, BACKGROUND_CONTEXT);
-		await until(projects.projects, (list) => list?.[0]?.name === "pi");
+		await projects.create({ name: "nycode", place: { env: null, path: "/nycode" } }, BACKGROUND_CONTEXT);
+		await until(projects.projects, (list) => list?.[0]?.name === "nycode");
 	});
 });
 
@@ -244,39 +244,39 @@ describe("Projects", () => {
 	});
 
 	it("create: a project after the others, refused for a taken name, a bad name or a bad place", async () => {
-		await projects.create({ name: " pi ", place: { env: null, path: "/w/pi" } }, BACKGROUND_CONTEXT);
+		await projects.create({ name: " nycode ", place: { env: null, path: "/w/nycode" } }, BACKGROUND_CONTEXT);
 		await projects.create({ name: "web", place: { env: null, path: " /w/web " } }, BACKGROUND_CONTEXT);
 		await projects.create({ name: "gpu-app", place: { env: "gpu", path: "~/app" } }, BACKGROUND_CONTEXT);
 		const list = await until(projects.projects, (value) => value?.length === 3);
 		assert.deepEqual(list, [
-			{ name: "pi", places: [{ env: null, path: "/w/pi" }] },
+			{ name: "nycode", places: [{ env: null, path: "/w/nycode" }] },
 			{ name: "web", places: [{ env: null, path: "/w/web" }] },
 			{ name: "gpu-app", places: [{ env: "gpu", path: "~/app" }] },
 		]);
 		for (const [name, place, error] of [
-			["pi", { env: null, path: "/a" }, /A project "pi" exists already/],
-			[" pi", { env: null, path: "/a" }, /A project "pi" exists already/],
+			["nycode", { env: null, path: "/a" }, /A project "nycode" exists already/],
+			[" nycode", { env: null, path: "/a" }, /A project "nycode" exists already/],
 			["rel", { env: null, path: "relative" }, /absolute or start with ~/],
 			["bad-env", { env: "Mac", path: "/a" }, /invalid environment name Mac/],
 			["  ", { env: null, path: "/a" }, /Invalid project name/],
 			["ctl\u0001", { env: null, path: "/a" }, /Invalid project name/],
 		] as const)
 			await assert.rejects(projects.create({ name, place }, BACKGROUND_CONTEXT), error, name);
-		assert.equal(names(projects.projects.value), "pi,web,gpu-app");
+		assert.equal(names(projects.projects.value), "nycode,web,gpu-app");
 	});
 
 	it("move: before another project, or (null) to the end; refused for an unknown project", async () => {
-		await projects.move({ name: "gpu-app", before: "pi" }, BACKGROUND_CONTEXT);
-		await until(projects.projects, (list) => names(list) === "gpu-app,pi,web");
+		await projects.move({ name: "gpu-app", before: "nycode" }, BACKGROUND_CONTEXT);
+		await until(projects.projects, (list) => names(list) === "gpu-app,nycode,web");
 		await projects.move({ name: "gpu-app", before: null }, BACKGROUND_CONTEXT);
-		await until(projects.projects, (list) => names(list) === "pi,web,gpu-app");
+		await until(projects.projects, (list) => names(list) === "nycode,web,gpu-app");
 		await projects.move({ name: "web", before: "web" }, BACKGROUND_CONTEXT);
-		await projects.move({ name: "web", before: "pi" }, BACKGROUND_CONTEXT);
-		await until(projects.projects, (list) => names(list) === "web,pi,gpu-app");
+		await projects.move({ name: "web", before: "nycode" }, BACKGROUND_CONTEXT);
+		await until(projects.projects, (list) => names(list) === "web,nycode,gpu-app");
 		await assert.rejects(projects.move({ name: "nope", before: null }, BACKGROUND_CONTEXT), /No project "nope"/);
 		await assert.rejects(projects.move({ name: "web", before: "nope" }, BACKGROUND_CONTEXT), /No project "nope"/);
 		await projects.move({ name: "web", before: "gpu-app" }, BACKGROUND_CONTEXT);
-		await until(projects.projects, (list) => names(list) === "pi,web,gpu-app");
+		await until(projects.projects, (list) => names(list) === "nycode,web,gpu-app");
 	});
 
 	it("move: many moves into one spot keep the order (positions numbered anew when the gap runs out)", async () => {
@@ -287,7 +287,7 @@ describe("Projects", () => {
 		// Each lands right before "web", after the one moved before it: the gap there halves every time.
 		const moved = extra.slice(1);
 		for (const name of moved) await projects.move({ name, before: "web" }, BACKGROUND_CONTEXT);
-		const expected = ["pi", ...moved, "web", "gpu-app", "m0"].join();
+		const expected = ["nycode", ...moved, "web", "gpu-app", "m0"].join();
 		assert.equal(names(await until(projects.projects, (list) => names(list) === expected)), expected);
 		// And to the front, repeatedly: each before the first.
 		for (const name of ["m3", "m2", "m1"]) {
@@ -295,26 +295,26 @@ describe("Projects", () => {
 			await projects.move({ name, before: first }, BACKGROUND_CONTEXT);
 			await until(projects.projects, (list) => list?.[0]?.name === name);
 		}
-		assert.equal(names(projects.projects.value)?.split(",").slice(0, 4).join(), "m1,m2,m3,pi");
+		assert.equal(names(projects.projects.value)?.split(",").slice(0, 4).join(), "m1,m2,m3,nycode");
 		for (const name of extra) await projects.remove({ name }, BACKGROUND_CONTEXT);
-		await until(projects.projects, (list) => names(list) === "pi,web,gpu-app");
+		await until(projects.projects, (list) => names(list) === "nycode,web,gpu-app");
 	});
 
 	it("locate: the place becomes the default (first), replacing that machine's place", async () => {
-		await projects.locate({ name: "pi", place: { env: "gpu", path: "~/pi" } }, BACKGROUND_CONTEXT);
+		await projects.locate({ name: "nycode", place: { env: "gpu", path: "~/nycode" } }, BACKGROUND_CONTEXT);
 		await until(projects.projects, (list) => list?.[0]?.places.length === 2);
 		assert.deepEqual(projects.projects.value?.[0]?.places, [
-			{ env: "gpu", path: "~/pi" },
-			{ env: null, path: "/w/pi" },
+			{ env: "gpu", path: "~/nycode" },
+			{ env: null, path: "/w/nycode" },
 		]);
-		await projects.locate({ name: "pi", place: { env: null, path: "/w/pi2" } }, BACKGROUND_CONTEXT);
+		await projects.locate({ name: "nycode", place: { env: null, path: "/w/pi2" } }, BACKGROUND_CONTEXT);
 		await until(projects.projects, (list) => list?.[0]?.places[0]?.path === "/w/pi2");
 		assert.deepEqual(projects.projects.value?.[0]?.places, [
 			{ env: null, path: "/w/pi2" },
-			{ env: "gpu", path: "~/pi" },
+			{ env: "gpu", path: "~/nycode" },
 		]);
 		await assert.rejects(
-			projects.locate({ name: "pi", place: { env: null, path: "rel" } }, BACKGROUND_CONTEXT),
+			projects.locate({ name: "nycode", place: { env: null, path: "rel" } }, BACKGROUND_CONTEXT),
 			/absolute or start with ~/,
 		);
 		await assert.rejects(
@@ -326,15 +326,15 @@ describe("Projects", () => {
 	it("assign: to a live project, or (null) to none; a copy keeps its source's project; the catalog is untouched", async () => {
 		const id = randomUUID();
 		// A membership may come before the session (the new-session screen assigns as it creates).
-		await projects.assign({ session: id, project: "pi" }, BACKGROUND_CONTEXT);
+		await projects.assign({ session: id, project: "nycode" }, BACKGROUND_CONTEXT);
 		await assert.rejects(projects.assign({ session: id, project: "nope" }, BACKGROUND_CONTEXT), /No project "nope"/);
-		const source = await sessions.create({ id, cwd: fixture.workspace, title: "In pi" }, BACKGROUND_CONTEXT);
+		const source = await sessions.create({ id, cwd: fixture.workspace, title: "In nycode" }, BACKGROUND_CONTEXT);
 		const other = await sessions.create({ cwd: fixture.workspace, title: "Free" }, BACKGROUND_CONTEXT);
 		// A clone (and a fork: the same path, `SessionCopied`) belongs to its source's project; others to none.
 		const copy = await sessions.clone({ id: source.id }, BACKGROUND_CONTEXT);
 		const plain = await sessions.clone({ id: other.id }, BACKGROUND_CONTEXT);
-		const members = await until(projects.sessions, (map) => map?.[copy.id] === "pi");
-		assert.deepEqual(members, { [source.id]: "pi", [copy.id]: "pi" });
+		const members = await until(projects.sessions, (map) => map?.[copy.id] === "nycode");
+		assert.deepEqual(members, { [source.id]: "nycode", [copy.id]: "nycode" });
 		assert.equal(members?.[plain.id], undefined);
 		assert(!("project" in (sessions.sessions.value?.find((row) => row.id === id) ?? {})));
 		await projects.assign({ session: copy.id, project: "web" }, BACKGROUND_CONTEXT);
@@ -347,15 +347,18 @@ describe("Projects", () => {
 		const id = (await sessions.create({ cwd: fixture.workspace, title: "Web" }, BACKGROUND_CONTEXT)).id;
 		await projects.assign({ session: id, project: "web" }, BACKGROUND_CONTEXT);
 		await projects.rename({ name: "web", to: " site " }, BACKGROUND_CONTEXT);
-		await until(projects.projects, (list) => names(list) === "pi,site,gpu-app");
+		await until(projects.projects, (list) => names(list) === "nycode,site,gpu-app");
 		const members = await until(projects.sessions, (map) => map?.[id] === "site");
 		assert(!Object.values(members).includes("web"));
 		// The same name (trimmed) is no clash.
 		await projects.rename({ name: "site", to: "site" }, BACKGROUND_CONTEXT);
-		await assert.rejects(projects.rename({ name: "site", to: "pi" }, BACKGROUND_CONTEXT), /"pi" exists already/);
+		await assert.rejects(
+			projects.rename({ name: "site", to: "nycode" }, BACKGROUND_CONTEXT),
+			/"nycode" exists already/,
+		);
 		await assert.rejects(projects.rename({ name: "nope", to: "x" }, BACKGROUND_CONTEXT), /No project "nope"/);
 		await assert.rejects(projects.rename({ name: "site", to: "  " }, BACKGROUND_CONTEXT), /Invalid project name/);
-		assert.equal(names(projects.projects.value), "pi,site,gpu-app");
+		assert.equal(names(projects.projects.value), "nycode,site,gpu-app");
 	});
 
 	it("archive: the project and its live sessions; restore brings back those, after the live projects", async () => {
@@ -371,12 +374,12 @@ describe("Projects", () => {
 		await sessions.archive({ id: before }, BACKGROUND_CONTEXT);
 		const elsewhere = (await sessions.create({ cwd: fixture.workspace, title: "Not in it" }, BACKGROUND_CONTEXT)).id;
 		await until(sessions.sessions, (rows) => !live(before) && Boolean(rows?.some((row) => row.id === elsewhere)));
-		await projects.move({ name: "gpu-app", before: "pi" }, BACKGROUND_CONTEXT);
-		await until(projects.projects, (list) => names(list) === "gpu-app,pi,site");
+		await projects.move({ name: "gpu-app", before: "nycode" }, BACKGROUND_CONTEXT);
+		await until(projects.projects, (list) => names(list) === "gpu-app,nycode,site");
 
 		const archivedAt = Date.now();
 		await projects.archive({ name: "gpu-app" }, BACKGROUND_CONTEXT);
-		await until(projects.projects, (list) => names(list) === "pi,site");
+		await until(projects.projects, (list) => names(list) === "nycode,site");
 		const [archived] = await until(projects.archived, (list) => list?.length === 1);
 		assert.deepEqual([archived?.name, archived?.places], ["gpu-app", [{ env: "gpu", path: "~/app" }]]);
 		assert(archived!.archivedAt >= archivedAt);
@@ -400,7 +403,7 @@ describe("Projects", () => {
 		);
 
 		await projects.restore({ name: "gpu-app" }, BACKGROUND_CONTEXT);
-		await until(projects.projects, (list) => names(list) === "pi,site,gpu-app");
+		await until(projects.projects, (list) => names(list) === "nycode,site,gpu-app");
 		assert.deepEqual(await until(projects.archived, (list) => list?.length === 0), []);
 		await until(sessions.sessions, () => live(first) && live(second));
 		// The one archived on its own before stays in the Archive.
@@ -416,7 +419,7 @@ describe("Projects", () => {
 			.map(([id]) => id);
 		assert.equal(ids.length, 3);
 		await projects.remove({ name: "gpu-app" }, BACKGROUND_CONTEXT);
-		await until(projects.projects, (list) => names(list) === "pi,site");
+		await until(projects.projects, (list) => names(list) === "nycode,site");
 		const members = await until(projects.sessions, (map) => !Object.values(map ?? {}).includes("gpu-app"));
 		for (const id of ids) {
 			assert.equal(members[id], undefined);
@@ -428,7 +431,7 @@ describe("Projects", () => {
 		await until(projects.archived, (list) => list?.[0]?.name === "site");
 		await projects.remove({ name: "site" }, BACKGROUND_CONTEXT);
 		await until(projects.archived, (list) => list?.length === 0);
-		assert.equal(names(projects.projects.value), "pi");
+		assert.equal(names(projects.projects.value), "nycode");
 		assert.equal((await until(projects.sessions, (map) => map?.[id] === undefined))[id], undefined);
 		// Its session stays archived, in the Archive on its own.
 		assert.notEqual(sessions.sessions.value?.find((row) => row.id === id)?.archivedAt, null);

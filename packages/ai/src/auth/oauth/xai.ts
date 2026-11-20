@@ -148,7 +148,7 @@ async function requestDeviceCode(signal: AbortSignal): Promise<XaiDeviceCode> {
 		{
 			client_id: XAI_CLIENT_ID,
 			scope: XAI_SCOPE,
-			referrer: "pi",
+			referrer: "nycode",
 		},
 		signal,
 	);

@@ -61,6 +61,7 @@ import {
 	modelName,
 	moreVerb,
 	NEW_SESSION,
+	NycodeLogo,
 	navigate,
 	OneShotAgents,
 	OpenConversation,
@@ -70,7 +71,6 @@ import {
 	openLayer,
 	openSidebar,
 	type PickedFile,
-	PiLogo,
 	PlusIcon,
 	ReplyTo,
 	RevealEntry,
@@ -136,7 +136,7 @@ import { DirectoryPicker, directoryPickerLayer } from "../envs/contract.web.tsx"
 import { Models } from "../models/contract.ts";
 import type { ResourceSnapshot } from "../models/resources.ts";
 import { type Session, Sessions } from "../sessions/contract.ts";
-import { PiDots } from "../sessions/contract.web.tsx";
+import { NycodeDots } from "../sessions/contract.web.tsx";
 import { SessionMetrics, SessionStatus, WorkerControl } from "../status/contract.ts";
 import { type Child, conversationLocation, SubagentControl, Subagents } from "../subagents/contract.ts";
 import { openMain } from "../subagents/contract.web.ts";
@@ -466,7 +466,7 @@ function Composer({
 				files={files}
 				register={registerInput}
 				{...(inputRef ? { inputRef } : {})}
-				placeholder={busy ? "Steer the current run…" : "Message Pi…"}
+				placeholder={busy ? "Steer the current run…" : "Message Nycode…"}
 				onEdit={() => completion?.update()}
 				onPaste={(event) => {
 					if (!attaching) return;
@@ -866,14 +866,14 @@ function viewTarget(
 }
 
 /**
- * The bar above the main conversation's composer while the session's subagents or one-shot agents run: pi's dots and
+ * The bar above the main conversation's composer while the session's subagents or one-shot agents run: nycode's dots and
  * their names, each opening its conversation. The main conversation idle shows no wheel, so this says work goes on.
  */
 function RunningAgents({ agents, onOpen }: { agents: readonly Child[]; onOpen: (conversation: number) => void }) {
 	return (
 		<div className="composer-wrap subagent-wrap">
 			<div className="subagent-bar running-agents">
-				<PiDots />
+				<NycodeDots />
 				<span className="running-agents-names">
 					{agents.length > 1 ? `${agents.length} agents running: ` : "Running: "}
 					{agents.map((agent, index) => (
@@ -931,7 +931,7 @@ function SessionChat({ sessionId, conversationId }: { sessionId: string; convers
 	const listed = useReadable(sessions?.sessions);
 	const session = listed?.find((entry) => entry.id === sessionId);
 	// A session archived or removed elsewhere while viewed: the new-session screen replaces it, and the toast says why
-	// (Pi Mobile's attach errors). Archiving from this view navigates first, so it never shows here.
+	// (Nycode Mobile's attach errors). Archiving from this view navigates first, so it never shows here.
 	const { setError: toast } = useComposerState();
 	useEffect(() => {
 		const current = nav.route;
@@ -1040,7 +1040,7 @@ function SessionChat({ sessionId, conversationId }: { sessionId: string; convers
 	const participant = status === "live" && chat?.variant === "participant";
 	// The members only a participant has (send, stop, queue edits, configure).
 	const writer = liveIn(chat, "participant");
-	// Who may write decides what shows (as Pi Mobile's `canWrite`), not whether the chat object is live yet: during a
+	// Who may write decides what shows (as Nycode Mobile's `canWrite`), not whether the chat object is live yet: during a
 	// load, a cold start or a reconnect the composer stays and only Send waits.
 	const canWrite = owner || grantMode(grant, sessionId) === "full";
 	// Held with the view, not once the subagent list names the child: Archive works right after load.
@@ -1094,7 +1094,7 @@ function SessionChat({ sessionId, conversationId }: { sessionId: string; convers
 	);
 	// Kept while reconnecting, as the composer is (`canWrite`).
 	const replying = canWrite && canReply ? replyTo : undefined;
-	// `@`/Tab file completion for participants; in chat mode (`canReply`) the agent's mention (`@pi`) is offered first.
+	// `@`/Tab file completion for participants; in chat mode (`canReply`) the agent's mention (`@nycode`) is offered first.
 	const { composer: composerRef } = useFrame();
 	const fileCompletion = useFileCompletion(
 		composerRef,
@@ -1108,7 +1108,7 @@ function SessionChat({ sessionId, conversationId }: { sessionId: string; convers
 	const cwdSheet = useSheet("cwd");
 	const costSheet = useSheet("cost");
 	/**
-	 * Restored text goes into the composer, which takes the focus, as in Pi Mobile; sending it again is a new message
+	 * Restored text goes into the composer, which takes the focus, as in Nycode Mobile; sending it again is a new message
 	 * (each send has its own request ID). Stop and others' withdrawals put it before the draft, a queue edit after.
 	 */
 	const restore = useCallback(
@@ -1386,7 +1386,7 @@ function SessionChat({ sessionId, conversationId }: { sessionId: string; convers
 			}),
 		);
 	};
-	/** Pages earlier entries into the transcript (Pi Mobile's `loadOlder`). */
+	/** Pages earlier entries into the transcript (Nycode Mobile's `loadOlder`). */
 	const loadEarlier = async () => {
 		try {
 			await transcriptStore?.loadEarlier();
@@ -1621,7 +1621,7 @@ function SessionChat({ sessionId, conversationId }: { sessionId: string; convers
 				? {}
 				: {
 						composer: readOnlyBar
-							? // As in Pi Mobile, the read-only bar has no scroll-down button.
+							? // As in Nycode Mobile, the read-only bar has no scroll-down button.
 								{ kind: "bar", bar: readOnlyBar }
 							: {
 									kind: "composer",
@@ -1959,8 +1959,8 @@ function NewSession() {
 					) : (
 						<div className="hero">
 							<div className="hero-title">
-								<PiLogo />
-								<h2>What should Pi do?</h2>
+								<NycodeLogo />
+								<h2>What should Nycode do?</h2>
 							</div>
 							{/* The project the session joins, then where it starts: each opens its own picker. */}
 							<div className="new-session-choices">
@@ -2003,7 +2003,7 @@ function NewSession() {
 	);
 }
 
-/** A guest's share ended: Pi Mobile clears the view and says so in its toast; nothing reconnects. */
+/** A guest's share ended: Nycode Mobile clears the view and says so in its toast; nothing reconnects. */
 function ShareEnded() {
 	const place = useChatScreen(undefined);
 	return (

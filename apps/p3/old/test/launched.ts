@@ -18,7 +18,7 @@ export const SOURCE: readonly string[] = [
 
 /** The command that starts the release installed in `install` (a directory with `node_modules/`). */
 export function releaseOf(install: string): readonly string[] {
-	return [process.execPath, join(install, "node_modules", "@earendil-works", "p3", "dist", "p3.js")];
+	return [process.execPath, join(install, "node_modules", "@nycode", "p3", "dist", "p3.js")];
 }
 
 /** A launched server. */

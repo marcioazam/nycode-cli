@@ -1,8 +1,8 @@
 // The session worker's part of status: its Durable task graph, followed, and pushed to the server's index of statuses
 // (the sidebar's working dots, what each busy conversation does, and why the main conversation's last run failed). The
 // worker pushes; the server never asks.
-import type { Usage } from "@earendil-works/pi-ai";
-import { type ConversationId, type Harness, LiveDoc, type LiveState, type TaskGraph } from "@earendil-works/pi-durable";
+import type { Usage } from "@nycode/ai";
+import { type ConversationId, type Harness, LiveDoc, type LiveState, type TaskGraph } from "@nycode/durable";
 import { type Ctx, defineFacet, expectVariant } from "@p2/app/v1";
 import { harnessOf, mainConversation, workerOf } from "@p2/app/v1/worker";
 import { type RunFailure, SessionStatus, StatusReport, type Work, type WorkStep } from "./contract.ts";
@@ -50,8 +50,8 @@ async function workOf(
 export function stepOf(live: LiveState | undefined, kinds: ReadonlySet<string>): WorkStep {
 	const tools = (live?.tools ?? []).filter((slot) => slot.status !== "done");
 	if (tools.length) return { kind: "tools", names: tools.map((slot) => slot.name) };
-	if (kinds.has("pi.compaction")) return { kind: "compacting" };
-	if (kinds.has("pi.generation")) return { kind: "thinking" };
+	if (kinds.has("nycode.compaction")) return { kind: "compacting" };
+	if (kinds.has("nycode.generation")) return { kind: "thinking" };
 	return { kind: "working" };
 }
 

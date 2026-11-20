@@ -2,9 +2,9 @@ import { randomUUID } from "node:crypto";
 import { readFile, rename, writeFile } from "node:fs/promises";
 import { request as httpRequest, type IncomingMessage } from "node:http";
 import { join } from "node:path";
-import type { OAuthCredential } from "@earendil-works/pi-ai";
-import { radiusProvider } from "@earendil-works/pi-ai/providers/radius";
-import { DEFAULT_RADIUS_GATEWAY, normalizeRadiusGatewayUrl } from "@earendil-works/pi-ai/providers/radius-config";
+import type { OAuthCredential } from "@nycode/ai";
+import { radiusProvider } from "@nycode/ai/providers/radius";
+import { DEFAULT_RADIUS_GATEWAY, normalizeRadiusGatewayUrl } from "@nycode/ai/providers/radius-config";
 import { SERVER_PART_LIMITS } from "@p2/app/v1";
 import { WebSocket } from "ws";
 import type { Forwards } from "../ports/contract.ts";
@@ -50,7 +50,7 @@ import {
  * Backpressure. Nothing may buffer without bound between a loopback source and
  * a slow browser; the relay itself cannot see a slow WebSocket reader.
  *
- * - HTTP channels use the relay's credit flow control (`pi-server.host.v3`):
+ * - HTTP channels use the relay's credit flow control (`nycode-server.host.v3`):
  *   response bodies stop at the window until the relay returns credit as the
  *   browser reads, and request bodies earn the relay credit as the loopback
  *   request takes them.
@@ -118,9 +118,9 @@ import {
  * channel reaches only a forward the owner marked public; for any other
  * forward, and for the brain's own UI, it is refused like an unknown forward.
  *
- * Client channels. A Pi client of the owner, the TUI launcher with `--radius`
+ * Client channels. A Nycode client of the owner, the TUI launcher with `--radius`
  * (src/hosts/tui-radius.ts), connects to Radius with its own bearer credential
- * (`pi-server.client.v2`). Radius then opens a `ws` channel with the principal
+ * (`nycode-server.client.v2`). Radius then opens a `ws` channel with the principal
  * but without a request or public origin: there is no browser request to
  * describe. The client's first message is its request instead, JSON
  * `{ type: "http" | "websocket", method, path, headers }`, and the brain makes
@@ -139,10 +139,15 @@ import {
  */
 
 /** Offered newest first; v3 adds credit flow control for HTTP channels, v4 port forwards, v5 channel sockets. */
-const HOST_SUBPROTOCOLS = ["pi-server.host.v5", "pi-server.host.v4", "pi-server.host.v3", "pi-server.host.v2"];
-const FLOW_SUBPROTOCOLS = new Set(["pi-server.host.v5", "pi-server.host.v4", "pi-server.host.v3"]);
-const CHANNEL_HOST_SUBPROTOCOL = "pi-server.host.v5";
-const CHANNEL_SUBPROTOCOL = "pi-server.channel.v1";
+const HOST_SUBPROTOCOLS = [
+	"nycode-server.host.v5",
+	"nycode-server.host.v4",
+	"nycode-server.host.v3",
+	"nycode-server.host.v2",
+];
+const FLOW_SUBPROTOCOLS = new Set(["nycode-server.host.v5", "nycode-server.host.v4", "nycode-server.host.v3"]);
+const CHANNEL_HOST_SUBPROTOCOL = "nycode-server.host.v5";
+const CHANNEL_SUBPROTOCOL = "nycode-server.channel.v1";
 /** A channel socket's direction pauses its source above this many unsent bytes, and resumes below the low mark. */
 const PIPE_HIGH_BYTES = 256 * 1024;
 const PIPE_LOW_BYTES = 64 * 1024;
@@ -193,11 +198,11 @@ export type RadiusBrainConfig = {
 	serverId: string;
 	/**
 	 * The brain's own Radius origin (`https://<label>.rdtun.com`), as last seen on a relayed request for its UI. Saved so
-	 * forward links are known after a restart before anyone opens Pi through Radius again.
+	 * forward links are known after a restart before anyone opens Nycode through Radius again.
 	 */
 	publicOrigin?: string;
 	/**
-	 * This brain's page in the Radius shell (`<shell>/pi/<organization ID>/<server>`), as last seen on a relayed request
+	 * This brain's page in the Radius shell (`<shell>/nycode/<organization ID>/<server>`), as last seen on a relayed request
 	 * for its UI; a page of the brain's UI is below it (`…/s/<session>`). People sessions are shared with by email open
 	 * them there, signed in to Radius. The shell names organizations by slug when they have one and replaces this ID
 	 * form, but a link people keep names the organization by ID, which a slug change leaves valid.
@@ -281,15 +286,15 @@ export async function writeRadiusConfig(directory: string, config: RadiusBrainCo
 
 /**
  * A saved shell page in the shell's current URL form: pages saved before its URLs dropped `/brains`
- * (`<shell>/pi/brains/<organization>/<server>`) no longer resolve. The next relayed request saves the current form.
+ * (`<shell>/nycode/brains/<organization>/<server>`) no longer resolve. The next relayed request saves the current form.
  */
 export function currentShellPage(saved: string): string {
-	return saved.replace(/^(https?:\/\/[^/]+)\/pi\/brains\//, "$1/pi/");
+	return saved.replace(/^(https?:\/\/[^/]+)\/nycode\/brains\//, "$1/nycode/");
 }
 
-/** Gateway for new logins: `PI_RADIUS_GATEWAY`, as in the coding agent, else production. */
+/** Gateway for new logins: `NYCODE_RADIUS_GATEWAY`, as in the coding agent, else production. */
 export function radiusGatewayFromEnv(): string {
-	return normalizeRadiusGatewayUrl(process.env.PI_RADIUS_GATEWAY ?? DEFAULT_RADIUS_GATEWAY);
+	return normalizeRadiusGatewayUrl(process.env.NYCODE_RADIUS_GATEWAY ?? DEFAULT_RADIUS_GATEWAY);
 }
 
 export function newServerId(): string {
@@ -321,9 +326,9 @@ export class RadiusBrain {
 	readonly #onStatus: (status: RadiusStatus) => void;
 	readonly #channels = new Map<string, Channel>();
 	#socket: WebSocket | undefined;
-	/** The relay accepted `pi-server.host.v3`. */
+	/** The relay accepted `nycode-server.host.v3`. */
 	#flowControl = false;
-	/** The relay accepted `pi-server.host.v5`: WebSocket channels get their own sockets. */
+	/** The relay accepted `nycode-server.host.v5`: WebSocket channels get their own sockets. */
 	#channelSockets = false;
 	/** The configuration the host socket connected with; channel sockets authenticate with its credential. */
 	#config: RadiusBrainConfig | undefined;
@@ -744,7 +749,7 @@ export class RadiusBrain {
 	#remember(origin: string, shellOrigin: string, owner: Principal): void {
 		const shellPage =
 			SHELL_ORIGIN.test(shellOrigin) && this.#config
-				? `${shellOrigin}/pi/${encodeURIComponent(owner.organization_id)}/${encodeURIComponent(this.#config.serverId)}`
+				? `${shellOrigin}/nycode/${encodeURIComponent(owner.organization_id)}/${encodeURIComponent(this.#config.serverId)}`
 				: this.#shellPage;
 		const newOrigin = this.#forwards !== undefined && this.#forwards.radiusOrigin !== origin;
 		if (!newOrigin && shellPage === this.#shellPage) return;

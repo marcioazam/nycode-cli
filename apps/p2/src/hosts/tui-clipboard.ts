@@ -6,7 +6,7 @@ import { randomUUID } from "node:crypto";
 import { readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { platform as osPlatform, tmpdir } from "node:os";
 import { join } from "node:path";
-import { getNativeClipboard } from "@earendil-works/pi-tui";
+import { getNativeClipboard } from "@nycode/tui";
 
 const MAX_OSC52_ENCODED_LENGTH = 100_000;
 

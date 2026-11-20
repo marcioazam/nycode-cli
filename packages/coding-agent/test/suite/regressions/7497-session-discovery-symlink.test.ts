@@ -12,7 +12,7 @@ describe("regression #7497: discover sessions through symlinked directories", ()
 	let sessionsDir: string;
 
 	beforeEach(() => {
-		tempDir = mkdtempSync(join(tmpdir(), "pi-session-discovery-"));
+		tempDir = mkdtempSync(join(tmpdir(), "nycode-session-discovery-"));
 		const agentDir = join(tempDir, "agent");
 		sessionsDir = join(agentDir, "sessions");
 		mkdirSync(sessionsDir, { recursive: true });

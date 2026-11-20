@@ -1,4 +1,4 @@
-// Pi Mobile's app-level new-session choices, retained when another conversation opens: one store per page, so a
+// Nycode Mobile's app-level new-session choices, retained when another conversation opens: one store per page, so a
 // command run outside React (the command menu's New session) starts a fresh one too.
 import { useSyncExternalStore } from "react";
 import { openNewSession } from "../runtime/web.tsx";

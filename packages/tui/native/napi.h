@@ -1,5 +1,5 @@
-#ifndef PI_NAPI_H
-#define PI_NAPI_H
+#ifndef NYCODE_NAPI_H
+#define NYCODE_NAPI_H
 
 // Resolve the small N-API surface we use from Node or Bun, without Node headers
 // or a link-time dependency on a particular runtime.
@@ -8,12 +8,12 @@
 #include <stdint.h>
 #ifdef _WIN32
 #include <windows.h>
-#define PI_NAPI_CALL __cdecl
-#define PI_NAPI_EXPORT __declspec(dllexport)
+#define NYCODE_NAPI_CALL __cdecl
+#define NYCODE_NAPI_EXPORT __declspec(dllexport)
 #else
 #include <dlfcn.h>
-#define PI_NAPI_CALL
-#define PI_NAPI_EXPORT __attribute__((visibility("default")))
+#define NYCODE_NAPI_CALL
+#define NYCODE_NAPI_EXPORT __attribute__((visibility("default")))
 #endif
 
 #define NAPI_AUTO_LENGTH ((size_t)-1)
@@ -23,27 +23,27 @@ typedef void* napi_value;
 typedef void* napi_callback_info;
 typedef void* napi_async_work;
 typedef void* napi_deferred;
-typedef void (PI_NAPI_CALL *napi_async_execute_callback)(napi_env, void*);
-typedef void (PI_NAPI_CALL *napi_async_complete_callback)(napi_env, int, void*);
-typedef int (PI_NAPI_CALL *napi_create_async_work_fn)(napi_env, napi_value, napi_value, napi_async_execute_callback, napi_async_complete_callback, void*, napi_async_work*);
-typedef int (PI_NAPI_CALL *napi_create_array_fn)(napi_env, napi_value*);
-typedef int (PI_NAPI_CALL *napi_async_work_fn)(napi_env, napi_async_work);
-typedef int (PI_NAPI_CALL *napi_create_promise_fn)(napi_env, napi_deferred*, napi_value*);
-typedef int (PI_NAPI_CALL *napi_settle_deferred_fn)(napi_env, napi_deferred, napi_value);
-typedef int (PI_NAPI_CALL *napi_create_error_fn)(napi_env, napi_value, napi_value, napi_value*);
-typedef napi_value (PI_NAPI_CALL *napi_callback)(napi_env, napi_callback_info);
-typedef int (PI_NAPI_CALL *napi_create_buffer_copy_fn)(napi_env, size_t, const void*, void**, napi_value*);
-typedef int (PI_NAPI_CALL *napi_create_function_fn)(napi_env, const char*, size_t, napi_callback, void*, napi_value*);
-typedef int (PI_NAPI_CALL *napi_create_string_utf8_fn)(napi_env, const char*, size_t, napi_value*);
-typedef int (PI_NAPI_CALL *napi_create_string_utf16_fn)(napi_env, const uint16_t*, size_t, napi_value*);
-typedef int (PI_NAPI_CALL *napi_get_boolean_fn)(napi_env, bool, napi_value*);
-typedef int (PI_NAPI_CALL *napi_get_cb_info_fn)(napi_env, napi_callback_info, size_t*, napi_value*, napi_value*, void**);
-typedef int (PI_NAPI_CALL *napi_get_value_fn)(napi_env, napi_value*);
-typedef int (PI_NAPI_CALL *napi_get_value_string_utf8_fn)(napi_env, napi_value, char*, size_t, size_t*);
-typedef int (PI_NAPI_CALL *napi_get_value_string_utf16_fn)(napi_env, napi_value, uint16_t*, size_t, size_t*);
-typedef int (PI_NAPI_CALL *napi_set_named_property_fn)(napi_env, napi_value, const char*, napi_value);
-typedef int (PI_NAPI_CALL *napi_set_element_fn)(napi_env, napi_value, uint32_t, napi_value);
-typedef int (PI_NAPI_CALL *napi_throw_error_fn)(napi_env, const char*, const char*);
+typedef void (NYCODE_NAPI_CALL *napi_async_execute_callback)(napi_env, void*);
+typedef void (NYCODE_NAPI_CALL *napi_async_complete_callback)(napi_env, int, void*);
+typedef int (NYCODE_NAPI_CALL *napi_create_async_work_fn)(napi_env, napi_value, napi_value, napi_async_execute_callback, napi_async_complete_callback, void*, napi_async_work*);
+typedef int (NYCODE_NAPI_CALL *napi_create_array_fn)(napi_env, napi_value*);
+typedef int (NYCODE_NAPI_CALL *napi_async_work_fn)(napi_env, napi_async_work);
+typedef int (NYCODE_NAPI_CALL *napi_create_promise_fn)(napi_env, napi_deferred*, napi_value*);
+typedef int (NYCODE_NAPI_CALL *napi_settle_deferred_fn)(napi_env, napi_deferred, napi_value);
+typedef int (NYCODE_NAPI_CALL *napi_create_error_fn)(napi_env, napi_value, napi_value, napi_value*);
+typedef napi_value (NYCODE_NAPI_CALL *napi_callback)(napi_env, napi_callback_info);
+typedef int (NYCODE_NAPI_CALL *napi_create_buffer_copy_fn)(napi_env, size_t, const void*, void**, napi_value*);
+typedef int (NYCODE_NAPI_CALL *napi_create_function_fn)(napi_env, const char*, size_t, napi_callback, void*, napi_value*);
+typedef int (NYCODE_NAPI_CALL *napi_create_string_utf8_fn)(napi_env, const char*, size_t, napi_value*);
+typedef int (NYCODE_NAPI_CALL *napi_create_string_utf16_fn)(napi_env, const uint16_t*, size_t, napi_value*);
+typedef int (NYCODE_NAPI_CALL *napi_get_boolean_fn)(napi_env, bool, napi_value*);
+typedef int (NYCODE_NAPI_CALL *napi_get_cb_info_fn)(napi_env, napi_callback_info, size_t*, napi_value*, napi_value*, void**);
+typedef int (NYCODE_NAPI_CALL *napi_get_value_fn)(napi_env, napi_value*);
+typedef int (NYCODE_NAPI_CALL *napi_get_value_string_utf8_fn)(napi_env, napi_value, char*, size_t, size_t*);
+typedef int (NYCODE_NAPI_CALL *napi_get_value_string_utf16_fn)(napi_env, napi_value, uint16_t*, size_t, size_t*);
+typedef int (NYCODE_NAPI_CALL *napi_set_named_property_fn)(napi_env, napi_value, const char*, napi_value);
+typedef int (NYCODE_NAPI_CALL *napi_set_element_fn)(napi_env, napi_value, uint32_t, napi_value);
+typedef int (NYCODE_NAPI_CALL *napi_throw_error_fn)(napi_env, const char*, const char*);
 
 static void* node_symbol(const char* name) {
 #ifdef _WIN32

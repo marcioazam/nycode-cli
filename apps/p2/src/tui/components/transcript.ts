@@ -4,9 +4,9 @@
 // becomes its committed entry under the same key), and a gone one is disposed. It also keeps the reading position: when
 // not following the end, the item at the top of the viewport stays put while older history is prepended or items above
 // it change height (p2-tui-port.md P0c).
-import type { AssistantMessage } from "@earendil-works/pi-ai";
-import type { EntryRecord } from "@earendil-works/pi-durable";
-import { type Component, Container, type ScrollView, Spacer } from "@earendil-works/pi-tui";
+import type { AssistantMessage } from "@nycode/ai";
+import type { EntryRecord } from "@nycode/durable";
+import { type Component, Container, type ScrollView, Spacer } from "@nycode/tui";
 import type { EntryRenderContext, TuiEntryRenderer } from "../../runtime/tui-renderers.ts";
 import type { Item, ToolView, Transcript } from "../../web/transcript.ts";
 import type { ToolRenderers } from "../tools/types.ts";
@@ -149,7 +149,7 @@ class UserView implements ItemView {
 		this.message.update(item);
 		return true;
 	}
-	/** A skill block follows the tools toggle, as pi's (Ctrl+O). */
+	/** A skill block follows the tools toggle, as nycode's (Ctrl+O). */
 	setState(state: ViewState): void {
 		this.message.setExpanded(state.expanded);
 	}
@@ -483,7 +483,7 @@ export class TranscriptView implements Component {
 
 	/**
 	 * Loads what the viewport shows of the last render: older history at the top, gaps in view. The scroll view calls
-	 * it on every layout too, because pi-tui scrolls without rendering again.
+	 * it on every layout too, because nycode-tui scrolls without rendering again.
 	 */
 	viewportChanged(): void {
 		const scroll = this.scroll;

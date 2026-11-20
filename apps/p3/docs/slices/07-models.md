@@ -14,13 +14,13 @@ The brief is filled out when the slice is next.
 
 -  `accounts/book.md` (Stored on the Server :337, Models :442); `resources-code/book.md:141-217`;
   `handoff.md:76-77`; `model-stress/report.md:829-863`; `resource-model/book.md:1393-1397` (Bedrock/Vertex);
-  `map/book.md:290-295`; `merged.md` §2 #5 (model wraps cover pi-ai callbacks).
+  `map/book.md:290-295`; `merged.md` §2 #5 (model wraps cover nycode-ai callbacks).
 - **source:** `packages/ai/src/auth/types.ts`, `packages/ai/src/models.ts`; p2 `plugins/login/`,
   `plugins/cache-warming/`, `src/runtime/settings.ts` (defaultModel).
 
 **Open or to carry (docs audit):**
 
-- Credentials by reference, never copied (from the withdrawn org entry); delivery kinds `pushed` (with an expiry; pi-ai's
+- Credentials by reference, never copied (from the withdrawn org entry); delivery kinds `pushed` (with an expiry; nycode-ai's
   `AuthResult` has none), `signing` (an ssh-agent bridged over Chord, the key stays on the server), `server-only`
   (`archive/model-stress/report.md` 829-850).
 - Accounts for third-party integrations (`archive/accounts/book.md`: `Accounts`, `AccountProviders`,
@@ -29,10 +29,10 @@ The brief is filled out when the slice is next.
 
 ## Worker memory: what to build with models (owner, 2026-11-16)
 
-Measured by mem-audit on a realistic session worker (the Durable harness with coding tools, pi-ai with the Anthropic
+Measured by mem-audit on a realistic session worker (the Durable harness with coding tools, nycode-ai with the Anthropic
 and OpenAI SDKs against a local HTTPS stub, telemetry), release layout, without the glibc setting; private:
 `/home/badlogic/chord-notes/research/p3-memory.md` (sections on the realistic worker and the levers), scripts in
-`/tmp/memprobe` and `/tmp/pi-snap2` on slayer (temporary). USS, MiB:
+`/tmp/memprobe` and `/tmp/nycode-snap2` on slayer (temporary). USS, MiB:
 
 | | today | with the levers below |
 | --- | --- | --- |
@@ -57,6 +57,6 @@ path about 4; data under 1.
 
 **Kept:** npm undici as coding-agent configures it (`packages/coding-agent/src/core/http-dispatcher.ts`: proxies,
 idle timeouts, connection attempts, the error listener); a `fetch` over `node:https` was ruled out for it.
-**Not done:** narrower SDK imports (no saving: each client constructs every resource); pi-ai without the SDKs (500 to
+**Not done:** narrower SDK imports (no saving: each client constructs every resource); nycode-ai without the SDKs (500 to
 700 lines for −1 to −6 MiB); a shared process making all provider requests (each turn would carry the whole context,
 images included, through one more encode and decode).

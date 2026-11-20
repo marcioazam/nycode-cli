@@ -1,7 +1,7 @@
-// The index from the environment's own listing (pi-env's `listFiles`, section 8.3 item 2), when it has one. Pure
+// The index from the environment's own listing (nycode-env's `listFiles`, section 8.3 item 2), when it has one. Pure
 // over an `ExecutionEnv`; the worker facet supplies the conversation's environment and the workspace's confinement.
 
-import type { ExecutionEnv } from "@earendil-works/pi-durable/env";
+import type { ExecutionEnv } from "@nycode/durable/env";
 import type { Context, FileItem } from "@p2/app/v1";
 
 /** The workspace index's bounds (workspace/environment.ts `FILES_LIMIT`, `FILES_BYTES`, `GIT_TIMEOUT`). */

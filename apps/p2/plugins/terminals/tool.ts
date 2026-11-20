@@ -9,8 +9,8 @@ import {
 	type Extension,
 	type ToolExecutionApi,
 	type ToolExecutionResult,
-} from "@earendil-works/pi-durable";
-import { arr, bool, int, obj, opt, type Static, str, union } from "@earendil-works/pi-schema";
+} from "@nycode/durable";
+import { arr, bool, int, obj, opt, type Static, str, union } from "@nycode/schema";
 import { type Context, isRooted, joinPath, type Location, literal } from "@p2/app/v1";
 import {
 	COMMANDS,

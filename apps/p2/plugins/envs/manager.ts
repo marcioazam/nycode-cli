@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto";
 import { chmod, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import type { FileInfo } from "@earendil-works/pi-durable/env";
+import type { FileInfo } from "@nycode/durable/env";
 import {
 	acceptHostKey,
 	type Connection,
@@ -16,8 +16,8 @@ import {
 	type RemotePlatform,
 	type SshTarget,
 	scanHostKey,
-} from "@earendil-works/pi-env";
-import { compile } from "@earendil-works/pi-schema";
+} from "@nycode/env";
+import { compile } from "@nycode/schema";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { remotePaths, value } from "@p2/app/v1/node";
 import {
@@ -94,8 +94,8 @@ export class EnvManager {
 	}
 
 	/**
-	 * A pi-env connection to env `name` configured as `config` (a sandbox: through its host), with p2's key and known
-	 * hosts, deploying the daemon pi-env ships. It starts at its first request; the caller closes it.
+	 * A nycode-env connection to env `name` configured as `config` (a sandbox: through its host), with p2's key and known
+	 * hosts, deploying the daemon nycode-env ships. It starts at its first request; the caller closes it.
 	 */
 	connection(name: string, config: EnvConfig): Connection {
 		return envConnection(this.directory, name, config, { launcher: this.launcher }).connection;

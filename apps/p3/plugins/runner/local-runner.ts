@@ -4,8 +4,8 @@
 // The rollout step ships changed scripts to every running worker and clears the failures.
 
 import { join } from "node:path";
-import { type Context, type Link, Session } from "@earendil-works/p3/v1";
-import type { PluginScript, ServerRuntime, WorkerRunner, WorkerState } from "@earendil-works/p3/v1/server";
+import { type Context, type Link, Session } from "@nycode/p3/v1";
+import type { PluginScript, ServerRuntime, WorkerRunner, WorkerState } from "@nycode/p3/v1/server";
 import { keyOf, WorkerProcess } from "./worker-process.ts";
 
 /** One session's worker: the tail of its operations (one at a time), its worker process, its failure. */

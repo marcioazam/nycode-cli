@@ -1,7 +1,7 @@
 // The sessions plugin's contract for server facets: the store of the sessions, whose named queries other objects on the
 // server read (the plugin's own views now; groupings and people later).
 
-import { arr, local, method, obj, queries, str } from "@earendil-works/p3/v1";
+import { arr, local, method, obj, queries, str } from "@nycode/p3/v1";
 import { Creator, SessionRow, SessionState, Title } from "./contract.ts";
 
 /** The sessions: their rows as named queries, and the writes. Once per server. */

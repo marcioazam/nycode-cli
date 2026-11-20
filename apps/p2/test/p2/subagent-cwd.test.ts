@@ -1,18 +1,12 @@
-// Pi Mobile 78056b34e: subagents without their own cwd work in the session's, also when they were created before a
+// Nycode Mobile 78056b34e: subagents without their own cwd work in the session's, also when they were created before a
 // move that left their copied cwd behind (a session moved from a phone to a remote env kept a phone path in its old
 // subagents). The worker reconciles them at every start.
 import assert from "node:assert/strict";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
-import { createModels } from "@earendil-works/pi-ai/models";
-import {
-	type ConversationId,
-	type ConversationView,
-	configure,
-	createRegistry,
-	Harness,
-} from "@earendil-works/pi-durable";
+import { createModels } from "@nycode/ai/models";
+import { type ConversationId, type ConversationView, configure, createRegistry, Harness } from "@nycode/durable";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { Sessions } from "../../plugins/sessions/contract.ts";
@@ -91,7 +85,7 @@ test(
 		);
 		try {
 			await harness.commit(async (tx) => {
-				await configure(tx, children.get("old") as ConversationId, { cwd: "/data/data/elsewhere/pi-private" });
+				await configure(tx, children.get("old") as ConversationId, { cwd: "/data/data/elsewhere/nycode-private" });
 			}, context);
 		} finally {
 			await harness.close(context);
@@ -106,7 +100,7 @@ test(
 			const chat = await holdIn(owner, Chat, { session, conversation: children.get(name)! }, "participant");
 			try {
 				const view = await until(chat.view, (value) => bash(value).length > 0, 30_000);
-				return { pwd: bash(view).join("\n"), cwd: (view?.docs["pi.agent"] as { cwd?: string }).cwd };
+				return { pwd: bash(view).join("\n"), cwd: (view?.docs["nycode.agent"] as { cwd?: string }).cwd };
 			} finally {
 				chat.release();
 			}

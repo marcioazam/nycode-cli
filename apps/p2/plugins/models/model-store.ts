@@ -1,7 +1,7 @@
-// Small locked catalog store, adapted from Pi's models-store.ts (MIT).
+// Small locked catalog store, adapted from Nycode's models-store.ts (MIT).
 // See third-party/pi.LICENSE. Provider code owns catalog refresh/publication.
 import { statSync } from "node:fs";
-import type { ModelsStore, ModelsStoreEntry, ModelsStoreOperationOptions } from "@earendil-works/pi-ai";
+import type { ModelsStore, ModelsStoreEntry, ModelsStoreOperationOptions } from "@nycode/ai";
 import { LockedFile, normalizePath, stripBom } from "@p2/app/v1/node";
 
 type Catalogs = Record<string, ModelsStoreEntry>;

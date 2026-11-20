@@ -1,4 +1,4 @@
-import { num, obj } from "@earendil-works/pi-schema";
+import { num, obj } from "@nycode/schema";
 import {
 	type AcceptsTable,
 	canView,
@@ -147,7 +147,7 @@ export default defineFacet((host) => {
 				};
 			}
 			if (isGuest(principal)) {
-				// As in Pi Mobile: whether it runs, its work and spend, never an error's text (paths, stacks): the worker's,
+				// As in Nycode Mobile: whether it runs, its work and spend, never an error's text (paths, stacks): the worker's,
 				// or a failed run's detail.
 				const statusesView = deriveTyped(self, [store.statuses], ([statuses]) =>
 					Object.fromEntries(

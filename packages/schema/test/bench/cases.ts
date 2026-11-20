@@ -1,5 +1,5 @@
 // Speed cases: realistic schemas with a valid and an invalid value each. Argument checks shaped like Chord's
-// contracts (closed objects, tagged unions), pi's built-in tool schemas, and MCP tool schemas with $ref and anyOf.
+// contracts (closed objects, tagged unions), nycode's built-in tool schemas, and MCP tool schemas with $ref and anyOf.
 
 import type { JsonSchema } from "../../src/index.ts";
 
@@ -236,14 +236,14 @@ export const cases: readonly Case[] = [
 		schema: mcpIssue,
 		valid: {
 			owner: "earendil-works",
-			repo: "pi",
+			repo: "nycode",
 			title: "Bug",
 			body: "...",
 			labels: ["bug"],
 			milestone: null,
 			state: "open",
 		},
-		invalid: { owner: "earendil works", repo: "pi", title: "Bug" },
+		invalid: { owner: "earendil works", repo: "nycode", title: "Bug" },
 	},
 	{
 		name: "MCP edit_file ($ref, anyOf)",

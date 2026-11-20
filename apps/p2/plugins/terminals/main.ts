@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { readFile, rm } from "node:fs/promises";
 import { createServer, type Socket } from "node:net";
 import { fileURLToPath } from "node:url";
-import { Connection, detectPlatform, openTerminal, type RemoteTerminal } from "@earendil-works/pi-env";
+import { Connection, detectPlatform, openTerminal, type RemoteTerminal } from "@nycode/env";
 import { takeProcessLock } from "../../src/runtime/process-lock.ts";
 import { localSystem, requireTerminalSupport, terminalDaemon } from "./daemon.ts";
 import { terminalHostAddress, terminalHostVersion } from "./detached.ts";
@@ -37,7 +37,7 @@ import {
 	type TerminalWait,
 } from "./protocol.ts";
 
-// The terminal host: owns the pi-env connections and the programs running in terminals, independent of the server and
+// The terminal host: owns the nycode-env connections and the programs running in terminals, independent of the server and
 // the session workers, so terminals survive their restarts (detached.ts). A headless libghostty terminal
 // follows each one, so a browser that attaches later gets the current screen. It exits when it has had no terminals
 // and no connections for a while. One per data directory. It is its own program, started by path (not a facet built by
@@ -132,7 +132,7 @@ type Hosted = {
 
 const terminals = new Map<string, Hosted>();
 const clients = new Set<Client>();
-/** pi-env connections by environment ("" for this machine), with the configuration they were made for. */
+/** nycode-env connections by environment ("" for this machine), with the configuration they were made for. */
 const connections = new Map<string, { revision: string; connection: Promise<Connection> }>();
 let idleSince = Date.now();
 
@@ -190,7 +190,7 @@ async function connection(env: string | null): Promise<{ connection: Connection;
 			const started = (async () => {
 				const { platform, arch } = localSystem();
 				const binary = await terminalDaemon(platform, arch, true);
-				return new Connection({ command: [binary], onLog: (text) => log(`pi-env: ${text}`) });
+				return new Connection({ command: [binary], onLog: (text) => log(`nycode-env: ${text}`) });
 			})();
 			entry = { revision: "", connection: started };
 			connections.set("", entry);
@@ -215,7 +215,7 @@ async function connection(env: string | null): Promise<{ connection: Connection;
 			const daemon = envConnection(directory, env, config, {
 				launcher: sandboxLauncher,
 				binary,
-				onLog: (text) => log(`pi-env ${env}: ${text}`),
+				onLog: (text) => log(`nycode-env ${env}: ${text}`),
 			}).connection;
 			try {
 				await requireTerminalSupport(daemon);

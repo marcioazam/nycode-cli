@@ -1,8 +1,8 @@
 [package]
-name = "pi-env"
+name = "nycode-env"
 version = "0.1.0"
 edition = "2024"
-description = "Remote execution environment daemon for Pi Durable"
+description = "Remote execution environment daemon for Nycode Durable"
 publish = false
 
 [dependencies]

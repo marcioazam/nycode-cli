@@ -1,6 +1,6 @@
 // compile(schema, { coerce: true }): coerce() and parse(), the three coercion passes (optional nulls, TypeBox's
 // conversion rules, primitive coercion by type), their order where they conflict, and the guarantees around them.
-// Ports pi-ai's tool argument coercion tests.
+// Ports nycode-ai's tool argument coercion tests.
 
 import Type from "typebox";
 import { describe, expect, expectTypeOf, it } from "vitest";

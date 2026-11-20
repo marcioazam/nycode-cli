@@ -12,7 +12,7 @@ The detailed tables per area are in this directory: `conversations.md`, `session
 | 2 | Session workers | start on demand; one worker per store; idle stop after 5 min without viewers, calls or tasks; sticky start failure with retry; generation fence on reports; crash reports; shutdown |
 | 3 | Conversations and agent | live view window; history paging and retained pages; jump to an entry; context, cache and cost; working indicator; tool cards and nested calls; send, steer, queue, dedupe per author request id; input gate until prompt resources load; structured attribution; stop and dequeue with restored drafts; model and thinking (owner); compact and reset; read-only conversations; model error entries; resume interrupted work |
 | 4 | Shell commands | `!cmd` / `!!cmd` in the conversation's cwd and environment; one at a time; live tail; spill file; result entry placed at the next boundary; cancel; dedupe |
-| 5 | Chat mode | per-conversation switch; chat messages without a turn; `@pi` mention with a digest; reply quotes |
+| 5 | Chat mode | per-conversation switch; chat messages without a turn; `@nycode` mention with a digest; reply quotes |
 | 6 | Agents | named subagents (spawn, steer, configure, archive, report answers once, own cwd); one-shot agents for scripts (read-only, JSON result); messages between sessions (agent tool, attributed, idempotent) |
 | 7 | Code mode | scripts calling tools as nested durable calls; replay after restart; switch on and off |
 | 8 | Session files | attachments (≤25 MiB, copied to remote environments); sent-file snapshots; versioned artifacts with sandboxed preview; shell spill files; previews; ranged downloads; copy on clone; delete with the session |

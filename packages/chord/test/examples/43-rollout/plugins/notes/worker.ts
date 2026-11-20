@@ -1,6 +1,6 @@
 // The notes plugin's worker facet.
 
-import { constant, defineFacet } from "@earendil-works/chord";
+import { constant, defineFacet } from "@nycode/chord";
 import { Label } from "./contract.ts";
 import { label } from "./label.ts";
 

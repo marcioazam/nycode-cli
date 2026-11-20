@@ -3,7 +3,7 @@
 // packages/codemode/src/cloudflare-modules.d.ts, with an untyped `ctx`.
 
 declare module "cloudflare:workers" {
-	import type { DurableObjectSqliteStorage } from "@earendil-works/chord/sqlite/cloudflare";
+	import type { DurableObjectSqliteStorage } from "@nycode/chord/sqlite/cloudflare";
 
 	export type DurableObjectStorage = DurableObjectSqliteStorage & {
 		getAlarm(): Promise<number | null>;

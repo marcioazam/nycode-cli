@@ -10,7 +10,7 @@ try {
 	const command = parseDevCommand(
 		args[0] === "--restart" ? { action: "restart" } : { action: "reload", ...(args.length ? { plugins: args } : {}) },
 	);
-	const result = await sendDevCommand(process.env.P2_DATA_DIR ?? join(homedir(), ".pi", "p2"), command);
+	const result = await sendDevCommand(process.env.P2_DATA_DIR ?? join(homedir(), ".nycode", "p2"), command);
 	console[result.ok ? "log" : "error"](result.message);
 	if (!result.ok) process.exitCode = 1;
 } catch (error) {

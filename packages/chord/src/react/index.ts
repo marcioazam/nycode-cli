@@ -1,4 +1,4 @@
-// Chord v2's React bindings (`@earendil-works/chord/react`; slice 11 §3): optional, non-React apps never load them.
+// Chord v2's React bindings (`@nycode/chord/react`; slice 11 §3): optional, non-React apps never load them.
 
 export type { InVariant, VariantOf, VariantRef } from "../surfaces/variant.ts";
 export {

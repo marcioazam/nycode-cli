@@ -1,4 +1,4 @@
-import type { Schema } from "@earendil-works/pi-schema";
+import type { Schema } from "@nycode/schema";
 
 /**
  * Creates a string enum schema compatible with Google's API and other providers
@@ -9,7 +9,7 @@ import type { Schema } from "@earendil-works/pi-schema";
  *   description: "The operation to perform"
  * });
  *
- * type Operation = Static<typeof OperationSchema>; // "add" | "subtract" | "multiply" | "divide" (Static from @earendil-works/pi-schema)
+ * type Operation = Static<typeof OperationSchema>; // "add" | "subtract" | "multiply" | "divide" (Static from @nycode/schema)
  */
 export function StringEnum<T extends readonly string[]>(
 	values: T,

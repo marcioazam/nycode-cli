@@ -1,7 +1,7 @@
 /* p2's additions to Markdown in Elanor's components (ElanorMarkdown.tsx). */
 
 /*
- * Markdown in the interface's sans (--sans), not the pi brand's prose serif. Every Elanor component inside sets its own
+ * Markdown in the interface's sans (--sans), not the nycode brand's prose serif. Every Elanor component inside sets its own
  * font from the tokens (Prose, Text, List, Table, Heading), so the family is set on each of them; code keeps its mono
  * font. Only the family changes: sizes, line heights and weights stay Elanor's.
  */

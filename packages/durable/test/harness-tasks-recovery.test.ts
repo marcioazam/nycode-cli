@@ -1,9 +1,9 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Context } from "@earendil-works/chord/context";
-import type { JsonValue } from "@earendil-works/chord/json";
-import { createModels } from "@earendil-works/pi-ai";
+import { createModels } from "@nycode/ai";
+import type { Context } from "@nycode/chord/context";
+import type { JsonValue } from "@nycode/chord/json";
 import {
 	createRegistry,
 	defineDoc,
@@ -15,8 +15,8 @@ import {
 	type Task,
 	type TaskId,
 	type TaskRuntime,
-} from "@earendil-works/pi-durable";
-import { obj } from "@earendil-works/pi-schema";
+} from "@nycode/durable";
+import { obj } from "@nycode/schema";
 import { afterEach, describe, expect, it } from "vitest";
 import { openNodeSqliteStorage } from "../src/storage/sqlite/node.ts";
 import { addTask, addTool } from "./harness-support.ts";
@@ -26,7 +26,7 @@ import { aborted, abortedWith, completed, countingReader, deferred, eventually, 
 const directories = new Set<string>();
 
 async function sqlitePath(): Promise<string> {
-	const directory = await mkdtemp(join(tmpdir(), "pi-durable-tasks-"));
+	const directory = await mkdtemp(join(tmpdir(), "nycode-durable-tasks-"));
 	directories.add(directory);
 	return join(directory, "session.sqlite");
 }

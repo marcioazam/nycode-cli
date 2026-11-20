@@ -106,7 +106,7 @@ The page's base renders one slot. Whatever draws the page is a plugin, so a new 
 // apps/p3/src/api/v1/web.ts
 /** What draws the page: the first contribution by plugin name (the shell). */
 export const Page = defineRegistry<ComponentType, ComponentType | undefined>("p3.page", { version: 1 });
-export { HostProvider, useHold, useHost, useMessages, usePageState, useRegistry, useWatch } from "@earendil-works/chord/react";
+export { HostProvider, useHold, useHost, useMessages, usePageState, useRegistry, useWatch } from "@nycode/chord/react";
 
 // apps/p3/src/web/main.tsx
 const core = defineFacet((host) => host.serve(Page, { compose: (table) => table[0]?.value }));

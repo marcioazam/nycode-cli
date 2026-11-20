@@ -1,6 +1,6 @@
 // The page's theme (src/web/theme.ts) with each of its backends: `local` in a bare browser (its own localStorage and
 // matchMedia), `shell` when the Radius shell frames the page (through the real shell bridge, src/web/shell-bridge.ts),
-// `native` in p2-mac (a fake `window.webkit.messageHandlers.piHost` and `pi-host-theme` events). A fake window and
+// `native` in p2-mac (a fake `window.webkit.messageHandlers.nycodeHost` and `nycode-host-theme` events). A fake window and
 // document stand in for the browser.
 import assert from "node:assert/strict";
 import { afterEach, describe, it } from "node:test";
@@ -16,7 +16,7 @@ import {
 } from "../../src/web/theme.ts";
 
 const SHELL = "https://radius.earendil.com";
-const BASE = `${SHELL}/pi/acme/11111111-0000-4000-8000-000000000000`;
+const BASE = `${SHELL}/nycode/acme/11111111-0000-4000-8000-000000000000`;
 
 type Message = Record<string, unknown>;
 type HostMessage = { type: "theme" } | { type: "set-theme"; preference: ThemePreference };
@@ -42,7 +42,7 @@ function browser(options: {
 	hidden?: boolean;
 	reducedMotion?: boolean;
 }) {
-	const storage = new Map<string, string>(options.stored === undefined ? [] : [["pi-theme", options.stored]]);
+	const storage = new Map<string, string>(options.stored === undefined ? [] : [["nycode-theme", options.stored]]);
 	const target = new EventTarget();
 	const media = Object.assign(new EventTarget(), { matches: options.dark ?? false });
 	const posted: Message[] = [];
@@ -50,7 +50,7 @@ function browser(options: {
 	const parent = { postMessage: (message: Message, origin: string) => origin === SHELL && posted.push(message) };
 	// The shell's scheme hint, as the page's inline script keeps it (src/hosts/web.ts).
 	const html = {
-		dataset: (options.hint === undefined ? {} : { piShellScheme: options.hint }) as Record<string, string>,
+		dataset: (options.hint === undefined ? {} : { nycodeShellScheme: options.hint }) as Record<string, string>,
 	};
 	const metas = [
 		{
@@ -93,7 +93,7 @@ function browser(options: {
 	if (options.native)
 		self.webkit = {
 			messageHandlers: {
-				piHost: {
+				nycodeHost: {
 					postMessage: (message: HostMessage) =>
 						new Promise((resolve) => asked.push({ message, answer: (preference) => resolve({ preference }) })),
 				},
@@ -145,32 +145,32 @@ function browser(options: {
 		},
 		/** Another tab of this origin stores `value`. */
 		otherTab(value: string | undefined) {
-			if (value === undefined) storage.delete("pi-theme");
-			else storage.set("pi-theme", value);
-			target.dispatchEvent(Object.assign(new Event("storage"), { key: "pi-theme" }));
+			if (value === undefined) storage.delete("nycode-theme");
+			else storage.set("nycode-theme", value);
+			target.dispatchEvent(Object.assign(new Event("storage"), { key: "nycode-theme" }));
 		},
 		hostReports(detail: unknown) {
-			target.dispatchEvent(new CustomEvent("pi-host-theme", { detail }));
+			target.dispatchEvent(new CustomEvent("nycode-host-theme", { detail }));
 		},
 	};
 }
 
 const hello = (theme?: unknown) => ({
-	channel: "pi-shell",
+	channel: "nycode-shell",
 	type: "hello",
 	version: 1,
 	base: BASE,
 	...(theme === undefined ? {} : { theme }),
 });
 const themeMessage = (preference: string, scheme: string) => ({
-	channel: "pi-shell",
+	channel: "nycode-shell",
 	type: "theme",
 	version: 1,
 	preference,
 	scheme,
 });
 const setThemeMessage = (preference: ThemePreference) => ({
-	channel: "pi-shell",
+	channel: "nycode-shell",
 	version: 1,
 	type: "set-theme",
 	preference,
@@ -197,10 +197,10 @@ describe("theme", () => {
 			assert.equal(getTheme(), "dark");
 			assert.equal(page.shown(), "dark");
 			setTheme("light");
-			assert.equal(page.storage.get("pi-theme"), "light");
+			assert.equal(page.storage.get("nycode-theme"), "light");
 			assert.equal(page.shown(), "light");
 			setTheme("system");
-			assert.equal(page.storage.has("pi-theme"), false);
+			assert.equal(page.storage.has("nycode-theme"), false);
 			page.system(true);
 			assert.equal(page.shown(), "dark");
 			// Another tab of the origin.
@@ -237,7 +237,7 @@ describe("theme", () => {
 			// Another tab of the frame's origin storing a value changes nothing either.
 			page.otherTab("dark");
 			assert.deepEqual([getTheme(), page.shown()], ["light", "light"]);
-			assert.equal(page.storage.get("pi-theme"), "dark");
+			assert.equal(page.storage.get("nycode-theme"), "dark");
 		});
 
 		it("sends a pick, applies it at once, and takes the shell's echo as authoritative", () => {
@@ -261,7 +261,7 @@ describe("theme", () => {
 			page.fromShell(themeMessage("light", "light"));
 			assert.deepEqual([getTheme(), page.shown()], ["light", "light"]);
 			// Nothing was stored in the frame's origin.
-			assert.equal(page.storage.get("pi-theme"), "dark");
+			assert.equal(page.storage.get("nycode-theme"), "dark");
 		});
 
 		it("applies only the echo of the last of several quick picks", () => {
@@ -292,7 +292,7 @@ describe("theme", () => {
 			setTheme("dark");
 			assert.deepEqual([getTheme(), page.shown()], ["dark", "dark"]);
 			// Neither stored nor followed from the frame's origin.
-			assert.equal(page.storage.get("pi-theme"), "light");
+			assert.equal(page.storage.get("nycode-theme"), "light");
 			page.otherTab("light");
 			assert.deepEqual([getTheme(), page.shown()], ["dark", "dark"]);
 			assert.ok(!page.posted.some((message) => message.type === "set-theme"));
@@ -302,7 +302,7 @@ describe("theme", () => {
 			assert.deepEqual([getTheme(), page.shown()], ["dark", "dark"]);
 			page.fromShell(themeMessage("dark", "dark"));
 			assert.deepEqual([getTheme(), page.shown()], ["dark", "dark"]);
-			assert.equal(page.storage.get("pi-theme"), "light");
+			assert.equal(page.storage.get("nycode-theme"), "light");
 		});
 
 		it("shows the scheme the shell hinted until its hello", () => {
@@ -341,7 +341,7 @@ describe("theme", () => {
 			assert.deepEqual([getTheme(), page.shown()], ["system", "dark"]);
 			setTheme("light");
 			assert.deepEqual([getTheme(), page.shown()], ["light", "light"]);
-			assert.equal(page.storage.get("pi-theme"), "dark");
+			assert.equal(page.storage.get("nycode-theme"), "dark");
 		});
 
 		it("ignores theme messages from another window or origin, or with unknown values", () => {
@@ -367,7 +367,7 @@ describe("theme", () => {
 			page.fromShell(hello());
 			assert.deepEqual([getTheme(), page.shown()], ["dark", "dark"]);
 			setTheme("light");
-			assert.equal(page.storage.get("pi-theme"), "light");
+			assert.equal(page.storage.get("nycode-theme"), "light");
 			assert.ok(!page.posted.some((message) => message.type === "set-theme"));
 			// The page is local now: a later theme message changes nothing.
 			page.fromShell(themeMessage("dark", "dark"));
@@ -378,9 +378,9 @@ describe("theme", () => {
 			const page = browser({ stored: "dark", meta: true, framed: true });
 			start();
 			setTheme("light");
-			assert.equal(page.storage.get("pi-theme"), "dark");
+			assert.equal(page.storage.get("nycode-theme"), "dark");
 			page.fromShell(hello());
-			assert.deepEqual([getTheme(), page.shown(), page.storage.get("pi-theme")], ["light", "light", "light"]);
+			assert.deepEqual([getTheme(), page.shown(), page.storage.get("nycode-theme")], ["light", "light", "light"]);
 			page.otherTab("dark");
 			assert.deepEqual([getTheme(), page.shown()], ["dark", "dark"]);
 		});
@@ -405,7 +405,7 @@ describe("theme", () => {
 			page.hostReports({ preference: "night" });
 			page.hostReports(null);
 			assert.equal(getTheme(), "system");
-			assert.equal(page.storage.get("pi-theme"), "dark");
+			assert.equal(page.storage.get("nycode-theme"), "dark");
 		});
 
 		it("sends a pick, applies it at once, and drops the startup answer it overtook", async () => {
@@ -426,7 +426,7 @@ describe("theme", () => {
 			page.asked[2]!.answer("dark");
 			await settled();
 			assert.deepEqual([getTheme(), page.shown()], ["dark", "dark"]);
-			assert.equal(page.storage.has("pi-theme"), false);
+			assert.equal(page.storage.has("nycode-theme"), false);
 		});
 
 		it("ignores reports while a pick is unanswered and takes the answer to the last one", async () => {
@@ -461,7 +461,7 @@ describe("theme", () => {
 	});
 
 	describe("fade", () => {
-		const typed = [{ types: ["pi-theme"] }];
+		const typed = [{ types: ["nycode-theme"] }];
 
 		it("fades a pick after the first frame, not what the page shows while it starts", () => {
 			const page = browser({ stored: "dark", fades: "typed" });

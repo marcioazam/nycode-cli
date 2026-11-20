@@ -69,6 +69,6 @@ test("an upload whose worker stops sending is dropped: the remote's read fails",
 test("what a person sent is urgent on its own, before any answer", () => {
 	const entry = (kind: string) => ({ seq: 1, changes: [{ type: "entry", value: { kind } }] }) as never;
 	assert.equal(isUrgentCommit(entry(INPUT_ENTRY)), true, "p2's input");
-	assert.equal(isUrgentCommit(entry("pi.assistant")), true, "an answer");
+	assert.equal(isUrgentCommit(entry("nycode.assistant")), true, "an answer");
 	assert.equal(isUrgentCommit(entry("p2.something-else")), false);
 });
