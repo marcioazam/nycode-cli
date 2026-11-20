@@ -33,11 +33,78 @@ OWN_PREFIXES = (
     "bench/",
 )
 DEFAULT_SUFFIXES = frozenset(
-    """.py .pyi .js .jsx .mjs .cjs .ts .tsx .mts .cts .rs .go .c .h
-.cpp .hpp .cc .cxx .cs .java .kt .kts .swift .dart .rb .php .sh .bash .zsh .fish
-.lua .pl .pm .r .R .sql .vue .svelte .astro .scala .sc .ex .exs .erl .hrl .hs
-.clj .cljs .cljc .fs .fsx .f90 .f .jl .nim .zig .ps1 .bat .cmd .awk .sed
-.html .css .scss .sass .less .graphql .gql .proto .rules""".split()
+    {
+        ".py",
+        ".pyi",
+        ".js",
+        ".jsx",
+        ".mjs",
+        ".cjs",
+        ".ts",
+        ".tsx",
+        ".mts",
+        ".cts",
+        ".rs",
+        ".go",
+        ".c",
+        ".h",
+        ".cpp",
+        ".hpp",
+        ".cc",
+        ".cxx",
+        ".cs",
+        ".java",
+        ".kt",
+        ".kts",
+        ".swift",
+        ".dart",
+        ".rb",
+        ".php",
+        ".sh",
+        ".bash",
+        ".zsh",
+        ".fish",
+        ".lua",
+        ".pl",
+        ".pm",
+        ".r",
+        ".R",
+        ".sql",
+        ".vue",
+        ".svelte",
+        ".astro",
+        ".scala",
+        ".sc",
+        ".ex",
+        ".exs",
+        ".erl",
+        ".hrl",
+        ".hs",
+        ".clj",
+        ".cljs",
+        ".cljc",
+        ".fs",
+        ".fsx",
+        ".f90",
+        ".f",
+        ".jl",
+        ".nim",
+        ".zig",
+        ".ps1",
+        ".bat",
+        ".cmd",
+        ".awk",
+        ".sed",
+        ".html",
+        ".css",
+        ".scss",
+        ".sass",
+        ".less",
+        ".graphql",
+        ".gql",
+        ".proto",
+        ".rules",
+    }
 )
 
 
@@ -99,9 +166,7 @@ def main() -> int:
     args = ap.parse_args()
     root = Path(args.root).resolve()
     changed = [line.strip() for line in sys.stdin if line.strip()]
-    problems = check(
-        root, changed, load_suffixes(root), load_upstream(), OWN_PREFIXES
-    )
+    problems = check(root, changed, load_suffixes(root), load_upstream(), OWN_PREFIXES)
     for p in problems:
         print(p)
     print(f"structure_changed: {len(changed)} changed files, {len(problems)} problems")
