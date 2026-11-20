@@ -538,7 +538,8 @@ def test_s1_case_reps_without_cases_dir_uses_k(tmp_path: Path, monkeypatch: MP) 
 
 
 BUNDLE_SH = (
-    Path(__file__).resolve().parents[2] / "claude-home/bin/evals/harbor/bundle.sh"
+    Path(__file__).resolve().parents[2]
+    / "import/ny-pi/claude-home/bin/evals/harbor/bundle.sh"
 )
 
 

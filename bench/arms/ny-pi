@@ -5,7 +5,8 @@
 # The pi release is symlinked read-only in practice (its core patch is already applied upstream of the stage).
 set -euo pipefail
 here=$(dirname "$(readlink -f "$0")")
-repo=$(cd "$here/../.." && pwd)
+# The ny-pi tree (install.sh, npm/, publish.list) sits under import/ny-pi while it exists in the nycode checkout.
+repo=$(cd "$here/../../import/ny-pi" && pwd)
 # shellcheck source=bench/arms/oauth-token.sh
 . "$here/oauth-token.sh"
 # shellcheck source=bench/arms/overlay-sha.sh

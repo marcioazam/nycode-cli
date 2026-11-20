@@ -39,7 +39,8 @@ from bench.power import sim as power_sim
 
 BENCH = Path(__file__).resolve().parent
 REPO = BENCH.parent
-HARBOR_DIR = REPO / "claude-home/bin/evals/harbor"
+# ny-pi harness tree still lives under import/ny-pi until F8 moves its pieces; the Harbor agent ships there.
+HARBOR_DIR = REPO / "import/ny-pi/claude-home/bin/evals/harbor"
 NOT_VERIFIED_EXIT = 5
 MAX_ERROR_SHARE = (
     0.10  # a stage with more errored runs than this ends the round (infra, not a score)

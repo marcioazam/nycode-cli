@@ -15,7 +15,7 @@ Os units ficam em `bench/tools/systemd/` e só valem depois de instalados por vo
 
 ```bash
 install -m 755 bench/tools/bench-pr.sh bench/tools/bench-nightly.sh bench/tools/vanilla-retest.sh ~/.local/bin/
-mkdir -p ~/.config/systemd/user ~/.config/ny-pi
+mkdir -p ~/.config/systemd/user ~/.config/nycode
 cp bench/tools/systemd/bench-pr.{service,timer} bench/tools/systemd/bench-nightly.{service,timer} ~/.config/systemd/user/
 systemctl --user daemon-reload
 systemctl --user enable --now bench-pr.timer bench-nightly.timer
@@ -26,7 +26,7 @@ Pré-requisitos no PATH: `gh` autenticado como o dono do repositório, `git`, `j
 
 ## Env file
 
-`~/.config/ny-pi/bench.env` (modo 0600, nunca versionado, formato `CHAVE=valor`):
+`~/.config/nycode/bench.env` (modo 0600, nunca versionado, formato `CHAVE=valor`):
 
 | Chave | Obrigatória | Significado |
 | --- | --- | --- |
@@ -578,7 +578,7 @@ incomparáveis). Crie a cópia junto com cada baseline novo, antes da rodada, e 
 ```bash
 . bench/arms/overlay-sha.sh
 overlay_freeze ~/.pi/agent ~/.local/state/bench/overlay/<data> "$PWD/bench/arms/overlay.list"   # imprime o hash
-echo 'BENCH_OVERLAY_DIR=<caminho da cópia>' >> ~/.config/ny-pi/bench.env
+echo 'BENCH_OVERLAY_DIR=<caminho da cópia>' >> ~/.config/nycode/bench.env
 ```
 
 A cópia contém segredos (`local.env`): fica fora do repositório, com modo 700. O gate mede as regras pessoais da
