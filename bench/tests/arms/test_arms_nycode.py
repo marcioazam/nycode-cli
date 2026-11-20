@@ -4,8 +4,6 @@ network, no spend: the stage is pre-built (`.ready`) and the binary is a fake.""
 import subprocess
 from pathlib import Path
 
-import pytest
-
 from bench import run as rb
 from bench.tests.helpers import BENCH, CF, MP, RA, script
 
@@ -75,15 +73,6 @@ def test_arm_meta_reads_overlay_sha_of_the_nycode_stage(
         rb.arm_meta("ny-pi", arms(), "pi", Path("/x/bin"), "m", 1.0)["overlay_sha"]
         == "p1"
     )
-
-
-def test_harbor_has_no_nycode_agent_yet(tmp_path: Path, monkeypatch: MP) -> None:
-    """09 §2.2: the Harbor agent for nycode is not designed. Running the ny-pi agent under its name would measure
-    the wrong harness, so the step stops."""
-    monkeypatch.setattr(rb, "oauth_token", lambda: "tok")
-    steps = rb.build_plan("pr", rb.load_toml(BENCH / "suites.toml"), ["s2"], k=1)
-    with pytest.raises(RuntimeError, match="Harbor agent for nycode"):
-        rb._harbor_step(steps[0], "nycode", "m", tmp_path / "o", 5.0)
 
 
 def run_arm(tmp: Path, *args: str, **env: str) -> subprocess.CompletedProcess[str]:
