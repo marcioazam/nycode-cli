@@ -1,8 +1,0 @@
-blank_issues_enabled: false
-contact_links:
-  - name: Question or idea
-    url: https://github.com/marcioazam/ny-pi/discussions
-    about: Ask in Discussions (Q&A) or propose an idea before opening an issue.
-  - name: Report a security vulnerability
-    url: https://github.com/marcioazam/ny-pi/security/advisories/new
-    about: Private reporting. Never use a public issue for a vulnerability; see SECURITY.md.
