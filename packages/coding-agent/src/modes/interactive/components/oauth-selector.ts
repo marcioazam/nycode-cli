@@ -1,0 +1,268 @@
+import type { ApiKeyAuth, AuthCheck, OAuthAuth } from "@earendil-works/pi-ai";
+import {
+	Container,
+	type Focusable,
+	fuzzyFilter,
+	getKeybindings,
+	getSelectPageIndex,
+	Input,
+	Spacer,
+	TruncatedText,
+	type TUI,
+} from "@earendil-works/pi-tui";
+import { isPreferredProvider } from "../../../core/preferred-providers.ts";
+import { theme } from "../theme/theme.ts";
+import { DynamicBorder } from "./dynamic-border.ts";
+import { getProviderBrandStyle, type ProviderBrandStyle, startBrandAnimation } from "./provider-brand.ts";
+
+export type AuthSelectorProvider = {
+	id: string;
+	name: string;
+	authType: "oauth" | "api_key";
+	method?: ApiKeyAuth | OAuthAuth;
+	status?: AuthCheck;
+	/**
+	 * Whether the provider's OAuth sign-in is backed by a subscription. `false` labels it as an account;
+	 * unset keeps the "subscription" label.
+	 */
+	subscription?: boolean;
+};
+
+export function formatAuthSelectorProviderType(
+	authType: AuthSelectorProvider["authType"],
+	subscription?: boolean,
+): string {
+	if (authType === "api_key") return "API key";
+	return subscription === false ? "account" : "subscription";
+}
+
+/** Themed suffix describing whether and how a login option is configured, for example " ✓ configured". */
+export function formatAuthSelectorProviderStatus(provider: AuthSelectorProvider): string {
+	if (!provider.status) return theme.fg("muted", " • not configured");
+	if (provider.status.type !== provider.authType) {
+		const label = `${formatAuthSelectorProviderType(provider.status.type, provider.subscription)} configured`;
+		return theme.fg("muted", " • ") + theme.fg("warning", label);
+	}
+	if (
+		!provider.status.source ||
+		provider.status.source === "OAuth" ||
+		provider.status.source === "stored credential"
+	) {
+		return theme.fg("success", " ✓ configured");
+	}
+	const source = /^[A-Z][A-Z0-9_]*(?:, [A-Z][A-Z0-9_]*)*$/.test(provider.status.source)
+		? `env: ${provider.status.source}`
+		: provider.status.source;
+	return theme.fg("success", ` ✓ ${source}`);
+}
+
+const MAX_VISIBLE = 8;
+
+/**
+ * Component that renders an auth provider selector. With `tui`, the selected row of a preferred partner provider
+ * shows its animated brand style.
+ */
+export class OAuthSelectorComponent extends Container implements Focusable {
+	readonly capturesViewportInput: boolean = true;
+	private searchInput: Input;
+
+	// Focusable implementation - propagate to search input for IME cursor positioning
+	private _focused = false;
+	get focused(): boolean {
+		return this._focused;
+	}
+	set focused(value: boolean) {
+		this._focused = value;
+		this.searchInput.focused = value;
+	}
+
+	private listContainer: Container;
+	private allProviders: AuthSelectorProvider[];
+	private filteredProviders: AuthSelectorProvider[];
+	private selectedIndex: number = 0;
+	private mode: "login" | "logout";
+	private onSelectCallback: (providerId: string, authType: AuthSelectorProvider["authType"]) => void;
+	private onCancelCallback: () => void;
+	private showAuthTypeLabels: boolean;
+	private readonly animationStart = performance.now();
+	private stopAnimation: (() => void) | undefined;
+
+	constructor(
+		mode: "login" | "logout",
+		providers: AuthSelectorProvider[],
+		onSelect: (providerId: string, authType: AuthSelectorProvider["authType"]) => void,
+		onCancel: () => void,
+		initialSearchInput?: string,
+		tui?: TUI,
+	) {
+		super();
+
+		this.mode = mode;
+		this.allProviders = providers;
+		this.filteredProviders = providers;
+		this.showAuthTypeLabels = new Set(providers.map((provider) => provider.authType)).size > 1;
+		this.onSelectCallback = onSelect;
+		this.onCancelCallback = onCancel;
+
+		// Add top border
+		this.addChild(new DynamicBorder());
+		this.addChild(new Spacer(1));
+
+		// Add title
+		const title = mode === "login" ? "Select provider to configure:" : "Select provider to logout:";
+		this.addChild(new TruncatedText(theme.fg("accent", theme.bold(title)), 1, 0));
+		this.addChild(new Spacer(1));
+
+		this.searchInput = new Input();
+		if (initialSearchInput) {
+			this.searchInput.setValue(initialSearchInput);
+		}
+		this.searchInput.onSubmit = () => {
+			const selectedProvider = this.filteredProviders[this.selectedIndex];
+			if (selectedProvider) {
+				this.onSelectCallback(selectedProvider.id, selectedProvider.authType);
+			}
+		};
+		this.addChild(this.searchInput);
+		this.addChild(new Spacer(1));
+
+		// Create list container
+		this.listContainer = new Container();
+		this.addChild(this.listContainer);
+
+		this.addChild(new Spacer(1));
+
+		// Add bottom border
+		this.addChild(new DynamicBorder());
+
+		// Initial render
+		this.filterProviders(initialSearchInput ?? "");
+
+		if (tui) this.stopAnimation = startBrandAnimation(tui, () => this.getSelectedBrandStyle() !== undefined);
+	}
+
+	override render(width: number): readonly string[] {
+		// The list is built from styled text, so an animated row needs a rebuild for each frame.
+		if (this.stopAnimation && this.getSelectedBrandStyle()) this.updateList();
+		return super.render(width);
+	}
+
+	/** Stops the brand animation. */
+	dispose(): void {
+		this.stopAnimation?.();
+		this.stopAnimation = undefined;
+	}
+
+	private getSelectedBrandStyle(): ProviderBrandStyle | undefined {
+		const selectedProvider = this.filteredProviders[this.selectedIndex];
+		return selectedProvider && getProviderBrandStyle(selectedProvider.id);
+	}
+
+	private filterProviders(query: string): void {
+		this.filteredProviders = query
+			? fuzzyFilter(
+					this.allProviders,
+					query,
+					(provider) => `${provider.name} ${provider.id} ${provider.authType} ${provider.method?.name ?? ""}`,
+				)
+			: this.allProviders;
+		// A query moves the selection to the top row, so the best match is highlighted.
+		this.selectedIndex = query ? 0 : Math.min(this.selectedIndex, Math.max(0, this.filteredProviders.length - 1));
+		this.updateList();
+	}
+
+	private updateList(): void {
+		this.listContainer.clear();
+
+		const startIndex = Math.max(
+			0,
+			Math.min(this.selectedIndex - Math.floor(MAX_VISIBLE / 2), this.filteredProviders.length - MAX_VISIBLE),
+		);
+		const endIndex = Math.min(startIndex + MAX_VISIBLE, this.filteredProviders.length);
+
+		for (let i = startIndex; i < endIndex; i++) {
+			const provider = this.filteredProviders[i];
+			if (!provider) continue;
+
+			const isSelected = i === this.selectedIndex;
+
+			const statusIndicator = formatAuthSelectorProviderStatus(provider);
+			// U+2726 is single-width in every terminal, unlike star emoji or ambiguous-width symbols such as U+2605.
+			const partnerMarker = isPreferredProvider(provider.id) ? theme.fg("muted", " ✦") : "";
+			const authTypeLabel = this.showAuthTypeLabels
+				? theme.fg("muted", ` [${formatAuthSelectorProviderType(provider.authType, provider.subscription)}]`)
+				: "";
+			let line = "";
+			if (isSelected) {
+				const prefix = theme.fg("accent", "→ ");
+				const brandStyle = this.stopAnimation && getProviderBrandStyle(provider.id);
+				const text = brandStyle
+					? brandStyle(provider.name, performance.now() - this.animationStart)
+					: theme.fg("accent", provider.name);
+				line = prefix + text + partnerMarker + authTypeLabel + statusIndicator;
+			} else {
+				const text = `  ${theme.fg("text", provider.name)}`;
+				line = text + partnerMarker + authTypeLabel + statusIndicator;
+			}
+
+			this.listContainer.addChild(new TruncatedText(line, 1, 0));
+		}
+
+		if (startIndex > 0 || endIndex < this.filteredProviders.length) {
+			const scrollInfo = theme.fg("muted", `  (${this.selectedIndex + 1}/${this.filteredProviders.length})`);
+			this.listContainer.addChild(new TruncatedText(scrollInfo, 1, 0));
+		}
+
+		// Show "no providers" if empty
+		if (this.filteredProviders.length === 0) {
+			const message =
+				this.allProviders.length === 0
+					? this.mode === "login"
+						? "No providers available"
+						: "No providers logged in. Use /login first."
+					: "No matching providers";
+			this.listContainer.addChild(new TruncatedText(theme.fg("muted", `  ${message}`), 1, 0));
+		}
+	}
+
+	handleInput(keyData: string): void {
+		const kb = getKeybindings();
+		const pageIndex = getSelectPageIndex(kb, keyData, this.selectedIndex, this.filteredProviders.length, MAX_VISIBLE);
+		// Up arrow
+		if (kb.matches(keyData, "tui.select.up")) {
+			if (this.filteredProviders.length === 0) return;
+			this.selectedIndex = Math.max(0, this.selectedIndex - 1);
+			this.updateList();
+		}
+		// Down arrow
+		else if (kb.matches(keyData, "tui.select.down")) {
+			if (this.filteredProviders.length === 0) return;
+			this.selectedIndex = Math.min(this.filteredProviders.length - 1, this.selectedIndex + 1);
+			this.updateList();
+		}
+		// Page up/down
+		else if (pageIndex !== undefined) {
+			if (this.filteredProviders.length === 0) return;
+			this.selectedIndex = pageIndex;
+			this.updateList();
+		}
+		// Enter
+		else if (kb.matches(keyData, "tui.select.confirm")) {
+			const selectedProvider = this.filteredProviders[this.selectedIndex];
+			if (selectedProvider) {
+				this.onSelectCallback(selectedProvider.id, selectedProvider.authType);
+			}
+		}
+		// Escape or Ctrl+C
+		else if (kb.matches(keyData, "tui.select.cancel")) {
+			this.onCancelCallback();
+		}
+		// Pass everything else to search input. Cursor keys leave the query as it is and must not move the selection.
+		else {
+			const previousQuery = this.searchInput.getValue();
+			this.searchInput.handleInput(keyData);
+			const query = this.searchInput.getValue();
+			if (query !== previousQuery) this.filterProviders(query);
+		}
+	}
+}
