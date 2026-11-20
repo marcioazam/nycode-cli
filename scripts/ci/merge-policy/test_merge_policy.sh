@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Test for merge-policy.sh on a throwaway repository: squash is ignored, an upstream merge (with and without a
-# resolution commit) passes, a merge of an ordinary branch fails. Run: bash scripts/ci/test_merge_policy.sh
+# resolution commit) passes, a merge of an ordinary branch fails. Run: bash scripts/ci/merge-policy/test_merge_policy.sh
 set -euo pipefail
 
 script=$(cd "$(dirname "$0")" && pwd)/merge-policy.sh
