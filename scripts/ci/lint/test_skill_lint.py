@@ -1,5 +1,7 @@
 """Self-test of skill_lint.py; run before the linter is trusted on the repo."""
 
+import contextlib
+import io
 import sys
 import tempfile
 import unittest
@@ -94,6 +96,12 @@ class SkillLintTest(unittest.TestCase):
     def test_zero_skills_fails(self) -> None:
         self.assertEqual(skill_lint.main([str(self.root)]), 1)
 
+    def test_allow_missing_dir_passes_only_when_absent(self) -> None:
+        gone = str(self.root / "not-yet")
+        self.assertEqual(skill_lint.main(["--allow-missing", gone]), 0)
+        self.assertEqual(skill_lint.main([gone]), 1)
+        self.assertEqual(skill_lint.main(["--allow-missing", str(self.root)]), 1)
+
     def test_main_exit_codes(self) -> None:
         make(self.root, "ok-skill", "ok-skill", GOOD_DESC)
         self.assertEqual(skill_lint.main([str(self.root)]), 0)
@@ -147,6 +155,77 @@ class StructureChangedTest(unittest.TestCase):
         self.assertEqual(
             structure_changed.check(self.root, ["d/f0.py"], self.suffixes), []
         )
+
+    def test_upstream_list_exempts_line_limit_only_for_listed_files(self) -> None:
+        self.write("a/up.py", 900)
+        self.write("a/own.py", 900)
+        out = structure_changed.check(
+            self.root,
+            ["a/up.py", "a/own.py"],
+            self.suffixes,
+            upstream=frozenset({"a/up.py"}),
+        )
+        self.assertEqual(len(out), 1)
+        self.assertIn("a/own.py", out[0])
+
+    def test_only_nycode_prefixes_are_bound(self) -> None:
+        self.write("upstream/big.py", 900)
+        self.write("scripts/ci/big.py", 900)
+        out = structure_changed.check(
+            self.root,
+            ["upstream/big.py", "scripts/ci/big.py"],
+            self.suffixes,
+            prefixes=structure_changed.OWN_PREFIXES,
+        )
+        self.assertEqual(len(out), 1)
+        self.assertIn("scripts/ci/big.py", out[0])
+
+    def test_upstream_list_file_lists_existing_paths(self) -> None:
+        repo = Path(__file__).resolve().parents[3]
+        listed = structure_changed.load_upstream()
+        self.assertGreater(len(listed), 0)
+        for rel in listed:
+            self.assertTrue((repo / rel).is_file(), rel)
+
+    def test_default_suffixes_without_harness_module(self) -> None:
+        self.assertEqual(
+            structure_changed.load_suffixes(self.root),
+            structure_changed.DEFAULT_SUFFIXES,
+        )
+
+    def test_suffixes_come_from_harness_module_when_present(self) -> None:
+        mod = self.root / structure_changed.HARNESS_STRUCTURE
+        mod.parent.mkdir(parents=True)
+        mod.write_text('CODE_SUFFIXES = {".zz"}\n', encoding="utf-8")
+        self.assertEqual(structure_changed.load_suffixes(self.root), frozenset({".zz"}))
+
+    def test_non_code_and_symlink_are_not_code(self) -> None:
+        self.write("a/real.py", 1)
+        (self.root / "a/link.py").symlink_to(self.root / "a/real.py")
+        (self.root / "a/notes.md").write_text("n\n", encoding="utf-8")
+        self.assertTrue(
+            structure_changed.is_code(self.root / "a/real.py", self.suffixes)
+        )
+        self.assertFalse(
+            structure_changed.is_code(self.root / "a/link.py", self.suffixes)
+        )
+        self.assertFalse(
+            structure_changed.is_code(self.root / "a/notes.md", self.suffixes)
+        )
+
+    def test_main_reads_changed_files_from_stdin(self) -> None:
+        self.write("scripts/ci/big.py", 900)
+        argv, stdin = sys.argv, sys.stdin
+        try:
+            sys.argv = ["structure_changed.py", "--root", str(self.root)]
+            sys.stdin = io.StringIO("scripts/ci/big.py\n\n")
+            with contextlib.redirect_stdout(io.StringIO()) as out:
+                code = structure_changed.main()
+        finally:
+            sys.argv, sys.stdin = argv, stdin
+        self.assertEqual(code, 1)
+        self.assertIn("scripts/ci/big.py: 900 lines > 800", out.getvalue())
+        self.assertIn("1 changed files, 1 problems", out.getvalue())
 
     def test_deleted_files_are_skipped(self) -> None:
         self.assertEqual(
