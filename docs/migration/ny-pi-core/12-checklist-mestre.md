@@ -5,21 +5,21 @@ Identificador: `C-F<fase>-<n>`. A coluna "prova" diz o que tem de ser observado.
 
 ## F0. Preparação e congelamento
 
-- [ ] C-F0-01 Decisões D-01 a D-28 lidas pelo dono; as "aguarda o dono" (D-15, D-16, D-17, D-22) respondidas. Prova: registro datado em `evidencias/F0.md`.
-- [ ] C-F0-02 SHA de congelamento do ny-pi registrado. Prova: `git -C ny-pi rev-parse origin/main`.
-- [ ] C-F0-03 Linha de base do destino: `npm ci --ignore-scripts`, `npm run build`, `npm run check` com saída 0. Prova: códigos de saída.
-- [ ] C-F0-04 `./test.sh` no destino; falhas conhecidas listadas (hoje: `@nycode/env`, falta `cargo`). Prova: resumo do teste.
-- [ ] C-F0-05 Anexos A, B, C, D regerados se algum commit novo entrou. Prova: SHAs no cabeçalho dos anexos.
-- [ ] C-F0-06 Pendência P-1 fechada: classe de cada peça copiada da especificação 0005. Prova: coluna preenchida.
-- [ ] C-F0-07 Ramos herdados listados por prefixo; nenhum com PR aberto. Prova: `gh pr list --state open` vazio.
-- [ ] C-F0-08 Ramos herdados apagados (D-15, com autorização). Prova: `git ls-remote --heads origin | wc -l`.
-- [ ] C-F0-09 8 alertas de secret scanning triados (D-16, com autorização). Prova: API devolve 0 abertos.
+- [x] C-F0-01 Decisões D-01 a D-28 lidas pelo dono; as "aguarda o dono" (D-15, D-16, D-17, D-22) respondidas. Prova: registro datado em `evidencias/F0.md`.
+- [x] C-F0-02 SHA de congelamento do ny-pi registrado. Prova: `git -C ny-pi rev-parse origin/main`.
+- [x] C-F0-03 Linha de base do destino: `npm ci --ignore-scripts`, `npm run build`, `npm run check` com saída 0. Prova: códigos de saída.
+- [x] C-F0-04 `./test.sh` no destino; falhas conhecidas listadas (hoje: `@nycode/env`, falta `cargo`). Prova: resumo do teste.
+- [x] C-F0-05 Anexos A, B, C, D regerados se algum commit novo entrou. Prova: SHAs no cabeçalho dos anexos.
+- [x] C-F0-06 Pendência P-1 fechada: classe de cada peça copiada da especificação 0005. Prova: coluna preenchida.
+- [x] C-F0-07 Ramos herdados listados por prefixo; nenhum com PR aberto. Prova: `gh pr list --state open` vazio.
+- [x] C-F0-08 Ramos herdados apagados (D-15, com autorização). Prova: `git ls-remote --heads origin | wc -l`.
+- [x] C-F0-09 8 alertas de secret scanning triados (D-16, com autorização). Prova: API devolve 0 abertos.
 - [ ] C-F0-10 Escopo npm decidido e reservado (D-17). Prova: `npm org ls` ou página da organização.
-- [ ] C-F0-11 Etiqueta `v1.6.0-base` criada no commit do fork (P-6). Prova: `git tag -l`.
-- [ ] C-F0-12 Script de renome do fork versionado no repositório. Prova: caminho do arquivo.
-- [ ] C-F0-13 Remoto `upstream` configurado e `rerere` ligado. Prova: `git remote -v`, `git config rerere.enabled`.
-- [ ] C-F0-14 Descrição e tópicos do repositório corrigidos (a descrição ainda fala em Rust). Prova: `gh repo view`.
-- [ ] C-F0-15 Rótulo `rust` e ambiente `copilot` removidos. Prova: API.
+- [x] C-F0-11 Etiqueta `v1.6.0-base` criada no commit do fork (P-6). Prova: `git tag -l`.
+- [x] C-F0-12 Script de renome do fork versionado no repositório. Prova: caminho do arquivo.
+- [x] C-F0-13 Remoto `upstream` configurado e `rerere` ligado. Prova: `git remote -v`, `git config rerere.enabled`.
+- [x] C-F0-14 Descrição e tópicos do repositório corrigidos (a descrição ainda fala em Rust). Prova: `gh repo view`.
+- [x] C-F0-15 Rótulo `rust` e ambiente `copilot` removidos. Prova: API.
 
 ## F1. Importação do histórico
 
