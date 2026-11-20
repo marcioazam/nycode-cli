@@ -24,3 +24,4 @@ packages/agent/docs/**/*.diff -whitespace
 *.gz binary
 *.woff binary
 *.woff2 binary
+*.tgz binary

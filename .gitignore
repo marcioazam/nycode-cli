@@ -46,3 +46,21 @@ plans/
 .nycode/settings.json
 collect.sh
 packages/agent/docs/extensions/nycode-server-artifact/index.md
+
+# Credentials and local state (from ny-pi); keep out of the repository
+/auth*.json
+*.env
+.env*
+!.env.example
+local.env
+mcp.json
+mcp-auth.json
+lsp.json
+models-store.json
+trust.json
+usage-cache*.json
+claude-home/rules/personal.md
+__pycache__/
+*.pyc
+*.bak*
+pi-transcripts/
