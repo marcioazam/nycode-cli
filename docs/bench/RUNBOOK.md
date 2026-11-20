@@ -676,7 +676,8 @@ Decisões de F3 (`docs/migration/ny-pi-core/09-paridade-e-benchmark.md`):
   executa `packages/coding-agent/dist/bundle/cli.js`. Camada do dono em `bench/arms/overlay-nycode.list`
   (`settings.json`, `AGENTS.md` de `~/.nycode/agent` ou `BENCH_OVERLAY_DIR`); o hash vai para `.overlay-sha`. As flags só do
   pi-code (`--settings`, `--mcp-config`, `--setting-sources`, `--add-dir`, `--strict-mcp-config`) são descartadas até F5.
-  O agente Harbor do nycode não existe: S2 com `--arm nycode` para com erro explícito.
+  S2 (Harbor): agente `bench/harbor/nycode_agent.py` (`NycodeAgent`) com o pacote do `bench/harbor/bundle.sh` (build do checkout +
+  camada do dono, em `/opt/nycode-home`; 09 §2.2); a rodada empacota o estágio do checkout antes do `harbor run`, como no ny-pi.
 - Braço `ny-pi-pi160` (D-25): o mesmo `bench/arms/ny-pi` com `BENCH_PI_VERSION=1.6.0` (tabela `env` do `arms.toml`),
   estágio `bench-nypi160-<sha12>`; exige um pi 1.6.0 gerenciado em `BENCH_PI_INSTALL_DIR` (o `~/.pi/agent/install` do
   dono é 1.5.2 e não serve). Sai com F10.
