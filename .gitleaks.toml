@@ -1,5 +1,5 @@
 # Default gitleaks rules plus the narrowest allowlist for known fakes.
-title = "ny-pi"
+title = "nycode"
 
 [extend]
 useDefault = true

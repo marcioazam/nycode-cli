@@ -9,7 +9,7 @@ TH_SHA256=12050095c8063bf4d34f9f6cbce6ba9fa8d0deea9d503d0570364feba093658e
 TH_URL=https://github.com/trufflesecurity/trufflehog/releases/download/v$TH_VERSION
 export PATH="$HOME/.local/bin:$PATH"
 CFG="$ROOT/.gitleaks.toml"
-IDFILE=${PI_HARNESS_IDENTIFIERS:-$HOME/.config/pi-harness/identifiers}
+IDFILE=${NYCODE_IDENTIFIERS:-$HOME/.config/nycode/identifiers}
 # Path regexes trufflehog must skip (it has no allowlist): fixtures and the known fake AWS key test.
 TH_EXCL=$(mktemp)
 trap 'rm -rf "$TH_EXCL" "${TMPD:-}"' EXIT
@@ -46,11 +46,11 @@ scan_gitleaks() { # args: gitleaks subcommand args...
 
 scan_trufflehog() { # args: paths...
   if ! install_trufflehog; then
-    if [ "${PI_HARNESS_ALLOW_NO_TRUFFLEHOG:-0}" = 1 ]; then
-      echo "!!! WARNING: trufflehog missing and install failed; SKIPPED by PI_HARNESS_ALLOW_NO_TRUFFLEHOG=1 !!!" >&2
+    if [ "${NYCODE_ALLOW_NO_TRUFFLEHOG:-0}" = 1 ]; then
+      echo "!!! WARNING: trufflehog missing and install failed; SKIPPED by NYCODE_ALLOW_NO_TRUFFLEHOG=1 !!!" >&2
       return 0
     fi
-    echo "trufflehog: not installed and install failed (set PI_HARNESS_ALLOW_NO_TRUFFLEHOG=1 to skip, NOT for publishing)" >&2
+    echo "trufflehog: not installed and install failed (set NYCODE_ALLOW_NO_TRUFFLEHOG=1 to skip, NOT for publishing)" >&2
     return 1
   fi
   local out rc=0
@@ -64,7 +64,7 @@ scan_trufflehog() { # args: paths...
 
 scan_identifiers() { # args: paths...   (path:line:content printed; patterns never printed)
   if [ ! -f "$IDFILE" ]; then
-    echo "identifiers: file missing ($IDFILE). Create it or point PI_HARNESS_IDENTIFIERS at an (empty) file." >&2
+    echo "identifiers: file missing ($IDFILE). Create it or point NYCODE_IDENTIFIERS at an (empty) file." >&2
     return 1
   fi
   # Fail closed: without rg the scan below would report no hits (GitHub runners ship no ripgrep, 2026-11-13).
