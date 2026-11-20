@@ -146,6 +146,7 @@ Tipos: `skill` (`claude-home/skills/<nome>/`), `agent` (`claude-home/agents/<nom
 | extension | up-dequeue | ui | Seta para cima restaura a fila |
 | hook | claims | core | Afirmação sem evidência |
 | hook | dispatch | core | Despachante dos hooks |
+| hook | fuzz | core | Testes de fuzz do parser do guard (só teste; sem efeito em runtime) |
 | hook | graph_context.py | optional | Exige codegraph |
 | hook | guard.py | core | Bloqueio de comando destrutivo |
 | hook | impeccable_gate.sh | optional | Serve uma skill de design que o repositório não traz |

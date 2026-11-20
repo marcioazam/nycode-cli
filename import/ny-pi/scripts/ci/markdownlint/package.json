@@ -1,0 +1,11 @@
+{
+  "name": "ny-pi-markdownlint",
+  "private": true,
+  "version": "0.0.0",
+  "devDependencies": {
+    "markdownlint-cli2": "0.24.1"
+  },
+  "overrides": {
+    "katex": "0.18.2"
+  }
+}

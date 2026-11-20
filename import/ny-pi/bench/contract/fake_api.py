@@ -9,16 +9,17 @@ messages already in the conversation.
 from __future__ import annotations
 
 import json
+import os
 import re
 import threading
 import time
 from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Self
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
-    from pathlib import Path
 
 MARKER = re.compile(r"contract-case:([A-Za-z0-9_.-]+)")
 UNROUTED = ""
@@ -55,6 +56,18 @@ def route(body: Mapping[str, Any]) -> tuple[str, int]:
         1 for m in messages if isinstance(m, dict) and m.get("role") == "assistant"
     )
     return (found.group(1) if found else UNROUTED), turn
+
+
+def capture_path(root: Path, seq: int, case: str) -> Path:
+    """Capture file of one request; ``ValueError`` when ``case`` would leave ``root``."""
+    # normpath + startswith: the confinement check CodeQL py/path-injection recognizes (Path.resolve is not).
+    base = os.path.realpath(root)
+    target = os.path.normpath(
+        os.path.join(base, f"req-{seq:03d}-{case or 'unrouted'}.json")
+    )
+    if not target.startswith(base + os.sep) or os.path.dirname(target) != base:
+        raise ValueError(f"capture path escapes {base}: {case!r}")
+    return Path(target)
 
 
 def message_content(step: Step, block_id: str) -> list[dict[str, object]]:
@@ -167,9 +180,7 @@ class FakeApi:
             self._captured.setdefault(case, []).append(body)
             self.hits.append(Hit(seq, case, turn, len(raw), time.monotonic()))
         if self._capture_dir is not None:
-            (
-                self._capture_dir / f"req-{seq:03d}-{case or 'unrouted'}.json"
-            ).write_bytes(raw)
+            capture_path(self._capture_dir, seq, case).write_bytes(raw)
         return body, case, turn, seq
 
     def start(self) -> int:

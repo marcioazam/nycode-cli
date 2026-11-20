@@ -8,15 +8,26 @@ type Entry = Record<string, unknown>
 let n = 0
 const id = () => `e${++n}`
 const user = (text = 'faça'): Entry => ({ type: 'message', id: id(), message: { role: 'user', content: text } })
-const say = (text: string): Entry => ({ type: 'message', id: id(), message: { role: 'assistant', content: [{ type: 'text', text }] } })
+const say = (text: string): Entry => ({
+  type: 'message',
+  id: id(),
+  message: { role: 'assistant', content: [{ type: 'text', text }] },
+})
 const call = (name: string, args: Record<string, unknown>, callId = `c${n + 1}`): Entry => ({
-  type: 'message', id: id(), message: { role: 'assistant', content: [{ type: 'toolCall', id: callId, name, arguments: args }] },
+  type: 'message',
+  id: id(),
+  message: { role: 'assistant', content: [{ type: 'toolCall', id: callId, name, arguments: args }] },
 })
 const result = (callId: string, toolName: string, isError = false): Entry => ({
-  type: 'message', id: id(), message: { role: 'toolResult', toolCallId: callId, toolName, isError, content: [{ type: 'text', text: 'ok' }] },
+  type: 'message',
+  id: id(),
+  message: { role: 'toolResult', toolCallId: callId, toolName, isError, content: [{ type: 'text', text: 'ok' }] },
 })
 const edit = (path: string): Entry => call('edit', { path, edits: [] })
-const bash = (command: string, callId: string, isError = false): Entry[] => [call('bash', { command }, callId), result(callId, 'bash', isError)]
+const bash = (command: string, callId: string, isError = false): Entry[] => [
+  call('bash', { command }, callId),
+  result(callId, 'bash', isError),
+]
 const env = {}
 
 test('sem edição: nada a fazer', () => {
@@ -53,14 +64,35 @@ test('bash que não é checagem não conta', () => {
 })
 
 test('só docs e config: nada a fazer', () => {
-  const d = decideCompletionGate([user(), edit('README.md'), call('write', { path: 'c.json', content: '{}' }), say('ok')], env)
+  const d = decideCompletionGate(
+    [user(), edit('README.md'), call('write', { path: 'c.json', content: '{}' }), say('ok')],
+    env,
+  )
   assert.equal(d.action, 'none')
 })
 
 test('gate-runner depois da edição libera (single e tasks)', () => {
-  const single = decideCompletionGate([user(), edit('a.py'), call('subagent', { agent: 'gate-runner', task: 'x' }, 's1'), result('s1', 'subagent'), say('ok')], env)
+  const single = decideCompletionGate(
+    [
+      user(),
+      edit('a.py'),
+      call('subagent', { agent: 'gate-runner', task: 'x' }, 's1'),
+      result('s1', 'subagent'),
+      say('ok'),
+    ],
+    env,
+  )
   assert.equal(single.action, 'none')
-  const many = decideCompletionGate([user(), edit('a.py'), call('subagent', { tasks: [{ agent: 'gate-runner', task: 'x' }] }, 's2'), result('s2', 'subagent'), say('ok')], env)
+  const many = decideCompletionGate(
+    [
+      user(),
+      edit('a.py'),
+      call('subagent', { tasks: [{ agent: 'gate-runner', task: 'x' }] }, 's2'),
+      result('s2', 'subagent'),
+      say('ok'),
+    ],
+    env,
+  )
   assert.equal(many.action, 'none')
 })
 
@@ -72,20 +104,40 @@ test('bloqueia uma vez por turno e rearma no turno seguinte', () => {
 })
 
 test('edição de turno anterior não bloqueia o turno atual', () => {
-  assert.equal(decideCompletionGate([user(), edit('a.py'), say('ok'), user('pergunta'), say('resposta')], env).action, 'none')
+  assert.equal(
+    decideCompletionGate([user(), edit('a.py'), say('ok'), user('pergunta'), say('resposta')], env).action,
+    'none',
+  )
 })
 
 test('isCheckCommand: checagens reais em qualquer segmento, atrás de wrappers', () => {
   for (const c of [
-    'pytest -q', 'cd x && go test ./...', 'python3 -m unittest test_a.py', 'uv run --with hcl2 pytest', 'npm run typecheck',
-    'node --experimental-strip-types --test a.test.ts', 'FOO=1 timeout 60 cargo test', './gradlew test',
-    'python3 ~/.pi/agent/claude-home/bin/checks/check-instructions.py', 'npx tsc --noEmit', 'make check 2>&1',
-    'ls; ruff check .', 'bash -n x.sh',
-  ]) assert.equal(isCheckCommand(c), true, c)
+    'pytest -q',
+    'cd x && go test ./...',
+    'python3 -m unittest test_a.py',
+    'uv run --with hcl2 pytest',
+    'npm run typecheck',
+    'node --experimental-strip-types --test a.test.ts',
+    'FOO=1 timeout 60 cargo test',
+    './gradlew test',
+    'python3 ~/.pi/agent/claude-home/bin/checks/check-instructions.py',
+    'npx tsc --noEmit',
+    'make check 2>&1',
+    'ls; ruff check .',
+    'bash -n x.sh',
+  ])
+    assert.equal(isCheckCommand(c), true, c)
 })
 
 test('isCheckCommand: menção de ferramenta não é checagem', () => {
-  for (const c of ['rg pytest .', 'cat eslint.config.js', 'grep -n tsc package.json', 'python3 x.py', 'echo go test', 'ls tests/'])
+  for (const c of [
+    'rg pytest .',
+    'cat eslint.config.js',
+    'grep -n tsc package.json',
+    'python3 x.py',
+    'echo go test',
+    'ls tests/',
+  ])
     assert.equal(isCheckCommand(c), false, c)
 })
 
@@ -93,4 +145,25 @@ test('plan mode e PI_COMPLETION_GATE=0 desligam', () => {
   const planOn: Entry = { type: 'custom', id: id(), customType: 'plan-mode', data: { enabled: true } }
   assert.equal(decideCompletionGate([planOn, user(), edit('a.py'), say('ok')], env).action, 'none')
   assert.equal(decideCompletionGate([user(), edit('a.py'), say('ok')], { PI_COMPLETION_GATE: '0' }).action, 'none')
+})
+
+test('isCheckCommand: entrada adversarial termina rápido (sem ReDoS)', () => {
+  for (const prefix of ['systemd-run', 'uv run']) {
+    const start = performance.now()
+    assert.equal(isCheckCommand(`${prefix}${' a'.repeat(5000)}`), false)
+    assert.ok(performance.now() - start < 50)
+  }
+  assert.equal(isCheckCommand('systemd-run --user -- pytest'), true)
+  // CodeQL js/redos (PR #66): a alternativa `node` era exponencial em 'node ' + '-- -'×n (22 repetições ~20 ms).
+  const start = performance.now()
+  assert.equal(isCheckCommand(`node ${'-- -'.repeat(40)} x`), false)
+  assert.ok(performance.now() - start < 50)
+  for (const c of [
+    'node --test',
+    'node --experimental-strip-types --test a.ts',
+    'node --max-old-space-size=4096 --test',
+  ]) {
+    assert.equal(isCheckCommand(c), true, c)
+  }
+  assert.equal(isCheckCommand('node a.js --test'), false)
 })

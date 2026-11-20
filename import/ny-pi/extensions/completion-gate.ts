@@ -24,28 +24,64 @@ export interface CompletionDecision {
   message?: string
 }
 
-const CODE = /\.(py|pyi|ts|tsx|mts|cts|js|jsx|mjs|cjs|go|rs|java|kt|kts|scala|rb|php|c|h|cc|cpp|hpp|cs|swift|dart|lua|sh|bash|zsh|sql|tf|proto|vue|svelte|astro|zig|ex|exs|erl|hs|ml|r|jl|nim)$/i
+const CODE =
+  /\.(py|pyi|ts|tsx|mts|cts|js|jsx|mjs|cjs|go|rs|java|kt|kts|scala|rb|php|c|h|cc|cpp|hpp|cs|swift|dart|lua|sh|bash|zsh|sql|tf|proto|vue|svelte|astro|zig|ex|exs|erl|hs|ml|r|jl|nim)$/i
 // Ancorado no início de cada segmento do comando (depois de wrappers), para `rg pytest` ou `cat eslint.config.js`
 // não contarem como checagem.
 const CHECK = new RegExp(
   '^(' +
     [
-      'pytest', 'unittest', 'py_compile', 'mypy', 'pyright', 'ruff', 'flake8', 'pylint', 'tox', 'nox',
-      'go\\s+(test|vet|build)', 'golangci-lint', 'staticcheck',
+      'pytest',
+      'unittest',
+      'py_compile',
+      'mypy',
+      'pyright',
+      'ruff',
+      'flake8',
+      'pylint',
+      'tox',
+      'nox',
+      'go\\s+(test|vet|build)',
+      'golangci-lint',
+      'staticcheck',
       'cargo\\s+(test|check|clippy|build|nextest)',
-      '(npm|pnpm|yarn|bun)\\s+(run\\s+)?[\\w:-]*(test|lint|build|check|type)[\\w:-]*', 'npm\\s+t\\b',
-      'vitest', 'jest', 'playwright\\s+test', 'tsc', 'tsgo', 'eslint', 'biome', 'oxlint', 'prettier\\s+--check',
+      '(npm|pnpm|yarn|bun)\\s+(run\\s+)?[\\w:-]*(test|lint|build|check|type)[\\w:-]*',
+      'npm\\s+t\\b',
+      'vitest',
+      'jest',
+      'playwright\\s+test',
+      'tsc',
+      'tsgo',
+      'eslint',
+      'biome',
+      'oxlint',
+      'prettier\\s+--check',
       '(make|just|task)\\s+[\\w:-]*(test|check|lint|build|verify)[\\w:-]*',
-      'gradlew?\\s+[\\w:-]*(test|check|build)', 'mvnw?\\s+[\\w:-]*(test|verify)', 'dotnet\\s+(test|build)',
-      'terraform\\s+validate', 'tofu\\s+validate', 'tflint', 'shellcheck', '(ba)?sh\\s+-n', 'node(\\s+--?[\\w-]+(=\\S+)?)*\\s+--(test|check)\\b',
-      'deno\\s+(test|check|lint)', 'php\\s+-l', 'phpunit', 'rspec', 'swift\\s+(test|build)', 'buf\\s+(lint|build)',
-      '\\S*git-deliver', 'python3?\\s+\\S*(structure|check-[\\w-]+|test_[\\w-]+)\\.py',
+      'gradlew?\\s+[\\w:-]*(test|check|build)',
+      'mvnw?\\s+[\\w:-]*(test|verify)',
+      'dotnet\\s+(test|build)',
+      'terraform\\s+validate',
+      'tofu\\s+validate',
+      'tflint',
+      'shellcheck',
+      '(ba)?sh\\s+-n',
+      // Cada opção é um token inteiro (`-\\S*` não cruza espaço): sem a ambiguidade exponencial do CodeQL js/redos.
+      'node(?:\\s+-\\S*)*?\\s+--(?:test|check)\\b',
+      'deno\\s+(test|check|lint)',
+      'php\\s+-l',
+      'phpunit',
+      'rspec',
+      'swift\\s+(test|build)',
+      'buf\\s+(lint|build)',
+      '\\S*git-deliver',
+      'python3?\\s+\\S*(structure|check-[\\w-]+|test_[\\w-]+)\\.py',
     ].join('|') +
     ')(\\s|$)',
   'i',
 )
 // Prefixos que só embrulham o comando real.
-const WRAP = /^(\w+=\S*|env|time|nice|sudo|timeout\s+\S+|npx|bunx|pnpm\s+(exec|dlx)|yarn\s+dlx|poetry\s+run|pipenv\s+run|python3?\s+-m|systemd-run(\s+\S+)*?\s+--|uv\s+run(\s+(--(with|python|project|directory|package|extra|group)\s+\S+|-p\s+\S+|-\S+))*)\s+/i
+const WRAP =
+  /^(\w+=\S*|env|time|nice|sudo|timeout\s+\S+|npx|bunx|pnpm\s+(exec|dlx)|yarn\s+dlx|poetry\s+run|pipenv\s+run|python3?\s+-m|systemd-run(?:\s+(?!--(?:\s|$))\S+)*\s+--|uv\s+run(\s+(--(with|python|project|directory|package|extra|group)\s+\S+|-p\s+\S+|-\S+))*)\s+/i
 
 export function isCheckCommand(command: string): boolean {
   return command.split(/&&|\|\||[;|\n(]/).some((segment) => {
@@ -60,7 +96,9 @@ export function isCheckCommand(command: string): boolean {
 
 const role = (e: Entry): string | undefined => (e.type === 'message' ? e.message?.role : undefined)
 const calls = (e: Entry): Entry[] =>
-  role(e) === 'assistant' && Array.isArray(e.message?.content) ? e.message.content.filter((b: Entry) => b?.type === 'toolCall') : []
+  role(e) === 'assistant' && Array.isArray(e.message?.content)
+    ? e.message.content.filter((b: Entry) => b?.type === 'toolCall')
+    : []
 
 function isCheckCall(b: Entry): boolean {
   if (b.name === 'bash') return isCheckCommand(String(b.arguments?.command ?? ''))
@@ -70,13 +108,17 @@ function isCheckCall(b: Entry): boolean {
   return a.agent === 'gate-runner' || many.some((t: Entry) => t?.agent === 'gate-runner')
 }
 
-export function decideCompletionGate(entries: Entry[], env: Record<string, string | undefined> = process.env): CompletionDecision {
+export function decideCompletionGate(
+  entries: Entry[],
+  env: Record<string, string | undefined> = process.env,
+): CompletionDecision {
   if (env.PI_COMPLETION_GATE === '0') return { action: 'none' }
   let start = 0
   let planMode = false
   for (let i = 0; i < entries.length; i++) {
     if (role(entries[i]) === 'user') start = i + 1
-    if (entries[i].type === 'custom' && entries[i].customType === 'plan-mode') planMode = entries[i].data?.enabled === true
+    if (entries[i].type === 'custom' && entries[i].customType === 'plan-mode')
+      planMode = entries[i].data?.enabled === true
   }
   if (planMode) return { action: 'none' }
 

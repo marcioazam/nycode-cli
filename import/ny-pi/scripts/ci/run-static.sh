@@ -127,7 +127,8 @@ structure_changed() { printf '%s\n' "${CHANGED[@]}" | python3 "$CIDIR/lint/struc
 markdownlint() {
   local dir="$TMP/mdlint"
   mkdir -p "$dir"
-  (cd "$dir" && npm init -y >/dev/null && npm install --ignore-scripts --no-audit --no-fund --no-package-lock markdownlint-cli2@0.24.1 >/dev/null) || return 1
+  cp "$CIDIR/markdownlint/package.json" "$CIDIR/markdownlint/package-lock.json" "$dir/" || return 1
+  (cd "$dir" && npm ci --ignore-scripts --no-audit --no-fund >/dev/null) || return 1
   "$dir/node_modules/.bin/markdownlint-cli2" --config "$CIDIR/markdownlint.jsonc" "$@"
 }
 

@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from fake_api import FakeApi, Step, route, sse_events
+from fake_api import FakeApi, Step, capture_path, route, sse_events
 
 SCRIPT = {
     "c1": [Step(tool_name="bash", tool_input={"command": "echo ok"}), Step(text="fim")]
@@ -141,3 +141,15 @@ def test_done_is_stored_before_the_answer_reaches_the_client() -> None:
         ):  # the client reads the answer and checks at once; a later store would lose the race
             post(api.port, {"stream": True, "messages": [user("contract-case:c1")]})
             assert api.hits[-1].done > 0
+
+
+@pytest.mark.parametrize(
+    "case", ["../x", "../../etc/passwd", "/etc/passwd", "a/../../b"]
+)
+def test_capture_path_rejects_escape(tmp_path: Path, case: str) -> None:
+    with pytest.raises(ValueError):
+        capture_path(tmp_path, 1, case)
+
+
+def test_capture_path_stays_inside(tmp_path: Path) -> None:
+    assert capture_path(tmp_path, 1, "c1") == tmp_path.resolve() / "req-001-c1.json"

@@ -1,8 +1,12 @@
-# CodeQL code scanning, scheduled only: never on pull_request, so it adds no time to a PR.
+# CodeQL code scanning: push to main, weekly schedule and pull_request. The PR run exists only so the OpenSSF
+# Scorecard SAST check sees a code-scanning check run on merged PRs (2026-11-20). It is an independent workflow,
+# not a required check, so it never gates or delays the critical path of the CI workflows.
 name: CodeQL
 
 on:
   push:
+    branches: [main]
+  pull_request:
     branches: [main]
   schedule:
     - cron: "41 6 * * 3"

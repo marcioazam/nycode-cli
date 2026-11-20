@@ -9,8 +9,9 @@ ny-pi has no tagged releases yet. Only the `main` branch receives security fixes
 Do not report a vulnerability through a public issue, discussion or pull request.
 
 1. Open the repository's **Security** tab and select **Report a vulnerability**
-   ([direct link](../../security/advisories/new)). Private vulnerability reporting is
-   enabled; the report stays between you and the maintainer.
+   ([direct link](../../security/advisories/new); how it works:
+   <https://docs.github.com/en/code-security/security-advisories/guidance-on-reporting-and-writing-information-about-vulnerabilities/privately-reporting-a-security-vulnerability>).
+   Private vulnerability reporting is enabled; the report stays between you and the maintainer.
 2. Include what you can: the commit, reproduction steps or a proof of concept, the impact, and whether you know of
    active exploitation. An early partial report is better than a late complete one.
 

@@ -139,6 +139,7 @@ $HOME/.pi/agent/claude-home/hooks/guard.py	claude-home/hooks/guard.py
 $HOME/.pi/agent/claude-home/hooks/impeccable_gate.sh	claude-home/hooks/impeccable_gate.sh
 $HOME/.pi/agent/claude-home/hooks/test_graph_context.py	claude-home/hooks/test_graph_context.py
 $HOME/.pi/agent/claude-home/hooks/test_guard.py	claude-home/hooks/test_guard.py
+$HOME/.pi/agent/claude-home/hooks/fuzz/test_guard_fuzz.py	claude-home/hooks/fuzz/test_guard_fuzz.py
 $HOME/.pi/agent/claude-home/hooks/test_hook_budget.py	claude-home/hooks/test_hook_budget.py
 $HOME/.pi/agent/claude-home/hooks/test_impeccable_gate.py	claude-home/hooks/test_impeccable_gate.py
 $HOME/.pi/agent/claude-home/lite/APPEND.md	claude-home/lite/APPEND.md

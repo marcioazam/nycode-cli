@@ -99,12 +99,38 @@ trufflehog_history() {
 # p/bash does not exist in the registry (404): shell is covered by p/default, p/command-injection.
 # Pre-existing findings (13 on 2026-11-13, listed in the task record) do not block: with BASE_SHA
 # semgrep reports only findings introduced since that commit; without it the whole tree is scanned.
+# The official image, pinned by digest (semgrep 1.186.0, Docker Hub semgrep/semgrep): the PyPI
+# wheel pins mcp==1.29.0 and opentelemetry-api~=1.37.0, which carry open advisories.
+SEMGREP_IMAGE=${SEMGREP_IMAGE:-semgrep/semgrep:1.186.0@sha256:6e1b04340e60e910fbb4ddbf3c857ab0918f064417ad5ac530014ccb3cf8c8f1}
+# The repo is mounted read-only; --baseline-commit rewrites the work tree, so it scans a private copy.
 semgrep_scan() {
-  local base=${BASE_SHA:-} args=()
-  case $base in '' | 0000000000000000000000000000000000000000) ;; *) args=(--baseline-commit "$base") ;; esac
-  SEMGREP_SEND_METRICS=off semgrep scan --error --metrics=off --disable-version-check --quiet \
+  command -v docker >/dev/null || {
+    echo "semgrep: docker is required (image $SEMGREP_IMAGE) and was not found"
+    return 1
+  }
+  local base=${BASE_SHA:-} args=() src=$PWD mode=ro rc=0
+  case $base in '' | 0000000000000000000000000000000000000000) ;; *)
+    args=(--baseline-commit "$base")
+    src=$TMP/semgrep-src
+    [ ! -d "$src" ] || rm -r "$src"
+    cp -a . "$src" || return 1
+    # In a linked worktree .git is a file pointing outside the mount: give the copy a self-contained repo at HEAD.
+    if [ -f "$src/.git" ]; then
+      rm "$src/.git"
+      git clone --quiet --no-checkout "$(git rev-parse --git-common-dir)" "$TMP/semgrep-git" || return 1
+      mv "$TMP/semgrep-git/.git" "$src/.git" && rm -r "$TMP/semgrep-git"
+      git -C "$src" reset --quiet "$(git rev-parse HEAD)" || return 1
+    fi
+    mode=rw
+    ;;
+  esac
+  docker run --rm --volume "$src:/src:$mode" --workdir /src \
+    --env SEMGREP_SEND_METRICS=off --env GIT_CONFIG_COUNT=1 --env GIT_CONFIG_KEY_0=safe.directory --env GIT_CONFIG_VALUE_0=/src \
+    "$SEMGREP_IMAGE" semgrep scan --error --metrics=off --disable-version-check --quiet \
     --config p/default --config p/python --config p/typescript --config p/command-injection --config p/github-actions \
-    --exclude scripts/fixtures/leak "${args[@]}" .
+    --exclude scripts/fixtures/leak "${args[@]}" . || rc=$?
+  [ "$mode" = rw ] && rm -r "$src"
+  return "$rc"
 }
 
 # osv-scanner has no severity threshold flag: fail on any group with CVSS >= 7 (HIGH/CRITICAL) or
