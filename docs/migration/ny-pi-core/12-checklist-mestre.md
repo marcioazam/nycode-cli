@@ -23,13 +23,13 @@ Identificador: `C-F<fase>-<n>`. A coluna "prova" diz o que tem de ser observado.
 
 ## F1. Importação do histórico
 
-- [ ] C-F1-01 Clone novo do ny-pi filtrado para `import/ny-pi/`. Prova: `git ls-files | grep -vc '^import/ny-pi/'` devolve 0 no clone.
-- [ ] C-F1-02 Verificação de vazamento no histórico do clone filtrado. Prova: saída 0 de `check-leaks.sh --history`.
-- [ ] C-F1-03 Fusão com `--allow-unrelated-histories` num PR com método merge. Prova: commit com dois pais em `main`.
-- [ ] C-F1-04 1485 arquivos sob `import/ny-pi/`. Prova: `git ls-files import/ny-pi | wc -l`.
-- [ ] C-F1-05 Histórico preservado. Prova: `git log --follow --oneline import/ny-pi/extensions/plan-gate.ts` mostra commits do ny-pi.
-- [ ] C-F1-06 `import/` fora de `workspaces`, Biome, `tsconfig`, pacote publicado. Prova: `npm run check` igual à linha de base.
-- [ ] C-F1-07 Nenhum arquivo fora de `import/ny-pi/` mudou no merge. Prova: `git diff --stat <pai1> <merge> -- . ':!import'` vazio (exceto as exclusões de C-F1-06).
+- [x] C-F1-01 Clone novo do ny-pi filtrado para `import/ny-pi/`. Prova: `git ls-files | grep -vc '^import/ny-pi/'` devolve 0 no clone.
+- [x] C-F1-02 Verificação de vazamento no histórico do clone filtrado. Prova: saída 0 de `check-leaks.sh --history`.
+- [x] C-F1-03 Fusão com `--allow-unrelated-histories` num PR com método merge. Prova: commit com dois pais em `main`.
+- [x] C-F1-04 1485 arquivos sob `import/ny-pi/`. Prova: `git ls-files import/ny-pi | wc -l`.
+- [x] C-F1-05 Histórico preservado. Prova: `git log --follow --oneline import/ny-pi/extensions/plan-gate.ts` mostra commits do ny-pi.
+- [x] C-F1-06 `import/` fora de `workspaces`, Biome, `tsconfig`, pacote publicado. Prova: `npm run check` igual à linha de base.
+- [x] C-F1-07 Nenhum arquivo fora de `import/ny-pi/` mudou no merge. Prova: `git diff --stat <pai1> <merge> -- . ':!import'` vazio (exceto as exclusões de C-F1-06).
 
 ## F2. Governança versionada e marca
 
