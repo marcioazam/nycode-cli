@@ -1,45 +1,70 @@
-name: Bug Report
-description: Report something that's broken
-labels: ["bug"]
+name: Bug report
+description: Something does not work as expected.
+labels: ["type: bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        **Before you start:** Read [CONTRIBUTING.md](https://github.com/marcioazam/nycode/blob/main/CONTRIBUTING.md).
+        Security vulnerabilities must not be reported here. Use **Security > Report a vulnerability** instead (see SECURITY.md).
 
-        New issues from new contributors are auto-closed by default. Maintainers review auto-closed issues daily. Issues that do not meet the quality bar in [CONTRIBUTING.md](https://github.com/marcioazam/nycode/blob/main/CONTRIBUTING.md) will not be reopened or receive a reply.
-
-        Keep this short. If it doesn't fit on one screen, it's too long. Write in your own voice.
-
-        **Important:** before reporting an issue in core, please validate first with `nycode -ne` that this is not caused by an extension you loaded.
-
+        Before reporting an issue in core, validate with `nycode -ne` that it is not caused by an extension you loaded (`-ne` is `--no-extensions`).
   - type: textarea
-    id: description
+    id: actual
     attributes:
-      label: What happened?
-      description: Be specific. Include error messages if any.
+      label: What happened
+      description: Include exact error messages and logs. Remove secrets, tokens and personal data.
     validations:
       required: true
-
-  - type: textarea
-    id: repro
-    attributes:
-      label: Steps to reproduce
-      description: Minimal steps to trigger the bug.
-    validations:
-      required: true
-
   - type: textarea
     id: expected
     attributes:
-      label: Expected behavior
+      label: What you expected
     validations:
-      required: false
-
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The smallest sequence that reproduces the problem.
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Core
+        - Built-in extensions
+        - Bundled resources
+        - Benchmark
+        - Distribution
+        - CI
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Impact
+      options:
+        - Blocks all use, data loss or wrong results
+        - Major feature broken, no workaround
+        - Feature broken, workaround exists
+        - Minor or cosmetic
+    validations:
+      required: true
   - type: input
     id: version
     attributes:
-      label: Version
-      description: e.g. 0.49.0
+      label: nycode version
+      description: "Output of `nycode --version`."
     validations:
-      required: false
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: OS and Node.js version
+      placeholder: "Linux x86_64, Node 22.19"

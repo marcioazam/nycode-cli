@@ -4,7 +4,7 @@ body:
     id: idea
     attributes:
       label: The idea
-      description: What would you like ny-pi to do?
+      description: What would you like nycode to do?
     validations:
       required: true
   - type: textarea
