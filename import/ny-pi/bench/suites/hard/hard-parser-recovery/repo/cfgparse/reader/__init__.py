@@ -1,0 +1,1 @@
+"""Leitura: texto → linhas lógicas."""

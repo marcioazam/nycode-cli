@@ -1,0 +1,43 @@
+#!/usr/bin/env python3
+"""Offline stand-in for gh: canned answers from $GH_STUB_DIR/rules.json, argv recorded to calls.jsonl.
+
+A rule matches when every token of `match` equals an argv element (a "~" prefix means substring); the first matching rule
+answers. `seq` makes the nth call get the nth response (the last one repeats). "{HEAD}" in stdout expands
+to `git rev-parse HEAD` of the working directory; "{REV:<rev>}" expands to `git rev-parse <rev>` there.
+"""
+
+import json
+import os
+import re
+import subprocess
+import sys
+
+root = os.environ["GH_STUB_DIR"]
+argv = sys.argv[1:]
+with open(os.path.join(root, "calls.jsonl"), "a", encoding="utf-8") as fh:
+    fh.write(json.dumps(argv) + "\n")
+with open(os.path.join(root, "rules.json"), encoding="utf-8") as fh:
+    rules = json.load(fh)
+state_file = os.path.join(root, "state.json")
+state = json.load(open(state_file, encoding="utf-8")) if os.path.exists(state_file) else {}
+for index, rule in enumerate(rules):
+    if all(any((token[1:] in arg) if token.startswith("~") else token == arg for arg in argv) for token in rule["match"]):
+        reply = rule
+        if "seq" in rule:
+            n = state.get(str(index), 0)
+            reply = rule["seq"][min(n, len(rule["seq"]) - 1)]
+            state[str(index)] = n + 1
+            with open(state_file, "w", encoding="utf-8") as fh:
+                json.dump(state, fh)
+        out = reply.get("stdout", "")
+        if "{HEAD}" in out:
+            head = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+            out = out.replace("{HEAD}", head)
+        for rev in set(re.findall(r"\{REV:([^}]+)\}", out)):
+            sha = subprocess.run(["git", "rev-parse", rev], capture_output=True, text=True).stdout.strip()
+            out = out.replace("{REV:" + rev + "}", sha)
+        sys.stdout.write(out)
+        sys.stderr.write(reply.get("stderr", ""))
+        sys.exit(reply.get("rc", 0))
+sys.stderr.write("stub gh: no rule for " + " ".join(argv) + "\n")
+sys.exit(1)

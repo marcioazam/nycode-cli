@@ -1,0 +1,11 @@
+{
+  "id": "multi-textdiff",
+  "suite": "multi",
+  "kind": "outcome",
+  "prompt": "Implemente os 3 módulos independentes abaixo (lev.py, diff.py, words.py); hoje cada função levanta NotImplementedError. O trabalho é paralelizável: cada módulo é um arquivo separado, sem imports entre eles, com testes próprios. Se o seu harness tiver subagentes, pode usá-los para dividir o trabalho; senão, faça em sequência. Especificação:\n- lev.py: levenshtein(a, b) -> int (distância de edição com inserção, remoção e substituição de custo 1) e closest(word, candidates, max_dist=2) -> str | None (candidato de menor distância <= max_dist; empate: o primeiro na ordem de candidates; nenhum -> None).\n- diff.py: line_diff(a, b) -> list[tuple[str, str]] com ops ' ' (igual), '-' (só em a), '+' (só em b), baseado em maior subsequência comum: as linhas ' ' e '-' em ordem reconstroem a; ' ' e '+' reconstroem b; o número de ' ' é o tamanho da LCS. Entradas vazias permitidas.\n- words.py: top_words(text, n) -> list[tuple[str, int]]: palavras (sequências de letras ASCII e apóstrofos, em minúsculas) com contagem, ordenadas por contagem decrescente e depois alfabética; no máximo n itens; n < 0 -> ValueError; n == 0 -> [].",
+  "timeout_s": 900,
+  "budget_usd": 1.5,
+  "split": "dev",
+  "security": false,
+  "test_cmd": "python3 -m pytest -q -p no:cacheprovider hidden"
+}

@@ -1,0 +1,5 @@
+{
+  "terminal-bench/fp8-rmsnorm-gemm": "needs a GPU (task.toml environment.gpus); the local runner has none",
+  "terminal-bench/jax-speedrun-gpu": "needs a GPU (task.toml environment.gpus); the local runner has none",
+  "terminal-bench/math-eval-grader": "needs a GPU (task.toml environment.gpus); the local runner has none"
+}

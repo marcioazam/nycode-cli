@@ -1,0 +1,15 @@
+#!/usr/bin/env python3
+"""Offline stand-in for gitleaks: records argv, exits with $GL_RC (default 0; the code under test passes --exit-code 77, so 77 = leak, anything else = scanner error).
+
+$GL_STDERR adds one stderr line, so a test can mimic gitleaks#1981 (an ` ERR ` line with exit 0)."""
+
+import json
+import os
+import sys
+
+with open(os.path.join(os.environ["GH_STUB_DIR"], "gitleaks.jsonl"), "a", encoding="utf-8") as fh:
+    fh.write(json.dumps(sys.argv[1:]) + "\n")
+sys.stderr.write("stub gitleaks\n")
+if os.environ.get("GL_STDERR"):
+    sys.stderr.write(os.environ["GL_STDERR"] + "\n")
+sys.exit(int(os.environ.get("GL_RC", "0")))

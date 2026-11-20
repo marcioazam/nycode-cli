@@ -1,0 +1,248 @@
+diff -ruN a/subagent/background.ts b/subagent/background.ts
+--- a/subagent/background.ts	1985-10-26 05:15:00.000000000 -0300
++++ b/subagent/background.ts	2026-11-12 21:24:39.858339520 -0300
+@@ -11,6 +11,7 @@
+ import * as os from 'node:os'
+ import * as path from 'node:path'
+ import { killProcessTree } from '../internal/process-tree.ts'
++import { childNestingEnv } from './nesting/index.ts'
+ import { sharedSlot } from '../internal/shared-slot.ts'
+ import { errorMessage } from '../internal/values.ts'
+ import { taskWithStartContext } from './child.ts'
+@@ -326,11 +327,11 @@
+     if (deferNotice) queueMicrotask(notify)
+     else notify()
+   }
+-  // The marker in env lets the child's subagent tool refuse to nest further. The run is
++  // The marker and depth in env let the child's subagent tool enforce the nesting cap. The run is
+   // already registered as running by the caller, so a spawn that throws synchronously
+   // (see spawnChild) must settle the record here: left as it was, the phantom held a cap
+   // slot with no kill and no eviction for the life of the process.
+-  const spawned = spawnChild(invocation.command, invocation.args, { cwd: invocation.cwd, env: { ...process.env, PI_CODE_SUBAGENT: '1', ...invocation.env } })
++  const spawned = spawnChild(invocation.command, invocation.args, { cwd: invocation.cwd, env: { ...process.env, ...childNestingEnv(), ...invocation.env } })
+   if ('error' in spawned) {
+     run.live = false
+     run.state = 'failed'
+diff -ruN a/subagent/concurrency.ts b/subagent/concurrency.ts
+--- a/subagent/concurrency.ts	1985-10-26 05:15:00.000000000 -0300
++++ b/subagent/concurrency.ts	2026-11-12 21:24:39.858440960 -0300
+@@ -1,10 +1,9 @@
+ /**
+- * Bounded fan-out for parallel subagent runs: the caps the tool advertises and the
+- * worker pool that honours them.
++ * Bounded fan-out for parallel subagent runs: the task cap the tool advertises and the
++ * worker pool that honours the per-depth concurrency (nesting/index.ts).
+  */
+ 
+ export const MAX_PARALLEL_TASKS = 8
+-export const MAX_CONCURRENCY = 4
+ 
+ export async function mapWithConcurrencyLimit<TIn, TOut>(items: TIn[], concurrency: number, fn: (item: TIn, index: number) => Promise<TOut>): Promise<TOut[]> {
+   if (items.length === 0) return []
+diff -ruN a/subagent/index.ts b/subagent/index.ts
+--- a/subagent/index.ts	1985-10-26 05:15:00.000000000 -0300
++++ b/subagent/index.ts	2026-11-12 21:24:39.858506540 -0300
+@@ -32,6 +32,7 @@
+ import { type AgentConfig, type AgentScope, discoverAgents } from './agents.ts'
+ import { activeBackgroundRuns, allBackgroundRuns, backgroundStatusText, cancelAllBackgroundRuns } from './background.ts'
+ import { buildHookAgent, forkAgent, setKnownMcpAliases } from './child.ts'
++import { canSpawnSubagents, claimSpawns, maxSubagentDepth, subagentDepth } from './nesting/index.ts'
+ import { checkProjectAgentGate, type ModeContext, runBackgroundMode, runChainMode, runParallelMode, runSingleMode, wantsBackground } from './modes.ts'
+ import { type MakeDetails, type SubagentMode, SubagentParams, type SubagentParamsStatic, type ToolResult } from './params.ts'
+ import { agentsListText, backgroundCompletionText, cancelResultText, resumeResultText, tasksStatusText } from './registry-text.ts'
+@@ -170,8 +171,8 @@
+       hookModels = []
+     }
+     setAgentRunner(async (request) => {
+-      // A subagent session must not spawn further agents; agent hooks inside one are
+-      // skipped (the seam rejection is non-blocking in runAgentHook).
++      // Agent hooks inside a subagent are skipped (the seam rejection is non-blocking in
++      // runAgentHook); nesting is for the subagent tool, under its depth cap and budget.
+       if (process.env.PI_CODE_SUBAGENT) throw new Error('agent hooks do not run inside a subagent')
+       // A context: fork skill names its agent, or runs with the full toolset;
+       // agent hooks keep the read-only hook shape.
+@@ -220,6 +221,9 @@
+   // project is already approved, read without prompting, since a trust dialog must
+   // not appear mid-turn and their descriptions are project text.
+   pi.on('before_agent_start', (event, ctx) => {
++    // A session at the depth cap cannot nest (the tool refuses there), and a session with the
++    // tool excluded cannot call it: a roster telling either to delegate only misleads.
++    if (!canSpawnSubagents() || !pi.getActiveTools().includes('subagent')) return
+     const scope: AgentScope = isProjectApprovedSilently(ctx) ? 'both' : 'user'
+     const key = `${scope}\n${ctx.cwd}`
+     if (rosterCache?.key !== key) rosterCache = { key, agents: discoverAgents(ctx.cwd, scope).agents }
+@@ -250,11 +254,10 @@
+       // so a default call can reach every agent it lists. An explicit agentScope
+       // still narrows or widens; the invocation gate below applies either way.
+       const agentScope: AgentScope = params.agentScope ?? (isProjectApprovedSilently(ctx) ? 'both' : 'user')
+-      // Children carry PI_CODE_SUBAGENT; without this check they could spawn
+-      // grandchildren without limit.
+-      if (process.env.PI_CODE_SUBAGENT) {
++      // Children carry their depth; without this check they could nest without limit.
++      if (!canSpawnSubagents()) {
+         return {
+-          content: [{ type: 'text', text: 'Nested subagent runs are not allowed: this session is already a subagent.' }],
++          content: [{ type: 'text', text: `Nested subagent runs are not allowed: this session is at depth ${subagentDepth()}, the cap is ${maxSubagentDepth()} (PI_CODE_SUBAGENT_MAX_DEPTH). Do the work here or report back to your parent.` }],
+           details: { mode: 'single', agentScope, projectAgentsDir: null, results: [] },
+         }
+       }
+@@ -281,6 +284,9 @@
+       const gateResult = await checkProjectAgentGate(params, agents, ctx, discovery.projectAgentsDir, gateModeOf(hasChain, hasTasks), makeDetails)
+       if (gateResult) return gateResult
+ 
++      const budgetError = claimSpawns(hasChain ? (params.chain?.length ?? 1) : hasTasks ? (params.tasks?.length ?? 1) : 1)
++      if (budgetError) return { content: [{ type: 'text', text: budgetError }], details: makeDetails(gateModeOf(hasChain, hasTasks))([]) }
++
+       // Project skills only preload and project/local agent memory stores only load
+       // once the project is approved, matching the gate the skills extension applies
+       // to discovery itself. Read after the project-agent gate above so an approval
+diff -ruN a/subagent/modes.ts b/subagent/modes.ts
+--- a/subagent/modes.ts	1985-10-26 05:15:00.000000000 -0300
++++ b/subagent/modes.ts	2026-11-12 21:24:39.858561220 -0300
+@@ -18,7 +18,8 @@
+ import { type AgentConfig, resolveModelAlias } from './agents.ts'
+ import { activeBackgroundRuns, MAX_BACKGROUND_RUNS, startBackgroundRun } from './background.ts'
+ import { agentHooksEnv, agentInvocationArgs, agentMemoryPromptSection, childPromptBody, taskWithStartContext, unresolvedToolsError, withMemoryTools } from './child.ts'
+-import { MAX_CONCURRENCY, MAX_PARALLEL_TASKS, mapWithConcurrencyLimit } from './concurrency.ts'
++import { MAX_PARALLEL_TASKS, mapWithConcurrencyLimit } from './concurrency.ts'
++import { parallelConcurrency } from './nesting/index.ts'
+ import type { ChainStepParam, MakeDetails, SubagentMode, SubagentParamsStatic, TaskItemParam, ToolResult } from './params.ts'
+ import { backgroundCompletionText } from './registry-text.ts'
+ import { getFinalOutput } from './render.ts'
+@@ -331,7 +332,7 @@
+     }
+   }
+ 
+-  const results = await mapWithConcurrencyLimit(tasks, MAX_CONCURRENCY, async (t, index) => {
++  const results = await mapWithConcurrencyLimit(tasks, parallelConcurrency(), async (t, index) => {
+     const result = await runSingleAgent({
+       defaultCwd,
+       agents,
+diff -ruN a/subagent/nesting/index.ts b/subagent/nesting/index.ts
+--- a/subagent/nesting/index.ts	1969-12-31 21:00:00.000000000 -0300
++++ b/subagent/nesting/index.ts	2026-11-11 17:32:24.547526473 -0300
+@@ -0,0 +1,94 @@
++/**
++ * Bounded nesting (local patch, claude-home/patches/pi-code/subagent-nesting.patch):
++ * the main session is depth 0, its children 1, grandchildren 2, and so on. A session
++ * may spawn while its depth is below PI_CODE_SUBAGENT_MAX_DEPTH (default 3: children,
++ * grandchildren and great-grandchildren; the deepest level is a leaf). Steering, not a
++ * sandbox. Each child of the main session roots its own tree (one lane); every run below it
++ * shares the lane's budget: PI_CODE_SUBAGENT_BUDGET runs (default 64, pi-subagents' per-tree
++ * default) and PI_CODE_SUBAGENT_COST_BUDGET USD of finished descendants (default 20: p99 of
++ * one subagent run here was 7.2 USD, 2026-11-11). The main session is never capped: the
++ * user sees every call it makes. Decision record: claude-home/docs/pi-multi-agent-2026-11-11.md.
++ */
++import { randomUUID } from 'node:crypto'
++import fs from 'node:fs'
++import os from 'node:os'
++import path from 'node:path'
++
++type Env = Record<string, string | undefined>
++
++function intEnv(raw: string | undefined, fallback: number, min: number, max: number): number {
++  const n = Number(raw)
++  return Number.isInteger(n) ? Math.min(max, Math.max(min, n)) : fallback
++}
++
++/** Depth of this session; a child from an unpatched parent (marker only) counts as 1. */
++export function subagentDepth(env: Env = process.env): number {
++  if (env.PI_CODE_SUBAGENT_DEPTH !== undefined) return intEnv(env.PI_CODE_SUBAGENT_DEPTH, 1, 0, 99)
++  return env.PI_CODE_SUBAGENT ? 1 : 0
++}
++
++export function maxSubagentDepth(env: Env = process.env): number {
++  return intEnv(env.PI_CODE_SUBAGENT_MAX_DEPTH, 3, 1, 5)
++}
++
++export function canSpawnSubagents(env: Env = process.env): boolean {
++  return subagentDepth(env) < maxSubagentDepth(env)
++}
++
++/** Parallel children run at once: 4 from the main session (the writer cap), 2 below it,
++ * so a full depth-3 tree holds at most 4 + 8 + 16 = 28 child processes. */
++export function parallelConcurrency(env: Env = process.env): number {
++  return subagentDepth(env) === 0 ? 4 : intEnv(env.PI_CODE_SUBAGENT_NESTED_CONCURRENCY, 2, 1, 4)
++}
++
++/** Env a child inherits: the marker, its depth and the tree id the budget is kept under.
++ * A child of the main session gets a fresh tree; deeper children inherit their parent's. */
++export function childNestingEnv(env: Env = process.env): Record<string, string> {
++  return {
++    PI_CODE_SUBAGENT: '1',
++    PI_CODE_SUBAGENT_DEPTH: String(subagentDepth(env) + 1),
++    PI_CODE_SUBAGENT_TREE: subagentDepth(env) === 0 ? newTreeId() : treeId(env),
++  }
++}
++
++const newTreeId = (): string => `${process.pid}-${randomUUID().slice(0, 8)}`
++let ownTree: string | undefined
++function treeId(env: Env): string {
++  if (env.PI_CODE_SUBAGENT_TREE && /^[\w-]+$/.test(env.PI_CODE_SUBAGENT_TREE)) return env.PI_CODE_SUBAGENT_TREE
++  ownTree ??= newTreeId()
++  return ownTree
++}
++
++const treeDir = (env: Env, root: string): string => path.join(root, `pi-code-subagent-tree-${treeId(env)}`)
++
++/** Claim `count` spawns from the tree budget; an error string when it is spent. One file
++ * per spawn (exclusive create) so concurrent processes in the tree never lose a count. */
++// ponytail: check-then-claim across processes can overshoot by the siblings claiming at the same
++// instant, and cost counts finished foreground runs only (background runs report no usage).
++export function claimSpawns(count: number, env: Env = process.env, root = os.tmpdir()): string | undefined {
++  if (subagentDepth(env) === 0) return undefined
++  const budget = intEnv(env.PI_CODE_SUBAGENT_BUDGET, 64, 1, 10_000)
++  const costBudget = Number(env.PI_CODE_SUBAGENT_COST_BUDGET ?? 20)
++  const dir = treeDir(env, root)
++  fs.mkdirSync(dir, { recursive: true, mode: 0o700 })
++  const files = fs.readdirSync(dir)
++  const used = files.filter((f) => f.startsWith('run-')).length
++  const spent = files.filter((f) => f.startsWith('cost-')).reduce((sum, f) => sum + (Number(fs.readFileSync(path.join(dir, f), 'utf-8')) || 0), 0)
++  if (used + count > budget) return `Subagent budget spent: ${used} of ${budget} runs in this lane (PI_CODE_SUBAGENT_BUDGET); finish with what you have or report back.`
++  if (Number.isFinite(costBudget) && costBudget > 0 && spent >= costBudget)
++    return `Subagent cost budget spent: ${spent.toFixed(2)} of ${costBudget} USD in this lane (PI_CODE_SUBAGENT_COST_BUDGET); finish with what you have or report back.`
++  for (let i = 0; i < count; i++) fs.writeFileSync(path.join(dir, `run-${randomUUID()}`), '', { flag: 'wx' })
++  return undefined
++}
++
++/** Charge a finished child's cost to this lane; the main session's own lanes are not capped. */
++export function recordSpawnCost(cost: number, env: Env = process.env, root = os.tmpdir()): void {
++  if (subagentDepth(env) === 0 || !(cost > 0)) return
++  try {
++    const dir = treeDir(env, root)
++    fs.mkdirSync(dir, { recursive: true, mode: 0o700 })
++    fs.writeFileSync(path.join(dir, `cost-${randomUUID()}`), String(cost), { flag: 'wx' })
++  } catch {
++    // accounting must never fail the run it measures
++  }
++}
+diff -ruN a/subagent/run.ts b/subagent/run.ts
+--- a/subagent/run.ts	1985-10-26 05:15:00.000000000 -0300
++++ b/subagent/run.ts	2026-11-12 21:24:39.858676930 -0300
+@@ -24,6 +24,7 @@
+ import { agentHooksEnv, agentInvocationArgs, agentMemoryPromptSection, childPromptBody, taskWithStartContext, unresolvedToolsError, withMemoryTools } from './child.ts'
+ import { getFinalOutput } from './render.ts'
+ import type { SingleResult, SubagentDetails } from './types.ts'
++import { childNestingEnv, recordSpawnCost } from './nesting/index.ts'
+ import { type AgentWorktree, cleanupAgentWorktree, createAgentWorktree } from './worktree.ts'
+ export async function writePromptToTempFile(agentName: string, prompt: string): Promise<{ dir: string; filePath: string }> {
+   const tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'pi-subagent-'))
+@@ -322,8 +323,8 @@
+       const invocation = getPiInvocation(args)
+       const spawned = spawnChild(invocation.command, invocation.args, {
+         cwd: worktree?.dir ?? runCwd,
+-        // The marker lets the child's subagent tool refuse to nest further.
+-        env: { ...process.env, PI_CODE_SUBAGENT: '1', ...agentHooksEnv(agent, options.agentId ?? '') },
++        // The marker and depth let the child's subagent tool enforce the nesting cap.
++        env: { ...process.env, ...childNestingEnv(), ...agentHooksEnv(agent, options.agentId ?? '') },
+       })
+       if ('error' in spawned) {
+         if (!currentResult.stderr) currentResult.stderr = spawned.error.message
+@@ -418,6 +419,7 @@
+     appendPartialNote(currentResult)
+     return currentResult
+   } finally {
++    recordSpawnCost(currentResult.usage.cost)
+     // Cleanup runs on abort too: it only removes a pristine worktree, so an
+     // interrupted agent's changes always survive.
+     if (worktree && (await cleanupAgentWorktree(runCwd, worktree)) === 'kept') {

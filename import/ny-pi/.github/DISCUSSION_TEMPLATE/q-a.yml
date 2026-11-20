@@ -1,0 +1,21 @@
+title: "[Q&A] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Search existing discussions first. For a bug use an issue; for a vulnerability use SECURITY.md.
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+    validations:
+      required: true
+  - type: textarea
+    id: tried
+    attributes:
+      label: What you tried
+      description: Commands and output (remove secrets and personal data).
+  - type: input
+    id: version
+    attributes:
+      label: ny-pi commit and pi version

@@ -1,0 +1,11 @@
+{
+  "id": "plan-config-json",
+  "suite": "plan",
+  "kind": "outcome",
+  "prompt": "Planeje antes de implementar. Objetivo: o pacote app/ lê configuração só de arquivos INI. Quero que também leia arquivos terminados em .json (um objeto {\"server\": {\"host\", \"port\", \"debug\"}} com os mesmos padrões localhost / 8080 / false), com o INI funcionando como hoje. Em ambos os formatos, porta fora de 1..65535 é configuração inválida (ValueError); no JSON, tipos errados (porta não inteira, debug não booleano) e JSON malformado também. app.cli.main(argv) deve devolver 2 se o arquivo não existe e 3 se a configuração é inválida.",
+  "timeout_s": 600,
+  "budget_usd": 1.0,
+  "split": "heldout",
+  "security": false,
+  "test_cmd": "python3 -m pytest -q -p no:cacheprovider hidden"
+}

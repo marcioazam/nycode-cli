@@ -1,0 +1,353 @@
+[
+ {
+  "id": "C1",
+  "claim": "LocAgent graph-guided localization: 92.7% file-level localization, ~86% lower cost with a fine-tuned 32B model, +12% Pass@10 resolution",
+  "url": "https://arxiv.org/abs/2503.09089",
+  "quote": "Notably, our method with the fine-tuned Qwen-2.5-Coder-Instruct-32B model achieves comparable results to SOTA proprietary models at greatly reduced cost (approximately 86% reduction), reaching up to 92.7% accuracy on file-level localization while improving downstream GitHub issue resolution success rates by 12% for multiple attempts (Pass@10).",
+  "item": "G1",
+  "script_status": "verified",
+  "verdict": "supported"
+ },
+ {
+  "id": "C2",
+  "claim": "KGCompass repository knowledge graph lifts resolved rate 30-156% relative over pure-LLM baselines",
+  "url": "https://arxiv.org/abs/2503.21710",
+  "quote": "Relative to pure-LLM baselines, KGCompass lifts the resolved rate by 50.8% on Claude-4 Sonnet, 30.2% on Claude-3.5 Sonnet, 115.7% on DeepSeek-V3, and 156.4% on Qwen2.5 Max.",
+  "item": "G1",
+  "script_status": "verified",
+  "verdict": "supported"
+ },
+ {
+  "id": "C3",
+  "claim": "89.7% of bugs KGCompass localizes lack location hints and need multi-hop graph traversal",
+  "url": "https://arxiv.org/abs/2503.21710",
+  "quote": "Among the bugs that KGCompass successfully localizes, 89.7% lack explicit location hints in the issue and are found only through multi-hop graph traversal, where pure LLMs struggle to locate bugs accurately.",
+  "item": "G1",
+  "script_status": "verified",
+  "verdict": "supported"
+ },
+ {
+  "id": "C4",
+  "claim": "OrcaLoca raises an open-source framework's resolve rate by 6.33 pp",
+  "url": "https://arxiv.org/abs/2502.00350",
+  "quote": "It also improves the final resolved rate of an open-source framework by 6.33 percentage points through its patch generation integration.",
+  "item": "G1",
+  "script_status": "verified",
+  "verdict": "supported"
+ },
+ {
+  "id": "C5",
+  "claim": "RepoGraph plug-in boosts all four SWE-bench methods it was added to",
+  "url": "https://arxiv.org/abs/2410.14684",
+  "quote": "We evaluate RepoGraph on the SWE-bench by plugging it into four different methods of two lines of approaches, where RepoGraph substantially boosts the performance of all systems, leading to a new state-of-the-art among open-source frameworks.",
+  "item": "G1",
+  "script_status": "verified",
+  "verdict": "supported"
+ },
+ {
+  "id": "C6",
+  "claim": "codegraph auto-syncs the index on every file change (vendor)",
+  "url": "https://github.com/colbymchenry/codegraph/blob/main/README.md",
+  "quote": "Auto-sync is enabled by default.",
+  "item": "G2",
+  "script_status": "verified",
+  "verdict": "supported"
+ },
+ {
+  "id": "C7",
+  "claim": "Serena uses language servers and supports over 40 languages; application GPL-3.0-or-later",
+  "url": "https://github.com/oraios/serena/blob/main/README.md",
+  "quote": "we provide support for over 40 programming languages",
+  "item": "G2",
+  "script_status": "verified",
+  "verdict": "partial"
+ },
+ {
+  "id": "C8",
+  "claim": "Aider repo map ranks files with a graph ranking algorithm over a file-dependency graph",
+  "url": "https://aider.chat/docs/repomap.html",
+  "quote": "It does this by analyzing the full repo map using a graph ranking algorithm, computed on a graph where each source file is a node and edges connect files which have dependencies.",
+  "item": "G2",
+  "script_status": "verified",
+  "verdict": "supported"
+ },
+ {
+  "id": "C9",
+  "claim": "Competitor-run comparison graded code-graph MCPs by call-edge precision and recall against a compiler (Go/TS)",
+  "url": "https://repowise.dev/blog/comparisons/best-code-graph-mcp-servers",
+  "quote": "Precision is the share of reported edges that are correct; recall is the share of real edges found.",
+  "item": "G2",
+  "script_status": "verified",
+  "verdict": "supported"
+ },
+ {
+  "id": "C10",
+  "claim": "LangGraph: resuming from a failed superstep does not re-run successful nodes",
+  "url": "https://docs.langchain.com/oss/javascript/langgraph/checkpointers",
+  "quote": "When you resume graph execution from that super-step you don't re-run the successful nodes.",
+  "item": "G3",
+  "script_status": "verified",
+  "verdict": "supported"
+ },
+ {
+  "id": "C11",
+  "claim": "OpenAI Agents SDK: a tripped input guardrail prevents the agent from running, saving tokens",
+  "url": "https://openai.github.io/openai-agents-python/guardrails/",
+  "quote": "If the guardrail tripwire is triggered, the agent never executes, preventing token consumption and tool execution.",
+  "item": "G3",
+  "script_status": "verified",
+  "verdict": "partial"
+ },
+ {
+  "id": "C12",
+  "claim": "AFlow automated workflow search lets smaller models beat GPT-4o on specific tasks at 4.55% of the cost",
+  "url": "https://arxiv.org/abs/2410.10762",
+  "quote": "Furthermore, AFlow enables smaller models to outperform GPT-4o on specific tasks at 4.55% of its inference cost in dollars.",
+  "item": "G3",
+  "script_status": "verified",
+  "verdict": "supported"
+ },
+ {
+  "id": "C13",
+  "claim": "Multi-agent benefit depends on task structure: +80.8% decomposable to -70% sequential planning",
+  "url": "https://arxiv.org/abs/2512.08296",
+  "quote": "Relative performance change compared to single-agent baseline ranges from +80.8% on decomposable financial reasoning to -70.0% on sequential planning, demonstrating that architecture-task alignment determines collaborative success.",
+  "item": "G3",
+  "script_status": "verified",
+  "verdict": "supported"
+ },
+ {
+  "id": "C14",
+  "claim": "Claude Code docs: for sequential, same-file or dependent work a single session or subagents are more effective than teams",
+  "url": "https://code.claude.com/docs/en/agent-teams",
+  "quote": "For sequential tasks, same-file edits, or work with many dependencies, a single session or subagents are more effective.",
+  "item": "G3",
+  "script_status": "verified",
+  "verdict": "supported"
+ },
+ {
+  "id": "C15",
+  "claim": "Raising the tool-call budget alone does not help; agents lack budget awareness",
+  "url": "https://arxiv.org/abs/2511.17006",
+  "quote": "However, we found that simply increasing the tool-call budget fails to improve performance, as agents lack \"budget awareness\" and quickly hit a performance ceiling.",
+  "item": "L1",
+  "script_status": "verified",
+  "verdict": "supported"
+ },
+ {
+  "id": "C16",
+  "claim": "Iterative decoding with high-fidelity feedback beats best-of-N by up to 10 points",
+  "url": "https://arxiv.org/abs/2504.01931",
+  "quote": "Across Sketch2Code, Text2SQL, Intercode, and WebShop, we show that IAD with proper integration of high fidelity feedback leads to consistent gains up to 10 percent absolute performance improvement over various baselines such as best-of-N.",
+  "item": "L1",
+  "script_status": "verified",
+  "verdict": "partial"
+ },
+ {
+  "id": "C17",
+  "claim": "Scaling repeated evaluation and criteria decomposition raises verifier accuracy",
+  "url": "https://arxiv.org/abs/2607.05391",
+  "quote": "Moreover, scaling repeated evaluation and criteria decomposition consistently lead to additional gains in verification accuracy through variance and complexity reduction.",
+  "item": "L1",
+  "script_status": "verified",
+  "verdict": "supported"
+ },
+ {
+  "id": "C18",
+  "claim": "One in five 'solved' SWE-bench Verified patches of top-30 agents are semantically wrong (weak tests)",
+  "url": "https://arxiv.org/abs/2603.00520",
+  "quote": "Our re-evaluation reveals that one in five \"solved\" patches from the top-30 agents are semantically incorrect, passing only because weak test suites fail to expose their errors.",
+  "item": "L1",
+  "script_status": "verified",
+  "verdict": "supported"
+ },
+ {
+  "id": "C19",
+  "claim": "An LLM judge detects reward hacking well in unambiguous cases; held-out tests add little",
+  "url": "https://arxiv.org/abs/2511.21654",
+  "quote": "We find the LLM judge to be highly effective at detecting reward hacking in unambiguous cases, and observe only minimal improvement from the use of held out test cases.",
+  "item": "L1",
+  "script_status": "verified",
+  "verdict": "supported"
+ },
+ {
+  "id": "C20",
+  "claim": "Code review by the coder or a separate verifier reduces delivered reward hacks in multi-agent coding",
+  "url": "https://arxiv.org/abs/2610.12822",
+  "quote": "As potential mitigations, we evaluate code review by the coder or a separate verifier, both of which reduce delivered hacks.",
+  "item": "L1",
+  "script_status": "verified",
+  "verdict": "supported"
+ },
+ {
+  "id": "C21",
+  "claim": "Ralph: use as little context as possible; more context worse outcomes",
+  "url": "https://ghuntley.com/ralph/",
+  "quote": "The more you use the context window, the worse the outcomes you'll get.",
+  "item": "L2",
+  "script_status": "verified",
+  "verdict": "supported"
+ },
+ {
+  "id": "C22",
+  "claim": "Loop stop rules: max iterations, time limit, idle (no new commit in N iterations)",
+  "url": "https://addyosmani.com/blog/self-improving-agents/",
+  "quote": "This prevents runaway costs and infinite loops.",
+  "item": "L2",
+  "script_status": "verified",
+  "verdict": "supported"
+ },
+ {
+  "id": "C23",
+  "claim": "Anthropic long-running harness: Claude tends to mark features complete without proper testing",
+  "url": "https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents",
+  "quote": "One final major failure mode that we observed was Claude’s tendency to mark a feature as complete without proper testing.",
+  "item": "L2",
+  "script_status": "verified",
+  "verdict": "supported"
+ },
+ {
+  "id": "C24",
+  "claim": "Anthropic: context resets were needed for Sonnet 4.5 because compaction alone was insufficient (model-dependent)",
+  "url": "https://www.anthropic.com/research/harness-design-long-running-apps",
+  "quote": "In our earlier testing, we found Claude Sonnet 4.5 exhibited context anxiety strongly enough that compaction alone wasn't sufficient to enable strong long task performance, so context resets became essential to the harness design.",
+  "item": "L2",
+  "script_status": "verified",
+  "verdict": "supported"
+ },
+ {
+  "id": "C25",
+  "claim": "Claude Code stop hooks: 8-consecutive-continuation cap",
+  "url": "https://code.claude.com/docs/en/hooks",
+  "quote": "Claude Code applies an 8-consecutive-continuation cap: after stop hooks have continued the turn eight times in a row, Claude Code overrides the next block and ends the turn.",
+  "item": "L2",
+  "script_status": "verified",
+  "verdict": "supported"
+ },
+ {
+  "id": "C26",
+  "claim": "METR: reward hacking 43x more common when the model sees the whole scoring function",
+  "url": "https://metr.org/blog/2025-06-05-recent-reward-hacking/",
+  "quote": "Reward hacking was more than 43× more common on RE-Bench tasks than HCAST tasks, perhaps because on RE-Bench tasks the model was able to see the entire scoring function, making that function easier to bypass and inadvertently priming the model to consider that type of solution more strongly.",
+  "item": "L2",
+  "script_status": "verified",
+  "verdict": "partial"
+ },
+ {
+  "id": "C27",
+  "claim": "Cursor: a judge agent decides at the end of each cycle; the next iteration starts fresh",
+  "url": "https://cursor.com/blog/scaling-agents",
+  "quote": "At the end of each cycle, a judge agent determined whether to continue, then the next iteration would start fresh.",
+  "item": "L2",
+  "script_status": "verified",
+  "verdict": "supported"
+ },
+ {
+  "id": "C28",
+  "claim": "Tool Search (deferred tools) improved Opus 4 49%->74% and Opus 4.5 79.5%->88.1% on an MCP eval",
+  "url": "https://www.anthropic.com/research/advanced-tool-use",
+  "quote": "Opus 4 improved from 49% to 74%, and Opus 4.5 improved from 79.5% to 88.1% with Tool Search Tool enabled.",
+  "item": "H1",
+  "script_status": "verified",
+  "verdict": "supported"
+ },
+ {
+  "id": "C29",
+  "claim": "Context editing plus memory +39% over baseline; editing alone +29% (internal eval)",
+  "url": "https://claude.com/resources/articles/context-management",
+  "quote": "The results demonstrate significant gains: combining the memory tool with context editing improved performance by 39% over baseline. Context editing alone delivered a 29% improvement.",
+  "item": "H1",
+  "script_status": "verified",
+  "verdict": "supported"
+ },
+ {
+  "id": "C30",
+  "claim": "Context rot: performance consistently degrades with input length across 18 LLMs",
+  "url": "https://www.trychroma.com/research/context-rot",
+  "quote": "Across all experiments, model performance consistently degrades with increasing input length.",
+  "item": "H1",
+  "script_status": "verified",
+  "verdict": "supported"
+ },
+ {
+  "id": "C31",
+  "claim": "Prompt caching cut API cost 41-80% and TTFT 13-31% in agentic tasks",
+  "url": "https://arxiv.org/html/2601.06007v2",
+  "quote": "Our results demonstrate that prompt caching reduces API costs by 41-80% and improves time to first token by 13-31% across providers.",
+  "item": "H1",
+  "script_status": "verified",
+  "verdict": "supported"
+ },
+ {
+  "id": "C32",
+  "claim": "Same model and effort: Claude Code/Codex cost >2x per task vs Pi at equal quality",
+  "url": "https://www.databricks.com/blog/benchmarking-coding-agents-databricks-multi-million-line-codebase",
+  "quote": "When we ran the same model with the same thinking effort through two different harnesses (Claude Code/Codex vs Pi), we observed that the cost per task differed significantly (more than 2x in some cases), while quality remained the same.",
+  "item": "H2",
+  "script_status": "verified",
+  "verdict": "partial"
+ },
+ {
+  "id": "C33",
+  "claim": "Progressive disclosure of skills may increase latency (token savings up to 81.7%)",
+  "url": "https://arxiv.org/html/2609.35692v1",
+  "quote": "Progressive disclosure may increase overall latency.",
+  "item": "H1",
+  "script_status": "verified",
+  "verdict": "supported"
+ },
+ {
+  "id": "C34",
+  "claim": "RouteLLM router cuts cost by over 2x without compromising quality",
+  "url": "https://arxiv.org/abs/2406.18665",
+  "quote": "Our evaluation on widely-recognized benchmarks shows that our approach significantly reduces costs-by over 2 times in certain cases-without compromising the quality of responses.",
+  "item": "H1",
+  "script_status": "verified",
+  "verdict": "partial"
+ },
+ {
+  "id": "C35",
+  "claim": "Anthropic multi-agent: token usage alone explains 80% of performance variance",
+  "url": "https://www.anthropic.com/research/multi-agent-research-system",
+  "quote": "We found that token usage by itself explains 80% of the variance, with the number of tool calls and the model choice as the two other explanatory factors.",
+  "item": "H1",
+  "script_status": "verified",
+  "verdict": "supported"
+ },
+ {
+  "id": "C36",
+  "claim": "Pre-registered study: the embedding index carries the localization gain; graph tools add nothing measurable on top for most sizes (small open models)",
+  "url": "https://arxiv.org/html/2610.33958",
+  "quote": "The embedding index carries the gain and the graph tools add nothing measurable on top of it for most sizes.",
+  "item": "challenge",
+  "script_status": "verified",
+  "verdict": "supported"
+ },
+ {
+  "id": "C37",
+  "claim": "Structural index lands at a lower $/solved than agentic grep; it pays off when the workload has multi-file changes (vendor)",
+  "url": "https://arxiv.org/html/2606.22417v1",
+  "quote": "the index lands at a lower $/solved than agentic grep",
+  "item": "challenge",
+  "script_status": "verified",
+  "verdict": "partial"
+ },
+ {
+  "id": "C38",
+  "claim": "Serena did not improve success on a small local benchmark and added tokens via tool schemas",
+  "url": "https://sovgrid.org/blog/serena-local-benchmark",
+  "quote": "Serena does not improve success or diff quality. It adds tokens, because its tool schemas bloat every request.",
+  "item": "challenge",
+  "script_status": "verified",
+  "verdict": "partial"
+ },
+ {
+  "id": "C39",
+  "claim": "With an imperfect verifier, resampling has an accuracy ceiling even with infinite compute",
+  "url": "https://arxiv.org/html/2411.17501v1",
+  "quote": "Resampling cannot decrease this probability, so it imposes an upper bound to the accuracy of resampling-based inference scaling even with an infinite compute budget.",
+  "item": "challenge",
+  "script_status": "verified",
+  "verdict": "supported"
+ }
+]

@@ -1,0 +1,11 @@
+{
+  "id": "multi-textkit",
+  "suite": "multi",
+  "kind": "outcome",
+  "prompt": "Implemente os 3 módulos independentes abaixo (slug.py, casing.py, truncate.py); hoje cada função levanta NotImplementedError. O trabalho é paralelizável: cada módulo é um arquivo separado, sem imports entre eles, com testes próprios. Se o seu harness tiver subagentes, pode usá-los para dividir o trabalho; senão, faça em sequência. Especificação:\n- slug.py: slugify(s) -> str. Minúsculas, remove acentos (NFKD), sequências não alfanuméricas viram um '-', sem '-' nas pontas; sem alfanuméricos -> ''.\n- casing.py: to_snake(s) e to_camel(s). to_snake aceita camelCase, PascalCase, kebab-case e espaços: 'HTTPServerError'->'http_server_error', 'userID2'->'user_id2', 'my-var name'->'my_var_name'. to_camel converte snake/kebab/espaços para camelCase: 'user_id_name'->'userIdName', 'Foo-bar'->'fooBar'; '' -> ''.\n- truncate.py: truncate(s, width, ellipsis='…') -> str (devolve s se len(s)<=width, senão s[:width-len(ellipsis)]+ellipsis; width<len(ellipsis) -> ValueError) e wrap(s, width) -> list[str] (quebra gulosa por palavras; palavra maior que width é cortada em pedaços de width; width<1 -> ValueError; texto vazio -> []).",
+  "timeout_s": 900,
+  "budget_usd": 1.5,
+  "split": "dev",
+  "security": false,
+  "test_cmd": "python3 -m pytest -q -p no:cacheprovider hidden"
+}

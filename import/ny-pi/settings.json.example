@@ -1,0 +1,25 @@
+{
+  "packages": [
+    {
+      "source": "npm:pi-code@1.7.0",
+      "extensions": [
+        "!extensions/mcp/**"
+      ]
+    },
+    "./vendor/pi-lsp",
+    "./vendor/ponytail"
+  ],
+  "theme": "tokyo-night",
+  "compaction": {
+    "enabled": true
+  },
+  "defaultProjectTrust": "never",
+  "retry": {
+    "enabled": true,
+    "maxRetries": 10,
+    "baseDelayMs": 2000,
+    "maxAgentDelayMs": 60000
+  },
+  "shellCommandPrefix": "export GIT_EDITOR=true GIT_SEQUENCE_EDITOR=true GIT_MERGE_AUTOEDIT=no GIT_PAGER=cat PAGER=cat AWS_PAGER= LESS=FRX",
+  "quietStartup": "header"
+}

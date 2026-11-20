@@ -1,0 +1,10 @@
+# Sample input for `python3 -m reportkit data/orders.csv`
+order_id,date,region,product,quantity,unit_price,discount_pct,notes
+A-1001,2024-01-03,north,Widget,4,25.00,,first order
+A-1002,2024-01-15,SOUTH,"Gadget, large",1,199.90,10,
+A-1003,2024-01-15,North,Gadget,2,99.95,2.5,
+
+A-1004,2024-02-02,east,Widget,10,25.00,15,"bulk
+order"
+A-1005,2024-02-17,SOUTH,Widget,3,25.00,0,
+A-1006,2024-04-01,WEST,Cable,7,3.35,5,

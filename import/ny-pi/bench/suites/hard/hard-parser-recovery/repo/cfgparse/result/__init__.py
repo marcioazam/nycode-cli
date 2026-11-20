@@ -1,0 +1,1 @@
+"""Resultado: árvore de configuração."""

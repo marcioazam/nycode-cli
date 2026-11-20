@@ -1,0 +1,11 @@
+{
+  "id": "plan-pagination",
+  "suite": "plan",
+  "kind": "outcome",
+  "prompt": "Planeje antes de implementar. Objetivo: a busca do pacote catalog/ devolve todos os resultados de uma vez. Quero paginação: service.search(store, q='', page=1, per_page=10) passa a devolver um dict {'items', 'page', 'per_page', 'total', 'pages'} (itens ordenados por nome, filtro por substring sem diferenciar maiúsculas; pages = max(1, ceil(total/per_page))). page < 1, page > pages ou per_page < 1 -> ValueError (página 1 de um resultado vazio é válida). O CLI main(argv, store, out=print) aceita um termo opcional e as opções --page N e --per-page M, imprime um nome por linha seguido de 'page P/PAGES'; entrada inválida imprime 'error: ...' e devolve 2. O export CSV (catalog.export.to_csv) deve continuar listando TODOS os itens.",
+  "timeout_s": 600,
+  "budget_usd": 1.0,
+  "split": "dev",
+  "security": false,
+  "test_cmd": "python3 -m pytest -q -p no:cacheprovider hidden"
+}

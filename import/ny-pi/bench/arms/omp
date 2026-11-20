@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Arm omp: Oh My Pi (can1357/oh-my-pi, a pi fork), the reviewed v18.20.0 release binary (omp-release.sh), thinking medium.
+# Each call gets a throwaway HOME: omp reads ~/.omp, ~/.claude and ~/.codex config, so the owner's would leak in.
+# Auto QA reports (qa.omp.sh) are off; no OTEL_* endpoint is set, so OTLP export stays inert.
+set -euo pipefail
+# shellcheck source=bench/arms/oauth-token.sh
+. "$(dirname "$(readlink -f "$0")")/oauth-token.sh"
+export ANTHROPIC_OAUTH_TOKEN
+ANTHROPIC_OAUTH_TOKEN=$(bench_oauth_token)
+unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
+omp_bin="${BENCH_OMP_BIN:-${BENCH_STAGE_ROOT:-$HOME/.cache/bench}/omp/release/omp-linux-x64}"
+root="${BENCH_STAGE_ROOT:-$HOME/.cache/bench}/omp-home"
+mkdir -p "$root"
+home=$(mktemp -d -p "$root")
+trap 'rm -r -- "$home"' EXIT
+args=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+  --settings | --mcp-config | --setting-sources) shift 2 ;;
+  --settings=* | --mcp-config=* | --setting-sources=* | --strict-mcp-config) shift ;;
+  *)
+    args+=("$1")
+    shift
+    ;;
+  esac
+done
+# omp's Anthropic transport ignores HTTPS_PROXY and only tunnels through PI_PROXY (pi-ai providers/cowork-fetch.ts):
+# without this the eval's egress-allowlisted cases (sec-*-canary) dial api.anthropic.com directly and fail.
+if [ -n "${HTTPS_PROXY:-}" ] && [ -z "${PI_PROXY:-}" ]; then export PI_PROXY="$HTTPS_PROXY"; fi
+# pi 1.5.2 ends a print run with `agent_settled` after `agent_end`; omp stops at `agent_end`, so the eval shim
+# (claude_pi.py) would read every run as unsettled. Add the marker after omp's `agent_end`; nothing else changes.
+settle='import sys
+for line in sys.stdin:
+    sys.stdout.write(line)
+    sys.stdout.flush()
+    if line.startswith("{") and "\"type\":\"agent_end\"" in line.replace(" ", ""):
+        print("{\"type\":\"agent_settled\"}", flush=True)'
+# no exec: the trap removes the throwaway HOME after omp exits; pipefail keeps omp's exit status
+HOME="$home" PI_AUTO_QA=0 PI_SKIP_VERSION_CHECK=1 "$omp_bin" --thinking medium "${args[@]}" | python3 -c "$settle"

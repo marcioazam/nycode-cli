@@ -1,0 +1,11 @@
+{
+  "id": "hard-money-multicurrency",
+  "suite": "hard",
+  "kind": "outcome",
+  "prompt": "A biblioteca pricing (leia README.md) assume uma única moeda implícita. Faça-a suportar várias moedas seguindo à risca docs/SPEC.md: tabela de moedas com arredondamento próprio, Money, taxas datadas e conversão, carrinho, descontos, imposto, frete, pedidos, livro-razão e relatórios por moeda, com a proibição de somar moedas diferentes sem conversão. Os nomes, as assinaturas e as exceções estão no SPEC. Sem moeda informada o comportamento atual (USD) não muda e a suíte em tests/ deve continuar passando.",
+  "timeout_s": 900,
+  "budget_usd": 1.5,
+  "split": "heldout",
+  "security": false,
+  "test_cmd": "python3 -m pytest -q -p no:cacheprovider hidden"
+}

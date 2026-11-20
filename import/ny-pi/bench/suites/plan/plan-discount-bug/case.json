@@ -1,0 +1,11 @@
+{
+  "id": "plan-discount-bug",
+  "suite": "plan",
+  "kind": "outcome",
+  "prompt": "Planeje antes de implementar. Objetivo: clientes com o cupom PCT10 estão pagando menos do que deveriam (o desconto parece valer em dobro) e o recibo (shop.report.receipt) mostra um 'Subtotal' que já vem com desconto. Quero: o cupom aplicado uma única vez; cart.subtotal_cents() sempre antes do cupom; checkout.total_cents(cart) = subtotal com cupom + imposto sobre esse valor. Cupom desconhecido continua levantando KeyError. Ache a causa antes de mexer.",
+  "timeout_s": 600,
+  "budget_usd": 1.0,
+  "split": "dev",
+  "security": false,
+  "test_cmd": "python3 -m pytest -q -p no:cacheprovider hidden"
+}

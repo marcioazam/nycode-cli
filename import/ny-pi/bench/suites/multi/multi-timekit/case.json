@@ -1,0 +1,11 @@
+{
+  "id": "multi-timekit",
+  "suite": "multi",
+  "kind": "outcome",
+  "prompt": "Implemente os 3 módulos independentes abaixo (duration.py, humanize.py, cron.py); hoje cada função levanta NotImplementedError. O trabalho é paralelizável: cada módulo é um arquivo separado, sem imports entre eles, com testes próprios. Se o seu harness tiver subagentes, pode usá-los para dividir o trabalho; senão, faça em sequência. Especificação:\n- duration.py: parse_duration(s) -> int segundos. Aceita sequências como '1h30m', '90s', '1d2h', sem distinção de maiúsculas, espaços ignorados. Unidades d,h,m,s; unidade repetida, texto vazio, número sem unidade ou unidade desconhecida -> ValueError.\n- humanize.py: humanize(seconds) -> str, formato '2d 3h 4m 5s' omitindo partes zero; 0 -> '0s'; negativo -> ValueError.\n- cron.py: matches(expr, dt) -> bool para datetime dt. expr tem 5 campos (minuto hora dia-do-mês mês dia-da-semana; dow 0-6 com 0=domingo). Cada campo: '*', 'n', 'a-b', 'a,b,c', '*/n', 'a-b/n'. Dia-do-mês E dia-da-semana precisam casar (AND). Número de campos errado, valor fora da faixa (min 0-59, hora 0-23, dom 1-31, mês 1-12, dow 0-6), passo < 1 ou intervalo invertido -> ValueError.",
+  "timeout_s": 900,
+  "budget_usd": 1.5,
+  "split": "dev",
+  "security": false,
+  "test_cmd": "python3 -m pytest -q -p no:cacheprovider hidden"
+}

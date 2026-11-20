@@ -1,0 +1,373 @@
+diff -ruN a/subagent/fleet/inbox.ts b/subagent/fleet/inbox.ts
+--- a/subagent/fleet/inbox.ts	2026-11-13 16:23:03.488369699 -0300
++++ b/subagent/fleet/inbox.ts	2026-11-13 16:23:03.489127748 -0300
+@@ -1,6 +1,8 @@
+ /**
+- * Child side of the user's messages: a subagent process polls its own inbox file and
++ * Child side of the parent's messages: a subagent process polls its own inbox file and
+  * steers each message into its running turn. Only depth >= 1 with a valid fleet env.
++ * Acks: `steered` when queued, `consumed` at the first turn_start after it (the message
++ * reached the model), `too-late` for what the agent never got to (final drain).
+  */
+ import { subagentDepth } from '../nesting/index.ts'
+ import { appendAck, currentFleetDir, readInbox, validRunId } from './store.ts'
+@@ -11,23 +13,57 @@
+ 
+ export interface InboxTarget {
+   sendUserMessage(text: string, options?: { deliverAs?: 'steer' | 'followUp' }): unknown
++  on?(event: 'turn_start' | 'agent_settled' | 'session_shutdown', handler: () => void): unknown
+ }
+ 
++/** The running watcher's run, and the steered messages no turn has started for yet. */
++let active: { dir: string; id: string; offset: number } | undefined
++const pending = new Set<string>()
++const hooked = new WeakSet<object>()
++
+ /** One poll: deliver every complete new message, ack each; returns the next offset. */
+ export function pollInboxOnce(pi: InboxTarget, dir: string, id: string, from: number): number {
+   const { items, next } = readInbox(dir, id, from)
+   for (const msg of items) {
+     let outcome: 'steered' | 'too-late' = 'steered'
++    // Before the call: an idle agent may start its turn inside sendUserMessage.
++    pending.add(msg.id)
+     try {
+       pi.sendUserMessage(msg.text, { deliverAs: 'steer' })
+     } catch {
+       outcome = 'too-late'
++      pending.delete(msg.id)
+     }
+     appendAck(dir, id, { id: msg.id, t: Date.now(), outcome })
+   }
+   return next
+ }
+ 
++function settlePending(dir: string, id: string, outcome: 'consumed' | 'too-late'): void {
++  for (const msgId of pending) appendAck(dir, id, { id: msgId, t: Date.now(), outcome })
++  pending.clear()
++}
++
++/** The agent is done or going away: what it never turned into a turn, and what arrived after the last poll, is too late. */
++function drainInbox(): void {
++  if (!active) return
++  const { dir, id } = active
++  settlePending(dir, id, 'too-late')
++  const { items, next } = readInbox(dir, id, active.offset)
++  for (const msg of items) appendAck(dir, id, { id: msg.id, t: Date.now(), outcome: 'too-late' })
++  active.offset = next
++}
++
++function hook(pi: InboxTarget): void {
++  if (hooked.has(pi)) return
++  hooked.add(pi)
++  pi.on?.('turn_start', () => {
++    if (active) settlePending(active.dir, active.id, 'consumed')
++  })
++  pi.on?.('agent_settled', drainInbox)
++  pi.on?.('session_shutdown', drainInbox)
++}
++
+ export function stopInboxWatcher(): void {
+   const holder = globalThis as Record<symbol, unknown>
+   const handle = holder[SLOT] as ReturnType<typeof setInterval> | undefined
+@@ -37,12 +73,16 @@
+ 
+ export function startInboxWatcher(pi: InboxTarget): void {
+   stopInboxWatcher()
++  active = undefined
++  pending.clear()
+   const dir = currentFleetDir()
+   const id = process.env[FLEET_ENV.runId]
+   if (subagentDepth() < 1 || !dir || !validRunId(id)) return
+-  let offset = 0
++  const watch = { dir, id, offset: 0 }
++  active = watch
++  hook(pi)
+   const handle = setInterval(() => {
+-    offset = pollInboxOnce(pi, dir, id, offset)
++    watch.offset = pollInboxOnce(pi, dir, id, watch.offset)
+   }, POLL_MS)
+   handle.unref()
+   ;(globalThis as Record<symbol, unknown>)[SLOT] = handle
+diff -ruN a/subagent/fleet/source.ts b/subagent/fleet/source.ts
+--- a/subagent/fleet/source.ts	2026-11-13 16:23:03.493243099 -0300
++++ b/subagent/fleet/source.ts	2026-11-13 16:23:03.493782718 -0300
+@@ -6,8 +6,9 @@
+ import * as fs from 'node:fs'
+ import { backgroundRun, cancelBackgroundRun } from '../background.ts'
+ import { detachAll, hasForeground } from './detach.ts'
+-import { appendInbox, currentFleetDir, readRecord, readRecords, readTranscript, requestStop } from './store.ts'
+-import { FLEET_ENV, type FleetSource, type RunRecord, type SendOutcome, type StopOrigin, type StopOutcome } from './types.ts'
++import { subagentDepth } from '../nesting/index.ts'
++import { appendInbox, currentFleetDir, readAcks, readInbox, readRecord, readRecords, readTranscript, requestStop } from './store.ts'
++import { FLEET_ENV, type FleetSource, type LeadSendOutcome, type RunRecord, type SendOutcome, type StopOrigin, type StopOutcome } from './types.ts'
+ 
+ const SOURCE_SLOT = Symbol.for('pi-code.fleet.source')
+ const KILL_GRACE_MS = 5000
+@@ -15,7 +16,8 @@
+ const DEBOUNCE_MS = 100
+ 
+ export interface FleetSourceDeps {
+-  resume(id: string, text: string): boolean
++  /** `fromUser` (default) words the completion as a report of the user's panel message; the model's send passes false. */
++  resume(id: string, text: string, fromUser?: boolean): boolean
+ }
+ 
+ /** The pid must still belong to this run: pids are reused, and the child env carries the id. */
+@@ -83,6 +85,62 @@
+   return rec.depth === 1 && rec.background && deps.resume(id, text) ? 'resumed' : 'not-running'
+ }
+ 
++/** The model's `send` key (PI_CODE_SUBAGENT_SEND); the one place that defines its default: on unless '0' (paired
++ * eval and STEER/RESTART bench, docs/pi-subagent-send-2026-11-13.md). */
++export function sendEnabled(): boolean {
++  return process.env.PI_CODE_SUBAGENT_SEND !== '0'
++}
++
++const SEND_MAX_CHARS = 4000
++const SEND_PER_RUN = 20
++const SEND_PER_PROCESS = 60
++const SENT_SLOT = Symbol.for('pi-code.fleet.send-count')
++
++/** Who the child is told the text comes from: never the user. */
++function senderLabel(dir: string): string {
++  if (subagentDepth() === 0) return '[message from lead (main session), not the user]: '
++  const own = process.env[FLEET_ENV.runId] ?? ''
++  return `[message from parent ${readRecord(dir, own)?.agent ?? 'agent'} (${own}), not the user]: `
++}
++
++function resumeWithLabel(rec: RunRecord, text: string): boolean {
++  const box = (globalThis as Record<symbol, { deps: FleetSourceDeps } | undefined>)[SOURCE_SLOT]
++  return rec.depth === 1 && rec.background && box !== undefined && box.deps.resume(rec.id, text, false)
++}
++
++/** The model's send: a labelled message to a run this process started. Running runs get it in their inbox (delivered
++ * at the next turn boundary); a finished depth-1 background run is resumed with it. After the append the record is read
++ * again: a run that ended without consuming the message is resumed, or reported not-delivered, never a false queued.
++ * `afterAppend` is the seam the race test uses to end the run in that window. */
++export function sendFromLead(id: string, text: string, afterAppend?: () => void): LeadSendOutcome {
++  if (!sendEnabled()) return 'disabled'
++  const body = text.trim()
++  if (!body) return 'empty'
++  if (body.length > SEND_MAX_CHARS) return 'too-long'
++  const dir = currentFleetDir()
++  const rec = dir ? readRecord(dir, id) : undefined
++  if (!dir || !rec) return 'unknown'
++  if (rec.ownerPid !== process.pid) return 'not-owned'
++  const holder = globalThis as Record<symbol, { n: number } | undefined>
++  const sent = (holder[SENT_SLOT] ??= { n: 0 })
++  if (sent.n >= SEND_PER_PROCESS) return 'process-limit'
++  if (readInbox(dir, id, 0).items.length >= SEND_PER_RUN) return 'run-limit'
++  const labelled = `${senderLabel(dir)}${body}`
++  let outcome: LeadSendOutcome = 'not-running'
++  if (rec.state !== 'running') {
++    if (resumeWithLabel(rec, labelled)) outcome = 'resumed'
++  } else {
++    const msgId = randomUUID().slice(0, 8)
++    appendInbox(dir, id, { id: msgId, t: Date.now(), text: labelled })
++    afterAppend?.()
++    const consumed = readAcks(dir, id, 0).items.some((ack) => ack.id === msgId && ack.outcome === 'consumed')
++    if (readRecord(dir, id)?.state === 'running' || consumed) outcome = 'queued'
++    else outcome = resumeWithLabel(rec, labelled) ? 'resumed' : 'not-delivered'
++  }
++  if (outcome !== 'not-running') sent.n++
++  return outcome
++}
++
+ const listeners = new Set<() => void>()
+ let watcher: fs.FSWatcher | undefined
+ let ticker: ReturnType<typeof setInterval> | undefined
+diff -ruN a/subagent/fleet/store.ts b/subagent/fleet/store.ts
+--- a/subagent/fleet/store.ts	2026-11-13 16:23:03.498875086 -0300
++++ b/subagent/fleet/store.ts	2026-11-13 16:23:03.499711474 -0300
+@@ -248,6 +248,12 @@
+   return validRunId(id) ? readJsonl<InboxMessage>(inboxFile(dir, id), from) : { items: [], next: from }
+ }
+ 
++/** Inbox messages of a run that no `consumed` ack covers: sent, but never reached the model. */
++export function undeliveredCount(dir: string, id: string): number {
++  const consumed = new Set(readAcks(dir, id, 0).items.filter((ack) => ack.outcome === 'consumed').map((ack) => ack.id))
++  return readInbox(dir, id, 0).items.filter((msg) => !consumed.has(msg.id)).length
++}
++
+ export function appendAck(dir: string, id: string, ack: InboxAck): void {
+   if (validRunId(id)) appendJsonl(ackFile(dir, id), ack)
+ }
+diff -ruN a/subagent/fleet/types.ts b/subagent/fleet/types.ts
+--- a/subagent/fleet/types.ts	2026-11-13 16:23:03.504230034 -0300
++++ b/subagent/fleet/types.ts	2026-11-13 16:23:03.505150552 -0300
+@@ -95,14 +95,18 @@
+ export interface InboxAck {
+   id: string
+   t: number
+-  /** steered: queued into the running agent; too-late: the agent had already finished. */
+-  outcome: 'steered' | 'too-late'
++  /** steered: queued into the running agent; consumed: a turn began after the steer (the message reached the model);
++   * too-late: the agent had already finished, or never started a turn for it. */
++  outcome: 'steered' | 'consumed' | 'too-late'
+ }
+ 
+ export type StopOutcome = 'stopping' | 'not-running' | 'unknown' | 'refused'
+ /** queued: written to a running run's inbox; resumed: a finished background run of the
+  * main session continued with the message as its new task (pi-code's resume). */
+ export type SendOutcome = 'queued' | 'resumed' | 'not-running' | 'unknown'
++/** The model's `send` (sendFromLead): the panel outcomes plus not-delivered (the run ended before it read the
++ * message and nothing could resume it) and the refusals, none of which write to the inbox. */
++export type LeadSendOutcome = SendOutcome | 'not-delivered' | 'disabled' | 'empty' | 'too-long' | 'not-owned' | 'run-limit' | 'process-limit'
+ 
+ /** What the panel and the viewer need from the data plane; injected so the UI can be
+  * tested against an in-memory fake. */
+diff -ruN a/subagent/index.ts b/subagent/index.ts
+--- a/subagent/index.ts	2026-11-13 16:23:03.513725042 -0300
++++ b/subagent/index.ts	2026-11-13 16:23:03.514466410 -0300
+@@ -34,15 +34,15 @@
+ import { buildHookAgent, forkAgent, setKnownMcpAliases } from './child.ts'
+ import { raceDetach } from './fleet/detach.ts'
+ import { startInboxWatcher, stopInboxWatcher } from './fleet/inbox.ts'
+-import { fleetSourceForUi, getFleetSource, stopOwnForegroundRuns } from './fleet/source.ts'
++import { fleetSourceForUi, getFleetSource, sendEnabled, sendFromLead, stopOwnForegroundRuns } from './fleet/source.ts'
+ import { registerFleetUi } from './fleet-ui/index.ts'
+ import { registerTeam } from './team/index.ts'
+ import { teamEnabled, withTeamTool } from './team/types.ts'
+ import { ensureFleetDir, removeFleetDir, sweepOrphanFleetDirs } from './fleet/store.ts'
+ import { canSpawnSubagents, claimSpawns, maxSubagentDepth, subagentDepth } from './nesting/index.ts'
+ import { checkProjectAgentGate, type ModeContext, runBackgroundMode, runChainMode, runParallelMode, runSingleMode, wantsBackground } from './modes.ts'
+-import { type MakeDetails, type SubagentMode, SubagentParams, type SubagentParamsStatic, type ToolResult } from './params.ts'
+-import { agentsListText, backgroundCompletionText, cancelResultText, resumeResultText, statusWithFleet, tasksStatusText } from './registry-text.ts'
++import { type MakeDetails, type SubagentMode, type SubagentParamsStatic, subagentParams, type ToolResult } from './params.ts'
++import { agentsListText, backgroundCompletionText, cancelResultText, resumeResultText, sendResultText, statusWithFleet, tasksStatusText } from './registry-text.ts'
+ import { getFinalOutput } from './render.ts'
+ import { runSingleAgent } from './run.ts'
+ import { renderSubagentCall, renderSubagentResult } from './transcript/index.ts'
+@@ -66,6 +66,10 @@
+ /** The answer to a resume, cancel or status request, which manage background runs
+  * instead of starting one; undefined for a request that runs an agent. */
+ function backgroundRegistryResult(params: SubagentParamsStatic, pi: ExtensionAPI, notifyBackgroundCompletion: CompletionSink, makeDetails: MakeDetails): ToolResult | undefined {
++  if (params.send) {
++    return { content: [{ type: 'text', text: sendResultText(params.send, sendFromLead(params.send, params.task ?? '')) }], details: makeDetails('single')([]) }
++  }
++
+   if (params.resume) {
+     const onResumed = (run: { id: string; agent: string }): void => {
+       pi.events.emit(SUBAGENT_CHANNEL, { phase: 'start', agentType: run.agent, agentId: run.id })
+@@ -235,14 +239,14 @@
+     // The fleet (panel data) exists only for an interactive main session: a headless `pi -p` at
+     // depth 0 (scripts, hooks) has nobody to show it to, so it writes nothing, unless team mode
+     // (PI_CODE_TEAMS=1) needs the dir for the roster, the peer messages and the lead inbox.
+-    if (subagentDepth() === 0 && (ctx.hasUI || teamEnabled())) {
++    if (subagentDepth() === 0 && (ctx.hasUI || teamEnabled() || sendEnabled())) {
+       ensureFleetDir() // undefined (unsafe root) disables the fleet: currentFleetDir stays unset
+       const holder = globalThis as Record<symbol, boolean>
+       if (!holder[FLEET_SWEPT]) {
+         holder[FLEET_SWEPT] = true
+         sweepOrphanFleetDirs()
+       }
+-      getFleetSource({ resume: (id, text) => resumeBackgroundRun(id, text, (run) => notifyBackgroundCompletion(run, text)) === 'resumed' })
++      getFleetSource({ resume: (id, text, fromUser = true) => resumeBackgroundRun(id, text, (run) => notifyBackgroundCompletion(run, fromUser ? text : undefined)) === 'resumed' })
+     } else if (subagentDepth() > 0) {
+       startInboxWatcher(pi)
+     }
+@@ -304,8 +308,9 @@
+       'Single mode also supports background: true for long tasks; a notification arrives on completion and {status: true} lists runs.',
+       'Agents come from ~/.claude/agents and ~/.pi/agent/agents, plus project .claude/agents and .pi/agents once the project is trusted.',
+       'agentScope: "user" or "project" narrows to one source.',
++      ...(sendEnabled() ? ['{send: <run id>, task: <message>} redirects a live background run (background runs only); the message is delivered at its next turn boundary, not mid tool call, labelled as yours and never as the user\'s.'] : []),
+     ].join(' '),
+-    parameters: SubagentParams,
++    parameters: subagentParams(),
+ 
+     async execute(_toolCallId, params, signal, onUpdate, ctx) {
+       // Claude merges project agents into the default roster (project wins on a name
+diff -ruN a/subagent/params.ts b/subagent/params.ts
+--- a/subagent/params.ts	2026-11-13 16:23:03.521369773 -0300
++++ b/subagent/params.ts	2026-11-13 16:23:03.522774181 -0300
+@@ -8,6 +8,7 @@
+ import { type Static, Type } from 'typebox'
+ 
+ import { stringEnum } from '../internal/string-enum.ts'
++import { sendEnabled } from './fleet/source.ts'
+ import type { SingleResult, SubagentDetails } from './types.ts'
+ 
+ export const TaskItem = Type.Object({
+@@ -38,8 +39,12 @@
+   status: Type.Optional(Type.Boolean({ description: 'Set true (alone, no other params) to list background runs instead of running anything.' })),
+   cancel: Type.Optional(Type.String({ description: 'Background run id to cancel (from the id returned when it started, or from status).' })),
+   resume: Type.Optional(Type.String({ description: 'Finished background run id to continue with a follow-up task; the child keeps everything it already saw. Pass task with it.' })),
++  send: Type.Optional(Type.String({ description: 'Live background run id to redirect: the message goes in task. It reaches the run at its next turn boundary, labelled as yours (not the user). Background runs only.' })),
+ })
+ 
++/** The schema the tool registers: `send` is part of it only while PI_CODE_SUBAGENT_SEND is on. */
++export const subagentParams = (): typeof SubagentParams => (sendEnabled() ? SubagentParams : (Type.Omit(SubagentParams, ['send']) as typeof SubagentParams))
++
+ /**
+  * pi only sets a tool result's error flag when execute() throws; a returned isError is
+  * ignored (docs/extensions.md, "Signaling errors"). Throwing here would be worse: the
+diff -ruN a/subagent/registry-text.ts b/subagent/registry-text.ts
+--- a/subagent/registry-text.ts	2026-11-13 16:23:03.529369791 -0300
++++ b/subagent/registry-text.ts	2026-11-13 16:23:03.530011174 -0300
+@@ -6,10 +6,18 @@
+ 
+ import { capForContext } from '../internal/output-guard.ts'
+ import type { AgentConfig, AgentSource } from './agents.ts'
+-import { stopOwnRun, fleetStatusLines } from './fleet/source.ts'
+-import { currentFleetDir, requestStop } from './fleet/store.ts'
++import { fleetStatusLines, sendEnabled, stopOwnRun } from './fleet/source.ts'
++import { currentFleetDir, readRecords, requestStop, undeliveredCount } from './fleet/store.ts'
++import type { LeadSendOutcome } from './fleet/types.ts'
+ import { type BackgroundRun, backgroundRun, backgroundStatusText, cancelBackgroundRun, MAX_BACKGROUND_RUNS, resumeBackgroundRun } from './background.ts'
+ 
++/** AC4: messages sent with `send` that no turn of the run consumed; empty when none or when send is off. */
++function undeliveredNote(id: string): string {
++  const dir = currentFleetDir()
++  const n = dir && sendEnabled() ? undeliveredCount(dir, id) : 0
++  return n > 0 ? `${n} message(s) sent with send were not delivered; resend with resume` : ''
++}
++
+ /** The completion notice a background run sends when it finishes. */
+ export function backgroundCompletionText(run: { id: string; agent: string; state: string; turns: number; output?: string; stderr?: string; partial?: boolean }, userResume?: string): string {
+   const output = capForContext(run.output ?? '') || '(no output)'
+@@ -25,7 +33,27 @@
+     userResume === undefined
+       ? ''
+       : `Report only, no action needed: the user messaged this run from the agent panel, which resumed it, and that resumed run has finished. Do not resume or repeat it. The user's message to the run was: "${userResume.length > 500 ? `${userResume.slice(0, 500)}…` : userResume}"\n\n`
+-  return `${origin}Background subagent run ${run.id} (${run.agent}) ${run.state} after ${run.turns} turns.\n\n${output}${diagnostics}${partialNote}`
++  const undelivered = undeliveredNote(run.id)
++  const undeliveredLine = undelivered ? `\n\n[${undelivered}]` : ''
++  return `${origin}Background subagent run ${run.id} (${run.agent}) ${run.state} after ${run.turns} turns.\n\n${output}${diagnostics}${partialNote}${undeliveredLine}`
++}
++
++/** What to tell the model about a send request. */
++export function sendResultText(id: string, outcome: LeadSendOutcome): string {
++  const text: Record<LeadSendOutcome, string> = {
++    queued: `Message queued for run ${id}: it is delivered at the run's next turn boundary, not in the middle of a tool call.`,
++    resumed: `Run ${id} had finished; resumed it with your message. A notification will arrive on completion.`,
++    'not-running': `Run ${id} is not running, so send cannot reach it: use {resume: "${id}", task: "..."} for a finished background run, or start a new run.`,
++    'not-delivered': `Run ${id} ended before it read your message and could not be resumed: start a new run.`,
++    unknown: `Unknown run: ${id}.\n\n${statusWithFleet()}`,
++    disabled: 'send is disabled (PI_CODE_SUBAGENT_SEND=0).',
++    empty: 'Pass task with send: the message needs text.',
++    'too-long': 'Message too long: send takes at most 4000 characters.',
++    'not-owned': `Run ${id} was not started by this session: send only reaches your own runs.`,
++    'run-limit': `Run ${id} already took 20 messages: use resume or start a new run.`,
++    'process-limit': 'This session already sent 60 messages with send.',
++  }
++  return text[outcome]
+ }
+ 
+ /** What to tell the model about a resume request. */
+@@ -60,7 +88,15 @@
+ /** The registry status plus the calls the user moved to the background (Ctrl+B), which live outside the registry. */
+ export function statusWithFleet(): string {
+   const moved = fleetStatusLines()
+-  return moved.length > 0 ? `${backgroundStatusText()}\n\nMoved to the background:\n${moved.join('\n')}` : backgroundStatusText()
++  const base = moved.length > 0 ? `${backgroundStatusText()}\n\nMoved to the background:\n${moved.join('\n')}` : backgroundStatusText()
++  const dir = currentFleetDir()
++  if (!dir || !sendEnabled()) return base
++  const lost = readRecords(dir)
++    .filter((rec) => rec.ownerPid === process.pid && rec.state !== 'running')
++    .map((rec) => ({ id: rec.id, note: undeliveredNote(rec.id) }))
++    .filter((run) => run.note)
++    .map((run) => `${run.id}: ${run.note}`)
++  return lost.length > 0 ? `${base}\n\n${lost.join('\n')}` : base
+ }
+ 
+ /** The registry fields the /tasks listing prints. */

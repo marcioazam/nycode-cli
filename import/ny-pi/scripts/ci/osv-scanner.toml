@@ -1,0 +1,3 @@
+# osv-scanner exceptions: each needs an owner, a reason and an expiry (the scan fails again after it).
+# owner: repository owner
+# (none: semgrep runs from its pinned container image, no longer from requirements-ci.txt)

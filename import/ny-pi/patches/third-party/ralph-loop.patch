@@ -1,0 +1,26 @@
+--- /dev/null
++++ b/scripts/pi-ralph-start.sh
+@@ -0,0 +1,23 @@
++#!/usr/bin/env bash
++# Porte do ralph-loop para o pi (2026-11-11): o command injeta os argumentos crus no script do ```!, então `<promise>`,
++# `;` ou `$(...)` no prompt viravam redirecionamento ou execução (bug do original). O /ralph-loop do pi os passa por
++# um heredoc com delimitador entre aspas (sem expansão) no stdin; aqui viram palavras com shlex (aspas respeitadas) e
++# vão para o setup-ralph-loop.sh do plugin, sem passar pelo shell. Uso: pi-ralph-start.sh <session-id> < argumentos
++set -euo pipefail
++here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
++export CLAUDE_CODE_SESSION_ID="${1:-${CLAUDE_CODE_SESSION_ID:-}}"
++raw="$(cat)"
++args=()
++while IFS= read -r -d '' word; do args+=("$word"); done < <(
++  RALPH_RAW="$raw" python3 -c '
++import os, shlex, sys
++raw = os.environ["RALPH_RAW"]
++try:
++    words = shlex.split(raw)
++except ValueError:  # aspas desbalanceadas (ex.: um apóstrofo no texto): separa por espaço
++    words = raw.split()
++for w in words:
++    sys.stdout.write(w + "\0")
++'
++)
++exec "$here/setup-ralph-loop.sh" "${args[@]}"

@@ -1,0 +1,19 @@
+{
+ "session_id": "01a1cbdf-c71a-75fe-8856-1b1956fdda28",
+ "cwd": "/tmp/pi-capture/repo",
+ "permission_mode": "default",
+ "transcript_path": "/tmp/pihome/.pi/agent/sessions/--tmp-pi-capture-repo--/2026-11-11T18-30-02-779Z_01a1cbdf-c71a-75fe-8856-1b1956fdda28.jsonl",
+ "effort": {
+  "level": "medium"
+ },
+ "tool_use_id": "toolu_01MzWLBSGdjKnVzVwu3PyWj5",
+ "hook_event_name": "PostToolUseFailure",
+ "tool_name": "Bash",
+ "tool_input": {
+  "command": "false",
+  "timeout": 10000
+ },
+ "error": "(no output)\n\nCommand exited with code 1",
+ "is_interrupt": false,
+ "duration_ms": 22
+}

@@ -1,0 +1,6 @@
+{"suite": "s6", "task_id": "terminal-bench/cad-model", "rep": 0, "passed": false, "cost_usd": 0.0827056, "wall_s": 104.91, "security": false, "split": "dev", "subagents_used": false, "error": null}
+{"suite": "s6", "task_id": "terminal-bench/fin-saccr-rwa", "rep": 0, "passed": false, "cost_usd": 0.21923230000000002, "wall_s": 123.73, "security": false, "split": "dev", "subagents_used": false, "error": null}
+{"suite": "s6", "task_id": "terminal-bench/ks-solver-cpp", "rep": 0, "passed": false, "cost_usd": 0.1011718, "wall_s": 73.47, "security": false, "split": "dev", "subagents_used": false, "error": null}
+{"suite": "s6", "task_id": "terminal-bench/production-planning", "rep": 0, "passed": false, "cost_usd": 0.4285589, "wall_s": 184.06, "security": false, "split": "dev", "subagents_used": false, "error": null}
+{"suite": "s6", "task_id": "terminal-bench/risk-scorer-replay", "rep": 0, "passed": true, "cost_usd": 1.1522443, "wall_s": 507.18, "security": false, "split": "dev", "subagents_used": false, "error": null}
+{"suite": "s6", "task_id": "terminal-bench/session-window-debug", "rep": 0, "passed": false, "cost_usd": 0.0696258, "wall_s": 36.36, "security": false, "split": "dev", "subagents_used": false, "error": null}

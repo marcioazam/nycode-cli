@@ -1,0 +1,25 @@
+# Defense-in-depth denylist; publish.list is the real allowlist.
+auth*.json
+*.env
+.env*
+local.env
+mcp.json
+mcp-auth.json
+lsp.json
+models-store.json
+sessions/
+checkpoints/
+memory/
+plans/
+projects/
+backups/
+.backups/
+session-env/
+claude-home/rules/personal.md
+__pycache__/
+*.pyc
+node_modules/
+*.bak*
+usage-cache*.json
+pi-transcripts/
+trust.json

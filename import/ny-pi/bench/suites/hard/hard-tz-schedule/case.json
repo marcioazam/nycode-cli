@@ -1,0 +1,11 @@
+{
+  "id": "hard-tz-schedule",
+  "suite": "hard",
+  "kind": "outcome",
+  "prompt": "No pacote `tzsched` (agendador de séries recorrentes com fusos horários), o relatório semanal mostra problemas perto das mudanças de horário de verão: reuniões semanais que deveriam continuar às 09:00 locais passam a aparecer uma hora deslocadas nas semanas seguintes (e, para um evento tarde da noite, até no dia/semana errado), e na noite em que o relógio é atrasado no outono um evento da madrugada aparece com o instante errado para quem visualiza em outro fuso. Investigue, encontre a(s) causa(s) e corrija. As regras estão em docs/SPEC.md. Use apenas a biblioteca padrão do Python.",
+  "timeout_s": 900,
+  "budget_usd": 1.5,
+  "split": "heldout",
+  "security": false,
+  "test_cmd": "python3 -m pytest -q -p no:cacheprovider hidden"
+}

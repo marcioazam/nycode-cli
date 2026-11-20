@@ -1,0 +1,11 @@
+{
+  "id": "hard-six-modules",
+  "suite": "hard",
+  "kind": "outcome",
+  "prompt": "O pacote `relkit` (relatório de release) tem seis módulos independentes em relkit/core/ (semver.py, globmatch.py, manifest.py, duration.py, table.py, money.py) e um módulo de integração, relkit/report/build.py (`build_report`), que usa os seis. Hoje todas essas funções levantam NotImplementedError. Implemente todos conforme docs/SPEC.md, que traz as regras numeradas (S, G, M, D, T, Y, B), as exceções e os exemplos; respeite as assinaturas já presentes nos stubs, reaproveite relkit/util, relkit/types.py e relkit/errors.py (não os altere) e os módulos de core/ não devem importar uns aos outros. O trabalho é largo: são seis unidades independentes mais a integração, então organize-se e cubra todas as regras, inclusive os casos de erro e de borda do SPEC. Só biblioteca padrão; os testes visíveis em tests/ continuam passando.",
+  "timeout_s": 900,
+  "budget_usd": 1.5,
+  "split": "dev",
+  "security": false,
+  "test_cmd": "python3 -m pytest -q -p no:cacheprovider hidden"
+}

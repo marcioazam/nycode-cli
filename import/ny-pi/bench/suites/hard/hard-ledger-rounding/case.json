@@ -1,0 +1,11 @@
+{
+  "id": "hard-ledger-rounding",
+  "suite": "hard",
+  "kind": "outcome",
+  "prompt": "O pacote `ledger` (razão contábil) gera um relatório final que diverge dos valores esperados: em alguns lançamentos o imposto e o valor convertido saem 1 centavo abaixo do correto quando a conta cai exatamente no meio entre dois centavos, e a linha TOTAL do relatório não confere com a soma das linhas exibidas. Investigue, encontre a(s) causa(s) e corrija sem alterar o comportamento dos demais cálculos (juros, taxas, rateio). As regras de negócio estão em docs/SPEC.md. Use apenas a biblioteca padrão do Python.",
+  "timeout_s": 900,
+  "budget_usd": 1.5,
+  "split": "dev",
+  "security": false,
+  "test_cmd": "python3 -m pytest -q -p no:cacheprovider hidden"
+}
