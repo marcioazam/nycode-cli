@@ -79,6 +79,12 @@ def _harbor_tasks(s: dict[str, Any], step: Step) -> list[str] | None:
     )
 
 
+def resolve_tier(tier: str, suites_cfg: dict[str, Any]) -> str:
+    """Canonical tier name: `[tier.smoke] alias = "pr"` (D-27) makes smoke the PR tier, so the round, its
+    directory and the sequential gate (meta tier == "pr") all see `pr`."""
+    return str(suites_cfg["tier"][tier].get("alias", tier))
+
+
 def build_plan(
     tier: str,
     suites_cfg: dict[str, Any],
@@ -536,7 +542,7 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument(
         "--tier",
         required=True,
-        choices=["pr", "baseline", "full", "vanilla", "tb41", "hard"],
+        choices=["pr", "smoke", "baseline", "full", "vanilla", "tb41", "hard"],
     )
     r.add_argument("--model", required=True)
     r.add_argument("--budget-usd", type=float, required=True)
@@ -631,6 +637,7 @@ def main(argv: list[str] | None = None) -> int:
             a.tasks = [t for t in os.environ["BENCH_EXTEND_TASKS"].split(",") if t]
             a.k = int(os.environ["BENCH_EXTEND_REPS"])
             a.out = Path(os.environ["BENCH_EXTEND_DIR"]) / "ext"
+        a.tier = resolve_tier(a.tier, suites_cfg)
         steps = build_plan(a.tier, suites_cfg, a.suites, a.k, a.tasks)
         if a.dry_run:
             print(render_plan(a.arm, a.tier, a.model, a.budget_usd, steps))

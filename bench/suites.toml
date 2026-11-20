@@ -118,6 +118,11 @@ steps = [
   { suite = "s2", n = 4, k = 1 },  # Harbor tasks are slow (up to 28 min); k1 keeps the PR under ~1 h
 ]
 
+# `smoke` = the PR tier under the name the migration plan uses (D-27, docs/migration/ny-pi-core/09 §5.2).
+# Resolved by run.py (resolve_tier); it has no steps of its own, so it cannot drift from `pr`.
+[tier.smoke]
+alias = "pr"
+
 # Frozen base of the PR gate (docs/bench/baseline-main): the PR units at k12 (s2 k4), so the gate's paired
 # interval carries almost only the candidate's noise (bench/stats.py, MARGIN).
 [tier.baseline]

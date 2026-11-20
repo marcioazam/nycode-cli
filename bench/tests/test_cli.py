@@ -344,7 +344,15 @@ def test_suites_toml_tiers_are_consistent() -> None:
     assert sum(c.startswith("sec-") for c in s1["pr_cases"]) == sum(
         c.startswith("sec-") for c in s1["cases"]
     )
-    assert set(cfg["tier"]) == {"pr", "baseline", "full", "vanilla", "tb41", "hard"}
+    assert set(cfg["tier"]) == {
+        "pr",
+        "smoke",
+        "baseline",
+        "full",
+        "vanilla",
+        "tb41",
+        "hard",
+    }
 
     def ks(tier: str) -> dict[str, int]:
         return {st["suite"]: st["k"] for st in cfg["tier"][tier]["steps"]}
