@@ -11,11 +11,11 @@
 #   ./scripts/release-secrets.sh sparkle                make (or reuse) Sparkle's update key, store it
 #   ./scripts/release-secrets.sh status                 list what the environment holds (names only)
 #
-# REPO overrides the repository (default marcioazam/nycode-cli).
+# REPO overrides the repository (default marcioazam/nycode).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-REPO="${REPO:-marcioazam/nycode-cli}"
+REPO="${REPO:-marcioazam/nycode}"
 ENVIRONMENT=p2-mac-release
 # Between certificate-request and certificate: the private key waits here, readable by you only.
 PENDING="$HOME/.p2-mac-signing"

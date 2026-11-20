@@ -13,7 +13,7 @@ const script = join(dirname(fileURLToPath(import.meta.url)), "preview-packages.m
 const sha = "a".repeat(40);
 const newerSha = "b".repeat(40);
 const mainSha = "c".repeat(40);
-const REPO_API = "/repos/marcioazam/nycode-cli/";
+const REPO_API = "/repos/marcioazam/nycode/";
 
 function temporaryDirectory(t) {
 	const directory = mkdtempSync(join(tmpdir(), "nycode-preview-packages-test-"));
@@ -89,7 +89,7 @@ function publish(server, dir, args = ["--event", "pull_request", "--ref", "pr-1"
 			ACTIONS_ID_TOKEN_REQUEST_URL: `${server.url}/token`,
 			ACTIONS_ID_TOKEN_REQUEST_TOKEN: "runner",
 			GITHUB_API_URL: server.url,
-			GITHUB_REPOSITORY: "marcioazam/nycode-cli",
+			GITHUB_REPOSITORY: "marcioazam/nycode",
 			GH_TOKEN: "job-token",
 		},
 	});

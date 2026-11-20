@@ -6,9 +6,9 @@ Message timestamps are Unix timestamps in milliseconds. They are different from 
 
 Source definitions:
 
-- [`packages/ai/src/types.ts`](https://github.com/marcioazam/nycode-cli/blob/main/packages/ai/src/types.ts) defines provider-facing messages and content blocks.
-- [`packages/agent/src/types.ts`](https://github.com/marcioazam/nycode-cli/blob/main/packages/agent/src/types.ts) defines the extensible `AgentMessage` union.
-- [`packages/coding-agent/src/core/messages.ts`](https://github.com/marcioazam/nycode-cli/blob/main/packages/coding-agent/src/core/messages.ts) adds coding-agent message roles.
+- [`packages/ai/src/types.ts`](https://github.com/marcioazam/nycode/blob/main/packages/ai/src/types.ts) defines provider-facing messages and content blocks.
+- [`packages/agent/src/types.ts`](https://github.com/marcioazam/nycode/blob/main/packages/agent/src/types.ts) defines the extensible `AgentMessage` union.
+- [`packages/coding-agent/src/core/messages.ts`](https://github.com/marcioazam/nycode/blob/main/packages/coding-agent/src/core/messages.ts) adds coding-agent message roles.
 
 ## Content blocks
 
