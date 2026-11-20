@@ -17,7 +17,10 @@ git checkout -q -b up && c up1 && c up2
 git update-ref refs/remotes/upstream/main up
 git checkout -q main
 
-fail() { echo "FAIL: $1" >&2; exit 1; }
+fail() {
+  echo "FAIL: $1" >&2
+  exit 1
+}
 run() { BEFORE=$1 AFTER=$(git rev-parse HEAD) bash "$script"; }
 
 # 1. squash (fast-forward / plain commit): no merge commit, passes
