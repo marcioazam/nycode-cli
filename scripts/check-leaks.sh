@@ -14,7 +14,7 @@ IDFILE=${NYCODE_IDENTIFIERS:-$HOME/.config/nycode/identifiers}
 # fake user:pass URL and PEM fixtures of the p2 and bug-report tests (same files as the .gitleaks.toml allowlists).
 TH_EXCL=$(mktemp)
 trap 'rm -rf "$TH_EXCL" "${TMPD:-}"' EXIT
-printf '%s\n' 'scripts/fixtures/leak/' 'atualizador/scripts/tests/test_core\.py$' '(^|/)\.git/' \
+printf '%s\n' 'scripts/fixtures/leak/' 'atualizador/scripts/tests/test_core\.py$' '(^|/)\.git/' '(^|/)node_modules/' \
   'apps/p2/test/p2/(logs|tui|tui-actions|fetch)\.test\.ts$' 'packages/coding-agent/test/bug-report\.test\.ts$' >"$TH_EXCL"
 
 install_trufflehog() {

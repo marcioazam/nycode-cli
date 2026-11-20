@@ -40,3 +40,12 @@ paths = [
   '''packages/chord/test/schema/stored/archive\.jsonl$''',
   '''packages/chord/test/node/http/upgrades\.test\.ts$''',
 ]
+
+[[allowlists]]
+description = "Installed dependencies: untracked, third-party and never published"
+paths = ['''(^|/)node_modules/''']
+
+[[allowlists]]
+description = "Hydrated model data (gitignored): content hashes, not credentials"
+targetRules = ["generic-api-key"]
+paths = ['''packages/ai/src/providers/data/''']
