@@ -26,7 +26,7 @@ Cada decisão tem um identificador estável (D-nn) citado nos outros documentos.
 | D-14 | Referências do benchmark | Guardadas valem; `pi-vanilla` e `cc-vanilla` são medidos de novo uma vez em F10, porque a base do pi mudou | adotada (regra de gatilho já existente) | F10 |
 | D-15 | Apagar 213 ramos herdados do nycode em Rust | Apagar depois de conferir que nenhum tem PR aberto | **aguarda o dono** | F0 |
 | D-16 | 8 alertas de secret scanning no destino | Fechar como credencial pública de cliente OAuth do upstream; remover `plan.md` do alcance | **aguarda o dono** | F0 |
-| D-17 | Escopo npm | Criar a organização `@nycode`; se indisponível, `@marcioazam` com prefixo `nycode-` | **aguarda o dono** | F11 |
+| D-17 | Escopo npm | ~~Criar a organização `@nycode`~~ (substituída). Dono, 2026-11-20: "Sem org vai ser repo opensource": sem organização nem publicação no npm; o canal é o repositório público `marcioazam/nycode` (fonte, etiquetas e GitHub Releases). Os itens npm de F11 (C-F11-01 a C-F11-05, C-F11-07) são reescritos para esse canal num PR de docs no início de F11 | decidida pelo dono | F11 |
 | D-18 | Política de contribuição | A do ny-pi (aberta, com modelos); o portão `lgtm` do upstream sai junto com seus workflows já removidos | adotada | — |
 | D-19 | Quem edita `CHANGELOG.md` | Mantenedores e agentes, em `## [Unreleased]`; contribuidores externos não | adotada | — |
 | D-20 | CodeQL | Workflow próprio (`javascript-typescript`, `python`, `actions`); desligar o "default setup" preso em `rust` | adotada | F3 |
@@ -147,3 +147,4 @@ exceções como intencionais.
 | P-11 | Quatro patches sem teste próprio: `commands-print`, `zz-hotkeys-no-alt`, `zz-panel-main-root`, `zzz-panel-column0` | Escrever teste de caracterização ao portar ([06](06-guia-de-execucao.md#f5)) | F5, F6 |
 | P-12 | Logo do nycode tem contraste baixo em fundo branco (1,14 no extremo claro); `extensions/ui-visual/header.ts` copia o logo do pi; `nycodeWordmark()` devolve "P" e "i" | Opções em [05, seção 7](05-marca-e-readme.md); cabeçalho trocado em F7 | F2, F7 |
 | P-13 | Estimativa de custo do tier `full` (US$ 86,16) acima do teto noturno de 30; S3 pede `n=50` com 19 tarefas utilizáveis | Ajustar teto ou amostra em F3 ([09](09-paridade-e-benchmark.md)) | F3 |
+| P-14 | `packages/coding-agent/test/subagent-extension.test.ts` "escalates SIGTERM to SIGKILL..." é instável sob a suíte inteira (falhou em 1 de 3 `./test.sh` em F0, passa isolado; `evidencias/F0.md`) | Diagnosticar e corrigir num PR próprio antes de F6, que porta o `subagent` | F6 |

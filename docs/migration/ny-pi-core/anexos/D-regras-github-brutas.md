@@ -1,4 +1,5 @@
 <!-- Anexo D: levantamento bruto de 2026-11-20 pela API do GitHub (só leitura). Regerar antes de F2 e F3. -->
+<!-- Conferido em F0 (2026-11-20) contra nycode@b92b1af50: entraram f76fb03b9 (#195, só URLs marcioazam/nycode-cli -> marcioazam/nycode em 48 arquivos) e b92b1af50 (#196, só docs/migration). Nenhum fato deste anexo muda além do nome do repositório; o estado do GitHub mudado pela própria F0 está em evidencias/F0.md. -->
 # Regras de repositório: ny-pi (origem) e nycode (destino)
 
 Coleta: `gh api` em 2026-11-20, somente GET. Segredos e variáveis: só nomes (nenhum existe).
