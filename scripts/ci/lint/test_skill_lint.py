@@ -1,5 +1,7 @@
 """Self-test of skill_lint.py; run before the linter is trusted on the repo."""
 
+import contextlib
+import io
 import sys
 import tempfile
 import unittest
@@ -190,6 +192,40 @@ class StructureChangedTest(unittest.TestCase):
             structure_changed.load_suffixes(self.root),
             structure_changed.DEFAULT_SUFFIXES,
         )
+
+    def test_suffixes_come_from_harness_module_when_present(self) -> None:
+        mod = self.root / structure_changed.HARNESS_STRUCTURE
+        mod.parent.mkdir(parents=True)
+        mod.write_text('CODE_SUFFIXES = {".zz"}\n', encoding="utf-8")
+        self.assertEqual(structure_changed.load_suffixes(self.root), frozenset({".zz"}))
+
+    def test_non_code_and_symlink_are_not_code(self) -> None:
+        self.write("a/real.py", 1)
+        (self.root / "a/link.py").symlink_to(self.root / "a/real.py")
+        (self.root / "a/notes.md").write_text("n\n", encoding="utf-8")
+        self.assertTrue(
+            structure_changed.is_code(self.root / "a/real.py", self.suffixes)
+        )
+        self.assertFalse(
+            structure_changed.is_code(self.root / "a/link.py", self.suffixes)
+        )
+        self.assertFalse(
+            structure_changed.is_code(self.root / "a/notes.md", self.suffixes)
+        )
+
+    def test_main_reads_changed_files_from_stdin(self) -> None:
+        self.write("scripts/ci/big.py", 900)
+        argv, stdin = sys.argv, sys.stdin
+        try:
+            sys.argv = ["structure_changed.py", "--root", str(self.root)]
+            sys.stdin = io.StringIO("scripts/ci/big.py\n\n")
+            with contextlib.redirect_stdout(io.StringIO()) as out:
+                code = structure_changed.main()
+        finally:
+            sys.argv, sys.stdin = argv, stdin
+        self.assertEqual(code, 1)
+        self.assertIn("scripts/ci/big.py: 900 lines > 800", out.getvalue())
+        self.assertIn("1 changed files, 1 problems", out.getvalue())
 
     def test_deleted_files_are_skipped(self) -> None:
         self.assertEqual(
