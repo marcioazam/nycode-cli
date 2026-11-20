@@ -1,0 +1,15 @@
+{
+	"name": "@nycode/coding-agent-install",
+	"version": "1.6.0",
+	"private": true,
+	"description": "Lockfile root used by the Nycode installer and updater.",
+	"dependencies": {
+		"@nycode/coding-agent": "1.6.0"
+	},
+	"overrides": {
+		"protobufjs": "7.6.6"
+	},
+	"engines": {
+		"node": ">=22.19.0"
+	}
+}

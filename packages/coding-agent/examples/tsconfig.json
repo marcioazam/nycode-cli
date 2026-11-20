@@ -1,0 +1,208 @@
+// Type-checks the example extensions against the modules extensions see at run time (core/extensions/virtual-modules.ts):
+// "@nycode/ai" is the extension view, which adds TypeBox's Type, Static and TSchema to the compat entry (the
+// view imports "@nycode/ai/compat", so that path stays the package's own).
+// The other paths repeat the root tsconfig.json; keep them in sync.
+// Also the test that imports the subagent example: it type-checks only against the extension view.
+{
+	"extends": "../../../tsconfig.json",
+	"compilerOptions": {
+		"paths": {
+			"@nycode/chord": [
+				"../../../packages/chord/src/index.ts"
+			],
+			"@nycode/chord/context": [
+				"../../../packages/chord/src/context/index.ts"
+			],
+			"@nycode/chord/delta": [
+				"../../../packages/chord/src/delta/index.ts"
+			],
+			"@nycode/chord/json": [
+				"../../../packages/chord/src/json.ts"
+			],
+			"@nycode/chord/watch": [
+				"../../../packages/chord/src/watch.ts"
+			],
+			"@nycode/chord/output": [
+				"../../../packages/chord/src/output.ts"
+			],
+			"@nycode/chord/sqlite": [
+				"../../../packages/chord/src/sqlite/index.ts"
+			],
+			"@nycode/chord/sqlite/node": [
+				"../../../packages/chord/src/sqlite/node.ts"
+			],
+			"@nycode/chord/sqlite/cloudflare": [
+				"../../../packages/chord/src/sqlite/cloudflare.ts"
+			],
+			"@nycode/chord/telemetry-sqlite": [
+				"../../../packages/chord/src/telemetry-sqlite/index.ts"
+			],
+			"@nycode/chord/http": [
+				"../../../packages/chord/src/node/http/index.ts"
+			],
+			"@nycode/chord/workers": [
+				"../../../packages/chord/src/node/workers/index.ts"
+			],
+			"@nycode/chord/workers/child": [
+				"../../../packages/chord/src/node/workers/child.ts"
+			],
+			"@nycode/chord/plugins": [
+				"../../../packages/chord/src/node/plugins/index.ts"
+			],
+			"@nycode/chord/plugins/runtime": [
+				"../../../packages/chord/src/node/plugins/runtime.ts"
+			],
+			"@nycode/chord/app": [
+				"../../../packages/chord/src/node/app/index.ts"
+			],
+			"@nycode/chord/app/files": [
+				"../../../packages/chord/src/node/app/files-entry.ts"
+			],
+			"@nycode/chord/web": [
+				"../../../packages/chord/src/web/index.ts"
+			],
+			"@nycode/chord/surfaces": [
+				"../../../packages/chord/src/node/surfaces/index.ts"
+			],
+			"@nycode/chord/react": [
+				"../../../packages/chord/src/react/index.ts"
+			],
+			"@nycode/chord/tui": [
+				"../../../packages/chord/src/tui/index.ts"
+			],
+			"@nycode/chord/tui/launcher": [
+				"../../../packages/chord/src/node/tui/index.ts"
+			],
+			"@nycode/chord/sync": [
+				"../../../packages/chord/src/sync/index.ts"
+			],
+			"@test/contracts/*": [
+				"../../chord/test/node/fixtures/plugins/contracts/*.ts"
+			],
+			"@example/contracts/*": [
+				"../../chord/test/examples/35-plugins/plugins/contracts/*.ts"
+			],
+			"@example/weather/*": [
+				"../../chord/test/examples/36-plugin-failures/plugins/weather/*.ts"
+			],
+			"@example/prices/*": [
+				"../../chord/test/examples/36-plugin-failures/plugins/prices/*.ts"
+			],
+			"@example/shapes/*": [
+				"../../chord/test/examples/37-plugin-imports/plugins/shapes/*.ts"
+			],
+			"@example/shared/*": [
+				"../../chord/test/examples/38-watch-and-rollout/plugins/contracts/*.ts"
+			],
+			"@nycode/telemetry": [
+				"../../../packages/telemetry/src/index.ts"
+			],
+			"@nycode/telemetry/testing": [
+				"../../../packages/telemetry/src/testing/index.ts"
+			],
+			"@nycode/telemetry/render": [
+				"../../../packages/telemetry/src/render.ts"
+			],
+			"@nycode/codemode": [
+				"../../../packages/codemode/src/index.ts"
+			],
+			"@nycode/codemode/cloudflare": [
+				"../../../packages/codemode/src/cloudflare.ts"
+			],
+			"@nycode/codemode/declarations": [
+				"../../../packages/codemode/src/declarations.ts"
+			],
+			"@nycode/codemode/portable": [
+				"../../../packages/codemode/src/portable.ts"
+			],
+			"@nycode/codemode/source": [
+				"../../../packages/codemode/src/source.ts"
+			],
+			"@nycode/codemode/worker": [
+				"../../../packages/codemode/src/runtime/worker.ts"
+			],
+			"@nycode/schema": [
+				"../../../packages/schema/src/index.ts"
+			],
+			"@nycode/schema/formats": [
+				"../../../packages/schema/src/formats/index.ts"
+			],
+			"@nycode/mcp": [
+				"../../../packages/mcp/src/index.ts"
+			],
+			"@nycode/mcp/oauth": [
+				"../../../packages/mcp/src/oauth/index.ts"
+			],
+			"@nycode/mcp/testing": [
+				"../../../packages/mcp/src/testing/index.ts"
+			],
+			"@nycode/ai": [
+				"../../../packages/coding-agent/src/core/extensions/nycode-ai-extension-view.ts"
+			],
+			"@nycode/ai/oauth": [
+				"../../../packages/ai/src/oauth.ts"
+			],
+			"@nycode/ai/*": [
+				"../../../packages/ai/src/*.ts",
+				"../../../packages/ai/src/providers/*.ts"
+			],
+			"@nycode/ai/dist/*": [
+				"../../../packages/ai/src/*"
+			],
+			"@nycode/durable": [
+				"../../../packages/durable/src/index.ts"
+			],
+			"@nycode/durable/testing": [
+				"../../../packages/durable/src/testing/index.ts"
+			],
+			"@nycode/durable/*": [
+				"../../../packages/durable/src/*.ts",
+				"../../../packages/durable/src/*/index.ts",
+				"../../../packages/durable/src/*"
+			],
+			"@nycode/env": [
+				"../../../packages/env/src/index.ts"
+			],
+			"@nycode/agent-core": [
+				"../../../packages/agent/src/index.ts"
+			],
+			"@nycode/coding-agent": [
+				"../../../packages/coding-agent/src/index.ts"
+			],
+			"@nycode/coding-agent/hooks": [
+				"../../../packages/coding-agent/src/core/hooks/index.ts"
+			],
+			"@nycode/coding-agent/*": [
+				"../../../packages/coding-agent/src/*"
+			],
+			"typebox": [
+				"../../../node_modules/typebox"
+			],
+			"@nycode/tui": [
+				"../../../packages/tui/src/index.ts"
+			],
+			"@nycode/tui/*": [
+				"../../../packages/tui/src/*"
+			],
+			"@earendil-works/pi-agent-old": [
+				"../../../packages/agent-old/src/index.ts"
+			],
+			"@earendil-works/pi-agent-old/*": [
+				"../../../packages/agent-old/src/*"
+			],
+			"@mariozechner/pi-ai": [
+				"../../../packages/coding-agent/src/core/extensions/nycode-ai-extension-view.ts"
+			]
+		}
+	},
+	"include": [
+		"./extensions/**/*",
+		"../../*/src/**/*.d.ts",
+		"../test/suite/regressions/8261-subagent-project-trust.test.ts",
+		"../test/subagent-extension.test.ts"
+	],
+	"exclude": [
+		"**/node_modules/**",
+		"./extensions/gondolin/**"
+	]
+}

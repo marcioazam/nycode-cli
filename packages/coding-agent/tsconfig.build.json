@@ -1,0 +1,17 @@
+{
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		"outDir": "./dist",
+		"paths": {
+			"@nycode/agent-core": ["../agent/dist/index.d.ts"],
+			"@nycode/agent-core/*": ["../agent/dist/*.d.ts"],
+			"@nycode/ai": ["../ai/dist/index.d.ts"],
+			"@nycode/ai/*": ["../ai/dist/*.d.ts", "../ai/dist/providers/*.d.ts"],
+			"@nycode/tui": ["../tui/dist/index.d.ts"],
+			"@nycode/tui/*": ["../tui/dist/*.d.ts", "../tui/dist/components/*.d.ts"]
+		},
+		"rootDir": "./src"
+	},
+	"include": ["src/**/*.ts", "src/**/*.d.ts"],
+	"exclude": ["node_modules", "dist", "src/experimental"]
+}

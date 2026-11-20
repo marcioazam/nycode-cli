@@ -1,0 +1,186 @@
+// Feeds the top-level conversations' (the main conversation and its `/tree` branches) and subagents' messages into the
+// server index with per-conversation acknowledged catch-up.
+import { setTimeout as sleep } from "node:timers/promises";
+import {
+	AssistantEntry,
+	type Conversation,
+	type ConversationRecord,
+	type Cursor,
+	type EntryId,
+	type EntryRecord,
+	ROOT_CONVERSATION_ID,
+} from "@nycode/durable";
+import { bool } from "@nycode/schema";
+import {
+	agentMessage,
+	type Ctx,
+	defineFacet,
+	forbidden,
+	isChordError,
+	local,
+	messageData,
+	peerMessage,
+	plainReferences,
+	SHELL_ENTRY,
+	signalOf,
+	until,
+} from "@p2/app/v1";
+import { CommitSignal, harnessOf, topLevelConversations } from "@p2/app/v1/worker";
+import { Subagents } from "../subagents/contract.worker.ts";
+import { type IndexedMessage, IndexScan, SearchFeed } from "./contract.ts";
+
+const Indexer = local("p2.search-indexer", {
+	version: 1,
+	params: {},
+	/** The first full scan since this worker started has committed (an index rebuild waits for it). */
+	members: { scanned: bool() },
+});
+
+const PAGE = 200;
+
+/**
+ * What an input or answer said: a person's, a peer session's or a subagent's input by its data (what they typed, not a mention's
+ * digest), a tool's input and an answer by their text.
+ */
+function indexedMessage(entry: EntryRecord): IndexedMessage | undefined {
+	const role = entry.model?.[0]?.role;
+	if (role !== "user" && role !== "assistant") return undefined;
+	// Durable's own entries with user messages (compaction summaries, handoffs) are not inputs; neither are user shell
+	// commands (`!cmd`), whose model message is the command's output (it must not become the session's title).
+	if (role === "user" && entry.kind.startsWith("nycode.") && entry.kind !== "nycode.user") return undefined;
+	if (entry.kind === SHELL_ENTRY) return undefined;
+	if (role === "assistant" && !AssistantEntry.is(entry)) return undefined;
+	const messages = entry.model?.filter((message) => message.role === role) ?? [];
+	const person = role === "user" ? messageData(entry.data) : undefined;
+	const typed =
+		role === "user"
+			? // File references are indexed (and titled) by the files' names.
+				person
+				? plainReferences(person.text)
+				: (peerMessage(entry.kind, entry.data)?.text ?? agentMessage(entry.kind, entry.data)?.text)
+			: undefined;
+	const text =
+		typed ??
+		messages
+			.map((message) =>
+				typeof message.content === "string"
+					? message.content
+					: message.content.flatMap((part) => (part.type === "text" ? [part.text] : [])).join("\n"),
+			)
+			.join("\n");
+	if (!text.trim()) return undefined;
+	return {
+		conversationId: entry.conversationId,
+		entryId: entry.id,
+		role,
+		timestamp: messages[0]?.timestamp ?? 0,
+		text,
+	};
+}
+
+/**
+ * Sends a conversation's entries after `through` up to the newest, a page at a time; each call returns once
+ * the server committed it. The cursor sent with a page stays `through` until the last page, so an interruption
+ * makes the next scan start over the same range (indexing is idempotent by entry ID). Returns the new cursor.
+ */
+async function catchUp(
+	root: Conversation,
+	feed: {
+		index(batch: { conversation: number; messages: IndexedMessage[]; through: number }, ctx: Ctx): Promise<unknown>;
+	},
+	through: number,
+	ctx: Ctx,
+): Promise<number> {
+	const upper = (await root.entries({}, 1, undefined, ctx)).items[0]?.id;
+	if (upper === undefined || upper <= through) return through;
+	let cursor: Cursor | undefined;
+	do {
+		const page = await root.entries({ minEntryId: (through + 1) as EntryId, maxEntryId: upper }, PAGE, cursor, ctx);
+		cursor = page.next;
+		const messages = page.items.map(indexedMessage).filter((message) => message !== undefined);
+		await feed.index({ conversation: root.id, messages, through: cursor === undefined ? upper : through }, ctx);
+	} while (cursor !== undefined);
+	return upper;
+}
+
+export default defineFacet((host) => {
+	host.serve(Indexer, (_params, self) => {
+		const harness = harnessOf(self);
+		const feed = self.get(SearchFeed, {});
+		const scanned = self.writable(false);
+		const commits = self.open(
+			async () =>
+				new CommitSignal(harness().durable, (publication) =>
+					publication.changes.some(
+						(change) =>
+							change.type === "entry" ||
+							(change.type === "document" && change.record.kind === Subagents.definition.kind),
+					),
+				),
+			(signal) => signal.close(),
+		);
+		// A watch is not an audit log: scan immutable history at start and after every entry commit, so
+		// overflow, resets, compaction and crashes cannot lose entries.
+		self.onLive(async (ctx) => {
+			const durable = harness().durable;
+			const signal = commits.value;
+			// Ends quietly when the task is stopped (shutdown, reload).
+			const pause = (wait: Promise<unknown>): Promise<boolean> =>
+				wait.then(
+					() => true,
+					() => false,
+				);
+			while (!signalOf(ctx).aborted) {
+				const seen = signal.version;
+				try {
+					const registry = await durable.snapshot(Subagents, ROOT_CONVERSATION_ID, ctx);
+					const ids = [
+						...(await topLevelConversations(durable, ctx)),
+						...Object.values(registry?.agents ?? {}).map((agent) => agent.conversationId),
+					];
+					// Records are table reads, in a commit. A fork's history (a `/tree` branch, a subagent forked from the
+					// main conversation: a Discord thread's) starts after its fork point: what it inherits is indexed with
+					// the conversation storing it, and the server refuses it in the fork's batches.
+					const records = await durable.commit(async (tx) => {
+						const found: ConversationRecord[] = [];
+						for (const id of ids) {
+							const record = await tx.conversation(id);
+							if (record) found.push(record);
+						}
+						return found;
+					}, ctx);
+					for (const record of records) {
+						const conversation = await durable.conversation(record.id, ctx);
+						if (!conversation) continue;
+						const through = await feed.cursor({ conversation: record.id }, ctx);
+						await catchUp(conversation, feed, Math.max(through, record.parent?.at ?? 0), ctx);
+					}
+					scanned.set(true);
+				} catch (error) {
+					if (signalOf(ctx).aborted) return;
+					// The server was unreachable or reloading: ask for its cursor again and retry the range.
+					if (!isChordError(error) || error.code !== "unavailable")
+						console.error("p2 search: indexing failed, retrying:", error);
+					await pause(sleep(1000, undefined, { signal: signalOf(ctx) }));
+					continue;
+				}
+				await pause(signal.next(seen, signalOf(ctx)));
+			}
+		});
+		return { scanned: self.derive([scanned], ([value]) => value) };
+	});
+
+	host.serve(IndexScan, (_params, principal, self) => {
+		if (principal.kind !== "server") throw forbidden("server only");
+		const indexer = self.get(Indexer, {});
+		return {
+			variant: "server",
+			members: {
+				scanned: async (ctx) => {
+					await until(indexer.scanned, (done) => done, ctx);
+					return null;
+				},
+			},
+		};
+	});
+});
