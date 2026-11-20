@@ -5,19 +5,19 @@
 # Usage: local.sh [--mutation] [--post]
 #   --post publishes each gate as a commit status on HEAD (fallback when the remote CI cannot run). It
 #   needs a clean tree and HEAD already pushed, so the status describes exactly the published commit.
-# Env: CI_LOCAL_CACHE (default ~/.cache/ny-pi-ci: tools and venv, installed once), BASE_SHA (default
+# Env: CI_LOCAL_CACHE (default ~/.cache/nycode-ci: tools and venv, installed once), BASE_SHA (default
 #      origin/main), CI_LOCAL_MAX_S (default 900: the whole run fails when it takes longer).
 # Exit: 0 all green, 1 a gate failed, 124 time limit.
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
-cache=${CI_LOCAL_CACHE:-$HOME/.cache/ny-pi-ci}
+cache=${CI_LOCAL_CACHE:-$HOME/.cache/nycode-ci}
 max=${CI_LOCAL_MAX_S:-900}
 base=${BASE_SHA:-origin/main}
 export TOOLS_BIN=$cache/bin
 mkdir -p "$cache"
 
 need=()
-for t in actionlint gitleaks trufflehog osv-scanner shellcheck shfmt biome rg; do
+for t in actionlint gitleaks trufflehog osv-scanner shellcheck shfmt rg; do
   [[ -x $TOOLS_BIN/$t ]] || need+=("$t")
 done
 if ((${#need[@]})); then bash scripts/ci/install-tools.sh "${need[@]}"; fi
@@ -66,7 +66,7 @@ gate() { # name cmd...
     echo "local-ci: time limit of ${max}s reached before $name" >&2
     exit 124
   fi
-  timeout "$left" env -u PI_BYPASS_PERMISSIONS CI=true BASE_SHA="$base" RUNNER_TEMP="$tmp/$name/rt" \
+  timeout "$left" env CI=true BASE_SHA="$base" RUNNER_TEMP="$tmp/$name/rt" \
     HOME="$tmp/$name/home" LEAKS_LOG_OPTS=HEAD PATH="$TOOLS_BIN:$venv/bin:$PATH" "$@" >"$tmp/$name/log" 2>&1 || rc=$?
   if ((rc == 0)); then
     echo "ok    $name ($((SECONDS - start))s)"

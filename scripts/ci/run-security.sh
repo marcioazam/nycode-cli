@@ -3,7 +3,7 @@
 # trufflehog via scripts/check-leaks.sh, plus trufflehog --only-verified over the history),
 # semgrep (--error) and osv-scanner (HIGH/CRITICAL = 0). Every step runs; non-zero if any failed.
 # The personal-identifier list used locally by check-leaks.sh is not in the repo: CI points
-# PI_HARNESS_IDENTIFIERS at an empty file (that scan only runs on the maintainer's machine).
+# NYCODE_IDENTIFIERS at an empty file (that scan only runs on the maintainer's machine).
 # Usage: run-security.sh [--selftest]   Env: RUNNER_TEMP, BASE_SHA.
 set -uo pipefail
 cd "$(git rev-parse --show-toplevel)" || exit 2
@@ -87,13 +87,13 @@ selftest() {
 
 leaks() {
   : >"$TMP/identifiers"
-  export PI_HARNESS_IDENTIFIERS="$TMP/identifiers"
+  export NYCODE_IDENTIFIERS="$TMP/identifiers"
   bash scripts/check-leaks.sh --selftest && bash scripts/check-leaks.sh --tree && bash scripts/check-leaks.sh --history
 }
 
 trufflehog_history() {
   trufflehog git "file://$PWD" --only-verified --fail --no-update --no-color \
-    --exclude-paths=<(printf '%s\n' 'scripts/fixtures/leak/' 'atualizador/scripts/tests/test_core\.py$')
+    --exclude-paths=<(printf '%s\n' 'scripts/fixtures/leak/')
 }
 
 # p/bash does not exist in the registry (404): shell is covered by p/default, p/command-injection.
@@ -128,16 +128,18 @@ semgrep_scan() {
     --env SEMGREP_SEND_METRICS=off --env GIT_CONFIG_COUNT=1 --env GIT_CONFIG_KEY_0=safe.directory --env GIT_CONFIG_VALUE_0=/src \
     "$SEMGREP_IMAGE" semgrep scan --error --metrics=off --disable-version-check --quiet \
     --config p/default --config p/python --config p/typescript --config p/command-injection --config p/github-actions \
-    --exclude scripts/fixtures/leak "${args[@]}" . || rc=$?
+    --exclude scripts/fixtures/leak --exclude import "${args[@]}" . || rc=$?
   [ "$mode" = rw ] && rm -r "$src"
   return "$rc"
 }
 
+# import/ (history imported from ny-pi, removed in F12) is outside every gate except the leak scan: the semgrep
+# and osv-scanner runs exclude it (no other directory of the repository is named "import").
 # osv-scanner has no severity threshold flag: fail on any group with CVSS >= 7 (HIGH/CRITICAL) or
 # no score at all (unknown is not assumed safe). Exceptions live in scripts/ci/osv-scanner.toml with owner+expiry.
 osv_scan() {
   local out="$TMP/osv.json" rc=0
-  osv-scanner scan source --config scripts/ci/osv-scanner.toml --recursive --format json --output-file "$out" . || rc=$?
+  osv-scanner scan source --config scripts/ci/osv-scanner.toml --recursive --x-exclude import --format json --output-file "$out" . || rc=$?
   # exit 128 = no packages found (never silent: the repo has npm lockfiles); 1 = vulnerabilities found
   [ "$rc" -le 1 ] || {
     echo "osv-scanner error (exit $rc)"

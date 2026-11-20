@@ -18,12 +18,12 @@ def touch(p: Path) -> None:
 
 
 def tree(tmp_path: Path) -> Path:
-    touch(tmp_path / "claude-home/skills/s1/SKILL.md")
-    touch(tmp_path / "claude-home/agents/a1.md")
-    touch(tmp_path / "extensions/e1.ts")
-    touch(tmp_path / "claude-home/hooks/guard.py")
-    touch(tmp_path / "claude-home/commands/c1.md")
-    (tmp_path / "claude-home/plugins/p1").mkdir(parents=True)
+    touch(tmp_path / "packages/coding-agent/resources/skills/s1/SKILL.md")
+    touch(tmp_path / "packages/coding-agent/resources/agents/a1.md")
+    touch(tmp_path / "packages/coding-agent/src/extensions/e1.ts")
+    touch(tmp_path / "packages/coding-agent/resources/hooks/guard.py")
+    touch(tmp_path / "packages/coding-agent/resources/commands/c1.md")
+    (tmp_path / "packages/coding-agent/resources/plugins/p1").mkdir(parents=True)
     return tmp_path
 
 
@@ -118,20 +118,20 @@ def test_malformed_row(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> No
 def test_ignore_rules(tmp_path: Path) -> None:
     root = tree(tmp_path)
     for p in (
-        "claude-home/hooks/test_x.py",
-        "claude-home/hooks/fixtures/f.json",
-        "claude-home/hooks/__pycache__/x.pyc",
-        "claude-home/hooks/.hidden",
-        "extensions/a.test.ts",
-        "extensions/test/t.ts",
-        "extensions/tests/t.ts",
-        "extensions/node_modules/m/i.ts",
-        "extensions/.cache/c.ts",
-        "extensions/readme.md",
+        "packages/coding-agent/resources/hooks/test_x.py",
+        "packages/coding-agent/resources/hooks/fixtures/f.json",
+        "packages/coding-agent/resources/hooks/__pycache__/x.pyc",
+        "packages/coding-agent/resources/hooks/.hidden",
+        "packages/coding-agent/src/extensions/a.test.ts",
+        "packages/coding-agent/src/extensions/test/t.ts",
+        "packages/coding-agent/src/extensions/tests/t.ts",
+        "packages/coding-agent/src/extensions/node_modules/m/i.ts",
+        "packages/coding-agent/src/extensions/.cache/c.ts",
+        "packages/coding-agent/src/extensions/readme.md",
     ):
         touch(root / p)
-    (root / "claude-home/skills/nodoc").mkdir()
-    (root / "extensions/dir1").mkdir()
+    (root / "packages/coding-agent/resources/skills/nodoc").mkdir()
+    (root / "packages/coding-agent/src/extensions/dir1").mkdir()
     found = core_scope.discover(root)
     assert found == {
         ("skill", "s1"),
@@ -146,6 +146,39 @@ def test_ignore_rules(tmp_path: Path) -> None:
 
 def test_discover_empty(tmp_path: Path) -> None:
     assert core_scope.discover(tmp_path) == set()
+
+
+def test_type_without_pieces_is_pending(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Rows of a type with no shipped piece are not stale; its first piece turns the check on."""
+    touch(tmp_path / "packages/coding-agent/resources/skills/s1/SKILL.md")
+    spec(tmp_path, ["| skill | s1 | core | m |", "| agent | a1 | ui | m |"])
+    code, _, _ = run(tmp_path, capsys)
+    assert code == 0
+    touch(tmp_path / "packages/coding-agent/resources/agents/other.md")
+    code, _, err = run(tmp_path, capsys)
+    assert code == 1
+    assert "stale: agent a1" in err and "missing: agent other" in err
+
+
+def test_piece_without_row_is_missing_even_when_spec_is_empty(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    touch(tmp_path / "packages/coding-agent/resources/skills/s1/SKILL.md")
+    spec(tmp_path, [])
+    code, _, err = run(tmp_path, capsys)
+    assert code == 1
+    assert err.strip() == "missing: skill s1"
+
+
+def test_native_extensions_are_not_pieces(tmp_path: Path) -> None:
+    ext = tmp_path / "packages/coding-agent/src/extensions"
+    touch(ext / "index.ts")
+    touch(ext / "mcp/index.ts")
+    touch(ext / "codemode/index.ts")
+    touch(ext / "bash-timeout/index.ts")
+    assert core_scope.discover(tmp_path) == {("extension", "bash-timeout")}
 
 
 def test_real_repo(capsys: pytest.CaptureFixture[str]) -> None:

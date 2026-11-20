@@ -13,3 +13,39 @@ regexes = ['''AKIAQYLPMN5HHHFPZAM2''']
 [[allowlists]]
 description = "Selftest fixtures for the leak scanner"
 paths = ['''scripts/fixtures/leak/''']
+
+[[allowlists]]
+description = "Fake user:pass URLs in redaction and argument-parsing tests"
+condition = "AND"
+regexTarget = "line"
+paths = [
+  '''apps/p2/test/p2/(logs|tui|tui-actions)\.test\.ts$''',
+  '''packages/coding-agent/test/bug-report\.test\.ts$''',
+]
+regexes = ['''https?://[A-Za-z0-9._-]+:[A-Za-z0-9._-]+@''']
+
+[[allowlists]]
+description = "Fake PEM block in the p2 fetch test"
+condition = "AND"
+regexTarget = "line"
+paths = ['''apps/p2/test/p2/fetch\.test\.ts$''']
+regexes = ['''-----BEGIN PRIVATE KEY-----''']
+
+[[allowlists]]
+description = "generic-api-key hits in fixtures: fake tokens, JSON test vectors and recorded test sessions"
+targetRules = ["generic-api-key"]
+paths = [
+  '''apps/p2/test/p2/(devices|tui-login)\.test\.ts$''',
+  '''packages/ai/test/data/json-test-suite\.json$''',
+  '''packages/chord/test/schema/stored/archive\.jsonl$''',
+  '''packages/chord/test/node/http/upgrades\.test\.ts$''',
+]
+
+[[allowlists]]
+description = "Installed dependencies: untracked, third-party and never published"
+paths = ['''(^|/)node_modules/''']
+
+[[allowlists]]
+description = "Hydrated model data (gitignored): content hashes, not credentials"
+targetRules = ["generic-api-key"]
+paths = ['''packages/ai/src/providers/data/''']

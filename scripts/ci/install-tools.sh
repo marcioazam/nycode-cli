@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Installs pinned release binaries into ${TOOLS_BIN:-$HOME/.local/bin}, verifying a sha256
 # recorded here (GitHub release asset digests, 2026-11-13). Usage: install-tools.sh NAME...
-# Names: actionlint gitleaks trufflehog osv-scanner shellcheck shfmt biome rg
+# Names: actionlint gitleaks trufflehog osv-scanner shellcheck shfmt rg
 set -euo pipefail
 BIN=${TOOLS_BIN:-$HOME/.local/bin}
 mkdir -p "$BIN"
@@ -16,7 +16,6 @@ spec() {
   osv-scanner) echo "2.7.1|$GH/google/osv-scanner/releases/download/v2.7.1/osv-scanner_linux_amd64|fb7dab19a8bd9bbe5c3189f09d4b7ee1820c9553a23bac202648a56efd2f6ee8|raw|osv-scanner" ;;
   shellcheck) echo "0.11.0|$GH/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux.x86_64.tar.xz|8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198|txz|shellcheck-v0.11.0/shellcheck" ;;
   shfmt) echo "3.14.1|$GH/mvdan/sh/releases/download/v3.14.1/shfmt_v3.14.1_linux_amd64|76e77641faa025814b77f153b29796b8e6fa2fca03e0c76a691608b86c7ea7bf|raw|shfmt" ;;
-  biome) echo "2.6.7|$GH/biomejs/biome/releases/download/%40biomejs/biome%402.6.7/biome-linux-x64|d924b8407471748465121f0a2dc1a0bc277038b0b89142e77583e3ce0dda3746|raw|biome" ;;
   rg) echo "15.2.0|$GH/BurntSushi/ripgrep/releases/download/15.2.0/ripgrep-15.2.0-x86_64-unknown-linux-musl.tar.gz|33e15bcf1624b25cdd2a55813a47a2f95dbe126268203e76aa6a585d1e7b149c|tgz|ripgrep-15.2.0-x86_64-unknown-linux-musl/rg" ;;
   *) return 1 ;;
   esac

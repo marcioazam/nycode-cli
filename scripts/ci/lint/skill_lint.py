@@ -2,7 +2,10 @@
 """Lint SKILL.md files: kebab-case name (1-64) equal to the directory, description 20-1024 chars,
 at most 500 lines, no obvious secret; fails when no skill is found.
 
-Usage: skill_lint.py [SKILLS_DIR ...]   (default: claude-home/skills)
+Usage: skill_lint.py [--allow-missing] [SKILLS_DIR ...]
+       (default dir: packages/coding-agent/resources/skills)
+--allow-missing passes when a SKILLS_DIR does not exist yet (skills arrive in F8); an existing
+directory without skills still fails.
 Exit 0 clean, 1 findings or zero skills, 2 usage error.
 """
 
@@ -78,7 +81,12 @@ def lint_roots(roots: list[Path]) -> tuple[int, list[str]]:
 
 
 def main(argv: list[str]) -> int:
-    roots = [Path(a) for a in argv] or [Path("claude-home/skills")]
+    allow_missing = "--allow-missing" in argv
+    paths = [a for a in argv if a != "--allow-missing"]
+    roots = [Path(a) for a in paths] or [Path("packages/coding-agent/resources/skills")]
+    if allow_missing and not any(r.exists() for r in roots):
+        print("skill_lint: no skills directory yet (pending F8), nothing to lint")
+        return 0
     found, findings = lint_roots(roots)
     for line in findings:
         print(line)

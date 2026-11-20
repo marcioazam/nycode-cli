@@ -10,10 +10,12 @@ TH_URL=https://github.com/trufflesecurity/trufflehog/releases/download/v$TH_VERS
 export PATH="$HOME/.local/bin:$PATH"
 CFG="$ROOT/.gitleaks.toml"
 IDFILE=${NYCODE_IDENTIFIERS:-$HOME/.config/nycode/identifiers}
-# Path regexes trufflehog must skip (it has no allowlist): fixtures and the known fake AWS key test.
+# Path regexes trufflehog must skip (it has no allowlist): fixtures, the known fake AWS key test and the
+# fake user:pass URL and PEM fixtures of the p2 and bug-report tests (same files as the .gitleaks.toml allowlists).
 TH_EXCL=$(mktemp)
 trap 'rm -rf "$TH_EXCL" "${TMPD:-}"' EXIT
-printf '%s\n' 'scripts/fixtures/leak/' 'atualizador/scripts/tests/test_core\.py$' '(^|/)\.git/' >"$TH_EXCL"
+printf '%s\n' 'scripts/fixtures/leak/' 'atualizador/scripts/tests/test_core\.py$' '(^|/)\.git/' '(^|/)node_modules/' \
+  'apps/p2/test/p2/(logs|tui|tui-actions|fetch)\.test\.ts$' 'packages/coding-agent/test/bug-report\.test\.ts$' >"$TH_EXCL"
 
 install_trufflehog() {
   command -v trufflehog >/dev/null 2>&1 && return 0
