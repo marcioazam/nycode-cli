@@ -92,11 +92,13 @@ mypy_changed() {
 }
 
 pytest_cov() {
-  # source=. + include_namespace_packages: unimported files count as 0% (no per-file exemption)
-  printf '[run]\nrelative_files = True\nsource = .\n[report]\ninclude_namespace_packages = True\nomit =\n  */node_modules/*\n  */.git/*\n  bench/suites/*/*/repo/*\n  bench/suites/*/*/hidden/*\n  bench/suites/*/*/oracle/*\n' >"$TMP/coveragerc"
+  # source=. + include_namespace_packages: unimported files count as 0% (no per-file exemption);
+  # patch=subprocess measures hooks the tests run as child processes (guard.py), merged by combine
+  printf '[run]\nrelative_files = True\nsource = .\npatch = subprocess\n[report]\ninclude_namespace_packages = True\nomit =\n  */node_modules/*\n  */.git/*\n  bench/suites/*/*/repo/*\n  bench/suites/*/*/hidden/*\n  bench/suites/*/*/oracle/*\n' >"$TMP/coveragerc"
   export COVERAGE_FILE="$TMP/.coverage"
   COVERAGE_RCFILE="$TMP/coveragerc" coverage run -m pytest scripts/ claude-home/hooks claude-home/bin bench \
-    -q -p no:cacheprovider && COVERAGE_RCFILE="$TMP/coveragerc" coverage xml -o "$TMP/coverage.xml"
+    -q -p no:cacheprovider && COVERAGE_RCFILE="$TMP/coveragerc" coverage combine -q &&
+    COVERAGE_RCFILE="$TMP/coveragerc" coverage xml -o "$TMP/coverage.xml"
 }
 
 diff_cover() {

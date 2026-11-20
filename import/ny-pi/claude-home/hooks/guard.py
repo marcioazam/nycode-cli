@@ -31,14 +31,20 @@ Política "Equilibrada":
   Resto: allow.
 
 Bypass (igual ao "Bypass Permissions" do Claude Code): PI_BYPASS_PERMISSIONS=1 transforma
-todo ASK em allow; DENY continua. LIGADO POR PADRÃO pelo wrapper ~/.local/bin/pi (modo
-autônomo); `pi --safe` inicia com confirmações. Na sessão: /bypass ou Ctrl+Shift+B
+todo ASK em allow; DENY continua. O padrão do wrapper ~/.local/bin/pi é o modo seguro
+(PI_BYPASS_PERMISSIONS=0, confirmações ligadas); o bypass entra com PI_BYPASS_PERMISSIONS=1 em
+~/.pi/agent/local.env ou `pi --bypass`, e `pi --safe` o desliga. Na sessão: /bypass ou Ctrl+Shift+B
 (~/.pi/agent/extensions/bypass-permissions/index.ts); ao executar um plan, volta a ON.
 
 Ajustar: edite as listas/funções abaixo e rode `python3 -m unittest -v test_guard` aqui.
 Desligar tudo: remova o bloco "hooks" de ~/.pi/agent/claude-home/settings.json.
-Falha interna (JSON inválido, exceção): permite e escreve o motivo no stderr.
+Falha interna: JSON inválido permite (stderr); exceção na ferramenta Bash vira ASK "guard: erro interno"
+(no bypass, aprovado sozinho como todo ASK); outras ferramentas permitem.
+Análise do Bash: agrupamento/palavras-chave, opções de envoltórios, `bash -c`/eval/xargs/find -exec, $(...) e
+crases (profundidade máx. 3, além disso ASK), continuação de linha, opções longas abreviadas e caminhos normalizados.
 """
+
+from __future__ import annotations
 
 import json
 import os
@@ -46,11 +52,27 @@ import re
 import shlex
 import sys
 import tempfile
+from typing import Any
 
+# fmt: off
 HOME = os.path.expanduser("~")
 SHELLS = {"sh", "bash", "zsh", "dash", "ksh", "fish"}
 FETCHERS = {"curl", "wget"}
 WRAPPERS = {"env", "nohup", "time", "command", "exec", "nice", "stdbuf", "timeout"}
+# Opções de cada envoltório que consomem o argumento seguinte.
+WRAPPER_VALUE_OPTS = {
+    "env": {"-u", "-C", "-S", "--unset", "--chdir", "--split-string"}, "nice": {"-n", "--adjustment"},
+    "stdbuf": {"-i", "-o", "-e", "--input", "--output", "--error"}, "timeout": {"-s", "-k", "--signal", "--kill-after"},
+    "time": {"-f", "-o", "--format", "--output"}, "exec": {"-a"},
+}
+XARGS_VALUE_OPTS = {"-a", "-d", "-E", "-I", "-L", "-n", "-P", "-s", "--arg-file", "--delimiter", "--eof",
+                    "--max-lines", "--max-args", "--max-procs", "--max-chars", "--process-slot-var"}
+FIND_EXEC = {"-exec", "-execdir", "-ok", "-okdir"}
+MAX_DEPTH = 3  # acima: ask, mas ainda analisa (deny vence) até HARD_DEPTH
+HARD_DEPTH = 24
+KEYWORDS = {"{", "}", "!", "then", "do", "else", "elif", "if", "while", "until", "fi", "done"}
+Finding = tuple[str, str]
+DEEP: Finding = ("ask", "comando aninhado fundo demais para analisar")
 PRIV = {"sudo", "su", "doas"}
 SEPARATORS = {";", "&&", "||", "|", "&", "|&", "\n"}
 DISK_RE = re.compile(r"^/dev/(sd[a-z]|nvme\d|hd[a-z]|vd[a-z]|xvd[a-z]|mmcblk\d|disk\d|disk/|dm-\d|mapper/|loop\d|md\d)")
@@ -96,11 +118,13 @@ READ_DENY_FILES = {
 }
 CLAUDE_CREDENTIALS_RE = re.compile(r"^" + re.escape(HOME) + r"/\.claude(-[^/]+)?/\.credentials\.json$")
 READ_DENY_ENV_RE = re.compile(r"^\.env(\.local|\.production|\..+\.local)?$")
+# fmt: on
 
 
 # ---------- parsing ----------
 
-def tokenize(cmd):
+
+def tokenize(cmd: str) -> list[str]:
     try:
         lex = shlex.shlex(cmd.replace("\n", " ; "), posix=True, punctuation_chars=True)
         lex.whitespace_split = True
@@ -110,15 +134,23 @@ def tokenize(cmd):
         return re.findall(r"\|\||&&|[;|&]|[^\s;|&]+", cmd)
 
 
-def segments(tokens):
-    """Lista de (argv, piped_from_previous)."""
-    out, cur, piped, next_piped = [], [], False, False
+def segments(tokens: list[str]) -> list[tuple[list[str], bool]]:
+    """Lista de (argv, piped_from_previous). `(`, `)` e, em posição de comando, `{ } ! then do ...` separam."""
+    out: list[tuple[list[str], bool]] = []
+    cur: list[str] = []
+    piped = next_piped = False
     for t in tokens:
-        if t in SEPARATORS:
+        sep = t in SEPARATORS
+        if sep or (not cur and t in KEYWORDS) or re.fullmatch(r"[<>]?\(+|\)+", t):
             if cur:
                 out.append((cur, piped))
+            if sep:
+                next_piped = t in ("|", "|&")
+            elif cur:
+                next_piped = (
+                    False  # agrupamento sem separador antes mantém o pipe pendente
+                )
             cur, piped = [], False
-            next_piped = t in ("|", "|&")
             continue
         if not cur:
             piped, next_piped = next_piped, False
@@ -128,7 +160,7 @@ def segments(tokens):
     return out
 
 
-def strip_prefixes(argv):
+def strip_prefixes(argv: list[str]) -> tuple[list[str], bool]:
     """Remove VAR=x, wrappers e sudo; devolve (argv_real, usou_privilegio)."""
     priv = False
     i = 0
@@ -150,15 +182,18 @@ def strip_prefixes(argv):
                     return (tokenize(rest[0]) if rest else []), True
         elif base in WRAPPERS:
             i += 1
-            while i < len(argv) and (argv[i].startswith("-") or (base == "timeout" and re.match(r"^\d", argv[i]))):
-                i += 1
+            values = WRAPPER_VALUE_OPTS.get(base, set())
+            while i < len(argv) and argv[i].startswith("-"):
+                i += 2 if argv[i] in values else 1
+            if base == "timeout":
+                i += 1  # duração
         else:
             break
     return argv[i:], priv
 
 
-def short_flags(args):
-    flags = set()
+def short_flags(args: list[str]) -> set[str]:
+    flags: set[str] = set()
     for a in args:
         if a.startswith("--"):
             flags.add(a)
@@ -167,11 +202,81 @@ def short_flags(args):
     return flags
 
 
+def long_match(flags: set[str], name: str) -> bool:
+    """Opção longa do GNU, inclusive abreviada por prefixo único (`--r` = `--recursive`)."""
+    return any(
+        f.startswith("--") and len(f) > 2 and name.startswith(f.split("=")[0])
+        for f in flags
+    )
+
+
+def norm_path(p: str) -> str:
+    """Normaliza caminho absoluto (`//dev/./sda` -> `/dev/sda`); outros ficam como estão."""
+    return re.sub(r"^/+", "/", os.path.normpath(p)) if p.startswith("/") else p
+
+
+def target_dirs(args: list[str]) -> list[str]:
+    """Valores de -t / --target-directory (cp, mv)."""
+    out = []
+    for i, a in enumerate(args):
+        if a.startswith("--target-directory="):
+            out.append(a.split("=", 1)[1])
+        elif a in ("-t", "--target-directory") and i + 1 < len(args):
+            out.append(args[i + 1])
+    return out
+
+
+def skip_opts(args: list[str], values: set[str]) -> list[str]:
+    """Remove as opções (e seus valores) do início de args; devolve o comando que sobra."""
+    i = 0
+    while i < len(args) and args[i].startswith("-") and args[i] != "--":
+        i += 2 if args[i] in values else 1
+    if i < len(args) and args[i] == "--":
+        i += 1
+    return args[i:]
+
+
+def nested_commands(name: str, args: list[str]) -> tuple[list[str], list[list[str]]]:
+    """Comandos dentro do comando: (scripts de shell para reanalisar, argvs para reanalisar)."""
+    scripts: list[str] = []
+    argvs: list[list[str]] = []
+    if name in SHELLS:
+        for i, a in enumerate(args[:-1]):
+            if re.match(r"^-[a-zA-Z]*c[a-zA-Z]*$", a):
+                scripts.append(args[i + 1])
+                break
+    elif name == "eval" and args:
+        scripts.append(" ".join(args))
+    elif name == "xargs":
+        rest = skip_opts(args, XARGS_VALUE_OPTS)
+        if rest:
+            argvs.append(rest)
+    elif name == "find":
+        for i, a in enumerate(args):
+            if a in FIND_EXEC:
+                end = i + 1
+                while end < len(args) and args[end] not in (";", "+"):
+                    end += 1
+                if end > i + 1:
+                    argvs.append(args[i + 1 : end])
+    return scripts, argvs
+
+
 # ---------- regras bash ----------
 
-def check_segment(argv, piped, prev_names, cmd=""):
+
+def check_segment(
+    argv: list[str],
+    piped: bool,
+    prev_names: set[str],
+    cmd: str = "",
+    depth: int = 0,
+    cwd: str = "",
+) -> tuple[list[Finding], str | None]:
     """Retorna lista de (nivel, motivo) para um segmento."""
-    found = []
+    if depth > HARD_DEPTH:
+        return [DEEP], None
+    found: list[Finding] = [DEEP] if depth > MAX_DEPTH else []
     real, priv = strip_prefixes(argv)
     if priv:
         found.append(("ask", "comando com privilégio (sudo/su/doas)"))
@@ -186,12 +291,24 @@ def check_segment(argv, piped, prev_names, cmd=""):
         found.append(("deny", "download com pipe direto para shell"))
 
     for i, t in enumerate(argv):
-        if t in (">", ">>", ">|", "&>", ">&", "&>>") and i + 1 < len(argv) and DISK_RE.match(argv[i + 1]):
+        if (
+            t in (">", ">>", ">|", "&>", ">&", "&>>")
+            and i + 1 < len(argv)
+            and DISK_RE.match(norm_path(argv[i + 1]))
+        ):
             found.append(("deny", f"escrita direta em disco {argv[i + 1]}"))
 
+    scripts, argvs = nested_commands(name, args)
+    for script in scripts:
+        found.extend(check_bash(script, cwd, depth + 1, cmd))
+    for sub in argvs:
+        found.extend(check_segment(sub, False, set(), cmd, depth + 1, cwd)[0])
+
     if name == "rm":
-        rec = bool(flags & {"-r", "-R", "--recursive"})
-        force = bool(flags & {"-f", "--force"})
+        rec = bool(flags & {"-r", "-R", "--recursive"}) or long_match(
+            flags, "--recursive"
+        )
+        force = bool(flags & {"-f", "--force"}) or long_match(flags, "--force")
         if rec and force:
             found.append(("deny", "rm recursivo forçado"))
         elif rec:
@@ -200,15 +317,26 @@ def check_segment(argv, piped, prev_names, cmd=""):
             found.append(("deny", "rm recursivo em diretório raiz, home ou sistema"))
     elif name.startswith("mkfs"):
         found.append(("deny", "formatação de sistema de arquivos"))
-    elif name == "dd" and any(a.startswith("of=/dev/") and not SAFE_DEV_RE.match(a[3:]) for a in args):
+    elif name == "dd" and any(
+        a.startswith("of=/")
+        and norm_path(a[3:]).startswith("/dev/")
+        and not SAFE_DEV_RE.match(norm_path(a[3:]))
+        for a in args
+    ):
         found.append(("deny", "dd escrevendo em dispositivo"))
-    elif name == "tee" and any(DISK_RE.match(a) for a in positional):
+    elif name == "tee" and any(DISK_RE.match(norm_path(a)) for a in positional):
         found.append(("deny", "tee escrevendo em dispositivo de bloco"))
-    elif name in ("cp", "mv") and positional and DISK_RE.match(positional[-1]):
+    elif name in ("cp", "mv") and any(
+        DISK_RE.match(norm_path(t)) for t in positional[-1:] + target_dirs(args)
+    ):
         found.append(("deny", f"{name} escrevendo em dispositivo de bloco"))
     elif name == "wipefs" and flags & {"-a", "--all", "-o", "--offset"}:
         found.append(("deny", "wipefs apagando assinaturas"))
-    elif name == "cryptsetup" and set(positional) & {"luksFormat", "erase", "luksErase"}:
+    elif name == "cryptsetup" and set(positional) & {
+        "luksFormat",
+        "erase",
+        "luksErase",
+    }:
         found.append(("deny", "cryptsetup destruindo cabeçalho LUKS"))
     elif name == "blkdiscard":
         found.append(("deny", "blkdiscard apaga o dispositivo"))
@@ -216,7 +344,11 @@ def check_segment(argv, piped, prev_names, cmd=""):
         found.append(("deny", "sgdisk apagando tabela de partições"))
     elif name == "parted" and {"mklabel", "mktable"} & set(positional):
         found.append(("deny", "parted mklabel apaga a tabela de partições"))
-    elif name == "sfdisk" and any(a.startswith("/dev/") for a in positional) and not flags & SFDISK_READ_FLAGS:
+    elif (
+        name == "sfdisk"
+        and any(a.startswith("/dev/") for a in positional)
+        and not flags & SFDISK_READ_FLAGS
+    ):
         found.append(("deny", "sfdisk reescrevendo tabela de partições"))
     elif name in POWER_CMDS and "-c" not in flags:
         found.append(("deny", f"{name} desliga/reinicia a máquina"))
@@ -226,14 +358,16 @@ def check_segment(argv, piped, prev_names, cmd=""):
         found.append(("deny", f"{name} desliga/reinicia a máquina"))
     elif name in ("chmod", "chown", "chgrp"):
         rec = bool(flags & {"-R", "--recursive"})
-        if rec and "/" in positional:
+        if rec and "/" in [norm_path(a) for a in positional]:
             found.append(("deny", f"{name} recursivo na raiz"))
         elif rec:
             found.append(("ask", f"{name} recursivo"))
     elif name == "shred":
         found.append(("ask", "shred"))
     elif name in ("kill", "pkill", "killall"):
-        if any(a in ("-9", "-KILL", "-SIGKILL") for a in args) or ("-s" in args and any(a in ("KILL", "9") for a in args)):
+        if any(a in ("-9", "-KILL", "-SIGKILL") for a in args) or (
+            "-s" in args and any(a in ("KILL", "9") for a in args)
+        ):
             found.append(("ask", "kill -9"))
         if name == "kill" and kill_targets(args) & {"-1", "1"}:
             found.append(("deny", "kill em todos os processos ou no PID 1"))
@@ -246,17 +380,18 @@ def check_segment(argv, piped, prev_names, cmd=""):
     elif name in ("npm", "pnpm", "yarn", "bun") and "publish" in positional:
         found.append(("ask", f"{name} publish"))
     elif name == "git":
-        found.extend(check_git(args))
+        found.extend(check_git(args, cwd))
     return found, name
 
 
-def catastrophic_rm_target(t):
+def catastrophic_rm_target(t: str) -> bool:
     if not t or t[0] not in "/~$":
         return False
+    t = norm_path(t)
     return re.sub(r"(/\*?)+$", "", t) in CATASTROPHIC_RM
 
 
-def kill_targets(args):
+def kill_targets(args: list[str]) -> set[str]:
     """Alvos de `kill` sem a especificação de sinal (-9, -KILL, -s X, -n X, --)."""
     i = 0
     if args and args[0] in ("-s", "-n", "--signal"):
@@ -268,29 +403,78 @@ def kill_targets(args):
     return set(args[i:])
 
 
-def deletes_protected(rest):
-    strip = lambda a: a.removeprefix("refs/heads/")  # noqa: E731
+def strip_ref(a: str) -> str:
+    return a.removeprefix("refs/heads/")
+
+
+def deletes_protected(rest: list[str]) -> bool:
+    strip = strip_ref
     pos = [a for a in rest if not a.startswith("-")]
-    if any(a.lstrip("+").startswith(":") and strip(a.lstrip("+")[1:]) in PROTECTED_BRANCHES for a in pos):
+    if any(
+        a.lstrip("+").startswith(":") and strip(a.lstrip("+")[1:]) in PROTECTED_BRANCHES
+        for a in pos
+    ):
         return True
-    return bool(short_flags(rest) & {"--delete", "-d"}) and any(strip(a) in PROTECTED_BRANCHES for a in pos)
+    return bool(short_flags(rest) & {"--delete", "-d"}) and any(
+        strip(a) in PROTECTED_BRANCHES for a in pos
+    )
 
 
-def check_git(args):
+def current_branch(cwd: str) -> str | None:
+    """Branch atual lendo HEAD (`.git/HEAD` ou o gitdir de worktree) a partir de cwd, sem subprocesso."""
+    d = os.path.abspath(cwd) if cwd else ""
+    try:
+        while d:
+            g = os.path.join(d, ".git")
+            if os.path.isfile(g):
+                with open(g) as f:
+                    first = f.readline().strip()
+                if not first.startswith("gitdir:"):
+                    return None
+                g = os.path.join(d, first[7:].strip())
+            if os.path.isdir(g):
+                with open(os.path.join(g, "HEAD")) as f:
+                    head = f.readline().strip()
+                return (
+                    head.removeprefix("ref: refs/heads/")
+                    if head.startswith("ref: refs/heads/")
+                    else None
+                )
+            parent = os.path.dirname(d)
+            if parent == d:
+                break
+            d = parent
+    except (OSError, UnicodeDecodeError):
+        pass
+    return None
+
+
+def check_git(args: list[str], cwd: str = "") -> list[Finding]:
     i = 0
     while i < len(args) and args[i].startswith("-"):
+        if args[i] in ("-C", "--git-dir", "--work-tree"):
+            cwd = ""  # repositório diferente do cwd: branch desconhecida
         i += 2 if args[i] in ("-C", "-c", "--git-dir", "--work-tree") else 1
     if i >= len(args):
         return []
     sub, rest = args[i], args[i + 1 :]
     flags = short_flags(rest)
     if sub == "push":
-        force = bool(flags & {"-f", "--force"}) or any(a.startswith("+") for a in rest)
-        targets = {a.split(":")[-1].lstrip("+") for a in rest if not a.startswith("-")}
+        pos = [a for a in rest if not a.startswith("-")]
+        force = (
+            bool(flags & {"-f", "--force", "--mirror"})
+            or any(f.startswith("--force-with-lease") for f in flags)
+            or any(a.startswith("+") for a in rest)
+        )
+        head = current_branch(cwd) or ""
+        targets = {strip_ref(a.split(":")[-1].lstrip("+")) for a in pos}
+        targets |= {head for t in targets if t in ("HEAD", "@")}
         if deletes_protected(rest):
             return [("deny", "git push apagando main/master")]
-        if force and targets & PROTECTED_BRANCHES:
+        if force and ("--mirror" in flags or targets & PROTECTED_BRANCHES):
             return [("deny", "git push forçado para main/master")]
+        if force and len(pos) <= 1 and current_branch(cwd) in PROTECTED_BRANCHES:
+            return [("deny", "git push forçado da branch main/master")]
         return [("ask", "git push" + (" --force" if force else ""))]
     if sub == "reset" and "--hard" in rest:
         return [("ask", "git reset --hard")]
@@ -306,18 +490,40 @@ def check_git(args):
 
 
 # Opções do pkill/pgrep que consomem o argumento seguinte (procps-ng).
-PGREP_VALUE_OPTS = {"-u", "-U", "-g", "-G", "-P", "-s", "-t", "-d", "--signal", "--euid", "--uid", "--pgroup",
-                    "--group", "--parent", "--session", "--terminal", "--delimiter", "--ns", "--nslist"}
+PGREP_VALUE_OPTS = {
+    "-u",
+    "-U",
+    "-g",
+    "-G",
+    "-P",
+    "-s",
+    "-t",
+    "-d",
+    "--signal",
+    "--euid",
+    "--uid",
+    "--pgroup",
+    "--group",
+    "--parent",
+    "--session",
+    "--terminal",
+    "--delimiter",
+    "--ns",
+    "--nslist",
+}
 PGREP_KILL_RE = re.compile(r"\bpgrep\s+([^|;&)`]*)")
-SELF_KILL_MSG = ("{0} -f com padrão que casa com a própria linha de comando do shell (o bash -c que roda isto morre, "
-                 "exit 143/144); use o colchete, ex. '[c]hrome', ou o PID salvo")
+SELF_KILL_MSG = (
+    "{0} -f com padrão que casa com a própria linha de comando do shell (o bash -c que roda isto morre, "
+    "exit 143/144); use o colchete, ex. '[c]hrome', ou o PID salvo"
+)
 
 
-def full_match_pattern(args):
+def full_match_pattern(args: list[str]) -> str | None:
     """Padrão de pkill/pgrep quando -f/--full está presente; senão None."""
     if not (short_flags(args) & {"-f", "--full"}):
         return None
-    rest, skip = [], False
+    rest: list[str] = []
+    skip = False
     for a in args:
         if skip:
             skip = False
@@ -328,18 +534,25 @@ def full_match_pattern(args):
     return rest[-1] if rest else None
 
 
-def matches_self(pattern, cmd):
+def matches_self(pattern: str, cmd: str) -> bool:
     try:
         return re.search(pattern, cmd) is not None
-    except re.error:
+    except (
+        re.error,
+        OverflowError,
+        RecursionError,
+    ):  # padrão inválido ou grande demais: texto literal
         return pattern in cmd
 
 
-HEREDOC_RE = re.compile(r"(?<!<)<<[-~]?[ \t]*(['\"]?)(\w+)\1[^\n]*\n(.*?)^[ \t]*\2[ \t]*$", re.S | re.M)
+HEREDOC_RE = re.compile(
+    r"(?<!<)<<[-~]?[ \t]*(['\"]?)(\w+)\1[^\n]*\n(.*?)^[ \t]*\2[ \t]*$",
+    re.DOTALL | re.MULTILINE,
+)
 SHELL_WORD_RE = re.compile(r"(?<![\w.-])(?:ba|z|da|k|fi)?sh\b(?!\.)")
 
 
-def mask_heredocs(cmd):
+def mask_heredocs(cmd: str) -> str:
     """Mesmo tamanho, corpo de heredoc em branco (quebras de linha mantidas), exceto quando a linha do `<<`
     tem um shell (`bash <<EOF`, `<<EOF | sh`): ali o texto roda."""
     out = list(cmd)
@@ -353,12 +566,12 @@ def mask_heredocs(cmd):
     return "".join(out)
 
 
-def mask_text(cmd):
+def mask_text(cmd: str) -> str:
     """Mesmo tamanho, com corpo de heredoc e conteúdo entre aspas trocados: texto citado não é comando.
     Heredoc lido por um shell (`bash <<EOF`) fica: ali o texto roda.
     ponytail: aspas após `bash -c` também são mascaradas (falso negativo raro); tratar se aparecer."""
     out = list(mask_heredocs(cmd))
-    quote = None
+    quote: str | None = None
     for i, c in enumerate(out):
         if quote:
             if c == quote and (quote == "'" or out[i - 1] != "\\"):
@@ -370,14 +583,16 @@ def mask_text(cmd):
     return "".join(out)
 
 
-def check_self_kill(cmd):
+def check_self_kill(cmd: str) -> list[Finding]:
     """pgrep -f cuja saída vai para kill (`| xargs kill`, `kill $(...)`, crases) e casa com o próprio shell.
     O padrão casa com o comando inteiro (o `bash -c` carrega tudo), mas só conta pgrep/kill fora de texto citado."""
-    found = []
+    found: list[Finding] = []
     masked = mask_text(cmd)
     for m in PGREP_KILL_RE.finditer(masked):
-        before, after = masked[: m.start()], masked[m.end():]
-        to_kill = re.match(r"\s*\|\s*xargs\b[^|;&]*\bkill\b", after) or re.search(r"\bkill\b[^;|&]*(\$\(|`)\s*$", before)
+        before, after = masked[: m.start()], masked[m.end() :]
+        to_kill = re.match(r"\s*\|\s*xargs\b[^|;&]*\bkill\b", after) or re.search(
+            r"\bkill\b[^;|&]*(\$\(|`)\s*$", before
+        )
         if not to_kill:
             continue
         raw = cmd[m.start(1) : m.end(1)]
@@ -391,17 +606,57 @@ def check_self_kill(cmd):
     return found
 
 
-def check_bash(cmd):
-    found = []
+def substitutions(cmd: str) -> list[str]:
+    """Corpos de `$(...)` e de crases fora de aspas simples (dentro de aspas duplas também executam)."""
+    out: list[str] = []
+    i, n, quote = 0, len(cmd), ""
+    while i < n:
+        c = cmd[i]
+        if c == "\\":
+            i += 2
+            continue
+        if quote == "'":
+            quote = "" if c == "'" else quote
+        elif c == "'" and not quote:  # dentro de "..." o ' é literal
+            quote = "'"
+        elif c == '"':
+            quote = "" if quote else '"'
+        elif c == "`":
+            j = cmd.find("`", i + 1)
+            j = n if j < 0 else j
+            out.append(cmd[i + 1 : j])
+            i = j
+        elif cmd.startswith("$(", i):
+            depth, j = 1, i + 2
+            while j < n and depth:
+                depth += (cmd[j] == "(") - (cmd[j] == ")")
+                j += 1
+            out.append(cmd[i + 2 : j - 1 if depth == 0 else j])
+            i = j - 1
+        i += 1
+    return out
+
+
+def check_bash(
+    cmd: str, cwd: str = "", depth: int = 0, root: str | None = None
+) -> list[Finding]:
+    if depth > HARD_DEPTH:
+        return [DEEP]
+    root = cmd if root is None else root
+    cmd = cmd.replace("\\\n", "")  # continuação de linha
+    found: list[Finding] = [DEEP] if depth > MAX_DEPTH else []
     body_free = mask_heredocs(cmd)  # corpo de heredoc não-shell é texto, não comando
-    if FORK_BOMB_RE.search(body_free):
-        found.append(("deny", "fork bomb"))
-    found.extend(check_self_kill(cmd))
-    prev_names = set()
+    if depth == 0:
+        if FORK_BOMB_RE.search(body_free):
+            found.append(("deny", "fork bomb"))
+        found.extend(check_self_kill(cmd))
+    for sub in substitutions(body_free):
+        found.extend(check_bash(sub, cwd, depth + 1, root))
+    prev_names: set[str] = set()
     for argv, piped in segments(tokenize(body_free)):
         if not piped:
             prev_names = set()
-        f, name = check_segment(argv, piped, prev_names, cmd)
+        f, name = check_segment(argv, piped, prev_names, root, depth, cwd)
         found.extend(f)
         if name:
             prev_names.add(name)
@@ -410,20 +665,35 @@ def check_bash(cmd):
 
 # ---------- regras de arquivo ----------
 
-def inside(path, root):
+
+def inside(path: str, root: str) -> bool:
     return bool(root) and (path == root or path.startswith(root.rstrip("/") + "/"))
 
 
-def check_file(path, cwd, project):
+def check_file(path: str, cwd: str, project: str) -> list[Finding]:
     if not path:
         return []
-    p = os.path.abspath(os.path.expanduser(path if os.path.isabs(path) or path.startswith("~") else os.path.join(cwd or os.getcwd(), path)))
+    p = os.path.abspath(
+        os.path.expanduser(
+            path
+            if os.path.isabs(path) or path.startswith("~")
+            else os.path.join(cwd or os.getcwd(), path)
+        )
+    )
     base = os.path.basename(p)
-    if (base == ".env" or base.startswith(".env.")) and not base.endswith(ENV_SAFE_SUFFIXES):
+    if (base == ".env" or base.startswith(".env.")) and not base.endswith(
+        ENV_SAFE_SUFFIXES
+    ):
         return [("ask", f"arquivo de segredos {base}")]
-    if base.endswith((".pem", ".key", ".p12", ".pfx")) or re.match(r"^id_(rsa|ed25519|ecdsa|dsa)", base):
+    if base.endswith((".pem", ".key", ".p12", ".pfx")) or re.match(
+        r"^id_(rsa|ed25519|ecdsa|dsa)", base
+    ):
         return [("ask", f"chave/certificado {base}")]
-    if base == "auth.json" or p in SENSITIVE_FILES or any(inside(p, d) for d in SENSITIVE_DIRS):
+    if (
+        base == "auth.json"
+        or p in SENSITIVE_FILES
+        or any(inside(p, d) for d in SENSITIVE_DIRS)
+    ):
         return [("ask", f"arquivo sensível {p}")]
     tmp_roots = {"/tmp", tempfile.gettempdir(), "/var/tmp"}
     if any(inside(p, r) for r in tmp_roots):
@@ -433,31 +703,55 @@ def check_file(path, cwd, project):
     return []
 
 
-def check_read(path, cwd):
-    if not path:
-        return []
-    p = os.path.abspath(os.path.expanduser(path if os.path.isabs(path) or path.startswith("~") else os.path.join(cwd or os.getcwd(), path)))
-    if (
+def read_denied(p: str) -> bool:
+    return bool(
         p in READ_DENY_FILES
         or any(inside(p, d) for d in READ_DENY_DIRS)
         or CLAUDE_CREDENTIALS_RE.match(p)
         or READ_DENY_ENV_RE.match(os.path.basename(p))
-    ):
+    )
+
+
+def check_read(path: str, cwd: str) -> list[Finding]:
+    if not path:
+        return []
+    p = os.path.abspath(
+        os.path.expanduser(
+            path
+            if os.path.isabs(path) or path.startswith("~")
+            else os.path.join(cwd or os.getcwd(), path)
+        )
+    )
+    if any(
+        read_denied(q) for q in (p, os.path.realpath(p))
+    ):  # realpath: link para segredo
         return [("deny", f"leitura de segredo bloqueada: {p}")]
     return []
 
 
 # ---------- main ----------
 
-def decide(payload):
+
+def bypass_on() -> bool:
+    return os.environ.get("PI_BYPASS_PERMISSIONS", "").lower() in (
+        "1",
+        "true",
+        "on",
+        "yes",
+    )
+
+
+def decide(payload: dict[str, Any]) -> tuple[str, str] | None:
     tool = payload.get("tool_name", "")
     ti = payload.get("tool_input") or {}
     cwd = payload.get("cwd") or os.getcwd()
     project = os.environ.get("CLAUDE_PROJECT_DIR") or cwd
     if tool == "Bash":
-        found = check_bash(ti.get("command") or "")
+        found = check_bash(ti.get("command") or "", os.path.abspath(cwd))
     elif tool in ("Edit", "Write", "MultiEdit"):
-        found = check_file(ti.get("file_path") or "", os.path.abspath(cwd), os.path.abspath(project))
+        found = check_file(
+            ti.get("file_path") or "", os.path.abspath(cwd), os.path.abspath(project)
+        )
     elif tool == "Read":
         found = check_read(ti.get("file_path") or "", os.path.abspath(cwd))
     else:
@@ -467,22 +761,37 @@ def decide(payload):
         return "deny", "Bloqueado pelo guard: " + "; ".join(dict.fromkeys(denies))
     asks = [r for lvl, r in found if lvl == "ask"]
     if asks:
-        if os.environ.get("PI_BYPASS_PERMISSIONS", "").lower() in ("1", "true", "on", "yes"):
+        if bypass_on():
             return None
         return "ask", "Confirmação necessária: " + "; ".join(dict.fromkeys(asks))
     return None
 
 
-def main():
+def main() -> int:
+    tool = ""
+    result: tuple[str, str] | None = None
     try:
         payload = json.loads(sys.stdin.read() or "{}")
-        result = decide(payload) if isinstance(payload, dict) else None
-    except Exception as e:  # nunca travar o trabalho por bug do guard
-        print(f"guard.py: erro interno, permitindo: {e!r}", file=sys.stderr)
-        return 0
+        if isinstance(payload, dict):
+            tool = str(payload.get("tool_name", ""))
+            result = decide(payload)
+    except Exception as e:  # noqa: BLE001  # nunca travar o trabalho por bug do guard
+        print(f"guard.py: erro interno: {e!r}", file=sys.stderr)
+        if tool == "Bash" and not bypass_on():
+            result = ("ask", "guard: erro interno")
     if result:
         decision, reason = result
-        print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": decision, "permissionDecisionReason": reason}}))
+        print(
+            json.dumps(
+                {
+                    "hookSpecificOutput": {
+                        "hookEventName": "PreToolUse",
+                        "permissionDecision": decision,
+                        "permissionDecisionReason": reason,
+                    }
+                }
+            )
+        )
     return 0
 
 
