@@ -14,7 +14,7 @@ Identificador: `C-F<fase>-<n>`. A coluna "prova" diz o que tem de ser observado.
 - [x] C-F0-07 Ramos herdados listados por prefixo; nenhum com PR aberto. Prova: `gh pr list --state open` vazio.
 - [x] C-F0-08 Ramos herdados apagados (D-15, com autorização). Prova: `git ls-remote --heads origin | wc -l`.
 - [x] C-F0-09 8 alertas de secret scanning triados (D-16, com autorização). Prova: API devolve 0 abertos.
-- [ ] C-F0-10 Escopo npm decidido e reservado (D-17). Prova: `npm org ls` ou página da organização.
+- [x] C-F0-10 Escopo npm decidido e reservado (D-17). Prova: `npm org ls` ou página da organização. Substituído pela decisão do dono de 2026-11-20 (sem organização npm; repositório público): prova = registro em `evidencias/F0.md` e `gh repo view --json visibility` = `PUBLIC`.
 - [x] C-F0-11 Etiqueta `v1.6.0-base` criada no commit do fork (P-6). Prova: `git tag -l`.
 - [x] C-F0-12 Script de renome do fork versionado no repositório. Prova: caminho do arquivo.
 - [x] C-F0-13 Remoto `upstream` configurado e `rerere` ligado. Prova: `git remote -v`, `git config rerere.enabled`.
