@@ -10,6 +10,8 @@ If your feature does not belong in the core, it should be an extension. PRs that
 
 Nycode's core exists to be minimal and to be extensible so that it can be influenced and manipulated by extensions.  Even hook points for extensions however should be well considered and discussed to avoid adding unmaintainable bloat and complex interactions.
 
+The nycode product ships a coding harness on top of that core. The harness is built from built-in extensions (`builtin:<name>`) and bundled resources, not from core changes: a built-in extension is still an extension, and the core changes only where a documented core change point requires it.
+
 ## The One Rule
 
 **You must understand your code.** If you cannot explain what your changes do and how they interact with the rest of the system, your PR will be closed.
@@ -17,21 +19,6 @@ Nycode's core exists to be minimal and to be extensible so that it can be influe
 Using AI to write code is fine. Submitting AI-generated slop without understanding it is not.
 
 If you use an agent, run it from the `nycode` root directory so it picks up `AGENTS.md` automatically. Your agent must follow the rules and guidelines in that file.
-
-## Contribution Gate
-
-All issues and PRs from new contributors are auto-closed by default.
-
-Issues submitted Friday through Sunday are not guaranteed to be reviewed.  If something is urgent, ask on Discord: https://discord.com/invite/3cU7Bz4UPx
-
-Maintainers review auto-closed issues daily and reopen worthwhile ones. Issues that do not meet the quality bar below will not be reopened or receive a reply.
-
-Approval happens through maintainer replies on issues:
-
-- `lgtmi`: your future issues will not be auto-closed
-- `lgtm`: your future issues and PRs will not be auto-closed
-
-The command must be at the start of the reply (optionally after one or more `@username` mentions) or at the end. `lgtmi` does not grant rights to submit PRs. Only `lgtm` grants rights to submit PRs.
 
 ## Quality Bar For Issues
 
@@ -45,7 +32,7 @@ If you open an issue, keep it short, concrete, and worth reading.
 - Explain why it matters.
 - If you want to implement the change yourself, say so.
 
-If the issue is real and written well, a maintainer may reopen it or reply with `lgtmi` or `lgtm` in the command position described above.
+If the issue is real and written well, a maintainer will triage it. Issues that do not meet this bar may be closed without a reply.
 
 ## Blocking
 
@@ -54,8 +41,6 @@ If you ignore this document twice, or if you spam the tracker with agent-generat
 If you send a large volume of issues through automation, your GitHub account will be permanently blocked. No taksies backsies.
 
 ## Before Submitting a PR
-
-Do not open a PR unless you have already been approved by a maintainer using `lgtm` in the command position described above.
 
 Before submitting a PR:
 
@@ -66,23 +51,24 @@ npm run check
 
 Both must pass.
 
-Do not edit `CHANGELOG.md`. Changelog entries are added by maintainers.
+External contributors do not edit any `CHANGELOG.md`: the maintainer records the entry under `## [Unreleased]` when merging. Maintainers and agents edit `[Unreleased]` only, as `AGENTS.md` says.
 
 If you are adding a new provider to `packages/ai`, see `AGENTS.md` for required tests.
 
+## Repository rules
+
+- Never commit secrets, personal identifiers, sessions, `auth*.json`, `mcp.json` or `local.env`. The leak checks in `scripts/ci/` and the pre-commit hook must pass.
+- Third-party code enters in one of three ways: an exact-version dependency, an optional package pinned to a full commit SHA, or imported code recorded in `NOTICE` with its origin, commit and license. Never patch a third-party component at run time.
+- Every shipped skill, agent, extension, hook, command or plugin has a class: `core`, `ui` or `optional`, listed in [`docs/specs/0005-core-scope.md`](docs/specs/0005-core-scope.md). `core` serves coding in any language, project type and domain, works with the shipped tools and the model provider alone (no specific MCP, SaaS, account or personal setup), is not a personal preference, and passed the cost x benefit rule against Claude Code and plain pi. Terminal-only pieces are `ui`; everything else is `optional` (kept out of the model's context by default) or stays out of the repository (narrow domains such as marketing, visual design or one cloud).
+- Text for the model follows [`docs/specs/0006-instruction-format.md`](docs/specs/0006-instruction-format.md): Markdown for instructions and skills, an XML tag around pasted material (documents, logs, examples, inputs) with long material before the task, JSON only where code parses it, and no format migration without the gate.
+- Code files created by nycode stay under 800 lines, with at most 7 code files per directory (the exact scope is in `AGENTS.md`).
+- Claims in the README and in pull request descriptions follow the honesty rule: every number points to a measurement in this repository with its sample size and interval, and numbers about nycode come only from a measurement of the `nycode` arm (until then the text says "measured as ny-pi on pi 1.5.2"); a loss is written next to the win it offsets; an interval that crosses zero is "not shown", never a win; what was not measured is called unmeasured; a newer measurement replaces the old number.
+
 ## Questions?
 
-Ask on [Discord](https://discord.com/invite/nKXTsAcmbT).
+Open an issue using one of the templates.
 
 ## FAQ
-
-### Why are new issues and PRs auto-closed?
-
-nycode receives more issues than the maintainers can responsibly review in real time. Many reports do not meet the quality bar in this guide or do not follow CONTRIBUTING.md. Some are slung at the repository mindlessly via an agent instead of being reviewed and shaped by the person submitting them. Auto-closing creates a buffer so maintainers can review the tracker on their own schedule and reopen the issues that meet the quality bar.
-
-### Why are weekend issues lower priority?
-
-We triage the tracker during working hours. That means more issues can accumulate over the weekend. Anything submitted Friday through Sunday may be missed or given lower priority in the Monday review queue. If a problem is urgent, ask on Discord and include the short version, a repro, and the relevant logs.
 
 ### Why do some issues get no reply?
 
@@ -95,8 +81,3 @@ AI can help group duplicates, summarize reports, and spot missing information. I
 ### Is this hostile to contributors?
 
 No. It is a guardrail against burnout and tracker spam. Short, concrete, reproducible issues are welcome. Thoughtful contributions are welcome. Automated slop, entitlement, and large volumes of low-effort reports are not.
-
-## Where can I learn about plans?
-
-Earendil uses RFCs to discuss larger changes.  Not all of them are public, but
-quite a few are.  They can be found at [rfc.earendil.com](https://rfc.earendil.com/keyword/nycode).
