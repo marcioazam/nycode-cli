@@ -23,7 +23,7 @@ Cada decisão tem um identificador estável (D-nn) citado nos outros documentos.
 | D-11 | Terceiros com patch local | `pi-lsp` embutido; `ponytail` e `ralph-loop` em fork próprio com o patch como commit e proposta ao autor | adotada | — |
 | D-12 | Serviços do upstream ainda usados (`pi.dev`) | Catálogo de modelos: manter o do upstream. Instalador e aviso de versão: próprios (npm e GitHub Releases) | adotada | F11 |
 | D-13 | Versão | Primeira versão com o harness: `2.0.0`, pacotes em sincronia | adotada | F11 |
-| D-14 | Referências do benchmark | Guardadas valem; `pi-vanilla` e `cc-vanilla` são medidos de novo uma vez em F10, porque a base do pi mudou | adotada (regra de gatilho já existente) | F10 |
+| D-14 | Referências do benchmark | ~~`pi-vanilla` e `cc-vanilla` são medidos de novo uma vez em F10~~ (superada em 2026-11-20). Revista pelo dono em 2026-11-20 ("benchmarks do claude code e pi vanilla já feitos"): valem as referências congeladas de `docs/bench/BASELINE-VANILLA-2026-11.md` (Claude Code 2.1.323, pi 1.5.2); sem nova medição dos vanilla em F10 | adotada | F10 |
 | D-15 | Apagar 213 ramos herdados do nycode em Rust | Apagar depois de conferir que nenhum tem PR aberto | **aguarda o dono** | F0 |
 | D-16 | 8 alertas de secret scanning no destino | Fechar como credencial pública de cliente OAuth do upstream; remover `plan.md` do alcance | **aguarda o dono** | F0 |
 | D-17 | Escopo npm | ~~Criar a organização `@nycode`~~ (substituída). Dono, 2026-11-20: "Sem org vai ser repo opensource": sem organização nem publicação no npm; o canal é o repositório público `marcioazam/nycode` (fonte, etiquetas e GitHub Releases). Os itens npm de F11 (C-F11-01 a C-F11-05, C-F11-07) são reescritos para esse canal num PR de docs no início de F11 | decidida pelo dono | F11 |
@@ -38,6 +38,7 @@ Cada decisão tem um identificador estável (D-nn) citado nos outros documentos.
 | D-26 | Braço `omp` do benchmark | Não migra (`bench/arms/omp` e os 3 arquivos `omp` de `evals/harbor`); decisão do dono de 2026-11-15 de comparar só ny-pi, Claude Code e pi puro | adotada | — |
 | D-27 | O plano cita `--tier smoke`, que não existe em `bench/suites.toml` | Criar em F3 o tier `smoke` como apelido do `pr` ([09, seção 5.2](09-paridade-e-benchmark.md)) | adotada | F3 |
 | D-28 | `gate.py` devolve `NOT_COMPARABLE` entre braços diferentes (`arm_version` e `overlay_sha` em `stats.META_KEYS`) | Modo de paridade entre braços, proposto em [09](09-paridade-e-benchmark.md#criterio-de-paridade); margem de custo 1,10 e uma rodada A/A em F3 | adotada | F3 |
+| D-29 | Benchmark durante a migração | Dono, 2026-11-20: "Não é para rodar nenhum benchmark agora", e "adiar itens de bench e seguir". Nenhuma rodada real (nem piloto, baseline ou poster) até o dono liberar; `--dry-run` e testes valem. O ruleset entra em F3 com 9 contextos (sem `bench-pr`); C-F3-09 e C-F3-10 ficam pendentes (P-16) e F3 fecha com esse desvio. Orçamento já autorizado para quando liberar: rodadas `pr` por PR funcional e um único `full` em F10 (substitui `baseline` e `full` do ny-pi@1.6.0 em F3, 09 §6). Prioridade do dono: manter o benchmark por PR funcionando | adotada | F3 |
 
 ## Detalhe das decisões com alternativa relevante
 
@@ -149,3 +150,4 @@ exceções como intencionais.
 | P-13 | Estimativa de custo do tier `full` (US$ 86,16) acima do teto noturno de 30; S3 pede `n=50` com 19 tarefas utilizáveis | Ajustar teto ou amostra em F3 ([09](09-paridade-e-benchmark.md)) | F3 |
 | P-14 | `packages/coding-agent/test/subagent-extension.test.ts` "escalates SIGTERM to SIGKILL..." é instável sob a suíte inteira (falhou em 1 de 3 `./test.sh` em F0, passa isolado; `evidencias/F0.md`) | Diagnosticar e corrigir num PR próprio antes de F6, que porta o `subagent` | F6 |
 | P-15 | `packages/durable` `store-storage-commit.test.ts` estourou o tempo de 5000 ms uma vez no CI (`test (durable)`, PR #205, F2); passou na rodada seguinte | Diagnosticar e corrigir num PR próprio; registrar cada nova ocorrência | F3 |
+| P-16 | Benchmark adiado (D-29): medir `ny-pi-pi160` no tier `pr` (C-F3-09), piloto S2 do agente Harbor do `nycode`, `baseline-main` do braço `nycode`, instalar o poster com `~/.config/nycode/bench.env`, provar `bench-pr` num PR de docs (C-F3-10) e devolver `bench-pr` ao ruleset | Fazer quando o dono liberar; antes de F10 (o gate de paridade depende disso) | liberação do dono |
