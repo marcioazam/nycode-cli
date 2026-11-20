@@ -1,0 +1,54 @@
+# Upstream (pi 1.6.0) source files above 800 lines at the migration base (origin/main eb92bd0a2).
+# structure_changed.py exempts them from the line limit; the list only shrinks: split a file, then delete its line.
+# Do not add to it (AGENTS.md). Regenerate to verify:
+#   git ls-files 'packages/*/src/**/*.ts' | xargs wc -l | awk '$1>800 && $2!="total"{print $2}' | sort
+packages/ai/src/api/anthropic-messages.ts
+packages/ai/src/api/bedrock-converse-stream.ts
+packages/ai/src/api/mistral-conversations.ts
+packages/ai/src/api/openai-codex-responses.ts
+packages/ai/src/api/openai-completions.ts
+packages/ai/src/api/openai-responses-shared.ts
+packages/chord/src/delta/tracker.ts
+packages/chord/src/host/attempt.ts
+packages/chord/src/host/host.ts
+packages/chord/src/host/object.ts
+packages/chord/src/host/reference.ts
+packages/chord/src/jobs/records.ts
+packages/chord/src/node/app/app.ts
+packages/chord/src/node/workers/workers.ts
+packages/chord/src/remote/provider.ts
+packages/chord/src/store/store.ts
+packages/coding-agent/src/core/agent-session.ts
+packages/coding-agent/src/core/compaction/compaction.ts
+packages/coding-agent/src/core/extensions/loader.ts
+packages/coding-agent/src/core/extensions/runner.ts
+packages/coding-agent/src/core/extensions/types.ts
+packages/coding-agent/src/core/model-runtime.ts
+packages/coding-agent/src/core/package-manager.ts
+packages/coding-agent/src/core/resource-loader.ts
+packages/coding-agent/src/core/session-manager.ts
+packages/coding-agent/src/core/settings-manager.ts
+packages/coding-agent/src/extensions/codemode/execute.ts
+packages/coding-agent/src/extensions/mcp/index.ts
+packages/coding-agent/src/modes/interactive/components/config-selector.ts
+packages/coding-agent/src/modes/interactive/components/easter-egg-3d.ts
+packages/coding-agent/src/modes/interactive/components/session-selector.ts
+packages/coding-agent/src/modes/interactive/components/settings-selector.ts
+packages/coding-agent/src/modes/interactive/components/tree-selector.ts
+packages/coding-agent/src/modes/interactive/interactive-mode.ts
+packages/coding-agent/src/modes/interactive/theme/theme.ts
+packages/coding-agent/src/modes/rpc/rpc-mode.ts
+packages/durable/src/codemode/codemode.ts
+packages/durable/src/env/node.ts
+packages/durable/src/harness/generation.ts
+packages/durable/src/harness/scheduler.ts
+packages/durable/src/harness/tool.ts
+packages/durable/src/harness/types.ts
+packages/durable/src/session/session.ts
+packages/durable/src/session/transaction.ts
+packages/durable/src/storage/indexeddb.ts
+packages/durable/src/storage/jsonl/storage.ts
+packages/durable/src/storage/memory.ts
+packages/durable/src/testing/storage-conformance.ts
+packages/tui/src/components/editor.ts
+packages/tui/src/components/markdown.ts

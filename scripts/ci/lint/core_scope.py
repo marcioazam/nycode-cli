@@ -2,6 +2,10 @@
 """Check docs/specs/0005-core-scope.md against the shipped pieces: every skill, agent, extension,
 hook, command and plugin has exactly one table row with a valid class, and no row is stale.
 
+A type with no shipped piece yet is not compared for stale rows: the pieces arrive in F5-F8 and
+their rows already exist. The first piece of a type turns the stale check on for that type; a
+piece without a row is always a finding.
+
 Usage: core_scope.py [--root DIR]   (default: repository root)
 Exit 0 clean, 1 findings, 2 spec unreadable or malformed.
 """
@@ -17,7 +21,11 @@ SPEC = Path("docs/specs/0005-core-scope.md")
 BEGIN, END = "<!-- core-scope:begin -->", "<!-- core-scope:end -->"
 TYPES = ("skill", "agent", "extension", "hook", "command", "plugin")
 CLASSES = ("core", "ui", "optional", "remove")
+RESOURCES = Path("packages/coding-agent/resources")
+EXTENSIONS = Path("packages/coding-agent/src/extensions")
 EXT_SKIP = {"test", "tests", "node_modules"}
+# Extensions and the registry the fork had before the harness: not pieces of the 0005 table.
+EXT_NATIVE = {"index", "codemode", "llama", "mcp", "tool-search"}
 HOOK_SKIP = ("test_", "fixtures", "__pycache__", ".")
 
 Piece = tuple[str, str]
@@ -33,7 +41,7 @@ def _children(d: Path) -> list[Path]:
 
 def discover(root: Path) -> set[Piece]:
     """Return the (type, name) pairs of the shipped pieces under root."""
-    home = root / "claude-home"
+    home = root / RESOURCES
     found: set[Piece] = set()
     for p in _children(home / "skills"):
         if (p / "SKILL.md").is_file():
@@ -41,12 +49,12 @@ def discover(root: Path) -> set[Piece]:
     for p in _children(home / "agents"):
         if p.suffix == ".md":
             found.add(("agent", p.stem))
-    for p in _children(root / "extensions"):
+    for p in _children(root / EXTENSIONS):
         if p.name.startswith(".") or p.name in EXT_SKIP or p.name.endswith(".test.ts"):
             continue
-        if p.is_dir():
+        if p.is_dir() and p.name not in EXT_NATIVE:
             found.add(("extension", p.name))
-        elif p.suffix == ".ts":
+        elif p.suffix == ".ts" and p.stem not in EXT_NATIVE:
             found.add(("extension", p.stem))
     for p in _children(home / "hooks"):
         if not p.name.startswith(HOOK_SKIP):
@@ -92,7 +100,8 @@ def compare(found: set[Piece], rows: list[tuple[str, str, str]]) -> list[str]:
             out.append(f"unknown class: {typ} {name} {cls}")
     listed = {(t, m) for t, m, _ in rows}
     out += [f"missing: {t} {m}" for t, m in found - listed]
-    out += [f"stale: {t} {m}" for t, m in listed - found if t in TYPES]
+    present = {t for t, _ in found}
+    out += [f"stale: {t} {m}" for t, m in listed - found if t in present]
     return sorted(out)
 
 

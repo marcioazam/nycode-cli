@@ -9,9 +9,11 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SCAN = ("claude-home", "extensions", "bin", "docs")
+RES = "packages/coding-agent/resources"
+SCAN = (RES, "packages/coding-agent/src/extensions", "scripts/harness", "docs")
 SKIP_PARTS = ("__pycache__", "node_modules", ".git")
-SKIP_PREFIX = ("docs/specs/", "claude-home/hooks/fixtures/", "claude-home/patches/pi-code/orig/")  # orig/: pristine upstream pi-code
+# docs/migration/: the plan cites ny-pi paths and targets that do not exist yet; docs/specs/: historical specs.
+SKIP_PREFIX = ("docs/specs/", "docs/migration/", f"{RES}/hooks/fixtures/")
 TEST_FILE = re.compile(  # tests cite synthetic names; patches are third-party diff context
     r"(^|/)(tests?/|test_[^/]*$|[^/]*\.test\.[a-z]+$)|\.patch$"
 )
@@ -31,9 +33,9 @@ AGENT_PATTERNS = [
     re.compile(r"\{agent: *([A-Za-z][\w-]*)\}"),
     re.compile(r"`([A-Za-z][\w-]*)` (?:agent|subagent)\b"),
 ]
+# ${NYCODE_RESOURCES} is the marker the loader resolves to the embedded resources directory (02, section 6).
 PATH_PATTERN = re.compile(
-    r"(?:\$CLAUDE_CONFIG_DIR|\$\{CLAUDE_CONFIG_DIR\}|(?:~|\$HOME|\$\{HOME\})/\.pi/agent/claude-home|"
-    r"(?:~|\$HOME|\$\{HOME\})/\.pi/agent|(?<![\w./-])claude-home)(/[^\s`'\")\]>,;|]*)?"
+    r"(?:\$NYCODE_RESOURCES|\$\{NYCODE_RESOURCES\}|(?<![\w./-])" + re.escape(RES) + r")(/[^\s`'\")\]>,;|]*)?"
 )
 PLACEHOLDER = re.compile(r"[<*{$\[]")
 
@@ -83,18 +85,11 @@ def bullet_marked(lines, i):
 
 def repo_path(match, root):
     """Map a matched prefix+tail to a repo-relative path, or None when it is not repo-local."""
-    text, tail = match.group(0), (match.group(1) or "")
+    tail = match.group(1) or ""
     tail = re.sub(r":[\d-]+$", "", tail).rstrip(".:!?}")
     if PLACEHOLDER.search(tail):
         tail = tail[: PLACEHOLDER.search(tail).start()].rsplit("/", 1)[0]
-    tail = tail.strip("/")
-    if text.startswith("claude-home") or "claude-home" in text or "CLAUDE_CONFIG_DIR" in text:
-        base = "claude-home"
-    elif "/.pi/agent" in text:
-        base = ""
-    else:
-        return None
-    return "/".join(p for p in (base, tail) if p)
+    return "/".join(p for p in (RES, tail.strip("/")) if p)
 
 
 def check_line(rel, lines, i, root, allow):
@@ -103,13 +98,13 @@ def check_line(rel, lines, i, root, allow):
     for pat in SKILL_PATTERNS:
         for m in pat.finditer(line):
             name = m.group(1)
-            if (root / "claude-home/skills" / name).is_dir():
+            if (root / RES / "skills" / name).is_dir():
                 continue
             found.append(("skill", name))
     for pat in AGENT_PATTERNS:
         for m in pat.finditer(line):
             name = m.group(1)
-            if not (root / "claude-home/agents" / f"{name}.md").is_file():
+            if not (root / RES / "agents" / f"{name}.md").is_file():
                 found.append(("agent", name))
     for m in PATH_PATTERN.finditer(line):
         target = repo_path(m, root)

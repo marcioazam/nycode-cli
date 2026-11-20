@@ -3,7 +3,7 @@
 # trufflehog via scripts/check-leaks.sh, plus trufflehog --only-verified over the history),
 # semgrep (--error) and osv-scanner (HIGH/CRITICAL = 0). Every step runs; non-zero if any failed.
 # The personal-identifier list used locally by check-leaks.sh is not in the repo: CI points
-# PI_HARNESS_IDENTIFIERS at an empty file (that scan only runs on the maintainer's machine).
+# NYCODE_IDENTIFIERS at an empty file (that scan only runs on the maintainer's machine).
 # Usage: run-security.sh [--selftest]   Env: RUNNER_TEMP, BASE_SHA.
 set -uo pipefail
 cd "$(git rev-parse --show-toplevel)" || exit 2
@@ -87,13 +87,13 @@ selftest() {
 
 leaks() {
   : >"$TMP/identifiers"
-  export PI_HARNESS_IDENTIFIERS="$TMP/identifiers"
+  export NYCODE_IDENTIFIERS="$TMP/identifiers"
   bash scripts/check-leaks.sh --selftest && bash scripts/check-leaks.sh --tree && bash scripts/check-leaks.sh --history
 }
 
 trufflehog_history() {
   trufflehog git "file://$PWD" --only-verified --fail --no-update --no-color \
-    --exclude-paths=<(printf '%s\n' 'scripts/fixtures/leak/' 'atualizador/scripts/tests/test_core\.py$')
+    --exclude-paths=<(printf '%s\n' 'scripts/fixtures/leak/')
 }
 
 # p/bash does not exist in the registry (404): shell is covered by p/default, p/command-injection.
