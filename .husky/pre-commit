@@ -8,6 +8,16 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
+# Leak scan of the staged files (added, copied, modified, renamed); NUL-separated so names with spaces survive.
+if [ -n "$(git diff --cached --name-only --diff-filter=ACMR)" ]; then
+  echo "Scanning staged files for leaks..."
+  git diff --cached --name-only --diff-filter=ACMR -z | xargs -0 bash scripts/check-leaks.sh --staged
+  if [ $? -ne 0 ]; then
+    echo "❌ Leak scan failed."
+    exit 1
+  fi
+fi
+
 # Run the check script (formatting, linting, and type checking)
 echo "Running formatting, linting, and type checking..."
 npm run check

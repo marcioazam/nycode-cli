@@ -10,13 +10,12 @@
 
 Search existing issues and discussions first. Remove secrets, tokens and personal data from anything you paste.
 
-ny-pi is maintained by one person: replies are best effort, with no response-time guarantee outside
+nycode is maintained by one person: replies are best effort, with no response-time guarantee outside
 [SECURITY.md](SECURITY.md).
 
 ## Not supported
 
-- Anything other than the `main` branch, and checkouts with local changes to the shipped files.
-- Versions of pi or pi-code other than the pinned ones (see the README).
-- Your personal overlay in `~/.pi/agent` (rules, agents, skills, credentials).
-- Problems in pi, pi-code, a model provider or another third party: report them upstream.
+- Versions older than the latest release (before the first release, anything other than `main`), and checkouts with
+  local changes to the shipped files.
+- Problems in a model provider or another third party, including the upstream pi project: report them upstream.
 - Running with permission bypass on: the behaviour is documented, but a command approved there is your responsibility.

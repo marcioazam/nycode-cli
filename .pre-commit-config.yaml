@@ -1,6 +1,6 @@
 # Same tool pins as the CI gates (scripts/ci); revs are full commit SHAs with the tag in the comment.
-# The repo's own secret scan stays in .githooks/pre-commit (scripts/check-leaks.sh, with the local
-# personal-identifier list); gitleaks here is the generic layer for contributors using pre-commit.
+# The repo's own secret scan runs from .husky/pre-commit (scripts/check-leaks.sh, with the local
+# personal-identifier list); gitleaks here is the generic layer for contributors who opt in to pre-commit.
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: ef6cf06c079dd6b299dfc720b0f14400c9d168e1 # v0.17.5

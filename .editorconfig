@@ -8,14 +8,18 @@ indent_size = 2
 insert_final_newline = true
 trim_trailing_whitespace = true
 
-[*.py]
-indent_size = 4
+# Same as biome.json (indentStyle tab, indentWidth 3)
+[*.{ts,tsx,js,mjs,cjs,json,jsonc}]
+indent_style = tab
+indent_size = 3
+tab_width = 3
 
-[*.{ts,tsx,js,json,jsonc,yml,yaml,sh}]
+[package-lock.json]
+indent_style = space
 indent_size = 2
 
-[Makefile]
-indent_style = tab
+[*.py]
+indent_size = 4
 
 [*.md]
 # Two trailing spaces are a Markdown line break.
