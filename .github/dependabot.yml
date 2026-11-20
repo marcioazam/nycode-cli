@@ -9,8 +9,10 @@ updates:
     groups:
       github-actions:
         patterns: ["*"]
+  # Workspaces (packages/*, apps/*) resolve from the root package-lock.json.
+  # packages/coding-agent/install-lock/ is generated from it; do not target it.
   - package-ecosystem: npm
-    directory: /npm
+    directory: /
     schedule:
       interval: weekly
     cooldown:
