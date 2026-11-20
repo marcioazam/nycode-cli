@@ -58,7 +58,10 @@ def test_dry_run_nycode_smoke_and_pi160_pr(monkeypatch: MP, capsys: CF) -> None:
 def test_arm_meta_reads_overlay_sha_of_the_nycode_stage(
     tmp_path: Path, monkeypatch: MP
 ) -> None:
-    for name, sha in (("bench-nycode-abc123def456", "n1"), ("bench-nypi-abc123def456-dirty", "p1")):
+    for name, sha in (
+        ("bench-nycode-abc123def456", "n1"),
+        ("bench-nypi-abc123def456-dirty", "p1"),
+    ):
         d = tmp_path / name
         d.mkdir()
         (d / ".overlay-sha").write_text(sha + "\n")
