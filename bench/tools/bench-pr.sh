@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Local poster of the required `bench-pr` commit status (L1: no self-hosted runner).
 # usage: bench-pr.sh --poll | --pr N
-# Runs the ny-pi PR tier in a throwaway worktree of the PR head, gates it against the main baseline and posts
+# Runs the nycode PR tier in a throwaway worktree of the PR head, gates it against the main baseline and posts
 # pending -> success|failure|error through `bench/run.py post-status`. Fail closed: anything unverifiable is `error`.
 set -euo pipefail
 
 # Public repo: no owner literal in the source; the env file names it (RUNBOOK).
-REPO=${BENCH_REPO:?set BENCH_REPO=owner/name (~/.config/ny-pi/bench.env)}
+REPO=${BENCH_REPO:?set BENCH_REPO=owner/name (~/.config/nycode/bench.env)}
 URL=${BENCH_REPO_URL:-https://github.com/$REPO.git}
 STATE=${BENCH_STATE:-$HOME/.local/state/bench}
 MODEL=${BENCH_MODEL:-claude-sonnet-5-5}
@@ -65,7 +65,7 @@ run_pr() {
   post() { (cd "$wt" && python3 bench/run.py post-status --pr "$n" --state "$1" --description "$2"); }
   cleanup() { git -C "$STATE/repo" worktree remove --force "$wt" || true; }
 
-  # Declared policy (owner, 2026-11-17): the benchmark runs only for PRs that change the harness's functional behavior.
+  # Declared policy (owner, 2026-11-17; D-21): the benchmark runs only for PRs that change the product's functional behavior.
   # Anything the classifier cannot read counts as functional (fail closed).
   mkdir -p "$out"
   verdict=$(cd "$wt" && python3 bench/run.py affects --base main --head "$sha" 2>/dev/null) || verdict=functional
@@ -73,13 +73,13 @@ run_pr() {
     {
       echo "## bench-pr: N/A"
       echo
-      echo "Sem mudança funcional no harness: o benchmark não rodou (política do dono, 2026-11-17). Arquivos:"
+      echo "Sem mudança funcional no produto: o benchmark não rodou (política do dono, 2026-11-17). Arquivos:"
       echo
       echo '```'
       tail -n +2 <<<"$verdict"
       echo '```'
     } >"$out/na.md"
-    post success "N/A: sem mudança funcional" || {
+    post success "não funcional, sem rodada" || {
       cleanup
       return 1
     }
@@ -101,7 +101,7 @@ run_pr() {
 
   rm -rf "$out"
   mkdir -p "$out"
-  (cd "$wt" && python3 bench/run.py run --arm ny-pi --tier pr --model "$MODEL" --budget-usd "$BUDGET" --out "$out") || rc=$?
+  (cd "$wt" && python3 bench/run.py run --arm nycode --tier pr --model "$MODEL" --budget-usd "$BUDGET" --out "$out") || rc=$?
   if [[ $rc -ne 0 && $rc -ne 5 ]]; then
     post error "run falhou (exit $rc)" || true
     cleanup
@@ -112,7 +112,7 @@ run_pr() {
   # Sequential gate (RUNBOOK "Gate sequencial"): the run above is look 1 (k1, security k3). When look 1 does not decide,
   # the gate calls this command to complete k3 (+2) and, if still in doubt, +3 on the discordant tasks (or a single failed
   # security rep); each call runs only the tasks and reps the gate names in BENCH_EXTEND_*.
-  ext="python3 bench/run.py run --extension --arm ny-pi --tier pr --model '$MODEL' --budget-usd '$EXT_BUDGET' >&2"
+  ext="python3 bench/run.py run --extension --arm nycode --tier pr --model '$MODEL' --budget-usd '$EXT_BUDGET' >&2"
   (cd "$wt" && python3 bench/run.py gate --base "$base" --cand "$out" --extend-with-cmd "$ext") >"$out/summary.md" || rc=$?
   case $rc in
   0) state=success desc=PASS ;;

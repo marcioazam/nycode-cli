@@ -55,7 +55,7 @@ esac
 STUB
 chmod +x "$T/bin/gh" "$T/bin/python3"
 
-export STUB_DIR=$T PATH="$T/bin:$PATH" BENCH_REPO=repo-owner/ny-pi BENCH_REPO_URL="$T/origin.git" BENCH_STATE="$T/state" BENCH_CC_CREDENTIALS=/dev/null
+export STUB_DIR=$T PATH="$T/bin:$PATH" BENCH_REPO=repo-owner/nycode BENCH_REPO_URL="$T/origin.git" BENCH_STATE="$T/state" BENCH_CC_CREDENTIALS=/dev/null
 unset BENCH_BASELINE_MAIN
 
 prs() { # extra jq-ish entries appended to a single eligible PR
@@ -75,11 +75,11 @@ reset
 prs
 bash "$here/bench-pr.sh" --poll >/dev/null 2>&1
 check "elegibilidade: só o PR do dono, mesmo repo" test "$(runs)" = 1
-check "run no worktree do head, braço ny-pi tier pr" grep -q "/wt/$SHA :: bench/run.py run --arm ny-pi --tier pr --model claude-sonnet-5-5 --budget-usd 12 --out $T/state/runs/$SHA" "$T/calls"
+check "run no worktree do head, braço nycode tier pr" grep -q "/wt/$SHA :: bench/run.py run --arm nycode --tier pr --model claude-sonnet-5-5 --budget-usd 12 --out $T/state/runs/$SHA" "$T/calls"
 check "gate contra baseline da main" grep -q "gate --base $T/state/base-main/docs/bench/baseline-main --cand $T/state/runs/$SHA" "$T/calls"
 check "pending depois success" bash -c "sed -n 1p '$T/posts' | grep -q '^pending|' && sed -n 2p '$T/posts' | grep -q '^success|PASS'"
 check "worktree removido" test -z "$(ls -A "$T/state/wt")"
-check "resumo vai como comentário do PR" grep -q "pr comment 1 --repo repo-owner/ny-pi --body-file $T/state/runs/$SHA/summary.md" "$T/comments"
+check "resumo vai como comentário do PR" grep -q "pr comment 1 --repo repo-owner/nycode --body-file $T/state/runs/$SHA/summary.md" "$T/comments"
 check "descrição do status sem caminho local" bash -c "! grep -q / '$T/posts'"
 
 # 1b. a PR closed after the list was read is skipped
@@ -148,8 +148,8 @@ prs
 printf 'non-functional\n- docs/a.md: docs/tooling\n' >"$T/affects"
 bash "$here/bench-pr.sh" --poll >/dev/null 2>&1
 check "não funcional: não roda benchmark" test "$(runs)" = 0
-check "não funcional: success N/A sem pending" bash -c "[ \"\$(wc -l <'$T/posts')\" = 1 ] && grep -q '^success|N/A: sem mudança funcional' '$T/posts'"
-check "não funcional: comentário lista os arquivos" bash -c "grep -q 'pr comment 1 --repo repo-owner/ny-pi --body-file' '$T/comments' && grep -q 'docs/a.md' '$T/state/runs/$SHA/na.md'"
+check "não funcional: success sem rodada e sem pending" bash -c "[ \"\$(wc -l <'$T/posts')\" = 1 ] && grep -q '^success|não funcional, sem rodada' '$T/posts'"
+check "não funcional: comentário lista os arquivos" bash -c "grep -q 'pr comment 1 --repo repo-owner/nycode --body-file' '$T/comments' && grep -q 'docs/a.md' '$T/state/runs/$SHA/na.md'"
 check "não funcional: worktree removido" test -z "$(ls -A "$T/state/wt")"
 reset
 printf 'garbage\n' >"$T/affects"

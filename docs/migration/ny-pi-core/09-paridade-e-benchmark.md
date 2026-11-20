@@ -181,7 +181,7 @@ funcional (tier `pr`), nightly e F10 (tier `full`), e o re-teste vanilla (tier `
 Também fixa `MISE_*` no `HOME` real (os shims do mise recusam o `HOME` do estágio) e aceita o modo chave de API
 (`BENCH_API_KEY_FILE`, `BENCH_ANTHROPIC_WORKSPACE_ID`).
 
-### 2.2 Novo braço `nycode` (**proposta**)
+### 2.2 Novo braço `nycode` (implementado em F3, `bench/arms/nycode`)
 
 O nycode não tem instalador, patch nem wrapper; o braço passa a construir o monorepo e rodar o binário:
 
@@ -197,6 +197,23 @@ O nycode não tem instalador, patch nem wrapper; o braço passa a construir o mo
 5. Saída com `exec` para o executável, com as flags de avaliação do runner. As flags `--settings`, `--mcp-config`,
    `--setting-sources`, `--add-dir` e `--strict-mcp-config` hoje são entendidas só pelo pi-code (o braço `pi-vanilla`
    as descarta); no nycode dependem da extensão `settings-flags` (F5). **Não verificado** se o conjunto é o mesmo.
+
+**Decidido em F3** (o que ficou diferente da proposta acima):
+
+- O build é o do `ci.yml`: `npm ci --ignore-scripts` e `npm run build` na raiz do checkout; o executável é
+  `packages/coding-agent/dist/bundle/cli.js` (campo `bin` de `packages/coding-agent/package.json`; `build` roda
+  `build-coding-agent-bundle.mjs`). O binário compilado de `build:binary` (bun) não entra.
+- Lista da camada do dono (`bench/arms/overlay-nycode.list`): `settings.json` e `AGENTS.md`, lidos de `~/.nycode/agent` ou de
+  `BENCH_OVERLAY_DIR`. `local.env` some, `vendor/pi-lsp` volta como extensão `lsp` (F9) e `vendor/ponytail` vira pacote
+  opcional; nenhum dos dois é copiado. `auth.json` e `models.json` nunca entram no hash.
+- Estágio `bench-nycode-<sha12>[-dirty]` (campo `stage_prefix` do `arms.toml`); `meta.json` leva `overlay_sha` como nos braços ny-pi.
+- As flags só do pi-code (`--settings`, `--mcp-config`, `--setting-sources`, `--add-dir`, `--strict-mcp-config`) são descartadas
+  pelo braço até a extensão `settings-flags` (F5), como no `pi-vanilla`. Continua **não verificado** se o conjunto é o mesmo.
+- Agente Harbor do nycode (S2, S3, S6): **não desenhado**; `--arm nycode` para com erro explícito nesses passos, em vez de
+  rodar o agente do ny-pi com o nome errado. Uma rodada real do `pr`/`smoke` só passa do S2 depois dele.
+- Runner do `pi` (decisão do dono em F3): mantida a skill `pelo-em-ovo`, localizada por `BENCH_PELO_RUN_PI`; nada é copiado
+  para `bench/`. A saída da skill de `claude-home` em F8 obriga a apontar a variável para a nova origem (ou copiar o
+  `run_pi.py` então). `BENCH_EVALS_RUN` segue igual.
 
 Dependências do `bench/` fora do repositório, que a migração não move (nem 02 nem 00 as colocam no destino):
 `BENCH_EVALS_RUN` (padrão `~/.claude/evals/run.py`) e `BENCH_PELO_RUN_PI` (padrão
@@ -220,6 +237,11 @@ Entradas, todas **propostas**:
   exemplo `ny-pi-1.6.0`), para não ser confundido com a baseline guardada em `docs/bench/baseline-main/`.
 - O braço some quando F10 fecha; `docs/bench/baseline-main/` passa a ser do braço `nycode`.
 
+**Implementado em F3** (`ny-pi-pi160` em `bench/arms.toml`): o mesmo `bin` `arms/ny-pi`, com `BENCH_PI_VERSION=1.6.0` (tabela
+`env`) e estágio próprio `bench-nypi160-<sha12>`; o `meta.json` leva `arm: ny-pi-pi160`. O script se recusa a montar o estágio
+se o `current-version` de `BENCH_PI_INSTALL_DIR` (padrão `~/.pi/agent/install`) não for 1.6.0. Falta, para a rodada real,
+uma instalação gerenciada do pi 1.6.0 (ver o relatório da unidade). A simulação sem custo roda; a rodada não foi feita.
+
 A referência guardada atual (`baseline-main`) foi medida com `arm_version 1.5.2` e `overlay_sha c06e62526c0540fe`
 (`docs/bench/baseline-main/meta.json`); por D-14 ela vale como histórico, mas **não** como referência de paridade do
 nycode, que é pi 1.6.x.
@@ -231,7 +253,7 @@ devolve `NOT_COMPARABLE` (exit 4). Um round do `nycode` contra um round do `ny-p
 `overlay_sha` (os arquivos de camada são outros), então `bench gate` devolveria `NOT_COMPARABLE` por construção. O
 `arm` não está em `META_KEYS`, então o nome do braço não bloqueia.
 
-**Proposta** (mudança no `bench/`, não executada): um modo de paridade (`bench gate --parity`) que ignora
+**Implementado em F3 (D-28)** (`bench gate --parity`): um modo de paridade (`bench gate --parity`) que ignora
 `arm_version` e `overlay_sha`, mantém `model` e `jobs`, e grava no `verdict.json` a lista de chaves ignoradas.
 Alternativa menor: o `nycode` e a referência declaram o mesmo `arm_version` (`1.6.0`) e o mesmo `overlay_sha` por uma
 camada de dono convertida de uma só origem, o que exige as duas camadas terem conteúdo idêntico (improvável, porque as
@@ -365,9 +387,10 @@ mostrar ruído acima de 1,10. Sem esse A/A, "custo por tarefa não pior além da
 ### 5.2 Tiers: smoke por PR, full por fase
 
 `bench/suites.toml` tem os tiers `pr`, `baseline`, `full`, `tb41`, `vanilla` e `hard`. Não existe um tier `smoke`: o
-critério de saída de F3 em [00](00-mega-plano.md) escreve `bench run --arm nycode --tier smoke`. **Proposta:**
-acrescentar
-`[tier.smoke]` idêntico ao `pr` (alias), para que o comando de 00 seja executável sem mudança de nome em código.
+critério de saída de F3 em [00](00-mega-plano.md) escreve `bench run --arm nycode --tier smoke`. **Decisão (D-27,
+F3):** `smoke` é um apelido do `pr`, sem passos próprios: `[tier.smoke] alias = "pr"` em `bench/suites.toml`, resolvido por
+`run.py` antes de montar o plano. A rodada, o `meta.json` (`tier`), o nome do diretório e o gate sequencial (que reconhece
+`tier == "pr"`) veem `pr`; `--tier smoke` e `--tier pr` imprimem o mesmo plano.
 
 - **`pr` ("smoke")**. Unidades: S1 `pr_cases` (16: 8 de segurança em k3, 8 em k1), S4 (12), S5 (10), S2 (4 do TB2), k1.
   Quando: por PR funcional.
@@ -530,9 +553,8 @@ C), 2 linhas de infraestrutura descartadas. O `verdict.json` do baseline contra 
    funcional e o `bench-pr` publica `success` ("sem mudança funcional", D-21).
 4. Depois de o PR entrar, rodar `bench-pr.sh --pr N` para os PRs que ficaram `NOT_COMPARABLE`.
 
-* *Quem pode.** Pela regra do RUNBOOK: só a máquina do dono roda (poster local, conta `claude`); o `bench-nightly.sh`
-  nunca
-grava a baseline; um baseline antigo (k2) ainda carrega, mas com intervalo mais largo. O ruleset de F3 tem
+**Quem pode.** Pela regra do RUNBOOK: só a máquina do dono roda (poster local, conta `claude`); o `bench-nightly.sh`
+nunca grava a baseline; um baseline antigo (k2) ainda carrega, mas com intervalo mais largo. O ruleset de F3 tem
 `bypass_actors: []`: nem o dono dispensa os checks do PR da baseline. Se o dono delega o registro a um agente, o
 agente só abre o PR com a saída que o poster gerou; **não verificado** quem tem permissão no GitHub para o `bench/run.py
 post-status` além do dono (ver "Contrapartida aceita" em `docs/ci-local.md`: qualquer credencial com escrita publica
