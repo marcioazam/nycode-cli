@@ -12,7 +12,7 @@ A LangChain, no Terminal-Bench 2.0, subiu o raciocínio no planejamento e o baix
 ## Contrato
 
 Na sessão headless de topo (sem UI e `PI_CODE_SUBAGENT_DEPTH` ausente ou 0, o `isTopLevelHeadless` de
-`extensions/headless-lean`), o hook `turn_start` de `extensions/effort-sandwich`:
+`packages/coding-agent/src/extensions/headless-lean`), o hook `turn_start` de `packages/coding-agent/src/extensions/effort-sandwich`:
 
 1. guarda `pi.getThinkingLevel()` no primeiro turno;
 2. nos turnos 0 a N-1 chama `pi.setThinkingLevel('high')` (N = `PI_EFFORT_SANDWICH_TURNS`, inteiro positivo, padrão 1);
@@ -21,7 +21,7 @@ Na sessão headless de topo (sem UI e `PI_CODE_SUBAGENT_DEPTH` ausente ou 0, o `
 
 Sem `PI_EFFORT_SANDWICH=1` nenhum handler é registrado. TUI, RPC e subagentes não mudam. O pi envia o nível como
 marcador de esforço na conversa (o `output_config` do topo fica fixo para o cache); conferido no payload pela API falsa
-de `bench/contract`. As duas chaves são aceitas no `local.env` (`bin/pi`).
+de `bench/contract`. As duas chaves são aceitas na configuração de ambiente do nycode (no ny-pi: `local.env` lido por `bin/pi`; destino: `settings-defaults.ts`, K4).
 
 ## Medição (Terminal-Bench 2.0, 13 tarefas que a main não satura, k=3, conta do plano, Sonnet 5.5, nível medium)
 
@@ -51,5 +51,5 @@ decisão do dono, não deste PR.
 
 ## Reverter
 
-Tirar `PI_EFFORT_SANDWICH=1` do `local.env`, ou apagar `extensions/effort-sandwich/`, as duas linhas em `publish.list`, a linha em
-`docs/specs/0005-core-scope.md` e as chaves em `bin/pi`.
+Tirar `PI_EFFORT_SANDWICH=1` da configuração de ambiente, ou apagar `packages/coding-agent/src/extensions/effort-sandwich/`, a linha em
+`docs/specs/0005-core-scope.md` e as chaves em `settings-defaults.ts` (no ny-pi: também as duas linhas em `publish.list` e as chaves em `bin/pi`).

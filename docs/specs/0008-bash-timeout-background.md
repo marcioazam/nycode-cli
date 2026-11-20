@@ -11,7 +11,7 @@ vivo e devolver um identificador.
 
 ## Comportamento
 
-Com `PI_BASH_TIMEOUT_BG=1`, o hook `tool_call` de `extensions/bash-timeout` reescreve o comando do `bash`
+Com `PI_BASH_TIMEOUT_BG=1`, o hook `tool_call` de `extensions/bash-timeout` (ny-pi; no nycode absorvido em `packages/coding-agent/src/core/tools/bash.ts`, K8, F7) reescreve o comando do `bash`
 (sem tocar no pi):
 
 1. T = `decide(timeout)` (padrão 600 s, teto 1800 s, como no T1); `timeout` do pi passa a T + 60 s, folga para o pi
@@ -44,6 +44,6 @@ critério falhar, a opção continua desligada.
 
 ## Testes
 
-`extensions/bash-timeout/index.test.ts`: saída e exit code (0 e 3), heredoc e aspas, estouro (retorno em cerca de T s,
+`extensions/bash-timeout/index.test.ts` (ny-pi; no nycode, teste ao lado do `bash.ts`, definido em F7): saída e exit code (0 e 3), heredoc e aspas, estouro (retorno em cerca de T s,
 pid e log na mensagem, processo vivo e terminando depois), stderr, env desligada, hook (T + 60, `&`, `sleep`), nos
 shells `sh`, `dash` e `bash` quando existem.
