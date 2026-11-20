@@ -35,12 +35,17 @@ jobs:
         run: npm run check
 
       # The checkout has no tags; the released changelog sections are compared with the newest release tag.
+      # O fork nycode ainda não tem tag de release; sem tag não há seção lançada para comparar.
       - name: Fetch the newest release tag
+        id: release-tag
         run: |
           tag=$(git ls-remote --tags --sort=-v:refname origin 'v*.*.*' | grep -v '\^{}' | head -1 | sed 's#.*refs/tags/##')
+          if [ -z "$tag" ]; then echo "::notice::sem tag v*.*.*; check de changelog lançado pulado"; exit 0; fi
           git fetch --depth=1 origin "refs/tags/$tag:refs/tags/$tag"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
       - name: Check released changelog sections
+        if: steps.release-tag.outputs.tag != ''
         run: npm run check:released-changelogs
 
   # Tests are split across parallel jobs so the slowest suites do not run back to back.
