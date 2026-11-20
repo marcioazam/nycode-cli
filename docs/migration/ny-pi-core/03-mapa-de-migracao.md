@@ -91,6 +91,109 @@ Todo arquivo removido cujo comportamento precisa continuar tem um teste no desti
 | `.githooks/pre-commit` | `.husky/pre-commit` | — | Commit de teste com segredo falso é barrado |
 | `patches/third-party/pi-lsp.patch` | `src/extensions/lsp/` | K5 | Testes do pi-lsp que o patch altera |
 
+### 2.5 Classe de cada peça (especificação 0005, P-1)
+
+Copiada sem edição de `marcioazam/ny-pi@e4f8729:docs/specs/0005-core-scope.md` (linhas 75 a 170, 94 peças) em F0.
+`core` entra no contexto do modelo por padrão; `ui` só afeta a interface; `optional` fica fora do contexto até ser
+ligada; `remove` não migra. A especificação migra para `docs/specs/` em F2 e continua sendo a fonte.
+
+| Tipo | Nome | Classe | Motivo |
+|---|---|---|---|
+| skill | agent-routing | core | Escolha entre agentes e ferramentas, qualquer projeto |
+| skill | agent-systems | optional | Domínio: projetar agentes e prompts de LLM |
+| skill | atualizador | optional | Fluxo de entrega do dono; `git-workflow` cobre o geral |
+| skill | code-simplification | core | Refatoração geral |
+| skill | codegraph | optional | Exige o MCP codegraph |
+| skill | context-economy | core | Custo de contexto, qualquer sessão |
+| skill | deep-search | optional | Exige MCPs de busca |
+| skill | diagnose | core | Depuração geral |
+| skill | differential-review | core | Revisão de segurança de diff, geral |
+| skill | doces-ou-travessuras | core | Detecta teste maquiado, geral |
+| skill | engineering-standards | core | Padrões de código por linguagem |
+| skill | git-workflow | core | Git geral |
+| skill | graph-engineering | core | Decomposição de tarefa grande, geral |
+| skill | insecure-defaults | core | Auditoria de padrões inseguros, oculta |
+| skill | lane-integration | core | Integração de lanes paralelas |
+| skill | loop-engineering | core | Laços com parada verificável |
+| skill | perplexity-urls | optional | Exige o MCP Perplexity |
+| skill | plan-workflow | core | Modo plano, oculta |
+| skill | pr-review | core | Revisão de PR geral |
+| skill | property-based-testing | core | Testes de propriedade, geral |
+| skill | quality-gates | core | Cobertura e mutação, geral |
+| skill | ripple-hunt | core | Referências velhas após edição |
+| skill | sdd-workflow | core | Especificação antes de mudança grande |
+| skill | security-audit | core | Auditoria de segurança geral |
+| skill | sharp-edges | core | APIs perigosas, geral |
+| skill | soteiros | optional | Auditoria de atualidade sob pedido, nicho |
+| skill | swarm-orchestration | core | Delegação em lanes |
+| skill | tdd | core | Teste antes, geral |
+| skill | to-questionnaire | core | Perguntas para terceiros, oculta |
+| skill | variant-analysis | core | Variantes de um bug, oculta |
+| agent | Explore | core | Leitura de código, padrão do mercado |
+| agent | Plan | core | Planejamento, padrão do mercado |
+| agent | general-purpose | core | Agente geral, padrão do mercado |
+| agent | swarm-worker | core | Escritor padrão das lanes |
+| agent | code-reviewer | core | Revisão de diff |
+| agent | test-author | core | Escrita de testes |
+| agent | test-reviewer | core | Revisão de testes |
+| agent | security-reviewer | core | Revisão de segurança |
+| agent | reliability-reviewer | core | Revisão de falhas e recuperação |
+| agent | gate-runner | core | Roda o gate uma vez |
+| agent | git-delivery | core | Entrega git |
+| agent | lane-integrator | core | Junta lanes |
+| agent | plan-reviewer | core | Fecha plano aprovado |
+| agent | research-scout | core | Fatos e versões com `web_fetch` |
+| agent | perplexity-scout | optional | Exige o MCP Perplexity |
+| agent | web-scout | optional | Exige MCPs de busca |
+| agent | claim-verifier | optional | Papel do `deep-search` |
+| extension | auto-resume | core | Retoma após erro transitório do provedor |
+| extension | bash-timeout | core | Limite de tempo do shell |
+| extension | bypass-permissions | core | Modo de permissão |
+| extension | cache-prefix-probe | remove | Diagnóstico temporário |
+| extension | compact-at-400k | core | Compactação de segurança |
+| extension | completion-gate | core | Verificação antes de encerrar |
+| extension | dev-commands | ui | `/copy-code` e `/keybindings` |
+| extension | effort-sandwich | optional | Raciocínio high só no 1º turno do `pi -p` de topo (opt-in, spec 0009) |
+| extension | footer-no-stats | ui | Rodapé |
+| extension | headless-lean | core | Custo sem interface |
+| extension | no-context-files-covers-claude-md | core | Contexto sem duplicata |
+| extension | no-web-search | core | Desliga busca que falha |
+| extension | pi-docs | core | Prompt menor |
+| extension | plan-gate | core | Plano aprovado vai ao fim |
+| extension | prefix-cache-1h | core | Cache do prefixo |
+| extension | puxar | optional | Importa sessão de outro perfil, uso pessoal |
+| extension | sound-notify | optional | Som ao fim do turno, gosto pessoal |
+| extension | sticky-prompt | ui | Última mensagem fixa |
+| extension | syntax-check | core | Erro de sintaxe após edição |
+| extension | todo-sync | core | Lista de tarefas em dia |
+| extension | ui | ui | Editor, acessibilidade, `/diff` |
+| extension | ui-visual | ui | Cabeçalho e ícones |
+| extension | up-dequeue | ui | Seta para cima restaura a fila |
+| hook | claims | core | Afirmação sem evidência |
+| hook | dispatch | core | Despachante dos hooks |
+| hook | fuzz | core | Testes de fuzz do parser do guard (só teste; sem efeito em runtime) |
+| hook | graph_context.py | optional | Exige codegraph |
+| hook | guard.py | core | Bloqueio de comando destrutivo |
+| hook | impeccable_gate.sh | optional | Serve uma skill de design que o repositório não traz |
+| command | cancel-ralph | core | Laço de prompt (par do `/loop` do Claude Code) |
+| command | claude-hud-configure | optional | Plugin `claude-hud` |
+| command | claude-hud-setup | optional | Plugin `claude-hud` |
+| command | claude-tier | optional | Sonda de plano de conta Claude Team |
+| command | clean_gone | core | Limpa branches mergeadas |
+| command | code-review | core | Revisão de PR |
+| command | commit | core | Commit |
+| command | commit-push-pr | core | Commit, push e PR |
+| command | diff-review | core | Revisão diferencial |
+| command | insecure-defaults-audit | core | Auditoria de padrões inseguros |
+| command | pre-launch | core | Fase do projeto prevista no contrato |
+| command | ralph-help | core | Ajuda do laço de prompt |
+| command | ralph-loop | core | Laço de prompt |
+| command | review-pr | core | Revisão por aspectos |
+| command | revise-claude-md | core | Aprendizado da sessão vira regra |
+| command | skill-gen | optional | Exige o MCP Firecrawl |
+| command | swarm | core | Delegação em lanes |
+| plugin | claude-hud | optional | Barra de status de terceiro |
+
 ## 3. pi-code 1.7.0 remendado
 
 O que roda hoje é o tarball `pi-code@1.7.0` mais 19 patches e um `sed`. Essa árvore tem 159 arquivos em
