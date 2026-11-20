@@ -61,17 +61,17 @@ Trocar OAuth por API muda o pedido do pi (sem a identidade do Claude Code no sys
 4. Fila única (2026-11-18): integre a main e rode o gate de um PR só depois do merge do anterior. Mesclar outro
    PR no meio faz o merge recusar (`base_moved`) e o gate precisa rodar de novo no head integrado.
 5. Rodar um PR à mão: `bench-pr.sh --pr N` (ignora o status final e reroda).
-6. Contrato mudou em 2026-11-17 por decisão do dono: o benchmark só roda quando o PR muda o comportamento funcional do
-   harness. Antes do `pending`, `bench run affects` (`bench/classify/affects.py`) lê `git diff base...head`: se todo arquivo for
-   documentação, teste, CI/ferramental do repositório, infra do próprio bench, licença ou só UI (temas, HUD,
-   statusline, extensões visuais, patches só de renderização), o status vira `success` com "N/A: sem mudança
-   funcional" e um comentário lista os arquivos; nada roda. Fail closed: caminho desconhecido, `*.md` instalado no
-   harness (`claude-home/**`, prompts), `publish.list` que instala ou remove algo e erro do classificador contam como funcional.
-   Refinamentos: `claude-home/docs/**` é registro (não funcional), salvo se algum `.md` de instrução instalado sob
-   `claude-home/` (fora de `docs/`) citar o caminho (`docs/...`, ou o diretório que o contém) no head; extensões só
-   interativas (`sound-notify`, `dev-commands`, `up-dequeue`, `puxar`) e `.pre-commit-config.yaml` não contam; um
-   `claude-home/patches/pi-code/*.patch` é UI só se todo arquivo que ele altera (`+++ b/...` no head) for
-   `subagent/fleet-ui/*`, `status-line.ts`, `notify.ts` ou `*.md`; patch sem alvos ou removido é funcional.
+6. Contrato mudou em 2026-11-17 por decisão do dono e foi reescrito para o nycode em F3 (D-21): o benchmark só roda quando
+   o PR muda o comportamento funcional do produto. Antes do `pending`, `bench run affects` (`bench/classify/affects.py`)
+   lê `git diff base...head`. É não funcional: documentação (`docs/**`, `*.md`, `packages/*/docs/**`), ferramental do
+   repositório (`.github`, `.husky`, `scripts/ci`, `scripts/check-*`, `bench/**`, licença e dotfiles), testes,
+   `apps/**` (fora dos gates, D-23) e UI pura (`resources/themes`, `resources/statusline`, `src/extensions/{ui,ui-visual,footer,sticky-prompt}`).
+   Se todo arquivo for assim, o status vira `success` com "não funcional, sem rodada" e um comentário lista os
+   arquivos; nada roda. Fail closed: caminho desconhecido, `packages/*/src/**`, tudo em
+   `packages/*/resources/{agents,skills,commands,rules,instructions,hooks}/**` (prompts, inclusive `.md`),
+   `package.json` com mudança fora de `files`, `package-lock.json` e erro do classificador contam como funcional. O campo
+   `files` de um `package.json` substitui o antigo `publish.list`: uma mudança que só mexe em `files` é não funcional
+   quando toda entrada tocada é não funcional (ex.: `docs`, `CHANGELOG.md`).
 7. Modo chave de API no `bench-pr.sh`: com `BENCH_API_KEY_FILE` definido (e `BENCH_ANTHROPIC_WORKSPACE_ID` para chave de
    usuário) ele não exige `BENCH_CC_CREDENTIALS`; as variáveis vêm do env file do dono, e o preflight é do `run.py`.
 
@@ -664,3 +664,24 @@ modo de conta) ou ~1 mês desde a última medição. Nunca misture OAuth e chave
 | 42 tarefas (S1–S5), k12 | `pi-vanilla` (pi 1.5.2) k12; `cc-vanilla` k2 | `ref-k12/pi-vanilla`; `baseline-2026-11/sonnet/cc-vanilla` | 2026-11-14/15, Sonnet 5.5 |
 | Suíte difícil (12 tarefas, k3) | `cc-vanilla`, `pi-vanilla` | `hard-2026-11/{cc-vanilla,pi-vanilla,pi-vanilla-new4}` | 2026-11-15, Sonnet 5.5 |
 | Terminal-Bench 2.0, amostra 1 (24 tarefas, k1, semente 20261115) | `cc-vanilla`, `pi-vanilla` | `tb2-sample-2026-11/{cc-vanilla,pi-vanilla}` (lista em `tasks.txt`) | 2026-11-15, Sonnet 5.5, esforço padrão |
+
+## nycode: braços, tier `smoke` e modo de paridade (F3)
+
+Decisões de F3 (`docs/migration/ny-pi-core/09-paridade-e-benchmark.md`):
+
+- Env file do poster e das units: `~/.config/nycode/bench.env` (modo 0600) com `BENCH_REPO=marcioazam/nycode`; `bench-pr.sh`
+  roda `--arm nycode`. `bench-nightly.sh` continua no braço `ny-pi` até a decisão de F10.
+- Braço `nycode` (`bench/arms/nycode`): estágio `bench-nycode-<sha12>[-dirty]` com `HOME` descartável e
+  `NYCODE_CODING_AGENT_DIR=<estágio>/.nycode/agent`; `npm ci --ignore-scripts` e `npm run build` na raiz do checkout;
+  executa `packages/coding-agent/dist/bundle/cli.js`. Camada do dono em `bench/arms/overlay-nycode.list`
+  (`settings.json`, `AGENTS.md` de `~/.nycode/agent` ou `BENCH_OVERLAY_DIR`); o hash vai para `.overlay-sha`. As flags só do
+  pi-code (`--settings`, `--mcp-config`, `--setting-sources`, `--add-dir`, `--strict-mcp-config`) são descartadas até F5.
+  O agente Harbor do nycode não existe: S2 com `--arm nycode` para com erro explícito.
+- Braço `ny-pi-pi160` (D-25): o mesmo `bench/arms/ny-pi` com `BENCH_PI_VERSION=1.6.0` (tabela `env` do `arms.toml`),
+  estágio `bench-nypi160-<sha12>`; exige um pi 1.6.0 gerenciado em `BENCH_PI_INSTALL_DIR` (o `~/.pi/agent/install` do
+  dono é 1.5.2 e não serve). Sai com F10.
+- Tier `smoke`: apelido do `pr` (`[tier.smoke] alias = "pr"`, D-27); a rodada e o diretório usam o nome `pr`.
+- `bench gate --base <ref> --cand <rodada> --parity` (D-28): compara braços diferentes. Ignora `arm_version` e
+  `overlay_sha`; `model` e `jobs` continuam exigindo igualdade; margem de custo 1,10; o `verdict.json` ganha
+  `parity.ignored_meta` e `parity.cost_max`.
+- Runner do `pi`: continua a skill `pelo-em-ovo` fora do repositório, via `BENCH_PELO_RUN_PI` (a skill sai de `claude-home` em F8).
