@@ -45,6 +45,9 @@ NOT_VERIFIED_EXIT = 5
 MAX_ERROR_SHARE = (
     0.10  # a stage with more errored runs than this ends the round (infra, not a score)
 )
+# Arms that build a stage from this checkout (arms.toml `stage_prefix` names it; ny-pi keeps the default).
+STAGED_ARMS = ("ny-pi", "ny-pi-pi160", "nycode")
+STAGE_PREFIX = "bench-nypi"
 Key = tuple[str, str, int]  # (suite, task_id, rep)
 Step = dict[str, Any]
 
@@ -219,12 +222,14 @@ def arm_meta(
         "arm": arm, "arm_version": ver, "model": model, "git_sha": sha,
         "started": datetime.now(UTC).isoformat(timespec="seconds"), "budget_usd": budget,
     }  # fmt: skip
-    if arm == "ny-pi":
-        meta["overlay_sha"] = overlay_sha(sha[:12])
+    if arm in STAGED_ARMS:
+        meta["overlay_sha"] = overlay_sha(
+            sha[:12], arms[arm].get("stage_prefix", STAGE_PREFIX)
+        )
         if meta["overlay_sha"] is None:
             # The --version call above builds the stage. Without a complete one every parallel run would try to
             # rebuild it at once and the round would end not_verified much later (timer gate, 2026-11-15).
-            raise RuntimeError(f"ny-pi stage not built: {err or 'no .ready'}")
+            raise RuntimeError(f"{arm} stage not built: {err or 'no .ready'}")
     return meta
 
 
@@ -233,13 +238,12 @@ def stage_root() -> Path:
     return Path(os.environ.get("BENCH_STAGE_ROOT", Path.home() / ".cache/bench"))
 
 
-def nypi_stage(short: str) -> Path | None:
-    """The ny-pi stage built from this checkout (arms/ny-pi), identified by its .overlay-sha. Only a complete
-    one counts (.ready): a build that failed halfway leaves .overlay-sha behind."""
+def nypi_stage(short: str, prefix: str = STAGE_PREFIX) -> Path | None:
+    """The stage built from this checkout by arms/ny-pi, ny-pi-pi160 or nycode (`prefix` = the arm's stage_prefix),
+    identified by its .overlay-sha. Only a complete one counts (.ready): a build that failed halfway leaves
+    .overlay-sha behind."""
     stage = os.environ.get("BENCH_STAGE")
-    cands = (
-        [Path(stage)] if stage else sorted(stage_root().glob(f"bench-nypi-{short}*"))
-    )
+    cands = [Path(stage)] if stage else sorted(stage_root().glob(f"{prefix}-{short}*"))
     return next(
         (
             c
@@ -250,8 +254,8 @@ def nypi_stage(short: str) -> Path | None:
     )
 
 
-def overlay_sha(short: str) -> str | None:
-    stage = nypi_stage(short)
+def overlay_sha(short: str, prefix: str = STAGE_PREFIX) -> str | None:
+    stage = nypi_stage(short, prefix)
     return (stage / ".overlay-sha").read_text().strip() if stage else None
 
 
@@ -281,15 +285,19 @@ def _harbor_step(
             )  # run_harbor inherits os.environ: no OAuth in this mode
     else:
         env = {tok_name: oauth_token(), **extra}
-    if arm == "ny-pi":
+    if arm == "nycode":
+        # 09 §2.2: the Harbor agent for nycode (a sibling of pi_harness_agent that installs the monorepo build) is
+        # not designed. Falling through to the ny-pi agent would measure the wrong harness.
+        raise RuntimeError("Harbor agent for nycode is not designed yet (09 §2.2)")
+    if arm in ("ny-pi", "ny-pi-pi160"):
         # Bundle the stage of THIS checkout, never the live ~/.pi (2026-11-14: Harbor measured the local harness).
         short = subprocess.run(
             ["git", "-C", str(REPO), "rev-parse", "--short=12", "HEAD"],
             capture_output=True, text=True, check=True,
         ).stdout.strip()  # fmt: skip
-        stage = nypi_stage(short)
+        stage = nypi_stage(short, os.environ.get("BENCH_STAGE_PREFIX", STAGE_PREFIX))
         if stage is None:
-            raise RuntimeError(f"ny-pi stage for {short} not built; run the arm first")
+            raise RuntimeError(f"{arm} stage for {short} not built; run the arm first")
         # Per-round path: arms running side by side must not overwrite one shared bundle.
         out.mkdir(parents=True, exist_ok=True)
         bundle = out / "pi-harness-bundle.tgz"
@@ -638,6 +646,10 @@ def main(argv: list[str] | None = None) -> int:
         )
         if a.arm not in arms:
             p.error(f"unknown arm {a.arm}; known: {', '.join(arms)}")
+        # The arm script and its children read these (ny-pi-pi160 selects pi 1.6.0 and its own stage).
+        os.environ.update(arms[a.arm].get("env", {}))
+        if "stage_prefix" in arms[a.arm]:
+            os.environ["BENCH_STAGE_PREFIX"] = arms[a.arm]["stage_prefix"]
         if a.extension:
             a.tasks = [t for t in os.environ["BENCH_EXTEND_TASKS"].split(",") if t]
             a.k = int(os.environ["BENCH_EXTEND_REPS"])

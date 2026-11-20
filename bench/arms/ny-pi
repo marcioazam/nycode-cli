@@ -17,11 +17,18 @@ real=${BENCH_REAL_HOME:-$HOME}
 # 2026-11-15. Pinned to the real HOME, every tool resolves as it does outside the stage. Unused without mise.
 export MISE_CONFIG_DIR="${MISE_CONFIG_DIR:-$real/.config/mise}" MISE_DATA_DIR="${MISE_DATA_DIR:-$real/.local/share/mise}"
 export MISE_STATE_DIR="${MISE_STATE_DIR:-$real/.local/state/mise}" MISE_CACHE_DIR="${MISE_CACHE_DIR:-$real/.cache/mise}"
-stage=${BENCH_STAGE:-${BENCH_STAGE_ROOT:-$real/.cache/bench}/bench-nypi-$(git -C "$repo" rev-parse --short=12 HEAD)$(git -C "$repo" diff --quiet HEAD || echo -dirty)}
+stage=${BENCH_STAGE:-${BENCH_STAGE_ROOT:-$real/.cache/bench}/${BENCH_STAGE_PREFIX:-bench-nypi}-$(git -C "$repo" rev-parse --short=12 HEAD)$(git -C "$repo" diff --quiet HEAD || echo -dirty)}
 if [ ! -f "$stage/.ready" ]; then
   mkdir -p "$(dirname "$stage")"
+  # ny-pi-pi160 (D-25) sets BENCH_PI_VERSION=1.6.0 and needs a managed pi install of that version at
+  # BENCH_PI_INSTALL_DIR; the owner's ~/.pi/agent/install is 1.5.2 and must not stand in for it.
+  pi_install=${BENCH_PI_INSTALL_DIR:-$real/.pi/agent/install}
+  if [ -n "${BENCH_PI_VERSION:-}" ] && [ "$(cat "$pi_install/current-version" 2>/dev/null)" != "$BENCH_PI_VERSION" ]; then
+    echo "bench: arm needs pi $BENCH_PI_VERSION at $pi_install (current-version: $(cat "$pi_install/current-version" 2>/dev/null || echo missing)); set BENCH_PI_INSTALL_DIR" >&2
+    exit 2
+  fi
   mkdir -p "$stage/.pi/agent/claude-home/rules" "$stage/.local/bin"
-  ln -sfn "$real/.pi/agent/install" "$stage/.pi/agent/install"
+  ln -sfn "$pi_install" "$stage/.pi/agent/install"
   ln -sfn "$real/.pi/agent/bin" "$stage/.pi/agent/bin"
   # Pristine pi-code from this tree's lockfile (never a copy of the live npm, which carries local patches).
   mkdir -p "$stage/.pi/agent/npm" && cp "$repo/npm/package.json" "$repo/npm/package-lock.json" "$stage/.pi/agent/npm/"

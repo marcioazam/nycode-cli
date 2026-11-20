@@ -1,0 +1,6 @@
+# Owner layer copied into the nycode stage (paths relative to ~/.nycode/agent, or BENCH_OVERLAY_DIR). Untracked by
+# design. Decided in F3 (09 §2.2): settings.json and AGENTS.md replace the ny-pi layer's settings.json, local.env and
+# claude-home/rules/personal.md; local.env is gone, vendor/pi-lsp returns as the `lsp` extension (F9) and
+# vendor/ponytail becomes an optional package, so neither is copied. auth.json and models.json never are.
+settings.json
+AGENTS.md
