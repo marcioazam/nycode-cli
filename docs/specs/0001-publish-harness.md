@@ -1,3 +1,8 @@
+> Nota nycode (F2): registro histórico do repositório `ny-pi`; os caminhos (`~/.pi/agent`, `install.sh`, `publish.list`,
+> `claude-home/`, `third-party.json`) são os daquele repositório e ficam como foram. No nycode o instalador e a lista de
+> publicação são removidos em F11 (`docs/migration/ny-pi-core/03-mapa-de-migracao.md`) e `claude-home/` vira
+> `packages/coding-agent/resources/` em F8.
+
 Tier: T3 (sinais: credenciais/segredos, publicação externa irreversível, migração do ~/.pi vivo para symlinks, contrato público novo)
 
 Assumptions: A1 (~90%, reversível) conta do `gh` autenticada é a dona do repo; A2 (~85%, base: agent-contract e skills citam o caminho) o git-deliver passa a viver em `claude-home/bin/git-deliver` dentro do repo e as referências trocam para `$CLAUDE_CONFIG_DIR/bin/git-deliver`, sem tocar o `~/.claude`; A3 (~85%) uma skill referenciada pelo que é enviado e sem dependência pessoal entra no repo; se tiver dependência pessoal, a referência sai (regra da tarefa 7); A4 (~80%) o push privado acontece assim que os gates automáticos passam, e a revisão humana fica antes de virar público (D9 do usuário). Risco: um vazamento que escapar dos scanners chega ao GitHub privado. Veto antes de executar se quiser revisar antes do push.
