@@ -684,4 +684,4 @@ Decisões de F3 (`docs/migration/ny-pi-core/09-paridade-e-benchmark.md`):
 - `bench gate --base <ref> --cand <rodada> --parity` (D-28): compara braços diferentes. Ignora `arm_version` e
   `overlay_sha`; `model` e `jobs` continuam exigindo igualdade; margem de custo 1,10; o `verdict.json` ganha
   `parity.ignored_meta` e `parity.cost_max`.
-- Runner do `pi`: continua a skill `pelo-em-ovo` fora do repositório, via `BENCH_PELO_RUN_PI` (a skill sai de `claude-home` em F8).
+- Runner do `pi`: continua o `run_pi.py` da pelo-em-ovo, fora do repositório, via `BENCH_PELO_RUN_PI` (a skill sai de `claude-home` em F8).

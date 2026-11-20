@@ -553,9 +553,8 @@ C), 2 linhas de infraestrutura descartadas. O `verdict.json` do baseline contra 
    funcional e o `bench-pr` publica `success` ("sem mudança funcional", D-21).
 4. Depois de o PR entrar, rodar `bench-pr.sh --pr N` para os PRs que ficaram `NOT_COMPARABLE`.
 
-* *Quem pode.** Pela regra do RUNBOOK: só a máquina do dono roda (poster local, conta `claude`); o `bench-nightly.sh`
-  nunca
-grava a baseline; um baseline antigo (k2) ainda carrega, mas com intervalo mais largo. O ruleset de F3 tem
+**Quem pode.** Pela regra do RUNBOOK: só a máquina do dono roda (poster local, conta `claude`); o `bench-nightly.sh`
+nunca grava a baseline; um baseline antigo (k2) ainda carrega, mas com intervalo mais largo. O ruleset de F3 tem
 `bypass_actors: []`: nem o dono dispensa os checks do PR da baseline. Se o dono delega o registro a um agente, o
 agente só abre o PR com a saída que o poster gerou; **não verificado** quem tem permissão no GitHub para o `bench/run.py
 post-status` além do dono (ver "Contrapartida aceita" em `docs/ci-local.md`: qualquer credencial com escrita publica

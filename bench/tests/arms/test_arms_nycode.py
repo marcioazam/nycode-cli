@@ -68,7 +68,7 @@ def test_arm_meta_reads_overlay_sha_of_the_nycode_stage(
         (d / ".ready").touch()
     monkeypatch.setenv("BENCH_STAGE_ROOT", str(tmp_path))
     monkeypatch.delenv("BENCH_STAGE", raising=False)
-    monkeypatch.setattr(rb.subprocess, "run", lambda *a, **k: subprocess.CompletedProcess(a, 0, "abc123def456\n", ""))  # fmt: skip
+    monkeypatch.setattr("bench.run.subprocess.run", lambda *a, **k: subprocess.CompletedProcess(a, 0, "abc123def456\n", ""))  # fmt: skip
     meta = rb.arm_meta("nycode", arms(), "pi", Path("/x/bin"), "m", 1.0)
     assert meta["overlay_sha"] == "n1"
     assert (
