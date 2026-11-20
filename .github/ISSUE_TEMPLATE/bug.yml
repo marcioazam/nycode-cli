@@ -6,6 +6,8 @@ body:
     attributes:
       value: |
         Security vulnerabilities must not be reported here. Use **Security > Report a vulnerability** instead (see SECURITY.md).
+
+        Before reporting an issue in core, validate with `nycode -ne` that it is not caused by an extension you loaded (`-ne` is `--no-extensions`).
   - type: textarea
     id: actual
     attributes:
@@ -34,10 +36,11 @@ body:
     attributes:
       label: Area
       options:
-        - Extensions
-        - claude-home (rules, agents, skills, hooks)
-        - Benchmark (bench/)
-        - Installer
+        - Core
+        - Built-in extensions
+        - Bundled resources
+        - Benchmark
+        - Distribution
         - CI
         - Other
     validations:
@@ -56,8 +59,8 @@ body:
   - type: input
     id: version
     attributes:
-      label: ny-pi commit and pi version
-      description: "Output of `git rev-parse --short HEAD` in your checkout and `pi --version`."
+      label: nycode version
+      description: "Output of `nycode --version`."
     validations:
       required: true
   - type: input
