@@ -5,21 +5,23 @@ on:
     - cron: '37 7 * * *'
   workflow_dispatch:
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
   audit:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
-          cache: npm
 
       - name: Install dependencies without lifecycle scripts
         run: npm ci --ignore-scripts --no-audit --no-fund
@@ -29,3 +31,20 @@ jobs:
 
       - name: Verify registry signatures
         run: npm audit signatures --omit=dev
+
+      # One exceptions file for both scanners: scripts/ci/osv-scanner.toml (owner and expiry per entry). Same threshold
+      # as osv_scan in scripts/ci/run-security.sh: a group with CVSS >= 7, or without a score, fails.
+      - name: Install osv-scanner (sha256-checked)
+        run: bash scripts/ci/install-tools.sh osv-scanner
+
+      - name: OSV scan of every lockfile
+        env:
+          OSV_REPORT: ${{ runner.temp }}/osv.json
+        run: |
+          rc=0
+          osv-scanner scan source --config scripts/ci/osv-scanner.toml --recursive --format json --output-file "$OSV_REPORT" . || rc=$?
+          # 1 = vulnerabilities found; anything above is a scanner error (128 = no packages found)
+          [ "$rc" -le 1 ] || { echo "osv-scanner error (exit $rc)"; exit 1; }
+          n=$(jq '[.results[]?.packages[]?.groups[]? | select(((.max_severity // "") | tonumber? // 10) >= 7)] | length' "$OSV_REPORT")
+          echo "osv-scanner: ${n} HIGH/CRITICAL/unscored group(s)"
+          [ "$n" -eq 0 ]

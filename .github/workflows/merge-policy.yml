@@ -1,0 +1,43 @@
+# D-07: squash is the normal merge; a merge commit is allowed only for upstream syncs. This job audits after the fact
+# (it cannot block the merge): it fails and opens an issue for a merge commit that brings no upstream commit.
+name: merge-policy
+
+on:
+  push:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: merge-policy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  merge-policy:
+    name: merge-policy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write # open the violation issue
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Audit new merge commits
+        env:
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          git fetch --no-tags https://github.com/earendil-works/pi.git main:refs/remotes/upstream/main
+          rc=0
+          bad=$(bash scripts/ci/merge-policy.sh) || rc=$?
+          [ "$rc" -eq 0 ] && exit 0
+          [ "$rc" -eq 1 ] || exit "$rc" # 2 = script error: fail without an issue
+          gh issue create --title "merge-policy: merge outside the policy at ${AFTER:0:12}" \
+            --body "Merge commits that bring no commit of earendil-works/pi main (D-07): ${bad//$'\n'/ }"
+          exit 1
