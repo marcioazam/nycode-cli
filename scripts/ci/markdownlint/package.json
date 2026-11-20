@@ -1,5 +1,5 @@
 {
-  "name": "ny-pi-markdownlint",
+  "name": "nycode-markdownlint",
   "private": true,
   "version": "0.0.0",
   "devDependencies": {

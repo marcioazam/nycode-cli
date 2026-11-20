@@ -7,11 +7,12 @@ import instruction_budget as ib
 
 
 def make_root(d: Path) -> None:
-    h = d / "claude-home"
+    h = d / ib.HOME
     (h / "rules").mkdir(parents=True)
+    (h / "instructions").mkdir()
     (h / "skills" / "s").mkdir(parents=True)
     (h / "agents").mkdir()
-    (h / "CLAUDE.md").write_text("# regras\n" * 20)
+    (h / "instructions" / "contract.md").write_text("# regras\n" * 20)
     (h / "rules" / "a.md").write_text("regra\n" * 10)
     (h / "skills" / "s" / "SKILL.md").write_text(
         "---\nname: s\ndescription: d\nother: x\n---\ncorpo longo\n" * 1
@@ -39,7 +40,7 @@ class T(unittest.TestCase):
         return ib.main(args)
 
     def grow(self) -> None:
-        with (self.root / "claude-home" / "CLAUDE.md").open("a") as f:
+        with (self.root / ib.HOME / "instructions" / "contract.md").open("a") as f:
             f.write("x" * 1024)
 
     def event(self, labels: list[str]) -> str:
@@ -65,11 +66,19 @@ class T(unittest.TestCase):
         self.assertEqual(self.check(self.event(["x"])), 1)
 
     def test_reduction_passes(self) -> None:
-        (self.root / "claude-home" / "CLAUDE.md").write_text("x")
+        (self.root / ib.HOME / "instructions" / "contract.md").write_text("x")
         self.assertEqual(self.check(), 0)
 
-    def test_missing_claude_md(self) -> None:
-        (self.root / "claude-home" / "CLAUDE.md").unlink()
+    def test_missing_contract(self) -> None:
+        (self.root / ib.HOME / "instructions" / "contract.md").unlink()
+        self.assertEqual(self.check(), 2)
+
+    def test_no_resources_yet_measures_zero(self) -> None:
+        empty = Path(tempfile.mkdtemp(dir=self.root))
+        self.assertEqual(ib.measure(empty), {})
+
+    def test_resources_without_skills_is_invalid(self) -> None:
+        (self.root / ib.HOME / "skills" / "s" / "SKILL.md").unlink()
         self.assertEqual(self.check(), 2)
 
     def test_bad_baseline(self) -> None:
@@ -85,7 +94,7 @@ class T(unittest.TestCase):
 
     def test_frontmatter_only(self) -> None:
         self.assertEqual(
-            ib.catalog_text(self.root / "claude-home/skills/s/SKILL.md"),
+            ib.catalog_text(self.root / ib.HOME / "skills/s/SKILL.md"),
             "name: s\ndescription: d",
         )
 

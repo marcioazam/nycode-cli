@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Gate de orçamento das instruções sempre carregadas do harness.
 
-Conta: claude-home/CLAUDE.md, claude-home/rules/*.md e, de cada
-claude-home/skills/*/SKILL.md e claude-home/agents/*.md, só `name`+`description`
-do frontmatter (o que entra no catálogo).
+Conta, em packages/coding-agent/resources: instructions/*.md, rules/*.md e, de cada
+skills/*/SKILL.md e agents/*.md, só `name`+`description` do frontmatter (o que entra
+no catálogo). Sem nenhum desses quatro diretórios (as peças chegam em F8) o total é 0;
+com algum deles, instructions/contract.md e ao menos uma skill são obrigatórios.
 
 Estimativa de tokens (offline, determinística): ceil(bytes_utf8 / 3.5).
 
@@ -22,9 +23,10 @@ import sys
 from pathlib import Path
 from typing import Any, cast
 
-HOME = "claude-home"
+HOME = "packages/coding-agent/resources"
 DEFAULT_BASELINE = Path(__file__).with_name("instruction_budget.baseline.json")
 LABEL = "budget-increase"
+COUNTED = ("instructions", "rules", "skills", "agents")
 
 
 class InputError(Exception):
@@ -54,14 +56,16 @@ def catalog_text(path: Path) -> str:
 
 def measure(root: Path) -> dict[str, int]:
     home = root / HOME
-    if not (home / "CLAUDE.md").is_file():
-        raise InputError(f"{home / 'CLAUDE.md'} não existe")
+    if not any((home / d).is_dir() for d in COUNTED):
+        return {}
+    contract = home / "instructions" / "contract.md"
+    if not contract.is_file():
+        raise InputError(f"{contract} não existe")
     files: dict[str, int] = {}
-    files[f"{HOME}/CLAUDE.md"] = tokens(
-        (home / "CLAUDE.md").read_text(encoding="utf-8")
-    )
-    for p in sorted((home / "rules").glob("*.md")):
-        files[f"{HOME}/rules/{p.name}"] = tokens(p.read_text(encoding="utf-8"))
+    for p in sorted((home / "instructions").glob("*.md")) + sorted(
+        (home / "rules").glob("*.md")
+    ):
+        files[p.relative_to(root).as_posix()] = tokens(p.read_text(encoding="utf-8"))
     skills = sorted((home / "skills").glob("*/SKILL.md"))
     if not skills:
         raise InputError("nenhuma skill encontrada")

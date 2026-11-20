@@ -246,8 +246,9 @@ com 1 ocorrência; `gh api repos/$UP/community/profile --jq .health_percentage` 
 
 **Passos**, nesta ordem (checks em [07](07-ci-qualidade-seguranca.md); benchmark em [09](09-paridade-e-benchmark.md)):
 
-1. **`scripts/ci/`:** `git mv import/ny-pi/scripts/ci scripts/ci`, mais `scripts/check-leaks.sh` e
-   `scripts/check-refs.py`. Criar `scripts/ci/lint/structure-upstream.txt` (arquivos do upstream acima de 800 linhas:
+1. **`scripts/ci/`:** `git mv import/ny-pi/scripts/ci scripts/ci`, mais
+   `scripts/check-refs.py` (`scripts/check-leaks.sh` e `scripts/fixtures/leak/` já entraram em F2, PR #202, para o
+   pre-commit de C-F2-14). Criar `scripts/ci/lint/structure-upstream.txt` (arquivos do upstream acima de 800 linhas:
    `git ls-files 'packages/*/src/**/*.ts' | xargs wc -l | awk '$1>800'`). `rg -n "claude-home|publish.list|\.pi/agent"
    scripts/ci` só pode sobrar onde F8 resolve. O `scripts/ci/biome.json` (2 espaços, aspas simples) não vale para o
    TypeScript do destino (D-06).
