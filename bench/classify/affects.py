@@ -1,151 +1,107 @@
-"""Does a PR change the harness's FUNCTIONAL behavior? Decides whether bench-pr spends a benchmark round.
+"""Does a PR change the nycode product's FUNCTIONAL behavior? Decides whether bench-pr spends a benchmark round.
 
-Fail closed: any path not proven non-functional is functional. Rules (record: docs/bench/RUNBOOK.md):
-non-functional = docs, repo tooling (CI, git hooks, release checks), the benchmark's own infra, eval infra, tests, licence
-files, markdown that is not installed, and pure-UI paths (themes, HUD, statusline, visual extensions, render-only patches).
-Instruction files installed under claude-home/ are prompts: always functional, except record docs under claude-home/docs/
-that no instruction file cites; pi-code patches are UI only when every patched file is a UI file.
+Fail closed: any path not proven non-functional is functional. The lists are the owner's proposal of
+docs/migration/ny-pi-core/09 §3.2 (D-21); the rule record is docs/bench/RUNBOOK.md.
+
+non-functional = docs, repo tooling (CI, hooks, release checks), the benchmark's own infra, tests, licence and dotfiles,
+`apps/**` (outside the gates, D-23) and pure-UI paths (themes, statusline, visual extensions).
+functional on purpose = `packages/*/src/**` (minus the UI extensions), everything under
+`packages/*/resources/{agents,skills,commands,rules,instructions,hooks}/` (prompts, even markdown), package.json and
+the lockfile (dependencies). A package.json diff that only adds or removes `files` entries is non-functional when
+every touched entry is (the `files` field replaces the old publish.list).
 """
 
 import fnmatch
+import json
+import posixpath
 import subprocess
 from pathlib import Path, PurePosixPath
+from typing import Any
 
+PROMPT_DIRS = ("agents", "skills", "commands", "rules", "instructions", "hooks")
+PROMPTS = tuple(f"packages/*/resources/{d}/*" for d in PROMPT_DIRS)
 # Pure UI: what the user sees, never what the agent is told or can do.
 UI = (
-    "themes/*",
-    "extensions/ui/*",  # editor, a11y, terminal title, /diff, /btw overlays
-    "extensions/ui-visual/*",  # header, icons, tool renderers, working indicator
-    "extensions/footer-no-stats.ts",
-    "extensions/sound-notify/*",  # interactive only
-    "extensions/dev-commands/*",
-    "extensions/up-dequeue/*",
-    "extensions/puxar.ts",
-    "claude-home/bin/puxar/*",
-    "extensions/sticky-prompt/*",
-    "claude-home/bin/hud/*",
-    "claude-home/plugins/claude-hud/*",
-    "claude-home/commands/claude-hud-*.md",  # only configure the HUD
-    "claude-home/patches/pi-code/statusline-multiline.patch",
-    "claude-home/patches/pi-code/subagent-render.patch",  # call/result drawing only
-    "claude-home/patches/pi-code/zzz-panel-column0.patch",  # panel column layout
+    "packages/*/resources/themes/*",
+    "packages/*/resources/statusline/*",
+    *(
+        f"packages/*/src/extensions/{d}/*"
+        for d in ("ui", "ui-visual", "footer", "sticky-prompt")
+    ),
 )
-NON_FUNCTIONAL = (
-    "docs/*",
+DOCS = ("docs/*", "packages/*/docs/*")
+REPO = (
     ".github/*",
+    ".husky/*",
     ".githooks/*",
     "scripts/ci/*",
     "scripts/check-*",
-    "scripts/refs-allow.txt",
-    "scripts/fixtures/*",
-    "bench/*",  # not installed in the harness (publish.list has no bench/ line)
-    "claude-home/bin/evals/*",  # eval infra; bundle.sh is carved out below
+    "bench/*",
     ".pre-commit-config.yaml",
     ".gitignore",
     ".gitattributes",
     ".editorconfig",
     ".leak-allow",
     ".gitleaks.toml",
+    ".gitleaksignore",
     "LICENSE",
     "NOTICE",
 )
-FUNCTIONAL_EXCEPTIONS = (
-    "claude-home/bin/evals/harbor/bundle.sh",
-)  # builds the harness under test
-PATCH_GLOB = "claude-home/patches/pi-code/*.patch"
-# A pi-code patch is UI when every file it patches (path inside the pi-code tree) matches one of these.
-PI_CODE_UI = ("subagent/fleet-ui/*", "status-line.ts", "notify.ts", "*.md")
-DOCS_DIR = "claude-home/docs/"
+APPS = ("apps/*",)  # D-23: outside the gates
+TESTS = ("packages/*/test/*",)
 TEST_NAMES = ("*.test.ts", "*.test.mjs", "test_*.py", "*_test.py", "test_*.sh")
 
 
-def installed_paths(publish_list: str) -> set[str]:
-    """Destination column of publish.list lines."""
-    out: set[str] = set()
-    for ln in publish_list.splitlines():
-        if ln.strip() and not ln.startswith("#") and "\t" in ln:
-            out.add(ln.split("\t")[1].strip())
-    return out
+def _any(p: str, globs: tuple[str, ...]) -> bool:
+    return any(fnmatch.fnmatchcase(p, g) for g in globs)
 
 
-def patch_target_files(text: str) -> list[str]:
-    """Files named by the `+++ b/<file>` headers of a patch (/dev/null ignored)."""
-    out: list[str] = []
-    for ln in text.splitlines():
-        if ln.startswith("+++ b/"):
-            out.append(ln[6:].split("\t")[0].strip())
-    return out
-
-
-def referenced_docs(grep_out: str) -> set[str]:
-    """Normalize `docs/...` matches (from git grep -o) to claude-home/docs/... paths."""
-    return {
-        "claude-home/" + ln.strip().rstrip(".")
-        for ln in grep_out.splitlines()
-        if ln.strip()
-    }
-
-
-def classify_path(
-    p: str,
-    installed: set[str],
-    referenced: set[str] | None = None,
-    patch_targets: dict[str, list[str]] | None = None,
-) -> tuple[bool, str]:
-    """(is_functional, reason). referenced: claude-home/docs paths cited by installed instruction files;
-    patch_targets: patch path -> files it patches (head content)."""
+def classify_path(p: str) -> tuple[bool, str]:
+    """(is_functional, reason). `*` in the globs crosses `/`, so `docs/*` is the whole tree."""
     pp = PurePosixPath(p)
-    if p in FUNCTIONAL_EXCEPTIONS:
-        return True, "builds the harness under test"
-    if any(fnmatch.fnmatchcase(p, g) for g in UI):
+    if _any(p, PROMPTS):
+        return True, "prompt shipped with the agent"
+    if _any(p, UI):
         return False, "ui"
-    if any(fnmatch.fnmatchcase(pp.name, g) for g in TEST_NAMES) or "tests" in pp.parts:
+    if _any(p, TESTS) or _any(pp.name, TEST_NAMES) or "tests" in pp.parts[:-1]:
         return False, "test"
-    if any(fnmatch.fnmatchcase(p, g) for g in NON_FUNCTIONAL):
-        return False, "docs/tooling"
-    if fnmatch.fnmatchcase(p, PATCH_GLOB):
-        t = (patch_targets or {}).get(p)
-        if t and all(any(fnmatch.fnmatchcase(f, g) for g in PI_CODE_UI) for f in t):
-            return False, "ui"
-        return True, "pi-code patch changes behavior"
-    if p.startswith(DOCS_DIR):
-        if any(p == r or p.startswith(r.rstrip("/") + "/") for r in referenced or ()):
-            return True, "doc referenced by an instruction file"
-        return False, "record doc"
+    if _any(p, DOCS):
+        return False, "docs"
+    if _any(p, REPO):
+        return False, "repo tooling"
+    if _any(p, APPS):
+        return False, "apps outside the gates"
     if p.endswith(".md"):
-        if p in installed or p.startswith("claude-home/"):
-            return True, "instruction file installed in the harness"
-        return False, "markdown"
+        return False, "docs"
+    if pp.name in ("package.json", "package-lock.json"):
+        return True, "dependencies and package contents"
     return True, "not proven non-functional"
 
 
+def _entry_inert(path: str) -> bool:
+    """A `files` entry (repo-relative) is inert when the file, or anything under it, is non-functional."""
+    return not classify_path(path)[0] or not classify_path(path + "/_")[0]
+
+
 def classify(
-    files: list[str],
-    publish_changes: list[str],
-    installed: set[str],
-    referenced: set[str] | None = None,
-    patch_targets: dict[str, list[str]] | None = None,
+    files: list[str], files_changes: dict[str, list[str]]
 ) -> tuple[bool, list[tuple[str, bool, str]]]:
-    """publish_changes: destinations of the publish.list lines the PR added or removed.
-    A publish.list change is non-functional only when every touched destination is itself non-functional."""
+    """files_changes: package.json path -> repo-relative `files` entries the PR added or removed, present only when
+    nothing else in that package.json changed. Such a change is non-functional only when every entry is."""
     rows: list[tuple[str, bool, str]] = []
     for f in files:
-        if f == "publish.list":
-            inert = bool(publish_changes) and not any(
-                classify_path(d, installed, referenced, patch_targets)[0]
-                for d in publish_changes
+        if f in files_changes:
+            inert = bool(files_changes[f]) and all(
+                _entry_inert(e) for e in files_changes[f]
             )
-            rows.append(
-                (
-                    f,
-                    not inert,
-                    "only non-functional paths"
-                    if inert
-                    else "installs or removes harness files",
-                )
+            why = (
+                "files field: only non-functional entries"
+                if inert
+                else "files field ships functional paths"
             )
+            rows.append((f, not inert, why))
         else:
-            fn, why = classify_path(f, installed, referenced, patch_targets)
+            fn, why = classify_path(f)
             rows.append((f, fn, why))
     return (any(r[1] for r in rows) or not rows), rows
 
@@ -156,58 +112,48 @@ def _git(*a: str) -> str:
     ).stdout
 
 
+def _files_entries(pkg: dict[str, Any]) -> set[str] | None:
+    files = pkg.get("files", [])
+    if not isinstance(files, list) or not all(isinstance(e, str) for e in files):
+        return None
+    return set(files)
+
+
+def _without_files(pkg: dict[str, Any]) -> dict[str, Any]:
+    return {k: v for k, v in pkg.items() if k != "files"}
+
+
+def _files_change(cwd: list[str], base: str, head: str, path: str) -> list[str] | None:
+    """Repo-relative `files` entries added or removed in `path`, or None when anything else changed or the file
+    cannot be read on both sides (added, deleted, not JSON): the caller then counts it as functional."""
+    try:
+        old = json.loads(_git(*cwd, "show", f"{base}:{path}"))
+        new = json.loads(_git(*cwd, "show", f"{head}:{path}"))
+    except (subprocess.CalledProcessError, json.JSONDecodeError):
+        return None
+    if not isinstance(old, dict) or not isinstance(new, dict):
+        return None
+    a, b = _files_entries(old), _files_entries(new)
+    if _without_files(old) != _without_files(new) or a is None or b is None:
+        return None
+    pkg_dir = posixpath.dirname(path)
+    return sorted(posixpath.normpath(posixpath.join(pkg_dir, e)) for e in a ^ b)
+
+
 def evaluate(
     base: str, head: str, repo: Path | None = None
 ) -> tuple[bool, list[tuple[str, bool, str]]]:
     """Diff merge-base(base, head)..head. Any git failure raises: the caller must treat that as functional."""
     cwd = ["-C", str(repo)] if repo else []
     files = _git(*cwd, "diff", "--name-only", f"{base}...{head}").splitlines()
-    pub: list[str] = []
-    if "publish.list" in files:
-        d = _git(*cwd, "diff", "-U0", f"{base}...{head}", "--", "publish.list")
-        pub = sorted(
-            installed_paths(
-                "\n".join(
-                    ln[1:]
-                    for ln in d.splitlines()
-                    if ln[:1] in "+-" and ln[:3] not in ("+++", "---")
-                )
-            )
-        )
-    installed = installed_paths(_git(*cwd, "show", f"{head}:publish.list"))
-    referenced: set[str] = set()
-    if any(f.startswith(DOCS_DIR) for f in files):
-        r = subprocess.run(
-            [
-                "git",
-                *cwd,
-                "grep",
-                "-h",
-                "-o",
-                "-E",
-                "docs/[A-Za-z0-9_./-]+",
-                head,
-                "--",
-                "claude-home/*.md",
-                ":!claude-home/docs",
-            ],
-            check=False,
-            capture_output=True,
-            text=True,
-        )
-        if r.returncode not in (0, 1):  # 1 = nothing found
-            raise subprocess.CalledProcessError(
-                r.returncode, r.args, r.stdout, r.stderr
-            )
-        referenced = referenced_docs(r.stdout)
-    targets: dict[str, list[str]] = {}
+    mb = _git(*cwd, "merge-base", base, head).strip()
+    changes: dict[str, list[str]] = {}
     for f in files:
-        if fnmatch.fnmatchcase(f, PATCH_GLOB):
-            try:
-                targets[f] = patch_target_files(_git(*cwd, "show", f"{head}:{f}"))
-            except subprocess.CalledProcessError:
-                pass  # removed in head: functional
-    return classify(files, pub, installed, referenced, targets)
+        if PurePosixPath(f).name == "package.json":
+            c = _files_change(cwd, mb, head, f)
+            if c is not None:
+                changes[f] = c
+    return classify(files, changes)
 
 
 def render(functional: bool, rows: list[tuple[str, bool, str]]) -> str:
