@@ -11,3 +11,19 @@ Mudanças deste fork em relação ao upstream: renomeação do produto de "pi" p
 "nycode" (pacotes npm, binário, variáveis de ambiente NYCODE_*, diretório de
 configuração .nycode), URLs do repositório e remoção dos workflows de CI da
 Earendil. Detalhes em docs/fork/2026-11-20-fork-do-pi.md.
+
+Código importado de terceiros
+-----------------------------
+
+ny-pi (https://github.com/marcioazam/ny-pi), licença MIT, commit
+e4f8729bfab57e9e2b222f020710c85d0a578c8d. Código do harness (extensões,
+agentes, skills, comandos, hooks, testes e benchmarks) importado para este
+repositório em fases; o histórico foi preservado em import/ny-pi/ até a
+conclusão da migração. Copyright dos contribuidores do ny-pi, nos termos da
+licença MIT do próprio ny-pi (import/ny-pi/LICENSE).
+
+pi-code 1.7.0 (https://github.com/ilovepixelart/pi-code), licença MIT,
+Copyright (c) 2025 Mario Zechner e Copyright (c) 2026 ilovepixelart. Código-
+fonte do pi-code, com os 19 patches que o ny-pi aplica sobre ele, entra neste repositório
+nas fases que o absorvem (extensão subagent e demais peças); o texto da
+licença acompanha esse código.

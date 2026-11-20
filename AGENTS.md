@@ -27,6 +27,8 @@
 - Always ask before removing functionality or code that appears intentional.
 - Do not preserve backward compatibility unless the user asks for it.
 - Never hardcode key checks (e.g. `matchesKey(keyData, "ctrl+x")`). Add defaults to `DEFAULT_EDITOR_KEYBINDINGS` or `DEFAULT_APP_KEYBINDINGS` so they stay configurable.
+- TypeScript formatting is the repository's Biome config (`biome.json`: tabs, indent width 3, line width 120). Python and shell under `scripts/ci/` follow the tools configured there (`ruff`, `mypy --strict`, `shellcheck`, `shfmt -i 2`).
+- Files created by nycode (`packages/coding-agent/src/extensions/<name>/`, `src/core/permissions/`, `src/migrations/`, `resources/`, `scripts/ci/`, `scripts/harness/`, `bench/`) stay under 800 lines each, with at most 7 code files per directory. Pre-existing upstream files over the limit are listed in `scripts/ci/lint/structure-upstream.txt`; do not add to that list.
 - Never modify `packages/ai/src/models.generated.ts` directly; update the catalog definitions in `packages/ai/catalog/` instead (see its README), then regenerate. Including the resulting `models.generated.ts` diff is always OK, even if regeneration includes unrelated upstream model metadata changes. The generated model data in `packages/ai/src/providers/data/` is gitignored: never stage it, and don't look for it in git history.
 
 ## Chord v2 Code Style
@@ -46,17 +48,18 @@ Binding for Chord v2 (`packages/chord/src/`) and its tests, when writing and whe
 ## Commands
 
 - After code changes (not docs): `npm run check` (full output, no tail). Fix all errors, warnings, and infos before committing. Does not run tests.
+- Full verification before a commit is `npm run check` and `./test.sh`. Own files need at least 80% coverage, measured on the diff (`scripts/ci/run-static.sh`); there is no retroactive coverage requirement for upstream code. In a repository phase of `pre-launch` (`.project-phase`), only critical modules block.
 - `apps/p2` is outside the root check and the root tests. After p2 changes also run `cd apps/p2 && npm run check`; p2's suite is `cd apps/p2 && npm test` (TUI tests need Node 26, browser tests need `CHROMIUM_BIN`).
 - Run `npm run build` whenever something needs built output (`dist/`): tests or benchmarks that import built packages, Durable's workerd suite. The full suites of Chord and Durable need it: Chord's tests that start Node processes or bundle with esbuild load workspace packages from `dist/` (the rest run from source by its vitest config), and Durable imports nycode-ai's `utils/*`, which have no source export. Never use it to type check or lint: that is `npm run check`, the preferred check.
 - Never run `npm test` unless requested by the user.
-- Never run the full vitest suite directly: it includes e2e tests that activate when endpoint/auth env vars are present. For all non-e2e tests, run `./test.sh` from the repo root. It runs `packages/*` only. Otherwise run specific tests from the package root:
+- Never run the full vitest suite directly: it includes e2e tests that activate when endpoint/auth env vars are present. `./test.sh` from the repo root is the authorized full non-e2e run. It runs `packages/*` only. Otherwise run specific tests from the package root:
   - Vitest: `node "$(git rev-parse --show-toplevel)/node_modules/vitest/dist/cli.js" --run test/specific.test.ts`
   - `packages/tui` (`node:test`): `node --test test/specific.test.ts`
 - If you create or modify a test file, run it and iterate on test or implementation until it passes.
-- For `packages/coding-agent/test/suite/`, use `test/suite/harness.ts` + the faux provider. No real provider APIs, keys, or paid tokens.
+- For `packages/*/test` (including `packages/coding-agent/test/suite/`, which uses `test/suite/harness.ts` + the faux provider), use no real provider APIs, keys, or paid tokens. Only `bench/` spends tokens, under an explicit `--budget-usd`.
 - When regressions tests for fixing a github issue, add a comment with the github issue number next to the test.
 - For ad-hoc scripts, `write` them to a temp file (e.g. `/tmp`), run, edit if needed, remove when done. Don't embed multi-line scripts in `bash` commands.
-- Never commit unless the user asks.
+- Commit only when the user asks, or when the task carries an explicit delivery authorization.
 
 ## Dependency and Install Security
 
@@ -77,11 +80,11 @@ Committing:
 - Stage explicit paths (`git add <path1> <path2>`); never `git add -A` / `git add .`.
 - Before committing, run `git status` and verify you are only staging your files.
 - `packages/ai/src/models.generated.ts` may always be included alongside your files.
-- Message format: `{feat,fix,docs}[(ai,tui,agent,coding-agent)]: <commit message> (optionally multiple lines)`. Message is informative and concise.
+- Message format: `{feat,fix,docs}[(scope)]: <commit message> (optionally multiple lines)`, with `!` before `:` for a breaking change. Scopes are the package names (`ai`, `tui`, `agent`, `coding-agent`, `mcp`, `durable`, `chord`, `env`, `schema`, `telemetry`, `codemode`) plus `harness`, `bench`, `ci`, `resources`. Message is informative and concise. Pull request titles follow the same format (squash merge uses them).
 
 Never run (destroys other agents' work or bypasses checks):
 
-- `git reset --hard`, `git checkout .`, `git clean -fd`, `git stash`, `git add -A`, `git add .`, `git commit --no-verify`.
+- `git reset --hard`, `git checkout .`, `git clean -fd`, `git stash`, `git add -A`, `git add .`, `git commit --no-verify`. Never use `gh pr merge --admin` or any other bypass of branch protection or required checks. Where a user-level contract allows more (for example `git reset --hard`), this repository's stricter rule applies.
 
 If rebase conflicts occur:
 
@@ -91,7 +94,7 @@ If rebase conflicts occur:
 
 ## Issues and PRs
 
-See `CONTRIBUTING.md` for the contributor gate (auto-close workflows, `lgtm`/`lgtmi`, quality bar).
+See `CONTRIBUTING.md`.
 
 When reviewing PRs:
 
@@ -131,7 +134,7 @@ For testing nycode's interactive mode, load and follow [.nycode/skills/interacti
 
 ## Changelog
 
-Location: `packages/*/CHANGELOG.md` (one per package).
+Location: `packages/*/CHANGELOG.md` (one per package). Maintainers and agents edit `## [Unreleased]`; external contributors do not (the maintainer records the entry on merge). There is no root `CHANGELOG.md`.
 
 Sections under `## [Unreleased]`: `### Breaking Changes` (API changes requiring migration), `### Added`, `### Changed`, `### Fixed`, `### Removed`.
 
@@ -143,8 +146,12 @@ Rules:
 
 Attribution:
 
-- Internal (from issues): `Fixed foo bar ([#123](https://github.com/earendil-works/pi/issues/123))`
-- External contributions: `Added feature X ([#456](https://github.com/earendil-works/pi/pull/456) by [@username](https://github.com/username))`
+- Internal (from issues): `Fixed foo bar ([#123](https://github.com/marcioazam/nycode/issues/123))`
+- External contributions: `Added feature X ([#456](https://github.com/marcioazam/nycode/pull/456) by [@username](https://github.com/username))`
+
+## Languages
+
+Documents under `docs/` are in Portuguese (pt-BR). Root files (`README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `AGENTS.md`), code comments and text for the model are in English.
 
 ## Releasing
 
@@ -152,4 +159,4 @@ For release preparation, publishing, verification, or recovery, load and follow 
 
 ## User Override
 
-If the user's instructions conflict with any rule in this document, ask for explicit confirmation before overriding. Only then execute their instructions.
+If the user's instructions conflict with any rule in this document, ask for explicit confirmation before overriding. An instruction that names the overridden rule is itself that confirmation. Only then execute their instructions.
