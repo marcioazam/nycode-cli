@@ -7,7 +7,7 @@ request before a context handoff. Read this file first, in full, then the readin
 
 - p3 is the successor of p2 (Nycode Mobile), built **tabula rasa on the Chord v2 app kit**, next to p2. The owner:
   "leave p2 to the kids". p2 stays his daily driver on the phone until p3 replaces it.
-- **p3 lives on `main`** of github.com/marcioazam/nycode-cli, in `/home/badlogic/nycode`, in `apps/p3/` (owner, 2026-11-07:
+- **p3 lives on `main`** of github.com/marcioazam/nycode, in `/home/badlogic/nycode`, in `apps/p3/` (owner, 2026-11-07:
   "switch to main, p3 can live there too, branch sucks"; the `p3` branch was rebased onto main and merged, b89b2232c).
   No branches, no worktrees: work in `/home/badlogic/nycode` on main; other sessions share the checkout (commit only your
   own files).
@@ -160,7 +160,7 @@ Radius artifacts (owner-facing; read with mcporter `radius.artifacts_read` / `ar
 - Checks: `npm run check` (root), app checks in `apps/<app>` (`npm run check`). Chord tests from `packages/chord`:
   `node ../../node_modules/vitest/dist/cli.js --run <paths>` (full suite after `npm run build`).
 - Commits: explicit paths, `{feat,fix,docs}(scope): ...`, push `git push origin main`; main's CI:
-  `gh run list --repo marcioazam/nycode-cli --branch main --workflow CI`.
+  `gh run list --repo marcioazam/nycode --branch main --workflow CI`.
 
 ## 7. Other open threads (not p3, keep track)
 

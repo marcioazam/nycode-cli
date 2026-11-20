@@ -104,7 +104,7 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/marcioazam/nycode-cli.git",
+		"url": "git+https://github.com/marcioazam/nycode.git",
 		"directory": "packages/ai"
 	},
 	"engines": {

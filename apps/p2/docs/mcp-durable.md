@@ -11,7 +11,7 @@ The human-readable plan with background lives at https://radius.earendil.com/art
 
 ## 1. Repository and rules
 
-Everything is in `marcioazam/nycode-cli` (local checkout `~/Development/nycode-mono`, branch `main`): the packages under
+Everything is in `marcioazam/nycode` (local checkout `~/Development/nycode-mono`, branch `main`): the packages under
 `packages/` (`env`, `mcp`, `durable`, `coding-agent`, `chord`, ...) and p2 at `apps/p2`. Until p2 moved there (commit
 `05dc8d239`), it lived in the private repository `earendil-works/pi-private`, which is no longer used.
 
