@@ -33,26 +33,26 @@ Identificador: `C-F<fase>-<n>`. A coluna "prova" diz o que tem de ser observado.
 
 ## F2. Governança versionada e marca
 
-- [ ] C-F2-01 `docs/assets/nycode-pixel.svg` restaurado. Prova: sha256 `7269f242f8f7c6dca765f8a780cf72f3a0d471a40e41e2524fc7f705328a9dd2`.
-- [ ] C-F2-02 `docs/assets/nycode-wordmark-ansi.txt` restaurado. Prova: sha256 `22201bcbda73ca8176350bc818ebea4fc70400f3572c507383decf19e836613f`.
-- [ ] C-F2-03 README sem o logo do pi. Prova: `rg -n "pi.dev/logo" README.md` vazio.
-- [ ] C-F2-04 README com o logo do nycode no topo. Prova: `rg -n "docs/assets/nycode-pixel.svg" README.md`.
-- [ ] C-F2-05 README não manda instalar por `pi.dev/install.sh`. Prova: busca vazia.
-- [ ] C-F2-06 Cada ocorrência de `pi.dev` e `earendil` no README tratada conforme [05](05-marca-e-readme.md). Prova: tabela de 05 marcada.
-- [ ] C-F2-07 Título de reserva "π" trocado (K14). Prova: `rg -n '"π"' packages/coding-agent/src/config.ts` vazio.
-- [ ] C-F2-08 `CODEOWNERS`, `PULL_REQUEST_TEMPLATE.md`, `release.yml`, `DISCUSSION_TEMPLATE/` presentes.
-- [ ] C-F2-09 `dependabot.yml` reescrito para o monorepo, com espera de 7 dias.
-- [ ] C-F2-10 Modelos de issue fundidos; nenhum aponta para o Discord do upstream.
-- [ ] C-F2-11 `APPROVED_CONTRIBUTORS` removido (D-18).
-- [ ] C-F2-12 `CODE_OF_CONDUCT.md`, `SUPPORT.md` presentes; `SECURITY.md` fundido.
-- [ ] C-F2-13 `.editorconfig`, `.gitattributes`, `.gitignore` fundidos; `.gitleaks.toml`, `.leak-allow` presentes; `.gitleaksignore` reconciliado.
-- [ ] C-F2-14 `.husky/pre-commit` roda a verificação de vazamento nos arquivos preparados.
-- [ ] C-F2-15 `AGENTS.md` e `CONTRIBUTING.md` reconciliados segundo a tabela de [04](04-regras-do-repositorio.md).
-- [ ] C-F2-16 `NOTICE` cita ny-pi e pi-code com licença e commit.
-- [ ] C-F2-17 Especificações 0001 a 0009 em `docs/specs/`, com caminhos atualizados.
-- [ ] C-F2-18 Configuração de merge do repositório aplicada. Prova: `gh api repos/marcioazam/nycode` mostra os 8 campos alvo.
-- [ ] C-F2-19 14 rótulos criados. Prova: `gh api .../labels` com 26 ou mais.
-- [ ] C-F2-20 Perfil de comunidade em 100%. Prova: `gh api repos/marcioazam/nycode/community/profile -q .health_percentage`.
+- [x] C-F2-01 `docs/assets/nycode-pixel.svg` restaurado. Prova: sha256 `7269f242f8f7c6dca765f8a780cf72f3a0d471a40e41e2524fc7f705328a9dd2`.
+- [x] C-F2-02 `docs/assets/nycode-wordmark-ansi.txt` restaurado. Prova: sha256 `22201bcbda73ca8176350bc818ebea4fc70400f3572c507383decf19e836613f`.
+- [x] C-F2-03 README sem o logo do pi. Prova: `rg -n "pi.dev/logo" README.md` vazio.
+- [x] C-F2-04 README com o logo do nycode no topo. Prova: `rg -n "docs/assets/nycode-pixel.svg" README.md`.
+- [x] C-F2-05 README não manda instalar por `pi.dev/install.sh`. Prova: busca vazia.
+- [x] C-F2-06 Cada ocorrência de `pi.dev` e `earendil` no README tratada conforme [05](05-marca-e-readme.md). Prova: tabela de 05 marcada.
+- [x] C-F2-07 Título de reserva "π" trocado (K14). Prova: `rg -n '"π"' packages/coding-agent/src/config.ts` vazio.
+- [x] C-F2-08 `CODEOWNERS`, `PULL_REQUEST_TEMPLATE.md`, `release.yml`, `DISCUSSION_TEMPLATE/` presentes.
+- [x] C-F2-09 `dependabot.yml` reescrito para o monorepo, com espera de 7 dias.
+- [x] C-F2-10 Modelos de issue fundidos; nenhum aponta para o Discord do upstream.
+- [x] C-F2-11 `APPROVED_CONTRIBUTORS` removido (D-18).
+- [x] C-F2-12 `CODE_OF_CONDUCT.md`, `SUPPORT.md` presentes; `SECURITY.md` fundido.
+- [x] C-F2-13 `.editorconfig`, `.gitattributes`, `.gitignore` fundidos; `.gitleaks.toml`, `.leak-allow` presentes; `.gitleaksignore` reconciliado.
+- [x] C-F2-14 `.husky/pre-commit` roda a verificação de vazamento nos arquivos preparados.
+- [x] C-F2-15 `AGENTS.md` e `CONTRIBUTING.md` reconciliados segundo a tabela de [04](04-regras-do-repositorio.md).
+- [x] C-F2-16 `NOTICE` cita ny-pi e pi-code com licença e commit.
+- [x] C-F2-17 Especificações 0001 a 0009 em `docs/specs/`, com caminhos atualizados.
+- [x] C-F2-18 Configuração de merge do repositório aplicada. Prova: `gh api repos/marcioazam/nycode` mostra os 8 campos alvo.
+- [x] C-F2-19 14 rótulos criados. Prova: `gh api .../labels` com 26 ou mais.
+- [x] C-F2-20 Perfil de comunidade em 100%. Prova: `gh api repos/marcioazam/nycode/community/profile -q .health_percentage`.
 
 ## F3. CI unificado, gates e benchmark
 
