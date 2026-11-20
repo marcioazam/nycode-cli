@@ -26,6 +26,7 @@ Levantamento: 2026-11-20, sobre `ny-pi@e4f8729` e `nycode@fb05db936`.
 | 11 | [Decisões e pendências](11-decisoes-e-pendencias.md) | 28 decisões (4 aguardam o dono) e 13 pendências |
 | 12 | [Checklist mestre](12-checklist-mestre.md) | 186 itens verificáveis |
 | 13 | [Fontes](13-fontes.md) | Comandos e fontes de cada fato; o que não foi verificado |
+| 14 | [Prompt de `/goal`](14-prompt-goal.md) | Condição pronta para executar a migração com `/goal` |
 
 ## Anexos
 
