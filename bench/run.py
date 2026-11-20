@@ -575,6 +575,11 @@ def main(argv: list[str] | None = None) -> int:
     g.add_argument("--base", type=Path, required=True)
     g.add_argument("--cand", type=Path, required=True)
     g.add_argument("--extend-with-cmd")
+    g.add_argument(
+        "--parity",
+        action="store_true",
+        help="compare two different arms: ignore arm_version and overlay_sha (model and jobs still must match), cost margin 1.10",
+    )
     af = sub.add_parser("affects")
     af.add_argument("--base", required=True)
     af.add_argument("--head", required=True)
@@ -691,6 +696,7 @@ def main(argv: list[str] | None = None) -> int:
             a.cand,
             a.extend_with_cmd,
             json.loads(cmf.read_text()) if cmf.exists() else {},
+            a.parity,
         )
         print(md)
         if os.environ.get("GITHUB_STEP_SUMMARY"):
