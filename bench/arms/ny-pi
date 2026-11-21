@@ -5,8 +5,16 @@
 # The pi release is symlinked read-only in practice (its core patch is already applied upstream of the stage).
 set -euo pipefail
 here=$(dirname "$(readlink -f "$0")")
-# The ny-pi tree (install.sh, npm/, publish.list) sits under import/ny-pi while it exists in the nycode checkout.
-repo=$(cd "$here/../../import/ny-pi" && pwd)
+# The ny-pi tree (install.sh, bin/pi, npm/, publish.list): BENCH_NYPI_SRC (a checkout or an extracted archive of
+# the ny-pi repository) when set, else import/ny-pi of this checkout. import/ny-pi no longer carries bin/pi (F5), so
+# the reference needs BENCH_NYPI_SRC. The stage name uses the git commit of that directory: without a .git there,
+# set BENCH_STAGE.
+src=${BENCH_NYPI_SRC:-$here/../../import/ny-pi}
+[ -f "$src/install.sh" ] && [ -f "$src/bin/pi" ] || {
+  echo "bench: ny-pi tree has no install.sh and bin/pi at $src; set BENCH_NYPI_SRC to a ny-pi checkout" >&2
+  exit 2
+}
+repo=$(cd "$src" && pwd)
 # shellcheck source=bench/arms/oauth-token.sh
 . "$here/oauth-token.sh"
 # shellcheck source=bench/arms/overlay-sha.sh

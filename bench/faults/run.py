@@ -38,7 +38,7 @@ __all__ = [
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
-ARMS = ("ny-pi", "pi-vanilla", "claude-vanilla")
+ARMS = ("ny-pi", "nycode", "pi-vanilla", "claude-vanilla")
 PROMPT = "Read probe.txt with your read tool, then reply with the text you receive. contract-case:{scenario}"
 
 
@@ -55,7 +55,7 @@ def arm_command(
     """Command line and environment that make ``arm`` talk to the fake server on ``port``."""
     exe = str(check.ARMS_DIR / arm)
     prompt = PROMPT.format(scenario=scenario)
-    clean = check.clean_env(env, scratch / "stage")
+    clean = check.clean_env(env, scratch / "stage", arm)
     if arm == "claude-vanilla":
         return [exe, "-p", prompt], {
             **clean,

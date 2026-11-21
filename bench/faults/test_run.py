@@ -95,6 +95,23 @@ def test_arm_command_ny_pi_builds_stage(tmp_path: Path, monkeypatch: MP) -> None
     assert "--no-session" in cmd and (agent / "models.json").is_file()
 
 
+def test_arm_command_nycode_uses_its_agent_dir_and_offline_switch(
+    tmp_path: Path, monkeypatch: MP
+) -> None:
+    assert "nycode" in run.ARMS
+    arms = tmp_path / "arms"
+    arms.mkdir()
+    arm = arms / "nycode"
+    arm.write_text('#!/bin/sh\nmkdir -p "$BENCH_STAGE/.nycode/agent"\n')
+    arm.chmod(0o755)
+    monkeypatch.setattr(run.check, "ARMS_DIR", arms)
+    cmd, env = run.arm_command("nycode", "overloaded", 9, tmp_path, {"NYCODE_X": "1"})
+    assert cmd[0] == str(arm) and "--no-session" in cmd
+    assert env["NYCODE_OFFLINE"] == "1" and "NYCODE_X" not in env
+    models = json.loads((tmp_path / "stage/.nycode/agent/models.json").read_text())
+    assert models["providers"]["anthropic"]["baseUrl"].endswith(":9")
+
+
 def test_main_table_json_and_bad_args(
     tmp_path: Path, monkeypatch: MP, capsys: pytest.CaptureFixture[str]
 ) -> None:

@@ -34,6 +34,19 @@ if [ ! -f "$stage/.ready" ] || [ ! -x "$bin" ]; then
   HOME=$stage NYCODE_CODING_AGENT_DIR=$agent NYCODE_SKIP_VERSION_CHECK=1 "$bin" --version >/dev/null
   touch "$stage/.ready"
 fi
+# mcp.json: the repo's example (placeholders, no secret; the ny-pi arm gets its mcp.json the same way, from the
+# template its installer copies), never the owner's. Every server is disabled, so no process starts and nothing
+# touches the network; bench/contract still reads each declaration. Written once per stage, also into an
+# already-built one; a function of the checkout, so not part of the layer hash.
+if [ ! -e "$agent/mcp.json" ]; then
+  mkdir -p "$agent"
+  node -e '
+const m = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+for (const s of Object.values(m.mcpServers)) s.enabled = false;
+process.stdout.write(JSON.stringify(m, null, 2) + "\n");
+' "$repo/packages/coding-agent/examples/config/mcp.json" >"$agent/mcp.json.tmp"
+  mv "$agent/mcp.json.tmp" "$agent/mcp.json"
+fi
 if [ -n "${BENCH_API_KEY_FILE:-}" ]; then
   export ANTHROPIC_API_KEY
   ANTHROPIC_API_KEY=$(bench_api_key)

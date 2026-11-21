@@ -1,11 +1,15 @@
 """Arms `nycode` (09 §2.2) and `ny-pi-pi160` (D-25): definition, dry-run, stage lookup and the arm scripts. No
 network, no spend: the stage is pre-built (`.ready`) and the binary is a fake."""
 
+import json
+import shutil
 import subprocess
 from pathlib import Path
 
 from bench import run as rb
 from bench.tests.helpers import BENCH, CF, MP, RA, script
+
+NODE = shutil.which("node") or "/usr/bin/node"  # the arm writes mcp.json with node
 
 FAKE_BIN = """
 echo "HOME=$HOME"
@@ -87,7 +91,7 @@ def run_arm(tmp: Path, *args: str, **env: str) -> subprocess.CompletedProcess[st
     key.write_text("sk-ant-fake\n")
     fake = script(tmp / "fake", FAKE_BIN)
     base = {
-        "PATH": "/usr/bin:/bin",
+        "PATH": f"/usr/bin:/bin:{Path(NODE).parent}",
         "BENCH_STAGE": str(stage),
         "BENCH_NYCODE_BIN": str(fake),
         "BENCH_CC_CREDENTIALS": str(creds),
@@ -130,6 +134,24 @@ def test_arm_api_key_mode(tmp_path: Path) -> None:
     assert "wrk_1" in models
 
 
+def test_arm_writes_a_secret_free_disabled_mcp_json(tmp_path: Path) -> None:
+    """The stage gets the repo example with every server disabled: nothing starts, nothing reaches the network."""
+    assert run_arm(tmp_path, "-p", "x", ANTHROPIC_API_KEY="leak").returncode == 0
+    written = (tmp_path / "stage/.nycode/agent/mcp.json").read_text()
+    example = json.loads(
+        (BENCH.parent / "packages/coding-agent/examples/config/mcp.json").read_text()
+    )
+    servers = json.loads(written)["mcpServers"]
+    assert servers.keys() == example["mcpServers"].keys() and servers
+    assert all(s["enabled"] is False for s in servers.values())
+    assert "leak" not in written
+    (tmp_path / "stage/.nycode/agent/mcp.json").write_text(
+        "{}"
+    )  # an existing file is kept
+    run_arm(tmp_path, "-p", "x")
+    assert (tmp_path / "stage/.nycode/agent/mcp.json").read_text() == "{}"
+
+
 def test_arm_builds_with_the_ci_commands() -> None:
     text = (BENCH / "arms/nycode").read_text()
     assert "npm ci --ignore-scripts" in text and "npm run build" in text
@@ -143,13 +165,69 @@ def test_pi160_stage_needs_a_pi_1_6_0_install(tmp_path: Path) -> None:
     rh = tmp_path / "rh/.pi/agent/install"
     rh.mkdir(parents=True)
     (rh / "current-version").write_text("1.5.2\n")
+    src = fake_nypi_tree(tmp_path)
     p = subprocess.run(
         ["bash", str(BENCH / "arms/ny-pi")],
         env={
             "PATH": "/usr/bin:/bin", "BENCH_PI_VERSION": "1.6.0", "BENCH_STAGE": str(tmp_path / "stage"),
+            "BENCH_NYPI_SRC": str(src),
             "BENCH_REAL_HOME": str(tmp_path / "rh"), "BENCH_CC_CREDENTIALS": "/dev/null",
         },
         capture_output=True, text=True, check=False,
     )  # fmt: skip
     assert p.returncode == 2 and "pi 1.6.0" in p.stderr and "1.5.2" in p.stderr
     assert not (tmp_path / "stage/.ready").exists()
+
+
+def fake_nypi_tree(tmp: Path) -> Path:
+    """An external ny-pi tree reduced to what the arm checks before it builds: install.sh and bin/pi."""
+    src = tmp / "nypi-src"
+    (src / "bin").mkdir(parents=True)
+    (src / "install.sh").write_text("#!/bin/sh\n")
+    (src / "bin/pi").write_text("#!/bin/sh\n")
+    return src
+
+
+def test_ny_pi_arm_needs_a_tree_with_bin_pi(tmp_path: Path) -> None:
+    """import/ny-pi has no bin/pi since F5: the arm says so and names BENCH_NYPI_SRC instead of exiting 127 later."""
+    (tmp_path / "bare").mkdir()
+    for extra in ({}, {"BENCH_NYPI_SRC": str(tmp_path / "bare")}):
+        p = subprocess.run(
+            ["bash", str(BENCH / "arms/ny-pi")],
+            env={"PATH": "/usr/bin:/bin", "BENCH_STAGE": str(tmp_path / "stage"), "BENCH_CC_CREDENTIALS": "/dev/null", **extra},
+            capture_output=True, text=True, check=False,
+        )  # fmt: skip
+        assert p.returncode == 2 and "BENCH_NYPI_SRC" in p.stderr
+    assert not (tmp_path / "stage").exists()
+
+
+def test_ny_pi_arm_builds_its_stage_from_bench_nypi_src(tmp_path: Path) -> None:
+    """With BENCH_NYPI_SRC the arm uses that tree's install.sh and npm/ (a fake tree records the call)."""
+    src = fake_nypi_tree(tmp_path)
+    (src / "npm").mkdir()
+    (src / "npm/package.json").write_text("{}")
+    (src / "npm/package-lock.json").write_text("{}")
+    (src / "install.sh").write_text('#!/bin/sh\necho "$0" >"$HOME/installed-from"\nmkdir -p "$HOME/.local/bin"\nprintf "#!/bin/sh\\necho PI\\n" >"$HOME/.local/bin/pi"\nchmod +x "$HOME/.local/bin/pi"\n')  # fmt: skip
+    fakebin = tmp_path / "fakebin"
+    fakebin.mkdir()
+    script(fakebin / "npm", "exit 0")
+    rh = tmp_path / "rh"
+    (rh / ".pi/agent/install").mkdir(parents=True)
+    (rh / ".pi/agent/bin").mkdir()
+    creds = tmp_path / "cred.json"
+    creds.write_text(
+        '{"claudeAiOauth":{"accessToken":"oauth-fake","expiresAt":99999999999999}}'
+    )
+    p = subprocess.run(
+        ["bash", str(BENCH / "arms/ny-pi")],
+        env={
+            "PATH": f"{fakebin}:/usr/bin:/bin", "BENCH_NYPI_SRC": str(src), "BENCH_STAGE": str(tmp_path / "stage"),
+            "BENCH_REAL_HOME": str(rh), "BENCH_CC_CREDENTIALS": str(creds), "BENCH_OVERLAY_DIR": str(tmp_path),
+        },
+        capture_output=True, text=True, check=False,
+    )  # fmt: skip
+    assert p.returncode == 0, p.stderr
+    assert (tmp_path / "stage/installed-from").read_text().strip() == str(
+        src / "install.sh"
+    )
+    assert (tmp_path / "stage/.ready").exists()
