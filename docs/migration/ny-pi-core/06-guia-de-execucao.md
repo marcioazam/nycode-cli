@@ -98,6 +98,7 @@ De F2 em diante, para arquivo já em `import/ny-pi/` (a cópia do pi-code, em F5
    npm run check 2>&1 | tee /tmp/f0-check.log | tail -5
    ./test.sh 2>&1 | tee /tmp/f0-test.log | tail -20
    ```
+
 3. **Congelar o ny-pi:** `git -C "$ORIG" fetch origin && git -C "$ORIG" rev-parse origin/main` (hoje
    `e4f8729bfab57e9e2b222f020710c85d0a578c8d`). Esse é o "SHA de congelamento": até F12 só correção de segurança entra
    em `ny-pi/main`; o resto se vê com `git -C "$ORIG" log <sha>..origin/main --oneline`.
@@ -174,6 +175,7 @@ D-15, D-16, D-17 e D-22, `npm view`, SHA da etiqueta. **Reversão:** F0 não alt
      && git merge --allow-unrelated-histories --no-ff ny-pi-import/main \
         -m "feat: import ny-pi history under import/ny-pi (marcioazam/ny-pi@<sha de congelamento>)"
    ```
+
 4. **Tirar `import/` dos gates** (leitura do destino em `fb05db936`):
 
    | Arquivo, chave ou linha | Alcança `import/`? | Ação |
@@ -187,7 +189,7 @@ D-15, D-16, D-17 e D-22, `npm view`, SHA da etiqueta. **Reversão:** F0 não alt
 
    As duas últimas linhas fariam o `npm run check` ler `import/ny-pi/npm/package.json` e todo `.ts` importado. Commit
    próprio no mesmo PR: `docs: keep import/ out of the root gates` ([02](02-arquitetura-alvo.md) §2).
-4. **Verificar uma vez** (`npm run check`, `./test.sh`). Fora de `import/ny-pi/` só mudam os quatro arquivos do passo 4:
+5. **Verificar uma vez** (`npm run check`, `./test.sh`). Fora de `import/ny-pi/` só mudam os quatro arquivos do passo 4:
    `git diff --name-only origin/main...HEAD | grep -v '^import/ny-pi/'`.
 6. **PR com método MERGE [AUTORIZAÇÃO de entrega]:** `gh pr create -R "$UP" --base main --head mig/f1-import-history
    --title "feat: import ny-pi history under import/ny-pi"` e, com checks verdes, `gh pr merge <n> -R "$UP" --merge`
@@ -212,7 +214,8 @@ saída do `git log --follow`, os quatro arquivos editados. **Reversão:** `git r
 [05](05-marca-e-readme.md). Ordem dos PRs (`git mv` de `import/ny-pi/...` quando o arquivo existe lá):
 
 1. `docs: add CODEOWNERS, dependabot, release and zizmor config` (o `dependabot.yml` do ny-pi cobre `/` e `/npm`:
-   ajustar aos diretórios do destino). 2. `docs: add PR and discussion templates` (mantém os modelos de issue).
+   ajustar aos diretórios do destino).
+2. `docs: add PR and discussion templates` (mantém os modelos de issue).
 3. `docs: add CODE_OF_CONDUCT and SUPPORT` (perfil de comunidade de 71% a 100%).
 4. `docs: add editorconfig, pre-commit and gitleaks config` (o destino usa `.husky/pre-commit` e `.gitleaksignore`).
 5. `docs: reconcile AGENTS.md and CONTRIBUTING.md` (D-18, D-19: hoje o `CONTRIBUTING.md` proíbe editar `CHANGELOG.md`
@@ -470,8 +473,10 @@ de referência (a divisão em PRs segue diretórios); submódulo que não compil
 1. `subagent` núcleo (`run`, `modes`, `concurrency`, `index`, `params`): `subagent-nesting.test.ts`; `background`.
 2. `fleet` (store, tracker, inbox, source): `fleet*.test.ts` (4); depois `fleet-ui` (patches `zz-panel-main-root` e
    `zzz-panel-column0`, sem teste próprio): `fleet-ui.test.ts`, `fleet-ui-layout.test.ts`.
-3. `transcript`: `subagent-render/render.test.ts`. 4. `nesting`, `respawn`, `send`: `respawn.test.ts`, `send.test.ts`.
-5. `model-effort`: `render`, `replay`, `tracker` (de `zzzzzzz-subagent-model-effort`). 6. `team`: `team*.test.ts` (2).
+3. `transcript`: `subagent-render/render.test.ts`.
+4. `nesting`, `respawn`, `send`: `respawn.test.ts`, `send.test.ts`.
+5. `model-effort`: `render`, `replay`, `tracker` (de `zzzzzzz-subagent-model-effort`).
+6. `team`: `team*.test.ts` (2).
 7. `plan-mode` (patch `zz-hotkeys-no-alt` sem teste próprio, `zzzz-plan-done-rule`, `zzzzz-plan-sota`):
    `plan-done-rule.test.ts`, `plan-sota.test.ts`. Exige o skill `plan-workflow/SKILL.md`, que chega em F8: até lá o
    teste usa um recurso de teste.
@@ -550,8 +555,8 @@ permissão atrás de chave.
 2. **Skills** (30 pastas, 227 arquivos) para `resources/skills/`, classe `core`, `ui` ou `optional` (P-1, 0005). P-4:
    licença e autoria das de terceiros (`claude-home/docs/third-party/`: `addy-agent-skills`, `mattpocock-skills`,
    `obra-superpowers`) vão ao `NOTICE`.
-3. **Comandos** (17) para `resources/commands/`. 4. **Agentes** (17) para `resources/agents/` (`plan-reviewer.md`
-   destrava o `plan-gate`).
+3. **Comandos** (17) para `resources/commands/`.
+4. **Agentes** (17) para `resources/agents/` (`plan-reviewer.md` destrava o `plan-gate`).
 5. **Hooks, fase A (D-08):** `claude-home/hooks` (21 arquivos: `guard.py`, `graph_context.py`, `dispatch/`, `claims/`,
    `impeccable_gate.sh`, fixtures, testes) para `resources/hooks/`, registrados por padrão em `hooks` de
    `settings-defaults.ts` e executados pela extensão `hooks` (F5). Exige `python3` e `jq`.
@@ -667,6 +672,7 @@ linha de base é um PR; reverter o PR restaura a anterior.
    /tmp/nycode-local-release/node/nycode --version && /tmp/nycode-local-release/bun/nycode --version
    NYCODE_ALLOW_LOCKFILE_CHANGE=1 npm_config_min_release_age=0 npm run release:major
    ```
+
 8. **Fumaça em contêiner limpo:** `docker run --rm node:22 sh -c 'npm i -g --ignore-scripts @nycode/coding-agent &&
    nycode --version'` (esperado `2.0.0`). Docker nesta máquina: não verificado.
 
