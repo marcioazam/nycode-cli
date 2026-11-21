@@ -22,18 +22,18 @@
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
-import type { ExtensionAPI, ExtensionCommandContext } from '@earendil-works/pi-coding-agent'
-import { atomicWriteFile } from './internal/atomic-write.ts'
-import { isFlagEnabled } from './internal/command-file.ts'
-import { claudeConfigDir } from './internal/config-dir.ts'
-import { parseClaudeFrontmatter } from './internal/frontmatter.ts'
-import { readManagedSettings } from './internal/managed-settings.ts'
-import { installedPlugins, pluginComponentPath } from './internal/plugins.ts'
-import { isProjectApproved } from './internal/project-approval.ts'
-import { ancestorDirs } from './internal/project-root.ts'
-import { addPromptSection, replaceDefaultInstructions } from './internal/prompt-options.ts'
-import { claudeSettingsChain, localSettingsFile, readSettingsChain } from './internal/settings-chain.ts'
-import { errorMessage, isDirectory } from './internal/values.ts'
+import type { ExtensionAPI, ExtensionCommandContext } from '../../core/extensions/types.ts'
+import { atomicWriteFile } from '../_shared/util/atomic-write.ts'
+import { isFlagEnabled } from '../_shared/commands/command-file.ts'
+import { claudeConfigDir } from '../_shared/settings/config-dir.ts'
+import { parseClaudeFrontmatter } from '../_shared/commands/frontmatter.ts'
+import { readManagedSettings } from '../_shared/settings/managed-settings.ts'
+import { installedPlugins, pluginComponentPath } from '../_shared/settings/plugins.ts'
+import { isProjectApproved } from '../_shared/project/project-approval.ts'
+import { ancestorDirs } from '../_shared/project/project-root.ts'
+import { addPromptSection, replaceDefaultInstructions } from '../_shared/commands/prompt-options.ts'
+import { claudeSettingsChain, localSettingsFile, readSettingsChain } from '../_shared/settings/settings-chain.ts'
+import { errorMessage, isDirectory } from '../_shared/util/values.ts'
 
 export interface OutputStyle {
   name: string
@@ -75,9 +75,9 @@ export function forcedPluginStyle(styles: OutputStyle[]): OutputStyle | undefine
   return styles.find((style) => style.forceForPlugin)
 }
 
-/** Equivalents of Claude's built-in styles, shipped with pi-code as the
+/** Equivalents of Claude's built-in styles, shipped with nycode as the
  * lowest-precedence source: a user or project style of the same name wins. */
-export const BUILTIN_STYLES_DIR = path.join(import.meta.dirname, 'internal', 'builtin-styles')
+export const BUILTIN_STYLES_DIR = path.join(import.meta.dirname, '..', '_shared', 'builtin-styles')
 
 /** The last line of pi's default coding instructions. Everything after it (append
  * text, project context, skills, cwd, other extensions' additions) survives a style
@@ -145,7 +145,7 @@ function readStyleFile(dir: string, entry: string): OutputStyle | undefined {
   try {
     return parseStyle(content, entry.replace(/\.md$/, ''))
   } catch (error) {
-    console.warn(`pi-code-output-styles: skipping ${file}: ${errorMessage(error).split('\n')[0]}`)
+    console.warn(`nycode-output-styles: skipping ${file}: ${errorMessage(error).split('\n')[0]}`)
     return undefined
   }
 }
@@ -216,12 +216,12 @@ function persistActiveStyle(file: string, name: string): string | undefined {
   return undefined
 }
 
-export default function outputStylesExtension(pi: ExtensionAPI) {
+export default function outputStylesExtension(nycode: ExtensionAPI) {
   let styles: OutputStyle[] = []
   let activeName: string | undefined
   let localSettingsPath = ''
 
-  pi.on('session_start', async (_event, ctx) => {
+  nycode.on('session_start', async (_event, ctx) => {
     const home = os.homedir()
     // A project style body is injected verbatim into the system prompt, so only honor
     // project styles / selection once the project is approved. isProjectTrusted alone
@@ -242,7 +242,7 @@ export default function outputStylesExtension(pi: ExtensionAPI) {
     if (active) ctx.ui.notify(`Output style: ${active.name}`, 'info')
   })
 
-  pi.on('before_agent_start', (event) => {
+  nycode.on('before_agent_start', (event) => {
     const active = styleForName(styles, activeName)
     if (!active || active.body.length === 0) return
     const text = styleText(active)
@@ -256,7 +256,7 @@ export default function outputStylesExtension(pi: ExtensionAPI) {
     ctx.ui.notify(failure ?? `Output style set to ${name} (applies next turn)`, failure ? 'error' : 'info')
   }
 
-  pi.registerCommand('output-style', {
+  nycode.registerCommand('output-style', {
     description: 'Choose the active Claude output style (or /output-style <name>)',
     // /output-style <name> takes a style name, so complete the discovered names by the
     // typed prefix (case-insensitive, like the handler's own name lookup). An empty
