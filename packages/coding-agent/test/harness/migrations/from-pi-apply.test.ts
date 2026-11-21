@@ -24,7 +24,7 @@ describe("migrate from-pi --apply", () => {
 
 	it("asks before copying auth.json and copies it with mode 0600 when confirmed", async () => {
 		const h = makeHome();
-		const confirm = vi.fn(async () => true);
+		const confirm = vi.fn(async (_question: string) => true);
 		await h.run(["--apply"], { isInteractive: true, confirm });
 		expect(confirm).toHaveBeenCalledTimes(1);
 		expect(confirm.mock.calls[0]?.[0]).toContain("auth.json");
@@ -40,7 +40,7 @@ describe("migrate from-pi --apply", () => {
 
 	it("skips auth.json without a terminal and never asks", async () => {
 		const h = makeHome();
-		const confirm = vi.fn(async () => true);
+		const confirm = vi.fn(async (_question: string) => true);
 		await h.run(["--apply"], { isInteractive: false, confirm });
 		expect(confirm).not.toHaveBeenCalled();
 		expect(existsSync(join(h.agentDir, "auth.json"))).toBe(false);
