@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { memoryNotice } from "../../../src/extensions/memory/index.ts";
+import { memoryNotice } from "../../../src/extensions/memory/notice.ts";
 
 const tmp = mkdtempSync(join(tmpdir(), "memory-notice-test-"));
 afterAll(() => rmSync(tmp, { recursive: true }));
