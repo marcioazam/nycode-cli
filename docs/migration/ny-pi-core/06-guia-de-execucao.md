@@ -412,7 +412,9 @@ PI_CODE_TARBALL=/tmp/pi-code-ref/pi-code-1.7.0.tgz bash import/ny-pi/scripts/che
 # esperado: "patch-stack: ok 19 patches"
 ```
 
-**Passo 3, conferir contra a árvore instalada** (máquina do dono, só leitura): `diff -r
+**Passo 3, conferir contra a árvore instalada** (com D-32, a árvore instalada é congelada em
+`import/ny-pi/pi-code-installed/` e o `diff -r` compara a cópia congelada com a instalada; os passos 1 e 2 valem só para os
+19 patches da `origin/main`) (máquina do dono, só leitura): `diff -r
 "$HOME/.pi/agent/npm/node_modules/pi-code/extensions" /tmp/pi-code-ref/package/extensions && echo IGUAIS`. Diferença
 fora dos 19 patches e do `sed` é desvio a registrar e resolver **antes** de importar. Que a instalação do dono bata:
 não verificado.
