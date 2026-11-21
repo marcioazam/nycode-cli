@@ -8,6 +8,7 @@ import contextImportsExtension from "./context-imports/index.ts";
 import contextUsageExtension from "./context-usage/index.ts";
 import docsPointerExtension from "./docs-pointer/index.ts";
 import envSettingsExtension from "./env-settings/index.ts";
+import footerExtension from "./footer/index.ts";
 import gitCheckpointExtension from "./git-checkpoint/index.ts";
 import goalExtension from "./goal/index.ts";
 import hooksExtension from "./hooks/index.ts";
@@ -68,6 +69,7 @@ export const builtInExtensions: InlineExtension[] = [
 	// Embedded ny-pi extensions, in ny-pi's load order (after pi-code, by source file name).
 	{ name: "auto-resume", factory: autoResumeExtension, builtin: true },
 	{ name: "completion-gate", factory: completionGateExtension, builtin: true },
+	{ name: "footer", factory: footerExtension, builtin: true },
 	{ name: "docs-pointer", factory: docsPointerExtension, builtin: true },
 	{ name: "prefix-cache-1h", factory: prefixCache1hExtension, builtin: true },
 	{ name: "sound-notify", factory: soundNotifyExtension, builtin: true },
