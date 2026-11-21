@@ -20,11 +20,12 @@
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
-import { getAgentDir, hasTrustRequiringProjectResources, ProjectTrustStore } from '@earendil-works/pi-coding-agent'
+import { getAgentDir } from '../../../config.ts'
+import { hasTrustRequiringProjectResources, ProjectTrustStore } from '../../../core/trust-manager.ts'
 
-import { claudeConfigDir } from './config-dir.ts'
+import { claudeConfigDir } from '../settings/config-dir.ts'
 import { ROOT_MARKERS } from './project-root.ts'
-import { localSettingsFile } from './settings-chain.ts'
+import { localSettingsFile } from '../settings/settings-chain.ts'
 
 /** Project files pi-code acts on that pi's own trust check does not look for. */
 const CLAUDE_SHAPED = [
@@ -45,10 +46,9 @@ const CLAUDE_SHAPED = [
 ]
 
 /** The folders whose `.claude` is the user's own configuration: the home directory, and
- * the directory whose `.claude` subdirectory is CLAUDE_CONFIG_DIR. The latter only while
+ * the directory whose `.claude` subdirectory is the home config directory. The latter only while
  * its settings.local.json stays beside that config: inside a repository whose root takes
- * the local settings instead, Claude holds it like any other folder. One comparison
- * covers both: a CLAUDE_CONFIG_DIR not named `.claude` never holds the file either. */
+ * the local settings instead, Claude holds it like any other folder. */
 function configurationHomes(home: string): string[] {
   const configDir = claudeConfigDir(home)
   const configHome = path.dirname(configDir)
@@ -106,13 +106,13 @@ const defaultDeps: ApprovalDeps = {
   remember: (cwd, trusted) => new ProjectTrustStore(getAgentDir()).set(cwd, trusted),
 }
 
-const APPROVAL_BODY = 'It ships Claude Code configuration that pi-code loads. MCP servers, hooks and agents can run commands from this repository.'
+const APPROVAL_BODY = 'It ships Claude Code configuration that nycode loads. MCP servers, hooks and agents can run commands from this repository.'
 
 /** The same decision as isProjectApproved, but never prompts: an undecided project
  * reads as unapproved. For surfaces that only display project config, like the
  * subagent roster, where a mid-turn dialog would be wrong. */
 export function isProjectApprovedSilently(ctx: Pick<ApprovalContext, 'cwd' | 'isProjectTrusted'> & { ui?: ApprovalContext['ui'] }, deps: ApprovalDeps = defaultDeps): boolean {
-  // A pi without isProjectTrusted (before 0.79.1, below PI_FLOOR) reads as untrusted.
+  // A host without isProjectTrusted reads as untrusted.
   if (ctx.isProjectTrusted?.() !== true) return false
   if (!deps.hasClaudeShaped(ctx.cwd)) return true
   if (deps.piWouldAsk(ctx.cwd)) return true
@@ -157,7 +157,7 @@ export function isGatedFileApproved(ctx: Pick<ApprovalContext, 'cwd' | 'isProjec
  * that cannot ask has not been approved.
  */
 export async function isProjectApproved(ctx: ApprovalContext, deps: ApprovalDeps = defaultDeps): Promise<boolean> {
-  if (ctx.isProjectTrusted?.() !== true) return false // pi declined trust, or predates it (below PI_FLOOR)
+  if (ctx.isProjectTrusted?.() !== true) return false // the host declined trust, or has no trust check
   if (!deps.hasClaudeShaped(ctx.cwd)) return true // nothing here pi's own check would miss
   if (deps.piWouldAsk(ctx.cwd)) return true // pi genuinely prompted for this project
 

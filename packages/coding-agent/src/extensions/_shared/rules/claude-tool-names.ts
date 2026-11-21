@@ -57,11 +57,11 @@ const fold = (name: string): string => name.trim().toLowerCase()
  * pi name itself so a list written in pi's own vocabulary still resolves. */
 export const CLAUDE_TOOL_MAP: Record<string, string> = Object.fromEntries(TOOL_NAMES.flatMap(({ claude, pi, aliases }) => [...(claude === null ? [] : [[fold(claude), pi]]), ...(aliases ?? []).map((alias) => [fold(alias), pi]), [fold(pi), pi]]))
 
-const PI_TO_CLAUDE: Record<string, string> = Object.fromEntries(TOOL_NAMES.filter((pair): pair is ToolNamePair & { claude: string } => pair.claude !== null).map(({ claude, pi }) => [pi, claude]))
+const CLAUDE_NAME_BY_TOOL: Record<string, string> = Object.fromEntries(TOOL_NAMES.filter((pair): pair is ToolNamePair & { claude: string } => pair.claude !== null).map(({ claude, pi }) => [pi, claude]))
 
 /** pi built-in -> canonical Claude tool name for hook payloads and matchers, or
  * undefined for a pi tool the reference has no counterpart for. MCP tools ride the
  * alias bus instead and never reach here. */
 export function claudeToolName(piName: string): string | undefined {
-  return PI_TO_CLAUDE[piName]
+  return CLAUDE_NAME_BY_TOOL[piName]
 }

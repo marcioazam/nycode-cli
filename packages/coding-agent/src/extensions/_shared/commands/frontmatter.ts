@@ -15,7 +15,7 @@
  * rejected.
  */
 
-import { parseFrontmatter } from '@earendil-works/pi-coding-agent'
+import { parseFrontmatter } from '../../../utils/frontmatter.ts'
 
 /** Top-level keys whose value is prose. `name` is an identifier and stays strict. */
 const FREE_TEXT_KEYS = new Set(['description', 'argument-hint', 'when_to_use'])

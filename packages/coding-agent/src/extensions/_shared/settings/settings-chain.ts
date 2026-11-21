@@ -12,8 +12,8 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { type CliSettings, cliSettings, type SettingSource } from './cli-settings.ts'
 import { claudeConfigDir } from './config-dir.ts'
-import { repoRoot } from './project-root.ts'
-import { isRecord } from './values.ts'
+import { repoRoot } from '../project/project-root.ts'
+import { isRecord } from '../util/values.ts'
 
 /** Whether every path given exists and belongs to the user running this process.
  * A path that is absent is not someone else's, so it does not disqualify the root. */

@@ -12,7 +12,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 
-import { isRecord } from './values.ts'
+import { isRecord } from '../util/values.ts'
 
 /** The OS managed-settings.json path Claude Code documents per platform. */
 export function managedSettingsPath(platform: NodeJS.Platform = process.platform): string {
@@ -61,7 +61,7 @@ function readOneSettingsFile(file: string): Record<string, unknown> {
     // enabledPlugins, disableAllHooks) on every session, with nothing said anywhere.
     if (!warnedUnparsable.has(file)) {
       warnedUnparsable.add(file)
-      console.warn(`pi-code: ignoring ${file}: not valid JSON; the managed policy it carries is not applied`)
+      console.warn(`nycode: ignoring ${file}: not valid JSON; the managed policy it carries is not applied`)
     }
   }
   return {}

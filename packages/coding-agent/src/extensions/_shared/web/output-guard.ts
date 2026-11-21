@@ -10,7 +10,7 @@
  * content at all. That trap is handled here once rather than at each call site.
  */
 
-import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, formatSize, truncateHead } from '@earendil-works/pi-coding-agent'
+import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, formatSize, truncateHead } from '../../../core/tools/truncate.ts'
 
 /**
  * Trim `text` to a byte budget. `String.slice` counts UTF-16 units, so slicing a CJK

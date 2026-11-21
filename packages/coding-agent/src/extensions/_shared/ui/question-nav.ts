@@ -3,8 +3,9 @@
  * extra screens (help, review, exit). Pure UI: nothing here costs a model call. Dismissing, skipping or
  * discarding is always reported to the model with its own text, never as a silent cancel.
  */
-import type { ExtensionContext, Theme } from '@earendil-works/pi-coding-agent'
-import { matchesKey, truncateToWidth, visibleWidth } from '@earendil-works/pi-tui'
+import type { ExtensionContext } from '../../../core/extensions/types.ts'
+import type { Theme } from '../../../modes/interactive/theme/theme.ts'
+import { matchesKey, truncateToWidth, visibleWidth } from '@nycode/tui'
 
 export type Answer = {
   answer: string

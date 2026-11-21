@@ -15,8 +15,8 @@
  * throw and the caller falls back to its non-model behavior.
  */
 
-import type { Api, AssistantMessage, Context, Model, ModelsSimpleStreamOptions, StopReason, ThinkingLevel, Usage } from '@earendil-works/pi-ai'
-import { ModelRuntime } from '@earendil-works/pi-coding-agent'
+import type { Api, AssistantMessage, Context, Model, ModelsSimpleStreamOptions, StopReason, ThinkingLevel, Usage } from '@nycode/ai'
+import { ModelRuntime } from '../../../core/model-runtime.ts'
 
 /** The completion backend: model + context -> assistant message. Overridable for tests. */
 export type CompleteFn = (model: Model<Api>, context: Context, options: ModelsSimpleStreamOptions) => Promise<AssistantMessage>

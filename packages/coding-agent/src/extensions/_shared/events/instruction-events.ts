@@ -10,7 +10,7 @@
 
 import * as path from 'node:path'
 
-import { claudeConfigDir } from './config-dir.ts'
+import { claudeConfigDir } from '../settings/config-dir.ts'
 
 export const INSTRUCTIONS_CHANNEL = 'pi-code:instructions'
 
@@ -51,9 +51,8 @@ export function isInstructionLoadEvent(data: unknown): data is InstructionLoadEv
 export function memoryTypeForPath(filePath: string, home: string, projectRoot: string): InstructionMemoryType {
   if (path.basename(filePath) === 'CLAUDE.local.md') return 'Local'
   const isUnder = (root: string): boolean => root.length > 0 && (filePath === root || filePath.startsWith(root + path.sep))
-  // Ahead of the project check: CLAUDE_CONFIG_DIR may sit outside home, and a session
-  // rooted at home has the config directory inside its project root. Only the user's
-  // memory there, since a checkout under the config directory is still a project.
+  // Ahead of the project check: a session rooted at home has the config directory inside its
+  // project root. Only the user's memory there, since a checkout under the config directory is still a project.
   const config = claudeConfigDir(home)
   if (filePath === path.join(config, 'CLAUDE.md') || isUnder(path.join(config, 'rules'))) return 'User'
   if (isUnder(projectRoot)) return 'Project'

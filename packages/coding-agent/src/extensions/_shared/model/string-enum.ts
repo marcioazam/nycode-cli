@@ -3,7 +3,7 @@
  * Schema, whose value TypeBox's Static reads as unknown. The emitted schema is unchanged.
  */
 
-import { StringEnum } from '@earendil-works/pi-ai'
+import { StringEnum } from '@nycode/ai'
 import { type TUnsafe, Type } from 'typebox'
 
 export function stringEnum<const T extends readonly string[]>(values: T, options?: { description?: string }): TUnsafe<T[number]> {

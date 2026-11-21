@@ -6,11 +6,12 @@
  */
 
 import * as fs from 'node:fs'
-import { errorMessage, parseNumericEnv } from './values.ts'
+import { errorMessage } from '../util/values.ts'
 
 // Captured at module load: the poll must run on real time even under a test's
 // fake timers (the stat watcher it replaced lived in libuv and was immune too);
 // otherwise fake-timer advances spin the poll and freeze real detection.
+const POLL_INTERVAL_MS = 2000
 const realSetInterval = globalThis.setInterval
 const realClearInterval = globalThis.clearInterval
 
@@ -27,11 +28,8 @@ function snapshot(file: string): string | undefined {
  * Returns a dispose function. The poll compares content, not stats: a same-size
  * rewrite within one timestamp tick is invisible to an mtime comparison on a
  * coarse-granularity filesystem, which made detection flaky. Settings files are
- * small, so re-reading them on the poll is negligible. The interval is
- * env-tunable for tests. */
+ * small, so re-reading them on the poll is negligible. */
 export function watchSettingsFiles(files: string[], reload: () => void): () => void {
-  const configured = parseNumericEnv(process.env.PI_CODE_SETTINGS_WATCH_INTERVAL_MS)
-  const interval = configured !== undefined && configured > 0 ? configured : 2000
   let last = files.map(snapshot)
   const timer = realSetInterval(() => {
     const next = files.map(snapshot)
@@ -42,10 +40,10 @@ export function watchSettingsFiles(files: string[], reload: () => void): () => v
       try {
         reload()
       } catch (error) {
-        console.warn(`pi-code: settings reload failed: ${errorMessage(error)}`)
+        console.warn(`nycode: settings reload failed: ${errorMessage(error)}`)
       }
     }
-  }, interval)
+  }, POLL_INTERVAL_MS)
   // A watcher alone must never keep a one-shot run alive.
   timer.unref?.()
   return () => realClearInterval(timer)

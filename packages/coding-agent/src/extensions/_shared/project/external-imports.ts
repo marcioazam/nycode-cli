@@ -19,11 +19,11 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 
-import { getAgentDir } from '@earendil-works/pi-coding-agent'
+import { getAgentDir } from '../../../config.ts'
 
-import { atomicWriteFile } from './atomic-write.ts'
+import { atomicWriteFile } from '../util/atomic-write.ts'
 import { gitRoot } from './project-root.ts'
-import { isRecord } from './values.ts'
+import { isRecord } from '../util/values.ts'
 
 /** The key for a working directory: its checkout, resolved, so the same checkout
  * reached through a symlink is the same project. */
@@ -36,7 +36,7 @@ export function externalImportKey(cwd: string): string {
   }
 }
 
-/** The store file, inside pi's agent directory (tests relocate that through PI_CODING_AGENT_DIR). */
+/** The store file, inside pi's agent directory (tests relocate that through NYCODE_CODING_AGENT_DIR). */
 export function externalImportStorePath(agentDir: string = getAgentDir()): string {
   return path.join(agentDir, 'pi-code-external-imports.json')
 }

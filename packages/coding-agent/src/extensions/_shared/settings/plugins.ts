@@ -20,8 +20,8 @@ import * as path from 'node:path'
 import { claudeConfigDir } from './config-dir.ts'
 import { readManagedSettings } from './managed-settings.ts'
 import { userSettingsFiles } from './settings-chain.ts'
-import { statToken } from './stat-token.ts'
-import { errorMessage, isRecord } from './values.ts'
+import { statToken } from '../util/stat-token.ts'
+import { errorMessage, isRecord } from '../util/values.ts'
 
 export interface InstalledPlugin {
   name: string
@@ -52,7 +52,7 @@ function readJson(file: string): Record<string, unknown> {
   } catch (error) {
     // A manifest that does not parse leaves the plugin with no components at all, and
     // settings that do not parse drop the enablement or configuration they carried.
-    console.warn(`pi-code-plugins: ignoring ${file}: ${errorMessage(error)}`)
+    console.warn(`nycode-plugins: ignoring ${file}: ${errorMessage(error)}`)
     return {}
   }
 }
@@ -318,7 +318,7 @@ export function pluginComponentPath(plugin: Pick<InstalledPlugin, 'name' | 'root
   const resolved = path.resolve(plugin.root, declared)
   const inside = path.relative(plugin.root, resolved)
   if (inside !== '' && (inside.startsWith(`..${path.sep}`) || inside === '..' || path.isAbsolute(inside))) {
-    console.warn(`pi-code-plugins: plugin ${plugin.name} declares the component path "${declared}", which resolves outside its root; ignoring it`)
+    console.warn(`nycode-plugins: plugin ${plugin.name} declares the component path "${declared}", which resolves outside its root; ignoring it`)
     return undefined
   }
   return resolved
