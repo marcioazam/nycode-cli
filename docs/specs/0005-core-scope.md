@@ -138,6 +138,7 @@ chegam por fase e o `core_scope.py` é convertido em F3.
 | extension | env-settings | core | Variáveis de ambiente do settings do Claude |
 | extension | footer-no-stats | ui | Rodapé |
 | extension | git-checkpoint | core | Checkpoints git e `/rewind` |
+| extension | goal | core | Objetivo de sessão (/goal) |
 | extension | headless-lean | core | Custo sem interface |
 | extension | hooks | core | Hooks no formato do Claude Code |
 | extension | init | core | `/init` |
