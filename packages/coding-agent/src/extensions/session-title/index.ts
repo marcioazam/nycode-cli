@@ -9,7 +9,7 @@
  *
  * It runs in every mode, not just the TUI: naming a session is cheap and harmless, and a
  * headless run that persists its session still benefits from a readable name later. The one
- * exception is a subagent child (PI_CODE_SUBAGENT=1): its session is never browsed by name,
+ * exception is a subagent child (NYCODE_SUBAGENT=1): its session is never browsed by name,
  * so the call is skipped outright rather than spending a model round trip nobody sees.
  * Titling is best-effort throughout: a session that already has a name, a run with no user
  * text (a slash-command-only turn), a headless run with no model, or any provider error
@@ -20,10 +20,10 @@
  * new session resets the guard.
  */
 
-import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent'
+import type { ExtensionAPI, ExtensionContext } from '../../core/extensions/types.ts'
 
-import { completeText } from './internal/model-complete.ts'
-import { contentText } from './internal/values.ts'
+import { completeText } from '../_shared/model/model-complete.ts'
+import { contentText } from '../_shared/util/values.ts'
 
 const TITLE_SYSTEM = 'You name a coding session from its first user message. Reply with a terse 3 to 6 word title in Title Case that captures the task. No quotes, no surrounding punctuation, no trailing period. Output the title only, nothing else.'
 /** A title is a few words; a tight cap keeps the extra call cheap and stops a runaway reply. */
@@ -89,10 +89,10 @@ function titlingDisabled(): boolean {
   // A subagent child's session (--no-session, or its own --session-dir once it persists
   // one for a resumable follow-up) is never browsed by name in a session picker: the
   // model call would only add latency and cost to how soon the child can exit.
-  return process.env.PI_CODE_SUBAGENT === '1'
+  return process.env.NYCODE_SUBAGENT === '1'
 }
 
-export default function sessionTitleExtension(pi: ExtensionAPI) {
+export default function sessionTitleExtension(nycode: ExtensionAPI) {
   // One title per session, reset when a new session takes over so a resumed or forked
   // session can still earn its own name.
   let titled = false
@@ -101,16 +101,16 @@ export default function sessionTitleExtension(pi: ExtensionAPI) {
   // dropped, rather than renaming whoever holds the session slot now.
   let generation = 0
 
-  pi.on('session_start', () => {
+  nycode.on('session_start', () => {
     titled = false
     generation++
   })
 
-  pi.on('agent_settled', async (_event, ctx) => {
+  nycode.on('agent_settled', async (_event, ctx) => {
     if (titlingDisabled()) return
     if (titled) return
     // Never clobber an existing name: a user-chosen or resumed name wins.
-    if (pi.getSessionName?.()) return
+    if (nycode.getSessionName?.()) return
     const model = ctx.model
     if (!model) return // headless with no model: nothing to name with, and the guard is left unspent
     const prompt = firstUserText(ctx)
@@ -143,12 +143,12 @@ export default function sessionTitleExtension(pi: ExtensionAPI) {
     try {
       // A /new during the await moved us to a different session, or a name has since been
       // set; applying this title now would rename the wrong session, so drop it.
-      if (generation !== startedGeneration || pi.getSessionName?.()) return
-      // pi.setSessionName refreshes the terminal/tab title natively (pi changelog), so a
+      if (generation !== startedGeneration || nycode.getSessionName?.()) return
+      // nycode.setSessionName refreshes the terminal/tab title natively (pi changelog), so a
       // separate ctx.ui.setTitle call would only duplicate that. The guard stays: a
       // disposed session throws from setSessionName post-await, and an escaping rejection
       // from this un-awaited settle can exit pi.
-      pi.setSessionName(title)
+      nycode.setSessionName(title)
     } catch {
       // disposed session or a setter failure: leave the session untitled.
     }
