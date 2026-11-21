@@ -1,2 +1,5 @@
 #!/bin/sh
-exec python3 -I "${CLAUDE_CONFIG_DIR:-$HOME/.pi/agent/claude-home}/skills/atualizador/scripts/git_deliver.py" "$@"
+# Wrapper of the canonical git-deliver implementation: ${NYCODE_RESOURCES}/skills/atualizador/scripts/git_deliver.py.
+# Without NYCODE_RESOURCES it uses the resources of this checkout.
+here=$(cd -- "$(dirname -- "$0")" && pwd)
+exec python3 -I "${NYCODE_RESOURCES:-$here/../../packages/coding-agent/resources}/skills/atualizador/scripts/git_deliver.py" "$@"

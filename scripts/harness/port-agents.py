@@ -1,35 +1,93 @@
 #!/usr/bin/env python3
-"""Porta ~/.claude/agents/*.md para ~/.pi/agent/claude-home/agents/ (vocabulário pi).
+"""Porta ~/.claude/agents/*.md para packages/coding-agent/resources/agents/ (vocabulário nycode).
 
-Frontmatter: tools/disallowedTools mapeados para nomes pi (MCP com '_' no lugar de '-'),
-ferramentas inexistentes no pi descartadas, tool_search incluído quando há MCP.
+Frontmatter: tools/disallowedTools mapeados para nomes do nycode (MCP com '_' no lugar de '-'),
+ferramentas inexistentes no nycode descartadas, tool_search incluído quando há MCP.
 Corpo: substituições pontuais de vocabulário; revisão manual depois.
 Uso: port-agents.py [--dry-run]
 """
+
 import os
 import re
 import sys
 from pathlib import Path
 
 SRC = Path(os.environ.get("CLAUDE_SRC_DIR", Path.home() / ".claude")) / "agents"
-DST = Path(os.environ.get("CLAUDE_CONFIG_DIR", Path.home() / ".pi/agent/claude-home")) / "agents"
+DST = (
+    Path(
+        os.environ.get(
+            "NYCODE_RESOURCES",
+            Path(__file__).resolve().parents[2] / "packages/coding-agent/resources",
+        )
+    )
+    / "agents"
+)
 
 SIMPLE = {
-    "read": ["read"], "write": ["write"], "edit": ["edit"], "multiedit": ["edit"], "bash": ["bash"],
-    "grep": ["grep"], "glob": ["find"], "ls": ["ls"], "webfetch": ["web_fetch"],
-    "websearch": ["mcp__keenable__search_web_pages"], "toolsearch": ["tool_search"],
-    "todowrite": ["todo"], "askuserquestion": ["question"],
-    "lsp": ["lsp_diagnostics", "lsp_hover", "lsp_definition", "lsp_references", "lsp_symbols"],
-    "agent": ["subagent"], "task": ["subagent"],
+    "read": ["read"],
+    "write": ["write"],
+    "edit": ["edit"],
+    "multiedit": ["edit"],
+    "bash": ["bash"],
+    "grep": ["grep"],
+    "glob": ["find"],
+    "ls": ["ls"],
+    "webfetch": ["web_fetch"],
+    "websearch": ["mcp__keenable__search_web_pages"],
+    "toolsearch": ["tool_search"],
+    "todowrite": ["todo"],
+    "askuserquestion": ["question"],
+    "lsp": [
+        "lsp_diagnostics",
+        "lsp_hover",
+        "lsp_definition",
+        "lsp_references",
+        "lsp_symbols",
+    ],
+    "agent": ["subagent"],
+    "task": ["subagent"],
 }
-# Claude-only tools with no pi counterpart (dropped silently).
-DROP = {"skill", "structuredoutput", "notebookedit", "workflow", "artifact", "artifactdata",
-        "artifactcomments", "designsync", "shareonboardingguide", "pushnotification",
-        "remotetrigger", "croncreate", "crondelete", "enterworktree", "exitworktree",
-        "publishplugin", "schedulewakeup", "monitor", "sendmessage"}
-PI_SERVERS = {"exa", "firecrawl", "youcom", "nimble", "octen", "context7", "paper_search",
-              "brave_search", "computer_use_linux", "playwright", "perplexity", "codegraph",
-              "package_version_check", "keenable", "parallel", "fetch", "linear"}
+# Claude-only tools with no nycode counterpart (dropped silently).
+DROP = {
+    "skill",
+    "structuredoutput",
+    "notebookedit",
+    "workflow",
+    "artifact",
+    "artifactdata",
+    "artifactcomments",
+    "designsync",
+    "shareonboardingguide",
+    "pushnotification",
+    "remotetrigger",
+    "croncreate",
+    "crondelete",
+    "enterworktree",
+    "exitworktree",
+    "publishplugin",
+    "schedulewakeup",
+    "monitor",
+    "sendmessage",
+}
+NYCODE_SERVERS = {
+    "exa",
+    "firecrawl",
+    "youcom",
+    "nimble",
+    "octen",
+    "context7",
+    "paper_search",
+    "brave_search",
+    "computer_use_linux",
+    "playwright",
+    "perplexity",
+    "codegraph",
+    "package_version_check",
+    "keenable",
+    "parallel",
+    "fetch",
+    "linear",
+}
 
 
 def norm(s: str) -> str:
@@ -47,16 +105,16 @@ def map_tool(t: str) -> list[str]:
         return []
     if not t.startswith("mcp__"):
         return []
-    rest = t[len("mcp__"):]
+    rest = t[len("mcp__") :]
     server, _, tool = rest.partition("__")
     if server.startswith("plugin_parallel_parallel-search"):
         server = "parallel"
     elif server.startswith("plugin_linear_linear") or server == "claude_ai_Linear":
         server = "linear"
-    elif server.startswith("plugin_") or server.startswith("claude_ai_"):
+    elif server.startswith(("plugin_", "claude_ai_")):
         return []
     server = norm(server)
-    if server not in PI_SERVERS:
+    if server not in NYCODE_SERVERS:
         return []
     if server == "fetch":
         return ["web_fetch"]
@@ -71,7 +129,7 @@ def parse_list(v: str) -> list[str]:
 
 
 def convert(text: str) -> str:
-    m = re.match(r"^---\n(.*?)\n---\n(.*)$", text, re.S)
+    m = re.match(r"^---\n(.*?)\n---\n(.*)$", text, re.DOTALL)
     if not m:
         raise ValueError("sem frontmatter")
     fm, body = m.group(1), m.group(2)
@@ -84,19 +142,28 @@ def convert(text: str) -> str:
                 for mapped in map_tool(t):
                     if mapped not in items:
                         items.append(mapped)
-            if key == "tools" and any(i.startswith("mcp__") and i != "mcp__keenable__search_web_pages" for i in items) and "tool_search" not in items:
+            if (
+                key == "tools"
+                and any(
+                    i.startswith("mcp__") and i != "mcp__keenable__search_web_pages"
+                    for i in items
+                )
+                and "tool_search" not in items
+            ):
                 items.append("tool_search")
             if key == "disallowedTools":
-                items = [i for i in items if i != "subagent"]  # filhos já não podem criar subagentes
+                items = [
+                    i for i in items if i != "subagent"
+                ]  # filhos já não podem criar subagentes
             if items:
                 out.append(f"{key}: {', '.join(items)}")
             continue
         if key in ("autoCompactWindow", "omitClaudeMd"):
             continue
         out.append(line)
-    body = (body
-            .replace("~/.claude/skills/", "~/.pi/agent/claude-home/skills/")
-            .replace("~/.claude/agents/", "~/.pi/agent/claude-home/agents/"))
+    body = body.replace("~/.claude/skills/", "${NYCODE_RESOURCES}/skills/").replace(
+        "~/.claude/agents/", "${NYCODE_RESOURCES}/agents/"
+    )
     return "---\n" + "\n".join(out) + "\n---\n" + body
 
 

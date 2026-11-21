@@ -1,22 +1,28 @@
 #!/usr/bin/env bash
-# pi-typecheck — roda `tsc --noEmit` nas extensões de ~/.pi/agent/extensions contra os tipos da release do pi em uso.
+# nycode-typecheck — roda `tsc --noEmit` nas extensões de ~/.nycode/agent/extensions contra os tipos do checkout.
 #
-# Por que um script e não um tsconfig fixo: os .d.ts vivem em install/releases/<versão>, que muda a cada upgrade;
-# o tsconfig é gerado em /tmp com a versão lida de install/current-version, então nunca aponta para release morta.
+# Por que um script e não um tsconfig fixo: o caminho dos .d.ts depende do checkout (NYCODE_REPO, padrão: a raiz
+# deste repositório), então o tsconfig é gerado em /tmp. Os tipos vêm de `npm run build` (dist/*.d.ts).
 # Hoje o LSP do harness não sobe aqui ("Could not find a valid TypeScript installation"), e o erro de tipo numa
 # extensão só aparece em runtime, com a sessão já quebrada.
 #
 # Testes ficam de fora: usam stubs propositalmente parciais do ExtensionAPI.
-# Uso: pi-typecheck [dir]   (padrão: ~/.pi/agent/extensions). Somente leitura; sai 1 se o tsc reclamar.
-# Origem: auditoria 2026-11-13 (MariaSolOs .pi/AGENTS.md, nicknisi home/.pi/package.json).
+# Uso: nycode-typecheck [dir]   (padrão: ~/.nycode/agent/extensions). Somente leitura; sai 1 se o tsc reclamar.
+# Origem: auditoria 2026-11-13 de configs públicas.
 set -euo pipefail
 
-AGENT="${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}"
+AGENT="${NYCODE_CODING_AGENT_DIR:-$HOME/.nycode/agent}"
 DIR="$(realpath "${1:-$AGENT/extensions}")"
-VER="$(cat "$AGENT/install/current-version")"
-MODULES="$AGENT/install/releases/$VER/node_modules"
-[ -d "$MODULES/@earendil-works/pi-coding-agent" ] || { echo "pi-typecheck: tipos do pi não encontrados em $MODULES" >&2; exit 1; }
-command -v tsc >/dev/null || { echo "pi-typecheck: tsc não está no PATH" >&2; exit 1; }
+REPO="${NYCODE_REPO:-$(cd "$(dirname "$0")/../../.." && pwd)}"
+MODULES="$REPO/node_modules"
+[ -f "$REPO/packages/coding-agent/dist/index.d.ts" ] || {
+  echo "nycode-typecheck: tipos não encontrados em $REPO/packages/coding-agent/dist (rode npm run build)" >&2
+  exit 1
+}
+command -v tsc >/dev/null || {
+  echo "nycode-typecheck: tsc não está no PATH" >&2
+  exit 1
+}
 
 tmpdir="$(mktemp -d)"
 trap 'rm -r "$tmpdir"' EXIT
@@ -33,9 +39,8 @@ cat >"$cfg" <<EOF
     "skipLibCheck": true,
     "allowImportingTsExtensions": true,
     "paths": {
-      "@earendil-works/pi-coding-agent": ["$MODULES/@earendil-works/pi-coding-agent/dist/index.d.ts"],
-      "@earendil-works/pi-ai/compat": ["$MODULES/@earendil-works/pi-ai/dist/compat.d.ts"],
-      "@earendil-works/*": ["$MODULES/@earendil-works/*/dist/index.d.ts"],
+      "@nycode/coding-agent": ["$REPO/packages/coding-agent/dist/index.d.ts"],
+      "@nycode/*": ["$REPO/packages/*/dist/index.d.ts"],
       "typebox": ["$MODULES/typebox/build/index.d.mts"]
     },
     "typeRoots": ["$MODULES/@types"],
