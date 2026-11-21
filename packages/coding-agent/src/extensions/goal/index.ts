@@ -9,7 +9,7 @@
  * - `/goal <condition>` sets (or replaces) the goal and starts a turn with Claude's
  *   kickoff directive; `/goal` shows status; `/goal clear` (stop/off/reset/none/cancel)
  *   removes it. The condition is capped at 4,000 characters.
- * - The evaluator is Claude's small fast model: PI_GOAL_MODEL or ANTHROPIC_DEFAULT_HAIKU_MODEL
+ * - The evaluator is Claude's small fast model: NYCODE_GOAL_MODEL or ANTHROPIC_DEFAULT_HAIKU_MODEL
  *   resolved against the models this user can run, else the newest Haiku of the session's
  *   provider, else the session model. It runs with thinking off (or the model's lowest
  *   level when it cannot be off), reads the branch transcript trimmed to half its context
@@ -44,9 +44,10 @@
  */
 
 import * as os from 'node:os'
-import type { ExtensionAPI, ExtensionContext, Theme } from '@earendil-works/pi-coding-agent'
-import { Text, truncateToWidth, wrapTextWithAnsi } from '@earendil-works/pi-tui'
-import { hookFiles, readSettingsDisableAllHooks, stopHookBlockCap } from './hooks/index.ts'
+import type { ExtensionAPI, ExtensionContext } from '../../core/extensions/types.ts'
+import type { Theme } from '../../modes/interactive/theme/theme.ts'
+import { Text, truncateToWidth, wrapTextWithAnsi } from '@nycode/tui'
+import { hookFiles, readSettingsDisableAllHooks, stopHookBlockCap } from '../hooks/index.ts'
 import {
   checkinIntervalMs,
   checkinText,
@@ -74,14 +75,14 @@ import {
   renderTranscript,
   summaryText,
   turnRetryDelayMs,
-} from './internal/goal-evaluator.ts'
-import { type GoalMessageDetails, type GoalStyle, goalMessageLines, goalPanelLines, indicatorText } from './internal/goal-ui.ts'
-import { readManagedSettings } from './internal/managed-settings.ts'
-import { canForceTool, completeText, completeToolCall } from './internal/model-complete.ts'
-import { resolveModelOverride } from './internal/model-lookup.ts'
-import { isProjectApprovedSilently } from './internal/project-approval.ts'
-import { isSubagentPhaseEvent, SUBAGENT_CHANNEL } from './internal/subagent-events.ts'
-import { errorMessage } from './internal/values.ts'
+} from '../_shared/goal/goal-evaluator.ts'
+import { type GoalMessageDetails, type GoalStyle, goalMessageLines, goalPanelLines, indicatorText } from '../_shared/goal/goal-ui.ts'
+import { readManagedSettings } from '../_shared/settings/managed-settings.ts'
+import { canForceTool, completeText, completeToolCall } from '../_shared/model/model-complete.ts'
+import { resolveModelOverride } from '../_shared/model/model-lookup.ts'
+import { isProjectApprovedSilently } from '../_shared/project/project-approval.ts'
+import { isSubagentPhaseEvent, SUBAGENT_CHANNEL } from '../_shared/events/subagent-events.ts'
+import { errorMessage } from '../_shared/util/values.ts'
 
 /** Session entry type the goal state persists under, and the custom message type its
  * transcript lines (kickoff, verdicts, check-ins) carry. */
@@ -211,7 +212,7 @@ function goalUnavailable(ctx: Pick<ExtensionContext, 'cwd' | 'isProjectTrusted' 
  * pi has no such tier, so the session model stands in unless the override names one of
  * the models this user can run. */
 function evaluatorModel(ctx: ExtensionContext): ExtensionContext['model'] {
-  const override = process.env.PI_GOAL_MODEL?.trim() || process.env.ANTHROPIC_DEFAULT_HAIKU_MODEL?.trim()
+  const override = process.env.NYCODE_GOAL_MODEL?.trim() || process.env.ANTHROPIC_DEFAULT_HAIKU_MODEL?.trim()
   if (override) return resolveModelOverride(ctx, override)
   return smallFastModel(ctx) ?? ctx.model
 }
@@ -253,7 +254,7 @@ function transcriptBudget(model: { contextWindow?: number }): number {
   return Math.floor((model.contextWindow || DEFAULT_CONTEXT_WINDOW) * TRANSCRIPT_WINDOW_SHARE * CHARS_PER_TOKEN)
 }
 
-export default function goalExtension(pi: ExtensionAPI) {
+export default function goalExtension(nycode: ExtensionAPI) {
   let goal: ActiveGoal | undefined
   /** The last goal achieved this session, for the status view after it clears. */
   let achieved: GoalSummary | undefined
@@ -285,7 +286,7 @@ export default function goalExtension(pi: ExtensionAPI) {
    * session that armed it, and sendMessage throws on a disposed one. */
   function send(content: string, details: GoalMessageDetails, options: { triggerTurn: boolean; deliverAs?: 'followUp' }): void {
     try {
-      pi.sendMessage({ customType: GOAL_MESSAGE, content, display: true, details }, options)
+      nycode.sendMessage({ customType: GOAL_MESSAGE, content, display: true, details }, options)
     } catch {
       // Disposed session: nothing left to tell.
     }
@@ -360,7 +361,7 @@ export default function goalExtension(pi: ExtensionAPI) {
     endDeferral()
     stopRetry()
     stopIndicator(ctx)
-    pi.appendEntry(GOAL_ENTRY, { state, condition: ended.condition } satisfies GoalEntry)
+    nycode.appendEntry(GOAL_ENTRY, { state, condition: ended.condition } satisfies GoalEntry)
     return ended.condition
   }
 
@@ -580,13 +581,13 @@ export default function goalExtension(pi: ExtensionAPI) {
     }))
   }
 
-  pi.registerMessageRenderer<GoalMessageDetails>(GOAL_MESSAGE, (message, options, theme) => {
+  nycode.registerMessageRenderer<GoalMessageDetails>(GOAL_MESSAGE, (message, options, theme) => {
     const content = typeof message.content === 'string' ? message.content : message.content.map((c) => (c.type === 'text' ? c.text : '')).join('')
     const lines = goalMessageLines(content, message.details, options.expanded, styleOf(theme), options.keyHint('app.tools.expand', 'expandir'))
     return new Text(lines.join('\n'), options.outputPad, 0)
   })
 
-  pi.registerCommand('goal', {
+  nycode.registerCommand('goal', {
     description: 'Set a goal the session keeps working toward until a separate check confirms it is met; /goal shows status, /goal clear stops',
     handler: async (args, ctx) => {
       sessionCtx = ctx
@@ -617,7 +618,7 @@ export default function goalExtension(pi: ExtensionAPI) {
       // A new goal replaces the current one, as Claude documents; the entry written here
       // is the state a resume restores.
       activate(ctx, condition)
-      pi.appendEntry(GOAL_ENTRY, { state: 'active', condition } satisfies GoalEntry)
+      nycode.appendEntry(GOAL_ENTRY, { state: 'active', condition } satisfies GoalEntry)
       if (!ctx.hasUI) tell(ctx, `Objetivo definido: ${condition}`, 'info')
       // Setting a goal starts a turn immediately with the condition as the directive; a
       // send during streaming queues it as a follow-up turn.
@@ -631,13 +632,13 @@ export default function goalExtension(pi: ExtensionAPI) {
     },
   })
 
-  pi.events.on(SUBAGENT_CHANNEL, (data) => {
+  nycode.events.on(SUBAGENT_CHANNEL, (data) => {
     if (!isSubagentPhaseEvent(data)) return
     if (data.phase === 'start') running.set(data.agentId, data.agentType)
     else running.delete(data.agentId)
   })
 
-  pi.on('session_start', (_event, ctx) => {
+  nycode.on('session_start', (_event, ctx) => {
     // pi's CLI builds a fresh extension instance per session replacement; RPC mode can reuse
     // one across sessions, so drop the previous session's goal and
     // timers before reading this session's persisted state.
@@ -659,22 +660,22 @@ export default function goalExtension(pi: ExtensionAPI) {
     tell(ctx, `Objetivo restaurado: ${entry.condition}`, 'info')
   })
 
-  pi.on('session_shutdown', () => {
+  nycode.on('session_shutdown', () => {
     stopCheckin()
     stopRetry()
     clearInterval(indicatorTimer)
     indicatorTimer = undefined
   })
 
-  pi.on('agent_start', () => {
+  nycode.on('agent_start', () => {
     turnUsedTools = false
   })
 
-  pi.on('tool_execution_start', () => {
+  nycode.on('tool_execution_start', () => {
     turnUsedTools = true
   })
 
-  pi.on('input', (event) => {
+  nycode.on('input', (event) => {
     // Only genuine user input is progress: a goal continuation or a subagent prompt
     // arrives with source 'extension'. Claude resets the block cap and the idle
     // check-in allowance on the user's next prompt.
@@ -690,7 +691,7 @@ export default function goalExtension(pi: ExtensionAPI) {
   // extension can hold its agent_end handler on a dialog, which would starve a settle-
   // based evaluation; and a continuation sent here is picked up as the run's own
   // continuation rather than a fresh prompt.
-  pi.on('agent_end', async (event, ctx) => {
+  nycode.on('agent_end', async (event, ctx) => {
     sessionCtx = ctx
     const last = lastAssistant(event.messages)
     lastTurnError = last?.stopReason === 'error' ? (last.errorMessage ?? 'unknown error') : undefined
@@ -705,7 +706,7 @@ export default function goalExtension(pi: ExtensionAPI) {
     await evaluate(ctx)
   })
 
-  pi.on('agent_settled', (_event, ctx) => {
+  nycode.on('agent_settled', (_event, ctx) => {
     const message = lastTurnError
     lastTurnError = undefined
     if (!goal || message === undefined) return
