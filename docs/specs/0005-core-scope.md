@@ -147,6 +147,7 @@ chegam por fase e o `core_scope.py` é convertido em F3.
 | extension | ui | ui | Editor, acessibilidade, `/diff` |
 | extension | ui-visual | ui | Cabeçalho e ícones |
 | extension | up-dequeue | ui | Seta para cima restaura a fila |
+| extension | web | optional | Busca e leitura web (desligada por padrão) |
 | hook | claims | core | Afirmação sem evidência |
 | hook | dispatch | core | Despachante dos hooks |
 | hook | fuzz | core | Testes de fuzz do parser do guard (só teste; sem efeito em runtime) |
