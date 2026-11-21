@@ -466,7 +466,11 @@ seção 1 foram executados.
    existe nas 14 costuras.
 2. **Nunca reformatar arquivo do upstream.** O `npm run check` roda o `biome --write`. O renome já reformatou 224
    arquivos (seção 4.3); depois de cada `check`, revisar o `git diff` e reverter reformatação de arquivo que a mudança
-   não tocou. Formatação em massa esconde mudança real e gera conflito.
+   não tocou. Formatação em massa esconde mudança real e gera conflito. Pelo mesmo motivo, os checks de arquivos
+   alterados do `ci-static` (`scripts/ci/changed-files.sh`) deixam de fora, no PR de sincronização, o arquivo cujo
+   conteúdo é exatamente o da imagem `R` (conteúdo do upstream como publicado); arquivo que o fork mudou difere de `R`
+   e continua checado. Na 1ª sincronização isso tirou do `markdownlint` 4 `.md` do upstream com 61 erros que já
+   existiam na `main` (tabs e código com espaço em `packages/mcp/README.md` e `apps/p2`, `apps/p3`).
 3. **Nunca mover nem renomear arquivo do upstream.** Mover quebra o rastreio de renome do git e cria
    conflito de modify/delete.
 4. **Extensão embutida em diretório próprio** (D-01): `src/extensions/<nome>/` mais uma linha de registro em
