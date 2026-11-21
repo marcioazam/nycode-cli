@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { decide, type GuardCall } from "../../../src/core/permissions/guard/decide.ts";
+import { claudePreCall } from "../../../src/extensions/hooks/claude-tools.ts";
 
 const ORACLE = join(import.meta.dirname, "oracle.py");
 const PROJECT = "/tmp/guard-project";
@@ -97,6 +98,14 @@ function bashCases(literals: string[], cwd: string): Case[] {
 	return out;
 }
 
+/** Each literal as a `run start` command: the gate judges it as the Bash call `claudePreCall` maps it to. */
+function runCases(literals: string[], cwd: string): Case[] {
+	return literals.map((text) => {
+		const call = claudePreCall("run", { action: "start", command: text }, cwd);
+		return { tool: call.name ?? "run", input: call.input as Record<string, string>, cwd };
+	});
+}
+
 function fileCases(literals: string[], cwd: string): Case[] {
 	return literals.flatMap((text) => [
 		{ tool: "Read", input: { file_path: text }, cwd },
@@ -154,6 +163,11 @@ describe("native permission engine against guard.py", () => {
 
 	it("agrees on Bash commands (bypass on: asks become allow, denies stay)", () => {
 		expect(firstMismatch(bashCases([...literals, ...random.slice(0, 300)], PROJECT), true)).toBeUndefined();
+	});
+
+	it("agrees on run start commands, which are judged as Bash (F1)", () => {
+		expect(firstMismatch(runCases([...literals, ...random.slice(0, 300)], PROJECT), false)).toBeUndefined();
+		expect(firstMismatch(runCases(literals.slice(0, 100), PROJECT), true)).toBeUndefined();
 	});
 
 	it.each([

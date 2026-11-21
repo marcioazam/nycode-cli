@@ -102,6 +102,23 @@ describe("gateToolCall", () => {
 		expect(bash).toEqual({ block: true, reason: expect.stringContaining("permission engine failed") });
 	});
 
+	// F1 (C-F8-13): `run start` executes `bash -lc <command>`, so it is judged as Bash.
+	it("judges a run start command as Bash", async () => {
+		const native = host("native", { hasUI: false });
+		const denied = await gateToolCall("run", { action: "start", command: "rm -rf /" }, native);
+		expect(denied).toEqual({ block: true, reason: expect.stringContaining("Bloqueado pelo guard") });
+		const asked = await gateToolCall("run", { action: "start", command: "sudo ls" }, native);
+		expect(asked).toEqual({ block: true, reason: expect.stringContaining("Confirmação necessária") });
+	});
+
+	it("lets the run actions that carry no command through", async () => {
+		const native = host("native", { hasUI: false });
+		for (const input of [{ action: "list" }, { action: "tail", id: "r1" }, { action: "stop", id: "r1" }]) {
+			expect(await gateToolCall("run", input, native)).toBeUndefined();
+		}
+		expect(await gateToolCall("run", { action: "start", command: "ls" }, native)).toBeUndefined();
+	});
+
 	it("judges file tools by the Claude shape (absolute file_path)", async () => {
 		const result = await gateToolCall("write", { path: "/etc/x", content: "" }, host("native", { hasUI: false }));
 		expect(result?.block).toBe(true);

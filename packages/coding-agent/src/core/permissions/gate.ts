@@ -4,7 +4,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { checkoutRoot } from "../../extensions/_shared/project/project-root.ts";
-import { claudeToolInput, claudeToolName } from "../../extensions/hooks/claude-tools.ts";
+import { claudePreCall } from "../../extensions/hooks/claude-tools.ts";
 import { getBuiltinResourcesRoot } from "../builtin-resources.ts";
 import type { ExtensionContext, ToolCallEventResult } from "../extensions/types.ts";
 import type { NycodeSettings } from "../settings-nycode.ts";
@@ -35,11 +35,12 @@ function engineUnavailable(engine: string): string | undefined {
 
 /** The native engine's outcome for one call; throws when the engine does, and the caller denies the call. */
 function nativeOutcome(toolName: string, input: unknown, cwd: string): NativeOutcome {
-	const tool = claudeToolName(toolName);
+	const call = claudePreCall(toolName, input, cwd);
+	const tool = call.name;
 	if (tool === undefined || !GUARDED_TOOLS.has(tool)) return { kind: "pass" };
 	const verdict = decide({
 		tool,
-		input: claudeToolInput(toolName, input, cwd) ?? {},
+		input: call.input ?? {},
 		cwd,
 		project: checkoutRoot(cwd),
 		bypass: isBypassOn(),

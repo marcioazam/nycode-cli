@@ -58,7 +58,9 @@ async function startSession(settings: { hooks?: Record<string, unknown> } = {}) 
 	};
 	const toolCall = (command: string) =>
 		handlers.get("tool_call")?.({ toolName: "bash", toolCallId: "t1", input: { command } }, ctx);
-	return { summary, toolCall };
+	const runCall = (input: Record<string, unknown>) =>
+		handlers.get("tool_call")?.({ toolName: "run", toolCallId: "t2", input }, ctx);
+	return { summary, toolCall, runCall };
 }
 
 describe("default hooks", () => {
@@ -95,6 +97,16 @@ describe("default hooks", () => {
 		const { toolCall } = await startSession();
 		expect(await toolCall("rm -rf /")).toMatchObject({ block: true });
 		expect(await toolCall("echo ok")).toBeUndefined();
+	});
+
+	// F1 (C-F8-13): `run start` executes `bash -lc <command>`; the guard judges it as Bash.
+	it("runs the guard on a run start command: rm -rf / is denied, sudo asks, harmless and no-command actions pass", async () => {
+		const { runCall } = await startSession();
+		expect(await runCall({ action: "start", command: "rm -rf /" })).toMatchObject({ block: true });
+		expect(await runCall({ action: "start", command: "sudo ls" })).toMatchObject({ block: true });
+		expect(await runCall({ action: "start", command: "echo ok" })).toBeUndefined();
+		expect(await runCall({ action: "list" })).toBeUndefined();
+		expect(await runCall({ action: "stop", id: "r1" })).toBeUndefined();
 	});
 
 	it("a settings.json event entry replaces that event's default; an empty list turns it off", async () => {
