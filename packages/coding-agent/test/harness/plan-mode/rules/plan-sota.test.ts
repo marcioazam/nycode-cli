@@ -201,14 +201,8 @@ test("bash: fdfind e kb.py", () => {
 	assert.equal(utils.isSafeCommand("fdfind foo"), true);
 	assert.equal(utils.isSafeCommand("fdfind -x rm"), false);
 	assert.equal(utils.isSafeCommand("fdfind --exec-batch rm"), false);
-	assert.equal(
-		utils.isSafeCommand("python3 ~/.pi/agent/claude-home/skills/obsidian-cli/scripts/kb.py search x"),
-		true,
-	);
-	assert.equal(
-		utils.isSafeCommand("python3 ~/.pi/agent/claude-home/skills/obsidian-cli/scripts/kb.py capture x"),
-		false,
-	);
+	assert.equal(utils.isSafeCommand("python3 ~/.nycode/agent/skills/obsidian-cli/scripts/kb.py search x"), true);
+	assert.equal(utils.isSafeCommand("python3 ~/.nycode/agent/skills/obsidian-cli/scripts/kb.py capture x"), false);
 	assert.equal(utils.isSafeCommand("python3 evil.py"), false);
 });
 

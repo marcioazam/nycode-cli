@@ -6,6 +6,7 @@ Lista completa, uma linha por arquivo: [E-mapa-arquivo-a-arquivo.tsv](E-mapa-arq
 
 | Regra | Arquivos | Padrão de origem | Destino | Ação | Fase |
 |---|---:|---|---|---|---|
+| X01 | 5 | `^claude-home/bin/evals/(?:plan_ab\.py\|plan_ab_cases\.jsonl\|test_plan_ab\.py\|harbor/(?:run\.sh\|README\.md))$` | `(sem referência no nycode)` | remover | F3 |
 | G01 | 1 | `^README\.md$` | `README.md` | fundir | F2 |
 | G02 | 1 | `^CHANGELOG\.md$` | `docs/harness/CHANGELOG-ny-pi.md` | mover | F2 |
 | G03 | 2 | `^(CODE_OF_CONDUCT\|SUPPORT)\.md$` | `$1.md` | mover | F2 |
@@ -33,7 +34,7 @@ Lista completa, uma linha por arquivo: [E-mapa-arquivo-a-arquivo.tsv](E-mapa-arq
 | B02 | 869 | `^bench/(.+)$` | `bench/$1` | converter | F3 |
 | B03 | 31 | `^docs/bench/(.+)$` | `docs/bench/$1` | mover | F3 |
 | B04 | 3 | `^claude-home/bin/evals/harbor/(omp-release\.sh\|omp_agent\.py\|tests/test_omp_agent\.py)$` | `(braço omp fora das medições, D-26)` | remover | F3 |
-| B05 | 10 | `^claude-home/bin/evals/(.+)$` | `bench/evals/$1` | converter | F3 |
+| B05 | 5 | `^claude-home/bin/evals/(.+)$` | `bench/evals/$1` | converter | F3 |
 | K01 | 1 | `^bin/pi$` | `packages/coding-agent/src/cli/args.ts + src/core/settings-defaults.ts (K3, K4)` | absorver | F4 |
 | K02 | 1 | `^bin/test_pi_env\.sh$` | `packages/coding-agent/test/harness/core/settings-env.test.ts` | converter | F4 |
 | K03 | 2 | `^(settings\.json\|local\.env)\.example$` | `packages/coding-agent/src/core/settings-defaults.ts + docs/settings.md (K4)` | absorver | F4 |
@@ -57,8 +58,8 @@ Lista completa, uma linha por arquivo: [E-mapa-arquivo-a-arquivo.tsv](E-mapa-arq
 | P12 | 2 | `^claude-home/patches/pi-code/(zzzz-plan-done-rule\|zzzzz-plan-sota)/(.+)$` | `packages/coding-agent/test/harness/extensions/plan-mode/$2` | converter | F6 |
 | P13 | 9 | `^claude-home/patches/pi-code/[a-z-]*(subagent\|panel\|team)[a-z0-9-]*\.patch$` | `packages/coding-agent/src/extensions/subagent/` | absorver | F6 |
 | P14 | 1 | `^claude-home/patches/pi-code/subagent-nesting\.test\.ts$` | `packages/coding-agent/test/harness/extensions/subagent/nesting.test.ts` | converter | F6 |
-| P15 | 15 | `^claude-home/patches/pi-code/(subagent-panel\|subagent-render\|team\|zz-subagent-respawn\|zzzzzz-subagent-send\|zzzzzzz-subagent-model-effort)/(.+)$` | `packages/coding-agent/test/harness/extensions/subagent/$1/$2` | converter | F6 |
-| P16 | 1 | `^scripts/check-patch-stack\.sh$` | `(sem pilha de patches)` | remover | F6 |
+| P15 | 14 | `^claude-home/patches/pi-code/(subagent-panel\|subagent-render\|team\|zz-subagent-respawn\|zzzzzz-subagent-send\|zzzzzzz-subagent-model-effort)/(.+)$` | `packages/coding-agent/test/harness/extensions/subagent/$1/$2` | converter | F6 |
+| P16 | 2 | `^scripts/check-patch-stack\.sh$` | `(sem pilha de patches)` | remover | F6 |
 | E01 | 1 | `^extensions/(cache-prefix-probe)/.+$` | `(D-10)` | remover | F7 |
 | E02 | 2 | `^extensions/(no-web-search\|no-context-files-covers-claude-md)\.ts$` | `(D-10)` | remover | F7 |
 | E03 | 1 | `^claude-home/bin/tests/no-context-files\.test\.ts$` | `packages/coding-agent/test/harness/extensions/claude-rules/context-files.test.ts` | converter | F7 |
@@ -115,12 +116,12 @@ Lista completa, uma linha por arquivo: [E-mapa-arquivo-a-arquivo.tsv](E-mapa-arq
 | Fase | mover | converter | fundir | absorver | remover | Total |
 |---|---:|---:|---:|---:|---:|---:|
 | F2 | 11 | 8 | 10 | 1 | 1 | 31 |
-| F3 | 34 | 910 | 0 | 0 | 5 | 949 |
+| F3 | 34 | 905 | 0 | 0 | 10 | 949 |
 | F4 | 3 | 4 | 0 | 5 | 0 | 12 |
 | F5 | 0 | 5 | 0 | 6 | 13 | 24 |
-| F6 | 0 | 20 | 0 | 13 | 1 | 34 |
-| F7 | 32 | 31 | 1 | 5 | 7 | 76 |
+| F6 | 0 | 19 | 0 | 13 | 2 | 34 |
+| F7 | 33 | 31 | 1 | 4 | 7 | 76 |
 | F8 | 9 | 338 | 0 | 2 | 0 | 349 |
 | F9 | 0 | 2 | 0 | 1 | 1 | 4 |
 | F11 | 0 | 0 | 0 | 0 | 6 | 6 |
-| **Total** | 89 | 1318 | 11 | 33 | 34 | **1485** |
+| **Total** | 90 | 1312 | 11 | 32 | 40 | **1485** |

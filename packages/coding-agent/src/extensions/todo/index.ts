@@ -1,10 +1,10 @@
 /**
- * Todo Extension - Claude Code style todo tracking with a live overlay
+ * Todo Extension - Claude Code style todo tracking
  *
  * This extension:
  * - Registers a `todo` tool for the LLM (add, start, complete, delete, clear, list)
  * - Registers a `/todos` command for users to view the list
- * - Shows a persistent widget above the editor with live todo status
+ * - Publishes the list on the `pi-code:todos` event; the Plan section draws it, the chat does not
  *
  * Todos move through a status machine: pending -> in_progress -> completed.
  * Exactly one todo is in_progress at a time; `start` moves any other
@@ -17,9 +17,9 @@
  * and session_compact, so the list survives compaction without external files.
  */
 
-import { Key, matchesKey, Text, type TUI, truncateToWidth } from "@nycode/tui";
+import { matchesKey, Text, truncateToWidth } from "@nycode/tui";
 import { type Static, Type } from "typebox";
-import type { ExtensionAPI, ExtensionContext, ExtensionUIContext } from "../../core/extensions/types.ts";
+import type { ExtensionAPI, ExtensionContext } from "../../core/extensions/types.ts";
 import type { SessionEntry } from "../../core/session-manager.ts";
 import type { Theme } from "../../modes/interactive/theme/theme.ts";
 
@@ -72,10 +72,6 @@ type TodoParamsType = Static<typeof TodoParams>;
 
 const TOOL_NAME = "todo";
 const STATE_ENTRY_TYPE = "pi-code:todo";
-const WIDGET_KEY = "todos";
-// Content budget: heading + todo rows + optional "+N more" summary. The
-// rendered widget is one line taller (trailing spacer below the panel).
-const MAX_WIDGET_LINES = 12;
 
 export const normalizeTodo = (raw: LegacyTodo): Todo => {
 	if (raw.status) return { id: raw.id, text: raw.text, status: raw.status, activeForm: raw.activeForm };
@@ -103,187 +99,6 @@ const listMark = (status: TodoStatus): string => {
 /** Plain-text list, shared by the list action and the non-terminal /todos path. */
 const plainTodoList = (todos: Todo[]): string =>
 	todos.length ? todos.map((t) => `${listMark(t.status)} #${t.id}: ${t.text}`).join("\n") : "No todos";
-
-interface OverlayLayout {
-	visible: Todo[];
-	hiddenCompleted: number;
-	truncatedTail: number;
-}
-
-/**
- * Fit todos into `budget` rows: drop completed first, then truncate the
- * non-completed tail. On overflow one row is reserved for the "+N more"
- * summary the caller appends.
- */
-export const layoutOverlay = (todos: Todo[], budget: number): OverlayLayout => {
-	if (todos.length <= budget) {
-		return { visible: todos, hiddenCompleted: 0, truncatedTail: 0 };
-	}
-	const innerBudget = budget - 1;
-	const nonCompleted = todos.filter((t) => t.status !== "completed");
-	const totalCompleted = todos.length - nonCompleted.length;
-	if (nonCompleted.length <= innerBudget) {
-		const kept = new Set<Todo>(nonCompleted);
-		for (const t of todos) {
-			if (kept.size >= innerBudget) break;
-			if (t.status === "completed") kept.add(t);
-		}
-		const visible = todos.filter((t) => kept.has(t));
-		const shownCompleted = visible.filter((t) => t.status === "completed").length;
-		return { visible, hiddenCompleted: totalCompleted - shownCompleted, truncatedTail: 0 };
-	}
-	return {
-		visible: nonCompleted.slice(0, innerBudget),
-		hiddenCompleted: totalCompleted,
-		truncatedTail: nonCompleted.length - innerBudget,
-	};
-};
-
-/** One-line widget used while collapsed (ctrl+shift+t): counts and the in_progress todo. */
-export const collapsedLine = (todos: Todo[], theme: Theme): string => {
-	const completed = todos.filter((t) => t.status === "completed").length;
-	const active = todos.find((t) => t.status === "in_progress");
-	const current = active ? `${theme.fg("dim", " · ")}${active.activeForm ?? active.text}` : "";
-	if (completed === todos.length)
-		return `${theme.fg("dim", `Todos ${completed}/${todos.length}`)}${theme.fg("dim", " · ")}${theme.fg("success", "concluídos")}`;
-	return theme.fg("accent", `Todos ${completed}/${todos.length}`) + current;
-};
-
-export const allDone = (todos: Todo[]): boolean => todos.length > 0 && todos.every((t) => t.status === "completed");
-
-/** Linhas visíveis a partir de `offset`, com indicadores de quanto ficou acima e abaixo. */
-export const scrollWindow = <T>(
-	items: T[],
-	budget: number,
-	offset: number,
-): { visible: T[]; above: number; below: number; offset: number } => {
-	if (items.length <= budget) return { visible: items, above: 0, below: 0, offset: 0 };
-	const inner = budget - 1; // uma linha para o rodapé "+N"
-	const max = items.length - inner;
-	const start = Math.min(Math.max(0, offset), max);
-	return { visible: items.slice(start, start + inner), above: start, below: max - start, offset: start };
-};
-
-/**
- * Persistent widget above the editor. Factory-form setWidget registration,
- * register-once + requestRender() refresh, auto-hide when the list is empty.
- * Reads live state via getTodos() at render time.
- */
-class TodoOverlay {
-	private uiCtx?: ExtensionUIContext;
-	private widgetRegistered = false;
-	private tui?: TUI;
-	// Per process, not persisted: ctrl+shift+t folds the list into collapsedLine.
-	private collapsed = false;
-	// Lista concluída recolhe sozinha; expandir manualmente (clique ou ctrl+shift+t) vence até a próxima lista.
-	private expandedByUser = false;
-	private scroll = 0;
-	private readonly getTodos: () => Todo[];
-
-	constructor(getTodos: () => Todo[]) {
-		this.getTodos = getTodos;
-	}
-
-	setUICtx(ctx: ExtensionUIContext): void {
-		// Identity-compare so repeat session_start handlers are idempotent;
-		// on identity change (/reload) invalidate so update() re-registers.
-		if (ctx !== this.uiCtx) {
-			this.uiCtx = ctx;
-			this.widgetRegistered = false;
-			this.tui = undefined;
-		}
-	}
-
-	private lastCount = 0;
-
-	update(): void {
-		if (!this.uiCtx) return;
-		const count = this.getTodos().length;
-		if (count > this.lastCount) this.resetView(); // lista nova ou item adicionado: volta ao automático
-		this.lastCount = count;
-		if (count === 0) {
-			this.resetView();
-			this.hide();
-			return;
-		}
-		if (this.widgetRegistered) {
-			this.tui?.requestRender();
-			return;
-		}
-		this.uiCtx.setWidget(
-			WIDGET_KEY,
-			(tui, theme) => {
-				this.tui = tui;
-				return {
-					render: (width: number) => this.renderWidget(theme, width),
-					// Mouse chega aqui em tuiMode fullscreen (padrão): clique alterna, roda rola a lista.
-					handleMouse: (event: { type?: string; wheelDelta?: number }) => {
-						if (event.type === "click") {
-							this.toggleCollapsed();
-							return { render: true };
-						}
-						if (event.type === "wheel" && event.wheelDelta) {
-							const moved = this.scrollBy(event.wheelDelta > 0 ? 1 : -1);
-							return moved ? { render: true } : undefined;
-						}
-						return undefined;
-					},
-					invalidate: () => {
-						this.widgetRegistered = false;
-						this.tui = undefined;
-					},
-				};
-			},
-			{ placement: "aboveEditor" },
-		);
-		this.widgetRegistered = true;
-	}
-
-	toggleCollapsed(): void {
-		const todos = this.getTodos();
-		if (todos.length === 0) return;
-		const showingCollapsed = this.collapsed || (allDone(todos) && !this.expandedByUser);
-		this.collapsed = !showingCollapsed;
-		this.expandedByUser = !this.collapsed;
-		this.scroll = 0;
-		this.update();
-	}
-
-	/** Rola a lista expandida; devolve true quando o offset mudou. */
-	scrollBy(delta: number): boolean {
-		const todos = this.getTodos();
-		if (this.collapsed || todos.length <= MAX_WIDGET_LINES - 1) return false;
-		const before = this.scroll;
-		this.scroll = Math.min(Math.max(0, this.scroll + delta), todos.length - (MAX_WIDGET_LINES - 2));
-		if (this.scroll === before) return false;
-		this.update();
-		return true;
-	}
-
-	/** Nova lista (ou lista esvaziada) volta ao comportamento automático. */
-	resetView(): void {
-		this.collapsed = false;
-		this.expandedByUser = false;
-		this.scroll = 0;
-	}
-
-	dispose(): void {
-		this.hide();
-		this.uiCtx = undefined;
-	}
-
-	private hide(): void {
-		if (!this.widgetRegistered) return;
-		this.uiCtx?.setWidget(WIDGET_KEY, undefined);
-		this.widgetRegistered = false;
-		this.tui = undefined;
-	}
-
-	/** Never drawn in the chat: the todos live only in the Plan section (event 'pi-code:todos', plan-mode/index.ts). */
-	private renderWidget(_theme: Theme, _width: number): string[] {
-		return [];
-	}
-}
 
 /**
  * UI component for the /todos command
@@ -389,16 +204,14 @@ const persistedTodoDetails = (entry: SessionEntry, includeLegacy: boolean): Pers
 	return message.details as PersistedTodoState | undefined;
 };
 
-/** Register the branch-local Todo provider, viewer, and live widget. */
+/** Register the branch-local Todo provider and viewer. */
 export default function todoExtension(nycode: ExtensionAPI) {
 	const setStaleItems = registerStaleReminder(nycode);
 	// In-memory state (reconstructed from session on load)
 	let todos: Todo[] = [];
 	let nextId = 1;
-	const overlay = new TodoOverlay(() => todos);
-	/** Todos go to the Plan section (plan-mode/index.ts listens); the chat widget stays empty. */
+	/** Todos go to the Plan section (plan-mode/index.ts listens); the chat draws no todo widget. */
 	const refresh = () => {
-		overlay.update();
 		const shown = todos.map((t) => ({
 			id: t.id,
 			text: t.status === "in_progress" ? (t.activeForm ?? t.text) : t.text,
@@ -452,16 +265,10 @@ export default function todoExtension(nycode: ExtensionAPI) {
 
 	nycode.on("session_start", (_event, ctx) => {
 		reconstructState(ctx);
-		if (ctx.hasUI) overlay.setUICtx(ctx.ui);
 		refresh();
-	});
-	nycode.registerShortcut(Key.ctrlShift("t"), {
-		description: "Collapse or expand the todo list",
-		handler: () => overlay.toggleCollapsed(),
 	});
 	nycode.on("session_tree", (_event, ctx) => replayAndRefresh(ctx));
 	nycode.on("session_compact", (_event, ctx) => replayAndRefresh(ctx));
-	nycode.on("session_shutdown", () => overlay.dispose());
 
 	// Reads live state at render time; never replay the branch here (the
 	// branch is stale until message_end runs after tool_execution_end).

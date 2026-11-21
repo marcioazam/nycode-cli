@@ -248,7 +248,9 @@ O script falha em PR quando um arquivo de código alterado passa de 800 linhas o
 passa de 7 arquivos de código; o legado não alterado nunca bloqueia. Para o nycode:
 
 - **Fonte da lista de sufixos de código**. De: `claude-home/bin/structure/structure.py`. Para:
-  `scripts/harness/structure/structure.py` (**proposta**, segue a pasta de ferramentas de 02).
+  `scripts/ci/lint/structure/structure.py` (anexo E, regra C09; F10 converteu; a proposta de `scripts/harness/` caiu: as instruções
+  embarcadas já citavam este caminho). `structure_changed.py` carrega a lista daí e mantém `DEFAULT_SUFFIXES` como cópia,
+  fixada por teste.
 - **Alcance do limite (D-06)**. De: todo arquivo alterado. Para: só arquivos criados pelo nycode (lista em 02, seção 9).
 - **Lista de base do upstream**. De: não existe. Para: `scripts/ci/lint/structure-upstream.txt`: arquivo do upstream
   alterado fica isento.

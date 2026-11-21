@@ -41,7 +41,7 @@ const CLAUDE_SHAPED = [
 	path.join(".claude", "CLAUDE.md"),
 	"CLAUDE.local.md",
 	".mcp.json",
-	// pi-code gated `.pi/mcp.json` and `.pi/agents`; the project config directory is now CONFIG_DIR_NAME (D-33).
+	// The project config directory (CONFIG_DIR_NAME, D-33) holds the gated mcp.json and agents.
 	path.join(CONFIG_DIR_NAME, "mcp.json"),
 	path.join(CONFIG_DIR_NAME, "agents"),
 ];

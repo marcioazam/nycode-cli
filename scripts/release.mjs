@@ -8,18 +8,17 @@
  *
  * Steps:
  * 1. Check the npm version and for uncommitted changes
- * 2. Verify every public workspace package is registered on npm,
- * 3. Bump version via npm run version:xxx or set an explicit version
- * 4. Update CHANGELOG.md files: [Unreleased] -> [version] - date
- * 5. Regenerate release artifacts
- * 6. Run checks and tests
- * 7. Commit and tag the release
- * 8. Add new [Unreleased] section to changelogs
- * 9. Commit next-cycle changelog updates
- * 10. Push main and the tag to trigger CI publication
+ * 2. Bump version via npm run version:xxx or set an explicit version
+ * 3. Update CHANGELOG.md files: [Unreleased] -> [version] - date
+ * 4. Regenerate release artifacts
+ * 5. Run checks and tests
+ * 6. Commit "Release vX.Y.Z" on the current branch and stop
+ *
+ * The script never pushes and never tags: the ruleset of main requires a pull request, so the commit goes
+ * through a PR, and the vX.Y.Z tag is created on the commit the squash leaves on main (see the release skill).
  */
 
-import { execSync, spawnSync } from "node:child_process";
+import { execSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { getPublicWorkspacePackages } from "./release-packages.mjs";
@@ -49,38 +48,6 @@ function run(cmd, options = {}) {
 function getVersion() {
 	const pkg = JSON.parse(readFileSync("packages/ai/package.json", "utf-8"));
 	return pkg.version;
-}
-
-function assertPackagesAreRegisteredWithNpm() {
-	const packageNames = getPublicWorkspacePackages().map((pkg) => pkg.name);
-	const unregisteredPackages = [];
-
-	console.log("Checking npm package registration...");
-	for (const packageName of packageNames) {
-		const result = spawnSync(process.platform === "win32" ? "npm.cmd" : "npm", ["view", packageName, "version", "--json"], {
-			encoding: "utf8",
-			stdio: ["ignore", "pipe", "pipe"],
-		});
-
-		if (result.status === 0 && result.stdout.trim()) {
-			console.log(`  ${packageName}`);
-			continue;
-		}
-
-		const output = [result.stdout, result.stderr, result.error?.message].filter(Boolean).join("\n");
-		if (output.includes("E404") || output.includes("404 Not Found")) {
-			unregisteredPackages.push(packageName);
-			continue;
-		}
-
-		throw new Error(output ? `Failed to query npm registration for ${packageName}\n${output}` : `Failed to query npm registration for ${packageName}`);
-	}
-
-	if (unregisteredPackages.length > 0) {
-		throw new Error(`The following public workspace packages are not registered on npm:\n${unregisteredPackages.map((packageName) => `  ${packageName}`).join("\n")}\nRegister them before running a release.`);
-	}
-
-	console.log("  All public workspace packages are registered on npm\n");
 }
 
 function compareVersions(a, b) {
@@ -190,23 +157,6 @@ function updateChangelogsForRelease(version) {
 	}
 }
 
-function addUnreleasedSection() {
-	const changelogs = getChangelogs();
-	const unreleasedSection = "## [Unreleased]\n\n";
-
-	for (const changelog of changelogs) {
-		const content = readFileSync(changelog, "utf-8");
-
-		// Insert after "# Changelog\n\n"
-		const updated = content.replace(
-			/^(# Changelog\n\n)/,
-			`$1${unreleasedSection}`
-		);
-		writeFileSync(changelog, updated);
-		console.log(`  Added [Unreleased] to ${changelog}`);
-	}
-}
-
 // Main flow
 console.log("\n=== Release Script ===\n");
 
@@ -231,31 +181,23 @@ if (status && status.trim()) {
 }
 console.log("  Working directory clean\n");
 
-// 2. Verify npm package registration before modifying the worktree.
-assertPackagesAreRegisteredWithNpm();
-
-// Pin and verify the Nix model catalog before modifying versions, so the pin
-// lands in the release commit and a failure leaves the worktree clean.
-console.log("Pinning and building with the newest model catalog for Nix...");
-console.log();
-
-// 3. Bump or set version
+// 2. Bump or set version
 const version = bumpOrSetVersion(RELEASE_TARGET);
 console.log(`  New version: ${version}\n`);
 
-// 4. Update changelogs
+// 3. Update changelogs
 console.log("Updating CHANGELOG.md files...");
 updateChangelogsForRelease(version);
 console.log();
 
-// 5. Regenerate release artifacts
+// 4. Regenerate release artifacts
 console.log("Regenerating release artifacts...");
 run("npm run generate:models");
 run("npm run check:model-data");
 run("npm run install-lock:coding-agent");
 console.log();
 
-// 6. Run checks and tests
+// 5. Run checks and tests
 console.log("Running checks...");
 run("npm run check");
 console.log();
@@ -278,28 +220,10 @@ console.log("Checking the packed coding-agent consumer install...");
 run("npm run check:package-install");
 console.log();
 
-// 7. Commit and tag
-console.log("Committing and tagging...");
+// 6. Commit on the current branch; no tag, no push
+console.log("Committing...");
 stageChangedFiles();
 run(`git commit -m "Release v${version}"`);
-run(`git tag v${version}`);
 console.log();
 
-// 8. Add new [Unreleased] sections
-console.log("Adding [Unreleased] sections for next cycle...");
-addUnreleasedSection();
-console.log();
-
-// 9. Commit
-console.log("Committing changelog updates...");
-stageChangedFiles();
-run(`git commit -m "Add [Unreleased] section for next cycle"`);
-console.log();
-
-// 10. Push
-console.log("Pushing to remote...");
-run("git push origin main");
-run(`git push origin v${version}`);
-console.log();
-
-console.log(`=== Prepared release v${version}; CI publication starts after the tag push ===`);
+console.log(`=== Prepared release commit v${version}; open a PR, squash-merge it, then tag the commit on main ===`);

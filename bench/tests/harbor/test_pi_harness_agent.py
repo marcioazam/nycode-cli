@@ -4,12 +4,13 @@ import asyncio
 import json
 import os
 import subprocess
-import sys
-import types
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
 import pytest
+
+from bench.tests.harbor.stubs import import_agent
 
 
 class _Pi:
@@ -30,19 +31,16 @@ class _Pi:
         self.calls.append(("root", command))
 
 
-def _stub(name: str, **attrs: Any) -> None:
-    m = types.ModuleType(name)
-    m.__dict__.update(attrs)
-    sys.modules[name] = m
+pi_harness_agent: Any = (
+    None  # set by the module fixture below, against stubbed harbor modules
+)
 
 
-for _n in ("harbor", "harbor.agents", "harbor.agents.installed", "harbor.environments"):
-    _stub(_n)
-_stub("harbor.agents.installed.pi", Pi=_Pi)
-_stub("harbor.agents.installed.node_install", nvm_node_install_snippet=lambda: "NVM")
-_stub("harbor.environments.base", BaseEnvironment=object)
-sys.path.insert(0, str(Path(__file__).parent.parent))
-import pi_harness_agent  # type: ignore[import-not-found]  # CI mypy runs with MYPYPATH=tests/
+@pytest.fixture(scope="module", autouse=True)
+def _agent_module() -> Iterator[None]:
+    global pi_harness_agent
+    with import_agent(_Pi, "pi_harness_agent") as (pi_harness_agent,):
+        yield
 
 
 def _run_fix(home: Path) -> int:

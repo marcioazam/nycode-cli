@@ -193,6 +193,12 @@ class StructureChangedTest(unittest.TestCase):
             structure_changed.DEFAULT_SUFFIXES,
         )
 
+    def test_default_suffixes_match_owner(self) -> None:
+        repo = Path(__file__).resolve().parents[3]
+        self.assertEqual(
+            structure_changed.load_suffixes(repo), structure_changed.DEFAULT_SUFFIXES
+        )
+
     def test_suffixes_come_from_harness_module_when_present(self) -> None:
         mod = self.root / structure_changed.HARNESS_STRUCTURE
         mod.parent.mkdir(parents=True)

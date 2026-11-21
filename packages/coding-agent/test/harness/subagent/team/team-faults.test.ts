@@ -11,15 +11,14 @@ import * as teamStore from "../../../../src/extensions/subagent/team/store.ts";
 import * as tasks from "../../../../src/extensions/subagent/team/tasks.ts";
 import { fleetTestEnv } from "../fleet-env.ts";
 
-// palette.ts reads the HUD config when it loads: an empty HOME (and no CLAUDE_CONFIG_DIR) makes the catch apply.
+// palette.ts reads the HUD config when it loads: an empty HOME makes the catch apply.
 const savedEnv = vi.hoisted(() => {
 	// vi.hoisted runs before static imports are bound: take the built-ins from the process.
 	const fs = process.getBuiltinModule("node:fs");
 	const os = process.getBuiltinModule("node:os");
 	const path = process.getBuiltinModule("node:path");
-	const saved = { HOME: process.env.HOME, CLAUDE_CONFIG_DIR: process.env.CLAUDE_CONFIG_DIR };
+	const saved = { HOME: process.env.HOME };
 	process.env.HOME = fs.mkdtempSync(path.join(os.tmpdir(), "team-faults-home-"));
-	delete process.env.CLAUDE_CONFIG_DIR;
 	return saved;
 });
 afterAll(() => {
