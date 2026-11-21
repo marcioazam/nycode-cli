@@ -1,5 +1,5 @@
 // Ports import/ny-pi/extensions/ui/test/a11y.test.ts. The plainHeader cases moved to the core (K10):
-// test/harness/core/header-no-color.test.ts.
+// test/harness/core/appearance/header-no-color.test.ts.
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import type { ExtensionAPI } from "../../../../src/core/extensions/types.ts";

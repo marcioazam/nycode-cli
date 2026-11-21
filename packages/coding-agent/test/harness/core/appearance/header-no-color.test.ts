@@ -1,6 +1,6 @@
 // K10: the built-in header drops its colors under NO_COLOR (it was the ui/a11y plainHeader wrapper in ny-pi).
 import { afterEach, describe, expect, it } from "vitest";
-import { BuiltInHeader } from "../../../src/modes/interactive/interactive-mode.ts";
+import { BuiltInHeader } from "../../../../src/modes/interactive/interactive-mode.ts";
 
 const LOGO = "\x1b[38;2;228;138;122m\x1b[48;2;79;142;179m▀\x1b[0m";
 const header = () =>

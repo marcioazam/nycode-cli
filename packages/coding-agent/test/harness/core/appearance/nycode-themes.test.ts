@@ -1,10 +1,10 @@
 // K4: mono and tokyo-night ship next to dark and light, and NO_COLOR applies mono.
 import { afterEach, describe, expect, it } from "vitest";
-import type { ExtensionAPI } from "../../../src/core/extensions/types.ts";
-import { SettingsManager } from "../../../src/core/settings-manager.ts";
-import a11y from "../../../src/extensions/ui/a11y.ts";
-import { initialThemeSetting } from "../../../src/modes/interactive/theme/nycode-themes.ts";
-import { getAvailableThemes, getThemeByName } from "../../../src/modes/interactive/theme/theme.ts";
+import type { ExtensionAPI } from "../../../../src/core/extensions/types.ts";
+import { SettingsManager } from "../../../../src/core/settings-manager.ts";
+import a11y from "../../../../src/extensions/ui/a11y.ts";
+import { initialThemeSetting } from "../../../../src/modes/interactive/theme/nycode-themes.ts";
+import { getAvailableThemes, getThemeByName } from "../../../../src/modes/interactive/theme/theme.ts";
 
 const saved = process.env.NO_COLOR;
 afterEach(() => {
