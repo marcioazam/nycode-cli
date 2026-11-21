@@ -3,7 +3,7 @@
  *
  * Supported form: ONE unquoted separator `&` in a single-line command (`nohup x > f 2>&1 &`, `cmd &`,
  * `a && b &`, `systemd-run --user --scope -- x &`, `setsid x &`, `nohup x & sleep 1; tail f`). The command gets
- *   \n__pi_rc=$?; echo "__PI_RUN_PID=$!"; (exit $__pi_rc)
+ *   \n__nycode_rc=$?; echo "__NYCODE_RUN_PID=$!"; (exit $__nycode_rc)
  * appended: `$!` is the pid of that last background job and the exit status of the command is kept. tool_result
  * reads the marker line (and removes it from the text the model sees).
  * Fail closed (command untouched, no run): several `&`, a newline, a here-document, an unbalanced quote, `#`
@@ -14,7 +14,7 @@
 import { homedir } from 'node:os'
 import { isAbsolute, resolve } from 'node:path'
 
-export const PID_MARK = '__PI_RUN_PID='
+export const PID_MARK = '__NYCODE_RUN_PID='
 
 export interface Instrumented {
   /** Command to run in place of the original. */
@@ -139,7 +139,7 @@ export function instrument(command: string, cwd: string): Instrumented | undefin
   const list = before.slice(semi + 1).trim()
   if (!list) return undefined
   return {
-    command: `${cmd}\n__pi_rc=$?; echo "${PID_MARK}$!"; (exit $__pi_rc)`,
+    command: `${cmd}\n__nycode_rc=$?; echo "${PID_MARK}$!"; (exit $__nycode_rc)`,
     display: list,
     logPath: redirectTarget(list, cwd, s.hasCd),
     trailing: cmd.slice(s.amp + 1).trim() === '',

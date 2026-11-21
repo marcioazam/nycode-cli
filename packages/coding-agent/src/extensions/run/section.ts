@@ -2,16 +2,16 @@
  * Run section below Plan (local patch): a belowEditor widget, same mechanics as plan-mode/section.ts: native focus
  * by Enter on its title (section-nav: ↓ on an empty editor focuses the first title) or by a click, Esc back to the title,
  * a 1 s render timer only while a run is live and the body shows, nothing at all while there are no runs.
- * Rendering is in view.ts. Record: docs/pi-run-section-2026-11-13.md.
+ * Rendering is in view.ts.
  */
-import type { ExtensionContext } from '@earendil-works/pi-coding-agent'
-import { matchesKey } from '@earendil-works/pi-tui'
+import { matchesKey } from '@nycode/tui'
+import type { ExtensionContext } from '../../core/extensions/types.ts'
 
-import { hudTheme, motionEnabled, SPINNER_MS } from '../subagent/fleet-ui/palette.ts'
+import { hudTheme, motionEnabled, SPINNER_MS } from '../subagent/fleet-ui/style/palette.ts'
 import type { UiTheme } from '../subagent/fleet-ui/panel.ts'
 import { fleetSourceForUi } from '../subagent/fleet/source.ts'
 import { editorOwnsFocus } from '../subagent/fleet-ui/section.ts'
-import { tabbed } from '../subagent/fleet-ui/chrome.ts'
+import { tabbed } from '../subagent/fleet-ui/style/chrome.ts'
 import { nav } from '../subagent/section-nav/nav.ts'
 import type { RunRecord, RunRegistry } from './registry.ts'
 import { startShell, stopRun } from './shell.ts'
@@ -63,7 +63,7 @@ export class RunSection {
     if (!value) this.prev = undefined
   }
 
-  /** Keeps pi's fullscreen viewport from taking PageUp/PageDown/Home/End while Run is focused. */
+  /** Keeps nycode's fullscreen viewport from taking PageUp/PageDown/Home/End while Run is focused. */
   get capturesViewportInput(): boolean {
     return this.nativeFocus
   }

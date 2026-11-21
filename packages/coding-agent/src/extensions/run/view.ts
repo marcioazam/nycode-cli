@@ -1,12 +1,12 @@
 /**
- * Render of the Run section (variant B of docs/pi-run-section-2026-11-13.md): chip + counts, a rule, one line per
+ * Render of the Run section (variant B of the Run section design): chip + counts, a rule, one line per
  * run, the selected one with its tail inline, and the key help in the footer of the group. Pure: theme, width and
  * state in, lines out. Glyph and text always go together (never color alone); NO_COLOR/theme decide the colors.
  */
-import { truncateToWidth, visibleWidth } from '@earendil-works/pi-tui'
+import { truncateToWidth, visibleWidth } from '@nycode/tui'
 
-import { chip, rule, summaryLine } from '../subagent/fleet-ui/chrome.ts'
-import { SPINNER, spinnerAt } from '../subagent/fleet-ui/palette.ts'
+import { chip, rule, summaryLine } from '../subagent/fleet-ui/style/chrome.ts'
+import { SPINNER, spinnerAt } from '../subagent/fleet-ui/style/palette.ts'
 import type { UiTheme } from '../subagent/fleet-ui/panel.ts'
 import { displayState, type RunRecord, type RunState } from './registry.ts'
 import { clock } from './tool.ts'

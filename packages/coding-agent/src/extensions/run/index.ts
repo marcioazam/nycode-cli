@@ -1,9 +1,8 @@
 /**
  * Run (local patch): the `run` tool, detection of nohup/`&` in the bash tool and the Run section under Plan.
  * One registry for shells and background subagents (registry.ts); the finish of a run the agent awaits starts a turn.
- * Record: docs/pi-run-section-2026-11-13.md.
  */
-import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent'
+import type { ExtensionAPI, ExtensionContext } from '../../core/extensions/types.ts'
 
 import { extractPid, instrument, type Instrumented } from './detect.ts'
 import { sharedRegistry, type RunRecord } from './registry.ts'
@@ -15,21 +14,21 @@ export function finishMessage(r: RunRecord, now: number): { customType: string; 
   return { customType: 'run-finished', content: `Run terminou:\n${summary(r, now, 20)}`, display: true }
 }
 
-export default function run(pi: ExtensionAPI): void {
+export default function run(nycode: ExtensionAPI): void {
   const reg = sharedRegistry()
   const section = new RunSection(reg)
-  registerRunTool(pi, reg)
+  registerRunTool(nycode, reg)
   /** toolCallId → what tool_call changed, read back by tool_result. */
   const pending = new Map<string, Instrumented & { cwd: string }>()
   let offFinish: (() => void) | undefined
 
-  pi.on('session_start', (event, ctx: ExtensionContext) => {
+  nycode.on('session_start', (event, ctx: ExtensionContext) => {
     if (event.reason !== 'reload') reg.resetSession()
     offFinish?.()
     offFinish = reg.onFinish((r) => {
       if (r.kind !== 'shell' || !r.awaited || r.waiters > 0) return
       try {
-        pi.sendMessage(finishMessage(r, reg.now()), { triggerTurn: true })
+        nycode.sendMessage(finishMessage(r, reg.now()), { triggerTurn: true })
       } catch {
         // stale session: nobody to tell
       }
@@ -37,14 +36,14 @@ export default function run(pi: ExtensionAPI): void {
     section.start(ctx)
   })
 
-  pi.on('session_shutdown', (_event, ctx: ExtensionContext) => {
+  nycode.on('session_shutdown', (_event, ctx: ExtensionContext) => {
     offFinish?.()
     offFinish = undefined
     pending.clear()
     section.shutdown(ctx)
   })
 
-  pi.on('tool_call', (event, ctx: ExtensionContext) => {
+  nycode.on('tool_call', (event, ctx: ExtensionContext) => {
     if (event.toolName !== 'bash') return undefined
     const input = event.input as { command?: unknown }
     if (typeof input.command !== 'string') return undefined
@@ -56,7 +55,7 @@ export default function run(pi: ExtensionAPI): void {
     return undefined
   })
 
-  pi.on('tool_result', (event) => {
+  nycode.on('tool_result', (event) => {
     if (event.toolName === 'subagent') section.sync()
     const inst = pending.get(event.toolCallId)
     if (!inst) return undefined

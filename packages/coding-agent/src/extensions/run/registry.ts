@@ -1,10 +1,10 @@
 /**
  * Run section registry (local patch): one list for the shells the `run` tool starts, the ones detected from the
- * bash tool (nohup / trailing `&`) and the background subagents (read from subagent/background.ts, never copied:
+ * bash tool (nohup / trailing `&`) and the background subagents (read from subagent/fleet/background.ts, never copied:
  * the state stays there). Pure bookkeeping, no UI and no process control. In memory only: a new session starts empty
- * (live shells keep running, detached, and are not listed again). Record: docs/pi-run-section-2026-11-13.md.
+ * (live shells keep running, detached, and are not listed again).
  */
-import { allBackgroundRuns, backgroundRun, type BackgroundRun } from '../subagent/background.ts'
+import { allBackgroundRuns, backgroundRun, type BackgroundRun } from '../subagent/fleet/background.ts'
 import { fleetSourceForUi } from '../subagent/fleet/source.ts'
 import type { RunRecord as FleetRecord } from '../subagent/fleet/types.ts'
 

@@ -1,6 +1,6 @@
 /**
  * Process control of the Run section (local patch): start a detached shell (own process group, output straight to
- * a log file so it outlives pi), follow a log incrementally, watch the liveness of detected pids and stop with the
+ * a log file so it outlives nycode), follow a log incrementally, watch the liveness of detected pids and stop with the
  * staged signals SIGINT → SIGTERM (7.5 s) → SIGKILL (+2.5 s). Linux (/proc) for the descendant walk.
  */
 import { spawn } from 'node:child_process'
@@ -9,7 +9,7 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { StringDecoder } from 'node:string_decoder'
 
-import { cancelBackgroundRun } from '../subagent/background.ts'
+import { cancelBackgroundRun } from '../subagent/fleet/background.ts'
 import type { RunRecord, RunRegistry } from './registry.ts'
 
 export const TERM_AFTER_MS = 7500
@@ -18,7 +18,7 @@ const POLL_MS = 500
 const LIVENESS_EVERY = 4 // polls: 2 s
 const MAX_READ = 1 << 20
 
-export const runsDir = (): string => process.env.PI_RUNS_DIR ?? join(homedir(), '.local', 'state', 'pi-runs')
+export const runsDir = (): string => process.env.NYCODE_RUNS_DIR ?? join(homedir(), '.local', 'state', 'pi-runs')
 
 /** Reads what the log grew by since the last call (bounded per call) into the ring buffer. */
 export function readNew(reg: RunRegistry, rec: RunRecord): void {

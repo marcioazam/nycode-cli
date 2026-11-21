@@ -1,11 +1,11 @@
 /**
  * The `run` tool (local patch): long-running shell commands the agent starts, lists, tails, stops and waits on.
- * Pure of UI: it talks to the registry and shell.ts. Record: docs/pi-run-section-2026-11-13.md.
+ * Pure of UI: it talks to the registry and shell.ts.
  */
-import type { ExtensionAPI } from '@earendil-works/pi-coding-agent'
+import type { ExtensionAPI } from '../../core/extensions/types.ts'
 import { type Static, Type } from 'typebox'
 
-import { stringEnum } from '../internal/string-enum.ts'
+import { stringEnum } from '../_shared/model/string-enum.ts'
 import { displayState, type RunRecord, type RunRegistry } from './registry.ts'
 import { startShell, stopRun } from './shell.ts'
 
@@ -91,8 +91,8 @@ export async function execute(reg: RunRegistry, params: P, cwd: string, signal?:
   }
 }
 
-export function registerRunTool(pi: ExtensionAPI, reg: RunRegistry): void {
-  pi.registerTool({
+export function registerRunTool(nycode: ExtensionAPI, reg: RunRegistry): void {
+  nycode.registerTool({
     name: TOOL_NAME,
     label: 'Run',
     description:
