@@ -1,9 +1,20 @@
 import { configDefaults, defineConfig, mergeConfig } from "vitest/config";
 import baseConfig, { workspaceSourcePaths } from "../../vitest.base.ts";
 
+// `import ".../config.ts?as-bun-binary"` loads config.ts as a compiled Bun binary sees it: from a `$bunfs`
+// URL. Only an explicit query opts in; every normal import keeps the real file URL.
+const asBunBinary = {
+	name: "as-bun-binary",
+	transform(code: string, id: string) {
+		if (!id.endsWith("?as-bun-binary")) return undefined;
+		return { code: code.replaceAll("import.meta.url", JSON.stringify("file:///$bunfs/root/nycode")), map: null };
+	},
+};
+
 export default mergeConfig(
 	baseConfig,
 	defineConfig({
+		plugins: [asBunBinary],
 		test: {
 			globals: true,
 			environment: "node",
