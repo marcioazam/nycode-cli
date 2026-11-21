@@ -6,6 +6,7 @@ import { JsonRpcLineReader } from "./lines.ts";
 import { type McpTransport, TransportEvents } from "./transport.ts";
 
 const DEFAULT_CLOSE_TIMEOUT_MS = 2_000;
+// nycode: K2 stdin close grace is 100 ms (upstream: 500 ms)
 /** How long a server gets to exit on its own after stdin closes, before it is sent SIGTERM. */
 const STDIN_CLOSE_GRACE_MS = 100;
 const USE_PROCESS_GROUPS = process.platform !== "win32";
