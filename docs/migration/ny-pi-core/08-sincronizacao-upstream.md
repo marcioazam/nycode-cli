@@ -231,6 +231,10 @@ Para cada costura: como reduzir (arquivo novo e chamada única) e o teste que fa
 O commit `f523ebd25` mudou 2316 arquivos. Isso não é uma costura localizada: é uma divergência em toda a árvore. Todo
 `git merge` direto do upstream conflita com o renome, a menos que o lado do upstream seja renomeado **antes** da fusão.
 
+D-30 (2026-11-20) amplia o renome aos internos (identificadores, comentários, testes, links e `pi.dev`): as regras novas
+entram em `scripts/fork/rename.py` (R1 de P-17), e cada sync renomeia o lado do upstream com elas antes da fusão, como
+já faz com os nomes de pacote.
+
 #### O que o renome é, de fato (medido)
 
 O registro do fork diz "Script: `/tmp/nycode-rename/rename.py` (+ `post.sh`), determinístico". Verificação em

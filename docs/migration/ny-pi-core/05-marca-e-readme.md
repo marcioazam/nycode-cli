@@ -208,14 +208,17 @@ F4 por causa do motor de permissão (K3). "Contributing" (98) perde o link de RF
 
 ## 6. Exceções: o que continua citando o pi
 
-- `CHANGELOG.md` dos 11 pacotes: histórico imutável, com links para `earendil-works/pi` (`AGENTS.md:132-147`).
-- `LICENSE` (MIT, "Copyright (c) 2025 Mario Zechner") e `NOTICE`: atribuição ([04](04-regras-do-repositorio.md), 5.15).
-- `docs/fork` (política de sincronização, commit base `073b0bae8488ee20def26e873b77036dac4e9eea`) e a seção "Origin".
-- Aliases `@mariozechner/*` (compatibilidade com extensões do pi): `rg -n '@mariozechner' packages` não foi rodado;
-  lista exata: não verificado.
-- `pi.dev` como fonte do catálogo de modelos (`README.md:66`, `nix/package.nix:20,28`): D-12, até decisão nova em F11.
-- Código importado do upstream: nomes, comentários e testes com `pi` ficam, porque renomear aumenta o conflito de cada
-  sincronização ([08](08-sincronizacao-upstream.md)).
+**Superada em 2026-11-20 por D-30** ([11](11-decisoes-e-pendencias.md)): o pi fica escondido ao máximo, inclusive nos
+internos (P-17). Só continuam citando o pi, por exigência legal ou histórica:
+
+- `LICENSE` (MIT, "Copyright (c) 2025 Mario Zechner"): intacto. `NOTICE`: curto, só o que a atribuição exige.
+- `CHANGELOG.md` dos pacotes: histórico imutável (`AGENTS.md`, seção Changelog).
+- `docs/fork` e `docs/migration`: registro do fork e da migração.
+- `nycode migrate from-pi` (`src/migrations/from-pi*`): lê a configuração antiga do usuário (D-09).
+
+Deixam de ser exceção: a seção "Origin" do README (vira "License: MIT, see LICENSE and NOTICE"), os aliases
+`@mariozechner/*`, `pi.dev` como fonte do catálogo de modelos (supera D-12) e o código importado do upstream, renomeado
+pelo script do fork a cada sync ([08](08-sincronizacao-upstream.md) §4.3).
 
 ## 7. Contraste do logo em tema claro e escuro
 

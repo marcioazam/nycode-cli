@@ -67,6 +67,7 @@ import { printTimings, resetTimings, time } from "./core/timings.ts";
 import { hasTrustRequiringProjectResources, ProjectTrustStore } from "./core/trust-manager.ts";
 import { builtInExtensions } from "./extensions/index.ts";
 import { loadMcpCommand } from "./extensions/mcp/cli.lazy.ts";
+import { runMigrateCommand } from "./migrations/from-pi.ts";
 import { runMigrations, showDeprecationWarnings } from "./migrations.ts";
 import { writeDiagnosticsToStderr } from "./modes/diagnostics-stderr.ts";
 import { InteractiveMode, runPrintMode, runRpcMode } from "./modes/index.ts";
@@ -659,6 +660,11 @@ export async function main(args: string[], options?: MainOptions) {
 	if (args[0] === "mcp") {
 		const { runMcpCommand } = await loadMcpCommand();
 		process.exitCode = await runMcpCommand(args.slice(1), { cwd, agentDir });
+		return;
+	}
+
+	if (args[0] === "migrate") {
+		process.exitCode = await runMigrateCommand(args.slice(1), { agentDir });
 		return;
 	}
 

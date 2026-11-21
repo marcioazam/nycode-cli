@@ -18,6 +18,7 @@
 
 - Added the `--bypass`, `--dangerously-skip-permissions`, `--safe` and `--no-bypass` flags and the `permissions.bypass` setting; precedence is flag, then `NYCODE_BYPASS_PERMISSIONS`, then `settings.json`, then `false`.
 - Added the `compaction.maxContextTokens`, `harness`, `subagent`, `tools.bash`, `todo`, `plan`, `notify`, `terminal.{uiState,reducedMotion,nerdFont,asciiIcons}`, `knowledge`, `codegraph`, `mcp`, `hooks`, `statusLine` and `env` settings, each with its `NYCODE_*` variable as an override. See `docs/settings.md` and `docs/environment-variables.md`.
+- Added `nycode migrate from-pi`, a dry-run-by-default import of a pi agent directory (settings, `local.env`, MCP config, models, LSP, keybindings, sessions, project trust) into the nycode agent directory; `--apply` writes with backups
 
 ### Fixed
 
