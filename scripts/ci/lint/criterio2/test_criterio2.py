@@ -1,6 +1,7 @@
 """Tests of criterio2.py: allow-list parsing, coverage, stale detection, both search tools and exit codes."""
 
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -85,6 +86,25 @@ def test_search_skips_excluded_directories(tmp_path: Path) -> None:
     hits, tool = criterio2.search(tmp_path)
     assert [(h.path, h.line) for h in hits] == [("src/a.ts", 1)]
     assert tool == ("rg" if HAS_RG else "git grep")
+
+
+@pytest.mark.skipif(not HAS_RG, reason="rg missing")
+def test_search_ignores_a_piped_stdin(tmp_path: Path) -> None:
+    # In CI stdin is a pipe, not a TTY: rg without a path would search stdin and find nothing.
+    put(tmp_path, "src/a.ts", "x ~/.pi/agent\n")
+    script = Path(criterio2.__file__)
+    code = (
+        f"import sys; sys.path.insert(0, {str(script.parent)!r}); import criterio2; "
+        f"print(len(criterio2.search(__import__('pathlib').Path({str(tmp_path)!r}))[0]))"
+    )
+    done = subprocess.run(
+        [sys.executable, "-c", code],
+        input="",
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert done.stdout.strip() == "1"
 
 
 @pytest.mark.skipif(not HAS_GIT, reason="git missing")

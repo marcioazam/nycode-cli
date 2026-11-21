@@ -92,7 +92,15 @@ def parse_allow(text: str) -> tuple[list[Exemption], list[str]]:
 
 
 def _run(cmd: list[str], root: Path) -> str:
-    done = subprocess.run(cmd, cwd=root, capture_output=True, text=True, check=False)
+    # stdin closed: rg reads a piped stdin (CI) instead of the tree when no path is given.
+    done = subprocess.run(
+        cmd,
+        cwd=root,
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
     if done.returncode not in (0, 1):  # 1 = no match, for rg and git grep alike
         raise SearchError(
             f"{cmd[0]} exited {done.returncode}: {done.stderr.strip()[:200]}"
@@ -114,6 +122,8 @@ def search(root: Path) -> tuple[list[Hit], str]:
                 "-e",
                 REGEX,
                 *(a for d in EXCLUDED for a in ("--glob", f"!{d}/**")),
+                "--",
+                ".",
             ],
             root,
         )
