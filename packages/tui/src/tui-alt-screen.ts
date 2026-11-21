@@ -18,6 +18,7 @@ import {
 	type ScrollbarGeometry,
 } from "./layout.ts";
 import { getLayoutNode } from "./layout-node.ts";
+import type { PrimaryScrollSnapshot } from "./public-hooks.ts";
 import type { Terminal } from "./terminal.ts";
 import {
 	deleteAllKittyImages,
@@ -338,6 +339,25 @@ export class TuiAltScreen extends TuiBase implements ViewportTUI {
 
 	protected override getMountedRoots(): readonly Component[] {
 		return this.layoutRoot ? [this.layoutRoot] : this.children;
+	}
+
+	// nycode: K10 read access to the primary scroll area for built-in extensions (public-hooks.ts)
+	getPrimaryScrollSnapshot(): PrimaryScrollSnapshot | undefined {
+		if (!this.currentLayout) return undefined;
+		const scrollView = this.getPrimaryScrollView();
+		const box = getScrollViewBox(this.currentLayout, scrollView);
+		if (!box?.scrollContentLines) return undefined;
+		return {
+			scrollTop: scrollView.scrollTop,
+			contentLines: box.scrollContentLines,
+			rect: box.rect,
+			scrollTo: (row, options) => scrollView.scrollTo(row, options),
+		};
+	}
+
+	// nycode: K10 selection state for built-in extensions (public-hooks.ts)
+	isSelectionPressActive(): boolean {
+		return this.selectionPressActive;
 	}
 
 	private getPrimaryScrollView(): ScrollView {

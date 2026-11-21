@@ -32,6 +32,7 @@ import settingsFlagsExtension from "./settings-flags/index.ts";
 import skillsCompatExtension from "./skills-compat/index.ts";
 import soundNotifyExtension from "./sound-notify/index.ts";
 import statusLineExtension from "./status-line/index.ts";
+import stickyPromptExtension from "./sticky-prompt/index.ts";
 import subagentExtension from "./subagent/index.ts";
 import syntaxCheckExtension from "./syntax-check/index.ts";
 import thinkingExtension from "./thinking/index.ts";
@@ -84,6 +85,7 @@ export const builtInExtensions: InlineExtension[] = [
 	{ name: "prefix-cache-1h", factory: prefixCache1hExtension, builtin: true },
 	{ name: "import-claude-session", factory: importClaudeSessionExtension, builtin: true, enabledByDefault: false },
 	{ name: "sound-notify", factory: soundNotifyExtension, builtin: true },
+	{ name: "sticky-prompt", factory: stickyPromptExtension, builtin: true },
 	{ name: "syntax-check", factory: syntaxCheckExtension, builtin: true },
 	{ name: "up-dequeue", factory: upDequeueExtension, builtin: true },
 ];
