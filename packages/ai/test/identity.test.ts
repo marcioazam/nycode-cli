@@ -103,7 +103,7 @@ describe("client identity", () => {
 	it("attributes OpenRouter requests", () => {
 		const openRouter = target("openrouter", "https://openrouter.ai/api/v1");
 		expect(getAttributionHeaders(openRouter, { attribution: NYCODE_ATTRIBUTION })).toEqual({
-			"HTTP-Referer": "https://pi.dev",
+			"HTTP-Referer": "https://github.com/marcioazam/nycode",
 			"X-OpenRouter-Title": "nycode",
 			"X-OpenRouter-Categories": "cli-agent",
 		});

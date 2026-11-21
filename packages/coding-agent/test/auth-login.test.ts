@@ -1,8 +1,8 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { InMemoryModelsStore, type Model, type Provider } from "@nycode/ai";
-import { describe, expect, test, vi } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { runAuthLogin } from "../src/cli/auth-login.ts";
 import type { LoginTerminal } from "../src/cli/auth-terminal.ts";
 import { AuthStorage } from "../src/core/auth-storage.ts";
@@ -142,6 +142,8 @@ function run(
 		signal,
 	});
 }
+
+afterEach(() => vi.unstubAllEnvs());
 
 describe("nycode auth login", () => {
 	const usage = "Usage: nycode auth login <provider> [--api-key] [--no-browser]";
@@ -440,6 +442,7 @@ describe("nycode auth login", () => {
 	test.each(["radius-mcp", "radius_mcp"])("keeps unrelated MCP servers when %s is occupied", async (fallback) => {
 		const agentDir = mkdtempSync(join(tmpdir(), "nycode-auth-login-"));
 		try {
+			vi.stubEnv("NYCODE_RADIUS_GATEWAY", "https://radius.example.com");
 			const { modelRuntime } = await setup({ apiKey: bothMethods.apiKey }, "radius");
 			const mcpPath = join(agentDir, "mcp.json");
 			const servers = {
@@ -452,9 +455,22 @@ describe("nycode auth login", () => {
 			expect(await run(["radius"], modelRuntime, terminal, undefined, agentDir)).toBe(0);
 			expect(JSON.parse(readFileSync(mcpPath, "utf8")).mcpServers).toEqual({
 				...servers,
-				"radius-mcp-3": { url: "https://radius.pi.dev/mcp", auth: { provider: "radius" } },
+				"radius-mcp-3": { url: "https://radius.example.com/mcp", auth: { provider: "radius" } },
 			});
 			expect(terminal.lines).toContain(`Added MCP server "radius-mcp-3" in ${mcpPath} to use the Login Test login.`);
+		} finally {
+			rmSync(agentDir, { recursive: true, force: true });
+		}
+	});
+
+	test("adds no Radius MCP server without a configured gateway", async () => {
+		const agentDir = mkdtempSync(join(tmpdir(), "nycode-auth-login-"));
+		try {
+			vi.stubEnv("NYCODE_RADIUS_GATEWAY", "");
+			const { modelRuntime } = await setup({ apiKey: bothMethods.apiKey }, "radius");
+			const terminal = scriptedTerminal(["sk-test"]);
+			expect(await run(["radius"], modelRuntime, terminal, undefined, agentDir)).toBe(0);
+			expect(existsSync(join(agentDir, "mcp.json"))).toBe(false);
 		} finally {
 			rmSync(agentDir, { recursive: true, force: true });
 		}
@@ -463,6 +479,7 @@ describe("nycode auth login", () => {
 	test("configures the Radius MCP server without asking, once", async () => {
 		const agentDir = mkdtempSync(join(tmpdir(), "nycode-auth-login-"));
 		try {
+			vi.stubEnv("NYCODE_RADIUS_GATEWAY", "https://radius.example.com");
 			const { modelRuntime } = await setup({ apiKey: bothMethods.apiKey }, "radius");
 			const mcpPath = join(agentDir, "mcp.json");
 			const first = scriptedTerminal(["sk-test"]);

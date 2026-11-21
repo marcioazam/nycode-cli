@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { InMemoryAuthStorageBackend } from "../src/core/auth-storage.ts";
-import { McpOAuthCredentialStore } from "../src/extensions/mcp/oauth.ts";
+import { McpOAuthCredentialStore } from "../src/extensions/mcp/oauth/oauth.ts";
 
 const SERVER_URL = "https://mcp.example.com/mcp";
 

@@ -66,7 +66,7 @@ import { SettingsManager } from "./core/settings-manager.ts";
 import { printTimings, resetTimings, time } from "./core/timings.ts";
 import { hasTrustRequiringProjectResources, ProjectTrustStore } from "./core/trust-manager.ts";
 import { builtInExtensions } from "./extensions/index.ts";
-import { loadMcpCommand } from "./extensions/mcp/cli.lazy.ts";
+import { loadMcpCommand } from "./extensions/mcp/cli/cli.lazy.ts";
 import { runMigrateCommand } from "./migrations/from-pi.ts";
 import { runMigrations, showDeprecationWarnings } from "./migrations.ts";
 import { writeDiagnosticsToStderr } from "./modes/diagnostics-stderr.ts";

@@ -82,13 +82,14 @@ These variables are read by Nycode itself:
 | `NYCODE_CODING_AGENT_SESSION_DIR` | Override session storage; overridden by `--session-dir` |
 | `NYCODE_PACKAGE_DIR` | Override the package directory, useful for Nix/Guix store paths |
 | `NYCODE_OFFLINE` | Disable automatic network activity, including model catalog refreshes |
-| `NYCODE_SKIP_VERSION_CHECK` | Disable the `pi.dev` latest-version request |
+| `NYCODE_SKIP_VERSION_CHECK` | Disable the GitHub Releases latest-version request |
 | `NYCODE_SELF_UPDATE_COMMAND` | Command `nycode update` runs to update Nycode itself, split on whitespace, with `{packageName}`, `{version}`, and `{installSpec}` placeholders. Takes precedence over the `selfUpdateCommand` setting. See [Custom update command](cli.md#custom-update-command) |
-| `NYCODE_TELEMETRY` | Override install/update telemetry and provider attribution headers: `1`/`true`/`yes` or `0`/`false`/`no` |
+| `NYCODE_TELEMETRY` | Override provider attribution headers (there is no install report): `1`/`true`/`yes` or `0`/`false`/`no` |
 | `NYCODE_CODEMODE_MAX_WORKERS` | Maximum codemode workers alive at once across all sessions in the process; default `2`. Each worker's script may use up to 256 MB. Raise it when one process runs several sessions, such as in-process subagents. Further scripts wait for a free worker. See [Codemode](codemode.md) |
 | `NYCODE_CACHE_RETENTION` | Set to `long` for extended provider prompt caching where supported |
-| `NYCODE_SHARE_VIEWER_URL` | Override the base URL used by `/share` |
-| `NYCODE_RADIUS_GATEWAY` | Override the Radius gateway origin used by `/bug` uploads |
+| `NYCODE_MODEL_CATALOG_URL` | Base URL of a model catalog server (`/api/models/providers/<provider>`). Unset by default: nycode uses only the bundled model data and requests no remote catalog |
+| `NYCODE_SHARE_VIEWER_URL` | Viewer base URL for `/share`; unset by default, so `/share` returns only the gist link |
+| `NYCODE_RADIUS_GATEWAY` | Origin of the Radius gateway. There is no default gateway: without it the built-in `radius` provider does not exist and `/bug` offers only the zip export. Custom gateways can also be configured in `models.json` |
 | `NYCODE_CLEAR_ON_SHRINK` | Set to `1` to clear empty rows when rendered content shrinks; the `terminal.clearOnShrink` setting takes precedence. See [Settings](settings.md) |
 | `NYCODE_HARDWARE_CURSOR` | Set to `1` to show the hardware cursor; see [Terminal setup](terminal-setup.md) |
 | `NYCODE_CLIPBOARD_OSC52` | Set to `1` to also send copied text to the terminal with OSC 52 after the local clipboard write, as Nycode does over SSH. Use it when a remote client reaches Nycode without SSH variables, such as a multiplexer attached from another machine or a remote IDE daemon |

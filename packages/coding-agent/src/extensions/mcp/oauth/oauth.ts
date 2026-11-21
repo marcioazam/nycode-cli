@@ -20,7 +20,6 @@ import {
 	createMcpAuthProvider as createAuthProvider,
 	listenForLoopbackSignIn,
 	type McpAuthProvider,
-	type McpClientMetadataDocuments,
 	type McpOAuthServerStore,
 	type McpOAuthSettings,
 	type McpOAuthState,
@@ -31,9 +30,8 @@ import {
 	waitForLoopbackSignIn,
 } from "@nycode/mcp/oauth";
 import lockfile from "proper-lockfile";
-import { APP_NAME, getAgentDir } from "../../config.ts";
-import { type AuthStorageBackend, FileAuthStorageBackend } from "../../core/auth-storage.ts";
-import { isClientMetadataDocumentCallback } from "../../core/mcp-servers.ts";
+import { APP_NAME, getAgentDir } from "../../../config.ts";
+import { type AuthStorageBackend, FileAuthStorageBackend } from "../../../core/auth-storage.ts";
 
 /** A refresh lock that its holder stopped renewing (the process was killed) is taken over after this. */
 const REFRESH_LOCK_STALE_MS = 20_000;
@@ -156,20 +154,8 @@ export class McpOAuthCredentialStore {
 	}
 }
 
-/** nycode's Client ID Metadata Documents on pi.dev: `client.json` and `<callback ID>/client.json`. */
-const NYCODE_CLIENT_METADATA_DOCUMENTS: McpClientMetadataDocuments = {
-	baseUrl: "https://pi.dev/oauth",
-	listsRedirectUrl: isClientMetadataDocumentCallback,
-};
-
-/** nycode's client identity for sign-in and refresh. */
-const NYCODE_CLIENT = { clientName: APP_NAME, clientMetadataDocuments: NYCODE_CLIENT_METADATA_DOCUMENTS };
-
-/** `settings` for nycode-mcp: a rebranded build would show up as nycode with nycode's documents, so `auto` registers. */
-function nycodeSettings(settings: McpOAuthSettings): McpOAuthSettings {
-	const auto = (settings.clientRegistration ?? "auto") === "auto";
-	return auto && APP_NAME !== "nycode" ? { ...settings, clientRegistration: "dcr" } : settings;
-}
+/** nycode's client identity for sign-in and refresh. It publishes no Client ID Metadata Documents, so it registers dynamically. */
+const NYCODE_CLIENT = { clientName: APP_NAME };
 
 /** nycode-mcp's `createMcpAuthProvider` with nycode's client identity. */
 export function createMcpAuthProvider(options: {
@@ -178,7 +164,7 @@ export function createMcpAuthProvider(options: {
 	settings: () => McpOAuthSettings;
 	onChallenge: (challenge: OAuthChallenge) => void;
 }): McpAuthProvider {
-	return createAuthProvider({ ...options, ...NYCODE_CLIENT, settings: () => nycodeSettings(options.settings()) });
+	return createAuthProvider({ ...options, ...NYCODE_CLIENT });
 }
 
 export interface McpSignInPrompt {
@@ -213,12 +199,11 @@ export async function signInMcpServer(options: {
 	signal?: AbortSignal;
 }): Promise<void> {
 	const { serverUrl, store, challenge, prompt, signal } = options;
-	const settings = nycodeSettings(options.settings);
+	const { settings } = options;
 	const { callback, redirectUrl } = await listenForLoopbackSignIn({
 		serverUrl,
 		store,
 		settings,
-		clientMetadataDocuments: NYCODE_CLIENT_METADATA_DOCUMENTS,
 		renderPage: renderCallbackPage,
 	});
 	try {

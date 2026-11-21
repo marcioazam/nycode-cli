@@ -52,20 +52,20 @@ import {
 	type McpServerEntry,
 	updateMcpServerConfig,
 } from "./config.ts";
-import type { McpOAuthCredentialStore, McpSignInPrompt } from "./oauth.ts";
+import type { McpOAuthCredentialStore, McpSignInPrompt } from "./oauth/oauth.ts";
 import {
 	createMcpResourceToolDefinitions,
 	LIST_MCP_RESOURCE_TEMPLATES_TOOL,
 	LIST_MCP_RESOURCES_TOOL,
 	READ_MCP_RESOURCE_TOOL,
 } from "./resources.ts";
-import { loadMcpRuntime } from "./runtime.lazy.ts";
-import type * as McpRuntime from "./runtime.ts";
-import type { McpServerConnection, McpServerLog, McpTransportFactory } from "./runtime.ts";
+import { loadMcpRuntime } from "./runtime/runtime.lazy.ts";
+import type * as McpRuntime from "./runtime/runtime.ts";
+import type { McpServerConnection, McpServerLog, McpTransportFactory } from "./runtime/runtime.ts";
 import { createMcpToolDefinition, createMcpToolRenderers, type McpToolDetails } from "./tools.ts";
 import { type McpMenu, type McpUi, showMcpManager } from "./ui.ts";
 
-export type { McpTransportFactory } from "./runtime.ts";
+export type { McpTransportFactory } from "./runtime/runtime.ts";
 
 export interface McpExtensionOptions {
 	/** Defaults to reading `mcp.json` from the agent directory and the trusted project. */

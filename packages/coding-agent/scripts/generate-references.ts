@@ -58,7 +58,7 @@ const referenceArtifacts: readonly ReferenceArtifact[] = [
 		title: "Models Configuration",
 		intro: [
 			"This reference lists the fields of `models.json`. See [Configure a compatible endpoint](models.md#configure-a-compatible-endpoint) for examples and [Configuration](configuration.md#agent-directory) for the file location.",
-			'Add `"$schema": "https://pi.dev/schemas/models.schema.json"` to `models.json` for editor validation and completion.',
+			'Add `"$schema": "https://raw.githubusercontent.com/marcioazam/nycode/main/packages/coding-agent/schemas/models.schema.json"` to `models.json` for editor validation and completion.',
 		].join("\n\n"),
 		sections: [
 			{
@@ -124,6 +124,11 @@ function documentedObject(schema: ReferenceSchema): { suffix: string; schema: Re
 
 const escapeTableText = (text: string) => text.replaceAll("|", "\\|").replaceAll("<", "&lt;");
 
+/** Wraps bare URLs in angle brackets so the generated page passes markdownlint MD034. */
+function autolinkUrls(text: string): string {
+	return text.replace(/(?<![<(])https?:\/\/\S+?(?=[.,;:]?(?:\s|$))/g, "<$&>");
+}
+
 function referenceRows(schema: ReferenceSchema, section: ReferenceSection, prefix = ""): string[] {
 	const rows: string[] = [];
 	for (const [name, field] of Object.entries(schema.properties ?? {})) {
@@ -136,7 +141,7 @@ function referenceRows(schema: ReferenceSchema, section: ReferenceSection, prefi
 			.filter((text) => text !== undefined)
 			.join(" ");
 		rows.push(
-			`| \`${path}\` | ${link ? `[${typeText}](${link})` : typeText} | ${defaultText} | ${escapeTableText(description)} |`,
+			`| \`${path}\` | ${link ? `[${typeText}](${link})` : typeText} | ${defaultText} | ${autolinkUrls(escapeTableText(description))} |`,
 		);
 		if (link || (prefix === "" && section.collapsed?.includes(name))) continue;
 		const nested = documentedObject(field);

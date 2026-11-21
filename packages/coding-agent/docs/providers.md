@@ -107,13 +107,13 @@ A stored API-key credential can include an `env` object. Its values take priorit
 
 Radius is a service crafted for Nycode by the builders of Nycode, Earendil Works. It provides a customizable AI gateway with organization-level controls and analytics built in, and artifacts for sharing what you create with Nycode.
 
-To get started, run `/login radius` in Nycode. This adds Radius as a provider, and its models appear in `/model` like any other provider's.
+To get started, set `NYCODE_RADIUS_GATEWAY` to your gateway origin and run `/login radius` in Nycode. This adds Radius as a provider, and its models appear in `/model` like any other provider's.
 
 Radius also has an MCP server, so Nycode can manage Radius for you.
 
 Radius is currently in early alpha and evolving quickly. See [radius.earendil.com](https://radius.earendil.com) for more.
 
-Radius authentication uses its gateway catalog and caches refreshed model metadata for later offline startup. A custom Radius gateway configured in `models.json` uses its own catalog rather than inheriting the public `radius.pi.dev` catalog.
+Radius authentication uses its gateway catalog and caches refreshed model metadata for later offline startup. A custom Radius gateway configured in `models.json` uses its own catalog; there is no embedded public Radius catalog or default gateway (set `NYCODE_RADIUS_GATEWAY`).
 
 ### OpenRouter
 

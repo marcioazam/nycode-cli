@@ -82,6 +82,7 @@ import {
 	resolveConfiguredModelHeaders,
 	validateExtensionProvider,
 } from "./provider-composer.ts";
+import { getRadiusGatewayUrl } from "./radius.ts";
 import { withPersonalizedCatalog, withRemoteCatalog } from "./remote-catalog-provider.ts";
 import { RuntimeCredentials } from "./runtime-credentials.ts";
 import {
@@ -118,6 +119,10 @@ export interface CreateModelRuntimeOptions {
 	allowModelNetwork?: boolean;
 	/** Timeout for the create-time network model refresh. */
 	modelRefreshTimeoutMs?: number;
+	/**
+	 * Base URL of a model catalog server. Falls back to `NYCODE_MODEL_CATALOG_URL`; without either, the runtime
+	 * uses only the built-in model data and never requests a remote catalog.
+	 */
 	catalogBaseUrl?: string;
 	/** Optional caller cancellation for initial cache restoration and availability checks. */
 	signal?: AbortSignal;
@@ -225,20 +230,23 @@ export class ModelRuntime implements Models {
 			(modelsPath
 				? new FileModelsStore(options.modelsStorePath ?? join(dirname(modelsPath), "models-store.json"))
 				: new InMemoryCodingAgentModelsStore());
+		const catalogBaseUrl = options.catalogBaseUrl ?? (process.env.NYCODE_MODEL_CATALOG_URL?.trim() || undefined);
 		const builtinModelDataGeneratedAt = builtinProviderCatalog.getBuiltinModelDataGeneratedAt();
 		const providers = builtinProviderCatalog.builtinProviders().map((provider) => {
-			if (provider.id === "radius") return provider;
 			// OpenRouter narrows the catalog to the models, limits and prices of the user's key.
 			if (provider.id === "openrouter") {
 				return withPersonalizedCatalog(
 					provider,
 					personalizeOpenRouterCatalog,
-					options.catalogBaseUrl,
+					catalogBaseUrl,
 					builtinModelDataGeneratedAt,
 				);
 			}
-			return withRemoteCatalog(provider, options.catalogBaseUrl, builtinModelDataGeneratedAt);
+			return withRemoteCatalog(provider, catalogBaseUrl, builtinModelDataGeneratedAt);
 		});
+		// Radius has no default gateway: the built-in provider exists only with NYCODE_RADIUS_GATEWAY.
+		const radiusGateway = getRadiusGatewayUrl();
+		if (radiusGateway) providers.push(builtinProviderCatalog.radiusProvider({ gateway: radiusGateway }));
 		const runtime = new ModelRuntime(
 			credentials,
 			config,

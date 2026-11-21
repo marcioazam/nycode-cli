@@ -173,7 +173,7 @@ function getSelfUpdateCommandForMethod(
 			const [command = "npm", ...npmArgs] = npmCommand ?? [];
 			const inferred = npmCommand?.length ? undefined : getInferredNpmInstall();
 			const prefixArgs = [...npmArgs, ...(inferred ? ["--prefix", inferred.prefix] : [])];
-			// pi.dev advertises releases immediately, so a configured npm age gate would
+			// GitHub Releases advertise a version immediately, so a configured npm age gate would
 			// block the update. npm has no per-package age gate, so this also lets new
 			// transitive dependency releases through. Managed installs avoid this.
 			const installStep = makeSelfUpdateCommandStep(command, [
@@ -614,12 +614,10 @@ export function expandTildePath(path: string): string {
 	return normalizePath(path);
 }
 
-const DEFAULT_SHARE_VIEWER_URL = "https://pi.dev/session/";
-
-/** Get the share viewer URL for a gist ID. */
-export function getShareViewerUrl(gistId: string): string {
-	const baseUrl = process.env.NYCODE_SHARE_VIEWER_URL || DEFAULT_SHARE_VIEWER_URL;
-	return `${baseUrl}#${gistId}`;
+/** Get the share viewer URL for a gist ID, or undefined while NYCODE_SHARE_VIEWER_URL is not set (there is no default viewer). */
+export function getShareViewerUrl(gistId: string): string | undefined {
+	const baseUrl = process.env.NYCODE_SHARE_VIEWER_URL;
+	return baseUrl ? `${baseUrl}#${gistId}` : undefined;
 }
 
 // =============================================================================

@@ -574,7 +574,7 @@ export class SettingsSelectorComponent extends Container {
 			{
 				id: "install-telemetry",
 				label: "Install telemetry",
-				description: "Send an anonymous version/update ping after changelog-detected updates",
+				description: "Send the nycode attribution headers to providers that accept them",
 				currentValue: config.enableInstallTelemetry ? "true" : "false",
 				values: ["true", "false"],
 			},

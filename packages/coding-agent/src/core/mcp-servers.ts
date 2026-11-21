@@ -107,23 +107,10 @@ export interface McpOAuthConfig extends McpOAuthFields {
 	 */
 	clientName?: string;
 	/**
-	 * How nycode identifies itself without `clientId`. `auto` (default): nycode's Client ID Metadata Document on
-	 * pi.dev when the authorization server supports it for public clients, otherwise dynamic client
-	 * registration; with `clientName` or a `callbackUrl` other than `/callback` on localhost or 127.0.0.1,
-	 * always dynamic client registration. `cimd`: always the document, and sign-in fails without support.
-	 * `dcr`: always dynamic client registration.
+	 * How nycode identifies itself without `clientId`. nycode publishes no Client ID Metadata Document, so
+	 * `auto` (default) and `dcr` both register a client dynamically; `cimd` is refused.
 	 */
-	clientRegistration?: "auto" | "dcr" | "cimd";
-}
-
-/**
- * Whether nycode's Client ID Metadata Documents list a redirect URI for the loopback `callbackUrl`: they list
- * `/callback` on localhost and 127.0.0.1, on any port. Without `callbackUrl`, nycode uses such a URI.
- */
-export function isClientMetadataDocumentCallback(callbackUrl: string | undefined): boolean {
-	if (callbackUrl === undefined) return true;
-	const url = new URL(callbackUrl);
-	return url.hostname !== "[::1]" && url.pathname === "/callback";
+	clientRegistration?: "auto" | "dcr";
 }
 
 export interface McpHttpServerConfig extends McpHttpServerFields, McpServerConfigBase {
@@ -211,12 +198,7 @@ function checkAuth(auth: unknown, url: string): string | undefined {
  * copy of the config with exposure aliases resolved, or an error message.
  */
 export function validateMcpServerConfig(name: string, raw: unknown): McpServerConfig | string {
-	const result = validateMcpServerFields(name, isRecord(raw) ? resolveExposureAliases(raw) : raw, {
-		checkMetadataDocumentCallback: (callbackUrl) =>
-			isClientMetadataDocumentCallback(callbackUrl)
-				? undefined
-				: 'oauth.clientRegistration "cimd" requires oauth.callbackUrl on localhost or 127.0.0.1 with path /callback',
-	});
+	const result = validateMcpServerFields(name, isRecord(raw) ? resolveExposureAliases(raw) : raw);
 	if (result.kind === "invalid") return result.error;
 	const error =
 		checkExposures(result.config) ??

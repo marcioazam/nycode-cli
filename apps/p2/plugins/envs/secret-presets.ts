@@ -31,8 +31,8 @@ export const SECRET_PRESETS: readonly SecretPreset[] = [
 		id: "radius",
 		label: "Radius token",
 		name: "RADIUS_TOKEN",
-		hosts: ["radius.earendil.com", "radius.pi.dev"],
-		hint: 'Radius (artifacts at radius.earendil.com, the model gateway at radius.pi.dev): curl -H "Authorization: Bearer $RADIUS_TOKEN" …',
+		hosts: ["radius.earendil.com"],
+		hint: 'Radius (artifacts at radius.earendil.com): curl -H "Authorization: Bearer $RADIUS_TOKEN" …',
 	},
 	{
 		id: "npm",

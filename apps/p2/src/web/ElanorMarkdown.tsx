@@ -1,4 +1,4 @@
-// Markdown in Elanor's components (the approach of pi.dev's docs, design-refresh): Markdown.tsx's elements mapped to
+// Markdown in Elanor's components (design-refresh approach): Markdown.tsx's elements mapped to
 // Elanor's Prose, Text, Heading, List, Link, Strong, Emphasis, InlineCode, Blockquote, Separator, Table and
 // CodeSnippet. p2's parser, its safety (raw HTML as text, remote images as links) and its streaming stay as they are.
 import {

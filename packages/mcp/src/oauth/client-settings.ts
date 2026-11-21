@@ -54,7 +54,7 @@ export interface McpOAuthSettings {
  * server `<baseUrl>/<callback ID>/client.json`, whose redirect URIs carry the path `<path>/<callback ID>`.
  */
 export interface McpClientMetadataDocuments {
-	/** For example `https://pi.dev/oauth`. */
+	/** For example `https://example.com/oauth`. */
 	baseUrl: string;
 	/** Whether the documents list `redirectUrl`. Loopback redirect URIs match on any port (RFC 8252). */
 	listsRedirectUrl(redirectUrl: string): boolean;

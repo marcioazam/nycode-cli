@@ -52,7 +52,7 @@ function builtinProvider(): Provider {
 }
 
 function testProvider(localGeneratedAt?: number) {
-	return withRemoteCatalog(builtinProvider(), "https://pi.dev", localGeneratedAt);
+	return withRemoteCatalog(builtinProvider(), "https://catalog.example.test", localGeneratedAt);
 }
 
 async function refreshProvider(
@@ -286,7 +286,7 @@ describe("remote catalog provider", () => {
 		expect((await store.read(provider.id))?.models.map((entry) => entry.id)).toEqual(["newer"]);
 	});
 
-	it("fetches the pi.dev catalog without refreshing a stale OAuth login", async () => {
+	it("fetches the configured catalog without refreshing a stale OAuth login", async () => {
 		const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(
 			async () =>
 				new Response(JSON.stringify({ dynamic: model("dynamic") }), {
@@ -296,19 +296,22 @@ describe("remote catalog provider", () => {
 		const oauthRefresh = vi.fn(async (): Promise<never> => {
 			throw new Error("invalid_grant");
 		});
-		const provider = withRemoteCatalog({
-			...builtinProvider(),
-			auth: {
-				oauth: {
-					name: "Test OAuth",
-					login: async () => {
-						throw new Error("not used");
+		const provider = withRemoteCatalog(
+			{
+				...builtinProvider(),
+				auth: {
+					oauth: {
+						name: "Test OAuth",
+						login: async () => {
+							throw new Error("not used");
+						},
+						refresh: oauthRefresh,
+						toAuth: async (credential) => ({ apiKey: credential.access }),
 					},
-					refresh: oauthRefresh,
-					toAuth: async (credential) => ({ apiKey: credential.access }),
 				},
 			},
-		});
+			"https://catalog.example.test",
+		);
 		const credentials = new InMemoryCredentialStore();
 		await credentials.modify(provider.id, async () => ({
 			type: "oauth",
@@ -325,7 +328,19 @@ describe("remote catalog provider", () => {
 		expect(provider.getModels().map((entry) => entry.id)).toEqual(["static", "dynamic"]);
 	});
 
-	it("treats unimplemented pi.dev catalog routes as an unavailable overlay", async () => {
+	it("makes no request and keeps the built-in models without a catalog URL", async () => {
+		const fetchSpy = vi.spyOn(globalThis, "fetch");
+		const builtin = builtinProvider();
+		const provider = withRemoteCatalog(builtin, undefined);
+		const store = new InMemoryModelsStore();
+
+		expect(provider).toBe(builtin);
+		await refreshProvider(provider, store, { force: true });
+		expect(fetchSpy).not.toHaveBeenCalled();
+		expect(provider.getModels().map((entry) => entry.id)).toEqual(["static"]);
+	});
+
+	it("treats unimplemented catalog routes as an unavailable overlay", async () => {
 		vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("not implemented", { status: 501 }));
 		const provider = testProvider();
 		const store = new InMemoryModelsStore();
@@ -358,11 +373,25 @@ describe("personalized catalog provider", () => {
 		const personalize: PersonalizeCatalog = async () => {
 			throw new Error("user models request failed");
 		};
-		const provider = withPersonalizedCatalog(builtinProvider(), personalize);
+		const provider = withPersonalizedCatalog(builtinProvider(), personalize, "https://catalog.example.test");
 
 		await expect(refreshProvider(provider, store)).rejects.toThrow("user models request failed");
 		expect(provider.getModels().map((entry) => entry.id)).toEqual(["allowed"]);
 		expect(await store.read(provider.id)).toEqual(saved);
+	});
+
+	it("personalizes the built-in models without any request when there is no catalog URL", async () => {
+		const fetchSpy = vi.spyOn(globalThis, "fetch");
+		const personalize = vi.fn<PersonalizeCatalog>(async (catalog) =>
+			catalog.filter((entry) => entry.id === "static"),
+		);
+		const provider = withPersonalizedCatalog(builtinProvider(), personalize, undefined);
+		const store = new InMemoryModelsStore();
+
+		await refreshProvider(provider, store);
+		expect(fetchSpy).not.toHaveBeenCalled();
+		expect(personalize.mock.calls[0]?.[0].map((entry) => entry.id)).toEqual(["static"]);
+		expect(provider.getModels().map((entry) => entry.id)).toEqual(["static"]);
 	});
 
 	it("restores a saved list as is, and falls back to the built-in models only when it is empty", async () => {
@@ -370,10 +399,10 @@ describe("personalized catalog provider", () => {
 			throw new Error("not used offline");
 		};
 		const store = new InMemoryModelsStore();
-		const provider = withPersonalizedCatalog(builtinProvider(), personalize);
+		const provider = withPersonalizedCatalog(builtinProvider(), personalize, "https://catalog.example.test");
 
-		// nycode versions before per-key lists stored the plain pi.dev catalog here, and saved an empty list
-		// after a missing pi.dev catalog or a failed first request. Only such an entry can be empty.
+		// nycode versions before per-key lists stored the plain remote catalog here, and saved an empty list
+		// after a missing remote catalog or a failed first request. Only such an entry can be empty.
 		await store.write(provider.id, { models: [], checkedAt: 1 });
 		await refreshProvider(provider, store, { allowNetwork: false });
 		expect(provider.getModels().map((entry) => entry.id)).toEqual(["static"]);

@@ -371,7 +371,7 @@ await models.refresh();                            // refresh all providers conc
 const fresh = models.getModel('llamacpp', 'qwen3-30b');
 ```
 
-Static built-in providers are no-ops for `refresh()`. Radius is both static and dynamic: it ships the public `radius.pi.dev` catalog for synchronous API lookup, then overlays cached and freshly fetched `/v1/config` models when refreshed with configured auth. See [createProvider()](#createprovider) for building a dynamic provider.
+Static built-in providers are no-ops for `refresh()`. Radius is both static and dynamic: it has no embedded public catalog and no default gateway: the provider exists only when a gateway URL is configured through `NYCODE_RADIUS_GATEWAY`, and it overlays cached and freshly fetched `/v1/config` models when refreshed with configured auth. See [createProvider()](#createprovider) for building a dynamic provider.
 
 ## Auth
 
@@ -454,7 +454,7 @@ await models.completeSimple(model, context, { identity: { attribution: null } })
   - NVIDIA NIM: `X-BILLING-INVOKE-ORIGIN: <name>` with its first letter upper-cased.
   - OpenCode: `x-opencode-client: <name>`.
 
-  `NYCODE_ATTRIBUTION` is nycode's: `{ name: "nycode", url: "https://pi.dev", categories: ["cli-agent"] }`.
+  `NYCODE_ATTRIBUTION` is nycode's: `{ name: "nycode", url: "https://github.com/marcioazam/nycode", categories: ["cli-agent"] }`.
 
 Identity headers are defaults below provider, model, and request headers, so configured headers win and a `null` request header removes one. Providers that send a fixed client identity, such as GitHub Copilot and Anthropic OAuth, keep it. `withClientIdentity(models, identity)` returns a wrapper of a `Models` (or `MutableModels`) whose requests use `identity` over the one the `Models` was created with, for libraries that receive a `Models` from their host. `identity` is plain JSON, so it can be persisted with other request options.
 

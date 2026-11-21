@@ -131,11 +131,13 @@ async function promptForOptions(
 		includeSummary = summary !== "No";
 	}
 	const description = hint.trim();
+	const gatewayUrl = getRadiusGatewayUrl();
+	const exportNote = "Export writes a zip archive to the current directory";
 	const delivery = await choose(
 		context,
 		"Bug report",
-		["Upload Report", "Export as Zip", "Cancel"],
-		`Description: ${description || "none"}\nTranscript: ${includeSession ? "included" : "not included"}\nSummary: ${includeSummary ? `written by ${context.session.model?.name ?? "the current model"}` : "none"}\n\nUpload sends the report to ${new URL(getRadiusGatewayUrl()).host}. Export writes a zip archive to the current directory instead.`,
+		gatewayUrl ? ["Upload Report", "Export as Zip", "Cancel"] : ["Export as Zip", "Cancel"],
+		`Description: ${description || "none"}\nTranscript: ${includeSession ? "included" : "not included"}\nSummary: ${includeSummary ? `written by ${context.session.model?.name ?? "the current model"}` : "none"}\n\n${gatewayUrl ? `Upload sends the report to ${new URL(gatewayUrl).host}. ${exportNote} instead.` : `${exportNote}; upload needs NYCODE_RADIUS_GATEWAY.`}`,
 	);
 	if (!delivery || delivery === "Cancel") return undefined;
 	return {

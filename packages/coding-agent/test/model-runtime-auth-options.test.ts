@@ -1,7 +1,9 @@
 import { type AuthType, type CredentialStore, InMemoryCredentialStore } from "@nycode/ai";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { AuthStorage } from "../src/core/auth-storage.ts";
 import { ModelRuntime } from "../src/core/model-runtime.ts";
+
+afterEach(() => vi.unstubAllEnvs());
 
 function authOptions(runtime: ModelRuntime, type?: AuthType) {
 	return runtime
@@ -124,6 +126,7 @@ describe("ModelRuntime auth options", () => {
 	});
 
 	it("distinguishes subscription OAuth from generic OAuth sign-in", async () => {
+		vi.stubEnv("NYCODE_RADIUS_GATEWAY", "https://radius.example.test");
 		const runtime = await ModelRuntime.create({
 			credentials: AuthStorage.inMemory({
 				anthropic: {

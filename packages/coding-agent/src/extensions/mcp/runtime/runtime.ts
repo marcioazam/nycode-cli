@@ -34,18 +34,18 @@ import {
 	type McpOAuthSettings,
 	type OAuthChallenge,
 } from "@nycode/mcp/oauth";
-import { VERSION } from "../../config.ts";
-import { resolveConfigValueOrThrow, resolveHeadersOrThrow } from "../../core/resolve-config-value.ts";
-import { sliceTail } from "../../core/tools/truncate.ts";
-import type { McpServerEntry } from "./config.ts";
-import type { McpServerLog } from "./log.ts";
-import { createMcpAuthProvider, type McpOAuthCredentialStore } from "./oauth.ts";
-import type { McpResourceServer } from "./resources.ts";
-import type { McpToolCaller } from "./tools.ts";
+import { VERSION } from "../../../config.ts";
+import { resolveConfigValueOrThrow, resolveHeadersOrThrow } from "../../../core/resolve-config-value.ts";
+import { sliceTail } from "../../../core/tools/truncate.ts";
+import type { McpServerEntry } from "../config.ts";
+import type { McpServerLog } from "../log.ts";
+import { createMcpAuthProvider, type McpOAuthCredentialStore } from "../oauth/oauth.ts";
+import type { McpResourceServer } from "../resources.ts";
+import type { McpToolCaller } from "../tools.ts";
 
 export { McpSignInCancelledError } from "@nycode/mcp/oauth";
-export { McpServerLog } from "./log.ts";
-export { McpOAuthCredentialStore, signInMcpServer } from "./oauth.ts";
+export { McpServerLog } from "../log.ts";
+export { McpOAuthCredentialStore, signInMcpServer } from "../oauth/oauth.ts";
 
 const DEFAULT_TIMEOUT_SECONDS = 60;
 const STDERR_TAIL_CHARS = 2_000;

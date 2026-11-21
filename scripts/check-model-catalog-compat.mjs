@@ -2,7 +2,7 @@
 
 // Checks that released nycode versions can use the model catalog we are about to publish.
 //
-// Problem: pi.dev serves each published catalog to every released nycode at or above
+// Problem: a configured catalog server serves each published catalog to every released nycode at or above
 // MINIMUM_PI_VERSION. Released clients use it right away, without updating nycode.
 // If the catalog needs code they don't have, they break.
 //
@@ -121,7 +121,7 @@ function main() {
 					error.message,
 					"",
 					`The model catalog does not type-check against nycode ${release}'s nycode-ai (errors above).`,
-					`pi.dev serves it to released nycode >= ${MINIMUM_PI_VERSION}, so those clients would receive models`,
+					`A configured catalog server serves it to released nycode >= ${MINIMUM_PI_VERSION}, so those clients would receive models`,
 					"their code cannot handle, e.g. a model whose api its provider does not implement.",
 					"If the change is intended, set MINIMUM_PI_VERSION in scripts/model-catalog-minimum-version.mjs",
 					"to the next release in the same commit.",
