@@ -475,7 +475,7 @@ de referência (a divisão em PRs segue diretórios); submódulo que não compil
 
 1. `subagent` núcleo (`run`, `modes`, `concurrency`, `index`, `params`): `subagent-nesting.test.ts`; `background`.
    1b. Depois de `fleet-ui` e `section-nav` (itens 2 e 4): `status-line` + `statusline-multiline` +
-   `zzzzzzzz-statusline-provider` e `run`, vindos de F5 (D-34); fecham C-F5-03 a C-F5-22 e C-F5-25.
+   `zzzzzzzz-statusline-provider` e `run`, vindos de F5 (D-34); fecham C-F5-21, C-F5-22, C-F5-25 e C-F5-26.
 2. `fleet` (store, tracker, inbox, source): `fleet*.test.ts` (4); depois `fleet-ui` (patches `zz-panel-main-root` e
    `zzz-panel-column0`, sem teste próprio): `fleet-ui.test.ts`, `fleet-ui-layout.test.ts`.
 3. `transcript`: `subagent-render/render.test.ts`.
