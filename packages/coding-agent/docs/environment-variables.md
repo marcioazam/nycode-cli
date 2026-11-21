@@ -100,4 +100,29 @@ These variables are read by Nycode itself:
 | `VISUAL`, `EDITOR` | External editor fallback when `externalEditor` is unset |
 | `HTTP_PROXY`, `HTTPS_PROXY` | Proxy outbound HTTP requests |
 
+### Nycode Settings Variables
+
+Every variable below overrides the `settings.json` key in the second column; the variable wins over the file. Switches accept `1`/`true` and `0`/`false`. A value that does not parse is ignored and the file value applies. Defaults are in [Settings](settings.md#permissions-harness-and-integrations). The extensions that use these keys are built in; the variables exist so automation can override a file.
+
+| Variable | Setting |
+|----------|---------|
+| `NYCODE_BYPASS_PERMISSIONS` | `permissions.bypass`; `--bypass`, `--dangerously-skip-permissions`, `--safe`, and `--no-bypass` take precedence |
+| `NYCODE_COMPACT_AT` | `compaction.maxContextTokens` |
+| `NYCODE_EFFORT_SANDWICH`, `NYCODE_EFFORT_SANDWICH_TURNS` | `harness.effortSandwich.enabled`, `harness.effortSandwich.turns` |
+| `NYCODE_SUBAGENT_RESPAWN` | `subagent.respawn` |
+| `NYCODE_HEADLESS_LEAN`, `NYCODE_HEADLESS_TRIM`, `NYCODE_HEADLESS_TOOLS`, `NYCODE_HEADLESS_FLOOR` | `harness.headless.lean`, `.trim`, `.tools`, `.floor` |
+| `NYCODE_BASH_TIMEOUT_BG` | `tools.bash.backgroundOnTimeout` |
+| `NYCODE_TODO_SYNC` | `todo.staleReminder` |
+| `NYCODE_PREFIX_CACHE_1H` | `harness.prefixCache1h` |
+| `NYCODE_AUTO_RESUME` | `harness.autoResume` |
+| `NYCODE_PLAN_GATE` | `plan.gate` |
+| `NYCODE_COMPLETION_GATE` | `harness.completionGate` |
+| `NYCODE_SOUND_NOTIFY` | `notify.sound` |
+| `NYCODE_UI_STATE`, `NYCODE_REDUCED_MOTION`, `NYCODE_NERD_FONT`, `NYCODE_ASCII_ICONS` | `terminal.uiState`, `.reducedMotion`, `.nerdFont`, `.asciiIcons` |
+| `NYCODE_KNOWLEDGE_VAULT`, `NYCODE_GRAPHS_VAULT` | `knowledge.vault`, `knowledge.graphsVault` |
+| `CODEGRAPH_AUTO_ROOT`, `CODEGRAPH_BIN`, `CODEGRAPH_STATUS_TTL`, `CODEGRAPH_AUTO_STATE` | `codegraph.autoRoot`, `.bin`, `.statusTtl`, `.autoState` (the codegraph tool's own names) |
+| `NYCODE_MCP_CONFIG` | `mcp.configPath` |
+
+`NYCODE_DISABLE_TERMINAL_TITLE`, `NYCODE_SUBAGENT`, and `NYCODE_SUBAGENT_DEPTH` have no settings key: the first is a switch for automation and the other two mark child processes.
+
 Provider credentials such as `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, and provider-specific configuration are listed in [Providers](providers.md#use-an-api-key-from-the-environment).
