@@ -79,13 +79,13 @@ a costura K1 é código do core: o teste passa a rodar sem o wrapper e **deixa d
 - **`hud/tests` (`.mjs`)**. Arquivos: 4. Destino ou decisão: `resources/statusline/`; dependem do plugin Claude HUD
   (excluídos hoje do CI).
 - **`evals/harbor/tests`**. Arquivos: 3. Destino ou decisão: `omp_agent` some (D-26); `pi_harness_agent` e
-  `pi_vanilla_api_agent` seguem com o `bench/`.
-- **`evals/test_plan_ab.py`**. Arquivos: 1. Destino ou decisão: `scripts/harness/evals/`.
+  `pi_vanilla_api_agent` foram para `bench/tests/harbor/` (F10).
+- **`evals/test_plan_ab.py`**. Arquivos: 1. Destino ou decisão: removido em F10 (nada referencia o `plan_ab`; 03 §2.3).
 - **`checks/` (`test_check_agents`, `test_skill_usage`)**. Arquivos: 2. Destino ou decisão: `scripts/harness/checks/`.
 - **`telemetry/`**. Arquivos: 2. Destino ou decisão: `scripts/harness/telemetry/`.
 - **`puxar/test_puxar.py`**. Arquivos: 1. Destino ou decisão: `scripts/harness/puxar/` (extensão
   `import-claude-session`).
-- **`structure/test_structure.py`**. Arquivos: 1. Destino ou decisão: `scripts/harness/structure/` (seção 3.5 de 07).
+- **`structure/test_structure.py`**. Arquivos: 1. Destino ou decisão: `scripts/ci/lint/structure/` (07 §3.5, F10).
 - **Total**. Arquivos: 22.
 - **`pi-ui-final-gate.sh`, `terminal-sota/{e2e,gate}.sh`**. Arquivos: 3. Destino ou decisão: gates de UI; **não
   verificado** se migram (ver a dimensão "interativo", seção 5.4).
