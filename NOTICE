@@ -13,6 +13,12 @@ packages/coding-agent/src/extensions/. Licença MIT, Copyright (c) 2025 Mario
 Zechner e Copyright (c) 2026 ilovepixelart; o texto da licença é o mesmo de
 LICENSE.
 
+pi-lsp 0.1.7 (pacote npm `pi-lsp`, sha512
+bEmxw2pZ3lUh5LDJFCShnmjbCltmSZLOp6neIl+sWEfOEwMBi6IdOoQ2W00Fdc+k8i2Sw17p7XGElykWmDQOkg==),
+com os patches do ny-pi, embutido em packages/coding-agent/src/extensions/lsp/.
+Licença MIT, "Copyright (c) 2026" (sem titular nomeado no pacote); o texto da
+licença está em packages/coding-agent/src/extensions/lsp/LICENSE.
+
 ny-pi, licença MIT, Copyright (c) 2026 ny-pi contributors; o texto da licença
 é o mesmo de LICENSE.
 
