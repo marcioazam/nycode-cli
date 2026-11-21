@@ -31,87 +31,27 @@
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
-import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent'
-import { truncateToWidth } from '@earendil-works/pi-tui'
-import { hookFiles, readSettingsDisableAllHooks, runHookCommand } from './hooks/index.ts'
-import { addDirFlagValue } from './internal/add-dir-flag.ts'
-import { claudeEffortLevel } from './internal/effort.ts'
-import { readManagedSettings } from './internal/managed-settings.ts'
-import { PACKAGE_VERSION } from './internal/package-version.ts'
-import { isPlanModeState, PLAN_MODE_CHANNEL } from './internal/plan-mode-state.ts'
-import { approvalRecheck, isProjectApprovedSilently } from './internal/project-approval.ts'
-import { checkoutRoot, gitRoot } from './internal/project-root.ts'
-import { readSettingsChain } from './internal/settings-chain.ts'
-import { watchSettingsFiles } from './internal/settings-watch.ts'
-import { readActiveStyleName, settingsFiles } from './output-styles.ts'
-import { dropTodoRows, frameStatusLine, labelFooter, layoutStatus, modelNames, setThinkingSource, tabbed, tidyRow } from './subagent/fleet-ui/chrome.ts'
-import { hudTheme } from './subagent/fleet-ui/palette.ts'
-import { bridge as sectionBridge } from './subagent/fleet-ui/section.ts'
-import { nav } from './subagent/section-nav/nav.ts'
+import type { ExtensionAPI, ExtensionContext } from '../../core/extensions/types.ts'
+import { addDirFlagValue } from '../_shared/seams/add-dir-flag.ts'
+import { claudeEffortLevel } from '../_shared/model/effort.ts'
+import { isPlanModeState, PLAN_MODE_CHANNEL } from '../_shared/events/plan-mode-state.ts'
+import { approvalRecheck, isProjectApprovedSilently } from '../_shared/project/project-approval.ts'
+import { checkoutRoot, gitRoot } from '../_shared/project/project-root.ts'
+import { watchSettingsFiles } from '../_shared/settings/settings-watch.ts'
+import { PACKAGE_VERSION } from '../_shared/util/package-version.ts'
+import { hookFiles, runHookCommand } from '../hooks/index.ts'
+import { readActiveStyleName, settingsFiles } from '../output-styles/index.ts'
+import { dropTodoRows, frameStatusLine, labelFooter, layoutStatus, modelNames, setThinkingSource, tabbed, tidyRow } from '../subagent/fleet-ui/style/chrome.ts'
+import { hudTheme } from '../subagent/fleet-ui/style/palette.ts'
+import { bridge as sectionBridge } from '../subagent/fleet-ui/section.ts'
+import { nav } from '../subagent/section-nav/nav.ts'
+import { activeStatusLine, type StatusLineConfig } from './config.ts'
+import { liveRateLimits, normalizeHeaders, parseRateLimits, type RateLimitSnapshot } from './rate-limits.ts'
+import { FOOTER_BRIDGE_CHANNEL, hudFooterBridge, renderStatusRows, statusRows } from './rows.ts'
 
 const COMMAND_TIMEOUT_MS = 5_000
 const DEBOUNCE_MS = 300
 const WIDGET_KEY = 'pi-code-statusline'
-
-/** stdout split into non-empty trimmed rows: one row goes to the footer segment, 2+ to the
- * widget (left-padded). Nothing lands in both. */
-export function statusRows(stdout: string, padding: number): { footer: string | undefined; rows: string[] } {
-  const rows = stdout
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-  const pad = ' '.repeat(padding)
-  if (rows.length === 0) return { footer: undefined, rows: [] }
-  if (rows.length === 1) return { footer: `${pad}${rows[0]}${pad}`, rows: [] }
-  return { footer: undefined, rows: rows.map((row) => pad + row) }
-}
-
-/** Each row cut to the render width (ANSI-aware); a string[] widget would wrap instead. Absorbed
- * extension statuses (the plan's 📋 n/m) close the last row, the tools one, with the HUD's separator. */
-export function renderStatusRows(rows: string[], width: number, trailers: Array<string | undefined> = []): string[] {
-  const tail = trailers.filter((t): t is string => !!t).join(' | ')
-  const all = tail && rows.length > 0 ? [...rows.slice(0, -1), `${rows.at(-1)} | ${tail}`] : rows
-  return all.map((row) => truncateToWidth(row, width))
-}
-
-/** Extension statuses the HUD shows on its tools row instead of the footer (user request 2026-11-13). */
-const ABSORBED = ['plan-mode']
-/** The footer extension (~/.pi/agent/extensions/footer-no-stats.ts) publishes its provider here once. */
-export const FOOTER_BRIDGE_CHANNEL = 'pi-code:footer-bridge'
-interface FooterBridge {
-  footerData: { getExtensionStatuses(): ReadonlyMap<string, string> }
-  absorbed: Set<string>
-  /** Set while the widget is folded: the footer then drops every extension status (bypass warning included). */
-  folded?: boolean
-}
-
-/** Live view of the footer's statuses: read at render time, and the keys it shows are claimed so the
- * footer drops them while the widget is up (and shows them again when it goes). */
-export function hudFooterBridge() {
-  let bridge: FooterBridge | undefined
-  let claimed = false
-  const apply = (): void => {
-    for (const k of ABSORBED) claimed ? bridge?.absorbed.add(k) : bridge?.absorbed.delete(k)
-  }
-  return {
-    /** A footer built after the widget gets the current claim too. */
-    attach(data: unknown): void {
-      const b = data as FooterBridge | null
-      if (typeof b?.footerData?.getExtensionStatuses !== 'function' || !(b.absorbed instanceof Set)) return
-      bridge = b
-      apply()
-    },
-    trailers: (): Array<string | undefined> => (bridge ? ABSORBED.map((k) => bridge!.footerData.getExtensionStatuses().get(k)) : []),
-    claim(shown: boolean): void {
-      claimed = shown
-      if (!shown) this.fold(false)
-      apply()
-    },
-    fold(folded: boolean): void {
-      if (bridge) bridge.folded = folded
-    },
-  }
-}
 
 /** Whether cwd sits in a git worktree: `.git` is a file pointing at the main
  * checkout there, and a directory in an ordinary clone. */
@@ -153,130 +93,6 @@ function formatCost(cost: number): string {
   return cost >= 0.01 ? `$${cost.toFixed(2)}` : `$${cost.toFixed(4)}`
 }
 
-interface RateLimitWindow {
-  used_percentage: number
-  /** Unix epoch seconds when the window resets, per Claude's documented field. */
-  resets_at?: number
-}
-interface RateLimitSnapshot {
-  five_hour?: RateLimitWindow
-  seven_day?: RateLimitWindow
-}
-
-/** Lowercase every header name (HTTP names are case-insensitive) and drop null
- * values, so a single lookup shape works regardless of how the provider cased
- * them. ProviderHeaders values are string | null. */
-function normalizeHeaders(raw: Record<string, string | null> | undefined): Record<string, string> {
-  const out: Record<string, string> = {}
-  for (const [key, value] of Object.entries(raw ?? {})) {
-    if (typeof value === 'string') out[key.toLowerCase()] = value
-  }
-  return out
-}
-
-function toNumber(value: string | undefined): number | undefined {
-  if (value === undefined || value.trim() === '') return undefined
-  const parsed = Number(value)
-  return Number.isFinite(parsed) ? parsed : undefined
-}
-
-/** One rate-limit window from the `anthropic-ratelimit-<prefix>-*` header family,
- * taking `-utilization` when present, else computing the percentage from `-limit` and
- * `-remaining`. `-utilization` is a 0 to 1 fraction, while Claude documents
- * used_percentage as "from 0 to 100": it is scaled and rounded to one decimal, as
- * Claude Code does (Math.round(utilization * 1000) / 10). resets_at comes from `-reset`
- * when the header is set. Header names vary, so only what is present is read. */
-function readRateLimitWindow(headers: Record<string, string>, prefix: string): RateLimitWindow | undefined {
-  const base = `anthropic-ratelimit-${prefix}`
-  const utilization = toNumber(headers[`${base}-utilization`])
-  let usedPercentage = utilization === undefined ? undefined : Math.round(utilization * 1000) / 10
-  if (usedPercentage === undefined) {
-    const limit = toNumber(headers[`${base}-limit`])
-    const remaining = toNumber(headers[`${base}-remaining`])
-    if (limit !== undefined && limit > 0 && remaining !== undefined) {
-      usedPercentage = ((limit - remaining) / limit) * 100
-    }
-  }
-  if (usedPercentage === undefined) return undefined
-  // A provider can report a utilization above 100 (or a remaining above the limit, making
-  // the computed value negative); clamp so the payload never carries a nonsense percentage.
-  const window: RateLimitWindow = { used_percentage: Math.max(0, Math.min(100, usedPercentage)) }
-  const resetsAt = headers[`${base}-reset`] ?? headers[`${base}-resets-at`]
-  if (resetsAt) {
-    // Claude documents resets_at as Unix epoch seconds; the header carries an ISO
-    // timestamp (or, from some providers, a bare epoch number already).
-    const epoch = /^\d+$/.test(resetsAt.trim()) ? Number(resetsAt.trim()) : Math.floor(Date.parse(resetsAt) / 1000)
-    if (Number.isFinite(epoch)) window.resets_at = epoch
-  }
-  return window
-}
-
-/** The snapshot with expired windows dropped, so a window whose reset time has
- * passed never lingers in the payload; undefined when nothing remains. */
-function liveRateLimits(snapshot: RateLimitSnapshot): RateLimitSnapshot | undefined {
-  const nowSeconds = Date.now() / 1000
-  const keep = (window?: RateLimitWindow): RateLimitWindow | undefined => (window && (window.resets_at === undefined || window.resets_at > nowSeconds) ? window : undefined)
-  const fiveHour = keep(snapshot.five_hour)
-  const sevenDay = keep(snapshot.seven_day)
-  if (!fiveHour && !sevenDay) return undefined
-  return { ...(fiveHour ? { five_hour: fiveHour } : {}), ...(sevenDay ? { seven_day: sevenDay } : {}) }
-}
-
-/** The five-hour and seven-day utilization windows Claude's statusline reports,
- * from the unified rate-limit response headers. Undefined when neither is present
- * so a response without them never clobbers an earlier snapshot. */
-function parseRateLimits(headers: Record<string, string>): RateLimitSnapshot | undefined {
-  const fiveHour = readRateLimitWindow(headers, 'unified-5h')
-  const sevenDay = readRateLimitWindow(headers, 'unified-7d')
-  if (!fiveHour && !sevenDay) return undefined
-  const snapshot: RateLimitSnapshot = {}
-  if (fiveHour) snapshot.five_hour = fiveHour
-  if (sevenDay) snapshot.seven_day = sevenDay
-  return snapshot
-}
-
-export interface StatusLineConfig {
-  command: string
-  padding: number
-  refreshInterval: number | undefined
-}
-
-/** One settings `statusLine` entry parsed into a config, or undefined when it is
- * not Claude's `{type: "command", command, padding?, refreshInterval?}` shape;
- * refreshInterval has a documented minimum of 1. */
-function parseStatusLineEntry(entry: unknown): StatusLineConfig | undefined {
-  if (entry === null || typeof entry !== 'object') return undefined
-  const record = entry as { type?: unknown; command?: unknown; padding?: unknown; refreshInterval?: unknown }
-  if (typeof record.command !== 'string') return undefined
-  if (record.type !== undefined && record.type !== 'command') return undefined
-  return {
-    command: record.command,
-    padding: typeof record.padding === 'number' && record.padding > 0 ? record.padding : 0,
-    refreshInterval: typeof record.refreshInterval === 'number' && record.refreshInterval >= 1 ? record.refreshInterval : undefined,
-  }
-}
-
-/** The `statusLine` recorded in settings, last file winning; a managed policy
- * entry wins over every file, and allowManagedHooksOnly narrows the setting to
- * managed settings entirely, as Claude documents. */
-export function readStatusLineConfig(files: string[], managed: Record<string, unknown> = readManagedSettings()): StatusLineConfig | undefined {
-  const managedConfig = parseStatusLineEntry(managed.statusLine)
-  if (managedConfig) return managedConfig
-  if (managed.allowManagedHooksOnly === true) return undefined
-  let found: StatusLineConfig | undefined
-  for (const settings of readSettingsChain(files)) found = parseStatusLineEntry(settings.statusLine) ?? found
-  return found
-}
-
-/** The statusLine that runs. Claude: with disableAllHooks set outside managed settings,
- * "Claude Code runs only a statusLine from managed settings, and with no managed
- * statusLine the status line is disabled"; set in managed settings, nothing runs. */
-export function activeStatusLine(files: string[], managed: Record<string, unknown> = readManagedSettings()): StatusLineConfig | undefined {
-  if (managed.disableAllHooks === true) return undefined
-  if (readSettingsDisableAllHooks(files)) return parseStatusLineEntry(managed.statusLine)
-  return readStatusLineConfig(files, managed)
-}
-
 /** The --add-dir directories, the flag context-imports registers for Claude's additional
  * working directories. Empty when none were given, which is the documented shape. */
 function addedDirs(): string[] {
@@ -288,8 +104,8 @@ function addedDirs(): string[] {
     .filter(Boolean)
 }
 
-export default function statusLine(pi: ExtensionAPI) {
-  setThinkingSource(() => pi.getThinkingLevel?.())
+export default function statusLine(nycode: ExtensionAPI) {
+  setThinkingSource(() => nycode.getThinkingLevel?.())
   let turnCount = 0
   let config: StatusLineConfig | undefined
   let sessionCtx: ExtensionContext | undefined
@@ -309,7 +125,7 @@ export default function statusLine(pi: ExtensionAPI) {
   let styleDirty = false
   // Lines changed, counted from successful edit/write inputs: newText and content
   // lines add, oldText lines remove. An approximation of Claude's counters, which
-  // is honest for the tools pi has; bash-side changes are invisible to both.
+  // is honest for the tools nycode has; bash-side changes are invisible to both.
   let linesAdded = 0
   let linesRemoved = 0
   // API timing and the last message's token usage, from provider/message events:
@@ -359,7 +175,7 @@ export default function statusLine(pi: ExtensionAPI) {
       }, { placement: 'belowEditor' })
       widgetShown = rows.length > 0
       footer.claim(widgetShown)
-      // pi moves a re-set widget last: the Plan section, when showing, goes back below the status line.
+      // nycode moves a re-set widget last: the Plan section, when showing, goes back below the status line.
       if (widgetShown) sectionBridge.reassertPlan()
     } catch {
       // Session gone: the widget went with it.
@@ -369,7 +185,7 @@ export default function statusLine(pi: ExtensionAPI) {
   /** Rows of the last script run: 2+ rows are the widget, none means the footer-only path. */
   let scriptRows: string[] = []
   let lastBuiltIn = ''
-  /** Footer-only status promoted into the widget: pi renders the footer below every widget, which would put it
+  /** Footer-only status promoted into the widget: nycode renders the footer below every widget, which would put it
    * under the Plan section; while Plan shows, the one-row (or built-in) status joins the widget above it. */
   let promoted = false
 
@@ -405,12 +221,12 @@ export default function statusLine(pi: ExtensionAPI) {
       hook_event_name: 'Status',
       session_id: ctx.sessionManager.getSessionId(),
       cwd: ctx.cwd,
-      // Claude sends its CLI version; pi-code's own version is the honest analogue.
+      // Claude sends its CLI version; nycode's own version is the honest analogue.
       version: PACKAGE_VERSION,
       // project_dir is the repository, not the directory the session started in: a
       // script labelling the project showed whichever subdirectory it was launched
       // from. git_worktree names a linked worktree and is absent in a main checkout, as
-      // Claude sends it. added_dirs comes from the --add-dir flag pi-code registers.
+      // Claude sends it. added_dirs comes from the --add-dir flag nycode registers.
       workspace: {
         current_dir: ctx.cwd,
         project_dir: checkoutRoot(ctx.cwd),
@@ -495,7 +311,7 @@ export default function statusLine(pi: ExtensionAPI) {
     try {
       // Everything below can touch ctx after an await, and every ctx getter throws
       // once the session is disposed. This promise is started from a timer with no
-      // awaiter, so an escaping rejection becomes an uncaughtException and exits pi.
+      // awaiter, so an escaping rejection becomes an uncaughtException and exits nycode.
       const result = await runHookCommand(config.command, buildPayload(ctx), COMMAND_TIMEOUT_MS, {
         onChild: (kill) => {
           killInflight = kill
@@ -549,9 +365,9 @@ export default function statusLine(pi: ExtensionAPI) {
   }
 
   const footer = hudFooterBridge()
-  pi.events.on(FOOTER_BRIDGE_CHANNEL, (data) => footer.attach(data))
+  nycode.events.on(FOOTER_BRIDGE_CHANNEL, (data) => footer.attach(data))
 
-  pi.events.on(PLAN_MODE_CHANNEL, (data) => {
+  nycode.events.on(PLAN_MODE_CHANNEL, (data) => {
     if (!isPlanModeState(data)) return
     permissionMode = data.active ? 'plan' : 'default'
     scheduleRefresh()
@@ -559,7 +375,7 @@ export default function statusLine(pi: ExtensionAPI) {
 
   // Counted here rather than in buildPayload so the numbers accumulate across the
   // session the way Claude's counters do.
-  pi.on('tool_result', (event) => {
+  nycode.on('tool_result', (event) => {
     if (event.isError) return
     const input = event.input as Record<string, unknown>
     const lines = (text: unknown): number => (typeof text === 'string' && text.length > 0 ? text.split('\n').length : 0)
@@ -574,10 +390,10 @@ export default function statusLine(pi: ExtensionAPI) {
 
   // API round-trip timing: the window between the request and its response, summed
   // across the session. ctx exposes no API-duration getter, so it is measured here.
-  pi.on('before_provider_request', () => {
+  nycode.on('before_provider_request', () => {
     requestStartMs = Date.now()
   })
-  pi.on('after_provider_response', (event, ctx) => {
+  nycode.on('after_provider_response', (event, ctx) => {
     if (requestStartMs !== undefined) apiDurationMs += Date.now() - requestStartMs
     requestStartMs = undefined
     // Rate-limit windows and 429 handling ride on the same response event. Header
@@ -601,7 +417,7 @@ export default function statusLine(pi: ExtensionAPI) {
   })
   // The last message's token usage, for the breakdown getContextUsage() omits,
   // and the running cost total, so renders never re-walk the branch.
-  pi.on('message_end', (event) => {
+  nycode.on('message_end', (event) => {
     const usage = (event as { message?: { usage?: NonNullable<typeof lastUsage> & { cost?: { total?: number } } } }).message?.usage
     if (!usage) return
     lastUsage = usage
@@ -610,7 +426,7 @@ export default function statusLine(pi: ExtensionAPI) {
     scheduleRefresh()
   })
 
-  pi.on('session_start', (_event, ctx) => {
+  nycode.on('session_start', (_event, ctx) => {
     // One instance serves every session, so a fresh session must not inherit state.
     turnCount = 0
     commandLine = undefined
@@ -686,7 +502,7 @@ export default function statusLine(pi: ExtensionAPI) {
     scheduleRefresh()
   })
 
-  pi.on('turn_start', (_event, ctx) => {
+  nycode.on('turn_start', (_event, ctx) => {
     turnCount++
     // A /output-style between turns lands in settings silently; its style applies
     // from this turn, so this is the moment the cached name can go stale.
@@ -695,12 +511,12 @@ export default function statusLine(pi: ExtensionAPI) {
     show(ctx, theme.fg('accent', '●') + theme.fg('dim', ` turn ${turnCount}...`))
   })
 
-  pi.on('turn_end', (_event, ctx) => {
+  nycode.on('turn_end', (_event, ctx) => {
     show(ctx, segmentText(ctx, ctx.ui.theme.fg('success', '✓')))
     scheduleRefresh()
   })
 
-  pi.on('agent_end', (_event, ctx) => {
+  nycode.on('agent_end', (_event, ctx) => {
     show(ctx, segmentText(ctx, ctx.ui.theme.fg('success', '✓')))
     scheduleRefresh()
   })
@@ -709,16 +525,16 @@ export default function statusLine(pi: ExtensionAPI) {
   // fires these events, so refresh at once instead of waiting for the next tick.
   // The rate-limit snapshot belongs to the provider that sent it: drop it on a switch, so
   // Anthropic -> GPT -> Anthropic does not revive the old headers (docs/hud-provider-usage.md).
-  pi.on('model_select', () => {
+  nycode.on('model_select', () => {
     rateLimits = undefined
     clearTimeout(expiryTimer)
     scheduleRefresh()
   })
-  pi.on('thinking_level_select', () => {
+  nycode.on('thinking_level_select', () => {
     scheduleRefresh()
   })
 
-  pi.on('session_compact', (_event, ctx) => {
+  nycode.on('session_compact', (_event, ctx) => {
     // Compaction replaces the branch entries; reseed the total from what remains. The last
     // response's usage describes the context that was just replaced: Claude sends
     // current_usage null until the next API call.
@@ -727,12 +543,12 @@ export default function statusLine(pi: ExtensionAPI) {
     scheduleRefresh()
   })
 
-  pi.on('session_tree', (_event, ctx) => {
+  nycode.on('session_tree', (_event, ctx) => {
     // Tree navigation swaps the branch wholesale with no message_end events.
     costTotal = sessionCost(ctx)
   })
 
-  pi.on('session_shutdown', () => {
+  nycode.on('session_shutdown', () => {
     if (sessionCtx) setRows(sessionCtx, [])
     sectionBridge.onPlanChange = undefined
     nav.resetTabs()
@@ -740,7 +556,7 @@ export default function statusLine(pi: ExtensionAPI) {
     clearInterval(refreshTimer)
     clearTimeout(debounceTimer)
     clearTimeout(expiryTimer)
-    // pi's CLI loads a fresh extension instance for every session replacement, so no later
+    // nycode's CLI loads a fresh extension instance for every session replacement, so no later
     // session_start reaches this watcher: left armed, it polls for the life of the process.
     disposeSettingsWatch()
     disposeSettingsWatch = () => {}
