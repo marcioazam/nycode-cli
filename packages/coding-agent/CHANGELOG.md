@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added `nycode migrate from-pi`, a dry-run-by-default import of a pi agent directory (settings, `local.env`, MCP config, models, LSP, keybindings, sessions, project trust) into the nycode agent directory; `--apply` writes with backups
+
 ### Fixed
 
 - Fixed sessions with very many entries after the last compaction (about 120k or more) failing to load with `RangeError: Maximum call stack size exceeded` when building the context ([#12154](https://github.com/earendil-works/pi/issues/12154))

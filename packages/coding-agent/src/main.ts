@@ -68,6 +68,7 @@ import { hasTrustRequiringProjectResources, ProjectTrustStore } from "./core/tru
 import { builtInExtensions } from "./extensions/index.ts";
 import { loadMcpCommand } from "./extensions/mcp/cli.lazy.ts";
 import { runMigrations, showDeprecationWarnings } from "./migrations.ts";
+import { runMigrateCommand } from "./migrations/from-pi.ts";
 import { writeDiagnosticsToStderr } from "./modes/diagnostics-stderr.ts";
 import { InteractiveMode, runPrintMode, runRpcMode } from "./modes/index.ts";
 import { initTheme, setThemeJsonValidator, stopThemeWatcher } from "./modes/interactive/theme/theme.ts";
@@ -659,6 +660,11 @@ export async function main(args: string[], options?: MainOptions) {
 	if (args[0] === "mcp") {
 		const { runMcpCommand } = await loadMcpCommand();
 		process.exitCode = await runMcpCommand(args.slice(1), { cwd, agentDir });
+		return;
+	}
+
+	if (args[0] === "migrate") {
+		process.exitCode = await runMigrateCommand(args.slice(1), { agentDir });
 		return;
 	}
 
