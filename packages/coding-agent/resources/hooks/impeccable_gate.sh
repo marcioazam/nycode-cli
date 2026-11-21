@@ -1,8 +1,8 @@
 #!/bin/sh
-# Called as `impeccable_gate.sh hook` by pi's account settings (SessionStart, PostToolUse Edit|Write, Stop).
+# Called as `impeccable_gate.sh hook` by the default hooks of settings-defaults.ts (SessionStart, PostToolUse Edit|Write, Stop).
 # Runs the package hook only in impeccable projects (.impeccable/, PRODUCT.md or DESIGN.md at the root).
 # Env override (tests): IMPECCABLE_GATE_LAUNCHER.
-launcher=${IMPECCABLE_GATE_LAUNCHER:-$HOME/.pi/agent/claude-home/skills/impeccable/scripts/impeccable}  # optional: needs the impeccable skill
+launcher=${IMPECCABLE_GATE_LAUNCHER:-${NYCODE_RESOURCES}/skills/impeccable/scripts/impeccable}  # optional: needs the impeccable skill
 [ -x "$launcher" ] && [ ! -d "$launcher" ] || exit 0
 tmp=$(mktemp "${TMPDIR:-/tmp}/impeccable-gate.XXXXXX") || exit 0
 trap 'rm -f "$tmp"' EXIT HUP INT TERM

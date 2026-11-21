@@ -1,19 +1,19 @@
 #!/bin/bash
-# pi port of ~/.claude/hooks/hook-dispatch.sh (docs/pi-hooks-port.md). Observe-only: never blocks, never exits non-zero.
+# nycode port of ~/.claude/hooks/hook-dispatch.sh. Observe-only: never blocks, never exits non-zero.
 # Events: SessionStart, PostToolUse (any other event is ignored). The claims ledger, the audit and live telemetry
 # were dropped on cost x benefit (2026-11-11); offline equivalents:
-# python3 ~/.pi/agent/claude-home/bin/telemetry/pi_telemetry.py audit|claims. See docs/pi-hooks-port.md.
+# the telemetry audit|claims commands of the harness scripts.
 set -euo pipefail
 
 command -v jq >/dev/null 2>&1 || exit 0
-# pi-code (Node 'pipe') hands hooks a Unix socket as stdin: `$(</dev/stdin)` reopens it and fails with ENXIO, so
+# nycode (Node 'pipe') hands hooks a Unix socket as stdin: `$(</dev/stdin)` reopens it and fails with ENXIO, so
 # the builtin read takes fd 0 as is (no fork). It returns 1 at EOF with the text read; nothing read means {}.
 IFS= read -r -d '' payload || true
 [ -n "${payload:-}" ] || payload='{}'
 # Harness confirmations of the agent's own edits, task updates and questions: not external input, never scanned.
 OWN_TOOLS='["Edit","Write","NotebookEdit","TodoWrite","TaskCreate","TaskUpdate","TaskList","TaskGet","AskUserQuestion","ExitPlanMode"]'
 # One jq pass for every field the handlers read (PostToolUse runs on every tool call). Invalid JSON exits silently.
-# agents lists the names an Agent call (pi's subagent: {agent} | {tasks:[{agent}]} | {chain:[{agent}]}) dispatched.
+# agents lists the names an Agent call (nycode's subagent: {agent} | {tasks:[{agent}]} | {chain:[{agent}]}) dispatched.
 fields="$(jq -r '(.tool_name // "") as $t | @sh "event=\(.hook_event_name // "") cwd=\(.cwd // "") tool=\($t) session_id=\(.session_id // "")
   bash_command=\(if $t == "Bash" then .tool_input.command // "" else "" end)
   path=\(.tool_input.file_path // .tool_input.notebook_path // .tool_input.path // "")
@@ -32,18 +32,18 @@ emit_context() {
     '{hookSpecificOutput:{hookEventName:$event,additionalContext:$context}}'
 }
 
-# Live, local check: MCP servers of pi's mcp.json whose absolute launcher path vanished. Runs in a child bash
+# Live, local check: MCP servers of nycode's mcp.json whose absolute launcher path vanished. Runs in a child bash
 # (timeout), so it is an exported function.
 # shellcheck disable=SC2329  # invoked by the child bash through export -f
 launcher_check() {
-  local cfg="${PI_MCP_CONFIG:-${HOME}/.pi/agent/mcp.json}" name cmd list=""
+  local cfg="${NYCODE_MCP_CONFIG:-${HOME}/.nycode/agent/mcp.json}" name cmd list=""
   [ -r "$cfg" ] || return 0
   while IFS=$'\t' read -r name cmd; do
     if [ ! -f "$cmd" ] || [ ! -x "$cmd" ]; then list+="${list:+, }${name} (${cmd})"; fi
   done < <(jq -r '(.mcpServers // .servers // {}) | to_entries[]
     | select((.value.command | type) == "string" and (.value.command | startswith("/")))
     | [.key, .value.command] | @tsv' "$cfg" 2>/dev/null)
-  [ -z "$list" ] || printf '%s' "MCP launchers missing for pi: ${list}; fix ~/.pi/agent/mcp.json"
+  [ -z "$list" ] || printf '%s' "MCP launchers missing for nycode: ${list}; fix ~/.nycode/agent/mcp.json"
 }
 
 session_start() {
@@ -65,13 +65,13 @@ session_start() {
     notes+=("repository context detected")
   fi
   # Path and threshold are overridable so tests do not depend on the host's /tmp usage.
-  local tmp_check="${PI_HARNESS_TMP_CHECK_PATH:-/tmp}"
-  if [ -d "$tmp_check" ] && [ "$(df -P "$tmp_check" | awk 'NR == 2 {sub(/%/, "", $5); print $5}')" -ge "${PI_HARNESS_TMP_THRESHOLD:-90}" ] 2>/dev/null; then
+  local tmp_check="${NYCODE_HARNESS_TMP_CHECK_PATH:-/tmp}"
+  if [ -d "$tmp_check" ] && [ "$(df -P "$tmp_check" | awk 'NR == 2 {sub(/%/, "", $5); print $5}')" -ge "${NYCODE_HARNESS_TMP_THRESHOLD:-90}" ] 2>/dev/null; then
     notes+=("/tmp is near capacity; shell tooling may fail")
   fi
   # Scans are shared with Claude (bin/harness_currency.py and friends write them).
   local scans_dir="${HARNESS_SCANS_DIR:-${HOME}/.claude/telemetry/scans}"
-  # Freshness: harness rows of the newest weekly currency report, if under 8 days old (the Claude Code row is not pi's).
+  # Freshness: harness rows of the newest weekly currency report, if under 8 days old (the Claude Code row is not nycode's).
   local report behind
   report="$(find "$scans_dir" -mindepth 2 -maxdepth 2 -name currency.json -mtime -8 2>/dev/null | sort | tail -1 || true)"
   if [ -n "$report" ]; then
@@ -122,7 +122,7 @@ session_start() {
 # Non-blocking sensor: agents most often "pass" by editing tests (ImpossibleBench, arXiv 2510.20270).
 TEST_PATH='(^|/)(tests?|__tests__|spec)/|(^|/)test_[^/]*\.py$|_test\.(py|go|rs)$|\.(test|spec)\.[cm]?[jt]sx?$|_spec\.rb$'
 
-# Coverage exclusions added by an edit (doces-ou-travessuras rule coverage-pragma; eval pi-outcome-k2 2026-11-12).
+# Coverage exclusions added by an edit (doces-ou-travessuras rule coverage-pragma; eval outcome-k2 2026-11-12).
 # [[:space:]] keeps this source from matching itself.
 COVERAGE_EXCL='pragma:[[:space:]]*no[[:space:]]*(cover|branch)|(istanbul|c8|v8)[[:space:]]+ignore|LCOV_EXC[L]|:noco[v]:|coverage\(of[f]\)|coverage:[[:space:]]*ignore'
 
@@ -142,15 +142,15 @@ edit_sensors() {
 
 # Verified git delivery: remind once per session to capture reusable learning (rules-ref/docs-and-knowledge.md).
 # Git runs inside the git-delivery subagent, so the main thread's PostToolUse of the Agent call that dispatched it
-# fires this; the Bash commit|push|merge trigger covers manual git. Main thread only (PI_CODE_SUBAGENT is set
+# fires this; the Bash commit|push|merge trigger covers manual git. Main thread only (NYCODE_SUBAGENT is set
 # in subagent children).
 # ponytail: one reminder per session; key the marker by HEAD if sessions miss later milestones.
 MILESTONE='(^|[;&|( ])(git[[:space:]]+(commit|push)|gh[[:space:]]+pr[[:space:]]+merge)([[:space:]]|$)'
 
 milestone_note() {
   local sid marker
-  [ "${PI_HARNESS_MILESTONE:-1}" != 0 ] || return 0
-  [ -z "${PI_CODE_SUBAGENT:-}" ] || return 0
+  [ "${NYCODE_HARNESS_MILESTONE:-1}" != 0 ] || return 0
+  [ -z "${NYCODE_SUBAGENT:-}" ] || return 0
   case "$tool" in
     Bash) [[ $bash_command =~ $MILESTONE ]] || return 0 ;;
     Agent) [[ " $agents " == *" git-delivery "* ]] || return 0 ;;
@@ -158,10 +158,10 @@ milestone_note() {
   esac
   sid="${session_id//[^A-Za-z0-9_-]/}"
   [ -n "$sid" ] || return 0
-  marker="${PI_HARNESS_MILESTONE_DIR:-${XDG_RUNTIME_DIR:-/tmp}/pi-milestones}/${sid}"
+  marker="${NYCODE_HARNESS_MILESTONE_DIR:-${XDG_RUNTIME_DIR:-/tmp}/nycode-milestones}/${sid}"
   [ ! -e "$marker" ] || return 0
   { mkdir -p "$(dirname "$marker")" && : >"$marker"; } 2>/dev/null || return 0
-  printf '%s' "Git delivery ran. When the task is done, if it verified reusable learning that the code and /docs do not hold (a root cause and its fix, a failed approach and why, a decision and its rationale, tool behavior), capture it in the knowledge vault (PI_KNOWLEDGE_VAULT, optional; the obsidian-cli skill's capture helper); nothing new is a valid outcome."
+  printf '%s' "Git delivery ran. When the task is done, if it verified reusable learning that the code and /docs do not hold (a root cause and its fix, a failed approach and why, a decision and its rationale, tool behavior), capture it in the knowledge vault (NYCODE_KNOWLEDGE_VAULT, optional; the obsidian-cli skill's capture helper); nothing new is a valid outcome."
 }
 
 # Delivery nudge (CLAUDE.md git delivery bullet): git delivery runs in the git-delivery agent through git-deliver.
@@ -170,8 +170,8 @@ milestone_note() {
 GIT_WRITE='(^|[[:space:];&|(/])(git([[:space:]]+(-[Cc][[:space:]]+[^[:space:]]+|--[a-z-]+(=[^[:space:]]+)?))*[[:space:]]+(commit|push|pull|merge|rebase|cherry-pick|revert|reset|update-ref|worktree[[:space:]]+(add|remove)|branch[[:space:]]+(-[dD]|--delete))|git-deliver[[:space:]]+(ship|commit|integrate|publish|merge|sync|cleanup)|gh[[:space:]]+pr[[:space:]]+(create|merge|edit|comment|close))([[:space:]]|$)'
 
 delivery_note() {
-  [ "${PI_HARNESS_DELIVERY_NUDGE:-1}" != 0 ] || return 0
-  [ -z "${PI_CODE_SUBAGENT:-}" ] || return 0
+  [ "${NYCODE_HARNESS_DELIVERY_NUDGE:-1}" != 0 ] || return 0
+  [ -z "${NYCODE_SUBAGENT:-}" ] || return 0
   [[ $bash_command =~ $GIT_WRITE ]] || return 0
   printf '%s' "Git delivery runs in the git-delivery agent through git-deliver (CLAUDE.md); keep the main chat to the brief and the handback."
 }

@@ -10,7 +10,7 @@ import unittest
 from typing import Any, ClassVar
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-GUARD = os.path.join(HERE, "guard.py")
+GUARD = os.path.join(HERE, "..", "..", "..", "resources", "hooks", "guard.py")
 HOME = os.path.expanduser("~")
 PROJECT = "/tmp/guard-project"
 
@@ -22,9 +22,9 @@ def run(
     cwd: str = PROJECT,
     raw: str | None = None,
 ) -> str:
-    env = {k: v for k, v in os.environ.items() if k != "PI_BYPASS_PERMISSIONS"}
+    env = {k: v for k, v in os.environ.items() if k != "NYCODE_BYPASS_PERMISSIONS"}
     if bypass:
-        env["PI_BYPASS_PERMISSIONS"] = "1"
+        env["NYCODE_BYPASS_PERMISSIONS"] = "1"
     env["CLAUDE_PROJECT_DIR"] = cwd
     payload = (
         raw
@@ -340,9 +340,9 @@ class TestFiles(unittest.TestCase):
             f"{HOME}/.ssh/config",
             f"{HOME}/.ssh/id_ed25519",
             f"{HOME}/.aws/credentials",
-            f"{HOME}/.pi/agent/auth.json",
-            f"{HOME}/.pi/agent/settings.json",
-            f"{HOME}/.local/bin/pi",
+            f"{HOME}/.nycode/agent/auth.json",
+            f"{HOME}/.nycode/agent/settings.json",
+            f"{HOME}/.local/bin/nycode",
             f"{HOME}/.zshrc",
             f"{HOME}/.bashrc",
         ]:
@@ -366,7 +366,7 @@ def read(path: str, **kw: Any) -> str:
 
 
 # Paridade com as 13 regras Read(...) deny de ~/.claude/settings.json (uma linha por regra, .claude-44 entrou
-# em 2026-11-12), mais as credenciais do pi.
+# em 2026-11-12), mais as credenciais do nycode.
 DENY_READ = [
     f"{HOME}/.ssh/id_ed25519",
     f"{HOME}/.ssh/config",
@@ -376,11 +376,11 @@ DENY_READ = [
     f"{HOME}/.claude-3/.credentials.json",
     f"{HOME}/.claude-4/.credentials.json",
     f"{HOME}/.claude-44/.credentials.json",
-    f"{HOME}/.pi/agent/claude-home/.credentials.json",
+    f"{HOME}/.nycode/agent/.credentials.json",
     f"{HOME}/.codex/auth.json",
     f"{HOME}/.config/mcp/secrets.env",
-    f"{HOME}/.pi/agent/auth.json",
-    f"{HOME}/.pi/agent/mcp-auth.json",
+    f"{HOME}/.nycode/agent/auth.json",
+    f"{HOME}/.nycode/agent/mcp-auth.json",
     f"{PROJECT}/.env",
     f"{PROJECT}/sub/.env.local",
     f"{PROJECT}/.env.staging.local",
@@ -393,7 +393,7 @@ ALLOW_READ = [
     f"{PROJECT}/.env.development",
     f"{HOME}/.ssh.md",
     f"{HOME}/.claude/settings.json",
-    f"{HOME}/.pi/agent/settings.json",
+    f"{HOME}/.nycode/agent/settings.json",
     "/etc/hosts",
 ]
 
@@ -423,8 +423,8 @@ class TestBypass(unittest.TestCase):
         self.assertEqual(write(f"{PROJECT}/.env", bypass=True), "allow")
 
     def test_bypass_zero_means_off(self) -> None:
-        env_backup = os.environ.get("PI_BYPASS_PERMISSIONS")
-        os.environ["PI_BYPASS_PERMISSIONS"] = "0"
+        env_backup = os.environ.get("NYCODE_BYPASS_PERMISSIONS")
+        os.environ["NYCODE_BYPASS_PERMISSIONS"] = "0"
         try:
             payload = json.dumps(
                 {
@@ -446,9 +446,9 @@ class TestBypass(unittest.TestCase):
             )
         finally:
             if env_backup is None:
-                os.environ.pop("PI_BYPASS_PERMISSIONS", None)
+                os.environ.pop("NYCODE_BYPASS_PERMISSIONS", None)
             else:
-                os.environ["PI_BYPASS_PERMISSIONS"] = env_backup
+                os.environ["NYCODE_BYPASS_PERMISSIONS"] = env_backup
 
     def test_bypass_keeps_deny(self) -> None:
         for c in DENY_BASH:

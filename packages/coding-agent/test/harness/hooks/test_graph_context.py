@@ -1,4 +1,4 @@
-"""Testes do graph_context.py (SessionStart/SubagentStart do pi-code). Rodar: python3 -m unittest -v test_graph_context"""
+"""Testes do graph_context.py (SessionStart/SubagentStart do nycode). Rodar: python3 -m unittest -v test_graph_context"""
 
 import json
 import os
@@ -9,7 +9,7 @@ import tempfile
 import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-HOOK = os.path.join(HERE, "graph_context.py")
+HOOK = os.path.join(HERE, "..", "..", "..", "resources", "hooks", "graph_context.py")
 
 
 def run(event, cwd, env_extra=None, raw=None):
@@ -32,7 +32,7 @@ class TestGraphContext(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.tmp, True)
         self.brain = os.path.join(self.tmp, "brain")
         os.makedirs(os.path.join(self.brain, "Projects"))
-        self.env = {"PI_KNOWLEDGE_VAULT": self.brain, "PI_GRAPHS_VAULT": os.path.join(self.tmp, "graphs"),
+        self.env = {"NYCODE_KNOWLEDGE_VAULT": self.brain, "NYCODE_GRAPHS_VAULT": os.path.join(self.tmp, "graphs"),
                     "CODEGRAPH_AUTO_ROOT": os.path.join(self.tmp, "source"),
                     "CODEGRAPH_AUTO_STATE": os.path.join(self.tmp, "state")}
 
@@ -60,14 +60,14 @@ class TestGraphContext(unittest.TestCase):
         self.assertNotIn("ToolSearch", ctx)
         self.assertNotIn("Knowledge vault:", ctx)  # só no SessionStart
 
-    def test_session_start_lists_brain_route_with_pi_kb_path(self):
+    def test_session_start_lists_brain_route_with_embedded_kb_path(self):
         repo = git_repo(os.path.join(self.tmp, "myrepo"))
         ctx = run("SessionStart", repo, self.env)
         self.assertIn("Graph:", ctx)
         self.assertIn("no codegraph index", ctx)
         self.assertNotIn("fff", ctx)
         self.assertIn("Knowledge vault:", ctx)
-        self.assertIn("~/.pi/agent/claude-home/skills/obsidian-cli/scripts/kb.py", ctx)
+        self.assertIn("${NYCODE_RESOURCES}/skills/obsidian-cli/scripts/kb.py", ctx)
 
     def test_brain_notes_for_repo_listed(self):
         repo = git_repo(os.path.join(self.tmp, "acme"))
@@ -78,7 +78,7 @@ class TestGraphContext(unittest.TestCase):
 
     def test_session_start_without_knowledge_vault_skips_the_line(self):
         repo = git_repo(os.path.join(self.tmp, "myrepo"))
-        env = {**os.environ, **self.env, "PI_KNOWLEDGE_VAULT": ""}
+        env = {**os.environ, **self.env, "NYCODE_KNOWLEDGE_VAULT": ""}
         ctx = run("SessionStart", repo, env)
         self.assertIn("Graph:", ctx)
         self.assertNotIn("Knowledge vault:", ctx)

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Guard de permissões do pi (hook PreToolUse do pi-code, no estilo Claude Code).
+"""Guard de permissões do nycode (hook PreToolUse, no estilo Claude Code).
 
-Registrado em ~/.pi/agent/claude-home/settings.json (hooks.PreToolUse, matcher Bash|Edit|Write).
+Registrado por padrão em hooks.PreToolUse de settings-defaults.ts (matcher Bash|Edit|Write|Read).
 Lê o payload JSON do stdin e responde:
   - nada (exit 0)  -> allow
-  - permissionDecision "ask"  -> o pi mostra confirmação; sem UI (pi -p, subagent) vira bloqueio
+  - permissionDecision "ask"  -> o nycode mostra confirmação; sem UI (nycode -p, subagent) vira bloqueio
   - permissionDecision "deny" -> bloqueado sempre
 
 Política "Equilibrada":
@@ -21,23 +21,22 @@ Política "Equilibrada":
   ASK (arriscado):
     sudo/su/doas, rm -r, git reset --hard / clean -f / push / rebase / branch -D,
     chmod -R, chown -R, shred, kill -9, docker rm/rmi/prune, npm|pnpm|yarn publish,
-    Edit/Write em arquivo sensível (.env*, chaves, ~/.ssh, ~/.aws, auth.json, settings do pi,
-    wrapper ~/.local/bin/pi, rc do shell) ou fora do projeto atual (/tmp é livre).
+    Edit/Write em arquivo sensível (.env*, chaves, ~/.ssh, ~/.aws, auth.json, settings do nycode,
+    wrapper ~/.local/bin/nycode, rc do shell) ou fora do projeto atual (/tmp é livre).
   DENY de Read (paridade com as 13 regras Read(...) deny de ~/.claude/settings.json, mais as
-    credenciais do pi): ~/.ssh/**, ~/.config/claude-secrets/**, ~/.claude*/.credentials.json,
-    claude-home/.credentials.json, ~/.codex/auth.json, ~/.config/mcp/secrets.env,
-    ~/.pi/agent/auth.json e mcp-auth.json, e em qualquer lugar .env, .env.local, .env.*.local,
+    credenciais do nycode): ~/.ssh/**, ~/.config/claude-secrets/**, ~/.claude*/.credentials.json,
+    ~/.nycode/agent/.credentials.json, ~/.codex/auth.json, ~/.config/mcp/secrets.env,
+    ~/.nycode/agent/auth.json e mcp-auth.json, e em qualquer lugar .env, .env.local, .env.*.local,
     .env.production. Só a ferramenta read: `cat` via bash não é coberto (rules/safety.md).
   Resto: allow.
 
-Bypass (igual ao "Bypass Permissions" do Claude Code): PI_BYPASS_PERMISSIONS=1 transforma
-todo ASK em allow; DENY continua. O padrão do wrapper ~/.local/bin/pi é o modo seguro
-(PI_BYPASS_PERMISSIONS=0, confirmações ligadas); o bypass entra com PI_BYPASS_PERMISSIONS=1 em
-~/.pi/agent/local.env ou `pi --bypass`, e `pi --safe` o desliga. Na sessão: /bypass ou Ctrl+Shift+B
-(~/.pi/agent/extensions/bypass-permissions/index.ts); ao executar um plan, volta a ON.
+Bypass (igual ao "Bypass Permissions" do Claude Code): NYCODE_BYPASS_PERMISSIONS=1 transforma
+todo ASK em allow; DENY continua. O padrão é o modo seguro (confirmações ligadas); o bypass entra
+com NYCODE_BYPASS_PERMISSIONS=1 no ambiente do nycode. Este script só lê a variável: `--bypass` e
+`permissions.bypass` não chegam a ele (o motor nativo de permissão, K11, os honra).
 
-Ajustar: edite as listas/funções abaixo e rode `python3 -m unittest -v test_guard` aqui.
-Desligar tudo: remova o bloco "hooks" de ~/.pi/agent/claude-home/settings.json.
+Ajustar: edite as listas/funções abaixo e rode `python3 -m pytest test/harness/hooks/test_guard.py` em packages/coding-agent.
+Desligar: "hooks": {"PreToolUse": []} em ~/.nycode/agent/settings.json (ou "disableAllHooks": true).
 Falha interna: JSON inválido permite (stderr); exceção na ferramenta Bash vira ASK "guard: erro interno"
 (no bypass, aprovado sozinho como todo ASK); outras ferramentas permitem.
 Análise do Bash: agrupamento/palavras-chave, opções de envoltórios, `bash -c`/eval/xargs/find -exec, $(...) e
@@ -90,9 +89,9 @@ SENSITIVE_DIRS = [os.path.join(HOME, d) for d in (".ssh", ".aws", ".gnupg", ".co
 SENSITIVE_FILES = {
     os.path.join(HOME, p)
     for p in (
-        ".pi/agent/settings.json",
-        ".pi/agent/auth.json",
-        ".local/bin/pi",
+        ".nycode/agent/settings.json",
+        ".nycode/agent/auth.json",
+        ".local/bin/nycode",
         ".zshrc",
         ".zshenv",
         ".zprofile",
@@ -111,9 +110,9 @@ READ_DENY_FILES = {
     for p in (
         ".codex/auth.json",
         ".config/mcp/secrets.env",
-        ".pi/agent/auth.json",
-        ".pi/agent/mcp-auth.json",
-        ".pi/agent/claude-home/.credentials.json",
+        ".nycode/agent/auth.json",
+        ".nycode/agent/mcp-auth.json",
+        ".nycode/agent/.credentials.json",
     )
 }
 CLAUDE_CREDENTIALS_RE = re.compile(r"^" + re.escape(HOME) + r"/\.claude(-[^/]+)?/\.credentials\.json$")
@@ -733,7 +732,7 @@ def check_read(path: str, cwd: str) -> list[Finding]:
 
 
 def bypass_on() -> bool:
-    return os.environ.get("PI_BYPASS_PERMISSIONS", "").lower() in (
+    return os.environ.get("NYCODE_BYPASS_PERMISSIONS", "").lower() in (
         "1",
         "true",
         "on",

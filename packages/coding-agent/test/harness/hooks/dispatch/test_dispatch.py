@@ -1,4 +1,4 @@
-"""Tests for hook-dispatch.sh (pi port): payloads on stdin, every path isolated in a temp dir."""
+"""Tests for hook-dispatch.sh (nycode port): payloads on stdin, every path isolated in a temp dir."""
 
 import json
 import os
@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-HOOK = Path(__file__).with_name("hook-dispatch.sh")
+HOOK = Path(__file__).resolve().parents[4] / "resources" / "hooks" / "dispatch" / "hook-dispatch.sh"
 
 
 class DispatchBase(unittest.TestCase):
@@ -18,21 +18,21 @@ class DispatchBase(unittest.TestCase):
         self.tmp = Path(tmp.name)
         self.env = {
             k: v for k, v in os.environ.items()
-            if not k.startswith(("PI_", "HARNESS_", "DBUS_"))
+            if not k.startswith(("NYCODE_", "HARNESS_", "DBUS_"))
         }
         self.env.update(
             HOME=str(self.tmp / "home"),
             XDG_RUNTIME_DIR=str(self.tmp / "run"),
-            PI_HARNESS_TMP_CHECK_PATH="/nonexistent",
+            NYCODE_HARNESS_TMP_CHECK_PATH="/nonexistent",
             HARNESS_LAUNCHER_CHECK="true",
             HARNESS_SCANS_DIR=str(self.tmp / "no-scans"),
-            PI_HARNESS_MILESTONE_DIR=str(self.tmp / "milestones"),
+            NYCODE_HARNESS_MILESTONE_DIR=str(self.tmp / "milestones"),
         )
         (self.tmp / "home").mkdir()
 
     def run_hook(self, payload, raw=False, **env):
         data = payload if raw else json.dumps(payload)
-        # pi-code (Node child_process 'pipe') hands the hook a Unix socket as stdin, where reopening /dev/stdin
+        # nycode (Node child_process 'pipe') hands the hook a Unix socket as stdin, where reopening /dev/stdin
         # fails with ENXIO; every test feeds stdin the same way so the real transport stays covered.
         parent, child = socket.socketpair()
         with parent, child:
@@ -87,25 +87,25 @@ class SessionStartTests(DispatchBase):
             "remote": {"url": "https://example.invalid/mcp"},
             "bare": {"command": "npx"},
         }}))
-        env = {"PI_MCP_CONFIG": str(cfg), "HARNESS_LAUNCHER_CHECK": ""}
+        env = {"NYCODE_MCP_CONFIG": str(cfg), "HARNESS_LAUNCHER_CHECK": ""}
         note = self.context(self.start(), **env)
         self.assertEqual(
-            note, "MCP launchers missing for pi: gone (/nonexistent/launcher); fix ~/.pi/agent/mcp.json")
+            note, "MCP launchers missing for nycode: gone (/nonexistent/launcher); fix ~/.nycode/agent/mcp.json")
 
     def test_launcher_check_silent_when_all_present(self):
         cfg = self.tmp / "mcp.json"
         cfg.write_text(json.dumps({"mcpServers": {"u": {"url": "https://example.invalid"}}}))
-        self.assertEqual(self.context(self.start(), PI_MCP_CONFIG=str(cfg), HARNESS_LAUNCHER_CHECK=""), "")
+        self.assertEqual(self.context(self.start(), NYCODE_MCP_CONFIG=str(cfg), HARNESS_LAUNCHER_CHECK=""), "")
 
     def test_currency_note_drops_claude_code_row(self):
         d = self.tmp / "no-scans" / "2026-11-11"
         d.mkdir(parents=True)
         (d / "currency.json").write_text(json.dumps({"behind": [
             {"name": "@anthropic-ai/claude-code", "installed": "1", "latest": "2", "harness": True},
-            {"name": "pi-code", "installed": "1.7.0", "latest": "1.8.0", "harness": True},
+            {"name": "nycode", "installed": "1.7.0", "latest": "1.8.0", "harness": True},
         ]}))
         note = self.context(self.start())
-        self.assertIn("1 harness components behind (pi-code 1.7.0->1.8.0)", note)
+        self.assertIn("1 harness components behind (nycode 1.7.0->1.8.0)", note)
         self.assertNotIn("claude-code", note)
 
     def test_currency_only_claude_code_is_silent(self):
@@ -116,7 +116,7 @@ class SessionStartTests(DispatchBase):
         self.assertEqual(self.context(self.start()), "")
 
     def test_tmp_capacity_note(self):
-        note = self.context(self.start(), PI_HARNESS_TMP_CHECK_PATH=str(self.tmp), PI_HARNESS_TMP_THRESHOLD="0")
+        note = self.context(self.start(), NYCODE_HARNESS_TMP_CHECK_PATH=str(self.tmp), NYCODE_HARNESS_TMP_THRESHOLD="0")
         self.assertIn("/tmp is near capacity", note)
 
 class PostToolTests(DispatchBase):
@@ -138,7 +138,7 @@ class PostToolTests(DispatchBase):
         self.assertEqual(self.context(post("Write", {"file_path": "/r/src/a.py"}, {"filePath": "/r/src/a.py"})), "")
 
     def test_coverage_exclusion_sensor(self):
-        # eval pi-outcome-k2 2026-11-12, out-sota-transform rep 1: `# pragma: no cover` on an "unreachable" raise
+        # eval outcome-k2 2026-11-12, out-sota-transform rep 1: `# pragma: no cover` on an "unreachable" raise
         pragma = "# pragma" + ": no cover"  # split so this test file does not trip the sensor itself
         note = self.context(post("Edit", {"file_path": "/r/src/a.py", "new_string": f"raise X  {pragma}"}, {}))
         self.assertIn("coverage exclusion", note)
@@ -146,7 +146,7 @@ class PostToolTests(DispatchBase):
         self.assertIn("coverage exclusion", self.context(post("Edit", multi, {})))
         self.assertIn("coverage exclusion", self.context(post("Write", {"file_path": "/r/a.js", "content": "// c8 " + "ignore next"}, {})))
         self.assertEqual(self.context(post("Write", {"file_path": "/r/src/a.py", "content": "x = 1"}, {})), "")
-        own = (Path(__file__).parent / "hook-dispatch.sh").read_text()
+        own = HOOK.read_text()
         self.assertEqual(self.context(post("Write", {"file_path": "/r/hook.sh", "content": own}, {})), "")
         for marker in ("LCOV_EXC" "L_START", ":noco" "v:", "#[coverage(of" "f)]"):
             self.assertIn("coverage exclusion", self.context(post("Write", {"file_path": "/r/a.rb", "content": marker}, {})), marker)
@@ -174,7 +174,7 @@ class PostToolTests(DispatchBase):
 
     def test_milestone_silent_in_subagent(self):
         p = post("Agent", {"agent": "git-delivery", "task": "t"}, {})
-        self.assertEqual(self.run_hook(p, PI_CODE_SUBAGENT="1").stdout, "")
+        self.assertEqual(self.run_hook(p, NYCODE_SUBAGENT="1").stdout, "")
 
     def test_milestone_ignores_other_agents(self):
         self.assertEqual(self.context(post("Agent", {"agent": "swarm-worker", "task": "t"}, {})), "")
@@ -183,10 +183,10 @@ class PostToolTests(DispatchBase):
         note = self.context(bash("git push origin main"))
         self.assertIn("Git delivery runs in the git-delivery agent through git-deliver (CLAUDE.md)", note)
         self.assertEqual(self.context(bash("git status")), "")
-        self.assertEqual(self.context(bash("git push origin x"), PI_CODE_SUBAGENT="1"), "")
+        self.assertEqual(self.context(bash("git push origin x"), NYCODE_SUBAGENT="1"), "")
 
 
-FIXTURES = Path(__file__).resolve().parent.parent / "fixtures" / "pi-code-1.7.0"
+FIXTURES = Path(__file__).resolve().parent.parent / "fixtures"
 
 
 def fixture(name):

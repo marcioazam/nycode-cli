@@ -1,13 +1,13 @@
-// Traduz a sessão JSONL do pi (v3) para o transcript no formato do Claude Code que o claude-hud lê, para as linhas de
-// atividade do HUD (tools, todos, skills, MCP) funcionarem no pi. Usado por claude-hud-statusline.mjs.
+// Traduz a sessão JSONL do nycode (v3) para o transcript no formato do Claude Code que o claude-hud lê, para as linhas de
+// atividade do HUD (tools, todos, skills, MCP) funcionarem no nycode. Usado por claude-hud-statusline.mjs.
 // Incremental: guarda o deslocamento lido e o estado (todos, nomes de chamadas) em <saída>.state.json e só converte as
-// linhas novas; se a sessão encolher ou trocar, refaz do zero. Testes: bin/hud/tests/claude-hud-pi-transcript.test.mjs.
+// linhas novas; se a sessão encolher ou trocar, refaz do zero. Testes: test/harness/statusline/claude-hud-nycode-transcript.test.mjs.
 import fs from 'node:fs';
 import path from 'node:path';
 
 const SKILL_FILE = /\/skills\/([^/]+)\/SKILL\.md$/;
 
-/** true se o arquivo parece uma sessão do pi (primeira linha `{"type":"session",...}` com versão). */
+/** true se o arquivo parece uma sessão do nycode (primeira linha `{"type":"session",...}` com versão). */
 export function isPiSession(file) {
   let fd;
   try {
@@ -24,7 +24,7 @@ export function isPiSession(file) {
   }
 }
 
-/** Uma chamada de ferramenta do pi como bloco(s) tool_use do Claude. */
+/** Uma chamada de ferramenta do nycode como bloco(s) tool_use do Claude. */
 export function toolUseBlocks(call, state) {
   const a = call.arguments ?? {};
   const block = (name, input, id = call.id) => ({ type: 'tool_use', id, name, input });
@@ -33,7 +33,7 @@ export function toolUseBlocks(call, state) {
       return [block('Bash', { command: a.command })];
     case 'read': {
       const skill = SKILL_FILE.exec(String(a.path ?? ''))?.[1];
-      // No pi uma skill carrega por `read` do SKILL.md: o HUD a mostra como Skill.
+      // No nycode uma skill carrega por `read` do SKILL.md: o HUD a mostra como Skill.
       return skill ? [block('Skill', { skill })] : [block('Read', { file_path: a.path })];
     }
     case 'write':
@@ -86,7 +86,7 @@ export function applyTodo(args, resultText, state) {
 const textOf = (content) =>
   typeof content === 'string' ? content : Array.isArray(content) ? content.filter((c) => c?.type === 'text').map((c) => c.text).join('\n') : '';
 
-/** Uma entrada da sessão do pi como zero ou mais linhas do transcript do Claude. */
+/** Uma entrada da sessão do nycode como zero ou mais linhas do transcript do Claude. */
 export function convertEntry(entry, state) {
   if (entry?.type !== 'message' || !entry.message) return [];
   const m = entry.message;

@@ -1,6 +1,6 @@
 """Folga de tempo dos hooks de bloqueio. Rodar: python3 -m pytest test_hook_budget.py (neste diretório).
 
-O pi bloqueia a ferramenta quando o hook estoura o tempo (pi-code `hooks/decisions.ts`: timedOut → block). No
+O nycode bloqueia a ferramenta quando o hook estoura o tempo (extensão hooks, `decisions.ts`: timedOut → block). No
 Terminal-Bench, com a CPU tomada por um treino, o guard (~30 ms ocioso) passou de 5 s: 12 chamadas `bash`
 bloqueadas sem rodar em 3 sessões (followup-A 2026-11-16, E3). 30 s não custam nada no caso normal.
 """

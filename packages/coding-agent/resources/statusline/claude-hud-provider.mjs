@@ -1,5 +1,5 @@
-// Provedor ativo do pi para o HUD. O payload do pi-code só traz model.id; o provedor vem do último `model_change`
-// que o pi grava no arquivo da sessão a cada seleção de modelo (SessionManager.appendModelChange), ou seja, antes
+// Provedor ativo do nycode para o HUD. O payload do nycode só traz model.id; o provedor vem do último `model_change`
+// que o nycode grava no arquivo da sessão a cada seleção de modelo (SessionManager.appendModelChange), ou seja, antes
 // de qualquer resposta. Só vale se o modelId gravado for o do payload: senão a troca está em andamento e o
 // provedor fica desconhecido (nunca o antigo). Sem heurística de nome de modelo.
 import fs from 'node:fs';
@@ -36,7 +36,7 @@ function lastModelChange(file, maxBytes) {
 
 /** Id do provedor do modelo ativo, ou undefined quando não dá para afirmar. */
 export function activeModelProvider(payload, { maxBytes = MAX_BYTES } = {}) {
-  // pi-code (patch pendente) pode mandar model.provider no payload: vale direto, sem ler a sessão.
+  // nycode (patch pendente) pode mandar model.provider no payload: vale direto, sem ler a sessão.
   const direct = payload?.model?.provider;
   if (typeof direct === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(direct)) return direct;
   const file = payload?.transcript_path;

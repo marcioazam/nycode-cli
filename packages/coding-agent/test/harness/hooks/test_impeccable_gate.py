@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 import unittest
 
-GATE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "impeccable_gate.sh")
+GATE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "resources", "hooks", "impeccable_gate.sh")
 FAKE = '#!/bin/sh\nprintf "%s" "$*" > "$0.argv"\ncat > "$0.stdin"\necho ran\n'
 
 
@@ -33,7 +33,7 @@ class GateTest(unittest.TestCase):
     def run_gate(self, args, cwd, payload=b"", env_extra=None, sock=True):
         env = dict(os.environ, IMPECCABLE_GATE_LAUNCHER=self.launcher)
         env.update(env_extra or {})
-        if sock:  # pi-code hands hooks a Unix socket as stdin
+        if sock:  # nycode hands hooks a Unix socket as stdin
             a, b = socket.socketpair()
             a.sendall(payload)
             a.shutdown(socket.SHUT_WR)

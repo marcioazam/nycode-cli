@@ -1,9 +1,9 @@
-// Uso de 5h e semanal no HUD, do provedor que o pi está usando de fato. O pi-code só preenche rate_limits com os
+// Uso de 5h e semanal no HUD, do provedor que o nycode está usando de fato. O nycode só preenche rate_limits com os
 // headers `anthropic-ratelimit-unified-*` (sempre da Anthropic) e só depois da primeira resposta; por isso aqui:
 //  - o rate_limits do stdin só vale para anthropic; em qualquer outro provedor (ou desconhecido) é descartado;
-//  - o provedor ativo (claude-hud-provider.mjs) escolhe a fonte de cota, com o token OAuth do próprio pi.
+//  - o provedor ativo (claude-hud-provider.mjs) escolhe a fonte de cota, com o token OAuth do próprio nycode.
 // Provedores com fonte instalada/documentada: anthropic (/api/oauth/usage) e openai-codex (chatgpt.com/backend-api/wham/usage,
-// o endpoint do cliente oficial codex, mesma base do provider do pi-ai). Os demais não mostram cota, nunca inventada.
+// o endpoint do cliente oficial codex, mesma base do provider de @nycode/ai). Os demais não mostram cota, nunca inventada.
 // Só leitura: nunca renova nem grava o token; o cache guarda só percentuais e resets (e um hash curto da conta).
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -81,10 +81,10 @@ function writeCache(file, value) {
 const accountTag = (id) => (id ? crypto.createHash('sha256').update(String(id)).digest('hex').slice(0, 16) : undefined);
 
 /** Ajusta payload.rate_limits ao provedor ativo; nunca lança. `provider` vem de activeModelProvider. */
-export async function withUsage(payload, { provider, cacheFile, authFile = path.join(os.homedir(), '.pi', 'agent', 'auth.json'), now = Date.now(), fetchImpl = fetch } = {}) {
+export async function withUsage(payload, { provider, cacheFile, authFile = path.join(os.homedir(), '.nycode', 'agent', 'auth.json'), now = Date.now(), fetchImpl = fetch } = {}) {
   if (!payload) return payload;
   const source = Object.hasOwn(SOURCES, provider ?? '') ? SOURCES[provider] : undefined;
-  // O que o pi-code mandou é sempre Anthropic: só vale com a Anthropic confirmada como provedor.
+  // O que o nycode mandou é sempre Anthropic: só vale com a Anthropic confirmada como provedor.
   if (provider === 'anthropic' && payload.rate_limits) return payload;
   delete payload.rate_limits;
   if (!source) return payload;

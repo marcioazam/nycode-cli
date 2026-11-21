@@ -1,18 +1,18 @@
-// Launcher do claude-hud para o pi (porte do scripts/statusline.mjs do plugin claude-hud 0.10.0).
-// O /claude-hud-setup copia este arquivo para $CLAUDE_CONFIG_DIR/plugins/claude-hud/statusline.mjs.
-// Diferença do original: o pi não instala plugins do Claude Code, então a instalação mais nova do claude-hud é
+// Launcher do claude-hud para o nycode (porte do scripts/statusline.mjs do plugin claude-hud 0.10.0).
+// O /claude-hud-setup copia este arquivo para ~/.nycode/agent/plugins/claude-hud/statusline.mjs.
+// Diferença do original: o nycode não instala plugins do Claude Code, então a instalação mais nova do claude-hud é
 // procurada também nos caches dos perfis do Claude Code (~/.claude/plugins/cache e ~/.claude-*/plugins/cache).
-// A config do HUD continua em $CLAUDE_CONFIG_DIR/plugins/claude-hud/config.json (a do pi, separada da do Claude).
-// O transcript do pi tem outro formato: antes de chamar o HUD, a sessão do pi é traduzida (claude-hud-pi-transcript.mjs)
+// A config do HUD continua em ~/.nycode/agent/plugins/claude-hud/config.json (a do nycode, separada da do Claude).
+// O transcript do nycode tem outro formato: antes de chamar o HUD, a sessão do nycode é traduzida (claude-hud-pi-transcript.mjs)
 // para um transcript no formato do Claude em plugins/claude-hud/pi-transcripts/, e o transcript_path do stdin aponta
-// para ele. Assim as linhas de tools, agents, todos, skills e MCP funcionam no pi.
+// para ele. Assim as linhas de tools, agents, todos, skills e MCP funcionam no nycode.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-// O pi-code junta as linhas do statusLine num só segmento do rodapé; sem padding lateral do Claude Code.
+// O nycode junta as linhas do statusLine num só segmento do rodapé; sem padding lateral do Claude Code.
 const columns = Number.parseInt(process.env.COLUMNS ?? '', 10);
 if (columns > 0) process.env.COLUMNS = String(Math.max(1, columns - 4));
 
@@ -24,10 +24,13 @@ if (process.env.NO_COLOR) {
 }
 
 const home = os.homedir();
-const envDir = process.env.CLAUDE_CONFIG_DIR?.trim();
+const resources = process.env.NYCODE_RESOURCES ?? '';
+const envDir = process.env.NYCODE_CODING_AGENT_DIR?.trim();
 const configDir = !envDir
-  ? path.join(home, '.claude')
+  ? path.join(home, '.nycode', 'agent')
   : envDir === '~' || envDir.startsWith('~/') ? path.join(home, envDir.slice(1)) : envDir;
+// O plugin claude-hud lê o diretório de config desta variável.
+process.env.CLAUDE_CONFIG_DIR = configDir;
 
 const list = (dir) => {
   try {
@@ -59,7 +62,7 @@ for (const cacheDir of [...new Set(cacheDirs)]) {
   }
 }
 
-/** O stdin do pi, com transcript_path trocado pela tradução quando ele aponta uma sessão do pi. */
+/** O stdin do nycode, com transcript_path trocado pela tradução quando ele aponta uma sessão do nycode. */
 async function translatedStdin() {
   if (process.stdin.isTTY) return null;
   const chunks = [];
@@ -67,15 +70,15 @@ async function translatedStdin() {
   const raw = Buffer.concat(chunks).toString('utf8');
   try {
     const payload = JSON.parse(raw);
-    // Provedor ativo, lido da sessão original do pi antes de o transcript ser traduzido (claude-hud-provider.mjs).
+    // Provedor ativo, lido da sessão original do nycode antes de o transcript ser traduzido (claude-hud-provider.mjs).
     const here0 = path.dirname(fileURLToPath(import.meta.url));
-    const providerFile = [path.join(here0, 'claude-hud-provider.mjs'), path.join(home, '.pi', 'agent', 'claude-home', 'bin', 'hud', 'claude-hud-provider.mjs')].find((file) => fs.existsSync(file));
+    const providerFile = [path.join(here0, 'claude-hud-provider.mjs'), path.join(resources, 'statusline', 'claude-hud-provider.mjs')].find((file) => fs.existsSync(file));
     const provider = providerFile ? (await import(pathToFileURL(providerFile).href)).activeModelProvider(payload) : undefined;
     const source = payload?.transcript_path;
     if (typeof source === 'string' && source) {
-      // O tradutor fica ao lado do original (claude-home/bin); a cópia instalada aponta para lá.
+      // O tradutor fica ao lado deste arquivo; a cópia instalada em ~/.nycode/agent aponta para ${NYCODE_RESOURCES}/statusline.
       const here = path.dirname(fileURLToPath(import.meta.url));
-      const candidates = [path.join(here, 'claude-hud-pi-transcript.mjs'), path.join(home, '.pi', 'agent', 'claude-home', 'bin', 'hud', 'claude-hud-pi-transcript.mjs')];
+      const candidates = [path.join(here, 'claude-hud-pi-transcript.mjs'), path.join(resources, 'statusline', 'claude-hud-pi-transcript.mjs')];
       const translator = candidates.find((file) => fs.existsSync(file));
       if (translator) {
         const { isPiSession, syncTranscript } = await import(pathToFileURL(translator).href);
@@ -87,7 +90,7 @@ async function translatedStdin() {
     }
     // Uso de 5h/semanal do provedor ativo, também antes da primeira resposta da API (claude-hud-usage.mjs).
     const here = path.dirname(fileURLToPath(import.meta.url));
-    const usage = [path.join(here, 'claude-hud-usage.mjs'), path.join(home, '.pi', 'agent', 'claude-home', 'bin', 'hud', 'claude-hud-usage.mjs')].find((file) => fs.existsSync(file));
+    const usage = [path.join(here, 'claude-hud-usage.mjs'), path.join(resources, 'statusline', 'claude-hud-usage.mjs')].find((file) => fs.existsSync(file));
     if (usage) {
       const { withUsage } = await import(pathToFileURL(usage).href);
       await withUsage(payload, { provider, cacheFile: path.join(configDir, 'plugins', 'claude-hud', 'usage-cache.json') });

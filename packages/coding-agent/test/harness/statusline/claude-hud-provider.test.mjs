@@ -1,10 +1,10 @@
-// Run: node --test ~/.pi/agent/claude-home/bin/hud/tests/claude-hud-provider.test.mjs
+// Run: node --test packages/coding-agent/test/harness/statusline/claude-hud-provider.test.mjs
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { after, test } from 'node:test';
-import { activeModelProvider } from '../claude-hud-provider.mjs';
+import { activeModelProvider } from '../../../resources/statusline/claude-hud-provider.mjs';
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hudprov-'));
 after(() => fs.rmSync(dir, { recursive: true, force: true }));
@@ -39,7 +39,7 @@ test('finds a model_change older than one read chunk, bounded by the cap', () =>
   assert.equal(activeModelProvider(payload(file, 'gpt-5.5'), { maxBytes: 4096 }), undefined);
 });
 
-test('payload.model.provider (pi-code patch) wins without reading the session; invalid values fall back to the session scan', () => {
+test('payload.model.provider wins without reading the session; invalid values fall back to the session scan', () => {
   const file = session('payload.jsonl', [change('anthropic', 'm1')]);
   assert.equal(activeModelProvider({ transcript_path: '/nonexistent', model: { id: 'm1', provider: 'openai-codex' } }), 'openai-codex');
   assert.equal(activeModelProvider({ transcript_path: file, model: { id: 'm1', provider: 'openai-codex' } }), 'openai-codex');

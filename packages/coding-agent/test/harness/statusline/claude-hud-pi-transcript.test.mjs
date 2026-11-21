@@ -1,11 +1,11 @@
-// Run: node --test ~/.pi/agent/claude-home/bin/hud/tests/claude-hud-pi-transcript.test.mjs
+// Run: node --test packages/coding-agent/test/harness/statusline/claude-hud-pi-transcript.test.mjs
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { after, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { isPiSession, syncTranscript } from '../claude-hud-pi-transcript.mjs';
+import { isPiSession, syncTranscript } from '../../../resources/statusline/claude-hud-pi-transcript.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 let n = 0;
@@ -27,7 +27,7 @@ function setup(entries) {
 const lines = (file) => fs.readFileSync(file, 'utf8').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l));
 const toolUses = (file) => lines(file).flatMap((l) => (Array.isArray(l.message?.content) ? l.message.content : [])).filter((b) => b.type === 'tool_use');
 
-test('detects pi sessions only', () => {
+test('detects nycode sessions only', () => {
   const { source, dir } = setup([]);
   assert.equal(isPiSession(source), true);
   const claude = path.join(dir, 'claude.jsonl');
@@ -36,11 +36,11 @@ test('detects pi sessions only', () => {
   assert.equal(isPiSession(path.join(dir, 'missing.jsonl')), false);
 });
 
-test('maps pi tools to the Claude names the HUD knows', () => {
+test('maps nycode tools to the Claude names the HUD knows', () => {
   const { source, out } = setup([
     call('t1', 'bash', { command: 'ls' }), result('t1', 'bash', 'ok'),
     call('t2', 'read', { path: '/a/b.py' }), result('t2', 'read', 'x'),
-    call('t3', 'read', { path: '/h/.pi/agent/claude-home/skills/tdd/SKILL.md' }), result('t3', 'read', 'x'),
+    call('t3', 'read', { path: '/h/.nycode/agent/skills/tdd/SKILL.md' }), result('t3', 'read', 'x'),
     call('t4', 'edit', { path: '/a/b.py', edits: [] }), result('t4', 'edit', 'x', true),
     call('t5', 'find', { pattern: '*.ts' }), call('t6', 'mcp__keenable__search_web_pages', { query: 'q' }),
   ]);
@@ -105,8 +105,8 @@ test('incremental: appends only new complete lines, rebuilds when the source shr
 });
 
 test('launcher feeds the translated transcript to the HUD (end to end)', async () => {
-  const hud = fs.readdirSync(path.join(os.homedir(), '.claude', 'plugins', 'cache'), { withFileTypes: true });
-  if (!hud.some((d) => d.name === 'claude-hud')) return; // sem claude-hud instalado: nada a testar
+  const cache = path.join(os.homedir(), '.claude', 'plugins', 'cache');
+  if (!fs.existsSync(cache) || !fs.readdirSync(cache).includes('claude-hud')) return; // sem claude-hud instalado: nada a testar
   const { source, dir } = setup([
     call('a', 'todo', { action: 'add', text: 'tarefa' }), result('a', 'todo', 'Added todo #1: tarefa'),
     call('b', 'todo', { action: 'start', id: 1 }), result('b', 'todo', 'Started #1'),
@@ -116,7 +116,7 @@ test('launcher feeds the translated transcript to the HUD (end to end)', async (
   fs.writeFileSync(path.join(dir, 'plugins', 'claude-hud', 'config.json'), JSON.stringify({ display: { showTools: true, showTodos: true } }));
   const { execFileSync } = await import('node:child_process');
   const payload = JSON.stringify({ model: { display_name: 'Opus' }, cwd: dir, context_window: { used_percentage: 1, context_window_size: 200000 }, transcript_path: source });
-  const outText = execFileSync('node', [path.join(here, '..', 'claude-hud-statusline.mjs')], { input: payload, env: { ...process.env, CLAUDE_CONFIG_DIR: dir, COLUMNS: '160' } }).toString().replace(/\x1b\[[0-9;]*m/g, '');
+  const outText = execFileSync('node', [path.join(here, '..', '..', '..', 'resources', 'statusline', 'claude-hud-statusline.mjs')], { input: payload, env: { ...process.env, NYCODE_CODING_AGENT_DIR: dir, COLUMNS: '160' } }).toString().replace(/\x1b\[[0-9;]*m/g, '');
   assert.match(outText, /Bash/);
   assert.match(outText, /tarefa/);
 });

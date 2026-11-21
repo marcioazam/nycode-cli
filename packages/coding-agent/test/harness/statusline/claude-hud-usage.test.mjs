@@ -1,10 +1,10 @@
-// Run: node --test ~/.pi/agent/claude-home/bin/hud/tests/claude-hud-usage.test.mjs
+// Run: node --test packages/coding-agent/test/harness/statusline/claude-hud-usage.test.mjs
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { after, test } from 'node:test';
-import { toCodexRateLimits, toRateLimits, withUsage } from '../claude-hud-usage.mjs';
+import { toCodexRateLimits, toRateLimits, withUsage } from '../../../resources/statusline/claude-hud-usage.mjs';
 
 const api = { five_hour: { utilization: 8, resets_at: '2026-11-12T19:39:00+00:00' }, seven_day: { utilization: 1, resets_at: null } };
 const expected = { five_hour: { used_percentage: 8, resets_at: Date.parse('2026-11-12T19:39:00Z') / 1000 }, seven_day: { used_percentage: 1 } };
@@ -46,7 +46,7 @@ test('maps ChatGPT windows by their real length: both, weekly-only, zero kept, n
     { rate_limit: { primary_window: { used_percent: -1, limit_window_seconds: H5 } } }]) assert.equal(toCodexRateLimits(bad), undefined);
 });
 
-test('Anthropic: fills rate_limits at startup with the pi token, then serves from cache', async () => {
+test('Anthropic: fills rate_limits at startup with the nycode token, then serves from cache', async () => {
   const env = setup();
   const f = ok(api);
   const p = await run('anthropic', env, f);
@@ -62,7 +62,7 @@ test('Anthropic: fills rate_limits at startup with the pi token, then serves fro
   assert.deepEqual(Object.keys(cached).sort(), ['at', 'rate_limits']);
 });
 
-test('Anthropic: header data from pi wins and skips the request', async () => {
+test('Anthropic: header data from nycode wins and skips the request', async () => {
   const env = setup();
   const f = ok(api);
   const own = { five_hour: { used_percentage: 50 } };
@@ -88,7 +88,7 @@ test('OpenAI Codex: weekly-only account yields only seven_day', async () => {
   assert.deepEqual(p.rate_limits, { seven_day: { used_percentage: 100, resets_at: 1_800_500_000 } });
 });
 
-test('a stale Anthropic snapshot from pi headers never survives on another provider', async () => {
+test('a stale Anthropic snapshot from nycode headers never survives on another provider', async () => {
   const stale = { five_hour: { used_percentage: 98 }, seven_day: { used_percentage: 53 } };
   for (const provider of ['openai-codex', 'github-copilot', 'google', 'unknown-x', undefined]) {
     const f = ok(provider === 'openai-codex' ? codexWeekly : api);
@@ -137,7 +137,7 @@ test('HTTP errors and malformed bodies show nothing', async () => {
   }
 });
 
-test('no request without a valid pi OAuth credential of the active provider', async () => {
+test('no request without a valid nycode OAuth credential of the active provider', async () => {
   const cases = [['anthropic', {}], ['anthropic', { anthropic: { type: 'api_key', key: 'k' } }], ['anthropic', { anthropic: { access: 't', expires: 1 } }],
     ['openai-codex', {}], ['openai-codex', { 'openai-codex': { ...codexAuth, accountId: undefined } }], ['openai-codex', { 'openai-codex': { ...codexAuth, expires: 1 } }],
     ['openai-codex', { anthropic: anthropicAuth }]];

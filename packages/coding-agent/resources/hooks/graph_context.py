@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Inject repository context at SessionStart and SubagentStart: code graph and knowledge pointers.
 
-pi port (2026-11-11) of ~/.claude/hooks/graph_context.py, registered in ~/.pi/agent/claude-home/settings.json; the
-pi-code hooks extension feeds additionalContext to the session (and to each subagent). Changes: pi tool names
-(tool_search, rg/fdfind), the claude-home kb.py path and a workspace line without the Claude `isolation` field.
+nycode port (2026-11-11) of ~/.claude/hooks/graph_context.py, registered by default in the hooks key of
+settings-defaults.ts; the hooks extension feeds additionalContext to the session (and to each subagent). Changes: nycode
+tool names (tool_search, rg/fdfind), the embedded kb.py path and a workspace line without the Claude `isolation` field.
 Tests: test_graph_context.py.
 
 Finds the nearest codegraph index (`.codegraph/codegraph.db`) from the session/subagent
@@ -15,12 +15,12 @@ capability warning instead of leaving the model to assume worktree isolation is 
 Standing authorization (user, 2026-10-24): at SessionStart only, a git main checkout under
 ~/source without an index (no dot directory in its path, at most AUTO_MAX_FILES tracked files)
 gets `codegraph init -y` in the background; a marker stops repeat spawns for MARKER_TTL.
-SessionStart also lists the knowledge-vault project notes ($PI_KNOWLEDGE_VAULT, optional: unset skips the line) and the
-graph vault ($PI_GRAPHS_VAULT, optional) for the repo, and routes retrieval through kb.py (stdlib, no desktop app),
+SessionStart also lists the knowledge-vault project notes ($NYCODE_KNOWLEDGE_VAULT, optional: unset skips the line) and the
+graph vault ($NYCODE_GRAPHS_VAULT, optional) for the repo, and routes retrieval through kb.py (stdlib, no desktop app),
 so it never probes the Obsidian CLI.
 
 Env overrides for tests: CODEGRAPH_BIN, CODEGRAPH_AUTO_ROOT, CODEGRAPH_AUTO_STATE,
-CODEGRAPH_AUTO_MAX_FILES, PI_KNOWLEDGE_VAULT, PI_GRAPHS_VAULT, CODEGRAPH_STATUS_CACHE (cache directory),
+CODEGRAPH_AUTO_MAX_FILES, NYCODE_KNOWLEDGE_VAULT, NYCODE_GRAPHS_VAULT, CODEGRAPH_STATUS_CACHE (cache directory),
 CODEGRAPH_STATUS_TTL (seconds, 0 disables).
 
 Cost: `codegraph status --json` is a Node process (about 270 ms, 212 MB), the whole price of this hook. Its result is
@@ -48,7 +48,7 @@ AUTO_MAX_FILES = 20_000
 MARKER_TTL = 6 * 3600  # seconds before a failed or interrupted auto-init may be retried
 KB_MAX_FILES, KB_MAX_NOTES = 400, 6
 MANIFEST = ".codegraph-obsidian.json"  # written by codegraph-obsidian
-KB_ROUTE = ("search: `python3 ~/.pi/agent/claude-home/skills/obsidian-cli/scripts/kb.py search <terms>`, "  # optional: needs the knowledge-base skill
+KB_ROUTE = ("search: `python3 ${NYCODE_RESOURCES}/skills/obsidian-cli/scripts/kb.py search <terms>`, "  # optional: needs the knowledge-base skill
             "then `kb.py section <note> <heading>`")  # short: MAX_CONTEXT cuts the line and note names must fit
 
 
@@ -221,11 +221,11 @@ def start_index(root: str) -> tuple[str, str] | None:
 
 def knowledge(root: str) -> str | None:
     """Knowledge-vault notes for this repo (folder named after a path component or its prefix before a `-`,
-    or file named after the repo) and its graph vault. None when PI_KNOWLEDGE_VAULT is unset."""
-    if not os.environ.get("PI_KNOWLEDGE_VAULT"):
+    or file named after the repo) and its graph vault. None when NYCODE_KNOWLEDGE_VAULT is unset."""
+    if not os.environ.get("NYCODE_KNOWLEDGE_VAULT"):
         return None
-    brain, base = env_path("PI_KNOWLEDGE_VAULT", ""), env_path("CODEGRAPH_AUTO_ROOT", "~/source")
-    graphs = env_path("PI_GRAPHS_VAULT", "") if os.environ.get("PI_GRAPHS_VAULT") else ""
+    brain, base = env_path("NYCODE_KNOWLEDGE_VAULT", ""), env_path("CODEGRAPH_AUTO_ROOT", "~/source")
+    graphs = env_path("NYCODE_GRAPHS_VAULT", "") if os.environ.get("NYCODE_GRAPHS_VAULT") else ""
     real, name = os.path.realpath(root), Path(root).name
     parts = Path(real).relative_to(base).parts if under(real, base) and real != base else (name,)
     words = {p.lower() for p in parts}
@@ -257,7 +257,7 @@ def workspace_warning(cwd: str) -> str:
     if len(display) > 260:
         display = json.dumps(cwd[:20] + "…" + cwd[-20:], ensure_ascii=False)
     return (f"Workspace: cwd={display}; Git worktree unavailable (unverified). "
-            "pi's subagent has no isolation field: parallel writers need disjoint files or run sequentially; "
+            "nycode's subagent has no isolation field: parallel writers need disjoint files or run sequentially; "
             "never initialize Git/dummy hooks.")
 
 
