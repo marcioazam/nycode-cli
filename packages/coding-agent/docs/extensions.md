@@ -247,7 +247,7 @@ export default async function (nycode: ExtensionAPI) {
 }
 ```
 
-This pattern makes the fetched models available during normal startup and to `nycode --list-models`. For model lists that change while Nycode runs, implement `refreshModels` instead; see [nycode.registerProvider()](#piregisterprovidername-config).
+This pattern makes the fetched models available during normal startup and to `nycode --list-models`. For model lists that change while Nycode runs, implement `refreshModels` instead; see [nycode.registerProvider()](#nycoderegisterprovidername-config).
 
 ### Long-lived resources and shutdown
 
@@ -259,14 +259,14 @@ Defer background resource startup until `session_start` or the command/tool/even
 
 **Single file** - simplest, for small extensions:
 
-```
+```text
 ~/.nycode/agent/extensions/
 └── my-extension.ts
 ```
 
 **Directory with index.ts** - for multi-file extensions:
 
-```
+```text
 ~/.nycode/agent/extensions/
 └── my-extension/
     ├── index.ts        # Entry point (exports default function)
@@ -276,7 +276,7 @@ Defer background resource startup until `session_start` or the command/tool/even
 
 **Package with dependencies** - for extensions that need npm packages:
 
-```
+```text
 ~/.nycode/agent/extensions/
 └── my-extension/
     ├── package.json    # Declares dependencies and entry points
@@ -1626,7 +1626,7 @@ nycode.registerTool({
 
 ### nycode.sendMessage(message, options?)
 
-Inject a custom message into the session. Custom messages participate in LLM context. For durable TUI-only content that should not be sent to the LLM, use [`nycode.appendEntry()`](#piappendentrycustomtype-data) with [`nycode.registerEntryRenderer()`](#piregisterentryrenderercustomtype-renderer).
+Inject a custom message into the session. Custom messages participate in LLM context. For durable TUI-only content that should not be sent to the LLM, use [`nycode.appendEntry()`](#nycodeappendentrycustomtype-data) with [`nycode.registerEntryRenderer()`](#nycoderegisterentryrenderercustomtype-renderer).
 
 ```typescript
 nycode.sendMessage({
@@ -2173,7 +2173,7 @@ export default function (nycode: ExtensionAPI) {
 }
 ```
 
-Rebuild from `getBranch()`, not from every entry: abandoned branches represent alternative histories. Use [`nycode.appendEntry()`](#piappendentrycustomtype-data) for durable data that should not reach the model.
+Rebuild from `getBranch()`, not from every entry: abandoned branches represent alternative histories. Use [`nycode.appendEntry()`](#nycodeappendentrycustomtype-data) for durable data that should not reach the model.
 
 <a id="register-tools"></a>
 
@@ -2365,6 +2365,7 @@ nycode -e ./tool-override.ts
 ```
 
 Alternatively, use `--no-builtin-tools` to start without any built-in tools while keeping extension tools enabled:
+
 ```bash
 # No built-in tools, only extension tools
 nycode --no-builtin-tools -e ./my-extension.ts
