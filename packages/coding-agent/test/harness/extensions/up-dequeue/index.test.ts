@@ -1,37 +1,50 @@
-import { test } from 'node:test'
-import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
-import { homedir } from 'node:os'
-import path from 'node:path'
-const agent = process.env.PI_AGENT_DIR ?? path.join(homedir(), '.pi/agent')
-const tui = `${agent}/install/releases/${readFileSync(`${agent}/install/current-version`, 'utf8').trim()}/node_modules/@earendil-works/pi-tui/dist`
-const { matchesKey } = await import(`${tui}/keys.js`)
-import register, { rewrite } from './index.ts'
+// Ported from import/ny-pi/extensions/up-dequeue/index.test.ts: Up becomes Alt+Up only with an empty editor and a
+// pending queue; the generated sequence is Alt+Up for the tui; the extension registers the terminal-input handler.
+import { matchesKey } from "@nycode/tui";
+import { describe, expect, it } from "vitest";
+import type { ExtensionAPI } from "../../../../src/core/extensions/types.ts";
+import upDequeueExtension, { rewrite } from "../../../../src/extensions/up-dequeue/index.ts";
 
-test('↑ vira Alt+↑ só com editor vazio e fila pendente', () => {
-  assert.equal(rewrite('\x1b[A', true, true), '\x1b[1;3A')
-  assert.equal(rewrite('\x1bOA', true, true), '\x1b[1;3A')
-  assert.equal(rewrite('\x1b[A', false, true), undefined)
-  assert.equal(rewrite('\x1b[A', true, false), undefined)
-  assert.equal(rewrite('a', true, true), undefined)
-})
+type Handler = (data: string) => { data: string } | undefined;
+type StartHandler = (event: unknown, ctx: unknown) => void;
 
-test('a sequência gerada é Alt+↑ para o pi-tui', () => {
-  assert.equal(matchesKey('\x1b[1;3A', 'alt+up'), true)
-})
+describe("up-dequeue", () => {
+	it("turns Up into Alt+Up only with an empty editor and a pending queue", () => {
+		expect(rewrite("\x1b[A", true, true)).toBe("\x1b[1;3A");
+		expect(rewrite("\x1bOA", true, true)).toBe("\x1b[1;3A");
+		expect(rewrite("\x1b[A", false, true)).toBeUndefined();
+		expect(rewrite("\x1b[A", true, false)).toBeUndefined();
+		expect(rewrite("a", true, true)).toBeUndefined();
+	});
 
-test('extensão registra o handler e consulta editor e fila', () => {
-  let onStart: any, handler: any
-  const ctx = (hasUI: boolean, text: string, pending: boolean) => ({
-    hasUI, hasPendingMessages: () => pending,
-    ui: { getEditorText: () => text, onTerminalInput: (h: any) => { handler = h } },
-  })
-  register({ on: (_e: string, fn: any) => { onStart = fn } } as any)
-  handler = undefined
-  onStart({}, ctx(false, '', true))
-  assert.equal(handler, undefined)
-  onStart({}, ctx(true, '  ', true))
-  assert.deepEqual(handler('\x1b[A'), { data: '\x1b[1;3A' })
-  onStart({}, ctx(true, 'texto', true))
-  assert.equal(handler('\x1b[A'), undefined)
-})
+	it("generates a sequence the tui reads as Alt+Up", () => {
+		expect(matchesKey("\x1b[1;3A", "alt+up")).toBe(true);
+	});
+
+	it("registers the handler and consults the editor and the queue", () => {
+		let onStart: StartHandler | undefined;
+		let handler: Handler | undefined;
+		const ctx = (hasUI: boolean, text: string, pending: boolean) => ({
+			hasUI,
+			hasPendingMessages: () => pending,
+			ui: {
+				getEditorText: () => text,
+				onTerminalInput: (h: Handler) => {
+					handler = h;
+				},
+			},
+		});
+		upDequeueExtension({
+			on: (_event: string, fn: StartHandler) => {
+				onStart = fn;
+			},
+		} as unknown as ExtensionAPI);
+		handler = undefined;
+		onStart?.({}, ctx(false, "", true));
+		expect(handler).toBeUndefined();
+		onStart?.({}, ctx(true, "  ", true));
+		expect(handler?.("\x1b[A")).toEqual({ data: "\x1b[1;3A" });
+		onStart?.({}, ctx(true, "texto", true));
+		expect(handler?.("\x1b[A")).toBeUndefined();
+	});
+});

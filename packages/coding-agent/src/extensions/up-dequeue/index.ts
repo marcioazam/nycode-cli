@@ -1,24 +1,23 @@
 /**
- * Seta ↑ também restaura as mensagens enfileiradas (steering/follow-up) para o editor, pedido do usuário
- * 2026-11-12. Só age com o editor vazio e fila não vazia: aí reescreve ↑ como Alt+↑ (app.message.dequeue).
- * Fora disso ↑ segue normal (cursor e histórico). Alt+↑ continua funcionando.
- * Reverter: apagar este diretório.
+ * Arrow up also restores queued messages (steering/follow-up) into the editor. Acts only with an empty editor and a
+ * non-empty queue: then it rewrites Up as Alt+Up (app.message.dequeue). Otherwise Up behaves normally (cursor and
+ * history). Alt+Up keeps working.
  */
-import type { ExtensionAPI } from '@earendil-works/pi-coding-agent'
+import type { ExtensionAPI } from "../../core/extensions/types.ts";
 
-const UP = new Set(['\x1b[A', '\x1bOA'])
-const ALT_UP = '\x1b[1;3A'
+const UP = new Set(["\x1b[A", "\x1bOA"]);
+const ALT_UP = "\x1b[1;3A";
 
 export function rewrite(data: string, editorEmpty: boolean, pending: boolean): string | undefined {
-  return UP.has(data) && editorEmpty && pending ? ALT_UP : undefined
+	return UP.has(data) && editorEmpty && pending ? ALT_UP : undefined;
 }
 
-export default function (pi: ExtensionAPI) {
-  pi.on('session_start', (_event, ctx) => {
-    if (!ctx.hasUI) return
-    ctx.ui.onTerminalInput((data) => {
-      const out = rewrite(data, ctx.ui.getEditorText().trim() === '', ctx.hasPendingMessages())
-      return out ? { data: out } : undefined
-    })
-  })
+export default function upDequeueExtension(nycode: ExtensionAPI): void {
+	nycode.on("session_start", (_event, ctx) => {
+		if (!ctx.hasUI) return;
+		ctx.ui.onTerminalInput((data) => {
+			const out = rewrite(data, ctx.ui.getEditorText().trim() === "", ctx.hasPendingMessages());
+			return out ? { data: out } : undefined;
+		});
+	});
 }
