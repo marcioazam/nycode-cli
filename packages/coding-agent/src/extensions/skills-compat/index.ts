@@ -5,13 +5,13 @@
  * existing `.claude/skills` directories (user then project) as skill paths, so
  * pi discovers Claude Code skills the same way it loads its own `.pi/skills`.
  * pi implements the Agent Skills standard, so `SKILL.md` directories work
- * unchanged and register as `/skill:name`.
+ * unchanged and register as `/skill:<name>`.
  *
  * Claude documents that a command file and a skill "work the same way", so a
  * SKILL.md body carries the dynamic features command bodies do: `` !`cmd` ``
  * spans, `@file` references, `$ARGUMENTS`/positional substitution and
  * `${CLAUDE_*}` variables. pi's loader delivers the raw text, so this extension
- * intercepts `/skill:name` input for the skills it contributed, expands the body
+ * intercepts `/skill:<name>` input for the skills it contributed, expands the body
  * through the shared command pipeline, and hands pi the already-expanded content
  * in pi's own skill-block format (pi emits the input event before its own
  * expansion, and skips text that no longer starts with `/`).
@@ -250,7 +250,7 @@ async function runForkedSkill(
 	}
 }
 
-/** A `/skill:name args` invocation into its expanded skill block, or undefined to
+/** A `/skill:<name> args` invocation into its expanded skill block, or undefined to
  * pass the input through to pi untouched. The expanded body is wrapped in pi's
  * skill-block format so downstream behavior (the baseDir note for relative
  * references) matches an untouched invocation. */
