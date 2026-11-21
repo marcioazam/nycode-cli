@@ -72,6 +72,11 @@ PY
 """
 
 
+COMMAND_SOURCE = "".join(
+    f"pi.registerCommand('{name}', {{}})\n" for name in check.COMMANDS
+)
+
+
 @pytest.fixture
 def arms(tmp_path: Path, monkeypatch: MP) -> Path:
     """A fake arms directory with arm ``fake`` and a stage template whose static cases all pass."""
@@ -82,9 +87,8 @@ def arms(tmp_path: Path, monkeypatch: MP) -> Path:
     arm.chmod(0o755)
     template = tmp_path / "template"
     files = {
-        "extensions/a/index.ts": "pi.registerCommand('goal', {})\npi.registerCommand('plan', {})\n",
+        "extensions/a/index.ts": COMMAND_SOURCE,
         "extensions/node_modules/dep/x.ts": "ignored",
-        "claude-home/commands/subagents.md": "---\ndescription: d\n---\n",
         "claude-home/skills/s/SKILL.md": "---\nname: s\ndescription: skill s\n---\n",
         "claude-home/agents/A.md": "---\nname: A\ndescription: agent A\n---\n",
         "mcp.json": json.dumps(
@@ -150,7 +154,10 @@ def test_fixed_harness_passes(tmp_path: Path, monkeypatch: MP) -> None:
     assert (code, report["summary"][cr.FAIL]) == (0, 0)
     assert status["plano/plan_mode_complete-presente"] == cr.OK
     assert status["plano/sem-escrita"] == cr.OK
-    assert status["comandos/subagents"] == cr.OK
+    assert [
+        status[f"comandos/{c}"] for c in ("goal", "plan", "agents", "tasks", "team")
+    ] == [cr.OK] * 5
+    assert "comandos/subagents" not in status
     assert status["mcp/local"] == cr.OK
 
 
@@ -172,6 +179,89 @@ def test_static_group_needs_no_pi_run_and_reports_stage_gaps(
     assert run(tmp_path, "--only", "comandos")[0] == 0
     assert (own / ".pi" / "agent" / "mcp.json").exists() is False
     assert (own / ".pi" / "agent" / "extensions").is_dir()
+
+
+def test_missing_command_fails_only_that_command(arms: Path, tmp_path: Path) -> None:
+    (arms / "extensions" / "a" / "index.ts").write_text(
+        COMMAND_SOURCE.replace("pi.registerCommand('team', {})\n", "")
+    )
+    code, _, status = run(tmp_path, "--only", "comandos")
+    assert code == 1
+    assert [n for n, v in status.items() if v == cr.FAIL] == ["comandos/team"]
+
+
+# The nycode arm keeps its agent directory in <stage>/.nycode/agent, needs NYCODE_OFFLINE and loads its commands,
+# skills and agents from the checkout (packages/coding-agent), not from the stage.
+NYCODE_ARM = FAKE_ARM.replace(".pi/agent", ".nycode/agent").replace(
+    "set -euo pipefail\n",
+    'set -euo pipefail\n[ "${NYCODE_OFFLINE:-}" = 1 ] || exit 9\n',
+    1,
+)
+
+
+@pytest.fixture
+def nycode_arms(tmp_path: Path, monkeypatch: MP) -> Path:
+    """Fake checkout ``tmp_path`` with ``bench/arms/nycode`` and the embedded sources; returns the stage template."""
+    folder = tmp_path / "bench" / "arms"
+    folder.mkdir(parents=True)
+    (folder / "nycode").write_text(NYCODE_ARM)
+    (folder / "nycode").chmod(0o755)
+    pkg = tmp_path / "packages" / "coding-agent"
+    embedded = {
+        "src/extensions/a/index.ts": COMMAND_SOURCE.replace("pi.", "nycode."),
+        "resources/skills/s/SKILL.md": "---\nname: s\ndescription: skill s\n---\n",
+        "resources/agents/A.md": "---\nname: A\ndescription: agent A\n---\n",
+    }
+    for rel, text in embedded.items():
+        (pkg / rel).parent.mkdir(parents=True, exist_ok=True)
+        (pkg / rel).write_text(text)
+    template = tmp_path / "template"
+    template.mkdir()
+    (template / "mcp.json").write_text(
+        json.dumps({"mcpServers": {"local": {"command": "python3", "enabled": False}}})
+    )
+    monkeypatch.setattr(check, "ARMS_DIR", folder)
+    monkeypatch.setenv("FAKE_TEMPLATE", str(template))
+    monkeypatch.setenv(
+        "NYCODE_SESSION_LEAK", "1"
+    )  # session variables are not passed on
+    monkeypatch.delenv("BENCH_STAGE", raising=False)
+    for name in ("FAKE_FIXED", "FAKE_SILENT", "FAKE_BUILD_FAILS", "FAKE_NO_STAGE"):
+        monkeypatch.delenv(name, raising=False)
+    return template
+
+
+def test_nycode_arm_is_checked_in_its_own_agent_dir(
+    nycode_arms: Path, tmp_path: Path, monkeypatch: MP
+) -> None:
+    monkeypatch.setenv("FAKE_FIXED", "1")
+    out = tmp_path / "out.json"
+    assert check.main(["--arm", "nycode", "--json", str(out)]) == 0
+    report = json.loads(out.read_text())
+    status = {c["name"]: c["status"] for c in report["cases"]}
+    assert [status[f"comandos/{c}"] for c in check.COMMANDS] == [cr.OK] * 5
+    assert status["skills/skill-frontmatter"] == cr.OK
+    assert status["skills/agente-frontmatter"] == cr.OK
+    assert status["mcp/local"] == cr.OK  # the stage's mcp.json, read from .nycode/agent
+    assert report["inventory"]["skills"] == {"files": 1, "description_chars": 7}
+    where = {c["evidence"] for c in report["cases"] if c["name"] == "comandos/goal"}
+    assert where == {
+        "estático: registrado em packages/coding-agent/src/extensions/a/index.ts:1"
+    }
+
+
+def test_nycode_arm_without_agent_dir_exits_2(
+    nycode_arms: Path, monkeypatch: MP, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setenv("FAKE_NO_STAGE", "1")
+    assert check.main(["--arm", "nycode"]) == 2
+    assert "<stage>/.nycode/agent" in capsys.readouterr().err
+
+
+def test_nycode_clean_env_sets_its_offline_switch(tmp_path: Path) -> None:
+    env = check.clean_env({"NYCODE_X": "1", "PI_Y": "1", "P": "p"}, tmp_path, "nycode")
+    assert env == {"P": "p", "BENCH_STAGE": str(tmp_path), "NYCODE_OFFLINE": "1"}
+    assert "NYCODE_OFFLINE" not in check.clean_env({}, tmp_path, "ny-pi")
 
 
 @pytest.mark.parametrize(

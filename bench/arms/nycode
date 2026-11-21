@@ -34,6 +34,15 @@ if [ ! -f "$stage/.ready" ] || [ ! -x "$bin" ]; then
   HOME=$stage NYCODE_CODING_AGENT_DIR=$agent NYCODE_SKIP_VERSION_CHECK=1 "$bin" --version >/dev/null
   touch "$stage/.ready"
 fi
+# mcp.json: the repo's example, byte for byte (placeholders, no secret, no `exposure`, no `enabled`), never the
+# owner's. It is the file the ny-pi arm gets from its installer (mcp.json.example), so both arms measure the same
+# MCP declarations (D-40): servers without `exposure` make the mcp extension activate `codemode` from the config
+# alone, whether or not a server connects. Written once per stage, also into an already-built one; a function of
+# the checkout, so not part of the layer hash.
+if [ ! -e "$agent/mcp.json" ]; then
+  mkdir -p "$agent"
+  cp "$repo/packages/coding-agent/examples/config/mcp.json" "$agent/mcp.json"
+fi
 if [ -n "${BENCH_API_KEY_FILE:-}" ]; then
   export ANTHROPIC_API_KEY
   ANTHROPIC_API_KEY=$(bench_api_key)
