@@ -2,7 +2,7 @@
  * Memory Extension
  *
  * Claude Code style persistent memory, per project. Memories live as markdown
- * files under ~/.pi/agent/memory/<project-slug>/ with a MEMORY.md index whose
+ * files under <agent dir>/memory/<project-slug>/ with a MEMORY.md index whose
  * content is injected into the system prompt each session. The agent manages
  * memories through the memory tool (save / read / delete / list).
  */
@@ -12,19 +12,23 @@ import { createHash } from 'node:crypto'
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
-import { StringEnum } from '@earendil-works/pi-ai'
-import { type ExtensionAPI, type ExtensionCommandContext, getAgentDir, SettingsManager, withFileMutationQueue } from '@earendil-works/pi-coding-agent'
+import { StringEnum } from '../../core/extensions/nycode-ai-extension-view.ts'
+import { getAgentDir } from '../../config.ts'
+import type { ExtensionAPI, ExtensionCommandContext } from '../../core/extensions/types.ts'
+import { SettingsManager } from '../../core/settings-manager.ts'
+import { withFileMutationQueue } from '../../core/tools/file-mutation-queue.ts'
+import type { ThemeColor } from '../../modes/interactive/theme/theme-tokens.ts'
 import { Type } from 'typebox'
-import { atomicWriteFile } from './internal/atomic-write.ts'
-import { claudeConfigDir } from './internal/config-dir.ts'
-import { readManagedSettings } from './internal/managed-settings.ts'
-import { capForContext } from './internal/output-guard.ts'
-import { isProjectApprovedSilently } from './internal/project-approval.ts'
-import { repoRoot } from './internal/project-root.ts'
-import { addPromptSection } from './internal/prompt-options.ts'
-import { claudeSettingsChain, readSettingsChain } from './internal/settings-chain.ts'
-import { statToken } from './internal/stat-token.ts'
-import { errorMessage } from './internal/values.ts'
+import { atomicWriteFile } from '../_shared/util/atomic-write.ts'
+import { claudeConfigDir } from '../_shared/settings/config-dir.ts'
+import { readManagedSettings } from '../_shared/settings/managed-settings.ts'
+import { capForContext } from '../_shared/web/output-guard.ts'
+import { isProjectApprovedSilently } from '../_shared/project/project-approval.ts'
+import { repoRoot } from '../_shared/project/project-root.ts'
+import { addPromptSection } from '../_shared/commands/prompt-options.ts'
+import { claudeSettingsChain, readSettingsChain } from '../_shared/settings/settings-chain.ts'
+import { statToken } from '../_shared/util/stat-token.ts'
+import { errorMessage } from '../_shared/util/values.ts'
 
 export const INDEX_FILE = 'MEMORY.md'
 
@@ -163,7 +167,7 @@ export function migrateLegacyStore(cwd: string): void {
     } catch (error) {
       // A failed migration must not take down session start, but the session then has no
       // memories while they sit under the old slug, which reads as having lost them.
-      console.warn(`pi-code-memory: could not move ${legacy} to ${current}: ${errorMessage(error)}; this session starts without those memories`)
+      console.warn(`nycode-memory: could not move ${legacy} to ${current}: ${errorMessage(error)}; this session starts without those memories`)
     }
     return
   }
@@ -388,7 +392,7 @@ export function readMemorySettings(files: string[], managed: Record<string, unkn
 
 /** Write `autoMemoryEnabled` into the user settings file, preserving every other key
  * and creating the file and its config directory when absent. Claude's /memory toggle
- * writes to the user scope (relocated by CLAUDE_CONFIG_DIR); the value takes effect from
+ * writes to the user scope (always <home>/.claude); the value takes effect from
  * the next session start, which is where autoMemoryEnabled is read.
  *
  * An absent file starts from an empty object so the toggle still lands. A file that is
@@ -425,15 +429,15 @@ export function setAutoMemoryEnabledSetting(home: string, value: boolean): { ok:
 /** Session-start notice: `◆ memória  11 notas · 7 projeto · … · /memory`. Types come from each note's `type` frontmatter;
  * a note without one, with an unknown one, missing or outside the memory directory counts as "sem tipo". */
 const NOTICE_TYPES: Array<[string, string]> = [['project', 'projeto'], ['feedback', 'orientação'], ['user', 'usuário'], ['reference', 'referência'], ['', 'sem tipo']]
-type NoticeTheme = { fg: (color: string, text: string) => string; bold?: (text: string) => string }
-/** Minimal brain glyph where a Nerd Font is known to render (kitty or PI_NERD_FONT=1; ASCII request wins), else a diamond. */
+type NoticeTheme = { fg: (color: ThemeColor, text: string) => string; bold?: (text: string) => string }
+/** Minimal brain glyph where a Nerd Font is known to render (kitty or NYCODE_NERD_FONT=1; ASCII request wins), else a diamond. */
 const memoryGlyph = (env: Record<string, string | undefined>): string => {
-  const ascii = Boolean(env.PI_ASCII_ICONS) || env.TERM === 'dumb' || env.TERM === 'linux'
-  return !ascii && (env.PI_NERD_FONT === '1' || env.TERM === 'xterm-kitty' || Boolean(env.KITTY_WINDOW_ID)) ? '\uee9c' : '◆'
+  const ascii = Boolean(env.NYCODE_ASCII_ICONS) || env.TERM === 'dumb' || env.TERM === 'linux'
+  return !ascii && (env.NYCODE_NERD_FONT === '1' || env.TERM === 'xterm-kitty' || Boolean(env.KITTY_WINDOW_ID)) ? '\uee9c' : '◆'
 }
 /** Space after the glyph: kitty draws a Nerd Font icon over the following cell, so there it takes two to keep a gap. */
 const glyphGap = (env: Record<string, string | undefined>): string => {
-  const ascii = Boolean(env.PI_ASCII_ICONS) || env.TERM === 'dumb' || env.TERM === 'linux'
+  const ascii = Boolean(env.NYCODE_ASCII_ICONS) || env.TERM === 'dumb' || env.TERM === 'linux'
   return !ascii && (env.TERM === 'xterm-kitty' || Boolean(env.KITTY_WINDOW_ID)) ? '  ' : ' '
 }
 
@@ -459,13 +463,13 @@ export function memoryNotice(dir: string, index: string, theme?: NoticeTheme, en
     .sort((a, b) => counts.get(b[0])! - counts.get(a[0])!)
     .map(([key, label]) => `${counts.get(key)} ${label}`)
     .join(' · ')
-  const fg = theme ? (color: string, text: string) => theme.fg(color, text) : (_color: string, text: string) => text
+  const fg = theme ? (color: ThemeColor, text: string) => theme.fg(color, text) : (_color: ThemeColor, text: string) => text
   const bold = theme?.bold ? (text: string) => theme.bold!(text) : (text: string) => text
   const total = `${entries.length} ${entries.length === 1 ? 'nota' : 'notas'}`
   return `${fg('accent', memoryGlyph(env))}${glyphGap(env)}${fg('text', bold('memória'))}  ${fg('muted', total)} ${fg('dim', '·')} ${fg('muted', byType)} ${fg('dim', '· /memory')}`
 }
 
-export default function memoryExtension(pi: ExtensionAPI): void {
+export default function memoryExtension(nycode: ExtensionAPI): void {
   let dir = memoryDir(process.cwd())
   let enabled = true
 
@@ -490,13 +494,13 @@ export default function memoryExtension(pi: ExtensionAPI): void {
   }
 
   // These extensions also load inside spawned subagent processes, which carry the
-  // PI_CODE_SUBAGENT marker. Claude does not load the main conversation's auto memory
+  // NYCODE_SUBAGENT marker. Claude does not load the main conversation's auto memory
   // into subagents (they get their own store through the agent `memory:` field), so
   // everything here no-ops there: no index injection, no notify, and the tool never
   // touches the parent store. Read per call so tests can flip the env var.
-  const inSubagent = (): boolean => Boolean(process.env.PI_CODE_SUBAGENT)
+  const inSubagent = (): boolean => Boolean(process.env.NYCODE_SUBAGENT)
 
-  pi.on('session_start', (_event, ctx) => {
+  nycode.on('session_start', (_event, ctx) => {
     if (inSubagent()) return
     migrateLegacyStore(ctx.cwd)
     const approved = isProjectApprovedSilently(ctx)
@@ -511,7 +515,7 @@ export default function memoryExtension(pi: ExtensionAPI): void {
     if (notice) ctx.ui.notify(`\u2063${notice}`, 'info')
   })
 
-  pi.on('before_agent_start', (event) => {
+  nycode.on('before_agent_start', (event) => {
     if (inSubagent() || !enabled) return
     const index = readIndexCached()
     if (!index.trim()) return
@@ -552,7 +556,7 @@ export default function memoryExtension(pi: ExtensionAPI): void {
     }
   }
 
-  pi.registerTool({
+  nycode.registerTool({
     name: 'memory',
     label: 'Memory',
     description:
@@ -581,7 +585,7 @@ export default function memoryExtension(pi: ExtensionAPI): void {
   // Claude's /memory lists the memory locations, opens one in the user's editor and toggles
   // auto memory. The listing reads the settings chain live so it reflects a toggle written
   // in the same session.
-  pi.registerCommand('memory', {
+  nycode.registerCommand('memory', {
     description: 'Show memory file locations, open one in your editor, or toggle auto memory (/memory [edit|on|off])',
     handler: async (args, ctx) => /* NOSONAR typescript:S7503 - pi types a command handler as returning Promise<void> */ {
       const home = os.homedir()
@@ -631,7 +635,7 @@ function showMemoryLocations(ctx: ExtensionCommandContext, home: string): void {
 /**
  * The CLAUDE.md locations /memory lists and edits. Claude's /memory lists every documented
  * location, including files that do not exist yet. The user file is read from the
- * configured directory, so CLAUDE_CONFIG_DIR moves it.
+ * configured directory, which is always <home>/.claude.
  */
 function memoryFiles(cwd: string, home: string): Array<{ label: string; file: string }> {
   return [
@@ -656,7 +660,7 @@ function pickerEntry({ label, file }: { label: string; file: string }): string {
 /**
  * /memory edit: open a memory file in the user's editor, as Claude does. The editor gets the
  * terminal (pi's TUI stopped and restarted around it, as pi's own external editor does) and
- * writes the file itself. pi-code never reads or rewrites the bytes: pi's in-TUI editor
+ * writes the file itself. nycode never reads or rewrites the bytes: pi's in-TUI editor
  * normalises CRLF and tabs and trims, and a read-then-write would overwrite a change made
  * meanwhile. The command is pi's own choice: its externalEditor setting, then VISUAL, EDITOR.
  */
