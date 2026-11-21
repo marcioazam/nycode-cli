@@ -21,6 +21,7 @@ import runExtension from "./run/index.ts";
 import sessionTitleExtension from "./session-title/index.ts";
 import settingsFlagsExtension from "./settings-flags/index.ts";
 import skillsCompatExtension from "./skills-compat/index.ts";
+import soundNotifyExtension from "./sound-notify/index.ts";
 import statusLineExtension from "./status-line/index.ts";
 import subagentExtension from "./subagent/index.ts";
 import thinkingExtension from "./thinking/index.ts";
@@ -63,5 +64,6 @@ export const builtInExtensions: InlineExtension[] = [
 	{ name: "web", factory: webExtension, builtin: true, enabledByDefault: false },
 	// Embedded ny-pi extensions, in ny-pi's load order (after pi-code, by source file name).
 	{ name: "docs-pointer", factory: docsPointerExtension, builtin: true },
+	{ name: "sound-notify", factory: soundNotifyExtension, builtin: true },
 	{ name: "up-dequeue", factory: upDequeueExtension, builtin: true },
 ];
