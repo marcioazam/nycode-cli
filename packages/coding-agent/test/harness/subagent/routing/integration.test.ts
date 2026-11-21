@@ -56,15 +56,25 @@ const model = (id: string, cost: number) => ({
 	reasoning: true,
 	cost: { input: 1, output: cost, cacheRead: 0, cacheWrite: 0 },
 });
-function boot(opts: { hasUI?: boolean; custom?: (factory: any) => Promise<unknown> } = {}) {
-	const tools: any[] = [];
-	const commands = new Map<string, any>();
-	const handlers = new Map<string, Array<(...a: any[]) => any>>();
+type Handler = (...a: unknown[]) => unknown;
+type ToolResult = { content: Array<{ text: string }> };
+type ToolDef = {
+	name: string;
+	description: string;
+	parameters: { properties: Record<string, { description?: string; items: { properties: Record<string, unknown> } }> };
+	execute: (...a: unknown[]) => Promise<ToolResult>;
+};
+type Overlay = { handleInput(data: string): void };
+type OverlayFactory = (tui: unknown, theme: unknown, kb: unknown, done: (v?: unknown) => void) => Overlay;
+function boot(opts: { hasUI?: boolean; custom?: (factory: OverlayFactory) => Promise<unknown> } = {}) {
+	const tools: ToolDef[] = [];
+	const commands = new Map<string, { handler: Handler }>();
+	const handlers = new Map<string, Handler[]>();
 	const notes: string[] = [];
 	const pi = {
-		on: (event: string, h: (...a: any[]) => any) => void handlers.set(event, [...(handlers.get(event) ?? []), h]),
-		registerTool: (def: any) => void tools.push(def),
-		registerCommand: (name: string, def: any) => void commands.set(name, def),
+		on: (event: string, h: Handler) => void handlers.set(event, [...(handlers.get(event) ?? []), h]),
+		registerTool: (def: ToolDef) => void tools.push(def),
+		registerCommand: (name: string, def: { handler: Handler }) => void commands.set(name, def),
 		events: { emit: () => {}, on: () => () => {} },
 		getActiveTools: () => ["subagent"],
 		getThinkingLevel: () => "high",
@@ -87,8 +97,8 @@ function boot(opts: { hasUI?: boolean; custom?: (factory: any) => Promise<unknow
 	const saved = process.argv[1];
 	process.argv[1] = fakePi;
 	subagentExtension(pi as never);
-	const tool = () => tools.filter((t) => t.name === "subagent").at(-1);
-	const run = (params: Record<string, unknown>): Promise<any> =>
+	const tool = () => tools.filter((t) => t.name === "subagent").at(-1) as ToolDef;
+	const run = (params: Record<string, unknown>): Promise<ToolResult> =>
 		tool().execute("call", params, undefined, undefined, ctx);
 	const info = async (params: Record<string, unknown>) => {
 		const res = await run(params);
@@ -245,7 +255,7 @@ test("agents: do frontmatter limita o spawn do filho e o roster (AC6)", async ()
 		const denied = await h.run({ agent: "worker", task: "x" });
 		assert.match(denied.content[0].text, /Unknown agent: "worker"\. Available agents: "reader"\./);
 		assert.ok((await h.info({ agent: "reader", task: "x" })).args.includes("--mode"));
-		const roster = (await h.fire("before_agent_start"))[0].systemPrompt as string;
+		const roster = ((await h.fire("before_agent_start"))[0] as { systemPrompt: string }).systemPrompt as string;
 		assert.ok(roster.includes("- reader (") && !roster.includes("- worker ("));
 		// um filho sem `agents:` herda a lista do pai (efetivo = próprio ∩ herdado)
 		assert.equal((await h.info({ agent: "reader", task: "x" })).env.allowed, '["reader"]');
@@ -282,7 +292,7 @@ test("política inválida nunca derruba o spawn (AC2)", async () => {
 
 test("/subagents-setup: modal salva, show, off, sem UI e uso inválido (AC1/AC2)", async () => {
 	clearPolicy();
-	let overlay: any;
+	let overlay: Overlay | undefined;
 	const h = boot({
 		hasUI: true,
 		custom: (factory) =>
@@ -296,7 +306,7 @@ test("/subagents-setup: modal salva, show, off, sem UI e uso inválido (AC1/AC2)
 			}),
 	});
 	try {
-		const cmd = h.commands.get("subagents-setup");
+		const cmd = h.commands.get("subagents-setup") as { handler: Handler };
 		const before = h.tools.length;
 		await cmd.handler("", h.ctx);
 		assert.ok(overlay);
@@ -372,20 +382,23 @@ test("resolveSpawn nunca lança: erro interno vira nota e agente intacto", () =>
 			throw new Error("boom");
 		},
 	};
-	const broken = applyMod.resolveSpawn(hostile as AgentConfig, { tools: 5 as any, skills: {} as any }, "x", {
-		NYCODE_SUBAGENT_ROUTING_FILE: policyFile,
-	});
+	const broken = applyMod.resolveSpawn(
+		hostile as AgentConfig,
+		{ tools: 5, skills: {} } as unknown as Parameters<typeof applyMod.resolveSpawn>[1],
+		"x",
+		{
+			NYCODE_SUBAGENT_ROUTING_FILE: policyFile,
+		},
+	);
 	assert.equal(broken.agent, hostile);
 	assert.match(broken.note ?? "", /route: skipped \(boom\)/);
 });
 
 test("AC7: com NYCODE_SUBAGENT_NO_SKILLS o skills.ts não entrega paths por resources_discover", () => {
-	const handlers = new Map<string, (...a: any[]) => any>();
-	const pi: any = new Proxy(
-		{ on: (e: string, h: any) => void handlers.set(e, h) },
-		{ get: (t: any, k) => t[k] ?? (() => {}) },
-	);
-	skillsExtension(pi);
+	const handlers = new Map<string, Handler>();
+	const base: Record<PropertyKey, unknown> = { on: (e: string, h: Handler) => void handlers.set(e, h) };
+	const pi = new Proxy(base, { get: (t, k) => t[k] ?? (() => {}) });
+	skillsExtension(pi as never);
 	const ctx = { cwd: tmp, hasUI: false, ui: {}, sessionManager: { getBranch: () => [] } };
 	const discover = handlers.get("resources_discover")!;
 	process.env.NYCODE_SUBAGENT_NO_SKILLS = "1";

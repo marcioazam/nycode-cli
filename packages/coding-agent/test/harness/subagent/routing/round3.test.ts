@@ -47,14 +47,19 @@ test("2: removePolicy só trata ENOENT como já off; /subagents-setup off notifi
 	const dir = join(tmp, "dirpolicy");
 	mkdirSync(dir);
 	assert.throws(() => policyMod.removePolicy({ NYCODE_SUBAGENT_ROUTING_FILE: dir }));
-	const handlers = new Map<string, any>();
-	registerRoutingCommand({ registerCommand: (n: string, d: any) => void handlers.set(n, d) } as any, () => {});
+	const handlers = new Map<string, { handler: (...a: unknown[]) => unknown }>();
+	registerRoutingCommand(
+		{
+			registerCommand: (n: string, d: { handler: (...a: unknown[]) => unknown }) => void handlers.set(n, d),
+		} as never,
+		() => {},
+	);
 	const notes: Array<[string, string]> = [];
 	const saved = process.env.NYCODE_SUBAGENT_ROUTING_FILE;
 	process.env.NYCODE_SUBAGENT_ROUTING_FILE = dir;
 	try {
 		await handlers
-			.get("subagents-setup")
+			.get("subagents-setup")!
 			.handler("off", { ui: { notify: (m: string, k: string) => void notes.push([m, k]) } });
 	} finally {
 		process.env.NYCODE_SUBAGENT_ROUTING_FILE = saved;

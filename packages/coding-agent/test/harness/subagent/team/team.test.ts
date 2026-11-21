@@ -20,11 +20,16 @@ import { fleetTestEnv } from "../fleet-env.ts";
 const { tmp } = fleetTestEnv("team-test-");
 
 // Results are unions on `ok` and the cases read both branches; inputs are deliberately malformed too. View them loosely.
-type Loose = { ok: boolean; error: string; [key: string]: any };
+type Loose = {
+	ok: boolean;
+	error: string;
+	// `any` is unavoidable: malformed-input cases read arbitrary result fields
+	[key: string]: any;
+};
 const loose =
-	(fn: (...args: any[]) => unknown) =>
+	(fn: (...args: never[]) => unknown) =>
 	(...args: unknown[]): Loose =>
-		fn(...args) as Loose;
+		(fn as (...a: unknown[]) => unknown)(...args) as Loose;
 const sendMessage = loose(route.sendMessage);
 const addTask = loose(tasks.addTask);
 const claimTask = loose(tasks.claimTask);
