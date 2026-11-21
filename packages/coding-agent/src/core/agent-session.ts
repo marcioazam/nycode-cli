@@ -3791,7 +3791,12 @@ export class AgentSession {
 				)
 			: createAllToolDefinitions(this._cwd, {
 					read: { autoResizeImages },
-					bash: { commandPrefix: shellCommandPrefix, shellPath },
+					// nycode: K8 background-on-timeout comes from the resolved nycode settings
+					bash: {
+						commandPrefix: shellCommandPrefix,
+						shellPath,
+						backgroundOnTimeout: this.settingsManager.getNycodeSettings().tools.bash.backgroundOnTimeout,
+					},
 				});
 
 		this._baseToolDefinitions = new Map(

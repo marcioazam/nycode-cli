@@ -124,7 +124,6 @@ chegam por fase e o `core_scope.py` é convertido em F3.
 | agent | web-scout | optional | Exige MCPs de busca |
 | agent | claim-verifier | optional | Papel do `deep-search` |
 | extension | auto-resume | core | Retoma após erro transitório do provedor |
-| extension | bash-timeout | core | Limite de tempo do shell |
 | extension | bypass-permissions | core | Modo de permissão |
 | extension | cache-prefix-probe | remove | Diagnóstico temporário |
 | extension | claude-rules | core | Regras do Claude Code em .claude/rules |
