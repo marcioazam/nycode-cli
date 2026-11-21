@@ -8,7 +8,7 @@
 | tipo | total | 48h | pós | primeira/última | exemplo | causa provável |
 |---|---|---|---|---|---|---|
 | bash timeout acima do teto | 75 | 71 | 24 | 11-16 08:59 / 11-19 01:38 | `bash: timeout de 3000s acima do teto de 1800s…` | harness: briefs de git-delivery (50), gate-runner (6) e swarm-worker pedem 2.000–3.600 s (3000 s ×36); recusa em `extensions/bash-timeout/index.ts:35`, teto `:22` |
-| read ENOENT `$CLAUDE_CONFIG_DIR/docs/agent-contract.md` | 101 | 98 | 35 | 11-16 18:30 / 11-19 02:18 | `ENOENT … '/home/marcio/code/pi-harness/$CLAUDE_CONFIG_DIR/docs/agent-contract.md'` | harness: variável literal que o `read` não expande. swarm-worker 41, gate-runner 15, plan-reviewer 12, security-reviewer 7, Explore 7 |
+| read ENOENT `$CLAUDE_CONFIG_DIR/docs/agent-contract.md` | 101 | 98 | 35 | 11-16 18:30 / 11-19 02:18 | `ENOENT … '~/code/pi-harness/$CLAUDE_CONFIG_DIR/docs/agent-contract.md'` | harness: variável literal que o `read` não expande. swarm-worker 41, gate-runner 15, plan-reviewer 12, security-reviewer 7, Explore 7 |
 | guard: rm recursivo forçado | 41 | 41 | 33 | 11-17 13:33 / 11-19 03:39 | `Bloqueado pelo guard: rm recursivo forçado` | harness: `claude-home/hooks/guard.py:205`; swarm-worker 29, web-platform-engineer 4, plan-reviewer 4 |
 | guard: pkill -f que casa com o próprio shell | 10 | 9 | 4 | 11-16 / 11-19 02:59 | `Bloqueado pelo guard: pkill -f com padrão…` | guard em ação (comportamento correto, mas o agente repete) |
 | 429 rate_limit_error | 143 | 71 | 21 | 11-16 17:22 / 11-19 05:10 | `…would exceed your account's rate limit` | externa: cota da conta |

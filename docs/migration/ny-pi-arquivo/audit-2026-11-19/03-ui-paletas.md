@@ -390,7 +390,7 @@ reproduzo aqui para respeitar o limite de linhas; os hex são validados só pelo
 
 ```python
 import json,sys
-T='/home/marcio/code/pi-harness/themes/'
+T='~/code/pi-harness/themes/'
 W=(.2126729,.7151522,.072175)
 def rgb(h): return [int(h.lstrip('#')[i:i+2],16) for i in (0,2,4)]
 def lin(c): c/=255; return c/12.92 if c<=.04045 else ((c+.055)/1.055)**2.4
