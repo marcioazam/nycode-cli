@@ -1,3 +1,4 @@
 # One entry per line: name  # reason. A trailing "/" covers the directory and everything below. Max 15 entries.
 # Entries are repo-relative paths under packages/coding-agent/resources. None yet: the ny-pi entries named runtime files
 # of the old pi home, a location the nycode scan no longer matches (D-09).
+lead  # label of the main session in team messages (subagent/team/route.ts, store.ts), not an agent definition
