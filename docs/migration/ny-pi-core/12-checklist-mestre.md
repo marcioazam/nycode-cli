@@ -125,7 +125,7 @@ Identificador: `C-F<fase>-<n>`. A coluna "prova" diz o que tem de ser observado.
 - [x] C-F8-01 K6 e K13: `resources/` carregado com a menor precedência e incluído no pacote.
 - [x] C-F8-02 Instruções (`contract`, `headless`, `lite`) embarcadas; orçamento de instruções não cresce. Prova: `instruction_budget.py check`.
 - [x] C-F8-03 Regras (`safety.md`, 4 de referência) embarcadas.
-- [ ] C-F8-04 30 skills embarcadas com a classe da 0005; as `optional` fora do contexto do modelo. Prova: `skill_lint.py`, `core_scope.py`. Parcial: embarque e classe feitos (#275); `optional` fora do contexto é PR medido (0005, K3c), adiado pela D-29.
+- [x] C-F8-04 30 skills embarcadas com a classe da 0005; as `optional` fora do contexto do modelo. Prova: `skill_lint.py`, `core_scope.py`. Feito sob a D-39: as 6 `optional` com `disable-model-invocation: true` e o guarda em `core_scope.py`; medição sem modelo: −6 skills e −2.202 caracteres na seção `<skills>` quando ela é listada (`-p` de topo já não lista skills).
 - [x] C-F8-05 17 comandos embarcados.
 - [x] C-F8-06 17 agentes embarcados; `check-agents.py` verde.
 - [x] C-F8-07 Nenhum texto embarcado cita `~/.pi`, `$CLAUDE_CONFIG_DIR` ou `claude-home`. Prova: `check-refs.py` e busca.
