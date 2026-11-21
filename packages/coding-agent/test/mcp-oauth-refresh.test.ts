@@ -15,7 +15,7 @@ import {
 	McpOAuthCredentialStore,
 	type McpSignInPrompt,
 	signInMcpServer,
-} from "../src/extensions/mcp/oauth.ts";
+} from "../src/extensions/mcp/oauth/oauth.ts";
 import { startOAuthMcpServer } from "./suite/mcp-oauth-server.ts";
 
 describe("MCP OAuth refresh", () => {

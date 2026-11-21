@@ -8,12 +8,12 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import chalk from "chalk";
-import { APP_NAME, CONFIG_DIR_NAME } from "../../config.ts";
-import { validateMcpServerConfig } from "../../core/mcp-servers.ts";
-import { ModelRuntime } from "../../core/model-runtime.ts";
-import { ProjectTrustStore } from "../../core/trust-manager.ts";
-import { openBrowser } from "../../utils/open-browser.ts";
-import { questionTerminal } from "../../utils/terminal-question.ts";
+import { APP_NAME, CONFIG_DIR_NAME } from "../../../config.ts";
+import { validateMcpServerConfig } from "../../../core/mcp-servers.ts";
+import { ModelRuntime } from "../../../core/model-runtime.ts";
+import { ProjectTrustStore } from "../../../core/trust-manager.ts";
+import { openBrowser } from "../../../utils/open-browser.ts";
+import { questionTerminal } from "../../../utils/terminal-question.ts";
 import {
 	addMcpServerConfig,
 	getMcpToolExposure,
@@ -21,7 +21,7 @@ import {
 	loadMcpConfig,
 	type McpServerEntry,
 	removeMcpServerConfig,
-} from "./config.ts";
+} from "../config.ts";
 import {
 	createDefaultTransport,
 	McpOAuthCredentialStore,
@@ -29,7 +29,7 @@ import {
 	McpServerLog,
 	McpSignInCancelledError,
 	signInMcpServer,
-} from "./runtime.ts";
+} from "../runtime/runtime.ts";
 
 const HELP = `${chalk.bold("Usage:")}
   ${APP_NAME} mcp add <server> [options] -- <command> [args...]

@@ -30,8 +30,8 @@ import {
 	waitForLoopbackSignIn,
 } from "@nycode/mcp/oauth";
 import lockfile from "proper-lockfile";
-import { APP_NAME, getAgentDir } from "../../config.ts";
-import { type AuthStorageBackend, FileAuthStorageBackend } from "../../core/auth-storage.ts";
+import { APP_NAME, getAgentDir } from "../../../config.ts";
+import { type AuthStorageBackend, FileAuthStorageBackend } from "../../../core/auth-storage.ts";
 
 /** A refresh lock that its holder stopped renewing (the process was killed) is taken over after this. */
 const REFRESH_LOCK_STALE_MS = 20_000;

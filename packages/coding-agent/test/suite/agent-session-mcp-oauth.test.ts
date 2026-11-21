@@ -7,10 +7,10 @@ import type { ToolResultMessage } from "@nycode/ai/compat";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { InMemoryAuthStorageBackend } from "../../src/core/auth-storage.ts";
 import { emitSessionShutdownEvent } from "../../src/core/extensions/runner.ts";
-import { runMcpCommand } from "../../src/extensions/mcp/cli.ts";
+import { runMcpCommand } from "../../src/extensions/mcp/cli/cli.ts";
 import type { McpOAuthConfig, McpServerEntry } from "../../src/extensions/mcp/config.ts";
 import { createMcpExtension } from "../../src/extensions/mcp/index.ts";
-import { McpOAuthCredentialStore } from "../../src/extensions/mcp/oauth.ts";
+import { McpOAuthCredentialStore } from "../../src/extensions/mcp/oauth/oauth.ts";
 import { createHarness, createTestUiContext, getMessageText, type Harness } from "./harness.ts";
 import { startOAuthMcpServer } from "./mcp-oauth-server.ts";
 
