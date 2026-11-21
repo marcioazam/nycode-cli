@@ -47,7 +47,7 @@
 		"@nycode/schema": "1.6.0",
 		"@nycode/telemetry": "1.6.0",
 		"esbuild": "0.28.2",
-		"ws": "8.21.0"
+		"ws": "8.23.0"
 	},
 	"devDependencies": {
 		"@nycode/ai": "1.6.0",

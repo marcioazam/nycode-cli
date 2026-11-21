@@ -67,9 +67,9 @@
 		"node": ">=22.19.0"
 	},
 	"dependencies": {
-		"quickjs-wasi": "3.6.2"
+		"quickjs-wasi": "3.7.0"
 	},
 	"devDependencies": {
-		"vitest": "4.1.12"
+		"vitest": "5.1.0"
 	}
 }
