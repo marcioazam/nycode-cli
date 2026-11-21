@@ -1,0 +1,661 @@
+--- a/internal/subagent-events.ts
++++ b/internal/subagent-events.ts
+@@ -5,6 +5,8 @@
+  */
+ 
+ export const SUBAGENT_CHANNEL = 'pi-code:subagent'
++/** Published by plan-mode: `{executing: boolean, step?: number, done: number, total: number}`; `step` = the first open step. Read-only here. */
++export const PLAN_STATE_CHANNEL = 'pi-code:plan-state'
+ 
+ export interface SubagentPhaseEvent {
+   phase: 'start' | 'stop'
+@@ -13,6 +15,13 @@
+   /** The run's final assistant text, on stop: Claude's SubagentStop delivers it
+    * as last_assistant_message so hooks need not parse a transcript. */
+   lastAssistantMessage?: string
++  /** Correlation (additive; consumers that do not know them ignore them): the `subagent` tool call, the plan step open at the
++   * start, and on stop how the lane ended. */
++  toolCallId?: string
++  planStep?: number
++  state?: string
++  exitCode?: number
++  partial?: boolean
+ }
+ 
+ export function isSubagentPhaseEvent(data: unknown): data is SubagentPhaseEvent {
+--- a/run/registry.ts
++++ b/run/registry.ts
+@@ -4,7 +4,9 @@
+  * the state stays there). Pure bookkeeping, no UI and no process control. In memory only: a new session starts empty
+  * (live shells keep running, detached, and are not listed again). Record: docs/pi-run-section-2026-11-13.md.
+  */
+-import { allBackgroundRuns, type BackgroundRun } from '../subagent/background.ts'
++import { allBackgroundRuns, backgroundRun, type BackgroundRun } from '../subagent/background.ts'
++import { fleetSourceForUi } from '../subagent/fleet/source.ts'
++import type { RunRecord as FleetRecord } from '../subagent/fleet/types.ts'
+ 
+ export type RunKind = 'shell' | 'agent'
+ /** Stored states; `new-output` and `silent` are derived from them by `displayState`. */
+@@ -40,6 +42,8 @@
+   /** Subagent cost in dollars when known. */
+   cost?: number
+   turns?: number
++  /** Agent cut at its maxTurns limit: state `done`, output incomplete. */
++  capped?: true
+   /** Found in a bash command, not started by the tool: it is not our child and has no process group of its own. */
+   detected?: boolean
+   /** `r` can restart it with `bash -lc command`. */
+@@ -61,7 +65,9 @@
+ export class RunRegistry {
+   now: () => number = Date.now
+   private readonly shells = new Map<string, RunRecord>()
++  /** Only for background runs that have no fleet record (no fleet dir): the first time they were observed. */
+   private readonly agentSeen = new Map<string, { startedAt: number; endedAt?: number }>()
++  private fleetCache: { at: number; rows: FleetRecord[] } | undefined
+   private readonly dismissed = new Set<string>()
+   private readonly awaitedAgents = new Set<string>()
+   private readonly changeListeners = new Set<Listener>()
+@@ -169,16 +175,42 @@
+     return this.shells.get(id) ?? this.agents(this.now()).find((r) => r.id === id)
+   }
+ 
++  /** The fleet changed on disk: the next read goes to the files (the section calls this from the source's onChange). */
++  fleetChanged(): void {
++    this.fleetCache = undefined
++  }
++
++  /** Depth-1 lanes of the fleet (fg and bg, the single source of agent state), read at most once a second between changes. */
++  private fleetLanes(now: number): FleetRecord[] {
++    if (this.fleetCache && now - this.fleetCache.at < 1000) return this.fleetCache.rows
++    let rows: FleetRecord[] = []
++    try {
++      rows = fleetSourceForUi().list().filter((r) => r.depth === 1)
++    } catch {
++      // the fleet source exists only after session_start at depth 0
++    }
++    this.fleetCache = { at: now, rows }
++    return rows
++  }
++
+   private agents(now: number): RunRecord[] {
+     const out: RunRecord[] = []
++    const lanes = this.fleetLanes(now)
++    const inFleet = new Set(lanes.map((r) => r.id))
++    for (const f of lanes) {
++      if (this.dismissed.has(f.id)) continue
++      if (f.state !== 'running' && now - (f.endedAt ?? f.updatedAt) > KEEP_MS) continue
++      out.push(agentRecord(f, backgroundRun(f.id), this.awaitedAgents.has(f.id)))
++    }
++    // No fleet record (no fleet dir): the registry's own run, timed from when it was first seen.
+     for (const b of allBackgroundRuns()) {
+-      if (this.dismissed.has(b.id)) continue
++      if (inFleet.has(b.id) || this.dismissed.has(b.id)) continue
+       const seen = this.agentSeen.get(b.id) ?? { startedAt: now }
+       this.agentSeen.set(b.id, seen)
+       const live = b.state === 'running' || b.live === true
+       if (!live && seen.endedAt === undefined) seen.endedAt = now
+       if (seen.endedAt !== undefined && now - seen.endedAt > KEEP_MS) continue
+-      out.push(agentRecord(b, seen, this.awaitedAgents.has(b.id)))
++      out.push(agentRecordFromRegistry(b, seen, this.awaitedAgents.has(b.id)))
+     }
+     return out
+   }
+@@ -202,6 +234,7 @@
+   resetSession(): void {
+     this.shells.clear()
+     for (const b of allBackgroundRuns()) this.dismissed.add(b.id)
++    for (const f of this.fleetLanes(this.now())) this.dismissed.add(f.id)
+     this.awaitedAgents.clear()
+     this.emit()
+   }
+@@ -238,7 +271,7 @@
+ 
+ const lastLines = (text: string | undefined): string[] => (text ? text.split('\n').slice(-TAIL_LINES) : [])
+ 
+-function agentRecord(b: BackgroundRun, seen: { startedAt: number; endedAt?: number }, awaited: boolean): RunRecord {
++function agentRecordFromRegistry(b: BackgroundRun, seen: { startedAt: number; endedAt?: number }, awaited: boolean): RunRecord {
+   const live = b.state === 'running' || b.live === true
+   const state: BaseState = live && b.state === 'running' ? 'running' : b.state === 'cancelled' ? 'stopped' : b.state === 'failed' ? 'failed' : b.state === 'done' ? 'done' : 'running'
+   const task = b.task.split('\n')[0] ?? ''
+@@ -261,6 +294,32 @@
+     waiters: 0,
+   }
+ }
++
++/** A fleet lane (start, end, state, turns, cost: the lane's own record) joined with the registry run that has the tail and the cwd. */
++function agentRecord(f: FleetRecord, b: BackgroundRun | undefined, awaited: boolean): RunRecord {
++  const task = f.task.split('\n')[0] ?? ''
++  const state: BaseState = f.state === 'cancelled' ? 'stopped' : f.state
++  return {
++    id: f.id,
++    kind: 'agent',
++    name: `${f.agent} · ${task}`,
++    command: task,
++    cwd: b?.spawn.cwd ?? '',
++    startedAt: f.startedAt,
++    endedAt: f.endedAt,
++    exitCode: f.exitCode,
++    state,
++    awaited,
++    tail: lastLines(b?.output ?? b?.stderr ?? f.activity),
++    turns: f.turns,
++    cost: f.cost,
++    ...(f.partial ? { capped: true as const } : {}),
++    outputSeq: 0,
++    seenSeq: 0,
++    lastOutputAt: f.startedAt,
++    waiters: 0,
++  }
++}
+ 
+ let shared: RunRegistry | undefined
+ const KEY = Symbol.for('pi-code.run.registry')
+--- a/run/section.ts
++++ b/run/section.ts
+@@ -9,6 +9,7 @@
+ 
+ import { hudTheme, motionEnabled, SPINNER_MS } from '../subagent/fleet-ui/palette.ts'
+ import type { UiTheme } from '../subagent/fleet-ui/panel.ts'
++import { fleetSourceForUi } from '../subagent/fleet/source.ts'
+ import { editorOwnsFocus } from '../subagent/fleet-ui/section.ts'
+ import { tabbed } from '../subagent/fleet-ui/chrome.ts'
+ import { nav } from '../subagent/section-nav/nav.ts'
+@@ -45,6 +46,7 @@
+   private registered = false
+   private offInput?: () => void
+   private offChange?: () => void
++  private offFleet?: () => void
+   private timer?: ReturnType<typeof setInterval>
+ 
+   private readonly reg: RunRegistry
+@@ -72,6 +74,7 @@
+   start(ctx: ExtensionContext): void {
+     this.ctx = ctx
+     this.offChange ??= this.reg.onChange(() => this.sync())
++    this.subscribeFleet()
+     nav.register({
+       id: 'run',
+       active: () => this.registered,
+@@ -86,10 +89,25 @@
+     this.sync()
+   }
+ 
++  /** Agent lanes live in the fleet: its change event replaces the tool_result + timer polling. Retried from sync() until the source exists. */
++  private subscribeFleet(): void {
++    if (this.offFleet) return
++    try {
++      this.offFleet = fleetSourceForUi().onChange(() => {
++        this.reg.fleetChanged()
++        this.sync()
++      })
++    } catch {
++      // no fleet source yet (session_start at depth 0 creates it)
++    }
++  }
++
+   /** Session boundary: timer, listener, widget and bridge links go away (live shells keep running, detached). */
+   shutdown(ctx: ExtensionContext | undefined = this.ctx): void {
+     this.offChange?.()
+     this.offChange = undefined
++    this.offFleet?.()
++    this.offFleet = undefined
+     this.offInput?.()
+     this.offInput = undefined
+     this.nativeFocus = false
+@@ -100,6 +118,7 @@
+ 
+   /** Re-reads the registry: the widget shows only while a run is live; finished ones stay in the registry (tool, history). */
+   sync(): void {
++    this.subscribeFleet()
+     const rows = this.reg.snapshot()
+     if (!rows.some((r) => r.state === 'running')) this.remove()
+     else {
+--- a/run/view.ts
++++ b/run/view.ts
+@@ -65,6 +65,7 @@
+   } else {
+     const since = ago(now - (r.endedAt ?? now))
+     if (st === 'stopped') parts.push(`parado · ${since}`)
++    else if (r.capped) parts.push(`parcial · ${since}`)
+     else if (r.exitCode !== undefined) parts.push(`exit ${r.exitCode} · ${since}`)
+     else parts.push(`${r.signal ? `sinal ${r.signal}` : 'terminou'} · ${since}`)
+   }
+--- a/subagent/background.ts
++++ b/subagent/background.ts
+@@ -413,7 +413,7 @@
+       run.output = `${run.output ?? ''}\n[${stopNote(stopBy)}]`.trim()
+     }
+     if (trackerBuffer.trim()) tracker?.onLine(trackerBuffer)
+-    tracker?.finish({ exitCode: run.exitCode, cancelled: run.state === 'cancelled', error: run.state === 'failed' ? (run.stderr || '').slice(-300) : undefined })
++    tracker?.finish({ exitCode: run.exitCode, cancelled: run.state === 'cancelled', partial: run.partial === true && run.state === 'done', error: run.state === 'failed' ? (run.stderr || '').slice(-300) : undefined })
+     complete()
+   })
+   proc.on('error', (error) => {
+--- a/subagent/fleet/source.ts
++++ b/subagent/fleet/source.ts
+@@ -235,16 +235,45 @@
+   return box.source
+ }
+ 
+-function isDetachedRunning(rec: RunRecord): boolean {
+-  return rec.depth === 1 && rec.state === 'running' && rec.background && rec.ownerPid === process.pid && !backgroundRun(rec.id)
++const FINISHED_KEEP_MS = 30 * 60_000
++
++/** mm:ss (h:mm:ss from an hour). */
++function clock(ms: number): string {
++  const total = Math.max(0, Math.floor(ms / 1000))
++  const mm = String(Math.floor(total / 60) % 60).padStart(2, '0')
++  const ss = String(total % 60).padStart(2, '0')
++  return total >= 3600 ? `${Math.floor(total / 3600)}:${mm}:${ss}` : `${mm}:${ss}`
++}
++
++/** Lanes of this session's tree (any depth) that the registry does not list: running ones and those finished less than 30 min ago.
++ * Nested lanes belong to the child that spawned them, not to this process, but share the fleet dir: the root lists them too. */
++function listedLane(rec: RunRecord, now: number): boolean {
++  if (backgroundRun(rec.id)) return false
++  if (rec.ownerPid !== process.pid && !(subagentDepth() === 0 && rec.depth >= 2)) return false
++  return rec.state === 'running' || now - (rec.endedAt ?? rec.updatedAt) < FINISHED_KEEP_MS
+ }
+ 
++/** One line per lane: `id agent state [depth N] · Nt · $x · mm:ss · activity`, nested lanes indented. */
+ export function fleetStatusLines(): string[] {
+   const dir = currentFleetDir()
+   if (!dir) return []
++  const now = Date.now()
+   return readRecords(dir)
+-    .filter(isDetachedRunning)
+-    .map((rec) => `${rec.id} (${rec.agent}) running — moved to the background (Ctrl+B)`)
++    .filter((rec) => listedLane(rec, now))
++    .sort((a, b) => a.startedAt - b.startedAt)
++    .map((rec) => {
++      const state = rec.partial ? `${rec.state} (partial)` : rec.state
++      const parts = [`${rec.id} ${rec.agent} ${state}${rec.depth > 1 ? ` depth ${rec.depth}` : ''}`, `${rec.turns}t`, `$${rec.cost.toFixed(2)}`, clock((rec.endedAt ?? now) - rec.startedAt)]
++      if (rec.activity) parts.push(rec.activity)
++      return `${'  '.repeat(Math.max(0, rec.depth - 1))}${parts.join(' · ')}`
++    })
++}
++
++/** Depth-1 lanes of this process still running outside the registry (auto-detached or Ctrl+B calls): the /new and resume warning counts them. */
++export function runningLaneCount(): number {
++  const dir = currentFleetDir()
++  if (!dir) return 0
++  return readRecords(dir).filter((rec) => rec.depth === 1 && rec.state === 'running' && rec.ownerPid === process.pid && !backgroundRun(rec.id)).length
+ }
+ 
+ /** Quit at depth 0: stop this process's foreground and detached children (background runs are the registry's job). */
+--- a/subagent/fleet/tracker.ts
++++ b/subagent/fleet/tracker.ts
+@@ -4,6 +4,7 @@
+  * throttled (<= 1 per 250 ms); message_update deltas are ignored so there is no
+  * per-token I/O.
+  */
++import { AsyncLocalStorage } from 'node:async_hooks'
+ import { subagentDepth } from '../nesting/index.ts'
+ import { currentForegroundCall } from './detach.ts'
+ import { appendTranscript, clearStop, currentFleetDir, readRecord, resetInbox, stopOrigin, validRunId, writeRecord } from './store.ts'
+@@ -18,11 +19,33 @@
+ // CSI sequences first: matched by the control-char class alone, ESC would go and leave `[31m` behind.
+ const CONTROL_RE = /\u001b\[[0-9;?]*[ -/]*[@-~]|[\u0000-\u001f\u007f]/g
+ 
++/** The `subagent` tool call in flight: execute() runs inside it, so every lane it starts (fg, bg, chain, parallel) records the call id. */
++export const toolCallScope = new AsyncLocalStorage<string>()
++
++let currentPlanStep: number | undefined
++/** Fed by the `pi-code:plan-state` listener; undefined = no plan running. */
++export function setPlanStep(step: number | undefined): void {
++  currentPlanStep = step
++}
++/** `toolCallId` and `planStep` of the call that is starting a lane now; absent fields are omitted. */
++export function laneCorrelation(): { toolCallId?: string; planStep?: number } {
++  const toolCallId = toolCallScope.getStore()
++  return { ...(toolCallId ? { toolCallId } : {}), ...(currentPlanStep === undefined ? {} : { planStep: currentPlanStep }) }
++}
++/** How a lane ended, from its record (the stop callback of a background run is outside the call's scope): the extra fields of the `stop` event. */
++export function laneOutcome(id: string): { toolCallId?: string; planStep?: number; state?: string; exitCode?: number; partial?: true } {
++  const dir = currentFleetDir()
++  const rec = dir ? readRecord(dir, id) : undefined
++  return rec ? { ...(rec.toolCallId ? { toolCallId: rec.toolCallId } : {}), ...(rec.planStep === undefined ? {} : { planStep: rec.planStep }), state: rec.state, ...(rec.exitCode === undefined ? {} : { exitCode: rec.exitCode }), ...(rec.partial ? { partial: true as const } : {}) } : {}
++}
++
+ export interface FinishOptions {
+   exitCode?: number
+   error?: string
+   aborted?: boolean
+   cancelled?: boolean
++  /** Cut at maxTurns: the record gets `partial` (state stays `done`). */
++  partial?: boolean
+ }
+ 
+ /** A maxTurns cap ends with our own SIGTERM (exit 143): that is a clean finish, as run.ts resolves it. */
+@@ -43,6 +66,8 @@
+   model?: string
+   effort?: string
+   background: boolean
++  /** First activity line, before the child has said anything (the lane exists from the moment it is queued). */
++  activity?: string
+ }
+ 
+ type Json = Record<string, any>
+@@ -110,6 +135,8 @@
+     task: collapse(o.task).slice(0, 300),
+     ...(o.model ? { model: o.model } : {}),
+     ...(o.effort ? { effort: o.effort } : {}),
++    ...(o.activity ? { activity: o.activity } : {}),
++    ...laneCorrelation(),
+     background,
+     state: 'running',
+     startedAt: now,
+@@ -208,6 +235,7 @@
+     this.rec.state = stopped || o.cancelled || o.aborted ? 'cancelled' : (o.exitCode ?? 0) === 0 && !o.error ? 'done' : 'failed'
+     this.rec.endedAt = Date.now()
+     this.rec.exitCode = o.exitCode
++    if (o.partial) this.rec.partial = true
+     if (o.error) this.rec.error = o.error.slice(0, 300)
+     this.write()
+   }
+--- a/subagent/fleet/types.ts
++++ b/subagent/fleet/types.ts
+@@ -70,11 +70,17 @@
+   tokens: RunTokens
+   /** USD spent by this run itself, descendants excluded. */
+   cost: number
++  /** The `subagent` tool call that started this run (the same id as the diagnostics' `gen_ai.tool.call.id`). */
++  toolCallId?: string
++  /** First open plan step when the run started (channel `pi-code:plan-state`). Heuristic: with steps worked in parallel it can name the neighbour. Absent without a running plan. */
++  planStep?: number
+   /** The child's pid; it leads its own process group (spawned detached). */
+   pid?: number
+   /** The process that spawned the run and is the only writer of its files. */
+   ownerPid: number
+   exitCode?: number
++  /** Cut at its maxTurns limit (SIGTERM by the parent): finished as `done`, but the output is incomplete. */
++  partial?: true
+   /** At most 300 characters. */
+   error?: string
+   /** Who stopped the run: the user (panel `x x`) or the parent agent (`subagent {cancel}`, registry or fleet path). */
+--- a/subagent/fleet-ui/index.ts
++++ b/subagent/fleet-ui/index.ts
+@@ -16,6 +16,7 @@
+ const WIDGET_KEY = 'pi-code-fleet'
+ const TICK_MS = 250 // spinner pace; idle ticks render once per second (IDLE_EVERY)
+ const IDLE_EVERY = 4
++const CONTEXT_TTL_MS = 1000
+ 
+ /** pi's TUI keeps the focused component private: treat the editor (getText + setText) as the
+  * owner; unknown focus counts as the editor so activation keeps working. */
+@@ -42,14 +43,24 @@
+ export function registerFleetUi(pi: ExtensionAPI, getSource: () => FleetSource | undefined): { openTasks(ctx: ExtensionCommandContext): Promise<void> } {
+   // Estado do main só para desenhar a raiz do painel; nada aqui comanda o fluxo.
+   const main: { state: MainStats['state']; since?: number; cost?: number; ctx?: ExtensionContext } = { state: 'idle' }
++  // getContextUsage() walks the branch: 6.3% of the non-idle samples while animating. Kept for CONTEXT_TTL_MS by the `now` the
++  // panel passes in, and dropped by the events that change the context (message, turn end, compaction, new session).
++  let usage: { at: number; tokens: number | undefined } | undefined
++  const dropUsage = (): void => {
++    usage = undefined
++  }
+   const getMain = (now: number): MainStats | undefined => {
+     if (!main.ctx) return undefined
+-    let contextTokens: number | undefined
+-    try {
+-      contextTokens = main.ctx.getContextUsage()?.tokens ?? undefined
+-    } catch {
+-      contextTokens = undefined
++    if (!usage || now - usage.at >= CONTEXT_TTL_MS || now < usage.at) {
++      let tokens: number | undefined
++      try {
++        tokens = main.ctx.getContextUsage()?.tokens ?? undefined
++      } catch {
++        tokens = undefined
++      }
++      usage = { at: now, tokens }
+     }
++    const contextTokens = usage.tokens
+     return { state: main.state, elapsedMs: main.since === undefined ? undefined : Math.max(0, now - main.since), contextTokens, cost: main.cost }
+   }
+   const controller = new PanelController({ getSource, now: Date.now, getMain })
+@@ -64,9 +75,13 @@
+     if (main.state !== 'idle') main.state = 'working'
+   })
+   pi.on('turn_end', (_event, ctx) => {
++    dropUsage()
+     main.cost = branchCost(ctx)
+   })
++  pi.on('message_end', dropUsage)
++  pi.on('session_compact', dropUsage)
+   pi.on('agent_settled', (_event, ctx) => {
++    dropUsage()
+     main.state = 'idle'
+     main.since = undefined
+     main.cost = branchCost(ctx)
+@@ -77,6 +92,7 @@
+     cleanup?.()
+     cleanup = undefined
+     main.ctx = ctx
++    dropUsage()
+     main.cost = branchCost(ctx)
+     if (!ctx.hasUI || process.env.PI_CODE_SUBAGENT) return
+     let tui: { requestRender(): void } | undefined
+--- a/subagent/fleet-ui/view-model.ts
++++ b/subagent/fleet-ui/view-model.ts
+@@ -23,6 +23,8 @@
+   /** 1-based start order among visible rows of the same agent type; 0 when the type is unique. */
+   nth: number
+   state: RunState
++  /** Finished by its maxTurns cap: `done` with incomplete output (the panel labels it `parcial`). */
++  partial?: true
+   activity: string
+   error?: string
+   elapsedMs: number
+@@ -141,6 +143,7 @@
+       task: firstLine(rec.task),
+       nth: 0,
+       state: rec.state,
++      ...(rec.partial ? { partial: true as const } : {}),
+       activity: rec.activity ?? '',
+       error: rec.error,
+       elapsedMs: Math.max(0, (rec.endedAt ?? opts.now) - rec.startedAt),
+--- a/subagent/index.ts
++++ b/subagent/index.ts
+@@ -27,14 +27,15 @@
+ import { addPromptSection } from '../internal/prompt-options.ts'
+ import { sessionHasTurns, sessionMailbox } from '../internal/session-mailbox.ts'
+ import { errorMessage } from '../internal/values.ts'
+-import { SUBAGENT_CHANNEL } from '../internal/subagent-events.ts'
++import { PLAN_STATE_CHANNEL, SUBAGENT_CHANNEL } from '../internal/subagent-events.ts'
+ import { skillDirs } from '../skills.ts'
+ import { type AgentConfig, type AgentScope, discoverAgents } from './agents.ts'
+ import { activeBackgroundRuns, allBackgroundRuns, MAX_BACKGROUND_RUNS, cancelAllBackgroundRuns, resumeBackgroundRun } from './background.ts'
+ import { buildHookAgent, forkAgent, setKnownMcpAliases } from './child.ts'
+ import { raceDetach, reserveAutoBatchSlot } from './fleet/detach.ts'
+ import { startInboxWatcher, stopInboxWatcher } from './fleet/inbox.ts'
+-import { fleetSourceForUi, getFleetSource, sendEnabled, sendFromLead, stopOwnForegroundRuns } from './fleet/source.ts'
++import { laneCorrelation, laneOutcome, setPlanStep, toolCallScope } from './fleet/tracker.ts'
++import { fleetSourceForUi, getFleetSource, runningLaneCount, sendEnabled, sendFromLead, stopOwnForegroundRuns } from './fleet/source.ts'
+ import { registerFleetUi } from './fleet-ui/index.ts'
+ import { registerTeam } from './team/index.ts'
+ import { setRoutingSession } from './routing/apply.ts'
+@@ -79,7 +80,7 @@
+ 
+   if (params.resume) {
+     const onResumed = (run: { id: string; agent: string }): void => {
+-      pi.events.emit(SUBAGENT_CHANNEL, { phase: 'start', agentType: run.agent, agentId: run.id })
++      pi.events.emit(SUBAGENT_CHANNEL, { phase: 'start', agentType: run.agent, agentId: run.id, ...laneCorrelation() })
+     }
+     return { content: [{ type: 'text', text: resumeResultText(params.resume, params.task, notifyBackgroundCompletion, onResumed) }], details: makeDetails('single')([]) }
+   }
+@@ -180,6 +181,11 @@
+   // Claude's mcp__<server> tool patterns translate against the parent's MCP roster,
+   // published by the mcp extension on the shared bus. Optional-chained so a minimal
+   // test stub without an event bus can still register the extension.
++  // Channel `pi-code:plan-state` ({executing, step?, done, total}, published by plan-mode): optional, absent = no planStep on the lanes.
++  pi.events?.on(PLAN_STATE_CHANNEL, (data) => {
++    const state = data as { executing?: boolean; step?: unknown } | undefined
++    setPlanStep(state?.executing && typeof state.step === 'number' ? state.step : undefined)
++  })
+   pi.events?.on(MCP_TOOLS_CHANNEL, (data) => {
+     if (isMcpToolAliases(data)) setKnownMcpAliases(data)
+   })
+@@ -293,7 +299,7 @@
+       return
+     }
+     if (event.reason === 'new' || event.reason === 'resume' || event.reason === 'fork') {
+-      const active = activeBackgroundRuns()
++      const active = activeBackgroundRuns() + runningLaneCount()
+       if (active > 0) ctx.ui?.notify(`${active} background run${active === 1 ? '' : 's'} still active; /tasks to inspect`, 'warning')
+     }
+   })
+@@ -336,7 +342,8 @@
+     ].join(' '),
+     parameters: subagentParams(routingPolicy !== undefined),
+ 
+-    async execute(_toolCallId, params, signal, onUpdate, ctx) {
++    // The call id rides an AsyncLocalStorage: every lane the call starts (any mode, fg or bg) records it in its fleet record.
++    execute: (toolCallId, params, signal, onUpdate, ctx) => toolCallScope.run(toolCallId, async () => {
+       // Claude merges project agents into the default roster (project wins on a name
+       // clash), and the roster above advertises them under the same approval check,
+       // so a default call can reach every agent it lists. An explicit agentScope
+@@ -404,7 +411,15 @@
+         skillRoots,
+         availableModels,
+         projectApproved,
+-        onPhase: (phase, agentType, agentId, lastAssistantMessage) => pi.events.emit(SUBAGENT_CHANNEL, { phase, agentType, agentId, ...(lastAssistantMessage === undefined ? {} : { lastAssistantMessage }) }),
++        // D15: a lane ends after /reload, when this instance's `pi` throws; the event goes through the mailbox (the current instance) and can never fail the lane.
++        onPhase: (phase, agentType, agentId, lastAssistantMessage) => {
++          try {
++            const payload = { phase, agentType, agentId, ...(lastAssistantMessage === undefined ? {} : { lastAssistantMessage }), ...laneCorrelation(), ...(phase === 'stop' ? laneOutcome(agentId) : {}) }
++            results.deliver((current) => current.events.emit(SUBAGENT_CHANNEL, payload))
++          } catch {
++            // The current session refused it; the lane's result must not depend on the event.
++          }
++        },
+       }
+ 
+       if (subagentDepth() === 0 && ctx.hasUI) {
+@@ -418,7 +433,7 @@
+         return runDetachableForeground(params, mode, deliver, makeDetails(gateModeOf(hasChain, hasTasks))([]), interactive && batch && params.background !== false)
+       }
+       return runForegroundMode(params, mode)
+-    },
++    }),
+ 
+     renderCall: (args, theme) => renderSubagentCall(args, theme),
+ 
+--- a/subagent/modes.ts
++++ b/subagent/modes.ts
+@@ -14,6 +14,7 @@
+ import { isProjectApproved } from '../internal/project-approval.ts'
+ import type { SessionMailbox } from '../internal/session-mailbox.ts'
+ import { SUBAGENT_CHANNEL } from '../internal/subagent-events.ts'
++import { laneCorrelation, laneOutcome } from './fleet/tracker.ts'
+ import { runSubagentStartHooks } from '../internal/subagent-hooks.ts'
+ import { type AgentConfig, resolveModelAlias } from './agents.ts'
+ import { activeAutoBatchSlots } from './fleet/detach.ts'
+@@ -209,7 +210,7 @@
+         // path, but the worktree branch reaches here from an async continuation outside it.
+         try {
+           deliver((current) => {
+-            current.events.emit(SUBAGENT_CHANNEL, { phase: 'stop', agentType: run.agent, agentId: run.id, ...(run.output?.trim() ? { lastAssistantMessage: run.output.trim() } : {}) })
++            current.events.emit(SUBAGENT_CHANNEL, { phase: 'stop', agentType: run.agent, agentId: run.id, ...laneOutcome(run.id), ...(run.output?.trim() ? { lastAssistantMessage: run.output.trim() } : {}) })
+             current.sendMessage({ customType: 'subagent-background', content: backgroundCompletionText(run), display: true }, { triggerTurn: true })
+           })
+         } catch {
+@@ -239,7 +240,7 @@
+     if (worktree) await cleanupAgentWorktree(runCwd, worktree).catch(() => {})
+     return backgroundCapResult(makeDetails)
+   }
+-  pi.events.emit(SUBAGENT_CHANNEL, { phase: 'start', agentType: agent.name, agentId: id })
++  pi.events.emit(SUBAGENT_CHANNEL, { phase: 'start', agentType: agent.name, agentId: id, ...laneCorrelation() })
+   return {
+     content: [{ type: 'text', text: `Started background run ${id} (${agent.name}). A notification will arrive on completion; check progress with {status: true}.${routed.note ? `\n${routed.note}` : ''}` }],
+     details: makeDetails('single')([]),
+--- a/subagent/registry-text.ts
++++ b/subagent/registry-text.ts
+@@ -9,7 +9,7 @@
+ import { fleetStatusLines, sendEnabled, stopOwnRun } from './fleet/source.ts'
+ import { currentFleetDir, readRecords, requestStop, undeliveredCount } from './fleet/store.ts'
+ import type { LeadSendOutcome } from './fleet/types.ts'
+-import { type BackgroundRun, backgroundRun, backgroundStatusText, cancelBackgroundRun, MAX_BACKGROUND_RUNS, resumeBackgroundRun } from './background.ts'
++import { type BackgroundRun, allBackgroundRuns, backgroundRun, backgroundStatusText, cancelBackgroundRun, MAX_BACKGROUND_RUNS, resumeBackgroundRun } from './background.ts'
+ 
+ /** AC4: messages sent with `send` that no turn of the run consumed; empty when none or when send is off. */
+ function undeliveredNote(id: string): string {
+@@ -85,10 +85,11 @@
+   return `Unknown background run: ${id}.\n\n${statusWithFleet()}`
+ }
+ 
+-/** The registry status plus the calls the user moved to the background (Ctrl+B), which live outside the registry. */
++/** The registry status plus every other lane of the session (the calls auto-detached or moved with Ctrl+B, nested lanes, finished ones), which live outside the registry. */
+ export function statusWithFleet(): string {
+-  const moved = fleetStatusLines()
+-  const base = moved.length > 0 ? `${backgroundStatusText()}\n\nMoved to the background:\n${moved.join('\n')}` : backgroundStatusText()
++  const lanes = fleetStatusLines()
++  const registry = allBackgroundRuns().length > 0 ? backgroundStatusText() : ''
++  const base = lanes.length > 0 ? [registry, `Agent lanes:\n${lanes.join('\n')}`].filter(Boolean).join('\n\n') : backgroundStatusText()
+   const dir = currentFleetDir()
+   if (!dir || !sendEnabled()) return base
+   const lost = readRecords(dir)
+--- a/subagent/run.ts
++++ b/subagent/run.ts
+@@ -227,13 +227,22 @@
+   // SubagentStart hooks run pre-spawn through the seam so their additionalContext
+   // reaches the child before its first prompt.
+   const startContexts = await runSubagentStartHooks(agent.name, agentId)
+-  options.onPhase?.('start', agent.name, agentId)
++  phase(options, 'start', agent.name, agentId)
+   let result: SingleResult | undefined
+   try {
+     result = await runSingleAgentInner({ ...options, agentId, startContexts })
+     return result
+   } finally {
+-    options.onPhase?.('stop', agent.name, agentId, result ? getFinalOutput(result.messages) || undefined : undefined)
++    phase(options, 'stop', agent.name, agentId, result ? getFinalOutput(result.messages) || undefined : undefined)
++  }
++}
++
++/** D15: a sink that throws (a captured `pi` gone stale after /reload) must neither replace this lane's result nor reject its siblings. */
++function phase(options: Pick<RunAgentOptions, 'onPhase'>, ...args: Parameters<NonNullable<RunAgentOptions['onPhase']>>): void {
++  try {
++    options.onPhase?.(...args)
++  } catch {
++    // Observers only: the lane's outcome is already decided.
+   }
+ }
+ 
+@@ -298,7 +307,9 @@
+   // Sessão persistida (zz-subagent-respawn): permite reiniciar o filho com a conversa inteira; removida no finally.
+   let sessionDir: string | undefined
+   let keepSession = false
+-  let tracker: ReturnType<typeof startTracking>
++  // Lane visible from the start (status, panels), before the prompt files and the spawn.
++  // Closed by the finish calls below and, on a throw before them, in the finally (finish is idempotent).
++  let tracker: ReturnType<typeof startTracking> = startTracking({ id: options.agentId ?? '', agent: agentName, task, ...configuredRuntime(args), background: false, activity: 'starting' })
+ 
+   const currentResult: SingleResult = {
+     agent: agentName,
+@@ -351,8 +362,7 @@
+         return
+       }
+       const proc = spawned.proc
+-      // Um tracker por execução, reaproveitado nos respawns: a linha do painel não fica em 'failed' durante a espera.
+-      tracker ??= startTracking({ id: options.agentId ?? '', agent: agentName, task, ...configuredRuntime(args), background: false })
++      // Um tracker por execução (criado acima), reaproveitado nos respawns: a linha do painel não fica em 'failed' durante a espera.
+       tracker?.setPid(proc.pid)
+       let buffer = ''
+       let assistantTurns = 0
+@@ -424,7 +434,7 @@
+         respawnWhy = sessionDir
+           ? shouldRespawn({ wasAborted, stopBy, partial: currentResult.partial, attempts: respawns.length, exitCode: code, messages: currentResult.messages.slice(attemptFrom), stderr: currentResult.stderr, claimBudget: () => claimSpawns(1) })
+           : undefined
+-        if (!respawnWhy) tracker?.finish({ exitCode: finishExitCode(Boolean(currentResult.partial), code), aborted: wasAborted, error: currentResult.errorMessage })
++        if (!respawnWhy) tracker?.finish({ exitCode: finishExitCode(Boolean(currentResult.partial), code), aborted: wasAborted, partial: Boolean(currentResult.partial), error: currentResult.errorMessage })
+         // A capped run was stopped by this module's own SIGTERM, which pi's print mode
+         // answers with exit 143: that is not the agent failing, as background.ts also holds.
+         resolve(currentResult.partial ? 0 : (code ?? 1)) // morto por sinal sem ser o nosso SIGTERM = falha
+@@ -485,6 +495,7 @@
+     }
+     return currentResult
+   } finally {
++    tracker?.finish({ exitCode: 1, error: currentResult.errorMessage ?? 'ended before the child finished' })
+     recordSpawnCost(currentResult.usage.cost)
+     // Cleanup runs on abort too: it only removes a pristine worktree, so an
+     // interrupted agent's changes always survive.

@@ -1,0 +1,21 @@
+diff -ruN a/question.ts b/question.ts
+--- a/question.ts	2026-11-15 01:14:49.401489832 -0300
++++ b/question.ts	2026-11-15 01:14:49.401991901 -0300
+@@ -195,14 +195,14 @@
+     const focus = i === optionIndex
+     const box = multiSelect && opt.isOther !== true ? checkbox(checked[i]) : ''
+     const edit = opt.isOther === true && editMode && editKind === 'free' ? ' ✎' : ''
+-    const tag = parts[i].tag ? (parts[i].tag.startsWith('recomendada') ? theme.fg('success', `★ ${parts[i].tag}`) : theme.fg('dim', parts[i].tag)) : ''
++    const tag = parts[i].tag ? (parts[i].tag.startsWith('recomendada') ? theme.fg('syntaxType', `★ ${parts[i].tag}`) : theme.fg('dim', parts[i].tag)) : ''
+     const label = `${box}${parts[i].label}${edit}`
+     const head = ` ${focus ? theme.fg('accent', theme.bold(`❯ ${i + 1}`)) : `  ${theme.fg('dim', String(i + 1))}`}  ${focus ? theme.fg('accent', theme.bold(label)) : theme.fg('text', label)}`
+     const left = head
+     const row = truncateToWidth(tag ? `${left}${' '.repeat(Math.max(2, width - visibleWidth(left) - visibleWidth(tag) - 1))}${tag}` : left, width)
+-    // Recommended option: the soft success background across the whole row, focused or not. A reset inside the
++    // Recommended option: system-palette cyan (theme token syntaxType = vars.cyan, owner 2026-11-15) on the bluish toolPendingBg across the whole row, focused or not. A reset inside the
+     // row (truncation closes colors) would drop it, so it is reopened.
+-    const paint = parts[i].tag.startsWith('recomendada') && typeof theme.bg === 'function' ? (x: string) => theme.bg('toolSuccessBg', x) : undefined
++    const paint = parts[i].tag.startsWith('recomendada') && typeof theme.bg === 'function' ? (x: string) => theme.bg('toolPendingBg', x) : undefined
+     if (!paint) lines.push(row)
+     else {
+       const open = paint('\u0000').split('\u0000')[0] ?? ''

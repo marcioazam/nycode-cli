@@ -1,0 +1,12 @@
+--- a/subagent/fleet-ui/palette.ts
++++ b/subagent/fleet-ui/palette.ts
+@@ -28,7 +28,8 @@
+ /** Roles the pi theme does not know: the token to use when the HUD palette is unavailable. */
+ const BASE_ROLE: Record<string, string> = { task: 'accent', cost: 'dim' }
+ 
+-export const SPINNER = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
++/** Running mark: one green dot that swells and shrinks (one cell wide, no emoji presentation). */
++export const SPINNER = ['·', '•', '●', '●', '•', '·']
+ export const SPINNER_MS = 200
+ 
+ const CONFIG = join(homedir(), '.pi', 'agent', 'claude-home', 'plugins', 'claude-hud', 'config.json')

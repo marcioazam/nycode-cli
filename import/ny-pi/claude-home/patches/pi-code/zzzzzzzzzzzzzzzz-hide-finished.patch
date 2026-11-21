@@ -1,0 +1,56 @@
+--- a/plan-mode/section.ts
++++ b/plan-mode/section.ts
+@@ -90,10 +90,12 @@
+ 
+   /** Whose list the section shows: a plan execution or the todo tool (header PLAN/TODO). */
+   private source: 'plan' | 'todo' = 'plan'
++  /** True while a finished todo list (or no list) keeps the widget off. */
++  private hidden = false
+ 
+   update(ctx: ExtensionContext, items: TodoItem[], source: 'plan' | 'todo' = 'plan'): void {
+     this.ctx = ctx
+-    const hadItems = this.items.length > 0
++    const hadItems = this.items.length > 0 && !this.hidden
+     // Another list is not the same run: its clock, spend and marks start over (a todo left over from an
+     // earlier task once inherited a whole plan's time and 4M tokens, 2026-11-13).
+     if (source !== this.source) {
+@@ -109,18 +111,21 @@
+     this.times.observe(items, this.now())
+     this.offset = clampOffset(this.offset, items.length, this.visible())
+     this.syncTimer()
+-    if (items.length === 0) {
++    // A finished todo list hides itself (a plan keeps its done state); a new open item brings it back.
++    const hide = items.length === 0 || (source === 'todo' && items.every((i) => i.completed))
++    this.hidden = hide
++    if (hide) {
+       this.remove()
+     } else {
+       this.ensure()
+       this.syncTimer()
+       this.tui?.requestRender()
+     }
+-    bridge.planActive = () => this.items.length > 0
++    bridge.planActive = () => this.items.length > 0 && !this.hidden
+     bridge.reassertPlan = () => this.reassert()
+     bridge.focusPlan = () => this.focusByKeyboard()
+     bridge.planFocused = () => this.nativeFocus
+-    if (hadItems !== items.length > 0) bridge.onPlanChange?.()
++    if (hadItems !== !hide) bridge.onPlanChange?.()
+   }
+ 
+   private resetManagement(): void {
+--- a/run/section.ts
++++ b/run/section.ts
+@@ -85,10 +85,10 @@
+     bridge.focusRun = () => false
+   }
+ 
+-  /** Re-reads the registry: shows or hides the widget, keeps the timer in step. */
++  /** Re-reads the registry: the widget shows only while a run is live; finished ones stay in the registry (tool, history). */
+   sync(): void {
+     const rows = this.reg.snapshot()
+-    if (rows.length === 0) this.remove()
++    if (!rows.some((r) => r.state === 'running')) this.remove()
+     else {
+       this.ensure()
+       this.fixSelection()

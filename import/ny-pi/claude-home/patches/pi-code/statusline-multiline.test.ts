@@ -72,3 +72,37 @@ test('ponte do footer: a extensão de footer publica o provedor; o HUD lê o sta
   hud.attach(late)
   assert.deepEqual([...late.absorbed], ['plan-mode'], 'footer recriado depois do widget herda a marca')
 })
+
+test('ponte do footer: Status Line recolhida faz o footer esconder todos os status; soltar o widget desfaz', () => {
+  const bridge: { footerData: { getExtensionStatuses: () => Map<string, string> }; absorbed: Set<string>; folded?: boolean } = {
+    footerData: { getExtensionStatuses: () => new Map([['bypass-permissions', 'BYPASS']]) },
+    absorbed: new Set<string>(),
+  }
+  const hud = sl.hudFooterBridge()
+  hud.attach(bridge)
+  hud.claim(true)
+  hud.fold(true)
+  assert.equal(bridge.folded, true)
+  hud.fold(false)
+  assert.equal(bridge.folded, false)
+  hud.fold(true)
+  hud.claim(false)
+  assert.equal(bridge.folded, false, 'sem widget o footer volta a mostrar tudo')
+  sl.hudFooterBridge().fold(true) // sem footer publicado: sem efeito, sem erro
+})
+
+test('footer: os status ficam alinhados à esquerda (sem preenchimento à frente), um fold os esconde', async () => {
+  cpSync(new URL('../../../extensions/footer-no-stats.ts', import.meta.url), join(tmp, 'footer-no-stats.ts')) // junto do node_modules do pi
+  const footer = (await import(`${tmp}/footer-no-stats.ts`)).default
+  let handler: ((e: unknown, ctx: unknown) => void) | undefined
+  let built: { render(w: number): string[] } | undefined
+  const pi = { on: (_n: string, f: typeof handler) => { handler = f }, events: { emit: (_c: string, b: { folded: boolean }) => { bridge = b } } }
+  let bridge: { folded: boolean } | undefined
+  footer(pi as never)
+  const theme = { fg: (_c: string, s: string) => s }
+  const data = { getExtensionStatuses: () => new Map([['bypass-permissions', '▲ BYPASS PERMISSIONS ON']]) }
+  handler?.({}, { ui: { setFooter: (f: (t: unknown, th: unknown, d: unknown) => typeof built) => { built = f(undefined, theme, data) } } })
+  assert.deepEqual(built?.render(80), ['▲ BYPASS PERMISSIONS ON'])
+  bridge!.folded = true
+  assert.deepEqual(built?.render(80), [])
+})

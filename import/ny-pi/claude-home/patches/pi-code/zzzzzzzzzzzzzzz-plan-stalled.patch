@@ -1,0 +1,33 @@
+--- a/plan-mode/index.ts
++++ b/plan-mode/index.ts
+@@ -209,8 +209,8 @@
+     })
+   }
+ 
+-  function endExecution(ctx: ExtensionContext, content: string): void {
+-    pi.sendMessage({ customType: 'plan-complete', content, display: true }, { triggerTurn: false })
++  function endExecution(ctx: ExtensionContext, content: string, customType = 'plan-complete'): void {
++    pi.sendMessage({ customType, content, display: true }, { triggerTurn: false })
+     executionMode = false
+     todoItems = []
+     restoreTools()
+@@ -232,7 +232,7 @@
+       .filter((t) => !t.completed)
+       .map((t) => `${t.step}. ${t.text}`)
+       .join('\n')
+-    endExecution(ctx, `**Plan execution ended** after ${STALLED_RUN_LIMIT} turns without step progress. Unfinished steps:\n\n${remaining}`)
++    endExecution(ctx, `**Plan execution ended** after ${STALLED_RUN_LIMIT} turns without step progress. Unfinished steps:\n\n${remaining}`, 'plan-stalled')
+   }
+ 
+   // Fall back to extracting a plan from the last assistant message's prose
+@@ -462,7 +462,9 @@
+   // Handle plan completion and plan mode UI
+   pi.on('agent_end', async (event, ctx) => {
+     if (executionMode && todoItems.length > 0) {
+-      settleExecutionRun(ctx)
++      // A run the user interrupted says nothing about progress: it neither counts as stalled nor resets the count.
++      const last = [...event.messages].reverse().find(isAssistantMessage)
++      if (last?.stopReason !== 'aborted') settleExecutionRun(ctx)
+       return
+     }
+ 

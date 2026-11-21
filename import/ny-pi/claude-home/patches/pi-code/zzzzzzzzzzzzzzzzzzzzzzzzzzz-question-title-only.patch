@@ -1,0 +1,35 @@
+diff -ruN a/question.ts b/question.ts
+--- a/question.ts	2026-11-15 01:13:44.169058332 -0300
++++ b/question.ts	2026-11-15 01:13:44.169589561 -0300
+@@ -173,7 +173,7 @@
+   const lines: string[] = []
+   const add = (s: string) => lines.push(truncateToWidth(s, width))
+ 
+-  // Variant B: a short numbered list (label + one-line summary), the recommended option marked with a star at the
++  // Variant B: a short numbered list (title only, owner 2026-11-15), the recommended option marked with a star at the
+   // right, and a detail panel with the full description of the focused option only. The panel keeps the height of
+   // the tallest description so the dialog does not jump while moving. Nothing is cut with "...".
+   const wrapped = (text: string, indent: string): string[] => wrapTextWithAnsi(text, Math.max(1, width - indent.length)).map((row) => indent + row)
+@@ -187,9 +187,8 @@
+ 
+   const parts = options.map((opt) => {
+     const m = opt.isOther === true ? null : LABEL_TAG.exec(opt.label)
+-    return { label: opt.isOther === true ? OTHER_LABEL : m ? m[1] : opt.label, tag: m ? tagOf(m[2]) : '', summary: (opt.description ?? '').split(/(?<=[.!?])\s/)[0] ?? '' }
++    return { label: opt.isOther === true ? OTHER_LABEL : m ? m[1] : opt.label, tag: m ? tagOf(m[2]) : '' }
+   })
+-  const labelWidth = Math.min(32, Math.max(0, ...parts.map((p) => visibleWidth(p.label))))
+   const anyDescription = options.some((o) => o.description)
+   for (let i = 0; i < options.length; i++) {
+     const opt = options[i]
+@@ -199,10 +198,7 @@
+     const tag = parts[i].tag ? (parts[i].tag.startsWith('recomendada') ? theme.fg('success', `★ ${parts[i].tag}`) : theme.fg('dim', parts[i].tag)) : ''
+     const label = `${box}${parts[i].label}${edit}`
+     const head = ` ${focus ? theme.fg('accent', theme.bold(`❯ ${i + 1}`)) : `  ${theme.fg('dim', String(i + 1))}`}  ${focus ? theme.fg('accent', theme.bold(label)) : theme.fg('text', label)}`
+-    const room = width - visibleWidth(head) - (tag ? visibleWidth(tag) + 3 : 0) - 2
+-    const pad = ' '.repeat(Math.max(0, labelWidth + visibleWidth(box) - visibleWidth(label)))
+-    const summary = parts[i].summary && room - pad.length > 8 ? `${pad}  ${theme.fg(focus ? 'muted' : 'dim', truncateToWidth(parts[i].summary, room - pad.length, '…'))}` : ''
+-    const left = head + summary
++    const left = head
+     const row = truncateToWidth(tag ? `${left}${' '.repeat(Math.max(2, width - visibleWidth(left) - visibleWidth(tag) - 1))}${tag}` : left, width)
+     // Recommended option: the soft success background across the whole row, focused or not. A reset inside the
+     // row (truncation closes colors) would drop it, so it is reopened.

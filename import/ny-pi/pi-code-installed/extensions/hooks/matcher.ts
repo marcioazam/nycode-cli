@@ -1,0 +1,232 @@
+/**
+ * The matcher engine: compiling a Claude matcher string (exact-name list or regex)
+ * to a memoized form, testing it against tool/source names, and resolving the hook
+ * commands an event fires. Owns the module-level compiled-matcher cache.
+ */
+
+import { matchesBashIfFilter } from '../internal/bash-rules.ts'
+import { CLAUDE_TOOL_MAP } from '../internal/claude-tool-names.ts'
+import { matchesPathRules, type PathAnchors } from '../internal/path-rules.ts'
+import { agentNamesIn, matchesAgentRules, matchesDomainRules, matchesSkillRules } from '../internal/scope-rules.ts'
+import { asPiReadsIt } from '../internal/tool-target.ts'
+import { errorMessage } from '../internal/values.ts'
+import type { HookCommand, HookMatcher } from './config.ts'
+
+/** Claude's rule: a matcher of only letters, digits, `_`, `-`, spaces, `,` and `|`
+ * is a list of exact names; anything else is an unanchored regex. */
+const EXACT_MATCHER = /^[\w\- ,|]*$/
+
+/** Claude names are PascalCase and keep dashes (`Bash`, `mcp__brave-search__x`);
+ * pi names are lowercase with underscores, so comparison folds both. */
+function foldName(name: string): string {
+  return name.toLowerCase().replaceAll('-', '_')
+}
+
+/** A matcher string's compiled form: a set of folded exact names, or a regex. */
+type CompiledMatcher = { tokens: Set<string> } | { regex: RegExp }
+
+function exactTokens(matcher: string): Set<string> {
+  return new Set(
+    matcher
+      .split(/[|,]/)
+      .map((token) => foldName(token.trim()))
+      .filter(Boolean),
+  )
+}
+
+/** Hook config is static per session and dispatch consults every matcher on every
+ * event, so each matcher string compiles once. Matchers are few; the bound is a
+ * safety net, clearing the (cheap to rebuild) cache rather than evicting. */
+const compiledMatchers = new Map<string, CompiledMatcher>()
+const COMPILED_MATCHER_BOUND = 1000
+
+let matcherCompiles = 0
+
+/** Test seam: matcher compilations performed, for asserting memoization. */
+export function matcherCompileCount(): number {
+  return matcherCompiles
+}
+
+/** Test seam: drop compiled matchers so a test observes fresh compiles. */
+export function resetMatcherCache(): void {
+  compiledMatchers.clear()
+  matcherCompiles = 0
+}
+
+function compileMatcher(matcher: string): CompiledMatcher {
+  const cached = compiledMatchers.get(matcher)
+  if (cached !== undefined) return cached
+  matcherCompiles += 1
+  let compiled: CompiledMatcher
+  if (EXACT_MATCHER.test(matcher)) {
+    compiled = { tokens: exactTokens(matcher) }
+  } else {
+    try {
+      compiled = { regex: new RegExp(matcher, 'i') }
+    } catch (error) {
+      // The fallback matches the literal text, which almost never matches a tool name, so
+      // the hook simply never fires. Say so: the matcher reads as merely wrong otherwise.
+      console.warn(`pi-code-hooks: matcher ${matcher} is not a valid regular expression (${errorMessage(error)}); it will only match a tool of that exact name`)
+      compiled = { tokens: exactTokens(matcher) }
+    }
+  }
+  if (compiledMatchers.size >= COMPILED_MATCHER_BOUND) compiledMatchers.clear()
+  compiledMatchers.set(matcher, compiled)
+  return compiled
+}
+
+function matcherApplies(matcher: string | undefined, names: readonly string[]): boolean {
+  if (!matcher || matcher === '*') return true
+  const compiled = compileMatcher(matcher)
+  if ('regex' in compiled) {
+    const { regex } = compiled
+    return names.some((name) => regex.test(name))
+  }
+  const { tokens } = compiled
+  return names.some((name) => tokens.has(foldName(name)))
+}
+
+/** A hook entry pi-code can run: a shell command, an http POST, an in-process
+ * prompt, an mcp_tool call, or an agent subagent. An agent hook with no runner
+ * registered is still matched here and resolves non-blocking at run time, the same
+ * way a prompt hook with no model does. */
+function isRunnableHook(hook: HookCommand): boolean {
+  if (hook.type === 'http') return typeof hook.url === 'string' && /^https?:\/\//.test(hook.url)
+  if (hook.type === 'prompt' || hook.type === 'agent') return typeof hook.prompt === 'string' && hook.prompt.length > 0
+  if (hook.type === 'mcp_tool') return typeof hook.server === 'string' && typeof hook.tool === 'string'
+  // A command hook needs a non-empty command, and exec-form args must all be strings:
+  // spawn('') throws ERR_INVALID_ARG_VALUE and a number has no replaceAll for argument
+  // substitution, both inside the runner's Promise executor, so the event's handler
+  // rejected instead of the hook reporting spawnFailed.
+  if (typeof hook.command !== 'string' || hook.command.length === 0) return false
+  if (hook.args !== undefined && !(Array.isArray(hook.args) && hook.args.every((arg) => typeof arg === 'string'))) return false
+  return hook.type === undefined || hook.type === 'command'
+}
+
+/** The synthetic identity of a non-shell hook entry: an http/prompt/agent/mcp_tool
+ * entry has no `command`, so its url / prompt / server:tool stands in. A shell hook
+ * (undefined or `command` type) already has one, so this is undefined. */
+function syntheticCommand(hook: HookCommand): string | undefined {
+  if (hook.type === 'http') return hook.url
+  if (hook.type === 'prompt' || hook.type === 'agent') return hook.prompt
+  if (hook.type === 'mcp_tool') return `${hook.server}:${hook.tool}`
+  return undefined
+}
+
+/** A matched entry with its `command` filled in: mirroring the synthetic identity into
+ * `command` keeps dedup, timeout messages and display working for non-shell hooks. */
+function withCommand(raw: HookCommand): HookCommand {
+  // Fill the identity onto the config entry itself rather than a clone: the runner
+  // must receive the same object collection reads, so a once-hook marked spent
+  // after a successful run is the object the next collection filters out.
+  if (typeof raw.command !== 'string') {
+    const identity = syntheticCommand(raw)
+    if (identity !== undefined) raw.command = identity
+  }
+  return raw
+}
+
+function collectCommands(matchers: HookMatcher[] | undefined, applies: (entry: HookMatcher) => boolean): HookCommand[] {
+  const result: HookCommand[] = []
+  const seen = new Set<string>()
+  for (const entry of matchers ?? []) {
+    if (!applies(entry)) continue
+    for (const raw of (entry.hooks ?? []).filter(isRunnableHook)) {
+      // A once-hook that already ran successfully is removed, as Claude documents.
+      if (raw.spent === true) continue
+      const hook = withCommand(raw)
+      // Claude runs a handler defined in more than one settings file once; a
+      // plugin's or skill's copy of the same handler stays separate. Handlers that
+      // share a command but differ in what they run or when (http headers, exec-form
+      // args, an `if` filter, an mcp_tool input) are different handlers: `if` is applied
+      // after this, so collapsing two filters left the other tool call with no guard.
+      const key = `${hook.origin ?? 'settings'}\n${hook.command}\n${JSON.stringify([hook.headers, hook.args, hook.if, hook.input])}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      result.push(hook)
+    }
+  }
+  return result
+}
+
+/** Command specs whose matcher applies to any of the given tool/source names.
+ * Multiple candidates let one event offer both the pi name and its Claude alias. */
+export function matchingCommands(matchers: HookMatcher[] | undefined, names: string | readonly string[]): HookCommand[] {
+  const candidates = typeof names === 'string' ? [names] : names
+  return collectCommands(matchers, (entry) => matcherApplies(entry.matcher, candidates))
+}
+
+/** Command specs for an event without matcher support (Stop, UserPromptSubmit): a
+ * stray `matcher` on such an event is silently ignored, as Claude documents, so
+ * every entry's hooks run. */
+export function allCommands(matchers: HookMatcher[] | undefined): HookCommand[] {
+  return collectCommands(matchers, () => true)
+}
+
+/** The tool call an `if` filter evaluates against; absent on non-tool events. */
+export interface IfFilterTarget {
+  piName: string
+  claudeName?: string
+  input: unknown
+  anchors: PathAnchors
+}
+
+/** Claude's `if` handler field: permission-rule syntax evaluated only on tool
+ * events; on any other event a hook carrying `if` never runs. A bare tool name
+ * matches by name; `Bash(pattern)` evaluates against the command through the if-filter
+ * matcher, which is best effort and errs toward running the hook, and file-tool patterns
+ * against the path via the shared permission path rules. A pattern for any other tool matches nothing, which is
+ * also what an unparseable rule does. */
+export function passesIfFilter(hook: HookCommand, target: IfFilterTarget | undefined): boolean {
+  if (hook.if === undefined) return true
+  if (target === undefined) return false
+  // Digits and hyphens are part of a tool name: an MCP tool is mcp__<server>__<tool> and
+  // server names carry both, so a stricter class silently matched nothing.
+  const parsed = /^([\w|-]+?)(?:\((.*)\))?$/.exec(hook.if.trim())
+  if (!parsed) return false
+  const fold = (name: string): string => name.toLowerCase().replaceAll('-', '_')
+  const ruleTools = new Set(parsed[1].split('|').map(fold))
+  const toolMatches = ruleTools.has(fold(target.piName)) || (target.claudeName !== undefined && ruleTools.has(fold(target.claudeName)))
+  if (!toolMatches) return false
+  const pattern = parsed[2]
+  if (pattern === undefined) return true
+  // Either spelling can arrive; normalize to the pi name the specifier engines take.
+  const tool = CLAUDE_TOOL_MAP[fold(target.piName)] ?? CLAUDE_TOOL_MAP[fold(target.claudeName ?? '')] ?? fold(target.piName)
+  return matchesToolPattern(tool, target.input as Record<string, unknown> | null, pattern, target.anchors)
+}
+
+/** One `if` pattern against a call's arguments. Claude evaluates the rule "against
+ * the tool name and arguments together" in permission-rule syntax, so each tool uses
+ * the same specifier engine its permission rules use: a command pattern for Bash, a
+ * `domain:` host for WebFetch, an agent name for Agent, a skill name for Skill, and a
+ * path rule for the file tools. A tool with no specifier syntax matches nothing,
+ * which is also what an unparseable rule does.
+ *
+ * PAIRED WITH commands.ts's tool_call guard, which dispatches the same tools to the
+ * same matchers for `allowed-tools` scopes. The two are deliberately NOT merged: bash
+ * differs on purpose (an allow scope requires every segment to match, an `if` filter is
+ * best effort and errs toward running the hook), and merging would hide that. They are
+ * two lists that must agree, so a new scoped tool has to be added in both places; the
+ * shared roster is ARG_RULE_TOOLS in internal/command-file.ts. */
+function matchesToolPattern(piName: string, input: Record<string, unknown> | null, pattern: string, anchors: PathAnchors): boolean {
+  const str = (value: unknown): string => (typeof value === 'string' ? value : '')
+  switch (piName) {
+    case 'bash':
+      return str(input?.command).length > 0 && matchesBashIfFilter(str(input?.command), pattern)
+    case 'web_fetch':
+      return matchesDomainRules(str(input?.url), [pattern])
+    case 'subagent':
+      return matchesAgentRules(agentNamesIn(input), [pattern])
+    case 'slash_command':
+      return matchesSkillRules(str(input?.command), [pattern])
+    default: {
+      // Normalised as pi's file tools resolve it (~, a leading @, a file:// URL), because
+      // the rule side expands ~ against home too: comparing the raw string let an
+      // `if: Edit(~/.ssh/*)` guard miss the very call it names. The value is normalised
+      // rather than routed through fileToolTarget, which would drop every tool outside
+      // read/edit/write and so stop matching rules that match today.
+      const named = str(input?.path) || str(input?.file_path)
+      return named.length > 0 && matchesPathRules(asPiReadsIt(named), [pattern], anchors)
+    }
+  }
+}

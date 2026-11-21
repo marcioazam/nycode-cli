@@ -1,6 +1,7 @@
 // Ciclo de vida do /goal com um pi falso: retries do avaliador, retry/pausa de turno falho.
 // node --experimental-strip-types --test ~/.pi/agent/claude-home/patches/pi-code/goal-lifecycle.test.ts
 import assert from 'node:assert/strict'
+import { execFileSync } from 'node:child_process'
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -8,6 +9,16 @@ import { test } from 'node:test'
 
 const tmp = mkdtempSync(join(tmpdir(), 'goal-life-'))
 cpSync(`${homedir()}/.pi/agent/npm/node_modules/pi-code/extensions`, join(tmp, 'extensions'), { recursive: true })
+// O patch onda5-goal entra por último na pilha: aplica na cópia se o pacote vivo ainda não o tem.
+const ONDA5 = new URL('./zzzzzzzzzzzzzz-onda5-goal.patch', import.meta.url).pathname
+function ensureOnda5(ext: string): void {
+  try {
+    execFileSync('patch', ['-d', ext, '-p1', '-R', '-s', '--dry-run', '-i', ONDA5], { stdio: 'ignore' })
+  } catch {
+    execFileSync('patch', ['-d', ext, '-p1', '-N', '-s', '--no-backup-if-mismatch', '-i', ONDA5])
+  }
+}
+ensureOnda5(join(tmp, 'extensions'))
 mkdirSync(join(tmp, 'node_modules'))
 const version = readFileSync(`${homedir()}/.pi/agent/install/current-version`, 'utf8').trim()
 symlinkSync(`${homedir()}/.pi/agent/install/releases/${version}/node_modules/@earendil-works`, join(tmp, 'node_modules', '@earendil-works'))
@@ -110,7 +121,7 @@ test('avaliador: 3 respostas ilegíveis pausam com aviso, goal continua ativo', 
   await h.fire('agent_end', { messages: [assistant()] })
   assert.equal(n, 3)
   assert.equal(h.sent.length, before, 'nenhum turno novo')
-  assert.match(h.notes.at(-1)!.text, /^Goal paused: the evaluator failed 3 times \(unreadable verdict: não sei\)/)
+  assert.match(h.notes.at(-1)!.text, /^Objetivo pausado: o avaliador falhou 3 vezes \(unreadable verdict: não sei\)/)
   await h.command().handler('', h.ctx)
   assert.match(h.notes.at(-1)!.text, /^Goal active: X pronto/)
   mc.setCompleteBackend(null)
@@ -124,7 +135,7 @@ test('turno falho transitório: 3 retries agendados e depois pausa; rate limit p
   for (let attempt = 1; attempt <= 3; attempt++) {
     await h.fire('agent_end', { messages: [assistant('error', '529 overloaded_error')] })
     await h.fire('agent_settled')
-    assert.match(h.notes.at(-1)!.text, new RegExp(`retrying in ${15 * 2 ** (attempt - 1)}s \\(${attempt}/3\\)`))
+    assert.match(h.notes.at(-1)!.text, new RegExp(`nova tentativa em ${15 * 2 ** (attempt - 1)}s \\(${attempt}/3\\)`))
     const before = h.sent.length
     t.mock.timers.tick(15_000 * 2 ** (attempt - 1))
     assert.equal(h.sent.length, before + 1)
@@ -132,12 +143,12 @@ test('turno falho transitório: 3 retries agendados e depois pausa; rate limit p
   }
   await h.fire('agent_end', { messages: [assistant('error', '529 overloaded_error')] })
   await h.fire('agent_settled')
-  assert.match(h.notes.at(-1)!.text, /^Goal paused \(overloaded, after 3 automatic retries\)/)
+  assert.match(h.notes.at(-1)!.text, /^Objetivo pausado \(overloaded, após 3 tentativas automáticas\)/)
 
   await h.fire('input', { source: 'interactive' })
   await h.fire('agent_end', { messages: [assistant('error', '429 rate_limit_error')] })
   await h.fire('agent_settled')
-  assert.match(h.notes.at(-1)!.text, /^Goal paused \(rate limit\)/)
+  assert.match(h.notes.at(-1)!.text, /^Objetivo pausado \(rate limit\)/)
 })
 
 test('turno falho: prompt do usuário cancela o retry pendente; headless só pausa; erro irrecuperável limpa', async (t) => {
@@ -157,11 +168,11 @@ test('turno falho: prompt do usuário cancela o retry pendente; headless só pau
   await headless.command().handler('X pronto', headless.ctx)
   await headless.fire('agent_end', { messages: [assistant('error', 'fetch failed')] })
   await headless.fire('agent_settled')
-  assert.match(headless.notes.at(-1)!.text, /^Goal paused \(connection\)/)
+  assert.match(headless.notes.at(-1)!.text, /^Objetivo pausado \(connection\)/)
 
   await h.fire('agent_end', { messages: [assistant('error', '401 authentication_error')] })
   await h.fire('agent_settled')
-  assert.match(h.notes.at(-1)!.text, /^Goal cleared after an unrecoverable error \(authentication\)/)
+  assert.match(h.notes.at(-1)!.text, /^Objetivo encerrado após um erro sem recuperação \(authentication\)/)
 })
 
 test('PI_GOAL_MODEL escolhe o avaliador', async () => {

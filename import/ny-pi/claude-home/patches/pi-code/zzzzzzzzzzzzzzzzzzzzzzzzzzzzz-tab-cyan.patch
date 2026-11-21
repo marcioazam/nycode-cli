@@ -1,0 +1,32 @@
+--- a/subagent/fleet-ui/chrome.ts
++++ b/subagent/fleet-ui/chrome.ts
+@@ -67,15 +67,18 @@
+ 
+ /** Tab bar (docs/pi-group-tabs-2026-11-14.md): a blank line, the tab names then the open group's detail (two spaces after the
+  * last tab, cut to the width), and a rule with `━` under the open tab (editor border color, bold) and under the focused one
+- * (bold, no role color); other tabs dim, rule `─`. Without color the `━` alone marks the open tab. `bands` are the name columns (clicks). */
++ * (bold); other tabs dim, rule `─`. Without color the `━` alone marks the open tab. `bands` are the name columns (clicks).
++ * System cyan (`syntaxType`, owner 2026-11-15) marks where the focus is: the focused tab, else the open one (focus in the editor). */
+ export function tabBar(tabs: TabSpec[], detail: string, theme: UiTheme, width: number): { lines: string[]; bands: TabBand[]; tabsWidth: number } {
+   const bands: TabBand[] = []
+   let col = 0
++  const tabFocus = tabs.some((t) => t.focus)
++  const role = (t: TabSpec): string => ((tabFocus ? t.focus : t.open) ? 'syntaxType' : openRole())
+   const names = tabs.map((t) => {
+     const w = visibleWidth(t.label)
+     bands.push({ id: t.id, from: col, to: col + w })
+     col += w + TAB_GAP.length
+-    return t.open ? bold(theme, theme.fg(openRole(), t.label)) : t.focus ? bold(theme, t.label) : theme.fg('dim', t.label)
++    return t.open || t.focus ? bold(theme, theme.fg(role(t), t.label)) : theme.fg('dim', t.label)
+   })
+   const tabsWidth = Math.max(0, col - TAB_GAP.length)
+   let line = ''
+@@ -87,7 +90,7 @@
+     dash(from - at)
+     const n = to - at
+     if (n <= 0) return
+-    line += t.open ? bold(theme, theme.fg(openRole(), '━'.repeat(n))) : t.focus ? bold(theme, '━'.repeat(n)) : theme.fg('dim', '─'.repeat(n))
++    line += t.open || t.focus ? bold(theme, theme.fg(role(t), '━'.repeat(n))) : theme.fg('dim', '─'.repeat(n))
+     at = to
+   })
+   dash(width - at)

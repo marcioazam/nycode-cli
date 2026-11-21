@@ -1,0 +1,224 @@
+--- a/subagent/fleet-ui/viewer.ts	2026-11-14 06:26:26.179860555 -0300
++++ b/subagent/fleet-ui/viewer.ts	2026-11-14 06:26:57.906036074 -0300
+@@ -2,7 +2,7 @@
+  * Live transcript viewer of one run (any depth) and the /tasks browser, both overlays.
+  * Record: docs/pi-agent-fleet-2026-11-12.md (A3, A5, A8).
+  */
+-import { decodeKittyPrintable, isKeyRelease, matchesKey, truncateToWidth, wrapTextWithAnsi } from '@earendil-works/pi-tui'
++import { decodeKittyPrintable, isKeyRelease, matchesKey, truncateToWidth, visibleWidth, wrapTextWithAnsi } from '@earendil-works/pi-tui'
+ import type { Component } from '@earendil-works/pi-tui'
+ import type { ExtensionContext } from '@earendil-works/pi-coding-agent'
+ 
+@@ -12,7 +12,7 @@
+ import type { UiTheme } from './panel.ts'
+ import { hudTheme, motionEnabled, spinnerAt } from './palette.ts'
+ import { conversationItems } from '../team/ui.ts'
+-import { viewerLines } from './runtime-label.ts'
++import { runtimeSummary } from './runtime-label.ts'
+ import { buildRows, chainOf, neighbours } from './view-model.ts'
+ 
+ /** Count of our open overlays; the panel passes all input through while it is above 0. */
+@@ -21,26 +21,27 @@
+ export const MAX_ITEMS = 2000
+ export const POLL_MS = 500
+ const RESULT_LINES = 3
+-/** Rows of chrome around the body: breadcrumb, status, nav, model/effort, outcome, input, footer. */
+-const CHROME_ROWS = 9
++/** Rows of chrome around the body: rule, header (2), outcome, input, hints. */
++const CHROME_ROWS = 6
+ 
+ /** Top edge of both overlays: they draw over the chat, so they need a visible boundary. */
+ const rule = (theme: UiTheme, width: number): string => theme.fg('borderAccent', '─'.repeat(Math.max(0, width)))
+ 
+-export const FOOTER_HINT = '↑↓ scroll · ←→ siblings · tab child · ⇧tab parent · x x stop · enter send · esc close'
++export const PLACEHOLDER = 'Mensagem para este agente'
++export const READ_ONLY_TEXT = 'somente leitura: o agente já terminou'
+ 
+ // ---- pure formatters ---------------------------------------------------------------
+ 
+ export function sendOutcomeText(outcome: SendOutcome): string {
+   switch (outcome) {
+     case 'queued':
+-      return '↪ sent; the agent reads it after its current tool step'
++      return '↪ enviada; o agente lê depois do passo atual'
+     case 'resumed':
+-      return '↪ resumed with your message'
++      return '↪ retomado com a sua mensagem'
+     case 'not-running':
+-      return 'run finished; message not sent'
++      return 'o agente já terminou; mensagem não enviada'
+     default:
+-      return 'run not found'
++      return 'agente não encontrado'
+   }
+ }
+ 
+@@ -62,7 +63,7 @@
+       const color = item.isError ? 'error' : 'dim'
+       const shown = all.slice(0, RESULT_LINES)
+       const out = shown.map((l, i) => truncateToWidth(theme.fg(color, (i === 0 ? '  ⎿ ' : '    ') + l), width))
+-      if (all.length > RESULT_LINES) out.push(truncateToWidth(theme.fg('dim', `  … ${all.length - RESULT_LINES} more lines`), width))
++      if (all.length > RESULT_LINES) out.push(truncateToWidth(theme.fg('dim', `  … mais ${all.length - RESULT_LINES} linhas`), width))
+       return out
+     }
+     default:
+@@ -71,20 +72,54 @@
+ }
+ 
+ export function stateLabel(state: RunRecord['state']): string {
+-  return state === 'running' ? '● running' : state === 'done' ? '✓ done' : state === 'failed' ? '✗ failed' : '■ stopped'
++  return state === 'running' ? '● rodando' : state === 'done' ? '✓ concluído' : state === 'failed' ? '✗ falhou' : '■ parado'
+ }
+ 
++const STATE_COLOR: Partial<Record<RunRecord['state'], string>> = { running: 'accent', done: 'success', failed: 'error' }
++
+ export function breadcrumb(records: readonly RunRecord[], id: string): string {
+   const chain = chainOf(records, id)
+   const parts = chain.map((r, i) => (i === 0 ? r.agent : `${r.agent}${superscript(i + 1)}`))
+   return ['main', ...parts].join(' › ')
+ }
+ 
+-export function navBar(records: readonly RunRecord[], id: string): string {
++/** Two header rows: path left, state and numbers right (the left side is cut first, never the state); runtime and neighbours below. */
++export function headerLines(records: readonly RunRecord[], id: string, nowMs: number, theme: UiTheme, width: number): [string, string] {
++  const rec = records.find((r) => r.id === id)
++  const crumb = rec ? breadcrumb(records, id) : 'main › (agente não encontrado)'
++  const right = rec
++    ? theme.fg(STATE_COLOR[rec.state] ?? 'dim', stateLabel(rec.state)) +
++      theme.fg('dim', ` · ${formatDuration((rec.endedAt ?? nowMs) - rec.startedAt)} · ${formatTokens(rec.tokens.context)} tok · ${formatCost(rec.cost)}`)
++    : ''
++  const room = width - visibleWidth(right) - 1
++  const left = theme.bold(truncateToWidth(crumb, Math.max(0, room), '…'))
++  const gap = ' '.repeat(Math.max(1, width - visibleWidth(left) - visibleWidth(right)))
++  const first = !right ? left : room >= 1 ? `${left}${gap}${right}` : right
++  if (!rec) return [truncateToWidth(first, width), '']
+   const { siblings, children } = neighbours(records, id)
+-  const sib = siblings.map((r) => (r.id === id ? `[${r.agent}]` : r.agent)).join(' ')
+-  const kids = children.map((r) => r.agent).join(' ')
+-  return `siblings: ${sib || '-'}   children: ${kids || '-'}`
++  const names = (list: RunRecord[]): string => list.map((r) => r.agent).join(', ')
++  const others = siblings.filter((r) => r.id !== id)
++  const second = [runtimeSummary(rec), ...(others.length ? [`ao lado: ${names(others)}`] : []), ...(children.length ? [`filhos: ${names(children)}`] : [])].join(' · ')
++  return [truncateToWidth(first, width), truncateToWidth(theme.fg('dim', second), width)]
++}
++
++const isReadOnly = (rec: RunRecord): boolean => rec.state !== 'running' && !(rec.depth === 1 && rec.background)
++
++/** Hint row: only the actions the viewer can take now. Armed stop replaces it with the confirmation. */
++export function hintLine(records: readonly RunRecord[], id: string, armed: boolean): { text: string; warn: boolean } {
++  const rec = records.find((r) => r.id === id)
++  if (armed && rec) return { text: `▲ x de novo para parar ${rec.agent} · o trabalho em andamento se perde · esc fecha`, warn: true }
++  const nb = neighbours(records, id)
++  const hints = [
++    '↑↓ rolar',
++    ...(nb.siblings.length > 1 ? ['←→ outro agente'] : []),
++    ...(nb.children.length ? ['tab filho'] : []),
++    ...(nb.parent ? ['⇧tab pai'] : []),
++    ...(rec && !isReadOnly(rec) ? ['⏎ enviar'] : []),
++    ...(rec?.state === 'running' ? ['x x parar'] : []),
++    'esc fechar',
++  ]
++  return { text: hints.join(' · '), warn: false }
+ }
+ 
+ function printable(data: string): string | undefined {
+@@ -190,28 +225,22 @@
+     const fit = (s: string): string => truncateToWidth(s, width)
+     const records = this.deps.source.list()
+     const rec = records.find((r) => r.id === this.id)
+-    const crumb = rec ? breadcrumb(records, this.id) : 'main › (run not found)'
+-    const status = rec
+-      ? `${stateLabel(rec.state)} · ${formatDuration((rec.endedAt ?? this.deps.now()) - rec.startedAt)} · ${formatTokens(rec.tokens.context)} tok · ${formatCost(rec.cost)}`
+-      : ''
+     const all = this.bodyLines(width)
+     const h = this.bodyHeight()
+     this.fromBottom = Math.max(0, Math.min(this.fromBottom, all.length - h))
+     const end = all.length - this.fromBottom
+     const body = all.slice(Math.max(0, end - h), end)
+     while (body.length < h) body.push('')
+-    const readOnly = rec !== undefined && rec.state !== 'running' && !(rec.depth === 1 && rec.background)
+-    const outcome = this.outcome || (readOnly ? 'read-only: run finished' : '')
++    const readOnly = rec !== undefined && isReadOnly(rec)
++    const outcome = this.outcome || (readOnly ? READ_ONLY_TEXT : '')
++    const hint = hintLine(records, this.id, this.deps.now() < this.armedUntil)
+     return [
+       rule(theme, width),
+-      fit(theme.bold(theme.fg('accent', crumb))),
+-      fit(theme.fg('muted', status)),
+-      fit(theme.fg('dim', navBar(records, this.id))),
+-      ...(rec ? viewerLines(rec) : ['', '']).map((l) => fit(theme.fg('muted', l))),
++      ...headerLines(records, this.id, this.deps.now(), theme, width),
+       ...body.map(fit),
+       fit(theme.fg('dim', outcome)),
+-      fit(`${theme.fg('accent', '> ')}${this.input}`),
+-      fit(theme.fg('dim', FOOTER_HINT)),
++      fit(`${theme.fg('accent', '❯')} ${this.input || (readOnly ? '' : theme.fg('dim', PLACEHOLDER))}`),
++      fit(theme.fg(hint.warn ? 'warning' : 'dim', hint.text)),
+     ]
+   }
+ 
+@@ -262,7 +291,7 @@
+   private pressStop(records: RunRecord[]): void {
+     const rec = records.find((r) => r.id === this.id)
+     if (!rec || rec.state !== 'running') {
+-      this.outcome = rec ? 'run finished; nothing to stop' : 'run not found'
++      this.outcome = rec ? 'o agente já terminou; nada a parar' : 'agente não encontrado'
+       return
+     }
+     const now = this.deps.now()
+@@ -271,7 +300,7 @@
+       this.outcome = stopMessage(this.deps.source.stop(this.id), rec.agent).text
+     } else {
+       this.armedUntil = now + ARM_MS
+-      this.outcome = `press x again to stop ${rec.agent}`
++      this.outcome = ''
+     }
+   }
+ }
+@@ -324,9 +353,9 @@
+     const h = Math.max(3, Math.floor(this.deps.rows() * 0.85) - 5)
+     const idx = Math.max(0, rows.findIndex((r) => r.id === this.selectedId))
+     const start = Math.max(0, Math.min(idx - Math.floor(h / 2), rows.length - h))
+-    const out = [rule(theme, width), truncateToWidth(theme.bold(theme.fg('accent', `Subagent runs (${rows.length})`)), width)]
++    const out = [rule(theme, width), truncateToWidth(theme.bold(theme.fg('accent', `Agentes (${rows.length})`)), width)]
+     rows.slice(start, start + h).forEach((r, i) => out.push(renderRow(r, start + i === idx, theme, width, motionEnabled() ? spinnerAt(this.deps.now()) : undefined)))
+-    out.push(truncateToWidth(theme.fg('dim', '↑↓ select · enter open · esc close'), width))
++    out.push(truncateToWidth(theme.fg('dim', '↑↓ escolher · ⏎ abrir · esc fechar'), width))
+     return out
+   }
+ 
+@@ -377,7 +406,7 @@
+ 
+ export async function openTasksBrowser(ctx: UiCtx, source: FleetSource): Promise<void> {
+   if (source.list().length === 0) {
+-    ctx.ui.notify('No subagent runs in this session.', 'info')
++    ctx.ui.notify('Nenhum agente nesta sessão.', 'info')
+     return
+   }
+   let selectedId: string | undefined
+--- a/subagent/fleet-ui/runtime-label.ts	2026-11-14 06:26:26.179786165 -0300
++++ b/subagent/fleet-ui/runtime-label.ts	2026-11-14 06:26:26.199873459 -0300
+@@ -1,6 +1,6 @@
+ /**
+  * Model and thinking level of a run, as the list row and the viewer show them.
+- * Pure. Unknown stays unknown (`?` in the list, `unknown` in the viewer): an absent effort is
++ * Pure. Unknown stays unknown (`?` in the list, `ainda não informado` in the viewer): an absent effort is
+  * never rendered as a default and never inherited from the parent. Record: docs/subagent-model-effort.md.
+  */
+ import type { RunRecord } from '../fleet/types.ts'
+@@ -31,10 +31,10 @@
+   return out.filter((s, i) => out.indexOf(s) === i)
+ }
+ 
+-/** Viewer lines (one each, so a long model cannot hide the effort): full labels with where each value comes from. */
+-export function viewerLines(m: RuntimeMeta): [string, string] {
++/** Viewer line: `model · effort`; `(configurado)` only for a value not yet observed. Unknown stays unknown, never a default. */
++export function runtimeSummary(m: RuntimeMeta): string {
+   const { full } = names(m)
+-  const model = full ? `${full} (${m.modelSeen ? 'observed' : 'configured'})` : 'unknown (not reported yet)'
+-  const effort = m.effort ? `${m.effort} (${m.effortSeen ? 'observed' : 'configured'})` : 'unknown (not set, child default; not reported yet)'
+-  return [`Model: ${model}`, `Effort: ${effort}`]
++  const model = full ? (m.modelSeen ? full : `${full} (configurado)`) : 'ainda não informado'
++  const effort = m.effort ? (m.effortSeen ? m.effort : `${m.effort} (configurado)`) : 'ainda não informado'
++  return `${model} · ${effort}`
+ }

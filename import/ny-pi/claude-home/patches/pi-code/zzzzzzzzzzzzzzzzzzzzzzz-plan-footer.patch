@@ -1,0 +1,126 @@
+--- a/plan-mode/section.ts
++++ b/plan-mode/section.ts
+@@ -320,7 +320,7 @@
+     if (focus) {
+       // Keys that fit, most useful first; `esc back` always stays (the way out must never be cut). The tab names take the start of the bar.
+       const keys = validKeys(this.selected(), paused).filter(([k]) => k !== 'esc').map(([k, l]) => `${k} ${l}`)
+-      const room = width - Math.max(nav.tabsWidth, 30) - visibleWidth(info) - 4 - ' · esc back'.length
++      const room = width - visibleWidth(info) - ' · esc back'.length // the footer line has the whole width
+       const fit: string[] = []
+       for (const k of keys) if (visibleWidth(` · ${[...fit, k].join(' · ')}`) <= room) fit.push(k)
+       hint = `${fit.length ? ` · ${fit.join(' · ')}` : ''} · esc back`
+@@ -337,8 +337,10 @@
+     const tail = colored.join(theme.fg('dim', ' · '))
+     const base = heading(title, theme, width, this.source, focus ? 'accent' : undefined)
+     const head = tail ? truncateToWidth(base + theme.fg('dim', ' · ') + tail, width) : base
+-    // The bar shows the title without label and count (`detail`); only the body of the open tab stays below it.
+-    const detail = [info + hint ? theme.fg('dim', (info + hint).replace(/^ · /, '')) : '', tail].filter(Boolean).join(theme.fg('dim', ' · '))
++    // Time, spend, window and keys sit on a footer line under the table (owner request 2026-11-14; they used to follow the
++    // tab name on the bar). The line is always there, so focusing never moves the transcript. The bar keeps the marks.
++    const footer = truncateToWidth(theme.fg('dim', (info + hint).replace(/^ · /, '')), width)
++    const detail = tail
+     const redraw = (): void => this.tui?.requestRender()
+     if (this.collapsed) return tabbed('plan', ['', head, rule(theme, width)], detail, theme, width, redraw)
+     const motion = motionEnabled()
+@@ -352,7 +354,7 @@
+       return out
+     })
+     const header = tableHeader(theme, width)
+-    return tabbed('plan', ['', head, rule(theme, width), ...(header ? [header] : []), ...body], detail, theme, width, redraw)
++    return tabbed('plan', ['', head, rule(theme, width), ...(header ? [header] : []), ...body, footer], detail, theme, width, redraw)
+   }
+ 
+   private drawerFor(item: TodoItem, active: number | undefined, width: number, theme: UiTheme): string[] {
+--- a/plan-mode/table.ts
++++ b/plan-mode/table.ts
+@@ -1,8 +1,8 @@
+ /**
+- * Plan table (UI only): `# · estado · tarefa · tempo · agente` rows for the Plan section.
++ * Plan table (UI only): `# · estado · tarefa · fim` rows for the Plan section.
+  * Times come from what the UI observes in this session (when a step became active or done), never from
+  * the plan file: a step already done when first seen shows `--:--`. State beyond done/doing/todo
+- * (`status`) and the `agent` column render when a producer sets them on the item; none does yet.
++ * (`status`) renders when a producer sets it on the item; none does yet.
+  * Record: docs/pi-interactive-display-2026-11-13.md ("Plan table").
+  */
+ import { truncateToWidth, visibleWidth } from '@earendil-works/pi-tui'
+@@ -96,6 +96,11 @@
+     return end === undefined || start === undefined ? undefined : end - start
+   }
+ 
++  /** Wall-clock instant a step finished; undefined when it was already done the first time it was seen. */
++  finishedAt(step: number): number | undefined {
++    return this.started.has(step) ? this.finished.get(step) : undefined
++  }
++
+   running(step: number, now: number): number | undefined {
+     const start = this.started.get(step)
+     return start === undefined || this.finished.has(step) ? undefined : (this.pausedAt ?? now) - start
+@@ -117,7 +122,7 @@
+ }
+ const MIN_TASK = 24
+ 
+-/** Column plan for a width. Ladder: full → no agent → short time (the label already says "finalizado") →
++/** Column plan for a width. Ladder: full → short time (clock only) →
+  * state as a symbol only → symbol + task. Each level keeps at least MIN_TASK cells (16 once compact) for the task. */
+ export interface Cols {
+   num: number
+@@ -125,20 +130,18 @@
+   label: boolean
+   time: number
+   short: boolean
+-  agent: number
+   task: number
+   header: boolean
+ }
+ const LEVELS: Array<Omit<Cols, 'task'>> = [
+-  { num: 4, state: 12, label: true, time: 17, short: false, agent: 14, header: true },
+-  { num: 4, state: 12, label: true, time: 17, short: false, agent: 0, header: true },
+-  { num: 4, state: 12, label: true, time: 8, short: true, agent: 0, header: true },
+-  { num: 3, state: 2, label: false, time: 8, short: true, agent: 0, header: true },
+-  { num: 0, state: 2, label: false, time: 0, short: true, agent: 0, header: false },
++  { num: 4, state: 12, label: true, time: 17, short: false, header: true },
++  { num: 4, state: 12, label: true, time: 8, short: true, header: true },
++  { num: 3, state: 2, label: false, time: 8, short: true, header: true },
++  { num: 0, state: 2, label: false, time: 0, short: true, header: false },
+ ]
+ export function columns(width: number): Cols {
+   for (const [i, l] of LEVELS.entries()) {
+-    const task = width - l.num - l.state - l.time - l.agent - 1
++    const task = width - l.num - l.state - l.time - 1
+     if (task >= (i < 3 ? MIN_TASK : 12) || i === LEVELS.length - 1) return { ...l, task: Math.max(4, task) }
+   }
+   throw new Error('unreachable')
+@@ -189,7 +192,7 @@
+ export function tableHeader(theme: UiTheme, width: number): string {
+   const c = columns(width)
+   if (!c.header) return ''
+-  const line = pad('#', c.num) + pad(c.label ? '  estado' : '', c.state) + pad('tarefa', c.task + 1) + (c.time ? pad('tempo', c.time) : '') + (c.agent ? 'agente' : '')
++  const line = pad('#', c.num) + pad(c.label ? '  estado' : '', c.state) + pad('tarefa', c.task + 1) + (c.time ? pad('fim', c.time) : '')
+   return truncateToWidth(theme.fg('dim', line.trimEnd()), width)
+ }
+ 
+@@ -202,9 +205,12 @@
+   let time = '—'
+   if (key === 'paused') time = `${formatDuration(times.running(item.step, now) ?? 0)} ∥`
+   else if (key === 'done') {
++    // Clock time the step finished (owner request 2026-11-14: "really show when each one finished"), then how long it
++    // took; the short rung keeps the clock only. Unknown when the step was already done the first time it was seen.
++    const at = times.finishedAt(item.step)
+     const took = times.took(item.step)
+-    const d = took === undefined ? '--:--' : formatDuration(took)
+-    time = c.short ? d : `finalizado ${d}`
++    const clock = at === undefined ? '--:--' : new Date(at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
++    time = c.short || took === undefined ? clock : `${clock} · ${formatDuration(took)}`
+   } else if (doing) {
+     const run = times.running(item.step, now)
+     time = run === undefined ? '' : `${formatDuration(run)}${motion && Math.floor(now / 1000) % 2 === 0 ? ' ▮' : ''}`
+@@ -220,7 +226,6 @@
+     pad(state, c.state) +
+     (doing ? theme.bold(theme.fg(taskRole, text)) : theme.fg(taskRole, text)) +
+     ' ' +
+-    (c.time ? pad(paint(time, key === 'todo' || key === 'skipped' ? 'dim' : st.role), c.time) : '') +
+-    (c.agent ? paint(item.agent ?? '—', item.agent ? st.role : 'dim') : '')
++    (c.time ? pad(paint(time, key === 'todo' || key === 'skipped' ? 'dim' : st.role), c.time) : '')
+   return truncateToWidth(line, width)
+ }

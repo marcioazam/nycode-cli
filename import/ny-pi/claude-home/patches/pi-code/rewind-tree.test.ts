@@ -20,6 +20,12 @@ process.env.PI_CODING_AGENT_DIR = join(tmp, 'agent')
 mkdirSync(process.env.PI_CODING_AGENT_DIR)
 const mod = await import(`${ext}/git-checkpoint.ts`)
 
+const choice = (mode: string) => mod.RESTORE_CHOICES.find((c: { mode: string }) => c.mode === mode).label
+const YES = 'Sim, restaurar os arquivos'
+const NO = 'Não, manter os arquivos como estão'
+const ASK = 'Restaurar os arquivos para este ponto? As mudanças feitas depois dele se perdem.'
+const MODE_TITLE = 'Voltar para “p” · o que desfazer:'
+
 const CP = { entryId: 'u1', ref: 'refs/pi-code/checkpoints/1', prompt: 'p', createdAt: '2026-01-01T00:00:00Z' }
 
 /** Loads the extension, runs session_start with the given stored checkpoints. */
@@ -45,7 +51,7 @@ async function setup(opts: { checkout?: number; stored?: object[] } = {}) {
   const ui = {
     select: async (title: string, options: string[]) => {
       selects.push(title)
-      if (title === 'Rewind to checkpoint:') return options[0]
+      if (title === 'Voltar para:') return options[0]
       return answers.shift()
     },
     notify: (m: string) => notes.push(m),
@@ -66,16 +72,16 @@ test('registra o handler session_before_tree', async () => {
 
 test('/tree para a mensagem com checkpoint: sim restaura o código', async () => {
   const s = await setup()
-  s.answers.push('Yes, restore code')
+  s.answers.push(YES)
   assert.equal(await before(s.handlers, s.ctx, 'u1'), undefined)
-  assert.deepEqual(s.selects, ['Restore code to that point?'])
+  assert.deepEqual(s.selects, [ASK])
   assert.equal(s.checkouts(), 1)
-  assert.deepEqual(s.notes, ['Code restored to checkpoint'])
+  assert.deepEqual(s.notes, ['Código restaurado para este ponto'])
 })
 
 test('/tree: não mantém o código e não cancela a navegação', async () => {
   const s = await setup()
-  s.answers.push('No, keep current code')
+  s.answers.push(NO)
   assert.equal(await before(s.handlers, s.ctx, 'u1'), undefined)
   assert.equal(s.checkouts(), 0)
 })
@@ -107,20 +113,20 @@ test('/tree sem UI não pergunta', async () => {
 
 test('/tree: falha do git avisa e não bloqueia', async () => {
   const s = await setup({ checkout: 1 })
-  s.answers.push('Yes, restore code')
+  s.answers.push(YES)
   assert.equal(await before(s.handlers, s.ctx, 'u1'), undefined)
-  assert.ok(s.notes.some((n) => n.startsWith('Code restore failed')))
+  assert.ok(s.notes.some((n) => n.startsWith('Não foi possível restaurar o código')))
 })
 
 test('/tree: exceção na restauração vira aviso', async () => {
   const s = await setup()
-  s.answers.push('Yes, restore code')
+  s.answers.push(YES)
   s.ctx.ui.notify = (m: string) => {
-    if (m === 'Code restored to checkpoint') throw new Error('ui down')
+    if (m === 'Código restaurado para este ponto') throw new Error('ui down')
     s.notes.push(m)
   }
   assert.equal(await before(s.handlers, s.ctx, 'u1'), undefined)
-  assert.deepEqual(s.notes, ['Code restore failed: ui down'])
+  assert.deepEqual(s.notes, ['Não foi possível restaurar o código: ui down'])
 })
 
 /** /rewind drives navigateTree, which in pi fires session_before_tree: simulate it. */
@@ -138,27 +144,27 @@ async function rewind(mode: string, navigated: { opts?: any }) {
 
 test('guarda: /rewind "Code and conversation" não pergunta de novo na navegação', async () => {
   const nav: any = {}
-  const s = await rewind('Code and conversation', nav)
-  assert.deepEqual(s.selects, ['Rewind to checkpoint:', 'Restore mode:'])
+  const s = await rewind(choice('code-and-conversation'), nav)
+  assert.deepEqual(s.selects, ['Voltar para:', MODE_TITLE])
   assert.equal(s.checkouts(), 1)
   assert.equal(nav.opts.summarize, false)
 })
 
 test('Summarize from here: navega com summarize e não toca o código', async () => {
   const nav: any = {}
-  const s = await rewind('Summarize from here', nav)
+  const s = await rewind(choice('summary'), nav)
   assert.deepEqual(nav.opts, { summarize: true })
   assert.equal(s.checkouts(), 0)
-  assert.deepEqual(s.selects, ['Rewind to checkpoint:', 'Restore mode:'])
-  assert.ok(s.notes.includes('Rewind complete'))
+  assert.deepEqual(s.selects, ['Voltar para:', MODE_TITLE])
+  assert.ok(s.notes.includes('✓ Voltou para “p” · resumido · o prompt está no campo'))
 })
 
 test('a guarda é liberada depois do /rewind (cancelado ou não)', async () => {
   const s = await setup()
-  s.answers.push('Conversation only')
+  s.answers.push(choice('conversation'))
   s.ctx.navigateTree = async () => ({ cancelled: true })
   await s.commands.get('rewind').handler('', s.ctx)
-  s.answers.push('Yes, restore code')
+  s.answers.push(YES)
   await before(s.handlers, s.ctx, 'u1')
   assert.equal(s.checkouts(), 1)
 })
@@ -167,7 +173,14 @@ test('patch aplica ao original e reverte no instalado', () => {
   const d = mkdtempSync(join(tmpdir(), 'rewind-orig-'))
   copyFileSync(`${PATCHES}/orig/git-checkpoint.ts`, join(d, 'git-checkpoint.ts'))
   execFileSync('patch', ['-d', d, '-p1', '-N', '--dry-run', '-i', `${PATCHES}/rewind-tree.patch`])
-  execFileSync('patch', ['-d', EXT, '-p1', '-R', '--dry-run', '-i', `${PATCHES}/rewind-tree.patch`])
+  // Como o bin/pi: a pilha se desfaz em ordem inversa (os patches posteriores que tocam o arquivo, como o onda5-rewind,
+  // antes do rewind-tree), numa cópia; o instalado não é tocado.
+  const stack = readdirSync(PATCHES).filter((n) => n.endsWith('.patch') && readFileSync(`${PATCHES}/${n}`, 'utf8').includes('git-checkpoint.ts')).sort().reverse()
+  assert.equal(stack.at(-1), 'rewind-tree.patch')
+  const c = mkdtempSync(join(tmpdir(), 'rewind-stack-'))
+  copyFileSync(`${EXT}/git-checkpoint.ts`, join(c, 'git-checkpoint.ts'))
+  for (const p of stack) execFileSync('patch', ['-d', c, '-p1', '-R', '-s', '-f', '-i', `${PATCHES}/${p}`])
+  assert.equal(readFileSync(join(c, 'git-checkpoint.ts'), 'utf8'), readFileSync(`${PATCHES}/orig/git-checkpoint.ts`, 'utf8'))
 })
 
 // ---- shadow repo de ponta a ponta, com git de verdade ----
@@ -295,11 +308,11 @@ test('fluxo real: baseline do primeiro edit, snapshot por prompt e /rewind "Code
   assert.equal(s.appended.length, 2)
   assert.equal(s.read('a.txt'), 'a3')
 
-  await s.doRewind(1, 'Code only') // mais antigo: u1
+  await s.doRewind(1, choice('code')) // mais antigo: u1
   assert.equal(s.read('a.txt'), 'a1') // antes do primeiro edit
   assert.equal(s.read('b.txt'), 'b-orig') // primeiro edit posterior ao checkpoint: baseline restaurada
   assert.equal(s.read('c.txt'), 'created later') // arquivo criado depois permanece
-  assert.deepEqual(s.notes.at(-1), ['Rewind complete', 'info'])
+  assert.deepEqual(s.notes.at(-1), ['✓ Voltou para “prompt u1” · só o código', 'info'])
   assert.equal(s.edits.length, 0) // Code only não mexe na conversa
 })
 
@@ -322,7 +335,7 @@ test('/rewind lista do mais novo ao mais antigo com prompt truncado e escolha ca
 test('/rewind sem checkpoints avisa; sem UI não faz nada; label marca checkpoint sem snapshot', async () => {
   const s = await real()
   await s.commands.get('rewind').handler('', s.ctx)
-  assert.deepEqual(s.notes.at(-1), ['No checkpoints recorded yet', 'info'])
+  assert.deepEqual(s.notes.at(-1), ['Nenhum checkpoint registrado ainda', 'info'])
   const n = s.notes.length
   await s.commands.get('rewind').handler('', { ...s.ctx, hasUI: false })
   assert.equal(s.notes.length, n)
@@ -330,29 +343,29 @@ test('/rewind sem checkpoints avisa; sem UI não faz nada; label marca checkpoin
   r.answers.push(undefined)
   await r.commands.get('rewind').handler('', r.ctx)
   assert.equal(r.selects[0].options.length, 1) // entrada sem entryId descartada
-  assert.ok(r.selects[0].options[0].endsWith('(empty prompt) [no code snapshot]'))
+  assert.ok(r.selects[0].options[0].endsWith('(prompt vazio) [sem snapshot de código]'))
 })
 
 test('restauração: checkpoint sem ref e snapshot vazio deixam o código intacto', async () => {
   const s = await real({ stored: [{ entryId: 'e1', ref: '', prompt: 'p', createdAt: '2026-01-01T00:00:00Z' }] })
-  await s.doRewind(0, 'Code only')
-  assert.deepEqual(s.notes.at(-2), ['Checkpoint has no code snapshot; code left untouched', 'warning'])
-  assert.deepEqual(s.notes.at(-1), ['Rewind complete', 'info'])
+  await s.doRewind(0, choice('code'))
+  assert.deepEqual(s.notes.at(-2), ['Este ponto não tem snapshot de código · o código não foi alterado', 'warning'])
+  assert.deepEqual(s.notes.at(-1), ['✓ Voltou para “p” · só o código', 'info'])
 
   const e = await real()
   writeFileSync(join(e.work, 'keep.txt'), 'keep')
   await e.run('u1') // nenhum arquivo editado: árvore vazia
-  await e.doRewind(0, 'Code only')
-  assert.ok(e.notes.some(([m]) => m === 'Checkpoint has no files; code left untouched'))
+  await e.doRewind(0, choice('code'))
+  assert.ok(e.notes.some(([m]) => m === 'Este ponto não tem arquivos · o código não foi alterado'))
   assert.equal(e.read('keep.txt'), 'keep')
 })
 
 test('restauração: ref inexistente falha com aviso e não conclui o rewind nem navega', async () => {
   const s = await real({ stored: [{ entryId: 'e1', ref: 'refs/pi-code/checkpoints/nope', prompt: 'p', createdAt: '2026-01-01T00:00:00Z' }] })
   let navigated = 0
-  await s.doRewind(0, 'Code and conversation', async () => { navigated++; return { cancelled: false } })
-  assert.ok(s.notes.some(([m, l]) => m.startsWith('Code restore failed:') && l === 'warning'))
-  assert.ok(!s.notes.some(([m]) => m === 'Rewind complete'))
+  await s.doRewind(0, choice('code-and-conversation'), async () => { navigated++; return { cancelled: false } })
+  assert.ok(s.notes.some(([m, l]) => m.startsWith('Não foi possível restaurar o código:') && l === 'warning'))
+  assert.ok(!s.notes.some(([m]) => m.startsWith('✓ Voltou')))
   assert.equal(navigated, 0)
 })
 
@@ -361,21 +374,21 @@ test('modos de conversa: "Conversation only" não toca o código; editorText, ca
   writeFileSync(join(s.work, 'a.txt'), 'a1')
   await s.run('u1', async () => { await s.edit('a.txt', 'a2') })
   let opts: any
-  await s.doRewind(0, 'Conversation only', async (id, o) => { opts = [id, o]; return { cancelled: false, editorText: 'refill' } })
+  await s.doRewind(0, choice('conversation'), async (id, o) => { opts = [id, o]; return { cancelled: false, editorText: 'refill' } })
   assert.deepEqual(opts, ['u1', { summarize: false }])
   assert.deepEqual(s.edits, ['refill'])
   assert.equal(s.read('a.txt'), 'a2')
-  assert.deepEqual(s.notes.at(-1), ['Rewind complete', 'info'])
+  assert.deepEqual(s.notes.at(-1), ['✓ Voltou para “prompt u1” · só a conversa · o prompt está no campo', 'info'])
 
   const before = s.notes.length
-  await s.doRewind(0, 'Conversation only', async () => ({ cancelled: true }))
-  assert.equal(s.notes.length, before) // cancelado: sem "Rewind complete"
-  await s.doRewind(0, 'Conversation only', async () => { throw new Error('nav down') })
-  assert.deepEqual(s.notes.at(-1), ['Conversation restore failed: nav down', 'error'])
+  await s.doRewind(0, choice('conversation'), async () => ({ cancelled: true }))
+  assert.equal(s.notes.length, before) // cancelado: sem "✓ Voltou"
+  await s.doRewind(0, choice('conversation'), async () => { throw new Error('nav down') })
+  assert.deepEqual(s.notes.at(-1), ['Não foi possível restaurar a conversa: nav down', 'error'])
 
-  await s.doRewind(0, 'Code and conversation')
+  await s.doRewind(0, choice('code-and-conversation'))
   assert.equal(s.read('a.txt'), 'a1')
-  assert.deepEqual(s.notes.at(-1), ['Rewind complete', 'info'])
+  assert.deepEqual(s.notes.at(-1), ['✓ Voltou para “prompt u1” · código e conversa', 'info'])
 })
 
 test('arquivo ignorado (.git/info/exclude) não entra no checkpoint nem é restaurado; edição fora da árvore é ignorada', async () => {
@@ -392,7 +405,7 @@ test('arquivo ignorado (.git/info/exclude) não entra no checkpoint nem é resta
     await s.fire('tool_call', { toolName: 'edit', input: {} }) // sem alvo
   })
   await s.run('u2', async () => { await s.edit('a.txt', 'a3') })
-  await s.doRewind(1, 'Code only')
+  await s.doRewind(1, choice('code'))
   assert.equal(s.read('a.txt'), 'a1')
   assert.equal(s.read('secret.txt'), 's2')
   assert.ok(!existsSync(outside))
@@ -409,7 +422,7 @@ test('arquivo apagado depois do checkpoint volta no rewind; diretório via symli
   rmSync(join(s.work, 'a.txt'))
   writeFileSync(join(s.work, 'real', 'f.txt'), 'f3')
   await s.run('u3') // a.txt rastreado e apagado: remoção é registrada
-  await s.doRewind(2, 'Code only')
+  await s.doRewind(2, choice('code'))
   assert.equal(s.read('a.txt'), 'a1')
   assert.equal(s.read('real/f.txt'), 'f1')
 })
@@ -420,7 +433,7 @@ test('rewind a um checkpoint intermediário restaura a versão daquele ponto', a
   await s.run('u1', async () => { await s.edit('a.txt', 'a2') })
   await s.run('u2', async () => { await s.edit('a.txt', 'a3') })
   await s.run('u3', async () => { await s.edit('a.txt', 'a4') })
-  await s.doRewind(1, 'Code only') // u2: estado antes do edit do run 2
+  await s.doRewind(1, choice('code')) // u2: estado antes do edit do run 2
   assert.equal(s.read('a.txt'), 'a2')
 })
 
@@ -453,7 +466,7 @@ test('CLAUDE_CODE_DISABLE_FILE_CHECKPOINTING=1 não registra checkpoints', async
   try { await s.run('u1') } finally { delete process.env.CLAUDE_CODE_DISABLE_FILE_CHECKPOINTING }
   assert.equal(s.appended.length, 0)
   await s.commands.get('rewind').handler('', s.ctx)
-  assert.deepEqual(s.notes.at(-1), ['No checkpoints recorded yet', 'info'])
+  assert.deepEqual(s.notes.at(-1), ['Nenhum checkpoint registrado ainda', 'info'])
 })
 
 test('retenção: lista de rewind limitada a 100 ao retomar e ao gravar o 101º', async () => {
@@ -480,7 +493,7 @@ test('retomar com checkpoints guardados e arquivos já rastreados: continua rast
   const r = await real({ session: 'resume.jsonl', cwd: s.work, stored: s.entries })
   writeFileSync(join(r.work, 'a.txt'), 'a-resumed')
   await r.run('u3') // a.txt veio de committedPaths: entra no snapshot
-  await r.doRewind(1, 'Code only') // u2
+  await r.doRewind(1, choice('code')) // u2
   assert.equal(r.read('a.txt'), 'a2')
 })
 
@@ -489,9 +502,9 @@ test('retomar em outro diretório avisa e usa shadow novo; checkpoints antigos n
   writeFileSync(join(a.work, 'a.txt'), 'a1')
   await a.run('u1', async () => { await a.edit('a.txt', 'a2') })
   const b = await real({ session: 'moved.jsonl', stored: a.entries })
-  assert.ok(b.notes.some(([m, l]) => m.includes(`recorded in ${a.work}`) && m.includes(b.work) && l === 'warning'))
+  assert.ok(b.notes.some(([m, l]) => m.includes(`foram gravados em ${a.work}`) && m.includes(b.work) && l === 'warning'))
   writeFileSync(join(b.work, 'a.txt'), 'b-file')
-  await b.doRewind(0, 'Code only')
+  await b.doRewind(0, choice('code'))
   assert.equal(b.read('a.txt'), 'b-file') // nunca sobrescreve a árvore de outro diretório
 })
 
@@ -503,11 +516,11 @@ test('fork: session_start herda os refs do shadow pai e session_before_fork rest
   const f = await real({ session: 'child.jsonl', cwd: p.work, stored: p.entries })
   await f.fire('session_start', { reason: 'fork', previousSessionFile: p.sessionFile })
   const answers = f.answers
-  answers.push('Yes, restore code to that point')
+  answers.push(YES)
   await f.fire('session_before_fork', { entryId: 'u1' })
   assert.equal(f.read('a.txt'), 'a1')
-  assert.deepEqual(f.notes.at(-1), ['Code restored to checkpoint', 'info'])
-  assert.equal(f.selects.at(-1)!.title, 'Restore code state?')
+  assert.deepEqual(f.notes.at(-1), ['Código restaurado para este ponto', 'info'])
+  assert.equal(f.selects.at(-1)!.title, ASK)
   // fork de sessão cujo pai não existe mais: segue sem falhar
   await assert.doesNotReject(f.fire('session_start', { reason: 'fork', previousSessionFile: join(tmp, 'ghost.jsonl') }))
 })
@@ -517,21 +530,21 @@ test('session_before_fork: recusa, sem UI, sem ref, entrada desconhecida, snapsh
   writeFileSync(join(s.work, 'a.txt'), 'a1')
   await s.run('u1') // snapshot vazio
   const asked = () => s.selects.length
-  s.answers.push('No, keep current code')
+  s.answers.push(NO)
   await s.fire('session_before_fork', { entryId: 'u1' })
-  assert.equal(s.notes.at(-1)?.[0] === 'Code restored to checkpoint', false)
+  assert.equal(s.notes.at(-1)?.[0] === 'Código restaurado para este ponto', false)
   const n = asked()
   await s.fire('session_before_fork', { entryId: 'noref' })
   await s.fire('session_before_fork', { entryId: 'unknown' })
   await s.fire('session_before_fork', { entryId: 'u1' }, { ...s.ctx, hasUI: false })
   assert.equal(asked(), n)
-  s.answers.push('Yes, restore code to that point')
+  s.answers.push(YES)
   await s.fire('session_before_fork', { entryId: 'u1' })
-  assert.deepEqual(s.notes.at(-1), ['Checkpoint has no files; code left untouched', 'warning'])
+  assert.deepEqual(s.notes.at(-1), ['Este ponto não tem arquivos · o código não foi alterado', 'warning'])
   // ref ruim: ls-tree falha, checkout falha
-  s.answers.push('Yes, restore code to that point')
+  s.answers.push(YES)
   await s.fire('session_before_fork', { entryId: 'bad' })
-  assert.ok(s.notes.at(-1)![0].startsWith('Restore failed:'))
+  assert.ok(s.notes.at(-1)![0].startsWith('Não foi possível restaurar o código:'))
 })
 
 test('session_before_tree com git real restaura o arquivo; falha de init desativa com aviso', async () => {
@@ -539,13 +552,13 @@ test('session_before_tree com git real restaura o arquivo; falha de init desativ
   writeFileSync(join(s.work, 'a.txt'), 'a1')
   await s.run('u1', async () => { await s.edit('a.txt', 'a2') })
   await s.run('u2')
-  s.answers.push('Yes, restore code')
+  s.answers.push(YES)
   await s.fire('session_before_tree', { preparation: { targetId: 'u1' } })
   assert.equal(s.read('a.txt'), 'a1')
   const d = await real({ fail: (a) => (a.includes('init') ? { code: 1, stderr: 'no git here' } : undefined) })
-  assert.deepEqual(d.notes.find(([m]) => m.startsWith('Checkpoints disabled')), ['Checkpoints disabled: no git here', 'warning'])
+  assert.deepEqual(d.notes.find(([m]) => m.startsWith('Checkpoints desligados')), ['Checkpoints desligados: no git here', 'warning'])
   const e = await real({ fail: (a) => (a.includes('init') ? { code: 1, stderr: '' } : undefined) })
-  assert.ok(e.notes.some(([m]) => m === 'Checkpoints disabled: git init failed'))
+  assert.ok(e.notes.some(([m]) => m === 'Checkpoints desligados: git init failed'))
 })
 
 test('add falha em um pathspec: os demais são snapshotados e o recusado sai do conjunto', async () => {
@@ -557,7 +570,7 @@ test('add falha em um pathspec: os demais são snapshotados e o recusado sai do 
   reject = true
   await s.run('u2', async () => { await s.edit('good.txt', 'g3') })
   assert.equal(s.appended.length, 2)
-  await s.doRewind(0, 'Code only') // u2 = estado antes do edit g3
+  await s.doRewind(0, choice('code')) // u2 = estado antes do edit g3
   assert.equal(s.read('good.txt'), 'g2')
   // tudo recusado: o arquivo sai do conjunto e os checkpoints seguintes continuam possíveis
   const t = await real({ fail: (a) => (a.includes('add') ? { code: 128 } : undefined) })
@@ -581,7 +594,7 @@ test('arquivo em repositório aninhado é indexado diretamente e restaurado', as
   await s.run('u1', async () => { await s.edit('sub/n.txt', 'n2') })
   await s.run('u2')
   writeFileSync(join(s.work, 'sub', 'n.txt'), 'n3')
-  await s.doRewind(1, 'Code only')
+  await s.doRewind(1, choice('code'))
   assert.equal(s.read('sub/n.txt'), 'n1')
 })
 
@@ -603,6 +616,6 @@ test('fora de um repo git não há exclude para espelhar e o fluxo segue', async
   writeFileSync(join(s.work, 'a.txt'), 'a1')
   await s.run('u1', async () => { await s.edit('a.txt', 'a2') })
   await s.run('u2')
-  await s.doRewind(1, 'Code only')
+  await s.doRewind(1, choice('code'))
   assert.equal(s.read('a.txt'), 'a1')
 })

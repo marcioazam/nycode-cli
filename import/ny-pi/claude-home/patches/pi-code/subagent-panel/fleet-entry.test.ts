@@ -268,7 +268,7 @@ test('registro pelo execute: {status}, {resume}, {cancel} de fundo e {cancel} de
     const fg = await waitFor('running fg record', h.runningFg)
     h.key('\x02')
     assert.ok(h.text(await pending).includes(MOVED))
-    assert.match(h.text(await h.run({ status: true })), new RegExp(`${fg.id} \\(fake\\) running — moved to the background`))
+    assert.match(h.text(await h.run({ status: true })), new RegExp(`${fg.id} fake running`))
     assert.equal(h.text(await h.run({ cancel: fg.id })), `Stopped run ${fg.id}.`)
     const fin = await waitFor('cancelled record', () => h.dirRecords().find((r) => r.id === fg.id && r.state === 'cancelled'))
     assert.equal(fin.stoppedBy, 'agent')
@@ -352,7 +352,7 @@ test('/tasks: sem execuções avisa; com execuções abre o navegador; sem UI im
     assert.deepEqual(h.notes.at(-1), ['info', 'No subagent runs in this session.'])
     await h.fire('session_start')
     await h.commands.get('tasks').handler('', h.ctx)
-    assert.deepEqual(h.notes.at(-1), ['info', 'No subagent runs in this session.'], 'frota vazia')
+    assert.deepEqual(h.notes.at(-1), ['info', 'Nenhum agente nesta sessão.'], 'frota vazia')
     const custom: unknown[] = []
     h.ctx.ui.custom = async (...a: unknown[]) => void custom.push(a)
     const bgId = h.text(await h.run({ agent: 'fake', task: 'hang-t', background: true })).match(/(bg-[0-9a-f]+)/)?.[1] as string

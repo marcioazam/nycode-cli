@@ -152,3 +152,66 @@ test('wiring: run.ts e background.ts passam o argv resolvido ao startTracking', 
     assert.match(src, /configuredRuntime\(/, f)
   }
 })
+
+// D10 (docs/sync-observabilidade.md): maxTurns termina como done, mas o registro diz que a saída é parcial.
+test('D10 tracker: finish({exitCode:0, partial:true}) grava partial:true e segue done; sem partial o campo não existe', () => {
+  const a = start({}, 20)
+  a.tr.finish({ exitCode: 0, partial: true })
+  const rec = a.read()
+  assert.equal(rec.state, 'done')
+  assert.equal(rec.partial, true)
+  const b = start({}, 21)
+  b.tr.finish({ exitCode: 0 })
+  assert.equal('partial' in b.read(), false)
+  store.removeFleetDir()
+})
+
+test('D10 view-model: a linha de um run parcial leva partial; wiring de run.ts e background.ts', async () => {
+  const vm = await import(`${ext}/subagent/fleet-ui/view-model.ts`)
+  const mk = (rid: string, over: object) => ({ v: 1, id: rid, parentId: null, depth: 1, agent: 'a', task: 't', background: true, state: 'done', startedAt: 1, updatedAt: 2, endedAt: 2, turns: 1, toolCalls: 0, tokens: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, context: 0 }, cost: 0, ownerPid: process.pid, ...over })
+  const rows = vm.buildRows([mk(id(22), { partial: true }), mk(id(23), {})], { now: 3, panel: false })
+  assert.equal(rows.find((r: any) => r.id === id(22)).partial, true)
+  assert.equal('partial' in rows.find((r: any) => r.id === id(23)), false)
+  for (const f of ['run.ts', 'background.ts']) assert.match(readFileSync(`${ext}/subagent/${f}`, 'utf8'), /partial: .*partial/, f)
+})
+
+test('D8 run.ts abre a faixa antes do spawn: startTracking com activity "starting" e sem criar o tracker dentro do runAttempt', () => {
+  const src = readFileSync(`${ext}/subagent/run.ts`, 'utf8')
+  assert.match(src, /let tracker[^\n]*= startTracking\(\{[^\n]*activity: 'starting'/)
+  assert.doesNotMatch(src, /tracker \?\?= startTracking/)
+  const dir = mainFleet()
+  const rec = trackerMod.startTracking({ id: id(24), agent: 'swarm-worker', task: 't', background: false, activity: 'starting' })
+  rec.flush(true)
+  assert.equal(JSON.parse(readFileSync(join(dir, `${id(24)}.json`), 'utf8')).activity, 'starting')
+  rec.finish({ exitCode: 0 })
+  store.removeFleetDir()
+})
+
+// D11 (docs/sync-observabilidade.md): id comum chamada ↔ run ↔ etapa do plano no registro do fleet.
+test('D11 tracker: o registro leva toolCallId (da chamada em curso) e planStep (do canal pi-code:plan-state); ausentes ficam omitidos', () => {
+  const dir = mainFleet()
+  const readRec = (n: number) => JSON.parse(readFileSync(join(dir, `${id(n)}.json`), 'utf8'))
+  trackerMod.setPlanStep(3)
+  const a = trackerMod.toolCallScope.run('call_77', () => trackerMod.startTracking({ id: id(30), agent: 'swarm-worker', task: 't', background: false }))
+  assert.equal(readRec(30).toolCallId, 'call_77')
+  assert.equal(readRec(30).planStep, 3)
+  trackerMod.setPlanStep(undefined)
+  const b = trackerMod.startTracking({ id: id(31), agent: 'swarm-worker', task: 't', background: false })
+  assert.equal('toolCallId' in readRec(31), false)
+  assert.equal('planStep' in readRec(31), false)
+  a.finish({ exitCode: 0, partial: true })
+  assert.deepEqual(trackerMod.laneOutcome(id(30)), { toolCallId: 'call_77', planStep: 3, state: 'done', exitCode: 0, partial: true })
+  assert.deepEqual(trackerMod.laneOutcome(id(99)), {})
+  b.finish({ exitCode: 1 })
+  assert.equal(trackerMod.laneOutcome(id(31)).state, 'failed')
+  store.removeFleetDir()
+})
+
+test('D11 wiring: execute roda dentro do toolCallScope, o canal plan-state é lido e o evento do ciclo leva a correlação', () => {
+  const index = readFileSync(`${ext}/subagent/index.ts`, 'utf8')
+  assert.match(index, /toolCallScope\.run\(toolCallId,/)
+  assert.match(index, /pi\.events\?\.on\(PLAN_STATE_CHANNEL/)
+  assert.match(index, /\.\.\.laneCorrelation\(\), \.\.\.\(phase === 'stop' \? laneOutcome\(agentId\)/)
+  assert.match(readFileSync(`${ext}/subagent/modes.ts`, 'utf8'), /\.\.\.laneOutcome\(run\.id\)/)
+  assert.match(readFileSync(`${ext}/internal/subagent-events.ts`, 'utf8'), /pi-code:plan-state/)
+})

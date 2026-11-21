@@ -1,0 +1,49 @@
+--- a/claude-rules.ts
++++ b/claude-rules.ts
+@@ -347,12 +347,29 @@
+   return nearestRulesDir !== null && sameLocation(nearestRulesDir, globalRulesDir) ? null : nearestRulesDir
+ }
+ 
+-/** The session_start notice, or undefined when no rule loaded at all. */
+-function rulesLoadedMessage(globalRules: RuleSet, projectRules: RuleSet): string | undefined {
+-  const hasGlobal = globalRules.inline.length > 0 || globalRules.scoped.length > 0
++/** Session-start notice: `⚖ regras  2 globais · nenhuma do projeto · sempre ativas`, or undefined when no rule loaded.
++ * "sempre ativas" = unscoped (inlined) rules; "por arquivo" = path-scoped ones, attached on a matching touch. */
++type NoticeTheme = { fg: (color: string, text: string) => string; bold?: (text: string) => string }
++/** Gavel glyph where a Nerd Font is known to render (kitty or PI_NERD_FONT=1; ASCII request wins), else a section sign. */
++const rulesGlyph = (env: Record<string, string | undefined>): string => {
++  const ascii = Boolean(env.PI_ASCII_ICONS) || env.TERM === 'dumb' || env.TERM === 'linux'
++  return !ascii && (env.PI_NERD_FONT === '1' || env.TERM === 'xterm-kitty' || Boolean(env.KITTY_WINDOW_ID)) ? '\uf0e3' : '§'
++}
++
++export function rulesLoadedMessage(globalRules: RuleSet, projectRules: RuleSet, theme?: NoticeTheme, env: Record<string, string | undefined> = process.env): string | undefined {
++  const globalCount = globalRules.inline.length + globalRules.scoped.length
+   const projectCount = projectRules.inline.length + projectRules.scoped.length
+-  if (!hasGlobal && projectCount === 0) return undefined
+-  return `Rules loaded: global ${hasGlobal ? 'yes' : 'no'}, project ${projectCount}`
++  if (globalCount === 0 && projectCount === 0) return undefined
++  const always = globalRules.inline.length + projectRules.inline.length
++  const scoped = globalRules.scoped.length + projectRules.scoped.length
++  const fg = theme ? (color: string, text: string) => theme.fg(color, text) : (_color: string, text: string) => text
++  const bold = theme?.bold ? (text: string) => theme.bold!(text) : (text: string) => text
++  const globalPart = globalCount === 0 ? 'nenhuma global' : `${globalCount} ${globalCount === 1 ? 'global' : 'globais'}`
++  const projectPart = projectCount === 0 ? 'nenhuma do projeto' : `${projectCount} do projeto`
++  const mode = scoped === 0 ? (always === 1 ? 'sempre ativa' : 'sempre ativas')
++    : always === 0 ? 'por arquivo'
++    : `${always} ${always === 1 ? 'sempre ativa' : 'sempre ativas'} · ${scoped} por arquivo`
++  return `${fg('accent', rulesGlyph(env))} ${fg('text', bold('regras'))}  ${fg('muted', globalPart)} ${fg('dim', '·')} ${fg('muted', projectPart)} ${fg('dim', `· ${mode}`)}`
+ }
+ 
+ // Module level because the working list lives in each extension instance's closure.
+@@ -410,8 +427,9 @@
+       { title: 'Project Rules', rules: projectRules, base: projectRulesBase },
+     ])
+ 
+-    const loaded = rulesLoadedMessage(globalRules, projectRules)
+-    if (loaded !== undefined && !rulesDisabled()) ctx.ui.notify(loaded, 'info')
++    const loaded = rulesLoadedMessage(globalRules, projectRules, ctx.ui.theme)
++    // U+2063 (invisible) asks the harness core patch for a neutral-background box; without it the mark takes no column.
++    if (loaded !== undefined && !rulesDisabled()) ctx.ui.notify(`\u2063${loaded}`, 'info')
+   })
+ 
+   pi.on('before_agent_start', (event) => {

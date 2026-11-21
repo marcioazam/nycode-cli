@@ -1,0 +1,410 @@
+--- a/plan-mode/done-view.ts
++++ b/plan-mode/done-view.ts
+@@ -1,21 +1,35 @@
+-// Exibição das tags [DONE:n] no chat (pedido do dono, 2026-11-14): só o texto mostrado muda; a sessão, o modelo e o rastreador seguem com a tag literal.
+-// Puro, sem pi: texto + etapas do plano -> texto exibido. Código (``` e `inline`) fica literal.
++// Exibição das tags [DONE:n] e blocos de estado do plano no chat (2026-11-18):
++// - Layout único padronizado para todos os estados (`em espera`, `bloqueado`, `cancelado`, avanço de etapa), sempre com o
++//   ícone de Plano (Opção 1 `U+EB9D` no Kitty/Nerd Font, `◈` Unicode, `^` ASCII) e a palavra `plano`.
++// - Etapa + barra de progresso (com micro-cometa opcional) + % ficam colados ao título à esquerda.
++// - Data/hora de envio fica em pílula discreta no canto superior direito (Solução 2).
++// - `em espera` usa cor roxa/lavanda (`wait`), separada do ciano (`run` exclusivo para execução ativa).
++// - `bloqueado` exibe o ícone de warning (`\uf421` / `▲` / `!`) junto de `precisa de você`.
+ export interface DoneStep {
+   step: number
+   text: string
+   completed?: boolean
+ }
++export type Env = Record<string, string | undefined>
+ export interface DonePaint {
+   ok: (s: string) => string
+   muted: (s: string) => string
+   text: (s: string) => string
+-  /** Cores do bloco de espera; sem elas cai em muted. */
++  dim?: (s: string) => string
++  /** Ciano de execução ativa; `wait` (roxo/lavanda) separa `em espera` de `executando`. */
+   run?: (s: string) => string
++  wait?: (s: string) => string
+   warn?: (s: string) => string
+   accent?: (s: string) => string
+   bold?: (s: string) => string
+-  /** Fundo neutro da caixa de espera; sem ele (ou sem largura) o bloco sai sem caixa. */
++  /** Fundos de caixa (neutro, roxo suave p/ espera, âmbar suave p/ bloqueado). */
+   box?: (s: string) => string
++  waitBox?: (s: string) => string
++  warnBox?: (s: string) => string
++  /** Pílula opcional p/ data de envio no canto direito (Solução 2). */
++  pill?: (s: string, kind: 'neutral' | 'wait' | 'warn') => string
++  /** Barra animada com micro-cometa opcional nas células pendentes. */
++  bar?: (filled: number, cells: number) => string
+ }
+ 
+ export const plainPaint: DonePaint = { ok: (s) => s, muted: (s) => s, text: (s) => s }
+@@ -23,31 +37,44 @@
+ const TAG = /\[DONE:(\d+)\]/gi
+ const ONLY_TAGS = /^\s*(?:\[DONE:\d+\]\s*)+$/i
+ const FENCE = /^\s*(```|~~~)/
+-// Prefixo incompleto de tag no fim do texto em streaming: some até a tag fechar, em vez de piscar cru.
+ const PARTIAL = /\[(?:D(?:O(?:N(?:E(?::\d*)?)?)?)?)?$/i
+ 
+ const BAR_MAX = 12
+-/** Colunas visíveis, sem SGR. ponytail: 1 coluna por caractere (CJK/emoji largos desalinham a caixa). */
+ const seen = (s: string): number => [...s.replace(/\x1b\[[0-9;]*m/g, '')].length
+-/** Texto literal dentro do Markdown do pi (que também interpreta `$…$` e `\[…\]`): trecho de código, com cerca maior que as crases do texto. */
+ const literal = (s: string, color: (s: string) => string): string => {
+   const fence = '`'.repeat(1 + Math.max(0, ...(s.match(/`+/g) ?? []).map((r) => r.length)))
+   return `${fence}${color(s)}${fence}`
+ }
+-// Fecho do plan-gate numa linha só dele (mesmas palavras de extensions/plan-gate.ts). No meio da frase fica literal.
+ const HOLD = /^\s*(?:PLAN (WAITING|BLOCKED)|PLANO (AGUARDANDO|BLOQUEADO)):\s*(.+?)\s*$/i
+ export const CANCELLED = /^\s*(?:PLAN CANCELLED|PLANO CANCELADO)\.?\s*$/i
+ const BG_ID = /\s*\(?\b(bg-[0-9a-f]+)\)?/i
+ const lista = (ns: number[]): string => (ns.length < 2 ? String(ns[0]) : `${ns.slice(0, -1).join(', ')} e ${ns[ns.length - 1]}`)
+ 
+-export function renderDoneTags(text: string, steps: readonly DoneStep[] | undefined, paint: DonePaint = plainPaint, streaming = false, width = 0, owned = (steps ?? []).some((s) => !s.completed)): string {
++const isAscii = (env: Env): boolean => Boolean(env.PI_ASCII_ICONS) || env.TERM === 'dumb' || env.TERM === 'linux'
++const isNerd = (env: Env): boolean => !isAscii(env) && (env.PI_NERD_FONT === '1' || env.TERM === 'xterm-kitty' || Boolean(env.KITTY_WINDOW_ID))
++export const planGlyph = (env: Env = process.env): string => (isAscii(env) ? '^' : isNerd(env) ? '\ueb9d' : '◈')
++export const warnGlyph = (env: Env = process.env): string => (isAscii(env) ? '!' : isNerd(env) ? '\uf421' : '▲')
++export const glyphGap = (env: Env = process.env): string => (!isAscii(env) && (env.TERM === 'xterm-kitty' || Boolean(env.KITTY_WINDOW_ID)) ? '  ' : ' ')
++
++export function renderDoneTags(
++  text: string,
++  steps: readonly DoneStep[] | undefined,
++  paint: DonePaint = plainPaint,
++  streaming = false,
++  width = 0,
++  _owned = true,
++  sentAt = '',
++  env: Env = process.env,
++): string {
+   if (!text.includes('[') && !/PLAN/i.test(text)) return text
+   const titles = new Map((steps ?? []).map((s) => [s.step, s.text]))
+   const total = steps && steps.length > 0 ? Math.max(...steps.map((s) => s.step), steps.length) : 0
+-  // Sem ícone de estado no chat (dono, 2026-11-15): "concluída" na cor de sucesso, depois da etapa.
+   const ok = paint.ok('concluída')
+-  const dot = paint.muted('·')
+-  /** Etapas seguidas (uma ou mais linhas só de tags): título de cada uma, barra de progresso e o que vem a seguir. */
++  const dot = (paint.dim ?? paint.muted)('·')
++  const dim = paint.dim ?? paint.muted
++  const drawBar = (filled: number, cells: number): string =>
++    paint.bar ? paint.bar(filled, cells) : paint.ok('━'.repeat(filled)) + (filled < cells ? dim('╌'.repeat(cells - filled)) : '')
++
+   const block = (ns: number[]): string => {
+     const known = ns.filter((n) => titles.has(n))
+     const out: string[] = []
+@@ -56,27 +83,26 @@
+     for (const n of known) out.push(`${paint.muted(`etapa ${n} de ${total}`)} ${ok} ${dot} ${paint.text(titles.get(n)!)}`)
+     if (!known.length) return out.join('\n')
+     const last = Math.max(...known)
+-    const width = Math.min(total, BAR_MAX)
+-    const filled = Math.min(width, Math.round((last / total) * width))
+-    const bar = paint.ok('━'.repeat(filled)) + (filled < width ? paint.muted('╌'.repeat(width - filled)) : '')
++    const cells = Math.min(total, BAR_MAX)
++    const filled = Math.min(cells, Math.round((last / total) * cells))
++    const bar = drawBar(filled, cells)
+     out[out.length - 1] += `  ${bar}${last >= total ? ` ${paint.muted('plano concluído')}` : ''}`
+     const next = last < total ? titles.get(last + 1) : undefined
+     if (next !== undefined) out.push(paint.muted(`→ a seguir: etapa ${last + 1} · ${next}`))
+     return out.join('\n')
+   }
+-  /** Variante B (dono, 2026-11-14): estado + etapa atual com barra, motivo e o que destrava. */
+-  // Variante A (dono, 2026-11-14): caixa de fundo neutro quando há largura e fundo; relógio, título em negrito, etapa e barra
+-  // à direita, motivo e o que fazer embaixo. O Markdown do pi mantém espaços e SGR, então cada linha sai já na largura.
++
+   const boxed = width > 0 && paint.box !== undefined
+   const side = boxed ? ' '.repeat(width >= 26 ? 3 : 1) : ''
+   const inner = boxed ? Math.max(8, width - 2 * side.length) : 0
+-  const open = boxed ? (paint.box!('\u0000').split('\u0000')[0] ?? '') : ''
+-  const row = (s: string, cols = seen(s)): string => {
+-    if (!boxed) return s
+-    // Um reset no meio da linha apagaria o fundo: reabre-o.
+-    const body = s.replace(/\x1b\[(?:0|49)?m/g, (m) => m + open)
+-    return paint.box!(`${side}${body}${' '.repeat(Math.max(0, inner - cols))}${side}`)
+-  }
++  const gap = glyphGap(env)
++  const pGlyph = planGlyph(env)
++  const wGlyph = warnGlyph(env)
++  const bold = paint.bold ?? ((s: string) => s)
++  const railLead = boxed ? ' '.repeat(1 + gap.length) : ''
++  const rail = `${railLead}${dim('│')}`
++  const RAIL = railLead.length + 2
++
+   const wrap = (plain: string, room: number): string[] => {
+     if (!boxed) return [plain]
+     const out: string[] = []
+@@ -94,48 +120,102 @@
+     if (cur) out.push(cur)
+     return out.length ? out : ['']
+   }
+-  const bold = paint.bold ?? ((s: string) => s)
+-  const railLead = boxed && owned ? '  ' : ''
+-  const rail = `${railLead}${paint.muted('│')}`
+-  const RAIL = railLead.length + 2
+-  const title = (cor: (s: string) => string, name: string, right: string[]): string => {
+-    // `owned`: the main session has a plan under way. Waiting on subagents or a background run without one is not a
+-    // plan, so the block drops the word and the plan icon.
+-    // Sem ícone de estado (dono, 2026-11-15): o estado vai por nome, na cor dele, depois de "plano"; na caixa o padding simétrico vem de `side`.
+-    const left = owned ? `${boxed ? '' : '  '}${(paint.accent ?? paint.muted)('◈')} ${paint.text(bold('plano'))} ${paint.muted('·')} ${cor(name)}` : cor(bold(name))
+-    if (!boxed) return [left, ...right].join('  ')
+-    // sem espaço: cai primeiro a barra, depois a etapa
+-    for (let n = right.length; n > 0; n--) {
+-      const r = right.slice(0, n).join('  ')
+-      const gap = inner - seen(left) - seen(r)
+-      if (gap >= 2) return left + ' '.repeat(gap) + r
++
++  type Row = string | { s: string; cols: number }
++  const frame = (rows: Row[], kind: 'neutral' | 'wait' | 'warn'): string => {
++    const boxFn = kind === 'wait' ? (paint.waitBox ?? paint.box) : kind === 'warn' ? (paint.warnBox ?? paint.box) : paint.box
++    const open = boxed && boxFn ? (boxFn('\u0000').split('\u0000')[0] ?? '') : ''
++    const row = (s: string, cols = seen(s)): string => {
++      if (!boxed || !boxFn) return s
++      const body = s.replace(/\x1b\[(?:0|49)?m/g, (m) => m + open)
++      return boxFn(`${side}${body}${' '.repeat(Math.max(0, inner - cols))}${side}`)
+     }
+-    return left
++    return (boxed ? ['', ...rows, ''] : rows).map((r) => (typeof r === 'string' ? row(r) : row(r.s, r.cols))).join('\n')
+   }
+-  type Row = string | { s: string; cols: number }
+-  const frame = (rows: Row[]): string => (boxed ? ['', ...rows, ''] : rows).map((r) => (typeof r === 'string' ? row(r) : row(r.s, r.cols))).join('\n')
++
++  const headerLine = (
++    iconPaint: (s: string) => string,
++    statePaint: (s: string) => string,
++    stateName: string,
++    extras: string[],
++    kind: 'neutral' | 'wait' | 'warn',
++  ): string => {
++    const base = `${boxed ? '' : '  '}${iconPaint(pGlyph)}${gap}${paint.text(bold('plano'))} ${dot} ${statePaint(bold(stateName))}`
++    const rightStr = sentAt && width >= 36 ? (paint.pill ? paint.pill(dim(sentAt), kind) : dim(sentAt)) : ''
++    if (!boxed) {
++      const left = extras.length ? `${base} ${dot} ${extras.join('  ')}` : base
++      return rightStr ? `${left}  ${rightStr}` : left
++    }
++    for (let n = extras.length; n >= 0; n--) {
++      const left = n > 0 ? `${base} ${dot} ${extras.slice(0, n).join('  ')}` : base
++      if (rightStr) {
++        const g = inner - seen(left) - seen(rightStr)
++        if (g >= 2) return left + ' '.repeat(g) + rightStr
++      } else if (seen(left) <= inner) {
++        return left
++      }
++    }
++    return base
++  }
++
+   const hold = (kind: string, reason: string): string => {
+     const waiting = /^(WAITING|AGUARDANDO)$/i.test(kind)
+-    const cor = waiting ? (paint.run ?? paint.muted) : (paint.warn ?? paint.muted)
++    const waitPaint = paint.wait ?? paint.run ?? paint.muted
++    const warnPaint = paint.warn ?? paint.muted
++    const statePaint = waiting ? waitPaint : warnPaint
++    const iconPaint = waiting ? (paint.wait ?? paint.accent ?? paint.muted) : (paint.warn ?? paint.accent ?? paint.muted)
++    const boxKind: 'wait' | 'warn' = waiting ? 'wait' : 'warn'
++
+     const done = (steps ?? []).filter((s) => s.completed).length
+-    const current = (steps ?? []).find((s) => !s.completed)?.step
++    const currentObj = (steps ?? []).find((s) => !s.completed)
++    const current = currentObj?.step
+     const cells = Math.min(total, BAR_MAX)
+     const filled = total ? Math.min(cells, Math.round((done / total) * cells)) : 0
+-    const right = current === undefined ? [] : [paint.muted(`etapa ${current} de ${total}`), `${paint.ok('━'.repeat(filled))}${filled < cells ? paint.muted('╌'.repeat(cells - filled)) : ''}`]
++    const pct = total ? Math.round((done / total) * 100) : 0
++    const extras =
++      current === undefined
++        ? []
++        : [paint.muted(`etapa ${current} de ${total}`), drawBar(filled, cells), dim(`${pct}%`)]
++
++    const room = Math.max(4, inner - RAIL)
++    const stepRows: Row[] = []
++    if (currentObj?.text) {
++      const rem = Math.max(0, total - done)
++      const saldo = `${done} ${done === 1 ? 'concluída' : 'concluídas'}, ${rem === 1 ? 'falta 1' : `faltam ${rem}`}`
++      const plainStep = `atual: ${currentObj.text} · ${saldo}`
++      if (!boxed || [...plainStep].length <= room) {
++        const line = `${rail} ${dim('atual:')} ${boxed ? literal(currentObj.text, paint.text) : paint.text(currentObj.text)} ${dot} ${paint.muted(saldo)}`
++        stepRows.push(boxed ? { s: line, cols: RAIL + [...plainStep].length } : line)
++      } else {
++        for (const r of wrap(plainStep, room)) {
++          stepRows.push(boxed ? { s: `${rail} ${literal(r, paint.muted)}`, cols: RAIL + [...r].length } : `${rail} ${paint.muted(r)}`)
++        }
++      }
++    }
++
+     const id = BG_ID.exec(reason)?.[1]
+     const why = reason.replace(BG_ID, '').trim() || reason
+-    const todo = waiting ? `segundo plano${id ? ` · ${id}` : ''} · retoma sozinho, nada a fazer` : 'precisa de você · responda para continuar'
+-    const room = Math.max(4, inner - RAIL)
+-    const action = !waiting && (!boxed || [...todo].length <= room)
+-      ? [`${rail} ${(paint.warn ?? paint.muted)('precisa de você')} ${paint.muted('· responda para continuar')}`]
+-      : wrap(todo, room).map((r) => `${railLead}${paint.muted(`│ ${r}`)}`)
+-    return frame([
+-      title(cor, waiting ? 'em espera' : 'bloqueado', right),
+-      // Na caixa o motivo sai literal: se o Markdown consumisse marcas a linha encolheria e o fundo ficaria curto.
+-      ...wrap(why, room).map((r): Row => (boxed ? { s: `${rail} ${literal(r, paint.text)}`, cols: RAIL + [...r].length } : `${rail} ${paint.text(r)}`)),
+-      ...action,
+-    ])
++    const todoPlain = waiting
++      ? `segundo plano${id ? ` · ${id}` : ''} · retoma sozinho, nada a fazer`
++      : `${wGlyph}${gap}precisa de você · responda para continuar`
++    const actionRows: Row[] =
++      !boxed || [...todoPlain].length <= room
++        ? waiting
++          ? [`${rail} ${waitPaint('segundo plano')}${dim(`${id ? ` · ${id}` : ''} · retoma sozinho, nada a fazer`)}`]
++          : [`${rail} ${warnPaint(wGlyph)}${gap}${warnPaint(bold('precisa de você'))} ${paint.muted('· responda para continuar')}`]
++        : wrap(todoPlain, room).map((r) => `${railLead}${paint.muted(`│ ${r}`)}`)
++
++    return frame(
++      [
++        headerLine(iconPaint, statePaint, waiting ? 'em espera' : 'bloqueado', extras, boxKind),
++        ...stepRows,
++        ...wrap(why, room).map((r): Row => (boxed ? { s: `${rail} ${literal(r, paint.text)}`, cols: RAIL + [...r].length } : `${rail} ${paint.text(r)}`)),
++        ...actionRows,
++      ],
++      boxKind,
++    )
+   }
++
+   let fenced = false
+   const lines: string[] = []
+   let run: number[] = []
+@@ -154,12 +234,18 @@
+       lines.push(hold(m[1] ?? m[2], m[3]))
+     } else if (!fenced && CANCELLED.test(line)) {
+       flush()
+-      lines.push(frame([title(paint.muted, 'cancelado', [])]))
++      lines.push(frame([headerLine(paint.accent ?? paint.muted, paint.muted, 'cancelado', [], 'neutral')], 'neutral'))
+     } else if (!fenced && ONLY_TAGS.test(line)) run.push(...[...line.matchAll(TAG)].map((m) => Number(m[1])))
+     else {
+       flush()
+-      // Pares de crases primeiro: o que está entre eles não é tocado.
+-      lines.push(fenced || !line.includes('[') ? line : line.split(/(`[^`]*`)/).map((part, i) => (i % 2 === 1 ? part : part.replace(TAG, (_m, n) => `${paint.muted(`etapa ${n}`)} ${ok}`))).join(''))
++      lines.push(
++        fenced || !line.includes('[')
++          ? line
++          : line
++              .split(/(`[^`]*`)/)
++              .map((part, i) => (i % 2 === 1 ? part : part.replace(TAG, (_m, n) => `${paint.muted(`etapa ${n}`)} ${ok}`)))
++              .join(''),
++      )
+     }
+   }
+   flush()
+--- a/plan-mode/index.ts
++++ b/plan-mode/index.ts
+@@ -127,17 +127,100 @@
+   let todoItems: TodoItem[] = []
+   // Títulos da execução mais recente: endExecution zera todoItems, e as tags já mostradas são redesenhadas depois.
+   let finishedTodos: TodoItem[] = []
++  // Data/hora do envio das mensagens do assistente (mensagens em streaming não trazem timestamp na 1ª chamada: cacheia a hora real).
++  const sentTimes = new Map<string, number>()
++  const parseRgb = (ansi: string | undefined): [number, number, number] | undefined => {
++    const m = /[34]8;2;(\d+);(\d+);(\d+)/.exec(ansi ?? '')
++    return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : undefined
++  }
++  const relLum = (c: readonly number[]): number =>
++    0.2126 * (c[0]! / 255) ** 2.2 + 0.7152 * (c[1]! / 255) ** 2.2 + 0.0722 * (c[2]! / 255) ** 2.2
++  const tintBox = (base: readonly number[], fg: readonly number[], ratio: number): [number, number, number] => {
++    const mix = base.map((b, k) => b * (1 - ratio) + fg[k]! * ratio)
++    const f = (relLum(base) / Math.max(relLum(mix), 1e-6)) ** (1 / 2.2)
++    return mix.map((v) => Math.max(0, Math.min(255, Math.round(v * f)))) as [number, number, number]
++  }
++  const pillFrom = (s: string, boxRgb: readonly number[] | undefined): string => {
++    if (!boxRgb) return s
++    const dark = relLum(boxRgb) < 0.25
++    const c = boxRgb.map((v, i) => Math.round(v * (dark ? 0.64 : 0.92) + (dark ? [10, 11, 18][i]! * 0.36 : 0)))
++    const open = `\x1b[48;2;${c.join(';')}m`
++    return `${open} ${s.replace(/\x1b\[(?:0|49)?m/g, (m) => m + open)} \x1b[49m`
++  }
++  const fmtSent = (ms: number): string => {
++    const d = new Date(ms)
++    const pad2 = (n: number) => String(n).padStart(2, '0')
++    return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`
++  }
+   // Só a exibição: a sessão, o modelo e markCompletedSteps seguem com a tag [DONE:n] literal.
+   pi.registerMarkdownTransformer?.(
+     (markdown, context) => {
+       let paint: DonePaint = plainPaint
+       try {
+-        const theme = lastCtx?.ui.theme
+-        if (theme) paint = { ok: (s) => theme.fg('success', s), muted: (s) => theme.fg('muted', s), text: (s) => theme.fg('text', s), run: (s) => theme.fg('syntaxType', s), warn: (s) => theme.fg('warning', s), accent: (s) => theme.fg('accent', s), bold: (s) => theme.bold(s), box: (s) => theme.bg('customMessageBg', s) }
++        const theme = lastCtx?.ui.theme as unknown as {
++          fg: (c: string, s: string) => string
++          bg: (c: string, s: string) => string
++          bold: (s: string) => string
++          getFgAnsi?: (c: string) => string
++          getBgAnsi?: (c: string) => string
++        } | undefined
++        if (theme) {
++          const baseRgb = parseRgb(theme.getBgAnsi?.('customMessageBg'))
++          const waitRgb = parseRgb(theme.getFgAnsi?.('mdCode'))
++          const warnRgb = parseRgb(theme.getFgAnsi?.('warning'))
++          const dimRgb = parseRgb(theme.getFgAnsi?.('dim'))
++          const cyanRgb = parseRgb(theme.getFgAnsi?.('syntaxType'))
++          const waitBgRgb = baseRgb && waitRgb ? tintBox(baseRgb, waitRgb, 0.16) : undefined
++          const warnBgRgb = baseRgb && warnRgb ? tintBox(baseRgb, warnRgb, 0.20) : undefined
++          const reduzido = (v: string | undefined) => v !== undefined && v !== '' && v !== '0' && v !== 'false'
++          const liveComet = Boolean(context.isStreaming && dimRgb && (cyanRgb ?? waitRgb) && !reduzido(process.env.PI_REDUCED_MOTION) && (process.env.NO_COLOR ?? '') === '')
++          paint = {
++            ok: (s) => theme.fg('success', s),
++            muted: (s) => theme.fg('muted', s),
++            dim: (s) => theme.fg('dim', s),
++            text: (s) => theme.fg('text', s),
++            run: (s) => theme.fg('syntaxType', s),
++            wait: (s) => theme.fg('mdCode', s),
++            warn: (s) => theme.fg('warning', s),
++            accent: (s) => theme.fg('accent', s),
++            bold: (s) => theme.bold(s),
++            box: (s) => theme.bg('customMessageBg', s),
++            waitBox: waitBgRgb ? (s) => `\x1b[48;2;${waitBgRgb.join(';')}m${s}\x1b[49m` : undefined,
++            warnBox: warnBgRgb ? (s) => `\x1b[48;2;${warnBgRgb.join(';')}m${s}\x1b[49m` : undefined,
++            pill: (s, kind) => pillFrom(s, kind === 'wait' ? (waitBgRgb ?? baseRgb) : kind === 'warn' ? (warnBgRgb ?? baseRgb) : baseRgb),
++            bar: liveComet
++              ? (filled, cells) => {
++                  const donePart = filled > 0 ? theme.fg('success', '━'.repeat(filled)) : ''
++                  const rem = Math.max(0, cells - filled)
++                  if (rem === 0) return donePart
++                  const target = (cyanRgb ?? waitRgb)!
++                  const pos = rem === 1 ? 0 : ((Math.sin(performance.now() * 0.0048) + 1) / 2) * (rem - 1)
++                  let tail = ''
++                  for (let i = 0; i < rem; i++) {
++                    const g = Math.exp(-((i - pos) ** 2) / 1.15)
++                    const c = dimRgb!.map((v, idx) => Math.round(v + (target[idx]! - v) * g))
++                    tail += `\x1b[38;2;${c.join(';')}m${g > 0.62 ? '━' : '╌'}`
++                  }
++                  return `${donePart}${tail}\x1b[39m`
++                }
++              : undefined,
++          }
++        }
+       } catch {
+         // contexto de sessão antiga: sem cor
+       }
+-      return renderDoneTags(markdown, todoItems.length > 0 ? todoItems : finishedTodos, paint, context.isStreaming, context.availableWidth, planModeEnabled || executionMode || todoItems.length > 0)
++      let ts = typeof context.timestamp === 'number' ? context.timestamp : context.timestamp ? Date.parse(String(context.timestamp)) : Number.NaN
++      if (!Number.isFinite(ts)) {
++        const key = String(context.messageId ?? markdown.slice(0, 120))
++        ts = sentTimes.get(key) ?? Number.NaN
++        if (!Number.isFinite(ts) && (/PLAN/i.test(markdown) || /PLANO/i.test(markdown))) {
++          if (sentTimes.size >= 200) sentTimes.clear()
++          ts = Date.now()
++          sentTimes.set(key, ts)
++        }
++      }
++      const sentAt = Number.isFinite(ts) && ts > 0 ? fmtSent(ts) : ''
++      const activeSteps = todoItems.length > 0 ? todoItems : finishedTodos.length > 0 ? finishedTodos : externalTodos
++      return renderDoneTags(markdown, activeSteps, paint, context.isStreaming, context.availableWidth, true, sentAt)
+     },
+     { messageTypes: ['assistant'] },
+   )
+--- a/subagent/fleet-ui/index.ts
++++ b/subagent/fleet-ui/index.ts
+@@ -132,7 +132,7 @@
+       if (result.action && source) {
+         executeAction(result.action, { source, notify: (m, type) => ctx.ui.notify(m, type), open: (id) => void openViewer(ctx, source, id) })
+       }
+-      render()
++      if (result.consume || result.action) render()
+       return result.consume ? { consume: true } : undefined
+     })
+     let offChange: (() => void) | undefined

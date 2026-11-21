@@ -1,0 +1,15 @@
+--- a/plan-mode/index.ts	2026-11-13 22:51:20.373852104 -0300
++++ b/plan-mode/index.ts	2026-11-13 22:51:20.380264504 -0300
+@@ -135,10 +135,8 @@
+ 
+   function updateStatus(ctx: ExtensionContext): void {
+     // Footer status
+-    if (executionMode && todoItems.length > 0) {
+-      const completed = todoItems.filter((t) => t.completed).length
+-      ctx.ui.setStatus('plan-mode', ctx.ui.theme.fg('accent', `📋 ${completed}/${todoItems.length}`))
+-    } else if (planModeEnabled) {
++    // No plan step counter in the status line while executing (user request 2026-11-13).
++    if (planModeEnabled && !executionMode) {
+       ctx.ui.setStatus('plan-mode', ctx.ui.theme.fg('warning', '⏸ plan'))
+     } else {
+       ctx.ui.setStatus('plan-mode', undefined)

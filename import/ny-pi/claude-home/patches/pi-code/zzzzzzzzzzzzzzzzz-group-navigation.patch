@@ -1,0 +1,765 @@
+diff -urN a/plan-mode/section.ts b/plan-mode/section.ts
+--- a/plan-mode/section.ts
++++ b/plan-mode/section.ts
+@@ -10,9 +10,10 @@
+ import type { ExtensionContext } from '@earendil-works/pi-coding-agent'
+ import { matchesKey, truncateToWidth, visibleWidth } from '@earendil-works/pi-tui'
+ 
+-import { heading, rule } from '../subagent/fleet-ui/chrome.ts'
++import { focusBand, heading, rule } from '../subagent/fleet-ui/chrome.ts'
+ import { hudTheme, motionEnabled } from '../subagent/fleet-ui/palette.ts'
+-import { bridge, clampOffset, editorOwnsFocus, viewportSize } from '../subagent/fleet-ui/section.ts'
++import { nav } from '../subagent/section-nav/nav.ts'
++import { bridge, clampOffset, viewportSize } from '../subagent/fleet-ui/section.ts'
+ import type { UiTheme } from '../subagent/fleet-ui/panel.ts'
+ import { applyMarks, drawerLines, planMarkdown, validKeys, stepSpend, type Mark } from './manage.ts'
+ import { formatDuration, formatSpend, markCounts, spendSince, PlanTimes, activeStep, tableDetail, tableHeader, tableRow } from './table.ts'
+@@ -58,7 +59,6 @@
+   private prev?: Prev
+   private nativeFocus = false
+   private registered = false
+-  private offInput?: () => void
+   private readonly times = new PlanTimes()
+   private timer?: ReturnType<typeof setInterval>
+   /** Clock the table reads; tests replace it. */
+@@ -123,8 +123,7 @@
+     }
+     bridge.planActive = () => this.items.length > 0 && !this.hidden
+     bridge.reassertPlan = () => this.reassert()
+-    bridge.focusPlan = () => this.focusByKeyboard()
+-    bridge.planFocused = () => this.nativeFocus
++    nav.register({ id: 'plan', active: () => this.items.length > 0 && !this.hidden, hasBody: true, folded: () => this.collapsed, toggle: () => this.toggle(), enter: () => this.focusByKeyboard() })
+     if (hadItems !== !hide) bridge.onPlanChange?.()
+   }
+ 
+@@ -208,13 +207,10 @@
+     this.syncTimer()
+     this.prev = undefined
+     this.nativeFocus = false
+-    this.offInput?.()
+-    this.offInput = undefined
+     this.remove(ctx)
+     bridge.planActive = () => false
+     bridge.reassertPlan = () => {}
+-    bridge.focusPlan = () => false
+-    bridge.planFocused = () => false
++    nav.unregister('plan')
+   }
+ 
+   /** One tick per second while a step is running and the body shows: the counter runs without other events. */
+@@ -235,7 +231,6 @@
+     if (!ui || this.ctx?.hasUI === false || typeof ui.setWidget !== 'function') return
+     if (!this.registered) {
+       this.register()
+-      if (typeof ui.onTerminalInput === 'function') this.offInput ??= ui.onTerminalInput((data) => this.onKey(data))
+     }
+   }
+ 
+@@ -292,6 +287,7 @@
+   }
+ 
+   render(width: number): string[] {
++    nav.stamp('plan')
+     const theme = this.theme
+     if (!theme || this.items.length === 0) return []
+     const total = this.items.length
+@@ -331,7 +327,8 @@
+     const tail = [current ? theme.fg('dim', `fazendo: ${current.text}`) : '', ...colored].filter(Boolean).join(theme.fg('dim', ' · '))
+     const base = heading(title, theme, width, this.source, focus ? 'accent' : undefined, this.collapsed)
+     const head = tail ? truncateToWidth(base + theme.fg('dim', ' · ') + tail, width) : base
+-    if (this.collapsed) return ['', head, rule(theme, width)]
++    const titleLine = nav.isTitle('plan') ? focusBand(head, this.source, theme, width) : head
++    if (this.collapsed) return ['', titleLine, rule(theme, width)]
+     const motion = motionEnabled()
+     const active = activeStep(this.items)
+     const body = this.items.slice(this.offset, this.offset + visible).flatMap((i) => {
+@@ -343,7 +340,7 @@
+       return out
+     })
+     const header = tableHeader(theme, width)
+-    return ['', head, rule(theme, width), ...(header ? [header] : []), ...body]
++    return ['', titleLine, rule(theme, width), ...(header ? [header] : []), ...body]
+   }
+ 
+   private drawerFor(item: TodoItem, active: number | undefined, width: number, theme: UiTheme): string[] {
+@@ -409,11 +406,6 @@
+     const list = !this.collapsed
+     if (matchesKey(data, 'down')) list ? this.moveCursor(1) : this.scrollBy(1)
+     else if (matchesKey(data, 'up')) {
+-      // On the first step, ↑ goes back to the Status Line (when it shows), else the last Sub Agents row (the editor takes native focus; the list keeps the keys).
+-      if (this.cursor === 0 && this.offset === 0 && (bridge.focusStatus() || bridge.focusFleetLast?.())) {
+-        this.release()
+-        return true
+-      }
+       list ? this.moveCursor(-1) : this.scrollBy(-1)
+     } else if (matchesKey(data, 'pageDown')) list ? this.moveCursor(page) : this.scrollBy(page)
+     else if (matchesKey(data, 'pageUp')) list ? this.moveCursor(-page) : this.scrollBy(-page)
+@@ -438,7 +430,7 @@
+     if (this.navigate(data)) return void this.tui?.requestRender()
+     const editor = this.prev
+     this.release()
+-    if (matchesKey(data, 'escape')) return
++    if (matchesKey(data, 'escape')) return nav.back('plan')
+     // Anything else is for the editor: typing and chords alike arrive there once, nothing is lost. Ctrl+Enter
+     // (send now) is a core shortcut that only fires while the editor holds focus: from Plan, Esc first, then the chord.
+     editor?.handleInput?.(data)
+@@ -464,12 +456,4 @@
+     return true
+   }
+ 
+-  /** Entry only: once Plan is focused, pi routes keys to `handleInput`. The empty-editor guard keeps ↓ for history/cursor. */
+-  private onKey(data: string): { consume: boolean } | undefined {
+-    if (this.items.length === 0 || this.nativeFocus) return undefined
+-    // Sub Agents (rows) and the Status Line come first in the chain: they hand over to Plan with ↓.
+-    if (bridge.fleetActive() || bridge.statusActive() || bridge.statusFocused()) return undefined
+-    if (matchesKey(data, 'down') && editorOwnsFocus(this.tui) && this.ctx?.ui.getEditorText() === '' && this.focusByKeyboard()) return { consume: true }
+-    return undefined
+-  }
+ }
+diff -urN a/run/section.ts b/run/section.ts
+--- a/run/section.ts
++++ b/run/section.ts
+@@ -1,6 +1,6 @@
+ /**
+  * Run section below Plan (local patch): a belowEditor widget, same mechanics as plan-mode/section.ts: native focus
+- * by ↓ on an empty editor (chain Sub Agents → Status Line → Plan → Run) or by a click, Esc back to the editor,
++ * by Enter on its title (section-nav: ↓ on an empty editor focuses the first title) or by a click, Esc back to the title,
+  * a 1 s render timer only while a run is live and the body shows, nothing at all while there are no runs.
+  * Rendering is in view.ts. Record: docs/pi-run-section-2026-11-13.md.
+  */
+@@ -9,7 +9,8 @@
+ 
+ import { hudTheme, motionEnabled } from '../subagent/fleet-ui/palette.ts'
+ import type { UiTheme } from '../subagent/fleet-ui/panel.ts'
+-import { bridge, editorOwnsFocus } from '../subagent/fleet-ui/section.ts'
++import { editorOwnsFocus } from '../subagent/fleet-ui/section.ts'
++import { nav } from '../subagent/section-nav/nav.ts'
+ import type { RunRecord, RunRegistry } from './registry.ts'
+ import { startShell, stopRun } from './shell.ts'
+ import { MAX_ROWS, renderRun, type View } from './view.ts'
+@@ -67,8 +68,7 @@
+   start(ctx: ExtensionContext): void {
+     this.ctx = ctx
+     this.offChange ??= this.reg.onChange(() => this.sync())
+-    bridge.runActive = () => this.registered
+-    bridge.focusRun = () => this.focusByKeyboard()
++    nav.register({ id: 'run', active: () => this.registered, hasBody: true, folded: () => this.collapsed, toggle: () => this.toggle(), enter: () => this.focusByKeyboard() })
+     this.sync()
+   }
+ 
+@@ -81,8 +81,7 @@
+     this.nativeFocus = false
+     this.prev = undefined
+     this.remove(ctx)
+-    bridge.runActive = () => false
+-    bridge.focusRun = () => false
++    nav.unregister('run')
+   }
+ 
+   /** Re-reads the registry: the widget shows only while a run is live; finished ones stay in the registry (tool, history). */
+@@ -189,6 +188,7 @@
+   render(width: number): string[] {
+     const theme = this.theme
+     if (!theme) return []
++    nav.stamp('run')
+     const rows = this.visibleRows()
+     const total = this.reg.snapshot().length
+     this.scrollIntoView(rows)
+@@ -201,6 +201,7 @@
+       now,
+       collapsed: this.collapsed,
+       focused: this.nativeFocus,
++      titleFocus: nav.isTitle('run'),
+       selectedId: this.selectedId,
+       offset: this.offset,
+       follow: this.follow,
+@@ -274,11 +275,6 @@
+     if (matchesKey(data, 'down')) {
+       if (open) this.select(rows, 1)
+     } else if (matchesKey(data, 'up')) {
+-      if (open && this.selectedId === rows[0]?.id && (bridge.planActive() || bridge.statusActive() || bridge.fleetActive())) {
+-        this.release()
+-        if (!(bridge.focusPlan() || bridge.focusStatus() || bridge.focusFleetLast?.())) this.focusByKeyboard()
+-        return true
+-      }
+       if (open) this.select(rows, -1)
+     } else if (matchesKey(data, 'pageDown')) open && this.select(rows, MAX_ROWS)
+     else if (matchesKey(data, 'pageUp')) open && this.select(rows, -MAX_ROWS)
+@@ -322,7 +318,7 @@
+     if (this.navigate(data)) return void this.tui?.requestRender()
+     const editor = this.prev
+     this.release()
+-    if (matchesKey(data, 'escape')) return
++    if (matchesKey(data, 'escape')) return nav.back('run')
+     editor?.handleInput?.(data)
+   }
+ 
+@@ -344,13 +340,10 @@
+     return true
+   }
+ 
+-  /** Entry: ↓ from an empty editor when nothing above (Sub Agents, Status Line, Plan) takes it, or Alt+↓ from anywhere. */
++  /** Entry: Alt+↓ from anywhere (the ↓ path goes through the group titles, section-nav/nav.ts). */
+   private onKey(data: string): { consume: boolean } | undefined {
+     if (!this.registered || this.nativeFocus) return undefined
+-    // Alt+↓ jumps straight here (Plan hands nothing over: its section is owned elsewhere).
+     if (matchesKey(data, 'alt+down') && editorOwnsFocus(this.tui) && this.focusByKeyboard()) return { consume: true }
+-    if (bridge.fleetActive() || bridge.statusActive() || bridge.statusFocused() || bridge.planActive() || bridge.planFocused()) return undefined
+-    if (matchesKey(data, 'down') && editorOwnsFocus(this.tui) && this.ctx?.ui.getEditorText() === '' && this.focusByKeyboard()) return { consume: true }
+     return undefined
+   }
+ }
+diff -urN a/run/view.ts b/run/view.ts
+--- a/run/view.ts
++++ b/run/view.ts
+@@ -5,7 +5,7 @@
+  */
+ import { truncateToWidth, visibleWidth } from '@earendil-works/pi-tui'
+ 
+-import { chip, rule, summaryLine } from '../subagent/fleet-ui/chrome.ts'
++import { chip, focusBand, rule, summaryLine } from '../subagent/fleet-ui/chrome.ts'
+ import type { UiTheme } from '../subagent/fleet-ui/panel.ts'
+ import { displayState, type RunRecord, type RunState } from './registry.ts'
+ import { clock } from './tool.ts'
+@@ -27,6 +27,8 @@
+   now: number
+   collapsed: boolean
+   focused: boolean
++  /** The group title holds the keyboard (section-nav). */
++  titleFocus: boolean
+   selectedId?: string
+   offset: number
+   follow: boolean
+@@ -97,7 +99,8 @@
+   const st = rows.map((r) => displayState(r, now))
+   const ended = (s: RunState): boolean => s === 'done' || s === 'failed' || s === 'stopped'
+   const summary = summaryLine({ running: st.filter((s) => !ended(s)).length, quiet: 0, failed: st.filter((s) => s === 'failed').length, done: st.filter((s) => s === 'done' || s === 'stopped').length }, theme)
+-  const head = truncateToWidth(chip('run', theme, view.focused ? 'accent' : undefined, view.collapsed) + ' ' + summary + filterNote, width)
++  const plainHead = truncateToWidth(chip('run', theme, view.focused ? 'accent' : undefined, view.collapsed) + ' ' + summary + filterNote, width)
++  const head = view.titleFocus ? focusBand(plainHead, 'run', theme, width) : plainHead
+   if (view.collapsed) return { lines: ['', head, rule(theme, width)], ids: [undefined, undefined, undefined] }
+ 
+   const lines: string[] = ['', head, rule(theme, width)]
+diff -urN a/status-line.ts b/status-line.ts
+--- a/status-line.ts
++++ b/status-line.ts
+@@ -46,7 +46,8 @@
+ import { readActiveStyleName, settingsFiles } from './output-styles.ts'
+ import { dropTodoRows, frameStatusLine, labelFooter, layoutStatus, modelNames, tidyRow } from './subagent/fleet-ui/chrome.ts'
+ import { hudTheme } from './subagent/fleet-ui/palette.ts'
+-import { bridge as sectionBridge, editorOwnsFocus, StatusFold } from './subagent/fleet-ui/section.ts'
++import { bridge as sectionBridge, StatusFold } from './subagent/fleet-ui/section.ts'
++import { nav } from './subagent/section-nav/nav.ts'
+ 
+ const COMMAND_TIMEOUT_MS = 5_000
+ const DEBOUNCE_MS = 300
+@@ -331,8 +332,7 @@
+ 
+   /** Fold and keyboard focus of the widget; kept for the session, so each widget re-set keeps them. */
+   let statusTui: { requestRender(): void } | undefined
+-  const fold = new StatusFold({ active: () => widgetShown, render: () => { footer.fold(widgetShown && fold.collapsed); statusTui?.requestRender() } })
+-  let offFoldInput: (() => void) | undefined
++  const fold = new StatusFold({ render: () => { footer.fold(widgetShown && fold.collapsed); statusTui?.requestRender() } })
+ 
+   function segmentText(ctx: ExtensionContext, symbol: string): string {
+     const theme = ctx.ui.theme
+@@ -354,12 +354,11 @@
+             fold.toggle()
+             return { handled: true, render: true }
+           },
+-          render: (width: number) => frameStatusLine(layoutStatus(renderStatusRows(dropTodoRows(rows).map((r, i) => tidyRow(r, i === 0, modelNames(ctx.model as { id?: string; name?: string } | undefined))), Infinity, footer.trailers()), hudTheme(theme), width), hudTheme(theme), width, { collapsed: fold.collapsed, focused: fold.focused }),
++          render: (width: number) => (nav.stamp('status'), frameStatusLine(layoutStatus(renderStatusRows(dropTodoRows(rows).map((r, i) => tidyRow(r, i === 0, modelNames(ctx.model as { id?: string; name?: string } | undefined))), Infinity, footer.trailers()), hudTheme(theme), width), hudTheme(theme), width, { collapsed: fold.collapsed, focused: fold.focused })),
+           invalidate() {},
+         }
+       }, { placement: 'belowEditor' })
+       widgetShown = rows.length > 0
+-      if (!widgetShown) fold.focused = false
+       footer.claim(widgetShown)
+       // pi moves a re-set widget last: the Plan section, when showing, goes back below the status line.
+       if (widgetShown) sectionBridge.reassertPlan()
+@@ -620,15 +619,7 @@
+     promoted = false
+     sectionBridge.onPlanChange = () => show(ctx, lastBuiltIn)
+     fold.reset()
+-    sectionBridge.statusActive = () => widgetShown
+-    sectionBridge.statusFocused = () => fold.focused
+-    sectionBridge.focusStatus = () => fold.focusByKeyboard()
+-    offFoldInput?.()
+-    offFoldInput = undefined
+-    // Print/RPC modes hand out a ctx.ui without TUI hooks: no key listener there.
+-    if (ctx.hasUI !== false && typeof ctx.ui.onTerminalInput === 'function') {
+-      offFoldInput = ctx.ui.onTerminalInput((data) => (fold.handleKey(data, { editorText: ctx.ui.getEditorText(), editorFocused: editorOwnsFocus(statusTui) }) ? { consume: true } : undefined))
+-    }
++    nav.register({ id: 'status', active: () => widgetShown, hasBody: false, folded: () => fold.collapsed, toggle: () => fold.toggle(), enter: () => false })
+     sessionCtx = ctx
+     widgetShown = false
+     sessionStartMs = Date.now()
+@@ -745,12 +736,8 @@
+   pi.on('session_shutdown', () => {
+     if (sessionCtx) setRows(sessionCtx, [])
+     sectionBridge.onPlanChange = undefined
+-    offFoldInput?.()
+-    offFoldInput = undefined
+     fold.reset()
+-    sectionBridge.statusActive = () => false
+-    sectionBridge.statusFocused = () => false
+-    sectionBridge.focusStatus = () => false
++    nav.unregister('status')
+     clearInterval(refreshTimer)
+     clearTimeout(debounceTimer)
+     clearTimeout(expiryTimer)
+diff -urN a/subagent/fleet-ui/chrome.ts b/subagent/fleet-ui/chrome.ts
+--- a/subagent/fleet-ui/chrome.ts
++++ b/subagent/fleet-ui/chrome.ts
+@@ -41,6 +41,15 @@
+   return truncateToWidth(chip(kind, theme, role, collapsed) + (detail ? theme.fg('dim', detail) : ''), width)
+ }
+ 
++/** Focused title (level 1 of the group navigation, section-nav/nav.ts): the whole heading line in reverse video of the group's
++ * role, padded to the full width and led by `❯`, so it reads without color too (NO_COLOR keeps reverse video and the glyph).
++ * `body`: the group has items Enter opens; otherwise Enter folds it. */
++export function focusBand(head: string, kind: HeadingKind, theme: UiTheme, width: number, body = true): string {
++  const plain = head.replace(/\x1b\[[0-9;]*m/g, '')
++  const text = truncateToWidth(`❯${plain}${body ? ' · enter open · esc back' : ' · enter fold · esc back'}`, width, '')
++  return bold(theme, `\x1b[7m${theme.fg(HEADING_KINDS[kind].role, text + ' '.repeat(Math.max(0, width - visibleWidth(text))))}\x1b[27m`)
++}
++
+ /** Thin rule across the full width. */
+ export function rule(theme: UiTheme, width: number): string {
+   return theme.fg('dim', '─'.repeat(Math.max(0, width)))
+@@ -56,14 +65,15 @@
+ /** Sub Agents chip and its rule above the panel lines; the group opens with a blank line (the spacing after the editor or the previous group) and never ends with one.
+  * Only with child rows does it add the title and rule: no orphan title or rule without them.
+  * `collapsed` (a summary) folds the body away: one title line carrying the summary, then the rule. */
+-export function frameSubAgents(lines: string[], hasRows: boolean, theme: UiTheme, width: number, collapsed?: string, summary?: string): string[] {
++export function frameSubAgents(lines: string[], hasRows: boolean, theme: UiTheme, width: number, collapsed?: string, summary?: string, titleFocus = false): string[] {
+   if (lines.length === 0) return lines
++  const band = (h: string): string => (titleFocus ? focusBand(h, 'subagents', theme, width) : h)
+   // No child rows (only the finished hint): still a group, so it opens with the blank line and does not end with one.
+   if (!hasRows) return ['', ...(lines.at(-1) === '' ? lines.slice(0, -1) : lines)]
+-  if (collapsed !== undefined) return ['', summary ? truncateToWidth(heading(SUBAGENTS_TITLE, theme, width, 'subagents', undefined, true) + ' ' + summary, width) : heading(`${SUBAGENTS_TITLE} ${collapsed}`, theme, width, 'subagents', undefined, true), rule(theme, width)]
++  if (collapsed !== undefined) return ['', band(summary ? truncateToWidth(heading(SUBAGENTS_TITLE, theme, width, 'subagents', undefined, true) + ' ' + summary, width) : heading(`${SUBAGENTS_TITLE} ${collapsed}`, theme, width, 'subagents', undefined, true)), rule(theme, width)]
+   const body = lines.at(-1) === '' ? lines.slice(0, -1) : lines
+   const head = summary ? truncateToWidth(chip('subagents', theme, undefined, false) + ' ' + summary, width) : heading(SUBAGENTS_TITLE, theme, width, 'subagents', undefined, false)
+-  return ['', head, rule(theme, width), ...body]
++  return ['', band(head), rule(theme, width), ...body]
+ }
+ 
+ export interface FleetCounts {
+@@ -82,19 +92,19 @@
+   return theme.fg(role, `${c.failed + c.done}/${total}`)
+ }
+ 
+-/** Fold state of the Status Line widget: `collapsed` keeps only the chip and the rule (every row is hidden); `focused` is the keyboard focus. */
++/** Fold state of the Status Line widget: `collapsed` keeps only the chip and the rule (every row is hidden); `focused` is the title focus (focusBand). */
+ export interface StatusView {
+   collapsed?: boolean
+   focused?: boolean
+ }
+-export const FOCUS_HINT = ' · space fold · esc back'
+ 
+ /** Status Line group: a blank line, the chip and its rule above the rows; the widget only exists while there are rows.
+  * Collapsed: the first row alone, ANSI-stripped and dim, cut to the width. Focused: accent chip and a short hint. */
+ export function frameStatusLine(rows: string[], theme: UiTheme, width: number, view: StatusView = {}): string[] {
+   if (rows.length === 0) return rows
+   const collapsed = view.collapsed ?? false
+-  const head = heading(STATUSLINE_TITLE + (view.focused ? FOCUS_HINT : ''), theme, width, 'statusline', view.focused ? 'accent' : undefined, collapsed)
++  const plain = heading(STATUSLINE_TITLE, theme, width, 'statusline', undefined, collapsed)
++  const head = view.focused ? focusBand(plain, 'statusline', theme, width, false) : plain
+   return collapsed ? ['', head, rule(theme, width)] : ['', head, rule(theme, width), ...rows]
+ }
+ 
+diff -urN a/subagent/fleet-ui/index.ts b/subagent/fleet-ui/index.ts
+--- a/subagent/fleet-ui/index.ts
++++ b/subagent/fleet-ui/index.ts
+@@ -7,7 +7,7 @@
+ 
+ import type { FleetSource } from '../fleet/types.ts'
+ import { collapsedSummary, frameSubAgents, summaryLine } from './chrome.ts'
+-import { bridge } from './section.ts'
++import { nav } from '../section-nav/nav.ts'
+ import { hudTheme } from './palette.ts'
+ import { executeAction, PanelController, renderPanel } from './panel.ts'
+ import type { MainStats, PanelView } from './panel.ts'
+@@ -89,8 +89,9 @@
+         const hud = hudTheme(theme)
+         return {
+           render: (width: number) => {
++            nav.stamp('subagents')
+             lastView = controller.view()
+-            return frameSubAgents(renderPanel(lastView, hud, width), lastView.rows.length > 0, hud, width, lastView.collapsed ? collapsedSummary(lastView.rows) : undefined, summaryLine(lastView.counts, hud))
++            return frameSubAgents(renderPanel(lastView, hud, width), lastView.rows.length > 0, hud, width, lastView.collapsed ? collapsedSummary(lastView.rows) : undefined, summaryLine(lastView.counts, hud), nav.isTitle('subagents'))
+           },
+           // Fullscreen mode (default) routes the click here with local coordinates: row 0 is the blank spacing line, row 1 the Sub Agents title.
+           // Regular mode has no mouse; ↓ then ← / → / Space on the title do the same.
+@@ -105,15 +106,16 @@
+       { placement: 'belowEditor' },
+     )
+     const render = (): void => tui?.requestRender()
+-    bridge.focusFleetLast = () => controller.focusLast()
+-    bridge.fleetActive = () => controller.rows().length > 0
++    nav.register({ id: 'subagents', active: () => controller.rows().length > 0, hasBody: true, folded: () => controller.sectionCollapsed, toggle: () => controller.toggleSection(), enter: () => controller.enterBody() })
+     const offInput = ctx.ui.onTerminalInput((data) => {
+       const source = getSource()
+-      const result = controller.handleKey(data, {
+-        editorText: ctx.ui.getEditorText(),
+-        editorFocused: editorOwnsFocus(tui),
+-        overlayOpen: overlays.open > 0,
+-      })
++      const env = { editorText: ctx.ui.getEditorText(), editorFocused: editorOwnsFocus(tui), overlayOpen: overlays.open > 0 }
++      // Group titles (level 1 of section-nav) own ↑↓ Enter Esc while a title is focused; a Sub Agents body keeps its own keys.
++      if (!controller.focused && nav.handleKey(data, env)) {
++        render()
++        return { consume: true }
++      }
++      const result = controller.handleKey(data, env)
+       if (result.action && source) {
+         executeAction(result.action, { source, notify: (m, type) => ctx.ui.notify(m, type), open: (id) => void openViewer(ctx, source, id) })
+       }
+@@ -144,8 +146,7 @@
+       offInput()
+       offChange?.()
+       clearInterval(timer)
+-      bridge.focusFleetLast = undefined
+-      bridge.fleetActive = () => false
++      nav.unregister('subagents')
+       ctx.ui.setWidget(WIDGET_KEY, undefined)
+     }
+   })
+diff -urN a/subagent/fleet-ui/panel.ts b/subagent/fleet-ui/panel.ts
+--- a/subagent/fleet-ui/panel.ts
++++ b/subagent/fleet-ui/panel.ts
+@@ -12,7 +12,7 @@
+ import { motionEnabled, SPINNER, spinnerAt } from './palette.ts'
+ import { unreadCounts } from '../team/ui.ts'
+ import { styleModelMeta } from './chrome.ts'
+-import { bridge } from './section.ts'
++import { nav } from '../section-nav/nav.ts'
+ 
+ /** The part of pi's Theme the fleet UI uses. */
+ export interface UiTheme {
+@@ -361,15 +361,21 @@
+     this.armed = undefined
+   }
+ 
+-  /** Keyboard focus on the last row (or the title when folded or empty): the way back from Plan. */
+-  focusLast(): boolean {
++  /** Enter on the group title (section-nav): the keyboard goes to the first row (the root row when folded). False when there are no rows. */
++  enterBody(): boolean {
+     const rows = this.rows()
+     if (rows.length === 0) return false
+     this.focused = true
+-    this.select(rows, this.sectionCollapsed ? null : rows.at(-1)!.id)
++    this.select(rows, this.sectionCollapsed ? null : rows[0]!.id)
+     return true
+   }
+ 
++  /** Esc (or ↑ on the root row): the body gives the keyboard back to the group title. */
++  private leave(): void {
++    this.unfocus()
++    nav.back('subagents')
++  }
++
+   /** Keep the selection on a visible row: nearest remaining row, else main; unfocus when empty. */
+   repair(rows: FleetRow[]): void {
+     if (!this.focused) return
+@@ -406,14 +412,7 @@
+       return source?.hasForeground() ? { consume: true, action: { type: 'detach' } } : { consume: false }
+     }
+     const rows = this.rows()
+-    if (!this.focused) {
+-      if (matchesKey(data, 'down') && env.editorText === '' && rows.length >= 1 && !bridge.planFocused() && !bridge.statusFocused()) {
+-        this.focused = true
+-        this.select(rows, this.sectionCollapsed ? null : rows[0]!.id)
+-        return { consume: true }
+-      }
+-      return { consume: false }
+-    }
++    if (!this.focused) return { consume: false }
+     this.repair(rows)
+     if (!this.focused) return { consume: false }
+     const ids: Array<string | null> = [null, ...rows.map((r) => r.id)]
+@@ -421,23 +420,19 @@
+     // Folded: no row is visible, so none can be opened, stopped or dismissed by a key.
+     const row = this.selectedId === null || this.sectionCollapsed ? undefined : rows[pos - 1]
+     if (matchesKey(data, 'down')) {
+-      // Folded: nothing below the title but the Status Line and Plan. At the end of the list ↓ hands the keyboard to the Status Line, else Plan, when they show.
+-      if ((this.sectionCollapsed || pos === ids.length - 1) && (bridge.focusStatus() || bridge.focusPlan() || bridge.focusRun())) {
+-        this.unfocus()
+-        return { consume: true }
+-      }
++      // The body ends at its last row (Esc goes back to the title); folded: nothing below the root row.
+       if (this.sectionCollapsed) return { consume: true }
+       this.select(rows, ids[Math.min(ids.length - 1, pos + 1)] ?? null)
+       return { consume: true }
+     }
+     if (matchesKey(data, 'up')) {
+-      if (pos === 0) this.unfocus()
++      if (pos === 0) this.leave()
+       else this.select(rows, ids[pos - 1] ?? null)
+       return { consume: true }
+     }
+     if (matchesKey(data, 'enter')) {
+       if (!row) {
+-        this.unfocus()
++        this.leave()
+         return { consume: true }
+       }
+       return { consume: true, action: { type: 'open', id: row.id } }
+@@ -475,7 +470,7 @@
+       return { consume: true }
+     }
+     if (matchesKey(data, 'escape')) {
+-      this.unfocus()
++      this.leave()
+       return { consume: true }
+     }
+     this.unfocus()
+diff -urN a/subagent/fleet-ui/section.ts b/subagent/fleet-ui/section.ts
+--- a/subagent/fleet-ui/section.ts
++++ b/subagent/fleet-ui/section.ts
+@@ -4,7 +4,7 @@
+  * section. Pure apart from the `bridge` singleton, which the Plan section fills in. Record:
+  * docs/pi-interactive-display-2026-11-13.md ("Plan section").
+  */
+-import { isKeyRelease, matchesKey } from '@earendil-works/pi-tui'
++import { nav } from '../section-nav/nav.ts'
+ 
+ /** Plan body rows: at most 6, at least 3, fewer on short terminals. Never unbounded. */
+ export const MAX_VISIBLE = 6
+@@ -30,98 +30,33 @@
+   reassertPlan(): void
+   /** Plan appeared, changed visibility or went away: the status line re-places its footer-only row. */
+   onPlanChange?: () => void
+-  /** Plan holds the keyboard (keyboard path): the fleet panel must not take ↓ meanwhile. */
+-  planFocused(): boolean
+-  /** ↓ from the Sub Agents list: give the keyboard to Plan. False when Plan is not showing. */
+-  focusPlan(): boolean
+-  /** ↑ from the top of Plan: back to the last Sub Agents row. False when there is no list. */
+-  focusFleetLast?: () => boolean
+-  /** The Status Line widget shows (it can fold and take the keyboard). */
+-  statusActive(): boolean
+-  /** The Status Line holds the keyboard (virtual focus, the editor keeps native focus). */
+-  statusFocused(): boolean
+-  /** ↓ from the last Sub Agents row, ↑ from the top of Plan: give the keyboard to the Status Line. False when it is not showing. */
+-  focusStatus(): boolean
+-  /** Sub Agents has child rows: the Status Line and Plan then leave the empty-editor ↓ entry to it. */
+-  fleetActive(): boolean
+-  /** The Run section shows (extensions/run); it follows Plan in the chain. */
+-  runActive(): boolean
+-  /** ↓ from the last Plan/Status Line/Sub Agents entry: give the keyboard to Run. False when it is not showing. */
+-  focusRun(): boolean
+ }
+ export const bridge: SectionBridge = {
+   planActive: () => false,
+   reassertPlan: () => {},
+-  focusPlan: () => false,
+-  planFocused: () => false,
+-  statusActive: () => false,
+-  statusFocused: () => false,
+-  focusStatus: () => false,
+-  fleetActive: () => false,
+-  runActive: () => false,
+-  focusRun: () => false,
+ }
+ 
+-/** Fold + keyboard focus of the Status Line widget, kept in memory for the session (a re-set widget keeps it).
+- * Chain from an empty editor: Sub Agents → Status Line → Plan (each only when it shows), ↑ the way back, Esc the editor. */
++/** Fold of the Status Line widget, kept in memory for the session (a re-set widget keeps it). Its title focus lives in
++ * section-nav/nav.ts; the group has no body, so Enter and Space fold it. */
+ export class StatusFold {
+   collapsed = false
+-  focused = false
+-  private readonly deps: { active(): boolean; render(): void }
++  private readonly deps: { render(): void }
+ 
+-  constructor(deps: { active(): boolean; render(): void }) {
++  constructor(deps: { render(): void }) {
+     this.deps = deps
+   }
+ 
++  /** The Status Line title holds the keyboard. */
++  get focused(): boolean {
++    return nav.isTitle('status')
++  }
++
+   reset(): void {
+     this.collapsed = false
+-    this.focused = false
+   }
+ 
+   toggle(): void {
+     this.collapsed = !this.collapsed
+     this.deps.render()
+   }
+-
+-  focusByKeyboard(): boolean {
+-    if (!this.deps.active()) return false
+-    this.focused = true
+-    this.deps.render()
+-    return true
+-  }
+-
+-  /** True when the key was used (consume). */
+-  handleKey(data: string, env: { editorText: string; editorFocused: boolean }): boolean {
+-    if (isKeyRelease(data)) return false
+-    if (!env.editorFocused || !this.deps.active()) {
+-      this.focused = false
+-      return false
+-    }
+-    if (!this.focused) {
+-      // A draft keeps ↓ for the editor; Sub Agents (when it has rows) and a focused Plan own the entry.
+-      if (!matchesKey(data, 'down') || env.editorText !== '' || bridge.fleetActive() || bridge.planFocused()) return false
+-      return this.focusByKeyboard()
+-    }
+-    const used = (): true => (this.deps.render(), true)
+-    if (matchesKey(data, 'down')) {
+-      if (bridge.focusPlan() || bridge.focusRun()) this.focused = false
+-      return used()
+-    }
+-    if (matchesKey(data, 'up')) {
+-      this.focused = false
+-      if (bridge.fleetActive()) bridge.focusFleetLast?.()
+-      return used()
+-    }
+-    if (matchesKey(data, 'escape')) {
+-      this.focused = false
+-      return used()
+-    }
+-    if (matchesKey(data, 'space') || (matchesKey(data, 'left') && !this.collapsed) || (matchesKey(data, 'right') && this.collapsed)) {
+-      this.collapsed = !this.collapsed
+-      return used()
+-    }
+-    this.focused = false
+-    this.deps.render()
+-    return false
+-  }
+ }
+diff -urN a/subagent/section-nav/nav.ts b/subagent/section-nav/nav.ts
+--- a/subagent/section-nav/nav.ts
++++ b/subagent/section-nav/nav.ts
+@@ -0,0 +1,124 @@
++/**
++ * Two-level keyboard navigation of the groups under the editor (RUN, TODO/PLAN, Sub Agents, Status Line).
++ * Level 1: ↓ on an empty editor focuses the TITLE of the first group in real visual order; ↑↓ then walk the titles only;
++ * ↑ on the first title (or Esc) gives the keyboard back to the editor. Level 2: Enter on a title gives the body the
++ * keyboard (each group keeps its own item keys); Esc in the body returns to the same title. A group without items
++ * (Status Line) has no body: Enter and Space fold it. The editor keeps native focus while a title is focused.
++ * Visual order is not fixed (pi moves a re-set widget last), so every group stamps its render and the order is the
++ * last render pass. Record: docs/pi-group-navigation-2026-11-14.md.
++ */
++import { isKeyRelease, matchesKey } from '@earendil-works/pi-tui'
++
++export type GroupId = 'run' | 'plan' | 'subagents' | 'status'
++
++export interface NavGroup {
++  id: GroupId
++  /** The group shows now (a hidden or empty group is skipped and never keeps the focus). */
++  active(): boolean
++  /** Items to navigate; false = informational group. */
++  hasBody: boolean
++  folded(): boolean
++  toggle(): void
++  /** Give the body the keyboard; false when it cannot take it. */
++  enter(): boolean
++}
++
++/** Fallback order for a group not yet rendered. */
++const DEFAULT_ORDER: GroupId[] = ['run', 'plan', 'subagents', 'status']
++
++export class GroupNav {
++  private readonly groups = new Map<GroupId, NavGroup>()
++  private readonly stamps = new Map<GroupId, number>()
++  private pass = new Set<GroupId>()
++  private seq = 0
++  /** Group whose title holds the focus. */
++  title: GroupId | undefined
++
++  register(group: NavGroup): void {
++    this.groups.set(group.id, group)
++  }
++
++  unregister(id: GroupId): void {
++    this.groups.delete(id)
++    this.stamps.delete(id)
++    this.pass.delete(id)
++    if (this.title === id) this.title = undefined
++  }
++
++  /** Called first in every group render: the order of the last render pass is the visual order. */
++  stamp(id: GroupId): void {
++    if (this.pass.has(id)) this.pass = new Set()
++    this.pass.add(id)
++    this.stamps.set(id, ++this.seq)
++  }
++
++  /** Active groups, top to bottom. */
++  order(): GroupId[] {
++    const active = [...this.groups.values()].filter((g) => g.active()).map((g) => g.id)
++    const seen = active.filter((id) => this.pass.has(id)).sort((a, b) => this.stamps.get(a)! - this.stamps.get(b)!)
++    return [...seen, ...DEFAULT_ORDER.filter((id) => active.includes(id) && !this.pass.has(id))]
++  }
++
++  /** The title of `id` is the focused one (a group that went away never is). */
++  isTitle(id: GroupId): boolean {
++    return this.title === id && this.groups.get(id)?.active() === true
++  }
++
++  /** Esc (or a lost body) returns to the title of `id`. */
++  back(id: GroupId): void {
++    if (this.groups.get(id)?.active()) this.title = id
++  }
++
++  /** ↓ on an empty editor: the first title. False when no group shows. */
++  focusFirst(): boolean {
++    const first = this.order()[0]
++    this.title = first
++    return first !== undefined
++  }
++
++  /** Keys while a title is focused (or the entry ↓ from the editor); true = consumed. */
++  handleKey(data: string, env: { editorText: string; editorFocused: boolean; overlayOpen: boolean }): boolean {
++    if (isKeyRelease(data)) return false
++    if (!env.editorFocused || env.overlayOpen) {
++      this.title = undefined
++      return false
++    }
++    if (this.title === undefined || !this.isTitle(this.title)) {
++      this.title = undefined
++      // Real bottom limit of a multi-line editor is not exposed by pi's editor: only an empty one hands ↓ over.
++      return matchesKey(data, 'down') && env.editorText === '' && this.focusFirst()
++    }
++    const group = this.groups.get(this.title)!
++    const order = this.order()
++    const at = order.indexOf(group.id)
++    if (matchesKey(data, 'down')) {
++      this.title = order[Math.min(order.length - 1, at + 1)]
++      return true
++    }
++    if (matchesKey(data, 'up')) {
++      this.title = at > 0 ? order[at - 1] : undefined
++      return true
++    }
++    if (matchesKey(data, 'escape')) {
++      this.title = undefined
++      return true
++    }
++    if (matchesKey(data, 'enter')) {
++      if (!group.hasBody) group.toggle()
++      else {
++        if (group.folded()) group.toggle()
++        this.title = undefined
++        if (!group.enter()) this.title = group.id
++      }
++      return true
++    }
++    if (matchesKey(data, 'space') || (matchesKey(data, 'left') && !group.folded()) || (matchesKey(data, 'right') && group.folded())) {
++      group.toggle()
++      return true
++    }
++    this.title = undefined
++    return false
++  }
++}
++
++export const nav = new GroupNav()

@@ -126,7 +126,7 @@ test('AC4 pelo handler tool_call; AC5 contexto; AC6 execução', async () => {
   assert.ok(text.includes(file))
   assert.ok(text.includes('Only tracked tasks are numbered'))
   assert.ok(text.length <= 1700, String(text.length))
-  await tools.plan_mode_complete.execute('id', { plan: 'Tier: T0 (teste)\n1. contar a.txt\n2. contar b.txt' })
+  await tools.plan_mode_complete.execute('id', { plan: 'Tier: T0 (teste)\n1. contar a.txt\n- wc -l a.txt\n2. contar b.txt\n- wc -l b.txt' })
   await on.agent_end({ messages: [] }, ctx)
   const exec = sent.find((m) => m.customType === 'plan-mode-execute')
   assert.match(exec.content, /materialize the plan file/)
@@ -173,21 +173,22 @@ const T2 = `## Resumo
    - AC: AC1, AC2
    - check: \`python -m unittest\`
 2. Gate e revisão
+   - rodar o gate do repositório
 `
 const lint = (p: string): string[] => utils.lintPlan(p)
 
 test('lintPlan: planos válidos', () => {
-  assert.deepEqual(lint('Tier: T0 (typo)\n1. corrigir typo'), [])
+  assert.deepEqual(lint('Tier: T0 (typo)\n1. corrigir typo\n- trocar a palavra'), [])
   assert.deepEqual(lint(T2), [])
 })
 
 test('lintPlan: R1 e R2', () => {
-  assert.deepEqual(lint('1. tarefa um\n2. tarefa dois'), ['missing "Tier: Tn (signals)" line'])
+  assert.deepEqual(lint('1. tarefa um\n- passo um\n2. tarefa dois\n- passo dois'), ['missing "Tier: Tn (signals)" line'])
   assert.deepEqual(lint('texto'), ['missing "Tier: Tn (signals)" line', 'no numbered tasks'])
 })
 
 test('lintPlan: R4 e R6 em T1 sem AC', () => {
-  assert.deepEqual(lint('Tier: T1 (x)\n1. fazer algo'), ['no EARS acceptance criterion (AC1: WHEN … THE SYSTEM SHALL …)', 'no check command in any task'])
+  assert.deepEqual(lint('Tier: T1 (x)\n1. fazer algo\n- passo simples'), ['no EARS acceptance criterion (AC1: WHEN … THE SYSTEM SHALL …)', 'no check command in any task'])
 })
 
 test('lintPlan: R5 AC não referenciado', () => {
@@ -197,8 +198,8 @@ test('lintPlan: R5 AC não referenciado', () => {
 })
 
 test('lintPlan: R3 confiança', () => {
-  assert.deepEqual(lint('Tier: T0 (x)\n- A1: algo\n1. tarefa um'), ['assumption A1 has no confidence %'])
-  assert.deepEqual(lint('Tier: T0 (x)\n- A1 (~92%, base x): algo\n1. tarefa um'), [])
+  assert.deepEqual(lint('Tier: T0 (x)\n- A1: algo\n1. tarefa um\n- passo um'), ['assumption A1 has no confidence %'])
+  assert.deepEqual(lint('Tier: T0 (x)\n- A1 (~92%, base x): algo\n1. tarefa um\n- passo um'), [])
 })
 
 test('lintPlan: R7 e R8', () => {
@@ -223,11 +224,11 @@ test('plan_mode_complete: rejeita duas vezes e aceita na terceira', async () => 
   const { tools, cmds, ctx } = setup()
   await cmds.plan.handler('', ctx)
   for (let i = 0; i < 2; i++) {
-    const r = await tools.plan_mode_complete.execute('id', { plan: '1. tarefa um' })
+    const r = await tools.plan_mode_complete.execute('id', { plan: '1. tarefa um\n- passo um' })
     assert.match(r.content[0].text, /^Plan not accepted/)
     assert.equal(r.terminate, undefined)
   }
-  const r = await tools.plan_mode_complete.execute('id', { plan: '1. tarefa um' })
+  const r = await tools.plan_mode_complete.execute('id', { plan: '1. tarefa um\n- passo um' })
   assert.equal(r.terminate, true)
   assert.match(r.content[0].text, /Unresolved lint: missing "Tier/)
 })
@@ -241,7 +242,7 @@ test('plan_mode_complete: plano válido é aceito e salvo; contador zera', async
   assert.equal(readFileSync(file, 'utf8'), T2)
   assert.ok(r.content[0].text.startsWith(`Plan submitted and saved to ${file}.`))
   assert.ok(!r.content[0].text.includes('Unresolved'))
-  const r2 = await tools.plan_mode_complete.execute('id', { plan: '1. tarefa um' })
+  const r2 = await tools.plan_mode_complete.execute('id', { plan: '1. tarefa um\n- passo um' })
   assert.match(r2.content[0].text, /^Plan not accepted/)
 })
 
@@ -253,15 +254,15 @@ test('contexto injetado: triagem T0', async () => {
 })
 
 test('lintPlan: R9 título acima de 50 caracteres', () => {
-  const ok = `Tier: T0 (x)\n1. ${'a'.repeat(50)}`
+  const ok = `Tier: T0 (x)\n1. ${'a'.repeat(50)}\n- passo`
   assert.deepEqual(lint(ok), [])
-  assert.deepEqual(lint(`Tier: T0 (x)\n1. curto\n7) ${'a'.repeat(51)}`), ['task 7 title is 51 characters (max 50, as shown): "A' + 'a'.repeat(50) + '"'])
+  assert.deepEqual(lint(`Tier: T0 (x)\n1. curto\n- passo\n7) ${'a'.repeat(51)}\n- passo`), ['task 7 title is 51 characters (max 50, as shown): "A' + 'a'.repeat(50) + '"'])
 })
 
 test('lintPlan: R9 mede o título como o todo o mostra (sem crase nem negrito)', () => {
   // 54 caracteres crus, 50 exibidos
-  assert.deepEqual(lint('Tier: T0 (x)\n1. Rename `lst` to `tasks` in store.py and test_app.py ok'), [])
-  assert.equal(lint('Tier: T0 (x)\n1. Rename `lst` to `tasks` in store.py and test_app.py ok!').length, 1)
+  assert.deepEqual(lint('Tier: T0 (x)\n1. Rename `lst` to `tasks` in store.py and test_app.py ok\n- passo'), [])
+  assert.equal(lint('Tier: T0 (x)\n1. Rename `lst` to `tasks` in store.py and test_app.py ok!\n- passo').length, 1)
 })
 
 const BAD = 'Tier: T0 (x)\n1. tarefa um\n- A1: algo'
@@ -281,7 +282,7 @@ test('@file após editar o arquivo aceita e gera os todos dele', async () => {
   const { tools, cmds, ctx } = setup()
   await cmds.plan.handler('', ctx)
   await tools.plan_mode_complete.execute('id', { plan: BAD })
-  const good = 'Tier: T0 (x)\n1. tarefa do arquivo\n2. outra do arquivo'
+  const good = 'Tier: T0 (x)\n1. tarefa do arquivo\n- passo um\n2. outra do arquivo\n- passo dois'
   writeFileSync(planFileOf(), good)
   const r = await tools.plan_mode_complete.execute('id', { plan: ' @file ' })
   assert.equal(r.terminate, true)
@@ -299,8 +300,8 @@ test('@file sem arquivo não conta como rejeição', async () => {
     assert.equal(r.terminate, undefined)
   }
   // contador intacto: duas rejeições ainda antes de aceitar
-  for (let i = 0; i < 2; i++) assert.match((await tools.plan_mode_complete.execute('id', { plan: '1. x tarefa' })).content[0].text, /^Plan not accepted/)
-  assert.equal((await tools.plan_mode_complete.execute('id', { plan: '1. x tarefa' })).terminate, true)
+  for (let i = 0; i < 2; i++) assert.match((await tools.plan_mode_complete.execute('id', { plan: '1. x tarefa\n- passo' })).content[0].text, /^Plan not accepted/)
+  assert.equal((await tools.plan_mode_complete.execute('id', { plan: '1. x tarefa\n- passo' })).terminate, true)
 })
 
 test('lintPlan: R5 aceita intervalo AC1–AC3 como cobertura', () => {

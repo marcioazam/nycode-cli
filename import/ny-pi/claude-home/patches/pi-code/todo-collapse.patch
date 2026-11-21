@@ -1,5 +1,5 @@
---- a/todo.ts	2026-11-13 13:33:37.532809635 -0300
-+++ b/todo.ts	2026-11-13 13:33:37.533307845 -0300
+--- a/todo.ts
++++ b/todo.ts
 @@ -18,7 +18,7 @@
   */
  
@@ -9,7 +9,24 @@
  import { type Static, Type } from 'typebox'
  
  import { stringEnum } from './internal/string-enum.ts'
-@@ -135,6 +135,26 @@
+@@ -79,10 +79,12 @@
+   return { id: raw.id, text: raw.text, status: raw.done ? 'completed' : 'pending' }
+ }
+ 
+-const statusGlyph = (status: TodoStatus, theme: Theme): string => {
+-  if (status === 'completed') return theme.fg('success', '✓')
+-  if (status === 'in_progress') return theme.fg('accent', '◐')
+-  return theme.fg('dim', '○')
++// Sem ícone de estado (dono, 2026-11-15): o nome do estado, na cor dele, numa coluna de largura fixa.
++const STATUS_NAME: Record<TodoStatus, [string, 'success' | 'accent' | 'dim']> = { completed: ['concluída', 'success'], in_progress: ['em andamento', 'accent'], pending: ['pendente', 'dim'] }
++const STATUS_W = 12
++const statusName = (status: TodoStatus, theme: Theme, pad = true): string => {
++  const [name, role] = STATUS_NAME[status]
++  return theme.fg(role, pad ? name.padEnd(STATUS_W) : name)
+ }
+ 
+ const listMark = (status: TodoStatus): string => {
+@@ -135,6 +137,26 @@
    }
  }
  
@@ -17,8 +34,8 @@
 +export const collapsedLine = (todos: Todo[], theme: Theme): string => {
 +  const completed = todos.filter((t) => t.status === 'completed').length
 +  const active = todos.find((t) => t.status === 'in_progress')
-+  const current = active ? ` · ${statusGlyph('in_progress', theme)} ${active.activeForm ?? active.text}` : ''
-+  if (completed === todos.length) return `${theme.fg('success', '✓')} ${theme.fg('dim', `Todos ${completed}/${todos.length}`)}`
++  const current = active ? `${theme.fg('dim', ' · ')}${active.activeForm ?? active.text}` : ''
++  if (completed === todos.length) return `${theme.fg('dim', `Todos ${completed}/${todos.length}`)}${theme.fg('dim', ' · ')}${theme.fg('success', 'concluídos')}`
 +  return theme.fg('accent', `Todos ${completed}/${todos.length}`) + current
 +}
 +
@@ -36,7 +53,7 @@
  /**
   * Persistent widget above the editor. Factory-form setWidget registration,
   * register-once + requestRender() refresh, auto-hide when the list is empty.
-@@ -144,6 +164,11 @@
+@@ -144,6 +166,11 @@
    private uiCtx?: ExtensionUIContext
    private widgetRegistered = false
    private tui?: TUI
@@ -48,7 +65,7 @@
    private readonly getTodos: () => Todo[]
  
    constructor(getTodos: () => Todo[]) {
-@@ -160,9 +185,15 @@
+@@ -160,9 +187,15 @@
      }
    }
  
@@ -65,7 +82,7 @@
        this.hide()
        return
      }
-@@ -176,6 +207,18 @@
+@@ -176,6 +209,18 @@
          this.tui = tui
          return {
            render: (width: number) => this.renderWidget(theme, width),
@@ -84,7 +101,7 @@
            invalidate: () => {
              this.widgetRegistered = false
              this.tui = undefined
-@@ -187,6 +230,34 @@
+@@ -187,6 +232,34 @@
      this.widgetRegistered = true
    }
  
@@ -119,43 +136,111 @@
    dispose(): void {
      this.hide()
      this.uiCtx = undefined
-@@ -203,6 +274,8 @@
-     const todos = this.getTodos()
-     if (todos.length === 0) return []
-     const truncate = (line: string): string => truncateToWidth(line, width, '…')
-+    // Lista inteira concluída: uma linha só, até o usuário expandir (clique ou ctrl+shift+t).
-+    if (this.collapsed || (allDone(todos) && !this.expandedByUser)) return [truncate(collapsedLine(todos, theme)), '']
+@@ -199,35 +272,9 @@
+     this.tui = undefined
+   }
  
-     const completed = todos.filter((t) => t.status === 'completed').length
-     const hasActive = completed < todos.length
-@@ -210,11 +283,21 @@
-     const headingIcon = hasActive ? '●' : '○'
-     const lines = [truncate(theme.fg(headingColor, `${headingIcon} Todos (${completed}/${todos.length})`))]
- 
+-  private renderWidget(theme: Theme, width: number): string[] {
+-    const todos = this.getTodos()
+-    if (todos.length === 0) return []
+-    const truncate = (line: string): string => truncateToWidth(line, width, '…')
+-
+-    const completed = todos.filter((t) => t.status === 'completed').length
+-    const hasActive = completed < todos.length
+-    const headingColor = hasActive ? 'accent' : 'dim'
+-    const headingIcon = hasActive ? '●' : '○'
+-    const lines = [truncate(theme.fg(headingColor, `${headingIcon} Todos (${completed}/${todos.length})`))]
+-
 -    const layout = layoutOverlay(todos, MAX_WIDGET_LINES - 1)
-+    const scrolled = this.scroll > 0
-+    const window = scrolled ? scrollWindow(todos, MAX_WIDGET_LINES - 1, this.scroll) : undefined
-+    const layout = window
-+      ? { visible: window.visible, hiddenCompleted: 0, truncatedTail: 0 }
-+      : layoutOverlay(todos, MAX_WIDGET_LINES - 1)
-     for (const todo of layout.visible) {
-       lines.push(truncate(`${theme.fg('dim', '├─')} ${statusGlyph(todo.status, theme)} ${overlayLabel(todo, theme)}`))
-     }
+-    for (const todo of layout.visible) {
+-      lines.push(truncate(`${theme.fg('dim', '├─')} ${statusGlyph(todo.status, theme)} ${overlayLabel(todo, theme)}`))
+-    }
+-
+-    const totalHidden = layout.hiddenCompleted + layout.truncatedTail
+-    if (totalHidden === 0) {
+-      const last = lines.length - 1
+-      lines[last] = lines[last].replace('├─', '└─')
+-    } else {
+-      const parts: string[] = []
+-      if (layout.hiddenCompleted > 0) parts.push(`${layout.hiddenCompleted} completed`)
+-      if (layout.truncatedTail > 0) parts.push(`${layout.truncatedTail} pending`)
+-      lines.push(truncate(theme.fg('dim', `└─ +${totalHidden} more (${parts.join(', ')})`)))
+-    }
+-    // Trailing spacer so the panel isn't flush against the editor box.
+-    lines.push('')
+-    return lines
++  /** Never drawn in the chat: the todos live only in the Plan section (event 'pi-code:todos', plan-mode/index.ts). */
++  private renderWidget(_theme: Theme, _width: number): string[] {
++    return []
+   }
+ }
  
-+    if (window) {
-+      lines.push(truncate(theme.fg('dim', `└─ ↑${window.above} ↓${window.below} (roda do mouse)`)))
-+      lines.push('')
-+      return lines
-+    }
-+
-     const totalHidden = layout.hiddenCompleted + layout.truncatedTail
-     if (totalHidden === 0) {
-       const last = lines.length - 1
-@@ -387,6 +470,7 @@
+@@ -274,7 +321,7 @@
+       lines.push(truncateToWidth(`  ${th.fg('muted', completedLabel)}`, width), '')
+ 
+       for (const todo of this.todos) {
+-        const glyph = statusGlyph(todo.status, th)
++        const glyph = statusName(todo.status, th)
+         const id = th.fg('accent', `#${todo.id}`)
+         const text = todo.status === 'completed' ? th.fg('dim', todo.text) : th.fg('text', todo.text)
+         let line = `  ${glyph} ${id} ${text}`
+@@ -315,7 +362,7 @@
+   for (const t of display) {
+     const idLabel = `#${t.id}`
+     const itemText = t.status === 'completed' ? theme.fg('dim', t.text) : theme.fg('muted', t.text)
+-    listText += `\n${statusGlyph(t.status, theme)} ${theme.fg('accent', idLabel)} ${itemText}`
++    listText += `\n${statusName(t.status, theme)} ${theme.fg('accent', idLabel)} ${itemText}`
+   }
+   if (!expanded && todoList.length > LIST_RESULT_PREVIEW) {
+     const moreLabel = `... ${todoList.length - LIST_RESULT_PREVIEW} more`
+@@ -339,6 +386,11 @@
+   let todos: Todo[] = []
+   let nextId = 1
+   const overlay = new TodoOverlay(() => todos)
++  /** Todos go to the Plan section (plan-mode/index.ts listens); the chat widget stays empty. */
++  const refresh = () => {
++    overlay.update()
++    pi.events.emit('pi-code:todos', todos.map((t) => ({ id: t.id, text: t.status === 'in_progress' ? (t.activeForm ?? t.text) : t.text, status: t.status })))
++  }
+ 
+   /**
+    * Reconstruct state from session entries.
+@@ -379,14 +431,15 @@
+     } catch (e) {
+       if (!isStaleCtxError(e)) throw e
+     }
+-    overlay.update()
++    refresh()
+   }
+ 
+   pi.on('session_start', (_event, ctx) => {
+     reconstructState(ctx)
      if (ctx.hasUI) overlay.setUICtx(ctx.ui)
-     overlay.update()
+-    overlay.update()
++    refresh()
    })
 +  pi.registerShortcut(Key.ctrlShift('t'), { description: 'Collapse or expand the todo list', handler: () => overlay.toggleCollapsed() })
    pi.on('session_tree', (_event, ctx) => replayAndRefresh(ctx))
    pi.on('session_compact', (_event, ctx) => replayAndRefresh(ctx))
    pi.on('session_shutdown', () => overlay.dispose())
+@@ -395,7 +448,7 @@
+   // branch is stale until message_end runs after tool_execution_end).
+   pi.on('tool_execution_end', (event) => {
+     if (event.toolName !== TOOL_NAME || event.isError) return
+-    overlay.update()
++    refresh()
+   })
+ 
+   const toolMessage = (text: string, details: TodoDetails) => ({
+@@ -528,8 +581,9 @@
+ 
+       const text = result.content[0]
+       const msg = text?.type === 'text' ? text.text : ''
+-      const glyph = details.action === 'start' ? theme.fg('accent', '◐ ') : theme.fg('success', '✓ ')
+-      return new Text(glyph + theme.fg('muted', msg), 0, 0)
++      const nome = details.action === 'start' ? 'in_progress' : details.action === 'complete' ? 'completed' : undefined
++      const tag = nome ? `${statusName(nome, theme, false)}${theme.fg('dim', ' · ')}` : ''
++      return new Text(tag + theme.fg('muted', msg), 0, 0)
+     },
+   })
+ 

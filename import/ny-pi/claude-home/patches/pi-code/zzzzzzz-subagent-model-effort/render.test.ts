@@ -93,48 +93,52 @@ function viewerOf(r: any) {
   return new viewer.ViewerComponent({ source: src, theme, id: r.id, done() {}, requestRender() {}, rows: () => 30, now: () => NOW, poll: false })
 }
 
-const lineWith = (lines: string[], label: string) => lines.find((s: string) => s.startsWith(label))
+/** Header row 2 (index 2 of the render): `model · effort`, then neighbours; it is the only place the viewer shows the runtime. */
+const runtimeLine = (lines: string[]): string => lines[2]
 
-test('viewer: linhas Model e Effort separadas, com origem observed', () => {
+test('viewer: modelo e esforço na linha 2 do cabeçalho, sem rótulos, origem observada', () => {
   const lines = viewerOf(rec(OBSERVED)).render(120)
-  assert.equal(lineWith(lines, 'Model:'), 'Model: anthropic/claude-sonnet-5-5 (observed)')
-  assert.equal(lineWith(lines, 'Effort:'), 'Effort: medium (observed)')
-  assert.match(lines[2], /^● running · /, 'status intacto')
-  assert.deepEqual([lines.findIndex((s: string) => s.startsWith('Model:')), lines.findIndex((s: string) => s.startsWith('Effort:'))], [4, 5], 'logo após a nav')
+  assert.equal(runtimeLine(lines), 'anthropic/claude-sonnet-5-5 · medium')
+  assert.equal(label.runtimeSummary(rec(OBSERVED)), 'anthropic/claude-sonnet-5-5 · medium')
+  assert.match(lines[1], /● rodando · /, 'status intacto')
+  assert.ok(!lines.some((s: string) => /^(Model|Effort):/.test(s)), 'sem as linhas rotuladas antigas')
 })
 
 test('viewer: configurado, off, e desconhecido', () => {
-  const both = (r: any) => {
-    const lines = viewerOf(r).render(120)
-    return [lineWith(lines, 'Model:'), lineWith(lines, 'Effort:')]
-  }
-  assert.deepEqual(both(rec({ model: 'a/b', effort: 'off' })), ['Model: a/b (configured)', 'Effort: off (configured)'])
-  assert.deepEqual(both(rec({ model: 'a/b' })), ['Model: a/b (configured)', 'Effort: unknown (not set, child default; not reported yet)'])
-  assert.deepEqual(both(rec()), ['Model: unknown (not reported yet)', 'Effort: unknown (not set, child default; not reported yet)'])
+  const both = (r: any) => label.runtimeSummary(r)
+  assert.equal(both(rec({ model: 'a/b', effort: 'off' })), 'a/b (configurado) · off (configurado)')
+  assert.equal(both(rec({ model: 'a/b' })), 'a/b (configurado) · ainda não informado')
+  assert.equal(both(rec()), 'ainda não informado · ainda não informado')
+  assert.equal(runtimeLine(viewerOf(rec({ model: 'a/b', effort: 'off' })).render(120)), 'a/b (configurado) · off (configurado)')
+  assert.equal(runtimeLine(viewerOf(rec()).render(120)), 'ainda não informado · ainda não informado')
 })
 
-test('viewer: a 20/40/80 as duas linhas rotuladas continuam presentes, com o valor do esforço, mesmo com modelo longo', () => {
+test('viewer: a 20/40/80/160 a linha 2 respeita a largura; modelo e esforço aparecem inteiros quando cabem e são cortados pela direita', () => {
   const long = { provider: 'p'.repeat(60), model: 'm'.repeat(80) }
   for (const w of WIDTHS) {
     for (const effort of ['off', 'high']) {
       for (const meta of [OBSERVED, long]) {
-        const lines = viewerOf(rec({ ...meta, effort, modelSeen: true, effortSeen: true })).render(w)
+        const r = rec({ ...meta, effort, modelSeen: true, effortSeen: true })
+        const lines = viewerOf(r).render(w)
         assert.ok(lines.every((s: string) => visibleWidth(s) <= w), String(w))
-        assert.ok(lineWith(lines, 'Model:'), `Model@${w}`)
-        // The label and the value come first on the line, before the origin note that truncation cuts.
-        const eff = lineWith(lines, 'Effort:')
-        assert.ok(eff && eff.startsWith(`Effort: ${effort.slice(0, Math.max(0, w - 'Effort: '.length))}`), `Effort@${w}: ${eff}`)
-        if (w >= 40) assert.ok(eff!.includes(`Effort: ${effort}`), `${w} ${effort}: ${eff}`)
+        const line = runtimeLine(lines).replace(/\x1b\[[0-9;]*m/g, '')
+        const full = label.runtimeSummary(r)
+        assert.ok(visibleWidth(line) <= w, `${w}: ${line}`)
+        // Truncation only cuts the end: what is shown is a prefix of the full text (the model comes first).
+        assert.ok(full.startsWith(line.replace(/(…|\.\.\.)$/, '')) && line.length > 0, `prefixo@${w}: ${line}`)
+        if (visibleWidth(full) <= w) assert.equal(line, full, `${w}/${effort}: cabe inteiro`)
+        else assert.ok(/(…|\.\.\.)$/.test(line) || visibleWidth(line) === w, `${w}/${effort}: cortado na largura`)
+        if (meta === OBSERVED && w >= 40) assert.ok(line.endsWith(` · ${effort}`), `${w} ${effort}: ${line}`)
       }
     }
   }
-  assert.ok(viewerOf(rec({ ...OBSERVED, provider: 'p'.repeat(40) })).render(160).some((s: string) => s.includes('p'.repeat(40) + '/claude-sonnet-5-5')))
+  assert.ok(runtimeLine(viewerOf(rec({ ...OBSERVED, provider: 'p'.repeat(40) })).render(160)).includes('p'.repeat(40) + '/claude-sonnet-5-5'))
 })
 
 test('viewer: a altura total acompanha as linhas (CHROME_ROWS) com a linha nova', () => {
   const lines = viewerOf(rec(OBSERVED)).render(80)
-  const h = Math.max(3, Math.floor(30 * 0.85) - 9)
-  assert.equal(lines.length, 9 + h)
+  const h = Math.max(3, Math.floor(30 * 0.85) - 6)
+  assert.equal(lines.length, 6 + h)
 })
 
 test('painel a 60 colunas: modelo+esforço mais curto cabe com o tempo; a tarefa trunca e as estatísticas caem', () => {
