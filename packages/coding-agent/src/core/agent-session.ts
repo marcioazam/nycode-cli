@@ -79,6 +79,7 @@ import {
 	prepareCompaction,
 	shouldCompact,
 } from "./compaction/index.ts";
+import { compactWhenOverLimit, warnInvalidCompactAt } from "./compaction/threshold.ts";
 import { DEFAULT_THINKING_LEVEL, THINKING_LEVEL_OPTIONS } from "./defaults.ts";
 import { exportSessionToHtml, type ToolHtmlRenderer } from "./export-html/index.ts";
 import { createToolHtmlRenderer } from "./export-html/tool-renderer.ts";
@@ -1140,6 +1141,20 @@ export class AgentSession {
 		resolve();
 	}
 
+	private async _compactAtThreshold(aborted: boolean): Promise<void> {
+		const limit = this.settingsManager.getNycodeSettings().compaction.maxContextTokens;
+		warnInvalidCompactAt(process.env, limit);
+		await compactWhenOverLimit({
+			aborted,
+			isCompacting: this.isCompacting,
+			contextWindow: this._limitsModel()?.contextWindow,
+			getTokens: () => this.getContextUsage()?.tokens,
+			limit,
+			getContext: () => this._extensionRunner.createContext(),
+			compact: () => this.compact(),
+		});
+	}
+
 	private async _emitAgentSettled(): Promise<void> {
 		this._cacheWarmer?.onAgentSettled();
 		this._isAgentRunActive = false;
@@ -1147,6 +1162,8 @@ export class AgentSession {
 		try {
 			const aborted = this._agentRunAbortRequested;
 			await this._extensionRunner.emit({ type: "agent_settled", aborted });
+			// nycode: K9 absolute-size compaction safety net, awaited here so `-p` does not exit mid-compaction
+			await this._compactAtThreshold(aborted);
 			this._emit({ type: "agent_settled", aborted });
 		} finally {
 			this._isEmittingAgentSettled = false;
