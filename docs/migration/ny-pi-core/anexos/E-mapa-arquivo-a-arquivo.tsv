@@ -1400,8 +1400,8 @@ extensions/headless-lean/index.test.ts	packages/coding-agent/test/harness/extens
 extensions/headless-lean/index.ts	packages/coding-agent/src/extensions/headless-lean/index.ts	mover	F7	E26
 extensions/no-context-files-covers-claude-md.ts	(D-10)	remover	F7	E02
 extensions/no-web-search.ts	(D-10)	remover	F7	E02
-extensions/pi-docs/index.test.ts	packages/coding-agent/test/harness/core/docs-pointer.test.ts	converter	F7	E11
-extensions/pi-docs/index.ts	packages/coding-agent/src/core/system-prompt.ts (K7)	absorver	F7	E10
+extensions/pi-docs/index.test.ts	packages/coding-agent/test/harness/extensions/docs-pointer/index.test.ts	converter	F7	E11
+extensions/pi-docs/index.ts	packages/coding-agent/src/extensions/docs-pointer/index.ts (D-36)	mover	F7	E10
 extensions/plan-gate.ts	packages/coding-agent/src/extensions/plan-gate/index.ts	mover	F7	E17
 extensions/prefix-cache-1h/index.ts	packages/coding-agent/src/extensions/prefix-cache-1h/index.ts	mover	F7	E26
 extensions/puxar.ts	packages/coding-agent/src/extensions/import-claude-session/index.ts	mover	F7	E20

@@ -159,7 +159,7 @@ Abreviação: `CA` = `packages/coding-agent/src`; `core/` e `cli/` abaixo são d
 | K4 | `core/settings-schema.ts` e `-defaults.ts` | Blocos novos, 3 padrões | 5+3 / 3+1 | 1 | médio |
 | K5 | `CA/extensions/index.ts` | Uma linha por extensão | 2 / 0 | n. med. | baixo |
 | K6 | `CA/core/resource-loader.ts` | Escopo `builtin` | 11 / 3 | n. med. | médio |
-| K7 | `CA/core/system-prompt.ts` | Seção `docs`, instruções | 8 / 1 | n. med. | médio |
+| K7 | `CA/core/system-prompt.ts` | Instruções embarcadas (F8; seção `docs` na extensão, D-36) | 8 / 1 | n. med. | médio |
 | K8 | `CA/core/tools/bash.ts` | Limite padrão e teto | 12 / 3 | n. med. | médio |
 | K9 | `CA/core/compaction/` | Limite absoluto de contexto | 15 / 4 | n. med. | médio |
 | K10 | `packages/tui/src/` | API pública nova | 91 / 30 | n. med. | alto |
@@ -218,8 +218,8 @@ Para cada costura: como reduzir (arquivo novo e chamada única) e o teste que fa
 - **K5.** Uma linha por extensão, em ordem alfabética, num bloco com marcador. Teste: lista as `builtin:` esperadas.
 - **K6.** Resolução do escopo `builtin` em arquivo novo; `resource-loader.ts` chama uma função. Teste: carregador com
   recurso embarcado de menor precedência.
-- **K7.** Montagem das seções novas em arquivo novo; `system-prompt.ts` recebe uma chamada. Teste: prompt com a
-  seção `docs` em uma linha.
+- **K7.** Montagem das instruções embarcadas em arquivo novo; `system-prompt.ts` recebe uma chamada (F8). Teste:
+  prompt com as instruções. A seção `docs` em uma linha é da extensão `docs-pointer` (D-36).
 - **K8.** Política de tempo limite em arquivo novo; `bash.ts` a chama. Teste: `bash` com 600 s padrão e teto 1800 s.
 - **K9.** Regra do limite absoluto em arquivo novo dentro de `core/compaction/`. Teste: `compact-at-400k` portado.
 - **K10.** API pública em arquivos novos de `packages/tui/src/`, mais uma linha de exportação. Teste: teste da API e
