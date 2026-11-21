@@ -32,7 +32,7 @@ const review = (verdict: string, callId: string): Entry[] => [
 	call("subagent", { agent: "plan-reviewer", task: "review" }, callId),
 	result(callId, "subagent", `- gap one\nPLAN_REVIEW: ${verdict}`),
 ];
-const record = (data: Record<string, unknown>): Entry => ({ type: "custom", id: id(), customType: "plan-gate", data });
+const record = (data: object): Entry => ({ type: "custom", id: id(), customType: "plan-gate", data });
 
 test("sem plano aprovado: nada a fazer", () => {
 	assert.equal(decidePlanGate([say("oi")]).action, "none");

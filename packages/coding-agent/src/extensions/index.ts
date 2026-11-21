@@ -15,6 +15,7 @@ import mcpExtension from "./mcp/index.ts";
 import memoryExtension from "./memory/index.ts";
 import notifyExtension from "./notify/index.ts";
 import outputStylesExtension from "./output-styles/index.ts";
+import planGateExtension from "./plan-gate/index.ts";
 import planModeExtension from "./plan-mode/index.ts";
 import questionExtension from "./question/index.ts";
 import runExtension from "./run/index.ts";
@@ -62,4 +63,5 @@ export const builtInExtensions: InlineExtension[] = [
 	{ name: "web", factory: webExtension, builtin: true, enabledByDefault: false },
 	// Embedded ny-pi extensions, in ny-pi's load order (after pi-code, by source file name).
 	{ name: "docs-pointer", factory: docsPointerExtension, builtin: true },
+	{ name: "plan-gate", factory: planGateExtension, builtin: true },
 ];
