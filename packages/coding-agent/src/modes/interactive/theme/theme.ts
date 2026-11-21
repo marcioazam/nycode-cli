@@ -28,6 +28,7 @@ import type { SourceInfo } from "../../../core/source-info.ts";
 import { closeWatcher, watchWithErrorHandler } from "../../../utils/fs-watch.ts";
 import { getHighlightLanguageCount, highlight, supportsLanguage } from "../../../utils/syntax-highlight.ts";
 import { stripBom } from "../../../utils/text.ts";
+import { loadNycodeThemes } from "./nycode-themes.ts";
 import { generateSystemThemeColors, SYSTEM_THEME_NAME, terminalAppearance } from "./system-theme.ts";
 import {
 	type ResolvedThemeColorValues,
@@ -386,6 +387,8 @@ function getBuiltinThemes(): Record<string, ThemeJson> {
 		BUILTIN_THEMES = {
 			dark: JSON.parse(stripBom(fs.readFileSync(darkPath, "utf-8"))) as ThemeJson,
 			light: JSON.parse(stripBom(fs.readFileSync(lightPath, "utf-8"))) as ThemeJson,
+			// nycode: K4 tokyo-night (the default) and mono (NO_COLOR) ship next to dark and light
+			...loadNycodeThemes(),
 		};
 	}
 	return BUILTIN_THEMES;
