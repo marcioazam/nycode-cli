@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Edit|Write|Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${NYCODE_RESOURCES}/hooks/guard.py",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

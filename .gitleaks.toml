@@ -7,7 +7,7 @@ useDefault = true
 [[allowlists]]
 description = "Known fake AWS key in the atualizador unit test"
 condition = "AND"
-paths = ['''claude-home/skills/atualizador/scripts/tests/test_core\.py$''']
+paths = ['''packages/coding-agent/resources/skills/atualizador/scripts/tests/test_core\.py$''']
 regexes = ['''AKIAQYLPMN5HHHFPZAM2''']
 
 [[allowlists]]
