@@ -4,16 +4,16 @@
  * the process-group kill used by the shell runner.
  */
 
-import { type ChildProcess, spawn } from 'node:child_process'
-import * as fs from 'node:fs'
-import type { Api, Model } from '@earendil-works/pi-ai'
-import { runAgent } from '../internal/agent-run.ts'
-import { callMcpTool } from '../internal/mcp-call.ts'
-import { type CompletionRegistry, completeText } from '../internal/model-complete.ts'
-import { killProcessTree } from '../internal/process-tree.ts'
-import { resolveShell } from '../internal/shell-resolve.ts'
-import { errorMessage } from '../internal/values.ts'
-import { type HookCommand, httpUrlAllowed, isBackgroundHook } from './config.ts'
+import { type ChildProcess, spawn } from "node:child_process";
+import * as fs from "node:fs";
+import type { Api, Model } from "@nycode/ai";
+import { type CompletionRegistry, completeText } from "../_shared/model/model-complete.ts";
+import { runAgent } from "../_shared/seams/agent-run.ts";
+import { callMcpTool } from "../_shared/seams/mcp-call.ts";
+import { killProcessTree } from "../_shared/shell/process-tree.ts";
+import { resolveShell } from "../_shared/shell/shell-resolve.ts";
+import { errorMessage } from "../_shared/util/values.ts";
+import { type HookCommand, httpUrlAllowed, isBackgroundHook } from "./config.ts";
 
 // Claude's defaults vary by type and event (600s for command/http/mcp_tool, 30s
 // for prompt, 60s for agent, lowered to 30s on UserPromptSubmit and to a shared
@@ -22,59 +22,64 @@ import { type HookCommand, httpUrlAllowed, isBackgroundHook } from './config.ts'
 // has no permission prompt to fall back on), so ten minutes of default budget
 // would wedge the turn on a hung hook. Hooks that legitimately run long can
 // raise their own per-hook `timeout`.
-const DEFAULT_TIMEOUT_S = 60
+const DEFAULT_TIMEOUT_S = 60;
 
 /** Claude's per-type defaults where they are safe to mirror: 30s for `prompt`
  * hooks and 60s for `agent` hooks. Command/http/mcp_tool keep the flat 60s
  * documented divergence from Claude's 600 (a gated hook fails closed here, so ten
  * minutes of default budget would wedge the turn). */
-const TYPE_DEFAULT_TIMEOUT_S: Record<string, number> = { prompt: 30, agent: 60 }
+const TYPE_DEFAULT_TIMEOUT_S: Record<string, number> = { prompt: 30, agent: 60 };
 
 export interface HookRunResult {
-  code: number
-  stdout: string
-  stderr: string
-  /** The hook was killed at its timeout, so its exit code carries no verdict. */
-  timedOut: boolean
-  /** The process errored before delivering a verdict (spawn failure, EIO). */
-  spawnFailed?: boolean
+	code: number;
+	stdout: string;
+	stderr: string;
+	/** The hook was killed at its timeout, so its exit code carries no verdict. */
+	timedOut: boolean;
+	/** The process errored before delivering a verdict (spawn failure, EIO). */
+	spawnFailed?: boolean;
 }
 /** Runs one configured hook entry, whatever its type; boundRunner dispatches. */
-export type HookRunner = (hook: HookCommand, payload: unknown, timeoutMs: number) => Promise<HookRunResult>
+export type HookRunner = (hook: HookCommand, payload: unknown, timeoutMs: number) => Promise<HookRunResult>;
 /** How one command hook is spawned, beyond the payload and its budget. Grouped rather
  * than trailing off the parameter list: the exec form, the shell choice and the
  * declaring plugin are all per-hook fields that arrive together from one HookCommand. */
 export interface HookSpawnOptions {
-  projectDir?: string
-  /** exec-form argv; shell-form when absent. */
-  args?: string[]
-  onChild?: (kill: () => void) => void
-  shell?: string
-  /** The declaring plugin's paths, exported to the child. */
-  plugin?: { root: string; dataDir: string }
-  /** Claude: "set automatically to the current session ID in ... hook command
-   * subprocesses ... this matches the session_id field in the hook JSON input and
-   * is updated on /clear." Absent in a stub context with no session manager. */
-  sessionId?: string
+	projectDir?: string;
+	/** exec-form argv; shell-form when absent. */
+	args?: string[];
+	onChild?: (kill: () => void) => void;
+	shell?: string;
+	/** The declaring plugin's paths, exported to the child. */
+	plugin?: { root: string; dataDir: string };
+	/** Claude: "set automatically to the current session ID in ... hook command
+	 * subprocesses ... this matches the session_id field in the hook JSON input and
+	 * is updated on /clear." Absent in a stub context with no session manager. */
+	sessionId?: string;
 }
 
-export type HookCommandRunner = (command: string, payload: unknown, timeoutMs: number, options?: HookSpawnOptions) => Promise<HookRunResult>
+export type HookCommandRunner = (
+	command: string,
+	payload: unknown,
+	timeoutMs: number,
+	options?: HookSpawnOptions,
+) => Promise<HookRunResult>;
 
 /** Above 2^31-1 ms Node clamps a timer to 1ms, which would kill the hook instantly. */
-const MAX_TIMEOUT_S = 2_147_483
+const MAX_TIMEOUT_S = 2_147_483;
 
 export function timeoutMs(command: HookCommand): number {
-  // Claude does not enforce `timeout` on an `async` command hook (it does on
-  // `asyncRewake`), so the budget is the Node timer ceiling: the timer exists only
-  // so the delay never clamps, not as a deadline. Background hooks still running when
-  // a headless run ends are killed instead.
-  if (isBackgroundHook(command) && command.asyncRewake !== true) return MAX_TIMEOUT_S * 1000
-  // Non-positive values fall back to the default: a 0ms timer would fire before the
-  // hook runs, and a timed-out PreToolUse hook fails closed, bricking the tool.
-  const declared = command.timeout
-  const fallback = TYPE_DEFAULT_TIMEOUT_S[command.type ?? 'command'] ?? DEFAULT_TIMEOUT_S
-  const seconds = typeof declared === 'number' && declared > 0 ? Math.min(declared, MAX_TIMEOUT_S) : fallback
-  return seconds * 1000
+	// Claude does not enforce `timeout` on an `async` command hook (it does on
+	// `asyncRewake`), so the budget is the Node timer ceiling: the timer exists only
+	// so the delay never clamps, not as a deadline. Background hooks still running when
+	// a headless run ends are killed instead.
+	if (isBackgroundHook(command) && command.asyncRewake !== true) return MAX_TIMEOUT_S * 1000;
+	// Non-positive values fall back to the default: a 0ms timer would fire before the
+	// hook runs, and a timed-out PreToolUse hook fails closed, bricking the tool.
+	const declared = command.timeout;
+	const fallback = TYPE_DEFAULT_TIMEOUT_S[command.type ?? "command"] ?? DEFAULT_TIMEOUT_S;
+	const seconds = typeof declared === "number" && declared > 0 ? Math.min(declared, MAX_TIMEOUT_S) : fallback;
+	return seconds * 1000;
 }
 
 /** Claude's SessionEnd budget: hooks share 1.5 seconds so session exit (and /new,
@@ -83,185 +88,223 @@ export function timeoutMs(command: HookCommand): number {
  * names ("apart from a command hook you run with async: true"): it runs in the
  * background, holds up nothing, and gets timeoutMs's no-deadline ceiling. */
 export function sessionEndTimeoutMs(command: HookCommand): number {
-  if (isBackgroundHook(command) && command.asyncRewake !== true) return timeoutMs(command)
-  const declared = command.timeout
-  if (typeof declared === 'number' && declared > 0) return Math.min(declared, 60) * 1000
-  return 1500
+	if (isBackgroundHook(command) && command.asyncRewake !== true) return timeoutMs(command);
+	const declared = command.timeout;
+	if (typeof declared === "number" && declared > 0) return Math.min(declared, 60) * 1000;
+	return 1500;
 }
 
 /** Memory backstop for a runaway hook. A decision payload is orders of magnitude smaller. */
-const MAX_HOOK_OUTPUT = 1_000_000
+const MAX_HOOK_OUTPUT = 1_000_000;
 
 /** Conventional exit code for a killed-on-timeout command, as `timeout(1)` reports it. */
-const TIMEOUT_EXIT_CODE = 124
+const TIMEOUT_EXIT_CODE = 124;
 
 /** Kill the shell and everything it spawned; see internal/process-tree. */
 function killTree(child: ChildProcess): void {
-  killProcessTree(child, 'SIGKILL')
+	killProcessTree(child, "SIGKILL");
 }
 
 /** Create the plugin data directory the moment its path is handed to a child. Claude
  * describes it as "created on first reference"; a best-effort mkdir, since a hook whose
  * data dir cannot be created should still run. */
 function ensureDir(dir: string): void {
-  try {
-    fs.mkdirSync(dir, { recursive: true })
-  } catch {
-    // The hook runs anyway; a script that needs the directory reports its own failure.
-  }
+	try {
+		fs.mkdirSync(dir, { recursive: true });
+	} catch {
+		// The hook runs anyway; a script that needs the directory reports its own failure.
+	}
 }
 
 /** The shell invocation for a shell-form command, or undefined when this machine has no
  * shell for it (Windows with neither Git Bash nor PowerShell). */
-function shellInvocation(command: string, shell: string | undefined): { file: string; spawnArgs: string[] } | undefined {
-  const resolved = resolveShell(shell)
-  return resolved ? { file: resolved.file, spawnArgs: resolved.argsFor(command) } : undefined
+function shellInvocation(
+	command: string,
+	shell: string | undefined,
+): { file: string; spawnArgs: string[] } | undefined {
+	const resolved = resolveShell(shell);
+	return resolved ? { file: resolved.file, spawnArgs: resolved.argsFor(command) } : undefined;
 }
 
 /** The environment a command hook's child runs with. */
-function hookEnv(projectDir: string | undefined, sessionId: string | undefined, plugin: HookSpawnOptions['plugin']): NodeJS.ProcessEnv {
-  // CLAUDE_CODE_CHILD_SESSION marks per-call children (hook and status line
-  // commands), never long-lived stdio MCP servers, as Claude documents; COLUMNS
-  // and LINES carry the terminal dimensions since the script's own width
-  // detection cannot see the captured terminal.
-  const env: NodeJS.ProcessEnv = { ...process.env, CLAUDECODE: '1', CLAUDE_CODE_CHILD_SESSION: '1' }
-  if (projectDir) env.CLAUDE_PROJECT_DIR = projectDir
-  // Claude: "Claude Code sets this to its own process ID in the subprocesses it
-  // spawns: Bash and PowerShell tool commands and hook commands." Set unconditionally,
-  // since every hook child qualifies.
-  env.CLAUDE_PID = String(process.pid)
-  if (sessionId) env.CLAUDE_CODE_SESSION_ID = sessionId
-  // Claude: "All three are exported as environment variables to hook processes and to
-  // MCP and LSP server subprocesses", so a plugin script can read them rather than
-  // depend on inline substitution. The data directory is "created on first reference",
-  // and exporting the path is that reference: a script should not have to mkdir it.
-  if (plugin) {
-    env.CLAUDE_PLUGIN_ROOT = plugin.root
-    env.CLAUDE_PLUGIN_DATA = plugin.dataDir
-    ensureDir(plugin.dataDir)
-  }
-  if (process.stdout.columns) env.COLUMNS = String(process.stdout.columns)
-  if (process.stdout.rows) env.LINES = String(process.stdout.rows)
-  return env
+function hookEnv(
+	projectDir: string | undefined,
+	sessionId: string | undefined,
+	plugin: HookSpawnOptions["plugin"],
+): NodeJS.ProcessEnv {
+	// CLAUDE_CODE_CHILD_SESSION marks per-call children (hook and status line
+	// commands), never long-lived stdio MCP servers, as Claude documents; COLUMNS
+	// and LINES carry the terminal dimensions since the script's own width
+	// detection cannot see the captured terminal.
+	const env: NodeJS.ProcessEnv = { ...process.env, CLAUDECODE: "1", CLAUDE_CODE_CHILD_SESSION: "1" };
+	if (projectDir) env.CLAUDE_PROJECT_DIR = projectDir;
+	// Claude: "Claude Code sets this to its own process ID in the subprocesses it
+	// spawns: Bash and PowerShell tool commands and hook commands." Set unconditionally,
+	// since every hook child qualifies.
+	env.CLAUDE_PID = String(process.pid);
+	if (sessionId) env.CLAUDE_CODE_SESSION_ID = sessionId;
+	// Claude: "All three are exported as environment variables to hook processes and to
+	// MCP and LSP server subprocesses", so a plugin script can read them rather than
+	// depend on inline substitution. The data directory is "created on first reference",
+	// and exporting the path is that reference: a script should not have to mkdir it.
+	if (plugin) {
+		env.CLAUDE_PLUGIN_ROOT = plugin.root;
+		env.CLAUDE_PLUGIN_DATA = plugin.dataDir;
+		ensureDir(plugin.dataDir);
+	}
+	if (process.stdout.columns) env.COLUMNS = String(process.stdout.columns);
+	if (process.stdout.rows) env.LINES = String(process.stdout.rows);
+	return env;
 }
 
 /** Um registro por execução no sink de diagnóstico do harness (ausente: não faz nada). Nunca lança. */
 function reportHook(command: string, payload: unknown, t0: number, r: HookRunResult): void {
-  try {
-    const sink = (globalThis as any)[Symbol.for('pi-harness:diag')]
-    if (typeof sink !== 'function') return
-    const ev = (payload as { hook_event_name?: unknown } | null)?.hook_event_name
-    const evento = typeof ev === 'string' && ev ? ev : 'hook'
-    const durMs = Math.round(Date.now() - t0)
-    const timedOut = r.timedOut === true
-    const spawnFailed = r.spawnFailed === true
-    const estado = spawnFailed ? 'não iniciou' : timedOut ? 'timeout' : r.code === 0 ? 'ok' : r.code === 2 ? 'bloqueou (2)' : `saiu ${r.code}`
-    const curto = (command.trim().split(/\s+/)[0] ?? '').split(/[\\/]/).pop() || command.slice(0, 40)
-    const quieto = r.code === 0 && !timedOut && !spawnFailed
-    sink({
-      sev: quieto ? 9 : r.code === 2 && !timedOut ? 13 : 17,
-      fonte: 'hook',
-      tipo: 'hook',
-      msg: `${evento} · ${curto} · ${estado} · ${durMs} ms`,
-      detalhe: r.stderr ? r.stderr.slice(0, 2048) : undefined,
-      quieto,
-      dados: { evento, comando: command.slice(0, 200), code: r.code, durMs, timedOut, spawnFailed },
-    })
-  } catch {}
+	try {
+		const sink = (globalThis as Record<symbol, unknown>)[Symbol.for("pi-harness:diag")];
+		if (typeof sink !== "function") return;
+		const ev = (payload as { hook_event_name?: unknown } | null)?.hook_event_name;
+		const evento = typeof ev === "string" && ev ? ev : "hook";
+		const durMs = Math.round(Date.now() - t0);
+		const timedOut = r.timedOut === true;
+		const spawnFailed = r.spawnFailed === true;
+		const estado = spawnFailed
+			? "não iniciou"
+			: timedOut
+				? "timeout"
+				: r.code === 0
+					? "ok"
+					: r.code === 2
+						? "bloqueou (2)"
+						: `saiu ${r.code}`;
+		const curto = (command.trim().split(/\s+/)[0] ?? "").split(/[\\/]/).pop() || command.slice(0, 40);
+		const quieto = r.code === 0 && !timedOut && !spawnFailed;
+		sink({
+			sev: quieto ? 9 : r.code === 2 && !timedOut ? 13 : 17,
+			fonte: "hook",
+			tipo: "hook",
+			msg: `${evento} · ${curto} · ${estado} · ${durMs} ms`,
+			detalhe: r.stderr ? r.stderr.slice(0, 2048) : undefined,
+			quieto,
+			dados: { evento, comando: command.slice(0, 200), code: r.code, durMs, timedOut, spawnFailed },
+		});
+	} catch {}
 }
 
 /** The shell path specifically; the statusline reuses it for its own command. With an
  * `args` array it becomes the exec path: `command` is spawned directly with those args.
  * `onChild` hands the caller a kill for the spawned tree, so a background hook that is
  * still running at session end can be reaped (Claude kills async hooks at teardown). */
-export const runHookCommand: HookCommandRunner = (command, payload, timeoutMs, { projectDir, args, onChild, shell, plugin, sessionId } = {}) =>
-  new Promise((resolve0) => {
-    const t0 = Date.now()
-    const resolve = (r: HookRunResult): void => {
-      reportHook(command, payload, t0, r)
-      resolve0(r)
-    }
-    // /bin/sh by absolute path off Windows, so the shell can't be resolved through an
-    // attacker-controlled PATH; on Windows the resolver follows Claude's documented Git
-    // Bash lookup. `detached` makes the shell its own process group leader so the
-    // timeout can kill the descendants too. CLAUDE_PROJECT_DIR is Claude's documented way for a hook to
-    // reference project files regardless of the shell's cwd. CLAUDECODE=1 marks every
-    // subprocess Claude spawns, so it is set on the child unconditionally.
-    const env = hookEnv(projectDir, sessionId, plugin)
-    // An exec-form hook (an `args` array) spawns the executable directly with those args
-    // and no shell, so shell metacharacters in the args arrive literally; $ARGUMENTS in
-    // each arg is replaced with the event JSON by a replacer function (so $$/$& in the
-    // payload survive verbatim). Without args the command string goes to the platform's
-    // shell, or to PowerShell when the hook says `shell: "powershell"`. Both share the
-    // same detached process group, so killTree reaches the descendants either way.
-    const target = Array.isArray(args) ? { file: command, spawnArgs: args.map((arg) => substituteArguments(arg, payload)) } : shellInvocation(command, shell)
-    if (!target) {
-      // Marked like a spawn failure so a gated event fails closed rather than reading as an allow.
-      resolve({ code: 0, stdout: '', stderr: 'no shell found: install Git for Windows or PowerShell', timedOut: false, spawnFailed: true })
-      return
-    }
-    // On Windows `detached` means DETACHED_PROCESS, which gives a console child its own
-    // window; windowsHide keeps every hook invisible (a no-op elsewhere).
-    // node defers only a few spawn errors to the 'error' event; the rest (E2BIG from a
-    // payload past the argv limit) throw here, inside the promise executor, which would
-    // reject the runner and lose every sibling hook's verdict for the event.
-    let child: ReturnType<typeof spawn>
-    try {
-      child = spawn(target.file, target.spawnArgs, { stdio: ['pipe', 'pipe', 'pipe'], detached: true, windowsHide: true, env })
-    } catch (error) {
-      resolve({ code: 0, stdout: '', stderr: errorMessage(error), timedOut: false, spawnFailed: true })
-      return
-    }
-    onChild?.(() => killTree(child))
-    let stdout = ''
-    let stderr = ''
-    let settled = false
-    const finish = (result: HookRunResult): void => {
-      if (settled) return
-      settled = true
-      clearTimeout(timer)
-      resolve(result)
-    }
-    // Resolve from the timer itself rather than waiting for `close`: `close` fires only
-    // once every stdio pipe is closed, and a grandchild that inherited them can hold the
-    // promise pending long past the timeout, stalling the tool call that awaits it.
-    const timer = setTimeout(() => {
-      killTree(child)
-      finish({ code: TIMEOUT_EXIT_CODE, stdout, stderr, timedOut: true })
-    }, timeoutMs)
-    // Decode on the stream: concatenating Buffers as strings mangles a multi-byte
-    // character split across chunks, and a mangled byte in a hook's deny decision makes
-    // it unparseable, which reads as an allow.
-    child.stdout?.setEncoding('utf8')
-    child.stderr?.setEncoding('utf8')
-    child.stdout?.on('data', (chunk: string) => {
-      if (stdout.length < MAX_HOOK_OUTPUT) stdout += chunk
-    })
-    child.stderr?.on('data', (chunk: string) => {
-      if (stderr.length < MAX_HOOK_OUTPUT) stderr += chunk
-    })
-    child.on('close', (code) => finish({ code: code ?? 0, stdout, stderr, timedOut: false }))
-    // Marked rather than silently read as a clean run: under fd exhaustion a
-    // deny-list guard that never spawned would otherwise pass as an allow.
-    child.on('error', (error) => finish({ code: 0, stdout, stderr: stderr || error.message, timedOut: false, spawnFailed: true }))
-    // A hook that exits without reading stdin (e.g. `exit 2`) closes the pipe first,
-    // so ignore EPIPE on this write rather than crashing the host process.
-    child.stdin?.on('error', () => {})
-    child.stdin?.end(JSON.stringify(payload))
-  })
+export const runHookCommand: HookCommandRunner = (
+	command,
+	payload,
+	timeoutMs,
+	{ projectDir, args, onChild, shell, plugin, sessionId } = {},
+) =>
+	new Promise((resolve0) => {
+		const t0 = Date.now();
+		const resolve = (r: HookRunResult): void => {
+			reportHook(command, payload, t0, r);
+			resolve0(r);
+		};
+		// /bin/sh by absolute path off Windows, so the shell can't be resolved through an
+		// attacker-controlled PATH; on Windows the resolver follows Claude's documented Git
+		// Bash lookup. `detached` makes the shell its own process group leader so the
+		// timeout can kill the descendants too. CLAUDE_PROJECT_DIR is Claude's documented way for a hook to
+		// reference project files regardless of the shell's cwd. CLAUDECODE=1 marks every
+		// subprocess Claude spawns, so it is set on the child unconditionally.
+		const env = hookEnv(projectDir, sessionId, plugin);
+		// An exec-form hook (an `args` array) spawns the executable directly with those args
+		// and no shell, so shell metacharacters in the args arrive literally; $ARGUMENTS in
+		// each arg is replaced with the event JSON by a replacer function (so $$/$& in the
+		// payload survive verbatim). Without args the command string goes to the platform's
+		// shell, or to PowerShell when the hook says `shell: "powershell"`. Both share the
+		// same detached process group, so killTree reaches the descendants either way.
+		const target = Array.isArray(args)
+			? { file: command, spawnArgs: args.map((arg) => substituteArguments(arg, payload)) }
+			: shellInvocation(command, shell);
+		if (!target) {
+			// Marked like a spawn failure so a gated event fails closed rather than reading as an allow.
+			resolve({
+				code: 0,
+				stdout: "",
+				stderr: "no shell found: install Git for Windows or PowerShell",
+				timedOut: false,
+				spawnFailed: true,
+			});
+			return;
+		}
+		// On Windows `detached` means DETACHED_PROCESS, which gives a console child its own
+		// window; windowsHide keeps every hook invisible (a no-op elsewhere).
+		// node defers only a few spawn errors to the 'error' event; the rest (E2BIG from a
+		// payload past the argv limit) throw here, inside the promise executor, which would
+		// reject the runner and lose every sibling hook's verdict for the event.
+		let child: ReturnType<typeof spawn>;
+		try {
+			child = spawn(target.file, target.spawnArgs, {
+				stdio: ["pipe", "pipe", "pipe"],
+				detached: true,
+				windowsHide: true,
+				env,
+			});
+		} catch (error) {
+			resolve({ code: 0, stdout: "", stderr: errorMessage(error), timedOut: false, spawnFailed: true });
+			return;
+		}
+		onChild?.(() => killTree(child));
+		let stdout = "";
+		let stderr = "";
+		let settled = false;
+		const finish = (result: HookRunResult): void => {
+			if (settled) return;
+			settled = true;
+			clearTimeout(timer);
+			resolve(result);
+		};
+		// Resolve from the timer itself rather than waiting for `close`: `close` fires only
+		// once every stdio pipe is closed, and a grandchild that inherited them can hold the
+		// promise pending long past the timeout, stalling the tool call that awaits it.
+		const timer = setTimeout(() => {
+			killTree(child);
+			finish({ code: TIMEOUT_EXIT_CODE, stdout, stderr, timedOut: true });
+		}, timeoutMs);
+		// Decode on the stream: concatenating Buffers as strings mangles a multi-byte
+		// character split across chunks, and a mangled byte in a hook's deny decision makes
+		// it unparseable, which reads as an allow.
+		child.stdout?.setEncoding("utf8");
+		child.stderr?.setEncoding("utf8");
+		child.stdout?.on("data", (chunk: string) => {
+			if (stdout.length < MAX_HOOK_OUTPUT) stdout += chunk;
+		});
+		child.stderr?.on("data", (chunk: string) => {
+			if (stderr.length < MAX_HOOK_OUTPUT) stderr += chunk;
+		});
+		child.on("close", (code) => finish({ code: code ?? 0, stdout, stderr, timedOut: false }));
+		// Marked rather than silently read as a clean run: under fd exhaustion a
+		// deny-list guard that never spawned would otherwise pass as an allow.
+		child.on("error", (error) =>
+			finish({ code: 0, stdout, stderr: stderr || error.message, timedOut: false, spawnFailed: true }),
+		);
+		// A hook that exits without reading stdin (e.g. `exit 2`) closes the pipe first,
+		// so ignore EPIPE on this write rather than crashing the host process.
+		child.stdin?.on("error", () => {});
+		child.stdin?.end(JSON.stringify(payload));
+	});
 
 /** `$VAR` / `${VAR}` in header values, from allowlisted env vars only; a reference
  * to an unlisted variable becomes an empty string, as Claude documents. */
-function interpolateHeaders(headers: Record<string, string> | undefined, allowed: string[] | undefined): Record<string, string> {
-  const allowedSet = new Set(allowed ?? [])
-  const out: Record<string, string> = {}
-  for (const [key, value] of Object.entries(headers ?? {})) {
-    out[key] = value.replace(/\$(?:\{([A-Za-z_]\w*)\}|([A-Za-z_]\w*))/g, (_token, braced?: string, bare?: string) => {
-      const name = braced ?? bare ?? ''
-      return allowedSet.has(name) ? (process.env[name] ?? '') : ''
-    })
-  }
-  return out
+function interpolateHeaders(
+	headers: Record<string, string> | undefined,
+	allowed: string[] | undefined,
+): Record<string, string> {
+	const allowedSet = new Set(allowed ?? []);
+	const out: Record<string, string> = {};
+	for (const [key, value] of Object.entries(headers ?? {})) {
+		out[key] = value.replace(/\$(?:\{([A-Za-z_]\w*)\}|([A-Za-z_]\w*))/g, (_token, braced?: string, bare?: string) => {
+			const name = braced ?? bare ?? "";
+			return allowedSet.has(name) ? (process.env[name] ?? "") : "";
+		});
+	}
+	return out;
 }
 
 /**
@@ -275,42 +318,58 @@ function interpolateHeaders(headers: Record<string, string> | undefined, allowed
  * the payload; when the setting is absent there are no restrictions, as Claude
  * documents. A blocked hook renders no decision, like every other http failure.
  */
-export async function runHttpHook(hook: { type?: string; command: string; url?: string; headers?: Record<string, string>; allowedEnvVars?: string[] }, payload: unknown, timeoutMs: number, allowedUrls?: string[]): Promise<HookRunResult> {
-  const url = hook.url ?? hook.command
-  if (!httpUrlAllowed(url, allowedUrls)) return { code: 1, stdout: '', stderr: `${url} does not match allowedHttpHookUrls; the hook was not called`, timedOut: false }
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', ...interpolateHeaders(hook.headers, hook.allowedEnvVars) },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(timeoutMs),
-    })
-    const body = (await response.text()).slice(0, MAX_HOOK_OUTPUT)
-    if (!response.ok) return { code: 1, stdout: '', stderr: `HTTP ${response.status} from ${url}`, timedOut: false }
-    if (body.trim().length === 0) return { code: 0, stdout: '', stderr: '', timedOut: false }
-    try {
-      JSON.parse(body)
-    } catch {
-      return { code: 1, stdout: '', stderr: `non-JSON response from ${url}`, timedOut: false }
-    }
-    return { code: 0, stdout: body, stderr: '', timedOut: false }
-  } catch (error) {
-    // A timeout is the abort that AbortSignal.timeout raises. Mark it as one so a gated
-    // event fails closed on it, exactly as a command hook that ran out of time does: the
-    // hook never answered, whichever transport it used.
-    const name = error instanceof Error ? error.name : ''
-    return { code: 1, stdout: '', stderr: errorMessage(error), timedOut: name === 'TimeoutError' || name === 'AbortError' }
-  }
+export async function runHttpHook(
+	hook: { type?: string; command: string; url?: string; headers?: Record<string, string>; allowedEnvVars?: string[] },
+	payload: unknown,
+	timeoutMs: number,
+	allowedUrls?: string[],
+): Promise<HookRunResult> {
+	const url = hook.url ?? hook.command;
+	if (!httpUrlAllowed(url, allowedUrls))
+		return {
+			code: 1,
+			stdout: "",
+			stderr: `${url} does not match allowedHttpHookUrls; the hook was not called`,
+			timedOut: false,
+		};
+	try {
+		const response = await fetch(url, {
+			method: "POST",
+			headers: { "content-type": "application/json", ...interpolateHeaders(hook.headers, hook.allowedEnvVars) },
+			body: JSON.stringify(payload),
+			signal: AbortSignal.timeout(timeoutMs),
+		});
+		const body = (await response.text()).slice(0, MAX_HOOK_OUTPUT);
+		if (!response.ok) return { code: 1, stdout: "", stderr: `HTTP ${response.status} from ${url}`, timedOut: false };
+		if (body.trim().length === 0) return { code: 0, stdout: "", stderr: "", timedOut: false };
+		try {
+			JSON.parse(body);
+		} catch {
+			return { code: 1, stdout: "", stderr: `non-JSON response from ${url}`, timedOut: false };
+		}
+		return { code: 0, stdout: body, stderr: "", timedOut: false };
+	} catch (error) {
+		// A timeout is the abort that AbortSignal.timeout raises. Mark it as one so a gated
+		// event fails closed on it, exactly as a command hook that ran out of time does: the
+		// hook never answered, whichever transport it used.
+		const name = error instanceof Error ? error.name : "";
+		return {
+			code: 1,
+			stdout: "",
+			stderr: errorMessage(error),
+			timedOut: name === "TimeoutError" || name === "AbortError",
+		};
+	}
 }
 
 /** System prompt turning a prompt hook into a structured decision, so its reply
  * flows through interpretHookResult exactly like a command hook's stdout. */
 const PROMPT_HOOK_SYSTEM = [
-  'You are a Claude Code hook evaluating whether an action should proceed.',
-  'Respond with ONLY a JSON object and nothing else:',
-  '{"hookSpecificOutput":{"permissionDecision":"allow"|"deny"|"ask","permissionDecisionReason":"<short reason>"}}',
-  'Use "allow" to let the action proceed, "deny" to block it, "ask" to require the user to confirm.',
-].join('\n')
+	"You are a Claude Code hook evaluating whether an action should proceed.",
+	"Respond with ONLY a JSON object and nothing else:",
+	'{"hookSpecificOutput":{"permissionDecision":"allow"|"deny"|"ask","permissionDecisionReason":"<short reason>"}}',
+	'Use "allow" to let the action proceed, "deny" to block it, "ask" to require the user to confirm.',
+].join("\n");
 
 /**
  * Claude's `type: "prompt"` hook: the prompt (with `$ARGUMENTS` replaced by the
@@ -323,8 +382,8 @@ const PROMPT_HOOK_SYSTEM = [
  * in the payload (`$$`, `$&`, `` $` ``, `$'`) are inserted literally, not read as
  * `String.replace` patterns. Prompt and agent hooks feed the result to the model. */
 function substituteArguments(prompt: string | undefined, payload: unknown): string {
-  const json = JSON.stringify(payload)
-  return (prompt ?? '').replaceAll('$ARGUMENTS', () => json)
+	const json = JSON.stringify(payload);
+	return (prompt ?? "").replaceAll("$ARGUMENTS", () => json);
 }
 
 /** Classify a model/agent failure: the deadline is authoritative via the signal (the
@@ -332,36 +391,48 @@ function substituteArguments(prompt: string | undefined, payload: unknown): stri
  * fails open), so a fired signal is a timeout (PreToolUse fails closed); anything else
  * produced no verdict and is non-blocking. */
 function abortAwareFailure(signal: AbortSignal, error: unknown): HookRunResult {
-  const aborted = signal.aborted || (error instanceof Error && (error.name === 'AbortError' || error.name === 'TimeoutError'))
-  return { code: aborted ? TIMEOUT_EXIT_CODE : 1, stdout: '', stderr: errorMessage(error), timedOut: aborted }
+	const aborted =
+		signal.aborted || (error instanceof Error && (error.name === "AbortError" || error.name === "TimeoutError"));
+	return { code: aborted ? TIMEOUT_EXIT_CODE : 1, stdout: "", stderr: errorMessage(error), timedOut: aborted };
 }
 
-export async function runPromptHook(hook: HookCommand, payload: unknown, model: Model<Api> | undefined, timeoutMs: number, registry?: CompletionRegistry): Promise<HookRunResult> {
-  if (!model) return { code: 1, stdout: '', stderr: 'no model available for prompt hook', timedOut: false }
-  // A replacer function, so `$$`/`$&`/`` $` ``/`$'` inside the payload JSON are inserted
-  // verbatim rather than read as replacement patterns (a Bash `echo $$` is a common trigger).
-  // Claude: when $ARGUMENTS is not present, the input JSON is appended to the
-  // prompt, so the model never evaluates blind.
-  const template = hook.prompt ?? ''
-  const withInput = template.includes('$ARGUMENTS') ? template : `${template}\n\n$ARGUMENTS`
-  const prompt = substituteArguments(withInput, payload)
-  const signal = AbortSignal.timeout(timeoutMs)
-  try {
-    const { text: answer } = await completeText(model, prompt, { system: PROMPT_HOOK_SYSTEM, maxTokens: 512, signal, registry })
-    return { code: 0, stdout: answer, stderr: '', timedOut: false }
-  } catch (error) {
-    return abortAwareFailure(signal, error)
-  }
+export async function runPromptHook(
+	hook: HookCommand,
+	payload: unknown,
+	model: Model<Api> | undefined,
+	timeoutMs: number,
+	registry?: CompletionRegistry,
+): Promise<HookRunResult> {
+	if (!model) return { code: 1, stdout: "", stderr: "no model available for prompt hook", timedOut: false };
+	// A replacer function, so `$$`/`$&`/`` $` ``/`$'` inside the payload JSON are inserted
+	// verbatim rather than read as replacement patterns (a Bash `echo $$` is a common trigger).
+	// Claude: when $ARGUMENTS is not present, the input JSON is appended to the
+	// prompt, so the model never evaluates blind.
+	const template = hook.prompt ?? "";
+	const withInput = template.includes("$ARGUMENTS") ? template : `${template}\n\n$ARGUMENTS`;
+	const prompt = substituteArguments(withInput, payload);
+	const signal = AbortSignal.timeout(timeoutMs);
+	try {
+		const { text: answer } = await completeText(model, prompt, {
+			system: PROMPT_HOOK_SYSTEM,
+			maxTokens: 512,
+			signal,
+			registry,
+		});
+		return { code: 0, stdout: answer, stderr: "", timedOut: false };
+	} catch (error) {
+		return abortAwareFailure(signal, error);
+	}
 }
 
 /** A dotted path into the hook's JSON input, or undefined when any step is missing. */
 function lookupPath(payload: unknown, dotted: string): unknown {
-  let current: unknown = payload
-  for (const key of dotted.split('.')) {
-    if (current === null || typeof current !== 'object') return undefined
-    current = (current as Record<string, unknown>)[key]
-  }
-  return current
+	let current: unknown = payload;
+	for (const key of dotted.split(".")) {
+		if (current === null || typeof current !== "object") return undefined;
+		current = (current as Record<string, unknown>)[key];
+	}
+	return current;
 }
 
 /** Claude's ${path} substitution for mcp_tool input: string values may reference the
@@ -369,16 +440,19 @@ function lookupPath(payload: unknown, dotted: string): unknown {
  * walked; an unresolvable path stays literal; non-string looked-up values are
  * JSON-encoded into the string. */
 function substituteInputPaths(value: unknown, payload: unknown): unknown {
-  if (typeof value === 'string') {
-    return value.replace(/\$\{([\w.]+)\}/g, (matchText, dotted: string) => {
-      const found = lookupPath(payload, dotted)
-      if (found === undefined) return matchText
-      return typeof found === 'string' ? found : JSON.stringify(found)
-    })
-  }
-  if (Array.isArray(value)) return value.map((entry) => substituteInputPaths(entry, payload))
-  if (value !== null && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, substituteInputPaths(entry, payload)]))
-  return value
+	if (typeof value === "string") {
+		return value.replace(/\$\{([\w.]+)\}/g, (matchText, dotted: string) => {
+			const found = lookupPath(payload, dotted);
+			if (found === undefined) return matchText;
+			return typeof found === "string" ? found : JSON.stringify(found);
+		});
+	}
+	if (Array.isArray(value)) return value.map((entry) => substituteInputPaths(entry, payload));
+	if (value !== null && typeof value === "object")
+		return Object.fromEntries(
+			Object.entries(value).map(([key, entry]) => [key, substituteInputPaths(entry, payload)]),
+		);
+	return value;
 }
 
 /**
@@ -389,25 +463,39 @@ function substituteInputPaths(value: unknown, payload: unknown): unknown {
  * closed on it.
  */
 export async function runMcpToolHook(hook: HookCommand, payload: unknown, timeoutMs: number): Promise<HookRunResult> {
-  if (!hook.server || !hook.tool) return { code: 1, stdout: '', stderr: 'mcp_tool hook needs server and tool', timedOut: false }
-  // Claude: `input` is the arguments passed to the tool; without it the tool is
-  // called with no arguments, never handed the whole event payload.
-  const input = hook.input && typeof hook.input === 'object' ? (substituteInputPaths(hook.input, payload) as Record<string, unknown>) : {}
-  let timer: ReturnType<typeof setTimeout> | undefined
-  const deadline = new Promise<HookRunResult>((resolve) => {
-    // Marked as a timeout so a gated event fails closed on it, like a command hook.
-    timer = setTimeout(() => resolve({ code: 1, stdout: '', stderr: `mcp_tool hook timed out after ${timeoutMs}ms`, timedOut: true }), timeoutMs)
-  })
-  const call = callMcpTool(hook.server, hook.tool, input)
-    .then((result): HookRunResult => ({ code: result.isError ? 1 : 0, stdout: result.text, stderr: '', timedOut: false }))
-    .catch((error): HookRunResult => ({ code: 1, stdout: '', stderr: errorMessage(error), timedOut: false }))
-  try {
-    return await Promise.race([call, deadline])
-  } finally {
-    // Left running, the deadline timer pins the event loop for the full timeout
-    // after the call resolves, delaying exit in a one-shot headless run.
-    clearTimeout(timer)
-  }
+	if (!hook.server || !hook.tool)
+		return { code: 1, stdout: "", stderr: "mcp_tool hook needs server and tool", timedOut: false };
+	// Claude: `input` is the arguments passed to the tool; without it the tool is
+	// called with no arguments, never handed the whole event payload.
+	const input =
+		hook.input && typeof hook.input === "object"
+			? (substituteInputPaths(hook.input, payload) as Record<string, unknown>)
+			: {};
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const deadline = new Promise<HookRunResult>((resolve) => {
+		// Marked as a timeout so a gated event fails closed on it, like a command hook.
+		timer = setTimeout(
+			() => resolve({ code: 1, stdout: "", stderr: `mcp_tool hook timed out after ${timeoutMs}ms`, timedOut: true }),
+			timeoutMs,
+		);
+	});
+	const call = callMcpTool(hook.server, hook.tool, input)
+		.then(
+			(result): HookRunResult => ({
+				code: result.isError ? 1 : 0,
+				stdout: result.text,
+				stderr: "",
+				timedOut: false,
+			}),
+		)
+		.catch((error): HookRunResult => ({ code: 1, stdout: "", stderr: errorMessage(error), timedOut: false }));
+	try {
+		return await Promise.race([call, deadline]);
+	} finally {
+		// Left running, the deadline timer pins the event loop for the full timeout
+		// after the call resolves, delaying exit in a one-shot headless run.
+		clearTimeout(timer);
+	}
 }
 
 /**
@@ -417,13 +505,23 @@ export async function runMcpToolHook(hook: HookCommand, payload: unknown, timeou
  * seam the subagent extension registers. Like the prompt hook, only an abort at the
  * deadline fails closed; a missing runner or a crashed agent is non-blocking.
  */
-export async function runAgentHook(hook: HookCommand, payload: unknown, timeoutMs: number, sessionModelId: string | undefined): Promise<HookRunResult> {
-  const prompt = substituteArguments(hook.prompt, payload)
-  const signal = AbortSignal.timeout(timeoutMs)
-  try {
-    const answer = await runAgent({ prompt, model: hook.model ?? sessionModelId, systemPrompt: hook.systemPrompt, signal })
-    return { code: 0, stdout: answer, stderr: '', timedOut: false }
-  } catch (error) {
-    return abortAwareFailure(signal, error)
-  }
+export async function runAgentHook(
+	hook: HookCommand,
+	payload: unknown,
+	timeoutMs: number,
+	sessionModelId: string | undefined,
+): Promise<HookRunResult> {
+	const prompt = substituteArguments(hook.prompt, payload);
+	const signal = AbortSignal.timeout(timeoutMs);
+	try {
+		const answer = await runAgent({
+			prompt,
+			model: hook.model ?? sessionModelId,
+			systemPrompt: hook.systemPrompt,
+			signal,
+		});
+		return { code: 0, stdout: answer, stderr: "", timedOut: false };
+	} catch (error) {
+		return abortAwareFailure(signal, error);
+	}
 }

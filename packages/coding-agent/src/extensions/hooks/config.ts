@@ -4,85 +4,85 @@
  * /hooks viewer formatting. Pure config-shape types and loading, no execution.
  */
 
-import * as fs from 'node:fs'
-import * as path from 'node:path'
-import { readManagedSettings } from '../internal/managed-settings.ts'
-import { type InstalledPlugin, pluginComponentPath, substitutePluginVars } from '../internal/plugins.ts'
-import { claudeSettingsChain, readSettingsChain } from '../internal/settings-chain.ts'
-import { errorMessage, escapeRegExp, isRecord } from '../internal/values.ts'
+import * as fs from "node:fs";
+import * as path from "node:path";
+import { readManagedSettings } from "../_shared/settings/managed-settings.ts";
+import { type InstalledPlugin, pluginComponentPath, substitutePluginVars } from "../_shared/settings/plugins.ts";
+import { claudeSettingsChain, readSettingsChain } from "../_shared/settings/settings-chain.ts";
+import { errorMessage, escapeRegExp, isRecord } from "../_shared/util/values.ts";
 
 export interface HookCommand {
-  type?: string
-  command: string
-  /** exec-form: spawn `command` directly with these args and no shell (shell-form when
-   * absent). $ARGUMENTS in each arg is replaced with the event JSON. */
-  args?: string[]
-  /** Claude's `shell`: "bash" (the default) or "powershell". The default is /bin/sh off
-   * Windows; on Windows Git Bash, then PowerShell when Git Bash is absent. Ignored when
-   * `args` is set. */
-  shell?: string
-  timeout?: number
-  /** Claude's `onFailure` (v2.1.295+): with "block", a failed hook (exit other than 0 and 2) blocks
-   * a gated event like a timeout does. Default "continue" (non-blocking error). */
-  onFailure?: 'continue' | 'block'
-  /** Claude's background contract, honored on `type: "command"` hooks only: `async` runs
-   * without blocking its event and with no timeout enforced; `asyncRewake` also runs in
-   * the background but keeps its timeout, and wakes the model when the hook exits 2
-   * (stderr, or stdout when stderr is empty, feeds back as a new turn). Background hooks
-   * render no decision; their JSON `systemMessage`/`additionalContext` reach the model on
-   * the next turn, and any still running when a headless run ends are killed. */
-  async?: boolean
-  asyncRewake?: boolean
-  /** Claude's permission-rule filter (`"Bash(git *)"`, `"Edit(*.ts)"`): evaluated only
-   * on tool events; on any other event a hook carrying `if` never runs. */
-  if?: string
-  /** The declaring plugin's paths, exported to the hook process. Claude: "All three
-   * are exported as environment variables to hook processes and to MCP and LSP server
-   * subprocesses", so a script can read them instead of relying on inline substitution. */
-  pluginRoot?: string
-  pluginDataDir?: string
-  /** http entries: the endpoint POSTed to; `command` mirrors it for dedup and display. */
-  url?: string
-  headers?: Record<string, string>
-  allowedEnvVars?: string[]
-  /** prompt entries: the prompt sent to the model (`$ARGUMENTS` = the event JSON). */
-  prompt?: string
-  /** mcp_tool entries: the connected server and tool to call, with optional input. */
-  server?: string
-  tool?: string
-  input?: Record<string, unknown>
-  /** prompt/agent entries: an optional model override; agent adds a system prompt. */
-  model?: string
-  systemPrompt?: string
-  /** Dedup scope: unset for settings files (identical handlers collapse across
-   * them); a plugin's or skill's copy carries its origin and stays separate. */
-  origin?: string
-  /** Claude's `once`: remove after the first successful run. Honored only for
-   * skill-frontmatter hooks; ignored in settings files and agent frontmatter. */
-  once?: boolean
-  /** Set after a once-hook's first successful run; collection skips spent hooks. */
-  spent?: boolean
-  /** Names one declared hook of an origin across re-parses (see stampOrigin). */
-  declarationKey?: string
+	type?: string;
+	command: string;
+	/** exec-form: spawn `command` directly with these args and no shell (shell-form when
+	 * absent). $ARGUMENTS in each arg is replaced with the event JSON. */
+	args?: string[];
+	/** Claude's `shell`: "bash" (the default) or "powershell". The default is /bin/sh off
+	 * Windows; on Windows Git Bash, then PowerShell when Git Bash is absent. Ignored when
+	 * `args` is set. */
+	shell?: string;
+	timeout?: number;
+	/** Claude's `onFailure` (v2.1.295+): with "block", a failed hook (exit other than 0 and 2) blocks
+	 * a gated event like a timeout does. Default "continue" (non-blocking error). */
+	onFailure?: "continue" | "block";
+	/** Claude's background contract, honored on `type: "command"` hooks only: `async` runs
+	 * without blocking its event and with no timeout enforced; `asyncRewake` also runs in
+	 * the background but keeps its timeout, and wakes the model when the hook exits 2
+	 * (stderr, or stdout when stderr is empty, feeds back as a new turn). Background hooks
+	 * render no decision; their JSON `systemMessage`/`additionalContext` reach the model on
+	 * the next turn, and any still running when a headless run ends are killed. */
+	async?: boolean;
+	asyncRewake?: boolean;
+	/** Claude's permission-rule filter (`"Bash(git *)"`, `"Edit(*.ts)"`): evaluated only
+	 * on tool events; on any other event a hook carrying `if` never runs. */
+	if?: string;
+	/** The declaring plugin's paths, exported to the hook process. Claude: "All three
+	 * are exported as environment variables to hook processes and to MCP and LSP server
+	 * subprocesses", so a script can read them instead of relying on inline substitution. */
+	pluginRoot?: string;
+	pluginDataDir?: string;
+	/** http entries: the endpoint POSTed to; `command` mirrors it for dedup and display. */
+	url?: string;
+	headers?: Record<string, string>;
+	allowedEnvVars?: string[];
+	/** prompt entries: the prompt sent to the model (`$ARGUMENTS` = the event JSON). */
+	prompt?: string;
+	/** mcp_tool entries: the connected server and tool to call, with optional input. */
+	server?: string;
+	tool?: string;
+	input?: Record<string, unknown>;
+	/** prompt/agent entries: an optional model override; agent adds a system prompt. */
+	model?: string;
+	systemPrompt?: string;
+	/** Dedup scope: unset for settings files (identical handlers collapse across
+	 * them); a plugin's or skill's copy carries its origin and stays separate. */
+	origin?: string;
+	/** Claude's `once`: remove after the first successful run. Honored only for
+	 * skill-frontmatter hooks; ignored in settings files and agent frontmatter. */
+	once?: boolean;
+	/** Set after a once-hook's first successful run; collection skips spent hooks. */
+	spent?: boolean;
+	/** Names one declared hook of an origin across re-parses (see stampOrigin). */
+	declarationKey?: string;
 }
 export interface HookMatcher {
-  matcher?: string
-  hooks: HookCommand[]
+	matcher?: string;
+	hooks: HookCommand[];
 }
 
 /** Whether a hook runs in the background. Claude documents `async`/`asyncRewake` on
  * `type: "command"` hooks only; on any other type the fields are inert and the hook
  * blocks, exactly as Claude runs it. */
 export function isBackgroundHook(hook: HookCommand): boolean {
-  return (hook.type === undefined || hook.type === 'command') && (hook.async === true || hook.asyncRewake === true)
+	return (hook.type === undefined || hook.type === "command") && (hook.async === true || hook.asyncRewake === true);
 }
-export type HooksConfig = Record<string, HookMatcher[]>
+export type HooksConfig = Record<string, HookMatcher[]>;
 
 /** Settings files to read, newest-winning, through the shared settings chain: project
  * files load only when trusted, the shared settings.json from cwd and settings.local.json
  * from the repository root, as Claude places them. */
 export function hookFiles(cwd: string, home: string, trusted: boolean): string[] {
-  return claudeSettingsChain(cwd, home, trusted)
+	return claudeSettingsChain(cwd, home, trusted);
 }
 
 /** Claude's `disableAllHooks` setting: the escape hatch a user reaches for when a
@@ -91,53 +91,74 @@ export function hookFiles(cwd: string, home: string, trusted: boolean): string[]
  * last-file-wins, since a repository file re-enabling the hooks the user just
  * disabled in their own settings would defeat the escape hatch. The chain itself
  * already gates project files on trust (see hookFiles). */
-export function readDisableAllHooks(files: string[], managed: Record<string, unknown> = readManagedSettings()): boolean {
-  return managed.disableAllHooks === true || readSettingsDisableAllHooks(files)
+export function readDisableAllHooks(
+	files: string[],
+	managed: Record<string, unknown> = readManagedSettings(),
+): boolean {
+	return managed.disableAllHooks === true || readSettingsDisableAllHooks(files);
 }
 
 /** The settings-chain half of disableAllHooks alone. Claude: user/project/local
  * disableAllHooks cannot disable hooks configured through managed policy settings,
  * so the caller keeps managed hooks running when only this half is set. */
 export function readSettingsDisableAllHooks(files: string[]): boolean {
-  for (const settings of readSettingsChain(files)) {
-    if (settings.disableAllHooks === true) return true
-  }
-  return false
+	for (const settings of readSettingsChain(files)) {
+		if (settings.disableAllHooks === true) return true;
+	}
+	return false;
 }
 
 /** Hooks from managed policy settings, one of Claude's hook locations. They run
  * even when user/project/local disableAllHooks is set; only the managed level's
  * own disableAllHooks turns them off (the caller checks that tier). */
-export function loadManagedHooks(sources?: Map<HookMatcher, string>, managed: Record<string, unknown> = readManagedSettings()): HooksConfig {
-  const config: HooksConfig = {}
-  if (isRecord(managed.hooks)) mergeHooksJson(config, JSON.stringify({ hooks: managed.hooks }), 'managed settings', sources)
-  return config
+export function loadManagedHooks(
+	sources?: Map<HookMatcher, string>,
+	managed: Record<string, unknown> = readManagedSettings(),
+): HooksConfig {
+	const config: HooksConfig = {};
+	if (isRecord(managed.hooks))
+		mergeHooksJson(config, JSON.stringify({ hooks: managed.hooks }), "managed settings", sources);
+	return config;
 }
 
 /** Hooks a skill's frontmatter declares, registered when the skill is invoked and
  * kept for the rest of the session, as Claude documents. They carry a skill origin
  * so dedup keeps them separate from settings copies and `once` is honored. */
-export function mergeSkillHooks(config: HooksConfig, skillName: string, hooks: unknown, sources?: Map<HookMatcher, string>): void {
-  mergeHooksJson(config, JSON.stringify({ hooks }), `${skillName} (skill)`, sources, `skill:${skillName}`)
+export function mergeSkillHooks(
+	config: HooksConfig,
+	skillName: string,
+	hooks: unknown,
+	sources?: Map<HookMatcher, string>,
+): void {
+	mergeHooksJson(config, JSON.stringify({ hooks }), `${skillName} (skill)`, sources, `skill:${skillName}`);
 }
 
 /** Claude's agent-frontmatter hooks, inside the subagent child: the parent passes
- * them via PI_CODE_AGENT_HOOKS (Stop already converted to SubagentStop), and they
+ * them via NYCODE_AGENT_HOOKS (Stop already converted to SubagentStop), and they
  * run only while this child runs because they die with the process. Returns the
  * agent identity for the child's SubagentStop firing, or undefined outside a
  * subagent or with no hooks passed. */
-export function mergeAgentEnvHooks(config: HooksConfig, sources?: Map<HookMatcher, string>): { agent: string; id?: string } | undefined {
-  if (process.env.PI_CODE_SUBAGENT !== '1') return undefined
-  const raw = process.env.PI_CODE_AGENT_HOOKS
-  if (!raw) return undefined
-  try {
-    const parsed: unknown = JSON.parse(raw)
-    if (!isRecord(parsed) || typeof parsed.agent !== 'string' || !isRecord(parsed.hooks)) return undefined
-    mergeHooksJson(config, JSON.stringify({ hooks: parsed.hooks }), `${parsed.agent} (agent)`, sources, `agent:${parsed.agent}`)
-    return { agent: parsed.agent, ...(typeof parsed.id === 'string' ? { id: parsed.id } : {}) }
-  } catch {
-    return undefined
-  }
+export function mergeAgentEnvHooks(
+	config: HooksConfig,
+	sources?: Map<HookMatcher, string>,
+): { agent: string; id?: string } | undefined {
+	if (process.env.NYCODE_SUBAGENT !== "1") return undefined;
+	const raw = process.env.NYCODE_AGENT_HOOKS;
+	if (!raw) return undefined;
+	try {
+		const parsed: unknown = JSON.parse(raw);
+		if (!isRecord(parsed) || typeof parsed.agent !== "string" || !isRecord(parsed.hooks)) return undefined;
+		mergeHooksJson(
+			config,
+			JSON.stringify({ hooks: parsed.hooks }),
+			`${parsed.agent} (agent)`,
+			sources,
+			`agent:${parsed.agent}`,
+		);
+		return { agent: parsed.agent, ...(typeof parsed.id === "string" ? { id: parsed.id } : {}) };
+	} catch {
+		return undefined;
+	}
 }
 
 /** Claude's `allowedHttpHookUrls` setting: URL patterns http hooks may target, with
@@ -147,101 +168,111 @@ export function mergeAgentEnvHooks(config: HooksConfig, sources?: Map<HookMatche
  * the chain; the chain already gates project files on trust (see hookFiles), and a
  * trusted project can run arbitrary shell hooks anyway, so letting it extend the
  * allowlist is no escalation. */
-export function readAllowedHttpHookUrls(files: string[], managed: Record<string, unknown> = readManagedSettings()): string[] | undefined {
-  let found: string[] | undefined
-  const collect = (value: unknown): void => {
-    if (!Array.isArray(value)) return
-    found = [...(found ?? []), ...value.filter((entry): entry is string => typeof entry === 'string')]
-  }
-  collect(managed.allowedHttpHookUrls)
-  for (const settings of readSettingsChain(files)) collect(settings.allowedHttpHookUrls)
-  return found
+export function readAllowedHttpHookUrls(
+	files: string[],
+	managed: Record<string, unknown> = readManagedSettings(),
+): string[] | undefined {
+	let found: string[] | undefined;
+	const collect = (value: unknown): void => {
+		if (!Array.isArray(value)) return;
+		found = [...(found ?? []), ...value.filter((entry): entry is string => typeof entry === "string")];
+	};
+	collect(managed.allowedHttpHookUrls);
+	for (const settings of readSettingsChain(files)) collect(settings.allowedHttpHookUrls);
+	return found;
 }
 
 /** Whether an http hook may target `url`. `*` in an allowlist entry matches any run
  * of characters; everything else is literal and the whole URL must match. An
  * undefined allowlist means the setting is absent, so there are no restrictions. */
 export function httpUrlAllowed(url: string, allowlist: string[] | undefined): boolean {
-  if (allowlist === undefined) return true
-  return allowlist.some((pattern) => {
-    const literal = pattern.split('*').map(escapeRegExp)
-    return new RegExp(`^${literal.join('.*')}$`).test(url)
-  })
+	if (allowlist === undefined) return true;
+	return allowlist.some((pattern) => {
+		const literal = pattern.split("*").map(escapeRegExp);
+		return new RegExp(`^${literal.join(".*")}$`).test(url);
+	});
 }
 
 export function loadHooks(files: string[], sources?: Map<HookMatcher, string>): HooksConfig {
-  const config: HooksConfig = {}
-  for (const file of files) {
-    let raw: string
-    try {
-      raw = fs.readFileSync(file, 'utf-8')
-    } catch {
-      continue
-    }
-    mergeHooksJson(config, raw, file, sources)
-  }
-  return config
+	const config: HooksConfig = {};
+	for (const file of files) {
+		let raw: string;
+		try {
+			raw = fs.readFileSync(file, "utf-8");
+		} catch {
+			continue;
+		}
+		mergeHooksJson(config, raw, file, sources);
+	}
+	return config;
 }
 
 /** Claude dedups identical handlers across settings files only; a plugin's copy
  * stays separate, so plugin entries carry their origin into the dedup key. */
 function stampOrigin(entries: HookMatcher[], origin: string, event: string): void {
-  for (const [entryIndex, entry] of entries.entries()) {
-    for (const [hookIndex, hook] of (entry.hooks ?? []).entries()) {
-      if (!isRecord(hook)) continue
-      // A stable name for this one declared hook, the same however often its source is
-      // parsed again: a settings reload re-merges skill hooks, and a spent once-hook has
-      // to stay spent without matching a sibling that only shares its command.
-      hook.declarationKey = JSON.stringify([origin, event, entryIndex, entry.matcher ?? null, hookIndex, hook])
-      hook.origin = origin
-    }
-  }
+	for (const [entryIndex, entry] of entries.entries()) {
+		for (const [hookIndex, hook] of (entry.hooks ?? []).entries()) {
+			if (!isRecord(hook)) continue;
+			// A stable name for this one declared hook, the same however often its source is
+			// parsed again: a settings reload re-merges skill hooks, and a spent once-hook has
+			// to stay spent without matching a sibling that only shares its command.
+			hook.declarationKey = JSON.stringify([origin, event, entryIndex, entry.matcher ?? null, hookIndex, hook]);
+			hook.origin = origin;
+		}
+	}
 }
 
 /** Stamp the declaring plugin's paths onto every hook it contributes, so the runner
  * can export them without re-deriving which plugin a hook came from. */
 function stampPluginPaths(entries: HookMatcher[], plugin: { root: string; dataDir: string }): void {
-  for (const entry of entries) {
-    for (const hook of entry.hooks ?? []) {
-      hook.pluginRoot = plugin.root
-      hook.pluginDataDir = plugin.dataDir
-    }
-  }
+	for (const entry of entries) {
+		for (const hook of entry.hooks ?? []) {
+			hook.pluginRoot = plugin.root;
+			hook.pluginDataDir = plugin.dataDir;
+		}
+	}
 }
 
-function mergeHooksJson(config: HooksConfig, raw: string, source: string, sources?: Map<HookMatcher, string>, origin?: string, plugin?: { root: string; dataDir: string }): void {
-  let parsed: { hooks?: HooksConfig }
-  try {
-    parsed = JSON.parse(raw)
-  } catch (error) {
-    // Every hook this source declares is now absent, a policy hook among them, so the
-    // failure is named rather than left to look like a file with no hooks in it.
-    console.warn(`pi-code-hooks: ignoring the hooks in ${source}: ${errorMessage(error)}`)
-    return
-  }
-  for (const [event, matchers] of Object.entries(parsed?.hooks ?? {})) {
-    if (!Array.isArray(matchers)) continue
-    // Entries are validated here rather than where they run: a malformed entry that
-    // throws from the tool_call handler becomes an error result there, so every tool
-    // call for the rest of the session fails with an opaque type error.
-    const usable = matchers.filter((entry) => isUsableMatcher(entry, source, event))
-    if (usable.length === 0) continue
-    if (origin !== undefined) stampOrigin(usable, origin, event)
-    if (plugin !== undefined) stampPluginPaths(usable, plugin)
-    config[event] = [...(config[event] ?? []), ...usable]
-    // Each parse produces fresh entry objects, so object identity keys the /hooks
-    // viewer's source attribution without touching the entries themselves.
-    for (const entry of usable) sources?.set(entry, source)
-  }
+function mergeHooksJson(
+	config: HooksConfig,
+	raw: string,
+	source: string,
+	sources?: Map<HookMatcher, string>,
+	origin?: string,
+	plugin?: { root: string; dataDir: string },
+): void {
+	let parsed: { hooks?: HooksConfig };
+	try {
+		parsed = JSON.parse(raw);
+	} catch (error) {
+		// Every hook this source declares is now absent, a policy hook among them, so the
+		// failure is named rather than left to look like a file with no hooks in it.
+		console.warn(`nycode-hooks: ignoring the hooks in ${source}: ${errorMessage(error)}`);
+		return;
+	}
+	for (const [event, matchers] of Object.entries(parsed?.hooks ?? {})) {
+		if (!Array.isArray(matchers)) continue;
+		// Entries are validated here rather than where they run: a malformed entry that
+		// throws from the tool_call handler becomes an error result there, so every tool
+		// call for the rest of the session fails with an opaque type error.
+		const usable = matchers.filter((entry) => isUsableMatcher(entry, source, event));
+		if (usable.length === 0) continue;
+		if (origin !== undefined) stampOrigin(usable, origin, event);
+		if (plugin !== undefined) stampPluginPaths(usable, plugin);
+		config[event] = [...(config[event] ?? []), ...usable];
+		// Each parse produces fresh entry objects, so object identity keys the /hooks
+		// viewer's source attribution without touching the entries themselves.
+		for (const entry of usable) sources?.set(entry, source);
+	}
 }
 
 /** The substitution here lands inside raw JSON, so values must arrive escaped:
  * an unescaped Windows root injected \U-style sequences, the parse threw, and
  * every hook the plugin declared silently vanished. */
-const jsonEscape = (value: string): string => JSON.stringify(value).slice(1, -1)
+const jsonEscape = (value: string): string => JSON.stringify(value).slice(1, -1);
 
 /** A reference Claude refuses to substitute into anything that reaches a shell. */
-const USER_CONFIG_REF = /\$\{user_config\./
+const USER_CONFIG_REF = /\$\{user_config\./;
 
 /**
  * Drop shell-form hook commands that reference `${user_config.*}`. Claude: "Fields that
@@ -253,89 +284,130 @@ const USER_CONFIG_REF = /\$\{user_config\./
  * costs itself, not the plugin's other hooks.
  */
 function withoutUserConfigShellCommands(raw: string, source: string): string {
-  let parsed: { hooks?: Record<string, unknown> }
-  try {
-    parsed = JSON.parse(raw)
-  } catch {
-    return raw // mergeHooksJson reports the parse failure
-  }
-  let dropped = false
-  for (const matchers of Object.values(parsed?.hooks ?? {})) {
-    if (!Array.isArray(matchers)) continue
-    for (const entry of matchers) {
-      // A malformed entry is left for mergeHooksJson to report by name; this pass must
-      // not throw on it, because the inline-manifest caller has no catch.
-      if (!isRecord(entry) || !Array.isArray(entry.hooks)) continue
-      const record = entry
-      const kept = (record.hooks as unknown[]).filter((hook) => {
-        if (!isRecord(hook)) return true
-        const candidate = hook as { command?: unknown; args?: unknown }
-        if (Array.isArray(candidate.args) || typeof candidate.command !== 'string' || !USER_CONFIG_REF.test(candidate.command)) return true
-        console.warn(`pi-code-hooks: ignoring a hook in ${source}: a shell-form command cannot reference \${user_config.*}; use exec form with "args", or read CLAUDE_PLUGIN_OPTION_<KEY> from the environment`)
-        dropped = true
-        return false
-      })
-      record.hooks = kept
-    }
-  }
-  return dropped ? JSON.stringify(parsed) : raw
+	let parsed: { hooks?: Record<string, unknown> };
+	try {
+		parsed = JSON.parse(raw);
+	} catch {
+		return raw; // mergeHooksJson reports the parse failure
+	}
+	let dropped = false;
+	for (const matchers of Object.values(parsed?.hooks ?? {})) {
+		if (!Array.isArray(matchers)) continue;
+		for (const entry of matchers) {
+			// A malformed entry is left for mergeHooksJson to report by name; this pass must
+			// not throw on it, because the inline-manifest caller has no catch.
+			if (!isRecord(entry) || !Array.isArray(entry.hooks)) continue;
+			const record = entry;
+			const kept = (record.hooks as unknown[]).filter((hook) => {
+				if (!isRecord(hook)) return true;
+				const candidate = hook as { command?: unknown; args?: unknown };
+				if (
+					Array.isArray(candidate.args) ||
+					typeof candidate.command !== "string" ||
+					!USER_CONFIG_REF.test(candidate.command)
+				)
+					return true;
+				console.warn(
+					`nycode-hooks: ignoring a hook in ${source}: a shell-form command cannot reference \${user_config.*}; use exec form with "args", or read CLAUDE_PLUGIN_OPTION_<KEY> from the environment`,
+				);
+				dropped = true;
+				return false;
+			});
+			record.hooks = kept;
+		}
+	}
+	return dropped ? JSON.stringify(parsed) : raw;
 }
 
 /** Each enabled plugin's hooks (hooks/hooks.json, or wherever the manifest points),
  * with ${CLAUDE_PLUGIN_ROOT}/${CLAUDE_PLUGIN_DATA} substituted before parsing so a
  * hook can name its bundled scripts by real path. */
-export function loadPluginHooks(config: HooksConfig, plugins: InstalledPlugin[], sources?: Map<HookMatcher, string>): void {
-  for (const plugin of plugins) {
-    const declared = plugin.manifest.hooks
-    // An inline hooks object; an array is not a valid hooks map (it would parse to
-    // numeric event keys), so it falls through to the default path rather than
-    // silently registering nothing.
-    if (declared !== null && typeof declared === 'object' && !Array.isArray(declared)) {
-      const inlineSource = `${plugin.name} (plugin.json)`
-      mergeHooksJson(config, substitutePluginVars(withoutUserConfigShellCommands(JSON.stringify({ hooks: declared }), inlineSource), plugin, jsonEscape), inlineSource, sources, `plugin:${plugin.name}`, plugin)
-      continue
-    }
-    const file = pluginComponentPath(plugin, typeof declared === 'string' ? declared : path.join('hooks', 'hooks.json'))
-    if (file === undefined) continue
-    try {
-      mergeHooksJson(config, substitutePluginVars(withoutUserConfigShellCommands(fs.readFileSync(file, 'utf-8'), file), plugin, jsonEscape), file, sources, `plugin:${plugin.name}`, plugin)
-    } catch {
-      // a plugin without hooks contributes nothing
-    }
-  }
+export function loadPluginHooks(
+	config: HooksConfig,
+	plugins: InstalledPlugin[],
+	sources?: Map<HookMatcher, string>,
+): void {
+	for (const plugin of plugins) {
+		const declared = plugin.manifest.hooks;
+		// An inline hooks object; an array is not a valid hooks map (it would parse to
+		// numeric event keys), so it falls through to the default path rather than
+		// silently registering nothing.
+		if (declared !== null && typeof declared === "object" && !Array.isArray(declared)) {
+			const inlineSource = `${plugin.name} (plugin.json)`;
+			mergeHooksJson(
+				config,
+				substitutePluginVars(
+					withoutUserConfigShellCommands(JSON.stringify({ hooks: declared }), inlineSource),
+					plugin,
+					jsonEscape,
+				),
+				inlineSource,
+				sources,
+				`plugin:${plugin.name}`,
+				plugin,
+			);
+			continue;
+		}
+		const file = pluginComponentPath(
+			plugin,
+			typeof declared === "string" ? declared : path.join("hooks", "hooks.json"),
+		);
+		if (file === undefined) continue;
+		try {
+			mergeHooksJson(
+				config,
+				substitutePluginVars(
+					withoutUserConfigShellCommands(fs.readFileSync(file, "utf-8"), file),
+					plugin,
+					jsonEscape,
+				),
+				file,
+				sources,
+				`plugin:${plugin.name}`,
+				plugin,
+			);
+		} catch {
+			// a plugin without hooks contributes nothing
+		}
+	}
 }
 
-/** A matcher entry pi-code can run: an object whose `hooks` is a list. Anything else
+/** A matcher entry nycode can run: an object whose `hooks` is a list. Anything else
  * is reported by name and skipped, so one bad entry costs its own hooks, not the
  * session's tool calls. */
 function isUsableMatcher(entry: unknown, file: string, event: string): entry is HookMatcher {
-  const candidate = entry as HookMatcher | null
-  if (candidate === null || typeof candidate !== 'object') {
-    console.warn(`pi-code-hooks: ignoring a non-object ${event} entry in ${file}`)
-    return false
-  }
-  if (candidate.hooks !== undefined && !Array.isArray(candidate.hooks)) {
-    console.warn(`pi-code-hooks: ignoring ${event} entry in ${file}: "hooks" must be a list`)
-    return false
-  }
-  // The list's entries too: the dispatcher reads `.type` of each, so one `null` (a
-  // hand-edit that removed an entry's body) failed every tool call for the session.
-  if (Array.isArray(candidate.hooks)) {
-    const objects = candidate.hooks.filter((hook: unknown) => isRecord(hook))
-    if (objects.length !== candidate.hooks.length) console.warn(`pi-code-hooks: ignoring ${candidate.hooks.length - objects.length} non-object hook(s) in a ${event} entry in ${file}`)
-    candidate.hooks = objects as HookCommand[]
-    for (const hook of candidate.hooks) {
-      if (hook.onFailure !== undefined && hook.onFailure !== 'continue' && hook.onFailure !== 'block') {
-        console.warn(`pi-code-hooks: ignoring onFailure in a ${event} hook in ${file}: must be "continue" or "block"`)
-        delete hook.onFailure
-      }
-    }
-  }
-  if (candidate.matcher !== undefined && typeof candidate.matcher !== 'string') {
-    console.warn(`pi-code-hooks: ignoring ${event} entry in ${file}: "matcher" must be a string`)
-    return false
-  }
-  return true
+	const candidate = entry as HookMatcher | null;
+	if (candidate === null || typeof candidate !== "object") {
+		console.warn(`nycode-hooks: ignoring a non-object ${event} entry in ${file}`);
+		return false;
+	}
+	if (candidate.hooks !== undefined && !Array.isArray(candidate.hooks)) {
+		console.warn(`nycode-hooks: ignoring ${event} entry in ${file}: "hooks" must be a list`);
+		return false;
+	}
+	// The list's entries too: the dispatcher reads `.type` of each, so one `null` (a
+	// hand-edit that removed an entry's body) failed every tool call for the session.
+	if (Array.isArray(candidate.hooks)) {
+		const objects = candidate.hooks.filter((hook: unknown) => isRecord(hook));
+		if (objects.length !== candidate.hooks.length)
+			console.warn(
+				`nycode-hooks: ignoring ${candidate.hooks.length - objects.length} non-object hook(s) in a ${event} entry in ${file}`,
+			);
+		candidate.hooks = objects as HookCommand[];
+		for (const hook of candidate.hooks) {
+			if (hook.onFailure !== undefined && hook.onFailure !== "continue" && hook.onFailure !== "block") {
+				console.warn(
+					`nycode-hooks: ignoring onFailure in a ${event} hook in ${file}: must be "continue" or "block"`,
+				);
+				delete hook.onFailure;
+			}
+		}
+	}
+	if (candidate.matcher !== undefined && typeof candidate.matcher !== "string") {
+		console.warn(`nycode-hooks: ignoring ${event} entry in ${file}: "matcher" must be a string`);
+		return false;
+	}
+	return true;
 }
 
 /** A hook entry's display identity for the /hooks viewer: the command for shell
@@ -343,34 +415,37 @@ function isUsableMatcher(entry: unknown, file: string, event: string): entry is 
  * is named rather than hidden, since a misconfigured entry is exactly what the
  * viewer exists to surface. */
 function hookIdentity(hook: HookCommand | null | undefined): string {
-  // A hand-edited settings file can leave a null (or otherwise empty) entry in a
-  // hooks array; name it rather than let it crash the viewer that exists to surface
-  // exactly this kind of misconfiguration.
-  const record: Partial<HookCommand> = hook ?? {}
-  const type = record.type ?? 'command'
-  if (type === 'http') return `http: ${record.url ?? record.command ?? '(missing url)'}`
-  if (type === 'prompt' || type === 'agent') return `${type}: ${record.prompt ?? record.command ?? '(missing prompt)'}`
-  if (type === 'mcp_tool') return `mcp_tool: ${record.server ?? '(missing server)'}:${record.tool ?? '(missing tool)'}`
-  return `command: ${record.command ?? '(missing command)'}`
+	// A hand-edited settings file can leave a null (or otherwise empty) entry in a
+	// hooks array; name it rather than let it crash the viewer that exists to surface
+	// exactly this kind of misconfiguration.
+	const record: Partial<HookCommand> = hook ?? {};
+	const type = record.type ?? "command";
+	if (type === "http") return `http: ${record.url ?? record.command ?? "(missing url)"}`;
+	if (type === "prompt" || type === "agent")
+		return `${type}: ${record.prompt ?? record.command ?? "(missing prompt)"}`;
+	if (type === "mcp_tool")
+		return `mcp_tool: ${record.server ?? "(missing server)"}:${record.tool ?? "(missing tool)"}`;
+	return `command: ${record.command ?? "(missing command)"}`;
 }
 
 /** Render the resolved hooks config as a readable per-event summary for /hooks:
  * one line per configured hook with its matcher, identity and, when known, the
  * settings file it came from. Pure formatting of already-resolved data. */
 export function formatHooksSummary(config: HooksConfig, sources?: Map<HookMatcher, string>): string {
-  const lines: string[] = []
-  for (const [event, matchers] of Object.entries(config)) {
-    const entryLines: string[] = []
-    for (const entry of matchers) {
-      const matcher = entry.matcher || '*'
-      const source = sources?.get(entry)
-      const suffix = source ? ` (${source})` : ''
-      for (const hook of entry.hooks ?? []) {
-        entryLines.push(`  [${matcher}] ${hookIdentity(hook)}${suffix}`)
-      }
-    }
-    if (entryLines.length > 0) lines.push(`${event}:`, ...entryLines)
-  }
-  if (lines.length === 0) return 'No hooks configured. Add a "hooks" section to ~/.claude/settings.json or .claude/settings.json.'
-  return lines.join('\n')
+	const lines: string[] = [];
+	for (const [event, matchers] of Object.entries(config)) {
+		const entryLines: string[] = [];
+		for (const entry of matchers) {
+			const matcher = entry.matcher || "*";
+			const source = sources?.get(entry);
+			const suffix = source ? ` (${source})` : "";
+			for (const hook of entry.hooks ?? []) {
+				entryLines.push(`  [${matcher}] ${hookIdentity(hook)}${suffix}`);
+			}
+		}
+		if (entryLines.length > 0) lines.push(`${event}:`, ...entryLines);
+	}
+	if (lines.length === 0)
+		return 'No hooks configured. Add a "hooks" section to ~/.claude/settings.json or .claude/settings.json.';
+	return lines.join("\n");
 }
