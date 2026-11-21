@@ -1,13 +1,17 @@
 // K11 (C-F8-11): the permission gate that agent-session calls before every tool call: the engine switch, the ask
 // confirmation, bypass, and the hooks the native engine replaces.
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type * as BuiltinResources from "../../../src/core/builtin-resources.ts";
 import type { ExtensionContext } from "../../../src/core/extensions/types.ts";
 import { setBypassState } from "../../../src/core/permissions/bypass-state.ts";
 import { type GateHost, gateToolCall, hooksForEngine } from "../../../src/core/permissions/gate.ts";
-import { SettingsManager } from "../../../src/core/settings-manager.ts";
+import { InMemorySettingsStorage, SettingsManager } from "../../../src/core/settings-manager.ts";
 
-const { initialBypass, resourcesRoot } = vi.hoisted(() => ({
+const { initialAgentDir, initialBypass, resourcesRoot } = vi.hoisted(() => ({
+	initialAgentDir: process.env.NYCODE_CODING_AGENT_DIR,
 	initialBypass: process.env.NYCODE_BYPASS_PERMISSIONS,
 	resourcesRoot: { override: undefined as string | undefined },
 }));
@@ -17,19 +21,38 @@ vi.mock("../../../src/core/builtin-resources.ts", async (importOriginal) => {
 	return { ...original, getBuiltinResourcesRoot: () => resourcesRoot.override ?? original.getBuiltinResourcesRoot() };
 });
 
-function host(engine: string, ui: { hasUI: boolean; confirm?: () => Promise<boolean> }): GateHost {
+let agentDir: string;
+
+beforeEach(() => {
+	agentDir = mkdtempSync(join(tmpdir(), "gate-agent-"));
+	process.env.NYCODE_CODING_AGENT_DIR = agentDir;
+});
+
+/** A session with the global settings.json `engine`; `projectEngine` is what the project's settings.json says. */
+function host(
+	engine: string,
+	ui: { hasUI: boolean; confirm?: () => Promise<boolean> },
+	projectEngine?: string,
+): GateHost {
+	writeFileSync(join(agentDir, "settings.json"), JSON.stringify({ permissions: { engine } }));
 	const ctx = {
 		cwd: "/tmp/gate-project",
 		hasUI: ui.hasUI,
 		ui: { confirm: ui.confirm },
 	} as unknown as ExtensionContext;
+	const storage = new InMemorySettingsStorage();
+	storage.withLock("project", () => JSON.stringify({ permissions: { engine: projectEngine } }));
+	// The gate takes no settings manager: a project's merged settings cannot reach the engine choice.
 	return {
-		settings: SettingsManager.inMemory({ permissions: { engine } } as never),
+		settings: SettingsManager.fromStorage(storage),
 		runner: { createContext: () => ctx },
-	};
+	} as unknown as GateHost;
 }
 
 afterEach(() => {
+	rmSync(agentDir, { recursive: true });
+	if (initialAgentDir === undefined) delete process.env.NYCODE_CODING_AGENT_DIR;
+	else process.env.NYCODE_CODING_AGENT_DIR = initialAgentDir;
 	if (initialBypass === undefined) delete process.env.NYCODE_BYPASS_PERMISSIONS;
 	else process.env.NYCODE_BYPASS_PERMISSIONS = initialBypass;
 });
@@ -37,6 +60,19 @@ afterEach(() => {
 describe("gateToolCall", () => {
 	it('leaves every call to the guard.py hook when the engine is "script"', async () => {
 		expect(await gateToolCall("bash", { command: "rm -rf /" }, host("script", { hasUI: false }))).toBeUndefined();
+	});
+
+	// (b) C-F8-13: permissions.engine is global-only, like permissions.bypass.
+	it("ignores a project's permissions.engine: a bogus one denies nothing, a native one does not take over", async () => {
+		const script = host("script", { hasUI: false }, "bogus");
+		expect(await gateToolCall("bash", { command: "ls" }, script)).toBeUndefined();
+		const native = host("script", { hasUI: false }, "native");
+		expect(await gateToolCall("bash", { command: "rm -rf /" }, native)).toBeUndefined();
+		expect(
+			await gateToolCall("bash", { command: "rm -rf /" }, host("native", { hasUI: false }, "script")),
+		).toMatchObject({
+			block: true,
+		});
 	});
 
 	it("denies every call for an unknown engine, even a harmless one", async () => {
@@ -126,18 +162,26 @@ describe("gateToolCall", () => {
 });
 
 describe("hooksForEngine", () => {
-	it("drops the guard.py PreToolUse default only for the native engine", () => {
-		expect(hooksForEngine({ permissions: { engine: "native" }, hooks: { Stop: [] } })).toEqual({
-			Stop: [],
-			PreToolUse: [],
-		});
-		expect(hooksForEngine({ permissions: { engine: "native" } })).toEqual({ PreToolUse: [] });
+	const globalEngine = (engine: string) =>
+		writeFileSync(join(agentDir, "settings.json"), JSON.stringify({ permissions: { engine } }));
+
+	it("drops the guard.py PreToolUse default only for the global native engine", () => {
+		globalEngine("native");
+		expect(hooksForEngine({ hooks: { Stop: [] } })).toEqual({ Stop: [], PreToolUse: [] });
+		expect(hooksForEngine({})).toEqual({ PreToolUse: [] });
+		globalEngine("script");
 		expect(hooksForEngine({ hooks: { Stop: [] } })).toEqual({ Stop: [] });
 		expect(hooksForEngine({})).toBeUndefined();
 	});
 
+	it("takes the engine from the same source as the gate: a project's native changes nothing", () => {
+		globalEngine("script");
+		expect(hooksForEngine({ permissions: { engine: "native" } })).toBeUndefined();
+	});
+
 	it("keeps a PreToolUse the user wrote", () => {
 		const hooks = { PreToolUse: [{ hooks: [] }] };
-		expect(hooksForEngine({ permissions: { engine: "native" }, hooks })).toBe(hooks);
+		writeFileSync(join(agentDir, "settings.json"), JSON.stringify({ permissions: { engine: "native" } }));
+		expect(hooksForEngine({ hooks })).toBe(hooks);
 	});
 });

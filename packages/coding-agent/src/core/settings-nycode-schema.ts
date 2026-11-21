@@ -17,7 +17,7 @@ const PermissionsSettingsSchema = Type.Object({
 	engine: Type.Optional(
 		Type.Union([Type.Literal("script"), Type.Literal("native")], {
 			description:
-				'Who decides the permission of each tool call: "script" (the embedded guard.py through the PreToolUse hook) or "native" (the TypeScript engine, same verdicts). Any other value denies every tool call.',
+				'Who decides the permission of each tool call: "script" (the embedded guard.py through the PreToolUse hook) or "native" (the TypeScript engine, same verdicts). Any other value denies every tool call. Global setting only.',
 			default: SETTINGS_DEFAULTS.permissions.engine,
 		}),
 	),

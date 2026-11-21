@@ -729,7 +729,7 @@ export class AgentSession {
 	): Promise<BeforeToolCallResult | undefined> {
 		const runner = this._extensionRunner;
 		// nycode: K11 native permission engine (permissions.engine) decides the call before the extension handlers
-		const gated = await gateToolCall(toolCall.name, args, { settings: this.settingsManager, runner });
+		const gated = await gateToolCall(toolCall.name, args, { runner });
 		if (gated) return gated;
 		if (!runner.hasHandlers("tool_call")) {
 			return undefined;

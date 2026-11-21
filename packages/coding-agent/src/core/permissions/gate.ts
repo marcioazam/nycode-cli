@@ -7,17 +7,16 @@ import { checkoutRoot } from "../../extensions/_shared/project/project-root.ts";
 import { claudePreCall } from "../../extensions/hooks/claude-tools.ts";
 import { getBuiltinResourcesRoot } from "../builtin-resources.ts";
 import type { ExtensionContext, ToolCallEventResult } from "../extensions/types.ts";
-import type { NycodeSettings } from "../settings-nycode.ts";
 import type { Settings } from "../settings-schema.ts";
 import { isBypassOn } from "./bypass-state.ts";
+import { globalPermissionsEngine } from "./global-settings.ts";
 import { decide } from "./guard/decide.ts";
 
 /** The tools the embedded guard judges: its hook matcher in settings-defaults.ts is `Bash|Edit|Write|Read`. */
 const GUARDED_TOOLS = new Set(["Bash", "Edit", "Write", "Read"]);
 
-/** What the gate needs from the session: the settings and a way to reach the UI. */
+/** What the gate needs from the session: a way to reach the UI. The engine comes from the global settings.json only. */
 export interface GateHost {
-	settings: { getNycodeSettings(): NycodeSettings };
 	runner: { createContext(): ExtensionContext };
 }
 
@@ -63,7 +62,7 @@ export async function gateToolCall(
 	host: GateHost,
 ): Promise<ToolCallEventResult | undefined> {
 	try {
-		const engine = host.settings.getNycodeSettings().permissions.engine;
+		const engine = globalPermissionsEngine();
 		const unavailable = engineUnavailable(engine);
 		if (unavailable !== undefined) return { block: true, reason: unavailable };
 		if (engine !== "native") return undefined;
@@ -86,6 +85,6 @@ export async function gateToolCall(
  * default is replaced by an empty list (never both engines), unless settings.json names its own PreToolUse.
  */
 export function hooksForEngine(settings: Settings): Record<string, unknown> | undefined {
-	if (settings.permissions?.engine !== "native" || settings.hooks?.PreToolUse !== undefined) return settings.hooks;
+	if (globalPermissionsEngine() !== "native" || settings.hooks?.PreToolUse !== undefined) return settings.hooks;
 	return { ...settings.hooks, PreToolUse: [] };
 }
