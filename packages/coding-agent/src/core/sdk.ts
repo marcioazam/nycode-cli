@@ -381,6 +381,7 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 				currentModel.provider === requestModel.provider &&
 				currentModel.id === requestModel.id &&
 				messages.length <= currentMessages.length &&
+				// nycode: K1 compare context messages by content identity, not by object identity (keeps the prompt cache warm)
 				messages.every((message, index) => nycodeSameContextMessage(currentMessages[index], message))
 			);
 		};

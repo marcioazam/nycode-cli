@@ -245,6 +245,7 @@ export function parseArgs(args: string[]): Args {
 		} else if (arg === "--no-approve" || arg === "-na") {
 			result.projectTrustOverride = false;
 		} else if (arg === "--bypass" || arg === "--dangerously-skip-permissions") {
+			// nycode: K3 permission-bypass flags (--bypass, --dangerously-skip-permissions, --safe, --no-bypass)
 			result.bypassPermissions = true;
 		} else if (arg === "--safe" || arg === "--no-bypass") {
 			result.bypassPermissions = false;

@@ -632,6 +632,7 @@ try {
 const nycodeConfigName: string | undefined = pkg.nycodeConfig?.name;
 export const PACKAGE_NAME: string = pkg.name || "@nycode/coding-agent";
 export const APP_NAME: string = nycodeConfigName || "nycode";
+// nycode: K14 fallback title is "nycode" (upstream: "π")
 export const APP_TITLE: string = nycodeConfigName ? APP_NAME : "nycode";
 export const CONFIG_DIR_NAME: string = pkg.nycodeConfig?.configDir || ".nycode";
 export const VERSION: string = pkg.version || "0.0.0";

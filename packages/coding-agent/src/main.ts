@@ -664,6 +664,7 @@ export async function main(args: string[], options?: MainOptions) {
 	}
 
 	if (args[0] === "migrate") {
+		// nycode: K12 `nycode migrate from-pi` entry point
 		process.exitCode = await runMigrateCommand(args.slice(1), { agentDir });
 		return;
 	}

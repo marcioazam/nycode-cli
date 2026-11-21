@@ -1,0 +1,21 @@
+# Seams K1..K14 (docs/migration/ny-pi-core/08-sincronizacao-upstream.md, section 4; 02-arquitetura-alvo.md, section 4).
+# Read by scripts/ci/seams/check-seams.sh. Fields, separated by " | ":
+#   id | files (space-separated; a directory is searched recursively) | marker pattern (ERE; it must not contain " | ") | test | state
+# state "ativa": the pattern must match in every file and the test must exist ("-" = no test yet, reported).
+# state "pendente: fase <F>": not in the code yet; the pattern must not match anywhere (update this line when it lands).
+# The marker is the comment `// nycode: K<n> <reason>` in the line above the edit; K13 is JSON (no comment), so its
+# pattern is the `files` entry itself.
+K1 | packages/coding-agent/src/core/sdk.ts | nycode: K1[[:space:]] | packages/coding-agent/test/harness/core/cache-warm-identity.test.ts | ativa
+K2 | packages/mcp/src/transports/stdio.ts | nycode: K2[[:space:]] | packages/mcp/test/stdio-close-grace.test.ts | ativa
+K3 | packages/coding-agent/src/cli/args.ts | nycode: K3[[:space:]] | packages/coding-agent/test/harness/core/settings-env.test.ts | ativa
+K4 | packages/coding-agent/src/core/settings-schema.ts packages/coding-agent/src/core/settings-defaults.ts | nycode: K4[[:space:]] | packages/coding-agent/test/harness/core/settings-keys.test.ts | ativa
+K5 | packages/coding-agent/src/extensions/index.ts | nycode: K5[[:space:]] | - | ativa
+K6 | packages/coding-agent/src/core/resource-loader.ts | nycode: K6[[:space:]] | - | pendente: fase F8
+K7 | packages/coding-agent/src/core/system-prompt.ts | nycode: K7[[:space:]] | - | pendente: fase F7, F8
+K8 | packages/coding-agent/src/core/tools/bash.ts | nycode: K8[[:space:]] | - | pendente: fase F7
+K9 | packages/coding-agent/src/core/compaction/ | nycode: K9[[:space:]] | - | pendente: fase F7
+K10 | packages/tui/src/ | nycode: K10[[:space:]] | - | pendente: fase F7
+K11 | packages/coding-agent/src/core/permissions/ | nycode: K11[[:space:]] | - | pendente: fase F8
+K12 | packages/coding-agent/src/main.ts | nycode: K12[[:space:]] | packages/coding-agent/test/harness/migrations/from-pi-apply.test.ts | ativa
+K13 | packages/coding-agent/package.json | "resources" | - | pendente: fase F8
+K14 | packages/coding-agent/src/config.ts | nycode: K14[[:space:]] | packages/coding-agent/test/cli-brand.test.ts | ativa

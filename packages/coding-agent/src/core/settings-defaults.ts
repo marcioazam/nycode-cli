@@ -27,6 +27,7 @@ export const SETTINGS_DEFAULTS = {
 	},
 	hideThinkingBlock: false,
 	showCacheMissNotices: false,
+	// nycode: K4 nycode defaults: quietStartup "header", defaultProjectTrust "never", retry, permissions and harness blocks
 	quietStartup: "header",
 	defaultProjectTrust: "never",
 	shellCommandPrefix:

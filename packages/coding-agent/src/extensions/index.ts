@@ -34,6 +34,7 @@ export const builtInExtensions: InlineExtension[] = [
 	{ name: "codemode", factory: codemodeExtension, replaceable: true, builtin: true },
 	{ name: "tool-search", factory: toolSearchExtension, replaceable: true, builtin: true },
 	{ name: "mcp", factory: mcpExtension, replaceable: true, builtin: true },
+	// nycode: K5 one registration line per embedded extension, alphabetical, below this marker
 	// Embedded pi-code extensions, in pi-code's load order (claude-rules first, then by name).
 	{ name: "claude-rules", factory: claudeRulesExtension, builtin: true },
 	{ name: "commands", factory: commandsExtension, builtin: true },

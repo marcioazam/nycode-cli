@@ -492,6 +492,7 @@ export const SettingsSchema = Type.Object(
 				default: SETTINGS_DEFAULTS.fullscreenWheelScrollLines,
 			}),
 		),
+		// nycode: K4 harness and permissions keys live in settings-nycode-schema.ts, composed here by one line
 		...NycodeSettingsProperties,
 		queueMode: Type.Optional(
 			Type.Union([Type.Literal("all"), Type.Literal("one-at-a-time")], {
