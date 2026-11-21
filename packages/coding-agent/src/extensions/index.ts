@@ -5,6 +5,7 @@ import commandsExtension from "./commands/index.ts";
 import contextImportsExtension from "./context-imports/index.ts";
 import contextUsageExtension from "./context-usage/index.ts";
 import envSettingsExtension from "./env-settings/index.ts";
+import footerExtension from "./footer/index.ts";
 import gitCheckpointExtension from "./git-checkpoint/index.ts";
 import goalExtension from "./goal/index.ts";
 import hooksExtension from "./hooks/index.ts";
@@ -59,4 +60,6 @@ export const builtInExtensions: InlineExtension[] = [
 	{ name: "thinking", factory: thinkingExtension, builtin: true },
 	{ name: "todo", factory: todoExtension, builtin: true },
 	{ name: "web", factory: webExtension, builtin: true, enabledByDefault: false },
+	// Embedded ny-pi extensions, in ny-pi's load order (after pi-code, by source file name).
+	{ name: "footer", factory: footerExtension, builtin: true },
 ];
