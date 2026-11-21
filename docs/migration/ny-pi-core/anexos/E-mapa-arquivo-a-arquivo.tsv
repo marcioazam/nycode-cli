@@ -1481,6 +1481,6 @@ scripts/refs-allow.txt	scripts/ci/lint/refs-allow.txt	converter	F3	C07
 scripts/test_check_refs.py	scripts/ci/lint/test_check_refs.py	converter	F3	C07
 scripts/test_install.sh	instalador e campo files do pacote	remover	F11	I01
 settings.json.example	packages/coding-agent/src/core/settings-defaults.ts + docs/settings.md (K4)	absorver	F4	K03
-themes/mono.json	packages/coding-agent/resources/themes/mono.json	mover	F7	E27
-themes/tokyo-night.json	packages/coding-agent/resources/themes/tokyo-night.json	mover	F7	E27
+themes/mono.json	packages/coding-agent/src/modes/interactive/theme/mono.json (D-37)	mover	F7	E27
+themes/tokyo-night.json	packages/coding-agent/src/modes/interactive/theme/tokyo-night.json (D-37)	mover	F7	E27
 third-party.json	NOTICE + pacotes opcionais (D-11)	remover	F9	T03
