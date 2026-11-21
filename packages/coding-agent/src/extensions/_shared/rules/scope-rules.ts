@@ -50,7 +50,9 @@ function matchesDomainRule(host: string, rule: string): boolean {
 	// A leading `*.` is the one wildcard that crosses dots: it stands for one or more
 	// whole labels, so it covers `a.b.example.com` while leaving the apex unmatched.
 	if (pattern.startsWith("*."))
+		// nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- hostPattern escapes the domain rule; only `*` becomes a label wildcard
 		return new RegExp(String.raw`^(?:[^.]+\.)+${hostPattern(pattern.slice(2))}$`).test(host);
+	// nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- hostPattern escapes the domain rule; only `*` becomes a label wildcard
 	return new RegExp(`^${hostPattern(pattern)}$`).test(host);
 }
 

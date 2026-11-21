@@ -113,6 +113,7 @@ function bracketClass(body: string): string | null {
  * faithful test: the invalid forms are its rules, not ones worth re-deriving here. */
 function isBuildableClass(source: string): boolean {
 	try {
+		// nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- only probes whether a validated character class compiles; the result is discarded
 		new RegExp(source);
 		return true;
 	} catch {
@@ -229,6 +230,7 @@ export function compileGlobs(globs: string[]): CompiledGlob[] {
 		// would compile to `^docs/$` and match nothing.
 		if (glob.endsWith("/")) glob += "**";
 		globsCompiled += 1;
+		// nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- globToRegExpSource escapes every literal glob character
 		compiled.push({ regex: new RegExp(`^${globToRegExpSource(glob)}$`) });
 	}
 	return compiled;
@@ -279,6 +281,7 @@ export function matchesPathRules(filePath: string, rules: string[], anchors: Pat
 		// rather than falling open, mirroring `Bash()`.
 		if (trimmed === "") return false;
 		const resolved = stripRuleDrive(toPosix(resolveRule(trimmed, anchors)), path.sep === "\\");
+		// nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- globToRegExpSource escapes every literal glob character
 		return new RegExp(`^${globToRegExpSource(resolved)}$`).test(target);
 	});
 }
