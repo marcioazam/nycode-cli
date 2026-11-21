@@ -1,5 +1,7 @@
 """Pull request lifecycle: gh helpers, publish (push and PR) and cleanup after the merge."""
 
+from __future__ import annotations
+
 import argparse
 import os
 import re
