@@ -18,106 +18,108 @@
  * Adapted from the pi v0.74.2 claude-rules example.
  */
 
-import * as fs from 'node:fs'
-import * as os from 'node:os'
-import * as path from 'node:path'
-import type { ExtensionAPI } from '../../core/extensions/types.ts'
-import type { ThemeColor } from '../../modes/interactive/theme/theme-tokens.ts'
-
-import { claudeMdExcludeFiles, isExcludedPath, readClaudeMdExcludes } from '../context-imports/excludes.ts'
-import { claudeConfigDir } from '../_shared/settings/config-dir.ts'
-import { publishInstructionLoad } from '../_shared/events/instruction-events.ts'
-import { readManagedSettings } from '../_shared/settings/managed-settings.ts'
-import { type CompiledGlob, compileGlobs, matchesCompiledGlobs } from '../_shared/rules/path-rules.ts'
-import { isProjectApproved } from '../_shared/project/project-approval.ts'
-import { findNearestDir, sameLocation } from '../_shared/project/project-root.ts'
-import { stripBlockComments } from '../_shared/shell/strip-comments.ts'
-import { fileToolTarget } from '../_shared/rules/tool-target.ts'
-import { realpathOr } from '../_shared/util/values.ts'
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
+import type { ExtensionAPI } from "../../core/extensions/types.ts";
+import type { ThemeColor } from "../../modes/interactive/theme/theme-tokens.ts";
+import { publishInstructionLoad } from "../_shared/events/instruction-events.ts";
+import { isProjectApproved } from "../_shared/project/project-approval.ts";
+import { findNearestDir, sameLocation } from "../_shared/project/project-root.ts";
+import { type CompiledGlob, compileGlobs, matchesCompiledGlobs } from "../_shared/rules/path-rules.ts";
+import { fileToolTarget } from "../_shared/rules/tool-target.ts";
+import { claudeConfigDir } from "../_shared/settings/config-dir.ts";
+import { readManagedSettings } from "../_shared/settings/managed-settings.ts";
+import { stripBlockComments } from "../_shared/shell/strip-comments.ts";
+import { realpathOr } from "../_shared/util/values.ts";
+import { claudeMdExcludeFiles, isExcludedPath, readClaudeMdExcludes } from "../context-imports/excludes.ts";
 
 export interface Frontmatter {
-  paths: string[]
-  body: string
+	paths: string[];
+	body: string;
 }
 
 function unquote(value: string): string {
-  return value.replace(/^["']|["']$/g, '')
+	return value.replace(/^["']|["']$/g, "");
 }
 
 /** The brace nesting depth after `char`; an unmatched closing brace stays at zero. */
 function braceDepth(char: string, depth: number): number {
-  if (char === '{') return depth + 1
-  if (char === '}') return Math.max(0, depth - 1)
-  return depth
+	if (char === "{") return depth + 1;
+	if (char === "}") return Math.max(0, depth - 1);
+	return depth;
 }
 
 /** Split a YAML flow sequence on its top-level commas. A comma inside a brace group
  * (`*.{ts,tsx}`, which Claude expands) or inside quotes belongs to its entry, so
  * splitting on every comma produced patterns that match nothing. */
 function splitInline(value: string): string[] {
-  const entries: string[] = []
-  let current = ''
-  let depth = 0
-  let quote: string | undefined
-  for (const char of value.replace(/^\[/, '').replace(/\]$/, '')) {
-    if (quote !== undefined) {
-      if (char === quote) quote = undefined
-      current += char
-      continue
-    }
-    if (char === '"' || char === "'") {
-      quote = char
-      current += char
-      continue
-    }
-    if (char === ',' && depth === 0) {
-      entries.push(current)
-      current = ''
-      continue
-    }
-    depth = braceDepth(char, depth)
-    current += char
-  }
-  entries.push(current)
-  return entries.map((entry) => unquote(entry.trim())).filter(Boolean)
+	const entries: string[] = [];
+	let current = "";
+	let depth = 0;
+	let quote: string | undefined;
+	for (const char of value.replace(/^\[/, "").replace(/\]$/, "")) {
+		if (quote !== undefined) {
+			if (char === quote) quote = undefined;
+			current += char;
+			continue;
+		}
+		if (char === '"' || char === "'") {
+			quote = char;
+			current += char;
+			continue;
+		}
+		if (char === "," && depth === 0) {
+			entries.push(current);
+			current = "";
+			continue;
+		}
+		depth = braceDepth(char, depth);
+		current += char;
+	}
+	entries.push(current);
+	return entries.map((entry) => unquote(entry.trim())).filter(Boolean);
 }
 
 /** A flow sequence that opens on the `paths:` line and closes on a later one, joined
  * back into a single value. An unterminated list runs to the end of the frontmatter. */
 function joinFlowSequence(lines: string[], index: number, opening: string): string {
-  let joined = opening
-  for (let i = index + 1; i < lines.length; i++) {
-    joined += ` ${lines[i].trim()}`
-    if (lines[i].includes(']')) break
-  }
-  return joined
+	let joined = opening;
+	for (let i = index + 1; i < lines.length; i++) {
+		joined += ` ${lines[i].trim()}`;
+		if (lines[i].includes("]")) break;
+	}
+	return joined;
 }
 
 function parsePaths(frontmatter: string): string[] {
-  const lines = frontmatter.split('\n')
-  const index = lines.findIndex((line) => /^\s*paths\s*:/.test(line))
-  if (index === -1) return []
-  const inline = lines[index].replace(/^\s*paths\s*:/, '').trim()
-  if (inline) return splitInline(inline.startsWith('[') && !inline.includes(']') ? joinFlowSequence(lines, index, inline) : inline)
-  const items: string[] = []
-  // Matched with string ops rather than a regex: the equivalent pattern needs two
-  // adjacent whitespace quantifiers, which backtracks super-linearly on long lines.
-  for (let i = index + 1; i < lines.length; i++) {
-    const entry = lines[i].trimStart()
-    if (!entry.startsWith('-')) break
-    const value = entry.slice(1).trim()
-    if (!value) break
-    items.push(unquote(value))
-  }
-  return items
+	const lines = frontmatter.split("\n");
+	const index = lines.findIndex((line) => /^\s*paths\s*:/.test(line));
+	if (index === -1) return [];
+	const inline = lines[index].replace(/^\s*paths\s*:/, "").trim();
+	if (inline)
+		return splitInline(
+			inline.startsWith("[") && !inline.includes("]") ? joinFlowSequence(lines, index, inline) : inline,
+		);
+	const items: string[] = [];
+	// Matched with string ops rather than a regex: the equivalent pattern needs two
+	// adjacent whitespace quantifiers, which backtracks super-linearly on long lines.
+	for (let i = index + 1; i < lines.length; i++) {
+		const entry = lines[i].trimStart();
+		if (!entry.startsWith("-")) break;
+		const value = entry.slice(1).trim();
+		if (!value) break;
+		items.push(unquote(value));
+	}
+	return items;
 }
 
 /** Split YAML-ish frontmatter off the front of a rule file, extracting `paths`. */
 export function parseFrontmatter(content: string): Frontmatter {
-  // A leading byte order mark (Windows editors add one) is part of the header, not the body.
-  const match = /^\uFEFF?---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(content)
-  if (!match) return { paths: [], body: content }
-  return { paths: parsePaths(match[1]), body: content.slice(match[0].length) }
+	// A leading byte order mark (Windows editors add one) is part of the header, not the body.
+	const match = /^\uFEFF?---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(content);
+	if (!match) return { paths: [], body: content };
+	return { paths: parsePaths(match[1]), body: content.slice(match[0].length) };
 }
 
 /**
@@ -132,95 +134,95 @@ export function parseFrontmatter(content: string): Frontmatter {
  * root.
  */
 export function pathMatchesGlobs(relPath: string, globs: string[]): boolean {
-  return matchesCompiledGlobs(relPath, compileGlobs(globs))
+	return matchesCompiledGlobs(relPath, compileGlobs(globs));
 }
 
 /** A rule pointer line, annotated with its path scope when present. */
-export function formatRulePointer(rel: string, paths: string[], base = '.claude/rules'): string {
-  const ref = `- ${base}/${rel}`
-  return paths.length > 0 ? `${ref} — applies when working on: ${paths.join(', ')}` : ref
+export function formatRulePointer(rel: string, paths: string[], base = ".claude/rules"): string {
+	const ref = `- ${base}/${rel}`;
+	return paths.length > 0 ? `${ref} — applies when working on: ${paths.join(", ")}` : ref;
 }
 
 /** A dirent's kind with symlinks resolved; nulls a dangling link. */
 function classifyEntry(entry: fs.Dirent, fullPath: string): { isDir: boolean; isFile: boolean } | null {
-  if (!entry.isSymbolicLink()) return { isDir: entry.isDirectory(), isFile: entry.isFile() }
-  try {
-    const stat = fs.statSync(fullPath)
-    return { isDir: stat.isDirectory(), isFile: stat.isFile() }
-  } catch {
-    return null
-  }
+	if (!entry.isSymbolicLink()) return { isDir: entry.isDirectory(), isFile: entry.isFile() };
+	try {
+		const stat = fs.statSync(fullPath);
+		return { isDir: stat.isDirectory(), isFile: stat.isFile() };
+	} catch {
+		return null;
+	}
 }
 
 /** Recursively find all .md files, following symlinks (Claude Code documents symlinked
  * shared rule dirs); `visited` realpaths keep a circular link from recursing forever. */
-function findMarkdownFiles(dir: string, basePath = '', visited = new Set<string>()): string[] {
-  const results: string[] = []
-  try {
-    const real = fs.realpathSync(dir)
-    if (visited.has(real)) return results
-    visited.add(real)
-  } catch {
-    return results
-  }
-  let entries: fs.Dirent[]
-  try {
-    entries = fs.readdirSync(dir, { withFileTypes: true })
-  } catch {
-    return results // a missing or unreadable directory must not take down session start
-  }
-  // Raw readdir order is filesystem-dependent (hash order on ext4, sorted on
-  // APFS), so unsorted iteration injects rules into the prompt in a different
-  // order per machine. Pinned-locale sort makes the prompt reproducible.
-  entries.sort((a, b) => a.name.localeCompare(b.name, 'en'))
-  for (const entry of entries) {
-    const relativePath = basePath ? `${basePath}/${entry.name}` : entry.name
-    const fullPath = path.join(dir, entry.name)
-    const kind = classifyEntry(entry, fullPath)
-    if (!kind) continue
-    if (kind.isDir) {
-      results.push(...findMarkdownFiles(fullPath, relativePath, visited))
-    } else if (kind.isFile && entry.name.endsWith('.md')) {
-      results.push(relativePath)
-    }
-  }
-  return results
+function findMarkdownFiles(dir: string, basePath = "", visited = new Set<string>()): string[] {
+	const results: string[] = [];
+	try {
+		const real = fs.realpathSync(dir);
+		if (visited.has(real)) return results;
+		visited.add(real);
+	} catch {
+		return results;
+	}
+	let entries: fs.Dirent[];
+	try {
+		entries = fs.readdirSync(dir, { withFileTypes: true });
+	} catch {
+		return results; // a missing or unreadable directory must not take down session start
+	}
+	// Raw readdir order is filesystem-dependent (hash order on ext4, sorted on
+	// APFS), so unsorted iteration injects rules into the prompt in a different
+	// order per machine. Pinned-locale sort makes the prompt reproducible.
+	entries.sort((a, b) => a.name.localeCompare(b.name, "en"));
+	for (const entry of entries) {
+		const relativePath = basePath ? `${basePath}/${entry.name}` : entry.name;
+		const fullPath = path.join(dir, entry.name);
+		const kind = classifyEntry(entry, fullPath);
+		if (!kind) continue;
+		if (kind.isDir) {
+			results.push(...findMarkdownFiles(fullPath, relativePath, visited));
+		} else if (kind.isFile && entry.name.endsWith(".md")) {
+			results.push(relativePath);
+		}
+	}
+	return results;
 }
 
 interface InlineRule {
-  /** The rule file's absolute path. */
-  file: string
-  body: string
+	/** The rule file's absolute path. */
+	file: string;
+	body: string;
 }
 
 interface ScopedRule {
-  rel: string
-  /** The rule file's absolute path. */
-  file: string
-  paths: string[]
-  /** The rule text, attached when a matching file is touched. */
-  body: string
+	rel: string;
+	/** The rule file's absolute path. */
+	file: string;
+	paths: string[];
+	/** The rule text, attached when a matching file is touched. */
+	body: string;
 }
 
 interface RuleSet {
-  inline: InlineRule[]
-  scoped: ScopedRule[]
+	inline: InlineRule[];
+	scoped: ScopedRule[];
 }
 
 interface ContextFile {
-  path: string
-  content: string
+	path: string;
+	content: string;
 }
 
 /** The prompt options this extension edits. pi sets `forceSystemPrompt` from 0.86, where
  * a handler that returned a prompt forced it for the run. */
 interface PromptOptions {
-  contextFiles?: ContextFile[]
-  appendSystemPrompt?: string
-  forceSystemPrompt?: string
+	contextFiles?: ContextFile[];
+	appendSystemPrompt?: string;
+	forceSystemPrompt?: string;
 }
 
-const EMPTY_RULES: RuleSet = { inline: [], scoped: [] }
+const EMPTY_RULES: RuleSet = { inline: [], scoped: [] };
 
 /** Unscoped rules are inlined; path-scoped ones keep their scope as pointers,
  * mirroring Claude Code, where scoped rules attach only to matching files. Files
@@ -228,115 +230,116 @@ const EMPTY_RULES: RuleSet = { inline: [], scoped: [] }
  * (excluding another team's `.claude/rules/**`) relies on; the check runs on the
  * realpath so a symlink cannot dodge an exclusion. */
 function readRules(rulesDir: string, isExcluded?: (realPath: string) => boolean): RuleSet {
-  const inline: InlineRule[] = []
-  const scoped: ScopedRule[] = []
-  for (const file of findMarkdownFiles(rulesDir)) {
-    const lexical = path.join(rulesDir, file)
-    if (isExcluded) {
-      // Both spellings count: a glob written against the lexical path and one
-      // written against the resolved real path each exclude, which can only
-      // widen an exclusion, never dodge one.
-      if (isExcluded(lexical) || isExcluded(realpathOr(lexical))) continue
-    }
-    let parsed: Frontmatter
-    try {
-      parsed = parseFrontmatter(fs.readFileSync(lexical, 'utf-8'))
-    } catch {
-      continue // one unreadable rule must not take down session start
-    }
-    // Rule bodies get the same block-level comment strip as CLAUDE.md files
-    // before they reach the prompt or attach to a tool result.
-    const body = stripBlockComments(parsed.body).trim()
-    // A body that strips to nothing has nothing to inline or attach; attaching
-    // an empty text block to a tool result is rejected by the API when the
-    // result's content is a block array (image-bearing results).
-    if (body.length === 0) continue
-    if (parsed.paths.length > 0) scoped.push({ rel: file, file: lexical, paths: parsed.paths, body })
-    else inline.push({ file: lexical, body })
-  }
-  return { inline, scoped }
+	const inline: InlineRule[] = [];
+	const scoped: ScopedRule[] = [];
+	for (const file of findMarkdownFiles(rulesDir)) {
+		const lexical = path.join(rulesDir, file);
+		if (isExcluded) {
+			// Both spellings count: a glob written against the lexical path and one
+			// written against the resolved real path each exclude, which can only
+			// widen an exclusion, never dodge one.
+			if (isExcluded(lexical) || isExcluded(realpathOr(lexical))) continue;
+		}
+		let parsed: Frontmatter;
+		try {
+			parsed = parseFrontmatter(fs.readFileSync(lexical, "utf-8"));
+		} catch {
+			continue; // one unreadable rule must not take down session start
+		}
+		// Rule bodies get the same block-level comment strip as CLAUDE.md files
+		// before they reach the prompt or attach to a tool result.
+		const body = stripBlockComments(parsed.body).trim();
+		// A body that strips to nothing has nothing to inline or attach; attaching
+		// an empty text block to a tool result is rejected by the API when the
+		// result's content is a block array (image-bearing results).
+		if (body.length === 0) continue;
+		if (parsed.paths.length > 0) scoped.push({ rel: file, file: lexical, paths: parsed.paths, body });
+		else inline.push({ file: lexical, body });
+	}
+	return { inline, scoped };
 }
 
 /** The user's rules directory as a pointer names it, so the model's read resolves: against
  * `~` under home, and by its full path where the Claude config directory sits elsewhere. */
 function userRulesBase(rulesDir: string, home: string): string {
-  const relative = path.relative(home, rulesDir)
-  const outsideHome = relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)
-  return outsideHome ? rulesDir : `~/${relative.split(path.sep).join('/')}`
+	const relative = path.relative(home, rulesDir);
+	const outsideHome = relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative);
+	return outsideHome ? rulesDir : `~/${relative.split(path.sep).join("/")}`;
 }
 
 /** The pointer list for a rule set's path-scoped rules. */
 function scopedPointers(rules: RuleSet, base: string): string {
-  const scopedList = rules.scoped.map((rule) => formatRulePointer(rule.rel, rule.paths, base)).join('\n')
-  return `Path-scoped rules, available in ${base}/:\n\n${scopedList}\n\nRead the relevant rule file with the read tool before working on the files it covers.`
+	const scopedList = rules.scoped.map((rule) => formatRulePointer(rule.rel, rule.paths, base)).join("\n");
+	return `Path-scoped rules, available in ${base}/:\n\n${scopedList}\n\nRead the relevant rule file with the read tool before working on the files it covers.`;
 }
 
 /** The system-prompt section for one rule set: inlined bodies, then scoped pointers. */
 function rulesSection(title: string, rules: RuleSet, base: string): string {
-  if (rules.inline.length === 0 && rules.scoped.length === 0) return ''
-  let section = `\n\n## ${title}`
-  if (rules.inline.length > 0) {
-    section += `\n\nThese rules always apply:\n\n${rules.inline.map((rule) => rule.body).join('\n\n')}`
-  }
-  if (rules.scoped.length > 0) section += `\n\n${scopedPointers(rules, base)}`
-  return section
+	if (rules.inline.length === 0 && rules.scoped.length === 0) return "";
+	let section = `\n\n## ${title}`;
+	if (rules.inline.length > 0) {
+		section += `\n\nThese rules always apply:\n\n${rules.inline.map((rule) => rule.body).join("\n\n")}`;
+	}
+	if (rules.scoped.length > 0) section += `\n\n${scopedPointers(rules, base)}`;
+	return section;
 }
 
 /** What a session's rules add to the prompt. Built once at session start, the only place
  * the rule files are read. */
 interface PromptRules {
-  /** The unscoped rules as context files, each under its own file, the way Claude loads it. */
-  files: ContextFile[]
-  /** The scoped pointers. Not a file, so they travel as appended instructions. */
-  pointers: string
-  /** Both as text, for a prompt that does not re-render from its options. */
-  text: string
+	/** The unscoped rules as context files, each under its own file, the way Claude loads it. */
+	files: ContextFile[];
+	/** The scoped pointers. Not a file, so they travel as appended instructions. */
+	pointers: string;
+	/** Both as text, for a prompt that does not re-render from its options. */
+	text: string;
 }
 
-const NO_PROMPT_RULES: PromptRules = { files: [], pointers: '', text: '' }
+const NO_PROMPT_RULES: PromptRules = { files: [], pointers: "", text: "" };
 
 function promptRules(sets: Array<{ title: string; rules: RuleSet; base: string }>): PromptRules {
-  const scoped = sets.filter(({ rules }) => rules.scoped.length > 0)
-  return {
-    files: sets.flatMap(({ rules }) => rules.inline.map((rule) => ({ path: rule.file, content: rule.body }))),
-    pointers: scoped.map(({ rules, base }) => scopedPointers(rules, base)).join('\n\n'),
-    text: sets.map(({ title, rules, base }) => rulesSection(title, rules, base)).join(''),
-  }
+	const scoped = sets.filter(({ rules }) => rules.scoped.length > 0);
+	return {
+		files: sets.flatMap(({ rules }) => rules.inline.map((rule) => ({ path: rule.file, content: rule.body }))),
+		pointers: scoped.map(({ rules, base }) => scopedPointers(rules, base)).join("\n\n"),
+		text: sets.map(({ title, rules, base }) => rulesSection(title, rules, base)).join(""),
+	};
 }
 
 /** Add the rules to the options a run's prompt is built from, returning how to take them
  * out again. */
 function addToOptions(options: PromptOptions, contextFiles: ContextFile[], rules: PromptRules): () => void {
-  const append = options.appendSystemPrompt
-  // Copies: the options belong to one run and these entries serve every turn.
-  contextFiles.push(...rules.files.map((entry) => ({ ...entry })))
-  if (rules.pointers.length > 0) options.appendSystemPrompt = append ? `${append}\n\n${rules.pointers}` : rules.pointers
-  return () => {
-    contextFiles.splice(contextFiles.length - rules.files.length, rules.files.length)
-    if (rules.pointers.length > 0) options.appendSystemPrompt = append
-  }
+	const append = options.appendSystemPrompt;
+	// Copies: the options belong to one run and these entries serve every turn.
+	contextFiles.push(...rules.files.map((entry) => ({ ...entry })));
+	if (rules.pointers.length > 0)
+		options.appendSystemPrompt = append ? `${append}\n\n${rules.pointers}` : rules.pointers;
+	return () => {
+		contextFiles.splice(contextFiles.length - rules.files.length, rules.files.length);
+		if (rules.pointers.length > 0) options.appendSystemPrompt = append;
+	};
 }
 
 /** A scoped rule resolved to the root its globs match against, ready to attach. */
 interface AttachTarget {
-  /** The rule's `paths:` globs as written, reported on the instruction-events bus. */
-  globs: string[]
-  /** The globs precompiled once at session start for the per-tool-result scan. */
-  compiled: CompiledGlob[]
-  body: string
-  /** The absolute directory `paths:` globs are matched relative to. */
-  root: string
-  /** The rule file's absolute path, reported on the instruction-events bus. */
-  file: string
-  /** Claude's memory_type for the rule's origin: global rules are User config. */
-  memoryType: 'User' | 'Project'
+	/** The rule's `paths:` globs as written, reported on the instruction-events bus. */
+	globs: string[];
+	/** The globs precompiled once at session start for the per-tool-result scan. */
+	compiled: CompiledGlob[];
+	body: string;
+	/** The absolute directory `paths:` globs are matched relative to. */
+	root: string;
+	/** The rule file's absolute path, reported on the instruction-events bus. */
+	file: string;
+	/** Claude's memory_type for the rule's origin: global rules are User config. */
+	memoryType: "User" | "Project";
 }
 
 /** CLAUDE_CODE_DISABLE_CLAUDE_MDS keeps every rule out of context, as it does in Claude
  * Code. Read where a rule would be delivered rather than once at session start: a
  * project's settings.json env reaches process.env after this extension's session_start. */
 function rulesDisabled(): boolean {
-  return process.env.CLAUDE_CODE_DISABLE_CLAUDE_MDS === '1'
+	return process.env.CLAUDE_CODE_DISABLE_CLAUDE_MDS === "1";
 }
 
 /** The project rules directory, or null when the project is not approved. Nearest
@@ -344,164 +347,204 @@ function rulesDisabled(): boolean {
  * gated on. Not the user's own rules dir: from $HOME (or under a dotfiles repo rooted
  * there) the nearest one is ~/.claude/rules, which the global load already read. */
 function projectRulesDirFor(cwd: string, approved: boolean, globalRulesDir: string): string | null {
-  const nearestRulesDir = approved ? findNearestDir(cwd, path.join('.claude', 'rules')) : null
-  return nearestRulesDir !== null && sameLocation(nearestRulesDir, globalRulesDir) ? null : nearestRulesDir
+	const nearestRulesDir = approved ? findNearestDir(cwd, path.join(".claude", "rules")) : null;
+	return nearestRulesDir !== null && sameLocation(nearestRulesDir, globalRulesDir) ? null : nearestRulesDir;
 }
 
 /** Session-start notice: `⚖ regras  2 globais · nenhuma do projeto · sempre ativas`, or undefined when no rule loaded.
  * "sempre ativas" = unscoped (inlined) rules; "por arquivo" = path-scoped ones, attached on a matching touch. */
-type NoticeTheme = { fg: (color: ThemeColor, text: string) => string; bold?: (text: string) => string }
+type NoticeTheme = { fg: (color: ThemeColor, text: string) => string; bold?: (text: string) => string };
 /** Gavel glyph where a Nerd Font is known to render (kitty or NYCODE_NERD_FONT=1; ASCII request wins), else a section sign. */
 const rulesGlyph = (env: Record<string, string | undefined>): string => {
-  const ascii = Boolean(env.NYCODE_ASCII_ICONS) || env.TERM === 'dumb' || env.TERM === 'linux'
-  return !ascii && (env.NYCODE_NERD_FONT === '1' || env.TERM === 'xterm-kitty' || Boolean(env.KITTY_WINDOW_ID)) ? '\uf0e3' : '§'
-}
+	const ascii = Boolean(env.NYCODE_ASCII_ICONS) || env.TERM === "dumb" || env.TERM === "linux";
+	return !ascii && (env.NYCODE_NERD_FONT === "1" || env.TERM === "xterm-kitty" || Boolean(env.KITTY_WINDOW_ID))
+		? "\uf0e3"
+		: "§";
+};
 /** Space after the glyph: kitty draws a Nerd Font icon over the following cell, so there it takes two to keep a gap. */
 const glyphGap = (env: Record<string, string | undefined>): string => {
-  const ascii = Boolean(env.NYCODE_ASCII_ICONS) || env.TERM === 'dumb' || env.TERM === 'linux'
-  return !ascii && (env.TERM === 'xterm-kitty' || Boolean(env.KITTY_WINDOW_ID)) ? '  ' : ' '
-}
+	const ascii = Boolean(env.NYCODE_ASCII_ICONS) || env.TERM === "dumb" || env.TERM === "linux";
+	return !ascii && (env.TERM === "xterm-kitty" || Boolean(env.KITTY_WINDOW_ID)) ? "  " : " ";
+};
 
-export function rulesLoadedMessage(globalRules: RuleSet, projectRules: RuleSet, theme?: NoticeTheme, env: Record<string, string | undefined> = process.env): string | undefined {
-  const globalCount = globalRules.inline.length + globalRules.scoped.length
-  const projectCount = projectRules.inline.length + projectRules.scoped.length
-  if (globalCount === 0 && projectCount === 0) return undefined
-  const always = globalRules.inline.length + projectRules.inline.length
-  const scoped = globalRules.scoped.length + projectRules.scoped.length
-  const fg = theme ? (color: ThemeColor, text: string) => theme.fg(color, text) : (_color: ThemeColor, text: string) => text
-  const bold = theme?.bold ? (text: string) => theme.bold!(text) : (text: string) => text
-  const globalPart = globalCount === 0 ? 'nenhuma global' : `${globalCount} ${globalCount === 1 ? 'global' : 'globais'}`
-  const projectPart = projectCount === 0 ? 'nenhuma do projeto' : `${projectCount} do projeto`
-  const mode = scoped === 0 ? (always === 1 ? 'sempre ativa' : 'sempre ativas')
-    : always === 0 ? 'por arquivo'
-    : `${always} ${always === 1 ? 'sempre ativa' : 'sempre ativas'} · ${scoped} por arquivo`
-  return `${fg('accent', rulesGlyph(env))}${glyphGap(env)}${fg('text', bold('regras'))}  ${fg('muted', globalPart)} ${fg('dim', '·')} ${fg('muted', projectPart)} ${fg('dim', `· ${mode}`)}`
+export function rulesLoadedMessage(
+	globalRules: RuleSet,
+	projectRules: RuleSet,
+	theme?: NoticeTheme,
+	env: Record<string, string | undefined> = process.env,
+): string | undefined {
+	const globalCount = globalRules.inline.length + globalRules.scoped.length;
+	const projectCount = projectRules.inline.length + projectRules.scoped.length;
+	if (globalCount === 0 && projectCount === 0) return undefined;
+	const always = globalRules.inline.length + projectRules.inline.length;
+	const scoped = globalRules.scoped.length + projectRules.scoped.length;
+	const fg = theme
+		? (color: ThemeColor, text: string) => theme.fg(color, text)
+		: (_color: ThemeColor, text: string) => text;
+	const bold = theme?.bold ? (text: string) => theme.bold!(text) : (text: string) => text;
+	const globalPart =
+		globalCount === 0 ? "nenhuma global" : `${globalCount} ${globalCount === 1 ? "global" : "globais"}`;
+	const projectPart = projectCount === 0 ? "nenhuma do projeto" : `${projectCount} do projeto`;
+	const mode =
+		scoped === 0
+			? always === 1
+				? "sempre ativa"
+				: "sempre ativas"
+			: always === 0
+				? "por arquivo"
+				: `${always} ${always === 1 ? "sempre ativa" : "sempre ativas"} · ${scoped} por arquivo`;
+	return `${fg("accent", rulesGlyph(env))}${glyphGap(env)}${fg("text", bold("regras"))}  ${fg("muted", globalPart)} ${fg("dim", "·")} ${fg("muted", projectPart)} ${fg("dim", `· ${mode}`)}`;
 }
 
 // Module level because the working list lives in each extension instance's closure.
-let pendingScopedRules = 0
+let pendingScopedRules = 0;
 
 /** Test seam: scoped rules still awaiting attachment in the current session, for
  * asserting that a fully attached rule leaves the per-tool-result working list. */
 export function pendingScopedRuleCount(): number {
-  return pendingScopedRules
+	return pendingScopedRules;
 }
 
 export default function claudeRulesExtension(nycode: ExtensionAPI) {
-  const globalRulesDir = path.join(claudeConfigDir(os.homedir()), 'rules')
-  const globalRulesBase = userRulesBase(globalRulesDir, os.homedir())
-  let rules: PromptRules = NO_PROMPT_RULES
-  // Scoped rules still awaiting a matching touch. An attached rule leaves the
-  // list, so each attaches at most once and the per-tool-result scan shrinks.
-  let attachTargets: AttachTarget[] = []
-  // Every scoped rule of the session, the list attachTargets is rebuilt from when what was
-  // attached leaves the context (see rearm below).
-  let scopedTargets: AttachTarget[] = []
+	const globalRulesDir = path.join(claudeConfigDir(os.homedir()), "rules");
+	const globalRulesBase = userRulesBase(globalRulesDir, os.homedir());
+	let rules: PromptRules = NO_PROMPT_RULES;
+	// Scoped rules still awaiting a matching touch. An attached rule leaves the
+	// list, so each attaches at most once and the per-tool-result scan shrinks.
+	let attachTargets: AttachTarget[] = [];
+	// Every scoped rule of the session, the list attachTargets is rebuilt from when what was
+	// attached leaves the context (see rearm below).
+	let scopedTargets: AttachTarget[] = [];
 
-  nycode.on('session_start', async (_event, ctx) => {
-    // Project rules are repository text landing in the system prompt, so they load
-    // only once the project is approved. isProjectTrusted alone is true for a repo
-    // pi never asked about; see project-approval.
-    const approved = await isProjectApproved(ctx)
-    // Claude's claudeMdExcludes covers rules files too (the docs' monorepo recipe
-    // excludes another team's .claude/rules/**), so the same merged glob list the
-    // context loader honors gates rule files here.
-    const excludeGlobs = readClaudeMdExcludes(claudeMdExcludeFiles(ctx.cwd, os.homedir(), approved), readManagedSettings())
-    const isExcluded = (realPath: string): boolean => isExcludedPath(realPath, excludeGlobs, os.homedir())
-    const globalRules = readRules(globalRulesDir, isExcluded)
-    const projectRulesDir = projectRulesDirFor(ctx.cwd, approved, globalRulesDir)
-    const projectRules = projectRulesDir ? readRules(projectRulesDir, isExcluded) : EMPTY_RULES
+	nycode.on("session_start", async (_event, ctx) => {
+		// Project rules are repository text landing in the system prompt, so they load
+		// only once the project is approved. isProjectTrusted alone is true for a repo
+		// pi never asked about; see project-approval.
+		const approved = await isProjectApproved(ctx);
+		// Claude's claudeMdExcludes covers rules files too (the docs' monorepo recipe
+		// excludes another team's .claude/rules/**), so the same merged glob list the
+		// context loader honors gates rule files here.
+		const excludeGlobs = readClaudeMdExcludes(
+			claudeMdExcludeFiles(ctx.cwd, os.homedir(), approved),
+			readManagedSettings(),
+		);
+		const isExcluded = (realPath: string): boolean => isExcludedPath(realPath, excludeGlobs, os.homedir());
+		const globalRules = readRules(globalRulesDir, isExcluded);
+		const projectRulesDir = projectRulesDirFor(ctx.cwd, approved, globalRulesDir);
+		const projectRules = projectRulesDir ? readRules(projectRulesDir, isExcluded) : EMPTY_RULES;
 
-    // Global globs are relative to cwd; project globs to the project root (the dir
-    // holding .claude), so `db/**` in a repo rule matches repo-relative paths even
-    // from a subdirectory session. Globs compile here, once per session, rather
-    // than on every tool result; rebuilt per session so a re-run re-attaches.
-    const projectRoot = projectRulesDir ? path.dirname(path.dirname(projectRulesDir)) : ctx.cwd
-    attachTargets = [
-      ...globalRules.scoped.map((rule) => ({ globs: rule.paths, compiled: compileGlobs(rule.paths), body: rule.body, root: realpathOr(ctx.cwd), file: rule.file, memoryType: 'User' as const })),
-      ...projectRules.scoped.map((rule) => ({ globs: rule.paths, compiled: compileGlobs(rule.paths), body: rule.body, root: realpathOr(projectRoot), file: rule.file, memoryType: 'Project' as const })),
-    ]
-    scopedTargets = attachTargets
-    pendingScopedRules = attachTargets.length
-    // Relative to cwd, which the read tool resolves: an ancestor dir yields a
-    // `../…/.claude/rules` the model can follow, where a bare '.claude/rules'
-    // would point at a nonexistent path under the subdirectory.
-    const projectRulesBase = projectRulesDir === null ? '.claude/rules' : path.relative(ctx.cwd, projectRulesDir) || '.claude/rules'
-    // Global first: Claude loads user-level rules before project rules.
-    rules = promptRules([
-      { title: 'Global Rules', rules: globalRules, base: globalRulesBase },
-      { title: 'Project Rules', rules: projectRules, base: projectRulesBase },
-    ])
+		// Global globs are relative to cwd; project globs to the project root (the dir
+		// holding .claude), so `db/**` in a repo rule matches repo-relative paths even
+		// from a subdirectory session. Globs compile here, once per session, rather
+		// than on every tool result; rebuilt per session so a re-run re-attaches.
+		const projectRoot = projectRulesDir ? path.dirname(path.dirname(projectRulesDir)) : ctx.cwd;
+		attachTargets = [
+			...globalRules.scoped.map((rule) => ({
+				globs: rule.paths,
+				compiled: compileGlobs(rule.paths),
+				body: rule.body,
+				root: realpathOr(ctx.cwd),
+				file: rule.file,
+				memoryType: "User" as const,
+			})),
+			...projectRules.scoped.map((rule) => ({
+				globs: rule.paths,
+				compiled: compileGlobs(rule.paths),
+				body: rule.body,
+				root: realpathOr(projectRoot),
+				file: rule.file,
+				memoryType: "Project" as const,
+			})),
+		];
+		scopedTargets = attachTargets;
+		pendingScopedRules = attachTargets.length;
+		// Relative to cwd, which the read tool resolves: an ancestor dir yields a
+		// `../…/.claude/rules` the model can follow, where a bare '.claude/rules'
+		// would point at a nonexistent path under the subdirectory.
+		const projectRulesBase =
+			projectRulesDir === null ? ".claude/rules" : path.relative(ctx.cwd, projectRulesDir) || ".claude/rules";
+		// Global first: Claude loads user-level rules before project rules.
+		rules = promptRules([
+			{ title: "Global Rules", rules: globalRules, base: globalRulesBase },
+			{ title: "Project Rules", rules: projectRules, base: projectRulesBase },
+		]);
 
-    const loaded = rulesLoadedMessage(globalRules, projectRules, ctx.ui.theme)
-    // U+2063 (invisible) asks the harness core patch for a neutral-background box; without it the mark takes no column.
-    if (loaded !== undefined && !rulesDisabled()) ctx.ui.notify(`\u2063${loaded}`, 'info')
-  })
+		const loaded = rulesLoadedMessage(globalRules, projectRules, ctx.ui.theme);
+		// U+2063 (invisible) asks the harness core patch for a neutral-background box; without it the mark takes no column.
+		if (loaded !== undefined && !rulesDisabled()) ctx.ui.notify(`\u2063${loaded}`, "info");
+	});
 
-  nycode.on('before_agent_start', (event) => {
-    if (rules.text.length === 0 || rulesDisabled()) return
+	nycode.on("before_agent_start", (event) => {
+		if (rules.text.length === 0 || rulesDisabled()) return;
 
-    // Rules join the options the prompt is built from. A provider that rebuilds the prompt
-    // from them keeps the rules there, where text appended to the rendered prompt is
-    // dropped: claude-bridge hands Claude Code the context files and appended instructions.
-    const options: PromptOptions | undefined = event.systemPromptOptions
-    const contextFiles = options?.contextFiles
-    const before = event.systemPrompt
-    if (options !== undefined && contextFiles !== undefined) {
-      const undo = addToOptions(options, contextFiles, rules)
-      // pi >= 0.86 re-renders event.systemPrompt from the options, and the rules are in.
-      if (event.systemPrompt !== before) return
-      // A prompt an earlier handler forced stays fixed, but the options are that run's own
-      // copy and still what a rebuilding provider reads, so they keep the rules. An older pi
-      // reuses the options object next turn, so there the edit is undone.
-      if (options.forceSystemPrompt === undefined) undo()
-    }
-    return { systemPrompt: before + rules.text }
-  })
+		// Rules join the options the prompt is built from. A provider that rebuilds the prompt
+		// from them keeps the rules there, where text appended to the rendered prompt is
+		// dropped: claude-bridge hands Claude Code the context files and appended instructions.
+		const options: PromptOptions | undefined = event.systemPromptOptions;
+		const contextFiles = options?.contextFiles;
+		const before = event.systemPrompt;
+		if (options !== undefined && contextFiles !== undefined) {
+			const undo = addToOptions(options, contextFiles, rules);
+			// pi >= 0.86 re-renders event.systemPrompt from the options, and the rules are in.
+			if (event.systemPrompt !== before) return;
+			// A prompt an earlier handler forced stays fixed, but the options are that run's own
+			// copy and still what a rebuilding provider reads, so they keep the rules. An older pi
+			// reuses the options object next turn, so there the edit is undone.
+			if (options.forceSystemPrompt === undefined) undo();
+		}
+		return { systemPrompt: before + rules.text };
+	});
 
-  // A rule's body sits in the tool result that attached it. Compaction folds that result into
-  // a summary and /tree moves to a branch that never had it, and Claude reloads the rule "as
-  // Claude reads files they apply to", so every rule is armed again.
-  const rearm = (): void => {
-    attachTargets = scopedTargets
-    pendingScopedRules = attachTargets.length
-  }
-  nycode.on('session_compact', rearm)
-  nycode.on('session_tree', rearm)
+	// A rule's body sits in the tool result that attached it. Compaction folds that result into
+	// a summary and /tree moves to a branch that never had it, and Claude reloads the rule "as
+	// Claude reads files they apply to", so every rule is armed again.
+	const rearm = (): void => {
+		attachTargets = scopedTargets;
+		pendingScopedRules = attachTargets.length;
+	};
+	nycode.on("session_compact", rearm);
+	nycode.on("session_tree", rearm);
 
-  // Lazy attach: when a file tool touches a path a scoped rule covers, append the
-  // rule body to that tool's result so it enters context, once per rule per session.
-  // This mirrors Claude Code, which attaches a scoped rule when a matching file is
-  // read or edited rather than inlining it upfront.
-  nycode.on('tool_result', (event, ctx) => {
-    if (attachTargets.length === 0 || rulesDisabled()) return
-    const rel = fileToolTarget(event)
-    if (rel === undefined) return
-    // Realpath both sides (roots canonicalise at session_start): a tool reporting
-    // the resolved real path in a symlinked checkout must still match.
-    const abs = realpathOr(path.resolve(ctx.cwd, rel))
+	// Lazy attach: when a file tool touches a path a scoped rule covers, append the
+	// rule body to that tool's result so it enters context, once per rule per session.
+	// This mirrors Claude Code, which attaches a scoped rule when a matching file is
+	// read or edited rather than inlining it upfront.
+	nycode.on("tool_result", (event, ctx) => {
+		if (attachTargets.length === 0 || rulesDisabled()) return;
+		const rel = fileToolTarget(event);
+		if (rel === undefined) return;
+		// Realpath both sides (roots canonicalise at session_start): a tool reporting
+		// the resolved real path in a symlinked checkout must still match.
+		const abs = realpathOr(path.resolve(ctx.cwd, rel));
 
-    const bodies: string[] = []
-    const remaining: AttachTarget[] = []
-    for (const target of attachTargets) {
-      const relativeToRoot = path.relative(target.root, abs)
-      // A file outside the rule root cannot match its project-relative globs. Test for
-      // a real parent-traversal segment, not a leading '..' (a file named `..config` is
-      // inside the root).
-      const outsideRoot = relativeToRoot === '..' || relativeToRoot.startsWith(`..${path.sep}`) || path.isAbsolute(relativeToRoot)
-      if (outsideRoot || !matchesCompiledGlobs(relativeToRoot, target.compiled)) {
-        remaining.push(target)
-        continue
-      }
-      bodies.push(target.body)
-      // The lazy attach is Claude's path_glob_match instruction load; the hooks
-      // extension bridges the bus event to the InstructionsLoaded hook. Leaving
-      // the working list also bounds the events to one per rule per session.
-      publishInstructionLoad(nycode.events, { file_path: target.file, memory_type: target.memoryType, load_reason: 'path_glob_match', globs: target.globs, trigger_file_path: abs })
-    }
-    attachTargets = remaining
-    pendingScopedRules = attachTargets.length
-    if (bodies.length === 0) return
-    return { content: [...event.content, ...bodies.map((text) => ({ type: 'text' as const, text }))] }
-  })
+		const bodies: string[] = [];
+		const remaining: AttachTarget[] = [];
+		for (const target of attachTargets) {
+			const relativeToRoot = path.relative(target.root, abs);
+			// A file outside the rule root cannot match its project-relative globs. Test for
+			// a real parent-traversal segment, not a leading '..' (a file named `..config` is
+			// inside the root).
+			const outsideRoot =
+				relativeToRoot === ".." || relativeToRoot.startsWith(`..${path.sep}`) || path.isAbsolute(relativeToRoot);
+			if (outsideRoot || !matchesCompiledGlobs(relativeToRoot, target.compiled)) {
+				remaining.push(target);
+				continue;
+			}
+			bodies.push(target.body);
+			// The lazy attach is Claude's path_glob_match instruction load; the hooks
+			// extension bridges the bus event to the InstructionsLoaded hook. Leaving
+			// the working list also bounds the events to one per rule per session.
+			publishInstructionLoad(nycode.events, {
+				file_path: target.file,
+				memory_type: target.memoryType,
+				load_reason: "path_glob_match",
+				globs: target.globs,
+				trigger_file_path: abs,
+			});
+		}
+		attachTargets = remaining;
+		pendingScopedRules = attachTargets.length;
+		if (bodies.length === 0) return;
+		return { content: [...event.content, ...bodies.map((text) => ({ type: "text" as const, text }))] };
+	});
 }

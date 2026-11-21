@@ -127,6 +127,7 @@ chegam por fase e o `core_scope.py` é convertido em F3.
 | extension | bash-timeout | core | Limite de tempo do shell |
 | extension | bypass-permissions | core | Modo de permissão |
 | extension | cache-prefix-probe | remove | Diagnóstico temporário |
+| extension | claude-rules | core | Regras do Claude Code em .claude/rules |
 | extension | compact-at-400k | core | Compactação de segurança |
 | extension | completion-gate | core | Verificação antes de encerrar |
 | extension | context-imports | core | Imports @ do CLAUDE.md |

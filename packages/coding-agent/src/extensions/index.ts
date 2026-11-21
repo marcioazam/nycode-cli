@@ -1,4 +1,5 @@
 import type { InlineExtension } from "../core/extensions/types.ts";
+import claudeRulesExtension from "./claude-rules/index.ts";
 import codemodeExtension from "./codemode/index.ts";
 import contextImportsExtension from "./context-imports/index.ts";
 import llamaExtension from "./llama/index.ts";
@@ -13,4 +14,5 @@ export const builtInExtensions: InlineExtension[] = [
 	{ name: "tool-search", factory: toolSearchExtension, replaceable: true, builtin: true },
 	{ name: "mcp", factory: mcpExtension, replaceable: true, builtin: true },
 	{ name: "context-imports", factory: contextImportsExtension, builtin: true },
+	{ name: "claude-rules", factory: claudeRulesExtension, builtin: true },
 ];
