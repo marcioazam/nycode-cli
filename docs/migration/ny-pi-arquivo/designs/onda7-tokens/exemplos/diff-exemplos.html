@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8">
+<title>Diff Apple-like: 3 exemplos</title>
+<style>
+  /* Paleta pi-escuro; fundos de linha = toolSuccessBg/toolErrorBg, ênfase de palavra mais forte. */
+  :root { --bg:#1c1c1e; --surface:#242426; --text:#f5f5f7; --muted:#aeaeb2; --dim:#98989d; --line:#48484a;
+    --ok:#30d158; --err:#ff6961; --accent:#409cff; --addBg:#17271c; --delBg:#2d1a1b; --addW:#1f5130; --delW:#6a2a2a;
+    --kw:#ff7ab2; --str:#ff8170; --fn:#78c2b3; --typ:#6bdfff; }
+  body { margin:0; background:#111; font:15px/1.5 "JetBrainsMono Nerd Font Mono", "JetBrains Mono", monospace; color:var(--text); }
+  .term { width:1000px; background:var(--bg); padding:18px 0 20px; }
+  .cap { color:var(--dim); padding:0 20px 12px; font-size:13px; }
+  .cap b { color:var(--text); font-weight:600; }
+  .box { background:var(--surface); margin:0 0 0 0; padding:10px 20px; }
+  .head { display:flex; gap:10px; align-items:baseline; }
+  .head .st { color:var(--ok); } .head .ic { color:var(--muted); } .head .v { font-weight:700; }
+  .head .t { color:var(--muted); } .head .r { margin-left:auto; }
+  .p { color:var(--ok); } .m { color:var(--err); } .d { color:var(--dim); }
+  .row { display:flex; white-space:pre; }
+  .ln { width:3ch; text-align:right; color:var(--dim); padding-right:1ch; }
+  .bar { width:3px; margin-right:1.5ch; }
+  .add { background:var(--addBg); } .del { background:var(--delBg); }
+  .add .bar { background:var(--ok); } .del .bar { background:var(--err); }
+  .aw, .dw, .tok { color:var(--text); } .aw { background:var(--addW); border-radius:3px; } .dw { background:var(--delW); border-radius:3px; }
+  .fold { color:var(--dim); padding:2px 0 2px 5.5ch; }
+  .kw { color:var(--kw); } .s { color:var(--str); } .fn { color:var(--fn); } .ty { color:var(--typ); }
+  .cols { display:grid; grid-template-columns:1fr 1px 1fr; } .sep { background:var(--line); }
+  .hunk { color:var(--accent); padding:4px 0 4px 1ch; }
+  .tok { border-bottom:2px solid; padding:0 1px; }
+  .tok.a { border-color:var(--ok); background:var(--addBg); } .tok.r { border-color:var(--err); background:var(--delBg); text-decoration:line-through; text-decoration-color:var(--err); }
+  section { display:none; } section:target, body:not(:has(:target)) section { display:block; margin-bottom:24px; }
+</style>
+
+<!-- 1 · Xcode: gutter colorido + fundo suave na linha + ênfase só na palavra que mudou -->
+<section id="ex1"><div class="term">
+<div class="cap"><b>1 · Inline, estilo Xcode</b>: barra de cor no gutter, linha com fundo suave e destaque só nas palavras que mudaram. Um sinal por linha, sem <code>+</code>/<code>-</code> repetidos.</div>
+<div class="box">
+  <div class="head"><span class="st">✓</span><span class="ic">✎</span><span class="v">edit</span><span class="t">src/app.ts</span><span class="r"><span class="p">+2</span> <span class="m">−2</span></span></div>
+</div>
+<div style="padding:6px 0">
+  <div class="row"><span class="ln">1</span><span class="bar"></span><span class="d"><span class="kw">import</span> { log } <span class="kw">from</span> <span class="s">'./log'</span></span></div>
+  <div class="row del"><span class="ln">2</span><span class="bar"></span><span><span class="kw">export const</span> greeting = <span class="s">'<span class="dw">hello</span>'</span></span></div>
+  <div class="row add"><span class="ln">2</span><span class="bar"></span><span><span class="kw">export const</span> greeting = <span class="s">'<span class="aw">olá, mundo</span>'</span></span></div>
+  <div class="row"><span class="ln">3</span><span class="bar"></span><span class="d"></span></div>
+  <div class="row"><span class="ln">4</span><span class="bar"></span><span class="d"><span class="kw">export function</span> <span class="fn">main</span>(): <span class="ty">void</span> {</span></div>
+  <div class="row del"><span class="ln">5</span><span class="bar"></span><span>  <span class="dw">console.log</span>(greeting)</span></div>
+  <div class="row add"><span class="ln">5</span><span class="bar"></span><span>  <span class="aw">log.info</span>(greeting)</span></div>
+  <div class="row"><span class="ln">6</span><span class="bar"></span><span class="d">}</span></div>
+</div>
+</div></section>
+
+<!-- 2 · delta/Kaleidoscope: lado a lado com hunk e linhas iguais recolhidas -->
+<section id="ex2"><div class="term">
+<div class="cap"><b>2 · Lado a lado, estilo Kaleidoscope/delta</b>: antes à esquerda, depois à direita, linhas iguais recolhidas em <code>⋯</code>. Bom acima de 140 colunas; abaixo disso volta ao inline.</div>
+<div class="box">
+  <div class="head"><span class="st">✓</span><span class="ic">✎</span><span class="v">edit</span><span class="t">src/app.ts</span><span class="r"><span class="p">+2</span> <span class="m">−2</span> <span class="d">· 1 trecho</span></span></div>
+</div>
+<div class="hunk">◆ main()</div>
+<div class="cols">
+  <div>
+    <div class="row del"><span class="ln">2</span><span class="bar"></span><span><span class="kw">export const</span> greeting = <span class="s">'<span class="dw">hello</span>'</span></span></div>
+    <div class="row"><span class="ln">3</span><span class="bar"></span></div>
+    <div class="row"><span class="ln">4</span><span class="bar"></span><span class="d"><span class="kw">export function</span> <span class="fn">main</span>() {</span></div>
+    <div class="row del"><span class="ln">5</span><span class="bar"></span><span>  <span class="dw">console.log</span>(greeting)</span></div>
+  </div>
+  <div class="sep"></div>
+  <div>
+    <div class="row add"><span class="ln">2</span><span class="bar"></span><span><span class="kw">export const</span> greeting = <span class="s">'<span class="aw">olá, mundo</span>'</span></span></div>
+    <div class="row"><span class="ln">3</span><span class="bar"></span></div>
+    <div class="row"><span class="ln">4</span><span class="bar"></span><span class="d"><span class="kw">export function</span> <span class="fn">main</span>() {</span></div>
+    <div class="row add"><span class="ln">5</span><span class="bar"></span><span>  <span class="aw">log.info</span>(greeting)</span></div>
+  </div>
+</div>
+<div class="fold">⋯ 38 linhas iguais</div>
+</div></section>
+
+<!-- 3 · difftastic/Zed: estrutural, uma linha por mudança, só o token alterado -->
+<section id="ex3"><div class="term">
+<div class="cap"><b>3 · Estrutural e compacto, estilo difftastic/Zed</b>: uma linha por mudança, com o token antigo riscado ao lado do novo. É o que cabe numa chamada de ferramenta recolhida.</div>
+<div class="box">
+  <div class="head"><span class="st">✓</span><span class="ic">✎</span><span class="v">edit</span><span class="t">src/app.ts</span><span class="r"><span class="d">2 mudanças</span></span></div>
+</div>
+<div style="padding:8px 0">
+  <div class="row"><span class="ln">2</span><span class="bar" style="background:var(--accent)"></span><span><span class="kw">export const</span> greeting = <span class="s">'<span class="tok r">hello</span> <span class="tok a">olá, mundo</span>'</span></span></div>
+  <div class="row"><span class="ln">5</span><span class="bar" style="background:var(--accent)"></span><span>  <span class="tok r">console.log</span> <span class="tok a">log.info</span>(greeting)</span></div>
+  <div class="row" style="margin-top:6px"><span class="ln"></span><span class="bar"></span><span class="d">ctrl+o abre o diff inteiro</span></div>
+</div>
+</div></section>
+</html>

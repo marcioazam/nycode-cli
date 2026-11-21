@@ -131,13 +131,15 @@ semgrep_scan() {
     --env SEMGREP_SEND_METRICS=off --env GIT_CONFIG_COUNT=1 --env GIT_CONFIG_KEY_0=safe.directory --env GIT_CONFIG_VALUE_0=/src \
     "$SEMGREP_IMAGE" semgrep scan --error --metrics=off --disable-version-check --quiet \
     --config p/default --config p/python --config p/typescript --config p/command-injection --config p/github-actions \
-    --exclude scripts/fixtures/leak --exclude import "${args[@]}" . || rc=$?
+    --exclude scripts/fixtures/leak --exclude import --exclude ny-pi-arquivo "${args[@]}" . || rc=$?
   [ "$mode" = rw ] && rm -r "$src"
   return "$rc"
 }
 
 # import/ (history imported from ny-pi, removed in F12) is outside every gate except the leak scan: the semgrep
 # and osv-scanner runs exclude it (no other directory of the repository is named "import").
+# docs/migration/ny-pi-arquivo (verbatim ny-pi archive, not maintained or executed, owner decision 2026-11-21) is
+# outside semgrep too; the leak scan still covers it.
 # osv-scanner has no severity threshold flag: fail on any group with CVSS >= 7 (HIGH/CRITICAL) or
 # no score at all (unknown is not assumed safe). Exceptions live in scripts/ci/osv-scanner.toml with owner+expiry.
 osv_scan() {
