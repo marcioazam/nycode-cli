@@ -28,6 +28,12 @@ Example extensions demonstrating:
 - External integrations (SSH, file watchers, system theme sync)
 - Custom providers (Anthropic with custom streaming, GitLab Duo)
 
+### [config/](config/)
+Starting points for user configuration files in `~/.nycode/agent/`:
+- `mcp.json`: MCP servers (secrets are `${ENV}` placeholders; export the variables). See [MCP](../docs/mcp.md).
+- `models.json`: per-model overrides, here the refusal fallback of `claude-sonnet-5-5`. See [Models](../docs/models-configuration.md).
+- `lsp.json`: language servers for the LSP integration (not read by nycode yet).
+
 ## Documentation
 
 - [SDK Examples](sdk/README.md)
