@@ -1,11 +1,11 @@
 // Ported from zzzzzzzzzzzzzz-onda5/viewer.test.ts (pi-code patch tests). The "patch applies to the current stack and
 // reverts" case has no counterpart (there is no patch any more); every other case and expectation is unchanged.
 import assert from "node:assert/strict";
+import { visibleWidth } from "@nycode/tui";
 import { test } from "vitest";
-
-const viewer: any = await import("../../../../src/extensions/subagent/fleet-ui/viewer.ts");
-const label: any = await import("../../../../src/extensions/subagent/fleet-ui/style/runtime-label.ts");
-const { visibleWidth }: any = await import("@nycode/tui");
+import type { FleetSource, RunRecord } from "../../../../src/extensions/subagent/fleet/types.ts";
+import * as label from "../../../../src/extensions/subagent/fleet-ui/style/runtime-label.ts";
+import * as viewer from "../../../../src/extensions/subagent/fleet-ui/viewer.ts";
 
 const NOW = 1_000_000;
 const theme = { fg: (_c: string, s: string) => s, bold: (s: string) => s };
@@ -33,7 +33,7 @@ const rec = (id: string, parentId: string | null, depth: number, over: Record<st
 		modelSeen: true,
 		effortSeen: true,
 		...over,
-	}) as any;
+	}) as unknown as RunRecord;
 
 test("cabeçalho: rodando, com irmãos e filhos", () => {
 	const rs = [rec("worker", null, 1), rec("gate", null, 1, { startedAt: NOW }), rec("kid", "worker", 2)];
@@ -101,7 +101,7 @@ test("dicas condicionais", () => {
 	});
 });
 
-function viewerOf(records: any[], clock = { now: NOW }) {
+function viewerOf(records: RunRecord[], clock = { now: NOW }) {
 	const src = {
 		list: () => records,
 		readTranscript: () => ({ items: [], next: 0 }),
@@ -110,7 +110,7 @@ function viewerOf(records: any[], clock = { now: NOW }) {
 		stop: () => "stopping",
 	};
 	const v = new viewer.ViewerComponent({
-		source: src,
+		source: src as unknown as FleetSource,
 		theme: tag,
 		id: records[0].id,
 		done: () => {},
@@ -155,8 +155,8 @@ test("textos de envio e do navegador em português; a lógica não muda", async 
 	assert.equal(viewer.sendOutcomeText("unknown"), "agente não encontrado");
 	const notes: unknown[][] = [];
 	await viewer.openTasksBrowser(
-		{ hasUI: true, ui: { notify: (...a: unknown[]) => notes.push(a) } },
-		{ list: () => [] },
+		{ hasUI: true, ui: { notify: (...a: unknown[]) => notes.push(a) } } as unknown as viewer.UiCtx,
+		{ list: () => [] } as unknown as FleetSource,
 	);
 	assert.deepEqual(notes, [["Nenhum agente nesta sessão.", "info"]]);
 });

@@ -22,14 +22,6 @@ delete process.env.NYCODE_SUBAGENT;
 delete process.env.NYCODE_SUBAGENT_DEPTH;
 delete process.env.NYCODE_TEAMS;
 
-const store: any = await import("../../../../../src/extensions/subagent/fleet/store.ts");
-const inbox: any = await import("../../../../../src/extensions/subagent/fleet/inbox.ts");
-const sourceMod: any = await import("../../../../../src/extensions/subagent/fleet/source.ts");
-const registryText: any = await import("../../../../../src/extensions/subagent/registry/registry-text.ts");
-const paramsMod: any = await import("../../../../../src/extensions/subagent/core/params.ts");
-const bgMod: any = await import("../../../../../src/extensions/subagent/fleet/background.ts");
-const { default: subagentExtension }: any = await import("../../../../../src/extensions/subagent/index.ts");
-
 const id = (n = 1): string => `fg-${n.toString(16).padStart(8, "0")}`;
 const LEAD = "[message from lead (main session), not the user]: ";
 const SENT_SLOT = Symbol.for("pi-code.fleet.send-count");
@@ -45,7 +37,7 @@ afterEach(() => {
 	store.removeFleetDir();
 });
 
-const baseRecord = (rid: string, over: Record<string, unknown> = {}) => ({
+const baseRecord = (rid: string, over: Partial<RunRecord> = {}): RunRecord => ({
 	v: 1,
 	id: rid,
 	parentId: null,
@@ -69,7 +61,7 @@ function mainFleet(): string {
 	delete process.env.NYCODE_SUBAGENT_DEPTH;
 	delete process.env.NYCODE_SUBAGENT;
 	process.env.NYCODE_SUBAGENT_SEND = "1";
-	return store.ensureFleetDir();
+	return store.ensureFleetDir() as string;
 }
 
 type Resume = [string, string, boolean | undefined];
@@ -107,7 +99,7 @@ function childPi() {
 }
 
 // Sobe o vigia do filho `rid` num diretório da frota próprio, com o relógio simulado.
-function startChild(rid: string, pi: unknown): string {
+function startChild(rid: string, pi: inbox.InboxTarget): string {
 	const root = store.fleetRoot();
 	mkdirSync(root, { recursive: true, mode: 0o700 });
 	const dir = join(root, `${process.pid}-${rid.slice(3)}`);
@@ -421,7 +413,7 @@ test("AC4: a conclusão e o status avisam as mensagens não entregues; chave des
 });
 
 test("sendResultText: cada desfecho diz o que aconteceu e o que fazer", () => {
-	const text = (o: string): string => registryText.sendResultText(id(0x50), o);
+	const text = (o: LeadSendOutcome): string => registryText.sendResultText(id(0x50), o);
 	assert.match(text("queued"), /next turn boundary, not in the middle of a tool call/);
 	assert.match(text("resumed"), /resumed it with your message/);
 	assert.match(text("not-running"), /use \{resume: "fg-00000050"/);
@@ -452,9 +444,27 @@ const timer = setInterval(() => {
 }, 20)
 `,
 );
+
+import type { ExtensionAPI } from "../../../../../src/core/extensions/types.ts";
+import * as paramsMod from "../../../../../src/extensions/subagent/core/params.ts";
+import * as bgMod from "../../../../../src/extensions/subagent/fleet/background.ts";
+import * as inbox from "../../../../../src/extensions/subagent/fleet/inbox.ts";
+import * as sourceMod from "../../../../../src/extensions/subagent/fleet/source.ts";
+import * as store from "../../../../../src/extensions/subagent/fleet/store.ts";
+import type { LeadSendOutcome, RunRecord } from "../../../../../src/extensions/subagent/fleet/types.ts";
+import subagentExtension from "../../../../../src/extensions/subagent/index.ts";
+import * as registryText from "../../../../../src/extensions/subagent/registry/registry-text.ts";
+
 process.env.FAKE_PI_DIR = tmp;
 const release = (task: string): void => writeFileSync(join(tmp, `release-${task}`), "");
 
+type ToolRes = { content: Array<{ text: string }> };
+type Tool = {
+	name: string;
+	description: string;
+	parameters: { properties: Record<string, unknown> };
+	execute: (...a: unknown[]) => Promise<ToolRes>;
+};
 type Sent = { msg: { customType: string; content: string }; opts: { triggerTurn?: boolean } };
 
 async function waitFor<T>(what: string, probe: () => T | undefined | false): Promise<T> {
@@ -469,12 +479,13 @@ async function waitFor<T>(what: string, probe: () => T | undefined | false): Pro
 
 // Um pi e um contexto falsos, sem UI: o `send` tem de criar a frota mesmo sem painel (evals em modo print/json).
 function boot() {
-	const handlers = new Map<string, Array<(...a: any[]) => any>>();
-	const tools: any[] = [];
+	const handlers = new Map<string, Array<(...a: unknown[]) => unknown>>();
+	const tools: Tool[] = [];
 	const sent: Sent[] = [];
 	const pi = {
-		on: (event: string, h: (...a: any[]) => any) => void handlers.set(event, [...(handlers.get(event) ?? []), h]),
-		registerTool: (def: any) => void tools.push(def),
+		on: (event: string, h: (...a: unknown[]) => unknown) =>
+			void handlers.set(event, [...(handlers.get(event) ?? []), h]),
+		registerTool: (def: Tool) => void tools.push(def),
 		registerCommand: () => {},
 		events: { emit: () => {}, on: () => () => {} },
 		getActiveTools: () => ["subagent"],
@@ -496,14 +507,14 @@ function boot() {
 	};
 	const savedArgv = process.argv[1];
 	process.argv[1] = fakePi;
-	subagentExtension(pi);
-	const tool = tools.find((t) => t.name === "subagent");
+	subagentExtension(pi as unknown as ExtensionAPI);
+	const tool = tools.find((t) => t.name === "subagent") as Tool;
 	const fire = async (event: string, payload: unknown = {}): Promise<void> => {
 		for (const h of handlers.get(event) ?? []) await h(payload, ctx);
 	};
-	const run = (params: Record<string, unknown>): Promise<any> =>
+	const run = (params: Record<string, unknown>): Promise<ToolRes> =>
 		tool.execute("call", params, undefined, undefined, ctx);
-	const text = (res: any): string => res.content[0].text;
+	const text = (res: ToolRes): string => res.content[0].text;
 	const finish = async (): Promise<void> => {
 		try {
 			await fire("session_shutdown", { reason: "reload" });
@@ -561,7 +572,9 @@ test("AC1/AC2/AC4/AC7: chave ligada em sessão sem UI: frota criada, send queued
 		);
 		await waitFor(
 			"record done",
-			() => (store.readRecord(store.currentFleetDir(), bgId) as { state: string } | undefined)?.state === "done",
+			() =>
+				(store.readRecord(store.currentFleetDir() as string, bgId) as { state: string } | undefined)?.state ===
+				"done",
 		);
 		assert.match(h.text(await h.run({ send: bgId, task: "ok" })), /resumed it with your message/);
 		const label = `${LEAD}ok`;

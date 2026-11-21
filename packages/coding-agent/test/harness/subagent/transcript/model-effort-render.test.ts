@@ -1,17 +1,16 @@
 // Ported from zzzzzzz-subagent-model-effort/render.test.ts (pi-code patch tests); same cases and expectations.
 // Modelo e esforço na lista e no viewer (docs/subagent-model-effort.md, AC1-AC3, AC6)
 import assert from "node:assert/strict";
+import { visibleWidth } from "@nycode/tui";
 import { test } from "vitest";
+import type { FleetSource, RunRecord } from "../../../../src/extensions/subagent/fleet/types.ts";
+import * as panel from "../../../../src/extensions/subagent/fleet-ui/panel.ts";
+import * as label from "../../../../src/extensions/subagent/fleet-ui/style/runtime-label.ts";
+import * as vm from "../../../../src/extensions/subagent/fleet-ui/view-model.ts";
+import * as viewer from "../../../../src/extensions/subagent/fleet-ui/viewer.ts";
 import { fleetTestEnv } from "../support/fleet-env.ts";
 
 fleetTestEnv("fleet-model-effort-render-");
-const vm: any = await import("../../../../src/extensions/subagent/fleet-ui/view-model.ts");
-const panel: any = await import("../../../../src/extensions/subagent/fleet-ui/panel.ts");
-const viewer: any = await import("../../../../src/extensions/subagent/fleet-ui/viewer.ts");
-const label: any = await import("../../../../src/extensions/subagent/fleet-ui/style/runtime-label.ts");
-const palette: any = await import("../../../../src/extensions/subagent/fleet-ui/style/palette.ts");
-await palette.ready;
-const { visibleWidth }: any = await import("@nycode/tui");
 
 const NOW = 1_000_000;
 const theme = { fg: (_c: string, s: string) => s, bold: (s: string) => s };
@@ -41,17 +40,17 @@ const rec = (over: Record<string, unknown> = {}) =>
 		ownerPid: 1,
 		activity: "Reading files",
 		...over,
-	}) as any;
+	}) as unknown as RunRecord;
 // /tasks mode (panel:false) lists finished runs too; panel mode hides `done`.
-const rowOf = (r: any) => vm.buildRows([r], { now: NOW, panel: false })[0];
-const render = (r: any, width: number, t: any = theme) => panel.renderRow(rowOf(r), false, t, width);
+const rowOf = (r: RunRecord) => vm.buildRows([r], { now: NOW, panel: false })[0];
+const render = (r: RunRecord, width: number, t: panel.UiTheme = theme) => panel.renderRow(rowOf(r), false, t, width);
 
 const OBSERVED = {
 	provider: "anthropic",
 	model: "claude-sonnet-5-5",
 	effort: "medium",
-	modelSeen: true,
-	effortSeen: true,
+	modelSeen: true as const,
+	effortSeen: true as const,
 };
 
 test("lista a 160 colunas: provedor/modelo completo e esforço, antes da tarefa", () => {
@@ -119,9 +118,9 @@ test("metadado fica na lista de /tasks (buildRows com panel:false) e na linha de
 	assert.ok(panel.renderRow(rows[1], false, theme, 160).includes("· high]"));
 });
 
-function viewerOf(r: any) {
+function viewerOf(r: RunRecord) {
 	const records = [r];
-	const src = {
+	const src: FleetSource = {
 		list: () => records,
 		readTranscript: () => ({ items: [], next: 0 }),
 		stop: () => "stopping",
@@ -154,7 +153,7 @@ test("viewer: modelo e esforço na linha 2 do cabeçalho, sem rótulos, origem o
 });
 
 test("viewer: configurado, off, e desconhecido", () => {
-	const both = (r: any) => label.runtimeSummary(r);
+	const both = (r: RunRecord) => label.runtimeSummary(r);
 	assert.equal(both(rec({ model: "a/b", effort: "off" })), "a/b (configurado) · off (configurado)");
 	assert.equal(both(rec({ model: "a/b" })), "a/b (configurado) · ainda não informado");
 	assert.equal(both(rec()), "ainda não informado · ainda não informado");

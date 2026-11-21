@@ -4,14 +4,14 @@ import assert from "node:assert/strict";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, test, vi } from "vitest";
+import * as sourceMod from "../../../../src/extensions/subagent/fleet/source.ts";
+import * as store from "../../../../src/extensions/subagent/fleet/store.ts";
+import * as trackerMod from "../../../../src/extensions/subagent/fleet/tracker.ts";
+import * as registryText from "../../../../src/extensions/subagent/registry/registry-text.ts";
 import { fleetTestEnv } from "../support/fleet-env.ts";
-import { baseRecord, deadPid, fleetRecordHelpers, id, sleeper, withEnv } from "../support/fleet-records.ts";
+import { baseRecord, deadPid, fleetRecordHelpers, id, must, sleeper, withEnv } from "../support/fleet-records.ts";
 
 const { tmp } = fleetTestEnv("fleet-test-");
-const store: any = await import("../../../../src/extensions/subagent/fleet/store.ts");
-const trackerMod: any = await import("../../../../src/extensions/subagent/fleet/tracker.ts");
-const sourceMod: any = await import("../../../../src/extensions/subagent/fleet/source.ts");
-const registryText: any = await import("../../../../src/extensions/subagent/registry/registry-text.ts");
 const { tempDir, mainFleet } = fleetRecordHelpers(store, tmp);
 
 afterEach(() => vi.useRealTimers());
@@ -80,7 +80,7 @@ test("records: orphaned running run maps to failed, bad JSON and foreign files s
 	writeFileSync(join(dir, "fg-00000007.json"), JSON.stringify({ ...baseRecord(id(7)), v: 2 }));
 	writeFileSync(join(dir, "bad.json"), JSON.stringify(baseRecord("bad")));
 	writeFileSync(join(dir, "note.txt"), "x");
-	const byId = Object.fromEntries(store.readRecords(dir).map((r: { id: string }) => [r.id, r]));
+	const byId = Object.fromEntries(store.readRecords(dir).map((r) => [r.id, r]));
 	assert.deepEqual(Object.keys(byId).sort(), [id(3), id(4), id(5)]);
 	assert.equal(byId[id(3)].state, "failed");
 	assert.equal(byId[id(3)].error, "orphaned");
@@ -142,13 +142,15 @@ test("tracker: scripted event stream fills record and transcript; writes are thr
 	vi.useFakeTimers({ toFake: ["Date", "setTimeout"] });
 	const dir = mainFleet();
 	const rid = id(10);
-	const tr = trackerMod.startTracking({
-		id: rid,
-		agent: "worker",
-		task: "  do\n  the   thing ",
-		model: "m",
-		background: false,
-	});
+	const tr = must(
+		trackerMod.startTracking({
+			id: rid,
+			agent: "worker",
+			task: "  do\n  the   thing ",
+			model: "m",
+			background: false,
+		}),
+	);
 	assert.ok(tr);
 	let rec = readRec(dir, rid);
 	assert.equal(rec.task, "do the thing");
@@ -231,7 +233,7 @@ test("tracker: scripted event stream fills record and transcript; writes are thr
 test("tracker: tool preview picks the first known argument, falls back to JSON", () => {
 	const dir = mainFleet();
 	const rid = id(11);
-	const tr = trackerMod.startTracking({ id: rid, agent: "a", task: "t", background: false });
+	const tr = must(trackerMod.startTracking({ id: rid, agent: "a", task: "t", background: false }));
 	tr.onLine(lineOf({ type: "tool_execution_start", toolName: "read", args: { path: "/a/b" } }));
 	tr.onLine(lineOf({ type: "tool_execution_start", toolName: "odd", args: { n: 1 } }));
 	tr.onLine(lineOf({ type: "tool_execution_end", toolName: "odd", result: {} }));
@@ -246,7 +248,7 @@ test("tracker: tool preview picks the first known argument, falls back to JSON",
 test("tracker: a resumed run keeps counters, clears the end state and the stop marker", () => {
 	const dir = mainFleet();
 	const rid = id(12);
-	const first = trackerMod.startTracking({ id: rid, agent: "a", task: "one", background: true });
+	const first = must(trackerMod.startTracking({ id: rid, agent: "a", task: "one", background: true }));
 	first.onLine(
 		lineOf({
 			type: "message_end",
@@ -262,7 +264,7 @@ test("tracker: a resumed run keeps counters, clears the end state and the stop m
 	const ended = readRec(dir, rid);
 	assert.equal(ended.state, "cancelled");
 	assert.equal(ended.stoppedBy, "user");
-	const again = trackerMod.startTracking({ id: rid, agent: "a", task: "two", background: true });
+	const again = must(trackerMod.startTracking({ id: rid, agent: "a", task: "two", background: true }));
 	const rec = readRec(dir, rid);
 	assert.equal(rec.startedAt, ended.startedAt);
 	assert.equal(rec.turns, 1);
@@ -275,7 +277,7 @@ test("tracker: a resumed run keeps counters, clears the end state and the stop m
 	assert.equal(rec.stoppedBy, undefined);
 	assert.equal(rec.task, "two");
 	assert.equal(store.stopOrigin(dir, rid), undefined);
-	assert.equal(store.readTranscript(dir, rid, 0).items.at(-1).text, "— resumed —");
+	assert.equal(must(store.readTranscript(dir, rid, 0).items.at(-1)).text, "— resumed —");
 	again.finish({ exitCode: 0 });
 	assert.equal(readRec(dir, rid).state, "done");
 	store.removeFleetDir();
@@ -293,7 +295,7 @@ test("tracker: finish states and idempotence", () => {
 	];
 	cases.forEach(([opts, state], i) => {
 		const rid = id(100 + i);
-		const tr = trackerMod.startTracking({ id: rid, agent: "a", task: "t", background: false });
+		const tr = must(trackerMod.startTracking({ id: rid, agent: "a", task: "t", background: false }));
 		tr.finish(opts);
 		tr.finish({ exitCode: 9 });
 		const rec = readRec(dir, rid);
@@ -311,7 +313,7 @@ test("tracker at depth 2 records its parent run id", () => {
 	const fleetDir = join(root, `${process.pid}-0badf00d`);
 	mkdirSync(fleetDir, { recursive: true, mode: 0o700 });
 	withEnv({ NYCODE_SUBAGENT_DEPTH: "1", NYCODE_FLEET_DIR: fleetDir, NYCODE_FLEET_RUN_ID: id(20) }, () => {
-		const tr = trackerMod.startTracking({ id: id(21), agent: "a", task: "t", background: false });
+		const tr = must(trackerMod.startTracking({ id: id(21), agent: "a", task: "t", background: false }));
 		tr.finish({});
 		const rec = readRec(fleetDir, id(21));
 		assert.equal(rec.parentId, id(20));
@@ -380,7 +382,7 @@ test("stop origin: {cancel} is the agent, the panel is the user (fails before: e
 	assert.equal(sourceMod.stopOwnRun(id(50)), "stopping");
 	assert.equal(store.stopOrigin(dir, id(50)), "agent");
 	assert.equal(await own.exited, true);
-	const t = trackerMod.startTracking({ id: id(51), agent: "a", task: "t", background: false });
+	const t = must(trackerMod.startTracking({ id: id(51), agent: "a", task: "t", background: false }));
 	store.requestStop(dir, id(51), "agent");
 	t.finish({ exitCode: 143 });
 	assert.equal(readRec(dir, id(51)).stoppedBy, "agent");

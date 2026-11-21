@@ -1,23 +1,25 @@
 // Ported from subagent-panel/fleet-ui-layout.test.ts (pi-code patch tests); same cases and expectations.
 // Testes de layout, paleta e larguras do painel da frota
 import assert from "node:assert/strict";
+import { visibleWidth } from "@nycode/tui";
 import { test } from "vitest";
+import type { RunRecord, TranscriptItem } from "../../../../src/extensions/subagent/fleet/types.ts";
+import type { PanelView } from "../../../../src/extensions/subagent/fleet-ui/panel.ts";
+import * as panel from "../../../../src/extensions/subagent/fleet-ui/panel.ts";
+import * as palette from "../../../../src/extensions/subagent/fleet-ui/style/palette.ts";
+import type { FleetRow } from "../../../../src/extensions/subagent/fleet-ui/view-model.ts";
+import * as vm from "../../../../src/extensions/subagent/fleet-ui/view-model.ts";
 import { fleetTestEnv } from "../support/fleet-env.ts";
+import type { FakeSource } from "../support/fleet-ui-fixtures.ts";
 
 fleetTestEnv("fleet-ui-layout-test-");
-
-const vm: any = await import("../../../../src/extensions/subagent/fleet-ui/view-model.ts");
-const panel: any = await import("../../../../src/extensions/subagent/fleet-ui/panel.ts");
-const palette: any = await import("../../../../src/extensions/subagent/fleet-ui/style/palette.ts");
-await palette.ready;
-const { visibleWidth }: any = await import("@nycode/tui");
 
 const NOW = 1_000_000;
 const theme = { fg: (_c: string, s: string) => s, bold: (s: string) => s };
 // Tema que marca a cor, para checar estilo por grau.
 const tagTheme = { fg: (c: string, s: string) => `<${c}>${s}</${c}>`, bold: (s: string) => `*${s}*` };
 
-function rec(id: string, parentId: string | null, depth: number, over: Record<string, unknown> = {}) {
+function rec(id: string, parentId: string | null, depth: number, over: Record<string, unknown> = {}): RunRecord {
 	return {
 		v: 1,
 		id,
@@ -36,10 +38,10 @@ function rec(id: string, parentId: string | null, depth: number, over: Record<st
 		ownerPid: 1,
 		activity: "Reading files",
 		...over,
-	} as any;
+	} as unknown as RunRecord;
 }
 
-function fakeSource(records: any[], transcripts: Record<string, any[]> = {}) {
+function fakeSource(records: RunRecord[], transcripts: Record<string, TranscriptItem[]> = {}): FakeSource {
 	const listeners: Array<() => void> = [];
 	const calls = { stop: [] as string[], send: [] as Array<[string, string]>, detach: 0 };
 	const s = {
@@ -75,13 +77,13 @@ function fakeSource(records: any[], transcripts: Record<string, any[]> = {}) {
 			};
 		},
 	};
-	return s as any;
+	return s as unknown as FakeSource;
 }
 
-const rowsOf = (records: any[], over: Record<string, unknown> = {}) =>
+const rowsOf = (records: RunRecord[], over: Record<string, unknown> = {}) =>
 	vm.buildRows(records, { now: NOW, panel: true, ...over });
 
-function controllerOf(records: any[]) {
+function controllerOf(records: RunRecord[]) {
 	const src = fakeSource(records);
 	const clock = { now: NOW };
 	const c = new panel.PanelController({ getSource: () => src, now: () => clock.now });
@@ -104,16 +106,17 @@ function withEnv<T>(env: Record<string, string | undefined>, fn: () => T): T {
 		}
 	}
 }
-const viewOf = (rows: any[], over: Record<string, unknown> = {}) => ({
-	rows,
-	focused: false,
-	selectedId: null,
-	hint: "2 running · ↓ to manage",
-	hintColor: "muted",
-	running: 2,
-	finished: 0,
-	...over,
-});
+const viewOf = (rows: FleetRow[], over: Record<string, unknown> = {}): PanelView =>
+	({
+		rows,
+		focused: false,
+		selectedId: null,
+		hint: "2 running · ↓ to manage",
+		hintColor: "muted",
+		running: 2,
+		finished: 0,
+		...over,
+	}) as unknown as PanelView;
 
 test("gap: one blank line closes a non-empty panel, none when empty", () => {
 	const rows = rowsOf([rec("a", null, 1), rec("b", null, 1, { startedAt: NOW - 1 })]);
@@ -129,7 +132,7 @@ test("task label: first line, collapsed, truncated; #n for repeated types in sta
 		rec("b", null, 1, { agent: "general-purpose", task: "Write docs", startedAt: 5 }),
 		rec("c", null, 1, { agent: "Explore", task: "x".repeat(300), startedAt: 7 }),
 	]);
-	const byId = Object.fromEntries(rows.map((r: any) => [r.id, r]));
+	const byId = Object.fromEntries(rows.map((r) => [r.id, r]));
 	assert.deepEqual([byId.b.nth, byId.a.nth, byId.c.nth], [1, 2, 0]);
 	const la = panel.renderRow(byId.a, false, tagTheme, 300);
 	assert.ok(la.includes("<text>general-purpose</text>") && la.includes("<dim>#2</dim>"), la);
@@ -148,9 +151,9 @@ test("stats columns have fixed widths so values do not shift", () => {
 		rec("b", null, 1, { startedAt: NOW - 3_725_000, tokens: { context: 2_500_000 }, cost: 123.4 }),
 	]);
 	const re = /(.{7}) \| (.{10}) \| (.{7})$/;
-	const cols = rows.map((r: any) => re.exec(panel.renderRow(r, false, theme, 100)));
+	const cols = rows.map((r) => re.exec(panel.renderRow(r, false, theme, 100)));
 	assert.ok(cols.every(Boolean));
-	assert.ok(cols.every((m: any) => m[0].length === cols[0][0].length));
+	assert.ok(cols.every((m) => m?.[0].length === cols[0]?.[0].length));
 	for (const r of rows) assert.equal(visibleWidth(panel.renderRow(r, false, theme, 100)), 100);
 });
 
@@ -212,7 +215,7 @@ const treeRecords = () => [
 test("main root: depth-1 rows hang from main with ├─/└─, deeper levels carry │ or blanks", () => {
 	const rows = rowsOf(treeRecords(), { mainRoot: true });
 	assert.deepEqual(
-		rows.map((r: any) => [r.id, r.guides]),
+		rows.map((r) => [r.id, r.guides]),
 		[
 			["a", "├─ "],
 			["a1", "│  └─ "],
@@ -220,18 +223,18 @@ test("main root: depth-1 rows hang from main with ├─/└─, deeper levels c
 		],
 	);
 	assert.deepEqual(
-		rowsOf(treeRecords()).map((r: any) => r.guides),
+		rowsOf(treeRecords()).map((r) => r.guides),
 		["", "└─ ", ""],
 		"sem mainRoot (/tasks) nada muda",
 	);
 	const solo = rowsOf([rec("a", null, 1), rec("a1", "a", 2)], { mainRoot: true });
 	assert.deepEqual(
-		solo.map((r: any) => r.guides),
+		solo.map((r) => r.guides),
 		["└─ ", "   └─ "],
 	);
 	const folded = rowsOf(treeRecords(), { mainRoot: true, collapsed: new Set(["a"]) });
 	assert.deepEqual(
-		folded.map((r: any) => [r.id, r.guides, r.hiddenDescendants]),
+		folded.map((r) => [r.id, r.guides, r.hiddenDescendants]),
 		[
 			["a", "├─ ", 1],
 			["b", "└─ ", 0],

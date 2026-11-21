@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { test } from "vitest";
+import type { ExtensionAPI } from "../../../../src/core/extensions/types.ts";
 import { fleetTestEnv } from "../support/fleet-env.ts";
 
 const { tmp } = fleetTestEnv("fleet-entry-");
@@ -20,12 +21,6 @@ process.env.NYCODE_CODING_AGENT_DIR = agentDir;
 delete process.env.CLAUDE_CONFIG_DIR;
 delete process.env.NYCODE_SUBAGENT;
 delete process.env.NYCODE_SUBAGENT_DEPTH;
-
-const store: any = await import("../../../../src/extensions/subagent/fleet/store.ts");
-const sourceMod: any = await import("../../../../src/extensions/subagent/fleet/source.ts");
-const bgMod: any = await import("../../../../src/extensions/subagent/fleet/background.ts");
-const trackerMod: any = await import("../../../../src/extensions/subagent/fleet/tracker.ts");
-const { default: subagentExtension }: any = await import("../../../../src/extensions/subagent/index.ts");
 
 // O filho falso só responde depois que `release-<tarefa>` existe em FAKE_PI_DIR; tarefas `hang-*` nunca respondem (servem a parada).
 const fakePi = join(tmp, "fake-pi-entry.mjs");
@@ -44,6 +39,13 @@ const timer = setInterval(() => {
 }, 20)
 `,
 );
+
+import * as bgMod from "../../../../src/extensions/subagent/fleet/background.ts";
+import * as sourceMod from "../../../../src/extensions/subagent/fleet/source.ts";
+import * as store from "../../../../src/extensions/subagent/fleet/store.ts";
+import * as trackerMod from "../../../../src/extensions/subagent/fleet/tracker.ts";
+import subagentExtension from "../../../../src/extensions/subagent/index.ts";
+
 process.env.FAKE_PI_DIR = tmp;
 const release = (task: string): void => writeFileSync(join(tmp, `release-${task}`), "");
 
@@ -70,21 +72,27 @@ function gone(pid: number): boolean {
 }
 
 // O pi e o contexto falsos: registram tudo o que a extensão faz e guardam o gancho de teclas do painel.
+type Handler = (...a: unknown[]) => unknown;
+// Resultado da ferramenta como o teste o lê (o fonte tipa o conteúdo como união de blocos).
+type ToolRes = { content: Array<{ text: string }>; isError?: boolean; details?: Record<string, unknown> };
+type Command = { handler: (...a: unknown[]) => Promise<void> };
+type Tool = { name: string; execute: (...a: unknown[]) => Promise<ToolRes> };
+
 function boot(opts: { hasUI?: boolean; sendThrows?: boolean } = {}) {
-	const handlers = new Map<string, Array<(...a: any[]) => any>>();
-	const tools: any[] = [];
-	const commands = new Map<string, any>();
+	const handlers = new Map<string, Handler[]>();
+	const tools: Tool[] = [];
+	const commands = new Map<string, Command>();
 	const sent: Sent[] = [];
-	const emitted: Array<[string, any]> = [];
+	const emitted: Array<[string, unknown]> = [];
 	const notes: Array<[string, string | undefined]> = [];
-	const inputs: Array<(data: string) => any> = [];
+	const inputs: Array<(data: string) => unknown> = [];
 	const widgets: unknown[] = [];
 	const steered: Array<[string, unknown]> = [];
 	const refused: Sent["msg"][] = [];
 	const pi = {
-		on: (event: string, h: (...a: any[]) => any) => void handlers.set(event, [...(handlers.get(event) ?? []), h]),
-		registerTool: (def: any) => void tools.push(def),
-		registerCommand: (name: string, def: any) => void commands.set(name, def),
+		on: (event: string, h: Handler) => void handlers.set(event, [...(handlers.get(event) ?? []), h]),
+		registerTool: (def: Tool) => void tools.push(def),
+		registerCommand: (name: string, def: Command) => void commands.set(name, def),
 		events: { emit: (c: string, d: unknown) => void emitted.push([c, d]), on: () => () => {} },
 		getActiveTools: () => ["subagent"],
 		sendMessage: (msg: Sent["msg"], o: Sent["opts"]) => {
@@ -101,7 +109,7 @@ function boot(opts: { hasUI?: boolean; sendThrows?: boolean } = {}) {
 		hasUI: opts.hasUI ?? true,
 		ui: {
 			setWidget: (...a: unknown[]) => void widgets.push(a),
-			onTerminalInput: (h: (data: string) => any) => {
+			onTerminalInput: (h: (data: string) => unknown) => {
 				inputs.push(h);
 				return () => {};
 			},
@@ -114,17 +122,17 @@ function boot(opts: { hasUI?: boolean; sendThrows?: boolean } = {}) {
 	};
 	const savedArgv = process.argv[1];
 	process.argv[1] = fakePi;
-	subagentExtension(pi);
-	const fire = async (event: string, payload: unknown = {}): Promise<any[]> => {
-		const out: any[] = [];
+	subagentExtension(pi as unknown as ExtensionAPI);
+	const fire = async (event: string, payload: unknown = {}): Promise<unknown[]> => {
+		const out: unknown[] = [];
 		for (const h of handlers.get(event) ?? []) out.push(await h(payload, ctx));
 		return out;
 	};
-	const tool = tools.find((t) => t.name === "subagent");
-	const run = (params: Record<string, unknown>, signal?: AbortSignal): Promise<any> =>
+	const tool = tools.find((t) => t.name === "subagent") as Tool;
+	const run = (params: Record<string, unknown>, signal?: AbortSignal): Promise<ToolRes> =>
 		tool.execute("call", params, signal, undefined, ctx);
-	const key = (data: string): any => inputs.at(-1)?.(data);
-	const text = (res: any): string => res.content[0].text;
+	const key = (data: string): unknown => inputs.at(-1)?.(data);
+	const text = (res: ToolRes): string => res.content[0].text;
 	const dirRecords = (): Rec[] => {
 		const dir = store.currentFleetDir();
 		return dir ? (store.readRecords(dir) as Rec[]) : [];
@@ -154,6 +162,7 @@ function boot(opts: { hasUI?: boolean; sendThrows?: boolean } = {}) {
 		handlers,
 		tools,
 		commands,
+		command: (name: string): Command => commands.get(name) as Command,
 		sent,
 		refused,
 		emitted,
@@ -397,13 +406,13 @@ test("/tasks: sem execuções avisa; com execuções abre o navegador; sem UI im
 		const saved = holder[slot];
 		holder[slot] = undefined;
 		try {
-			await h.commands.get("tasks").handler("", h.ctx);
+			await h.command("tasks").handler("", h.ctx);
 		} finally {
 			holder[slot] = saved;
 		}
 		assert.deepEqual(h.notes.at(-1), ["info", "No subagent runs in this session."]);
 		await h.fire("session_start");
-		await h.commands.get("tasks").handler("", h.ctx);
+		await h.command("tasks").handler("", h.ctx);
 		assert.deepEqual(h.notes.at(-1), ["info", "Nenhum agente nesta sessão."], "frota vazia");
 		const custom: unknown[] = [];
 		h.ctx.ui.custom = async (...a: unknown[]) => void custom.push(a);
@@ -411,10 +420,10 @@ test("/tasks: sem execuções avisa; com execuções abre o navegador; sem UI im
 			.text(await h.run({ agent: "fake", task: "hang-t", background: true }))
 			.match(/(bg-[0-9a-f]+)/)?.[1] as string;
 		await waitFor("bg record", () => h.dirRecords().find((r) => r.id === bgId));
-		await h.commands.get("tasks").handler("", h.ctx);
+		await h.command("tasks").handler("", h.ctx);
 		assert.equal(custom.length, 1, "o navegador abriu uma vez");
 		const headless = boot({ hasUI: false });
-		await headless.commands.get("tasks").handler("", headless.ctx);
+		await headless.command("tasks").handler("", headless.ctx);
 		assert.match(headless.notes[0][1] as string, new RegExp(`${bgId} fake: running - hang-t`));
 		await headless.finish();
 	} finally {
@@ -426,10 +435,12 @@ test("roster, /agents, modo inválido e teto de profundidade", async () => {
 	const h = boot();
 	try {
 		await h.fire("session_start");
-		const [prompt] = (await h.fire("before_agent_start", { systemPrompt: "base" })).filter(Boolean);
+		const [prompt] = (await h.fire("before_agent_start", { systemPrompt: "base" })).filter(Boolean) as Array<{
+			systemPrompt: string;
+		}>;
 		assert.match(prompt.systemPrompt, /^base\n\n## Subagents\n\n/);
 		assert.match(prompt.systemPrompt, /- fake \(user\): agente falso dos testes de entrada/);
-		await h.commands.get("agents").handler("", h.ctx);
+		await h.command("agents").handler("", h.ctx);
 		assert.match(h.notes.at(-1)?.[1] ?? "", /fake/);
 		const invalid = h.text(await h.run({}));
 		assert.match(invalid, /^Invalid parameters\. Provide exactly one mode\.\nAvailable agents: .*fake \(user\)/);

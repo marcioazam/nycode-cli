@@ -1,20 +1,19 @@
 // Ported from subagent-panel/fleet-ui.test.ts (pi-code patch tests); same cases and expectations.
 // Testes do viewer da frota (subagent/fleet-ui/viewer.ts): formatadores, render, rolagem, teclas e poll.
 import assert from "node:assert/strict";
+import { visibleWidth } from "@nycode/tui";
 import { afterEach, test, vi } from "vitest";
+import type { RunRecord, TranscriptItem } from "../../../../src/extensions/subagent/fleet/types.ts";
+import * as viewer from "../../../../src/extensions/subagent/fleet-ui/viewer.ts";
 import { fleetTestEnv } from "../support/fleet-env.ts";
 import { fakeSource, K, NOW, rec, tagTheme, theme, tree3 } from "../support/fleet-ui-fixtures.ts";
 
 fleetTestEnv("fleet-viewer-test-");
-const viewer: any = await import("../../../../src/extensions/subagent/fleet-ui/viewer.ts");
-const palette: any = await import("../../../../src/extensions/subagent/fleet-ui/style/palette.ts");
-await palette.ready;
-const { visibleWidth }: any = await import("@nycode/tui");
-
 afterEach(() => vi.useRealTimers());
 
 test("formatadores do viewer: itens do transcript", () => {
-	const f = (item: any, w = 40) => viewer.formatItem({ t: 0, ...item }, tagTheme, w);
+	const f = (item: Record<string, unknown>, w = 40) =>
+		viewer.formatItem({ t: 0, ...item } as unknown as TranscriptItem, tagTheme, w);
 	assert.deepEqual(f({ kind: "user", text: "oi" }), ["<accent>› oi</accent>"]);
 	assert.deepEqual(f({ kind: "tool_call", text: "bash   ls\n-la" }), ["<muted>⏺ bash ls -la</muted>"]);
 	assert.deepEqual(f({ kind: "note", text: "n" }), ["<dim>n</dim>"]);
@@ -36,12 +35,10 @@ test("formatadores do viewer: desfechos de envio, estado, breadcrumb e navegaç�
 	assert.equal(viewer.sendOutcomeText("resumed"), "↪ retomado com a sua mensagem");
 	assert.equal(viewer.sendOutcomeText("not-running"), "o agente já terminou; mensagem não enviada");
 	assert.equal(viewer.sendOutcomeText("unknown"), "agente não encontrado");
-	assert.deepEqual(["running", "done", "failed", "cancelled"].map(viewer.stateLabel), [
-		"● rodando",
-		"✓ concluído",
-		"✗ falhou",
-		"■ parado",
-	]);
+	assert.deepEqual(
+		(["running", "done", "failed", "cancelled"] as const).map((s) => viewer.stateLabel(s)),
+		["● rodando", "✓ concluído", "✗ falhou", "■ parado"],
+	);
 	assert.equal(viewer.breadcrumb(tree3(), "a1x"), "main › a-a › a-a1² › a-a1x³");
 	assert.equal(viewer.breadcrumb(tree3(), "a"), "main › a-a");
 	const header = (id: string) => viewer.headerLines(tree3(), id, NOW, theme, 200);
@@ -50,7 +47,7 @@ test("formatadores do viewer: desfechos de envio, estado, breadcrumb e navegaç�
 	assert.doesNotMatch(header("a1x")[1], /filhos/);
 });
 
-function viewerOf(records: any[], transcripts: Record<string, any[]> = {}, rows = 20) {
+function viewerOf(records: RunRecord[], transcripts: Record<string, TranscriptItem[]> = {}, rows = 20) {
 	const src = fakeSource(records, transcripts);
 	const clock = { now: NOW };
 	const state = { closed: 0, renders: 0 };
@@ -66,7 +63,7 @@ function viewerOf(records: any[], transcripts: Record<string, any[]> = {}, rows 
 	});
 	return { v, src, clock, state };
 }
-const item = (kind: string, text: string, extra = {}) => ({ t: 0, kind, text, ...extra });
+const item = (kind: string, text: string, extra = {}) => ({ t: 0, kind, text, ...extra }) as unknown as TranscriptItem;
 
 test("viewer: render com cabeçalho, nav, corpo, input e rodapé; largura respeitada", () => {
 	const { v, src } = viewerOf(tree3(), {
@@ -78,7 +75,7 @@ test("viewer: render com cabeçalho, nav, corpo, input e rodapé; largura respei
 	assert.match(lines[2], /^ainda não informado · ainda não informado · ao lado: a-b/);
 	assert.match(viewer.headerLines(tree3(), "a", NOW, theme, 200)[1], /ao lado: a-b · filhos: a-a1, a-a2$/);
 	assert.ok(lines.includes("› faça") && lines.includes("⏺ bash ls") && lines.includes("  ⎿ 1"));
-	assert.ok(lines.at(-1).startsWith("↑↓ rolar"));
+	assert.ok(lines.at(-1)?.startsWith("↑↓ rolar"));
 	assert.ok(lines.every((l: string) => visibleWidth(l) <= 60));
 	assert.equal(lines.at(-2), "❯ Mensagem para este agente");
 	src.records = [];
@@ -153,7 +150,7 @@ test("viewer: input, backspace, esc limpa antes de fechar, enter envia e mostra 
 	v.handleInput(K.enter);
 	assert.deepEqual(src.calls.send, [["a", "pare"]]);
 	assert.equal(v.input, "");
-	assert.match(v.render(100).at(-3), /^↪ enviada; o agente lê depois/);
+	assert.match(v.render(100).at(-3) ?? "", /^↪ enviada; o agente lê depois/);
 	for (const [out, text] of [
 		["resumed", "↪ retomado com a sua mensagem"],
 		["not-running", "o agente já terminou; mensagem não enviada"],
@@ -162,7 +159,7 @@ test("viewer: input, backspace, esc limpa antes de fechar, enter envia e mostra 
 		src.sendOutcome = out;
 		v.handleInput("m");
 		v.handleInput(K.enter);
-		assert.equal(v.render(100).at(-3), text);
+		assert.equal(v.render(100).at(-3) ?? "", text);
 	}
 });
 
@@ -179,11 +176,11 @@ test("viewer: x x para em 2 s; expira; terminado é somente leitura", () => {
 	assert.deepEqual(src.calls.stop, ["a"]);
 	assert.equal(v.outcome, "Stopping a-a…");
 	const done = viewerOf([rec("d", null, 1, { state: "done", endedAt: NOW })]);
-	assert.equal(done.v.render(100).at(-3), "somente leitura: o agente já terminou");
+	assert.equal(done.v.render(100).at(-3) ?? "", "somente leitura: o agente já terminou");
 	done.v.handleInput("x");
 	assert.match(done.v.outcome, /o agente já terminou; nada a parar/);
 	const bg = viewerOf([rec("bg", null, 1, { state: "done", endedAt: NOW, background: true })]);
-	assert.equal(bg.v.render(100).at(-3), "");
+	assert.equal(bg.v.render(100).at(-3) ?? "", "");
 	const gone = viewerOf([rec("g", null, 1)]);
 	gone.src.records = [];
 	gone.v.handleInput("x");

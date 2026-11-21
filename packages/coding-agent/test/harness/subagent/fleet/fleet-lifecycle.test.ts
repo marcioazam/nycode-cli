@@ -5,16 +5,16 @@ import { spawnSync } from "node:child_process";
 import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, test, vi } from "vitest";
+import * as detach from "../../../../src/extensions/subagent/fleet/detach.ts";
+import * as inbox from "../../../../src/extensions/subagent/fleet/inbox.ts";
+import * as sourceMod from "../../../../src/extensions/subagent/fleet/source.ts";
+import * as store from "../../../../src/extensions/subagent/fleet/store.ts";
+import * as trackerMod from "../../../../src/extensions/subagent/fleet/tracker.ts";
+import * as registryText from "../../../../src/extensions/subagent/registry/registry-text.ts";
 import { fleetTestEnv } from "../support/fleet-env.ts";
-import { baseRecord, deadPid, fleetRecordHelpers, id, sleeper, withEnv } from "../support/fleet-records.ts";
+import { baseRecord, deadPid, fleetRecordHelpers, id, must, sleeper, withEnv } from "../support/fleet-records.ts";
 
 const { tmp } = fleetTestEnv("fleet-lifecycle-test-");
-const store: any = await import("../../../../src/extensions/subagent/fleet/store.ts");
-const trackerMod: any = await import("../../../../src/extensions/subagent/fleet/tracker.ts");
-const detach: any = await import("../../../../src/extensions/subagent/fleet/detach.ts");
-const inbox: any = await import("../../../../src/extensions/subagent/fleet/inbox.ts");
-const sourceMod: any = await import("../../../../src/extensions/subagent/fleet/source.ts");
-const registryText: any = await import("../../../../src/extensions/subagent/registry/registry-text.ts");
 const { tempDir, mainFleet } = fleetRecordHelpers(store, tmp);
 const readRec = (dir: string, rid: string) => JSON.parse(readFileSync(join(dir, `${rid}.json`), "utf8"));
 
@@ -226,7 +226,7 @@ test("inbox: pollInboxOnce steers each message and acks; a throwing pi acks too-
 		rid,
 		off,
 	);
-	assert.equal(store.readAcks(dir, rid, 0).items.at(-1).outcome, "too-late");
+	assert.equal(must(store.readAcks(dir, rid, 0).items.at(-1)).outcome, "too-late");
 	assert.equal(inbox.pollInboxOnce(pi, dir, rid, off), off);
 	rmSync(dir, { recursive: true });
 });
@@ -295,7 +295,7 @@ test("F1 finishExitCode: a maxTurns cap (SIGTERM, exit 143) finishes as done (fa
 	assert.equal(trackerMod.finishExitCode(true, 143), 0);
 	assert.equal(trackerMod.finishExitCode(false, 143), 143);
 	assert.equal(trackerMod.finishExitCode(false, null), undefined);
-	const tr = trackerMod.startTracking({ id: id(200), agent: "a", task: "t", background: false });
+	const tr = must(trackerMod.startTracking({ id: id(200), agent: "a", task: "t", background: false }));
 	tr.finish({ exitCode: trackerMod.finishExitCode(true, 143) });
 	assert.equal(readRec(dir, id(200)).state, "done");
 	store.removeFleetDir();
@@ -304,7 +304,7 @@ test("F1 finishExitCode: a maxTurns cap (SIGTERM, exit 143) finishes as done (fa
 test("F2 resume truncates the inbox and acks (fails before: the old steer is still readable from offset 0)", () => {
 	const dir = mainFleet();
 	const rid = id(210);
-	trackerMod.startTracking({ id: rid, agent: "a", task: "t", background: true }).finish({ exitCode: 0 });
+	must(trackerMod.startTracking({ id: rid, agent: "a", task: "t", background: true })).finish({ exitCode: 0 });
 	store.appendInbox(dir, rid, { id: "old", t: 1, text: "stale steer" });
 	store.appendAck(dir, rid, { id: "old", t: 1, outcome: "steered" });
 	assert.equal(store.readInbox(dir, rid, 0).items.length, 1);

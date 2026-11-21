@@ -4,26 +4,34 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "vitest";
+import * as childMod from "../../../../src/extensions/subagent/core/child.ts";
+import * as store from "../../../../src/extensions/subagent/fleet/store.ts";
+import * as trackerMod from "../../../../src/extensions/subagent/fleet/tracker.ts";
+import type { RunRecord } from "../../../../src/extensions/subagent/fleet/types.ts";
+import * as vm from "../../../../src/extensions/subagent/fleet-ui/view-model.ts";
+import type { AgentConfig } from "../../../../src/extensions/subagent/registry/agents.ts";
 import { fleetTestEnv } from "../support/fleet-env.ts";
+import { baseRecord, must } from "../support/fleet-records.ts";
 
 const SRC = join(import.meta.dirname, "../../../../src/extensions/subagent");
 fleetTestEnv("fleet-model-effort-");
-const store: any = await import("../../../../src/extensions/subagent/fleet/store.ts");
-const trackerMod: any = await import("../../../../src/extensions/subagent/fleet/tracker.ts");
-const childMod: any = await import("../../../../src/extensions/subagent/core/child.ts");
 
 const id = (n: number): string => `fg-${n.toString(16).padStart(8, "0")}`;
+// The class flush accepts `force`; the exported RunTracker interface does not declare it.
+const flushNow = (t: { flush(): void }): void => (t as unknown as { flush(force: boolean): void }).flush(true);
 const line = (ev: unknown): string => JSON.stringify(ev);
 function mainFleet(): string {
 	delete process.env.NYCODE_SUBAGENT_DEPTH;
 	delete process.env.NYCODE_SUBAGENT;
-	return store.ensureFleetDir();
+	return must(store.ensureFleetDir());
 }
 const start = (opts: Record<string, unknown>, n: number) => {
 	const dir = mainFleet();
-	const tr = trackerMod.startTracking({ id: id(n), agent: "swarm-worker", task: "t", background: false, ...opts });
+	const tr = must(
+		trackerMod.startTracking({ id: id(n), agent: "swarm-worker", task: "t", background: false, ...opts }),
+	);
 	const read = () => {
-		tr.flush(true);
+		flushNow(tr);
 		return JSON.parse(readFileSync(join(dir, `${id(n)}.json`), "utf8"));
 	};
 	return { tr, read, dir };
@@ -45,7 +53,7 @@ test("configuredRuntime: lê o argv real (modelo com sufixo, --thinking, sem nad
 
 test("configuredRuntime acompanha agentInvocationArgs: agent.model, alias e CLAUDE_CODE_SUBAGENT_MODEL", () => {
 	const c = trackerMod.configuredRuntime;
-	const base = { name: "w", description: "d", systemPrompt: "", source: "user" };
+	const base: AgentConfig = { name: "w", description: "d", systemPrompt: "", source: "user", filePath: "" };
 	assert.deepEqual(c(childMod.agentInvocationArgs({ ...base, model: "a/b", effort: "low" })), {
 		model: "a/b",
 		effort: "low",
@@ -186,14 +194,16 @@ test("tracker: resume recomeça do configurado do novo argv; contadores seguem",
 	);
 	tr.finish({ exitCode: 0 });
 	assert.equal(read().state, "done");
-	const again = trackerMod.startTracking({
-		id: id(8),
-		agent: "swarm-worker",
-		task: "t2",
-		background: true,
-		model: "c/d",
-	});
-	const dir = store.currentFleetDir();
+	const again = must(
+		trackerMod.startTracking({
+			id: id(8),
+			agent: "swarm-worker",
+			task: "t2",
+			background: true,
+			model: "c/d",
+		}),
+	);
+	const dir = must(store.currentFleetDir());
 	const rec = JSON.parse(readFileSync(join(dir, `${id(8)}.json`), "utf8"));
 	assert.equal(rec.model, "c/d");
 	assert.equal("effort" in rec, false, "o esforço antigo não vaza para a nova execução");
@@ -224,29 +234,11 @@ test("D10 tracker: finish({exitCode:0, partial:true}) grava partial:true e segue
 });
 
 test("D10 view-model: a linha de um run parcial leva partial; wiring de run.ts e background.ts", async () => {
-	const vm: any = await import("../../../../src/extensions/subagent/fleet-ui/view-model.ts");
-	const mk = (rid: string, over: object) => ({
-		v: 1,
-		id: rid,
-		parentId: null,
-		depth: 1,
-		agent: "a",
-		task: "t",
-		background: true,
-		state: "done",
-		startedAt: 1,
-		updatedAt: 2,
-		endedAt: 2,
-		turns: 1,
-		toolCalls: 0,
-		tokens: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, context: 0 },
-		cost: 0,
-		ownerPid: process.pid,
-		...over,
-	});
-	const rows = vm.buildRows([mk(id(22), { partial: true }), mk(id(23), {})] as any[], { now: 3, panel: false });
-	assert.equal(rows.find((r: any) => r.id === id(22)).partial, true);
-	assert.equal("partial" in rows.find((r: any) => r.id === id(23)), false);
+	const mk = (rid: string, over: Partial<RunRecord>): RunRecord =>
+		baseRecord(rid, { background: true, state: "done", updatedAt: 2, endedAt: 2, turns: 1, ...over });
+	const rows = vm.buildRows([mk(id(22), { partial: true }), mk(id(23), {})], { now: 3, panel: false });
+	assert.equal(must(rows.find((r) => r.id === id(22))).partial, true);
+	assert.equal("partial" in must(rows.find((r) => r.id === id(23))), false);
 	for (const f of ["core/run.ts", "fleet/background.ts"])
 		assert.match(readFileSync(join(SRC, f), "utf8"), /partial: .*partial/, f);
 });
@@ -256,14 +248,16 @@ test('D8 run.ts abre a faixa antes do spawn: startTracking com activity "startin
 	assert.match(src, /(?:let|const) tracker\b[^;]*?= startTracking\(\{[^}]*activity: "starting"/);
 	assert.doesNotMatch(src, /tracker \?\?= startTracking/);
 	const dir = mainFleet();
-	const rec = trackerMod.startTracking({
-		id: id(24),
-		agent: "swarm-worker",
-		task: "t",
-		background: false,
-		activity: "starting",
-	});
-	rec.flush(true);
+	const rec = must(
+		trackerMod.startTracking({
+			id: id(24),
+			agent: "swarm-worker",
+			task: "t",
+			background: false,
+			activity: "starting",
+		}),
+	);
+	flushNow(rec);
 	assert.equal(JSON.parse(readFileSync(join(dir, `${id(24)}.json`), "utf8")).activity, "starting");
 	rec.finish({ exitCode: 0 });
 	store.removeFleetDir();
@@ -275,12 +269,12 @@ test("D11 tracker: o registro leva toolCallId (da chamada em curso) e planStep (
 	const readRec = (n: number) => JSON.parse(readFileSync(join(dir, `${id(n)}.json`), "utf8"));
 	trackerMod.setPlanStep(3);
 	const a = trackerMod.toolCallScope.run("call_77", () =>
-		trackerMod.startTracking({ id: id(30), agent: "swarm-worker", task: "t", background: false }),
+		must(trackerMod.startTracking({ id: id(30), agent: "swarm-worker", task: "t", background: false })),
 	);
 	assert.equal(readRec(30).toolCallId, "call_77");
 	assert.equal(readRec(30).planStep, 3);
 	trackerMod.setPlanStep(undefined);
-	const b = trackerMod.startTracking({ id: id(31), agent: "swarm-worker", task: "t", background: false });
+	const b = must(trackerMod.startTracking({ id: id(31), agent: "swarm-worker", task: "t", background: false }));
 	assert.equal("toolCallId" in readRec(31), false);
 	assert.equal("planStep" in readRec(31), false);
 	a.finish({ exitCode: 0, partial: true });

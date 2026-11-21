@@ -2,6 +2,8 @@
 import { spawn, spawnSync } from "node:child_process";
 import { mkdtempSync } from "node:fs";
 import { join } from "node:path";
+import type * as StoreModule from "../../../../src/extensions/subagent/fleet/store.ts";
+import type { RunRecord } from "../../../../src/extensions/subagent/fleet/types.ts";
 
 export const id = (n = 1): string => `fg-${n.toString(16).padStart(8, "0")}`;
 
@@ -22,7 +24,13 @@ export function withEnv(vars: Record<string, string | undefined>, fn: () => void
 	}
 }
 
-export const baseRecord = (rid: string, over: Record<string, unknown> = {}) => ({
+/** Narrows a value that must exist for the test to proceed. */
+export function must<T>(v: T | undefined | null): T {
+	if (v === undefined || v === null) throw new Error("expected a defined value");
+	return v;
+}
+
+export const baseRecord = (rid: string, over: Partial<RunRecord> = {}): RunRecord => ({
 	v: 1,
 	id: rid,
 	parentId: null,
@@ -54,14 +62,14 @@ export function sleeper(env: Record<string, string | undefined>) {
 }
 
 /** Per-test-file helpers bound to the fleet store module and the file's temp root. */
-export function fleetRecordHelpers(store: any, tmp: string) {
+export function fleetRecordHelpers(store: typeof StoreModule, tmp: string) {
 	return {
 		tempDir: (): string => mkdtempSync(join(tmp, "fleet-dir-")),
 		// Depth 0 with a fresh process-wide fleet dir; callers remove it with store.removeFleetDir().
 		mainFleet: (): string => {
 			delete process.env.NYCODE_SUBAGENT_DEPTH;
 			delete process.env.NYCODE_SUBAGENT;
-			return store.ensureFleetDir();
+			return must(store.ensureFleetDir());
 		},
 	};
 }

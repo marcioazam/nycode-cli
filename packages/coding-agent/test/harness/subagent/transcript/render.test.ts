@@ -3,16 +3,18 @@
 // env -u NYCODE_SUBAGENT -u NYCODE_SUBAGENT_DEPTH -u NYCODE_FLEET_DIR -u NYCODE_FLEET_RUN_ID -u NYCODE_TEAMS node --experimental-strip-types --test ~/.pi/agent/claude-home/patches/pi-code/subagent-render/render.test.ts
 import assert from "node:assert/strict";
 import { homedir } from "node:os";
+import type { Component } from "@nycode/tui";
 import { test } from "vitest";
+import type { ExtensionAPI } from "../../../../src/core/extensions/types.ts";
+import extension from "../../../../src/extensions/subagent/index.ts";
+import * as fmt from "../../../../src/extensions/subagent/transcript/format.ts";
+import * as tr from "../../../../src/extensions/subagent/transcript/index.ts";
+import type { Theme } from "../../../../src/modes/interactive/theme/theme.ts";
 import { fleetTestEnv } from "../support/fleet-env.ts";
 
 // The color assertions need a colored baseline; an ambient NO_COLOR (CI, the gate) made them fail. The NO_COLOR tests set it themselves.
 delete process.env.NO_COLOR;
 fleetTestEnv("subagent-render-");
-const tr: any = await import("../../../../src/extensions/subagent/transcript/index.ts");
-const fmt: any = await import("../../../../src/extensions/subagent/transcript/format.ts");
-const palette: any = await import("../../../../src/extensions/subagent/fleet-ui/style/palette.ts");
-await palette.ready;
 
 const CODE: Record<string, number> = {
 	error: 91,
@@ -24,15 +26,18 @@ const CODE: Record<string, number> = {
 	toolTitle: 96,
 	toolOutput: 97,
 };
+// Partial fake: the renderers only call fg and bold.
 const theme = {
 	fg: (role: string, t: string) => `\x1b[${CODE[role] ?? 39}m${t}\x1b[39m`,
 	bold: (t: string) => `\x1b[1m${t}\x1b[22m`,
-};
-const mdTheme = new Proxy({}, { get: () => (t: string) => t });
+} as unknown as Theme;
+const mdTheme = new Proxy({} as Parameters<typeof tr.renderSubagentResult>[4] & object, {
+	get: () => (t: string) => t,
+});
 const strip = (s: string): string => s.replace(/\x1b\[[0-9;]*m/g, "");
-const lines = (c: { render(w: number): string[] }, plain = true, w = 200): string[] =>
+const lines = (c: Component, plain = true, w = 200): string[] =>
 	c.render(w).map((l) => (plain ? strip(l).trimEnd() : l));
-const text = (c: { render(w: number): string[] }, w = 200): string => lines(c, true, w).join("\n");
+const text = (c: Component, w = 200): string => lines(c, true, w).join("\n");
 
 const call = (name: string, args: Record<string, unknown>) => ({ type: "toolCall", id: name, name, arguments: args });
 const asst = (content: unknown[], ts?: number) => ({
@@ -89,8 +94,15 @@ const wrap = (mode: string, results: unknown[], extra: Record<string, unknown> =
 	content: [{ type: "text", text: "fallback text" }],
 	details: { mode, agentScope: "user", projectAgentsDir: null, results, ...extra },
 });
+type RenderResult = Parameters<typeof tr.renderSubagentResult>[0];
 const view = (result: unknown, opts: { expanded?: boolean; isPartial?: boolean } = {}, args: unknown = {}) =>
-	tr.renderSubagentResult(result, { expanded: false, isPartial: false, ...opts }, theme, args, mdTheme);
+	tr.renderSubagentResult(
+		result as RenderResult,
+		{ expanded: false, isPartial: false, ...opts },
+		theme,
+		args as Parameters<typeof tr.renderSubagentResult>[3],
+		mdTheme,
+	);
 const tasks = [
 	{ agent: "Explore", task: "Scan it. Then report" },
 	{ agent: "swarm-worker", task: "Run: sleep 15; echo hi" },
@@ -512,18 +524,24 @@ test("collapsed lines stay short whatever the task is", () => {
 
 // ---- the hook in subagent/index.ts ----
 
+// Minimal shape of the registered tool that the test calls.
+interface Tool {
+	name: string;
+	renderCall(args: unknown, theme: Theme, ctx: unknown): Component;
+	renderResult(result: unknown, opts: unknown, theme: Theme, ctx: unknown): Component;
+}
+
 test("index.ts wires renderCall and renderResult (isPartial and args forwarded) to the transcript", async () => {
-	const tools: any[] = [];
+	const tools: Tool[] = [];
 	const pi = {
 		on: () => {},
-		registerTool: (d: any) => void tools.push(d),
+		registerTool: (d: Tool) => void tools.push(d),
 		registerCommand: () => {},
 		events: { emit: () => {}, on: () => () => {} },
 		getActiveTools: () => ["subagent"],
 	};
-	const { default: extension } = await import("../../../../src/extensions/subagent/index.ts");
-	extension(pi as any);
-	const tool = tools.find((t) => t.name === "subagent");
+	extension(pi as unknown as ExtensionAPI);
+	const tool = tools.find((t) => t.name === "subagent") as Tool;
 	assert.deepEqual(lines(tool.renderCall({ tasks }, theme, {})), ["parallel · 2 agents"]);
 	const out = tool.renderResult(wrap("parallel", []), { expanded: false, isPartial: true }, theme, {
 		args: { tasks },
@@ -544,17 +562,14 @@ test("invalidate reaches the nested components and a redraw renders the same lin
 });
 
 test("NO_COLOR: the expanded markdown output carries no escapes even with a coloring markdown theme", () => {
-	const ansiMd = new Proxy(
-		{},
-		{
-			get: (_t, k) =>
-				k === "highlightCode"
-					? (c: string) => c.split("\n").map((l) => `\x1b[35m${l}\x1b[39m`)
-					: k === "codeBlockIndent"
-						? "  "
-						: (t: string) => `\x1b[95m${t}\x1b[39m`,
-		},
-	);
+	const ansiMd = new Proxy({} as Parameters<typeof tr.renderSubagentResult>[4] & object, {
+		get: (_t, k) =>
+			k === "highlightCode"
+				? (c: string) => c.split("\n").map((l) => `\x1b[35m${l}\x1b[39m`)
+				: k === "codeBlockIndent"
+					? "  "
+					: (t: string) => `\x1b[95m${t}\x1b[39m`,
+	});
 	const md = res({
 		exitCode: 0,
 		messages: [asst([{ type: "text", text: "## Title\n**bold** `code` [l](http://x)\n\n```ts\nconst a = 1\n```" }])],

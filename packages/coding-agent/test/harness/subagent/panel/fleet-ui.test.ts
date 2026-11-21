@@ -1,22 +1,24 @@
 // Ported from subagent-panel/fleet-ui.test.ts (pi-code patch tests); same cases and expectations.
 // Testes do painel/viewer da frota (subagent/fleet-ui)
 import assert from "node:assert/strict";
+import { visibleWidth } from "@nycode/tui";
 import { afterEach, test, vi } from "vitest";
+import type { ExtensionAPI, ExtensionCommandContext } from "../../../../src/core/extensions/types.ts";
+import type { RunRecord } from "../../../../src/extensions/subagent/fleet/types.ts";
+import * as fleetUi from "../../../../src/extensions/subagent/fleet-ui/index.ts";
+import type { PanelView } from "../../../../src/extensions/subagent/fleet-ui/panel.ts";
+import * as panel from "../../../../src/extensions/subagent/fleet-ui/panel.ts";
+import type { FleetRow } from "../../../../src/extensions/subagent/fleet-ui/view-model.ts";
+import * as vm from "../../../../src/extensions/subagent/fleet-ui/view-model.ts";
+import * as viewer from "../../../../src/extensions/subagent/fleet-ui/viewer.ts";
 import { fleetTestEnv } from "../support/fleet-env.ts";
+import type { FakeComp, FakeSource } from "../support/fleet-ui-fixtures.ts";
 import { fakeCtx, fakeSource, K, NOW, rec, tagTheme, theme, tree3 } from "../support/fleet-ui-fixtures.ts";
 
 fleetTestEnv("fleet-ui-test-");
-const vm: any = await import("../../../../src/extensions/subagent/fleet-ui/view-model.ts");
-const panel: any = await import("../../../../src/extensions/subagent/fleet-ui/panel.ts");
-const viewer: any = await import("../../../../src/extensions/subagent/fleet-ui/viewer.ts");
-const fleetUi: any = await import("../../../../src/extensions/subagent/fleet-ui/index.ts");
-const palette: any = await import("../../../../src/extensions/subagent/fleet-ui/style/palette.ts");
-await palette.ready;
-const { visibleWidth }: any = await import("@nycode/tui");
-
-const rowsOf = (records: any[], over: Record<string, unknown> = {}) =>
+const rowsOf = (records: RunRecord[], over: Record<string, unknown> = {}) =>
 	vm.buildRows(records, { now: NOW, panel: true, ...over });
-const ids = (rows: any[]) => rows.map((r) => r.id);
+const ids = (rows: FleetRow[]) => rows.map((r) => r.id);
 
 // ---- view model ----
 
@@ -65,7 +67,7 @@ test("pai ausente pendura em main; irmãos por startedAt; ciclo não quebra", ()
 test("guias de uma árvore de 3 níveis com irmãos", () => {
 	const rows = rowsOf(tree3());
 	assert.deepEqual(
-		rows.map((r: any) => [r.id, r.guides]),
+		rows.map((r) => [r.id, r.guides]),
 		[
 			["a", ""],
 			["a1", "├─ "],
@@ -85,10 +87,10 @@ test("colapso mostra (+N) e esconde descendentes; N conta visíveis", () => {
 	assert.equal(rows[0].collapsed, true);
 	assert.match(panel.renderRow(rows[0], false, theme, 80), /a-a \(\+5( · [●✕] \d+)*\)/);
 	const inner = rowsOf(tree3(), { collapsed: new Set(["a1"]) });
-	assert.equal(inner.find((r: any) => r.id === "a1").hiddenDescendants, 2);
-	assert.equal(inner.find((r: any) => r.id === "a").hiddenDescendants, 0);
+	assert.equal(inner.find((r) => r.id === "a1")?.hiddenDescendants, 2);
+	assert.equal(inner.find((r) => r.id === "a")?.hiddenDescendants, 0);
 	// colapsar um nó sem filhos visíveis não marca nada
-	assert.equal(rowsOf(tree3(), { collapsed: new Set(["b"]) }).at(-1).collapsed, false);
+	assert.equal(rowsOf(tree3(), { collapsed: new Set(["b"]) }).at(-1)?.collapsed, false);
 });
 
 test("dica de terminados: só depth 1 done nos últimos 30 s", () => {
@@ -100,7 +102,15 @@ test("dica de terminados: só depth 1 done nos últimos 30 s", () => {
 		rec("deep", "f", 2, { state: "done", endedAt: NOW - 1 }),
 	];
 	assert.equal(vm.finishedCount(records, NOW), 2);
-	const view = { rows: [], focused: false, selectedId: null, hint: "", hintColor: "muted", running: 0, finished: 2 };
+	const view = {
+		rows: [],
+		focused: false,
+		selectedId: null,
+		hint: "",
+		hintColor: "muted",
+		running: 0,
+		finished: 2,
+	} as unknown as PanelView;
 	assert.deepEqual(
 		panel.renderPanel(view, theme, 80),
 		[],
@@ -112,16 +122,16 @@ test("dica de terminados: só depth 1 done nos últimos 30 s", () => {
 test("newestRootFirst, elapsed e chainOf/neighbours", () => {
 	const rows = rowsOf(tree3(), { panel: false, newestRootFirst: true });
 	assert.equal(rows[0].id, "b");
-	assert.equal(rows.find((r: any) => r.id === "a").elapsedMs, NOW - 1);
+	assert.equal(rows.find((r) => r.id === "a")?.elapsedMs, NOW - 1);
 	const done = rowsOf([rec("z", null, 1, { state: "failed", endedAt: NOW - 20_000 })]);
 	assert.equal(done[0].elapsedMs, 40_000);
 	assert.deepEqual(
-		vm.chainOf(tree3(), "a1x").map((r: any) => r.id),
+		vm.chainOf(tree3(), "a1x").map((r) => r.id),
 		["a", "a1", "a1x"],
 	);
 	const n = vm.neighbours(tree3(), "a1");
 	assert.deepEqual(
-		[n.siblings.map((r: any) => r.id), n.children.map((r: any) => r.id), n.parent.id],
+		[n.siblings.map((r) => r.id), n.children.map((r) => r.id), n.parent?.id],
 		[["a1", "a2"], ["a1x", "a1y"], "a"],
 	);
 	assert.deepEqual(vm.neighbours(tree3(), "nope"), { siblings: [], children: [] });
@@ -146,7 +156,15 @@ test("largura: nenhuma linha excede o width (20, 40, 80, 160)", () => {
 				assert.ok(visibleWidth(panel.renderRow(row, selected, tagTheme, width)) <= width, `${row.id}@${width}`);
 		}
 		const lines = panel.renderPanel(
-			{ rows, focused: true, selectedId: "b", hint: "x".repeat(100), hintColor: "dim", running: 3, finished: 1 },
+			{
+				rows,
+				focused: true,
+				selectedId: "b",
+				hint: "x".repeat(100),
+				hintColor: "dim",
+				running: 3,
+				finished: 1,
+			} as unknown as PanelView,
 			tagTheme,
 			width,
 		);
@@ -215,7 +233,7 @@ test("painel: main focado/desfocado, janela de 10 linhas com … N more", () => 
 		hintColor: "muted",
 		running: 14,
 		finished: 0,
-	};
+	} as unknown as PanelView;
 	const idle = panel.renderPanel(base, theme, 100);
 	assert.equal(idle.length, 1 + 10 + 1 + 1);
 	assert.match(idle[0], /^● main +14 running · ↓ to manage$/);
@@ -237,7 +255,7 @@ test("painel: main focado/desfocado, janela de 10 linhas com … N more", () => 
 
 const OK = { editorText: "", editorFocused: true, overlayOpen: false };
 
-function controllerOf(records: any[]) {
+function controllerOf(records: RunRecord[]) {
 	const src = fakeSource(records);
 	const clock = { now: NOW };
 	const c = new panel.PanelController({ getSource: () => src, now: () => clock.now });
@@ -424,7 +442,7 @@ test("/tasks: sem runs avisa; lista todos (sem esconder), enter abre o viewer e 
 	];
 	const src = fakeSource(records);
 	const { ctx, calls, comps } = fakeCtx([
-		(c: any) => {
+		(c) => {
 			// lista: desce e abre
 			const lines = c.render(80);
 			assert.equal(
@@ -440,12 +458,12 @@ test("/tasks: sem runs avisa; lista todos (sem esconder), enter abre o viewer e 
 			c.handleInput(K.up);
 			c.handleInput(K.enter);
 		},
-		(c: any) => c.handleInput(K.esc), // viewer fecha
-		(c: any) => c.handleInput(K.esc), // lista fecha
+		(c) => c.handleInput(K.esc), // viewer fecha
+		(c) => c.handleInput(K.esc), // lista fecha
 	]);
 	await viewer.openTasksBrowser(ctx, src);
 	assert.equal(comps.length, 3);
-	assert.equal(comps[1].id, "d");
+	assert.equal((comps[1] as unknown as { id: string }).id, "d");
 	assert.deepEqual(calls[0], {
 		overlay: true,
 		overlayOptions: { anchor: "bottom-center", width: "100%", maxHeight: "85%", margin: 0 },
@@ -455,11 +473,11 @@ test("/tasks: sem runs avisa; lista todos (sem esconder), enter abre o viewer e 
 
 test("TasksComponent: seleção limitada e timers soltos no dispose", () => {
 	const src = fakeSource([rec("a", null, 1), rec("b", null, 1, { startedAt: NOW })]);
-	let picked: any = "unset";
+	let picked: string | undefined | "unset" = "unset";
 	const t = new viewer.TasksComponent({
 		source: src,
 		theme,
-		done: (id: any) => {
+		done: (id) => {
 			picked = id;
 		},
 		requestRender() {},
@@ -495,31 +513,42 @@ test("TasksComponent: seleção limitada e timers soltos no dispose", () => {
 // ---- index ----
 
 function fakePi() {
-	const handlers: Record<string, (...a: any[]) => any> = {};
+	const handlers: Record<string, (...a: unknown[]) => unknown> = {};
 	return {
 		handlers,
 		pi: {
-			on: (e: string, h: (...a: any[]) => any) => {
+			on: (e: string, h: (...a: unknown[]) => unknown) => {
 				handlers[e] = h;
 			},
-		} as any,
+		} as unknown as ExtensionAPI,
 	};
 }
 
+type WidgetContent = (tui: unknown, theme: unknown) => FakeComp & { invalidate(): void };
+type InputHandler = (data: string) => { consume: boolean } | undefined;
+interface UiRec {
+	widgets: Array<{ key: string; content: WidgetContent; options: unknown }>;
+	inputs: InputHandler[];
+	notes: unknown[];
+	editorText: string;
+	renders?: number;
+}
+
 function fakeUi(over: Record<string, unknown> = {}) {
-	const rec2: any = { widgets: [] as any[], inputs: [] as any[], notes: [] as any[], editorText: "" };
+	const rec2: UiRec = { widgets: [], inputs: [], notes: [], editorText: "" };
 	const tui = {
 		requestRender: () => {
 			rec2.renders = (rec2.renders ?? 0) + 1;
 		},
-		focusedComponent: undefined as any,
+		focusedComponent: undefined as unknown,
 		terminal: { rows: 30 },
 	};
 	const ctx = {
 		hasUI: true,
 		ui: {
-			setWidget: (key: string, content: any, options: any) => rec2.widgets.push({ key, content, options }),
-			onTerminalInput: (h: any) => {
+			setWidget: (key: string, content: WidgetContent, options: unknown) =>
+				rec2.widgets.push({ key, content, options }),
+			onTerminalInput: (h: InputHandler) => {
 				rec2.inputs.push(h);
 				return () => rec2.inputs.splice(rec2.inputs.indexOf(h), 1);
 			},
@@ -529,13 +558,13 @@ function fakeUi(over: Record<string, unknown> = {}) {
 		},
 		...over,
 	};
-	return { ctx: ctx as any, rec: rec2, tui };
+	return { ctx: ctx as unknown as ExtensionCommandContext, rec: rec2, tui };
 }
 
 test("registerFleetUi: widget abaixo do editor, teclas, sem UI/filho não registra, shutdown limpa", async () => {
 	const src = fakeSource([rec("a", null, 1)]);
 	const { pi, handlers } = fakePi();
-	let source: any;
+	let source: FakeSource | undefined;
 	const api = fleetUi.registerFleetUi(pi, () => source);
 	const { ctx, rec: r, tui } = fakeUi();
 
@@ -563,7 +592,7 @@ test("registerFleetUi: widget abaixo do editor, teclas, sem UI/filho não regist
 	assert.equal(r.inputs.length, 1);
 	assert.equal(r.inputs[0]("a"), undefined);
 	assert.deepEqual(r.inputs[0](K.down), { consume: true });
-	assert.ok(r.renders > 0);
+	assert.ok((r.renders ?? 0) > 0);
 	tui.focusedComponent = { render() {} }; // diálogo: não é o editor
 	assert.equal(r.inputs[0](K.down), undefined);
 	tui.focusedComponent = { getText() {}, setText() {} };
@@ -602,7 +631,7 @@ test("registerFleetUi: o tick de 1 s assina um source que só aparece depois do 
 	vi.useFakeTimers({ toFake: ["setInterval"] });
 	const { pi, handlers } = fakePi();
 	const src = fakeSource([]);
-	let source: any;
+	let source: FakeSource | undefined;
 	fleetUi.registerFleetUi(pi, () => source);
 	const { ctx, rec: r, tui } = fakeUi();
 	try {

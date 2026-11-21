@@ -1,11 +1,13 @@
 // Records, fake fleet source and themes shared by the fleet panel and viewer tests.
+import type { ExtensionContext } from "../../../../src/core/extensions/types.ts";
+import type { FleetSource, RunRecord, TranscriptItem } from "../../../../src/extensions/subagent/fleet/types.ts";
 
 export const NOW = 1_000_000;
 export const theme = { fg: (_c: string, s: string) => s, bold: (s: string) => s };
 // Tema que marca a cor, para checar estilo por grau.
 export const tagTheme = { fg: (c: string, s: string) => `<${c}>${s}</${c}>`, bold: (s: string) => `*${s}*` };
 
-export function rec(id: string, parentId: string | null, depth: number, over: Record<string, unknown> = {}) {
+export function rec(id: string, parentId: string | null, depth: number, over: Record<string, unknown> = {}): RunRecord {
 	return {
 		v: 1,
 		id,
@@ -24,10 +26,20 @@ export function rec(id: string, parentId: string | null, depth: number, over: Re
 		ownerPid: 1,
 		activity: "Reading files",
 		...over,
-	} as any;
+	} as unknown as RunRecord;
 }
 
-export function fakeSource(records: any[], transcripts: Record<string, any[]> = {}) {
+export type FakeSource = FleetSource & {
+	records: RunRecord[];
+	transcripts: Record<string, TranscriptItem[]>;
+	calls: { stop: string[]; send: Array<[string, string]>; detach: number };
+	listeners: Array<() => void>;
+	foreground: boolean;
+	stopOutcome: string;
+	sendOutcome: string;
+};
+
+export function fakeSource(records: RunRecord[], transcripts: Record<string, TranscriptItem[]> = {}): FakeSource {
 	const listeners: Array<() => void> = [];
 	const calls = { stop: [] as string[], send: [] as Array<[string, string]>, detach: 0 };
 	const s = {
@@ -63,7 +75,7 @@ export function fakeSource(records: any[], transcripts: Record<string, any[]> = 
 			};
 		},
 	};
-	return s as any;
+	return s as unknown as FakeSource;
 }
 
 export const tree3 = () => [
@@ -93,18 +105,24 @@ export const K = {
 	bs: "\x7f",
 };
 
-export function fakeCtx(results: any[]) {
-	const calls: any[] = [];
+export interface FakeComp {
+	render(width: number): string[];
+	handleInput(data: string): void;
+	dispose?(): void;
+}
+
+export function fakeCtx(results: Array<(comp: FakeComp) => void>) {
+	const calls: unknown[] = [];
 	const notes: Array<[string, string?]> = [];
-	const comps: any[] = [];
+	const comps: FakeComp[] = [];
 	const ctx = {
 		hasUI: true,
 		ui: {
 			notify: (m: string, t?: string) => notes.push([m, t]),
-			custom: async (factory: any, options: any) => {
+			custom: async (factory: (...a: unknown[]) => FakeComp, options: unknown) => {
 				calls.push(options);
 				const tui = { requestRender() {}, terminal: { rows: 30 } };
-				let finish: (v: any) => void = () => {};
+				let finish: (v: unknown) => void = () => {};
 				const p = new Promise((r) => {
 					finish = r;
 				});
@@ -119,5 +137,5 @@ export function fakeCtx(results: any[]) {
 			},
 		},
 	};
-	return { ctx: ctx as any, calls, notes, comps };
+	return { ctx: ctx as unknown as ExtensionContext, calls, notes, comps };
 }

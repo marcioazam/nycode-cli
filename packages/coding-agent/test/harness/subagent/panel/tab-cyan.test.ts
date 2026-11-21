@@ -3,12 +3,12 @@
 // (nome e `━`); com uma tab focada (↓ no editor vazio, ← →), o ciano vai para ela e a aberta mantém a cor do pi.
 import assert from "node:assert/strict";
 import { test } from "vitest";
-
-const { tabBar }: any = await import("../../../../src/extensions/subagent/fleet-ui/style/chrome.ts");
+import { tabBar } from "../../../../src/extensions/subagent/fleet-ui/style/chrome.ts";
+import type { GroupId, TabSpec } from "../../../../src/extensions/subagent/section-nav/nav.ts";
 
 const theme = { fg: (c: string, s: string) => `<${c}>${s}</${c}>`, bold: (s: string) => `<b>${s}</b>` };
 // Largura folgada: as tags falsas do tema contam como texto visível.
-const tab = (id: string, open: boolean, focus: boolean) => ({ id, label: id, open, focus });
+const tab = (id: GroupId, open: boolean, focus: boolean): TabSpec => ({ id, label: id, open, focus });
 
 test("foco no composer: a tab aberta fica ciana (nome e régua)", () => {
 	const { lines } = tabBar([tab("status", true, false), tab("run", false, false)], "", theme, 200);

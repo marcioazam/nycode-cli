@@ -20,10 +20,6 @@ delete process.env.NYCODE_SUBAGENT_DEPTH;
 for (const k of ["NYCODE_SUBAGENT_ALLOWED_AGENTS", "NYCODE_FLEET_DIR", "NYCODE_FLEET_RUN_ID", "NYCODE_SUBAGENT_TREE"])
 	delete process.env[k];
 
-const store: any = await import("../../../../../src/extensions/subagent/fleet/store.ts");
-const bgMod: any = await import("../../../../../src/extensions/subagent/fleet/background.ts");
-const { default: subagentExtension }: any = await import("../../../../../src/extensions/subagent/index.ts");
-
 // O filho só responde depois que `release-<tarefa>` existe.
 const fakePi = join(tmp, "fake-pi-reload.mjs");
 writeFileSync(
@@ -39,33 +35,43 @@ const timer = setInterval(() => {
 }, 20)
 `,
 );
+
+import type { ExtensionAPI } from "../../../../../src/core/extensions/types.ts";
+import * as runMod from "../../../../../src/extensions/subagent/core/run.ts";
+import type { SubagentDetails } from "../../../../../src/extensions/subagent/core/types.ts";
+import * as bgMod from "../../../../../src/extensions/subagent/fleet/background.ts";
+import * as store from "../../../../../src/extensions/subagent/fleet/store.ts";
+import subagentExtension from "../../../../../src/extensions/subagent/index.ts";
+import type { AgentConfig } from "../../../../../src/extensions/subagent/registry/agents.ts";
+
 process.env.FAKE_PI_DIR = tmp;
 const release = (task: string): void => writeFileSync(join(tmp, `release-${task}`), "");
 const STALE = "This extension ctx is stale after session replacement or reload.";
 
 /** Uma instância da extensão; `reload()` a deixa velha: todo acesso ao pi/ctx capturado lança, como o pi real. */
 function instance() {
-	const handlers = new Map<string, Array<(...a: any[]) => any>>();
-	const tools: any[] = [];
-	const sent: any[] = [];
+	const handlers = new Map<string, Array<(...a: unknown[]) => unknown>>();
+	const tools: Array<{ name: string; execute: (...a: unknown[]) => Promise<{ content: Array<{ text: string }> }> }> =
+		[];
+	const sent: Array<{ content: string }> = [];
 	let stale = false;
 	const guard = <T>(v: T): T => {
 		if (stale) throw new Error(STALE);
 		return v;
 	};
-	const pi: any = {
-		on: (e: string, h: (...a: any[]) => any) => void handlers.set(e, [...(handlers.get(e) ?? []), h]),
-		registerTool: (d: any) => void tools.push(d),
+	const pi = {
+		on: (e: string, h: (...a: unknown[]) => unknown) => void handlers.set(e, [...(handlers.get(e) ?? []), h]),
+		registerTool: (d: (typeof tools)[number]) => void tools.push(d),
 		registerCommand() {},
 		get events() {
 			return guard({ emit() {}, on: () => () => {} });
 		},
 		getActiveTools: () => guard(["subagent"]),
 		getThinkingLevel: () => guard("off"),
-		sendMessage: (msg: any) => void guard(sent.push(msg)),
+		sendMessage: (msg: { content: string }) => void guard(sent.push(msg)),
 		sendUserMessage: () => guard(undefined),
 	};
-	const ctx: any = {
+	const ctx = {
 		mode: "tui",
 		hasUI: true,
 		get cwd() {
@@ -89,11 +95,11 @@ function instance() {
 	};
 	const savedArgv = process.argv[1];
 	process.argv[1] = fakePi;
-	subagentExtension(pi);
+	subagentExtension(pi as unknown as ExtensionAPI);
 	const fire = async (e: string, p: unknown = {}) => {
 		for (const h of handlers.get(e) ?? []) await h(p, ctx);
 	};
-	const tool = tools.find((t) => t.name === "subagent");
+	const tool = tools.find((t) => t.name === "subagent") as (typeof tools)[number];
 	return {
 		sent,
 		fire,
@@ -161,12 +167,11 @@ test('D15: /reload com tasks:[2] em curso; as duas faixas terminam e o texto ent
 });
 
 test("D15: um onPhase que lança (pi velho) não troca o resultado da faixa nem derruba a chamada", async () => {
-	const runMod = await import("../../../../../src/extensions/subagent/core/run.ts");
 	const savedArgv = process.argv[1];
 	process.argv[1] = fakePi;
 	release("solo");
 	try {
-		const agent = {
+		const agent: AgentConfig = {
 			name: "fake",
 			description: "f",
 			systemPrompt: "x",
@@ -175,10 +180,10 @@ test("D15: um onPhase que lança (pi velho) não troca o resultado da faixa nem 
 		};
 		const res = await runMod.runSingleAgent({
 			defaultCwd: tmp,
-			agents: [agent as any],
+			agents: [agent],
 			agentName: "fake",
 			task: "solo",
-			makeDetails: () => ({}) as any,
+			makeDetails: () => ({}) as unknown as SubagentDetails,
 			onPhase: () => {
 				throw new Error(STALE);
 			},

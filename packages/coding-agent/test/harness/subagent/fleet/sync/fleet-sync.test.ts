@@ -5,13 +5,18 @@ import assert from "node:assert/strict";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, test, vi } from "vitest";
+import type { ExtensionAPI } from "../../../../../src/core/extensions/types.ts";
+import * as runMod from "../../../../../src/extensions/subagent/core/run.ts";
+import type { SubagentDetails } from "../../../../../src/extensions/subagent/core/types.ts";
+import * as store from "../../../../../src/extensions/subagent/fleet/store.ts";
+import type { FleetSource, RunRecord } from "../../../../../src/extensions/subagent/fleet/types.ts";
+import * as fleetUi from "../../../../../src/extensions/subagent/fleet-ui/index.ts";
+import type { AgentConfig } from "../../../../../src/extensions/subagent/registry/agents.ts";
 import { fleetTestEnv } from "../../support/fleet-env.ts";
 
 const { tmp } = fleetTestEnv("fleet-sync-");
-const store: any = await import("../../../../../src/extensions/subagent/fleet/store.ts");
-const runMod: any = await import("../../../../../src/extensions/subagent/core/run.ts");
-const fleetUi: any = await import("../../../../../src/extensions/subagent/fleet-ui/index.ts");
 
+type Widget = (tui: unknown, theme: unknown) => { render(w: number): string[] };
 const theme = {
 	fg: (_c: string, t: string) => t,
 	bold: (t: string) => t,
@@ -19,19 +24,19 @@ const theme = {
 	underline: (t: string) => t,
 };
 function fakePi() {
-	const handlers: Record<string, (...a: any[]) => any> = {};
+	const handlers: Record<string, (...a: unknown[]) => unknown> = {};
 	return {
 		handlers,
 		pi: {
-			on: (n: string, h: (...a: any[]) => any) => {
+			on: (n: string, h: (...a: unknown[]) => unknown) => {
 				handlers[n] = h;
 			},
 			registerCommand() {},
 			registerShortcut() {},
-		} as any,
+		} as unknown as ExtensionAPI,
 	};
 }
-const row = {
+const row: RunRecord = {
 	v: 1,
 	id: "fg-00000001",
 	parentId: null,
@@ -57,11 +62,11 @@ const emptySource = {
 	hasForeground: () => false,
 	detachForeground: () => 0,
 	onChange: () => () => {},
-} as any;
+} as unknown as FleetSource;
 function boot(calls: { n: number }) {
 	const { pi, handlers } = fakePi();
 	fleetUi.registerFleetUi(pi, () => emptySource);
-	const widgets: any[] = [];
+	const widgets: Widget[] = [];
 	const tui = { requestRender() {}, terminal: { rows: 40 } };
 	const ctx = {
 		hasUI: true,
@@ -71,7 +76,7 @@ function boot(calls: { n: number }) {
 			return { tokens: 1000 * calls.n };
 		},
 		ui: {
-			setWidget: (_k: string, f: any) => f && widgets.push(f),
+			setWidget: (_k: string, f: Widget | undefined) => f && widgets.push(f),
 			onTerminalInput: () => () => {},
 			notify() {},
 			setStatus() {},
@@ -80,7 +85,7 @@ function boot(calls: { n: number }) {
 	};
 	return { handlers, ctx, widgets, tui };
 }
-const text = (w: any, tui: any): string =>
+const text = (w: Widget, tui: unknown): string =>
 	w(tui, theme)
 		.render(120)
 		.join("\n")
@@ -121,12 +126,18 @@ writeFileSync(
 	fakeChild,
 	`process.stdout.write(JSON.stringify({ type: 'message_end', message: { role: 'assistant', content: [{ type: 'text', text: 'fake done' }], stopReason: 'stop' } }) + '\\n')\nsetInterval(() => {}, 1000)\n`,
 );
-const agent = { name: "fake", description: "fake", systemPrompt: "x", source: "user", filePath: join(tmp, "fake.md") };
+const agent: AgentConfig = {
+	name: "fake",
+	description: "fake",
+	systemPrompt: "x",
+	source: "user",
+	filePath: join(tmp, "fake.md"),
+};
 
-async function lane(over: object, cwd?: string): Promise<any> {
+async function lane(over: object, cwd?: string): Promise<RunRecord> {
 	delete process.env.NYCODE_SUBAGENT_DEPTH;
 	delete process.env.NYCODE_SUBAGENT;
-	const dir: string = store.ensureFleetDir();
+	const dir = store.ensureFleetDir() as string;
 	const savedArgv = process.argv[1];
 	process.argv[1] = fakeChild;
 	let id = "";
@@ -137,13 +148,13 @@ async function lane(over: object, cwd?: string): Promise<any> {
 				agents: [{ ...agent, ...over }],
 				agentName: "fake",
 				task: "go",
-				makeDetails: () => ({}),
+				makeDetails: () => ({}) as unknown as SubagentDetails,
 				onPhase: (p: string, _a: string, agentId: string) => {
 					if (p === "start") id = agentId;
 				},
 			})
 			.catch(() => undefined);
-		return store.readRecord(dir, id);
+		return store.readRecord(dir, id) as RunRecord;
 	} finally {
 		process.argv[1] = savedArgv;
 		store.removeFleetDir();

@@ -2,9 +2,10 @@
 // Caminhos de falha da frota (subagent/fleet/*): erros de disco, watcher, listener e kill que os outros arquivos não alcançam
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
-import {
+import fsDefault, {
 	chmodSync,
 	existsSync,
+	type FSWatcher,
 	mkdirSync,
 	mkdtempSync,
 	readdirSync,
@@ -15,13 +16,13 @@ import {
 import { syncBuiltinESMExports } from "node:module";
 import { join } from "node:path";
 import { afterEach, test, vi } from "vitest";
+import * as sourceMod from "../../../../src/extensions/subagent/fleet/source.ts";
+import * as store from "../../../../src/extensions/subagent/fleet/store.ts";
+import * as trackerMod from "../../../../src/extensions/subagent/fleet/tracker.ts";
 import { fleetTestEnv } from "../support/fleet-env.ts";
+import { baseRecord, must } from "../support/fleet-records.ts";
 
 const { tmp } = fleetTestEnv("fleet-faults-");
-const store: any = await import("../../../../src/extensions/subagent/fleet/store.ts");
-const trackerMod: any = await import("../../../../src/extensions/subagent/fleet/tracker.ts");
-const sourceMod: any = await import("../../../../src/extensions/subagent/fleet/source.ts");
-const fsDefault = (await import("node:fs")).default as any;
 
 const id = (n = 1): string => `fg-${n.toString(16).padStart(8, "0")}`;
 const tempDir = (): string => mkdtempSync(join(tmp, "faults-dir-"));
@@ -32,32 +33,16 @@ const asRoot = { skip: process.getuid?.() === 0 };
 function mainFleet(): string {
 	delete process.env.NYCODE_SUBAGENT_DEPTH;
 	delete process.env.NYCODE_SUBAGENT;
-	return store.ensureFleetDir();
+	return must(store.ensureFleetDir());
 }
 
-const baseRecord = (rid: string, over: Record<string, unknown> = {}) => ({
-	v: 1,
-	id: rid,
-	parentId: null,
-	depth: 1,
-	agent: "a",
-	task: "t",
-	background: false,
-	state: "running",
-	startedAt: 1,
-	updatedAt: 1,
-	turns: 0,
-	toolCalls: 0,
-	tokens: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, context: 0 },
-	cost: 0,
-	ownerPid: process.pid,
-	...over,
-});
-
 // Troca fs.watch (o source usa a ligação `fs.watch` do módulo) e devolve o restaurador.
-function patchWatch(impl: (orig: (...a: any[]) => unknown, args: unknown[]) => unknown): () => void {
+function patchWatch(
+	impl: (orig: typeof fsDefault.watch, args: Parameters<typeof fsDefault.watch>) => unknown,
+): () => void {
 	const orig = fsDefault.watch;
-	fsDefault.watch = (...args: unknown[]) => impl(orig.bind(fsDefault), args);
+	fsDefault.watch = ((...args: Parameters<typeof fsDefault.watch>) =>
+		impl(orig.bind(fsDefault), args)) as typeof fsDefault.watch;
 	syncBuiltinESMExports();
 	return () => {
 		fsDefault.watch = orig;
@@ -112,10 +97,10 @@ test("onChange: um listener que lança não impede os demais de receber a mudan�
 test("onChange: erro no watcher o fecha e o próximo poll cria outro, e as mudanças seguem sendo avisadas", () => {
 	vi.useFakeTimers({ toFake: ["setInterval", "setTimeout"] });
 	const dir = mainFleet();
-	const watchers: any[] = [];
-	const closed = new Set<any>();
+	const watchers: FSWatcher[] = [];
+	const closed = new Set<FSWatcher>();
 	const restore = patchWatch((orig, args) => {
-		const w: any = orig(...args);
+		const w = orig(...args);
 		const close = w.close.bind(w);
 		w.close = () => {
 			closed.add(w);
@@ -269,7 +254,7 @@ test("tracker: evento depois de mais de 250 ms sem escrita grava na hora, sem es
 	vi.useFakeTimers({ toFake: ["Date", "setTimeout"], now: 0 });
 	const dir = mainFleet();
 	try {
-		const tr = trackerMod.startTracking({ id: id(5), agent: "a", task: "t", background: false });
+		const tr = must(trackerMod.startTracking({ id: id(5), agent: "a", task: "t", background: false }));
 		vi.advanceTimersByTime(300);
 		tr.onLine(JSON.stringify({ type: "tool_execution_start", toolName: "bash", args: { command: "ls" } }));
 		const rec = JSON.parse(readFileSync(join(dir, `${id(5)}.json`), "utf8"));

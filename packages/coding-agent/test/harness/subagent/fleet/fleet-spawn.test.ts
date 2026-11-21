@@ -5,15 +5,17 @@ import { mkdirSync, rmdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "vitest";
 import { APP_NAME } from "../../../../src/config.ts";
+import * as runMod from "../../../../src/extensions/subagent/core/run.ts";
+import type { SingleResult, SubagentDetails } from "../../../../src/extensions/subagent/core/types.ts";
+import * as bgMod from "../../../../src/extensions/subagent/fleet/background.ts";
+import * as sourceMod from "../../../../src/extensions/subagent/fleet/source.ts";
+import * as store from "../../../../src/extensions/subagent/fleet/store.ts";
+import * as trackerMod from "../../../../src/extensions/subagent/fleet/tracker.ts";
+import type { AgentConfig } from "../../../../src/extensions/subagent/registry/agents.ts";
+import * as registryText from "../../../../src/extensions/subagent/registry/registry-text.ts";
 import { fleetTestEnv } from "../support/fleet-env.ts";
 
 const { tmp } = fleetTestEnv("fleet-spawn-");
-const store: any = await import("../../../../src/extensions/subagent/fleet/store.ts");
-const trackerMod: any = await import("../../../../src/extensions/subagent/fleet/tracker.ts");
-const sourceMod: any = await import("../../../../src/extensions/subagent/fleet/source.ts");
-const runMod: any = await import("../../../../src/extensions/subagent/core/run.ts");
-const bgMod: any = await import("../../../../src/extensions/subagent/fleet/background.ts");
-const registryText: any = await import("../../../../src/extensions/subagent/registry/registry-text.ts");
 
 // O filho falso: 'ok' emite uma mensagem do assistente sem '\n' final (o resto do buffer no close) e sai com 0;
 // 'alive' emite a mesma linha com '\n' e fica vivo até o SIGTERM.
@@ -28,8 +30,16 @@ setInterval(() => {}, 1000)
 );
 process.env.FAKE_PI_MODE = "alive";
 
-const agent = { name: "fake", description: "fake", systemPrompt: "x", source: "user", filePath: join(tmp, "fake.md") };
+const agent: AgentConfig = {
+	name: "fake",
+	description: "fake",
+	systemPrompt: "x",
+	source: "user",
+	filePath: join(tmp, "fake.md"),
+};
 const deadline = 5000;
+// Fake parcial: o código sob teste não lê os campos de SubagentDetails.
+const fakeDetails = (): SubagentDetails => ({}) as unknown as SubagentDetails;
 
 async function waitFor<T>(what: string, probe: () => T | undefined | false): Promise<T> {
 	const end = Date.now() + deadline;
@@ -67,7 +77,7 @@ type Rec = {
 async function withFleet(mode: string, body: (dir: string) => Promise<void>): Promise<void> {
 	delete process.env.NYCODE_SUBAGENT_DEPTH;
 	delete process.env.NYCODE_SUBAGENT;
-	const dir: string = store.ensureFleetDir();
+	const dir = store.ensureFleetDir() as string;
 	const savedArgv = process.argv[1];
 	process.argv[1] = fakePi;
 	process.env.FAKE_PI_MODE = mode;
@@ -89,14 +99,14 @@ async function withFleet(mode: string, body: (dir: string) => Promise<void>): Pr
 }
 
 // runSingleAgent gera o próprio agentId (run.ts:221): o gancho onPhase('start') o revela, ainda de forma síncrona.
-function startForeground(): { id: () => string; result: Promise<any> } {
+function startForeground(): { id: () => string; result: Promise<SingleResult> } {
 	let id = "";
 	const result = runMod.runSingleAgent({
 		defaultCwd: tmp,
 		agents: [agent],
 		agentName: "fake",
 		task: "go",
-		makeDetails: () => ({}),
+		makeDetails: fakeDetails,
 		onPhase: (phase: string, _a: string, agentId: string) => {
 			if (phase === "start") id = agentId;
 		},
@@ -150,7 +160,7 @@ test("foreground: o modelo/esforço emitidos pelo filho chegam ao registro e ven
 			agents: [{ ...agent, model: "cfg-model" }],
 			agentName: "fake",
 			task: "go",
-			makeDetails: () => ({}),
+			makeDetails: fakeDetails,
 			onPhase: (phase: string, _a: string, agentId: string) => {
 				if (phase === "start") id = agentId;
 			},
@@ -193,10 +203,13 @@ for (const [name, stop, note, by] of [
 			const { id: getId, result } = startForeground();
 			const id = await waitFor("agent id", () => getId());
 			const rec = await waitFor("running record", runningRec(dir, id));
-			assert.equal(sourceMod[stop](rec.id), "stopping");
+			assert.equal((stop === "stopOwnRun" ? sourceMod.stopOwnRun : sourceMod.stopRun)(rec.id), "stopping");
 			const res = await result;
 			assert.equal(res.stopReason, "aborted");
-			assert.equal(res.errorMessage, trackerMod[note]);
+			assert.equal(
+				res.errorMessage,
+				note === "AGENT_STOP_NOTE" ? trackerMod.AGENT_STOP_NOTE : trackerMod.USER_STOP_NOTE,
+			);
 			const fin = (await waitFor("cancelled record", () =>
 				store.readRecord(dir, id)?.state === "cancelled" ? store.readRecord(dir, id) : undefined,
 			)) as Rec;
@@ -212,22 +225,27 @@ for (const [name, stop, note, by] of [
 ] as const) {
 	test(`background: parada por ${name} cancela a execução e anota ${by}`, async () => {
 		await withFleet("alive", async (dir) => {
-			let done: any;
-			const finished = new Promise((r) => {
+			let done: (run: bgMod.BackgroundRun) => void = () => {};
+			const finished = new Promise<bgMod.BackgroundRun>((r) => {
 				done = r;
 			});
 			const id = bgMod.startBackgroundRun(
 				"fake",
 				"go",
 				{ command: process.execPath, args: [fakePi], cwd: tmp },
-				(run: unknown) => done(run),
+				(run) => done(run),
 			);
 			assert.ok(id);
 			const rec = await waitFor("running record", runningRec(dir, id));
-			assert.equal(sourceMod[stop](id), "stopping");
-			const run: any = await finished;
+			assert.equal((stop === "stopOwnRun" ? sourceMod.stopOwnRun : sourceMod.stopRun)(id), "stopping");
+			const run = await finished;
 			assert.equal(run.state, "cancelled");
-			assert.ok(run.output.endsWith(`[${trackerMod[note]}]`), run.output);
+			assert.ok(
+				(run.output as string).endsWith(
+					`[${note === "AGENT_STOP_NOTE" ? trackerMod.AGENT_STOP_NOTE : trackerMod.USER_STOP_NOTE}]`,
+				),
+				run.output,
+			);
 			const fin = (await waitFor("cancelled record", () =>
 				store.readRecord(dir, id)?.state === "cancelled" ? store.readRecord(dir, id) : undefined,
 			)) as Rec;
@@ -251,12 +269,12 @@ process.exit(Number(process.env.FAKE_EXIT ?? 3))
 `,
 );
 
-const lastText = (res: any): string =>
+const lastText = (res: SingleResult): string =>
 	res.messages
-		.filter((m: any) => m.role === "assistant")
+		.filter((m) => m.role === "assistant")
 		.at(-1)
-		?.content.map((c: any) => c.text)
-		.join("\n");
+		?.content.map((c) => (c as { text?: string }).text)
+		.join("\n") as string;
 
 test("foreground: uso, modelo, erro, stderr e código de saída do filho chegam ao resultado; ruído e evento de ferramenta são tratados", async () => {
 	await withFleet("ok", async () => {
@@ -270,8 +288,8 @@ test("foreground: uso, modelo, erro, stderr e código de saída do filho chegam 
 				agents: [agent],
 				agentName: "fake",
 				task: "go",
-				makeDetails: () => ({}),
-				onUpdate: (u: any) => updates.push(u.content[0].text),
+				makeDetails: fakeDetails,
+				onUpdate: (u) => updates.push((u.content[0] as { text: string }).text),
 			})
 			.finally(() => delete process.env.NYCODE_SUBAGENT_RESPAWN);
 		assert.equal(res.exitCode, 3);
@@ -288,7 +306,7 @@ test("foreground: uso, modelo, erro, stderr e código de saída do filho chegam 
 		assert.equal(res.model, "m-1");
 		assert.equal(res.errorMessage, "oops");
 		assert.deepEqual(
-			res.messages.map((m: any) => m.role),
+			res.messages.map((m) => m.role),
 			["assistant", "toolResult"],
 			"ruído e linha inválida não viram mensagem",
 		);
@@ -305,7 +323,7 @@ test("foreground: agente desconhecido e ferramentas que não resolvem recusam se
 			agents: [agent],
 			agentName: "nope",
 			task: "go",
-			makeDetails: () => ({}),
+			makeDetails: fakeDetails,
 			onPhase,
 		});
 		assert.equal(unknown.exitCode, 1);
@@ -316,7 +334,7 @@ test("foreground: agente desconhecido e ferramentas que não resolvem recusam se
 			agents: [{ ...agent, tools: ["not_a_tool"] }],
 			agentName: "fake",
 			task: "go",
-			makeDetails: () => ({}),
+			makeDetails: fakeDetails,
 			onPhase,
 		});
 		assert.equal(noTools.exitCode, 1);
@@ -336,7 +354,7 @@ test("foreground: isolation worktree fora de um repositório git falha a execuç
 			agents: [{ ...agent, isolation: "worktree" }],
 			agentName: "fake",
 			task: "go",
-			makeDetails: () => ({}),
+			makeDetails: fakeDetails,
 		});
 		assert.equal(res.exitCode, 1);
 		assert.match(res.stderr, /^isolation: worktree could not be created: .* is not a git repository$/);
@@ -352,7 +370,7 @@ test("foreground: cwd inexistente falha o spawn e deixa o motivo no stderr", asy
 			agents: [agent],
 			agentName: "fake",
 			task: "go",
-			makeDetails: () => ({}),
+			makeDetails: fakeDetails,
 		});
 		assert.equal(res.exitCode, 1);
 		assert.match(res.stderr, /ENOENT/);
@@ -368,7 +386,7 @@ test("foreground: maxTurns encerra o filho após o N-ésimo turno, sem falha, co
 				agents: [{ ...agent, maxTurns: 1 }],
 				agentName: "fake",
 				task: "go",
-				makeDetails: () => ({}),
+				makeDetails: fakeDetails,
 				onPhase: (phase: string, _a: string, agentId: string) => {
 					if (phase === "start") id = agentId;
 				},
@@ -404,7 +422,7 @@ test("foreground: abortar pelo sinal mata o grupo do filho e a chamada rejeita; 
 				agents: [agent],
 				agentName: "fake",
 				task: "go",
-				makeDetails: () => ({}),
+				makeDetails: fakeDetails,
 				signal: pre,
 			}),
 			/Subagent was aborted/,
@@ -412,14 +430,14 @@ test("foreground: abortar pelo sinal mata o grupo do filho e a chamada rejeita; 
 	});
 });
 
-function startForegroundWith(signal: AbortSignal): { id: () => string; result: Promise<any> } {
+function startForegroundWith(signal: AbortSignal): { id: () => string; result: Promise<SingleResult> } {
 	let id = "";
 	const result = runMod.runSingleAgent({
 		defaultCwd: tmp,
 		agents: [agent],
 		agentName: "fake",
 		task: "go",
-		makeDetails: () => ({}),
+		makeDetails: fakeDetails,
 		signal,
 		onPhase: (phase: string, _a: string, agentId: string) => {
 			if (phase === "start") id = agentId;
@@ -456,15 +474,12 @@ test("getPiInvocation: o script do processo, o runtime genérico (nycode no PATH
 
 // Fundo: inicia uma execução e devolve o id e a promessa da execução final.
 function startBg(spawn: { command?: string; args: string[]; cwd?: string; maxTurns?: number }) {
-	let done: (run: any) => void = () => {};
-	const finished = new Promise<any>((r) => {
+	let done: (run: bgMod.BackgroundRun) => void = () => {};
+	const finished = new Promise<bgMod.BackgroundRun>((r) => {
 		done = r;
 	});
-	const id = bgMod.startBackgroundRun(
-		"fake",
-		"go",
-		{ command: process.execPath, cwd: tmp, ...spawn },
-		(run: unknown) => done(run),
+	const id = bgMod.startBackgroundRun("fake", "go", { command: process.execPath, cwd: tmp, ...spawn }, (run) =>
+		done(run),
 	);
 	return { id: id as string, finished };
 }
@@ -476,7 +491,7 @@ test("background: spawn que falha (comando inexistente) fecha a execução como 
 		const run = await finished;
 		assert.equal(run.state, "failed");
 		assert.equal(run.exitCode, 1);
-		assert.match(run.stderr, /ENOENT/);
+		assert.match(run.stderr as string, /ENOENT/);
 		assert.match(registryText.tasksStatusText([run]), /failed \(0 turns\) - go\n {2}stderr: .*ENOENT/);
 	});
 });
@@ -524,8 +539,8 @@ test("background: retomar (resume) reexecuta a sessão; unknown, still-running, 
 		);
 		assert.equal(bgMod.cancelBackgroundRun("bg-nope"), "unknown");
 		assert.equal(bgMod.cancelBackgroundRun(first.id), "not-running");
-		let done2: (run: any) => void = () => {};
-		const second = new Promise<any>((r) => {
+		let done2: (run: bgMod.BackgroundRun) => void = () => {};
+		const second = new Promise<bgMod.BackgroundRun>((r) => {
 			done2 = r;
 		});
 		assert.equal(bgMod.resumeBackgroundRun(first.id, "segunda", done2), "resumed");
