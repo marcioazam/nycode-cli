@@ -15,7 +15,10 @@ from typing import Any
 HERE = os.path.dirname(os.path.abspath(__file__))
 HOOKS_TESTS = os.path.join(HERE, "..", "hooks")
 GUARD = os.path.join(HERE, "..", "..", "..", "resources", "hooks", "guard.py")
-SOURCES = [os.path.join(HOOKS_TESTS, "test_guard.py"), os.path.join(HOOKS_TESTS, "fuzz", "test_guard_fuzz.py")]
+SOURCES = [
+    os.path.join(HOOKS_TESTS, "test_guard.py"),
+    os.path.join(HOOKS_TESTS, "fuzz", "test_guard_fuzz.py"),
+]
 
 
 def corpus() -> list[str]:
@@ -24,7 +27,11 @@ def corpus() -> list[str]:
         with open(path, encoding="utf-8") as f:
             tree = ast.parse(f.read())
         for node in ast.walk(tree):
-            if isinstance(node, ast.Constant) and isinstance(node.value, str) and len(node.value) <= 4096:
+            if (
+                isinstance(node, ast.Constant)
+                and isinstance(node.value, str)
+                and len(node.value) <= 4096
+            ):
                 seen.setdefault(node.value)
     return list(seen)
 
@@ -36,7 +43,11 @@ def decide(cases: list[dict[str, Any]]) -> list[Any]:
     spec.loader.exec_module(guard)
     out: list[Any] = []
     for case in cases:
-        payload = {"tool_name": case["tool"], "tool_input": case["input"], "cwd": case["cwd"]}
+        payload = {
+            "tool_name": case["tool"],
+            "tool_input": case["input"],
+            "cwd": case["cwd"],
+        }
         try:
             result = guard.decide(payload)
             out.append(None if result is None else list(result))
