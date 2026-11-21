@@ -1,21 +1,20 @@
 #!/usr/bin/env node
-// Gera uma imagem pelos modelos de imagem do pi (ModelRuntime.generateImages), com as
-// credenciais do próprio pi (~/.pi/agent/auth.json): substitui o `impeccable generate-image`,
+// Gera uma imagem pelos modelos de imagem do nycode (ModelRuntime.generateImages), com as
+// credenciais do próprio nycode (~/.nycode/agent/auth.json): substitui o `impeccable generate-image`,
 // que exige OPENAI_API_KEY. Padrão: openrouter/google/gemini-3-pro-image. O adaptador de imagens do
-// OpenRouter no pi-ai usa chat/completions: os modelos openai/gpt-image-* (só /api/v1/images) dão 404 aqui.
+// OpenRouter no @nycode/ai usa chat/completions: os modelos openai/gpt-image-* (só /api/v1/images) dão 404 aqui.
 //
-// node ~/.pi/agent/claude-home/bin/pi-image.mjs --prompt-file p.txt --out plate.png \
+// node scripts/harness/pi-image.mjs --prompt-file p.txt --out plate.png \
 //   [--ref crop.png ...] [--size 1536x1024] [--background transparent|opaque] [--model provider/id]
 //   [--list]
 // Sai 0 com "WROTE <out> <WxH> alpha=<yes|no>"; 1 em erro; 3 quando pediu transparent e veio sem alpha
 // (o arquivo fica gravado para inspeção; não há chroma-key).
 
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
-import { homedir } from 'node:os'
 import { dirname, extname, resolve } from 'node:path'
 
-const version = readFileSync(`${homedir()}/.pi/agent/install/current-version`, 'utf8').trim()
-const { ModelRuntime } = await import(`${homedir()}/.pi/agent/install/releases/${version}/node_modules/@earendil-works/pi-coding-agent/dist/index.js`)
+// Needs `npm run build` (the workspace package resolves to dist/); pngInfo and sizeHints work without it.
+const { ModelRuntime } = await import('@nycode/coding-agent')
 
 function args(argv) {
   const out = { ref: [] }
@@ -59,7 +58,7 @@ async function main() {
     return 0
   }
   if (!opt['prompt-file'] || !opt.out) throw new Error('uso: --prompt-file <txt> --out <png> [--ref img] [--size WxH] [--background transparent|opaque] [--model provider/id]')
-  const wanted = opt.model ?? process.env.PI_IMAGE_MODEL ?? 'openrouter/google/gemini-3-pro-image'
+  const wanted = opt.model ?? process.env.NYCODE_IMAGE_MODEL ?? 'openrouter/google/gemini-3-pro-image'
   const model = models.find((m) => `${m.provider}/${m.id}` === wanted)
   if (!model) throw new Error(`modelo de imagem indisponível: ${wanted} (veja --list)`)
   const background = opt.background ?? 'opaque'
