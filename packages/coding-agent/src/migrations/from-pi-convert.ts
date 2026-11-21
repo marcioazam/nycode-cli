@@ -170,6 +170,9 @@ export interface McpConversion {
 	placeholders: string[];
 	/** `server.field` of args and urls that look like credentials and were copied as is (never the value). */
 	unmigrated: string[];
+	/** Entries dropped because they are not objects (name only), and server names that define a `command`. */
+	warnings: string[];
+	commands: string[];
 }
 
 function placeholderName(...parts: string[]): string {
@@ -207,16 +210,37 @@ function credentialArgs(args: unknown[]): number[] {
 	return found;
 }
 
+function isObject(value: unknown): value is Json {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 /** Replaces every literal `env` and `headers` value by a `${NAME}` placeholder and lists credential-like args/url. */
 export function convertMcp(piMcp: Json): McpConversion {
 	const mcp: Json = structuredClone(piMcp);
 	const placeholders: string[] = [];
 	const unmigrated: string[] = [];
-	const servers = (mcp.mcpServers ?? {}) as Record<string, Json>;
+	const warnings: string[] = [];
+	const commands: string[] = [];
+	// Entries that are not objects are dropped, not copied: they could carry a secret the converter cannot see.
+	if (mcp.mcpServers !== undefined && !isObject(mcp.mcpServers)) {
+		warnings.push("mcpServers is not an object; skipped");
+		delete mcp.mcpServers;
+	}
+	const servers = (mcp.mcpServers ?? {}) as Record<string, unknown>;
 	for (const [serverName, server] of Object.entries(servers)) {
+		if (!isObject(server)) {
+			warnings.push(`mcpServers.${serverName} is not an object; skipped`);
+			delete servers[serverName];
+			continue;
+		}
 		for (const field of ["env", "headers"] as const) {
-			const table = server[field] as Record<string, unknown> | undefined;
-			if (!table) continue;
+			const table = server[field];
+			if (table === undefined) continue;
+			if (!isObject(table)) {
+				warnings.push(`mcpServers.${serverName}.${field} is not an object; skipped`);
+				delete server[field];
+				continue;
+			}
 			for (const [key, value] of Object.entries(table)) {
 				const scheme = typeof value === "string" ? (SCHEME_PREFIX.exec(value)?.[0] ?? "") : "";
 				if (typeof value === "string" && PLACEHOLDER.test(value.slice(scheme.length))) continue;
@@ -225,10 +249,11 @@ export function convertMcp(piMcp: Json): McpConversion {
 				placeholders.push(name);
 			}
 		}
+		if (typeof server.command === "string") commands.push(serverName);
 		if (typeof server.url === "string" && looksLikeCredential(server.url)) unmigrated.push(`${serverName}.url`);
 		if (Array.isArray(server.args)) {
 			for (const index of credentialArgs(server.args)) unmigrated.push(`${serverName}.args[${index}]`);
 		}
 	}
-	return { mcp, placeholders, unmigrated };
+	return { mcp, placeholders, unmigrated, warnings, commands };
 }

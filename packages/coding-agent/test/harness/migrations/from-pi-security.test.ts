@@ -1,5 +1,5 @@
 // Security of the writing side of `migrate from-pi`: file modes from creation, merges that never raise trust.
-import { chmodSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { makeHome } from "./from-pi-fixture.ts";
@@ -105,5 +105,18 @@ describe("migrate from-pi merges into an existing destination", () => {
 		writeFileSync(join(h.agentDir, "trust.json"), '{"secret-path-zzz": oops}');
 		expect(await h.run(["--apply"])).toBe(1);
 		expect(h.err.join("\n")).not.toContain("secret-path-zzz");
+	});
+});
+
+describe("migrate from-pi prompt interruption", () => {
+	it("treats Ctrl+C or EOF at the auth prompt as a refusal and still prints the summary", async () => {
+		const h = makeHome();
+		const confirm = async (): Promise<boolean> => {
+			throw new Error("interrupted");
+		};
+		expect(await h.run(["--apply"], { isInteractive: true, confirm })).toBe(0);
+		expect(existsSync(join(h.agentDir, "auth.json"))).toBe(false);
+		expect(h.out.join("\n")).toMatch(/Wrote \d+ file/);
+		expect(h.out.join("\n")).toMatch(/auth\.json: (declined|interrupted)/);
 	});
 });

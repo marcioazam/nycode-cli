@@ -1,5 +1,6 @@
 // Builds the plan of `nycode migrate from-pi`: reads the pi agent directory (read only) and decides each write.
 import { existsSync, lstatSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
+import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { convertMcp, convertSettings, type LocalEnv, mergeSettings, parseLocalEnv } from "./from-pi-convert.ts";
 
@@ -29,13 +30,27 @@ export interface Plan {
 const COPIED_FILES = ["models.json", "lsp.json", "keybindings.json"];
 const AUTH_FILE = /^auth.*\.json$/;
 const WARN_LIMIT = 20;
+/** Settings keys whose origin values run code at startup. */
+const CODE_KEYS = ["packages", "hooks", "shellCommandPrefix"];
 
-function isRegularFile(path: string): boolean {
+function entryKind(path: string): "missing" | "file" | "directory" | "other" {
 	try {
-		return lstatSync(path).isFile();
+		const stat = lstatSync(path);
+		return stat.isFile() ? "file" : stat.isDirectory() ? "directory" : "other";
 	} catch {
-		return false;
+		return "missing";
 	}
+}
+
+const isRegularFile = (path: string): boolean => entryKind(path) === "file";
+
+/** True for a regular file; an entry that exists but is a symlink or special file is reported and skipped. */
+function regularOrNote(path: string, label: string, kind: "file" | "directory", notes: string[]): boolean {
+	const found = entryKind(path);
+	if (found === "missing") return false;
+	if (found === kind) return true;
+	notes.push(`${label} is not a regular ${kind} (symlink or special entry); skipped`);
+	return false;
 }
 
 /** The old wrapper trusted local.env only when it was owned by the user with mode 0600 or 0400. */
@@ -68,7 +83,9 @@ function readJson(path: string, errors: string[]): Record<string, unknown> | und
 		errors.push(`${path}: not a JSON object`);
 		return undefined;
 	} catch (error) {
-		errors.push(`${path}: invalid JSON (${error instanceof Error ? error.message : String(error)})`);
+		// The engine message can quote file content; keep only the position it reports.
+		const position = error instanceof Error ? /position (\d+)/.exec(error.message)?.[1] : undefined;
+		errors.push(`${path}: invalid JSON${position ? ` at position ${position}` : ""}`);
 		return undefined;
 	}
 }
@@ -135,13 +152,16 @@ export function buildPlan(source: string, dest: string): Plan {
 		else env = parseLocalEnv(readFileSync(localEnvPath, "utf8"));
 	}
 
+	const codeRunners: string[] = [];
 	const settingsPath = join(source, "settings.json");
-	const piSettings = existsSync(settingsPath) ? readJson(settingsPath, plan.errors) : {};
-	if (piSettings && (existsSync(settingsPath) || Object.keys(env.values).length > 0)) {
+	const hasSettings = regularOrNote(settingsPath, "settings.json", "file", plan.notes);
+	const piSettings = hasSettings ? readJson(settingsPath, plan.errors) : {};
+	if (piSettings && (hasSettings || Object.keys(env.values).length > 0)) {
 		const result = convertSettings(piSettings, env);
 		let settings = result.settings;
 		const destSettings = join(dest, "settings.json");
 		const existing = isRegularFile(destSettings) ? readJson(destSettings, plan.errors) : undefined;
+		for (const key of CODE_KEYS) if (key in result.settings && !(existing && key in existing)) codeRunners.push(key);
 		if (existing) {
 			const merged = mergeSettings(existing, settings);
 			settings = merged.settings;
@@ -171,10 +191,12 @@ export function buildPlan(source: string, dest: string): Plan {
 	if (env.ignored.length > 0) plan.notes.push(`local.env: ignored ${env.ignored.slice(0, WARN_LIMIT).join(", ")}`);
 
 	const mcpPath = join(source, "mcp.json");
-	if (existsSync(mcpPath)) {
+	if (regularOrNote(mcpPath, "mcp.json", "file", plan.notes)) {
 		const piMcp = readJson(mcpPath, plan.errors);
 		if (piMcp) {
-			const { mcp, placeholders, unmigrated } = convertMcp(piMcp);
+			const { mcp, placeholders, unmigrated, warnings, commands } = convertMcp(piMcp);
+			for (const warning of warnings) plan.notes.push(`mcp.json: ${warning}`);
+			if (commands.length > 0) codeRunners.push(`mcp.json command (${commands.join(", ")})`);
 			add(
 				{
 					rel: "mcp.json",
@@ -199,7 +221,7 @@ export function buildPlan(source: string, dest: string): Plan {
 	addTrust(source, dest, add, plan.errors, plan.notes);
 
 	const sessionsRoot = join(source, "sessions");
-	if (existsSync(sessionsRoot) && statSync(sessionsRoot).isDirectory()) {
+	if (regularOrNote(sessionsRoot, "sessions", "directory", plan.notes)) {
 		for (const rel of listTree(source, "sessions")) {
 			const destPath = join(dest, rel);
 			plan.files.push({
@@ -213,6 +235,12 @@ export function buildPlan(source: string, dest: string): Plan {
 
 	for (const name of readdirSync(source).filter((n) => AUTH_FILE.test(n) && isRegularFile(join(source, n)))) {
 		add({ rel: name, label: "credentials", from: join(source, name), mode: 0o600, credential: true });
+	}
+
+	if (codeRunners.length > 0 && resolve(source) !== defaultSource(homedir())) {
+		plan.notes.push(
+			`--from is not the default ${defaultSource(homedir())}: these origin entries run code at the next nycode start, review them first: ${codeRunners.join(", ")}`,
+		);
 	}
 
 	const claudeHome = join(source, "claude-home");

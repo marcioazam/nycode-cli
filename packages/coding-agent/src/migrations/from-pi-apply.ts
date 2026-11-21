@@ -50,7 +50,11 @@ async function wanted(file: PlanFile, io: ApplyIo, skipped: string[]): Promise<b
 		skipped.push(`${file.rel}: no interactive terminal`);
 		return false;
 	}
-	if (await io.confirm(`Copy ${file.rel} (credentials) to the nycode agent directory? [y/N] `)) return true;
+	// Ctrl+C or EOF at the prompt rejects; that is a refusal, never an abort without a summary.
+	const answer = await io
+		.confirm(`Copy ${file.rel} (credentials) to the nycode agent directory? [y/N] `)
+		.catch(() => false);
+	if (answer) return true;
 	skipped.push(`${file.rel}: declined`);
 	return false;
 }

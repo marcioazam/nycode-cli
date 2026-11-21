@@ -152,4 +152,25 @@ describe("migrate from-pi conversion", () => {
 		expect(listed).toHaveLength(4);
 		expect(new Set(listed).size).toBe(4);
 	});
+
+	it("skips mcp servers and tables that are not objects, with a warning, instead of failing", async () => {
+		const h = makeHome();
+		writeFileSync(
+			join(h.source, "mcp.json"),
+			JSON.stringify({
+				mcpServers: {
+					bad: "sk-string-secret",
+					worse: null,
+					odd: { command: "x", env: ["sk-array-secret"], headers: "sk-str-secret2" },
+					ok: { command: "y", env: { A: "v" } },
+				},
+			}),
+		);
+		expect(await h.run(["--apply"])).toBe(0);
+		const raw = readFileSync(join(h.agentDir, "mcp.json"), "utf8");
+		for (const leaked of ["sk-string-secret", "sk-array-secret", "sk-str-secret2"]) expect(raw).not.toContain(leaked);
+		expect(JSON.parse(raw).mcpServers.ok.env).toEqual({ A: ph("OK_A") });
+		expect(h.out.join("\n")).toMatch(/mcpServers\.bad is not an object.*mcpServers\.worse is not an object/s);
+		expect(h.out.join("\n")).toMatch(/mcpServers\.odd\.env is not an object/);
+	});
 });

@@ -1,5 +1,6 @@
 // `nycode migrate from-pi` plan mode: default dry run writes nothing, leaves the origin intact and never prints secrets.
-import { existsSync } from "node:fs";
+import { cpSync, existsSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { hashTree, makeHome, SECRET } from "./from-pi-fixture.ts";
 
@@ -49,5 +50,53 @@ describe("migrate from-pi dry run", () => {
 		const h = makeHome();
 		expect(await h.run(["--help"])).toBe(0);
 		expect(h.out.join("\n")).toContain("--apply");
+	});
+
+	it("reports a JSON syntax error by file and position without echoing the content", async () => {
+		const h = makeHome();
+		writeFileSync(join(h.source, "settings.json"), '{"a": 1 "b": "sk-secret-zzz"}');
+		expect(await h.run([])).toBe(1);
+		const text = h.err.join("\n");
+		expect(text).toContain("settings.json");
+		expect(text).toMatch(/position \d+/);
+		expect(text).not.toContain("sk-secret-zzz");
+	});
+
+	it("skips settings.json, mcp.json and sessions/ when they are symlinks, saying so", async () => {
+		const h = makeHome();
+		for (const name of ["settings.json", "mcp.json", "sessions"]) {
+			cpSync(join(h.source, name), join(h.home, `real-${name}`), { recursive: true });
+			rmSync(join(h.source, name), { recursive: true });
+			symlinkSync(join(h.home, `real-${name}`), join(h.source, name));
+		}
+		expect(await h.run(["--apply"])).toBe(0);
+		expect(existsSync(join(h.agentDir, "mcp.json"))).toBe(false);
+		expect(existsSync(join(h.agentDir, "sessions"))).toBe(false);
+		// local.env still converts into a settings.json that holds none of the symlinked file's keys
+		expect(readFileSync(join(h.agentDir, "settings.json"), "utf8")).not.toContain("tokyo-night");
+		expect(h.out.join("\n")).toMatch(/settings\.json is not a regular file/);
+		expect(h.out.join("\n")).toMatch(/mcp\.json is not a regular file/);
+		expect(h.out.join("\n")).toMatch(/sessions is not a regular directory/);
+	});
+
+	it("warns that origin packages, hooks, shellCommandPrefix and mcp commands run code when --from is not the default", async () => {
+		const h = makeHome();
+		writeFileSync(
+			join(h.source, "settings.json"),
+			JSON.stringify({ packages: ["npm:x@1.0.0"], hooks: { a: 1 }, shellCommandPrefix: "p;" }),
+		);
+		const other = join(h.home, "other");
+		cpSync(h.source, other, { recursive: true });
+		await h.run(["--from", other]);
+		const text = h.out.join("\n");
+		expect(text).toMatch(
+			/not the default.*run code.*packages.*hooks.*shellCommandPrefix.*mcp\.json command \(search\)/s,
+		);
+	});
+
+	it("does not warn about code execution for the default origin", async () => {
+		const h = makeHome();
+		await h.run([]);
+		expect(h.out.join("\n")).not.toMatch(/run code/);
 	});
 });
