@@ -3,7 +3,8 @@ description: "Explica o Ralph Loop e os commands dele no nycode (/ralph-loop, /c
 disable-model-invocation: true
 ---
 
-<!-- Porte para o nycode (2026-11-11) do /ralph-loop:help (ralph-loop 1.0.1); renomeado para não colidir com ajudas do nycode. -->
+<!-- Porte para o nycode (2026-11-11) do /ralph-loop:help (ralph-loop 1.0.1); renomeado para não colidir com ajudas do nycode.
+Pacote opcional: o Stop hook vem do pacote ralph-loop (optional). -->
 
 Explique ao usuário, em português, sem usar ferramentas:
 
@@ -17,8 +18,9 @@ intercepta e devolve o prompt, e ele continua de onde os arquivos estão, até c
 ## Commands no nycode
 
 - `/ralph-loop PROMPT [--max-iterations N] [--completion-promise TEXTO]`: inicia o loop nesta sessão. Grava o estado em
-  `.claude/ralph-loop.local.md` no diretório atual; o Stop hook (registrado em `~/.nycode/agent/settings.json`)
-  devolve o prompt até achar `<promise>TEXTO</promise>` na última resposta ou chegar ao limite. Exemplo:
+  `.claude/ralph-loop.local.md` no diretório atual; o Stop hook (do pacote opcional ralph-loop; você o registra em
+  `hooks.Stop` de `~/.nycode/agent/settings.json`, veja `docs/optional-packages.md`) devolve o prompt até achar
+  `<promise>TEXTO</promise>` na última resposta ou chegar ao limite. Exemplo:
   `/ralph-loop "Corrija o refresh de token em auth.ts. Escreva <promise>FIXED</promise> quando os testes passarem."
   --completion-promise "FIXED" --max-iterations 10`
 - `/cancel-ralph`: apaga o arquivo de estado e informa a iteração em que estava.

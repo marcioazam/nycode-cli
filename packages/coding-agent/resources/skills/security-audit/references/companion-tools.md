@@ -4,7 +4,7 @@ Moved out of `SKILL.md` on 2026-11-07 to keep the skill small (`security-reviewe
 frontmatter).
 
 The Claude Code plugins this file used to name (Trail of Bits `variant-analysis`, `sharp-edges`, `static-analysis`,
-plus `semgrep-guardian` and `claude-security`) do not exist in nycode; the `offensive-*` skills (claude-red collection) are installed but are offensive tooling,
+plus `semgrep-guardian` and `claude-security`) do not exist in nycode; the `offensive-*` skills (claude-red collection) come from an optional package (optional) and are offensive tooling,
 outside this procedure. This skill stays defensive; the steps below replace the plugins with local
 tools. Check availability first: `which semgrep gitleaks trivy cargo-audit codeql` (2026-11 on this host: semgrep
 1.172.0, gitleaks 8.30.1, trivy 0.74.0 and cargo-audit installed; `codeql` not installed). A missing tool is a

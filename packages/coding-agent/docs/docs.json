@@ -97,6 +97,10 @@
               "path": "packages.md"
             },
             {
+              "title": "Install Optional Packages",
+              "path": "optional-packages.md"
+            },
+            {
               "title": "Connect MCP Servers",
               "path": "mcp.md"
             }
