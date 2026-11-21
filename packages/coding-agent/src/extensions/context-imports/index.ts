@@ -311,9 +311,7 @@ export default function contextImportsExtension(nycode: ExtensionAPI) {
 	 * nothing left for it to gate. Extracted so session_start itself stays a thin
 	 * dispatcher; before_agent_start's own excluded() check covers pi's native files,
 	 * which this cannot reach since pi loads those itself. */
-	async function loadSessionMemory(
-		ctx: ExtensionContext,
-	): Promise<{
+	async function loadSessionMemory(ctx: ExtensionContext): Promise<{
 		userContext?: { path: string; content: string };
 		localContexts: Array<{ path: string; content: string }>;
 		projectDotClaude?: { path: string; content: string };

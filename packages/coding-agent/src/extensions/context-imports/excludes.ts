@@ -52,6 +52,7 @@ function matchesExcludeGlob(absPath: string, globs: string[], home: string): boo
 		if (glob.length === 0) return false;
 		if (glob.startsWith("/")) glob = glob.slice(1);
 		else if (!glob.startsWith("**/")) glob = `**/${glob}`;
+		// nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- globToRegExpSource escapes every literal glob character; only the glob wildcards become regex syntax
 		return new RegExp(`^${globToRegExpSource(glob)}$`).test(target);
 	});
 }
