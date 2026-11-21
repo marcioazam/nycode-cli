@@ -22,14 +22,14 @@ const pending = new Set<string>()
 const hooked = new WeakSet<object>()
 
 /** One poll: deliver every complete new message, ack each; returns the next offset. */
-export function pollInboxOnce(pi: InboxTarget, dir: string, id: string, from: number): number {
+export function pollInboxOnce(nycode: InboxTarget, dir: string, id: string, from: number): number {
   const { items, next } = readInbox(dir, id, from)
   for (const msg of items) {
     let outcome: 'steered' | 'too-late' = 'steered'
     // Before the call: an idle agent may start its turn inside sendUserMessage.
     pending.add(msg.id)
     try {
-      pi.sendUserMessage(msg.text, { deliverAs: 'steer' })
+      nycode.sendUserMessage(msg.text, { deliverAs: 'steer' })
     } catch {
       outcome = 'too-late'
       pending.delete(msg.id)
@@ -54,14 +54,14 @@ function drainInbox(): void {
   active.offset = next
 }
 
-function hook(pi: InboxTarget): void {
-  if (hooked.has(pi)) return
-  hooked.add(pi)
-  pi.on?.('turn_start', () => {
+function hook(nycode: InboxTarget): void {
+  if (hooked.has(nycode)) return
+  hooked.add(nycode)
+  nycode.on?.('turn_start', () => {
     if (active) settlePending(active.dir, active.id, 'consumed')
   })
-  pi.on?.('agent_settled', drainInbox)
-  pi.on?.('session_shutdown', drainInbox)
+  nycode.on?.('agent_settled', drainInbox)
+  nycode.on?.('session_shutdown', drainInbox)
 }
 
 export function stopInboxWatcher(): void {
@@ -71,7 +71,7 @@ export function stopInboxWatcher(): void {
   holder[SLOT] = undefined
 }
 
-export function startInboxWatcher(pi: InboxTarget): void {
+export function startInboxWatcher(nycode: InboxTarget): void {
   stopInboxWatcher()
   active = undefined
   pending.clear()
@@ -80,9 +80,9 @@ export function startInboxWatcher(pi: InboxTarget): void {
   if (subagentDepth() < 1 || !dir || !validRunId(id)) return
   const watch = { dir, id, offset: 0 }
   active = watch
-  hook(pi)
+  hook(nycode)
   const handle = setInterval(() => {
-    watch.offset = pollInboxOnce(pi, dir, id, watch.offset)
+    watch.offset = pollInboxOnce(nycode, dir, id, watch.offset)
   }, POLL_MS)
   handle.unref()
   ;(globalThis as Record<symbol, unknown>)[SLOT] = handle

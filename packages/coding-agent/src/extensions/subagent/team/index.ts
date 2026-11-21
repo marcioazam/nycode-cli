@@ -1,12 +1,12 @@
 /**
  * Agent team entry (local patch, team.patch): the `team` tool, the /team command, the
- * lead's inbox and the peer feed. Everything is inert unless PI_CODE_TEAMS=1 (or /team on):
+ * lead's inbox and the peer feed. Everything is inert unless NYCODE_TEAMS=1 (or /team on):
  * no tool, no prompt section, no timer. Contract: types.ts.
  */
-import type { ExtensionAPI } from '@earendil-works/pi-coding-agent'
+import type { ExtensionAPI } from '../../../core/extensions/types.ts'
 import { type Static, Type } from 'typebox'
-import { addPromptSection } from '../../internal/prompt-options.ts'
-import { stringEnum } from '../../internal/string-enum.ts'
+import { addPromptSection } from '../../_shared/commands/prompt-options.ts'
+import { stringEnum } from '../../_shared/model/string-enum.ts'
 import { currentFleetDir, readJsonl } from '../fleet/store.ts'
 import { subagentDepth } from '../nesting/index.ts'
 import { digest, type FeedState, newFeedState } from './feed.ts'
@@ -33,11 +33,11 @@ interface Sink {
 }
 
 /** The lead's inbox: every pending message in ONE followUp, so a batch costs one main turn. Returns the next offset. */
-export function pollMainInbox(pi: Sink, fleetDir: string, from: number): number {
+export function pollMainInbox(nycode: Sink, fleetDir: string, from: number): number {
   const { items, next } = readJsonl<{ text: string }>(mainInboxFile(fleetDir), from)
   if (items.length > 0) {
     try {
-      pi.sendUserMessage(items.map((m) => m.text).join('\n\n'), { deliverAs: 'followUp' })
+      nycode.sendUserMessage(items.map((m) => m.text).join('\n\n'), { deliverAs: 'followUp' })
     } catch {
       /* the session is switching: the batch is lost like an unacked steer */
     }
@@ -46,22 +46,22 @@ export function pollMainInbox(pi: Sink, fleetDir: string, from: number): number 
 }
 
 /** A member's peer feed: one steer when the digest is due and not empty. */
-export function pollFeed(pi: Sink, fleetDir: string, selfId: string, state: FeedState, now: number): void {
+export function pollFeed(nycode: Sink, fleetDir: string, selfId: string, state: FeedState, now: number): void {
   const text = digest(fleetDir, selfId, state, now)
   if (!text) return
   try {
-    pi.sendUserMessage(text, { deliverAs: 'steer' })
+    nycode.sendUserMessage(text, { deliverAs: 'steer' })
   } catch {
     /* run is finishing */
   }
 }
 
-function tick(pi: Sink): void {
+function tick(nycode: Sink): void {
   const dir = currentFleetDir()
   if (!teamEnabled() || !dir) return
   const s = slot()
-  if (subagentDepth() === 0) s.mainOffset = pollMainInbox(pi, dir, s.mainOffset)
-  else pollFeed(pi, dir, selfOf(dir).id, s.feed, Date.now())
+  if (subagentDepth() === 0) s.mainOffset = pollMainInbox(nycode, dir, s.mainOffset)
+  else pollFeed(nycode, dir, selfOf(dir).id, s.feed, Date.now())
 }
 
 export function stopTeamTimer(): void {
@@ -70,10 +70,10 @@ export function stopTeamTimer(): void {
   s.timer = undefined
 }
 
-function startTeamTimer(pi: Sink): void {
+function startTeamTimer(nycode: Sink): void {
   stopTeamTimer()
   if (!teamEnabled()) return
-  const timer = setInterval(() => tick(pi), TICK_MS)
+  const timer = setInterval(() => tick(nycode), TICK_MS)
   timer.unref()
   slot().timer = timer
 }
@@ -95,7 +95,7 @@ type Args = Static<typeof Params>
 const reply = (text: string) => ({ content: [{ type: 'text' as const, text }], details: {} })
 const show = (r: Result<Record<string, unknown>>, ok: (r: Record<string, unknown>) => string): string => (r.ok ? ok(r) : r.error)
 
-/** Runs one tool call against the fleet dir; pure of pi so the tests drive it directly. */
+/** Runs one tool call against the fleet dir; pure of nycode so the tests drive it directly. */
 export function runTeamTool(dir: string, args: Args): string {
   const self = selfOf(dir)
   switch (args.action) {
@@ -120,12 +120,12 @@ export function runTeamTool(dir: string, args: Args): string {
 
 const GUIDE = 'Team mode is on: other agents of this tree are running. Use the `team` tool (send, roster, board, tasks) for short typed messages, shared facts and exclusive task claims; replies reach the recipient at its next turn. Keep messages short; claim a task before editing its files.'
 
-export function registerTeam(pi: ExtensionAPI): void {
+export function registerTeam(nycode: ExtensionAPI): void {
   let registered = false
   const registerTool = (): void => {
     if (registered) return
     registered = true
-    pi.registerTool({
+    nycode.registerTool({
       name: 'team',
       label: 'Team',
       description: 'Talk to the other agents of this run tree: send short typed messages (to a run id, agent name, parent, lead or all), read the roster, append to or read the shared board, and add, claim or finish tasks with exclusive claims.',
@@ -133,42 +133,42 @@ export function registerTeam(pi: ExtensionAPI): void {
       async execute(_id, params) {
         if (!teamEnabled()) return reply('team mode is off')
         const dir = currentFleetDir()
-        if (!dir) return reply('team: no fleet directory (team mode needs PI_CODE_TEAMS=1 in the main session)')
+        if (!dir) return reply('team: no fleet directory (team mode needs NYCODE_TEAMS=1 in the main session)')
         return reply(runTeamTool(dir, params))
       },
     })
   }
   const setTool = (on: boolean): void => {
-    const active = pi.getActiveTools?.() ?? []
-    if (on && !active.includes('team')) pi.setActiveTools?.([...active, 'team'])
-    if (!on && active.includes('team')) pi.setActiveTools?.(active.filter((n) => n !== 'team'))
+    const active = nycode.getActiveTools?.() ?? []
+    if (on && !active.includes('team')) nycode.setActiveTools?.([...active, 'team'])
+    if (!on && active.includes('team')) nycode.setActiveTools?.(active.filter((n) => n !== 'team'))
   }
 
   if (teamEnabled()) {
     registerTool()
-    startTeamTimer(pi)
+    startTeamTimer(nycode)
   }
 
-  pi.on('before_agent_start', (event) => {
-    if (!teamEnabled() || !pi.getActiveTools().includes('team')) return
+  nycode.on('before_agent_start', (event) => {
+    if (!teamEnabled() || !nycode.getActiveTools().includes('team')) return
     if (addPromptSection(event, 'team', GUIDE)) return
     return { systemPrompt: `${event.systemPrompt}\n\n## Team\n\n${GUIDE}` }
   })
-  pi.on('session_shutdown', () => stopTeamTimer())
+  nycode.on('session_shutdown', () => stopTeamTimer())
 
   if (subagentDepth() > 0) return
-  pi.registerCommand('team', {
+  nycode.registerCommand('team', {
     description: 'Agent team mode: /team on|off|status',
     handler: async (args, ctx) => /* NOSONAR typescript:S7503 - handler type is Promise<void> */ {
       const word = args.trim().toLowerCase()
       if (word === 'on' || word === 'off') {
         if (word === 'on') {
-          process.env.PI_CODE_TEAMS = '1'
+          process.env.NYCODE_TEAMS = '1'
           registerTool()
           setTool(true)
-          startTeamTimer(pi)
+          startTeamTimer(nycode)
         } else {
-          process.env.PI_CODE_TEAMS = '0'
+          process.env.NYCODE_TEAMS = '0'
           stopTeamTimer()
           setTool(false)
         }

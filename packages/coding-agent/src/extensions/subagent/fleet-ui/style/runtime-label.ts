@@ -3,7 +3,7 @@
  * Pure. Unknown stays unknown (`?` in the list, `ainda não informado` in the viewer): an absent effort is
  * never rendered as a default and never inherited from the parent. Record: docs/subagent-model-effort.md.
  */
-import type { RunRecord } from '../fleet/types.ts'
+import type { RunRecord } from '../../fleet/types.ts'
 
 export type RuntimeMeta = Pick<RunRecord, 'model' | 'provider' | 'effort' | 'modelSeen' | 'effortSeen'>
 

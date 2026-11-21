@@ -1,6 +1,6 @@
 /** `/subagents-setup [show|off]` (docs/subagent-routing-2026-11-13.md, AC1/AC2). */
-import type { ExtensionAPI } from '@earendil-works/pi-coding-agent'
-import { getSupportedThinkingLevels } from '@earendil-works/pi-ai'
+import type { ExtensionAPI } from '../../../core/extensions/types.ts'
+import { getSupportedThinkingLevels } from '@nycode/ai'
 import { OVERLAY_OPTIONS } from '../fleet-ui/viewer.ts'
 import { type Effort, EFFORTS, formatPolicy, loadPolicy, policyFile, removePolicy, type RoutingPolicy, savePolicy } from './policy.ts'
 import { SetupComponent, type SetupModel } from './setup-ui.ts'
@@ -8,7 +8,7 @@ import { SetupComponent, type SetupModel } from './setup-ui.ts'
 type Handler = Parameters<ExtensionAPI['registerCommand']>[1]['handler']
 type CommandCtx = Parameters<Handler>[1]
 
-/** The efforts pi reports for the model, in ladder order (`off` is a level too). */
+/** The efforts nycode reports for the model, in ladder order (`off` is a level too). */
 function supportedEfforts(model: Parameters<typeof getSupportedThinkingLevels>[0]): Effort[] {
   const levels = getSupportedThinkingLevels(model) as string[]
   return EFFORTS.filter((e) => levels.includes(e))
@@ -26,8 +26,8 @@ const runSetup = (ctx: CommandCtx, models: SetupModel[]): Promise<RoutingPolicy 
 }
 
 /** `onChange` runs after the policy file changed, so the tool can re-register with the new description and schema. */
-export function registerRoutingCommand(pi: ExtensionAPI, onChange: () => void): void {
-  pi.registerCommand('subagents-setup', {
+export function registerRoutingCommand(nycode: ExtensionAPI, onChange: () => void): void {
+  nycode.registerCommand('subagents-setup', {
     description: 'Choose the models and efforts subagents may use (show | off)',
     handler: async (args, ctx) => {
       const arg = args.trim().toLowerCase()

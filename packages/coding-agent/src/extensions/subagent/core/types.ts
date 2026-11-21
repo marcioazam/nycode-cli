@@ -3,9 +3,9 @@
  * from both so neither has to import the other.
  */
 
-import type { Message } from '@earendil-works/pi-ai'
+import type { Message } from '@nycode/ai'
 
-import type { AgentScope } from './agents.ts'
+import type { AgentScope } from '../registry/agents.ts'
 
 export interface UsageStats {
   input: number

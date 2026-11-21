@@ -7,12 +7,12 @@
  * state, and these are the only users of the tui container and markdown widgets.
  */
 
-import type { getMarkdownTheme, Theme } from '@earendil-works/pi-coding-agent'
-import { Container, Markdown, Spacer, Text } from '@earendil-works/pi-tui'
+import type { getMarkdownTheme, Theme } from '../../../modes/interactive/theme/theme.ts'
+import { Container, Markdown, Spacer, Text } from '@nycode/tui'
 
-import type { AgentScope } from './agents.ts'
+import type { AgentScope } from '../registry/agents.ts'
 import { type DisplayItem, formatToolCall, formatUsageStats, getDisplayItems, getFinalOutput } from './render.ts'
-import type { SingleResult } from './types.ts'
+import type { SingleResult } from '../core/types.ts'
 
 const COLLAPSED_ITEM_COUNT = 10
 

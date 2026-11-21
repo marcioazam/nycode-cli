@@ -3,11 +3,11 @@
  * rule between them, the model label colors and the duration clock. Pure; colors come from the UI roles
  * (Tokyo Night through palette.ts), never from literals. Record: docs/pi-interactive-display-2026-11-13.md.
  */
-import { truncateToWidth, visibleWidth } from '@earendil-works/pi-tui'
+import { truncateToWidth, visibleWidth } from '@nycode/tui'
 
-import { nav } from '../section-nav/nav.ts'
-import type { GroupId, TabBand, TabSpec } from '../section-nav/nav.ts'
-import type { UiTheme } from './panel.ts'
+import { nav } from '../../section-nav/nav.ts'
+import type { GroupId, TabBand, TabSpec } from '../../section-nav/nav.ts'
+import type { UiTheme } from '../panel.ts'
 
 export const SUBAGENTS_TITLE = 'Sub Agents'
 export const STATUSLINE_TITLE = 'Status Line'
@@ -56,7 +56,7 @@ export function rule(theme: UiTheme, width: number): string {
 
 const TAB_GAP = '   '
 
-/** Session thinking level, read when the bar is drawn: pi paints the editor border with `thinking<Level>`, and the open
+/** Session thinking level, read when the bar is drawn: nycode paints the editor border with `thinking<Level>`, and the open
  * tab takes that same role so both match (falls back to `text` without a level). Set by status-line.ts. */
 let thinkingLevel: () => string | undefined = () => undefined
 export const setThinkingSource = (read: () => string | undefined): void => void (thinkingLevel = read)

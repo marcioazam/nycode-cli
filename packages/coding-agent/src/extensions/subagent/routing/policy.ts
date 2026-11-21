@@ -4,12 +4,12 @@
  * the harness behaves as before. An invalid file never breaks a spawn: one warning, routing off.
  */
 import * as fs from 'node:fs'
-import * as os from 'node:os'
 import * as path from 'node:path'
+import { ENV_AGENT_DIR, getAgentDir } from '../../../config.ts'
 
 type Env = Record<string, string | undefined>
 
-/** pi's thinking levels in ascending order; the router's ladder is built on this order. */
+/** nycode's thinking levels in ascending order; the router's ladder is built on this order. */
 export const EFFORTS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'] as const
 export type Effort = (typeof EFFORTS)[number]
 
@@ -24,9 +24,9 @@ export const isEffort = (value: unknown): value is Effort => typeof value === 's
 export const effortRank = (effort: string): number => (EFFORTS as readonly string[]).indexOf(effort)
 
 export function policyFile(env: Env = process.env): string {
-  const override = env.PI_CODE_SUBAGENT_ROUTING_FILE
+  const override = env.NYCODE_SUBAGENT_ROUTING_FILE
   if (override) return override
-  return path.join(env.PI_CODING_AGENT_DIR || path.join(os.homedir(), '.pi', 'agent'), 'subagent-routing.json')
+  return path.join(env[ENV_AGENT_DIR] || getAgentDir(), 'subagent-routing.json')
 }
 
 /** The policy in `raw`, or the reason it is invalid. Efforts come back de-duplicated in ladder order. */
@@ -61,19 +61,19 @@ export function loadPolicy(env: Env = process.env): RoutingPolicy | undefined {
   try {
     text = fs.readFileSync(file, 'utf-8')
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') warnOnce(`pi-code-subagent: routing policy ${file} unreadable, routing off: ${(error as Error).message}`)
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') warnOnce(`nycode-subagent: routing policy ${file} unreadable, routing off: ${(error as Error).message}`)
     return undefined
   }
   let raw: unknown
   try {
     raw = JSON.parse(text)
   } catch {
-    warnOnce(`pi-code-subagent: routing policy ${file} is not valid JSON, routing off`)
+    warnOnce(`nycode-subagent: routing policy ${file} is not valid JSON, routing off`)
     return undefined
   }
   const parsed = parsePolicy(raw)
   if (typeof parsed === 'string') {
-    warnOnce(`pi-code-subagent: routing policy ${file} invalid (${parsed}), routing off`)
+    warnOnce(`nycode-subagent: routing policy ${file} invalid (${parsed}), routing off`)
     return undefined
   }
   return parsed

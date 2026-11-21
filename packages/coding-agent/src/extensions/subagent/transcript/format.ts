@@ -5,10 +5,10 @@
  */
 
 import * as os from 'node:os'
-import type { Message } from '@earendil-works/pi-ai'
-import type { Theme } from '@earendil-works/pi-coding-agent'
+import type { Message } from '@nycode/ai'
+import type { Theme } from '../../../modes/interactive/theme/theme.ts'
 
-import { getDisplayItems } from '../render.ts'
+import { getDisplayItems } from '../render/render.ts'
 
 const ELLIPSIS = '…'
 export const LINE_MAX = 72
@@ -56,7 +56,7 @@ function shortenPath(p: string): string {
 const str = (v: unknown, fallback: string): string => (typeof v === 'string' && v ? v : fallback)
 const pathOf = (a: Record<string, unknown>, fallback: string): string => shortenPath(str(a.file_path ?? a.path, fallback))
 
-/** A range only when pi was asked for one: both offset and limit, or an open-ended offset. */
+/** A range only when nycode was asked for one: both offset and limit, or an open-ended offset. */
 function readArg(a: Record<string, unknown>): string {
   const offset = typeof a.offset === 'number' ? a.offset : undefined
   const limit = typeof a.limit === 'number' && a.limit > 0 ? a.limit : undefined

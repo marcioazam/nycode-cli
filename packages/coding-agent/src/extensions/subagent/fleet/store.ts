@@ -49,7 +49,7 @@ export function ensureFleetDir(): string | undefined {
   }
 }
 
-/** Depth 0 ignores an inherited PI_CODE_FLEET_DIR: a pi launched from a bash tool must not join its parent's fleet. */
+/** Depth 0 ignores an inherited NYCODE_FLEET_DIR: a nycode launched from a bash tool must not join its parent's fleet. */
 export function currentFleetDir(): string | undefined {
   if (subagentDepth() === 0) return slot[DIR_SLOT] as string | undefined
   const dir = process.env[FLEET_ENV.dir]

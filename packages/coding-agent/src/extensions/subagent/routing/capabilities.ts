@@ -3,9 +3,9 @@
  * the source of tools and skills; a spawn may only narrow them, never widen. Plus the `agents:` allowlist a
  * child carries to its own spawns, and the depth ceiling that removes the `subagent` tool.
  */
-import type { AgentConfig } from '../agents.ts'
+import type { AgentConfig } from '../registry/agents.ts'
 
-export const ALLOWED_AGENTS_ENV = 'PI_CODE_SUBAGENT_ALLOWED_AGENTS'
+export const ALLOWED_AGENTS_ENV = 'NYCODE_SUBAGENT_ALLOWED_AGENTS'
 
 const fold = (name: string): string => name.toLowerCase().replaceAll('-', '_')
 const strings = (value: unknown): string[] | undefined => (Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string' && v.trim() !== '').map((v) => v.trim()) : undefined)

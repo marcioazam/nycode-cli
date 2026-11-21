@@ -1,7 +1,7 @@
 /**
  * Agent fleet contract (local patch, claude-home/patches/pi-code/subagent-panel.patch).
  *
- * Every pi process that spawns a subagent (the main session at depth 0 and any writer
+ * Every nycode process that spawns a subagent (the main session at depth 0 and any writer
  * child below it) records that run in one shared directory per main session, the fleet
  * dir. The spawner is the only writer of a run's files; the main session's panel reads
  * the whole tree from disk, so runs at depth 2 and 3, which live in other processes, show
@@ -19,10 +19,10 @@
 /** Environment a spawned child inherits (set by the spawner, read by the child). */
 export const FLEET_ENV = {
   /** The main session's fleet dir; created once at depth 0, inherited unchanged below. */
-  dir: 'PI_CODE_FLEET_DIR',
+  dir: 'NYCODE_FLEET_DIR',
   /** The run id of this process itself, so its own children record it as their parent
    * and its inbox watcher knows which inbox is its own. Unset in the main session. */
-  runId: 'PI_CODE_FLEET_RUN_ID',
+  runId: 'NYCODE_FLEET_RUN_ID',
 } as const
 
 export type RunState = 'running' | 'done' | 'failed' | 'cancelled'

@@ -10,7 +10,7 @@ import * as os from 'node:os'
 import * as path from 'node:path'
 
 export const MAX_RESPAWNS = 2
-/** Espera antes do 1º e do 2º respawn; PI_SUBAGENT_RESPAWN_DELAY_MS substitui ambas (testes). */
+/** Espera antes do 1º e do 2º respawn; NYCODE_SUBAGENT_RESPAWN_DELAY_MS substitui ambas (testes). */
 const DELAYS_MS = [20_000, 60_000]
 /** Erros do provedor que reiniciar não resolve (cota, cobrança, credencial, requisição inválida). */
 const NON_RETRYABLE = /insufficient_quota|billing|quota exceeded|out of budget|usage limit|authentication_error|invalid_api_key|permission_error|invalid_request_error/i
@@ -44,7 +44,7 @@ const oneLine = (text: string, max: number): string => text.replace(/\s+/g, ' ')
 export function shouldRespawn(i: RespawnInput): string | undefined {
   try {
     const env = i.env ?? process.env
-    if (i.wasAborted || i.stopBy || i.partial || env.PI_SUBAGENT_RESPAWN === '0' || i.attempts >= MAX_RESPAWNS) return undefined
+    if (i.wasAborted || i.stopBy || i.partial || env.NYCODE_SUBAGENT_RESPAWN === '0' || i.attempts >= MAX_RESPAWNS) return undefined
     const last = [...i.messages].reverse().find((m) => m.role === 'assistant')
     let reason: string
     if (i.exitCode !== 0) reason = `exit ${i.exitCode === null ? 'by signal' : `code ${i.exitCode}`}`
@@ -62,8 +62,8 @@ export function shouldRespawn(i: RespawnInput): string | undefined {
 }
 
 export const respawnDelayMs = (attempt: number, env: Env = process.env): number => {
-  const forced = Number(env.PI_SUBAGENT_RESPAWN_DELAY_MS)
-  return env.PI_SUBAGENT_RESPAWN_DELAY_MS !== undefined && Number.isFinite(forced) && forced >= 0 ? forced : (DELAYS_MS[attempt] ?? DELAYS_MS[DELAYS_MS.length - 1])
+  const forced = Number(env.NYCODE_SUBAGENT_RESPAWN_DELAY_MS)
+  return env.NYCODE_SUBAGENT_RESPAWN_DELAY_MS !== undefined && Number.isFinite(forced) && forced >= 0 ? forced : (DELAYS_MS[attempt] ?? DELAYS_MS[DELAYS_MS.length - 1])
 }
 
 /** Diretório de sessão do filho; undefined (= segue com --no-session, sem respawn) se não der para criar. */

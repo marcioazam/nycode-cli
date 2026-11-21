@@ -4,16 +4,16 @@
  * runs without the skill catalog, and the child's env carries the parent ceiling and its `agents:` allowlist.
  * With no policy the agent is returned untouched. A spawn is never refused for a policy problem.
  */
-import type { AgentConfig } from '../agents.ts'
+import type { AgentConfig } from '../registry/agents.ts'
 import { maxSubagentDepth, subagentDepth } from '../nesting/index.ts'
 import { ALLOWED_AGENTS_ENV, childAllowedAgents, narrowList, narrowSkills } from './capabilities.ts'
 import { loadPolicy } from './policy.ts'
 import { type CatalogModel, routeSpawn } from './route.ts'
 
-export const PARENT_MODEL_ENV = 'PI_CODE_SUBAGENT_PARENT_MODEL'
-export const PARENT_EFFORT_ENV = 'PI_CODE_SUBAGENT_PARENT_EFFORT'
+export const PARENT_MODEL_ENV = 'NYCODE_SUBAGENT_PARENT_MODEL'
+export const PARENT_EFFORT_ENV = 'NYCODE_SUBAGENT_PARENT_EFFORT'
 /** Read by skills.ts: a child with this set receives no skill paths from resources_discover. */
-export const NO_SKILLS_ENV = 'PI_CODE_SUBAGENT_NO_SKILLS'
+export const NO_SKILLS_ENV = 'NYCODE_SUBAGENT_NO_SKILLS'
 
 type Env = Record<string, string | undefined>
 

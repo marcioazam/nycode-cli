@@ -1,6 +1,6 @@
 /**
  * Agent team contract (local patch, claude-home/patches/pi-code/team.patch). Opt-in
- * (PI_CODE_TEAMS=1 or /team on): every run of the fleet tree can message any other run,
+ * (NYCODE_TEAMS=1 or /team on): every run of the fleet tree can message any other run,
  * share a board and claim tasks, all through files under the fleet dir (fleet/types.ts):
  *   <id>.inbox.jsonl         team messages, delivered by the fleet inbox watcher (steer)
  *   main.inbox.jsonl         messages to the lead (main session), delivered as one followUp
@@ -23,7 +23,7 @@ export const LIMITS = { text: 2000, board: 1000, perRun: 30, perTree: 300, feedM
 /** The main session's id in team addressing (it has no run id). */
 export const LEAD_ID = 'main'
 
-export const teamEnabled = (): boolean => process.env.PI_CODE_TEAMS === '1'
+export const teamEnabled = (): boolean => process.env.NYCODE_TEAMS === '1'
 
 /** Team mode: a tools allowlist must not hide the team tool (it grants messaging, not write access). No allowlist = all tools. */
 export const withTeamTool = <T extends { tools?: string[] }>(agent: T): T =>

@@ -4,7 +4,7 @@
  */
 import { randomUUID } from 'node:crypto'
 import * as fs from 'node:fs'
-import { backgroundRun, cancelBackgroundRun } from '../background.ts'
+import { backgroundRun, cancelBackgroundRun } from './background.ts'
 import { detachAll, hasForeground } from './detach.ts'
 import { subagentDepth } from '../nesting/index.ts'
 import { appendInbox, currentFleetDir, readAcks, readInbox, readRecord, readRecords, readTranscript, requestStop } from './store.ts'
@@ -85,10 +85,10 @@ function sendToRun(id: string, text: string, deps: FleetSourceDeps): SendOutcome
   return rec.depth === 1 && rec.background && deps.resume(id, text) ? 'resumed' : 'not-running'
 }
 
-/** The model's `send` key (PI_CODE_SUBAGENT_SEND); the one place that defines its default: on unless '0' (paired
+/** The model's `send` key (NYCODE_SUBAGENT_SEND); the one place that defines its default: on unless '0' (paired
  * eval and STEER/RESTART bench, docs/pi-subagent-send-2026-11-13.md). */
 export function sendEnabled(): boolean {
-  return process.env.PI_CODE_SUBAGENT_SEND !== '0'
+  return process.env.NYCODE_SUBAGENT_SEND !== '0'
 }
 
 const SEND_MAX_CHARS = 4000

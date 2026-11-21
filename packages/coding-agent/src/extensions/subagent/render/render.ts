@@ -1,12 +1,12 @@
 /**
  * Subagent display formatters: the pure helpers that turn a run's messages and usage
- * into the strings the subagent tool renders. No process spawning, no pi API, no state,
+ * into the strings the subagent tool renders. No process spawning, no nycode API, no state,
  * so they render the same way for the live tool and for tests.
  */
 
 import * as os from 'node:os'
-import type { Message } from '@earendil-works/pi-ai'
-import type { Theme } from '@earendil-works/pi-coding-agent'
+import type { Message } from '@nycode/ai'
+import type { Theme } from '../../../modes/interactive/theme/theme.ts'
 
 export function formatTokens(count: number): string {
   if (count < 1000) return count.toString()

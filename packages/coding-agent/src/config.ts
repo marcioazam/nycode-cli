@@ -461,6 +461,21 @@ export function getBuiltinStylesDir(): string {
 }
 
 /**
+ * Get path to the built-in subagent definitions (Explore, Plan, general-purpose; shipped with package)
+ * - For Bun binary: builtin-agents/ next to executable
+ * - For Node.js (dist/): dist/extensions/subagent/agents/
+ * - For source (src/): src/extensions/subagent/agents/
+ */
+export function getBuiltinAgentsDir(): string {
+	if (isBunBinary) {
+		return join(getPackageDir(), "builtin-agents");
+	}
+	const packageDir = getPackageDir();
+	const srcOrDist = existsSync(join(packageDir, "src")) ? "src" : "dist";
+	return join(packageDir, srcOrDist, "extensions", "subagent", "agents");
+}
+
+/**
  * Get path to HTML export template directory (shipped with package)
  * - For Bun binary: export-html/ next to executable
  * - For Node.js (dist/): dist/core/export-html/

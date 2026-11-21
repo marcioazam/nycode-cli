@@ -4,10 +4,10 @@
  * in render order draws the bar (chrome.ts `tabbed`). Level 1: ↓ on an empty editor focuses the open tab, ← → walk the tabs,
  * Enter opens the tab and enters its body (Status has none: Enter only opens), Space opens without entering, nothing folds, ↑ and Esc return
  * to the editor. Level 2: the body keeps its own keys; Esc returns to the same tab. The editor keeps native focus while a
- * tab is focused. Visual order is not fixed (pi moves a re-set widget last), so every group stamps its render.
+ * tab is focused. Visual order is not fixed (nycode moves a re-set widget last), so every group stamps its render.
  * Records: docs/pi-group-tabs-2026-11-14.md (tabs), docs/pi-group-navigation-2026-11-14.md (levels).
  */
-import { isKeyRelease, matchesKey } from '@earendil-works/pi-tui'
+import { isKeyRelease, matchesKey } from '@nycode/tui'
 
 export type GroupId = 'run' | 'plan' | 'subagents' | 'status'
 
@@ -195,7 +195,7 @@ export class GroupNav {
     }
     if (this.title === undefined || !this.isTitle(this.title)) {
       this.title = undefined
-      // Real bottom limit of a multi-line editor is not exposed by pi's editor: only an empty one hands ↓ over.
+      // Real bottom limit of a multi-line editor is not exposed by nycode's editor: only an empty one hands ↓ over.
       return matchesKey(data, 'down') && env.editorText === '' && this.focusFirst()
     }
     const group = this.groups.get(this.title)!
@@ -231,7 +231,7 @@ export class GroupNav {
   }
 }
 
-/** One instance per process: pi loads each extension in its own module graph (moduleCache: false), so a plain
+/** One instance per process: nycode loads each extension in its own module graph (moduleCache: false), so a plain
  * module-level instance would give status-line and each section its own bar (internal/shared-slot.ts). */
 const NAV_SLOT = Symbol.for('pi-code.group-nav')
 export const nav: GroupNav = ((globalThis as Record<symbol, unknown>)[NAV_SLOT] ??= new GroupNav()) as GroupNav

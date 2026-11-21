@@ -13,7 +13,7 @@ export const viewportSize = (terminalRows: number): number => Math.max(MIN_VISIB
 /** Offset kept inside [0, total - visible]. */
 export const clampOffset = (offset: number, total: number, visible: number): number => Math.max(0, Math.min(offset, Math.max(0, total - visible)))
 
-/** pi's TUI keeps the focused component private: the editor (getText + setText) owns it; unknown counts as the editor. */
+/** nycode's TUI keeps the focused component private: the editor (getText + setText) owns it; unknown counts as the editor. */
 export function editorOwnsFocus(tui: unknown): boolean {
   const focused = (tui as { focusedComponent?: unknown } | undefined)?.focusedComponent
   if (focused == null) return true
@@ -25,7 +25,7 @@ export function editorOwnsFocus(tui: unknown): boolean {
 export interface SectionBridge {
   /** A Plan section is showing (items exist). The status line then keeps its row in the widget, above Plan. */
   planActive(): boolean
-  /** Re-set the Plan widget so it renders after the status widget (pi moves a re-set widget last). */
+  /** Re-set the Plan widget so it renders after the status widget (nycode moves a re-set widget last). */
   reassertPlan(): void
   /** Plan appeared, changed visibility or went away: the status line re-places its footer-only row. */
   onPlanChange?: () => void

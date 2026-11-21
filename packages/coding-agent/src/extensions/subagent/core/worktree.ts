@@ -3,7 +3,7 @@
  * child an isolated copy of the repository, branched from the repository's default
  * branch (origin/HEAD, falling back to main/master, then the current HEAD) rather
  * than the parent session's HEAD, and automatically cleaned up when the subagent
- * makes no changes. Divergence, documented in the subagent README: pi sets the
+ * makes no changes. Divergence, documented in the subagent README: nycode sets the
  * child's working directory into the worktree but does not police commands that
  * navigate back out, which Claude additionally enforces per call.
  */
@@ -13,7 +13,7 @@ import { randomUUID } from 'node:crypto'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import { promisify } from 'node:util'
-import { errorMessage } from '../internal/values.ts'
+import { errorMessage } from '../../_shared/util/values.ts'
 
 const git = async (cwd: string, ...args: string[]): Promise<string> => {
   const { stdout } = await promisify(execFile)('git', args, { cwd })

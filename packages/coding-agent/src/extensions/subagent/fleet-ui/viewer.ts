@@ -2,17 +2,17 @@
  * Live transcript viewer of one run (any depth) and the /tasks browser, both overlays.
  * Record: docs/pi-agent-fleet-2026-11-12.md (A3, A5, A8).
  */
-import { decodeKittyPrintable, isKeyRelease, matchesKey, truncateToWidth, visibleWidth, wrapTextWithAnsi } from '@earendil-works/pi-tui'
-import type { Component } from '@earendil-works/pi-tui'
-import type { ExtensionContext } from '@earendil-works/pi-coding-agent'
+import { decodeKittyPrintable, isKeyRelease, matchesKey, truncateToWidth, visibleWidth, wrapTextWithAnsi } from '@nycode/tui'
+import type { Component } from '@nycode/tui'
+import type { ExtensionContext } from '../../../core/extensions/types.ts'
 
-import { formatDuration, formatTokens } from '../../internal/goal-evaluator.ts'
+import { formatDuration, formatTokens } from '../../_shared/goal/goal-evaluator.ts'
 import type { FleetSource, RunRecord, SendOutcome, TranscriptItem } from '../fleet/types.ts'
 import { ARM_MS, formatCost, renderRow, stopMessage, superscript } from './panel.ts'
 import type { UiTheme } from './panel.ts'
-import { hudTheme, motionEnabled, spinnerAt } from './palette.ts'
+import { hudTheme, motionEnabled, spinnerAt } from './style/palette.ts'
 import { conversationItems } from '../team/ui.ts'
-import { runtimeSummary } from './runtime-label.ts'
+import { runtimeSummary } from './style/runtime-label.ts'
 import { buildRows, chainOf, neighbours } from './view-model.ts'
 
 /** Count of our open overlays; the panel passes all input through while it is above 0. */
@@ -373,7 +373,7 @@ export class TasksComponent implements Component {
 
 // ---- entry points ------------------------------------------------------------------
 
-/** Only what the overlays need from a pi context (command and event contexts both fit). */
+/** Only what the overlays need from a nycode context (command and event contexts both fit). */
 export type UiCtx = Pick<ExtensionContext, 'ui' | 'hasUI'>
 
 // Anchored at the bottom, over the editor and the panel the user came from (centered, a short list floated mid-chat).

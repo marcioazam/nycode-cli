@@ -6,11 +6,11 @@
  * under each row. The state lives here, not in the call box above.
  */
 
-import type { getMarkdownTheme, Theme } from '@earendil-works/pi-coding-agent'
-import { Container, Markdown, Spacer, Text } from '@earendil-works/pi-tui'
+import type { getMarkdownTheme, Theme } from '../../../modes/interactive/theme/theme.ts'
+import { Container, Markdown, Spacer, Text } from '@nycode/tui'
 
-import { formatUsageStats, getDisplayItems, getFinalOutput } from '../render.ts'
-import type { SingleResult } from '../types.ts'
+import { formatUsageStats, getDisplayItems, getFinalOutput } from '../render/render.ts'
+import type { SingleResult } from '../core/types.ts'
 import { clip, formatToolCall, LINE_MAX, previewLine, resultStats, statsText, toolParts } from './format.ts'
 import { Indent, type T, themed, Wrapped } from './layout.ts'
 

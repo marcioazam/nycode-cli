@@ -1,5 +1,5 @@
 /**
- * Running one child agent: spawn a `pi` process, parse its JSON event stream back
+ * Running one child agent: spawn a `nycode` process, parse its JSON event stream back
  * into messages and usage, and tear the child down on abort or a maxTurns cap.
  *
  * The only place in the subagent extension that owns a process, a temp file or a
@@ -14,22 +14,23 @@ import * as path from 'node:path'
 import type { Readable } from 'node:stream'
 import { StringDecoder } from 'node:string_decoder'
 
-import type { AgentToolResult } from '@earendil-works/pi-agent-core'
-import type { Message } from '@earendil-works/pi-ai'
-import { withFileMutationQueue } from '@earendil-works/pi-coding-agent'
-import { cliSettings } from '../internal/cli-settings.ts'
-import { killProcessTree } from '../internal/process-tree.ts'
-import { currentFleetDir, fleetChildEnv, stopOrigin } from './fleet/store.ts'
-import { configuredRuntime, finishExitCode, startTracking, stopNote } from './fleet/tracker.ts'
-import { runSubagentStartHooks } from '../internal/subagent-hooks.ts'
-import { type AgentConfig, resolveModelAlias } from './agents.ts'
+import type { AgentToolResult } from '@nycode/agent-core'
+import type { Message } from '@nycode/ai'
+import { APP_NAME } from '../../../config.ts'
+import { withFileMutationQueue } from '../../../core/tools/file-mutation-queue.ts'
+import { cliSettings } from '../../_shared/settings/cli-settings.ts'
+import { killProcessTree } from '../../_shared/shell/process-tree.ts'
+import { currentFleetDir, fleetChildEnv, stopOrigin } from '../fleet/store.ts'
+import { configuredRuntime, finishExitCode, startTracking, stopNote } from '../fleet/tracker.ts'
+import { runSubagentStartHooks } from '../../_shared/events/subagent-hooks.ts'
+import { type AgentConfig, resolveModelAlias } from '../registry/agents.ts'
 import { agentHooksEnv, agentInvocationArgs, agentMemoryPromptSection, childPromptBody, taskWithStartContext, unresolvedToolsError, withMemoryTools } from './child.ts'
-import { getFinalOutput } from './render.ts'
+import { getFinalOutput } from '../render/render.ts'
 import type { SingleResult, SubagentDetails } from './types.ts'
-import { childNestingEnv, claimSpawns, recordSpawnCost } from './nesting/index.ts'
-import { makeSessionDir, respawnDelayMs, respawnTask, shouldRespawn, sleepAbortable, useSessionArgs } from './respawn/index.ts'
-import { withTeamTool } from './team/types.ts'
-import { resolveSpawn, type SpawnRequest } from './routing/apply.ts'
+import { childNestingEnv, claimSpawns, recordSpawnCost } from '../nesting/index.ts'
+import { makeSessionDir, respawnDelayMs, respawnTask, shouldRespawn, sleepAbortable, useSessionArgs } from '../respawn/index.ts'
+import { withTeamTool } from '../team/types.ts'
+import { resolveSpawn, type SpawnRequest } from '../routing/apply.ts'
 import { type AgentWorktree, cleanupAgentWorktree, createAgentWorktree } from './worktree.ts'
 export async function writePromptToTempFile(agentName: string, prompt: string): Promise<{ dir: string; filePath: string }> {
   const tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'pi-subagent-'))
@@ -56,7 +57,7 @@ export function getPiInvocation(args: string[]): { command: string; args: string
     return { command: process.execPath, args }
   }
 
-  return { command: 'pi', args }
+  return { command: APP_NAME, args }
 }
 
 export type OnUpdateCallback = (partial: AgentToolResult<SubagentDetails>) => void
@@ -143,7 +144,7 @@ export function utf8Chunks(): (chunk: Buffer | string) => string {
   return (chunk) => (typeof chunk === 'string' ? chunk : decoder.write(chunk))
 }
 
-/** The pi child, or the error spawning it threw synchronously. Node normally
+/** The nycode child, or the error spawning it threw synchronously. Node normally
  * reports a spawn failure through the child's async 'error' event, but some
  * failures (confirmed on Linux: posix_spawn detects E2BIG immediately) throw at
  * the spawn() call site instead; catching it here, in one place with an explicit
@@ -165,7 +166,7 @@ export function spawnChild(command: string, args: string[], options: { cwd: stri
     })
     // A third failure shape: at the descriptor limit (EMFILE, ENFILE) node returns a child
     // with no stdio and emits 'error' on the next tick. The callers wire stdout first, so
-    // the deferred event would find no listener, and an unhandled 'error' exits pi.
+    // the deferred event would find no listener, and an unhandled 'error' exits nycode.
     if (!proc.stdout) {
       proc.on('error', () => {})
       return { error: new Error('spawn returned no stdio: the file descriptor limit is likely exhausted (EMFILE)') }
@@ -237,7 +238,7 @@ export async function runSingleAgent(options: RunAgentOptions): Promise<SingleRe
   }
 }
 
-/** D15: a sink that throws (a captured `pi` gone stale after /reload) must neither replace this lane's result nor reject its siblings. */
+/** D15: a sink that throws (a captured `nycode` gone stale after /reload) must neither replace this lane's result nor reject its siblings. */
 function phase(options: Pick<RunAgentOptions, 'onPhase'>, ...args: Parameters<NonNullable<RunAgentOptions['onPhase']>>): void {
   try {
     options.onPhase?.(...args)
@@ -300,7 +301,7 @@ async function runSingleAgentInner(options: RunAgentOptions): Promise<SingleResu
   const args = agentInvocationArgs(invocationAgent, resolveModelAlias(routed.agent.modelAlias, options.availableModels ?? []))
   args.push(...routed.args)
   // Claude's subagents run in-process and see the parent's --settings and
-  // --setting-sources; a child pi process has to be handed them.
+  // --setting-sources; a child nycode process has to be handed them.
   args.push(...cliSettings().forwardArgs)
 
   let tmpPrompt: { dir: string; filePath: string } | undefined
@@ -435,7 +436,7 @@ async function runSingleAgentInner(options: RunAgentOptions): Promise<SingleResu
           ? shouldRespawn({ wasAborted, stopBy, partial: currentResult.partial, attempts: respawns.length, exitCode: code, messages: currentResult.messages.slice(attemptFrom), stderr: currentResult.stderr, claimBudget: () => claimSpawns(1) })
           : undefined
         if (!respawnWhy) tracker?.finish({ exitCode: finishExitCode(Boolean(currentResult.partial), code), aborted: wasAborted, partial: Boolean(currentResult.partial), error: currentResult.errorMessage })
-        // A capped run was stopped by this module's own SIGTERM, which pi's print mode
+        // A capped run was stopped by this module's own SIGTERM, which nycode's print mode
         // answers with exit 143: that is not the agent failing, as background.ts also holds.
         resolve(currentResult.partial ? 0 : (code ?? 1)) // morto por sinal sem ser o nosso SIGTERM = falha
       })

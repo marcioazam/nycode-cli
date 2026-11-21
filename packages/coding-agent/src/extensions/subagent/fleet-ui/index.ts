@@ -3,12 +3,12 @@
  * handling, the live viewer and the /tasks browser. Wired by ../index.ts.
  * Record: docs/pi-agent-fleet-2026-11-12.md.
  */
-import type { ExtensionAPI, ExtensionCommandContext, ExtensionContext } from '@earendil-works/pi-coding-agent'
+import type { ExtensionAPI, ExtensionCommandContext, ExtensionContext } from '../../../core/extensions/types.ts'
 
 import type { FleetSource } from '../fleet/types.ts'
-import { frameSubAgents, summaryLine, tabbed } from './chrome.ts'
+import { frameSubAgents, summaryLine, tabbed } from './style/chrome.ts'
 import { nav } from '../section-nav/nav.ts'
-import { hudTheme } from './palette.ts'
+import { hudTheme } from './style/palette.ts'
 import { executeAction, PanelController, renderPanel } from './panel.ts'
 import type { MainStats, PanelView } from './panel.ts'
 import { openTasksBrowser, openViewer, overlays } from './viewer.ts'
@@ -18,7 +18,7 @@ const TICK_MS = 250 // spinner pace; idle ticks render once per second (IDLE_EVE
 const IDLE_EVERY = 4
 const CONTEXT_TTL_MS = 1000
 
-/** pi's TUI keeps the focused component private: treat the editor (getText + setText) as the
+/** nycode's TUI keeps the focused component private: treat the editor (getText + setText) as the
  * owner; unknown focus counts as the editor so activation keeps working. */
 function editorOwnsFocus(tui: unknown): boolean {
   const focused = (tui as { focusedComponent?: unknown } | undefined)?.focusedComponent
@@ -40,7 +40,7 @@ function branchCost(ctx: ExtensionContext): number | undefined {
   }
 }
 
-export function registerFleetUi(pi: ExtensionAPI, getSource: () => FleetSource | undefined): { openTasks(ctx: ExtensionCommandContext): Promise<void> } {
+export function registerFleetUi(nycode: ExtensionAPI, getSource: () => FleetSource | undefined): { openTasks(ctx: ExtensionCommandContext): Promise<void> } {
   // Estado do main só para desenhar a raiz do painel; nada aqui comanda o fluxo.
   const main: { state: MainStats['state']; since?: number; cost?: number; ctx?: ExtensionContext } = { state: 'idle' }
   // getContextUsage() walks the branch: 6.3% of the non-idle samples while animating. Kept for CONTEXT_TTL_MS by the `now` the
@@ -64,23 +64,23 @@ export function registerFleetUi(pi: ExtensionAPI, getSource: () => FleetSource |
     return { state: main.state, elapsedMs: main.since === undefined ? undefined : Math.max(0, now - main.since), contextTokens, cost: main.cost }
   }
   const controller = new PanelController({ getSource, now: Date.now, getMain })
-  pi.on('agent_start', () => {
+  nycode.on('agent_start', () => {
     main.state = 'thinking'
     main.since = Date.now()
   })
-  pi.on('turn_start', () => {
+  nycode.on('turn_start', () => {
     if (main.state !== 'idle') main.state = 'thinking'
   })
-  pi.on('tool_execution_start', () => {
+  nycode.on('tool_execution_start', () => {
     if (main.state !== 'idle') main.state = 'working'
   })
-  pi.on('turn_end', (_event, ctx) => {
+  nycode.on('turn_end', (_event, ctx) => {
     dropUsage()
     main.cost = branchCost(ctx)
   })
-  pi.on('message_end', dropUsage)
-  pi.on('session_compact', dropUsage)
-  pi.on('agent_settled', (_event, ctx) => {
+  nycode.on('message_end', dropUsage)
+  nycode.on('session_compact', dropUsage)
+  nycode.on('agent_settled', (_event, ctx) => {
     dropUsage()
     main.state = 'idle'
     main.since = undefined
@@ -88,13 +88,13 @@ export function registerFleetUi(pi: ExtensionAPI, getSource: () => FleetSource |
   })
   let cleanup: (() => void) | undefined
 
-  pi.on('session_start', (_event, ctx) => {
+  nycode.on('session_start', (_event, ctx) => {
     cleanup?.()
     cleanup = undefined
     main.ctx = ctx
     dropUsage()
     main.cost = branchCost(ctx)
-    if (!ctx.hasUI || process.env.PI_CODE_SUBAGENT) return
+    if (!ctx.hasUI || process.env.NYCODE_SUBAGENT) return
     let tui: { requestRender(): void } | undefined
     let lastView: PanelView | undefined
     let ticks = 0
@@ -180,7 +180,7 @@ export function registerFleetUi(pi: ExtensionAPI, getSource: () => FleetSource |
     }
   })
 
-  pi.on('session_shutdown', () => {
+  nycode.on('session_shutdown', () => {
     cleanup?.()
     cleanup = undefined
   })

@@ -1,9 +1,9 @@
 /** Theme plumbing and the two small tui components the transcript needs: an indented child and a capped, wrapped line. */
 
-import type { Theme } from '@earendil-works/pi-coding-agent'
-import { type Component, Text, truncateToWidth, visibleWidth } from '@earendil-works/pi-tui'
+import type { Theme } from '../../../modes/interactive/theme/theme.ts'
+import { type Component, Text, truncateToWidth, visibleWidth } from '@nycode/tui'
 
-import { noColor } from '../fleet-ui/palette.ts'
+import { noColor } from '../fleet-ui/style/palette.ts'
 
 export type T = Pick<Theme, 'fg' | 'bold'>
 

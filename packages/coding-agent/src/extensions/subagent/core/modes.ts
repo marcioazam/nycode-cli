@@ -8,24 +8,24 @@
 import { randomUUID } from 'node:crypto'
 import * as path from 'node:path'
 
-import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent'
-import { cliSettings } from '../internal/cli-settings.ts'
-import { capForContext } from '../internal/output-guard.ts'
-import { isProjectApproved } from '../internal/project-approval.ts'
-import type { SessionMailbox } from '../internal/session-mailbox.ts'
-import { SUBAGENT_CHANNEL } from '../internal/subagent-events.ts'
-import { laneCorrelation, laneOutcome } from './fleet/tracker.ts'
-import { runSubagentStartHooks } from '../internal/subagent-hooks.ts'
-import { type AgentConfig, resolveModelAlias } from './agents.ts'
-import { activeAutoBatchSlots } from './fleet/detach.ts'
-import { activeBackgroundRuns, MAX_BACKGROUND_RUNS, startBackgroundRun } from './background.ts'
+import type { ExtensionAPI, ExtensionContext } from '../../../core/extensions/types.ts'
+import { cliSettings } from '../../_shared/settings/cli-settings.ts'
+import { capForContext } from '../../_shared/web/output-guard.ts'
+import { isProjectApproved } from '../../_shared/project/project-approval.ts'
+import type { SessionMailbox } from '../../_shared/events/session-mailbox.ts'
+import { SUBAGENT_CHANNEL } from '../../_shared/events/subagent-events.ts'
+import { laneCorrelation, laneOutcome } from '../fleet/tracker.ts'
+import { runSubagentStartHooks } from '../../_shared/events/subagent-hooks.ts'
+import { type AgentConfig, resolveModelAlias } from '../registry/agents.ts'
+import { activeAutoBatchSlots } from '../fleet/detach.ts'
+import { activeBackgroundRuns, MAX_BACKGROUND_RUNS, startBackgroundRun } from '../fleet/background.ts'
 import { agentHooksEnv, agentInvocationArgs, agentMemoryPromptSection, childPromptBody, taskWithStartContext, unresolvedToolsError, withMemoryTools } from './child.ts'
 import { MAX_PARALLEL_TASKS, mapWithConcurrencyLimit } from './concurrency.ts'
-import { parallelConcurrency } from './nesting/index.ts'
+import { parallelConcurrency } from '../nesting/index.ts'
 import type { ChainStepParam, MakeDetails, SubagentMode, SubagentParamsStatic, TaskItemParam, ToolResult } from './params.ts'
-import { backgroundCompletionText } from './registry-text.ts'
-import { getFinalOutput } from './render.ts'
-import { resolveSpawn, type SpawnRequest } from './routing/apply.ts'
+import { backgroundCompletionText } from '../registry/registry-text.ts'
+import { getFinalOutput } from '../render/render.ts'
+import { resolveSpawn, type SpawnRequest } from '../routing/apply.ts'
 import { getPiInvocation, type OnUpdateCallback, removeTmpPrompt, runSingleAgent, type SubagentPhaseSink, writePromptToTempFile } from './run.ts'
 import type { SingleResult } from './types.ts'
 import { type AgentWorktree, cleanupAgentWorktree, createAgentWorktree } from './worktree.ts'
@@ -67,7 +67,7 @@ export async function checkProjectAgentGate(params: SubagentParamsStatic, agents
   // user-scope run never prompts or persists a trust decision it does not need.
   if (requestedProjectAgents.length === 0) return null
 
-  // isProjectTrusted alone is true for a repo pi never asked about; see project-approval.
+  // isProjectTrusted alone is true for a repo nycode never asked about; see project-approval.
   const approved = await isProjectApproved(ctx)
   const gate = projectAgentGate(requestedProjectAgents.length, approved, ctx.hasUI, params.confirmProjectAgents ?? true)
   // Agent names come from repo-controlled frontmatter; a newline in one would otherwise
@@ -77,7 +77,7 @@ export async function checkProjectAgentGate(params: SubagentParamsStatic, agents
     return { content: [{ type: 'text', text: `Project-local agents (${names}) require a trusted project; refusing in non-interactive mode.` }], details: makeDetails(gateMode)([]) }
   }
   if (gate === 'confirm') {
-    // Each agent knows where it was loaded from; projectAgentsDir only ever held .pi/agents.
+    // Each agent knows where it was loaded from; projectAgentsDir only ever held the project's nycode agents dir.
     const dirs = [...new Set(requestedProjectAgents.map((a) => path.dirname(a.filePath)))]
     const dir = dirs.join(', ') || projectAgentsDir || '(unknown)'
     const ok = await ctx.ui.confirm('Run project-local agents?', `Agents: ${names}\nSource: ${dir}\n\nProject agents are repo-controlled. Only continue for trusted repositories.`)
@@ -142,9 +142,9 @@ function backgroundTarget(params: SubagentParamsStatic, agents: AgentConfig[], m
 export interface BackgroundContext {
   agents: AgentConfig[]
   defaultCwd: string
-  pi: ExtensionAPI
+  nycode: ExtensionAPI
   /** Hands the completion to the session current when the run ends, which after a
-   * /new, /resume, /fork or /reload is not the one whose pi started it. */
+   * /new, /resume, /fork or /reload is not the one whose nycode started it. */
   deliver: SessionMailbox['deliver']
   makeDetails: MakeDetails
   skillRoots: string[]
@@ -153,7 +153,7 @@ export interface BackgroundContext {
 }
 
 export async function runBackgroundMode(params: SubagentParamsStatic, context: BackgroundContext): Promise<ToolResult> {
-  const { agents, defaultCwd, pi, deliver, makeDetails, skillRoots, availableModels, projectApproved } = context
+  const { agents, defaultCwd, nycode, deliver, makeDetails, skillRoots, availableModels, projectApproved } = context
   const target = backgroundTarget(params, agents, makeDetails)
   if ('content' in target) return target
   const { task, agent } = target
@@ -240,7 +240,7 @@ export async function runBackgroundMode(params: SubagentParamsStatic, context: B
     if (worktree) await cleanupAgentWorktree(runCwd, worktree).catch(() => {})
     return backgroundCapResult(makeDetails)
   }
-  pi.events.emit(SUBAGENT_CHANNEL, { phase: 'start', agentType: agent.name, agentId: id, ...laneCorrelation() })
+  nycode.events.emit(SUBAGENT_CHANNEL, { phase: 'start', agentType: agent.name, agentId: id, ...laneCorrelation() })
   return {
     content: [{ type: 'text', text: `Started background run ${id} (${agent.name}). A notification will arrive on completion; check progress with {status: true}.${routed.note ? `\n${routed.note}` : ''}` }],
     details: makeDetails('single')([]),
@@ -388,7 +388,7 @@ export async function runParallelMode(tasks: TaskItemParam[], mode: ModeContext)
     content: [
       {
         type: 'text',
-        // Full reports, so a fan-out can be synthesized from; capped at pi's tool-output budget.
+        // Full reports, so a fan-out can be synthesized from; capped at nycode's tool-output budget.
         text: capForContext(`Parallel: ${successCount}/${results.length} succeeded\n\n${summaries.join('\n\n')}`),
       },
     ],

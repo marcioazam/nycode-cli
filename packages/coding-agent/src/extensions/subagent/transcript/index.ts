@@ -3,12 +3,12 @@
  * the call box (no state) and the result (state, placeholders while the run starts, partial updates).
  */
 
-import { getMarkdownTheme, type Theme } from '@earendil-works/pi-coding-agent'
-import { Text } from '@earendil-works/pi-tui'
+import { getMarkdownTheme, type Theme } from '../../../modes/interactive/theme/theme.ts'
+import { Text } from '@nycode/tui'
 
-import { noColor } from '../fleet-ui/palette.ts'
-import { getFinalOutput } from '../render.ts'
-import type { SingleResult, SubagentDetails } from '../types.ts'
+import { noColor } from '../fleet-ui/style/palette.ts'
+import { getFinalOutput } from '../render/render.ts'
+import type { SingleResult, SubagentDetails } from '../core/types.ts'
 import { type CallArgs, type CallItem, renderSubagentCall } from './call.ts'
 import { taskTitle, TITLE_MAX } from './format.ts'
 import { type Entry, renderSingle, renderTree, stateOf } from './result.ts'

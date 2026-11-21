@@ -4,7 +4,7 @@
  * Record: docs/pi-agent-fleet-2026-11-12.md (A1, A7).
  */
 import type { RunRecord, RunState } from '../fleet/types.ts'
-import { listMeta } from './runtime-label.ts'
+import { listMeta } from './style/runtime-label.ts'
 
 export const FINISHED_TTL_MS = 30_000
 /** A running run silent this long shows as quiet (◌). */

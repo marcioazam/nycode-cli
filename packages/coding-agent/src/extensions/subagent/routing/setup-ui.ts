@@ -3,8 +3,8 @@
  * use, step 2 marks, per marked model, the efforts allowed. up/down move, space toggles, enter confirms the
  * step, esc cancels without saving. Pure state + render so it is testable without a TUI.
  */
-import { isKeyRelease, matchesKey, truncateToWidth } from '@earendil-works/pi-tui'
-import type { Component } from '@earendil-works/pi-tui'
+import { isKeyRelease, matchesKey, truncateToWidth } from '@nycode/tui'
+import type { Component } from '@nycode/tui'
 import { type Effort, EFFORTS, type RoutingPolicy } from './policy.ts'
 
 export interface SetupModel {

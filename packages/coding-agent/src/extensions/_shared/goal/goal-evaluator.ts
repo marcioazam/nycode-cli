@@ -2,11 +2,11 @@
  * The pure half of /goal: the directive Claude Code sends when a goal is set, the
  * evaluator prompt its small fast model judges the condition with, the transcript
  * rendering that prompt sees, verdict parsing, the classifier for the errors that
- * clear a goal, the check-in schedule, and the status text. No pi state lives here,
+ * clear a goal, the check-in schedule, and the status text. No nycode state lives here,
  * so goal.ts stays the lifecycle wiring and each contract is pinned on its own.
  */
 
-import { parseNumericEnv } from './values.ts'
+import { parseNumericEnv } from '../util/values.ts'
 
 /** Claude caps a goal condition at 4,000 characters. */
 export const GOAL_CONDITION_MAX_CHARS = 4000
@@ -33,7 +33,7 @@ export const EVALUATOR_SYSTEM = [
   '- {"ok": false, "impossible": true, "reason": "<explain why the condition can never be satisfied>"}',
   'Always include a "reason" field, quoting specific text from the transcript whenever possible. If the transcript does not contain clear evidence that the condition is satisfied, return {"ok": false, "reason": "insufficient evidence in transcript"}.',
   'Only use {"ok": false, "impossible": true} when the condition is genuinely unachievable in this session, for example: the condition is self-contradictory, it depends on a resource or capability that is unavailable, or the assistant has explicitly tried, exhausted reasonable approaches, and stated it cannot be done. Apply your own judgment when deciding this: the assistant claiming the goal is impossible is evidence, not proof; independently confirm the condition is genuinely unachievable rather than deferring to the assistant\'s self-assessment. Do not use it just because the goal has not been reached yet or because progress is slow. When in doubt, return {"ok": false} without "impossible".',
-  // Claude pins the reply with a JSON schema; pi's one-off completion cannot, so the
+  // Claude pins the reply with a JSON schema; nycode's one-off completion cannot, so the
   // instruction has to carry that weight.
   'Output the JSON object only, with no text before or after it and no code fence.',
 ].join('\n')

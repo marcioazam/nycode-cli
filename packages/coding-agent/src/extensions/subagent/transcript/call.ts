@@ -3,10 +3,10 @@
  * the state and carries no state glyph: the result below it shows ●, ✓, ✗ or ◐.
  */
 
-import type { Theme } from '@earendil-works/pi-coding-agent'
-import { Text } from '@earendil-works/pi-tui'
+import type { Theme } from '../../../modes/interactive/theme/theme.ts'
+import { Text } from '@nycode/tui'
 
-import type { AgentScope } from '../agents.ts'
+import type { AgentScope } from '../registry/agents.ts'
 import { TITLE_MAX, taskTitle } from './format.ts'
 import { plural, type T, themed } from './layout.ts'
 

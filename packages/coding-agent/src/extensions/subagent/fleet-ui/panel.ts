@@ -3,18 +3,18 @@
  * render function of the panel and `PanelController`, the testable key state machine.
  * Record: docs/pi-agent-fleet-2026-11-12.md (A1, A2, A4, A7).
  */
-import { isKeyRelease, matchesKey, truncateToWidth, visibleWidth } from '@earendil-works/pi-tui'
+import { isKeyRelease, matchesKey, truncateToWidth, visibleWidth } from '@nycode/tui'
 
-import { formatDuration, formatTokens } from '../../internal/goal-evaluator.ts'
+import { formatDuration, formatTokens } from '../../_shared/goal/goal-evaluator.ts'
 import type { FleetSource, StopOutcome } from '../fleet/types.ts'
 import { buildRows, finishedCount, QUIET_MS, runningCount } from './view-model.ts'
 import type { FleetRow } from './view-model.ts'
-import { motionEnabled, SPINNER, spinnerAt } from './palette.ts'
+import { motionEnabled, SPINNER, spinnerAt } from './style/palette.ts'
 import { unreadCounts } from '../team/ui.ts'
-import { styleModelMeta } from './chrome.ts'
+import { styleModelMeta } from './style/chrome.ts'
 import { nav } from '../section-nav/nav.ts'
 
-/** The part of pi's Theme the fleet UI uses. */
+/** The part of nycode's Theme the fleet UI uses. */
 export interface UiTheme {
   fg(color: string, text: string): string
   bold(text: string): string

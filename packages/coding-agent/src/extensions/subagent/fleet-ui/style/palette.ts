@@ -1,6 +1,6 @@
 /**
  * HUD palette for the agent panel, viewer and /tasks browser: reads `colors` from the claude-hud
- * config once and maps the UI's color roles to them with truecolor ANSI. Falls back to the pi
+ * config once and maps the UI's color roles to them with truecolor ANSI. Falls back to the nycode
  * theme when the file or a field is missing; NO_COLOR emits no color codes.
  * Record: docs/pi-agents-ui-teams-sota-2026-11-13.md (A4).
  */
@@ -8,11 +8,13 @@ import { readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
-import type { UiTheme } from './panel.ts'
+import { claudeConfigDir } from '../../../_shared/settings/config-dir.ts'
+
+import type { UiTheme } from '../panel.ts'
 
 export type Colors = Record<string, [number, number, number]>
 
-/** UI color role (pi theme token, plus `task` and `cost`) → HUD `colors` key. */
+/** UI color role (nycode theme token, plus `task` and `cost`) → HUD `colors` key. */
 const ROLE_TO_HUD: Record<string, string> = {
   text: 'model',
   muted: 'context',
@@ -25,28 +27,17 @@ const ROLE_TO_HUD: Record<string, string> = {
   task: 'project',
   cost: 'custom',
 }
-/** Roles the pi theme does not know: the token to use when the HUD palette is unavailable. */
+/** Roles the nycode theme does not know: the token to use when the HUD palette is unavailable. */
 const BASE_ROLE: Record<string, string> = { task: 'accent', cost: 'dim' }
 
 /** Running mark: one green dot that swells and shrinks (one cell wide, no emoji presentation). */
 export const SPINNER = ['·', '•', '●', '●', '•', '·']
 export const SPINNER_MS = 200
 
-const CONFIG = join(homedir(), '.pi', 'agent', 'claude-home', 'plugins', 'claude-hud', 'config.json')
-const A11Y = join(homedir(), '.pi', 'agent', 'extensions', 'ui', 'a11y.ts')
+const CONFIG = join(claudeConfigDir(homedir()), 'plugins', 'claude-hud', 'config.json')
 
-type A11y = { noColor(): boolean; reducedMotion(): boolean }
-let a11y: A11y | undefined
-/** Resolves once the shared a11y helpers are loaded (or known missing); the env check covers the gap. */
-export const ready: Promise<void> = import(A11Y).then(
-  (m: A11y) => {
-    a11y = m
-  },
-  () => undefined,
-)
-
-export const noColor = (): boolean => (a11y ? a11y.noColor() : (process.env.NO_COLOR ?? '') !== '')
-export const motionEnabled = (): boolean => !noColor() && !(a11y ? a11y.reducedMotion() : process.env.PI_REDUCED_MOTION === '1')
+export const noColor = (): boolean => (process.env.NO_COLOR ?? '') !== ''
+export const motionEnabled = (): boolean => !noColor() && process.env.NYCODE_REDUCED_MOTION !== '1'
 export const spinnerAt = (now: number): number => Math.floor(now / SPINNER_MS) % SPINNER.length
 
 /** Valid `#rrggbb` entries of the config's `colors`; anything else is ignored. */

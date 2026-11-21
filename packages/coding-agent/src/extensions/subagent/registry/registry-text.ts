@@ -4,12 +4,12 @@
  * each is a pure string function the tests can pin directly.
  */
 
-import { capForContext } from '../internal/output-guard.ts'
+import { capForContext } from '../../_shared/web/output-guard.ts'
 import type { AgentConfig, AgentSource } from './agents.ts'
-import { fleetStatusLines, sendEnabled, stopOwnRun } from './fleet/source.ts'
-import { currentFleetDir, readRecords, requestStop, undeliveredCount } from './fleet/store.ts'
-import type { LeadSendOutcome } from './fleet/types.ts'
-import { type BackgroundRun, allBackgroundRuns, backgroundRun, backgroundStatusText, cancelBackgroundRun, MAX_BACKGROUND_RUNS, resumeBackgroundRun } from './background.ts'
+import { fleetStatusLines, sendEnabled, stopOwnRun } from '../fleet/source.ts'
+import { currentFleetDir, readRecords, requestStop, undeliveredCount } from '../fleet/store.ts'
+import type { LeadSendOutcome } from '../fleet/types.ts'
+import { type BackgroundRun, allBackgroundRuns, backgroundRun, backgroundStatusText, cancelBackgroundRun, MAX_BACKGROUND_RUNS, resumeBackgroundRun } from '../fleet/background.ts'
 
 /** AC4: messages sent with `send` that no turn of the run consumed; empty when none or when send is off. */
 function undeliveredNote(id: string): string {
@@ -46,7 +46,7 @@ export function sendResultText(id: string, outcome: LeadSendOutcome): string {
     'not-running': `Run ${id} is not running, so send cannot reach it: use {resume: "${id}", task: "..."} for a finished background run, or start a new run.`,
     'not-delivered': `Run ${id} ended before it read your message and could not be resumed: start a new run.`,
     unknown: `Unknown run: ${id}.\n\n${statusWithFleet()}`,
-    disabled: 'send is disabled (PI_CODE_SUBAGENT_SEND=0).',
+    disabled: 'send is disabled (NYCODE_SUBAGENT_SEND=0).',
     empty: 'Pass task with send: the message needs text.',
     'too-long': 'Message too long: send takes at most 4000 characters.',
     'not-owned': `Run ${id} was not started by this session: send only reaches your own runs.`,

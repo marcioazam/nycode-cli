@@ -4,12 +4,12 @@
  * extension entry point back.
  */
 
-import type { AgentToolResult } from '@earendil-works/pi-agent-core'
+import type { AgentToolResult } from '@nycode/agent-core'
 import { type Static, Type } from 'typebox'
 
-import { stringEnum } from '../internal/string-enum.ts'
-import { sendEnabled } from './fleet/source.ts'
-import type { SpawnRequest } from './routing/apply.ts'
+import { stringEnum } from '../../_shared/model/string-enum.ts'
+import { sendEnabled } from '../fleet/source.ts'
+import type { SpawnRequest } from '../routing/apply.ts'
 import type { SingleResult, SubagentDetails } from './types.ts'
 
 export const TaskItem = Type.Object({
@@ -59,14 +59,14 @@ const withRouting = (base: typeof SubagentParams): typeof SubagentParams =>
     ...routingProps(),
   }) as typeof SubagentParams
 
-/** The schema the tool registers: `send` is part of it only while PI_CODE_SUBAGENT_SEND is on; the routing fields only with a routing policy. */
+/** The schema the tool registers: `send` is part of it only while NYCODE_SUBAGENT_SEND is on; the routing fields only with a routing policy. */
 export const subagentParams = (routing = false): typeof SubagentParams => {
   const base = sendEnabled() ? SubagentParams : (Type.Omit(SubagentParams, ['send']) as typeof SubagentParams)
   return routing ? withRouting(base) : base
 }
 
 /**
- * pi only sets a tool result's error flag when execute() throws; a returned isError is
+ * nycode only sets a tool result's error flag when execute() throws; a returned isError is
  * ignored (docs/extensions.md, "Signaling errors"). Throwing here would be worse: the
  * agent loop replaces the result with createErrorToolResult(message), discarding the
  * details renderResult needs to show the failed agent's transcript. The failure is

@@ -10,12 +10,12 @@ import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
 
-import type { AgentRunRequest } from '../internal/agent-run.ts'
-import { claudeConfigDir } from '../internal/config-dir.ts'
-import { sliceBytes } from '../internal/output-guard.ts'
-import { repoRoot } from '../internal/project-root.ts'
-import { autoMemoryEnabled, capIndexForPrompt, INDEX_MAX_BYTES, INDEX_MAX_LINES, memorySettingsFiles, readMemorySettings } from '../memory.ts'
-import { type AgentConfig, type AgentMemoryScope, expandMcpToolPatterns, withPreloadedSkills } from './agents.ts'
+import type { AgentRunRequest } from '../../_shared/seams/agent-run.ts'
+import { claudeConfigDir } from '../../_shared/settings/config-dir.ts'
+import { sliceBytes } from '../../_shared/web/output-guard.ts'
+import { repoRoot } from '../../_shared/project/project-root.ts'
+import { autoMemoryEnabled, capIndexForPrompt, INDEX_MAX_BYTES, INDEX_MAX_LINES, memorySettingsFiles, readMemorySettings } from '../../memory/index.ts'
+import { type AgentConfig, type AgentMemoryScope, expandMcpToolPatterns, withPreloadedSkills } from '../registry/agents.ts'
 /** The system prompt for Claude's experimental `type: "agent"` hooks: the subagent
  * inspects with read-only tools and returns the same JSON decision a command hook's
  * stdout carries. A hook-supplied `systemPrompt` is appended after it. */
@@ -28,7 +28,7 @@ export const AGENT_HOOK_SYSTEM = [
 ].join('\n')
 
 /** The agent a context: fork skill runs as when it names none: full toolset, no
- * extra system prompt (the child keeps pi's default), the skill content as the
+ * extra system prompt (the child keeps nycode's default), the skill content as the
  * task. */
 export function forkAgent(request: Pick<AgentRunRequest, 'model' | 'systemPrompt'>): AgentConfig {
   return {
@@ -133,7 +133,7 @@ export function setKnownMcpAliases(aliases: ReadonlyArray<{ pi: string; claude: 
   knownMcpAliases = aliases
 }
 
-/** pi's built-in ToolName union (core/tools/index.d.ts; the package's export map
+/** nycode's built-in ToolName union (core/tools/index.d.ts; the package's export map
  * does not expose allToolNames, so this mirrors it) plus the tools pi-code's own
  * extensions register in a child. Claude's capitalized spellings fold onto these. */
 const CHILD_TOOL_NAMES = new Set(['read', 'bash', 'edit', 'write', 'grep', 'find', 'ls', 'web_fetch', 'web_search', 'list_mcp_resources', 'read_mcp_resource', 'todo', 'question', 'memory', 'slash_command', 'plan_mode_complete'])
@@ -155,7 +155,7 @@ export function agentInvocationArgs(agent: AgentConfig, aliasModel?: string): st
   // A concrete model wins; otherwise a Claude tier alias resolved against the models
   // this user can actually run; then CLAUDE_CODE_SUBAGENT_MODEL, per Claude's model
   // order (invocation model, frontmatter model, this variable, the session model).
-  // pi reads a thinking level from the model pattern's :suffix when a model is
+  // nycode reads a thinking level from the model pattern's :suffix when a model is
   // pinned, and from --thinking otherwise.
   // Claude exempts the two built-ins from the environment variable: "Setting
   // CLAUDE_CODE_SUBAGENT_MODEL by itself doesn't change the model the built-in Explore and
@@ -186,7 +186,7 @@ export function agentHooksEnv(agent: AgentConfig, agentId: string): Record<strin
   const stop = hooks.Stop
   delete hooks.Stop
   if (Array.isArray(stop)) hooks.SubagentStop = [...(Array.isArray(hooks.SubagentStop) ? (hooks.SubagentStop as unknown[]) : []), ...stop]
-  return { PI_CODE_AGENT_HOOKS: JSON.stringify({ agent: agent.name, id: agentId, hooks }) }
+  return { NYCODE_AGENT_HOOKS: JSON.stringify({ agent: agent.name, id: agentId, hooks }) }
 }
 
 /** This string becomes the whole of one argv element to the spawned child

@@ -2,7 +2,7 @@
  * Background subagent runs: fire-and-forget children whose completion wakes
  * the parent agent via a notification message. State lives in an in-memory
  * registry queried via {status: true}; it is lost on restart. A child still
- * running when pi quits is SIGTERMed (cancelAllBackgroundRuns); one still running
+ * running when nycode quits is SIGTERMed (cancelAllBackgroundRuns); one still running
  * across a same-process session switch keeps going under the new session.
  */
 
@@ -10,14 +10,14 @@ import { randomUUID } from 'node:crypto'
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
-import { killProcessTree } from '../internal/process-tree.ts'
-import { childNestingEnv } from './nesting/index.ts'
-import { sharedSlot } from '../internal/shared-slot.ts'
-import { errorMessage } from '../internal/values.ts'
-import { taskWithStartContext } from './child.ts'
-import { fleetChildEnv, currentFleetDir, stopOrigin } from './fleet/store.ts'
-import { configuredRuntime, startTracking, stopNote } from './fleet/tracker.ts'
-import { spawnChild, utf8Chunks } from './run.ts'
+import { killProcessTree } from '../../_shared/shell/process-tree.ts'
+import { childNestingEnv } from '../nesting/index.ts'
+import { sharedSlot } from '../../_shared/seams/shared-slot.ts'
+import { errorMessage } from '../../_shared/util/values.ts'
+import { taskWithStartContext } from '../core/child.ts'
+import { fleetChildEnv, currentFleetDir, stopOrigin } from './store.ts'
+import { configuredRuntime, startTracking, stopNote } from './tracker.ts'
+import { spawnChild, utf8Chunks } from '../core/run.ts'
 
 export interface BackgroundRun {
   id: string
@@ -45,7 +45,7 @@ export interface BackgroundRun {
    * earliest-finished runs by this, not Map insertion (start) order: a long run
    * started first but finished last must not vanish the instant it completes. */
   finishedAt?: number
-  /** pi session the child ran under, so a follow-up can continue its context. */
+  /** nycode session the child ran under, so a follow-up can continue its context. */
   sessionId: string
   /** How the child was spawned, so a follow-up can repeat it with a new task. */
   spawn: BackgroundSpawn
@@ -59,16 +59,16 @@ export interface BackgroundSpawn {
   env?: Record<string, string>
   /** The --system-prompt body, kept so a resume can rebuild the file the
    * completing run deleted. Without it the resumed child is handed a path that no
-   * longer exists, and pi falls back to using that path as the prompt text. */
+   * longer exists, and nycode falls back to using that path as the prompt text. */
   promptBody?: string
   /** Claude's maxTurns: kill the child once it has produced this many turns. */
   maxTurns?: number
 }
 
 /** The registry, held on globalThis rather than in module state. /reload and a /resume into
- * another directory clear pi's extension cache and evaluate this module again; a registry
+ * another directory clear nycode's extension cache and evaluate this module again; a registry
  * that died with the old instance left live children unlisted, uncancellable, and running
- * on past pi's exit, since the quit path signals only what the registry holds. */
+ * on past nycode's exit, since the quit path signals only what the registry holds. */
 const registry = sharedSlot<{ runs: Map<string, BackgroundRun>; finishSequence: number }>('background-runs')
 const state = registry.get() ?? { runs: new Map<string, BackgroundRun>(), finishSequence: 0 }
 registry.set(state)
@@ -148,7 +148,7 @@ export function createJsonlOutputParser(onTurn?: (turns: number) => void): { pus
   }
 }
 
-/** Extract the final assistant text and turn count from a pi --mode json stdout stream. */
+/** Extract the final assistant text and turn count from a nycode --mode json stdout stream. */
 export function parseFinalOutputFromJsonl(jsonl: string): { text: string; turns: number } {
   const parser = createJsonlOutputParser()
   parser.push(jsonl)
@@ -177,14 +177,14 @@ export function cancelBackgroundRun(id: string): 'cancelled' | 'not-running' | '
 
 /** SIGTERM every live background child, killing each process group the way a single
  * cancel does. Called on quit: a detached child would otherwise keep running (and
- * spending tokens) after pi exits, its completion swallowed. Returns how many were
+ * spending tokens) after nycode exits, its completion swallowed. Returns how many were
  * signalled; each cancelled child still holds its slot until it actually dies. */
 export function cancelAllBackgroundRuns(): number {
   let count = 0
   for (const id of Array.from(runs.keys())) {
     if (cancelBackgroundRun(id) === 'cancelled') count++
   }
-  // Called at quit: nothing in this registry is resumable once pi exits.
+  // Called at quit: nothing in this registry is resumable once nycode exits.
   for (const run of runs.values()) removeRunFiles(run)
   return count
 }
@@ -194,7 +194,7 @@ export function backgroundStatusText(): string {
 }
 
 /** Every run this process knows about, live and finished. The registry is module state
- * that outlives a session switch; a per-session list is not, because pi re-invokes each
+ * that outlives a session switch; a per-session list is not, because nycode re-invokes each
  * extension factory per session. */
 export function allBackgroundRuns(): BackgroundRun[] {
   return [...runs.values()]
@@ -259,11 +259,11 @@ function withRebuiltPrompt(spawnSpec: BackgroundSpawn, agent: string): { args: s
     rebuilt[flag + 1] = file
     return { args: rebuilt, dir }
   } catch (error) {
-    // Cannot rewrite it: drop the pair rather than hand pi a path it will treat as
+    // Cannot rewrite it: drop the pair rather than hand nycode a path it will treat as
     // prompt text, which would replace the agent persona with a temp path. The child then
     // runs as a plain assistant instead of the agent asked for, and nothing in its output
     // says so, hence the notice.
-    console.warn(`pi-code-subagent: resuming ${agent} without its agent prompt: ${errorMessage(error)}`)
+    console.warn(`nycode-subagent: resuming ${agent} without its agent prompt: ${errorMessage(error)}`)
     return { args: spawnSpec.args.filter((_arg, i) => i !== flag && i !== flag + 1) }
   }
 }
@@ -288,7 +288,7 @@ export function startBackgroundRun(agent: string, task: string, invocation: Back
   const id = presetId ?? `bg-${randomUUID().slice(0, 8)}`
   // A stable session id per run: the child persists its session, so a follow-up can
   // resume it instead of starting cold. It persists into a directory of its own: in the
-  // project's session dir it would be the newest session there, which `pi -c` and /resume
+  // project's session dir it would be the newest session there, which `nycode -c` and /resume
   // offer as the user's previous one. The same args serve the resume, so it finds the file.
   const sessionId = `pi-code-${id}-${randomUUID().slice(0, 8)}`
   const sessionDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pi-code-bg-session-'))
@@ -313,11 +313,11 @@ function driveRun(run: BackgroundRun, invocation: BackgroundSpawn, onComplete: (
     completed = true
     run.finishedAt = ++state.finishSequence
     evictFinishedRuns()
-    // A run outlives the session that started it, and pi's loader wires assertActive()
+    // A run outlives the session that started it, and nycode's loader wires assertActive()
     // into every runtime call, so notifying a disposed session throws; callers route the
     // notice to the current session (session-mailbox), and this guard is the backstop.
     // This fires from the child's 'close'/'error' listener, where nothing upstream
-    // catches: an escaping error reaches Node as an uncaughtException and takes pi down
+    // catches: an escaping error reaches Node as an uncaughtException and takes nycode down
     // with it. The run state is already recorded by this point.
     const notify = (): void => {
       try {
@@ -386,7 +386,7 @@ function driveRun(run: BackgroundRun, invocation: BackgroundSpawn, onComplete: (
     for (const line of lines) tracker.onLine(line)
   })
   // An 'error' on a stream with no listener is rethrown by EventEmitter, and this one
-  // belongs to a detached child, so a pipe read failure would exit pi the same way an
+  // belongs to a detached child, so a pipe read failure would exit nycode the same way an
   // unguarded completion would. The foreground runner guards its streams the same way.
   proc.stdout.on('error', () => {})
   proc.stderr?.on('data', (data) => {

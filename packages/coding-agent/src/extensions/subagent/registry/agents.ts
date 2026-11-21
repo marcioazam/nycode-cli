@@ -5,18 +5,19 @@
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
-import { getAgentDir, stripFrontmatter } from '@earendil-works/pi-coding-agent'
+import { CONFIG_DIR_NAME, getAgentDir, getBuiltinAgentsDir } from '../../../config.ts'
+import { stripFrontmatter } from '../../../utils/frontmatter.ts'
 // The same mapping a command's `allowed-tools` gets: an agent's `tools:` is the same
-// Claude field, and `--tools` is an exact-name allowlist, so a name pi has no tool for
+// Claude field, and `--tools` is an exact-name allowlist, so a name nycode has no tool for
 // is not merely ignored, it narrows the child's registry.
-import { coerceGrantItems, parseToolGrants } from '../internal/command-file.ts'
-import { claudeConfigDir } from '../internal/config-dir.ts'
-import { parseClaudeFrontmatter } from '../internal/frontmatter.ts'
-import { findModel } from '../internal/model-lookup.ts'
-import { installedPlugins, pluginComponentPath } from '../internal/plugins.ts'
-import { ancestorDirs, findNearestDir, sameLocation } from '../internal/project-root.ts'
-import { sharedSlot } from '../internal/shared-slot.ts'
-import { errorMessage } from '../internal/values.ts'
+import { coerceGrantItems, parseToolGrants } from '../../_shared/commands/command-file.ts'
+import { claudeConfigDir } from '../../_shared/settings/config-dir.ts'
+import { parseClaudeFrontmatter } from '../../_shared/commands/frontmatter.ts'
+import { findModel } from '../../_shared/model/model-lookup.ts'
+import { installedPlugins, pluginComponentPath } from '../../_shared/settings/plugins.ts'
+import { ancestorDirs, findNearestDir, sameLocation } from '../../_shared/project/project-root.ts'
+import { sharedSlot } from '../../_shared/seams/shared-slot.ts'
+import { errorMessage } from '../../_shared/util/values.ts'
 
 /**
  * `tools:` may be a comma-separated string (the Claude Code format) or a YAML block
@@ -33,7 +34,7 @@ import { errorMessage } from '../internal/values.ts'
 function parseToolsField(raw: unknown, granting: boolean): string[] | undefined | null {
   if (raw === undefined) return undefined
   // Shares the command parser's splitting, so a comma inside an argument scope stays
-  // inside it here too: split naively, `Bash(mv, write, cp)` grants the child pi's real `write`.
+  // inside it here too: split naively, `Bash(mv, write, cp)` grants the child nycode's real `write`.
   if (raw !== null && !Array.isArray(raw) && typeof raw !== 'string') return null
   if (Array.isArray(raw) && raw.some((item) => typeof item !== 'string')) return null
   const items = coerceGrantItems(raw)
@@ -46,7 +47,7 @@ function parseToolsField(raw: unknown, granting: boolean): string[] | undefined 
 
 /** Discovery runs on every roster build and every subagent call, and a rejected file
  * is rejected again each time. Each distinct warning is printed once per process so
- * it informs without flooding the terminal. The set lives in a shared slot because pi
+ * it informs without flooding the terminal. The set lives in a shared slot because nycode
  * loads a fresh module instance for every session and /reload. */
 const warnedSlot = sharedSlot<Set<string>>('subagent.agent-warnings')
 function warnOnce(message: string): void {
@@ -61,7 +62,7 @@ function warnOnce(message: string): void {
 }
 
 /**
- * Claude Code model aliases name Anthropic tiers. pi's resolver would partial-match
+ * Claude Code model aliases name Anthropic tiers. nycode's resolver would partial-match
  * one against an authenticated Anthropic provider, but for every other setup the
  * child exits at boot on an unresolvable --model. Running on the session model
  * (Claude's `inherit`) is the degradation that works everywhere; users who want a
@@ -92,7 +93,7 @@ export function resolveModelAlias(alias: string | undefined, available: Readonly
   return findModel(alias, available)?.id
 }
 
-/** pi's extended thinking levels; Claude's effort values are a subset, so they map 1:1. */
+/** nycode's extended thinking levels; Claude's effort values are a subset, so they map 1:1. */
 const THINKING_LEVELS = new Set(['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'])
 
 function parseEffortField(raw: unknown): string | undefined {
@@ -125,7 +126,7 @@ function parseSkillsField(raw: unknown): string[] | undefined {
 }
 
 /** Inline the named skills into an agent's prompt. Claude preloads a subagent's
- * `skills` at startup rather than letting it discover them, and a child pi process
+ * `skills` at startup rather than letting it discover them, and a child nycode process
  * does not inherit the parent's skill discovery, so the bodies travel in the prompt.
  * A name that resolves to nothing is reported rather than dropped: a silently missing
  * instruction is worse than a visible gap. */
@@ -174,7 +175,7 @@ function readSkillBody(name: string, skillDirs: string[]): string | undefined {
   return undefined
 }
 
-/** permissionMode has no pi equivalent; 'plan' means a research agent, so translate
+/** permissionMode has no nycode equivalent; 'plan' means a research agent, so translate
  * the intent into a read-only toolset unless the file pins tools itself. */
 const READ_ONLY_TOOLS = ['read', 'grep', 'find', 'ls']
 
@@ -187,13 +188,13 @@ function agentName(frontmatter: Record<string, unknown>, filePath: string, plugi
   if (pluginName !== undefined) return `${pluginName}:${declared || path.basename(filePath, '.md')}`
   if (!declared) return null
   if (declared.includes(':')) {
-    warnOnce(`pi-code-subagent: ignoring agent ${filePath}: names cannot contain ":", which is reserved for plugin-scoped identifiers`)
+    warnOnce(`nycode-subagent: ignoring agent ${filePath}: names cannot contain ":", which is reserved for plugin-scoped identifiers`)
     return null
   }
   return declared
 }
 
-/** The text after a frontmatter block pi's parser rejected, so stripFrontmatter throws too. */
+/** The text after a frontmatter block nycode's parser rejected, so stripFrontmatter throws too. */
 function bodyAfterFrontmatter(content: string): string {
   return content.slice(content.indexOf('\n---', 3) + 4).trim()
 }
@@ -216,7 +217,7 @@ function readAgentFile(content: string, filePath: string, pluginName?: string): 
     if (pluginName !== undefined) return { frontmatter: {}, body: bodyAfterFrontmatter(content) }
     // Malformed YAML must not abort discovery for the whole directory, but a silent drop
     // reads as "that agent does not exist", so it is named like the other rejections here.
-    warnOnce(`pi-code-subagent: ignoring agent ${filePath}: its frontmatter could not be parsed (${errorMessage(error)})`)
+    warnOnce(`nycode-subagent: ignoring agent ${filePath}: its frontmatter could not be parsed (${errorMessage(error)})`)
     return null
   }
 }
@@ -243,7 +244,7 @@ function parseAgentFile(content: string, source: AgentSource, filePath: string, 
   const tools = parseToolsField(frontmatter.tools, true)
   if (tools === null) {
     // A silent drop reads as "agent does not exist"; say why.
-    warnOnce(`pi-code-subagent: ignoring agent ${filePath}: its tools: grant could not be parsed`)
+    warnOnce(`nycode-subagent: ignoring agent ${filePath}: its tools: grant could not be parsed`)
     return null
   }
   const disallowedTools = parseToolsField(frontmatter.disallowedTools, false)
@@ -252,7 +253,7 @@ function parseAgentFile(content: string, source: AgentSource, filePath: string, 
   if (isolation === null) {
     // isolation is a declared safety boundary: an unrecognized value must reject
     // the definition rather than run the agent against the real checkout.
-    warnOnce(`pi-code-subagent: ignoring agent ${filePath}: isolation value ${JSON.stringify(frontmatter.isolation)} is not supported (only "worktree" is)`)
+    warnOnce(`nycode-subagent: ignoring agent ${filePath}: isolation value ${JSON.stringify(frontmatter.isolation)} is not supported (only "worktree" is)`)
     return null
   }
   return {
@@ -287,10 +288,10 @@ function parseIsolationField(raw: unknown): 'worktree' | undefined | null {
 
 /** Claude's MCP server-level patterns in agent `tools`/`disallowedTools`:
  * `mcp__<server>` or `mcp__<server>__*` covers every tool of that server, and
- * `mcp__*` every MCP tool from any server. pi registers MCP tools under its own
+ * `mcp__*` every MCP tool from any server. nycode registers MCP tools under its own
  * `<server>_<tool>` names, so the parent's alias list is the translation table;
  * matching folds case and dashes like hook matchers do. A pattern that matches
- * nothing is kept verbatim (harmless to pi's exact-name filter), so a server that
+ * nothing is kept verbatim (harmless to nycode's exact-name filter), so a server that
  * failed to connect is not silently dropped from a deny list. */
 export function expandMcpToolPatterns(entries: string[], aliases: ReadonlyArray<{ pi: string; claude: string }>): string[] {
   const fold = (name: string): string => name.toLowerCase().replaceAll('-', '_')
@@ -401,7 +402,7 @@ function buildAgentMap(userAgents: AgentConfig[], projectAgents: AgentConfig[], 
 export type AgentSource = 'user' | 'project' | 'builtin' | 'plugin'
 
 /** Bundled default agents (Explore, Plan, general-purpose), lowest precedence. */
-const BUILTIN_AGENTS_DIR = path.join(import.meta.dirname, 'agents')
+const BUILTIN_AGENTS_DIR = getBuiltinAgentsDir()
 
 /** Agent directories of every enabled plugin, each with its plugin name (Claude
  * scopes plugin agent ids as `<plugin>:<name>`): `agents/` unless the manifest
@@ -420,7 +421,7 @@ function pluginAgentDirs(home: string): Array<{ dir: string; pluginName: string 
 export function discoverAgents(cwd: string, scope: AgentScope): AgentDiscoveryResult {
   const userDir = path.join(getAgentDir(), 'agents')
   const claudeUserDir = path.join(claudeConfigDir(os.homedir()), 'agents')
-  const projectPiDir = findNearestDir(cwd, path.join('.pi', 'agents'))
+  const projectNycodeDir = findNearestDir(cwd, path.join(CONFIG_DIR_NAME, 'agents'))
   // Claude scans every .claude/agents between cwd and the repository root, the
   // definition closest to cwd winning a name clash; root-first load order makes
   // the nearer directory's entry overwrite in the map below.
@@ -432,11 +433,11 @@ export function discoverAgents(cwd: string, scope: AgentScope): AgentDiscoveryRe
     .reverse()
 
   // Plugins load after builtins and before the user's own dirs, so a user agent
-  // wins a name clash with a plugin's, and ~/.pi/agent/agents wins over ~/.claude.
+  // wins a name clash with a plugin's, and ~/.nycode/agent/agents wins over ~/.claude.
   const userAgents = scope === 'project' ? [] : [...loadAgentsFromDir(BUILTIN_AGENTS_DIR, 'builtin'), ...pluginAgentDirs(os.homedir()).flatMap((entry) => loadAgentsFromDir(entry.dir, 'plugin', entry.pluginName)), ...loadAgentsFromDir(claudeUserDir, 'user'), ...loadAgentsFromDir(userDir, 'user')]
-  // project .claude/agents loads first so project .pi/agents wins on name conflicts
-  const projectAgents = scope === 'user' ? [] : [...projectClaudeDirs.flatMap((dir) => loadAgentsFromDir(dir, 'project')), ...(projectPiDir ? loadAgentsFromDir(projectPiDir, 'project') : [])]
+  // project .claude/agents loads first so project .nycode/agents wins on name conflicts
+  const projectAgents = scope === 'user' ? [] : [...projectClaudeDirs.flatMap((dir) => loadAgentsFromDir(dir, 'project')), ...(projectNycodeDir ? loadAgentsFromDir(projectNycodeDir, 'project') : [])]
 
   const agentMap = buildAgentMap(userAgents, projectAgents, scope)
-  return { agents: Array.from(agentMap.values()), projectAgentsDir: projectPiDir }
+  return { agents: Array.from(agentMap.values()), projectAgentsDir: projectNycodeDir }
 }
