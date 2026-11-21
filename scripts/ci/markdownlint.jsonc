@@ -10,6 +10,9 @@
     "MD041": false,
     "MD060": false
   },
+  // Upstream changelogs keep upstream formatting (rewriting them would conflict on every sync, 08); nycode entries
+  // go under [Unreleased] as AGENTS.md says.
+  "ignores": ["packages/*/CHANGELOG.md"],
   "gitignore": false,
   "noProgress": true
 }
