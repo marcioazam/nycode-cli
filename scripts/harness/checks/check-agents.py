@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Valida os agentes de ~/.pi/agent/claude-home/agents para o pi (pi-code subagent).
+"""Valida os agentes de packages/coding-agent/resources/agents para o nycode (extensão subagent).
 
 Checa: frontmatter YAML, name = arquivo, description, tools/disallowedTools contra as
-ferramentas reais do pi e os nomes MCP de `pi mcp list --json` (cache em /tmp/mcp-list.json,
+ferramentas reais do nycode e os nomes MCP de `nycode mcp list --json` (cache em /tmp/mcp-list.json,
 regenerado com --refresh), skills existentes, model/effort válidos, e vocabulário do
-Claude Code que não existe no pi no corpo. Saída: uma linha por problema; exit 1 se houver.
+Claude Code que não existe no nycode no corpo. Saída: uma linha por problema; exit 1 se houver.
 Uso: check-agents.py [--refresh] [agente.md ...]
 """
 import json, re, subprocess, sys
@@ -12,8 +12,9 @@ from pathlib import Path
 import yaml
 
 HOME = Path.home()
-AGENTS = HOME / ".pi/agent/claude-home/agents"
-SKILLS = HOME / ".pi/agent/claude-home/skills"
+RESOURCES = Path(__file__).resolve().parents[3] / "packages/coding-agent/resources"
+AGENTS = RESOURCES / "agents"
+SKILLS = RESOURCES / "skills"
 CACHE = Path("/tmp/mcp-list.json")
 BUILTIN = {"read", "bash", "edit", "write", "grep", "find", "ls", "web_fetch", "todo", "question",
            "memory", "tool_search", "subagent", "plan_mode_complete", "lsp_diagnostics", "lsp_hover",
@@ -21,25 +22,25 @@ BUILTIN = {"read", "bash", "edit", "write", "grep", "find", "ls", "web_fetch", "
            "slash_command", "mcp__keenable__search_web_pages"}
 MODELS = {"sonnet", "opus", "haiku", "fable", "inherit"}
 EFFORT = {"off", "minimal", "low", "medium", "high", "xhigh", "max"}
-# Vocabulário do Claude Code sem equivalente direto no pi (corpo dos agentes).
+# Vocabulário do Claude Code sem equivalente direto no nycode (corpo dos agentes).
 BAD = [
-    (r"\bmcp__plugin_", "MCP de plugin do Claude (inexistente no pi)"),
-    (r"\bmcp__claude_ai_", "MCP claude.ai (inexistente no pi)"),
-    (r"\bmcp__[a-z]+-[a-z-]+__", "nome MCP com hífen (no pi vira _)"),
-    (r"~/\.claude/(skills|agents|settings|rules|CLAUDE\.md|hooks)", "caminho do Claude Code (use ~/.pi/agent/claude-home)"),
+    (r"\bmcp__plugin_", "MCP de plugin do Claude (inexistente no nycode)"),
+    (r"\bmcp__claude_ai_", "MCP claude.ai (inexistente no nycode)"),
+    (r"\bmcp__[a-z]+-[a-z-]+__", "nome MCP com hífen (no nycode vira _)"),
+    (r"~/\.claude/(skills|agents|settings|rules|CLAUDE\.md|hooks)", "caminho do Claude Code (use ${NYCODE_RESOURCES})"),
     (r"\b(TodoWrite|AskUserQuestion|WebSearch|WebFetch|NotebookEdit|ToolSearch|SendMessage|ScheduleWakeup|StructuredOutput)\b", "ferramenta Claude"),
-    (r"\bSkill tool\b|\bthe Skill\b|`Skill`", "Skill tool (no pi: read do SKILL.md)"),
-    (r"\b(Agent|Task) tool\b|subagent_type", "Task/Agent tool (no pi: subagent)"),
-    (r"\bclaude -p\b", "claude -p (no pi: pi -p)"),
+    (r"\bSkill tool\b|\bthe Skill\b|`Skill`", "Skill tool (no nycode: read do SKILL.md)"),
+    (r"\b(Agent|Task) tool\b|subagent_type", "Task/Agent tool (no nycode: subagent)"),
+    (r"\bclaude -p\b", "claude -p (no nycode: nycode -p)"),
     (r"\b(Glob|Grep|MultiEdit) tool\b", "ferramenta Claude"),
     (r"`(Read|Write|Edit|Bash|Grep|Glob)`", "nome capitalizado de ferramenta Claude"),
-    (r"\bCLAUDE\.md\b", "CLAUDE.md (no pi o contrato global é claude-home/CLAUDE.md, já no contexto do agente)"),
+    (r"\bCLAUDE\.md\b", "CLAUDE.md (no nycode o contrato global é instructions/contract.md, já no contexto do agente)"),
     (r"\bClaude Code\b", "menção a Claude Code"),
-    (r"\bweb_search\b(?!_)", "web_search do pi-code está desligado"),
+    (r"\bweb_search\b(?!_)", "web_search está desligado no nycode"),
 ]
 
-# Ocorrências revisadas à mão e corretas no pi (arquivo, trecho): CLAUDE.md do repositório-alvo,
-# comparação de runs Claude Code x pi, referência de leitura a ~/.claude/rules.
+# Ocorrências revisadas à mão e corretas no nycode (arquivo, trecho): CLAUDE.md do repositório-alvo,
+# comparação de runs Claude Code x nycode, referência de leitura a ~/.claude/rules.
 ALLOW = {
     ("agent-systems-auditor.md", "Claude Code"),
     ("gate-runner.md", "CLAUDE.md"), ("go-service-engineer.md", "CLAUDE.md"),
@@ -49,7 +50,7 @@ ALLOW = {
 
 def mcp_names(refresh: bool):
     if refresh or not CACHE.exists():
-        out = subprocess.run([str(HOME / ".pi/agent/bin/pi"), "mcp", "list", "--json"], capture_output=True, text=True, cwd="/tmp")
+        out = subprocess.run(["nycode", "mcp", "list", "--json"], capture_output=True, text=True, cwd="/tmp")
         CACHE.write_text(out.stdout)
     data = json.loads(CACHE.read_text())
     norm = lambda s: re.sub(r"[^A-Za-z0-9_]", "_", s)
@@ -74,7 +75,7 @@ def check(path: Path, servers, names, unauth):
         fm = yaml.safe_load(m.group(1))
     except Exception as e:
         return [f"{path.name}: YAML inválido: {e}"]
-    # O corpo inteiro, comentários HTML inclusive, vira o system prompt (pi-code subagent/agents.ts).
+    # O corpo inteiro, comentários HTML inclusive, vira o system prompt (extensão subagent, agents.ts).
     body = m.group(2)
     if fm.get("name") != path.stem:
         probs.append(f"name {fm.get('name')!r} != arquivo")
@@ -97,8 +98,8 @@ def check(path: Path, servers, names, unauth):
                 continue  # servidor sem login: nomes não verificáveis agora
             mm = re.match(r"^mcp__([A-Za-z0-9_]+)__(authenticate|complete_authentication)$", it)
             if mm and mm.group(1) in servers:
-                continue  # ferramentas de login que o pi cria só enquanto o servidor pede auth
-            probs.append(f"{key}: {it!r} não existe no pi")
+                continue  # ferramentas de login que o nycode cria só enquanto o servidor pede auth
+            probs.append(f"{key}: {it!r} não existe no nycode")
         if key == "tools" and any(i.startswith("mcp__") and i != "mcp__keenable__search_web_pages" for i in items) and "tool_search" not in items:
             probs.append("tools tem MCP deferido mas não tool_search")
     model = fm.get("model")

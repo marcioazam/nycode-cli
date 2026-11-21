@@ -21,7 +21,7 @@ def problems(body: str) -> list[str]:
 
 
 class BodyReachesTheAgent(unittest.TestCase):
-    # O pi-code passa o corpo inteiro como system prompt (subagent/agents.ts: `systemPrompt: body`), sem tirar
+    # O nycode passa o corpo inteiro como system prompt (extensão subagent, agents.ts: `systemPrompt: body`), sem tirar
     # comentários HTML; antes do conserto o checador os apagava e um caminho do Claude num comentário passava.
     def test_html_comment_is_checked(self):
         found = problems('Body.\n<!--\nOrigin: ~/.claude/agents/x.md\n-->\n')
@@ -51,8 +51,8 @@ class Frontmatter(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             found = ca.check(self.write(d, 'c.md', fm), servers, names, unauth)
         joined = '\n'.join(found)
-        for expected in ("name 'other' != arquivo", 'description vazia', "tools: 'fake' não existe no pi",
-                         "tools: 'mcp__srv__get2' não existe no pi", 'tools tem MCP deferido mas não tool_search',
+        for expected in ("name 'other' != arquivo", 'description vazia', "tools: 'fake' não existe no nycode",
+                         "tools: 'mcp__srv__get2' não existe no nycode", 'tools tem MCP deferido mas não tool_search',
                          "model 'sonnet': use provider/id", "effort 'huge' inválido", "skill 'nope-skill' inexistente",
                          'caminho inexistente: ~/no/such/file'):
             self.assertIn(expected, joined)
