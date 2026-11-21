@@ -129,7 +129,61 @@ describe("shareSession", () => {
 			"--public=false",
 			expect.any(String),
 		]);
-		expect(statuses[0]).toContain("https://pi.dev/session/#forced-gist");
+		// No default viewer: only the gist link without NYCODE_SHARE_VIEWER_URL.
+		expect(statuses[0]).toContain("Gist: ");
+		expect(statuses[0]).toContain("https://gist.github.com/test/forced-gist");
+		expect(statuses[0]).not.toContain("Share URL");
+		expect(statuses[0]).not.toContain("pi.dev");
+	});
+
+	async function shareToGist(): Promise<string[]> {
+		childProcessMocks.spawn.mockImplementation(() => {
+			const child = Object.assign(new EventEmitter(), {
+				stdout: new PassThrough(),
+				stderr: new PassThrough(),
+				kill: vi.fn(),
+			});
+			queueMicrotask(() => {
+				child.stdout.end("https://gist.github.com/test/forced-gist\n");
+				child.stderr.end();
+				child.emit("close", 0);
+			});
+			return child;
+		});
+		const statuses: string[] = [];
+		await shareSession({
+			session: {
+				sessionManager: { getSessionId: () => "gist", getCwd: () => "/tmp", getBranch: () => [] },
+				state: { systemPrompt: "", tools: [] },
+				settingsManager: { getSessionShareDestination: () => "gist" },
+				modelRuntime: { getProvider: vi.fn() },
+				exportToHtml: async (filePath: string) => writeFileSync(filePath, "html"),
+			},
+			ui: { setFocus() {}, requestRender() {} },
+			editorContainer: { clear() {}, addChild() {} },
+			editor: {},
+			showStatus: (message: string) => statuses.push(message),
+			showError: vi.fn(),
+		} as never);
+		return statuses;
+	}
+
+	it("prints a viewer link only when NYCODE_SHARE_VIEWER_URL is configured", async () => {
+		vi.stubEnv("NYCODE_SHARE_VIEWER_URL", "https://viewer.example/session/");
+		const statuses = await shareToGist();
+		vi.unstubAllEnvs();
+
+		expect(statuses[0]).toContain("Share URL: ");
+		expect(statuses[0]).toContain("https://viewer.example/session/#forced-gist");
+	});
+
+	it("never prints a default viewer link", async () => {
+		vi.stubEnv("NYCODE_SHARE_VIEWER_URL", "");
+		const statuses = await shareToGist();
+		vi.unstubAllEnvs();
+
+		expect(statuses[0]).not.toContain("Share URL");
+		expect(statuses[0]).toContain("NYCODE_SHARE_VIEWER_URL");
 	});
 
 	it("reports missing Radius authentication when Radius is forced", async () => {

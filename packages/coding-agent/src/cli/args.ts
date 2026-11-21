@@ -475,8 +475,8 @@ ${chalk.bold("Environment Variables:")}
   NYCODE_PACKAGE_DIR                   - Override package directory (for Nix/Guix store paths)
   NYCODE_OFFLINE                       - Disable startup network operations when set to 1/true/yes
   NYCODE_SELF_UPDATE_COMMAND           - Command nycode update runs to update nycode itself ({packageName}, {version}, {installSpec})
-  NYCODE_TELEMETRY                     - Override install telemetry when set to 1/true/yes or 0/false/no
-  NYCODE_SHARE_VIEWER_URL              - Base URL for /share command (default: https://pi.dev/session/)
+  NYCODE_TELEMETRY                     - Override provider attribution headers when set to 1/true/yes or 0/false/no
+  NYCODE_SHARE_VIEWER_URL              - Viewer base URL for /share (no default: without it /share prints only the gist link)
 
 ${chalk.bold("Built-in Tool Names:")}
   read       - Read file contents

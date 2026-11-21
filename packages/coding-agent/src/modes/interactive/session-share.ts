@@ -209,7 +209,12 @@ async function shareViaGist(tmpFile: string, context: SessionShareContext): Prom
 		}
 
 		const previewUrl = getShareViewerUrl(gistId);
-		context.showStatus(`Share URL: ${hyperlink(previewUrl, previewUrl)}\nGist: ${hyperlink(gistUrl, gistUrl)}`);
+		const gistLine = `Gist: ${hyperlink(gistUrl, gistUrl)}`;
+		context.showStatus(
+			previewUrl
+				? `Share URL: ${hyperlink(previewUrl, previewUrl)}\n${gistLine}`
+				: `${gistLine}\nSet NYCODE_SHARE_VIEWER_URL to also get a viewer link.`,
+		);
 	} catch (error: unknown) {
 		if (!loader.signal.aborted) {
 			restoreEditor(loader, context);
