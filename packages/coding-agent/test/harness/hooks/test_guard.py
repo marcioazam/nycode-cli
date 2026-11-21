@@ -11,7 +11,9 @@ from typing import Any, ClassVar
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 GUARD = os.path.join(HERE, "..", "..", "..", "resources", "hooks", "guard.py")
-HOME = os.path.expanduser("~")
+# Fixed HOME outside every temp root: the guard frees /tmp, so a runner HOME under /tmp (mktemp -d) would turn
+# "outside the project" paths into allowed ones. The guard subprocess gets the same HOME.
+HOME = "/home/guard-test-user"
 PROJECT = "/tmp/guard-project"
 
 
@@ -26,6 +28,7 @@ def run(
     if bypass:
         env["NYCODE_BYPASS_PERMISSIONS"] = "1"
     env["CLAUDE_PROJECT_DIR"] = cwd
+    env["HOME"] = HOME
     payload = (
         raw
         if raw is not None
