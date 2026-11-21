@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { ProjectTrustStore } from "../src/core/trust-manager.ts";
-import { runMcpCommand } from "../src/extensions/mcp/cli.ts";
+import { runMcpCommand } from "../src/extensions/mcp/cli/cli.ts";
 import { startOAuthMcpServer } from "./suite/mcp-oauth-server.ts";
 
 const FIXTURE = resolve(import.meta.dirname, "../../mcp/test/fixtures/stdio-server.mjs");

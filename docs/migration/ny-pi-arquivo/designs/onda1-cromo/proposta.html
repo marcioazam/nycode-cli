@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Onda 1 · cromo da tela — proposta "Calmo"</title>
+<style>
+  :root { color-scheme: light dark; --page: light-dark(#fbfbfd, #111113); --ink: light-dark(#1d1d1f, #f5f5f7); --ink2: light-dark(#5f5f64, #a1a1a6); --line: light-dark(#d9d9de, #303034); --card: light-dark(#fff, #18181a); }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1500px; margin: auto; padding: 40px 28px 80px; }
+  h1 { font-size: 2rem; letter-spacing: -.02em; margin: 0 0 4px; text-wrap: balance; }
+  h2 { font-size: 1.3rem; letter-spacing: -.01em; margin: 56px 0 6px; }
+  p, li { max-width: 75ch; } .lead { color: var(--ink2); margin-top: 0; }
+  .warn { border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; background: var(--card); max-width: 75ch; }
+  .bar { position: sticky; top: 0; z-index: 1; background: var(--page); padding: 10px 0; border-bottom: 1px solid var(--line); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  button { font: inherit; padding: 5px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; }
+  button[aria-pressed=true] { background: var(--ink); color: var(--page); border-color: var(--ink); }
+  button:focus-visible, a:focus-visible { outline: 2px solid #0a84ff; outline-offset: 2px; }
+  .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 560px), 1fr)); gap: 20px; align-items: start; margin: 14px 0; }
+  figure { margin: 0; min-width: 0; } figcaption { font-size: .85rem; color: var(--ink2); margin-bottom: 6px; }
+  figcaption b { color: var(--ink); }
+  img.bot { aspect-ratio: 1081 / 330; object-fit: cover; object-position: bottom; }
+  img { width: 100%; height: auto; border-radius: 10px; display: block; border: 1px solid var(--line); }
+  table { border-collapse: collapse; font-size: .9rem; margin: 10px 0; } td, th { border-bottom: 1px solid var(--line); padding: 6px 12px 6px 0; text-align: left; vertical-align: top; }
+  .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 6px; border: 1px solid var(--line); }
+  code { font: .88em ui-monospace, "JetBrains Mono", Menlo, monospace; }
+
+  /* terminal mock: tema Grafite (proposto) e Tokyo Night (atual) */
+  body { --bg: #1c1c1e; --surface: #2c2c2e; --label: #f5f5f7; --sec: #98989f; --ter: #48484a; --accent: #0a84ff; --ok: #30d158; --caution: #ff9f0a; --err: #ff453a; }
+  body[data-theme=tokyo] { --bg: #1a1b26; --surface: #292e42; --label: #c0caf5; --sec: #a9b1d6; --ter: #414868; --accent: #bb9af7; --ok: #9ece6a; --caution: #e0af68; --err: #f7768e; }
+  pre.term { margin: 0; background: var(--bg); color: var(--label); border-radius: 10px; padding: 10px 0; overflow-x: auto; font: 13px/1.5 "JetBrainsMono Nerd Font", "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace; }
+  .term .b, .term .k { font-weight: 700; } .term .s { color: var(--sec); } .term .t { color: var(--ter); }
+  .term .a { color: var(--accent); } .term .g { color: var(--ok); } .term .w { color: var(--caution); } .term .e { color: var(--err); }
+  .term .cur { background: var(--label); } .term .u { background: var(--surface); display: inline-block; }
+  .term .lc { color: #e48a7a; } .term .lb { color: #4f8eb3; } .term .ly { color: #eab65d; } .term .lg { color: #e48a7a; background: #4f8eb3; }
+  .term.nc span:not(.cur):not(.t):not(.s) { color: var(--label); font-weight: 700; } .term.nc .u { background: none; }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; font: 13px ui-monospace, monospace; }
+  .tabs span { background: var(--card); border: 1px solid var(--line); border-radius: 8px 8px 0 0; padding: 6px 14px; }
+</style>
+<main>
+<h1>Onda 1 · cromo da tela — proposta “Calmo”</h1>
+<p class="lead">Header, composer, status, modos, painéis, avisos e título do terminal (A01–A17). Proposta aprovada em parte; o que foi aplicado e o que ficou de fora está em <a href="README.md">README.md</a>.</p>
+<p class="warn"><b>Como ler.</b> “Antes” são as capturas reais da galeria. “Depois” são <b>mocks em HTML</b>, não capturas: mostram disposição, hierarquia e cor, não pixels do kitty. Dados de demonstração.</p>
+
+<div class="bar"><span>Tema do mock:</span>
+  <button data-t="" aria-pressed="true">Grafite (proposto)</button>
+  <button data-t="tokyo" aria-pressed="false">Tokyo Night (atual)</button>
+  <span style="color:var(--ink2);font-size:.85rem">O layout não depende do tema; dá para aprovar um sem o outro.</span>
+</div>
+
+<h2>As 5 regras do desenho</h2>
+<ol>
+  <li><b>Conteúdo primeiro.</b> O cromo fixo embaixo cai de 8 linhas para 4 (ocioso). O que sobra é espaço para a conversa.</li>
+  <li><b>Cada informação num lugar só.</b> O que é fixo (marca, versão, dicas) fica no topo e rola com a conversa. O que muda (modelo, raciocínio, contexto, pasta, branch) fica na última linha, perto de onde se digita. Hoje modelo e raciocínio aparecem duas vezes.</li>
+  <li><b>Hierarquia por peso e três cinzas, não por cor.</b> Título em negrito, detalhe em cinza secundário, réguas em cinza terciário.</li>
+  <li><b>Cor só quando significa algo.</b> Azul = onde você age e modo ativo. Laranja = atenção. Vermelho = falha. Verde = concluído. Hoje há 8 cores no cromo, 3 delas só para diferenciar etiquetas.</li>
+  <li><b>O padrão é silêncio.</b> Estado normal não ocupa linha. Modos, avisos e painéis só aparecem quando existem, sempre no mesmo lugar e com a mesma gramática.</li>
+</ol>
+
+<h2>1 · Tela inicial <small>(A02 header, A05 rodapé, A06 status)</small></h2>
+<div class="pair">
+<figure><figcaption><b>Antes</b> · captura real 01</figcaption><img src="../../ui-ux-gallery/images/01-inicial-harness.png" alt="Tela inicial atual: header com modelo, raciocínio, contexto e caminho; editor entre réguas roxas; etiqueta verde STATUS LINE; duas linhas de HUD repetindo o modelo"></figure>
+<figure><figcaption><b>Depois</b> · mock</figcaption><pre class="term" data-cols="88">
+ {lg:▀}{lc:▀█}   {b:pi} {s:1.5.2}
+ {lb:█▀} {ly:█}   {k:?} {s:atalhos}    {k:/} {s:comandos}    {k:!} {s:shell}
+
+
+
+
+
+
+
+
+
+
+---
+ {a:❯} {cur: }
+---
+ {b:Modelo Demo} {s:· medium · 12% do contexto}>>{s:projeto-demo  ⎇ main}
+</pre></figure>
+</div>
+<ul>
+  <li><b>Header</b>: marca, versão e 3 dicas. Saem modelo, raciocínio, contexto e caminho (foram para o status, onde continuam visíveis depois que o header rola). Sai <code>esc interrompe</code>: aparece só enquanto há algo para interromper (tela 2).</li>
+  <li><b>Composer</b>: mesmas duas réguas, agora em cinza terciário. O roxo forte saía do elemento mais vazio da tela. O <code>❯</code> azul marca onde digitar.</li>
+  <li><b>Status</b>: uma linha, sem etiqueta <code>STATUS LINE</code>, sem régua, sem linha em branco. Esquerda = sessão (modelo em negrito, o resto em cinza). Direita = lugar (pasta curta e branch; o caminho inteiro sai).</li>
+  <li><code>32k ctx</code> (tamanho da janela, nunca muda) vira <code>12% do contexto</code> (uso, que é o que se acompanha).</li>
+</ul>
+
+<h2>2 · Trabalhando</h2>
+<div class="pair">
+<figure><figcaption><b>Antes</b> · captura real 51</figcaption><img src="../../ui-ux-gallery/images/51-goal-status.png" alt="Tela atual durante uma resposta: régua roxa com 'escrevendo 4s', etiqueta STATUS LINE e linha de goal no fim"></figure>
+<figure><figcaption><b>Depois</b> · mock</figcaption><pre class="term" data-cols="88">
+~ ❯ escreva os testes de demonstração
+
+ Vou criar os testes em test/demo.test.ts e rodar a suíte em seguida.
+
+ Lista de tarefas atualizada.
+
+
+
+
+--- {a:⠋} {s:escrevendo · 4s ·} {k:esc} {s:interrompe}
+ {a:❯} {cur: }
+---
+ {b:Modelo Demo} {s:· medium · 14% do contexto}>>{s:projeto-demo  ⎇ main}
+ {a:◎ goal} {s:escrever testes de demonstração · 12m}
+</pre></figure>
+</div>
+<ul>
+  <li>O indicador de trabalho continua na régua de cima do composer (já funciona bem). Só o spinner é azul; o texto é cinza. A dica <code>esc interrompe</code> nasce aqui e some ao terminar.</li>
+  <li>Os blocos do transcript (fundos de tool, mensagens) são da Onda 3 e não fazem parte desta proposta.</li>
+</ul>
+
+<h2>3 · Modos e permissões <small>(A08 plan, A09 goal, A10 bypass, A07 limite 429)</small></h2>
+<div class="pair">
+<figure><figcaption><b>Antes</b> · capturas reais 70 e 100</figcaption><img class="bot" src="../../ui-ux-gallery/images/70-plan-mode.png" alt="Plan mode atual: '⏸ plan' laranja colado no fim da segunda linha do HUD depois de uma barra vertical"><img class="bot" style="margin-top:10px" src="../../ui-ux-gallery/images/100-bypass-on.png" alt="Bypass atual: linha extra vermelha em maiúsculas 'BYPASS PERMISSIONS ON'"></figure>
+<figure><figcaption><b>Depois</b> · mock (os três modos ligados ao mesmo tempo, pior caso)</figcaption><pre class="term" data-cols="88">
+---
+ {a:❯} {cur: }
+---
+ {b:Modelo Demo} {s:· medium · 12% do contexto}>>{s:projeto-demo  ⎇ main}
+ {a:⏸ plano}    {a:◎ goal} {s:escrever testes · 12m}    {w:⚠ bypass ligado}
+</pre>
+<figcaption style="margin-top:14px"><b>Depois</b> · limite do provider (429)</figcaption><pre class="term" data-cols="88">
+---
+ {a:❯} {cur: }
+---
+ {b:Modelo Demo} {s:· medium · 12% do contexto}>>{s:projeto-demo  ⎇ main}
+ {w:◷ limite do provider} {s:nova tentativa em 42s}
+</pre></figure>
+</div>
+<ul>
+  <li><b>Uma linha de modos</b>, que só existe quando há modo ativo. Hoje cada modo entra de um jeito: plan colado com <code>|</code> na linha do HUD, goal em linha própria, bypass em outra linha, em maiúsculas e vermelho.</li>
+  <li>Mesma gramática para todos: <code>glifo + nome</code> colorido, detalhe em cinza. Minúsculas e em português.</li>
+  <li><b>Bypass em laranja, não vermelho.</b> É atenção, não falha; vermelho fica reservado a erro. Com permissões no modo padrão (<code>ask</code>) não aparece nada: o <code>🔒 permissions: ask</code> some (e leva embora o emoji de largura dupla).</li>
+  <li>O glifo acompanha a cor, então sem cor (tela 6) o estado continua legível.</li>
+</ul>
+
+<h2>4 · Painéis abaixo do composer <small>(A14)</small></h2>
+<div class="pair">
+<figure><figcaption><b>Antes</b> · captura real 60</figcaption><img src="../../ui-ux-gallery/images/60-plan-fleet.png" alt="Painéis atuais: etiquetas coloridas SUB AGENTS, STATUS LINE e PLAN, cada uma com régua; o status fica no meio, entre subagentes e plano"></figure>
+<figure><figcaption><b>Depois</b> · mock</figcaption><pre class="term" data-cols="88">
+---
+ {a:❯} {cur: }
+---
+
+ {s:▾} {b:Subagentes} {s:2 ativos · ↓ para gerenciar}
+   {g:●} {b:gate-runner}   {s:Rodando verificações}>>{s:1m 03s    1.0k tok}
+   {g:●} {b:swarm-worker}  {s:Editando arquivos}>>{s:1m 03s    1.0k tok}
+
+ {s:▾} {b:Plano} {s:4 de 12}
+   {g:✓} {s:04  Tarefa de demonstração 4}
+   {a:▸} {b:05  Tarefa de demonstração 5}>>{s:00:03}
+   {s:○ 06  Tarefa de demonstração 6}
+
+ {b:Modelo Demo} {s:· medium · 12% do contexto}>>{s:projeto-demo  ⎇ main}
+</pre>
+<figcaption style="margin-top:14px"><b>Depois</b> · painéis recolhidos</figcaption><pre class="term" data-cols="88">
+---
+ {a:❯} {cur: }
+---
+ {s:▸} {b:Subagentes} {s:2 ativos}    {s:▸} {b:Plano} {s:4 de 12 · 00:03}
+ {b:Modelo Demo} {s:· medium · 12% do contexto}>>{s:projeto-demo  ⎇ main}
+</pre></figure>
+</div>
+<ul>
+  <li><b>O status é sempre a última linha.</b> Hoje ele fica no meio, entre Subagentes e Plano, e muda de altura conforme os painéis.</li>
+  <li>Títulos de seção em negrito com <code>▾/▸</code>, sem etiqueta invertida colorida nem régua. O espaço em branco separa os grupos. Dobrar por clique e por <code>↓ ← Espaço</code> continua igual.</li>
+  <li>O status deixa de ser seção dobrável: com uma linha não há o que recolher.</li>
+  <li>O interior das linhas (colunas da tabela do plano, custo por agente) é da Onda 5; aqui está só simplificado para mostrar o conjunto.</li>
+</ul>
+<p class="warn"><b>Atenção:</b> isto substitui as etiquetas invertidas (variante D) que você escolheu em 2026-11-13. Se preferir mantê-las, o resto da proposta funciona igual; só os títulos de seção ficam como estão.</p>
+
+<h2>5 · Avisos de início <small>(A15 confiança, A16 diagnóstico, A17 piso de versão)</small></h2>
+<div class="pair">
+<figure><figcaption><b>Antes</b> · sem captura (A15–A17 bloqueados na galeria); hoje são textos nativos em inglês, cada um num formato</figcaption></figure>
+<figure><figcaption><b>Depois</b> · mock</figcaption><pre class="term" data-cols="88">
+ {lg:▀}{lc:▀█}   {b:pi} {s:1.5.2}
+ {lb:█▀} {ly:█}   {k:?} {s:atalhos}    {k:/} {s:comandos}    {k:!} {s:shell}
+
+ {w:⚠} {b:Projeto não confiável} {s:configuração local ignorada ·} {k:/trust} {s:para confiar}
+ {w:⚠} {b:pi desatualizado} {s:este harness pede 1.5.2 ou mais novo ·} {k:pi update}
+ {e:✗} {b:models.json inválido} {s:linha 12 · usando os modelos padrão}
+</pre></figure>
+</div>
+<ul>
+  <li>Uma gramática: <code>glifo de severidade + o que houve (negrito) + consequência (cinza) + ação</code>. Uma linha por aviso, logo abaixo do header.</li>
+  <li>Os textos acima são exemplos de formato; o conteúdo real de cada aviso precisa ser lido no código antes de reescrever.</li>
+</ul>
+
+<h2>6 · Sem cor e terminal estreito <small>(A03)</small></h2>
+<div class="pair">
+<figure><figcaption><b>Antes</b> · captura real 80 (NO_COLOR): o header some inteiro</figcaption><img class="bot" src="../../ui-ux-gallery/images/80-nocolor-header.png" alt="Tela atual com NO_COLOR: sem header, etiqueta STATUS LINE em vídeo invertido"></figure>
+<figure><figcaption><b>Depois</b> · mock NO_COLOR, 56 colunas</figcaption><pre class="term nc" data-cols="56" style="max-width:480px">
+ {b:pi} {s:1.5.2}
+ {k:?} {s:atalhos}    {k:/} {s:comandos}    {k:!} {s:shell}
+
+
+
+
+---
+ ❯ {cur: }
+---
+ {b:Modelo Demo} {s:· medium · 12%}>>{s:projeto-demo}
+ ⏸ plano    ⚠ bypass ligado
+</pre></figure>
+</div>
+<ul>
+  <li>Como a hierarquia é de peso e cinza, o desenho sem cor é o mesmo desenho. O header passa a existir também em NO_COLOR (sem o logo colorido).</li>
+  <li>Estreito: a linha de status perde primeiro o branch, depois “do contexto”, depois o raciocínio. Modelo e pasta ficam por último.</li>
+</ul>
+
+<h2>7 · Título do terminal <small>(A11, A13)</small></h2>
+<div class="pair">
+<figure><figcaption><b>Antes</b> · captura real 127</figcaption><img src="../../ui-ux-gallery/images/127-detalhe-titulo-idle.png" alt="Título atual: π - projeto-demo"></figure>
+<figure><figcaption><b>Depois</b> · mock de abas</figcaption>
+<div class="tabs"><span>projeto-demo</span><span>⠋ projeto-demo</span><span>✓ projeto-demo</span><span>corrigir login · projeto-demo</span></div></figure>
+</div>
+<ul><li>O nome mais específico vem primeiro, porque abas cortam pela direita. Sai o prefixo <code>π -</code>; o estado (<code>⠋</code> trabalhando, <code>✓</code> terminou) continua na frente, como hoje.</li></ul>
+
+<h2>Alternativa para o composer: superfície em vez de réguas</h2>
+<div class="pair">
+<figure><figcaption><b>B</b> · mock · bloco com fundo elevado, sem réguas</figcaption><pre class="term" data-cols="88">
+
+~ {a:❯} {cur: }
+
+ {b:Modelo Demo} {s:· medium · 12% do contexto}>>{s:projeto-demo  ⎇ main}
+</pre></figure>
+<figure><figcaption>Por que não é a recomendada</figcaption><p style="margin:0">Fica mais “Apple”, mas o fundo depende de o editor do pi aceitar cor de fundo (não verificado), some em NO_COLOR e perde a régua que hoje carrega o “escrevendo · 4s”. A recomendada (réguas discretas) só troca cores e ordem.</p></figure>
+</div>
+
+<h2>Cores e contraste</h2>
+<p>Contraste calculado nesta página (WCAG 2.x) contra o fundo do tema selecionado. Texto precisa de 4,5:1; o cinza terciário é só para réguas, nunca para texto.</p>
+<table id="cx"></table>
+
+<h2>O que muda por item</h2>
+<table>
+<tr><th>ID</th><th>Item</th><th>Proposta</th></tr>
+<tr><td>A01, A04</td><td>Header e rodapé nativos</td><td>Sem mudança (já substituídos).</td></tr>
+<tr><td>A02</td><td>Header do harness</td><td>Marca, versão e 3 dicas; estado da sessão sai daqui.</td></tr>
+<tr><td>A03</td><td>Header sem cor</td><td>Passa a existir, mesmo layout em negrito e cinza.</td></tr>
+<tr><td>A05, A06</td><td>Rodapé e status</td><td>Uma linha fixa, sempre a última: sessão à esquerda, lugar à direita.</td></tr>
+<tr><td>A07–A10</td><td>429, plan, goal, bypass</td><td>Linha única de modos, mesma gramática, só quando ativos.</td></tr>
+<tr><td>A11, A13</td><td>Título do terminal e da sessão</td><td>Específico primeiro, sem prefixo.</td></tr>
+<tr><td>A12</td><td>Rastreio de foco</td><td>Sem mudança (não é visual).</td></tr>
+<tr><td>A14</td><td>Árvore de widgets</td><td>Ordem fixa: composer, painéis, modos, status. Títulos sem etiqueta colorida.</td></tr>
+<tr><td>A15–A17</td><td>Avisos de início</td><td>Uma gramática de aviso, uma linha cada.</td></tr>
+</table>
+<h2>Custos assumidos e pontos em aberto</h2>
+<ul>
+  <li><b>A linha de modos aparece e some</b>, então o composer sobe uma linha quando um modo liga. A alternativa é reservar a linha sempre (sem salto, mas uma linha vazia no estado normal).</li>
+  <li><b>Uso do contexto em %</b> e <b>fundo no editor</b> dependem de o pi expor esses dados/opções; não verifiquei no código.</li>
+  <li>O texto do status hoje vem do seu script de HUD. A proposta muda a moldura e o conteúdo padrão; um script próprio continua podendo imprimir o que quiser.</li>
+  <li>Não achei estudo nem guideline com número de linhas fixas aceitável para cromo de TUI; “8 → 4” é comparação com o estado atual, não com uma norma.</li>
+</ul>
+
+<h2>Fontes lidas</h2>
+<ul>
+  <li><a href="https://developer.apple.com/design/human-interface-guidelines/color">Apple HIG · Color</a>: não depender só de cor; a mesma cor não deve significar coisas diferentes.</li>
+  <li><a href="https://developer.apple.com/design/human-interface-guidelines/labels">Apple HIG · Labels</a>: cores de label (primária, secundária, terciária) comunicam importância relativa.</li>
+  <li><a href="https://developer.apple.com/design/human-interface-guidelines/materials">Apple HIG · Materials</a>: controles numa camada funcional separada do conteúdo.</li>
+  <li><a href="https://clig.dev/">clig.dev</a>: “if everything is a different color, then the color means nothing”.</li>
+  <li><a href="https://no-color.org/">no-color.org</a>: NO_COLOR desliga só cor; negrito continua valendo.</li>
+  <li><a href="https://www.w3.org/TR/wcag2ict/">WCAG2ICT</a>: 4,5:1 de contraste também em software não web.</li>
+  <li><a href="https://code.claude.com/docs/en/statusline">Claude Code · status line</a>: barra no rodapé; com ela ativa, as dicas de teclado do rodapé somem.</li>
+  <li><a href="https://raw.githubusercontent.com/openai/codex/main/codex-rs/tui/src/bottom_pane/footer.rs">Codex CLI · footer.rs</a>: modo e goal como texto curto numa linha, separados por “ · ”.</li>
+  <li><a href="https://github.com/github/TUIKit/blob/main/docs/foundations.md">GitHub TUIKit · foundations</a>: cor semântica, hierarquia por níveis de luminosidade, input sempre visível, revelar dicas aos poucos.</li>
+</ul>
+<p>Não verificado em fonte primária: layout de opencode, Crush, Gemini CLI e Amp.</p>
+</main>
+<script>
+const vis = s => s.replace(/\{\w+:([^{}]*)\}/g, '$1')
+const html = s => s.replace(/\{(\w+):([^{}]*)\}/g, '<span class="$1">$2</span>')
+function line(l, cols) {
+  if (l.startsWith('---')) {
+    const lab = l.slice(3).trim(), head = lab ? `{t:──} ${lab} ` : ''
+    return html(head) + `<span class="t">${'─'.repeat(Math.max(0, cols - vis(head).length))}</span>`
+  }
+  if (l.startsWith('~')) return `<span class="u">${html(l.slice(1).padEnd(cols + l.length - 1 - vis(l.slice(1)).length))}</span>`
+  const [left, right = ''] = l.split('>>')
+  return html(left + ' '.repeat(Math.max(1, cols - vis(left).length - vis(right).length - 1)) + right)
+}
+for (const pre of document.querySelectorAll('pre.term')) {
+  const src = pre.textContent.replace(/^\n|\n$/g, '')
+  pre.innerHTML = src.split('\n').map(l => line(l, +pre.dataset.cols)).join('\n')
+}
+// contraste WCAG calculado a partir das variáveis do tema
+const lum = hex => { const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).map(c => c <= .04045 ? c / 12.92 : ((c + .055) / 1.055) ** 2.4); return .2126 * r + .7152 * g + .0722 * b }
+const ROLES = [['--label', 'Texto principal'], ['--sec', 'Cinza secundário (detalhe)'], ['--ter', 'Cinza terciário (só réguas)'], ['--accent', 'Destaque: prompt e modo ativo'], ['--caution', 'Atenção'], ['--err', 'Falha'], ['--ok', 'Concluído']]
+function contrast() {
+  const cs = getComputedStyle(document.body), bg = cs.getPropertyValue('--bg').trim()
+  document.getElementById('cx').innerHTML = '<tr><th>Papel</th><th>Cor</th><th>Contraste</th></tr>' + ROLES.map(([v, name]) => {
+    const c = cs.getPropertyValue(v).trim(), [hi, lo] = [lum(c), lum(bg)].sort((a, b) => b - a)
+    return `<tr><td>${name}</td><td><span class="sw" style="background:${c}"></span><code>${c}</code></td><td>${((hi + .05) / (lo + .05)).toFixed(1)}:1</td></tr>`
+  }).join('')
+}
+for (const b of document.querySelectorAll('button[data-t]')) b.onclick = () => {
+  document.body.dataset.theme = b.dataset.t
+  document.querySelectorAll('button[data-t]').forEach(x => x.setAttribute('aria-pressed', x === b))
+  contrast()
+}
+contrast()
+</script>
+</html>

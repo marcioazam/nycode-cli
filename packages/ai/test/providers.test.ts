@@ -70,10 +70,8 @@ describe("builtin providers", () => {
 			expect(list.length).toBeGreaterThan(0);
 			expect(list.every((m) => m.provider === provider.id)).toBe(true);
 		}
-		expect(getBuiltinModel("radius", "balanced")).toMatchObject({
-			api: "nycode-messages",
-			provider: "radius",
-		});
+		// Radius has no shipped catalog and no default gateway: it is not a built-in provider.
+		expect(providers.map((p) => p.id)).not.toContain("radius");
 	});
 
 	it("returns empty results for unknown provider ids", () => {

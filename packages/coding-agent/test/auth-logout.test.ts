@@ -1,5 +1,5 @@
 import { type Credential, InMemoryModelsStore } from "@nycode/ai";
-import { describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { runAuthLogout } from "../src/cli/auth-logout.ts";
 import { AuthStorage } from "../src/core/auth-storage.ts";
 import { CredentialSynchronizationError, ModelRuntime } from "../src/core/model-runtime.ts";
@@ -31,6 +31,10 @@ const oauthCredential = {
 } as const;
 
 describe("nycode auth logout", () => {
+	// Radius exists as a built-in provider only when a gateway is configured.
+	beforeEach(() => vi.stubEnv("NYCODE_RADIUS_GATEWAY", "https://radius.example.test"));
+	afterEach(() => vi.unstubAllEnvs());
+
 	test("requires exactly one provider", async () => {
 		const { errors, run } = await setup({});
 		for (const args of [[], ["--api-key"], ["radius", "extra"]]) {

@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Changed the `McpClientMetadataDocuments.baseUrl` example to a neutral host: the package names no application document host.
+
 ## [1.6.0] - 2026-11-20
 
 ### Added

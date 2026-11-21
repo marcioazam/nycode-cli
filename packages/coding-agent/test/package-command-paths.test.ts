@@ -104,8 +104,8 @@ if (process.platform !== "win32") fs.chmodSync(nycodePath, 0o755);
 			"fetch",
 			vi.fn(async (input: string | URL | Request) => {
 				const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
-				if (url === "https://pi.dev/api/latest-version") {
-					return Response.json({ packageName: PACKAGE_NAME, version: targetVersion });
+				if (url === "https://api.github.com/repos/marcioazam/nycode/releases/latest") {
+					return Response.json({ tag_name: `v${targetVersion}` });
 				}
 				const releaseUrl = `https://example.test/api/installer/releases/${targetVersion}`;
 				if (url === `${releaseUrl}/package.json` || url === `${releaseUrl}/package-lock.json`) {
@@ -713,7 +713,7 @@ if (process.platform !== "win32") fs.chmodSync(nycodePath, 0o755);
 	it("allows explicit self-update checks when automatic version checks are disabled", async () => {
 		const previousSkipVersionCheck = process.env.NYCODE_SKIP_VERSION_CHECK;
 		process.env.NYCODE_SKIP_VERSION_CHECK = "1";
-		const fetchMock = vi.fn(async () => Response.json({ version: VERSION }));
+		const fetchMock = vi.fn(async () => Response.json({ tag_name: `v${VERSION}` }));
 		vi.stubGlobal("fetch", fetchMock);
 		const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -743,7 +743,7 @@ if (process.platform !== "win32") fs.chmodSync(nycodePath, 0o755);
 			.fn()
 			.mockRejectedValueOnce(new Error("fetch failed"))
 			.mockRejectedValueOnce(new Error("fetch failed"))
-			.mockResolvedValueOnce(Response.json({ version: VERSION }));
+			.mockResolvedValueOnce(Response.json({ tag_name: `v${VERSION}` }));
 		vi.stubGlobal("fetch", fetchMock);
 		const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -787,6 +787,30 @@ if (process.platform !== "win32") fs.chmodSync(nycodePath, 0o755);
 		);
 		expect(errorSpy).not.toHaveBeenCalled();
 		expect(process.exitCode).toBeUndefined();
+	});
+
+	it("does not update a managed install without an installer API base, and points at GitHub Releases", async () => {
+		const targetVersion = getNewerPatchVersion();
+		const { managedRoot } = prepareManagedInstall(targetVersion);
+		vi.stubEnv("NYCODE_INSTALLER_API_BASE", "");
+		const fetchMock = vi.fn(async (input: string | URL | Request) => {
+			const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+			if (url === "https://api.github.com/repos/marcioazam/nycode/releases/latest") {
+				return Response.json({ tag_name: `v${targetVersion}` });
+			}
+			throw new Error(`Unexpected fetch: ${url}`);
+		});
+		vi.stubGlobal("fetch", fetchMock);
+		vi.spyOn(console, "log").mockImplementation(() => {});
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+		await expect(runPackageCommandDirectly(["update", "--self"])).resolves.toBeUndefined();
+
+		expect(errorSpy.mock.calls.map(([message]) => String(message)).join("\n")).toContain(
+			"https://github.com/marcioazam/nycode/releases",
+		);
+		expect(existsSync(join(managedRoot, "releases", targetVersion))).toBe(false);
+		expect(process.exitCode).toBe(1);
 	});
 
 	it("accepts a managed install marker with a UTF-8 BOM", async () => {
@@ -932,9 +956,7 @@ process.exit(${exitCode});
 		vi.stubEnv("NYCODE_SELF_UPDATE_COMMAND", "nycode-wrapper upgrade {installSpec} {version}");
 		vi.stubGlobal(
 			"fetch",
-			vi.fn(async () =>
-				Response.json({ packageName: "@new-scope/nycode", version: targetVersion, note: "Read me" }),
-			),
+			vi.fn(async () => Response.json({ tag_name: `v${targetVersion}` })),
 		);
 		const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -943,12 +965,11 @@ process.exit(${exitCode});
 
 		expect(JSON.parse(readFileSync(recordPath, "utf8")) as string[]).toEqual([
 			"upgrade",
-			`@new-scope/nycode@${targetVersion}`,
+			`${PACKAGE_NAME}@${targetVersion}`,
 			targetVersion,
 		]);
 		expect(existsSync(npmRecordPath)).toBe(false);
 		const stdout = logSpy.mock.calls.map(([message]) => String(message)).join("\n");
-		expect(stdout).toContain("Read me");
 		// Like mise, the command leaves this installation untouched; the nycode on PATH reports the new version.
 		expect(stdout).toContain(`Updated nycode from ${VERSION} to ${targetVersion}`);
 		expect(errorSpy).not.toHaveBeenCalled();
@@ -969,7 +990,7 @@ process.exit(${exitCode});
 			JSON.stringify({ selfUpdateCommand: [originalExecPath, scriptPath, projectRecordPath] }),
 		);
 		vi.stubEnv("NYCODE_SELF_UPDATE_COMMAND", "");
-		const fetchMock = vi.fn(async () => Response.json({ version: VERSION }));
+		const fetchMock = vi.fn(async () => Response.json({ tag_name: `v${VERSION}` }));
 		vi.stubGlobal("fetch", fetchMock);
 		const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 		vi.spyOn(console, "error").mockImplementation(() => {});
@@ -980,7 +1001,7 @@ process.exit(${exitCode});
 			`nycode is already up to date (v${VERSION})`,
 		);
 
-		fetchMock.mockImplementation(async () => Response.json({ version: targetVersion }));
+		fetchMock.mockImplementation(async () => Response.json({ tag_name: `v${targetVersion}` }));
 		await expect(runPackageCommandDirectly(["update", "--self"])).resolves.toBeUndefined();
 		expect(JSON.parse(readFileSync(recordPath, "utf8")) as string[]).toEqual([PACKAGE_NAME]);
 		expect(process.exitCode).toBeUndefined();
@@ -992,7 +1013,7 @@ process.exit(${exitCode});
 		vi.stubEnv("NYCODE_SELF_UPDATE_COMMAND", "nycode-wrapper upgrade");
 		vi.stubGlobal(
 			"fetch",
-			vi.fn(async () => Response.json({ version: targetVersion })),
+			vi.fn(async () => Response.json({ tag_name: `v${targetVersion}` })),
 		);
 		const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
@@ -1011,7 +1032,7 @@ process.exit(${exitCode});
 		vi.stubEnv("NYCODE_SELF_UPDATE_COMMAND", "nycode-wrapper upgrade");
 		vi.stubGlobal(
 			"fetch",
-			vi.fn(async () => Response.json({ version: getNewerPatchVersion() })),
+			vi.fn(async () => Response.json({ tag_name: `v${getNewerPatchVersion()}` })),
 		);
 		const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -1079,7 +1100,7 @@ else fs.writeFileSync(${JSON.stringify(recordPath)},JSON.stringify(args));
 			value: join(selfPackageDir, "dist", "cli.js"),
 			configurable: true,
 		});
-		const fetchMock = vi.fn(async () => Response.json({ version: VERSION }));
+		const fetchMock = vi.fn(async () => Response.json({ tag_name: `v${VERSION}` }));
 		vi.stubGlobal("fetch", fetchMock);
 
 		const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
@@ -1104,9 +1125,9 @@ else fs.writeFileSync(${JSON.stringify(recordPath)},JSON.stringify(args));
 		}
 	});
 
-	it("uses the current package name when the update check omits packageName", async () => {
+	it("installs the current package name during self-update", async () => {
 		const globalPrefix = join(tempDir, "global-prefix");
-		const selfPackageDir = join(globalPrefix, "lib", "node_modules", "@mariozechner", "nycode-coding-agent");
+		const selfPackageDir = join(globalPrefix, "lib", "node_modules", "@nycode", "coding-agent");
 		const fakeNpmPath = join(tempDir, "fake-npm.cjs");
 		const recordPath = join(tempDir, "self-update.json");
 		mkdirSync(selfPackageDir, { recursive: true });
@@ -1127,7 +1148,7 @@ else fs.writeFileSync(${JSON.stringify(recordPath)},JSON.stringify(args));
 			configurable: true,
 		});
 		const targetVersion = getNewerPatchVersion();
-		const fetchMock = vi.fn(async () => Response.json({ version: targetVersion }));
+		const fetchMock = vi.fn(async () => Response.json({ tag_name: `v${targetVersion}` }));
 		vi.stubGlobal("fetch", fetchMock);
 
 		const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
@@ -1144,57 +1165,6 @@ else fs.writeFileSync(${JSON.stringify(recordPath)},JSON.stringify(args));
 			expect(recordedArgs).toContain(`${PACKAGE_NAME}@${targetVersion}`);
 			expect(recordedArgs).not.toContain(PACKAGE_NAME);
 			expect(stdout).toContain(`Updated nycode from ${VERSION} to ${targetVersion}`);
-		} finally {
-			logSpy.mockRestore();
-			errorSpy.mockRestore();
-		}
-	});
-
-	it("installs the active package name from the update check during self-update", async () => {
-		const globalPrefix = join(tempDir, "global-prefix");
-		const selfPackageDir = join(globalPrefix, "lib", "node_modules", "@mariozechner", "nycode-coding-agent");
-		const fakeNpmPath = join(tempDir, "fake-npm.cjs");
-		const recordPath = join(tempDir, "self-update.json");
-		mkdirSync(selfPackageDir, { recursive: true });
-		writeFileSync(
-			fakeNpmPath,
-			`const fs=require("node:fs"),path=require("node:path"),args=process.argv.slice(2),prefix=args[args.indexOf("--prefix")+1];
-if(args.includes("root")) console.log(path.join(prefix,"lib","node_modules"));
-else {
-	const records=fs.existsSync(${JSON.stringify(recordPath)})?JSON.parse(fs.readFileSync(${JSON.stringify(recordPath)},"utf-8")):[];
-	records.push(args);
-	fs.writeFileSync(${JSON.stringify(recordPath)},JSON.stringify(records));
-}
-`,
-		);
-		writeFileSync(
-			join(agentDir, "settings.json"),
-			JSON.stringify({ npmCommand: [originalExecPath, fakeNpmPath, "--prefix", globalPrefix] }, null, 2),
-		);
-		process.env.NYCODE_PACKAGE_DIR = selfPackageDir;
-		Object.defineProperty(process, "execPath", {
-			value: join(selfPackageDir, "dist", "cli.js"),
-			configurable: true,
-		});
-		const activePackageName = PACKAGE_NAME === "@new-scope/nycode" ? "@newer-scope/nycode" : "@new-scope/nycode";
-		vi.stubGlobal(
-			"fetch",
-			vi.fn(async () => Response.json({ packageName: activePackageName, version: "0.73.0" })),
-		);
-
-		const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
-		try {
-			await expect(runPackageCommandDirectly(["update", "--self"])).resolves.toBeUndefined();
-
-			expect(process.exitCode).toBeUndefined();
-			expect(errorSpy).not.toHaveBeenCalled();
-			const recordedCalls = JSON.parse(readFileSync(recordPath, "utf-8")) as string[][];
-			expect(recordedCalls).toEqual([
-				expect.arrayContaining(["uninstall", "-g", PACKAGE_NAME]),
-				expect.arrayContaining(["install", "-g", `${activePackageName}@0.73.0`]),
-			]);
 		} finally {
 			logSpy.mockRestore();
 			errorSpy.mockRestore();
@@ -1223,7 +1193,7 @@ else {
 		});
 		vi.stubGlobal(
 			"fetch",
-			vi.fn(async () => Response.json({ version: getNewerPatchVersion() })),
+			vi.fn(async () => Response.json({ tag_name: `v${getNewerPatchVersion()}` })),
 		);
 
 		const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
@@ -1245,9 +1215,9 @@ else {
 		}
 	});
 
-	it("fails self-update when renamed npm package installation fails", async () => {
+	it("fails self-update when the npm package installation fails", async () => {
 		const globalPrefix = join(tempDir, "global-prefix");
-		const selfPackageDir = join(globalPrefix, "lib", "node_modules", "@mariozechner", "nycode-coding-agent");
+		const selfPackageDir = join(globalPrefix, "lib", "node_modules", "@nycode", "coding-agent");
 		const fakeNpmPath = join(tempDir, "fake-npm-fail.cjs");
 		const recordPath = join(tempDir, "self-update-fail.json");
 		mkdirSync(selfPackageDir, { recursive: true });
@@ -1273,10 +1243,10 @@ if(args.includes("install")) process.exit(23);
 			value: join(selfPackageDir, "dist", "cli.js"),
 			configurable: true,
 		});
-		const activePackageName = PACKAGE_NAME === "@new-scope/nycode" ? "@newer-scope/nycode" : "@new-scope/nycode";
+		const targetVersion = getNewerPatchVersion();
 		vi.stubGlobal(
 			"fetch",
-			vi.fn(async () => Response.json({ packageName: activePackageName, version: "0.73.0" })),
+			vi.fn(async () => Response.json({ tag_name: `v${targetVersion}` })),
 		);
 
 		const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
@@ -1291,10 +1261,7 @@ if(args.includes("install")) process.exit(23);
 			expect(stdout).not.toContain(`Updated nycode`);
 			expect(stderr).toContain("exited with code 23");
 			const recordedCalls = JSON.parse(readFileSync(recordPath, "utf-8")) as string[][];
-			expect(recordedCalls).toEqual([
-				expect.arrayContaining(["uninstall", "-g", PACKAGE_NAME]),
-				expect.arrayContaining(["install", "-g", `${activePackageName}@0.73.0`]),
-			]);
+			expect(recordedCalls).toEqual([expect.arrayContaining(["install", "-g", `${PACKAGE_NAME}@${targetVersion}`])]);
 		} finally {
 			logSpy.mockRestore();
 			errorSpy.mockRestore();

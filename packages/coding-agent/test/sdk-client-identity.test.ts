@@ -149,7 +149,7 @@ describe("createAgentSession client identity", () => {
 			attribution: NYCODE_ATTRIBUTION,
 		});
 		expect(getAttributionHeaders(model, options?.identity)).toEqual({
-			"HTTP-Referer": "https://pi.dev",
+			"HTTP-Referer": "https://github.com/marcioazam/nycode",
 			"X-OpenRouter-Title": "nycode",
 			"X-OpenRouter-Categories": "cli-agent",
 		});

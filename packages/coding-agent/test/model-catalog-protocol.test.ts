@@ -14,7 +14,7 @@ import { VERSION } from "../src/config.ts";
 import { ModelRuntime } from "../src/core/model-runtime.ts";
 import { allowNetwork } from "./test-network-env.ts";
 
-// Runs the current client against the catalog selection pi.dev performs, using
+// Runs the current client against the catalog selection a catalog server performs, using
 // the shared protocol in scripts/model-catalog-protocol.ts. Regression test for #9099.
 
 const legacyRevision = `sha256-${"a".repeat(64)}`;
@@ -52,7 +52,7 @@ const objects = new Map<string, unknown>([
 	[getModelCatalogProviderKey(mixedApiRevision, "openrouter", "typed"), [{ type: "chat", ...mixedApiModel }]],
 ]);
 
-/** Minimal stand-in for pi.dev's /api/models/providers/:provider route. */
+/** Minimal stand-in for a catalog server's /api/models/providers/:provider route. */
 function startCatalogServer(requests: string[]): Promise<Server> {
 	const server = createServer((request, response) => {
 		const url = new URL(request.url ?? "/", `http://${request.headers.host}`);

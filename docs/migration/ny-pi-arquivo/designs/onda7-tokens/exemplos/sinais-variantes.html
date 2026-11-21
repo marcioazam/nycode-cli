@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8">
+<title>Interrupção e compactação: variantes</title>
+<style>
+  /* Paleta pi-escuro. Cada variante tem o mesmo contexto: resposta parcial acima, editor abaixo. */
+  :root { --bg:#1c1c1e; --surface:#2c2c2e; --text:#f5f5f7; --muted:#aeaeb2; --dim:#98989d; --line:#48484a;
+    --ok:#30d158; --err:#ff6961; --warn:#ffd60a; --accent:#409cff; --warnBg:#2e2a14; --accBg:#202b39; }
+  body { margin:0; background:#111; font:15px/1.55 "JetBrainsMono Nerd Font Mono", monospace; color:var(--text); }
+  .term { width:1000px; background:var(--bg); padding:14px 0 18px; }
+  .cap { color:var(--dim); padding:0 20px 10px; font-size:13px; } .cap b { color:var(--text); }
+  .p { padding:0 20px; } .dim { color:var(--dim); } .mut { color:var(--muted); } .err { color:var(--err); }
+  .gap { height:12px; } .ed { border-top:2px solid var(--accent); border-bottom:2px solid var(--accent); height:22px; margin-top:12px; }
+  .chip { display:inline-block; padding:0 8px; border-radius:4px; }
+  .rule { display:flex; align-items:center; gap:12px; padding:0 20px; color:var(--dim); }
+  .rule::before, .rule::after { content:""; flex:1; border-top:1px solid var(--line); }
+  .bar { display:inline-block; height:10px; vertical-align:middle; border-radius:2px; }
+  .lb { border-left:3px solid; padding-left:12px; margin-left:20px; }
+  section { display:none; } section:target, body:not(:has(:target)) section { display:block; margin-bottom:22px; }
+</style>
+
+<section id="int"><div class="term">
+<div class="cap"><b>Interrupção (Esc no meio da resposta)</b>: A é o atual; B–D são as variantes.</div>
+<div class="p mut">Vou atualizar o tema e rodar os testes de contraste para</div>
+<div class="gap"></div>
+<div class="cap" style="padding-bottom:4px">A · atual</div>
+<div class="p err">Operation aborted</div>
+<div class="gap"></div>
+<div class="cap" style="padding-bottom:4px">B · linha discreta (Claude Code / Codex): glifo de parar, texto em dim, o que fazer em seguida</div>
+<div class="p"><span style="color:var(--warn)">■</span> <span class="mut">Interrompido por você</span> <span class="dim">· o texto até aqui ficou · Enter continua, ↑ edita a mensagem</span></div>
+<div class="gap"></div>
+<div class="cap" style="padding-bottom:4px">C · chip âmbar (macOS: estado, não erro), com ação à direita</div>
+<div class="p"><span class="chip" style="background:var(--warnBg);color:var(--warn)">⏸ Interrompido</span> <span class="dim">às 11:42 · 38 s · 1,2 mil tokens</span><span class="dim" style="float:right">Enter continuar</span></div>
+<div class="gap"></div>
+<div class="cap" style="padding-bottom:4px">D · divisor de capítulo (iMessage): separa a resposta cortada do que vem depois</div>
+<div class="rule">⏸ interrompido às 11:42 · Enter continua</div>
+<div class="ed"></div>
+</div></section>
+
+<section id="comp"><div class="term">
+<div class="cap"><b>Compactação de contexto</b>: A é o atual; B–D são as variantes.</div>
+<div class="cap" style="padding-bottom:4px">A · atual</div>
+<div style="background:var(--surface);padding:10px 20px"><div style="color:var(--accent);font-weight:700">[compaction]</div><div class="gap"></div><div class="mut">Compacted from 250,173 tokens (ctrl+o to expand)</div></div>
+<div class="gap"></div>
+<div class="cap" style="padding-bottom:4px">B · divisor de capítulo: a conversa "vira a página", sem caixa</div>
+<div class="rule"><span style="color:var(--accent)">⟲</span> Contexto resumido · 250 mil → 18 mil tokens · <span class="mut">ctrl+o resumo</span></div>
+<div class="gap"></div>
+<div class="cap" style="padding-bottom:4px">C · cartão com medidor antes/depois (Activity Monitor)</div>
+<div class="lb" style="border-color:var(--accent)">
+  <div><span style="color:var(--accent)">⟲</span> <b>Contexto compactado</b> <span class="dim">· 11:42</span></div>
+  <div class="dim">antes <span class="bar" style="width:500px;background:var(--line)"></span> 250 mil</div>
+  <div class="dim">agora <span class="bar" style="width:36px;background:var(--accent)"></span> 18 mil <span class="mut">(−93%)</span></div>
+  <div class="dim">ctrl+o abre o resumo · arquivos e decisões preservados</div>
+</div>
+<div class="gap"></div>
+<div class="cap" style="padding-bottom:4px">D · linha única, no ritmo das tools (✓ ícone verbo · resumo à direita)</div>
+<div class="p"><span style="color:var(--ok)">✓</span> <span class="mut">⟲</span> <b>compactar</b>  <span class="mut">250 173 → 18 432 tokens</span><span class="dim" style="float:right">−93% · ctrl+o</span></div>
+<div class="ed"></div>
+</div></section>
+
+<section id="res"><div class="term">
+<div class="cap"><b>Sessão retomada (/resume, pi -c)</b>: o marcador separa o histórico do que vem agora. Diz há quanto tempo foi, como a sessão ficou e o próximo passo. A é o atual; B–D são as variantes.</div>
+<div class="p mut">… e a linha de bypass agora fica em vermelho. Quer que eu aplique?</div>
+<div class="gap"></div>
+<div class="cap" style="padding-bottom:4px">A · atual</div>
+<div class="p dim">Resumed session</div>
+<div class="gap"></div>
+<div class="cap" style="padding-bottom:4px">B · divisor de capítulo com tempo decorrido (iMessage/Slack: "Ontem 23:14"), uma linha de onde parou embaixo · <b>recomendada</b></div>
+<div class="rule"><span style="color:var(--accent)">↺</span> <span class="mut">Retomada</span> · ontem 23:14 · há 12 h</div>
+<div class="p dim" style="text-align:center">onda7-tokens · 148 mensagens · contexto 25% · parou esperando sua resposta</div>
+<div class="gap"></div>
+<div class="cap" style="padding-bottom:4px">C · cartão "onde parou" (Linear/Raycast), com a sua última mensagem e as ações</div>
+<div class="lb" style="border-color:var(--accent)">
+  <div><span style="color:var(--accent)">↺</span> <b>Sessão retomada</b> <span class="dim">· onda7-tokens · há 12 h</span></div>
+  <div class="dim">você pediu: <span class="mut">"definir um UI e UX SOTA para isso e me enviar"</span></div>
+  <div class="dim">estado: <span style="color:var(--err)">■</span> interrompido · 148 mensagens · contexto 25%</div>
+  <div class="dim">Enter continua · ↑ edita a última mensagem · /tree navega</div>
+</div>
+<div class="gap"></div>
+<div class="cap" style="padding-bottom:4px">D · linha única, no ritmo das tools</div>
+<div class="p"><span style="color:var(--accent)">↺</span> <b>retomada</b>  <span class="mut">onda7-tokens · há 12 h</span><span class="dim" style="float:right">148 msgs · ctx 25%</span></div>
+<div class="gap"></div>
+<div class="cap" style="padding-bottom:4px">B com pasta trocada (hoje: "Resumed session in /tmp/x"): o aviso usa ▲ amarelo, porque o trabalho segue em outro lugar</div>
+<div class="rule"><span style="color:var(--accent)">↺</span> <span class="mut">Retomada</span> · ontem 23:14 · há 12 h</div>
+<div class="p" style="text-align:center"><span style="color:var(--warn)">▲</span> <span class="mut">a pasta original sumiu; trabalhando em</span> <span class="dim">/tmp/x</span></div>
+<div class="ed"></div>
+</div></section>
+
+<section id="comp2"><div class="term">
+<div class="cap"><b>Compactação, proposta completa</b>: um marco na conversa, como a sessão retomada. Diz o que aconteceu, quanto liberou, por que e onde ver o resumo. Dados: <code>tokensBefore</code>, <code>summary</code>, arquivos lidos e editados, hora.</div>
+<div class="p mut">Pronto: os testes de contraste passaram nos dois temas.</div>
+<div class="gap"></div>
+<div class="cap" style="padding-bottom:4px">A · atual</div>
+<div style="background:var(--surface);padding:10px 20px"><div style="color:var(--accent);font-weight:700">[compaction]</div><div class="gap"></div><div class="mut">Compacted from 252,284 tokens (ctrl+o to expand)</div></div>
+<div class="gap"></div>
+<div class="cap" style="padding-bottom:4px">1 · recolhida, automática · <b>recomendada</b>: divisor + uma linha de contexto; sem caixa, a conversa "vira a página"</div>
+<div class="rule"><span style="color:var(--accent)">⟲</span> <span class="mut">Contexto resumido</span> · 11:42 · 252 mil → ~18 mil tokens</div>
+<div class="p dim" style="text-align:center">automático, perto do limite · 14 arquivos lidos, 6 editados · <span class="mut">ctrl+o</span> abre o resumo</div>
+<div class="gap"></div>
+<div class="cap" style="padding-bottom:4px">2 · recolhida, manual (/compact com instrução): a instrução aparece no lugar do motivo</div>
+<div class="rule"><span style="color:var(--accent)">⟲</span> <span class="mut">Contexto resumido</span> · 11:42 · 252 mil → ~18 mil tokens</div>
+<div class="p dim" style="text-align:center">/compact "foque nos tokens de tema" · <span class="mut">ctrl+o</span> abre o resumo</div>
+<div class="gap"></div>
+<div class="cap" style="padding-bottom:4px">3 · expandida (ctrl+o ou clique): o resumo em seções, com barra lateral de destaque e arquivos como lista curta</div>
+<div class="rule"><span style="color:var(--accent)">⟲</span> <span class="mut">Contexto resumido</span> · 11:42 · 252 mil → ~18 mil tokens</div>
+<div class="gap"></div>
+<div class="lb" style="border-color:var(--accent)">
+  <div><b>Objetivo</b></div>
+  <div class="mut">Tokens de design Onda 7: temas pi-claro/pi-escuro, ícones nas tools, diff estilo Xcode.</div>
+  <div style="margin-top:8px"><b>Feito</b></div>
+  <div class="mut">✓ temas e contraste 43/43 · ✓ diff inline no edit · ✓ moldura da imagem e barra de rolagem</div>
+  <div style="margin-top:8px"><b>Pendente</b></div>
+  <div class="mut">○ escolher variante de interrupção e compactação · ○ fundo das mensagens do usuário</div>
+  <div style="margin-top:8px"><b>Arquivos</b> <span class="dim">· 6 editados, 14 lidos</span></div>
+  <div class="dim"><span style="color:var(--ok)">✎</span> extensions/ui-visual/tools.ts · diff.ts · icons.ts · themes/pi-escuro.json <span class="mut">+2</span></div>
+  <div class="dim" style="margin-top:8px">ctrl+o recolhe</div>
+</div>
+<div class="gap"></div>
+<div class="cap" style="padding-bottom:4px">4 · em andamento (hoje só um spinner no rodapé): a mesma linha, viva, no lugar onde o marco vai ficar</div>
+<div class="rule"><span style="color:var(--accent)">⠋</span> <span class="mut">Resumindo o contexto</span> · 252 mil tokens · esc cancela</div>
+<div class="ed"></div>
+</div></section>
+<section id="comp3"><div class="term">
+<div class="cap"><b>Caixa da compactação mantida</b>: hoje ela usa o mesmo fundo das suas mensagens (#2c2c2e). Como separar as duas.</div>
+<div class="cap" style="padding-bottom:4px">A · hoje: mensagem sua e compactação idênticas no fundo</div>
+<div style="background:var(--surface);padding:10px 20px">rode a compactação e me mostre</div>
+<div class="gap"></div>
+<div class="p mut">Pronto: os testes de contraste passaram nos dois temas.</div>
+<div class="gap"></div>
+<div style="background:var(--surface);padding:10px 20px;"><div><span style="color:var(--accent)">⟲</span> <b style="color:var(--accent)">Contexto resumido</b> <span class="dim">· 11:42 · automático, perto do limite</span></div><div class="gap"></div><div class="mut">252 mil → ~18 mil tokens · 14 arquivos lidos, 6 editados · <span class="dim">ctrl+o abre o resumo</span></div></div>
+<div class="gap"></div>
+<div style="background:var(--surface);padding:10px 20px">e agora aplique o fundo</div>
+<div class="gap"></div><div class="cap" style="padding-bottom:4px">B · suas mensagens com o tom azul de 12% (proposta pendente); a compactação fica cinza · <b>recomendada</b></div>
+<div style="background:var(--accBg);padding:10px 20px">rode a compactação e me mostre</div>
+<div class="gap"></div>
+<div class="p mut">Pronto: os testes de contraste passaram nos dois temas.</div>
+<div class="gap"></div>
+<div style="background:var(--surface);padding:10px 20px;"><div><span style="color:var(--accent)">⟲</span> <b style="color:var(--accent)">Contexto resumido</b> <span class="dim">· 11:42 · automático, perto do limite</span></div><div class="gap"></div><div class="mut">252 mil → ~18 mil tokens · 14 arquivos lidos, 6 editados · <span class="dim">ctrl+o abre o resumo</span></div></div>
+<div class="gap"></div>
+<div style="background:var(--accBg);padding:10px 20px">e agora aplique o fundo</div>
+<div class="gap"></div><div class="cap" style="padding-bottom:4px">C · só a compactação muda: fundo das tools (#242426) e barra lateral azul; suas mensagens ficam como estão</div>
+<div style="background:var(--surface);padding:10px 20px">rode a compactação e me mostre</div>
+<div class="gap"></div>
+<div class="p mut">Pronto: os testes de contraste passaram nos dois temas.</div>
+<div class="gap"></div>
+<div style="background:#242426;padding:10px 20px;border-left:3px solid var(--accent);"><div><span style="color:var(--accent)">⟲</span> <b style="color:var(--accent)">Contexto resumido</b> <span class="dim">· 11:42 · automático, perto do limite</span></div><div class="gap"></div><div class="mut">252 mil → ~18 mil tokens · 14 arquivos lidos, 6 editados · <span class="dim">ctrl+o abre o resumo</span></div></div>
+<div class="gap"></div>
+<div style="background:var(--surface);padding:10px 20px">e agora aplique o fundo</div>
+<div class="gap"></div><div class="ed"></div>
+</div></section>
+<section id="comp4"><div class="term">
+<div class="cap"><b>Compactação: 3 variantes em harmonia com o design atual</b> (mensagem sua azul, tools com fundo e ícone, faixa de interrupção).</div>
+<div class="cap" style="padding:14px 20px 6px">1 · <b>como uma tool</b>: mesma caixa, ícone e ritmo do <code>✓ ícone verbo  alvo</code>; o resumo abre como a saída de uma tool (│). Fundo neutro das tools (#242426), azul só no ícone</div>
+<div style="background:#202b39;padding:10px 20px">rode os testes e compacte</div>
+<div class="gap"></div>
+<div style="background:#17271c;padding:10px 20px"><span style="color:var(--ok)">✓</span> <span class="mut">⌨</span> <b>bash</b>&nbsp;&nbsp; <span class="mut">npm test · 0,8 s</span></div>
+<div class="gap"></div>
+<div style="background:#242426;padding:10px 20px"><span style="color:var(--ok)">✓</span> <span style="color:var(--accent)">⟲</span> <b>compactar</b>&nbsp;&nbsp; <span class="mut">252 mil → ~18 mil tokens · 14 lidos, 6 editados</span><span class="dim" style="float:right">12:07 · ctrl+o</span></div>
+<div class="gap"></div>
+<div style="background:#202b39;padding:10px 20px">continue</div>
+<div class="cap" style="padding:6px 20px">1 aberta</div><div style="background:#242426;padding:10px 20px"><span style="color:var(--ok)">✓</span> <span style="color:var(--accent)">⟲</span> <b>compactar</b>&nbsp;&nbsp; <span class="mut">252 mil → ~18 mil tokens · 14 lidos, 6 editados</span><span class="dim" style="float:right">12:07 · ctrl+o</span>
+<div style="margin:6px 0 0 28px;border-left:1px solid var(--line);padding-left:12px" class="mut"><b style="color:var(--text)">Objetivo</b> tokens da Onda 7<br><b style="color:var(--text)">Feito</b> temas · diff · moldura da imagem<br><b style="color:var(--text)">Próximos passos</b> commit e recaptura</div></div><div class="cap" style="padding:14px 20px 6px">2 · <b>faixa de uma linha</b>, irmã da faixa de interrupção (mesma altura, mesmo ■/⟲ à esquerda); só muda a cor: azul de sistema em vez de vermelho</div>
+<div style="background:#202b39;padding:10px 20px">rode os testes e compacte</div>
+<div class="gap"></div>
+<div style="background:#17271c;padding:10px 20px"><span style="color:var(--ok)">✓</span> <span class="mut">⌨</span> <b>bash</b>&nbsp;&nbsp; <span class="mut">npm test · 0,8 s</span></div>
+<div class="gap"></div>
+<div style="background:#1f2633;padding:2px 20px"><span style="color:var(--accent)">⟲ contexto resumido</span> <span class="dim">· 12:07 · 252 mil → ~18 mil tokens · 14 lidos, 6 editados · ctrl+o abre</span></div>
+<div class="gap"></div>
+<div class="cap" style="padding:0 20px 4px">a faixa de interrupção, para comparar</div>
+<div style="background:#2d1a1b;padding:2px 20px"><span style="color:var(--err)">■ interrompido por você</span> <span class="dim">· o que já foi escrito ficou</span></div>
+<div class="gap"></div>
+<div style="background:#202b39;padding:10px 20px">continue</div>
+<div class="cap" style="padding:14px 20px 6px">3 · <b>caixa atual + barra lateral</b>: mantém a caixa cinza, ganha o ▎ azul à esquerda (o mesmo traço do diff Xcode) e uma linha só</div>
+<div style="background:#202b39;padding:10px 20px">rode os testes e compacte</div>
+<div class="gap"></div>
+<div style="background:#17271c;padding:10px 20px"><span style="color:var(--ok)">✓</span> <span class="mut">⌨</span> <b>bash</b>&nbsp;&nbsp; <span class="mut">npm test · 0,8 s</span></div>
+<div class="gap"></div>
+<div style="background:#2c2c2e;padding:10px 20px 10px 17px;border-left:3px solid var(--accent)"><span style="color:var(--accent)">⟲</span> <b style="color:var(--accent)">Contexto resumido</b> <span class="dim">· 12:07</span>&nbsp;&nbsp;<span class="mut">252 mil → ~18 mil tokens · 14 lidos, 6 editados</span><span class="dim" style="float:right">ctrl+o abre</span></div>
+<div class="gap"></div>
+<div style="background:#202b39;padding:10px 20px">continue</div>
+<div class="ed"></div>
+</div></section>
+<section id="hook"><div class="term">
+<div class="cap"><b>Mensagens de hook</b> (<code>claude-stop-hook</code>, <code>claude-async-hook</code>): hoje uma caixa cinza com <code>[claude-stop-hook]</code> e o texto cru em inglês. Proposta: o mesmo ritmo das tools e da compactação (<code>estado ícone verbo  alvo</code>), fundo neutro, ▲ amarelo porque o hook pede ação ao agente.</div>
+<div class="cap" style="padding:10px 20px 4px">A · atual</div>
+<div style="background:var(--surface);padding:10px 20px"><div style="color:var(--accent);font-weight:700">[claude-stop-hook]</div><div class="gap"></div><div class="mut">[impeccable@1] Findings marked attribution unknown may predate this session; do not treat them as regressions…</div><div class="gap"></div><div class="mut">[impeccable@1] Design hook findings requiring review in code/pi-harness/docs/designs/onda7-tokens/sinais-variantes.html (4 issue(s)):<br>- [low-contrast] [attribution unknown] Low contrast text. Text does not meet WCAG AA…<br>- [low-contrast] [attribution unknown] Low contrast text.<br>- …</div></div>
+<div class="cap" style="padding:14px 20px 4px">B · recolhida: quem pediu, quantos achados, onde; os achados repetidos viram contagem</div>
+<div style="background:#17271c;padding:10px 20px"><span style="color:var(--ok)">✓</span> <span class="mut">✎</span> <b>edit</b>&nbsp;&nbsp;&nbsp; <span class="mut">docs/designs/onda7-tokens/sinais-variantes.html · +42 −0</span></div>
+<div class="gap"></div>
+<div style="background:#242426;padding:10px 20px"><span style="color:var(--warn)">▲</span> <span class="mut">⚑</span> <b>hook</b>&nbsp;&nbsp;&nbsp; <span class="mut">impeccable · 4 achados em sinais-variantes.html · 3 contraste, 1 espaçamento</span><span class="dim" style="float:right">ao parar · ctrl+o</span></div>
+<div class="gap"></div>
+<div class="p mut">Revisei os 4 achados: são falsos positivos medidos…</div>
+<div class="cap" style="padding:14px 20px 4px">B aberta (ctrl+o): achados agrupados por regra, em pt-BR; "pode ser anterior" vira uma marca discreta; a instrução ao agente em cinza no fim</div>
+<div style="background:#242426;padding:10px 20px"><span style="color:var(--warn)">▲</span> <span class="mut">⚑</span> <b>hook</b>&nbsp;&nbsp;&nbsp; <span class="mut">impeccable · 4 achados em sinais-variantes.html · 3 contraste, 1 espaçamento</span><span class="dim" style="float:right">ao parar · ctrl+o</span>
+<div style="margin:6px 0 0 28px;border-left:1px solid var(--line);padding-left:12px">
+<div><span style="color:var(--warn)">contraste baixo</span> <span class="mut">×3 · texto abaixo de 4,5:1 (WCAG AA)</span> <span class="dim">· pode ser anterior</span></div>
+<div><span style="color:var(--warn)">espaçamento interno apertado</span> <span class="mut">×1 · texto colado na borda; use 8–16px</span> <span class="dim">· pode ser anterior</span></div>
+<div class="dim" style="margin-top:6px">arquivo: code/pi-harness/docs/designs/onda7-tokens/sinais-variantes.html</div>
+<div class="dim">pedido ao agente: corrigir o real; falso positivo medido vai para <span class="mut">impeccable hooks ignore-value</span></div>
+</div></div>
+<div class="gap"></div>
+<div class="p mut">Revisei os 4 achados: são falsos positivos medidos…</div>
+<div class="cap" style="padding:14px 20px 4px">B com um hook qualquer (texto livre): a primeira linha vira o alvo; o resto abre no ctrl+o</div>
+<div style="background:#242426;padding:10px 20px"><span style="color:var(--warn)">▲</span> <span class="mut">⚑</span> <b>hook</b>&nbsp;&nbsp;&nbsp; <span class="mut">ralph-loop · ainda há tarefas abertas no plano</span><span class="dim" style="float:right">ao parar · ctrl+o</span></div>
+<div class="gap"></div>
+<div style="background:#242426;padding:10px 20px"><span style="color:var(--accent)">●</span> <span class="mut">⚑</span> <b>hook</b>&nbsp;&nbsp;&nbsp; <span class="mut">assíncrono · gate terminou: 3 checks verdes</span><span class="dim" style="float:right">12:31 · ctrl+o</span></div>
+<div class="ed"></div>
+</div></section>
+</html>

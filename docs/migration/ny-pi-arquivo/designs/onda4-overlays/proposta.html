@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Onda 4 · overlays e comandos — proposta “Uma folha”</title>
+<style>
+  :root { color-scheme: light dark;
+    --page: light-dark(oklch(98.5% .002 280), oklch(17% .005 280)); --ink: light-dark(oklch(23% .005 280), oklch(96% .003 280));
+    --ink2: light-dark(oklch(46% .008 280), oklch(74% .008 280)); --line: light-dark(oklch(88% .005 280), oklch(31% .006 280));
+    --card: light-dark(#fff, oklch(21% .005 280)); --link: light-dark(oklch(48% .17 255), oklch(76% .13 250)); }
+  html { scroll-padding-top: 64px; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1500px; margin: auto; padding: 40px 28px 80px; }
+  h1 { font-size: 2rem; letter-spacing: -.02em; margin: 0 0 4px; text-wrap: balance; }
+  h2 { font-size: 1.3rem; letter-spacing: -.01em; margin: 56px 0 6px; } h2 small { font-weight: 400; color: var(--ink2); font-size: .8em; }
+  h3 { font-size: 1rem; margin: 22px 0 4px; }
+  p, li { max-width: 75ch; } .lead { color: var(--ink2); margin-top: 0; }
+  .warn { border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; background: var(--card); max-width: 75ch; }
+  nav { position: sticky; top: 0; z-index: 1; background: var(--page); padding: 10px 0; border-bottom: 1px solid var(--line); display: flex; gap: 18px; overflow-x: auto; white-space: nowrap; scrollbar-width: none; font-size: .9rem; }
+  a { color: var(--link); } :focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+  .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 560px), 1fr)); gap: 20px; align-items: start; margin: 14px 0; }
+  figure { margin: 0; min-width: 0; container-type: inline-size; } figcaption { font-size: .85rem; color: var(--ink2); margin: 0 0 6px; } figcaption b { color: var(--ink); }
+  img { width: 100%; height: auto; border-radius: 10px; display: block; border: 1px solid var(--line); object-fit: cover; object-position: bottom; margin-bottom: 10px; }
+  img.top { object-position: top; }
+  .scroll { overflow-x: auto; } table { border-collapse: collapse; font-size: .9rem; margin: 10px 0; }
+  td, th { border-bottom: 1px solid var(--line); padding: 6px 14px 6px 0; text-align: left; vertical-align: top; }
+  code, kbd { font: .88em ui-monospace, "JetBrains Mono", Menlo, monospace; }
+  .tag { display: inline-block; font-size: .75rem; font-weight: 400; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink2); white-space: nowrap; }
+
+  /* terminal no tema em uso (themes/tokyo-night.json) */
+  body { --bg: #1a1b26; --sel: #2e3c5e; --label: #c0caf5; --sec: #a9b1d6; --dim: #8a93bd; --ter: #50699d; --accent: #bb9af7; --ok: #9ece6a; --att: #e0af68; --err: #f7768e;
+    --mono: 13px/1.5 "JetBrainsMono Nerd Font", "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace; }
+  pre.term { margin: 0 0 10px; background: var(--bg); color: var(--label); border-radius: 10px; padding: 10px 0; overflow-x: auto; font: var(--mono); font-size: clamp(10px, 100cqw / 54, 13px); color-scheme: dark; } /* 88 colunas cabem sem rolar a partir de ~540px */
+  .term .b, .term .k { font-weight: 700; } .term .s { color: var(--sec); } .term .d { color: var(--dim); } .term .t { color: var(--ter); }
+  .term .a { color: var(--accent); } .term .m { color: var(--accent); font-weight: 700; }
+  .term .g { color: var(--ok); } .term .w { color: var(--att); } .term .r { color: var(--err); }
+  .term .cur { background: var(--label); } .term .u { background: var(--sel); display: inline-block; } .term .u .d { color: var(--sec); }
+
+  /* demo interativa: mesma gramática, com campo e opções de verdade */
+  .demo { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 560px), 1fr)); gap: 20px; align-items: start; margin: 14px 0; }
+  .box { background: var(--bg); color: var(--label); border-radius: 10px; padding: 10px 0; font: var(--mono); min-width: 0; color-scheme: dark; }
+  .box hr { border: 0; border-top: 1px solid var(--accent); margin: 0; }
+  .box label { display: flex; gap: 1ch; padding: 2px 1ch; } .box label span { color: var(--dim); }
+  .box input { flex: 1; min-width: 0; font: inherit; color: inherit; background: none; border: 0; padding: 0; caret-color: var(--label); }
+  .box input::placeholder { color: var(--dim); opacity: 1; } .box input:focus-visible { outline: 0; } .box:focus-within { box-shadow: 0 0 0 2px var(--link); }
+  #cmds { height: 22.5em; overflow-y: auto; margin-top: 4px; scroll-padding: 3em 0; scrollbar-width: thin; }
+  #cmds .grp, #count { color: var(--dim); padding: 0 1ch; margin: 0; }
+  #cmds [role=option] { display: grid; grid-template-columns: 2ch 15ch 1fr auto; gap: 0 1ch; padding: 3px 1ch; min-height: 24px; align-items: center; cursor: pointer; }
+  #cmds [role=option] > * { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  #cmds i { color: var(--accent); font-style: normal; } #cmds span { color: var(--sec); } #cmds kbd { color: var(--dim); font: inherit; }
+  #cmds b { font-weight: 400; } #cmds [aria-selected=true] { background: var(--sel); } #cmds [aria-selected=true] b { font-weight: 700; } #cmds [aria-selected=true] kbd { color: var(--sec); }
+</style>
+<main>
+<h1>Onda 4 · overlays e comandos — proposta “Uma folha”</h1>
+<p class="lead">Seletores, confirmações, telas de informação e mensagens de comando (D01–D28). <b>Nada foi aplicado</b>: isto é um exemplo para você avaliar. Resumo, decisões pendentes e limites em <a href="README.md">README.md</a>.</p>
+<p class="warn"><b>Como ler.</b> “Antes” são capturas reais da galeria (pi 1.5.2, provider fake). “Depois” são <b>mocks em HTML</b> no tema Tokyo Night: mostram disposição, hierarquia e texto, não pixels do kitty. A demo do início é a única parte interativa. Dados de demonstração.</p>
+
+<nav aria-label="Seções"><a href="#auditoria">Auditoria</a><a href="#regras">Regras</a><a href="#demo">Experimente</a><a href="#central">1 Central</a><a href="#painel">2 Visão geral</a><a href="#seletores">3 Seletores</a><a href="#confirmar">4 Confirmações</a><a href="#gestao">5 Gestão</a><a href="#atalhos">6 Atalhos</a><a href="#mensagens">7 Mensagens</a><a href="#decidir">O que decidir</a><a href="#fontes">Fontes</a></nav>
+
+<h2 id="auditoria">Auditoria: o que as capturas mostram</h2>
+<div class="scroll"><table>
+<tr><th>#</th><th>Achado</th><th>Onde se vê</th></tr>
+<tr><td>1</td><td><b>Nove contêineres diferentes</b> para a mesma ideia: régua azul com e sem título, régua roxa, três réguas, régua só em cima, tela cheia, texto solto no topo, tabela com bordas.</td><td>20, 21, 95, 24, 312, 23, 211, 200, 104, 22</td></tr>
+<tr><td>2</td><td><b>Três marcadores de seleção</b>: <code>→</code>, <code>›</code> com fundo, <code>&gt;</code>. O valor em uso ora é <code>✓</code>, ora é só cor.</td><td>20, 21, 203 · 23, 24 · 211</td></tr>
+<tr><td>3</td><td><b>Cinco jeitos de escrever as teclas</b>: “Enter/Space to change”, “enter select”, “escape/ctrl+c cancel”, “up/down move”, com <code>·</code>, <code>•</code> ou espaço.</td><td>20, 21, 203, 312, 211</td></tr>
+<tr><td>4</td><td><b>Telas de informação sem forma</b>: sem título nem moldura, tudo no mesmo cinza, no topo da tela, viram parte da conversa e não fecham.</td><td>104, 106, 107, 212, 213</td></tr>
+<tr><td>5</td><td><b>Confirmação de risco com “Yes” já selecionado</b>, botões “Yes / No” e o texto inteiro em roxo: Enter por reflexo libera comandos do repositório. Só o diálogo do LSP (262) abre na opção reversível.</td><td>203, 206, 302, 95</td></tr>
+<tr><td>6</td><td><b>Teclas demais de uma vez</b>: retomar sessão mostra 9 dicas e 3 filtros; a árvore mostra 11 atalhos antes do primeiro item.</td><td>24, 23</td></tr>
+<tr><td>7</td><td><b>Atalhos como tabela de bordas grossas</b> despejada na conversa: não tem busca, não fecha e fica atrás dos próximos painéis.</td><td>22, 23, 24</td></tr>
+<tr><td>8</td><td><b>Inglês dentro de um cromo em português</b> (Ondas 1 e 2 já usam português).</td><td>todas</td></tr>
+<tr><td>9</td><td><b>Caminho absoluto longo como conteúdo principal</b>; o nome que importa fica perdido no começo da linha.</td><td>106, 212</td></tr>
+<tr><td>10</td><td><b>Avisos empilhados em cores diferentes</b> (amarelo em cima, verde embaixo) e seletores sem título.</td><td>21, 20</td></tr>
+</table></div>
+<p>O que já funciona e fica: régua fina sem caixa, busca ao digitar, descrição do item selecionado em <code>/settings</code>, escopo pasta/todas em <code>/resume</code>, o diálogo do LSP (262) que lista o que será executado, <code>/session</code> (26) com seções e rótulos, todas as teclas atuais.</p>
+<p>Conferido por um revisor separado, que abriu as 34 capturas da onda. Não medido nesta auditoria: contraste por pixel, navegação real por teclado, <code>NO_COLOR</code> e terminal estreito.</p>
+
+<h2 id="regras">As 6 regras desta onda</h2>
+<ol>
+  <li><b>Uma folha só.</b> Todo overlay abre no mesmo lugar (embaixo, largura inteira, sobre o composer), entre duas réguas finas, com o título na régua de cima e o resumo à direita. É a moldura do histórico da Onda 2.</li>
+  <li><b>Uma linha, uma gramática.</b> <code>❯</code> e fundo marcam o item ativo; <code>✓</code> com palavra marca o que está em uso; o valor fica à direita; grupos têm rótulo cinza.</li>
+  <li><b>Um rodapé, no máximo quatro teclas.</b> Sempre <code>↑↓ escolher · ⏎ verbo · esc fechar</code>. O resto fica atrás de <code>?</code>.</li>
+  <li><b>Confirmação diz o risco e o verbo.</b> Pergunta no título, consequência em uma frase, botões com verbo (“Confiar e carregar”), e a opção segura vem primeiro e já selecionada. Esc é sempre a opção segura.</li>
+  <li><b>Informação vira painel de gestão.</b> Título, resumo em número, grupos, estado com glifo e palavra, e a próxima ação. Fecha com Esc e não suja a conversa.</li>
+  <li><b>Português, e estado nunca só por cor.</b> Vale em <code>NO_COLOR</code>: <code>●</code>, <code>▲</code>, <code>✓</code>, <code>✗</code> sempre acompanhados de palavra.</li>
+</ol>
+
+<h2 id="demo">Experimente: achar um comando</h2>
+<p>Digite (por exemplo <code>mem</code>, <code>modelo</code>, <code>atalho</code>), use <kbd>↑</kbd> <kbd>↓</kbd> e <kbd>⏎</kbd>, ou clique. O painel do comando aparece ao lado.</p>
+<div class="demo">
+  <div class="box">
+    <hr><label><span aria-hidden="true">/</span><input id="q" role="combobox" aria-expanded="true" aria-controls="cmds" aria-autocomplete="list" aria-label="Buscar comando" placeholder="Buscar comando" autocomplete="off" autocapitalize="off" spellcheck="false"></label><hr>
+    <div id="cmds" role="listbox" aria-label="Comandos"></div>
+    <p id="count" aria-live="polite"></p>
+  </div>
+  <figure><pre class="term" id="out" data-cols="88" aria-live="polite" tabindex="0" role="group" aria-label="Painel do comando escolhido"></pre></figure>
+</div>
+
+<h2 id="central">1 · Central de comandos <small>(<code>/</code>, B12 + D12)</small> <span class="tag">nativo do pi</span></h2>
+<div class="pair">
+<figure><figcaption><b>Antes</b> · captura real 02</figcaption><img src="../../ui-ux-gallery/images/02-autocomplete-slash.png" width="1081" height="901" style="aspect-ratio:1081/290" loading="lazy" alt="Autocomplete atual: lista plana de 34 comandos em ordem fixa, descrições em inglês, contador (1/34) solto"></figure>
+<figure><figcaption><b>Depois</b> · mock, campo vazio: recentes e grupos</figcaption><pre class="term" data-cols="88">
+===
+ /{cur: }{d:Buscar comando}
+===
+ {d:Recentes}
+~ {a:❯} {b:model}           Trocar de modelo>>{d:ctrl+l}
+   resume          {s:Retomar uma sessão}
+ {d:Sessão}
+   new             {s:Começar uma sessão nova}
+   tree            {s:Voltar a um ponto da conversa}
+   rename          {s:Dar nome à sessão}
+ {d:Modelo}
+   thinking        {s:Nível de raciocínio}
+   output-style    {s:Estilo das respostas}
+ {d:1 de 34 · ↑↓ escolher · tab completa · ⏎ executa · esc fecha}
+</pre>
+<figcaption><b>Depois</b> · mock, buscando “mem”: lista plana, trecho casado em destaque</figcaption><pre class="term" data-cols="88">
+===
+ /mem{cur: }
+===
+~ {a:❯} {m:mem}{b:ory}          Arquivos de memória carregados
+   context         {s:Uso do contexto e da }{m:mem}{s:ória}
+ {d:1 de 2 · ↑↓ escolher · tab completa · ⏎ executa · esc fecha}
+</pre></figure>
+</div>
+<ul>
+  <li><b>Achar</b>: 34 comandos em seis grupos (Sessão, Modelo, Contexto, Extensões, Preferências, Ajuda), com os usados por último no topo. Hoje é uma lista plana em ordem fixa.</li>
+  <li><b>Entender</b>: descrição curta em português dizendo o efeito; a tecla direta, quando existe, à direita.</li>
+  <li><b>Buscar</b>: casa nome e descrição (digitar “modelo” acha <code>model</code>), ignora acento; ao filtrar, os grupos somem e a lista fica plana.</li>
+  <li><b>Vazio</b>: “Nenhum comando com “xyz” · apague para ver todos”.</li>
+</ul>
+
+<h2 id="painel">2 · Visão geral <small>(novo: <code>/painel</code>)</small> <span class="tag">extensão do harness</span></h2>
+<div class="pair">
+<figure><figcaption><b>Antes</b> · não existe. Para saber o estado é preciso rodar <code>/context</code>, <code>/memory</code>, <code>/mcp</code>, <code>/agents</code>, <code>/hooks</code> e <code>/bypass status</code>, um por vez (capturas 104, 106, 312, 212, 107, 102).</figcaption><img class="top" src="../../ui-ux-gallery/images/106-memory.png" width="1081" height="901" style="aspect-ratio:1081/250" loading="lazy" alt="Saída atual de /memory: sete linhas de caminhos absolutos em cinza, sem moldura, no topo da conversa"></figure>
+<figure><figcaption><b>Depois</b> · mock: uma tela, cada linha abre o seu gerenciador</figcaption><pre class="term" data-cols="88" id="m-painel">
+---{b:Visão geral}>>{d:projeto-demo · main}
+~ {a:❯} {s:Modelo}       {b:Modelo Demo} · raciocínio medium>>{d:/model}
+   {d:Contexto}     {a:━━━}{t:─────────────────}  {s:4,8k de 32k · 15%}>>{d:/context}
+   {d:Permissões}   {s:pergunta antes de agir}>>{d:/bypass}
+   {d:Memória}      {s:ligada · 4 arquivos}>>{d:/memory}
+   {d:MCP}          {g:●} {s:1 conectado · 1 ferramenta}>>{d:/mcp}
+   {d:Agentes}      {s:4 disponíveis · nenhuma execução}>>{d:/agents}
+   {d:Hooks}        {s:1 ativo · PostToolUse}>>{d:/hooks}
+   {d:Confiança}    {w:▲} {s:projeto não confiável · a configuração dele não carrega}>>{d:/trust}
+ {d:↑↓ escolher · ⏎ abrir · esc fechar}
+---
+</pre></figure>
+</div>
+<ul>
+  <li><b>Gestão num lugar</b>: o que está ligado, quanto está em uso e o que pede atenção (<code>▲</code>), em oito linhas. O comando de cada área fica à direita: a tela também ensina onde cada coisa mora.</li>
+  <li><b>Sem repetir o HUD</b>: o HUD mostra o que muda a cada turno (modelo, barras); aqui fica o que é configuração.</li>
+  <li><b>Custo</b>: é o único item novo. Lê dados que os comandos atuais já expõem; se alguma área não tiver API, a linha não aparece.</li>
+</ul>
+
+<h2 id="seletores">3 · Seletores <small>(D01–D07: <code>/settings</code>, <code>/model</code>, <code>/resume</code>, <code>/tree</code>)</small> <span class="tag">nativo do pi</span></h2>
+<div class="pair">
+<figure><figcaption><b>Antes</b> · capturas reais 20 (ajustes) e 21 (modelo)</figcaption>
+<img src="../../ui-ux-gallery/images/20-settings.png" width="1081" height="901" style="aspect-ratio:1081/480" loading="lazy" alt="Ajustes atuais: sem título, seta, true e false como valores, contador (1/33) solto, dica em inglês">
+<img src="../../ui-ux-gallery/images/21-model.png" width="1081" height="901" style="aspect-ratio:1081/400" loading="lazy" alt="Seletor de modelo atual: aviso amarelo em cima, aviso verde embaixo, seta e visto juntos, colchetes"></figure>
+<figure><figcaption><b>Depois</b> · mock, ajustes</figcaption><pre class="term" data-cols="88" id="m-settings">
+---{b:Ajustes}>>{d:1 de 33}
+ {cur: }{d:Buscar ajuste}
+ {d:Contexto}
+~ {a:❯} {b:Compactar sozinho}>>desligado
+   Redimensionar imagens>>{s:ligado}
+   Bloquear imagens>>{s:desligado}
+ {d:Editor}
+   Comandos de skill>>{s:ligado}
+   Margem do editor>>{s:0}
+   Itens no autocomplete>>{s:5}
+ {s:Compacta o contexto quando ele fica grande demais.}
+ {d:↑↓ escolher · ⏎ alterar · esc fechar}
+---
+</pre>
+<figcaption><b>Depois</b> · mock, modelo</figcaption><pre class="term" data-cols="88" id="m-model">
+---{b:Modelo}>>{d:2 disponíveis}
+~ {a:❯} {b:Modelo Demo}     m1 · fake>>{m:✓ em uso}
+   Modelo Demo 2   {d:m2 · fake}
+ {d:Só aparecem modelos de provedores configurados · /login adiciona}
+ {d:↑↓ escolher · ⏎ usar · ctrl+s tornar padrão · esc fechar}
+---
+</pre></figure>
+</div>
+<div class="pair">
+<figure><figcaption><b>Antes</b> · capturas reais 24 (retomar) e 23 (árvore)</figcaption>
+<img src="../../ui-ux-gallery/images/24-resume.png" width="1081" height="901" style="aspect-ratio:1081/330" loading="lazy" alt="Retomar sessão atual: duas linhas com nove dicas de tecla e três filtros antes do campo de busca">
+<img src="../../ui-ux-gallery/images/23-tree.png" width="1081" height="901" style="aspect-ratio:1081/400" loading="lazy" alt="Árvore atual: onze atalhos em duas linhas, rótulos user e assistant coloridos, contador (5/5) solto"></figure>
+<figure><figcaption><b>Depois</b> · mock, retomar sessão</figcaption><pre class="term" data-cols="88" id="m-resume">
+---{b:Retomar sessão}>>{m:● esta pasta}   {d:todas}
+ {cur: }{d:Buscar nas sessões}
+~ {a:❯} {b:primeira mensagem}>>5 mensagens · agora
+   ajusta o parser de datas>>{d:12 mensagens · ontem}
+   revisão do changelog>>{d:3 mensagens · seg}
+ {d:↑↓ escolher · ⏎ retomar · tab escopo · ? mais teclas · esc fechar}
+---
+</pre>
+<figcaption><b>Depois</b> · mock, depois de <kbd>?</kbd> com a busca vazia</figcaption><pre class="term" data-cols="88">
+---{b:Retomar sessão}>>{d:mais teclas}
+ {k:ctrl+s}  {s:ordenar}          {k:ctrl+n}  {s:só as com nome}     {k:ctrl+p}  {s:mostrar caminho}
+ {k:ctrl+r}  {s:renomear}         {k:ctrl+d}  {s:apagar}
+ {d:Na busca:} {k:re:}{s:padrão usa regex ·} {k:"frase"} {s:busca exata}
+ {d:? volta · esc fechar}
+---
+</pre>
+<figcaption><b>Depois</b> · mock, árvore da conversa</figcaption><pre class="term" data-cols="88" id="m-tree">
+---{b:Pontos da conversa}>>{d:4 de 4}
+ {cur: }{d:Buscar nas mensagens}
+   {d:você}  primeira mensagem
+   {d:pi}    {s:Resposta de demonstração do provider fake.}
+   {d:você}  segunda mensagem
+~ {a:❯} {s:pi}    {b:Resposta de demonstração do provider fake.}>>aqui
+ {d:↑↓ escolher · ⏎ voltar para cá · ? mais teclas · esc fechar}
+---
+</pre></figure>
+</div>
+<ul>
+  <li><b>Título sempre</b>: hoje <code>/settings</code> e <code>/model</code> abrem sem dizer o que são.</li>
+  <li><b>Busca só quando ajuda</b>: o campo aparece em listas com mais de 8 itens e sempre com placeholder. Hoje listas de 2 a 5 itens mostram um <code>&gt;</code> vazio.</li>
+  <li><b>Valor com palavra</b>: <code>ligado</code> / <code>desligado</code> em vez de <code>true</code> / <code>false</code>; <code>✓ em uso</code> em vez de seta e visto lado a lado.</li>
+  <li><b>Grupos em ajustes</b>: 33 itens numa lista só viram grupos com rótulo; a busca continua achando qualquer um.</li>
+  <li><b>Um aviso, embaixo, em cinza</b>: a nota sobre provedores deixa de ser um bloco amarelo acima do campo; “catálogo atualizado” some (não pede ação).</li>
+  <li><b>Teclas avançadas atrás de <kbd>?</kbd></b>: continuam todas funcionando; só deixam de ocupar duas linhas antes do conteúdo.</li>
+  <li><b>Contraste</b>: na linha selecionada o cinza escuro (3,7:1 sobre o fundo de seleção) sobe para o cinza claro (5,2:1).</li>
+</ul>
+
+<h2 id="confirmar">4 · Confirmações <small>(D08, D22–D24: confiança, agentes do projeto, imports, hooks, LSP)</small> <span class="tag">nativo + pi-code</span></h2>
+<div class="pair">
+<figure><figcaption><b>Antes</b> · capturas reais 203 (confiança) e 206 (agentes do projeto)</figcaption>
+<img src="../../ui-ux-gallery/images/203-dialogo-1.png" width="1081" height="841" style="aspect-ratio:1081/320" loading="lazy" alt="Diálogo atual Trust this project: todo em roxo, Yes já selecionado, opções Yes e No">
+<img src="../../ui-ux-gallery/images/206-agente-projeto-confirm.png" width="1081" height="841" style="aspect-ratio:1081/380" loading="lazy" alt="Diálogo atual Run project-local agents: todo em roxo, Yes já selecionado"></figure>
+<figure><figcaption><b>Depois</b> · mock, confiança</figcaption><pre class="term" data-cols="88" id="m-trust">
+---{b:Confiar neste projeto?}
+ {s:/tmp/…/work/projeto-demo}
+
+ Ele traz configuração própria. Se você confiar, {b:servidores MCP, hooks e agentes}
+ {b:deste repositório podem executar comandos} na sua máquina.
+
+~ {a:❯} {b:Não confiar}>>seguro
+   Confiar e carregar
+ {d:↑↓ escolher · ⏎ confirmar · esc não confiar}
+---
+</pre>
+<figcaption><b>Depois</b> · mock, agentes do projeto</figcaption><pre class="term" data-cols="88">
+---{b:Executar agentes deste projeto?}
+ {s:projeto-agente}  {d:em .claude/agents}
+
+ Agentes do projeto são escritos pelo repositório. {b:Continue só se confia nele.}
+
+~ {a:❯} {b:Não executar}>>seguro
+   Executar
+ {d:↑↓ escolher · ⏎ confirmar · esc não executar}
+---
+</pre></figure>
+</div>
+<ul>
+  <li><b>Opção segura primeiro e selecionada</b>: hoje o Enter por reflexo responde “Yes”. Passa a responder “Não”; liberar exige uma seta e Enter.</li>
+  <li><b>Botão com verbo</b>: “Confiar e carregar” diz o que acontece; “Yes” exige reler a pergunta.</li>
+  <li><b>Risco em negrito, o resto em texto normal</b>: hoje o diálogo inteiro é roxo, então nada se destaca.</li>
+  <li><b>Esc dito por extenso</b>: <code>esc não confiar</code>, em vez de <code>escape/ctrl+c cancel</code>.</li>
+  <li><b>Sem mudança</b>: as opções que existem, o que cada uma faz e onde a resposta é gravada.</li>
+</ul>
+
+<h2 id="gestao">5 · Painéis de gestão <small>(D20–D22, D25–D27: <code>/context</code>, <code>/memory</code>, <code>/mcp</code>, <code>/agents</code>, <code>/hooks</code>, <code>/tasks</code>)</small> <span class="tag">pi-code</span></h2>
+<div class="pair">
+<figure><figcaption><b>Antes</b> · capturas reais 104, 212, 107, 312, 213</figcaption>
+<img class="top" src="../../ui-ux-gallery/images/104-context.png" width="1081" height="901" style="aspect-ratio:1081/150" loading="lazy" alt="Saída atual de /context: quatro linhas em cinza no topo, sem moldura">
+<img class="top" src="../../ui-ux-gallery/images/212-agents.png" width="1081" height="841" style="aspect-ratio:1081/230" loading="lazy" alt="Saída atual de /agents: nome seguido do caminho absoluto do arquivo, tudo em cinza">
+<img class="top" src="../../ui-ux-gallery/images/107-hooks.png" width="1081" height="901" style="aspect-ratio:1081/130" loading="lazy" alt="Saída atual de /hooks: matcher entre colchetes e comando numa linha quebrada, em cinza">
+<img src="../../ui-ux-gallery/images/312-d25-mcp-nativo.png" width="1081" height="601" style="aspect-ratio:1081/250" loading="lazy" alt="Painel atual MCP servers: uma linha inteira em roxo com estado, contagem e escopo; aviso amarelo longe, no topo">
+<img class="top" src="../../ui-ux-gallery/images/213-tasks.png" width="1081" height="841" style="aspect-ratio:1081/90" loading="lazy" alt="Saída atual de /tasks sem execuções: uma frase em cinza no topo"></figure>
+<figure><figcaption><b>Depois</b> · mocks</figcaption><pre class="term" data-cols="88" id="m-context">
+---{b:Contexto}>>{d:Modelo Demo · janela de 32k}
+ {a:━━━━━━━━━}{t:───────────────────────────────────────────────────}  {b:15%}
+ {d:Usado}    4,8k tokens
+ {d:Livre}    27,2k tokens
+ {d:Compactar sozinho}  {s:desligado · /settings muda}
+ {d:esc fechar}
+---
+</pre><pre class="term" data-cols="88" id="m-memory">
+---{b:Memória}>>{g:●} {s:automática ligada}
+~ {a:❯} {s:Usuário}   {b:CLAUDE.md}>>~/.claude
+   {d:Projeto}   CLAUDE.md>>{d:projeto-demo}
+   {d:Projeto}   CLAUDE.local.md>>{d:projeto-demo}
+   {d:Projeto}   CLAUDE.md>>{d:projeto-demo/.claude}
+   {d:Índice}    MEMORY.md>>{d:memória automática}
+ {d:↑↓ escolher · ⏎ editar · /memory off desliga · esc fechar}
+---
+</pre><pre class="term" data-cols="88" id="m-mcp">
+---{b:Servidores MCP}>>{d:1 conectado}
+~ {a:❯} {g:●} {b:demo}   conectado>>1 ferramenta · codemode · global
+ {w:▲} {s:Ferramentas MCP só são chamadas por codemode ou tool_search; nenhum está ativo.}
+ {d:↑↓ escolher · ⏎ gerenciar · esc fechar}
+---
+</pre><pre class="term" data-cols="88" id="m-agents">
+---{b:Agentes}>>{d:4 disponíveis}
+ {d:Seus · ~/.claude/agents}
+~ {a:❯} {b:demo}
+ {d:Embutidos}
+   Explore
+   general-purpose
+   Plan
+ {d:Para criar: um arquivo .md em ~/.claude/agents (seu) ou .claude/agents (projeto)}
+ {d:↑↓ escolher · ⏎ ver arquivo · esc fechar}
+---
+</pre><pre class="term" data-cols="88" id="m-hooks">
+---{b:Hooks}>>{d:1 ativo}
+ {d:PostToolUse · depois de cada ferramenta}
+   {s:qualquer ferramenta}  {d:→}  echo "Hook de demonstração"
+   {d:definido em ~/.claude/settings.json}
+ {d:esc fechar}
+---
+</pre><pre class="term" data-cols="88" id="m-tasks">
+---{b:Execuções de subagentes}>>{d:nenhuma}
+ {d:Nada rodou nesta sessão · as execuções aparecem aqui quando o pi delega trabalho}
+ {d:esc fechar}
+---
+</pre></figure>
+</div>
+<ul>
+  <li><b>Painel que fecha</b>: hoje a saída é impressa no topo e fica na conversa. Passa a abrir na folha e sumir com Esc.</li>
+  <li><b>Nome primeiro, caminho curto depois</b>: <code>demo</code> em vez de <code>demo - /tmp/pigal-…/claude/agents/demo.md</code>; pasta abreviada à direita.</li>
+  <li><b>Número no título</b>: “1 conectado”, “4 disponíveis”, “1 ativo”. Dá para ler o estado sem ler a lista.</li>
+  <li><b>Aviso junto do que ele afeta</b>: o alerta do MCP sai do topo da tela e vai para dentro do painel, com <code>▲</code>.</li>
+  <li><b>Vazio explica</b>: diz por que está vazio e quando deixa de estar.</li>
+  <li><b>Sem inventar dado</b>: <code>/context</code> mostra só o que o comando calcula hoje (usado, janela, livre).</li>
+</ul>
+
+<h2 id="atalhos">6 · Atalhos <small>(D11, <code>/hotkeys</code> e <code>?</code>)</small> <span class="tag">nativo do pi</span></h2>
+<div class="pair">
+<figure><figcaption><b>Antes</b> · captura real 22</figcaption><img class="top" src="../../ui-ux-gallery/images/22-hotkeys.png" width="1081" height="901" style="aspect-ratio:1081/690" loading="lazy" alt="Atalhos atuais: tabelas com bordas brancas grossas impressas na conversa, em inglês, uma linha de borda entre cada atalho"></figure>
+<figure><figcaption><b>Depois</b> · mock</figcaption><pre class="term" data-cols="88" id="m-hotkeys">
+---{b:Atalhos}>>{d:14 teclas}
+ {cur: }{d:Buscar atalho}
+ {d:Escrever}
+   {k:/}               {s:comandos}
+   {k:!}               {s:rodar no shell ·} {k:!!} {s:roda fora do contexto}
+   {k:alt+⏎}           {s:deixar para quando o pi terminar}
+   {k:ctrl+⏎}          {s:interromper a ferramenta e enviar agora}
+   {k:↑}               {s:trazer a fila de volta para editar}
+   {k:ctrl+v}          {s:colar imagem, arquivo ou texto}
+   {k:ctrl+g}          {s:abrir no editor externo}
+ {d:Conversa}
+   {k:ctrl+o}          {s:expandir a saída das ferramentas}
+   {k:ctrl+t}          {s:mostrar ou esconder o raciocínio}
+   {k:ctrl+x}          {s:copiar a seleção ou a última resposta}
+   {k:ctrl+l}          {s:trocar de modelo}
+ {d:Extensões}
+   {k:ctrl+shift+t}    {s:recolher ou abrir a lista de tarefas}
+ {d:↑↓ rolar · /keybindings edita as teclas · esc fechar}
+---
+</pre></figure>
+</div>
+<ul>
+  <li><b>Sem bordas</b>: alinhamento e espaço fazem a tabela; some uma linha de borda por atalho, cabe o dobro na tela.</li>
+  <li><b>Por tarefa</b>: Escrever, Conversa, Extensões, em vez da ordem do arquivo de teclas.</li>
+  <li><b>Busca</b>: digitar “fila” ou “ctrl+o” filtra. Fecha com Esc, não fica na conversa.</li>
+  <li><b>Sempre as teclas reais</b>: a lista continua gerada dos keybindings em uso; só o texto e a forma mudam.</li>
+</ul>
+
+<h2 id="mensagens">7 · Mensagens de comando <small>(D05, D13–D17, D19, D27, D28)</small> <span class="tag">extensão do harness + pi-code</span></h2>
+<div class="pair">
+<figure><figcaption><b>Antes</b> · captura real 102 (<code>/bypass status</code>)</figcaption><img src="../../ui-ux-gallery/images/102-bypass-status.png" width="1081" height="901" style="aspect-ratio:1081/300" loading="lazy" alt="Resposta atual de /bypass status"></figure>
+<figure><figcaption><b>Depois</b> · mock: uma linha, resultado e como desfazer</figcaption><pre class="term" data-cols="88">
+ {g:✓} {s:Sessão renomeada para “parser de datas”}
+ {g:✓} {s:Modo equipe ligado · /team off desliga}
+ {w:▲} {s:Bypass ligado: o pi age sem perguntar · /bypass off desliga}
+ {r:✗} {s:Nível “ultra” não existe · use low, medium ou high}
+</pre></figure>
+</div>
+<ul>
+  <li><b>Três formas</b>: <code>✓</code> feito, <code>▲</code> atenção, <code>✗</code> não deu. Sempre com o próximo passo depois do <code>·</code>.</li>
+  <li><b>Erro diz a saída</b>: lista os valores válidos em vez de só “Unknown thinking level”.</li>
+</ul>
+
+<h2 id="decidir">O que decidir</h2>
+<div class="scroll"><table>
+<tr><th>#</th><th>Item</th><th>Onde mexe</th><th>Risco</th><th>Recomendo</th></tr>
+<tr><td>2</td><td>Visão geral <code>/painel</code></td><td>extensão nova do harness</td><td>baixo</td><td>aplicar primeiro: valida a folha sem tocar no core</td></tr>
+<tr><td>7</td><td>Mensagens do harness (<code>/bypass</code>, <code>/rename</code>, <code>/pi-docs</code>, <code>/puxar</code>, <code>/keybindings</code>)</td><td><code>extensions/*</code></td><td>baixo</td><td>aplicar</td></tr>
+<tr><td>4</td><td>Confirmações: opção segura primeiro, verbo, risco em negrito</td><td>pi-code (<code>hooks</code>, <code>context-imports</code>, <code>subagent/modes</code>) e core (<code>/trust</code>)</td><td>médio</td><td>aplicar: é o único item de segurança</td></tr>
+<tr><td>5</td><td>Painéis de gestão</td><td>pilha de patches do pi-code (<code>context-usage</code>, <code>memory</code>, <code>hooks</code>, <code>subagent</code>, <code>mcp</code>)</td><td>médio</td><td>aplicar</td></tr>
+<tr><td>6</td><td>Atalhos em painel com busca</td><td>comando nativo; trocar por painel de extensão</td><td>médio</td><td>aplicar</td></tr>
+<tr><td>3</td><td>Seletores com título, grupos, valor em palavra, <kbd>?</kbd></td><td>core do pi (<code>showSelector</code> e os quatro seletores)</td><td>alto: patch a manter a cada versão do pi</td><td>decidir depois de 2, 4–7</td></tr>
+<tr><td>1</td><td>Central de comandos agrupada, com recentes</td><td>autocomplete nativo (<code>select-list</code>)</td><td>alto: mesmo patch adiado na Onda 2</td><td>decidir junto com o 3</td></tr>
+</table></div>
+<p>O risco vem da origem de cada tela no inventário (<code>docs/ui-ux-inventory.md</code>). A viabilidade de cada mudança no código ainda não foi verificada; isso é o primeiro passo do plano, se você aprovar.</p>
+<p>Fora desta proposta: onboarding (D10, inativo nesta instalação), <code>/login</code> (D09, textos finais não lidos), fallback do <code>question</code> (D18, não visual), <code>/changelog</code> e afins (D12, sem defeito visível).</p>
+
+<h2 id="fontes">Fontes da pesquisa</h2>
+<p>Lidas em 2026-11-14 por dois agentes de pesquisa independentes (Perplexity + Keenable; Parallel + Exa). “Lida” é página aberta com a citação encontrada; “trecho” é só o resumo da busca.</p>
+<ul>
+  <li><b>Confirmação</b>: título que descreve a situação, até três botões, rótulo de uma ou duas palavras com verbo, evitar “OK” e “Yes/No”, Esc cancela, não confirmar o que é comum e desfazível (<a href="https://developer.apple.com/design/human-interface-guidelines/alerts">Apple HIG, Alerts</a>, lida em parte). Dizer o que vai acontecer em vez de “tem certeza?” e usar botões que nomeiam o resultado (<a href="https://www.nngroup.com/articles/confirmation-dialog/">NN/g, Confirmation dialogs</a>, lida).</li>
+  <li><b>Hierarquia por disposição e agrupamento, não por decoração</b>; ações secundárias vão para um “mais” (<a href="https://developer.apple.com/documentation/TechnologyOverviews/liquid-glass">Apple, Liquid Glass</a>; princípios hierarquia, harmonia e consistência em <a href="https://developer.apple.com/videos/play/wwdc2025/102">WWDC25, sessão 102</a>; trechos).</li>
+  <li><b>Ajustes</b> em grupos, com o título igual ao grupo aberto (<a href="https://developer.apple.com/design/human-interface-guidelines/settings">Apple HIG, Settings</a>, lida).</li>
+  <li><b>Seletor</b>: placeholder que diz o propósito, título quando falta contexto, separadores para grupos, descrição para o valor atual, nada de fluxo longo (<a href="https://code.visualstudio.com/api/ux-guidelines/quick-picks">VS Code, Quick Picks</a>, lida).</li>
+  <li><b>Central de comandos</b>: recentes e favoritos com o campo vazio, lista plana ao digitar, Esc limpa o texto e só depois fecha (<a href="https://manual.raycast.com/search-bar">Raycast, Search bar</a>, trecho). <code>/</code> abre menu que filtra ao digitar (<a href="https://code.claude.com/docs/en/commands">Claude Code</a>, <a href="https://developers.openai.com/codex/cli/slash-commands">Codex</a>, lidas); paleta em <code>ctrl+p</code> (<a href="https://opencode.ai/docs/tui/">OpenCode</a>, lida).</li>
+  <li><b>Retomar sessão</b>: digitar já busca, Enter retoma, escopo padrão é o projeto atual (<a href="https://code.claude.com/docs/en/sessions">Claude Code, Sessions</a>, lida). <b>Esc</b> fecha o diálogo e recusa a permissão (<a href="https://code.claude.com/docs/en/interactive-mode">Claude Code, Interactive mode</a>, lida); <code>?</code> abre a ajuda de teclas (<a href="https://github.com/google-gemini/gemini-cli/blob/main/docs/reference/keyboard-shortcuts.md">Gemini CLI</a>, lida).</li>
+  <li><b>Cor</b>: <a href="https://no-color.org/">NO_COLOR</a> (lida); estado não só por cor e texto a 4,5:1 (<a href="https://www.w3.org/WAI/WCAG22/Understanding/use-of-color">WCAG 2.2, 1.4.1</a> e <a href="https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html">1.4.3</a>, trechos).</li>
+  <li><b>Inferência minha, sem fonte que mande</b>: opção segura já selecionada nas confirmações (apoiada no achado 5 e no diálogo 262); painel <code>/painel</code>; teclas avançadas atrás de <code>?</code>.</li>
+  <li><b>Não verificado</b>: páginas da Apple de sheets, popovers, menus, busca e teclado; Raycast e Linear em leitura direta; Crush, Amp, Charm e Textual; diálogos de permissão do Codex e do OpenCode.</li>
+</ul>
+</main>
+<script>
+const vis = s => s.replace(/\{\w+:([^{}]*)\}/g, '$1')
+const html = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/\{(\w+):([^{}]*)\}/g, '<span class="$1">$2</span>')
+const RULE = { '---': 't', '===': 'a' } // régua: azul-cinza (folha), roxa (composer)
+function line(l, cols) {
+  const cls = RULE[l.slice(0, 3)]
+  if (cls) {
+    const [left, right = ''] = l.slice(3).split('>>'), r = c => `<span class="${cls}">${c}</span>`
+    const head = left.trim() ? `{${cls}:──} ${left.trim()} ` : '', tail = right ? ` ${right} {${cls}:──}` : ''
+    return html(head) + r('─'.repeat(Math.max(0, cols - vis(head).length - vis(tail).length))) + html(tail)
+  }
+  const sel = l[0] === '~', [left, right = ''] = (sel ? l.slice(1) : l).split('>>')
+  const out = html(left + ' '.repeat(Math.max(1, cols - vis(left).length - vis(right).length - 1)) + right + ' ')
+  return sel ? `<span class="u">${out}</span>` : out
+}
+const render = (src, cols) => src.replace(/^\n|\n$/g, '').split('\n').map(l => line(l, cols)).join('\n')
+for (const pre of document.querySelectorAll('pre.term:not(#out)')) {
+  pre.innerHTML = render(pre.textContent, +pre.dataset.cols)
+  pre.tabIndex = 0; pre.setAttribute('role', 'group'); pre.setAttribute('aria-label', 'Mock de terminal')
+}
+
+// Demo: [grupo, comando, descrição, tecla, id do mock]
+const CMDS = [
+  ['Sessão', 'new', 'Começar uma sessão nova'], ['Sessão', 'resume', 'Retomar uma sessão', '', 'm-resume'], ['Sessão', 'tree', 'Voltar a um ponto da conversa', '', 'm-tree'],
+  ['Sessão', 'rename', 'Dar nome à sessão'], ['Sessão', 'export', 'Exportar a conversa'],
+  ['Modelo', 'model', 'Trocar de modelo', 'ctrl+l', 'm-model'], ['Modelo', 'thinking', 'Nível de raciocínio'], ['Modelo', 'output-style', 'Estilo das respostas'],
+  ['Contexto', 'context', 'Uso do contexto e da memória', '', 'm-context'], ['Contexto', 'memory', 'Arquivos de memória carregados', '', 'm-memory'],
+  ['Extensões', 'mcp', 'Servidores MCP', '', 'm-mcp'], ['Extensões', 'agents', 'Agentes disponíveis', '', 'm-agents'], ['Extensões', 'hooks', 'Hooks ativos', '', 'm-hooks'],
+  ['Extensões', 'tasks', 'Execuções de subagentes', '', 'm-tasks'],
+  ['Preferências', 'painel', 'Visão geral do que está ligado', '', 'm-painel'], ['Preferências', 'settings', 'Ajustes', '', 'm-settings'],
+  ['Preferências', 'trust', 'Confiar neste projeto', '', 'm-trust'], ['Preferências', 'bypass', 'Agir sem perguntar: ligar ou desligar'],
+  ['Ajuda', 'hotkeys', 'Atalhos de teclado', '?', 'm-hotkeys'], ['Ajuda', 'changelog', 'O que mudou nesta versão'],
+]
+const $ = id => document.getElementById(id), q = $('q'), list = $('cmds'), out = $('out')
+const norm = s => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
+let act = 0, shown = []
+function draw() {
+  const f = norm(q.value.replace(/^\//, '').trim())
+  shown = CMDS.filter(c => norm(c[1] + ' ' + c[2]).includes(f))
+  if (f) shown.sort((a, b) => b[1].includes(f) - a[1].includes(f)) // nome casado antes de descrição casada
+  act = Math.max(0, Math.min(act, shown.length - 1))
+  let g = ''
+  list.innerHTML = shown.map((c, i) => (f || c[0] === g ? '' : `<div class="grp" role="presentation">${g = c[0]}</div>`) +
+    `<div role="option" id="o${i}" aria-selected="${i === act}"><i aria-hidden="true">${i === act ? '❯' : ''}</i><b>${c[1]}</b><span>${c[2]}</span><kbd>${c[3] || ''}</kbd></div>`).join('')
+  if (!shown.length) list.innerHTML = '<div class="grp">Nenhum comando com esse texto · apague para ver todos</div>'
+  $('count').textContent = (shown.length ? `${act + 1} de ${shown.length} · ` : '') + '↑↓ escolher · ⏎ executa · esc limpa'
+  q.setAttribute('aria-activedescendant', shown.length ? 'o' + act : '')
+  $('o' + act)?.scrollIntoView({ block: 'nearest' })
+}
+function run() {
+  const c = shown[act]; if (!c) return
+  out.innerHTML = c[4] ? $(c[4]).innerHTML : render(`---{b:/${c[1]}}\n {s:${c[2]}}\n {d:Sem mock nesta proposta · abriria na mesma folha, com o mesmo rodapé}\n {d:esc fechar}\n---`, 88)
+}
+q.addEventListener('input', () => { act = 0; draw() })
+q.addEventListener('keydown', e => {
+  const d = { ArrowDown: 1, ArrowUp: -1 }[e.key]
+  if (d) { act = (act + d + shown.length) % (shown.length || 1); draw() }
+  else if (e.key === 'Enter') run()
+  else if (e.key === 'Escape') { q.value = ''; act = 0; draw() }
+  else return
+  e.preventDefault()
+})
+list.addEventListener('click', e => { const o = e.target.closest('[role=option]'); if (o) { act = +o.id.slice(1); draw(); run(); q.focus({ preventScroll: true }) } })
+draw(); act = CMDS.findIndex(c => c[1] === 'painel'); draw(); run(); act = 0; draw()
+</script>
+</html>

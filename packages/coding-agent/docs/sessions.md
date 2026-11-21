@@ -69,7 +69,7 @@ Use `--no-session` for an ephemeral run. An ephemeral session cannot be resumed 
 
 ## Export or share a session
 
-Use `/export` to write the current session as HTML or JSONL. Use `/share` to upload it and get a viewer link. By default, Nycode uses a Radius artifact when Radius authentication is configured; otherwise, it uses a private GitHub gist. Set [`sessionShareDestination`](settings.md#sessions-and-context) to `gist` or `radius` to force one destination.
+Use `/export` to write the current session as HTML or JSONL. Use `/share` to upload it. Without `NYCODE_SHARE_VIEWER_URL` the command returns only the gist link. By default, Nycode uses a Radius artifact when Radius authentication is configured; otherwise, it uses a private GitHub gist. Set [`sessionShareDestination`](settings.md#sessions-and-context) to `gist` or `radius` to force one destination.
 
 Review exported or shared sessions first. They can contain prompts, model responses, tool arguments, command output, file contents, and extension messages.
 
@@ -77,4 +77,4 @@ Review exported or shared sessions first. They can contain prompts, model respon
 
 Run `/bug [description]` to prepare a private report for the Nycode developers. You can include the session transcript, omit it, or ask the current model to summarize the problem. Review any transcript or generated summary because it can contain sensitive conversation data.
 
-The report includes environment and provider configuration without credential values, plus recorded error diagnostics. Upload it through `radius.pi.dev` or export the same report as a zip to inspect and share yourself. Uploads do not require a login; Radius authentication attributes the report to your account so the developers can follow up. If an upload fails, Nycode offers to export the zip.
+The report includes environment and provider configuration without credential values, plus recorded error diagnostics. Export the report as a zip to inspect and share yourself. When `NYCODE_RADIUS_GATEWAY` names a Radius gateway, you can also upload it there; Radius authentication attributes the report to your account. If an upload fails, Nycode offers to export the zip.

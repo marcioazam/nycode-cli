@@ -25,20 +25,6 @@ export function writeUpstreamMock(preloadPath: string, modelsDev: ModelsDevV2Cat
 		},
 		"https://openrouter.ai/api/v1/models?output_modalities=decisions": { data: [] },
 		"https://ai-gateway.vercel.sh/v1/models": { data: [] },
-		"https://radius.pi.dev/v1/config": {
-			baseUrl: "https://radius.pi.dev",
-			models: [
-				{
-					id: "test",
-					name: "Test",
-					reasoning: false,
-					input: ["text"],
-					cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-					contextWindow: 4096,
-					maxTokens: 4096,
-				},
-			],
-		},
 	};
 	writeFileSync(
 		preloadPath,

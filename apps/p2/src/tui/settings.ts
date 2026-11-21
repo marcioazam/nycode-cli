@@ -182,7 +182,7 @@ const box = (ctx: TuiContext, title: string, body: Component, footer: () => stri
 function sample(ref: ThemeRef, width: number): string[] {
 	const theme = ref.current;
 	const markdown = new Markdown(
-		"## Preview\nSome **bold** text, a [link](https://pi.dev) and `code`.\n```ts\nconst answer = 42; // comment\n```",
+		"## Preview\nSome **bold** text, a [link](https://example.com) and `code`.\n```ts\nconst answer = 42; // comment\n```",
 		1,
 		0,
 		ref.markdown,

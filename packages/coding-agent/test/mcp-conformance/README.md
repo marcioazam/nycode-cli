@@ -39,7 +39,7 @@ node packages/coding-agent/test/mcp-conformance/run.ts --update-baseline
 ## Known failures
 
 - `elicitation-sep1034-client-defaults`: nycode does not support elicitation.
-- `auth/basic-cimd`: nycode uses its Client ID Metadata Document on pi.dev, not the suite's `https://conformance-test.local/client-metadata.json`.
+- `auth/basic-cimd`: nycode has no default Client ID Metadata Document and registers dynamically, so the suite's `https://conformance-test.local/client-metadata.json` is not used.
 - `auth/scope-retry-limit`: `nycode-client` fails by design; the server never accepts the granted scope.
 
 2026-07-28 is not covered: it is a stateless protocol nycode does not implement.

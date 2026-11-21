@@ -2,8 +2,6 @@ import type { OAuthCredential } from "../auth/types.ts";
 import type { Model, ThinkingLevelMap } from "../types.ts";
 import { ownedSlice } from "../utils/text.ts";
 
-export const DEFAULT_RADIUS_GATEWAY = "https://radius.pi.dev";
-
 export type RadiusGatewayModel = {
 	id: string;
 	name: string;
@@ -53,6 +51,12 @@ function sanitizeRadiusGatewayConfig(config: unknown): RadiusGatewayConfig | und
 export function normalizeRadiusGatewayUrl(value: string): string {
 	const withScheme = /^https?:\/\//iu.test(value) ? value : `https://${value}`;
 	return withScheme.replace(/\/+$/u, "");
+}
+
+/** Normalize a configured gateway origin; there is no default, so a missing one is an error naming the variable. */
+export function requireRadiusGateway(value: string | undefined): string {
+	if (!value?.trim()) throw new Error("There is no default Radius gateway: set NYCODE_RADIUS_GATEWAY.");
+	return normalizeRadiusGatewayUrl(value.trim());
 }
 
 export function getRadiusCredentialConfig(credential: OAuthCredential | undefined): RadiusGatewayConfig | undefined {

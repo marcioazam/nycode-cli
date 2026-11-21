@@ -15,13 +15,13 @@ import { writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { InMemoryAuthStorageBackend } from "../../src/core/auth-storage.ts";
 import type { McpHttpServerConfig, McpServerEntry } from "../../src/extensions/mcp/config.ts";
-import type { McpSignInPrompt } from "../../src/extensions/mcp/oauth.ts";
+import type { McpSignInPrompt } from "../../src/extensions/mcp/oauth/oauth.ts";
 import {
 	createDefaultTransport,
 	McpOAuthCredentialStore,
 	McpServerConnection,
 	signInMcpServer,
-} from "../../src/extensions/mcp/runtime.ts";
+} from "../../src/extensions/mcp/runtime/runtime.ts";
 
 /**
  * Sign-ins nycode asks the user for are not limited, so a user who keeps approving them would loop

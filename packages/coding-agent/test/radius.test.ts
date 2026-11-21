@@ -39,12 +39,15 @@ let tempDir: string;
 
 beforeEach(() => {
 	allowNetwork();
+	// Radius has no default gateway: the built-in provider exists only when one is configured.
+	vi.stubEnv("NYCODE_RADIUS_GATEWAY", "https://radius.example.com");
 	tempDir = join(tmpdir(), `nycode-test-radius-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 	mkdirSync(tempDir, { recursive: true });
 });
 
 afterEach(() => {
 	vi.restoreAllMocks();
+	vi.unstubAllEnvs();
 	if (tempDir && existsSync(tempDir)) rmSync(tempDir, { recursive: true });
 });
 
@@ -93,7 +96,7 @@ describe("Radius provider", () => {
 		expect((await modelsStore.read(RADIUS_PROVIDER_ID))?.models).toHaveLength(1);
 		const radiusRequest = vi
 			.mocked(fetch)
-			.mock.calls.find(([url]) => String(url) === "https://radius.pi.dev/v1/config");
+			.mock.calls.find(([url]) => String(url) === "https://radius.example.com/v1/config");
 		expect(radiusRequest?.[1]?.headers).toMatchObject({ authorization: "Bearer access-token" });
 	});
 
@@ -121,7 +124,21 @@ describe("Radius provider", () => {
 		});
 
 		expect(runtime.getAvailableSnapshot().filter((model) => model.provider === RADIUS_PROVIDER_ID)).toEqual([]);
-		expect(fetchSpy.mock.calls.some(([url]) => String(url).includes("radius.pi.dev/v1/config"))).toBe(false);
+		expect(fetchSpy.mock.calls.some(([url]) => String(url).includes("/v1/config"))).toBe(false);
+	});
+
+	it("has no Radius provider and requests no gateway without NYCODE_RADIUS_GATEWAY", async () => {
+		vi.stubEnv("NYCODE_RADIUS_GATEWAY", "");
+		const fetchSpy = vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("unexpected request"));
+		const runtime = await ModelRuntime.create({
+			credentials: AuthStorage.inMemory(),
+			modelsStore: new InMemoryModelsStore(),
+			modelsPath: null,
+			allowModelNetwork: true,
+		});
+
+		expect(runtime.getProvider(RADIUS_PROVIDER_ID)).toBeUndefined();
+		expect(fetchSpy.mock.calls.filter(([url]) => String(url).includes("/v1/config"))).toEqual([]);
 	});
 
 	it("supports custom Radius gateways from models.json", async () => {

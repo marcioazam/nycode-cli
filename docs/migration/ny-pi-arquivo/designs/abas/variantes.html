@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Título em abas — variantes</title>
+<style>
+  :root { color-scheme: light dark; --page: light-dark(#fbfbfd, #111113); --ink: light-dark(#1d1d1f, #f5f5f7); --ink2: light-dark(#5f5f64, #a1a1a6); --line: light-dark(#d9d9de, #303034); --card: light-dark(#fff, #18181a); }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1500px; margin: auto; padding: 40px 28px 80px; }
+  h1 { font-size: 2rem; letter-spacing: -.02em; margin: 0 0 4px; text-wrap: balance; }
+  h2 { font-size: 1.3rem; letter-spacing: -.01em; margin: 56px 0 6px; }
+  p, li { max-width: 75ch; } .lead { color: var(--ink2); margin-top: 0; }
+  .warn { border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; background: var(--card); max-width: 75ch; }
+  .bar { position: sticky; top: 0; z-index: 1; background: var(--page); padding: 10px 0; border-bottom: 1px solid var(--line); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  button { font: inherit; padding: 5px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; }
+  button[aria-pressed=true] { background: var(--ink); color: var(--page); border-color: var(--ink); }
+  button:focus-visible, a:focus-visible { outline: 2px solid #0a84ff; outline-offset: 2px; }
+  .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 560px), 1fr)); gap: 20px; align-items: start; margin: 14px 0; }
+  figure { margin: 0; min-width: 0; } figcaption { font-size: .85rem; color: var(--ink2); margin-bottom: 6px; }
+  figcaption b { color: var(--ink); }
+  img.bot { aspect-ratio: 1081 / 330; object-fit: cover; object-position: bottom; }
+  img { width: 100%; height: auto; border-radius: 10px; display: block; border: 1px solid var(--line); }
+  table { border-collapse: collapse; font-size: .9rem; margin: 10px 0; } td, th { border-bottom: 1px solid var(--line); padding: 6px 12px 6px 0; text-align: left; vertical-align: top; }
+  .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 6px; border: 1px solid var(--line); }
+  code { font: .88em ui-monospace, "JetBrains Mono", Menlo, monospace; }
+
+  /* terminal mock: cores do Tokyo Night */
+  body { --bg: #1a1b26; --surface: #292e42; --label: #c0caf5; --sec: #8a93bd; --ter: #414868; --accent: #7aa2f7; --ok: #9ece6a; --caution: #e0af68; --err: #f7768e; }
+  pre.term { margin: 0; background: var(--bg); color: var(--label); border-radius: 10px; padding: 10px 0; overflow-x: auto; font: 13px/1.5 "JetBrainsMono Nerd Font", "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace; }
+  .term .b, .term .k { font-weight: 700; } .term .s { color: var(--sec); } .term .t { color: var(--ter); }
+  .term .a { color: var(--accent); } .term .g { color: var(--ok); } .term .w { color: var(--caution); } .term .e { color: var(--err); }
+  .term .cur { background: var(--label); } .term .u { background: var(--surface); display: inline-block; }
+  .term .lc { color: #e48a7a; } .term .lb { color: #4f8eb3; } .term .ly { color: #eab65d; } .term .lg { color: #e48a7a; background: #4f8eb3; }
+  .term.nc span:not(.cur):not(.t):not(.s) { color: var(--label); font-weight: 700; } .term.nc .u { background: none; }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; font: 13px ui-monospace, monospace; }
+  .tabs span { background: var(--card); border: 1px solid var(--line); border-radius: 8px 8px 0 0; padding: 6px 14px; }
+  h3 { font-size: 1.02rem; margin: 26px 0 4px; } .tag { font-size: .75rem; border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; margin-left: 8px; color: var(--ink2); vertical-align: 2px; }
+  pre.term + figcaption { margin-top: 12px; } figure > img { max-width: 920px; }
+  .term .ci { background: var(--label); color: var(--bg); font-weight: 700; } .term .cs { background: var(--surface); color: var(--label); font-weight: 700; }
+  .term .cg { background: var(--ok); color: var(--bg); font-weight: 700; } .term .ca { background: var(--accent); color: var(--bg); font-weight: 700; }
+  .term .fo { outline: 1px solid var(--accent); outline-offset: -1px; color: var(--label); }
+  section.v { margin-top: 44px; } section.v pre.term { margin-bottom: 4px; } figcaption { margin-top: 14px; }
+  .term .cy { color: #7dcfff; font-weight: 700; } .term .f { color: var(--label); font-weight: 700; }
+</style>
+<main>
+<h1>Título em abas — variantes</h1>
+<p class="lead">Status, Agentes, Todo e Run viram abas numa linha só. Uma aba aberta por vez: abrir uma esconde o conteúdo da anterior. Tudo aqui é <b>mock em HTML</b>; nada foi aplicado.</p>
+<section class="v" id="escolhida"><h2>Escolhida: sublinhado, aba aberta em ciano</h2><p>Variante B com os seus ajustes: a aba aberta fica em ciano (nome e régua) e não há ponto de alerta em <code>Status</code>.</p><figure><figcaption><b>1.</b> Só a status line</figcaption><pre class="term" data-cols="96">
+ {cy:Status}
+{t:─}{cy:━━━━━━}{t:───}{t:──────────────────────────────────────────────────────────────────────────────────────}
+ {b:Claude Fable 5.2} {s:· medium · ~}>>{s:<1m · $10.38}
+ {s:ctx} {b:13%} {s:·} {s:5h} {w:27% ▲} {s:acaba em 1h 40m} {s:·} {s:semana} {w:57% ▲} {s:acaba em 1d 2h}
+ {w:⚠ bypass ligado}
+</pre><figcaption><b>2.</b> Quatro abas, Status aberta</figcaption><pre class="term" data-cols="96">
+ {cy:Status}   {s:Agentes 2}   {s:Todo 1/4}   {s:Run 1}
+{t:─}{cy:━━━━━━}{t:───}{t:─────────}{t:───}{t:────────}{t:───}{t:─────}{t:───}{t:───────────────────────────────────────────────────────}
+ {b:Claude Fable 5.2} {s:· medium · ~}>>{s:<1m · $10.38}
+ {s:ctx} {b:13%} {s:·} {s:5h} {w:27% ▲} {s:acaba em 1h 40m} {s:·} {s:semana} {w:57% ▲} {s:acaba em 1d 2h}
+ {w:⚠ bypass ligado}
+</pre><figcaption><b>3.</b> Agentes aberta</figcaption><pre class="term" data-cols="96">
+ {s:Status}   {cy:Agentes 2}   {s:Todo 1/4}   {s:Run 1}
+{t:─}{t:──────}{t:───}{cy:━━━━━━━━━}{t:───}{t:────────}{t:───}{t:─────}{t:───}{t:───────────────────────────────────────────────────────}
+ {a:●} code-reviewer     {s:revisando o diff · 2m 10s}
+ {a:●} test-author       {s:escrevendo testes · 48s}
+ {g:✓} {s:Explore           concluído · 31s}
+</pre><figcaption><b>4.</b> Foco do teclado em Todo (branco), ainda mostrando Agentes; <code>Enter</code> abre</figcaption><pre class="term" data-cols="96">
+ {s:Status}   {cy:Agentes 2}   {f:Todo 1/4}   {s:Run 1}
+{t:─}{t:──────}{t:───}{cy:━━━━━━━━━}{t:───}{f:━━━━━━━━}{t:───}{t:─────}{t:───}{t:───────────────────────────────────────────────────────}
+ {a:●} code-reviewer     {s:revisando o diff · 2m 10s}
+ {a:●} test-author       {s:escrevendo testes · 48s}
+ {g:✓} {s:Explore           concluído · 31s}
+</pre><figcaption><b>5.</b> Todo aberta</figcaption><pre class="term" data-cols="96">
+ {s:Status}   {s:Agentes 2}   {cy:Todo 1/4}   {s:Run 1}
+{t:─}{t:──────}{t:───}{t:─────────}{t:───}{cy:━━━━━━━━}{t:───}{t:─────}{t:───}{t:───────────────────────────────────────────────────────}
+ {g:✓} {s:Ler o código do HUD}
+ {a:▸} Escrever o renderizador
+ {s:○ Rodar os testes}
+ {s:○ Atualizar o registro}
+</pre><figcaption><b>6.</b> Tudo recolhido</figcaption><pre class="term" data-cols="96">
+ {s:Status}   {s:Agentes 2}   {s:Todo 1/4}   {s:Run 1}
+{t:─}{t:──────}{t:───}{t:─────────}{t:───}{t:────────}{t:───}{t:─────}{t:───}{t:───────────────────────────────────────────────────────}
+</pre></figure></section>
+<h2>Hoje</h2>
+<figure><img src="atual.png" alt="Título STATUS LINE como etiqueta verde invertida, régua, e as três linhas da status line"></figure>
+<p>Cada grupo (Run, Todo, Sub Agents, Status Line) tem hoje a própria etiqueta, a própria régua e o próprio bloco, empilhados. Com os quatro abertos, são quatro títulos e quatro réguas antes do conteúdo.</p>
+<h2>Como funciona, em todas as variantes</h2>
+<ul>
+  <li><b>Aba só existe quando há o que mostrar.</b> Sem agentes, todo ou run, fica só <code>Status</code>.</li>
+  <li><b>Contagem no nome:</b> <code>Agentes 2</code> (rodando), <code>Todo 1/4</code> (feitos/total), <code>Run 1</code>.</li>
+  <li><b>Ponto amarelo <span style="color:var(--caution)">●</span></b> numa aba fechada avisa que há alerta lá dentro (por exemplo, limite de uso em ritmo alto).</li>
+  <li><b>Mouse:</b> clicar numa aba abre; clicar na aba já aberta recolhe tudo.</li>
+  <li><b>Teclado:</b> <code>↓</code> no editor vazio foca as abas; <code>← →</code> andam entre elas; <code>Enter</code> abre; <code>Esc</code> ou <code>↑</code> devolve ao editor.</li>
+</ul>
+<section class="v"><h3>A · Segmentado <span class="tag">recomendada</span></h3><p>A aba aberta ganha um fundo discreto, como o controle segmentado do macOS. As outras ficam em cinza. Sem cor: cor só aparece no ponto de alerta.</p><figure><figcaption><b>1.</b> Só a status line (sem agentes, todo ou run)</figcaption><pre class="term" data-cols="96">
+ {cs: Status }
+{t:────────────────────────────────────────────────────────────────────────────────────────────────}
+ {b:Claude Fable 5.2} {s:· medium · ~}>>{s:<1m · $10.38}
+ {s:ctx} {b:13%} {s:·} {s:5h} {w:27% ▲} {s:acaba em 1h 40m} {s:·} {s:semana} {w:57% ▲} {s:acaba em 1d 2h}
+ {w:⚠ bypass ligado}
+</pre><figcaption><b>2.</b> Quatro abas, Status aberta</figcaption><pre class="term" data-cols="96">
+ {cs: Status } {s: Agentes 2 } {s: Todo 1/4 } {s: Run 1 }
+{t:────────────────────────────────────────────────────────────────────────────────────────────────}
+ {b:Claude Fable 5.2} {s:· medium · ~}>>{s:<1m · $10.38}
+ {s:ctx} {b:13%} {s:·} {s:5h} {w:27% ▲} {s:acaba em 1h 40m} {s:·} {s:semana} {w:57% ▲} {s:acaba em 1d 2h}
+ {w:⚠ bypass ligado}
+</pre><figcaption><b>3.</b> Agentes aberta: o conteúdo da status line some; o ponto avisa do alerta de uso</figcaption><pre class="term" data-cols="96">
+ {s: Status }{w:●} {cs: Agentes 2 } {s: Todo 1/4 } {s: Run 1 }
+{t:────────────────────────────────────────────────────────────────────────────────────────────────}
+ {a:●} code-reviewer     {s:revisando o diff · 2m 10s}
+ {a:●} test-author       {s:escrevendo testes · 48s}
+ {g:✓} {s:Explore           concluído · 31s}
+</pre><figcaption><b>4.</b> Foco do teclado em Todo (ainda mostrando Agentes); <code>Enter</code> abre</figcaption><pre class="term" data-cols="96">
+ {s: Status }{w:●} {cs: Agentes 2 } {fo: Todo 1/4 } {s: Run 1 }
+{t:────────────────────────────────────────────────────────────────────────────────────────────────}
+ {a:●} code-reviewer     {s:revisando o diff · 2m 10s}
+ {a:●} test-author       {s:escrevendo testes · 48s}
+ {g:✓} {s:Explore           concluído · 31s}
+</pre><figcaption><b>5.</b> Todo aberta</figcaption><pre class="term" data-cols="96">
+ {s: Status }{w:●} {s: Agentes 2 } {cs: Todo 1/4 } {s: Run 1 }
+{t:────────────────────────────────────────────────────────────────────────────────────────────────}
+ {g:✓} {s:Ler o código do HUD}
+ {a:▸} Escrever o renderizador
+ {s:○ Rodar os testes}
+ {s:○ Atualizar o registro}
+</pre><figcaption><b>6.</b> Tudo recolhido</figcaption><pre class="term" data-cols="96">
+ {s: Status }{w:●} {s: Agentes 2 } {s: Todo 1/4 } {s: Run 1 }
+{t:────────────────────────────────────────────────────────────────────────────────────────────────}
+</pre></figure></section><section class="v"><h3>B · Sublinhado <span class="tag">mais leve</span></h3><p>A régua que já existe embaixo do título engrossa sob a aba aberta. Nenhum fundo, nenhuma caixa.</p><figure><figcaption><b>1.</b> Só a status line (sem agentes, todo ou run)</figcaption><pre class="term" data-cols="96">
+ {b:Status}
+{t:─}{b:━━━━━━}{t:───}{t:──────────────────────────────────────────────────────────────────────────────────────}
+ {b:Claude Fable 5.2} {s:· medium · ~}>>{s:<1m · $10.38}
+ {s:ctx} {b:13%} {s:·} {s:5h} {w:27% ▲} {s:acaba em 1h 40m} {s:·} {s:semana} {w:57% ▲} {s:acaba em 1d 2h}
+ {w:⚠ bypass ligado}
+</pre><figcaption><b>2.</b> Quatro abas, Status aberta</figcaption><pre class="term" data-cols="96">
+ {b:Status}   {s:Agentes 2}   {s:Todo 1/4}   {s:Run 1}
+{t:─}{b:━━━━━━}{t:───}{t:─────────}{t:───}{t:────────}{t:───}{t:─────}{t:───}{t:───────────────────────────────────────────────────────}
+ {b:Claude Fable 5.2} {s:· medium · ~}>>{s:<1m · $10.38}
+ {s:ctx} {b:13%} {s:·} {s:5h} {w:27% ▲} {s:acaba em 1h 40m} {s:·} {s:semana} {w:57% ▲} {s:acaba em 1d 2h}
+ {w:⚠ bypass ligado}
+</pre><figcaption><b>3.</b> Agentes aberta: o conteúdo da status line some; o ponto avisa do alerta de uso</figcaption><pre class="term" data-cols="96">
+ {s:Status}{w: ●}   {b:Agentes 2}   {s:Todo 1/4}   {s:Run 1}
+{t:─}{t:──────}{t:─────}{b:━━━━━━━━━}{t:───}{t:────────}{t:───}{t:─────}{t:───}{t:─────────────────────────────────────────────────────}
+ {a:●} code-reviewer     {s:revisando o diff · 2m 10s}
+ {a:●} test-author       {s:escrevendo testes · 48s}
+ {g:✓} {s:Explore           concluído · 31s}
+</pre><figcaption><b>4.</b> Foco do teclado em Todo (ainda mostrando Agentes); <code>Enter</code> abre</figcaption><pre class="term" data-cols="96">
+ {s:Status}{w: ●}   {b:Agentes 2}   {a:Todo 1/4}   {s:Run 1}
+{t:─}{t:──────}{t:─────}{b:━━━━━━━━━}{t:───}{a:━━━━━━━━}{t:───}{t:─────}{t:───}{t:─────────────────────────────────────────────────────}
+ {a:●} code-reviewer     {s:revisando o diff · 2m 10s}
+ {a:●} test-author       {s:escrevendo testes · 48s}
+ {g:✓} {s:Explore           concluído · 31s}
+</pre><figcaption><b>5.</b> Todo aberta</figcaption><pre class="term" data-cols="96">
+ {s:Status}{w: ●}   {s:Agentes 2}   {b:Todo 1/4}   {s:Run 1}
+{t:─}{t:──────}{t:─────}{t:─────────}{t:───}{b:━━━━━━━━}{t:───}{t:─────}{t:───}{t:─────────────────────────────────────────────────────}
+ {g:✓} {s:Ler o código do HUD}
+ {a:▸} Escrever o renderizador
+ {s:○ Rodar os testes}
+ {s:○ Atualizar o registro}
+</pre><figcaption><b>6.</b> Tudo recolhido</figcaption><pre class="term" data-cols="96">
+ {s:Status}{w: ●}   {s:Agentes 2}   {s:Todo 1/4}   {s:Run 1}
+{t:─}{t:──────}{t:─────}{t:─────────}{t:───}{t:────────}{t:───}{t:─────}{t:───}{t:─────────────────────────────────────────────────────}
+</pre></figure></section><section class="v"><h3>C · Só texto <span class="tag">mais compacta</span></h3><p>Uma linha a menos: sem régua. A aba aberta fica em negrito, as outras em cinza, separadas por um traço fino.</p><figure><figcaption><b>1.</b> Só a status line (sem agentes, todo ou run)</figcaption><pre class="term" data-cols="96">
+ {b:Status}
+ {b:Claude Fable 5.2} {s:· medium · ~}>>{s:<1m · $10.38}
+ {s:ctx} {b:13%} {s:·} {s:5h} {w:27% ▲} {s:acaba em 1h 40m} {s:·} {s:semana} {w:57% ▲} {s:acaba em 1d 2h}
+ {w:⚠ bypass ligado}
+</pre><figcaption><b>2.</b> Quatro abas, Status aberta</figcaption><pre class="term" data-cols="96">
+ {b:Status} {t:│} {s:Agentes} {s:2} {t:│} {s:Todo} {s:1/4} {t:│} {s:Run} {s:1}
+ {b:Claude Fable 5.2} {s:· medium · ~}>>{s:<1m · $10.38}
+ {s:ctx} {b:13%} {s:·} {s:5h} {w:27% ▲} {s:acaba em 1h 40m} {s:·} {s:semana} {w:57% ▲} {s:acaba em 1d 2h}
+ {w:⚠ bypass ligado}
+</pre><figcaption><b>3.</b> Agentes aberta: o conteúdo da status line some; o ponto avisa do alerta de uso</figcaption><pre class="term" data-cols="96">
+ {s:Status} {w:●} {t:│} {b:Agentes} {s:2} {t:│} {s:Todo} {s:1/4} {t:│} {s:Run} {s:1}
+ {a:●} code-reviewer     {s:revisando o diff · 2m 10s}
+ {a:●} test-author       {s:escrevendo testes · 48s}
+ {g:✓} {s:Explore           concluído · 31s}
+</pre><figcaption><b>4.</b> Foco do teclado em Todo (ainda mostrando Agentes); <code>Enter</code> abre</figcaption><pre class="term" data-cols="96">
+ {s:Status} {w:●} {t:│} {b:Agentes} {s:2} {t:│} {a:› Todo} {s:1/4} {t:│} {s:Run} {s:1}
+ {a:●} code-reviewer     {s:revisando o diff · 2m 10s}
+ {a:●} test-author       {s:escrevendo testes · 48s}
+ {g:✓} {s:Explore           concluído · 31s}
+</pre><figcaption><b>5.</b> Todo aberta</figcaption><pre class="term" data-cols="96">
+ {s:Status} {w:●} {t:│} {s:Agentes} {s:2} {t:│} {b:Todo} {s:1/4} {t:│} {s:Run} {s:1}
+ {g:✓} {s:Ler o código do HUD}
+ {a:▸} Escrever o renderizador
+ {s:○ Rodar os testes}
+ {s:○ Atualizar o registro}
+</pre><figcaption><b>6.</b> Tudo recolhido</figcaption><pre class="term" data-cols="96">
+ {s:Status} {w:●} {t:│} {s:Agentes} {s:2} {t:│} {s:Todo} {s:1/4} {t:│} {s:Run} {s:1}
+</pre></figure></section><section class="v"><h3>D · Etiqueta de hoje <span class="tag">menor mudança</span></h3><p>Mantém a etiqueta invertida e colorida de hoje para a aba aberta; as outras entram ao lado como texto.</p><figure><figcaption><b>1.</b> Só a status line (sem agentes, todo ou run)</figcaption><pre class="term" data-cols="96">
+ {cg: STATUS LINE }
+{t:────────────────────────────────────────────────────────────────────────────────────────────────}
+ {b:Claude Fable 5.2} {s:· medium · ~}>>{s:<1m · $10.38}
+ {s:ctx} {b:13%} {s:·} {s:5h} {w:27% ▲} {s:acaba em 1h 40m} {s:·} {s:semana} {w:57% ▲} {s:acaba em 1d 2h}
+ {w:⚠ bypass ligado}
+</pre><figcaption><b>2.</b> Quatro abas, Status aberta</figcaption><pre class="term" data-cols="96">
+ {cg: STATUS LINE } {s: AGENTES 2 } {s: TODO 1/4 } {s: RUN 1 }
+{t:────────────────────────────────────────────────────────────────────────────────────────────────}
+ {b:Claude Fable 5.2} {s:· medium · ~}>>{s:<1m · $10.38}
+ {s:ctx} {b:13%} {s:·} {s:5h} {w:27% ▲} {s:acaba em 1h 40m} {s:·} {s:semana} {w:57% ▲} {s:acaba em 1d 2h}
+ {w:⚠ bypass ligado}
+</pre><figcaption><b>3.</b> Agentes aberta: o conteúdo da status line some; o ponto avisa do alerta de uso</figcaption><pre class="term" data-cols="96">
+ {s: STATUS LINE }{w:●} {ca: AGENTES 2 } {s: TODO 1/4 } {s: RUN 1 }
+{t:────────────────────────────────────────────────────────────────────────────────────────────────}
+ {a:●} code-reviewer     {s:revisando o diff · 2m 10s}
+ {a:●} test-author       {s:escrevendo testes · 48s}
+ {g:✓} {s:Explore           concluído · 31s}
+</pre><figcaption><b>4.</b> Foco do teclado em Todo (ainda mostrando Agentes); <code>Enter</code> abre</figcaption><pre class="term" data-cols="96">
+ {s: STATUS LINE }{w:●} {ca: AGENTES 2 } {ci: TODO 1/4 } {s: RUN 1 }
+{t:────────────────────────────────────────────────────────────────────────────────────────────────}
+ {a:●} code-reviewer     {s:revisando o diff · 2m 10s}
+ {a:●} test-author       {s:escrevendo testes · 48s}
+ {g:✓} {s:Explore           concluído · 31s}
+</pre><figcaption><b>5.</b> Todo aberta</figcaption><pre class="term" data-cols="96">
+ {s: STATUS LINE }{w:●} {s: AGENTES 2 } {ca: TODO 1/4 } {s: RUN 1 }
+{t:────────────────────────────────────────────────────────────────────────────────────────────────}
+ {g:✓} {s:Ler o código do HUD}
+ {a:▸} Escrever o renderizador
+ {s:○ Rodar os testes}
+ {s:○ Atualizar o registro}
+</pre><figcaption><b>6.</b> Tudo recolhido</figcaption><pre class="term" data-cols="96">
+ {s: STATUS LINE }{w:●} {s: AGENTES 2 } {s: TODO 1/4 } {s: RUN 1 }
+{t:────────────────────────────────────────────────────────────────────────────────────────────────}
+</pre></figure></section>
+<h2>Comparação</h2>
+<table>
+<tr><th>Variante</th><th>Linhas de título</th><th>Aba aberta</th><th>Sem cor (NO_COLOR)</th><th>Risco</th></tr>
+<tr><td>A · Segmentado</td><td>2</td><td>fundo discreto</td><td>precisa de marca extra (negrito ou colchetes)</td><td>baixo</td></tr>
+<tr><td>B · Sublinhado</td><td>2</td><td>régua grossa embaixo</td><td>funciona sozinha</td><td>alinhamento da régua com nomes de largura variável</td></tr>
+<tr><td>C · Só texto</td><td>1</td><td>negrito</td><td>negrito apenas; mais fraca</td><td>menos óbvio qual está aberta</td></tr>
+<tr><td>D · Etiqueta de hoje</td><td>2</td><td>etiqueta invertida colorida</td><td>já resolvida hoje</td><td>mantém cor sem significado no título</td></tr>
+</table>
+<h2>Em aberto</h2>
+<ul>
+  <li><b>Qual aba abre sozinha?</b> Proposta: Status por padrão; quando um agente começa, a aba Agentes aparece mas não rouba a tela. Alternativa: abrir Agentes automaticamente enquanto houver agente rodando.</li>
+  <li><b>Nomes:</b> usei <code>Status</code>, <code>Agentes</code>, <code>Todo</code>, <code>Run</code>. Hoje são <code>STATUS LINE</code>, <code>SUB AGENTS</code>, <code>PLAN</code>/<code>TODO</code>, <code>RUN</code>.</li>
+  <li><b>O conteúdo de Agentes, Todo e Run não muda</b>: os exemplos acima são simplificados; o que muda é só o título e o fato de aparecer um por vez.</li>
+  <li>Aplicar mexe no pi-code (títulos, navegação e mouse dos quatro grupos), que hoje são blocos independentes. É maior que a troca da status line.</li>
+</ul>
+</main>
+<script>
+const vis = s => s.replace(/\{\w+:([^{}]*)\}/g, '$1')
+const html = s => s.replace(/\{(\w+):([^{}]*)\}/g, '<span class="$1">$2</span>')
+function line(l, cols) {
+  if (l.startsWith('---')) {
+    const lab = l.slice(3).trim(), head = lab ? `{t:──} ${lab} ` : ''
+    return html(head) + `<span class="t">${'─'.repeat(Math.max(0, cols - vis(head).length))}</span>`
+  }
+  if (l.startsWith('~')) return `<span class="u">${html(l.slice(1).padEnd(cols + l.length - 1 - vis(l.slice(1)).length))}</span>`
+  const [left, right = ''] = l.split('>>')
+  return html(left + ' '.repeat(Math.max(1, cols - vis(left).length - vis(right).length - 1)) + right)
+}
+for (const pre of document.querySelectorAll('pre.term')) {
+  const src = pre.textContent.replace(/^\n|\n$/g, '')
+  pre.innerHTML = src.split('\n').map(l => line(l, +pre.dataset.cols)).join('\n')
+}
+// #A..#D: mostra só aquela variante (usado para gerar os prints)
+const only = 'EABCD'.indexOf(location.hash.slice(1))
+if (location.hash && only >= 0) { const keep = document.querySelectorAll('section.v')[only]; document.querySelector('main').replaceChildren(keep); keep.style.marginTop = 0 }
+</script>
+</html>

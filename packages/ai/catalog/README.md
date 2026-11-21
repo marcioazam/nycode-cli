@@ -4,13 +4,13 @@
 
 - `src/providers/data/<provider>.json`: model values, grouped by API (gitignored)
 - `src/providers/<provider>.models.ts` and `src/models.generated.ts`: typed wrappers (committed)
-- with `--json-output <dir>`: the public catalog JSON served by pi.dev
+- with `--json-output <dir>`: the public catalog JSON for a configured catalog server
 
 ## Layout
 
 | Path | Contents |
 | --- | --- |
-| `sources/` | Upstream fetchers. `models-dev.ts` normalizes the [models.dev v2](https://models.dev/experimental/v2.0/api.json) catalog; OpenRouter, Vercel AI Gateway, NVIDIA NIM, and Radius have their own modules. All sources are fetched before anything is built. |
+| `sources/` | Upstream fetchers. `models-dev.ts` normalizes the [models.dev v2](https://models.dev/experimental/v2.0/api.json) catalog; OpenRouter, Vercel AI Gateway, and NVIDIA NIM have their own modules. All sources are fetched before anything is built. |
 | `providers/<id>.ts` | One file per built-in provider: where its models come from, its API and base URL, compat defaults, corrections, and models upstream does not list. Register new files in `providers/index.ts`. |
 | `families/` | Facts about a model family that hold on every host, such as Claude effort levels or GPT-6 thinking levels. They apply to every provider's models. |
 | `define.ts` | `defineProvider()` and the helpers provider files use. |
@@ -33,10 +33,10 @@ Most providers are a models.dev provider served on one API:
 import { defineProvider, modelsDevModels } from "../define.ts";
 
 export default defineProvider({
-	id: "example",
-	models: (ctx) =>
-		modelsDevModels(ctx, "example", { api: "openai-completions", baseUrl: "https://api.example.com/v1" }),
-	compat: { "openai-completions": { supportsStore: false } },
+ id: "example",
+ models: (ctx) =>
+  modelsDevModels(ctx, "example", { api: "openai-completions", baseUrl: "https://api.example.com/v1" }),
+ compat: { "openai-completions": { supportsStore: false } },
 });
 ```
 
@@ -44,7 +44,7 @@ export default defineProvider({
 
 ## Released clients
 
-pi.dev serves each published catalog to every released nycode at or above `MINIMUM_PI_VERSION` (`scripts/model-catalog-minimum-version.mjs` in the repository root). Released clients use it within hours, without updating nycode, and combine it with their own code's defaults, such as `detectCompat()` in `src/api/openai-completions.ts`.
+A configured catalog server serves each published catalog to every released nycode at or above `MINIMUM_PI_VERSION` (`scripts/model-catalog-minimum-version.mjs` in the repository root). Released clients use it within hours, without updating nycode, and combine it with their own code's defaults, such as `detectCompat()` in `src/api/openai-completions.ts`.
 
 A catalog change must therefore work with the latest release's code, not only with the code in the same commit. Example: a new code default makes `supportsDeveloperRole: false` redundant for a provider, so the line is removed from the catalog. Released clients still default to `true` and start sending the `developer` role, which the provider rejects.
 

@@ -10,7 +10,7 @@ import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { OAuthCredential } from "@nycode/ai";
 import { radiusProvider } from "@nycode/ai/providers/radius";
-import { DEFAULT_RADIUS_GATEWAY, normalizeRadiusGatewayUrl } from "@nycode/ai/providers/radius-config";
+import { requireRadiusGateway } from "@nycode/ai/providers/radius-config";
 import { WebSocket } from "ws";
 import { configDirectory } from "./tui-config.ts";
 import type { TuiRequestInit, TuiSocket, TuiSocketEvents, TuiTransport } from "./tui-transport.ts";
@@ -41,7 +41,7 @@ export async function radiusClient(
 	const path = join(directory, "radius.json");
 	let login = readLogin(path);
 	if (!login) {
-		const gateway = normalizeRadiusGatewayUrl(process.env.NYCODE_RADIUS_GATEWAY ?? DEFAULT_RADIUS_GATEWAY);
+		const gateway = requireRadiusGateway(process.env.NYCODE_RADIUS_GATEWAY);
 		print(`Signing in to Radius at ${gateway}`);
 		const credential = await radiusOAuth(gateway).login({
 			signal,

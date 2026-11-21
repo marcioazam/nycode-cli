@@ -23,7 +23,7 @@ export interface ClientAttribution {
 /** nycode's attribution, used by nycode-agent-core, nycode-durable, and the coding agent. */
 export const NYCODE_ATTRIBUTION: ClientAttribution = {
 	name: "nycode",
-	url: "https://pi.dev",
+	url: "https://github.com/marcioazam/nycode",
 	categories: ["cli-agent"],
 };
 

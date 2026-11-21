@@ -1,9 +1,4 @@
 <p align="center">
-  <a href="https://pi.dev">
-    <img alt="Nycode logo" src="https://pi.dev/logo-auto.svg" width="128">
-  </a>
-</p>
-<p align="center">
   <a href="https://discord.com/invite/3cU7Bz4UPx"><img alt="Discord" src="https://img.shields.io/badge/discord-community-5865F2?style=flat-square&logo=discord&logoColor=white" /></a>
   <a href="https://www.npmjs.com/package/@nycode/coding-agent"><img alt="npm" src="https://img.shields.io/npm/v/@nycode/coding-agent?style=flat-square&logo=npm&logoColor=white" /></a>
 </p>
@@ -22,19 +17,7 @@ Use Nycode [interactively](docs/usage.md), automate it in [print or JSON mode](d
 
 ## Getting started
 
-Install the command-line interface:
-
-```bash
-curl -fsSL https://pi.dev/install.sh | sh
-```
-
-On Windows:
-
-```shell
-powershell -c "irm https://pi.dev/install.ps1 | iex"
-```
-
-The installer pins all dependencies and updates Nycode with `nycode update`. Alternatively, install directly with npm, which does not pin transitive dependencies:
+Download the release for your platform from <https://github.com/marcioazam/nycode/releases>. Alternatively, install directly with npm, which does not pin transitive dependencies:
 
 ```bash
 npm install -g --ignore-scripts @nycode/coding-agent

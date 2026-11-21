@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Saída do bash: 3 variantes</title>
+<style>
+  :root { color-scheme: light dark; --page: light-dark(#fbfbfd, #111113); --ink: light-dark(#1d1d1f, #f5f5f7); --ink2: light-dark(#5f5f64, #a1a1a6); --line: light-dark(#d9d9de, #303034); --card: light-dark(#fff, #18181a); }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1180px; margin: auto; padding: 40px 28px 80px; }
+  h1 { font-size: 2rem; letter-spacing: -.02em; margin: 0 0 4px; text-wrap: balance; }
+  h2 { font-size: 1.25rem; letter-spacing: -.01em; margin: 52px 0 2px; }
+  h2 small { font-weight: 400; color: var(--ink2); font-size: .95rem; margin-left: 8px; }
+  p, li { max-width: 75ch; } .lead { color: var(--ink2); margin-top: 0; }
+  ul.pc { margin: 8px 0 14px; padding-left: 20px; color: var(--ink2); font-size: .93rem; } ul.pc b { color: var(--ink); font-weight: 600; }
+  code { font: .88em ui-monospace, "SF Mono", Menlo, monospace; }
+  table { border-collapse: collapse; font-size: .92rem; margin-top: 12px; } td, th { border-bottom: 1px solid var(--line); padding: 7px 16px 7px 0; text-align: left; vertical-align: top; }
+
+  /* terminal: tema pi-escuro do harness (~/.pi/agent/themes/pi-escuro.json) */
+  .term { --bg: #1c1c1e; --surf: #242426; --okbg: #17271c; --errbg: #2d1a1b; --text: #f5f5f7; --muted: #aeaeb2; --dim: #98989d; --line: #48484a; --ok: #30d158; --err: #ff6961; --acc: #409cff;
+    background: var(--bg); color: var(--muted); border-radius: 12px; padding: 14px 0; overflow-x: auto;
+    font: 13px/1.55 "JetBrainsMono Nerd Font", "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace; }
+  .term pre { margin: 0; padding: 0 16px; white-space: pre; font: inherit; }
+  .term .blk { margin: 0 0 12px; } .term .blk:last-child { margin-bottom: 0; }
+  .ok { color: var(--ok); } .er { color: var(--err); } .tx { color: var(--text); } .b { font-weight: 700; } .dm { color: var(--dim); } .ln { color: var(--line); } .ac { color: var(--acc); }
+  .okbg { background: var(--okbg); padding: 6px 16px; } .errbg { background: var(--errbg); padding: 6px 16px; } .surf { background: var(--surf); padding: 8px 16px; margin: 0 12px 12px !important; }
+  .bar-ok { box-shadow: inset 2px 0 0 var(--ok); } .bar-er { box-shadow: inset 2px 0 0 var(--err); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 520px), 1fr)); gap: 18px; align-items: start; }
+  figure { margin: 0; min-width: 0; } figcaption { font-size: .82rem; color: var(--ink2); margin-bottom: 6px; }
+</style>
+<main>
+<h1>Saída do bash: 3 variantes</h1>
+<p class="lead">Mesmo conteúdo nas quatro: um sucesso com saída longa (7 linhas, mostra as 5 últimas), um erro e um comando sem saída. Cores do tema <code>pi-escuro</code>. Todas mantêm: uma linha por chamada, resumo após <code>·</code>, português, duração só a partir de 1 s.</p>
+
+<h2>Hoje <small>referência</small></h2>
+<div class="term">
+<pre class="blk okbg"><span class="ok">✓</span> <span class="dm">▸</span> <span class="tx b">bash </span>  cd ~/code/pi-harness &amp;&amp; rg -ln "renderCall|renderResult" ext…
+    <span class="dm">│</span> ⋯ 2 linhas acima
+    <span class="dm">│</span> extensions/image-open/image-open.test.ts
+    <span class="dm">│</span> ~/.pi/agent/npm/node_modules/pi-code/extensions/todo.ts
+    <span class="dm">│</span> ~/.pi/agent/npm/node_modules/pi-code/extensions/question.ts
+    <span class="dm">│</span> ~/.pi/agent/npm/node_modules/pi-code/extensions/subagent/index.ts</pre>
+<pre class="blk errbg"><span class="er">✕</span> <span class="dm">▸</span> <span class="tx b">bash </span>  node --test tests/x.test.mjs <span class="dm">·</span> <span class="er">código 1</span> <span class="dm">· 1.2s</span>
+    <span class="dm">│</span> Error: Cannot find module 'tests/x.test.mjs'</pre>
+<pre class="blk okbg"><span class="ok">✓</span> <span class="dm">▸</span> <span class="tx b">bash </span>  mkdir -p /tmp/out</pre>
+</div>
+<ul class="pc"><li>O fundo verde/vermelho pinta o bloco inteiro: muita tinta para o que é status. O <code>│</code> e o <code>⋯</code> competem com a saída.</li></ul>
+
+<h2>1 · Silêncio <small>sem fundo; o status é só o glifo</small></h2>
+<div class="term">
+<pre class="blk"><span class="ok">✓</span> <span class="tx b">bash</span>  cd ~/code/pi-harness &amp;&amp; rg -ln "renderCall|renderResult" ext… <span class="dm">· 7 linhas</span>
+      <span class="dm">extensions/image-open/image-open.test.ts</span>
+      <span class="dm">~/.pi/agent/npm/node_modules/pi-code/extensions/todo.ts</span>
+      <span class="dm">~/.pi/agent/npm/node_modules/pi-code/extensions/question.ts</span>
+      <span class="dm">~/.pi/agent/npm/node_modules/pi-code/extensions/subagent/index.ts</span>
+      <span class="dm">+3 linhas · ctrl+o</span></pre>
+<pre class="blk"><span class="er">✕</span> <span class="tx b">bash</span>  node --test tests/x.test.mjs <span class="dm">·</span> <span class="er">código 1</span> <span class="dm">· 1.2s</span>
+      <span class="er">Error: Cannot find module 'tests/x.test.mjs'</span></pre>
+<pre class="blk"><span class="ok">✓</span> <span class="tx b">bash</span>  mkdir -p /tmp/out</pre>
+</div>
+<ul class="pc">
+<li><b>A favor:</b> o mínimo de tinta; a saída fica alinhada sob o comando, em cinza; o resto vira uma nota no fim (<code>+3 linhas · ctrl+o</code>), onde o olho termina.</li>
+<li><b>Contra:</b> sem fundo, blocos seguidos se separam só pelo espaço em branco; erro depende da cor vermelha (o <code>✕</code> segura o sentido sem cor).</li>
+</ul>
+
+<h2>2 · Cartão <small>superfície neutra, faixa fina de status</small></h2>
+<div class="term">
+<pre class="blk surf bar-ok"><span class="ok">●</span> <span class="tx b">bash</span>  <span class="dm">$</span> cd ~/code/pi-harness &amp;&amp; rg -ln "renderCall|renderResult" ext… <span class="dm">· 7 linhas</span>
+
+  extensions/image-open/image-open.test.ts
+  ~/.pi/agent/npm/node_modules/pi-code/extensions/todo.ts
+  ~/.pi/agent/npm/node_modules/pi-code/extensions/question.ts
+  ~/.pi/agent/npm/node_modules/pi-code/extensions/subagent/index.ts
+  <span class="dm">3 linhas ocultas</span></pre>
+<pre class="blk surf bar-er"><span class="er">●</span> <span class="tx b">bash</span>  <span class="dm">$</span> node --test tests/x.test.mjs <span class="dm">·</span> <span class="er">código 1</span> <span class="dm">· 1.2s</span>
+
+  Error: Cannot find module 'tests/x.test.mjs'</pre>
+<pre class="blk surf bar-ok"><span class="ok">●</span> <span class="tx b">bash</span>  <span class="dm">$</span> mkdir -p /tmp/out</pre>
+</div>
+<ul class="pc">
+<li><b>A favor:</b> o fundo deixa de ser verde: um cinza único agrupa a chamada, e o status vira só a faixa de 1 coluna e o ponto; o <code>$</code> diz "isto é um comando" sem rótulo.</li>
+<li><b>Contra:</b> no terminal a faixa é um caractere (<code>▎</code>), não 2 px; cantos arredondados não existem, então o cartão é um retângulo.</li>
+</ul>
+
+<h2>3 · Fio <small>conector sob o comando, como uma linha do tempo</small></h2>
+<div class="term">
+<pre class="blk"><span class="ok">●</span> <span class="tx b">bash</span>  cd ~/code/pi-harness &amp;&amp; rg -ln "renderCall|renderResult" ext…
+<span class="ln">  ╰</span> extensions/image-open/image-open.test.ts
+    ~/.pi/agent/npm/node_modules/pi-code/extensions/todo.ts
+    ~/.pi/agent/npm/node_modules/pi-code/extensions/question.ts
+    ~/.pi/agent/npm/node_modules/pi-code/extensions/subagent/index.ts
+    <span class="dm">… 7 linhas, 3 ocultas</span></pre>
+<pre class="blk"><span class="er">●</span> <span class="tx b">bash</span>  node --test tests/x.test.mjs <span class="dm">·</span> <span class="er">código 1</span> <span class="dm">· 1.2s</span>
+<span class="ln">  ╰</span> <span class="er">Error: Cannot find module 'tests/x.test.mjs'</span></pre>
+<pre class="blk"><span class="ok">●</span> <span class="tx b">bash</span>  mkdir -p /tmp/out</pre>
+</div>
+<ul class="pc">
+<li><b>A favor:</b> o conector <code>╰</code> liga resultado à chamada com um só traço (o mesmo gesto do <code>⎿</code> do Claude Code, que o harness já imita em atalhos); a saída não ganha uma barra por linha.</li>
+<li><b>Contra:</b> o ponto colorido sozinho carrega o status; daltônicos dependem do <code>código 1</code> escrito.</li>
+</ul>
+
+<h2>Comparação</h2>
+<table>
+<tr><th></th><th>Tinta</th><th>Status sem cor</th><th>Separação entre blocos</th><th>Mudança no código</th></tr>
+<tr><td><b>1 Silêncio</b></td><td>mínima</td><td>✓ / ✕</td><td>só espaço</td><td>tirar o fundo do Box; saída em dim; nota no fim</td></tr>
+<tr><td><b>2 Cartão</b></td><td>média</td><td>código escrito</td><td>forte (superfície)</td><td>fundo único neutro + <code>▎</code>; <code>$</code> no comando</td></tr>
+<tr><td><b>3 Fio</b></td><td>baixa</td><td>código escrito</td><td>média (conector)</td><td>tirar o fundo; <code>╰</code> na 1ª linha; nota no fim</td></tr>
+</table>
+<p class="lead" style="margin-top:14px">Diga 1, 2 ou 3 (ou uma mistura, por ex. "3 com o ✓/✕ da 1") e eu aplico às 7 tools, não só ao bash.</p>
+</main>

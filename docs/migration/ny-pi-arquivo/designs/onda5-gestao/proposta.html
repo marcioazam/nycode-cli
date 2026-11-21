@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Onda 5 · plano, tarefas, agentes e objetivo — proposta</title>
+<style>
+  :root { color-scheme: light dark; --page: light-dark(#fbfbfd, #111113); --ink: light-dark(#1d1d1f, #f5f5f7); --ink2: light-dark(#5f5f64, #a1a1a6); --line: light-dark(#d9d9de, #303034); --card: light-dark(#fff, #18181a); }
+  html { scroll-padding-top: 64px; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1500px; margin: auto; padding: 40px 28px 80px; }
+  h1 { font-size: 2rem; letter-spacing: -.02em; margin: 0 0 4px; text-wrap: balance; }
+  h2 { font-size: 1.3rem; letter-spacing: -.01em; margin: 56px 0 6px; } h2 small { font-weight: 400; color: var(--ink2); font-size: .8em; }
+  h3 { font-size: 1rem; margin: 22px 0 4px; }
+  p, li { max-width: 75ch; } .lead { color: var(--ink2); margin-top: 0; }
+  .warn { border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; background: var(--card); max-width: 75ch; }
+  nav { position: sticky; top: 0; z-index: 1; background: var(--page); padding: 10px 0; border-bottom: 1px solid var(--line); display: flex; gap: 6px 18px; flex-wrap: wrap; font-size: .9rem; }
+  a { color: light-dark(#0066cc, #4aa3ff); } a:focus-visible { outline: 2px solid #0a84ff; outline-offset: 2px; }
+  .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 560px), 1fr)); gap: 20px; align-items: start; margin: 14px 0; }
+  figure { margin: 0; min-width: 0; } figcaption { font-size: .85rem; color: var(--ink2); margin-bottom: 6px; } figcaption b { color: var(--ink); }
+  img { width: 100%; height: auto; border-radius: 10px; display: block; border: 1px solid var(--line); object-fit: cover; object-position: bottom; margin-bottom: 10px; }
+  .scroll { overflow-x: auto; } table { border-collapse: collapse; font-size: .9rem; margin: 10px 0; } td, th { border-bottom: 1px solid var(--line); padding: 6px 14px 6px 0; text-align: left; vertical-align: top; }
+  code, kbd { font: .88em ui-monospace, "JetBrains Mono", Menlo, monospace; }
+  .tag { display: inline-block; font-size: .75rem; font-weight: 400; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink2); white-space: nowrap; }
+
+  /* terminal mock no tema em uso (Tokyo Night); --dim já no valor proposto na Onda 1 (#8a93bd, 5,7:1) */
+  body { --bg: #1a1b26; --surface: #292e42; --label: #c0caf5; --sec: #a9b1d6; --dim: #8a93bd; --ter: #414868; --accent: #bb9af7; --okc: #9ece6a; --warnc: #e0af68; --errc: #f7768e; }
+  pre.term { margin: 0 0 10px; background: var(--bg); color: var(--label); border-radius: 10px; padding: 10px 0; overflow-x: auto; font: 12px/1.5 "JetBrainsMono Nerd Font", "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace; }
+  .term .b, .term .k { font-weight: 700; } .term .s { color: var(--sec); } .term .d { color: var(--dim); } .term .t { color: var(--ter); }
+  .term .a { color: var(--accent); } .term .m { color: var(--accent); font-weight: 700; } .term .ok { color: var(--okc); } .term .w { color: var(--warnc); } .term .e { color: var(--errc); }
+  .term .cur { background: var(--label); } .term .u { background: var(--surface); display: inline-block; }
+</style>
+<main>
+<h1>Onda 5 · plano, tarefas, agentes e objetivo — proposta</h1>
+<p class="lead">Os painéis de gerenciamento do pi: pergunta ao usuário, tarefas, modo plano, objetivo (<code>/goal</code>), agentes em segundo plano, processos, voltar no tempo (<code>/rewind</code>) e avisos do sistema (E01–E20). <b>Nada foi aplicado</b>: este arquivo é só para você avaliar. Registro: <a href="README.md">README.md</a>.</p>
+<p class="warn"><b>Como ler.</b> “Antes” são capturas reais da galeria (2026-11-14, pi 1.5.2, tema Tokyo Night). “Depois” são <b>mocks em HTML</b>: mostram disposição, hierarquia e texto, não pixels do kitty. Dados de demonstração. O cinza das dicas nos mocks já usa o ajuste de contraste pendente da Onda 1 (<code>#8a93bd</code>, 5,7:1).</p>
+
+<nav><a href="#auditoria">Auditoria</a><a href="#regras">Regras</a><a href="#paineis">1 Painéis</a><a href="#tarefas">2 Tarefas</a><a href="#plano">3 Modo plano</a><a href="#objetivo">4 Objetivo</a><a href="#agente">5 Detalhe do agente</a><a href="#pergunta">6 Pergunta</a><a href="#rewind">7 Voltar no tempo</a><a href="#avisos">8 Avisos</a><a href="#decidir">O que decidir</a><a href="#fontes">Fontes</a></nav>
+
+<h2 id="auditoria">Auditoria: o que as 20 telas mostram hoje</h2>
+<div class="scroll"><table>
+<tr><th>#</th><th>Defeito observado</th><th>Onde aparece</th><th>Por que atrapalha</th></tr>
+<tr><td>1</td><td>Três etiquetas coloridas empilhadas (<code>SUB AGENTS</code> roxo, <code>STATUS LINE</code> verde, <code>PLAN</code> laranja, <code>RUN</code> lilás), cada uma com régua própria</td><td>E05, E09, E11, E13</td><td>A cor não significa nada (“se tudo tem cor, a cor não diz nada”, clig.dev) e <code>STATUS LINE</code> rotula o óbvio</td></tr>
+<tr><td>2</td><td>Tabela do plano repete o estado (<code>✓ feito … finalizado --:--</code>) e tem a coluna <code>agente</code> só com <code>—</code></td><td>E02, E05</td><td>Seis linhas e cinco colunas para dizer “4 de 12, fazendo a 5”</td></tr>
+<tr><td>3</td><td>Inglês e português misturados: <code>idle · 2 running · ↓ to manage</code>, <code>Restore mode</code>, <code>Press Escape to close</code>, <code>Plan mode enabled</code>, <code>Goal set</code></td><td>E01, E03, E04, E06, E08–E10, E15, E19</td><td>A HIG pede linguagem consistente; as Ondas 1 e 2 já são em português</td></tr>
+<tr><td>4</td><td><code>/goal</code> mostra só <code>◎ /goal active</code></td><td>E08</td><td>Condição, turnos, tempo e tokens existem no código e não aparecem sem abrir o painel</td></tr>
+<tr><td>5</td><td>Modo plano é um <code>⏸ plan</code> pequeno no fim do status</td><td>E04</td><td>É um modo que muda o que o agente pode fazer e quase não se vê</td></tr>
+<tr><td>6</td><td><code>/rewind</code> não diz o que cada opção desfaz; o resultado é só <code>Rewind complete</code></td><td>E15</td><td>Ação que apaga trabalho precisa dizer o que se perde antes de confirmar</td></tr>
+<tr><td>7</td><td>O mesmo parágrafo do plan-gate, em inglês e escrito para o modelo, aparece três vezes</td><td>E07</td><td>Ruído: três blocos iguais empurram a conversa para fora da tela</td></tr>
+<tr><td>8</td><td>Quatro marcadores de seleção (<code>→</code>, <code>&gt;</code>, <code>›</code>, <code>❯</code>) e quatro formatos de dica de teclas</td><td>E01, E03, E09, E10, E15, E16</td><td>Cada painel precisa ser reaprendido</td></tr>
+<tr><td>9</td><td>Hook que só informa aparece como <code>Warning:</code> em laranja</td><td>E20</td><td>O olho vai para um alerta que não pede ação</td></tr>
+<tr><td>10</td><td>Nova tentativa automática: três linhas de JSON em vermelho e <code>auto-resume 1/5 in 30s</code> no fim do status</td><td>E14</td><td>O que vai acontecer e como cancelar ficam longe do erro</td></tr>
+</table></div>
+
+<h2 id="regras">As 5 regras desta onda</h2>
+<ol>
+  <li><b>Um painel, uma linha de título.</b> Sem etiqueta colorida: régua fina, nome em negrito, o resumo ao lado (<code>Plano 4 de 12</code>). Hierarquia por posição, peso e cinza; a cor de destaque fica só para “isto está acontecendo agora”.</li>
+  <li><b>Resumo primeiro, detalhe a pedido.</b> Cada painel responde “como está?” em uma linha; a lista aparece só com o que importa agora (o item ativo e os próximos); o resto fica a uma tecla.</li>
+  <li><b>Progresso com número.</b> Onde o total é conhecido, <code>4 de 12</code> e uma barra; onde não é, tempo decorrido. Nunca só um ponto piscando.</li>
+  <li><b>Estado é glifo mais palavra, em português.</b> <code>✓</code> feito, <code>▸</code> fazendo, <code>○</code> a fazer, <code>●</code> rodando, <code>▲</code> pede atenção. Funciona em <code>NO_COLOR</code>.</li>
+  <li><b>Uma gramática só, a mesma da Onda 2.</b> <code>❯</code> marca a linha ativa; dicas em cinza com <code>·</code>, sempre na última linha; ação que apaga trabalho diz o que se perde.</li>
+</ol>
+
+<h2 id="paineis">1 · Painéis abaixo do composer <small>(E05, E09, E11, E12, E13)</small> <span class="tag">patch no pi-code</span></h2>
+<div class="pair">
+<figure><figcaption><b>Antes</b> · captura real 60</figcaption><img src="../../ui-ux-gallery/images/60-plan-fleet.png" style="aspect-ratio:1081/480" alt="Hoje: etiqueta roxa SUB AGENTS, etiqueta verde STATUS LINE e etiqueta laranja PLAN, cada uma com régua, e a tabela do plano com cinco colunas">
+<figcaption><b>Antes</b> · foco no painel de agentes, captura real 165</figcaption><img src="../../ui-ux-gallery/images/165-fleet-foco-depois.png" style="aspect-ratio:1081/210" alt="Hoje: com foco, a etiqueta vira uma barra roxa de largura inteira com enter open, esc back"></figure>
+<figure><figcaption><b>Depois</b> · mock, aberto</figcaption><pre class="term" data-cols="88">
+===
+ {cur: }
+===
+---{b:Agentes} {d:2 rodando}>>{d:↓ gerenciar}
+ {a:●} {b:gate-runner}    {s:Rodando verificações}>>{d:1m 03s · 1,0k tok}
+ {a:●} {b:swarm-worker}   {s:Editando arquivos}>>{d:1m 03s · 1,0k tok}
+---{b:Plano} {d:4 de 12}  {a:━━━━}{t:━━━━━━━━}>>{d:0:03}
+ {ok:✓} {d:4 concluídas}
+ {a:▸} {b:Tarefa de demonstração 5}>>{a:0:03}
+ {d:○ Tarefa de demonstração 6}
+ {d:○ Tarefa de demonstração 7}
+ {d:… mais 5}
+---{b:Processos} {d:1 rodando}
+ {a:●} {s:servidor de demonstração}>>{d:0:04 · saída nova}
+
+ {b:Modelo Demo} {s:◐ medium ◷ 1h10m}
+ {s:[projeto-demo] contexto de demonstração}
+</pre>
+<figcaption><b>Depois</b> · mock, dobrado (uma linha por painel)</figcaption><pre class="term" data-cols="88">
+---{b:Agentes} {d:2 rodando · 1m 06s}
+---{b:Plano} {d:4 de 12}  {a:━━━━}{t:━━━━━━━━}  {s:fazendo: Tarefa de demonstração 5}
+---{b:Processos} {d:1 rodando}
+</pre>
+<figcaption><b>Depois</b> · mock, com foco no painel (↓ a partir do composer vazio)</figcaption><pre class="term" data-cols="88">
+---{m:Agentes} {d:2 rodando}
+~ {a:❯} {a:●} {b:gate-runner}    {s:Rodando verificações}>>{d:1m 07s · 1,0k tok}
+   {a:●} {b:swarm-worker}   {s:Editando arquivos}>>{d:1m 07s · 1,0k tok}
+ {d:↑↓ escolher · ⏎ abrir · x parar · esc voltar}
+</pre></figure>
+</div>
+<ul>
+  <li><b>Etiquetas</b>: saem as quatro caixas coloridas. Entram régua fina e nome em negrito, como o histórico da Onda 2. <code>STATUS LINE</code> some: o status não precisa de título.</li>
+  <li><b>Ordem fixa</b>: Agentes, Plano, Processos, e o status sempre por último. Hoje o status fica no meio e muda de lugar quando um painel abre.</li>
+  <li><b>Plano</b>: uma barra com um traço por passo e <code>4 de 12</code>. Os passos feitos viram uma linha (<code>✓ 4 concluídas</code>); aparecem o passo ativo, os dois próximos e <code>… mais N</code>. A tabela completa continua em <kbd>⏎</kbd> detalhes.</li>
+  <li><b>Agentes</b>: sai a linha <code>main idle · 2 running · ↓ to manage</code> (o título já diz). Modelo, esforço e custo de cada agente vão para o detalhe (item 5); na lista ficam nome, o que está fazendo, tempo e tokens.</li>
+  <li><b>Um glifo para “rodando”</b>: <code>●</code> na cor de destaque para agente e processo (hoje <code>●</code> verde, <code>·</code> pulsando e <code>◆</code>). O pulso continua, mas entre <code>●</code> e <code>•</code>, sem sumir.</li>
+  <li><b>Foco</b>: em vez da barra roxa de largura inteira, o título fica na cor de destaque e a linha ativa ganha <code>❯</code> e fundo. Teclas na última linha.</li>
+  <li><b>Sem mudança</b>: teclas, o que cada painel contém, dobrar e abrir, e as barras de ctx / usage / weekly do HUD.</li>
+</ul>
+
+<h2 id="tarefas">2 · Tarefas <small>(E02, E03, E06)</small> <span class="tag">patch no pi-code</span></h2>
+<div class="pair">
+<figure><figcaption><b>Antes</b> · capturas reais 310 (seção) e 90 (<code>/todos</code>)</figcaption>
+<img src="../../ui-ux-gallery/images/310-e02-secao-todo.png" style="aspect-ratio:1081/230" alt="Hoje: etiqueta roxa TODO 1/3 e tabela com colunas número, estado, tarefa, tempo e agente">
+<img src="../../ui-ux-gallery/images/90-todos-overlay.png" style="aspect-ratio:1081/300" alt="Hoje: painel Todos com 1/3 completed, identificadores #1 #2 #3 e Press Escape to close"></figure>
+<figure><figcaption><b>Depois</b> · mock, painel (mesmo desenho do plano)</figcaption><pre class="term" data-cols="88">
+---{b:Tarefas} {d:1 de 3}  {a:━}{t:━━}>>{d:0:02}
+ {ok:✓} {d:Escrever testes}
+ {a:▸} {b:Implementando função}>>{a:0:02}
+ {d:○ Revisar docs}
+</pre>
+<figcaption><b>Depois</b> · mock, <code>/todos</code></figcaption><pre class="term" data-cols="88">
+---{b:Tarefas} {d:1 de 3}
+ {ok:✓} {d:Escrever testes}
+ {a:▸} {b:Implementando função}
+ {d:○} {s:Revisar docs}
+ {d:esc fechar}
+---
+</pre>
+<figcaption><b>Depois</b> · mock, vazio (<code>/todos</code> e <code>/plan-todos</code>)</figcaption><pre class="term" data-cols="88">
+ {d:Nenhuma tarefa ainda ·} {k:/plan} {d:cria um plano}
+</pre></figure>
+</div>
+<ul>
+  <li>Plano e tarefas passam a ser o mesmo desenho; só o nome muda (<code>Plano</code> quando veio do modo plano, <code>Tarefas</code> quando veio do agente).</li>
+  <li>Somem <code>#1 #2 #3</code>, as colunas <code>estado</code> e <code>agente</code> e o texto duplicado <code>Implementar função (Implementando função)</code>: o item ativo mostra só a forma “fazendo”.</li>
+  <li>Item concluído fica em cinza com <code>✓</code>, sem riscado.</li>
+</ul>
+
+<h2 id="plano">3 · Modo plano <small>(E04, E05)</small> <span class="tag">patch no pi-code</span></h2>
+<div class="pair">
+<figure><figcaption><b>Antes</b> · captura real 70 (topo e base)</figcaption>
+<img src="../../ui-ux-gallery/images/70-plan-mode.png" style="aspect-ratio:1081/90;object-position:top" alt="Hoje: aviso em inglês Plan mode enabled com a lista de tools">
+<img src="../../ui-ux-gallery/images/70-plan-mode.png" style="aspect-ratio:1081/160" alt="Hoje: o único sinal permanente do modo plano é a palavra plan pequena no fim do status"></figure>
+<figure><figcaption><b>Depois</b> · mock, modo ligado (o estado mora na régua do composer, como <code>shell</code> na Onda 2)</figcaption><pre class="term" data-cols="88">
+ {d:Modo plano ligado · o agente lê e propõe, não edita ·} {k:ctrl+shift+p} {d:sai}
+
+^^^
+ {cur: }
+^^^>>{w:plano · só leitura}
+</pre>
+<figcaption><b>Depois</b> · mock, plano pronto</figcaption><pre class="term" data-cols="88">
+---{b:Plano pronto} {d:6 passos}
+~ {a:❯} {b:Executar o plano}       {s:sai do modo plano e acompanha os 6 passos}
+   Continuar planejando    {d:fica no modo plano}
+   Ajustar o plano         {d:você escreve o que mudar}
+ {d:↑↓ escolher · ⏎ confirmar · esc continua planejando}
+---
+</pre></figure>
+</div>
+<ul>
+  <li><b>Modo visível onde se digita</b>: a régua do composer muda de cor e ganha <code>plano · só leitura</code>. O <code>⏸ plan</code> do status sai (uma informação, um lugar).</li>
+  <li><b>Aviso</b>: diz o efeito do modo e a tecla que sai, no lugar da lista de tools em inglês.</li>
+  <li><b>Plano pronto</b>: as mesmas três opções de hoje (<code>Execute the plan</code>, <code>Stay in plan mode</code>, <code>Refine the plan</code>), cada uma com o que acontece depois.</li>
+  <li><b>Sem mudança</b>: o que o modo bloqueia, a tecla, o fluxo de aprovação.</li>
+</ul>
+
+<h2 id="objetivo">4 · Objetivo <small>(E08, <code>/goal</code>)</small> <span class="tag">patch no pi-code (goal.patch já existe)</span></h2>
+<div class="pair">
+<figure><figcaption><b>Antes</b> · captura real 51</figcaption><img src="../../ui-ux-gallery/images/51-goal-status.png" style="aspect-ratio:1081/270" alt="Hoje: Goal set em inglês no transcript e apenas /goal active no status, sem condição nem progresso"></figure>
+<figure><figcaption><b>Depois</b> · mock, painel junto dos outros</figcaption><pre class="term" data-cols="88">
+---{b:Objetivo} {d:3 turnos · 4m 12s · 12,4k tok}
+ {a:◎} {s:escrever testes de demonstração}
+ {d:última checagem: ainda não · faltam os testes de fuso horário}
+</pre>
+<figcaption><b>Depois</b> · mock, mensagens no transcript</figcaption><pre class="term" data-cols="88">
+ {a:◎} {b:Objetivo definido} {s:escrever testes de demonstração}
+ {d:○ Objetivo ainda não atingido · continuando}
+ {ok:✓} {b:Objetivo atingido} {d:5 turnos · 7m 40s · 21,0k tok}
+ {e:✗} {b:Objetivo não pôde ser atingido} {s:a suíte depende de um serviço fora do ar}
+</pre>
+<figcaption><b>Depois</b> · mock, <code>/goal</code> sem objetivo</figcaption><pre class="term" data-cols="88">
+ {d:Nenhum objetivo ·} {k:/goal &lt;condição&gt;} {d:define um ·} {k:/goal clear} {d:encerra}
+</pre></figure>
+</div>
+<ul>
+  <li>O objetivo vira um painel como os outros: a condição, quantos turnos já foram avaliados, tempo, tokens e o motivo da última checagem. Esses dados já existem (<code>goal-ui.ts</code>); hoje só aparecem ao rodar <code>/goal</code>.</li>
+  <li>O <code>◎ /goal active</code> do status sai: o painel ocupa o lugar dele.</li>
+  <li>Os quatro estados (definido, ainda não, atingido, não pôde) em português, com glifo diferente para cada um.</li>
+</ul>
+
+<h2 id="agente">5 · Detalhe de um agente <small>(E10)</small> <span class="tag">patch no pi-code</span></h2>
+<div class="pair">
+<figure><figcaption><b>Antes</b> · captura real 168</figcaption><img src="../../ui-ux-gallery/images/168-fleet-viewer-depois.png" style="aspect-ratio:1081/330;object-position:0 22%" alt="Hoje: cabeçalho de cinco linhas com siblings, children, Model observed e Effort observed">
+<img src="../../ui-ux-gallery/images/168-fleet-viewer-depois.png" style="aspect-ratio:1081/90" alt="Hoje: campo de mensagem marcado só com um sinal de maior e dicas em inglês"></figure>
+<figure><figcaption><b>Depois</b> · mock</figcaption><pre class="term" data-cols="88">
+---{b:main › swarm-worker}>>{a:● rodando} {d:· 1m 13s · 1,0k tok · &lt;$0,01}
+ {d:fake/m1 · medium · ao lado: gate-runner, Explore}
+
+ {s:linha longa 27 do transcript do agente de demonstração}
+ {s:linha longa 28 do transcript do agente de demonstração}
+ {s:linha longa 29 do transcript do agente de demonstração}
+ {s:linha longa 30 do transcript do agente de demonstração}
+---
+ {a:❯} {cur: }{d:Mensagem para este agente}
+ {d:↑↓ rolar · ←→ outro agente · ⏎ enviar · x x parar · esc fechar}
+</pre>
+<figcaption><b>Depois</b> · mock, parar pede confirmação na própria linha de dicas</figcaption><pre class="term" data-cols="88">
+ {w:▲ x de novo para parar swarm-worker · o trabalho em andamento se perde ·} {k:esc} {w:cancela}
+</pre></figure>
+</div>
+<ul>
+  <li>Cabeçalho de cinco linhas vira duas: quem é e como está na régua; modelo, esforço e vizinhos em uma linha cinza. <code>(observed)</code> e <code>children: -</code> saem; filhos só aparecem quando existem.</li>
+  <li>O campo de mensagem ganha <code>❯</code>, cursor e um texto que diz para quem vai.</li>
+  <li>Dicas em português, em uma linha; <kbd>tab</kbd> filho e <kbd>⇧tab</kbd> pai só aparecem quando o agente tem filho ou pai.</li>
+</ul>
+
+<h2 id="pergunta">6 · Pergunta ao usuário <small>(E01)</small> <span class="tag">patch no pi-code</span></h2>
+<div class="pair">
+<figure><figcaption><b>Antes</b> · captura real 41</figcaption><img src="../../ui-ux-gallery/images/41-question-multi.png" style="aspect-ratio:1081/300" alt="Hoje: título entre colchetes, marcador sinal de maior, dicas em inglês separadas por bolinhas"></figure>
+<figure><figcaption><b>Depois</b> · mock, várias respostas</figcaption><pre class="term" data-cols="88">
+---{b:Recursos} {d:escolha um ou mais}>>{d:1 de 2}
+ Quais recursos incluir?
+
+   {a:[x]} Logs
+   {d:[ ]} Métricas
+~ {a:❯} {a:[x]} {b:Traces}
+   {d:[ ]} Outra resposta…
+ {d:↑↓ escolher · espaço marca · ⏎ confirma · esc cancela}
+---
+</pre>
+<figcaption><b>Depois</b> · mock, resposta única</figcaption><pre class="term" data-cols="88">
+---{b:Abordagem} {d:escolha uma}
+ Qual abordagem usar?
+
+   Simples         {d:menos código, sem cache}
+~ {a:❯} {b:Completa}        {s:com cache e testes}
+   Híbrida
+   Outra resposta…
+ {d:↑↓ escolher · ⏎ confirma · esc cancela}
+---
+</pre></figure>
+</div>
+<ul>
+  <li>O título diz o tipo (<code>escolha uma</code> / <code>escolha um ou mais</code>), então ninguém precisa descobrir se <kbd>espaço</kbd> funciona. Com várias perguntas, <code>1 de 2</code>.</li>
+  <li><code>[x]</code> / <code>[ ]</code> ficam: são legíveis sem cor. Trocam o marcador (<code>&gt;</code> por <code>❯</code> com fundo) e as dicas.</li>
+  <li><code>Type something.</code> vira <code>Outra resposta…</code>, sempre a última opção.</li>
+</ul>
+
+<h2 id="rewind">7 · Voltar no tempo <small>(E15, E19)</small> <span class="tag">patch no pi-code</span></h2>
+<div class="pair">
+<figure><figcaption><b>Antes</b> · capturas reais 186 e 187</figcaption>
+<img src="../../ui-ux-gallery/images/186-rewind-checkpoints.png" style="aspect-ratio:1081/200;object-position:0 78%" alt="Hoje: Rewind to checkpoint com hora em formato AM/PM e seta como marcador">
+<img src="../../ui-ux-gallery/images/187-rewind-opcoes.png" style="aspect-ratio:1081/260;object-position:0 80%" alt="Hoje: Restore mode com quatro opções em inglês sem dizer o que cada uma desfaz"></figure>
+<figure><figcaption><b>Depois</b> · mock, passo 1: para onde</figcaption><pre class="term" data-cols="88">
+---{b:Voltar para} {d:1 de 3}
+~ {a:❯} {b:@@WRITE crie um arquivo}>>{d:01:26 · há 2 min}
+   {s:refatora o parser de datas}>>{d:01:19 · há 9 min}
+   {s:adiciona teste com fuso horário}>>{d:01:12 · há 16 min}
+ {d:↑↓ escolher · ⏎ continuar · esc cancelar}
+---
+</pre>
+<figcaption><b>Depois</b> · mock, passo 2: o que desfazer</figcaption><pre class="term" data-cols="88">
+---{b:Voltar para} {s:“@@WRITE crie um arquivo”}
+~ {a:❯} {b:Código e conversa}        {s:desfaz os arquivos e apaga as mensagens depois deste ponto}
+   Só a conversa             {d:os arquivos ficam como estão}
+   Só o código               {d:a conversa fica como está}
+   Resumir daqui em diante   {d:troca as mensagens seguintes por um resumo}
+ {d:↑↓ escolher · ⏎ voltar · esc cancelar}
+---
+</pre>
+<figcaption><b>Depois</b> · mock, resultado e avisos</figcaption><pre class="term" data-cols="88">
+ {ok:✓} {s:Voltou para “@@WRITE crie um arquivo” · código e conversa · o prompt está no campo}
+ {w:▲} {s:Checkpoints desligados:} {d:&lt;motivo&gt;}
+ {w:▲} {s:Este ponto não tem arquivos · o código não foi alterado}
+</pre></figure>
+</div>
+<ul>
+  <li><b>Cada opção diz o que acontece</b>. É a única tela desta onda que apaga trabalho; hoje <code>Code only</code> e <code>Conversation only</code> exigem adivinhar.</li>
+  <li>Hora em 24h mais “há N min”; o marcador vira <code>❯</code>.</li>
+  <li>O resultado diz para onde voltou e o que foi restaurado, no lugar de <code>Rewind complete</code>.</li>
+  <li><b>Fora</b>: a árvore de conversa (E16) é componente nativo do pi; mudar exige patch no core.</li>
+</ul>
+
+<h2 id="avisos">8 · Avisos do sistema <small>(E07, E14, E17, E18, E20)</small> <span class="tag">E07, E14, E18: extensão do harness · E20: patch no pi-code</span></h2>
+<div class="pair">
+<figure><figcaption><b>Antes</b> · capturas reais 182 (plan-gate), 235 (nova tentativa) e 111 (hook)</figcaption>
+<img src="../../ui-ux-gallery/images/182-plan-gate-bloqueio.png" style="aspect-ratio:1081/500;object-position:0 62%" alt="Hoje: o mesmo parágrafo do plan-gate em inglês repetido em blocos roxos, seguido de um Warning em laranja">
+<img src="../../ui-ux-gallery/images/235-auto-resume-aviso.png" style="aspect-ratio:1081/200;object-position:0 16%" alt="Hoje: três linhas de erro 503 com JSON em vermelho">
+<img src="../../ui-ux-gallery/images/111-hook-mensagem.png" style="aspect-ratio:1081/120;object-position:0 44%" alt="Hoje: mensagem informativa de hook exibida como Warning em laranja"></figure>
+<figure><figcaption><b>Depois</b> · mock, gate do plano (uma linha; repetição vira contador)</figcaption><pre class="term" data-cols="88">
+ {w:▲} {b:Plano} {s:falta a revisão final (plan-reviewer) · o agente foi avisado}>>{d:3ª vez · ctrl+o}
+ {w:▲} {b:Plano} {w:parou de cobrar após 3 avisos · rode o plan-reviewer antes de concluir}
+ {ok:✓} {b:Plano} {s:revisão final aprovada}
+</pre>
+<figcaption><b>Depois</b> · mock, nova tentativa automática (acima do composer, onde está o indicador de trabalho)</figcaption><pre class="term" data-cols="88">
+ {e:✗} {s:503 · Serviço indisponível}
+--- {a:↻ nova tentativa em 30s · 1 de 5 · esc cancela}
+ {cur: }
+---
+</pre><pre class="term" data-cols="88">
+--- {w:⏸ limite de uso da conta · retoma sozinho às 14:30 · esc cancela}
+ {cur: }
+---
+</pre>
+<figcaption><b>Depois</b> · mock, hook e compactação</figcaption><pre class="term" data-cols="88">
+ {d:◇ hook PostToolUse · Hook de demonstração executado}
+ {w:▲} {b:Hook} {s:bloqueou o comando ·} {d:&lt;motivo do hook&gt;}
+ {d:◇ contexto em 250k · compactando}
+</pre></figure>
+</div>
+<ul>
+  <li><b>Três níveis, três formas</b>: informação em cinza com <code>◇</code>; pede atenção com <code>▲</code> na cor de aviso; erro com <code>✗</code> em vermelho. Hoje hook informativo e bloqueio usam o mesmo <code>Warning:</code>.</li>
+  <li><b>Gate do plano</b>: o texto longo continua indo para o modelo (ele precisa das instruções); na tela fica uma linha em português, e a repetição vira <code>3ª vez</code>. <kbd>ctrl+o</kbd> mostra o texto inteiro.</li>
+  <li><b>Nova tentativa</b>: contagem e <kbd>esc</kbd> sobem para a régua do composer, no mesmo lugar do indicador “escrevendo” da Onda 1. O erro vira uma linha, sem JSON.</li>
+  <li><b>Compactação</b>: o aviso da extensão (E18) já é em português; só ganha o <code>◇</code>. O bloco nativo <code>[compaction]</code> (E17) fica como está: é do core.</li>
+  <li><b>Correção de inventário</b>: a galeria chama E18 de “400k”, mas o limite real é <code>PI_COMPACT_AT</code>, padrão 250k.</li>
+</ul>
+
+<h2 id="decidir">O que decidir</h2>
+<p>Na Onda 1 você pediu para não mexer nos status de Plan, Subagents e Runs. O item 1 mexe exatamente neles: é a decisão principal desta onda.</p>
+<div class="scroll"><table>
+<tr><th>#</th><th>Item</th><th>Onde mexe</th><th>Risco</th><th>Recomendo</th></tr>
+<tr><td>1</td><td>Painéis sem etiqueta colorida, ordem fixa, plano com barra e lista curta</td><td>patch no pi-code: <code>fleet-ui/chrome.ts</code>, <code>panel.ts</code>, <code>palette.ts</code>, <code>plan-mode/section.ts</code>, <code>run/section.ts</code></td><td>médio: <code>panel.ts</code> já recebe 4 patches e dois da pilha não estão rastreados no git</td><td>aplicar</td></tr>
+<tr><td>2</td><td>Tarefas no mesmo desenho; <code>/todos</code> e vazio em português</td><td>patch no pi-code: <code>todo.ts</code>, <code>plan-mode/index.ts</code></td><td>baixo</td><td>aplicar</td></tr>
+<tr><td>3</td><td>Modo plano na régua do composer; “Plano pronto” com consequências</td><td>patch no pi-code: <code>plan-mode/index.ts</code>; régua em <code>extensions/ui/editor.ts</code></td><td>médio: a régua precisa saber do modo (hoje só o status sabe)</td><td>aplicar</td></tr>
+<tr><td>4</td><td>Objetivo como painel; mensagens em português</td><td>patch no pi-code: <code>goal.ts</code>, <code>internal/goal-ui.ts</code></td><td>médio: <code>goal.patch</code> já mexe no mesmo arquivo</td><td>aplicar</td></tr>
+<tr><td>5</td><td>Detalhe do agente: cabeçalho de 2 linhas, campo com <code>❯</code>, dicas</td><td>patch no pi-code: <code>fleet-ui/viewer.ts</code>, <code>runtime-label.ts</code></td><td>baixo</td><td>aplicar</td></tr>
+<tr><td>6</td><td>Pergunta: tipo no título, <code>❯</code>, dicas</td><td>patch novo no pi-code: <code>question.ts</code></td><td>baixo</td><td>aplicar</td></tr>
+<tr><td>7</td><td>Voltar no tempo: opções com consequência, resultado, avisos</td><td>patch novo no pi-code: <code>git-checkpoint.ts</code></td><td>baixo: só texto, usa o seletor do pi (a descrição ao lado depende do que <code>ctx.ui.select</code> aceita)</td><td>aplicar</td></tr>
+<tr><td>8a</td><td>Gate do plano em uma linha com contador</td><td><code>extensions/plan-gate.ts</code></td><td>médio: fluxo crítico; o texto para o modelo não pode mudar</td><td>aplicar</td></tr>
+<tr><td>8b</td><td>Nova tentativa na régua do composer</td><td><code>extensions/auto-resume/index.ts</code></td><td>baixo; as linhas vermelhas com JSON são do core e ficam</td><td>aplicar</td></tr>
+<tr><td>8c</td><td>Hook informativo em cinza; bloqueio com <code>▲</code></td><td>patch novo no pi-code: <code>hooks/index.ts</code></td><td>baixo</td><td>aplicar</td></tr>
+<tr><td>—</td><td>Árvore de conversa (E16), bloco <code>[compaction]</code> (E17), erro com JSON</td><td>patch novo no core do pi</td><td>alto (manutenção a cada versão)</td><td>não agora</td></tr>
+</table></div>
+<p>Ordem sugerida, se aprovar: <b>8a, 8b</b> (só extensões do harness), depois <b>1 e 2</b> (o que se vê o tempo todo), depois <b>3 a 7 e 8c</b>. Antes de escrever patch no pi-code, a pilha atual precisa estar rastreada (<code>zzzzzzzzzz-plan-section</code> e <code>zzzzzzzzzz-pulse-dot</code> não estão).</p>
+
+<h2 id="fontes">Fontes da pesquisa <small>(lidas em 2026-11-14)</small></h2>
+<h3>Lidas na fonte primária</h3>
+<ul>
+  <li><b>Tarefas com três estados, um item ativo, contagem e limite de itens</b>: Codex usa <code>✔</code> / <code>□</code> com o passo ativo em destaque (<a href="https://github.com/openai/codex/blob/6a54efb76bf53f498ae184d8b3b1f46c23f78ea5/codex-rs/tui/src/history_cell/plans.rs">plans.rs</a>); Crush mostra <code>2/5</code>, spinner e o texto do item ativo em uma linha, e só expande se couber (<a href="https://github.com/charmbracelet/crush/blob/2edc4e68/internal/ui/model/pills.go">pills.go</a>); Claude Code mostra até cinco tarefas (<a href="https://code.claude.com/docs/en/interactive-mode">interactive-mode</a>).</li>
+  <li><b>Plano pronto com opções que dizem o que vem depois</b>: Gemini CLI “Yes, automatically accept edits” / “Yes, manually accept edits” (<a href="https://raw.githubusercontent.com/google-gemini/gemini-cli/main/docs/cli/plan-mode.md">plan-mode.md</a>); Copilot CLI “Accept plan and continue in Autopilot…” / “Exit plan mode and I will prompt myself” (<a href="https://docs.github.com/en/copilot/how-tos/copilot-cli/use-copilot-cli/speed-up-task-completion">docs</a>).</li>
+  <li><b>Objetivo com condição, turnos, tempo e tokens</b>: Claude Code <code>/goal</code> (<a href="https://code.claude.com/docs/en/goal">goal</a>).</li>
+  <li><b>Trabalho em segundo plano em uma lista só, com abrir e parar</b>: Claude Code <code>/tasks</code> (<a href="https://code.claude.com/docs/en/commands">commands</a>); Copilot CLI <code>/tasks</code> “subagents and shell commands” (<a href="https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference">referência</a>).</li>
+  <li><b>Voltar no tempo escolhendo o que restaurar</b>: Claude Code “Restore code and conversation / Restore conversation / Restore code / Summarize from here” (<a href="https://code.claude.com/docs/en/checkpointing">checkpointing</a>); Copilot CLI “Conversation only / Conversation + files” (mesma referência acima).</li>
+  <li><b>Pergunta com várias respostas e resposta livre sempre disponível</b>: opencode (<a href="https://opencode.ai/docs/tools">tools</a>); Gemini CLI <code>ask_user</code> (<a href="https://raw.githubusercontent.com/google-gemini/gemini-cli/main/docs/tools/ask-user.md">ask-user.md</a>).</li>
+  <li><b>Apple HIG</b>: progresso determinado sempre que possível, em lugar fixo, sem termos vagos (<a href="https://developer.apple.com/design/human-interface-guidelines/progress-indicators">Progress indicators</a>); esconder detalhe até ser relevante (<a href="https://developer.apple.com/design/human-interface-guidelines/disclosure-controls">Disclosure controls</a>); cor nunca como único sinal e com o mesmo significado em todo lugar (<a href="https://developer.apple.com/design/human-interface-guidelines/color">Color</a>); botões com verbo, menos palavras, o mais importante primeiro (<a href="https://developer.apple.com/design/human-interface-guidelines/writing">Writing</a>); alerta só para o que não se desfaz, sempre com cancelar (<a href="https://developer.apple.com/design/human-interface-guidelines/alerts">Alerts</a>).</li>
+  <li><b>Terminal</b>: “if everything is a different color, then the color means nothing”, mostrar o estado e sugerir o próximo comando (<a href="https://clig.dev/">clig.dev</a>); <code>NO_COLOR</code> tira cor mas não negrito (<a href="https://no-color.org/">no-color.org</a>).</li>
+  <li><b>Contraste</b>: texto 4,5:1, componentes e estados 3:1 (<a href="https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html">WCAG 2.2, 1.4.3</a>, <a href="https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html">1.4.11</a>).</li>
+  <li><b>Esperas longas</b>: acima de 10 s, mostrar percentual ou a lista de passos feitos e por fazer (<a href="https://www.nngroup.com/articles/designing-for-waits-and-interruptions/">NN/g</a>); mostrar poucas opções primeiro e o resto a pedido (<a href="https://www.nngroup.com/articles/progressive-disclosure/">NN/g, progressive disclosure</a>).</li>
+</ul>
+<h3>Lidas só em trecho de busca (não contam como verificadas)</h3>
+<ul>
+  <li>HIG: hierarquia por disposição e agrupamento, não por decoração (<a href="https://developer.apple.com/videos/play/wwdc2025/356">WWDC25, sessão 356</a>); status junto do item que descreve (<a href="https://developer.apple.com/design/human-interface-guidelines/feedback">Feedback</a>, lido em trechos).</li>
+  <li>Xcode com agentes: conversa de um lado, artefatos do outro (<a href="https://developer.apple.com/videos/play/wwdc2026/259/">WWDC26, sessão 259</a>, lido em trechos).</li>
+  <li>Teclas do <code>/tasks</code> do Copilot (Enter abre, <code>x</code> ou <code>k</code> para); opções do diálogo de plano do Claude Code.</li>
+</ul>
+<h3>Não verificado</h3>
+<ul>
+  <li>Como qualquer produto mostra <b>mensagens de hook</b> e o <b>texto do aviso de compactação</b>: nenhuma fonte primária lida. O item 8 se apoia só na HIG, no clig.dev e na auditoria das capturas.</li>
+  <li>Tempo, tokens e custo por agente em outros produtos; painel de agentes do Codex, Gemini, opencode, Cursor, Amp e Warp.</li>
+  <li>Os rótulos “hierarquia, harmonia, consistência” não foram achados literalmente em página da Apple.</li>
+  <li>Estes mocks não foram renderizados no kitty: largura real dos glifos <code>━ ▸ ◎ ▲ ◇ ↻</code> na fonte em uso, <code>NO_COLOR</code> e terminal estreito ficam para a aplicação.</li>
+</ul>
+</main>
+<script>
+const vis = s => s.replace(/\{\w+:([^{}]*)\}/g, '$1')
+const html = s => s.replace(/</g, '&lt;').replace(/\{(\w+):([^{}]*)\}/g, '<span class="$1">$2</span>')
+const RULE = { '---': 't', '===': 'a', '^^^': 'w' } // régua: cinza (painel), roxa (composer), aviso (modo plano)
+function line(l, cols) {
+  const cls = RULE[l.slice(0, 3)]
+  if (cls) {
+    const [left, right = ''] = l.slice(3).split('>>'), r = c => `<span class="${cls}">${c}</span>`
+    const head = left.trim() ? `{${cls}:──} ${left.trim()} ` : '', tail = right ? ` ${right} {${cls}:──}` : ''
+    return html(head) + r('─'.repeat(Math.max(0, cols - vis(head).length - vis(tail).length))) + html(tail)
+  }
+  const sel = l.startsWith('~'), [left, right = ''] = (sel ? l.slice(1) : l).split('>>')
+  const out = html(left + ' '.repeat(Math.max(1, cols - vis(left).length - vis(right).length - 1)) + right + ' ')
+  return sel ? `<span class="u">${out}</span>` : out
+}
+for (const pre of document.querySelectorAll('pre.term')) {
+  const src = pre.textContent.replace(/^\n|\n$/g, '')
+  pre.innerHTML = src.split('\n').map(l => line(l, +pre.dataset.cols)).join('\n')
+}
+</script>
+</html>

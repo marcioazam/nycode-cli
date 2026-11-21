@@ -1,14 +1,14 @@
 /**
- * Model catalog protocol shared by nycode and pi.dev.
+ * Model catalog protocol used by nycode and by any configured catalog server.
  *
  * This file is copied verbatim into two repositories. Change both copies in
  * the same pair of pull requests and keep them byte for byte identical:
  *
  *   marcioazam/nycode      scripts/model-catalog-protocol.ts
- *   earendil-works/pi.dev  src/shared/models/protocol.ts
+ *   the catalog server repository, if any
  *
  * nycode uses it to publish catalog revisions and to test clients against the
- * catalog selection pi.dev performs. pi.dev uses it to serve catalog requests.
+ * catalog selection a catalog server performs. A server uses it to serve catalog requests.
  * Keep it free of imports and runtime specific APIs so it runs unchanged in
  * Node.js and Cloudflare Workers.
  *
