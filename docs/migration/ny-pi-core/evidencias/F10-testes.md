@@ -233,6 +233,18 @@ Ramo `docs/f10-test-map`, 2026-11-21. Registros em `~/.local/share/nycode-mig/f1
 | `core_scope.py` | OK (109 peças) |
 | `check-seams.sh` | exit 0 |
 
-Não rodado: `check-leaks.sh` (nenhum arquivo movido; só texto, um teste e um script do mapa). O venv de CI em
+Conversão de `structure.py` e dos agentes de Harbor (2026-11-21, cabeça `c16ad38a2` com o doc; Python 3.12):
+
+| Verificação | Resultado |
+|---|---|
+| `pytest scripts/ci/lint/structure scripts/ci/lint/test_skill_lint.py scripts/ci/lint/test_gerar_mapa.py bench/tests` | 321 passaram (`structure`: 16 casos; Harbor: 10 do `pi_harness_agent` e 6 do `pi_vanilla_api_agent`) |
+| `python3 scripts/ci/lint/structure/structure.py --project-root . --json` | roda; achados só de arquivos do upstream acima de 800 linhas |
+| `run-static.sh` (`BASE_SHA` = merge-base com `origin/main`) | `ci-static OK`, diff-cover 98% (falta: `pi_harness_agent.py:95`, o `FileNotFoundError` do pacote ausente, e 4 linhas de `structure.py`/`test_structure.py`) |
+| `check-refs.py`, `core_scope.py` | 0; OK (109 peças) |
+| `gitleaks dir` sobre `git archive HEAD`; trufflehog do `check-leaks.sh` | sem achados nos dois (o `check-leaks.sh` inteiro falha sem `~/.config/nycode/identifiers`, ausente nesta máquina) |
+| `rg -n "import/ny-pi" bench scripts packages` | restam `bench/arms/ny-pi`, `core_scope.py` e seu teste, `OMP_DIR` e comentários de cabeçalho de testes TS (ver Riscos) |
+
+Não rodado: `npm run check` (nenhum TypeScript mudou nesta parte). Antes, na primeira parte:
+`check-leaks.sh` não rodou (nenhum arquivo movido). O venv de CI em
 `/tmp/ci312` sumiu durante a unidade e foi refeito em `~/.local/share/nycode-mig/ci312` com
 `scripts/ci/requirements-ci.txt` (hashes exigidos).
