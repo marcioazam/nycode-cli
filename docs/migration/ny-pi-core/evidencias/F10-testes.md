@@ -4,7 +4,7 @@
 
 Item C-F10-07 e critério global 3 de [00 §8](../00-mega-plano.md): todo teste do ny-pi tem um equivalente verde no
 nycode, ou uma linha em [03](../03-mapa-de-migracao.md) que justifica a remoção. Esta evidência registra o método, as
-contagens e o que ainda falta. Nenhum teste foi escrito nesta unidade.
+contagens e o estado final. A unidade só mexeu em testes onde o código testado mudou (todo e `test_affects.py`).
 
 ## Método
 
@@ -20,15 +20,16 @@ Insumo bruto: `f10-tests-map.tsv` (280 linhas), em `~/.local/share/nycode-mig/`,
 
 ## Contagens
 
-| Situação | Antes | Depois |
+| Situação | Início | Final |
 |---|---:|---:|
 | Equivalente com o mesmo caminho do anexo (`ok`) | 250 | 250 |
 | Equivalente em outro caminho (`destino-diferente`) | 28 | 24 |
 | Sem justificativa (`falta-justificativa`) | 2 | 0 |
-| Pendente: só existe a cópia em `import/ny-pi/` | 0 | 4 |
+| Removido com linha em [03 §2.3](../03-mapa-de-migracao.md): `replay.test.ts` e `test_cache_probe_join.py` (já no início) e os 4 de 2026-11-21 | 0 | 6 |
 | **Total** | **280** | **280** |
 
-Depois das correções, 276 testes têm equivalente no nycode ou linha de remoção; 4 estão pendentes.
+Final: 280 de 280 têm equivalente no nycode (274) ou remoção justificada no 03 (6). Os 4 testes removidos em
+2026-11-21 deixam o código testado só em `import/ny-pi/` (ver Riscos).
 
 Correções feitas no anexo E (commit `999af08da`):
 
@@ -42,15 +43,19 @@ Correções feitas no anexo E (commit `999af08da`):
 - `test_cache_probe_join.py` não precisou de linha nova: o 03 §2.3 já lista "`cache_probe_join.py`, seu teste" sob a D-10
   (diagnóstico temporário). O anexo E já o marcava `remover`.
 
-Observação: `E-resumo-por-regra.md` diz "gerado por `gerar-mapa.py`". As correções acima foram feitas à mão nos dois
-arquivos gerados, e o gerador não conhece as exceções (ver Riscos).
+`gerar-mapa.py` agora produz essas correções: ganhou `OVERRIDES` (os 24 destinos, `replay.test.ts`, mais as 4 linhas
+já editadas à mão por D-36 e D-37) e a regra `X01` (os 4 testes removidos), além de `--resumo <sha>`, que gera
+`E-resumo-por-regra.md` (antes só o TSV saía do script). Prova: com o ny-pi em `origin/main` `e4f8729` (1485 caminhos),
+o gerador sem `X01` dá o TSV idêntico ao de `999af08da` (diff vazio); com `X01`, o TSV difere só nas 4 linhas novas.
+O resumo de `999af08da` estava defasado em duas células (F7 com `mover` 32 e `absorver` 5, total 89 e 33, quando o TSV
+tem 33, 4, 90 e 32 desde D-36): a regeneração as corrige.
 
 ## Casos a menos no destino
 
 Legenda: **equivalente** (arquivo:linha no nycode), **SUPERADO** (o mecanismo testado deixou de existir; justificativa
 na linha) e **AUSENTE** (o comportamento ainda existe ou foi decidido, e não há teste).
 
-### `bench/tests/classify/test_affects.py` (11 para 7)
+### `bench/tests/classify/test_affects.py` (11 para 7, os 11 cobertos com 4 casos novos)
 
 | Caso na origem | Equivalente |
 |---|---|
@@ -63,7 +68,7 @@ na linha) e **AUSENTE** (o comportamento ainda existe ou foi decidido, e não h�
 | `test_record_docs` | SUPERADO: não há `claude-home/docs`; `docs/*` já é "docs" em `test_non_functional` |
 | `test_patch_targets` | SUPERADO: não há pilha de patches |
 | `test_parse_helpers` | SUPERADO: `patch_target_files` e `referenced_docs` deixaram de existir |
-| `test_more_ui` (parametrizado: `sound-notify`, `dev-commands`, `up-dequeue`, `puxar`, `.pre-commit-config.yaml`) | **AUSENTE** para as 4 extensões. O nycode as classifica como funcionais (`not proven non-functional`: confirmado rodando `affects.classify_path`), e a lista UI de `affects.py` só tem `ui`, `ui-visual`, `footer`, `sticky-prompt`. O caso de `.pre-commit-config.yaml` está em `test_non_functional`. Falta confirmar a decisão D-21 (09 §3.2) e fixar o resultado num teste |
+| `test_more_ui` (parametrizado: `sound-notify`, `dev-commands`, `up-dequeue`, `puxar`, `.pre-commit-config.yaml`) | `.pre-commit-config.yaml`: `test_non_functional`. As 4 extensões: a lista do nycode é deliberadamente mais estreita (09 §3.2, D-21: UI pura é `ui`, `ui-visual`, `footer`, `sticky-prompt`, temas e linha de status; o resto falha fechado), então o equivalente é o inverso: `test_functional` afirma `sound-notify`, `dev-commands`, `up-dequeue` e `import-claude-session` (o `puxar`) como funcionais (`bench/tests/classify/test_affects.py`, 4 casos novos). Justificativa no 03 §2.3 |
 
 ### `claude-home/bin/tests/pi-ui-final-gate.sh` (2 para 0)
 
@@ -111,18 +116,25 @@ Nenhum AUSENTE.
 |---|---|
 | 22 casos de `collapsedLine`, `execute`, `renderCall`, `renderResult`, `replay`, `widget` (registro), `scrollWindow`, `layoutOverlay`, `normalizeTodo`, `/todos` | `test/harness/todo/todo-collapse.test.ts:15` a `:420`, mesmos nomes |
 | `patch aplica ao original e reverte no instalado` | SUPERADO: não há pilha de patches |
-| `ctrl+shift+t alterna entre a lista completa e uma linha, e pede re-render` | **AUSENTE**. O destino testa só que o atalho existe e que o widget continua vazio (`:60`, `:81`) |
-| `a linha recolhida respeita a largura` | **AUSENTE** (mesma razão) |
-| `widget: render normal com glifos, └─ no último e cabeçalho dim quando tudo concluído` | **AUSENTE**: `:60` afirma `render(80) == []` |
-| `widget concluído: clique expande, novo clique recolhe` | **AUSENTE** |
-| `widget: roda do mouse rola a lista longa e mostra ↑↓` | **AUSENTE** |
-| `allDone e retomada: item novo volta a expandir` | Parcial: `plan-source-reset.test.ts:66` cobre a lista concluída que some e reaparece na seção Plan, não o estado `expandedByUser` do `todo` |
-| `widget: estouro mostra "+N more" e trunca à largura` | **AUSENTE** |
+| Os 7 casos do widget (`ctrl+shift+t` alterna, linha recolhida e largura, render normal com glifos, clique, roda do mouse, estouro `+N more`) e o parcial (`allDone` e retomada) | SUPERADO: o widget foi removido (commit `aff208fc3`), ver abaixo |
 
-Os 7 AUSENTES e o parcial dizem respeito ao widget de todos no chat. O destino trocou o desenho: "o chat nunca desenha
-os todos" (`:60`), e a lista vai à seção Plan por evento. O código do widget (`TodoOverlay`, clique, roda, recolher)
-continua em `src/extensions/todo/index.ts:172-235`, e nenhum teste o exerce. Ou o código é morto e deve sair, ou o
-comportamento vale e precisa de teste.
+Evidência de que o widget era código morto, em `src/extensions/todo/index.ts` antes da remoção:
+
+1. `renderWidget` devolvia `[]` sempre (a lista vai à seção Plan pelo evento `pi-code:todos`, `plan-mode/index.ts`).
+2. O mouse chega ao componente pela caixa que ele ocupa na tela (`getLayoutBoxesAt` em
+   `packages/tui/src/tui-alt-screen.ts`, `dispatchMouseToLayout`): um componente de zero linhas não tem caixa, então
+   `handleMouse` (clique e roda) nunca era chamado.
+3. `ctrl+shift+t` só mudava `collapsed`, `expandedByUser` e `scroll`, lidos apenas por `renderWidget`; o efeito
+   visível era nenhum. `layoutOverlay`, `scrollWindow`, `collapsedLine` e `allDone` só serviam a essa renderização.
+4. Registrar um widget de zero linhas não muda a altura do contêiner acima do editor (`renderWidgetContainer`: um
+   `Spacer(1)` com ou sem widgets).
+
+Removidos: `TodoOverlay`, o atalho, `layoutOverlay`, `scrollWindow`, `collapsedLine`, `allDone`, `WIDGET_KEY` e
+`MAX_WIDGET_LINES`. Testes que acompanham: saíram os de `collapsedLine` (2), do widget (2), do atalho (2) e de
+`scrollWindow` e `layoutOverlay`, e o teste "o chat nunca desenha" virou "não registra widget nem atalho e publica a
+lista pelo evento". Os demais casos de `todo-collapse.test.ts` (ferramenta, replay, `/todos`) seguem verdes. A
+documentação histórica copiada de `claude-home/docs` (`docs/harness/pi-ui-sota.md`, `goal.md`) ainda descreve o
+atalho; é registro do ny-pi e não foi editada.
 
 ### `patches/pi-core/mcp-close-grace.test.ts` (7 para 1)
 
@@ -155,39 +167,35 @@ Nenhum AUSENTE. O destino ganhou `terminal.reducedMotion` do `settings.json` (`:
 
 ### Resumo dos AUSENTES
 
-| Origem | Caso | O que testava |
-|---|---|---|
-| `test_affects.py` | `test_more_ui` (4 extensões) | `sound-notify`, `dev-commands`, `up-dequeue`, `puxar` classificados como não funcionais (UI) |
-| `todo-collapse.test.ts` | `ctrl+shift+t` alterna | Atalho alterna lista completa e linha única e pede re-render |
-| `todo-collapse.test.ts` | linha recolhida e largura | `collapsedLine` respeita a largura |
-| `todo-collapse.test.ts` | widget render normal | Glifos, `└─` no último item, cabeçalho dim com tudo concluído |
-| `todo-collapse.test.ts` | clique | Clique no widget concluído expande e recolhe |
-| `todo-collapse.test.ts` | roda do mouse | Rolagem da lista longa com `↑↓` |
-| `todo-collapse.test.ts` | estouro | `+N more` e truncamento à largura |
-| `todo-collapse.test.ts` | `allDone` e retomada (parcial) | Item novo volta a expandir um widget recolhido pelo usuário |
+Nenhum AUSENTE ficou em aberto: `test_more_ui` tem o teste inverso no nycode e os casos do widget de todos são
+SUPERADOS pela remoção do widget.
 
-## Pendências
+## Pendências resolvidas
 
-1. Quatro testes só existem como cópia bruta em `import/ny-pi/` e saem com `import/` em F12. O anexo E os manda para
-   `converter` em F3, e a conversão não aconteceu. Sem ela, o critério global 3 falha para estes:
+1. Os quatro testes que só existiam em `import/ny-pi/` viraram `remover` no anexo E (regra `X01`) com linha no 03 §2.3.
+   Em cada um, o código testado também só existe em `import/ny-pi/`, não foi convertido por F3 e sai com ele em F12:
 
-   | Teste (origem) | Casos | Destino no anexo E | Equivalente atual |
+   | Teste (origem) | Casos | Código testado | Situação |
    |---|---:|---|---|
-   | `claude-home/bin/evals/harbor/tests/test_pi_harness_agent.py` | 10 | `bench/evals/harbor/tests/test_pi_harness_agent.py` | Nenhum. `bench/tests/harbor/test_nycode_agent.py` (11), `test_nycode_bundle.py` (4) e `test_nycode_step.py` (4) testam o agente do nycode, não o do ny-pi |
-   | `claude-home/bin/evals/harbor/tests/test_pi_vanilla_api_agent.py` | 6 | `bench/evals/harbor/tests/test_pi_vanilla_api_agent.py` | Nenhum (mesmo diretório acima) |
-   | `claude-home/bin/evals/test_plan_ab.py` | 25 | `bench/evals/test_plan_ab.py` | Nenhum. `rg plan_ab` fora de `import/` e `docs/` não acha nada |
-   | `claude-home/bin/structure/test_structure.py` | 16 | `scripts/ci/lint/structure/test_structure.py` | Nenhum. `scripts/ci/lint/structure_changed.py` não tem teste; `test_changed_files.py` (2) e `test_skill_lint.py` testam outros scripts |
+   | `claude-home/bin/evals/harbor/tests/test_pi_harness_agent.py` | 10 | `pi_harness_agent.py` | Só em `import/ny-pi/`; `bench/run.py` (`HARBOR_DIR`) ainda o usa no braço `ny-pi`. O agente do nycode é `bench/harbor/nycode_agent.py` (testes: 11, 4 e 4 casos) |
+   | `claude-home/bin/evals/harbor/tests/test_pi_vanilla_api_agent.py` | 6 | `pi_vanilla_api_agent.py` | Idem, braço `pi-vanilla` em modo API; importa `_models_merge` de `pi_harness_agent` |
+   | `claude-home/bin/evals/test_plan_ab.py` | 25 | `plan_ab.py` | Nada no nycode o referencia (`rg plan_ab` fora de `import/` e `docs/`) |
+   | `claude-home/bin/structure/test_structure.py` | 16 | `structure.py` | Só em `import/ny-pi/`; o CI usa `scripts/ci/lint/structure_changed.py` (D-06), que não importa o `structure.py` (usa a cópia `DEFAULT_SUFFIXES`) |
 
-   Decisão pendente de quem manda: converter os quatro antes de F12 (unidade própria, F3), ou registrar a remoção no
-   03 §2.3 (cada um com o motivo: agentes de benchmark do ny-pi, comparação A/B de plano, medidor de estrutura
-   substituído por `structure_changed.py`).
-2. Os AUSENTES da tabela acima: decidir entre escrever o teste e remover o código morto (todo), e fixar a classificação
-   das 4 extensões em `bench/classify/affects.py`.
-3. `gerar-mapa.py` deve receber as exceções (24 destinos e `replay.test.ts`), senão a próxima geração desfaz a correção.
+   Portar o código exigiria tipar em `mypy --strict`, trocar nomes e decidir o destino (`scripts/harness/` no 07 §3.5,
+   `scripts/ci/lint/` no anexo E): código de produção novo só para salvar um teste.
+2. `test_more_ui` e os casos do widget de todos: ver as seções acima.
+3. `gerar-mapa.py` recebeu as exceções (ver "Correções feitas no anexo E").
 
 ## Riscos
 
-- O anexo E e o resumo por regra são gerados; a edição manual diverge do gerador até a pendência 3.
+- As linhas do anexo E do código testado (`pi_harness_agent.py`, `pi_vanilla_api_agent.py`, `plan_ab.py`,
+  `plan_ab_cases.jsonl`, `structure.py`) seguem `converter` F3, e a conversão não aconteceu. Decidir antes de F12:
+  converter ou marcar `remover`. Sem decisão, o braço `pi-vanilla` (D-26) perde o agente de Harbor quando `import/`
+  sair (`bench/run.py` lê `HARBOR_DIR` de lá), e as instruções embarcadas (`resources/instructions/contract.md`,
+  `rules/ref/harness-economy.md`, skills `engineering-standards` e `ripple-hunt`) continuam mandando rodar
+  `scripts/ci/lint/structure/structure.py`, que não existe.
 - A contagem de casos usa o nome do `test(`/`it(`/`def test_` (parametrizados contam uma vez); ela não prova que as
-  asserções são as mesmas, só que há caso homônimo. Nenhum teste foi executado nesta unidade.
-- "Verde" depende do gate de cada fase; esta evidência mostra a existência do equivalente, não a execução.
+  asserções são as mesmas, só que há caso homônimo.
+- "Verde" depende do gate de cada fase; esta evidência mostra a existência do equivalente. Execução desta unidade em
+  "Verificação".

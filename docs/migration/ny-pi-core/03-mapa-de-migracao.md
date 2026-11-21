@@ -33,13 +33,13 @@ git -C ~/source/ny-pi ls-tree -r --name-only origin/main \
 | Ação | Significado | Arquivos |
 |---|---|---:|
 | mover | `git mv` sem mudar o conteúdo | 90 |
-| converter | `git mv` e ajuste mecânico: caminhos, imports `@earendil-works/pi-*` para `@nycode/*`, nomes `PI_*`, formatação | 1317 |
+| converter | `git mv` e ajuste mecânico: caminhos, imports `@earendil-works/pi-*` para `@nycode/*`, nomes `PI_*`, formatação | 1313 |
 | fundir | O destino já existe no fork; o conteúdo é combinado | 11 |
 | absorver | O arquivo some e seu comportamento passa a morar em código do core ou de uma extensão | 32 |
-| remover | Não migra; o motivo está na regra | 35 |
+| remover | Não migra; o motivo está na regra | 39 |
 | **Total** | | **1485** |
 
-Dos 1317 "converter", 869 são `bench/` (784 deles são tarefas de teste em `bench/suites/`, que só mudam de lugar) e
+Dos 1313 "converter", 869 são `bench/` (784 deles são tarefas de teste em `bench/suites/`, que só mudam de lugar) e
 261 são agentes, comandos e skills.
 
 ### 2.2 Totais por fase
@@ -56,7 +56,7 @@ Dos 1317 "converter", 869 são `bench/` (784 deles são tarefas de teste em `ben
 | F9 | 4 | Patches de terceiros, `third-party.json` |
 | F11 | 6 | Instalador, `publish.list`, `npm/` |
 
-### 2.3 O que é removido e por quê (35 arquivos)
+### 2.3 O que é removido e por quê (39 arquivos)
 
 | Arquivos | Motivo | Decisão |
 |---|---|---|
@@ -67,8 +67,23 @@ Dos 1317 "converter", 869 são `bench/` (784 deles são tarefas de teste em `ben
 | `scripts/check-patch-stack.sh`, `claude-home/patches/pi-code/zzzzzzz-subagent-model-effort/replay.test.ts` | Não há mais pilha de patches; o teste só reverte e reaplica essa pilha (o comportamento de roteamento tem `render.test.ts` e `tracker.test.ts` no destino) | — |
 | `extensions/cache-prefix-probe/index.ts`, `claude-home/bin/telemetry/cache_probe_join.py`, seu teste, `cache-remeasure.sh` | Diagnóstico marcado como temporário | D-10 |
 | `extensions/no-web-search.ts`, `extensions/no-context-files-covers-claude-md.ts`, `scripts/compaction-400k.py` | Contornos de um acoplamento que acaba | D-10 |
+| `claude-home/bin/evals/harbor/tests/test_pi_harness_agent.py`, `claude-home/bin/evals/harbor/tests/test_pi_vanilla_api_agent.py`, `claude-home/bin/evals/test_plan_ab.py`, `claude-home/bin/structure/test_structure.py` | O código que eles testam não foi convertido e continua só em `import/ny-pi/` (`bench/run.py` ainda lê os agentes de Harbor de lá), de onde sai em F12; o teste sai com ele. O nycode não ganha código de produção só para guardar um teste. A estrutura do CI é medida por `scripts/ci/lint/structure_changed.py` (limites só dos arquivos criados, D-06) | D-06 |
 | `third-party.json` | Terceiros embutidos ou pacotes opcionais | D-11 |
 | `install.sh`, `publish.list`, `scripts/install-lib.sh`, `scripts/test_install.sh`, `npm/package.json`, `npm/package-lock.json` | Instalação e publicação do fork | — |
+
+Testes do ny-pi que o nycode não repete caso a caso (C-F10-07, detalhe em
+[evidencias/F10-testes.md](evidencias/F10-testes.md)):
+
+- `bench/tests/classify/test_affects.py`, `test_more_ui`. O ny-pi tratava `sound-notify`, `dev-commands`, `up-dequeue` e
+  `puxar` como UI pura e, por isso, não funcionais. O nycode é deliberadamente mais estreito: a UI pura é só `ui`,
+  `ui-visual`, `footer`, `sticky-prompt` e os temas e a linha de status embarcados (09 §3.2, D-21), e o resto falha
+  fechado como funcional. O teste `test_functional` afirma agora `sound-notify`, `dev-commands`, `up-dequeue` e
+  `import-claude-session` (o `puxar` do ny-pi) como funcionais.
+- `todo-collapse.test.ts`: 7 casos (atalho, linha recolhida, glifos, clique, roda, estouro e `allDone`) testavam o
+  widget de todos acima do editor. Desde que a lista passou à seção Plan, esse widget renderizava `[]`: sem linhas não
+  tem caixa de clique nem de roda, e `ctrl+shift+t` alternava um estado invisível. O código (`TodoOverlay`, o atalho e
+  `layoutOverlay`, `scrollWindow`, `collapsedLine`, `allDone`) foi removido e o teste fixa que o chat não registra widget
+  nem atalho e que a lista sai pelo evento `pi-code:todos`.
 
 Todo arquivo removido cujo comportamento precisa continuar tem um teste no destino que o cobre. Exemplo: o teste de
 `no-context-files` vira `test/harness/extensions/claude-rules/context-files.test.ts` (regra E03), que prova que
