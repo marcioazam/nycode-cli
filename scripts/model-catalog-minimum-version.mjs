@@ -1,5 +1,5 @@
 // The oldest nycode version that receives model catalogs published from this checkout.
-// pi.dev keeps one catalog per minimum version; clients older than this keep the
+// A catalog server keeps one catalog per minimum version; clients older than this keep the
 // last catalog published under the previous minimum and stop receiving updates.
 //
 // Bump this only when generated model metadata requires behavior unavailable in

@@ -47,11 +47,7 @@ nix run github:marcioazam/nycode/stable
 
 Supports ARM64 and x86-64 on Linux and macOS. Use `nix build .` or `nix run .` to build or run your checkout.
 
-Nix builds are offline, so the bundled model data comes from a pi.dev model catalog revision pinned in `nix/model-catalog.json`. At runtime, Nycode still overlays newer catalog data from pi.dev as usual. The Nix workflow replaces the pin on `main` when it no longer matches the checkout, for example after a provider is added or gains a new model type. To refresh it by hand:
-
-```bash
-npm run update:model-catalog-pin
-```
+Nix builds are offline; bundled model data is still pending an offline source in the Nix build (see `nix/package.nix`).
 
 ## Packages
 

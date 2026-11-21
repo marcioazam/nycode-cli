@@ -24,7 +24,7 @@ import {
 import { MINIMUM_PI_VERSION } from "./model-catalog-minimum-version.mjs";
 
 // The storage layout, index format, and version ordering are defined in
-// model-catalog-protocol.ts, which pi.dev shares to serve these artifacts.
+// model-catalog-protocol.ts, which a catalog server can share to serve these artifacts.
 const JSON_CONTENT_TYPE = "application/json; charset=utf-8";
 const IMMUTABLE_CACHE_CONTROL = "public, max-age=31536000, immutable";
 const INDEX_CACHE_CONTROL = "no-store";
@@ -227,7 +227,7 @@ function uploadJson(bucket, endpoint, sourcePath, key, cacheControl) {
 	]);
 }
 
-// Validate with the same parser pi.dev uses, but keep the stored entries so
+// Validate with the same parser a catalog server uses, but keep the stored entries so
 // the publication metadata of existing revisions is preserved.
 function validateIndex(index) {
 	parseModelCatalogIndex(index);

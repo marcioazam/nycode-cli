@@ -59,12 +59,12 @@ test("serves Nycode user agents the catalog for their version", () => {
 	// Regression test for #9099: released clients identify themselves only by User-Agent.
 	assert.deepEqual(
 		parseModelCatalogRequest(
-			"https://pi.dev/api/models/providers/openrouter?types=chat%2Cimage",
+			"https://catalog.example.test/api/models/providers/openrouter?types=chat%2Cimage",
 			"nycode/0.84.4 (linux; node/v22.0.0; x64)",
 		),
 		{ kind: "catalog", nycodeVersion: "0.84.4", representation: "typed" },
 	);
-	assert.deepEqual(parseModelCatalogRequest("https://pi.dev/api/models", "nycode/0.84.4"), {
+	assert.deepEqual(parseModelCatalogRequest("https://catalog.example.test/api/models", "nycode/0.84.4"), {
 		kind: "catalog",
 		nycodeVersion: "0.84.4",
 		representation: "legacy",
@@ -74,17 +74,17 @@ test("serves Nycode user agents the catalog for their version", () => {
 test("serves explicit and unversioned catalog requests", () => {
 	assert.deepEqual(
 		parseModelCatalogRequest(
-			"https://pi.dev/api/models?nycode-version=0.83.0",
+			"https://catalog.example.test/api/models?nycode-version=0.83.0",
 			"nycode/0.85.1 (linux; node/v22.0.0; x64)",
 		),
 		{ kind: "catalog", nycodeVersion: "0.83.0", representation: "legacy" },
 	);
-	assert.deepEqual(parseModelCatalogRequest("https://pi.dev/api/models?types=chat", "curl/8.0.0"), {
+	assert.deepEqual(parseModelCatalogRequest("https://catalog.example.test/api/models?types=chat", "curl/8.0.0"), {
 		kind: "catalog",
 		nycodeVersion: undefined,
 		representation: "typed",
 	});
-	assert.deepEqual(parseModelCatalogRequest("https://pi.dev/api/models", "nycode/latest"), {
+	assert.deepEqual(parseModelCatalogRequest("https://catalog.example.test/api/models", "nycode/latest"), {
 		kind: "catalog",
 		nycodeVersion: undefined,
 		representation: "legacy",
@@ -92,11 +92,14 @@ test("serves explicit and unversioned catalog requests", () => {
 });
 
 test("rejects invalid catalog request parameters", () => {
-	assert.deepEqual(parseModelCatalogRequest("https://pi.dev/api/models?nycode-version=latest", undefined), {
-		kind: "invalid",
-		error: "Invalid Nycode version.",
-	});
-	assert.deepEqual(parseModelCatalogRequest("https://pi.dev/api/models?types=", "nycode/0.84.4"), {
+	assert.deepEqual(
+		parseModelCatalogRequest("https://catalog.example.test/api/models?nycode-version=latest", undefined),
+		{
+			kind: "invalid",
+			error: "Invalid Nycode version.",
+		},
+	);
+	assert.deepEqual(parseModelCatalogRequest("https://catalog.example.test/api/models?types=", "nycode/0.84.4"), {
 		kind: "invalid",
 		error: "Invalid model types.",
 	});
