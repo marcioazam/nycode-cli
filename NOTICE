@@ -13,6 +13,12 @@ packages/coding-agent/src/extensions/. Licença MIT, Copyright (c) 2025 Mario
 Zechner e Copyright (c) 2026 ilovepixelart; o texto da licença é o mesmo de
 LICENSE.
 
+pi-lsp 0.1.7 (pacote npm `pi-lsp`, sha512
+bEmxw2pZ3lUh5LDJFCShnmjbCltmSZLOp6neIl+sWEfOEwMBi6IdOoQ2W00Fdc+k8i2Sw17p7XGElykWmDQOkg==),
+com os patches do ny-pi, embutido em packages/coding-agent/src/extensions/lsp/.
+Licença MIT, "Copyright (c) 2026" (sem titular nomeado no pacote); o texto da
+licença está em packages/coding-agent/src/extensions/lsp/LICENSE.
+
 ny-pi, licença MIT, Copyright (c) 2026 ny-pi contributors; o texto da licença
 é o mesmo de LICENSE.
 
@@ -66,3 +72,25 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+Optional packages (installed from source, not bundled)
+------------------------------------------------------
+
+Estes pacotes não fazem parte do nycode nem são distribuídos com ele: o usuário
+os instala com `nycode install` num commit fixo (packages/coding-agent/docs/
+optional-packages.md). Cada repositório traz o próprio LICENSE.
+
+- ponytail: licença MIT, Copyright (c) 2026 DietrichGebert. Fork
+  https://github.com/marcioazam/ponytail (ramo nycode, commit a75382e) de
+  https://github.com/DietrichGebert/ponytail v4.10.3 (ef8ca48), com patches.
+- ralph-loop: licença Apache-2.0 (https://www.apache.org/licenses/LICENSE-2.0),
+  Anthropic. Fork https://github.com/marcioazam/ralph-loop (commit 9e7f895) do
+  diretório plugins/ralph-loop de
+  https://github.com/anthropics/claude-plugins-official (893173f), com
+  alterações.
+- pr-review-toolkit: licença Apache-2.0, Anthropic. Diretório
+  plugins/pr-review-toolkit de
+  https://github.com/anthropics/claude-plugins-official, commit 893173f, sem
+  alterações.
+- claude-red: licença MIT, Copyright (c) 2024-2025 SnailSploit / Kai Aizen.
+  https://github.com/SnailSploit/Claude-Red, commit a8de813, sem alterações.

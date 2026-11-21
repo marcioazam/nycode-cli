@@ -234,7 +234,8 @@ To turn hooks off or replace them:
   `settings.local.json` it turns the other hooks off and the guard keeps running.
 
 The ralph-loop `Stop` hook and the `ponytail` variables (`PONYTAIL_SUBAGENT_MATCHER`) belong to the optional packages of
-the same names and are not registered here.
+the same names. Installing a package does not register hooks: add the `hooks.Stop` and `env` entries by hand, as
+[Optional Packages](optional-packages.md) shows.
 
 The default `statusLine` runs `node "${NYCODE_RESOURCES}/statusline/statusline.mjs"`, the claude-hud launcher. It prints
 nothing until the claude-hud plugin is installed in a Claude Code profile (`/claude-hud-setup`), and then the built-in

@@ -19,6 +19,7 @@ import hooksExtension from "./hooks/index.ts";
 import importClaudeSessionExtension from "./import-claude-session/index.ts";
 import initExtension from "./init/index.ts";
 import llamaExtension from "./llama/index.ts";
+import lspExtension from "./lsp/index.ts";
 import mcpExtension from "./mcp/index.ts";
 import memoryExtension from "./memory/index.ts";
 import notifyExtension from "./notify/index.ts";
@@ -76,6 +77,8 @@ export const builtInExtensions: InlineExtension[] = [
 	{ name: "thinking", factory: thinkingExtension, builtin: true },
 	{ name: "todo", factory: todoExtension, builtin: true },
 	{ name: "web", factory: webExtension, builtin: true, enabledByDefault: false },
+	// Embedded pi-lsp: a settings package listed right after pi-code in ny-pi, so it loads before the ny-pi extensions.
+	{ name: "lsp", factory: lspExtension, builtin: true },
 	// Embedded ny-pi extensions, in ny-pi's load order (after pi-code, by source file name).
 	{ name: "auto-resume", factory: autoResumeExtension, builtin: true },
 	// nycode: K11 the logic lives with the permission engine in core/permissions/, this line only registers it.

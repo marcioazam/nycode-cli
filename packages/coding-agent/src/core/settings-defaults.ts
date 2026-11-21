@@ -102,7 +102,7 @@ export const SETTINGS_DEFAULTS = {
 	// nycode: K4 hooks, statusLine and env defaults
 	// Hooks registered by default, run by the `hooks` extension (needs python3 and jq). A `hooks` entry in settings.json
 	// replaces the default list of that event; `"PreToolUse": []` turns the guard off. The ralph-loop Stop hook is a
-	// third-party package (F9) and registers itself when installed.
+	// third-party package (F9); installing it registers no hooks, so docs/optional-packages.md has the settings entry.
 	hooks: {
 		PreToolUse: [{ matcher: "Bash|Edit|Write|Read", hooks: [guardHook] }],
 		SessionStart: [{ matcher: "startup|resume|clear|compact", hooks: [graphContext, dispatch, impeccableGate(5)] }],
