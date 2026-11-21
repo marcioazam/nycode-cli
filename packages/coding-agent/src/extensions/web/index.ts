@@ -1,0 +1,450 @@
+/**
+ * Web Extension
+ *
+ * Key-free web access: web_search scrapes the DuckDuckGo HTML endpoint (no
+ * API key, no account) and web_fetch retrieves a URL as readable text.
+ * Honors the local-only setup: no cloud accounts, plain HTTPS to public web.
+ */
+
+import type { LookupAddress } from 'node:dns'
+import { lookup } from 'node:dns/promises'
+import type { LookupFunction } from 'node:net'
+import type { Usage } from '@earendil-works/pi-ai'
+import type { ExtensionAPI } from '@earendil-works/pi-coding-agent'
+import { Type } from 'typebox'
+
+import { htmlToMarkdown, removeTags } from './internal/html-markdown.ts'
+import { type CompletionRegistry, completeText } from './internal/model-complete.ts'
+import { capForContext } from './internal/output-guard.ts'
+import { parseNumericEnv } from './internal/values.ts'
+import { httpFetch } from './internal/web-transport.ts'
+
+const SEARCH_ENDPOINT = 'https://html.duckduckgo.com/html/?q='
+const USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) pi-code-web/0.1'
+const MAX_FETCH_CHARS = 30_000
+/** How much of a body is read, and what happens past that. */
+type BodyLimit = { maxBytes: number; overflow: 'cut' | 'refuse' }
+// A page is converted whole, then capped at MAX_FETCH_CHARS. Real pages put hundreds
+// of KB of markup ahead of their content (a GitHub pull request's conversation starts
+// past 250k chars), so the raw ceiling bounds memory only; the converter is linear
+// (10 MiB converts in ~120ms). Over it the fetch is refused, never cut: a cut can land
+// inside a <script> or <style> and leak its contents as text.
+const FETCH_LIMIT: BodyLimit = { maxBytes: 10 * 1024 * 1024, overflow: 'refuse' }
+// The results page is ~35k; a small cut bounds the result regexes' worst case.
+const SEARCH_LIMIT: BodyLimit = { maxBytes: 200_000, overflow: 'cut' }
+const FETCH_TIMEOUT_MS = 20_000
+
+export interface SearchResult {
+  title: string
+  url: string
+  snippet: string
+}
+
+const ENTITIES: Record<string, string> = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#x27;': "'", '&#39;': "'", '&nbsp;': ' ' }
+
+export function decodeEntities(text: string): string {
+  return text.replace(/&(?:amp|lt|gt|quot|#x27|#39|nbsp);/g, (m) => ENTITIES[m] ?? m)
+}
+
+export function stripTags(html: string): string {
+  return decodeEntities(removeTags(html)).replace(/\s+/g, ' ').trim()
+}
+
+/** Resolve DuckDuckGo's redirect links (/l/?uddg=<encoded>) to the target URL. */
+export function resolveResultUrl(href: string): string {
+  const match = /[?&]uddg=([^&]+)/.exec(href)
+  if (match) {
+    try {
+      return decodeURIComponent(match[1])
+    } catch {
+      return href
+    }
+  }
+  return href.startsWith('//') ? `https:${href}` : href
+}
+
+/** Keep results whose host matches an allowed domain (or is not blocked). A domain
+ * matches the host itself or any subdomain of it, as Claude's domain scoping does. */
+export function filterByDomain(results: SearchResult[], allowed: string[] | undefined, blocked: string[] | undefined): SearchResult[] {
+  const hostOf = (url: string): string => {
+    try {
+      return new URL(url).hostname.toLowerCase()
+    } catch {
+      return ''
+    }
+  }
+  const matches = (host: string, domain: string): boolean => {
+    const d = domain.toLowerCase().replace(/^\.+/, '')
+    return host === d || host.endsWith(`.${d}`)
+  }
+  let out = results
+  if (allowed && allowed.length > 0) out = out.filter((r) => allowed.some((d) => matches(hostOf(r.url), d)))
+  else if (blocked && blocked.length > 0) out = out.filter((r) => !blocked.some((d) => matches(hostOf(r.url), d)))
+  return out
+}
+
+export function parseSearchResults(html: string, limit: number): SearchResult[] {
+  const results: SearchResult[] = []
+  const anchorPattern = /<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g
+  const snippetPattern = /<a[^>]*class="result__snippet"[^>]*>([\s\S]*?)<\/a>/
+  const anchors = [...html.matchAll(anchorPattern)]
+  for (let i = 0; i < anchors.length && results.length < limit; i++) {
+    const match = anchors[i]
+    const url = resolveResultUrl(match[1])
+    const title = stripTags(match[2])
+    if (!title || url.includes('duckduckgo.com/y.js')) continue
+    // A result's snippet sits between its anchor and the next one; pairing by block
+    // keeps attribution right when an ad anchor (skipped above) carries a snippet too.
+    const block = html.slice((match.index ?? 0) + match[0].length, anchors[i + 1]?.index ?? html.length)
+    const snippet = snippetPattern.exec(block)
+    results.push({ title, url, snippet: snippet ? stripTags(snippet[1]) : '' })
+  }
+  return results
+}
+
+/** Cap a converted body at the fetch budget, naming what was dropped. */
+function capFetchChars(text: string): string {
+  return text.length > MAX_FETCH_CHARS ? `${text.slice(0, MAX_FETCH_CHARS)}\n[truncated ${text.length - MAX_FETCH_CHARS} chars]` : text
+}
+
+/**
+ * IPv4-mapped (::ffff:...) and NAT64 (64:ff9b::...) forms embed an IPv4 in the low 32 bits,
+ * in either dotted-decimal or hex; the WHATWG URL parser normalizes literals to the hex form.
+ */
+function embeddedIpv4(addr: string): string | null {
+  const dotted = /^(?:::ffff:|64:ff9b::)(\d+\.\d+\.\d+\.\d+)$/.exec(addr)
+  if (dotted) return dotted[1]
+  const hex = /^(?:::ffff:|64:ff9b::)([0-9a-f]{1,4}):([0-9a-f]{1,4})$/.exec(addr)
+  if (!hex) return null
+  const hi = Number.parseInt(hex[1], 16)
+  const lo = Number.parseInt(hex[2], 16)
+  return `${hi >> 8}.${hi & 0xff}.${lo >> 8}.${lo & 0xff}`
+}
+
+function isPrivateIpv6(addr: string): boolean {
+  const embedded = embeddedIpv4(addr)
+  if (embedded) return isPrivateAddress(embedded)
+  if (addr === '::1' || addr === '::') return true
+  if (/^fe[89ab]/.test(addr)) return true // link-local fe80::/10
+  if (/^fe[cdef]/.test(addr)) return true // site-local fec0::/10, deprecated but still routed
+  if (addr.startsWith('ff')) return true // multicast ff00::/8
+  return /^f[cd]/.test(addr) // unique local fc00::/7
+}
+
+function isPrivateIpv4(addr: string): boolean {
+  const parts = addr.split('.').map(Number)
+  if (parts.length !== 4 || parts.some((p) => Number.isNaN(p) || p < 0 || p > 255)) return true
+  return isReservedIpv4(parts)
+}
+
+/** True when the four parsed octets fall in a loopback, private, link-local, CGNAT or other non-public range. */
+function isReservedIpv4(parts: number[]): boolean {
+  const [a, b] = parts
+  if (a === 0 || a === 10 || a === 127) return true
+  if (a === 169 && b === 254) return true
+  if (a === 172 && b >= 16 && b <= 31) return true
+  if (a === 192 && b === 168) return true
+  if (a === 192 && b === 0 && parts[2] === 0) return true // protocol assignments 192.0.0/24
+  if (a === 198 && (b === 18 || b === 19)) return true // benchmarking 198.18/15
+  if (a >= 224) return true // multicast 224/4, reserved 240/4, broadcast 255.255.255.255
+  return a === 100 && b >= 64 && b <= 127
+}
+
+/** SSRF guard: true for loopback, RFC1918, link-local, CGNAT, and private IPv6 ranges. Fails closed on unparseable input. */
+export function isPrivateAddress(ip: string): boolean {
+  const addr = ip
+    .toLowerCase()
+    .replace(/^\[|\]$/g, '')
+    .split('%')[0]
+  return addr.includes(':') ? isPrivateIpv6(addr) : isPrivateIpv4(addr)
+}
+
+/** A lookup that always yields `addresses`, so the socket cannot resolve the host again. */
+export function pinnedLookup(addresses: LookupAddress[]): LookupFunction {
+  return (_hostname, options, callback) => {
+    const cb = (typeof options === 'function' ? options : callback) as (err: Error | null, address: unknown, family?: number) => void
+    if (typeof options !== 'function' && options.all) return cb(null, addresses)
+    const [first] = addresses
+    cb(null, first.address, first.family)
+  }
+}
+
+/**
+ * Resolve a host once, reject any private address, and return a lookup pinned to exactly
+ * those addresses. Passing that lookup to the transport is what closes the SSRF
+ * time-of-check/time-of-use gap: the connection reuses the validated resolution rather
+ * than issuing a second, unchecked DNS query that a rebinding record could answer privately.
+ */
+async function resolveAndPin(url: URL): Promise<LookupFunction> {
+  const host = url.hostname.replace(/^\[|\]$/g, '')
+  const addresses = await lookup(host, { all: true, verbatim: true })
+  // An empty list would leave nothing to reject, so the guard would pass vacuously.
+  // Schemes without a host (data:, file:) reach here the same way.
+  if (addresses.length === 0) throw new Error(`${url.hostname || url.protocol} did not resolve to any address`)
+  for (const { address } of addresses) {
+    if (isPrivateAddress(address)) throw new Error(`refusing to fetch private/internal address for ${url.hostname} (${address})`)
+  }
+  return pinnedLookup(addresses)
+}
+
+const MAX_REDIRECTS = 5
+
+/** The charset a content-type header declares, or 'utf-8' when it names none. */
+function declaredCharset(contentType: string): string {
+  const match = /charset=(?:"([^"]*)"|'([^']*)'|([^;\s]*))/i.exec(contentType)
+  return (match?.[1] ?? match?.[2] ?? match?.[3] ?? '').trim() || 'utf-8'
+}
+
+/** A decoder for `contentType`'s declared charset, or the platform default (UTF-8) for a
+ * label TextDecoder does not recognize: a bad or made-up charset must not fail the fetch. */
+function decoderFor(contentType: string): TextDecoder {
+  try {
+    return new TextDecoder(declaredCharset(contentType))
+  } catch {
+    return new TextDecoder()
+  }
+}
+
+/** readCapped for a response with no body stream: the whole body is buffered, then cut or refused. */
+async function readUnstreamed(response: Response, decoder: TextDecoder, limit: BodyLimit, tooLarge: () => Error): Promise<string> {
+  const bytes = new Uint8Array(await response.arrayBuffer())
+  if (bytes.byteLength > limit.maxBytes && limit.overflow === 'refuse') throw tooLarge()
+  return decoder.decode(bytes.subarray(0, limit.maxBytes))
+}
+
+/** Read a response body up to `limit.maxBytes`, decoded as the content-type header's charset
+ * (UTF-8 when it names none), then stop the download. Past the limit the body is cut or
+ * the read throws, per `limit.overflow`; a declared content-length over a refusing limit
+ * throws before any byte is read. */
+async function readCapped(response: Response, url: URL, limit: BodyLimit): Promise<string> {
+  const tooLarge = () => new Error(`response from ${url.hostname} exceeds the ${limit.maxBytes / 1024 / 1024} MiB limit`)
+  if (limit.overflow === 'refuse' && Number(response.headers.get('content-length')) > limit.maxBytes) {
+    void response.body?.cancel().catch(() => {})
+    throw tooLarge()
+  }
+  const decoder = decoderFor(response.headers.get('content-type') ?? '')
+  const reader = response.body?.getReader()
+  if (!reader) return readUnstreamed(response, decoder, limit, tooLarge)
+  let text = ''
+  let read = 0
+  // A refusing read keeps going at exactly the limit: only the next chunk shows whether it is over.
+  while (limit.overflow === 'refuse' || read < limit.maxBytes) {
+    const { done, value } = await reader.read()
+    if (done) break
+    if (!value) continue
+    if (read + value.byteLength > limit.maxBytes && limit.overflow === 'refuse') {
+      await reader.cancel().catch(() => {}) // NOSONAR typescript:S9382 - a stream is read chunk by chunk
+      throw tooLarge()
+    }
+    text += decoder.decode(value.subarray(0, limit.maxBytes - read), { stream: true })
+    read += value.byteLength
+  }
+  // Flush: bytes of a character cut off by the end of the stream become U+FFFD
+  // instead of vanishing silently.
+  text += decoder.decode()
+  await reader.cancel().catch(() => {})
+  return text
+}
+
+/** Either the page, or the cross-host redirect Claude reports instead of following. */
+type FetchOutcome = { kind: 'body'; text: string; contentType: string } | { kind: 'redirect'; to: string }
+
+/** Claude upgrades an http URL to https before fetching; the rest of the URL is
+ * untouched, so a caller's path, query and fragment survive. */
+function upgradeToHttps(rawUrl: string): string {
+  const url = new URL(rawUrl)
+  if (url.protocol === 'http:') url.protocol = 'https:'
+  return url.href
+}
+
+/** Cross-host redirect policy. `report` is WebFetch's documented behavior; `follow`
+ * keeps the old chase for the internal search fetch, whose endpoint is ours and whose
+ * hops Claude's WebFetch rule does not describe. Stated at every call site rather than
+ * defaulted, so a new caller has to decide which it wants. */
+type CrossHost = 'follow' | 'report'
+
+/** The next hop of a redirect, or the naming result that ends the fetch. Split from
+ * fetchText so the loop reads as request-then-hop; every guard the hop needs lives
+ * here. */
+function redirectTarget(response: Response, url: URL, rawUrl: string, crossHost: CrossHost): { kind: 'next'; next: URL } | { kind: 'redirect'; to: string } {
+  // The hop's body is never read; without the cancel its socket stays held
+  // until the 20s abort timeout, once per hop.
+  void response.body?.cancel().catch(() => {})
+  const location = response.headers.get('location')
+  if (!location) throw new Error(`redirect without location from ${url.hostname}`)
+  const next = new URL(location, url)
+  // Only the caller's URL was scheme-checked; a redirect could hand back data: or
+  // file:, which carry no host for the address guard to inspect.
+  if (next.protocol !== 'http:' && next.protocol !== 'https:') throw new Error(`unsupported redirect scheme ${next.protocol} from ${rawUrl}`)
+  // Claude: "When a URL redirects to a different host, WebFetch returns a text
+  // result that names the original URL and the redirect target instead of following
+  // it." The target is never requested, so the per-hop address guard never sees it
+  // and never needs to: a cross-host hop cannot reach anything at all from here.
+  if (crossHost === 'report' && next.hostname.toLowerCase() !== url.hostname.toLowerCase()) return { kind: 'redirect', to: next.href }
+  return { kind: 'next', next }
+}
+
+/** The per-hop timeout, combined with the caller's own signal (the tool call's, fired on
+ * Esc) when there is one: cancelling must not lose the ceiling that keeps a silently
+ * hanging host from holding the turn forever, but Esc must not have to wait for it either. */
+function hopSignal(signal: AbortSignal | undefined): AbortSignal {
+  const timeout = AbortSignal.timeout(FETCH_TIMEOUT_MS)
+  return signal ? AbortSignal.any([signal, timeout]) : timeout
+}
+
+async function fetchText(rawUrl: string, crossHost: CrossHost, limit: BodyLimit, signal?: AbortSignal, transport = httpFetch): Promise<FetchOutcome> {
+  let url = new URL(rawUrl)
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+    // Cancelled between hops (a redirect chain), not just mid-request.
+    signal?.throwIfAborted()
+    // Resolve, validate and pin per hop: a redirect target gets the same guarantee.
+    const lookup = await resolveAndPin(url)
+    const response = await transport(url, {
+      signal: hopSignal(signal),
+      lookup,
+      userAgent: USER_AGENT,
+    })
+    if (response.status >= 300 && response.status < 400) {
+      const hop = redirectTarget(response, url, rawUrl, crossHost)
+      if (hop.kind === 'redirect') return hop
+      url = hop.next
+      continue
+    }
+    if (!response.ok) {
+      void response.body?.cancel().catch(() => {})
+      throw new Error(`HTTP ${response.status} for ${url}`)
+    }
+    return { kind: 'body', text: await readCapped(response, url, limit), contentType: response.headers.get('content-type') ?? '' } // NOSONAR typescript:S9382 - each redirect hop depends on the previous response
+  }
+  throw new Error(`too many redirects for ${rawUrl}`)
+}
+
+/** Claude documents a 15-minute per-URL cache for WebFetch, overridable by env:
+ * "set CLAUDE_CODE_WEBFETCH_CACHE_TTL_MS to change how long WebFetch keeps each
+ * response". Read per store so a change takes effect without a restart; an unset,
+ * blank, negative or non-numeric value keeps the documented default. */
+const FETCH_CACHE_TTL_DEFAULT_MS = 15 * 60 * 1000
+
+function fetchCacheTtlMs(): number {
+  const parsed = parseNumericEnv(process.env.CLAUDE_CODE_WEBFETCH_CACHE_TTL_MS)
+  return parsed !== undefined && parsed >= 0 ? parsed : FETCH_CACHE_TTL_DEFAULT_MS
+}
+const FETCH_CACHE_MAX_ENTRIES = 50
+
+type FetchCache = Map<string, { expires: number; body: string }>
+
+/** Store a freshly fetched body. Drop expired entries first, then evict the oldest
+ * live one if still full; deleting before set keeps Map insertion order a true
+ * recency order, so a refreshed URL moves to the newest slot instead of keeping its
+ * stale one. Only a delivered body reaches here, so a thrown fetch retries next call. */
+function rememberFetch(cache: FetchCache, url: string, body: string, now: number): void {
+  cache.delete(url)
+  for (const [key, entry] of cache) {
+    if (entry.expires <= now) cache.delete(key)
+  }
+  if (cache.size >= FETCH_CACHE_MAX_ENTRIES) {
+    const oldest = cache.keys().next().value
+    if (oldest !== undefined) cache.delete(oldest)
+  }
+  cache.set(url, { expires: now + fetchCacheTtlMs(), body })
+}
+
+/** Claude's WebFetch runs the prompt over the page with a fast model and returns
+ * that answer, not the raw page, along with the nested call's usage so the tool
+ * result can account for it. Best-effort: any failure (no model, provider error)
+ * yields null so the caller falls back to the markdown. */
+async function answerFromPage(model: Parameters<typeof completeText>[0], prompt: string, url: string, body: string, signal?: AbortSignal, registry?: CompletionRegistry): Promise<{ text: string; usage: Usage } | null> {
+  try {
+    return await completeText(model, `${prompt}\n\nAnswer using only the page content below, fetched from ${url}:\n\n${body}`, {
+      system: 'You extract and answer questions from a web page. Answer only from the provided content, concisely. If the content does not contain the answer, say so.',
+      maxTokens: 1024,
+      signal,
+      registry,
+    })
+  } catch {
+    return null
+  }
+}
+
+/** A fetched page as the capped text web_fetch caches: HTML converted to markdown, anything else as is. */
+function pageBody(text: string, contentType: string): string {
+  return capFetchChars(contentType.includes('html') ? htmlToMarkdown(text) : text)
+}
+
+export default function webExtension(pi: ExtensionAPI) {
+  const fetchCache = new Map<string, { expires: number; body: string }>()
+  pi.registerTool({
+    name: 'web_search',
+    label: 'Web search',
+    description: 'Search the web (DuckDuckGo). Returns titles, URLs, and snippets. Use web_fetch to read a result in full.',
+    parameters: Type.Object({
+      query: Type.String({ description: 'Search query' }),
+      count: Type.Optional(Type.Number({ description: 'Max results (default 5)' })),
+      allowed_domains: Type.Optional(Type.Array(Type.String(), { description: 'Only include results from these domains' })),
+      blocked_domains: Type.Optional(Type.Array(Type.String(), { description: 'Exclude results from these domains' })),
+    }),
+    async execute(_id, params, signal) {
+      // Claude documents allowed/blocked domains as mutually exclusive; allowed wins.
+      const outcome = await fetchText(SEARCH_ENDPOINT + encodeURIComponent(params.query), 'follow', SEARCH_LIMIT, signal)
+      const text = outcome.kind === 'body' ? outcome.text : ''
+      const limit = Math.min(params.count ?? 5, 10)
+      const results = filterByDomain(parseSearchResults(text, 10), params.allowed_domains, params.blocked_domains).slice(0, limit)
+      if (results.length === 0) {
+        return { content: [{ type: 'text' as const, text: 'No results found.' }], details: {} }
+      }
+      const formatted = results.map((r, i) => `${i + 1}. ${r.title}\n   ${r.url}\n   ${r.snippet}`).join('\n')
+      return { content: [{ type: 'text' as const, text: formatted }], details: {} }
+    },
+  })
+
+  pi.registerTool({
+    name: 'web_fetch',
+    label: 'Web fetch',
+    description:
+      'Fetch a URL and return its content converted to markdown. Pass `prompt` to get a focused answer extracted from the page instead of the raw content. http URLs are upgraded to https, a redirect to a different host is reported rather than followed, and responses are cached per URL for 15 minutes by default (CLAUDE_CODE_WEBFETCH_CACHE_TTL_MS).',
+    parameters: Type.Object({
+      url: Type.String({ description: 'Absolute http(s) URL to fetch' }),
+      prompt: Type.Optional(Type.String({ description: 'What to extract or answer from the page; returns the model’s answer instead of the raw markdown' })),
+    }),
+    async execute(_id, params, signal, _onUpdate, ctx) {
+      if (!/^https?:\/\//.test(params.url)) {
+        return { content: [{ type: 'text' as const, text: 'Only http(s) URLs are supported.' }], details: {} }
+      }
+      // Claude: "HTTP URLs are automatically upgraded to HTTPS." Upgrading here rather
+      // than inside the fetch keeps one spelling for the cache key and the prompt text
+      // too, so http:// and https:// of the same page share a single entry.
+      const target = upgradeToHttps(params.url)
+      const now = Date.now()
+      // The cache holds the raw markdown, so a second fetch with a different prompt
+      // still reuses it: retrieval and the optional prompt step are separate.
+      const cached = fetchCache.get(target)
+      let body: string
+      if (cached && cached.expires > now) {
+        body = cached.body
+      } else {
+        const outcome = await fetchText(target, 'report', FETCH_LIMIT, signal)
+        // A cross-host redirect has no body to cache or summarize: the naming result is
+        // the answer, and Claude fetches the target with a second call if it wants it.
+        if (outcome.kind === 'redirect') {
+          return { content: [{ type: 'text' as const, text: `${target} redirects to a different host: ${outcome.to}\nFetch ${outcome.to} directly to read it.` }], details: {} }
+        }
+        body = pageBody(outcome.text, outcome.contentType)
+        rememberFetch(fetchCache, target, body, now)
+      }
+
+      // Best-effort prompt-over-page: a failure returns null, so web_fetch always
+      // falls back to the raw markdown and returns something. The nested call's
+      // usage rides on the result either way, so pi counts it in session totals.
+      let usage: Usage | undefined
+      if (params.prompt && ctx?.model) {
+        const answer = await answerFromPage(ctx.model, params.prompt, target, body, signal, ctx.modelRegistry)
+        if (answer?.text) return { content: [{ type: 'text' as const, text: answer.text }], details: {}, usage: answer.usage }
+        // An empty answer still cost the completion; the fallback carries its usage.
+        usage = answer?.usage
+      }
+      // The char cap alone admits thousands of short lines; pi's tool-output budget
+      // bounds lines too, which the shared guard enforces.
+      return { content: [{ type: 'text' as const, text: capForContext(body) || '(empty response)' }], details: {}, usage }
+    },
+  })
+}
