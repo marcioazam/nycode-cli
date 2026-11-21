@@ -1,23 +1,20 @@
 #!/usr/bin/env node
-// Detecta `$1`, `$@`, `${1:-x}` acidentais em skills e commands do claude-home: o pi-code expande esses tokens
+// Detecta `$1`, `$@`, `${1:-x}` acidentais em skills e commands dos recursos do nycode: o nycode expande esses tokens
 // quando o arquivo é invocado (/skill:<nome>, /comando), e exemplos de shell em skills (`$1` num script) viram o
-// argumento do usuário ou somem. Usa a função real do pi-code (substituteArgs via jiti, o carregador do pi),
-// então acompanha mudanças no pacote. Intencional, ignorado: `$ARGUMENTS`, `$ARGUMENTS[N]`, argumentos nomeados
+// argumento do usuário ou somem. Usa a função real do nycode (substituteArgs, importada do código-fonte TypeScript
+// pelo type stripping do Node), então acompanha mudanças no pacote. Intencional, ignorado: `$ARGUMENTS`, `$ARGUMENTS[N]`, argumentos nomeados
 // do frontmatter `arguments` e escapes (`\$1` fica `$1`, como deve). Correção: escapar como `\$1`.
 // Saída: JSON [{file, line, text, expanded}] em stdout; exit 0. Chamado por check-instructions.py.
-// Uso: arg-expansion-check.mjs [arquivo.md ...]   (sem argumentos: skills/*/SKILL.md e commands/*.md)
+// Uso: arg-expansion-check.mjs [arquivo.md ...]   (sem argumentos: skills/*/SKILL.md e commands/*.md de ${NYCODE_RESOURCES})
 import * as fs from 'node:fs'
-import * as os from 'node:os'
 import * as path from 'node:path'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
-const HOME = os.homedir()
-const CH = path.join(HOME, '.pi/agent/claude-home')
-const PI = path.join(HOME, '.pi/agent/install/releases/1.5.2/node_modules')
-const CMD_FILE = path.join(HOME, '.pi/agent/npm/node_modules/pi-code/extensions/internal/command-file.ts')
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..')
+const CH = process.env.NYCODE_RESOURCES ?? path.join(ROOT, 'packages/coding-agent/resources')
+const CMD_FILE = path.join(ROOT, 'packages/coding-agent/src/extensions/_shared/commands/command-file.ts')
 
-const { createJiti } = await import(path.join(PI, 'jiti/lib/jiti.mjs'))
-const jiti = createJiti(import.meta.url, { alias: { '@earendil-works/pi-coding-agent': path.join(PI, '@earendil-works/pi-coding-agent') } })
-const { parseCommandFile, substituteArgs } = await jiti.import(CMD_FILE)
+const { parseCommandFile, substituteArgs } = await import(pathToFileURL(CMD_FILE).href)
 
 const ARGS = Array.from({ length: 10 }, (_, i) => `\u2983A${i}\u2984`).join(' ')
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Perdas totais de cache (cacheRead == 0) no meio das sessões do pi, por faixa de pausa, e custo do aquecimento.
-# Uso: cache-misses.sh [desde, ISO; padrão 2026-11-11]. Spec: claude-home/docs/pi-memory-cache-sota-2026-11-13.md.
+# Perdas totais de cache (cacheRead == 0) no meio das sessões do nycode, por faixa de pausa, e custo do aquecimento.
+# Uso: cache-misses.sh [desde, ISO; padrão 2026-11-11].
 set -euo pipefail
 SINCE=${1:-2026-11-11}
-cd ~/.pi/agent/sessions
+cd "${NYCODE_CODING_AGENT_DIR:-$HOME/.nycode/agent}/sessions"
 
 echo "== custo por componente (chamadas do assistente)"
 rg --no-filename '"role":"assistant"' -g '*.jsonl' . | jq -s --arg s "$SINCE" '
