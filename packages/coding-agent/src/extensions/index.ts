@@ -8,11 +8,14 @@ import contextImportsExtension from "./context-imports/index.ts";
 import contextUsageExtension from "./context-usage/index.ts";
 import devCommandsExtension from "./dev-commands/index.ts";
 import docsPointerExtension from "./docs-pointer/index.ts";
+import effortSandwichExtension from "./effort-sandwich/index.ts";
 import envSettingsExtension from "./env-settings/index.ts";
 import footerExtension from "./footer/index.ts";
 import gitCheckpointExtension from "./git-checkpoint/index.ts";
 import goalExtension from "./goal/index.ts";
+import headlessLeanExtension from "./headless-lean/index.ts";
 import hooksExtension from "./hooks/index.ts";
+import importClaudeSessionExtension from "./import-claude-session/index.ts";
 import initExtension from "./init/index.ts";
 import llamaExtension from "./llama/index.ts";
 import mcpExtension from "./mcp/index.ts";
@@ -73,10 +76,13 @@ export const builtInExtensions: InlineExtension[] = [
 	{ name: "auto-resume", factory: autoResumeExtension, builtin: true },
 	{ name: "completion-gate", factory: completionGateExtension, builtin: true },
 	{ name: "dev-commands", factory: devCommandsExtension, builtin: true },
+	{ name: "effort-sandwich", factory: effortSandwichExtension, builtin: true },
 	{ name: "footer", factory: footerExtension, builtin: true },
+	{ name: "headless-lean", factory: headlessLeanExtension, builtin: true },
 	{ name: "docs-pointer", factory: docsPointerExtension, builtin: true },
 	{ name: "plan-gate", factory: planGateExtension, builtin: true },
 	{ name: "prefix-cache-1h", factory: prefixCache1hExtension, builtin: true },
+	{ name: "import-claude-session", factory: importClaudeSessionExtension, builtin: true, enabledByDefault: false },
 	{ name: "sound-notify", factory: soundNotifyExtension, builtin: true },
 	{ name: "syntax-check", factory: syntaxCheckExtension, builtin: true },
 	{ name: "up-dequeue", factory: upDequeueExtension, builtin: true },
