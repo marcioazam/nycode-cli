@@ -1,17 +1,20 @@
 ---
 name: release
-description: Prepare, publish, verify, and recover nycode releases. Use for release preparation, local release smoke tests, publishing, and failed release CI or announcements.
+description: Prepare, publish, verify, and recover nycode releases. Use for release preparation, local release smoke tests, publishing, and a failed release workflow.
 ---
 
 # Releasing nycode
 
 Run repository commands from the repo root (two directories above this skill), unless instructed otherwise.
 
-**Lockstep versioning**: all packages share one version; every release updates all together. `patch` = fixes + additions, `minor` = breaking changes. No major releases.
+**Lockstep versioning**: all packages share one version; every release updates all together. `patch` = fixes + additions, `minor` = breaking changes. No major releases, with one exception: `2.0.0` (D-13) is the first release with the embedded harness and ships once, through `npm run release:major` from `1.x`, after a complete `release:local` run (step 2, no skipped checks or tests). After it, `major` is closed again.
+
+The repository is the only channel: a GitHub Release of `marcioazam/nycode` with self-contained binaries, `SHA256SUMS` and a provenance attestation. Nothing is published to npm and no long-lived token exists.
 
 1. **Update CHANGELOGs**: ask the user whether they ran the `/cl` prompt on the latest commit on `main`. If not, they must run `/cl` first to audit and update each package's `[Unreleased]` section before releasing.
 
 2. **Local smoke test**: build an unpublished release and smoke test from outside the repo (so it can't resolve workspace files):
+
    ```bash
    npm run release:local -- --out /tmp/nycode-local-release --force
    cd /tmp
@@ -30,23 +33,47 @@ Run repository commands from the repo root (two directories above this skill), u
    /tmp/nycode-local-release/bun/nycode -p "Say exactly: ok"
    /tmp/nycode-local-release/bun/nycode
    ```
+
    Verify both Node and Bun startup, model/account listing, interactive startup, and at least one real prompt with the intended default provider. The bare commands `/tmp/nycode-local-release/node/nycode` and `/tmp/nycode-local-release/bun/nycode` start interactive mode; run each in tmux, submit a prompt, and wait for the model reply before considering the interactive smoke test passed. Failures are release blockers unless the user explicitly accepts the risk.
 
    Load and follow [interactive-testing.md](interactive-testing.md) for the tmux workflow. Start each release binary from `/tmp`, not the repo root.
 
-3. **Run the release script**:
+3. **Prepare the release commit**: the ruleset of `main` requires a pull request, so the script never pushes and never tags. From an up-to-date `main`, create the branch and run the script:
+
    ```bash
+   git switch -c release/vX.Y.Z origin/main
    NYCODE_ALLOW_LOCKFILE_CHANGE=1 npm_config_min_release_age=0 npm run release:patch    # fixes + additions
    NYCODE_ALLOW_LOCKFILE_CHANGE=1 npm_config_min_release_age=0 npm run release:minor    # breaking changes
    ```
-   If the test suite already passed in `npm run release:local` and only fails from machine load, `NYCODE_RELEASE_SKIP_TESTS=1` skips `./test.sh` in the release script; checks and the packed install check still run. Use it only with the user's approval.
 
-   Use `npm_config_min_release_age=0` only for the release command. The repo's normal npm age gate can otherwise block the release lockfile refresh when the current workspace package version was published recently. Review any lockfile or install lock diffs the release creates before push.
+   For `2.0.0` only: `npm run release:major` on the branch `release/v2.0.0`; the exception goes in the PR description.
 
-   The release script pins the newest published model catalog for Nix (`nix/model-catalog.json`) and builds the checkout with it as the Nix build does (it fails if that catalog predates main's model changes; publish one first), bumps all package versions, updates changelogs, regenerates release artifacts, runs `npm run check`, commits `Release vX.Y.Z`, tags `vX.Y.Z`, adds fresh `## [Unreleased]` changelog sections, commits `Add [Unreleased] section for next cycle`, then pushes `main` and the tag. Do not rerun the release script after a tag was pushed.
+   If the test suite already passed in `npm run release:local` and only fails from machine load, `NYCODE_RELEASE_SKIP_TESTS=1` skips `./test.sh` in the release script; checks and the packed install check still run. Use it only with the user's approval (never for `2.0.0`).
 
-4. **CI verifies and announces the npm release**: pushing the `vX.Y.Z` tag triggers `.github/workflows/build-binaries.yml`. The `publish-npm` job uses npm trusted publishing through GitHub Actions OIDC with environment `npm-publish`; no local `npm publish`, `npm whoami`, OTP, or WebAuthn flow is required. After publishing, `announce-nycode-dev-release` verifies every public workspace package resolves at the exact release version and that its npm tarball is available, then writes the verified release marker to R2. `pi.dev/api/latest-version` reads that marker; it must never announce a release from npm before this job succeeds.
+   Use `npm_config_min_release_age=0` only for the release command. The repo's normal npm age gate can otherwise block the release lockfile refresh when the current workspace package version was published recently. Review any lockfile or install lock diffs the release creates before opening the PR.
 
-5. **CI builds the Nix release**: the tag push also triggers `.github/workflows/nix.yml`, which builds the tagged flake on Linux and macOS and then fast-forwards the `stable` branch to the release commit. `nix run github:marcioazam/nycode/stable` runs the latest release. If the Nix build fails, `stable` stays on the previous release; the tag cannot be fixed, so fix `main` and ship the fix in the next release.
+   The script bumps all package versions, updates changelogs, regenerates release artifacts, runs `npm run check`, the tests and the packed install check, and stops at the commit `Release vX.Y.Z` on the current branch. Do not rerun it for the same version: if it failed, reset the branch to `origin/main` and start over.
 
-6. **If CI publish or announcement fails**: inspect the failed job. The publish helper is idempotent and skips package versions already present on npm; the announcement job rechecks availability before updating the R2 marker. Rerun the failed job or workflow after fixing CI or transient npm issues. Do not rerun `npm run release:patch` or `npm run release:minor` for the same version.
+4. **Merge and tag**: open the PR from `release/vX.Y.Z`, wait for the required checks and squash-merge it. Create the tag on the commit the squash left on `main`, never on the branch commit:
+
+   ```bash
+   git fetch origin main
+   git show origin/main:packages/coding-agent/package.json | jq -r .version    # must print X.Y.Z
+   git tag -a vX.Y.Z <sha-on-main> -m "vX.Y.Z"
+   git push origin vX.Y.Z
+   ```
+
+5. **CI builds and publishes the Release**: pushing the `vX.Y.Z` tag triggers `.github/workflows/publish.yml` (`workflow_dispatch` with the tag recovers a failed run). It builds the 6 binaries, `SHA256SUMS` and the source archive, smoke-tests the binaries on Linux, macOS and Windows, attests the artifacts and publishes the GitHub Release. Follow it with `gh run watch`. The only secret is the run's `GITHUB_TOKEN`.
+
+6. **Verify and open the next cycle**: confirm the Release and its provenance (`gh` 2.49 or newer):
+
+   ```bash
+   gh release view vX.Y.Z -R marcioazam/nycode --json assets,isDraft,isPrerelease
+   gh release download vX.Y.Z -R marcioazam/nycode -D /tmp/nycode-release
+   (cd /tmp/nycode-release && sha256sum -c SHA256SUMS)
+   gh attestation verify /tmp/nycode-release/nycode-linux-x64.tar.gz -R marcioazam/nycode
+   ```
+
+   Then add the fresh `## [Unreleased]` section after `# Changelog` in each package CHANGELOG, commit `Add [Unreleased] section for next cycle` and open it as a second PR, after the tag.
+
+7. **If the workflow fails**: inspect the failed job and rerun it, or dispatch `publish.yml` again with the same tag; the draft Release is published only after every asset is uploaded. A published Release with a wrong asset is removed with `gh release delete vX.Y.Z --cleanup-tag -R marcioazam/nycode` and the fix ships as the next patch version. Never move or reuse a tag and never rerun the release script for the same version.
