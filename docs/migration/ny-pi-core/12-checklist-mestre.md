@@ -125,7 +125,7 @@ Identificador: `C-F<fase>-<n>`. A coluna "prova" diz o que tem de ser observado.
 - [x] C-F8-01 K6 e K13: `resources/` carregado com a menor precedência e incluído no pacote.
 - [x] C-F8-02 Instruções (`contract`, `headless`, `lite`) embarcadas; orçamento de instruções não cresce. Prova: `instruction_budget.py check`.
 - [x] C-F8-03 Regras (`safety.md`, 4 de referência) embarcadas.
-- [ ] C-F8-04 30 skills embarcadas com a classe da 0005; as `optional` fora do contexto do modelo. Prova: `skill_lint.py`, `core_scope.py`. Parcial: embarque e classe feitos (#275); `optional` fora do contexto é PR medido (0005, K3c), adiado pela D-29.
+- [x] C-F8-04 30 skills embarcadas com a classe da 0005; as `optional` fora do contexto do modelo. Prova: `skill_lint.py`, `core_scope.py`. Feito sob a D-39: as 6 `optional` com `disable-model-invocation: true` e o guarda em `core_scope.py`; medição sem modelo: −6 skills e −2.202 caracteres na seção `<skills>` quando ela é listada (`-p` de topo já não lista skills).
 - [x] C-F8-05 17 comandos embarcados.
 - [x] C-F8-06 17 agentes embarcados; `check-agents.py` verde.
 - [x] C-F8-07 Nenhum texto embarcado cita `~/.pi`, `$CLAUDE_CONFIG_DIR` ou `claude-home`. Prova: `check-refs.py` e busca.
@@ -154,9 +154,9 @@ Identificador: `C-F<fase>-<n>`. A coluna "prova" diz o que tem de ser observado.
 - [x] C-F10-03 As 11 dimensões com medida ou marcadas "sem medida". Feito sob a D-39: 2 com medida (velocidade, robustez), 2 em parte (contexto, segurança) e 7 "sem medida" por exigirem modelo, cada uma com a fonte, ver [F10-paridade](evidencias/F10-paridade.md).
 - [x] C-F10-04 Relatório de paridade em `evidencias/F10-paridade.md`, perdas ao lado dos ganhos. Feito sob a D-39: o relatório, sem modelo; falta a assinatura do dono (F10).
 - [x] C-F10-05 `docs/bench/baseline-main/` regravado por PR (linha sem modelo, D-39). Feito sob a D-39: contrato e falhas do `nycode` e do `ny-pi` em `docs/bench/baseline-main/sem-modelo/`; `runs.jsonl`, `verdict.json` e `meta.json` intactos, ver [F10-paridade](evidencias/F10-paridade.md).
-- [ ] C-F10-06 Segunda sincronização com o upstream feita e medida (critério global 7).
-- [ ] C-F10-07 Todos os testes do ny-pi com equivalente verde ou justificativa no mapa (critério global 3).
-- [ ] C-F10-08 Busca do critério global 2 vazia.
+- [ ] C-F10-06 Segunda sincronização com o upstream feita e medida (critério global 7). Fecha em F12 (D-43): o upstream não publicou commit novo desde `780bf31fc`.
+- [x] C-F10-07 Todos os testes do ny-pi com equivalente verde ou justificativa no mapa (critério global 3). Feito: 280 de 280, ver [F10-testes](evidencias/F10-testes.md) (#289).
+- [x] C-F10-08 Busca do critério global 2 vazia fora de `import/`, `docs/`, do comando de migração e das exceções declaradas em `scripts/ci/lint/criterio2/criterio2-allow.txt`, cada uma com classe e motivo; o passo `criterio2` do ci-static falha em linha nova (D-41). Prova: `python3 scripts/ci/lint/criterio2/criterio2.py` termina em `criterio2 OK: 223 lines covered by 21 exceptions` (produto-externo 16 exceções e 91 linhas, upstream 3 e 121, ferramenta-fork 1 e 10, migracao 1 e 1); sobre a `main` anterior (239 linhas) a mesma lista falha com 16 linhas sem cobertura, os 16 defeitos corrigidos (comentários, dados de teste e `delete process.env.CLAUDE_CONFIG_DIR` morto em 6 testes).
 
 ## F11. Distribuição
 

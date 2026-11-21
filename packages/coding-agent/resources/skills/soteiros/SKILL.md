@@ -1,6 +1,7 @@
 ---
 name: soteiros
 description: "Audit code, architecture, dependencies and practices against current SOTA from primary sources (stable releases only) and transform to it; each gap with evidence, target, cost and rollback."
+disable-model-invocation: true
 ---
 
 # Soteiros

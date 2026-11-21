@@ -933,19 +933,19 @@ claude-home/bin/doctor/README.md	scripts/harness/doctor/README.md	converter	F8	R
 claude-home/bin/doctor/pi-doctor	scripts/harness/doctor/pi-doctor	converter	F8	R15
 claude-home/bin/doctor/pi-typecheck	scripts/harness/doctor/pi-typecheck	converter	F8	R15
 claude-home/bin/doctor/prune-sessions	scripts/harness/doctor/prune-sessions	converter	F8	R15
-claude-home/bin/evals/harbor/README.md	bench/evals/harbor/README.md	converter	F3	B05
-claude-home/bin/evals/harbor/bundle.sh	bench/evals/harbor/bundle.sh	converter	F3	B05
+claude-home/bin/evals/harbor/README.md	(sem referência no nycode)	remover	F3	X01
+claude-home/bin/evals/harbor/bundle.sh	bench/harbor/pi_bundle.sh	converter	F3	B05
 claude-home/bin/evals/harbor/omp-release.sh	(braço omp fora das medições, D-26)	remover	F3	B04
 claude-home/bin/evals/harbor/omp_agent.py	(braço omp fora das medições, D-26)	remover	F3	B04
-claude-home/bin/evals/harbor/pi_harness_agent.py	bench/evals/harbor/pi_harness_agent.py	converter	F3	B05
-claude-home/bin/evals/harbor/pi_vanilla_api_agent.py	bench/evals/harbor/pi_vanilla_api_agent.py	converter	F3	B05
-claude-home/bin/evals/harbor/run.sh	bench/evals/harbor/run.sh	converter	F3	B05
+claude-home/bin/evals/harbor/pi_harness_agent.py	bench/harbor/pi_harness_agent.py	converter	F3	B05
+claude-home/bin/evals/harbor/pi_vanilla_api_agent.py	bench/harbor/pi_vanilla_api_agent.py	converter	F3	B05
+claude-home/bin/evals/harbor/run.sh	(sem referência no nycode)	remover	F3	X01
 claude-home/bin/evals/harbor/tests/test_omp_agent.py	(braço omp fora das medições, D-26)	remover	F3	B04
-claude-home/bin/evals/harbor/tests/test_pi_harness_agent.py	bench/evals/harbor/tests/test_pi_harness_agent.py	converter	F3	B05
-claude-home/bin/evals/harbor/tests/test_pi_vanilla_api_agent.py	bench/evals/harbor/tests/test_pi_vanilla_api_agent.py	converter	F3	B05
-claude-home/bin/evals/plan_ab.py	bench/evals/plan_ab.py	converter	F3	B05
-claude-home/bin/evals/plan_ab_cases.jsonl	bench/evals/plan_ab_cases.jsonl	converter	F3	B05
-claude-home/bin/evals/test_plan_ab.py	bench/evals/test_plan_ab.py	converter	F3	B05
+claude-home/bin/evals/harbor/tests/test_pi_harness_agent.py	bench/tests/harbor/test_pi_harness_agent.py	converter	F3	B05
+claude-home/bin/evals/harbor/tests/test_pi_vanilla_api_agent.py	bench/tests/harbor/test_pi_vanilla_api_agent.py	converter	F3	B05
+claude-home/bin/evals/plan_ab.py	(sem referência no nycode)	remover	F3	X01
+claude-home/bin/evals/plan_ab_cases.jsonl	(sem referência no nycode)	remover	F3	X01
+claude-home/bin/evals/test_plan_ab.py	(sem referência no nycode)	remover	F3	X01
 claude-home/bin/git-deliver	scripts/harness/git-deliver	converter	F8	R15
 claude-home/bin/hud/claude-hud-pi-transcript.mjs	packages/coding-agent/resources/statusline/claude-hud-pi-transcript.mjs	converter	F8	R14
 claude-home/bin/hud/claude-hud-provider.mjs	packages/coding-agent/resources/statusline/claude-hud-provider.mjs	converter	F8	R14
@@ -1048,11 +1048,11 @@ claude-home/hooks/test_impeccable_gate.py	packages/coding-agent/test/harness/hoo
 claude-home/lite/APPEND.md	packages/coding-agent/resources/instructions/lite.md	converter	F8	R03
 claude-home/lite/settings.json	packages/coding-agent/resources/instructions/lite.settings.json	converter	F8	R04
 claude-home/patches/pi-code/commands-print.patch	packages/coding-agent/src/extensions/commands/	absorver	F5	P02
-claude-home/patches/pi-code/goal-lifecycle.test.ts	packages/coding-agent/test/harness/extensions/goal/goal-lifecycle.test.ts	converter	F6	P10
+claude-home/patches/pi-code/goal-lifecycle.test.ts	packages/coding-agent/test/harness/goal/goal-lifecycle.test.ts	converter	F6	P10
 claude-home/patches/pi-code/goal.patch	packages/coding-agent/src/extensions/goal/	absorver	F6	P09
-claude-home/patches/pi-code/goal.test.ts	packages/coding-agent/test/harness/extensions/goal/goal.test.ts	converter	F6	P10
+claude-home/patches/pi-code/goal.test.ts	packages/coding-agent/test/harness/goal/goal.test.ts	converter	F6	P10
 claude-home/patches/pi-code/notify-focus.patch	packages/coding-agent/src/extensions/notify/	absorver	F5	P03
-claude-home/patches/pi-code/notify-focus.test.ts	packages/coding-agent/test/harness/extensions/notify-focus.test.ts	converter	F5	P07
+claude-home/patches/pi-code/notify-focus.test.ts	packages/coding-agent/test/harness/notify/notify-focus.test.ts	converter	F5	P07
 claude-home/patches/pi-code/orig/commands.ts	(original do pi-code; a referência é o tarball 1.7.0)	remover	F5	P01
 claude-home/patches/pi-code/orig/git-checkpoint.ts	(original do pi-code; a referência é o tarball 1.7.0)	remover	F5	P01
 claude-home/patches/pi-code/orig/goal.ts	(original do pi-code; a referência é o tarball 1.7.0)	remover	F5	P01
@@ -1067,43 +1067,43 @@ claude-home/patches/pi-code/orig/subagent/modes.ts	(original do pi-code; a refer
 claude-home/patches/pi-code/orig/subagent/run.ts	(original do pi-code; a referência é o tarball 1.7.0)	remover	F5	P01
 claude-home/patches/pi-code/orig/todo.ts	(original do pi-code; a referência é o tarball 1.7.0)	remover	F5	P01
 claude-home/patches/pi-code/rewind-tree.patch	packages/coding-agent/src/extensions/git-checkpoint/	absorver	F5	P04
-claude-home/patches/pi-code/rewind-tree.test.ts	packages/coding-agent/test/harness/extensions/rewind-tree.test.ts	converter	F5	P07
+claude-home/patches/pi-code/rewind-tree.test.ts	packages/coding-agent/test/harness/git-checkpoint/git-checkpoint.test.ts	converter	F5	P07
 claude-home/patches/pi-code/statusline-multiline.patch	packages/coding-agent/src/extensions/status-line/	absorver	F5	P05
-claude-home/patches/pi-code/statusline-multiline.test.ts	packages/coding-agent/test/harness/extensions/statusline-multiline.test.ts	converter	F5	P07
+claude-home/patches/pi-code/statusline-multiline.test.ts	packages/coding-agent/test/harness/status-line/statusline-multiline.test.ts	converter	F5	P07
 claude-home/patches/pi-code/subagent-nesting.patch	packages/coding-agent/src/extensions/subagent/	absorver	F6	P13
-claude-home/patches/pi-code/subagent-nesting.test.ts	packages/coding-agent/test/harness/extensions/subagent/nesting.test.ts	converter	F6	P14
+claude-home/patches/pi-code/subagent-nesting.test.ts	packages/coding-agent/test/harness/subagent/nesting/subagent-nesting.test.ts	converter	F6	P14
 claude-home/patches/pi-code/subagent-panel.patch	packages/coding-agent/src/extensions/subagent/	absorver	F6	P13
-claude-home/patches/pi-code/subagent-panel/fleet-entry.test.ts	packages/coding-agent/test/harness/extensions/subagent/subagent-panel/fleet-entry.test.ts	converter	F6	P15
-claude-home/patches/pi-code/subagent-panel/fleet-faults.test.ts	packages/coding-agent/test/harness/extensions/subagent/subagent-panel/fleet-faults.test.ts	converter	F6	P15
-claude-home/patches/pi-code/subagent-panel/fleet-spawn.test.ts	packages/coding-agent/test/harness/extensions/subagent/subagent-panel/fleet-spawn.test.ts	converter	F6	P15
-claude-home/patches/pi-code/subagent-panel/fleet-ui-layout.test.ts	packages/coding-agent/test/harness/extensions/subagent/subagent-panel/fleet-ui-layout.test.ts	converter	F6	P15
-claude-home/patches/pi-code/subagent-panel/fleet-ui.test.ts	packages/coding-agent/test/harness/extensions/subagent/subagent-panel/fleet-ui.test.ts	converter	F6	P15
-claude-home/patches/pi-code/subagent-panel/fleet.test.ts	packages/coding-agent/test/harness/extensions/subagent/subagent-panel/fleet.test.ts	converter	F6	P15
+claude-home/patches/pi-code/subagent-panel/fleet-entry.test.ts	packages/coding-agent/test/harness/subagent/fleet/fleet-entry.test.ts	converter	F6	P15
+claude-home/patches/pi-code/subagent-panel/fleet-faults.test.ts	packages/coding-agent/test/harness/subagent/fleet/fleet-faults.test.ts	converter	F6	P15
+claude-home/patches/pi-code/subagent-panel/fleet-spawn.test.ts	packages/coding-agent/test/harness/subagent/fleet/fleet-spawn.test.ts	converter	F6	P15
+claude-home/patches/pi-code/subagent-panel/fleet-ui-layout.test.ts	packages/coding-agent/test/harness/subagent/panel/fleet-ui-layout.test.ts	converter	F6	P15
+claude-home/patches/pi-code/subagent-panel/fleet-ui.test.ts	packages/coding-agent/test/harness/subagent/panel/fleet-ui.test.ts	converter	F6	P15
+claude-home/patches/pi-code/subagent-panel/fleet.test.ts	packages/coding-agent/test/harness/subagent/fleet/fleet.test.ts	converter	F6	P15
 claude-home/patches/pi-code/subagent-panel/setup.ts	packages/coding-agent/test/harness/extensions/subagent/subagent-panel/setup.ts	converter	F6	P15
 claude-home/patches/pi-code/subagent-render.patch	packages/coding-agent/src/extensions/subagent/	absorver	F6	P13
-claude-home/patches/pi-code/subagent-render/render.test.ts	packages/coding-agent/test/harness/extensions/subagent/subagent-render/render.test.ts	converter	F6	P15
+claude-home/patches/pi-code/subagent-render/render.test.ts	packages/coding-agent/test/harness/subagent/transcript/render.test.ts	converter	F6	P15
 claude-home/patches/pi-code/team.patch	packages/coding-agent/src/extensions/subagent/	absorver	F6	P13
-claude-home/patches/pi-code/team/team-faults.test.ts	packages/coding-agent/test/harness/extensions/subagent/team/team-faults.test.ts	converter	F6	P15
-claude-home/patches/pi-code/team/team.test.ts	packages/coding-agent/test/harness/extensions/subagent/team/team.test.ts	converter	F6	P15
+claude-home/patches/pi-code/team/team-faults.test.ts	packages/coding-agent/test/harness/subagent/team/team-faults.test.ts	converter	F6	P15
+claude-home/patches/pi-code/team/team.test.ts	packages/coding-agent/test/harness/subagent/team/team.test.ts	converter	F6	P15
 claude-home/patches/pi-code/todo-collapse.patch	packages/coding-agent/src/extensions/todo/	absorver	F5	P06
-claude-home/patches/pi-code/todo-collapse.test.ts	packages/coding-agent/test/harness/extensions/todo-collapse.test.ts	converter	F5	P07
+claude-home/patches/pi-code/todo-collapse.test.ts	packages/coding-agent/test/harness/todo/todo-collapse.test.ts	converter	F5	P07
 claude-home/patches/pi-code/zz-hotkeys-no-alt.patch	packages/coding-agent/src/extensions/plan-mode/	absorver	F6	P11
 claude-home/patches/pi-code/zz-panel-main-root.patch	packages/coding-agent/src/extensions/subagent/	absorver	F6	P13
 claude-home/patches/pi-code/zz-subagent-respawn.patch	packages/coding-agent/src/extensions/subagent/	absorver	F6	P13
-claude-home/patches/pi-code/zz-subagent-respawn/respawn.test.ts	packages/coding-agent/test/harness/extensions/subagent/zz-subagent-respawn/respawn.test.ts	converter	F6	P15
+claude-home/patches/pi-code/zz-subagent-respawn/respawn.test.ts	packages/coding-agent/test/harness/subagent/nesting/respawn.test.ts	converter	F6	P15
 claude-home/patches/pi-code/zzz-panel-column0.patch	packages/coding-agent/src/extensions/subagent/	absorver	F6	P13
 claude-home/patches/pi-code/zzzz-plan-done-rule.patch	packages/coding-agent/src/extensions/plan-mode/	absorver	F6	P11
-claude-home/patches/pi-code/zzzz-plan-done-rule/plan-done-rule.test.ts	packages/coding-agent/test/harness/extensions/plan-mode/plan-done-rule.test.ts	converter	F6	P12
+claude-home/patches/pi-code/zzzz-plan-done-rule/plan-done-rule.test.ts	packages/coding-agent/test/harness/plan-mode/rules/plan-done-rule.test.ts	converter	F6	P12
 claude-home/patches/pi-code/zzzzz-plan-sota.patch	packages/coding-agent/src/extensions/plan-mode/	absorver	F6	P11
-claude-home/patches/pi-code/zzzzz-plan-sota/plan-sota.test.ts	packages/coding-agent/test/harness/extensions/plan-mode/plan-sota.test.ts	converter	F6	P12
+claude-home/patches/pi-code/zzzzz-plan-sota/plan-sota.test.ts	packages/coding-agent/test/harness/plan-mode/rules/plan-sota.test.ts	converter	F6	P12
 claude-home/patches/pi-code/zzzzzz-subagent-send.patch	packages/coding-agent/src/extensions/subagent/	absorver	F6	P13
-claude-home/patches/pi-code/zzzzzz-subagent-send/send.test.ts	packages/coding-agent/test/harness/extensions/subagent/zzzzzz-subagent-send/send.test.ts	converter	F6	P15
+claude-home/patches/pi-code/zzzzzz-subagent-send/send.test.ts	packages/coding-agent/test/harness/subagent/fleet/sync/send.test.ts	converter	F6	P15
 claude-home/patches/pi-code/zzzzzzz-subagent-model-effort.patch	packages/coding-agent/src/extensions/subagent/	absorver	F6	P13
-claude-home/patches/pi-code/zzzzzzz-subagent-model-effort/render.test.ts	packages/coding-agent/test/harness/extensions/subagent/zzzzzzz-subagent-model-effort/render.test.ts	converter	F6	P15
-claude-home/patches/pi-code/zzzzzzz-subagent-model-effort/replay.test.ts	packages/coding-agent/test/harness/extensions/subagent/zzzzzzz-subagent-model-effort/replay.test.ts	converter	F6	P15
-claude-home/patches/pi-code/zzzzzzz-subagent-model-effort/tracker.test.ts	packages/coding-agent/test/harness/extensions/subagent/zzzzzzz-subagent-model-effort/tracker.test.ts	converter	F6	P15
+claude-home/patches/pi-code/zzzzzzz-subagent-model-effort/render.test.ts	packages/coding-agent/test/harness/subagent/transcript/model-effort-render.test.ts	converter	F6	P15
+claude-home/patches/pi-code/zzzzzzz-subagent-model-effort/replay.test.ts	(sem pilha de patches)	remover	F6	P16
+claude-home/patches/pi-code/zzzzzzz-subagent-model-effort/tracker.test.ts	packages/coding-agent/test/harness/subagent/fleet/tracker.test.ts	converter	F6	P15
 claude-home/patches/pi-code/zzzzzzzz-statusline-provider.patch	packages/coding-agent/src/extensions/status-line/	absorver	F5	P05
-claude-home/patches/pi-code/zzzzzzzz-statusline-provider/provider.test.ts	packages/coding-agent/test/harness/extensions/status-line/provider.test.ts	converter	F5	P08
+claude-home/patches/pi-code/zzzzzzzz-statusline-provider/provider.test.ts	packages/coding-agent/test/harness/status-line/provider.test.ts	converter	F5	P08
 claude-home/patches/pi-core/cache-warm-identity.mjs	packages/coding-agent/src/core/sdk.ts (K1)	absorver	F4	K05
 claude-home/patches/pi-core/mcp-close-grace.mjs	packages/mcp/src/transports/stdio.ts (K2)	absorver	F4	K06
 claude-home/patches/pi-core/mcp-close-grace.test.ts	packages/mcp/test/stdio-close-grace.test.ts	converter	F4	K07
@@ -1478,7 +1478,7 @@ scripts/compaction-400k.py	(K9)	remover	F7	E09
 scripts/fixtures/leak/clean.txt	scripts/ci/fixtures/leak/clean.txt	mover	F3	C08
 scripts/install-lib.sh	instalador e campo files do pacote	remover	F11	I01
 scripts/refs-allow.txt	scripts/ci/lint/refs-allow.txt	converter	F3	C07
-scripts/test_check_refs.py	scripts/ci/lint/test_check_refs.py	converter	F3	C07
+scripts/test_check_refs.py	scripts/test_check_refs.py	converter	F3	C07
 scripts/test_install.sh	instalador e campo files do pacote	remover	F11	I01
 settings.json.example	packages/coding-agent/src/core/settings-defaults.ts + docs/settings.md (K4)	absorver	F4	K03
 themes/mono.json	packages/coding-agent/src/modes/interactive/theme/mono.json (D-37)	mover	F7	E27

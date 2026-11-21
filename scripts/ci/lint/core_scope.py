@@ -5,7 +5,8 @@ hook, command and plugin has exactly one table row with a valid class, and no ro
 A type with no shipped piece yet is not compared for stale rows: the pieces arrive in F5-F8 and
 their rows already exist. The first piece of a type turns the stale check on for that type; a
 row whose piece still waits in import/ny-pi (extensions/, claude-home/) is pending, not stale.
-A piece without a row is always a finding.
+A piece without a row is always a finding. Every `optional` skill must carry
+`disable-model-invocation: true` (D-39: it stays out of the model context, `/skill:<name>` still works).
 
 Usage: core_scope.py [--root DIR]   (default: repository root)
 Exit 0 clean, 1 findings, 2 spec unreadable or malformed.
@@ -32,6 +33,7 @@ EXT_SKIP = {"test", "tests", "node_modules"}
 EXT_NATIVE = {"index", "codemode", "llama", "mcp", "tool-search"}
 # A directory starting with "_" is a shared library the extensions import (`_shared`, 03 §3.2), never registered.
 EXT_LIBRARY_PREFIX = "_"
+HIDDEN_KEY = "disable-model-invocation: true"
 HOOK_SKIP = ("test_", "fixtures", "__pycache__", ".")
 
 Piece = tuple[str, str]
@@ -125,6 +127,24 @@ def compare(
     return sorted(out)
 
 
+def unhidden_optional_skills(root: Path, rows: list[tuple[str, str, str]]) -> list[str]:
+    """Findings for `optional` skills that stay in the model context (no `disable-model-invocation: true`).
+
+    Core skills are not checked: some are hidden on purpose, others are not.
+    """
+    out: list[str] = []
+    for typ, name, cls in rows:
+        skill = root / RESOURCES / "skills" / name / "SKILL.md"
+        if typ != "skill" or cls != "optional" or not skill.is_file():
+            continue
+        frontmatter = skill.read_text(encoding="utf-8").split("---", 2)[1:2]
+        if not any(
+            line.strip() == HIDDEN_KEY for f in frontmatter for line in f.splitlines()
+        ):
+            out.append(f"not hidden: skill {name} (optional needs {HIDDEN_KEY})")
+    return out
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[3])
@@ -142,6 +162,7 @@ def main(argv: list[str] | None = None) -> int:
     findings = compare(
         discover(root), rows, discover(root, IMPORT_RESOURCES, IMPORT_EXTENSIONS)
     )
+    findings = sorted(findings + unhidden_optional_skills(root, rows))
     if findings:
         print("\n".join(findings), file=sys.stderr)
         return 1

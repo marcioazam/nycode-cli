@@ -1,6 +1,7 @@
 ---
 name: perplexity-urls
 description: "Web search through the Perplexity MCP with exact, verified source URLs, paired with an independent provider. Use for any web search or perplexity_* call (Perplexity is the first provider)."
+disable-model-invocation: true
 ---
 
 # Perplexity with exact URLs

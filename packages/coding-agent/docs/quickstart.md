@@ -6,21 +6,18 @@ For native Windows setup, read [Windows Setup](windows.md). For Android, read [T
 
 ## 1. Install Nycode
 
-Download the release for macOS, Linux, or Windows from <https://github.com/marcioazam/nycode/releases>. Alternatively, install Nycode from npm, which does not pin transitive dependencies. This requires Node.js 22.19 or newer:
+Download the archive for your platform (`darwin-arm64`, `darwin-x64`, `linux-x64`, `linux-arm64`, `windows-x64`, `windows-arm64`) from <https://github.com/marcioazam/nycode/releases>. The binary is self-contained: it needs no Node.js and no `npm install`. Nycode is not published to npm. The first release is `2.0.0`.
+
+Check the download against `SHA256SUMS` from the same release and unpack it (Linux x64 shown; Windows ships `nycode-<platform>.zip`):
 
 ```bash
-npm install -g --ignore-scripts @nycode/coding-agent
+sha256sum -c --ignore-missing SHA256SUMS
+tar -xzf nycode-linux-x64.tar.gz
 ```
 
-Nycode does not require dependency lifecycle scripts for a normal npm installation.
+To verify the build provenance, run `gh attestation verify nycode-linux-x64.tar.gz -R marcioazam/nycode` (GitHub CLI 2.49 or newer). Put the unpacked `nycode` directory on your `PATH`.
 
-With Nix on macOS or Linux, install the latest release from Nycode's flake. Nix builds Nycode from source:
-
-```bash
-nix profile add github:marcioazam/nycode/stable
-```
-
-Older Nix versions use `nix profile install` instead. Update with `nix profile upgrade nycode`; `nycode update` cannot update a Nix installation. To pin a release, use a tag such as `github:marcioazam/nycode/v1.0.0`.
+To work from sources instead, see [Getting started](../../../README.md#getting-started) in the repository README.
 
 Verify the installation:
 
@@ -109,18 +106,6 @@ Start with the least powerful mechanism that meets your need:
 
 ## Uninstall Nycode
 
-If you installed Nycode with npm, run:
+If you installed from a release download, delete the unpacked `nycode` directory and the archive.
 
-```bash
-npm uninstall -g @nycode/coding-agent
-```
-
-If you installed from a release download, delete the downloaded files.
-
-If you installed Nycode with Nix, run:
-
-```bash
-nix profile remove nycode
-```
-
-None of these methods removes configuration, credentials, sessions, or installed Nycode packages from `~/.nycode/agent/`.
+Uninstalling does not remove configuration, credentials, sessions, or installed Nycode packages from `~/.nycode/agent/`.

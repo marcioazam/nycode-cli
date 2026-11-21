@@ -2,7 +2,7 @@
 
 Subclasses Harbor's built-in Pi agent: trajectory/cost parsing and the CLI flags are inherited.
 Only install() (ships the bundle instead of `npm i -g pi`) and the final pi invocation differ.
-Build the bundle first with bundle.sh. The OAuth token comes from the harbor process env at runtime.
+Build the bundle first with pi_bundle.sh. The OAuth token comes from the harbor process env at runtime.
 """
 
 import os
@@ -92,7 +92,7 @@ class PiHarnessAgent(Pi):  # type: ignore[misc]
     async def install(self, environment: BaseEnvironment) -> None:
         bundle = Path(os.environ.get("PI_HARNESS_BUNDLE", "/tmp/pi-harness-bundle.tgz"))
         if not bundle.is_file():
-            raise FileNotFoundError(f"{bundle} missing; run bundle.sh first")
+            raise FileNotFoundError(f"{bundle} missing; run pi_bundle.sh first")
         await self.exec_as_root(environment, _ROOT_DEPS)
         await environment.upload_file(bundle, _REMOTE_BUNDLE)
         # The bundle is rooted at a fixed container home, whatever user runs the task.
