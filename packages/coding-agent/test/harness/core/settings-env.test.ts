@@ -73,10 +73,37 @@ describe("bypass precedence", () => {
 		expect(bypass(["--dangerously-skip-permissions"])).toBe(true);
 	});
 
-	it("ignores a variable that does not parse", () => {
-		vi.stubEnv("NYCODE_BYPASS_PERMISSIONS", "yes please");
-		expect(bypass([], manager({ permissions: { bypass: true } }))).toBe(true);
-		expect(bypass([])).toBe(false);
+	it.each([["no"], ["off"], ["FALSE"], ["Off"], [""], ["  "], ["yes please"], ["2"]])(
+		"fails closed on the unrecognised or false value %j over settings bypass true",
+		(value) => {
+			vi.stubEnv("NYCODE_BYPASS_PERMISSIONS", value);
+			expect(bypass([], manager({ permissions: { bypass: true } }))).toBe(false);
+		},
+	);
+
+	it.each([["YES"], ["On"], ["TRUE"], [" 1 "]])("accepts %j as true regardless of case", (value) => {
+		vi.stubEnv("NYCODE_BYPASS_PERMISSIONS", value);
+		expect(bypass([])).toBe(true);
+	});
+
+	it("reports an unrecognised variable once, without its value, and not for a recognised one", () => {
+		const settings = manager({ permissions: { bypass: true } });
+		vi.stubEnv("NYCODE_BYPASS_PERMISSIONS", "s3cr3t-nope");
+		settings.getBypassPermissions();
+		settings.getBypassPermissions();
+		const errors = settings.drainErrors();
+		expect(errors).toHaveLength(1);
+		expect(errors[0].error.message).toContain("NYCODE_BYPASS_PERMISSIONS");
+		expect(errors[0].error.message).not.toContain("s3cr3t-nope");
+		vi.stubEnv("NYCODE_BYPASS_PERMISSIONS", "off");
+		expect(manager().getBypassPermissions()).toBe(false);
+		expect(settings.drainErrors()).toEqual([]);
+	});
+
+	it("keeps the flag above an unrecognised variable", () => {
+		vi.stubEnv("NYCODE_BYPASS_PERMISSIONS", "nope");
+		expect(bypass(["--bypass"])).toBe(true);
+		expect(bypass(["--safe"], manager({ permissions: { bypass: true } }))).toBe(false);
 	});
 
 	it("does not let a project settings file switch bypass on", () => {

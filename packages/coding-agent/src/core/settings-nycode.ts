@@ -36,9 +36,9 @@ interface Field<T> {
 }
 
 const envBoolean = (raw: string): boolean | undefined => {
-	const text = raw.trim();
-	if (text === "1" || text === "true") return true;
-	if (text === "0" || text === "false") return false;
+	const text = raw.trim().toLowerCase();
+	if (text === "1" || text === "true" || text === "yes" || text === "on") return true;
+	if (text === "0" || text === "false" || text === "no" || text === "off") return false;
 	return undefined;
 };
 const envNumber = (raw: string): number | undefined => (/^\d+(\.\d+)?$/.test(raw.trim()) ? Number(raw) : undefined);
@@ -80,20 +80,22 @@ function pick<T>(field: Field<T>, envRaw: string | undefined, settingValue: unkn
 	return pickOptional(field, envRaw, settingValue) ?? fallback;
 }
 
+/** True when NYCODE_BYPASS_PERMISSIONS is set but is not a recognised boolean (an empty value included). */
+export function isBypassEnvUnrecognised(env: Env): boolean {
+	const raw = env.NYCODE_BYPASS_PERMISSIONS;
+	return raw !== undefined && envBoolean(raw) === undefined;
+}
+
 /**
  * Whether permission prompts are auto-approved. Flag, then NYCODE_BYPASS_PERMISSIONS, then settings.json, then false.
+ * Fail closed: a variable that is set but unrecognised (empty included) is false, never a fall-through to settings.json.
  * `settings` must be the global layer: a project must not switch its own permission prompts off.
  */
 export function resolveBypassPermissions(input: { flag?: boolean; env: Env; settings: Settings }): boolean {
-	return (
-		input.flag ??
-		pick(
-			BOOLEAN,
-			input.env.NYCODE_BYPASS_PERMISSIONS,
-			input.settings.permissions?.bypass,
-			SETTINGS_DEFAULTS.permissions.bypass,
-		)
-	);
+	if (input.flag !== undefined) return input.flag;
+	const raw = input.env.NYCODE_BYPASS_PERMISSIONS;
+	if (raw !== undefined) return envBoolean(raw) ?? false;
+	return pick(BOOLEAN, undefined, input.settings.permissions?.bypass, SETTINGS_DEFAULTS.permissions.bypass);
 }
 
 /** Resolve every nycode key except `permissions.bypass`, `hooks`, `statusLine` and `env`, which have their own getters. */

@@ -10,7 +10,12 @@ import { normalizePath, resolvePath } from "../utils/paths.ts";
 import { stripBom } from "../utils/text.ts";
 import { DEFAULT_HTTP_IDLE_TIMEOUT_MS, parseHttpIdleTimeoutMs } from "./http-dispatcher.ts";
 import { SETTINGS_DEFAULTS } from "./settings-defaults.ts";
-import { type NycodeSettings, resolveBypassPermissions, resolveNycodeSettings } from "./settings-nycode.ts";
+import {
+	isBypassEnvUnrecognised,
+	type NycodeSettings,
+	resolveBypassPermissions,
+	resolveNycodeSettings,
+} from "./settings-nycode.ts";
 import type { HooksSettings, StatusLineSettings } from "./settings-nycode-schema.ts";
 import type {
 	CacheWarmingMode,
@@ -560,6 +565,8 @@ export class SettingsManager {
 		}
 	}
 
+	private bypassEnvWarned = false;
+
 	private recordError(scope: SettingsScope, error: unknown): void {
 		this.errors.push(toSettingsError(scope, error, this.settingsPaths[scope]));
 	}
@@ -932,6 +939,15 @@ export class SettingsManager {
 	 * global settings.json, then false. Global only: a project file must not disable its own prompts.
 	 */
 	getBypassPermissions(cliFlag?: boolean): boolean {
+		if (cliFlag === undefined && !this.bypassEnvWarned && isBypassEnvUnrecognised(process.env)) {
+			this.bypassEnvWarned = true;
+			this.recordError(
+				"global",
+				new Error(
+					"NYCODE_BYPASS_PERMISSIONS is not a recognised boolean (1/true/yes/on, 0/false/no/off); bypass stays off",
+				),
+			);
+		}
 		return resolveBypassPermissions({ flag: cliFlag, env: process.env, settings: this.globalSettings });
 	}
 
