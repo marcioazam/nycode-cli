@@ -7,8 +7,8 @@ export default mergeConfig(
 		test: {
 			globals: true,
 			environment: "node",
-			// resources/ holds embedded skill tests that run under node:test (see the "test" script), not vitest.
-			exclude: [...configDefaults.exclude, "resources/**"],
+			// resources/ holds embedded skill tests and the status-line tests run under node:test (see the "test" script), not vitest.
+			exclude: [...configDefaults.exclude, "resources/**", "test/harness/statusline/**"],
 			testTimeout: 30000,
 			// Tests run offline by default; opt in with allowNetwork() from test/test-network-env.ts.
 			env: { NYCODE_OFFLINE: "1" },

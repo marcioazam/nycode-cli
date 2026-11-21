@@ -90,7 +90,7 @@ pytest_cov() {
   # Python test roots; the ones the migration has not created yet (hooks and harness tools: F8, bench: F3 bench lane)
   # are skipped until they exist, never dropped from the list.
   local roots=() d
-  for d in scripts packages/coding-agent/resources/skills packages/coding-agent/resources/hooks scripts/harness bench; do
+  for d in scripts packages/coding-agent/resources/skills packages/coding-agent/test/harness/hooks scripts/harness bench; do
     [ -d "$d" ] && roots+=("$d")
   done
   COVERAGE_RCFILE="$TMP/coveragerc" coverage run -m pytest "${roots[@]}" -q -p no:cacheprovider &&

@@ -2,5 +2,3 @@
 # Entries are repo-relative paths under packages/coding-agent/resources. None yet: the ny-pi entries named runtime files
 # of the old pi home, a location the nycode scan no longer matches (D-09).
 lead  # label of the main session in team messages (subagent/team/route.ts, store.ts), not an agent definition
-packages/coding-agent/resources/hooks/  # hooks arrive in F8 step 5 (guard.py, graph_context.py are cited by rules and agents); remove this entry when resources/hooks lands
-packages/coding-agent/resources/statusline/  # statusline files arrive in the F8 statusline unit (claude-hud commands cite them); remove this entry when resources/statusline lands
