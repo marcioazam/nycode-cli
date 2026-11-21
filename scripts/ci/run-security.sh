@@ -88,7 +88,10 @@ selftest() {
 leaks() {
   : >"$TMP/identifiers"
   export NYCODE_IDENTIFIERS="$TMP/identifiers"
-  bash scripts/check-leaks.sh --selftest && bash scripts/check-leaks.sh --tree && bash scripts/check-leaks.sh --history
+  # History of HEAD only: gitleaks scans --all by default, and the CI clone (fetch-depth 0) holds every open branch,
+  # so one branch's unmerged commit would fail every other PR (PR #223 failed on a fixture commit of #224).
+  bash scripts/check-leaks.sh --selftest && bash scripts/check-leaks.sh --tree &&
+    LEAKS_LOG_OPTS=${LEAKS_LOG_OPTS:-HEAD} bash scripts/check-leaks.sh --history
 }
 
 trufflehog_history() {
