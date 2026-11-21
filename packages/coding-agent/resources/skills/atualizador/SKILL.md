@@ -4,6 +4,7 @@ description: "Publish local repo work end to end via git-delivery: commit, push,
 context: fork
 agent: git-delivery
 model: haiku
+disable-model-invocation: true
 ---
 
 # Atualizador

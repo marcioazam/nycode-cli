@@ -1,6 +1,7 @@
 ---
 name: agent-systems
 description: Design, evaluate, harden, or optimize an LLM agent, prompt, eval suite, tool contract, or subagent workflow. Not for ordinary application code.
+disable-model-invocation: true
 ---
 
 # Agent systems

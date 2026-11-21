@@ -1,7 +1,8 @@
 // K6: the built-in scope of the resource loader. Embedded skills have the lowest precedence: a user, project or
 // package skill with the same name replaces them, silently; a missing resources directory embeds nothing.
 import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
 	builtinResourceDir,
@@ -11,6 +12,7 @@ import {
 } from "../../../../src/core/builtin-resources.ts";
 import { DefaultResourceLoader } from "../../../../src/core/resource-loader.ts";
 import { SettingsManager } from "../../../../src/core/settings-manager.ts";
+import { formatSkillsForPrompt, loadSkillsFromDir } from "../../../../src/core/skills.ts";
 import { createResourcesFixture, type ResourcesFixture } from "./fixture.ts";
 
 const skill = (name: string, description: string) =>
@@ -91,5 +93,23 @@ describe("built-in skills in the resource loader (K6)", () => {
 	it("--no-skills leaves the embedded skills out", async () => {
 		fx.write("skills/alpha/SKILL.md", skill("alpha", "embedded"));
 		expect((await loadSkills({ noSkills: true })).skills).toEqual([]);
+	});
+});
+
+// D-39: the `optional` skills of docs/specs/0005-core-scope.md stay loaded (so /skill:<name> expands them) but out of
+// the model's <available_skills> section.
+const SHIPPED_SKILLS = join(dirname(fileURLToPath(import.meta.url)), "../../../../resources/skills");
+const HIDDEN_OPTIONAL = ["agent-systems", "atualizador", "codegraph", "deep-search", "perplexity-urls", "soteiros"];
+
+describe("shipped optional skills (D-39)", () => {
+	it("are loaded and invocable but absent from the prompt skills section", () => {
+		const { skills } = loadSkillsFromDir({ dir: SHIPPED_SKILLS, source: "builtin" });
+		const names = skills.map((s) => s.name);
+		const prompt = formatSkillsForPrompt(skills);
+		for (const name of HIDDEN_OPTIONAL) {
+			expect(names).toContain(name);
+			expect(prompt).not.toContain(`<name>${name}</name>`);
+		}
+		expect(prompt).toContain("<name>tdd</name>");
 	});
 });
