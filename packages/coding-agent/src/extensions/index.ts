@@ -13,6 +13,7 @@ import mcpExtension from "./mcp/index.ts";
 import memoryExtension from "./memory/index.ts";
 import notifyExtension from "./notify/index.ts";
 import outputStylesExtension from "./output-styles/index.ts";
+import planModeExtension from "./plan-mode/index.ts";
 import questionExtension from "./question/index.ts";
 import sessionTitleExtension from "./session-title/index.ts";
 import settingsFlagsExtension from "./settings-flags/index.ts";
@@ -42,6 +43,7 @@ export const builtInExtensions: InlineExtension[] = [
 	{ name: "memory", factory: memoryExtension, builtin: true },
 	{ name: "notify", factory: notifyExtension, builtin: true },
 	{ name: "output-styles", factory: outputStylesExtension, builtin: true },
+	{ name: "plan-mode", factory: planModeExtension, builtin: true },
 	{ name: "question", factory: questionExtension, builtin: true },
 	{ name: "session-title", factory: sessionTitleExtension, builtin: true },
 	{ name: "settings-flags", factory: settingsFlagsExtension, builtin: true },

@@ -148,6 +148,7 @@ chegam por fase e o `core_scope.py` é convertido em F3.
 | extension | output-styles | core | Estilos de saída |
 | extension | pi-docs | core | Prompt menor |
 | extension | plan-gate | core | Plano aprovado vai ao fim |
+| extension | plan-mode | core | Modo de plano |
 | extension | prefix-cache-1h | core | Cache do prefixo |
 | extension | puxar | optional | Importa sessão de outro perfil, uso pessoal |
 | extension | question | core | Pergunta ao usuário com opções |
