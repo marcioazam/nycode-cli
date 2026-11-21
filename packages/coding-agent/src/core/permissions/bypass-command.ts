@@ -1,30 +1,30 @@
 /**
- * Bypass Permissions (estilo Claude Code) para o guard de permissões do pi.
+ * Bypass Permissions (estilo Claude Code) para o motor de permissões do nycode.
  *
- * Padrão: LIGADO (modo autônomo). O wrapper ~/.local/bin/pi exporta
- * PI_BYPASS_PERMISSIONS=1 a menos que você rode `pi --safe` (ou PI_BYPASS_PERMISSIONS=0).
+ * Padrão: DESLIGADO (modo seguro). Liga com `nycode --bypass`, NYCODE_BYPASS_PERMISSIONS=1 ou `permissions.bypass`;
+ * `nycode --safe` (ou NYCODE_BYPASS_PERMISSIONS=0) mantém as confirmações.
  *
- * O guard (~/.pi/agent/claude-home/hooks/guard.py, hook PreToolUse via pi-code) lê
- * PI_BYPASS_PERMISSIONS do ambiente; os hooks herdam o process.env do pi, então
+ * O guard (${NYCODE_RESOURCES}/hooks/guard.py, hook PreToolUse da extensão `hooks`) lê
+ * NYCODE_BYPASS_PERMISSIONS do ambiente; os hooks herdam o process.env do nycode, então
  * alternar a variável aqui vale imediatamente para esta sessão (e subagents iniciados depois).
  *
  *   /bypass          alterna
  *   /bypass on|off   define      /bypass status   mostra
  *   Ctrl+Shift+B     alterna
  *
- * Plan mode (pi-code): ao sair do plan mode para executar o plano, o bypass é
+ * Plan mode (nycode): ao sair do plan mode para executar o plano, o bypass é
  * religado automaticamente (mesmo que você o tenha desligado antes). Enquanto o
  * plan mode está ativo, o próprio plan mode já restringe as ferramentas.
  *
  * Com bypass ON as confirmações ("ask") somem; os bloqueios catastróficos ("deny") continuam.
  */
 
-import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent'
-import { Key } from '@earendil-works/pi-tui'
+import { Key } from '@nycode/tui'
+import type { ExtensionAPI, ExtensionContext } from '../extensions/types.ts'
+import { PLAN_MODE_CHANNEL } from '../../extensions/_shared/events/plan-mode-state.ts'
 
-const VAR = 'PI_BYPASS_PERMISSIONS'
+const VAR = 'NYCODE_BYPASS_PERMISSIONS'
 const STATUS_KEY = 'bypass-permissions'
-const PLAN_MODE_CHANNEL = 'pi-code:plan-mode' // pi-code/extensions/internal/plan-mode-state.ts
 
 function isOn(): boolean {
   return ['1', 'true', 'on', 'yes'].includes((process.env[VAR] ?? '').toLowerCase())
@@ -46,18 +46,18 @@ function set(ctx: ExtensionContext | undefined, on: boolean, why?: string): void
   }
 }
 
-export default function (pi: ExtensionAPI) {
+export default function (nycode: ExtensionAPI) {
   let lastCtx: ExtensionContext | undefined
   let planActive = false
 
-  pi.on('session_start', async (_event, ctx) => {
+  nycode.on('session_start', async (_event, ctx) => {
     lastCtx = ctx
     render(ctx)
   })
 
-  // pi-code publica { active } no bus ao entrar/sair do plan mode.
+  // o plan-mode publica { active } no bus ao entrar/sair do plan mode.
   // Transição active -> inativo = plano sendo executado (ou plan mode encerrado): bypass ON.
-  pi.events.on(PLAN_MODE_CHANNEL, (data: unknown) => {
+  nycode.events.on(PLAN_MODE_CHANNEL, (data: unknown) => {
     const active = (data as { active?: unknown } | undefined)?.active
     if (typeof active !== 'boolean') return
     const leaving = planActive && !active
@@ -65,7 +65,7 @@ export default function (pi: ExtensionAPI) {
     if (leaving && !isOn()) set(lastCtx, true, 'execução do plano')
   })
 
-  pi.registerCommand('bypass', {
+  nycode.registerCommand('bypass', {
     description: 'Bypass Permissions: alterna (ou on/off/status) as confirmações do guard',
     handler: async (args, ctx) => {
       lastCtx = ctx
@@ -77,7 +77,7 @@ export default function (pi: ExtensionAPI) {
     },
   })
 
-  pi.registerShortcut(Key.ctrlShift('b'), {
+  nycode.registerShortcut(Key.ctrlShift('b'), {
     description: 'Alternar Bypass Permissions',
     handler: async (ctx) => {
       lastCtx = ctx
