@@ -33,13 +33,13 @@ git -C ~/source/ny-pi ls-tree -r --name-only origin/main \
 | Ação | Significado | Arquivos |
 |---|---|---:|
 | mover | `git mv` sem mudar o conteúdo | 90 |
-| converter | `git mv` e ajuste mecânico: caminhos, imports `@earendil-works/pi-*` para `@nycode/*`, nomes `PI_*`, formatação | 1318 |
+| converter | `git mv` e ajuste mecânico: caminhos, imports `@earendil-works/pi-*` para `@nycode/*`, nomes `PI_*`, formatação | 1317 |
 | fundir | O destino já existe no fork; o conteúdo é combinado | 11 |
 | absorver | O arquivo some e seu comportamento passa a morar em código do core ou de uma extensão | 32 |
-| remover | Não migra; o motivo está na regra | 34 |
+| remover | Não migra; o motivo está na regra | 35 |
 | **Total** | | **1485** |
 
-Dos 1318 "converter", 869 são `bench/` (784 deles são tarefas de teste em `bench/suites/`, que só mudam de lugar) e
+Dos 1317 "converter", 869 são `bench/` (784 deles são tarefas de teste em `bench/suites/`, que só mudam de lugar) e
 261 são agentes, comandos e skills.
 
 ### 2.2 Totais por fase
@@ -56,7 +56,7 @@ Dos 1318 "converter", 869 são `bench/` (784 deles são tarefas de teste em `ben
 | F9 | 4 | Patches de terceiros, `third-party.json` |
 | F11 | 6 | Instalador, `publish.list`, `npm/` |
 
-### 2.3 O que é removido e por quê (34 arquivos)
+### 2.3 O que é removido e por quê (35 arquivos)
 
 | Arquivos | Motivo | Decisão |
 |---|---|---|
@@ -64,7 +64,7 @@ Dos 1318 "converter", 869 são `bench/` (784 deles são tarefas de teste em `ben
 | `scripts/ci/biome.json` | A formatação TypeScript é a do fork | D-06 |
 | `bench/arms/omp`, `claude-home/bin/evals/harbor/omp-release.sh`, `omp_agent.py`, `tests/test_omp_agent.py` | Braço `omp` fora das medições | D-26 |
 | `claude-home/patches/pi-code/orig/*` (13) | Cópias do original; a referência passa a ser o tarball com sha1 conferido | D-02 |
-| `scripts/check-patch-stack.sh` | Não há mais pilha de patches | — |
+| `scripts/check-patch-stack.sh`, `claude-home/patches/pi-code/zzzzzzz-subagent-model-effort/replay.test.ts` | Não há mais pilha de patches; o teste só reverte e reaplica essa pilha (o comportamento de roteamento tem `render.test.ts` e `tracker.test.ts` no destino) | — |
 | `extensions/cache-prefix-probe/index.ts`, `claude-home/bin/telemetry/cache_probe_join.py`, seu teste, `cache-remeasure.sh` | Diagnóstico marcado como temporário | D-10 |
 | `extensions/no-web-search.ts`, `extensions/no-context-files-covers-claude-md.ts`, `scripts/compaction-400k.py` | Contornos de um acoplamento que acaba | D-10 |
 | `third-party.json` | Terceiros embutidos ou pacotes opcionais | D-11 |

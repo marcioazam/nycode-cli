@@ -57,8 +57,8 @@ Lista completa, uma linha por arquivo: [E-mapa-arquivo-a-arquivo.tsv](E-mapa-arq
 | P12 | 2 | `^claude-home/patches/pi-code/(zzzz-plan-done-rule\|zzzzz-plan-sota)/(.+)$` | `packages/coding-agent/test/harness/extensions/plan-mode/$2` | converter | F6 |
 | P13 | 9 | `^claude-home/patches/pi-code/[a-z-]*(subagent\|panel\|team)[a-z0-9-]*\.patch$` | `packages/coding-agent/src/extensions/subagent/` | absorver | F6 |
 | P14 | 1 | `^claude-home/patches/pi-code/subagent-nesting\.test\.ts$` | `packages/coding-agent/test/harness/extensions/subagent/nesting.test.ts` | converter | F6 |
-| P15 | 15 | `^claude-home/patches/pi-code/(subagent-panel\|subagent-render\|team\|zz-subagent-respawn\|zzzzzz-subagent-send\|zzzzzzz-subagent-model-effort)/(.+)$` | `packages/coding-agent/test/harness/extensions/subagent/$1/$2` | converter | F6 |
-| P16 | 1 | `^scripts/check-patch-stack\.sh$` | `(sem pilha de patches)` | remover | F6 |
+| P15 | 14 | `^claude-home/patches/pi-code/(subagent-panel\|subagent-render\|team\|zz-subagent-respawn\|zzzzzz-subagent-send\|zzzzzzz-subagent-model-effort)/(.+)$` | `packages/coding-agent/test/harness/extensions/subagent/$1/$2` | converter | F6 |
+| P16 | 2 | `^scripts/check-patch-stack\.sh$` | `(sem pilha de patches)` | remover | F6 |
 | E01 | 1 | `^extensions/(cache-prefix-probe)/.+$` | `(D-10)` | remover | F7 |
 | E02 | 2 | `^extensions/(no-web-search\|no-context-files-covers-claude-md)\.ts$` | `(D-10)` | remover | F7 |
 | E03 | 1 | `^claude-home/bin/tests/no-context-files\.test\.ts$` | `packages/coding-agent/test/harness/extensions/claude-rules/context-files.test.ts` | converter | F7 |
@@ -118,9 +118,9 @@ Lista completa, uma linha por arquivo: [E-mapa-arquivo-a-arquivo.tsv](E-mapa-arq
 | F3 | 34 | 910 | 0 | 0 | 5 | 949 |
 | F4 | 3 | 4 | 0 | 5 | 0 | 12 |
 | F5 | 0 | 5 | 0 | 6 | 13 | 24 |
-| F6 | 0 | 20 | 0 | 13 | 1 | 34 |
+| F6 | 0 | 19 | 0 | 13 | 2 | 34 |
 | F7 | 32 | 31 | 1 | 5 | 7 | 76 |
 | F8 | 9 | 338 | 0 | 2 | 0 | 349 |
 | F9 | 0 | 2 | 0 | 1 | 1 | 4 |
 | F11 | 0 | 0 | 0 | 0 | 6 | 6 |
-| **Total** | 89 | 1318 | 11 | 33 | 34 | **1485** |
+| **Total** | 89 | 1317 | 11 | 33 | 35 | **1485** |
