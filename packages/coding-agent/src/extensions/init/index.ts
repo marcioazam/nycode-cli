@@ -17,13 +17,13 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 
-import { CONTEXT_FILE_CANDIDATES } from './internal/context-files.ts'
+import { CONTEXT_FILE_CANDIDATES } from '../_shared/project/context-files.ts'
 
 export { CONTEXT_FILE_CANDIDATES }
 
-import type { ExtensionAPI } from '@earendil-works/pi-coding-agent'
+import type { ExtensionAPI } from '../../core/extensions/types.ts'
 
-import { checkoutRoot } from './internal/project-root.ts'
+import { checkoutRoot } from '../_shared/project/project-root.ts'
 
 function statOf(target: string): fs.Stats | undefined {
   try {
@@ -63,14 +63,14 @@ export function buildInitPrompt(opts: InitPromptOptions = {}): string {
   if (opts.existingContextFile) {
     parts.push(`A context file already exists at the project root: ${opts.existingContextFile}. Read it, then propose improvements based on what you found and apply the ones that clearly help. Do not overwrite the file wholesale; keep its structure and voice and make targeted edits.`)
   } else {
-    parts.push('Write the result to AGENTS.md at the project root. Create the file yourself. pi prefers AGENTS.md over CLAUDE.md as its context file, and Claude Code can read it too via an @AGENTS.md import from CLAUDE.md or a symlink.')
+    parts.push('Write the result to AGENTS.md at the project root. Create the file yourself. nycode prefers AGENTS.md over CLAUDE.md as its context file, and Claude Code can read it too via an @AGENTS.md import from CLAUDE.md or a symlink.')
   }
   parts.push('Keep the file concise and high-signal, under roughly 200 lines. Skip generic advice and anything obvious from a glance at the code.')
   return parts.join('\n\n')
 }
 
-export default function initExtension(pi: ExtensionAPI) {
-  pi.registerCommand('init', {
+export default function initExtension(nycode: ExtensionAPI) {
+  nycode.registerCommand('init', {
     description: 'Analyze the codebase and create or improve the project context file (AGENTS.md)',
     handler: async (_args, ctx) => /* NOSONAR typescript:S7503 - pi types a command handler as returning Promise<void> */ {
       const root = checkoutRoot(ctx.cwd)
@@ -79,7 +79,7 @@ export default function initExtension(pi: ExtensionAPI) {
       const copilotRules = statOf(path.join(root, '.github', 'copilot-instructions.md'))?.isFile() === true
       // A bare send throws (and is silently swallowed) while the agent is
       // streaming, so mid-stream invocations queue as a follow-up turn.
-      pi.sendUserMessage(buildInitPrompt({ ...(existing !== undefined ? { existingContextFile: existing } : {}), cursorRules, copilotRules }), ctx.isIdle() ? {} : { deliverAs: 'followUp' })
+      nycode.sendUserMessage(buildInitPrompt({ ...(existing !== undefined ? { existingContextFile: existing } : {}), cursorRules, copilotRules }), ctx.isIdle() ? {} : { deliverAs: 'followUp' })
     },
   })
 }
