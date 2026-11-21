@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import type { CommandRunResult, ResolvedCommand } from "./types";
+import type { ExtensionAPI } from "../../../core/extensions/types.ts";
+import type { CommandRunResult, ResolvedCommand } from "./types.ts";
 
 function isExecutable(filePath: string): boolean {
   try {
@@ -36,7 +36,7 @@ export function isExecutableAvailable(bin: string): boolean {
 }
 
 export async function runCommand(
-  pi: ExtensionAPI,
+  nycode: ExtensionAPI,
   command: ResolvedCommand,
   signal?: AbortSignal,
 ): Promise<CommandRunResult> {
@@ -48,7 +48,7 @@ export async function runCommand(
     env: command.env ? { ...process.env, ...command.env } : undefined,
   } as Parameters<ExtensionAPI["exec"]>[2] & { env?: NodeJS.ProcessEnv };
 
-  const result = await pi.exec(command.bin, command.args, execOptions);
+  const result = await nycode.exec(command.bin, command.args, execOptions);
 
   return {
     id: command.id,

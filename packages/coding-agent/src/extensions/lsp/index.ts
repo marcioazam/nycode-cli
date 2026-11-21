@@ -20,17 +20,17 @@ import {
   type ServerCapabilities,
 } from "vscode-languageserver-protocol";
 import { Type } from "typebox";
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { Box, Spacer, Text } from "@earendil-works/pi-tui";
-import { loadLspConfig } from "../_shared/config/config";
-import { isPathIncluded, matchesAnyGlob } from "../_shared/glob";
-import { filePathToUri, findProjectRoot, normalizeRelativePath, resolveCommand, toAbsolutePath, uriToFilePath } from "../_shared/paths";
-import { formatLspDiagnostics, formatWarnings, hasIssueOutput, joinSections } from "../_shared/output";
-import { terminateChild } from "./process";
-// PATCH local (vendor): pós-edit só com erros (ver post-edit.ts).
-import { formatPostEdit, oncePerSession } from "./post-edit";
-import { isExecutableAvailable } from "../_shared/runner";
-import type { LspServerConfig, ResolvedCommand, StoredDiagnostics } from "../_shared/types";
+import type { ExtensionAPI, ExtensionContext } from "../../core/extensions/types.ts";
+import { Box, Spacer, Text } from "@nycode/tui";
+import { loadLspConfig } from "./_shared/config/config.ts";
+import { isPathIncluded, matchesAnyGlob } from "./_shared/glob.ts";
+import { filePathToUri, findProjectRoot, normalizeRelativePath, resolveCommand, toAbsolutePath, uriToFilePath } from "./_shared/paths.ts";
+import { formatLspDiagnostics, formatWarnings, hasIssueOutput, joinSections } from "./_shared/output.ts";
+import { terminateChild } from "./process.ts";
+// Post-edit text carries errors only (see post-edit.ts).
+import { formatPostEdit, oncePerSession } from "./post-edit.ts";
+import { isExecutableAvailable } from "./_shared/runner.ts";
+import type { LspServerConfig, ResolvedCommand, StoredDiagnostics } from "./_shared/types.ts";
 
 const DEFAULT_STARTUP_TIMEOUT_MS = 45_000;
 const DEFAULT_DIAGNOSTICS_WAIT_MS = 1_500;
@@ -159,8 +159,8 @@ function customMessageText(content: unknown, details: unknown): string {
     .join("\n");
 }
 
-function registerDiagnosticsRenderer(pi: ExtensionAPI): void {
-  pi.registerMessageRenderer("pi-lsp-diagnostics", (message, _options, theme) => {
+function registerDiagnosticsRenderer(nycode: ExtensionAPI): void {
+  nycode.registerMessageRenderer("lsp-diagnostics", (message, _options, theme) => {
     const text = customMessageText(message.content, message.details);
     const box = new Box(1, 1, (value) => theme.bg("toolSuccessBg", value));
     box.addChild(new Text(theme.fg("toolTitle", theme.bold("lsp_diagnostics")), 0, 0));
@@ -455,7 +455,7 @@ class LspClient {
     this.process = undefined;
 
     if (child) {
-      await bestEffortWriteJsonRpc(child, { jsonrpc: "2.0", id: "pi-lsp-shutdown", method: "shutdown" });
+      await bestEffortWriteJsonRpc(child, { jsonrpc: "2.0", id: "lsp-shutdown", method: "shutdown" });
       await bestEffortWriteJsonRpc(child, { jsonrpc: "2.0", method: "exit" });
     }
 
@@ -469,7 +469,7 @@ class LspManager {
   private readonly diagnostics = new DiagnosticsStore();
   private readonly clients = new Map<string, LspClient>();
   private readonly backoff = new Map<string, { retryAt: number; attempts: number; reason: string }>();
-  // PATCH local (vendor): avisos/falhas já mostrados nesta sessão (ver post-edit.ts).
+  // Warnings and failures already shown in this session (see post-edit.ts).
   private readonly reported = new Set<string>();
 
   async matchingServers(ctx: ExtensionContext, file: string): Promise<{ matches: MatchedServer[]; warnings: string[]; workspace: string }> {
@@ -526,7 +526,7 @@ class LspManager {
 
   async updateDiagnosticsForFile(ctx: ExtensionContext, file: string): Promise<string> {
     const { matches, warnings: allWarnings, workspace } = await this.matchingServers(ctx, file);
-    // PATCH local (vendor): sem "root markers not found"; demais avisos uma vez por sessão.
+    // No "root markers not found" warning; every other warning once per session.
     const warnings = allWarnings.filter((w) => !w.includes("root markers not found") && oncePerSession(this.reported, w));
     if (matches.length === 0) return formatWarnings("LSP diagnostics", warnings);
 
@@ -535,7 +535,7 @@ class LspManager {
       try {
         const maxFileSizeBytes = match.server.maxFileSizeBytes ?? DEFAULT_MAX_FILE_SIZE_BYTES;
         if (!(await fileSizeAllowed(file, maxFileSizeBytes))) {
-          // PATCH local (vendor): aviso de arquivo grande omitido no pós-edit.
+          // The oversized-file warning is left out of the post-edit text.
           continue;
         }
 
@@ -546,11 +546,11 @@ class LspManager {
         await client.didSave(file);
         await delay(match.server.diagnosticsWaitMs ?? DEFAULT_DIAGNOSTICS_WAIT_MS, ctx.signal);
         const entry = this.diagnostics.get(match.server.id, match.root, file);
-        // PATCH local (vendor): só erros; vazio quando não há nada a dizer.
+        // Errors only; empty when there is nothing to say.
         const text2 = formatPostEdit(match.server.id, file, entry?.diagnostics ?? [], match.root);
         if (text2) lines.push(text2);
       } catch (error) {
-        // PATCH local (vendor): falha de servidor uma vez por sessão.
+        // A server failure is reported once per session.
         const message = (error as Error).message;
         if (oncePerSession(this.reported, `${match.server.id}: ${message}`)) lines.push(`⚠️ ${match.server.id}: ${message}`);
       }
@@ -600,11 +600,11 @@ const REFERENCES_PARAMS = Type.Object({
   includeDeclaration: Type.Optional(Type.Boolean({ default: false, description: "Include the declaration in references" })),
 });
 
-export default function piLspExtension(pi: ExtensionAPI) {
+export default function lspExtension(nycode: ExtensionAPI) {
   const manager = new LspManager();
-  registerDiagnosticsRenderer(pi);
+  registerDiagnosticsRenderer(nycode);
 
-  pi.on("tool_result", async (event, ctx) => {
+  nycode.on("tool_result", async (event, ctx) => {
     if (event.toolName !== "write" && event.toolName !== "edit") return undefined;
     if (event.isError) return undefined;
 
@@ -615,20 +615,19 @@ export default function piLspExtension(pi: ExtensionAPI) {
     const summary = await manager.updateDiagnosticsForFile(ctx, file);
     if (!summary.trim()) return undefined;
 
-    // PATCH local (vendor): o upstream (0.1.7) também mandava uma mensagem "steer" com
-    // content "" quando havia problemas. O diagnóstico já vai no resultado da ferramenta;
-    // o steer vazio chegava depois da resposta final e gerava turnos vazios + HTTP 400
-    // ("does not support assistant message prefill"). Removido.
+    // pi-lsp 0.1.7 also sent an empty "steer" message when there were problems. The diagnostics already
+    // travel in the tool result; the empty steer arrived after the final answer and caused empty turns plus
+    // HTTP 400 ("does not support assistant message prefill"). Removed.
     void hasIssueOutput;
 
     return { content: [...event.content, { type: "text", text: summary }] };
   });
 
-  pi.on("session_shutdown", async () => {
+  nycode.on("session_shutdown", async () => {
     await manager.shutdownAll();
   });
 
-  pi.registerTool({
+  nycode.registerTool({
     name: "lsp_diagnostics",
     label: "LSP Diagnostics",
     description: "Return latest LSP diagnostics collected for a file.",
@@ -641,7 +640,7 @@ export default function piLspExtension(pi: ExtensionAPI) {
     },
   });
 
-  pi.registerTool({
+  nycode.registerTool({
     name: "lsp_hover",
     label: "LSP Hover",
     description: "Request hover information from the matching LSP server.",
@@ -657,7 +656,7 @@ export default function piLspExtension(pi: ExtensionAPI) {
     },
   });
 
-  pi.registerTool({
+  nycode.registerTool({
     name: "lsp_definition",
     label: "LSP Definition",
     description: "Request definition locations from the matching LSP server.",
@@ -673,7 +672,7 @@ export default function piLspExtension(pi: ExtensionAPI) {
     },
   });
 
-  pi.registerTool({
+  nycode.registerTool({
     name: "lsp_references",
     label: "LSP References",
     description: "Request references from the matching LSP server.",
@@ -689,7 +688,7 @@ export default function piLspExtension(pi: ExtensionAPI) {
     },
   });
 
-  pi.registerTool({
+  nycode.registerTool({
     name: "lsp_symbols",
     label: "LSP Symbols",
     description: "Request document symbols from the matching LSP server.",

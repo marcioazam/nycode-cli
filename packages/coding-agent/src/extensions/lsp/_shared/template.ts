@@ -1,4 +1,4 @@
-import type { PathPlaceholders } from "./types";
+import type { PathPlaceholders } from "./types.ts";
 
 const PLACEHOLDER_PATTERN = /\{(workspace|root|file|relFile|dir|relDir|config|configDir)\}/g;
 

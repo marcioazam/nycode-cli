@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { Diagnostic } from "vscode-languageserver-protocol";
-import { formatPostEdit, oncePerSession } from "./post-edit.ts";
+import { formatPostEdit, oncePerSession } from "../../../src/extensions/lsp/post-edit.ts";
 
 const diag = (severity: number | undefined, message = "m", extra: Partial<Diagnostic> = {}): Diagnostic =>
   ({ range: { start: { line: 2, character: 4 }, end: { line: 2, character: 5 } }, severity, message, ...extra }) as Diagnostic;

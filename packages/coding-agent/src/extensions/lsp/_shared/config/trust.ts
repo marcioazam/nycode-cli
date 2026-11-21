@@ -1,8 +1,9 @@
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
-import type { ConfigKind } from "../types";
+import { getAgentDir } from "../../../../config.ts";
+import type { ExtensionContext } from "../../../../core/extensions/types.ts";
+import type { ConfigKind } from "../types.ts";
 
 export interface TrustStore {
   version: 1;
@@ -19,7 +20,7 @@ export function sha256(content: string): string {
   return crypto.createHash("sha256").update(content).digest("hex");
 }
 
-export function getTrustStorePath(kind: ConfigKind, agentDir = process.env.PI_AGENT_DIR ?? path.join(process.env.HOME ?? "", ".pi", "agent")): string {
+export function getTrustStorePath(kind: ConfigKind, agentDir = getAgentDir()): string {
   return path.join(agentDir, "trust", `${kind}.json`);
 }
 

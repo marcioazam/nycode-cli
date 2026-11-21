@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { test } from "node:test";
-import { terminateChild } from "./process.ts";
+import { terminateChild } from "../../../src/extensions/lsp/process.ts";
 
 test("terminateChild SIGKILLs a child that ignores SIGTERM", async () => {
   const child = spawn(process.execPath, ["-e", "process.on('SIGTERM',()=>{});process.stdin.resume();console.log('up')"], { stdio: ["pipe", "pipe", "inherit"] });

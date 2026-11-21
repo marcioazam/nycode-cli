@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import type { CommandConfig, PathPlaceholders, ResolvedCommand } from "./types";
-import { applyTemplate, applyTemplateArray, applyTemplateRecord } from "./template";
+import type { CommandConfig, PathPlaceholders, ResolvedCommand } from "./types.ts";
+import { applyTemplate, applyTemplateArray, applyTemplateRecord } from "./template.ts";
 
 export function expandHome(input: string): string {
   if (input === "~") return process.env.HOME ?? input;

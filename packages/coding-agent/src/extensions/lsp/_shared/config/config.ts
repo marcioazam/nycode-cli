@@ -1,13 +1,10 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { findUp } from "../paths";
-import { askProjectConfigTrust, sha256 } from "./trust";
-import type { ConfigLayer, LoadedConfig, LspConfigFile, LspServerConfig, MatchableConfig } from "../types";
-
-function defaultAgentDir(): string {
-  return process.env.PI_AGENT_DIR ?? path.join(process.env.HOME ?? "", ".pi", "agent");
-}
+import { CONFIG_DIR_NAME, getAgentDir } from "../../../../config.ts";
+import type { ExtensionContext } from "../../../../core/extensions/types.ts";
+import { findUp } from "../paths.ts";
+import type { ConfigLayer, LoadedConfig, LspConfigFile, LspServerConfig, MatchableConfig } from "../types.ts";
+import { askProjectConfigTrust, sha256 } from "./trust.ts";
 
 function asObject(value: unknown): Record<string, unknown> | undefined {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined;
@@ -123,7 +120,7 @@ function binariesForLsp(items: LspServerConfig[]): string[] {
 export async function loadLspConfig(ctx: ExtensionContext): Promise<LoadedConfig<LspServerConfig>> {
   const warnings: string[] = [];
   const layers: ConfigLayer<LspServerConfig>[] = [];
-  const globalPath = path.join(defaultAgentDir(), "lsp.json");
+  const globalPath = path.join(getAgentDir(), "lsp.json");
 
   try {
     const globalLayer = await readJsonLayer({ scope: "global", filePath: globalPath, parseItems: parseLspItems });
@@ -132,7 +129,7 @@ export async function loadLspConfig(ctx: ExtensionContext): Promise<LoadedConfig
     warnings.push(`Failed to load global lsp config: ${(error as Error).message}`);
   }
 
-  const projectPath = findUp(ctx.cwd, path.join(".pi", "lsp.json"));
+  const projectPath = findUp(ctx.cwd, path.join(CONFIG_DIR_NAME, "lsp.json"));
   if (projectPath) {
     try {
       const projectLayer = await readJsonLayer({ scope: "project", filePath: projectPath, parseItems: parseLspItems });

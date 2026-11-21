@@ -1,13 +1,12 @@
-// PATCH local (vendor): texto automático pós-edit enxuto (só erros).
-// Por quê: em 111 sessões, ≈77% do texto pós-edit era ruído (avisos de configuração repetidos,
-// "no diagnostics", warnings/hints). A consulta explícita (`lsp_diagnostics`) segue completa.
-// Reverter: desfazer os trechos "PATCH local (vendor)" em index.ts e apagar post-edit.ts e post-edit.test.ts.
+// Lean automatic post-edit text (errors only).
+// Why: in 111 sessions about 77% of the post-edit text was noise (repeated config warnings, "no diagnostics",
+// warnings and hints). The explicit `lsp_diagnostics` query stays complete.
 import path from "node:path";
 import type { Diagnostic } from "vscode-languageserver-protocol";
 
 const MAX_ERRORS = 10;
 
-// Inline de `formatDiagnostic` (_shared/output.ts importa "./paths" sem extensão e não carrega em strip-types).
+// Errors-only variant of `formatDiagnostic` in _shared/output.ts.
 function formatError(file: string, d: Diagnostic, root?: string): string {
   const rel = root ? path.relative(root, file) || path.basename(file) : file;
   const source = d.source ? `${d.source}: ` : "";

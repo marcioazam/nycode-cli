@@ -1,7 +1,7 @@
 import path from "node:path";
 import type { Diagnostic, DiagnosticRelatedInformation } from "vscode-languageserver-protocol";
-import type { CommandRunResult } from "./types";
-import { uriToFilePath } from "./paths";
+import type { CommandRunResult } from "./types.ts";
+import { uriToFilePath } from "./paths.ts";
 
 const DEFAULT_OUTPUT_LIMIT = 4000;
 
