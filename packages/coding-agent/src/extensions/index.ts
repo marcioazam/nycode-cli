@@ -38,6 +38,8 @@ import syntaxCheckExtension from "./syntax-check/index.ts";
 import thinkingExtension from "./thinking/index.ts";
 import todoExtension from "./todo/index.ts";
 import toolSearchExtension from "./tool-search/index.ts";
+import uiExtension from "./ui/index.ts";
+import uiVisualExtension from "./ui-visual/index.ts";
 import upDequeueExtension from "./up-dequeue/index.ts";
 import webExtension from "./web/index.ts";
 
@@ -87,5 +89,7 @@ export const builtInExtensions: InlineExtension[] = [
 	{ name: "sound-notify", factory: soundNotifyExtension, builtin: true },
 	{ name: "sticky-prompt", factory: stickyPromptExtension, builtin: true },
 	{ name: "syntax-check", factory: syntaxCheckExtension, builtin: true },
+	{ name: "ui", factory: uiExtension, builtin: true },
+	{ name: "ui-visual", factory: uiVisualExtension, builtin: true },
 	{ name: "up-dequeue", factory: upDequeueExtension, builtin: true },
 ];
