@@ -229,7 +229,7 @@ async function runManagedSelfUpdate(managedRoot: string, version: string): Promi
 	let stageDir: string | undefined;
 	try {
 		cleanupManagedStaging(managedRoot);
-		// No default release server: the managed installer is not published yet (F11), so updating a
+		// No default release server: no Nycode channel writes the managed-install marker, so updating a
 		// managed install needs NYCODE_INSTALLER_API_BASE.
 		const configuredApiBase = process.env.NYCODE_INSTALLER_API_BASE?.trim();
 		if (!configuredApiBase) {
@@ -1194,7 +1194,9 @@ export async function handlePackageCommand(
 					if (installMethod === "npm") {
 						console.log();
 						console.log(chalk.yellow(`This npm installation of ${APP_NAME} does not pin its dependencies.`));
-						console.log(chalk.yellow(`Pinned releases are published at ${RELEASES_URL}`));
+						console.log(
+							chalk.yellow(`Pinned standalone binaries are attached to each release at ${RELEASES_URL}`),
+						);
 					}
 				}
 				return true;
