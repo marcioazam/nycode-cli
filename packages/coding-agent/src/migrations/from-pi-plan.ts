@@ -130,12 +130,21 @@ export function buildPlan(source: string, dest: string): Plan {
 	if (existsSync(mcpPath)) {
 		const piMcp = readJson(mcpPath, plan.errors);
 		if (piMcp) {
-			const { mcp, placeholders } = convertMcp(piMcp);
+			const { mcp, placeholders, unmigrated } = convertMcp(piMcp);
 			add(
-				{ rel: "mcp.json", label: "copied, literal secrets replaced by env placeholders", mode: 0o600 },
+				{
+					rel: "mcp.json",
+					label: "env and headers values replaced by env placeholders; args and url copied as is",
+					mode: 0o600,
+				},
 				`${JSON.stringify(mcp, null, 2)}\n`,
 			);
 			if (placeholders.length > 0) plan.notes.push(`mcp.json: export these variables: ${placeholders.join(", ")}`);
+			if (unmigrated.length > 0) {
+				plan.notes.push(
+					`mcp.json: not migrated automatically (credential-like args/url copied as is; replace them by env placeholders): ${unmigrated.join(", ")}`,
+				);
+			}
 		}
 	}
 

@@ -136,13 +136,19 @@ export function convertSettings(piSettings: Json, env: LocalEnv): SettingsConver
 	};
 }
 
-const SECRET_NAME = /key|token|secret|passw|auth|credential|bearer/i;
 const SCHEME_PREFIX = /^(Bearer|Basic) /i;
+const PLACEHOLDER = /^\$\{[A-Za-z_][A-Za-z0-9_]*\}$/;
+// Credential patterns the converter cannot rewrite safely inside `args` and `url`; reported, never altered.
+const CREDENTIAL_FLAG = /^--?[a-z0-9_-]*(?:token|key|secret|passw|auth|credential|bearer)[a-z0-9_-]*(=(.*))?$/i;
+const CREDENTIAL_QUERY = /[?&](?:api[-_]?key|token|access[-_]?token|key|secret|passw(?:or)?d|auth)=(?!\$\{)[^&#\s]+/i;
+const CREDENTIAL_USERINFO = /\/\/[^\s/:@]+:(?!\$\{)[^\s/@]+@/;
 
 export interface McpConversion {
 	mcp: Json;
 	/** Placeholder names the user must export; the replaced values are discarded and never reported. */
 	placeholders: string[];
+	/** `server.field` of args and urls that look like credentials and were copied as is (never the value). */
+	unmigrated: string[];
 }
 
 function placeholderName(...parts: string[]): string {
@@ -153,23 +159,48 @@ function placeholderName(...parts: string[]): string {
 		.toUpperCase();
 }
 
-/** Replaces literal secrets in each server's `env` and `headers` by `${NAME}` placeholders. */
+function looksLikeCredential(text: string): boolean {
+	return CREDENTIAL_QUERY.test(text) || CREDENTIAL_USERINFO.test(text);
+}
+
+function credentialArgs(args: unknown[]): number[] {
+	const found: number[] = [];
+	args.forEach((arg, index) => {
+		if (typeof arg !== "string") return;
+		const flag = CREDENTIAL_FLAG.exec(arg);
+		const next = args[index + 1];
+		const flagged = flag
+			? flag[1] !== undefined
+				? flag[2] !== "" && !PLACEHOLDER.test(flag[2])
+				: typeof next === "string" && !next.startsWith("-") && !PLACEHOLDER.test(next)
+			: false;
+		if (flagged || looksLikeCredential(arg)) found.push(index);
+	});
+	return found;
+}
+
+/** Replaces every literal `env` and `headers` value by a `${NAME}` placeholder and lists credential-like args/url. */
 export function convertMcp(piMcp: Json): McpConversion {
 	const mcp: Json = structuredClone(piMcp);
 	const placeholders: string[] = [];
+	const unmigrated: string[] = [];
 	const servers = (mcp.mcpServers ?? {}) as Record<string, Json>;
 	for (const [serverName, server] of Object.entries(servers)) {
 		for (const field of ["env", "headers"] as const) {
 			const table = server[field] as Record<string, unknown> | undefined;
 			if (!table) continue;
 			for (const [key, value] of Object.entries(table)) {
-				if (typeof value !== "string" || value.includes("${") || !SECRET_NAME.test(key)) continue;
+				const scheme = typeof value === "string" ? (SCHEME_PREFIX.exec(value)?.[0] ?? "") : "";
+				if (typeof value === "string" && PLACEHOLDER.test(value.slice(scheme.length))) continue;
 				const name = field === "env" ? placeholderName(key) : placeholderName(serverName, key);
-				const scheme = SCHEME_PREFIX.exec(value)?.[0] ?? "";
 				table[key] = `${scheme}\${${name}}`;
 				placeholders.push(name);
 			}
 		}
+		if (typeof server.url === "string" && looksLikeCredential(server.url)) unmigrated.push(`${serverName}.url`);
+		if (Array.isArray(server.args)) {
+			for (const index of credentialArgs(server.args)) unmigrated.push(`${serverName}.args[${index}]`);
+		}
 	}
-	return { mcp, placeholders };
+	return { mcp, placeholders: [...new Set(placeholders)], unmigrated };
 }

@@ -30,7 +30,8 @@ Options:
   -h, --help     Show this help
 
 Converts settings.json and local.env (only read when owned by you with mode 0600 or 0400) to nycode settings;
-copies mcp.json (literal secrets become \${ENV} placeholders), models.json, lsp.json, keybindings.json,
+copies mcp.json (env and headers values become \${ENV} placeholders; credential-like args and urls are
+listed, not rewritten), models.json, lsp.json, keybindings.json,
 sessions/ and the project trust file. auth*.json is copied only with --apply, after an interactive
 confirmation. The origin directory is never changed or deleted. Backups go to
 <agent dir>/.backup-from-pi/<timestamp>/.`;

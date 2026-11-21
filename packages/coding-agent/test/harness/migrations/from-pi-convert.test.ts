@@ -1,5 +1,5 @@
 // Settings conversion of `migrate from-pi`: the nine local.env keys, packages, mcp placeholders and plain copies.
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { makeHome, ph, SECRET } from "./from-pi-fixture.ts";
@@ -41,7 +41,7 @@ describe("migrate from-pi conversion", () => {
 		const raw = readFileSync(join(h.agentDir, "mcp.json"), "utf8");
 		expect(raw).not.toContain(SECRET);
 		const mcp = JSON.parse(raw).mcpServers;
-		expect(mcp.search.env).toEqual({ SEARCH_API_KEY: ph("SEARCH_API_KEY"), KEEP: ph("KEEP"), MODE: "fast" });
+		expect(mcp.search.env).toEqual({ SEARCH_API_KEY: ph("SEARCH_API_KEY"), KEEP: ph("KEEP"), MODE: ph("MODE") });
 		expect(mcp.exa.headers["x-api-key"]).toMatch(/^\$\{[A-Z0-9_]+\}$/);
 		expect(h.out.join("\n")).toContain("SEARCH_API_KEY");
 	});
@@ -54,5 +54,71 @@ describe("migrate from-pi conversion", () => {
 		expect(read(h.agentDir, "keybindings.json")).toEqual({});
 		expect(read(h.agentDir, "trust.json")).toEqual({ "/work/proj": true });
 		expect(readFileSync(join(h.agentDir, "sessions", "--proj--", "a.jsonl"), "utf8")).toContain("session");
+	});
+
+	it("replaces every literal env and headers value, keeping only the Bearer/Basic prefix and existing placeholders", async () => {
+		const h = makeHome();
+		writeFileSync(
+			join(h.source, "mcp.json"),
+			JSON.stringify({
+				mcpServers: {
+					api: {
+						url: "https://example.test/mcp",
+						headers: {
+							Authorization: "Basic dXNlcjpwdw==",
+							"x-custom": "plainvalue",
+							"x-ok": `Bearer ${ph("TOK")}`,
+							"x-mixed": `pre-${ph("TOK")}-post`,
+						},
+						env: { PLAIN: "visible", OK: ph("OK") },
+					},
+				},
+			}),
+		);
+		await h.run(["--apply"]);
+		const raw = readFileSync(join(h.agentDir, "mcp.json"), "utf8");
+		for (const leaked of ["dXNlcjpwdw==", "plainvalue", "pre-", "visible"]) expect(raw).not.toContain(leaked);
+		const api = JSON.parse(raw).mcpServers.api;
+		expect(api.headers.Authorization).toBe(`Basic ${ph("API_AUTHORIZATION")}`);
+		expect(api.headers["x-custom"]).toBe(ph("API_X_CUSTOM"));
+		expect(api.headers["x-ok"]).toBe(`Bearer ${ph("TOK")}`);
+		expect(api.headers["x-mixed"]).toBe(ph("API_X_MIXED"));
+		expect(api.env).toEqual({ PLAIN: ph("PLAIN"), OK: ph("OK") });
+	});
+
+	it("lists credential-like args and urls as not migrated, by server and field, never by value", async () => {
+		const h = makeHome();
+		writeFileSync(
+			join(h.source, "mcp.json"),
+			JSON.stringify({
+				mcpServers: {
+					gh: {
+						command: "npx",
+						args: ["-y", "srv", "--token=ghp_value123", "--api-key", "abcd1234", "--verbose"],
+					},
+					web: { url: "https://user:hunter22@host.test/mcp?api_key=zzz999" },
+					q: { url: "https://host.test/mcp?x=1&token=tok888" },
+					clean: {
+						command: "npx",
+						args: ["-y", "srv", `--token=${ph("GH_TOKEN")}`],
+						url: `https://host.test/mcp?key=${ph("K")}`,
+					},
+				},
+			}),
+		);
+		await h.run([]);
+		const text = h.out.join("\n");
+		expect(text).toMatch(/not migrated automatically.*gh\.args\[2\].*gh\.args\[3\]/s);
+		expect(text).toContain("web.url");
+		expect(text).toContain("q.url");
+		expect(text).not.toMatch(/clean\./);
+		for (const leaked of ["ghp_value123", "abcd1234", "hunter22", "zzz999", "tok888"])
+			expect(text).not.toContain(leaked);
+	});
+
+	it("labels the mcp.json plan entry for what it does", async () => {
+		const h = makeHome();
+		await h.run([]);
+		expect(h.out.join("\n")).toMatch(/mcp\.json\s+\(.*env and headers values replaced.*args and url copied as is/);
 	});
 });
