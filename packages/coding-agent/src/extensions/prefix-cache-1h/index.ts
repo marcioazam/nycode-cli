@@ -1,41 +1,47 @@
 /**
- * Cache de 1 hora só no prefixo (tools + system) da sessão interativa principal; as mensagens ficam em 5 min.
+ * 1-hour cache only on the prefix (tools + system) of the main interactive session; messages stay at 5 min.
  *
- * Uma pausa de 5 a 60 min expira o cache de 5 min e a chamada seguinte regrava tudo a 1,25×. Com o prefixo em 1h,
- * a parte fixa (~48K tokens) é lida a 0,05×, e só a conversa é regravada. O 1h custa 2× na gravação, por isso fica
- * fora do `pi -p` e dos subagentes, cujo prefixo quase nunca é reusado depois de 5 min. A API exige as entradas de
- * 1h antes das de 5 min; tools e system vêm antes das mensagens. Continuação de thread não reenvia system/tools.
- * Replay e A/B: ~/.pi/agent/claude-home/docs/pi-claude-harness-transfer-2026-11-12.md.
+ * A 5 to 60 min pause expires the 5 min cache and the next call rewrites everything at 1.25x. With the prefix at 1h,
+ * the fixed part (~48K tokens) is read at 0.05x and only the conversation is rewritten. 1h costs 2x on write, so it
+ * stays out of `-p` runs and subagents, whose prefix is rarely reused after 5 min. The API requires 1h entries before
+ * 5 min ones; tools and system come before the messages. Thread continuations do not resend system/tools.
  *
- * PI_PREFIX_CACHE_1H=0 desliga; =1 força fora da sessão interativa (teste). Reverter: apagar este arquivo.
+ * `harness.prefixCache1h` (NYCODE_PREFIX_CACHE_1H wins): `auto` (default) is on in interactive sessions only, `true`
+ * forces it elsewhere, `false` turns it off. Never inside a subagent (NYCODE_SUBAGENT=1).
  */
-import type { ExtensionAPI } from '@earendil-works/pi-coding-agent'
 
-type Env = Record<string, string | undefined>
-type Block = { cache_control?: { type?: string; ttl?: string } }
+import type { ExtensionAPI } from "../../core/extensions/types.ts";
+import type { Env } from "../../core/settings-nycode.ts";
+import { resolveNycodeSettings } from "../../core/settings-nycode.ts";
 
-export function enabled(hasUI: boolean, env: Env): boolean {
-  if (env.PI_PREFIX_CACHE_1H === '0' || env.PI_CODE_SUBAGENT === '1') return false
-  return hasUI || env.PI_PREFIX_CACHE_1H === '1'
+type Block = { cache_control?: { type?: string; ttl?: string } };
+
+/** Whether the prefix gets the 1h ttl for this session: the key says on/off/auto, subagents never. */
+export function enabled(hasUI: boolean, setting: boolean | "auto", env: Env): boolean {
+	if (setting === false || env.NYCODE_SUBAGENT === "1") return false;
+	return setting === true || hasUI;
 }
 
-/** Põe ttl 1h nos marcadores ephemeral sem ttl de tools e system; devolve o payload só se mudou. */
+/** Sets ttl 1h on the ephemeral markers without ttl in tools and system; returns the payload only if it changed. */
 export function prefixTtl1h(payload: unknown): unknown {
-  if (!payload || typeof payload !== 'object') return undefined
-  const p = payload as { tools?: unknown; system?: unknown }
-  let changed = false
-  for (const list of [p.tools, p.system]) {
-    if (!Array.isArray(list)) continue
-    for (const b of list as Block[]) {
-      if (b?.cache_control?.type === 'ephemeral' && !b.cache_control.ttl) {
-        b.cache_control = { ...b.cache_control, ttl: '1h' }
-        changed = true
-      }
-    }
-  }
-  return changed ? payload : undefined
+	if (!payload || typeof payload !== "object") return undefined;
+	const p = payload as { tools?: unknown; system?: unknown };
+	let changed = false;
+	for (const list of [p.tools, p.system]) {
+		if (!Array.isArray(list)) continue;
+		for (const b of list as Block[]) {
+			if (b?.cache_control?.type === "ephemeral" && !b.cache_control.ttl) {
+				b.cache_control = { ...b.cache_control, ttl: "1h" };
+				changed = true;
+			}
+		}
+	}
+	return changed ? payload : undefined;
 }
 
-export default function (pi: ExtensionAPI) {
-  pi.on('before_provider_request', (event, ctx) => (enabled(ctx.hasUI, process.env) ? prefixTtl1h(event.payload) : undefined))
+export default function prefixCache1hExtension(nycode: ExtensionAPI): void {
+	nycode.on("before_provider_request", (event, ctx) => {
+		const { prefixCache1h } = resolveNycodeSettings(nycode.getSettings(), process.env).harness;
+		return enabled(ctx.hasUI, prefixCache1h, process.env) ? prefixTtl1h(event.payload) : undefined;
+	});
 }
