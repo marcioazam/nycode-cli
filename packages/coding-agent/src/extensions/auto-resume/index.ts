@@ -1,27 +1,30 @@
 /**
- * Auto-resume do pi: retoma sozinho a sessão quando o provedor falha com erro transitório DEPOIS de esgotadas as
- * retentativas internas do pi (settings retry.maxRetries=10, ~6 min). Motivo: incidentes 503 de 2026-11-13 (queda da
- * Anthropic) deixavam a sessão parada no meio do trabalho, na principal e nos filhos do `subagent`
- * (`pi --mode json -p --no-session`, PI_CODE_SUBAGENT=1), por isso vale para ambos.
+ * Auto-resume: resumes the session by itself when the provider fails with a transient error AFTER nycode's internal
+ * retries are exhausted (settings retry.maxRetries=10, ~6 min). Reason: the 2026-11-13 503 incidents (Anthropic
+ * outage) left sessions stopped mid-work, in the main session and in `subagent` children (NYCODE_SUBAGENT=1), so it
+ * applies to both.
  *
- * Mecanismo: `agent_before_settle` olha a última mensagem do assistente; se terminou em erro retryável (não overflow
- * de contexto), espera 30s/90s/3/5/10 min (abortável) e devolve uma `custom_message` `auto-resume` com `continue: true`.
- * Limite: 5 tentativas consecutivas (contadas pelas mensagens `auto-resume` depois da última resposta sem erro);
- * depois disso desiste com aviso. `PI_AUTO_RESUME=0` desliga. Falha aberta: qualquer exceção libera.
+ * Mechanism: `agent_before_settle` looks at the last assistant message; if it ended in a retryable error (not a context
+ * overflow), it waits 30s/90s/3/5/10 min (abortable) and returns an `auto-resume` `custom_message` with
+ * `continue: true`. Limit: 5 consecutive attempts (counted by the `auto-resume` messages after the last reply without
+ * error); then it gives up with a warning. `harness.autoResume` (NYCODE_AUTO_RESUME wins) switches it off. Fails open:
+ * any exception releases the session.
  *
- * A lista de padrões é cópia de pi-ai/dist/utils/retry.js (isRetryableAssistantError) e overflow.js: o import de
- * '@earendil-works/pi-ai/compat' não resolve fora do pi (testes em node puro), então fica inline. Reverter: apagar o diretório.
+ * The pattern list is a copy of @nycode/ai's retry.js (isRetryableAssistantError) and overflow.js, kept inline.
  *
- * Limite da conta (pedido 2026-11-13, como o Claude Code): o 429 "would exceed your account's rate limit" não é
- * transitório. `message_end` marca o erro com "quota exceeded" (padrão não-retryável do pi-ai), então o pi não gasta as
- * 10 retentativas; o settle espera até o reset (+1 min) e retoma sozinho. O horário vem dos headers do 429
- * (`anthropic-ratelimit-unified-*reset`, `retry-after`), senão do cache do HUD (usage-cache.json, a mesma fonte do
- * "resets in 41m"), senão 15 min. No máximo 3 esperas seguidas. Filhos (`PI_CODE_SUBAGENT`) e sessões sem UI (`pi -p`, `ctx.hasUI` falso) falham rápido (give_up, aviso no stderr); o principal com UI espera.
+ * Account limit: the 429 "would exceed your account's rate limit" is not transient. `message_end` marks the error with
+ * "quota exceeded" (a non-retryable pattern), so the 10 internal retries are not spent; the settle waits until the
+ * reset (+1 min) and resumes by itself. The time comes from the 429 headers (`anthropic-ratelimit-unified-*reset`,
+ * `retry-after`), else from the HUD cache (usage-cache.json, the same source as "resets in 41m"), else 15 min. At most
+ * 3 waits in a row. Children (NYCODE_SUBAGENT) and sessions without UI (`-p`, `ctx.hasUI` false) fail fast (give_up,
+ * warning on stderr); the main session with a UI waits.
  */
 import { readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import type { ExtensionAPI } from '@earendil-works/pi-coding-agent'
+import { claudeConfigDir } from '../_shared/settings/config-dir.ts'
+import type { ExtensionAPI } from '../../core/extensions/types.ts'
+import { resolveNycodeSettings } from '../../core/settings-nycode.ts'
 
 type Entry = Record<string, any>
 export type Decision =
@@ -29,12 +32,13 @@ export type Decision =
   | { action: 'resume'; attempt: number; delayMs: number; message: string; kind?: 'limit' }
   | { action: 'give_up'; message: string }
 
-// ~20 min além dos ~6 min de retries internos: cobre queda de internet/provedor longa; falha não é cobrada.
+// ~20 min beyond the ~6 min of internal retries: covers a long network/provider outage; a failure is not billed.
 export const DELAYS_MS = [30_000, 90_000, 180_000, 300_000, 600_000]
 const MAX_ERR = 200
 
 const NON_RETRYABLE =
   /GoUsageLimitError|FreeUsageLimitError|Monthly usage limit reached|available balance|insufficient_quota|out of budget|quota exceeded|billing|subscription_sharing_usage_limit_exceeded|subscription_sharing_workplace_individual_usage_limit_exceeded|"code"\s*:\s*"?1308(?![0-9])/i
+// nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- fixed literal alternatives joined at load
 const RETRYABLE = new RegExp(
   [
     'overloaded',
@@ -88,7 +92,7 @@ const LIMIT_UNKNOWN_MS = 15 * 60_000
 // The longest window is 7 days; a later reset is bogus and would overflow setTimeout (fires at once past ~24.8 days).
 const LIMIT_MAX_AHEAD_MS = 8 * 86_400_000
 
-/** The account-limit error rewritten so pi-ai's retry treats it as non-retryable; undefined for anything else. */
+/** The account-limit error rewritten so the retry logic treats it as non-retryable; undefined for anything else. */
 export function markLimit(error: string): string | undefined {
   return ACCOUNT_LIMIT.test(error) && !error.startsWith(LIMIT_MARK) ? `${LIMIT_MARK}: ${error}` : undefined
 }
@@ -133,8 +137,8 @@ function decideLimit(
   env: Record<string, string | undefined>,
   opts: { now: number; resetAt?: number; hasUI?: boolean },
 ): Decision {
-  if (env.PI_CODE_SUBAGENT) return { action: 'none' }
-  // No UI (pi -p): nobody can see or cancel a long wait (gate #28: 600 s lost to a headless 429); end now.
+  if (env.NYCODE_SUBAGENT) return { action: 'none' }
+  // No UI (-p): nobody can see or cancel a long wait (gate #28: 600 s lost to a headless 429); end now.
   if (opts.hasUI === false)
     return {
       action: 'give_up',
@@ -168,7 +172,6 @@ export function decideResume(
   env: Record<string, string | undefined> = process.env,
   opts: { now: number; resetAt?: number; hasUI?: boolean } = { now: Date.now() },
 ): Decision {
-  if (env.PI_AUTO_RESUME === '0') return { action: 'none' }
   let last = -1
   for (let i = branch.length - 1; i >= 0; i--) {
     if (branch[i].type === 'message' && branch[i].message?.role === 'assistant') {
@@ -205,7 +208,7 @@ export function decideResume(
   }
 }
 
-/** Espera `ms`; devolve false se abortou antes. */
+/** Waits `ms`; returns false if aborted first. */
 export function sleep(ms: number, signal?: AbortSignal): Promise<boolean> {
   if (signal?.aborted) return Promise.resolve(false)
   return new Promise((resolve) => {
@@ -222,18 +225,17 @@ export function sleep(ms: number, signal?: AbortSignal): Promise<boolean> {
 
 function hudCache(): unknown {
   try {
-    const dir = process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.pi', 'agent', 'claude-home')
-    return JSON.parse(readFileSync(join(dir, 'plugins', 'claude-hud', 'usage-cache.json'), 'utf8'))
+    return JSON.parse(readFileSync(join(claudeConfigDir(homedir()), 'plugins', 'claude-hud', 'usage-cache.json'), 'utf8'))
   } catch {
     return undefined
   }
 }
 
-export default function (pi: ExtensionAPI, wait: typeof sleep = sleep, now: () => number = Date.now) {
+export default function autoResumeExtension(nycode: ExtensionAPI, wait: typeof sleep = sleep, now: () => number = Date.now) {
   // Headers of the last 429: they carry the reset time; a later 200 does not clear them (the settle reads them),
   // a successful assistant reply does (the limit it described has passed).
   let limitHeaders: Record<string, string> = {}
-  pi.on('after_provider_response', (event: any) => {
+  nycode.on('after_provider_response', (event: any) => {
     if (event?.status !== 429) return
     limitHeaders = Object.fromEntries(
       Object.entries(event.headers ?? {})
@@ -241,7 +243,7 @@ export default function (pi: ExtensionAPI, wait: typeof sleep = sleep, now: () =
         .map(([k, v]) => [k.toLowerCase(), v as string]),
     )
   })
-  pi.on('message_end', (event: any) => {
+  nycode.on('message_end', (event: any) => {
     const m = event?.message
     // Headers only describe the account limit: drop them on a success or on any error that is not that limit.
     if (m?.role === 'assistant' && (m.stopReason !== 'error' || !ACCOUNT_LIMIT.test(String(m.errorMessage ?? ''))))
@@ -250,8 +252,9 @@ export default function (pi: ExtensionAPI, wait: typeof sleep = sleep, now: () =
       m?.role === 'assistant' && m.stopReason === 'error' ? markLimit(String(m.errorMessage ?? '')) : undefined
     return marked ? { message: { ...m, errorMessage: marked } } : undefined
   })
-  pi.on('agent_before_settle', async (event: any, ctx: any) => {
+  nycode.on('agent_before_settle', async (event: any, ctx: any) => {
     try {
+      if (!resolveNycodeSettings(nycode.getSettings(), process.env).harness.autoResume) return
       const t = now()
       const d = decideResume(ctx.sessionManager.getBranch() as Entry[], process.env, {
         now: t,
@@ -295,7 +298,7 @@ export default function (pi: ExtensionAPI, wait: typeof sleep = sleep, now: () =
       ]
       return { entries, continue: true }
     } catch {
-      return // falha aberta: nunca prende a sessão
+      return // fail open: never traps the session
     }
   })
 }
