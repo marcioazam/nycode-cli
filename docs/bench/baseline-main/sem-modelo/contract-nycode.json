@@ -1,0 +1,264 @@
+{
+  "arm": "nycode",
+  "commit": "d594d675753f",
+  "exit": 1,
+  "summary": {
+    "ok": 28,
+    "falha": 1,
+    "pulado": 4
+  },
+  "inventory": {
+    "tools": [
+      {
+        "name": "read",
+        "chars": 857
+      },
+      {
+        "name": "bash",
+        "chars": 669
+      },
+      {
+        "name": "edit",
+        "chars": 1248
+      },
+      {
+        "name": "write",
+        "chars": 451
+      },
+      {
+        "name": "run",
+        "chars": 1232
+      },
+      {
+        "name": "codemode",
+        "chars": 1490
+      },
+      {
+        "name": "__nycode_deferred_placeholder__",
+        "chars": 107
+      }
+    ],
+    "tools_count": 7,
+    "tools_chars": 6054,
+    "system_chars": 7121,
+    "system_sections": {
+      "tools": 426,
+      "rules": 726,
+      "project_context": 4598,
+      "mcp_servers": 515,
+      "headless": 664,
+      "cwd": 51,
+      "(texto)": 141
+    },
+    "skills_listed": 0,
+    "agents_listed": 0,
+    "skills": {
+      "files": 30,
+      "description_chars": 6788
+    },
+    "agents": {
+      "files": 17,
+      "description_chars": 2045
+    }
+  },
+  "cases": [
+    {
+      "name": "inventario/pedido-capturado",
+      "group": "inventario",
+      "status": "ok",
+      "evidence": "7 ferramentas, system 7121 chars, 0 skills, 0 agentes"
+    },
+    {
+      "name": "regras/plan_mode_complete-ausente",
+      "group": "regras",
+      "status": "ok",
+      "evidence": "plan_mode_complete ausente em -p sem --plan"
+    },
+    {
+      "name": "regras/question-ausente",
+      "group": "regras",
+      "status": "ok",
+      "evidence": "question ausente em -p"
+    },
+    {
+      "name": "regras/sem-erro-de-interface:read",
+      "group": "regras",
+      "status": "ok",
+      "evidence": "tool_result: contract-probe"
+    },
+    {
+      "name": "regras/sem-erro-de-interface:bash",
+      "group": "regras",
+      "status": "ok",
+      "evidence": "tool_result: ok"
+    },
+    {
+      "name": "regras/sem-erro-de-interface:edit",
+      "group": "regras",
+      "status": "ok",
+      "evidence": "tool_result: Successfully replaced 1 block(s) in /tmp/contract-5cqbgjv7/work/t-edit/probe.txt."
+    },
+    {
+      "name": "regras/sem-erro-de-interface:write",
+      "group": "regras",
+      "status": "ok",
+      "evidence": "tool_result: Successfully wrote to /tmp/contract-5cqbgjv7/work/t-write/written.txt"
+    },
+    {
+      "name": "regras/sem-erro-de-interface:run",
+      "group": "regras",
+      "status": "pulado",
+      "evidence": "não provada inofensiva: sem input seguro conhecido"
+    },
+    {
+      "name": "regras/sem-erro-de-interface:codemode",
+      "group": "regras",
+      "status": "pulado",
+      "evidence": "executa código arbitrário"
+    },
+    {
+      "name": "regras/sem-erro-de-interface:__nycode_deferred_placeholder__",
+      "group": "regras",
+      "status": "pulado",
+      "evidence": "não provada inofensiva: sem input seguro conhecido"
+    },
+    {
+      "name": "basicas/read",
+      "group": "basicas",
+      "status": "ok",
+      "evidence": "ok; tool_result: contract-probe"
+    },
+    {
+      "name": "basicas/write",
+      "group": "basicas",
+      "status": "ok",
+      "evidence": "ok; tool_result: Successfully wrote to /tmp/contract-5cqbgjv7/work/t-write/written.txt"
+    },
+    {
+      "name": "basicas/edit",
+      "group": "basicas",
+      "status": "ok",
+      "evidence": "ok; tool_result: Successfully replaced 1 block(s) in /tmp/contract-5cqbgjv7/work/t-edit/probe.txt."
+    },
+    {
+      "name": "basicas/bash",
+      "group": "basicas",
+      "status": "ok",
+      "evidence": "ok; tool_result: ok"
+    },
+    {
+      "name": "basicas/todo",
+      "group": "basicas",
+      "status": "falha",
+      "evidence": "todo não enviada ao modelo em -p"
+    },
+    {
+      "name": "plano/plan_mode_complete-presente",
+      "group": "plano",
+      "status": "ok",
+      "evidence": "plan_mode_complete presente em -p com --plan"
+    },
+    {
+      "name": "plano/sem-escrita",
+      "group": "plano",
+      "status": "ok",
+      "evidence": "edit, write enviadas com --plan, escrita recusada: Plan mode: write blocked (only .md plan files). Plan file: /tmp/d39/v2/stage-nycode/.nycode/agent/plans/2026…"
+    },
+    {
+      "name": "comandos/goal",
+      "group": "comandos",
+      "status": "ok",
+      "evidence": "estático: registrado em packages/coding-agent/src/extensions/goal/index.ts:577"
+    },
+    {
+      "name": "comandos/plan",
+      "group": "comandos",
+      "status": "ok",
+      "evidence": "estático: registrado em packages/coding-agent/src/extensions/plan-mode/index.ts:380"
+    },
+    {
+      "name": "comandos/agents",
+      "group": "comandos",
+      "status": "ok",
+      "evidence": "estático: registrado em packages/coding-agent/src/extensions/subagent/index.ts:646"
+    },
+    {
+      "name": "comandos/tasks",
+      "group": "comandos",
+      "status": "ok",
+      "evidence": "estático: registrado em packages/coding-agent/src/extensions/subagent/index.ts:632"
+    },
+    {
+      "name": "comandos/team",
+      "group": "comandos",
+      "status": "ok",
+      "evidence": "estático: registrado em packages/coding-agent/src/extensions/subagent/team/index.ts:194"
+    },
+    {
+      "name": "skills/skill-frontmatter",
+      "group": "skills",
+      "status": "ok",
+      "evidence": "30 arquivos com name e description"
+    },
+    {
+      "name": "skills/skill-nomes-unicos",
+      "group": "skills",
+      "status": "ok",
+      "evidence": "30 nomes distintos"
+    },
+    {
+      "name": "skills/agente-frontmatter",
+      "group": "skills",
+      "status": "ok",
+      "evidence": "17 arquivos com name e description"
+    },
+    {
+      "name": "skills/agente-nomes-unicos",
+      "group": "skills",
+      "status": "ok",
+      "evidence": "17 nomes distintos"
+    },
+    {
+      "name": "mcp/brave-search",
+      "group": "mcp",
+      "status": "ok",
+      "evidence": "estático: comando npx no PATH"
+    },
+    {
+      "name": "mcp/codegraph",
+      "group": "mcp",
+      "status": "ok",
+      "evidence": "estático: comando codegraph no PATH"
+    },
+    {
+      "name": "mcp/context7",
+      "group": "mcp",
+      "status": "ok",
+      "evidence": "estático: URL https://mcp.context7.com"
+    },
+    {
+      "name": "mcp/exa",
+      "group": "mcp",
+      "status": "ok",
+      "evidence": "estático: URL https://mcp.exa.ai"
+    },
+    {
+      "name": "mcp/perplexity",
+      "group": "mcp",
+      "status": "ok",
+      "evidence": "estático: comando npx no PATH"
+    },
+    {
+      "name": "mcp/playwright",
+      "group": "mcp",
+      "status": "ok",
+      "evidence": "estático: comando npx no PATH"
+    },
+    {
+      "name": "mcp/tools-list",
+      "group": "mcp",
+      "status": "pulado",
+      "evidence": "precisa de rede/login: nenhum servidor é iniciado"
+    }
+  ]
+}

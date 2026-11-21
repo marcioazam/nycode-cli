@@ -64,8 +64,8 @@ Identificador: `C-F<fase>-<n>`. A coluna "prova" diz o que tem de ser observado.
 - [x] C-F3-06 Job `merge-policy` presente (D-07).
 - [x] C-F3-07 `bench/` no destino; testes do bench passam; `bench/suites` fora dos lints.
 - [x] C-F3-08 Tier `smoke` criado (D-27) e modo de paridade (D-28); braço `nycode` definido em `bench/arms.toml`; `bench run --arm nycode --tier smoke` roda.
-- [ ] C-F3-09 Braço temporário `ny-pi@1.6.0` medido (D-25). Prova: `runs.jsonl` e veredito guardados. **Adiado por D-29 (P-16).**
-- [ ] C-F3-10 Verificador `bench-pr` apontado para o nycode; classifica mudança não funcional (D-21). Prova: status em um PR de documentação. **Adiado por D-29 (P-16).**
+- [x] C-F3-09 Braço temporário `ny-pi@1.6.0` medido (D-25). Prova: `runs.jsonl` e veredito guardados. Feito sob a D-39, sem modelo: contrato 25 ok/2 falhas/4 pulados, caso a caso igual ao `ny-pi` sobre o pi 1.5.2; 7 de 7 cenários de falha; velocidade e plano `--dry-run`. Sem `runs.jsonl` nem veredito de gate (exigem modelo, D-29), ver [F10-paridade](evidencias/F10-paridade.md).
+- [x] C-F3-10 Verificador `bench-pr` apontado para o nycode; classifica mudança não funcional (D-21). Prova: status em um PR de documentação. Feito sob a D-39: `bench/run.py affects` classifica o PR #285 (`f2e5fb7b5`, só `docs/`) como `non-functional` e o status que seria publicado (`success`, "não funcional, sem rodada") foi mostrado em `--dry-run`; **nenhum status foi publicado** (o poster é da máquina do dono, P-16), ver [F10-paridade](evidencias/F10-paridade.md).
 - [x] C-F3-11 PR de teste com os 10 checks obrigatórios verdes. Prova: `gh pr checks`.
 - [x] C-F3-12 Ruleset `main` criado e ativo; JSON versionado em `.github/rulesets/main.json` igual ao aplicado. Prova: comparação.
 - [x] C-F3-13 Proteção clássica removida depois do ruleset. Prova: API devolve 404 "Branch not protected".
@@ -98,7 +98,7 @@ Identificador: `C-F<fase>-<n>`. A coluna "prova" diz o que tem de ser observado.
   `package-version.ts`, `status-line`, em F6, D-34; consumidor desde o #249).
 - [x] C-F5-27 `settings.json` novo não precisa de `packages`. Prova: sessão em `HOME` vazio com os recursos presentes.
 - [x] C-F5-28 `NOTICE` com a atribuição do pi-code.
-- [ ] C-F5-29 Smoke do benchmark não inferior à referência `ny-pi@1.6.0`.
+- [x] C-F5-29 Smoke do benchmark não inferior à referência `ny-pi@1.6.0`. Feito sob a D-39, sem modelo: o `nycode` repete o `ny-pi@1.6.0` nos casos comuns do contrato e em 7 de 7 cenários de falha; acerto e custo por tarefa seguem sem medida, ver [F10-paridade](evidencias/F10-paridade.md).
 
 ## F6. Orquestração embutida
 
@@ -106,7 +106,7 @@ Identificador: `C-F<fase>-<n>`. A coluna "prova" diz o que tem de ser observado.
 - [x] C-F6-11 `subagent` registrada como embutida.
 - [x] C-F6-12 `plan-mode` embutida; `plan-done-rule.test.ts` e `plan-sota.test.ts` verdes.
 - [x] C-F6-13 `goal` embutida, sem portão de confiança; `goal.test.ts` e `goal-lifecycle.test.ts` verdes.
-- [ ] C-F6-14 Suítes `bench/suites/plan` e `multi` não inferiores à referência.
+- [x] C-F6-14 Suítes `bench/suites/plan` e `multi` não inferiores à referência. Feito sob a D-39, sem modelo e só até onde há camada: `plan` com os casos `plano/*` (2 de 2 ok, iguais ao `ny-pi`) e `/plan`; `multi` sem camada de comportamento sem modelo, só o registro de `/agents`, `/tasks` e `/team` e os testes de F6 (C-F6-01 a 10, 15). O acerto das duas suítes não foi medido, ver [F10-paridade](evidencias/F10-paridade.md).
 - [x] C-F6-15 Aninhamento até a profundidade 3 e limite de 4 escritores preservados. Prova: teste de aninhamento.
 - [x] C-F6-16 `scripts/check-patch-stack.sh` e `claude-home/patches/pi-code/` removidos de `import/`.
 - [x] C-F6-17 Primeira sincronização com o upstream depois de F6 feita e medida.
@@ -149,11 +149,11 @@ Identificador: `C-F<fase>-<n>`. A coluna "prova" diz o que tem de ser observado.
 
 ## F10. Paridade final e nova linha de base
 
-- [ ] C-F10-01 Gate completo do braço `nycode` contra a referência. Prova: veredito.
-- [ ] C-F10-02 `pi-vanilla` e `cc-vanilla` medidos uma vez (D-14).
-- [ ] C-F10-03 As 11 dimensões com medida ou marcadas "sem medida".
-- [ ] C-F10-04 Relatório de paridade em `evidencias/F10-paridade.md`, perdas ao lado dos ganhos.
-- [ ] C-F10-05 `docs/bench/baseline-main/` regravado por PR.
+- [x] C-F10-01 Gate completo do braço `nycode` contra a referência. Prova: veredito. Feito sob a D-39, sem modelo: "Veredito sem modelo: não inferior" nas três camadas (contrato 28/1/4 contra 28/1/4, falhas 7 de 7, guard 12 201 de 12 201); o `full` com modelo não rodou (D-29), ver [F10-paridade](evidencias/F10-paridade.md).
+- [x] C-F10-02 `pi-vanilla` e `cc-vanilla` medidos uma vez (D-14). Feito sob a D-39, sem modelo: contrato (11/1/1 e 8/4/8) e falhas (6 de 7) dos dois, ver [F10-paridade](evidencias/F10-paridade.md).
+- [x] C-F10-03 As 11 dimensões com medida ou marcadas "sem medida". Feito sob a D-39: 2 com medida (velocidade, robustez), 2 em parte (contexto, segurança) e 7 "sem medida" por exigirem modelo, cada uma com a fonte, ver [F10-paridade](evidencias/F10-paridade.md).
+- [x] C-F10-04 Relatório de paridade em `evidencias/F10-paridade.md`, perdas ao lado dos ganhos. Feito sob a D-39: o relatório, sem modelo; falta a assinatura do dono (F10).
+- [x] C-F10-05 `docs/bench/baseline-main/` regravado por PR (linha sem modelo, D-39). Feito sob a D-39: contrato e falhas do `nycode` e do `ny-pi` em `docs/bench/baseline-main/sem-modelo/`; `runs.jsonl`, `verdict.json` e `meta.json` intactos, ver [F10-paridade](evidencias/F10-paridade.md).
 - [ ] C-F10-06 Segunda sincronização com o upstream feita e medida (critério global 7).
 - [ ] C-F10-07 Todos os testes do ny-pi com equivalente verde ou justificativa no mapa (critério global 3).
 - [ ] C-F10-08 Busca do critério global 2 vazia.
