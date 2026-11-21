@@ -43,6 +43,7 @@ import {
 	Spacer,
 	setCapabilityOverrides,
 	setKeybindings,
+	stripTerminalSequences,
 	type Terminal,
 	Text,
 	TruncatedText,
@@ -262,9 +263,23 @@ class ExpandableText extends ThemedText implements Expandable {
 	}
 }
 
-/** The built-in header. Clicking its logo (the first two lines, after one column of padding) plays an easter egg. */
-class BuiltInHeader extends ExpandableText {
+// nycode: K10 NO_COLOR (no-color.org): the header and its logo carry no color, so the extension no longer wraps it
+function noColorRequested(): boolean {
+	return (process.env.NO_COLOR ?? "") !== "";
+}
+
+/**
+ * The built-in header. Clicking its logo (the first two lines, after one column of padding) plays an easter egg.
+ * Under NO_COLOR it renders without escape sequences and the click does nothing.
+ */
+export class BuiltInHeader extends ExpandableText {
 	onLogoClick: ((column: number, row: number) => void) | undefined;
+
+	// nycode: K10 NO_COLOR: the logo's brand colors are fixed, outside the theme, so strip them here
+	override render(width: number): readonly string[] {
+		const lines = super.render(width);
+		return noColorRequested() ? lines.map(stripTerminalSequences) : lines;
+	}
 
 	handleMouse(event: TuiMouseEvent): TuiMouseEventResult | undefined {
 		if (event.type !== "click" || event.y > 1 || event.x < 1 || event.x > 4 || !this.onLogoClick) return undefined;
@@ -1164,7 +1179,9 @@ export class InteractiveMode {
 				1,
 				0,
 			);
-			if (showLogo) header.onLogoClick = (column, row) => playNycodeLogo3d(this.renderer, column, row);
+			// nycode: K10 NO_COLOR: the 3D logo easter egg is colored, so it is not wired
+			if (showLogo && !noColorRequested())
+				header.onLogoClick = (column, row) => playNycodeLogo3d(this.renderer, column, row);
 			this.builtInHeader = header;
 
 			// Setup UI layout
