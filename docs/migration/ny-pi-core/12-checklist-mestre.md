@@ -122,22 +122,22 @@ Identificador: `C-F<fase>-<n>`. A coluna "prova" diz o que tem de ser observado.
 
 ## F8. Recursos embarcados e permissões
 
-- [ ] C-F8-01 K6 e K13: `resources/` carregado com a menor precedência e incluído no pacote.
-- [ ] C-F8-02 Instruções (`contract`, `headless`, `lite`) embarcadas; orçamento de instruções não cresce. Prova: `instruction_budget.py check`.
-- [ ] C-F8-03 Regras (`safety.md`, 4 de referência) embarcadas.
-- [ ] C-F8-04 30 skills embarcadas com a classe da 0005; as `optional` fora do contexto do modelo. Prova: `skill_lint.py`, `core_scope.py`.
-- [ ] C-F8-05 17 comandos embarcados.
-- [ ] C-F8-06 17 agentes embarcados; `check-agents.py` verde.
-- [ ] C-F8-07 Nenhum texto embarcado cita `~/.pi`, `$CLAUDE_CONFIG_DIR` ou `claude-home`. Prova: `check-refs.py` e busca.
-- [ ] C-F8-08 Hooks fase A: `guard.py`, `graph_context.py`, `hook-dispatch.sh` registrados por padrão; `test_guard.py`, fuzz e demais testes Python verdes.
-- [ ] C-F8-09 Linha de status embarcada; 4 testes do HUD verdes.
+- [x] C-F8-01 K6 e K13: `resources/` carregado com a menor precedência e incluído no pacote.
+- [x] C-F8-02 Instruções (`contract`, `headless`, `lite`) embarcadas; orçamento de instruções não cresce. Prova: `instruction_budget.py check`.
+- [x] C-F8-03 Regras (`safety.md`, 4 de referência) embarcadas.
+- [ ] C-F8-04 30 skills embarcadas com a classe da 0005; as `optional` fora do contexto do modelo. Prova: `skill_lint.py`, `core_scope.py`. Parcial: embarque e classe feitos (#275); `optional` fora do contexto é PR medido (0005, K3c), adiado pela D-29.
+- [x] C-F8-05 17 comandos embarcados.
+- [x] C-F8-06 17 agentes embarcados; `check-agents.py` verde.
+- [x] C-F8-07 Nenhum texto embarcado cita `~/.pi`, `$CLAUDE_CONFIG_DIR` ou `claude-home`. Prova: `check-refs.py` e busca.
+- [x] C-F8-08 Hooks fase A: `guard.py`, `graph_context.py`, `hook-dispatch.sh` registrados por padrão; `test_guard.py`, fuzz e demais testes Python verdes.
+- [x] C-F8-09 Linha de status embarcada; 4 testes do HUD verdes.
 - [x] C-F8-10 `/bypass` e o atalho no motor de permissão (K11). Prova: `test/harness/permissions/bypass-command.test.ts`; [evidência F8](evidencias/F8.md).
 - [x] C-F8-11 Hooks fase B: motor nativo com o mesmo veredito que `guard.py` em 100% do corpus e do fuzz. Prova: relatório do teste diferencial.
 - [x] C-F8-12 Falha do motor de permissão nega a chamada. Prova: teste de falha (`gate.test.ts`, "denies the call when the engine itself fails").
 - [x] C-F8-13 Revisão de segurança de F8 concluída.
-- [ ] C-F8-14 Ferramentas de `claude-home/bin` em `scripts/harness/`; testes verdes.
-- [ ] C-F8-15 `claude-home/docs` em `docs/harness/`; ligações internas válidas.
-- [ ] C-F8-16 Pendência P-4 fechada: origem e licença das skills de terceiros no `NOTICE`.
+- [x] C-F8-14 Ferramentas de `claude-home/bin` em `scripts/harness/`; testes verdes.
+- [x] C-F8-15 `claude-home/docs` em `docs/harness/`; ligações internas válidas.
+- [x] C-F8-16 Pendência P-4 fechada: origem e licença das skills de terceiros no `NOTICE`.
 
 ## F9. Terceiros
 
