@@ -21,6 +21,7 @@ def _step(tmp_path: Path, monkeypatch: MP, arm: str) -> Path:
     hd = tmp_path / "hd"
     hd.mkdir()
     script(hd / "bundle.sh", "exit 0\n")
+    script(hd / "pi_bundle.sh", "exit 0\n")
     dump = tmp_path / "env_dump"
     harbor = script(tmp_path / "harbor", f"env > {dump}\n")
     monkeypatch.setenv("BENCH_HARBOR", str(harbor))

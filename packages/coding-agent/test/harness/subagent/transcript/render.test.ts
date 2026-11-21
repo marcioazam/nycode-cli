@@ -1,6 +1,6 @@
 // Ported from subagent-render/render.test.ts (pi-code patch tests); same cases and expectations.
 // Testes do desenho do subagent no transcript (subagent/transcript/*.ts e o gancho em subagent/index.ts):
-// env -u NYCODE_SUBAGENT -u NYCODE_SUBAGENT_DEPTH -u NYCODE_FLEET_DIR -u NYCODE_FLEET_RUN_ID -u NYCODE_TEAMS node --experimental-strip-types --test ~/.pi/agent/claude-home/patches/pi-code/subagent-render/render.test.ts
+// env -u NYCODE_SUBAGENT -u NYCODE_SUBAGENT_DEPTH -u NYCODE_FLEET_DIR -u NYCODE_FLEET_RUN_ID -u NYCODE_TEAMS npx vitest --run test/harness/subagent/transcript/render.test.ts
 import assert from "node:assert/strict";
 import { homedir } from "node:os";
 import type { Component } from "@nycode/tui";
@@ -68,7 +68,7 @@ const res = (over: Record<string, unknown> = {}) => ({
 const running = res({
 	messages: [
 		asst([{ type: "text", text: "thinking aloud" }, call("read", { path: "/a" })]),
-		asst([call("read", { path: `${homedir()}/.pi/agent/claude-home/hooks/test_guard.py`, offset: 80, limit: 140 })]),
+		asst([call("read", { path: `${homedir()}/.nycode/agent/hooks/test_guard.py`, offset: 80, limit: 140 })]),
 	],
 	usage: usage({ contextTokens: 23400 }),
 });
@@ -226,7 +226,7 @@ test("calls carry no state glyph: the call box cannot know the state", () => {
 
 test('single running: "● <latest tool>", never prose', () => {
 	const l = lines(view(wrap("single", [running]), { isPartial: true }));
-	assert.deepEqual(l, ["  ⎿ ● Read ~/.pi/agent/claude-home/hooks/test_guard.py:80-219", "  ctrl+o expand"]);
+	assert.deepEqual(l, ["  ⎿ ● Read ~/.nycode/agent/hooks/test_guard.py:80-219", "  ctrl+o expand"]);
 	assert.ok(!l.join("\n").includes("thinking aloud"));
 	assert.deepEqual(lines(view(wrap("single", [res()]), { isPartial: true })), ["  ⎿ ● starting…", "  ctrl+o expand"]);
 	const prose = res({ messages: [asst([{ type: "text", text: "hm" }])] });
@@ -295,7 +295,7 @@ test("parallel running: tree with latest tool per task and the aggregate glyph i
 	const l = lines(view(wrap("parallel", [running, done])));
 	assert.deepEqual(l, [
 		"  ├─ ● swarm-worker  Harden the pi PreToolUse guard   2 tools · 23.4k tok",
-		"  │  ⎿ Read ~/.pi/agent/claude-home/hooks/test_guard.py:80-219",
+		"  │  ⎿ Read ~/.nycode/agent/hooks/test_guard.py:80-219",
 		"  └─ ✓ swarm-worker  Three small harness hygiene changes: x, y   Done · 1 tool · 41.0k tok · $0.12 · 12s",
 		"     ⎿ Hecho con código",
 		"  ● 1/2 done · ctrl+o expand",
@@ -459,7 +459,7 @@ test("expanded parallel and chain keep the tree: rows like collapsed plus the de
 	const l = lines(view(wrap("parallel", [running, done]), { expanded: true }));
 	const at = (re: RegExp): number => l.findIndex((x) => re.test(x));
 	assert.equal(l[0], "  ├─ ● swarm-worker  Harden the pi PreToolUse guard   2 tools · 23.4k tok");
-	assert.equal(l[1], "  │  ⎿ Read ~/.pi/agent/claude-home/hooks/test_guard.py:80-219");
+	assert.equal(l[1], "  │  ⎿ Read ~/.nycode/agent/hooks/test_guard.py:80-219");
 	assert.ok(
 		l[2] === "  │  Task: Harden the pi PreToolUse guard. OWNED FILES: a, b" && l[3] === "  │  ⎿ Read /a",
 		l.join("\n"),

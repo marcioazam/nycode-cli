@@ -700,10 +700,12 @@ Verificação: `gh attestation verify <artefato> -R marcioazam/nycode`. Fonte:
 **Passos** (um PR cada, salvo indicação):
 
 1. **`release.mjs` sem npm e sem empurrar para a `main`.** Tirar `assertPackagesAreRegisteredWithNpm` (anexo B §5) e o
-   passo do catálogo do Nix (`nix/model-catalog.json`), e parar no commit `Release vX.Y.Z` do ramo atual: o ruleset da
+   que restava do passo do catálogo do Nix (só um comentário e uma mensagem: o código que fixava `nix/model-catalog.json` já
+   tinha saído), e parar no commit `Release vX.Y.Z` do ramo atual: o ruleset da
    `main` exige PR e não tem exceção, então `git push origin main` seria recusado. A etiqueta `vX.Y.Z` é criada no commit
    que o squash deixou na `main`, depois do merge (`git tag -a v2.0.0 <sha> && git push origin v2.0.0`). O commit
-   `Add [Unreleased] section for next cycle` vai em outro PR, depois da etiqueta. Remover `scripts/publish.mjs`,
+   `Add [Unreleased] section for next cycle` vai em outro PR, depois da etiqueta, feito à mão (o skill `release.md` descreve):
+   `addUnreleasedSection` saiu do script. Remover `scripts/publish.mjs`,
    `publish-model-catalog.mjs` e `publish-release-announcement.mjs` (com os testes), que falam com o registro npm e o R2
    do upstream, e os scripts `publish*` do `package.json` raiz.
 2. **Nix (P-18): remover da distribuição** (`flake.nix`, `nix/package.nix`, a seção "Run with Nix" do `README.md`).
@@ -806,8 +808,7 @@ serviço, não verificado). A remoção do Nix e o `release.mjs` novo revertem p
 4. **Remover `import/ny-pi/`**, já esvaziado por F2 a F11 (as exclusões de F1 passo 4 podem ficar): ramo
    `mig/f12-remove-import`; `find import/ny-pi -type f | wc -l` (o que sobrou tem destino em 03 ou justificativa);
    `git rm -r import/ny-pi`, commit `docs: remove import/ny-pi after migration (history stays in git)`; critério
-   global 2 (00 §8), sem saída: `rg -n "patch -p1|sed -i|CLAUDE_CONFIG_DIR|node_modules/pi-code|\.pi/agent" . -g
-   '!docs/**' -g '!node_modules' -g '!packages/coding-agent/src/migrations/from-pi.ts' -g '!CHANGELOG.md'`.
+   global 2 (00 §8, D-41): `python3 scripts/ci/lint/criterio2/criterio2.py` termina em `criterio2 OK`.
 5. **Fechar o checklist** [12](12-checklist-mestre.md) em 100%, com a sincronização com o upstream executada ao menos 2
    vezes depois de F6 (critério 7) e a política de sincronização em `docs/fork/` ([08](08-sincronizacao-upstream.md)).
    **[AUTORIZAÇÃO]** atualizar a descrição e os tópicos do repositório (`gh repo edit $UP --description "..."`).

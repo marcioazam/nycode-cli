@@ -1,6 +1,6 @@
 // Ported from zzzzzzzzzzzzzzzzzzzzzzzzzzzzzz-fleet-sync/fleet-sync.test.ts (pi-code patch tests); same cases and expectations.
 // Testes do zzzzzzzzzzzzzzzzzzzzzzzzzzzzzz-fleet-sync.patch (docs/sync-observabilidade.md, D8-D11 + custo do painel):
-//   env -u NYCODE_SUBAGENT node --experimental-strip-types --test ~/.pi/agent/claude-home/patches/pi-code/zzzzzzzzzzzzzzzzzzzzzzzzzzzzzz-fleet-sync/fleet-sync.test.ts
+//   env -u NYCODE_SUBAGENT npx vitest --run test/harness/subagent/fleet/sync/fleet-sync.test.ts
 import assert from "node:assert/strict";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
