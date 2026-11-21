@@ -39,6 +39,7 @@ export function globToRegExp(pattern: string): RegExp {
 	}
 
 	source += "$";
+	// nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- every literal character is escaped by escapeRegExpChar; only `*`, `**` and `?` become fixed regex pieces
 	return new RegExp(source);
 }
 
