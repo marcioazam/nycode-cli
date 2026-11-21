@@ -29,6 +29,8 @@ export interface Plan {
 }
 
 const COPIED_FILES = ["models.json", "lsp.json", "keybindings.json"];
+/** Directories copied without overwriting: pi sessions and the memory extension store. */
+export const KEPT_DIRS = ["sessions", "memory"];
 const AUTH_FILE = /^auth.*\.json$/;
 const WARN_LIMIT = 20;
 /** Settings keys whose origin values run code at startup. */
@@ -221,13 +223,14 @@ export function buildPlan(source: string, dest: string): Plan {
 
 	addTrust(source, dest, add, plan.errors, plan.notes);
 
-	const sessionsRoot = join(source, "sessions");
-	if (regularOrNote(sessionsRoot, "sessions", "directory", plan.notes)) {
-		for (const rel of listTree(source, "sessions")) {
+	// Directory trees are copied file by file; a file already present in the destination is kept.
+	for (const dir of KEPT_DIRS) {
+		if (!regularOrNote(join(source, dir), dir, "directory", plan.notes)) continue;
+		for (const rel of listTree(source, dir)) {
 			const destPath = join(dest, rel);
 			plan.files.push({
 				rel,
-				label: "session",
+				label: dir === "sessions" ? "session" : dir,
 				from: join(source, rel),
 				action: existsSync(destPath) ? "keep" : "create",
 			});
