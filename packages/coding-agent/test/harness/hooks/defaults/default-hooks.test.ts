@@ -1,6 +1,6 @@
 // The hooks nycode registers by default (settings-defaults.ts `hooks`): the hooks extension, started on default
 // settings, resolves every command to a file under the embedded resources, and the guard blocks a catastrophic command.
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -126,6 +126,22 @@ describe("default hooks", () => {
 		expect(await runCall({ action: "start", command: "echo ok" })).toBeUndefined();
 		expect(await runCall({ action: "list" })).toBeUndefined();
 		expect(await runCall({ action: "stop", id: "r1" })).toBeUndefined();
+	});
+
+	// F4 (C-F8-13): D-08, a guard that fails to run denies the call instead of failing open.
+	it.each([127, 1])("blocks the call when the guard interpreter exits %i", async (code) => {
+		const bin = join(home, "bin");
+		mkdirSync(bin);
+		writeFileSync(join(bin, "python3"), `#!/bin/sh\nexit ${code}\n`);
+		chmodSync(join(bin, "python3"), 0o755);
+		const savedPath = process.env.PATH;
+		process.env.PATH = `${bin}:${savedPath}`;
+		try {
+			const { toolCall } = await startSession();
+			expect(await toolCall("echo ok")).toMatchObject({ block: true, reason: expect.stringContaining("onFailure") });
+		} finally {
+			process.env.PATH = savedPath;
+		}
 	});
 
 	// F3 (C-F8-13): with the script engine the guard is always in the effective PreToolUse.

@@ -218,9 +218,9 @@ through `${NYCODE_RESOURCES}`, which the hooks extension exports. They need `pyt
 | `Stop` | none | `impeccable_gate.sh hook` | 30 |
 
 `guard.py` is the permission guard: it denies catastrophic commands and secret reads, and asks before risky ones (a
-`NYCODE_BYPASS_PERMISSIONS=1` environment turns the asks into allows; denials stay). If `python3` is missing, the shell
-cannot start the command and the hook fails as a non-blocking error: the guard then allows the call, as it did in ny-pi.
-A guard that starts but crashes on a Bash call asks instead of allowing. `hook-dispatch.sh` exits 0 without `jq`, and
+`NYCODE_BYPASS_PERMISSIONS=1` environment turns the asks into allows; denials stay). The guard hook has `onFailure: "block"`:
+if `python3` is missing, or the interpreter fails before the guard runs (exit 127, a broken import), the call is
+blocked, not allowed. A guard that starts but crashes on a Bash call asks instead of allowing. `hook-dispatch.sh` exits 0 without `jq`, and
 `impeccable_gate.sh` then reads the working directory instead of the event's.
 
 To turn hooks off or replace them:
