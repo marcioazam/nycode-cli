@@ -16,58 +16,70 @@
  * tem saída e repete a cada FOLLOW chamadas até haver mudança. Custo: uma chamada todo a cada ~10-13 chamadas, só em
  * sessões interativas. Sem interface (benchmarks) o comportamento e o texto seguem idênticos ao original.
  *
- * O estado vem do evento `pi-code:todos` que a extensão todo do pi-code emite a cada mudança e ao recarregar a sessão.
- * PI_TODO_SYNC=0 desliga. Reverter: apagar este diretório.
+ * O estado vem do evento `pi-code:todos` que a extensão todo emite a cada mudança e ao recarregar a sessão.
+ * NYCODE_TODO_SYNC=0 ou `todo.staleReminder: false` nas settings desliga (resolvedor de settings-nycode).
  */
-import type { ExtensionAPI } from '@earendil-works/pi-coding-agent'
+import { getAgentDir } from "../../config.ts";
+import type { ExtensionAPI } from "../../core/extensions/types.ts";
+import { SettingsManager } from "../../core/settings-manager.ts";
 
-export type Item = { id: number; text: string; status: string }
+export type Item = { id: number; text: string; status: string };
 
 /** Chamadas de ferramenta sem tocar na lista antes de lembrar. */
-export const EVERY = 10
+export const EVERY = 10;
 
 /** Chamadas entre lembretes enquanto a lista não mudar (modo estrito). */
-export const FOLLOW = 3
+export const FOLLOW = 3;
 
-const MAX_ITEMS = 12
+const MAX_ITEMS = 12;
 
 /** Lembrete estrito: itens abertos compactos e pedido de reconciliação, sem saída. */
 export function strictReminder(items: Item[]): string | undefined {
-  const open = items.filter((t) => t.status !== 'completed')
-  if (open.length === 0) return undefined
-  const lines = open.slice(0, MAX_ITEMS).map((t) => `#${t.id} [${t.status}] ${t.text.slice(0, 60)}`)
-  if (open.length > MAX_ITEMS) lines.push(`+${open.length - MAX_ITEMS} more`)
-  return `<system-reminder>The todo list has ${open.length} open item(s) and has not changed for several tool calls:\n${lines.join('\n')}\nReconcile the list now with one todo call that changes it: complete finished items, start the item you are actually working on, add untracked work (background runs, PRs waiting on gates). \`todo list\` does not count.</system-reminder>`
+	const open = items.filter((t) => t.status !== "completed");
+	if (open.length === 0) return undefined;
+	const lines = open.slice(0, MAX_ITEMS).map((t) => `#${t.id} [${t.status}] ${t.text.slice(0, 60)}`);
+	if (open.length > MAX_ITEMS) lines.push(`+${open.length - MAX_ITEMS} more`);
+	return `<system-reminder>The todo list has ${open.length} open item(s) and has not changed for several tool calls:\n${lines.join("\n")}\nReconcile the list now with one todo call that changes it: complete finished items, start the item you are actually working on, add untracked work (background runs, PRs waiting on gates). \`todo list\` does not count.</system-reminder>`;
 }
 
 /** Texto do lembrete, ou undefined quando não há item aberto. */
 export function reminder(items: Item[], calls: number): string | undefined {
-  const open = items.filter((t) => t.status !== 'completed')
-  if (open.length === 0) return undefined
-  const active = open.find((t) => t.status === 'in_progress')
-  const where = active ? `in progress: #${active.id} "${active.text}"` : 'none in progress'
-  return `<system-reminder>The todo list has ${open.length} open item(s) (${where}) and the last ${calls} tool calls did not update it. If an item is finished, complete it now; if the work moved to another item, start that one; add what is missing. If the list is accurate, carry on and do not mention this reminder.</system-reminder>`
+	const open = items.filter((t) => t.status !== "completed");
+	if (open.length === 0) return undefined;
+	const active = open.find((t) => t.status === "in_progress");
+	const where = active ? `in progress: #${active.id} "${active.text}"` : "none in progress";
+	return `<system-reminder>The todo list has ${open.length} open item(s) (${where}) and the last ${calls} tool calls did not update it. If an item is finished, complete it now; if the work moved to another item, start that one; add what is missing. If the list is accurate, carry on and do not mention this reminder.</system-reminder>`;
 }
 
-export default function (pi: ExtensionAPI) {
-  if (process.env.PI_TODO_SYNC === '0') return
-  let items: Item[] = []
-  let calls = 0
-  pi.events.on('pi-code:todos', (data: unknown) => {
-    items = Array.isArray(data) ? (data as Item[]) : []
-  })
-  pi.on('tool_result', (event, ctx) => {
-    const strict = ctx?.hasUI === true
-    const action = (event.input as { action?: string } | undefined)?.action
-    if (event.toolName === 'todo' && (!strict || action !== 'list')) {
-      calls = 0
-      return undefined
-    }
-    calls += 1
-    if (calls < EVERY) return undefined
-    const text = strict ? strictReminder(items) : reminder(items, calls)
-    calls = strict && text ? EVERY - FOLLOW : 0
-    if (!text || !Array.isArray(event.content)) return undefined
-    return { content: [...event.content, { type: 'text' as const, text }] }
-  })
+/** Lê a chave `todo.staleReminder` (env NYCODE_TODO_SYNC > settings.json > ligado). */
+export const readStaleReminderEnabled = (cwd: string): boolean =>
+	SettingsManager.create(cwd, getAgentDir()).getNycodeSettings().todo.staleReminder;
+
+/** Registra o lembrete; a chave é lida uma vez, na primeira chamada de ferramenta (a fábrica não tem cwd). */
+export function registerStaleReminder(
+	nycode: ExtensionAPI,
+	readEnabled: (cwd: string) => boolean = readStaleReminderEnabled,
+) {
+	let items: Item[] = [];
+	let calls = 0;
+	let enabled: boolean | undefined;
+	nycode.events.on("pi-code:todos", (data: unknown) => {
+		items = Array.isArray(data) ? (data as Item[]) : [];
+	});
+	nycode.on("tool_result", (event, ctx) => {
+		enabled ??= readEnabled(ctx?.cwd ?? process.cwd());
+		if (!enabled) return undefined;
+		const strict = ctx?.hasUI === true;
+		const action = (event.input as { action?: string } | undefined)?.action;
+		if (event.toolName === "todo" && (!strict || action !== "list")) {
+			calls = 0;
+			return undefined;
+		}
+		calls += 1;
+		if (calls < EVERY) return undefined;
+		const text = strict ? strictReminder(items) : reminder(items, calls);
+		calls = strict && text ? EVERY - FOLLOW : 0;
+		if (!text || !Array.isArray(event.content)) return undefined;
+		return { content: [...event.content, { type: "text" as const, text }] };
+	});
 }
