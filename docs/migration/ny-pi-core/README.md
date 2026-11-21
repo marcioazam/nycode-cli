@@ -58,7 +58,7 @@ Quatro respostas do dono travam o início de alguma fase
 
 1. D-15: apagar os 213 ramos herdados do antigo nycode em Rust?
 2. D-16: fechar os 8 alertas de secret scanning como credencial pública do upstream?
-3. D-17: criar a organização `@nycode` no npm?
+3. ~~D-17: criar a organização `@nycode` no npm?~~ Respondida em 2026-11-20: sem npm, o canal é o repositório (GitHub Releases)
 4. D-22: arquivar o repositório ny-pi no corte?
 
 ## Evidências

@@ -160,16 +160,16 @@ Identificador: `C-F<fase>-<n>`. A coluna "prova" diz o que tem de ser observado.
 
 ## F11. Distribuição
 
-- [ ] C-F11-01 Workflow de publicação com `id-token: write`, executor hospedado, sem token.
-- [ ] C-F11-02 Publicador confiável configurado para cada pacote; primeira publicação em até 2 dias.
-- [ ] C-F11-03 `2.0.0` publicada com proveniência. Prova: `npm view @nycode/coding-agent dist.attestations`.
-- [ ] C-F11-04 Tokens proibidos nos pacotes.
-- [ ] C-F11-05 Instalação limpa em contêiner: `npm install -g --ignore-scripts @nycode/coding-agent` e teste de fumaça.
-- [ ] C-F11-06 Binários e Nix decididos e, se mantidos, com workflow.
-- [ ] C-F11-07 Aviso de versão e autoatualização consultam o registro do nycode (D-12). Nenhuma chamada a `pi.dev` (D-30, P-17 K15).
-- [ ] C-F11-08 README com instruções de instalação do nycode; números só de medição do braço `nycode`.
-- [ ] C-F11-09 Skill `release.md` reescrita (P-7).
-- [ ] C-F11-10 `install.sh`, `publish.list`, `npm/` removidos de `import/`.
+- [ ] C-F11-01 Workflow `publish.yml` disparado por etiqueta `v*`: `permissions: {}` no topo, `id-token: write` e `attestations: write` só no job `release`, executor hospedado, actions por SHA, sem segredo além do `GITHUB_TOKEN`. Prova: `actionlint .github/workflows/publish.yml` e `zizmor --min-severity medium .github/workflows/publish.yml` com saída 0; `bash scripts/ci/run-security.sh` termina OK; `rg -n "secrets\.|self-hosted" .github/workflows/publish.yml` mostra só `secrets.GITHUB_TOKEN`.
+- [ ] C-F11-02 Artefato de instalação sem registro npm (D-17): 6 binários `bun` autocontidos, `SHA256SUMS` e o código-fonte, com atestação (`actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6`, v4.2.2). Prova: `gh release download v2.0.0 -R marcioazam/nycode -D /tmp/f11v` e, para cada arquivo, `gh attestation verify <arquivo> -R marcioazam/nycode` com saída 0 (gh >= 2.49); `sha256sum -c SHA256SUMS`.
+- [ ] C-F11-03 `2.0.0` publicada como GitHub Release (D-13, D-42), não rascunho. Prova: `gh release view v2.0.0 -R marcioazam/nycode --json isDraft,isPrerelease,assets --jq '[.isDraft,.isPrerelease,(.assets|length)]'` devolve `[false,false,<n>]` com os 6 arquivos, o código-fonte e `SHA256SUMS`; `git ls-remote --tags origin v2.0.0` mostra a etiqueta no commit da `main` que traz a versão `2.0.0` (`git show <sha>:packages/coding-agent/package.json | jq -r .version`).
+- [ ] C-F11-04 Nenhum token de longa duração nem segredo nos artefatos. Prova: `gh api repos/marcioazam/nycode/actions/secrets --jq .total_count` devolve `0`; `gitleaks dir` sobre o arquivo de código-fonte extraído e sobre o binário Linux extraído sai com 0.
+- [ ] C-F11-05 Instalação limpa em contêiner a partir do Release: `docker run --rm node:22 sh -c '… curl … nycode-linux-x64.tar.gz … sha256sum -c … tar -xzf … nycode/nycode --version'` (comando completo em [06](06-guia-de-execucao.md#f11)) imprime `2.0.0`.
+- [ ] C-F11-06 Binários com workflow (`publish.yml`, matriz de fumaça em `ubuntu`, `macos` e `windows`) e Nix removido (P-18). Prova: `bash scripts/build-binaries.sh --help` sai 0 e o run de `publish.yml` tem os 3 jobs de fumaça verdes; `test ! -e flake.nix && test ! -d nix`.
+- [ ] C-F11-07 Aviso de versão e `nycode update` consultam o GitHub Releases de `marcioazam/nycode` (D-12, D-30), sem `pi.dev`, sem registro npm. Prova: `rg -n "pi\.dev" packages/*/src -g '!*.test.ts'` sem saída; `rg -n "api.github.com/repos/marcioazam/nycode/releases/latest" packages/coding-agent/src/utils/version-check.ts` acha a linha; `env -u OPENROUTER_API_KEY npx vitest --run test/version-check.test.ts` e o teste novo do passo 5 de F11 (`nycode update` de binário imprime `https://github.com/marcioazam/nycode/releases`) passam.
+- [ ] C-F11-08 README com instruções de instalação do nycode; números só de medição do braço `nycode`. Prova: `rg -n "No release is published|Nothing is published" README.md packages/coding-agent/docs` sem saída; `rg -n "releases/download|gh attestation verify" README.md` acha as instruções.
+- [ ] C-F11-09 Skill `release.md` reescrita (P-7), com a exceção do `2.0.0`. Prova: `rg -n "build-binaries.yml|nix.yml|trusted publishing|pi.dev|R2" .nycode/skills/release.md` sem saída; `rg -n "publish.yml|2.0.0" .nycode/skills/release.md` acha os dois.
+- [ ] C-F11-10 `install.sh`, `publish.list`, `npm/` removidos de `import/`. Prova: `test ! -e import/ny-pi/install.sh && test ! -e import/ny-pi/publish.list && test ! -d import/ny-pi/npm`.
 
 ## F12. Corte e descomissionamento
 

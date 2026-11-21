@@ -37,8 +37,8 @@ O registro está dividido em três tabelas com o mesmo identificador: 1.1 (o que
 | R-13 | Custo e fila do benchmark estouram | Rodadas `full` por fase | F3, F10 | M | M | Dono |
 | R-14 | Runner local do `bench-pr` parado bloqueia PRs | Status obrigatório sem workflow | F3 | M | A | Dono |
 | R-15 | Conta de benchmark indisponível ou limitada | Conta `claude` única, em fila | F3, F10 | M | M | Dono |
-| R-16 | Escopo npm `@nycode` indisponível | D-17: hoje 404, sem dono | F11 | M | M | Dono |
-| R-17 | Publicação sem proveniência | Trusted publishing não configurado | F11 | M | A | Seg. |
+| R-16 | ~~Escopo npm `@nycode` indisponível~~ (D-17: sem npm; canal do repositório) | Risco passa a ser Release recusado ou `publish.yml` sem permissão (06, "Se der errado" 10) | F11 | B | M | Dono |
+| R-17 | Publicação sem proveniência | `actions/attest` ausente no `publish.yml` ou atestação que não verifica | F11 | M | A | Seg. |
 | R-18 | `pi.dev` fora do ar ou catálogo incompatível | D-12: serviço do upstream | F11 | B | M | Orq. |
 | R-19 | Perda de dados em `nycode migrate from-pi` | Sobrescrita de auth, sessões, MCP | F4, F12 | B | A | Seg. |
 | R-20 | Dois harnesses disputam `~/.pi` e `~/.nycode` | Convivência em F12 | F12 | M | M | Dono |
@@ -76,8 +76,8 @@ O registro está dividido em três tabelas com o mesmo identificador: 1.1 (o que
 | R-13 | Gasto da conta acima do orçado | `smoke` por PR, `full` por fase; `est_cost_usd` |
 | R-14 | Status `bench-pr` pendente por horas | Verificador local como serviço; D-21 para PR sem código |
 | R-15 | Erro de autenticação ou limite no bench | Fila única; rodar quando a conta voltar |
-| R-16 | `npm access` ou `npm view` sem escopo | Reservar na F0; plano B `@marcioazam/nycode-*` |
-| R-17 | Pacote publicado sem selo de origem | `--provenance` obrigatório (`publish.mjs`) |
+| R-16 | `publish.yml` falha ou deixa o Release em rascunho | `gh release delete v2.0.0 --cleanup-tag`, corrigir por PR e reetiquetar (06, "Se der errado" 10) |
+| R-17 | Release publicado sem selo de origem | `gh attestation verify` por arquivo é parte da saída de F11; sem atestação o Release volta a rascunho |
 | R-18 | Falha ao listar modelos, OAuth ou instalador | Catálogo em cache; aviso de versão próprio |
 | R-19 | `migrate from-pi` sem `--dry-run` limpo | Cópia, nunca move; backup; sem tocar auth |
 | R-20 | Sessão do `pi` e do `nycode` no mesmo diretório | Diretórios distintos; migração por cópia |
@@ -154,7 +154,7 @@ escrevem no GitHub (reverter, apagar, recriar proteção) exigem a autorização
 | F8 | Motor de permissão para `"script"`; revert dos recursos | Sempre |
 | F9 | Desligar `lsp`; opcionais saem de `nycode install` | Sempre |
 | F10 | Revert do PR que regrava `docs/bench/baseline-main/` | Sempre |
-| F11 | Parte reversível: instalador e binários. Publicação no npm: não | Ver ponto sem volta |
+| F11 | Reversível: o Release e a etiqueta se apagam (`gh release delete --cleanup-tag`); a atestação fica no Sigstore público | Ver ponto sem volta |
 | F12 | Desarquivar o `ny-pi`; restaurar `import/ny-pi/` por git; `pi` do dia a dia volta | Enquanto o `ny-pi` existir |
 
 Detalhes por fase, para quem executa:
@@ -176,17 +176,18 @@ Detalhes por fase, para quem executa:
 
 ### 2.1 Ponto sem volta
 
-- **Publicação no npm (F11) não é reversível.** Uma versão publicada pode ser marcada com `npm deprecate`; o
-  `npm unpublish` só é possível em janela curta após a publicação. O prazo de 72 horas é o que se conhece por convenção
-  do npm, **não verificado** aqui, e a regra atual do registro precisa ser lida na documentação oficial do npm antes de
-  F11. O nome do pacote e a versão `2.0.0` (D-13) ficam consumidos mesmo depois de `unpublish`.
+- **Publicação do Release `v2.0.0` (F11) é reversível no GitHub, não no mundo.** O Release e a etiqueta se apagam
+  (`gh release delete v2.0.0 --cleanup-tag`) e a imutabilidade de Release está desligada (`enabled: false` em
+  2026-11-21), mas quem já baixou o binário o mantém e a atestação segue nos registros públicos (comportamento do
+  Sigstore, não verificado). O número `2.0.0` (D-13) deve ser tratado como consumido depois de publicado: a correção sai
+  como `2.0.1`. O npm deixou de ser canal (D-17), então `npm deprecate` e `unpublish` não se aplicam.
 - **Arquivar o `ny-pi` (F12)** é reversível: o GitHub permite desarquivar (comportamento do GitHub, não verificado
   nesta etapa).
 - **Apagar `import/ny-pi/`** é reversível por git: o histórico da pasta continua em `main`.
 - **Apagar ramos (F0)** é reversível se o SHA foi gravado; sem o SHA, depende do `reflog` remoto, que o GitHub não expõe
   (não verificado).
-- Portanto, o primeiro ponto sem volta é a primeira publicação no npm. Antes dele, só F11 pode ser interrompida sem
-  custo; depois dele, o rollback passa a ser "publicar versão corrigida" e `npm deprecate`.
+- Portanto, o primeiro ponto de difícil volta é o primeiro download do Release `v2.0.0`. Antes dele, só F11 pode ser
+  interrompida sem custo; depois, o rollback passa a ser "publicar versão corrigida".
 
 ## 3. Critérios de parada
 
@@ -206,7 +207,7 @@ Interromper a migração, congelar a fase em curso e voltar ao `pi` do ny-pi qua
    ser corrigido em um PR.
 7. O dono suspende por escrito, ou o orçamento de benchmark do período acaba (R-13, R-15).
 8. Uma diferença visual não autorizada na UI não é revertida em 2 PRs (R-27).
-9. A F11 não consegue reservar escopo npm nem usar o plano B (D-17): F11 e F12 param; F0 a F10 permanecem.
+9. A F11 não consegue publicar o Release nem atestar os arquivos (D-17, D-42): F11 e F12 param; F0 a F10 permanecem.
 
 Os limiares numéricos dos itens 1, 3, 5 e 8 são propostas deste plano, não valores medidos.
 

@@ -35,7 +35,7 @@ extensões, hooks, agentes, skills, regras, benchmark e instalador) para **dentr
 | Arquivos | 1485 (870 em `bench/`, 439 em `claude-home/`, 60 em `extensions/`) | monorepo npm: 12 pacotes `@nycode/*` 1.6.0, 3 apps |
 | Linguagens | TypeScript, Python 3.12, shell POSIX; Node 24 | TypeScript; Node >= 22.19 |
 | Checks obrigatórios | `ci-static`, `ci-security`, `instruction-budget`, `bench-pr` (ruleset, squash, linear) | `build-check`, `test (coding-agent\|durable\|chord\|other)`, `mcp-conformance` (proteção clássica) |
-| Publicação | Não publica no npm; `install.sh` + `publish.list` (symlinks) | `scripts/release.mjs` + `publish.mjs`; escopo `@nycode` ainda **não existe** no npm (404) |
+| Publicação | Não publica no npm; `install.sh` + `publish.list` (symlinks) | `scripts/release.mjs` + `publish.mjs` (para o npm); escopo `@nycode` **não existe** no npm (404) e a D-17 descartou o npm: o canal é o GitHub Releases do repositório |
 | Logo | — | `docs/assets/nycode-pixel.svg` removido em `c410d670e`; recuperável de `9ea437bf7` |
 
 Detalhe completo: [01-inventario-origem.md](01-inventario-origem.md) e anexos [A](anexos/A-inventario-ny-pi.md),
@@ -54,7 +54,7 @@ Detalhe completo: [01-inventario-origem.md](01-inventario-origem.md) e anexos [A
 6. **Custo × benefício acima de tudo.** Peça `core`, `ui` ou `optional` segue a especificação 0005 do ny-pi, que migra
    junto. Peça opcional não entra no contexto do modelo por padrão.
 7. **Segurança da cadeia de suprimento não regride.** Actions por SHA, dependências exatas, `--ignore-scripts`,
-   verificação de vazamento, publicação com proveniência.
+   verificação de vazamento, publicação com atestação de proveniência (`actions/attest`, D-17).
 8. **Evidência registrada.** Cada fase fecha com um registro em `docs/migration/ny-pi-core/evidencias/` (comandos,
    SHAs, saídas).
 
@@ -97,7 +97,7 @@ Cada fase tem critérios de entrada e de saída verificáveis. O passo a passo c
 | F8 | Recursos embarcados e permissões | Agentes, skills, comandos, regras, instruções, hooks; motor de permissão nativo | G | F5, F6 |
 | F9 | Terceiros | `pi-lsp` embutido, demais como opcionais | M | F5 |
 | F10 | Paridade final e nova linha de base | Gate completo, nova linha de base `main`, relatório de paridade | M | F6 a F9 |
-| F11 | Distribuição | Escopo npm, publicação com proveniência, instalador, binários, atualização | G | F10 |
+| F11 | Distribuição | GitHub Release `v2.0.0` do repositório com binários e atestação, aviso de versão, Nix removido (D-17, D-42) | G | F10 |
 | F12 | Corte e descomissionamento | Dados do usuário migrados, ny-pi arquivado | P | F11 |
 
 Tamanho: P até 5 PRs, M até 15, G até 40, GG acima de 40. A ordem de grandeza vem das contagens do inventário
@@ -116,7 +116,7 @@ Tamanho: P até 5 PRs, M até 15, G até 40, GG acima de 40. A ordem de grandeza
      Apagar ramos exige autorização do dono ([D-15](11-decisoes-e-pendencias.md)).
   5. Triar os 8 alertas abertos de secret scanning do destino (credenciais OAuth de cliente instalado herdadas do
      upstream em `packages/ai/src/utils/oauth/` e um `plan.md` histórico).
-  6. Reservar o escopo `@nycode` no npm (hoje `npm view @nycode/coding-agent` devolve 404).
+  6. ~~Reservar o escopo `@nycode` no npm~~ (substituído pela D-17: sem npm; o canal é o repositório).
   7. Criar a etiqueta `v1.6.0-base` no commit do fork, para o `build-check` ter uma tag de referência.
 - Saída: decisões registradas; `evidencias/F0.md` com as saídas; nenhum ramo órfão; alertas triados.
 
@@ -205,10 +205,11 @@ Tamanho: P até 5 PRs, M até 15, G até 40, GG acima de 40. A ordem de grandeza
 
 ### F11. Distribuição
 
-- Trabalho: publicação no npm por *trusted publishing* com proveniência, binários, Nix, instalador próprio,
-  autoatualização e decisão sobre os serviços do upstream ainda consultados.
-- Saída: `npm install -g @nycode/coding-agent` instala a versão com o harness; instalação limpa em contêiner passa o
-  teste de fumaça.
+- Trabalho: workflow `publish.yml` por etiqueta `v*`, binários `bun` autocontidos com atestação de proveniência no
+  GitHub Release de `marcioazam/nycode`, Nix fora da distribuição (P-18), README de instalação, aviso de versão pelo
+  GitHub Releases (já assim desde o K15) e `release.md` reescrito (D-17, D-42).
+- Saída: o binário baixado do Release `v2.0.0` instala e imprime `2.0.0` num contêiner limpo, e
+  `gh attestation verify` o aceita.
 
 ### F12. Corte e descomissionamento
 
@@ -265,7 +266,7 @@ Registro completo e planos de reversão em [10-riscos-e-rollback.md](10-riscos-e
 
 | Papel | Quem | Responsabilidade |
 |---|---|---|
-| Dono | Marcio | Decisões de [11](11-decisoes-e-pendencias.md), autorizações (apagar ramos, npm, arquivar), aceite de fase |
+| Dono | Marcio | Decisões de [11](11-decisoes-e-pendencias.md), autorizações (apagar ramos, arquivar, publicar o Release), aceite de fase |
 | Orquestrador | sessão principal do agente | Divide em unidades, escreve os briefings, julga a evidência |
 | Executores | subagentes escritores | Um PR por unidade, com teste |
 | Revisor | `plan-reviewer`, `code-reviewer`, `security-reviewer` | Revisão por fase; segurança obrigatória em F4 e F8 |
