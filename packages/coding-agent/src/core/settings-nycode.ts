@@ -9,6 +9,7 @@ import type { Settings } from "./settings-schema.ts";
 export type Env = Readonly<Record<string, string | undefined>>;
 
 export interface NycodeSettings {
+	permissions: { engine: "script" | "native" };
 	compaction: { maxContextTokens: number };
 	harness: {
 		effortSandwich: { enabled: boolean; turns: number };
@@ -54,6 +55,10 @@ const AUTO: Field<boolean | "auto"> = {
 const TOOLS: Field<"lean" | "all"> = {
 	fromEnv: (raw) => (raw === "lean" || raw === "all" ? raw : undefined),
 	fromSettings: (raw) => (raw === "lean" || raw === "all" ? raw : undefined),
+};
+const ENGINE: Field<"script" | "native"> = {
+	fromEnv: () => undefined,
+	fromSettings: (raw) => (raw === "script" || raw === "native" ? raw : undefined),
 };
 const TEXT: Field<string> = {
 	fromEnv: (raw) => (raw === "" ? undefined : raw),
@@ -103,6 +108,7 @@ export function resolveNycodeSettings(settings: Settings, env: Env): NycodeSetti
 	const d = SETTINGS_DEFAULTS;
 	const h = settings.harness;
 	return {
+		permissions: { engine: pick(ENGINE, undefined, settings.permissions?.engine, d.permissions.engine) },
 		compaction: {
 			maxContextTokens: pick(
 				integerAtLeast(1),

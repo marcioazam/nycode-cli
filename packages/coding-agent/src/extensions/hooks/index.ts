@@ -97,6 +97,7 @@
 import * as os from "node:os";
 import { exportResourcesRoot } from "../../core/builtin-resources.ts";
 import type { ExtensionAPI, ExtensionContext } from "../../core/extensions/types.ts";
+import { hooksForEngine } from "../../core/permissions/gate.ts";
 import { INSTRUCTIONS_CHANNEL, isInstructionLoadEvent } from "../_shared/events/instruction-events.ts";
 import { isMcpToolAliases, MCP_TOOLS_CHANNEL } from "../_shared/events/mcp-alias.ts";
 import { isPlanModeState, PLAN_MODE_CHANNEL } from "../_shared/events/plan-mode-state.ts";
@@ -516,7 +517,8 @@ export default function hooksExtension(nycode: ExtensionAPI) {
 		// referencing $CLAUDE_PROJECT_DIR/.claude/hooks/helper.sh must resolve from a
 		// subdirectory session too.
 		projectDir = checkoutRoot(ctx.cwd);
-		settingsHooks = nycode.getSettings().hooks;
+		// nycode: K11 with permissions.engine "native" the guard.py PreToolUse default does not run
+		settingsHooks = hooksForEngine(nycode.getSettings());
 		resolveConfig(ctx.cwd, trusted);
 		// Claude picks up direct settings edits mid-session via a file watcher. The reload
 		// closes over the cwd value, never ctx: the poll has no awaiter, and every getter of

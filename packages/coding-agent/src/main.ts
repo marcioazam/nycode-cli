@@ -52,6 +52,7 @@ import { resolveCliModel, resolveModelScopeWithDiagnostics, type ScopedModel } f
 import { ModelRuntime } from "./core/model-runtime.ts";
 import { restoreStdout, takeOverStdout } from "./core/output-guard.ts";
 import type { ProgressEvent } from "./core/package-manager.ts";
+import { setBypassState } from "./core/permissions/bypass-state.ts";
 import { type AppMode, resolveProjectTrusted } from "./core/project-trust.ts";
 import type { CreateAgentSessionOptions } from "./core/sdk.ts";
 import {
@@ -719,6 +720,8 @@ export async function main(args: string[], options?: MainOptions) {
 	time("runMigrations");
 
 	const startupSettingsManager = SettingsManager.create(cwd, agentDir);
+	// nycode: K11 --bypass/--safe, NYCODE_BYPASS_PERMISSIONS and permissions.bypass set the state both engines read
+	setBypassState(startupSettingsManager.getBypassPermissions(parsed.bypassPermissions));
 	const startupSettingsDiagnostics = collectSettingsDiagnostics(startupSettingsManager);
 
 	// Experimental first-time setup: theme choice and analytics opt-in.

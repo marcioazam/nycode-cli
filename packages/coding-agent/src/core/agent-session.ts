@@ -121,6 +121,7 @@ import { type BashExecutionMessage, type CustomMessage, convertToLlm } from "./m
 import { ModelRegistry } from "./model-registry.ts";
 import type { ModelRuntime } from "./model-runtime.ts";
 import { NestedToolCallRunner } from "./nested-tool-calls.ts";
+import { gateToolCall } from "./permissions/gate.ts";
 import { expandPromptTemplate, type PromptTemplate } from "./prompt-templates.ts";
 import type { ResourceExtensionPaths, ResourceLoader } from "./resource-loader.ts";
 import { exportSessionToJsonl } from "./session-export.ts";
@@ -727,6 +728,9 @@ export class AgentSession {
 		parentToolCallId?: string,
 	): Promise<BeforeToolCallResult | undefined> {
 		const runner = this._extensionRunner;
+		// nycode: K11 native permission engine (permissions.engine) decides the call before the extension handlers
+		const gated = await gateToolCall(toolCall.name, args, { settings: this.settingsManager, runner });
+		if (gated) return gated;
 		if (!runner.hasHandlers("tool_call")) {
 			return undefined;
 		}

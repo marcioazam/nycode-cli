@@ -805,6 +805,20 @@
           "type": "boolean",
           "description": "Auto-approve the permission prompts of the permission engine; deny rules still apply. Global setting only. NYCODE_BYPASS_PERMISSIONS and --bypass/--safe take precedence.",
           "default": false
+        },
+        "engine": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "script"
+            },
+            {
+              "type": "string",
+              "const": "native"
+            }
+          ],
+          "description": "Who decides the permission of each tool call: \"script\" (the embedded guard.py through the PreToolUse hook) or \"native\" (the TypeScript engine, same verdicts).",
+          "default": "script"
         }
       }
     },

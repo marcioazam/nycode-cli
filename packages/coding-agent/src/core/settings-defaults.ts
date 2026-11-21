@@ -84,7 +84,7 @@ export const SETTINGS_DEFAULTS = {
 	fullscreenCopyOnSelect: true,
 	fullscreenWheelScrollLines: "auto",
 	// nycode keys (docs/migration/ny-pi-core/02-arquitetura-alvo.md section 5); read by the extensions that own them.
-	permissions: { bypass: false },
+	permissions: { bypass: false, engine: "script" },
 	harness: {
 		effortSandwich: { enabled: false, turns: 1 },
 		headless: { lean: true, trim: true, tools: "lean", floor: true },

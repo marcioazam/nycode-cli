@@ -171,6 +171,7 @@ These keys only exist, validate, and are read here; the built-in extensions that
 | Setting | Type | Default | Variable | Description |
 |---|---|---|---|---|
 | `permissions.bypass` | boolean | `false` | `NYCODE_BYPASS_PERMISSIONS` | Auto-approve permission prompts; deny rules still apply. `--bypass` and `--dangerously-skip-permissions` turn it on for one run, `--safe` and `--no-bypass` turn it off; a flag beats the variable, which beats the file. **Can only be set in agent-directory settings.** |
+| `permissions.engine` | `"script" \| "native"` | `"script"` | none | Who decides the permission of each tool call. `"script"` runs the embedded `guard.py` as the `PreToolUse` hook (needs `python3`). `"native"` decides in-process with a TypeScript port of the same rules (same verdicts, no Python) and the `guard.py` hook does not run. A value that is not one of the two is ignored. |
 | `harness.effortSandwich.enabled` | boolean | `false` | `NYCODE_EFFORT_SANDWICH` | High thinking on the first turns of a top-level headless run. |
 | `harness.effortSandwich.turns` | integer ≥ 1 | `1` | `NYCODE_EFFORT_SANDWICH_TURNS` | Turns that use high thinking. |
 | `subagent.respawn` | boolean | `true` | `NYCODE_SUBAGENT_RESPAWN` | Respawn a crashed foreground subagent. |

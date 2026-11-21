@@ -1,11 +1,8 @@
 // K11: the permission gate in front of every tool call. `permissions.engine` picks who decides: "script" leaves the call
 // to the embedded guard.py (run by the `hooks` extension at PreToolUse), "native" decides here with the TypeScript port
-// of the guard. An unknown engine or a missing guard script denies the call; an internal error of the engine follows guard.py (Bash asks).
-import { existsSync } from "node:fs";
-import { join } from "node:path";
+// of the guard. An internal error of the engine follows guard.py: Bash asks, the file tools pass.
 import { checkoutRoot } from "../../extensions/_shared/project/project-root.ts";
 import { claudeToolInput, claudeToolName } from "../../extensions/hooks/claude-tools.ts";
-import { getBuiltinResourcesRoot } from "../builtin-resources.ts";
 import type { ExtensionContext, ToolCallEventResult } from "../extensions/types.ts";
 import type { NycodeSettings } from "../settings-nycode.ts";
 import type { Settings } from "../settings-schema.ts";
@@ -22,16 +19,6 @@ export interface GateHost {
 }
 
 type NativeOutcome = { kind: "pass" } | { kind: "ask"; reason: string } | { kind: "block"; reason: string };
-
-/** Why the chosen engine cannot decide, or undefined when it can (and "native" is decided in-process). */
-function engineUnavailable(engine: string): string | undefined {
-	if (engine === "native") return undefined;
-	if (engine !== "script")
-		return `permissions.engine "${engine}" is not known (use "script" or "native"); call denied`;
-	return existsSync(join(getBuiltinResourcesRoot(), "hooks", "guard.py"))
-		? undefined
-		: 'permissions.engine is "script" but the embedded guard script (hooks/guard.py) was not found; call denied';
-}
 
 /** The native engine's outcome for one call; throws if the engine does. */
 function nativeOutcome(toolName: string, input: unknown, cwd: string): NativeOutcome {
@@ -70,8 +57,6 @@ export async function gateToolCall(
 ): Promise<ToolCallEventResult | undefined> {
 	try {
 		const engine = host.settings.getNycodeSettings().permissions.engine;
-		const unavailable = engineUnavailable(engine);
-		if (unavailable !== undefined) return { block: true, reason: unavailable };
 		if (engine !== "native") return undefined;
 		const ctx = host.runner.createContext();
 		const outcome = nativeOutcome(toolName, input, ctx.cwd);

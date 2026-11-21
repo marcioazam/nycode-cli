@@ -55,6 +55,7 @@ const rows: Row[] = [
 		envRaw: "0",
 		envExpected: false,
 	},
+	{ key: "permissions.engine", def: "script", set: "native", invalid: "wasm" },
 	{
 		key: "compaction.maxContextTokens",
 		env: "NYCODE_COMPACT_AT",
