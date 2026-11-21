@@ -89,7 +89,7 @@ These variables are read by Nycode itself:
 | `NYCODE_CACHE_RETENTION` | Set to `long` for extended provider prompt caching where supported |
 | `NYCODE_MODEL_CATALOG_URL` | Base URL of a model catalog server (`/api/models/providers/<provider>`). Unset by default: nycode uses only the bundled model data and requests no remote catalog |
 | `NYCODE_SHARE_VIEWER_URL` | Viewer base URL for `/share`; unset by default, so `/share` returns only the gist link |
-| `NYCODE_RADIUS_GATEWAY` | Override the Radius gateway origin used by `/bug` uploads |
+| `NYCODE_RADIUS_GATEWAY` | Origin of the Radius gateway. There is no default gateway: without it the built-in `radius` provider does not exist and `/bug` offers only the zip export. Custom gateways can also be configured in `models.json` |
 | `NYCODE_CLEAR_ON_SHRINK` | Set to `1` to clear empty rows when rendered content shrinks; the `terminal.clearOnShrink` setting takes precedence. See [Settings](settings.md) |
 | `NYCODE_HARDWARE_CURSOR` | Set to `1` to show the hardware cursor; see [Terminal setup](terminal-setup.md) |
 | `NYCODE_CLIPBOARD_OSC52` | Set to `1` to also send copied text to the terminal with OSC 52 after the local clipboard write, as Nycode does over SSH. Use it when a remote client reaches Nycode without SSH variables, such as a multiplexer attached from another machine or a remote IDE daemon |

@@ -4,7 +4,7 @@
 
 This reference lists the fields of `models.json`. See [Configure a compatible endpoint](models.md#configure-a-compatible-endpoint) for examples and [Configuration](configuration.md#agent-directory) for the file location.
 
-Add `"$schema": "https://pi.dev/schemas/models.schema.json"` to `models.json` for editor validation and completion.
+Add `"$schema": "https://raw.githubusercontent.com/marcioazam/nycode/main/packages/coding-agent/schemas/models.schema.json"` to `models.json` for editor validation and completion.
 
 ## Providers
 

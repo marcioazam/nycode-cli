@@ -12,7 +12,7 @@ For a built-in provider, start with `/login`, then choose a model with `/model`.
 | An OpenAI-, Anthropic-, or Google-compatible endpoint | Add it to `models.json` |
 | A provider with a custom protocol or authentication flow | Build or install a provider extension |
 
-Browse the [model catalog](https://pi.dev/models) for current providers, model IDs, capabilities, context limits, and pricing. Nycode starts with its bundled catalog and can overlay newer catalog data from pi.dev. Cached catalog data remains available offline; run `nycode update --models` to force a refresh.
+Nycode uses its bundled catalog of providers, model IDs, capabilities, context limits, and pricing. The remote model catalog is off by default; nycode uses only the bundled data. Set `NYCODE_MODEL_CATALOG_URL` to a catalog server to enable it.
 
 ## Authenticate
 
@@ -48,7 +48,7 @@ Use [`models.json`](configuration.md#agent-directory) when an endpoint speaks an
 
 ```json
 {
-  "$schema": "https://pi.dev/schemas/models.schema.json",
+  "$schema": "https://raw.githubusercontent.com/marcioazam/nycode/main/packages/coding-agent/schemas/models.schema.json",
   "providers": {
     "ollama": {
       "baseUrl": "http://localhost:11434/v1",

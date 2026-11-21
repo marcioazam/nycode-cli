@@ -6,17 +6,7 @@ For native Windows setup, read [Windows Setup](windows.md). For Android, read [T
 
 ## 1. Install Nycode
 
-Install Nycode with the installer on macOS, Linux, or Windows:
-
-```bash tab="macOS / Linux"
-curl -fsSL https://pi.dev/install.sh | sh
-```
-
-```powershell tab="Windows"
-powershell -c "irm https://pi.dev/install.ps1 | iex"
-```
-
-Both installers pin all dependencies and update Nycode with `nycode update`. Alternatively, install Nycode from npm, which does not pin transitive dependencies. This requires Node.js 22.19 or newer:
+Download the release for macOS, Linux, or Windows from https://github.com/marcioazam/nycode/releases. Alternatively, install Nycode from npm, which does not pin transitive dependencies. This requires Node.js 22.19 or newer:
 
 ```bash
 npm install -g --ignore-scripts @nycode/coding-agent
@@ -125,11 +115,7 @@ If you installed Nycode with npm, run:
 npm uninstall -g @nycode/coding-agent
 ```
 
-If you used the installer, run it again and choose **Uninstall Nycode**:
-
-```bash
-curl -fsSL https://pi.dev/install.sh | sh
-```
+If you installed from a release download, delete the downloaded files.
 
 If you installed Nycode with Nix, run:
 

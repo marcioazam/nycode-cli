@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Breaking Changes
+
+- Removed `DEFAULT_RADIUS_GATEWAY`, the shipped Radius catalog (`radius.models.ts`) and the Radius source of the catalog build. `radiusProvider()` now requires `gateway`, and `radiusProvider` is no longer part of `builtinProviders()`; add it with the configured gateway.
+- Changed the provider attribution URL (`NYCODE_ATTRIBUTION`) to `https://github.com/marcioazam/nycode`.
+
 ### Fixed
 
 - Fixed `retryAssistantCall()` retaining an abort listener after each completed backoff, causing listener buildup across repeated retries ([#10506](https://github.com/earendil-works/pi/issues/10506))

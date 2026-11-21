@@ -36,7 +36,7 @@ Extensions, prompt templates, and skills can add commands. The command menu in N
 |---|---|
 | `/copy` | Copy the last assistant message |
 | `/export [path]` | Export the session as HTML or JSONL |
-| `/share` | Upload the session and return a viewer link |
+| `/share` | Upload the session as a gist and return its link (a viewer link only when `NYCODE_SHARE_VIEWER_URL` is set) |
 | `/bug [description]` | Prepare a private bug report for the Nycode developers |
 
 Review a session before exporting or sharing it. Sessions can contain prompts, tool arguments, command output, file contents, and credentials exposed during the conversation.

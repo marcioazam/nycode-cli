@@ -4,6 +4,14 @@
 
 ### Breaking Changes
 
+- Removed every request to and mention of `pi.dev` (decision D-30). The install report is gone, and the `enableInstallTelemetry` setting and `NYCODE_TELEMETRY` now control only the provider attribution headers.
+- Changed the update check, the update banner and `nycode update` to read the latest release from GitHub Releases of `marcioazam/nycode` (the tag, without a leading `v`, is the version). The release note, the package-rename migration and the installer hints that came from `pi.dev` are gone; `NYCODE_SKIP_VERSION_CHECK` and `NYCODE_OFFLINE` still apply.
+- Changed managed-install self-update to need `NYCODE_INSTALLER_API_BASE`: there is no default installer server until the own installer exists (F11). The error points at https://github.com/marcioazam/nycode/releases.
+- Changed `/share` to have no default viewer: without `NYCODE_SHARE_VIEWER_URL` it prints only the gist link.
+- Changed MCP OAuth to always register a client dynamically: nycode publishes no Client ID Metadata Document, and `oauth.clientRegistration: "cimd"` is refused.
+- Changed the remote model catalog to be off by default: nycode uses the bundled model data, and requests a catalog only from the URL in the new `NYCODE_MODEL_CATALOG_URL` environment variable (or the `catalogBaseUrl` runtime option).
+- Changed Radius to have no default gateway: the built-in `radius` provider, `/bug` uploads, the Radius share and the Radius MCP server need `NYCODE_RADIUS_GATEWAY`; without it `/bug` offers only the zip export.
+- Changed the `$schema` and `$id` URLs of the JSON schemas and themes to raw files of `marcioazam/nycode` on GitHub.
 - Changed the defaults to the ny-pi ones: `defaultProjectTrust` is `"never"`, `quietStartup` is `"header"`, `retry.maxRetries` is `10`, and `shellCommandPrefix` exports `GIT_EDITOR=true`, `GIT_PAGER=cat` and related variables so git and pagers never wait on a terminal. Set the old values in `settings.json` to keep them.
 
 ### Added
