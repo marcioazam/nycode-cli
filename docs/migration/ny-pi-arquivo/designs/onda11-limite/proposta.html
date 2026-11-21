@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Onda 11 · limite de uso: variantes de exibição</title>
+<style>
+  :root { color-scheme: light dark; --page: light-dark(#fbfbfd, #111113); --ink: light-dark(#1d1d1f, #f5f5f7); --ink2: light-dark(#5f5f64, #a1a1a6); --line: light-dark(#d9d9de, #303034); --card: light-dark(#fff, #18181a); --link: light-dark(#0066cc, #4ea1ff); }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1180px; margin: auto; padding: 40px 28px 80px; }
+  h1 { font-size: 2rem; letter-spacing: -.02em; margin: 0 0 4px; text-wrap: balance; }
+  h2 { font-size: 1.3rem; margin: 52px 0 6px; } h2 small { font-weight: 400; color: var(--ink2); font-size: .8em; }
+  h3 { font-size: .95rem; margin: 18px 0 6px; color: var(--ink2); font-weight: 500; }
+  p, li { max-width: 78ch; } .lead { color: var(--ink2); margin-top: 0; }
+  .box { border: 1px solid var(--line); border-radius: 10px; padding: 10px 16px; background: var(--card); max-width: 78ch; }
+  nav { position: sticky; top: 0; z-index: 1; background: var(--page); padding: 10px 0; border-bottom: 1px solid var(--line); display: flex; gap: 6px 18px; flex-wrap: wrap; font-size: .9rem; }
+  a { color: var(--link); text-underline-offset: 2px; }
+  table { border-collapse: collapse; font-size: .9rem; margin: 10px 0; } td, th { border-bottom: 1px solid var(--line); padding: 6px 14px 6px 0; text-align: left; vertical-align: top; } th { color: var(--ink2); font-weight: 500; }
+  code, kbd { font: .88em ui-monospace, "JetBrains Mono", Menlo, monospace; }
+  .tag { display: inline-block; font-size: .75rem; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink2); white-space: nowrap; }
+  .tag.rec { border-color: #34c759; color: #34c759; }
+  .pro { color: #34c759; } .con { color: #ff6961; }
+
+  /* terminal no tema pi-noite (tokens de ~/.pi/agent/themes/pi-noite.json) */
+  .term { --bg: #1a1b26; --text: #c0caf5; --muted: #a9b1d6; --dim: #8a93bd; --err: #f7768e; --warn: #e0af68; --ok: #9ece6a; --acc: #7aa2f7; --cy: #7dcfff; --rule: #3b4261;
+    --errBg: #3b2934; --warnBg: #2e2a24; --okBg: #29302a; --neutralBg: #262734;
+    background: var(--bg); color: var(--text); border-radius: 10px; padding: 12px 0; margin: 0 0 10px; overflow-x: auto;
+    font: 13px/1.55 "JetBrainsMono Nerd Font", "JetBrains Mono", ui-monospace, Menlo, monospace; white-space: pre; }
+  .term .l { padding: 0 22px; min-height: 1.55em; display: flex; }
+  .term .l > .grow { flex: 1; }
+  .term .blk { padding: 6px 0; margin: 2px 0; }
+  .term .err { background: var(--errBg); } .term .warnb { background: var(--warnBg); } .term .okb { background: var(--okBg); } .term .neu { background: var(--neutralBg); }
+  .e { color: var(--err); } .w { color: var(--warn); } .o { color: var(--ok); } .d { color: var(--dim); } .m { color: var(--muted); } .a { color: var(--acc); } .c { color: var(--cy); } .r { color: var(--rule); }
+  .b { font-weight: 700; } .i { font-style: italic; }
+  .bar-on { color: var(--warn); } .bar-off { color: var(--rule); }
+  .frames { display: grid; gap: 10px; }
+  .frame-cap { font-size: .82rem; color: var(--ink2); margin: 6px 0 2px; }
+</style>
+<main>
+<h1>Onda 11 · limite de uso da conta: variantes de exibição</h1>
+<p class="lead">Como o pi mostra o limite de uso da conta (429 <code>rate_limit_error</code>) e a espera do <code>auto-resume</code>. <b>Nada foi aplicado.</b> Os mocks usam os tokens do tema <code>pi-noite</code>; mostram disposição, hierarquia e texto, não pixels do kitty.</p>
+
+<nav><a href="#hoje">Hoje</a><a href="#a">A · Uma caixa só</a><a href="#b">B · Erro com espera dentro</a><a href="#c">C · Linha compacta</a><a href="#d">D · Cartão com contagem</a><a href="#comum">Comum a todas</a><a href="#decidir">Decidir</a></nav>
+
+<h2 id="hoje">Hoje <small>a captura enviada, redesenhada; os defeitos vêm do código</small></h2>
+<div class="term">
+<div class="blk err"><div class="l"><span class="e b">O provedor está limitando o uso</span><span class="d"> · rate_limit_error</span></div>
+<div class="l">  This request would exceed your account's rate limit. Please try again later.</div>
+<div class="l"><span class="d">  ↑ traz o pedido de volta · /model troca de modelo</span></div></div>
+<div class="l"> </div>
+<div class="blk warnb"><div class="l"><span class="w b grow">Limite de uso da conta atingido</span><span class="d">12:26</span></div>
+<div class="l"><span class="d">│&nbsp;</span><span class="m">a conversa retoma sozinha às 01:01 PM · esc cancela</span></div></div>
+</div>
+<table>
+<tr><th>#</th><th>Defeito</th><th>Onde</th></tr>
+<tr><td>1</td><td>Duas caixas para um evento só, com dois nomes: “o provedor está limitando o uso” e “limite de uso da conta atingido”.</td><td><code>patches/pi-core/avisos/runtime.mjs</code> <code>blocoErro</code>; <code>auto-resume/index.ts:255</code></td></tr>
+<tr><td>2</td><td>Hora em formato americano (<code>01:01 PM</code>) ao lado da hora em 24 h (<code>12:26</code>): <code>toLocaleTimeString([])</code> pega o locale do processo.</td><td><code>auto-resume/index.ts:101</code></td></tr>
+<tr><td>3</td><td>A ação da caixa vermelha (<code>↑ traz o pedido de volta</code>) contradiz a espera: o pedido já vai voltar sozinho.</td><td><code>CAUSAS.limite.acao</code></td></tr>
+<tr><td>4</td><td>A mensagem do provedor aparece em inglês, com o mesmo peso do texto principal.</td><td><code>blocoErro</code>, 2ª linha</td></tr>
+<tr><td>5</td><td>Nada diz quanto falta, e a caixa amarela fica igual depois de retomar ou cancelar (“retoma sozinha às…” no passado).</td><td><code>caixaNeutra</code> desenha uma vez</td></tr>
+<tr><td>6</td><td>Estruturas diferentes: a vermelha sem hora e recuada com espaços; a amarela com hora e <code>│</code>.</td><td>os dois desenhos</td></tr>
+</table>
+
+<!-- ============ A ============ -->
+<h2 id="a">A · Uma caixa só, que muda de estado <span class="tag rec">recomendada</span></h2>
+<p>Quando o <code>auto-resume</code> assume o erro, a caixa vermelha não é desenhada: fica uma caixa âmbar que começa como espera e termina como retomada (verde) ou cancelada (cinza). A frase do provedor vai para uma linha <code>dim</code>, curta.</p>
+<div class="frames">
+<div class="frame-cap">12:26 · limite atingido</div>
+<div class="term"><div class="blk warnb">
+<div class="l"><span class="w b grow">Limite de uso da conta · retoma às 13:01</span><span class="d">12:26</span></div>
+<div class="l"><span class="d">│&nbsp;</span><span class="m">a conversa continua sozinha em 35 min · esc cancela · /model troca de modelo</span></div>
+<div class="l"><span class="d">│ provedor: “would exceed your account's rate limit”</span></div>
+</div></div>
+<div class="frame-cap">13:01 · retomou (a mesma caixa, redesenhada)</div>
+<div class="term"><div class="blk okb">
+<div class="l"><span class="o b grow">Limite de uso da conta · retomou às 13:01</span><span class="d">12:26</span></div>
+<div class="l"><span class="d">│ esperou 35 min</span></div>
+</div></div>
+<div class="frame-cap">ou: esc durante a espera</div>
+<div class="term"><div class="blk neu">
+<div class="l"><span class="m b grow">Limite de uso da conta · espera cancelada por você</span><span class="d">12:26</span></div>
+<div class="l"><span class="d">│ ↑ traz o pedido de volta · /model troca de modelo</span></div>
+</div></div>
+</div>
+<p><span class="pro">+</span> resolve 1, 3, 5 e 6 de uma vez; um nome só. <span class="con">−</span> exige que o patch de avisos saiba do <code>auto-resume</code> (a marca <code>LIMIT_MARK</code> já chega no <code>errorMessage</code>) e que a caixa seja redesenhável.</p>
+
+<!-- ============ B ============ -->
+<h2 id="b">B · Erro vermelho com a espera dentro</h2>
+<p>Mantém a caixa de erro (a causa é um erro) e põe a espera como última linha dela, em âmbar. A caixa amarela some.</p>
+<div class="term"><div class="blk err">
+<div class="l"><span class="e b grow">O provedor limitou a sua conta</span><span class="d">12:26</span></div>
+<div class="l"><span class="d">│ would exceed your account's rate limit · rate_limit_error</span></div>
+<div class="l"><span class="d">│&nbsp;</span><span class="w">⏸ retoma sozinha às 13:01 · em 35 min · esc cancela</span></div>
+</div></div>
+<p><span class="pro">+</span> menor mudança: um desenho só, sem estado novo. <span class="con">−</span> o vermelho fica 35 min na tela para algo que se resolve sozinho; depois de retomar, a linha âmbar continua no futuro.</p>
+
+<!-- ============ C ============ -->
+<h2 id="c">C · Linha compacta e contagem na linha de trabalho</h2>
+<p>Sem caixa: uma linha no histórico (como “interrompido por você”) e a contagem viva no indicador, onde o olho já está. A frase do provedor fica em <kbd>ctrl+o</kbd>.</p>
+<div class="term">
+<div class="l"><span class="w">limite de uso da conta</span><span class="d"> · retoma às 13:01 · /model troca de modelo</span></div>
+<div class="l"> </div>
+<div class="l"><span class="w">⏸&nbsp;</span><span class="m">esperando o limite · 34:12 · esc cancela</span></div>
+</div>
+<p><span class="pro">+</span> o mais calmo; nada grande no histórico. <span class="con">−</span> fácil de não ver ao voltar ao terminal; depende da linha de trabalho estar visível.</p>
+
+<!-- ============ D ============ -->
+<h2 id="d">D · Cartão com contagem e barra</h2>
+<p>Como A, mas a caixa mostra quanto da espera já passou, com a barra em oitavos da P08 e minutos restantes. Atualiza 1 vez por minuto (não precisa de quadro de animação).</p>
+<div class="frames">
+<div class="frame-cap">12:44</div>
+<div class="term"><div class="blk warnb">
+<div class="l"><span class="w b grow">Limite de uso da conta</span><span class="d">12:26</span></div>
+<div class="l"><span class="d">│&nbsp;</span><span class="bar-on">██████▌</span><span class="bar-off">╌╌╌╌╌╌&nbsp;</span><span class="m">retoma às 13:01 · faltam 17 min</span></div>
+<div class="l"><span class="d">│ esc cancela · /model troca de modelo</span></div>
+</div></div>
+</div>
+<p><span class="pro">+</span> responde “quanto falta?” sem conta de cabeça. <span class="con">−</span> o maior custo: timer por minuto e redesenho de um item antigo do histórico.</p>
+
+<!-- ============ comum ============ -->
+<h2 id="comum">Comum a todas as variantes</h2>
+<ul>
+<li>Hora em 24 h pelo <code>pt-BR</code> (corrige o defeito 2); é um bug, vale com qualquer escolha.</li>
+<li>Uma palavra para o caso: “limite de uso da conta” (o rótulo de 429 genérico continua “limite de uso do provedor”).</li>
+<li>A frase do provedor nunca some, mas fica em <code>dim</code> e encurtada; o texto inteiro segue no log da sessão.</li>
+<li>Fallbacks: <code>NO_COLOR</code> mantém título e texto sem fundo; <code>PI_ASCII_ICONS</code> troca <code>⏸</code> por <code>||</code> e a barra por <code>#</code>/<code>-</code>; leitor de tela recebe uma linha por fato.</li>
+</ul>
+
+<h2 id="decidir">Decidir</h2>
+<table>
+<tr><th>Variante</th><th>Resolve</th><th>Custo</th><th>Arquivos</th></tr>
+<tr><td>A · Uma caixa só</td><td>1, 3, 4, 5, 6</td><td>M</td><td><code>runtime.mjs</code>, <code>auto-resume/index.ts</code></td></tr>
+<tr><td>B · Erro com espera dentro</td><td>1, 4, 6</td><td>P</td><td><code>runtime.mjs</code>, <code>auto-resume/index.ts</code></td></tr>
+<tr><td>C · Linha compacta</td><td>1, 3, 4, 6</td><td>P</td><td><code>runtime.mjs</code>, <code>auto-resume/index.ts</code></td></tr>
+<tr><td>D · Cartão com contagem</td><td>1 a 6</td><td>G</td><td>os de A e um timer por minuto</td></tr>
+</table>
+<p class="box">Responda com a letra (pode combinar, por exemplo “A com a barra de D”). A correção da hora (defeito 2) entra junto com qualquer uma.</p>
+</main>
+</html>

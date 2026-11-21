@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Onda 2 · editor, histórico e fila — proposta</title>
+<style>
+  :root { color-scheme: light dark; --page: light-dark(#fbfbfd, #111113); --ink: light-dark(#1d1d1f, #f5f5f7); --ink2: light-dark(#5f5f64, #a1a1a6); --line: light-dark(#d9d9de, #303034); --card: light-dark(#fff, #18181a); }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1500px; margin: auto; padding: 40px 28px 80px; }
+  h1 { font-size: 2rem; letter-spacing: -.02em; margin: 0 0 4px; text-wrap: balance; }
+  h2 { font-size: 1.3rem; letter-spacing: -.01em; margin: 56px 0 6px; } h2 small { font-weight: 400; color: var(--ink2); font-size: .8em; }
+  h3 { font-size: 1rem; margin: 22px 0 4px; }
+  p, li { max-width: 75ch; } .lead { color: var(--ink2); margin-top: 0; }
+  .warn { border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; background: var(--card); max-width: 75ch; }
+  nav { position: sticky; top: 0; z-index: 1; background: var(--page); padding: 10px 0; border-bottom: 1px solid var(--line); display: flex; gap: 6px 18px; flex-wrap: wrap; font-size: .9rem; }
+  a { color: light-dark(#0066cc, #4aa3ff); } a:focus-visible { outline: 2px solid #0a84ff; outline-offset: 2px; }
+  .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 560px), 1fr)); gap: 20px; align-items: start; margin: 14px 0; }
+  figure { margin: 0; min-width: 0; } figcaption { font-size: .85rem; color: var(--ink2); margin-bottom: 6px; } figcaption b { color: var(--ink); }
+  img { width: 100%; height: auto; border-radius: 10px; display: block; border: 1px solid var(--line); object-fit: cover; object-position: bottom; }
+  table { border-collapse: collapse; font-size: .9rem; margin: 10px 0; } td, th { border-bottom: 1px solid var(--line); padding: 6px 14px 6px 0; text-align: left; vertical-align: top; }
+  code, kbd { font: .88em ui-monospace, "JetBrains Mono", Menlo, monospace; }
+  .tag { display: inline-block; font-size: .75rem; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink2); white-space: nowrap; }
+
+  /* terminal mock no tema em uso (Tokyo Night) */
+  body { --bg: #1a1b26; --surface: #292e42; --label: #c0caf5; --sec: #a9b1d6; --dim: #737aa2; --ter: #414868; --accent: #bb9af7; --shell: #73daca; }
+  pre.term { margin: 0 0 10px; background: var(--bg); color: var(--label); border-radius: 10px; padding: 10px 0; overflow-x: auto; font: 13px/1.5 "JetBrainsMono Nerd Font", "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace; }
+  .term .b, .term .k { font-weight: 700; } .term .s { color: var(--sec); } .term .d { color: var(--dim); } .term .t { color: var(--ter); }
+  .term .a { color: var(--accent); } .term .m { color: var(--accent); font-weight: 700; } .term .g { color: var(--shell); }
+  .term .cur { background: var(--label); } .term .u { background: var(--surface); display: inline-block; }
+</style>
+<main>
+<h1>Onda 2 · editor, histórico e fila — proposta</h1>
+<p class="lead">Composer, histórico (Ctrl+R), rascunho, fila de mensagens, modo shell, vim, prompt fixo e autocomplete (B01–B13). Itens 1, 2 e 3 <b>aplicados em 2026-11-14</b>; o que foi feito, as capturas reais e o que ficou de fora estão em <a href="README.md">README.md</a>.</p>
+<p class="warn"><b>Como ler.</b> “Antes” são capturas reais da galeria (algumas ainda com o header antigo da Onda 1; olhe só a parte de baixo). “Depois” são <b>mocks em HTML</b> no tema Tokyo Night: mostram disposição, hierarquia e texto, não pixels do kitty. Dados de demonstração.</p>
+
+<nav><a href="#regras">Regras</a><a href="#historico">1 Histórico</a><a href="#fila">2 Fila</a><a href="#modos">3 Modos do composer</a><a href="#sticky">4 Prompt fixo</a><a href="#auto">5 Autocomplete</a><a href="#decidir">O que decidir</a><a href="#fontes">Fontes</a></nav>
+
+<h2 id="regras">As 4 regras desta onda</h2>
+<ol>
+  <li><b>Tudo acontece perto de onde se digita.</b> Histórico, fila e modos aparecem colados ao composer, não no meio da tela.</li>
+  <li><b>Cada estado diz como sair dele.</b> Rascunho guardado mostra a tecla que devolve; fila mostra a tecla que edita; busca vazia diz o próximo passo.</li>
+  <li><b>Estado nunca é só cor.</b> Modo shell, escopo ativo e item selecionado têm também palavra ou marcador (vale em <code>NO_COLOR</code>).</li>
+  <li><b>Uma gramática só.</b> <code>❯</code> marca o item ativo em todo lugar; réguas finas em cima e embaixo, como o composer; dicas em cinza com <code>·</code>; tudo em português.</li>
+</ol>
+
+<h2 id="historico">1 · Histórico de prompts <small>(B03, Ctrl+R)</small> <span class="tag">extensão do harness</span></h2>
+<div class="pair">
+<figure><figcaption><b>Antes</b> · captura real 04</figcaption><img src="../../ui-ux-gallery/images/04-historico-ctrl-r.png" style="aspect-ratio:1081/640" alt="Histórico atual: texto solto no meio da tela, sem moldura, longe do editor, com escopo entre colchetes"></figure>
+<figure><figcaption><b>Depois</b> · mock, buscando “parser”</figcaption><pre class="term" data-cols="88">
+ {s:Vou ajustar o parser e rodar os testes.}
+
+---{b:Histórico}>>{m:● sessão}   {d:projeto}   {d:todas}
+ parser{cur: }>>{d:1 de 3}
+~ {a:❯} refatora o {m:parser} de datas para aceitar ISO 8601
+   adiciona teste do {m:parser} com fuso horário {d:⏎} e roda a suíte
+   por que o {m:parser} falha com ano de 2 dígitos?
+ {d:↑↓ escolher · ⏎ usar · tab escopo · esc fechar}
+---
+ {b:Modelo Demo} {s:◐ medium ◷ 1h10m}
+</pre>
+<figcaption><b>Estados vazios</b> · mock</figcaption><pre class="term" data-cols="88">
+---{b:Histórico}>>{m:● sessão}   {d:projeto}   {d:todas}
+ {cur: }{d:Buscar nos prompts}
+ {d:Nenhum prompt nesta sessão ainda · Tab amplia a busca}
+ {d:↑↓ escolher · ⏎ usar · tab escopo · esc fechar}
+---
+</pre><pre class="term" data-cols="88">
+---{b:Histórico}>>{d:sessão}   {m:● projeto}   {d:todas}
+ xyz{cur: }
+ {d:Nada com “xyz” · Tab amplia a busca}
+ {d:↑↓ escolher · ⏎ usar · tab escopo · esc fechar}
+---
+</pre></figure>
+</div>
+<ul>
+  <li><b>Lugar</b>: sai do meio da tela e abre embaixo, largura inteira, sobre o composer. O olho não viaja e o texto escolhido cai exatamente ali.</li>
+  <li><b>Moldura</b>: duas réguas finas (mesma gramática do composer). Hoje o texto fica solto e se mistura com a conversa por baixo.</li>
+  <li><b>Busca</b>: cursor visível, placeholder que diz o que se busca, contador <code>1 de 3</code>, e o trecho que casou em destaque.</li>
+  <li><b>Escopo</b>: <code>● sessão</code> em vez de <code>[sessão]</code>; o ponto e o negrito marcam o ativo mesmo sem cor.</li>
+  <li><b>Vazio</b>: diz o motivo e o próximo passo (<code>Tab amplia a busca</code>), em vez de só “Nenhum prompt encontrado”.</li>
+  <li><b>Sem mudança</b>: teclas, escopos, limites de leitura e o que Enter/Esc fazem.</li>
+</ul>
+
+<h2 id="fila">2 · Fila de mensagens <small>(B06, B07, B08)</small> <span class="tag">extensão, reescrevendo linhas do pi nativo</span></h2>
+<div class="pair">
+<figure><figcaption><b>Antes</b> · captura real 116</figcaption><img src="../../ui-ux-gallery/images/116-fila-duas.png" style="aspect-ratio:1081/300" alt="Fila atual: duas linhas Steering em inglês e a dica Alt+Up to edit all queued messages, tudo no mesmo cinza"></figure>
+<figure><figcaption><b>Depois</b> · mock</figcaption><pre class="term" data-cols="88">
+ parte 1 da resposta lenta de demonstração. parte 2 da resposta lenta de
+
+ {d:Na fila · 2}>>{k:↑} {d:editar ·} {k:ctrl+⏎} {d:enviar agora}
+ {d:1}  {s:roda também os testes de integração}>>{d:no próximo passo}
+ {d:2}  {s:atualiza o CHANGELOG}>>{d:ao terminar}
+--- {a:⠋ escrevendo · 4s · esc interrompe}
+ {cur: }
+---
+</pre></figure>
+</div>
+<ul>
+  <li><b>Português e sentido</b>: <code>Steering:</code> vira <code>no próximo passo</code>; <code>Follow-up:</code> vira <code>ao terminar</code>. Diz <em>quando</em> a mensagem entra, que é o que importa.</li>
+  <li><b>Hierarquia</b>: a mensagem em cinza claro (legível), rótulos e contagem em cinza escuro. Hoje é tudo o mesmo cinza de 4,1:1.</li>
+  <li><b>Tecla certa</b>: a dica atual mostra a tecla do keybinding; o que você usa é <kbd>↑</kbd> com o campo vazio. Entra também <kbd>ctrl+⏎</kbd> enviar agora (B08), que hoje não aparece em lugar nenhum.</li>
+  <li><b>Risco</b>: a lista é desenhada pelo pi nativo. A extensão reescreveria essas linhas pelo padrão do texto; se o pi mudar o texto, volta sozinho ao visual atual (sem quebrar). Alternativa: patch no core (mais firme, mais manutenção).</li>
+</ul>
+
+<h2 id="modos">3 · Modos do composer <small>(B02 vim, B04 rascunho, B09 shell)</small> <span class="tag">extensão do harness</span></h2>
+<div class="pair">
+<figure><figcaption><b>Antes</b> · capturas reais 112 (rascunho) e 114 (shell)</figcaption>
+<img src="../../ui-ux-gallery/images/112-rascunho-guardado.png" style="aspect-ratio:1081/170;margin-bottom:10px" alt="Rascunho atual: só a palavra rascunho na régua, sem dizer como recuperar">
+<img src="../../ui-ux-gallery/images/114-bash-bang.png" style="aspect-ratio:1081/170" alt="Composer atual: réguas roxas; no modo shell só a cor da régua muda"></figure>
+<figure>
+<figcaption><b>Depois</b> · rascunho guardado (Ctrl+S)</figcaption><pre class="term" data-cols="88">
+===>>{s:rascunho guardado ·} {k:ctrl+s} {s:devolve}
+ {cur: }
+===
+</pre>
+<figcaption><b>Depois</b> · apagou com Ctrl+C (some na próxima tecla)</figcaption><pre class="term" data-cols="88">
+===
+ {cur: }
+===>>{s:apagado ·} {k:↑} {s:recupera}
+</pre>
+<figcaption><b>Depois</b> · modo shell <code>!</code> e <code>!!</code></figcaption><pre class="term" data-cols="88">
++++
+ !git status{cur: }
++++>>{g:shell}
+</pre><pre class="term" data-cols="88">
++++
+ !!cat notas.txt{cur: }
++++>>{g:shell · fora do contexto}
+</pre>
+<figcaption><b>Depois</b> · vim</figcaption><pre class="term" data-cols="88">
+===
+ refatora o parser{cur: }
+===>>{m:NORMAL}
+</pre></figure>
+</div>
+<ul>
+  <li><b>Um lugar para o estado do composer</b>: a ponta direita da régua de baixo (modo) e de cima (rascunho, nome da sessão). Estado normal não mostra nada.</li>
+  <li><b>Rascunho</b>: passa a dizer a tecla que devolve. Hoje mostra só <code>✎ rascunho</code>.</li>
+  <li><b>Ctrl+C com texto</b>: hoje o texto some em silêncio (ele vai para o histórico, mas nada avisa). Passa a mostrar <code>apagado · ↑ recupera</code> até a próxima tecla.</li>
+  <li><b>Shell</b>: hoje só a cor da régua muda. Entra a palavra <code>shell</code>, e <code>fora do contexto</code> para <code>!!</code> (a diferença entre os dois hoje é invisível).</li>
+  <li><b>Vim</b>: <code>NORMAL</code> em destaque; <code>INSERT</code> some (é o estado padrão de quem digita).</li>
+  <li><b>Sem mudança</b>: cor da régua (ela indica o nível de raciocínio), teclas, e o indicador <code>escrevendo</code> da Onda 1.</li>
+</ul>
+
+<h2 id="sticky">4 · Prompt fixo no topo <small>(B05)</small> <span class="tag">manter</span></h2>
+<div class="pair">
+<figure><figcaption><b>Atual</b> · captura real 120</figcaption><img src="../../ui-ux-gallery/images/120-sticky-prompt.png" style="aspect-ratio:1081/120;object-position:top" alt="Linha fixa no topo com ❯ e o último prompt sobre fundo de seleção"></figure>
+<div><p>Já segue as regras: uma linha, <code>❯</code>, some quando não precisa, clique leva ao prompt. Proposta: <b>não mexer</b>. O <code>❯</code> dele vira o marcador padrão do histórico (item 1) e do autocomplete (item 5).</p></div>
+</div>
+
+<h2 id="auto">5 · Autocomplete de <code>/</code> e <code>@</code> <small>(B12)</small> <span class="tag">exige patch no core · opcional</span></h2>
+<div class="pair">
+<figure><figcaption><b>Antes</b> · captura real 02</figcaption><img src="../../ui-ux-gallery/images/02-autocomplete-slash.png" style="aspect-ratio:1081/290" alt="Autocomplete atual: seta roxa, descrições em inglês, contador (1/34) solto embaixo"></figure>
+<figure><figcaption><b>Depois</b> · mock</figcaption><pre class="term" data-cols="88">
+===
+ /{cur: }
+===
+~ {a:❯} {b:settings}        {s:Open settings menu}
+   model           {d:&lt;provider/model&gt; — Select model (opens selector UI)}
+   tree            {d:Navigate session tree (switch branches)}
+   thinking        {d:&lt;level&gt; — Set thinking level}
+   scoped-models   {d:Enable/disable models for Ctrl+P cycling}
+ {d:1 de 34 · ↑↓ escolher · tab completa · ⏎ executa}
+</pre></figure>
+</div>
+<ul>
+  <li>Mesma gramática do histórico: <code>❯</code>, linha selecionada com fundo, contador e teclas numa linha de dica.</li>
+  <li>É componente nativo do pi (<code>select-list</code>). Mudar exige patch novo no core; as descrições em inglês vêm de cada comando. <b>Minha recomendação: deixar para depois</b>, o ganho é pequeno para o custo.</li>
+</ul>
+
+<h2 id="decidir">O que decidir</h2>
+<table>
+<tr><th>#</th><th>Item</th><th>Onde mexe</th><th>Risco</th><th>Recomendo</th></tr>
+<tr><td>1</td><td>Histórico: embaixo, moldura, busca com destaque, estados vazios</td><td><code>extensions/ui/history.ts</code>, <code>editor.ts</code></td><td>baixo</td><td>aplicar</td></tr>
+<tr><td>2</td><td>Fila em português com “quando entra” e teclas certas</td><td><code>extensions/up-dequeue</code> (reescreve linhas nativas)</td><td>médio: depende do texto do pi 1.5.2; se mudar, volta ao atual</td><td>aplicar</td></tr>
+<tr><td>3a</td><td>Rascunho com a tecla que devolve</td><td><code>extensions/ui/editor.ts</code></td><td>baixo</td><td>aplicar</td></tr>
+<tr><td>3b</td><td>Aviso <code>apagado · ↑ recupera</code> no Ctrl+C</td><td><code>extensions/ui/editor.ts</code></td><td>baixo</td><td>aplicar</td></tr>
+<tr><td>3c</td><td>Palavra <code>shell</code> / <code>fora do contexto</code> na régua</td><td><code>extensions/ui/editor.ts</code></td><td>baixo</td><td>aplicar</td></tr>
+<tr><td>3d</td><td>Vim: só <code>NORMAL</code> aparece</td><td><code>extensions/ui/editor.ts</code></td><td>baixo</td><td>aplicar</td></tr>
+<tr><td>4</td><td>Prompt fixo</td><td>—</td><td>—</td><td>manter</td></tr>
+<tr><td>5</td><td>Autocomplete</td><td>patch novo no core do pi</td><td>alto (manutenção a cada versão)</td><td>não agora</td></tr>
+</table>
+<p>Fora desta proposta por serem nativos e sem defeito visível: editor externo (B11), colar imagem (B10), <code>?</code> abre atalhos (B13, já está no header).</p>
+
+<h2 id="fontes">Fontes da pesquisa <small>(lidas em 2026-11-14)</small></h2>
+<ul>
+  <li>Fila acima do composer, esmaecida, com a tecla de editar no rótulo: Gemini CLI “Queued (press ↑ to edit)” (<a href="https://raw.githubusercontent.com/google-gemini/gemini-cli/main/packages/cli/src/ui/components/QueuedMessageDisplay.tsx">QueuedMessageDisplay.tsx</a>); Codex separa “after next tool call” e “at end of turn” (<a href="https://raw.githubusercontent.com/openai/codex/main/codex-rs/tui/src/bottom_pane/pending_input_preview.rs">pending_input_preview.rs</a>); Claude Code devolve a fila com ↑ e envia agora com Ctrl+Enter (<a href="https://code.claude.com/docs/en/interactive-mode">interactive-mode</a>).</li>
+  <li>Histórico com escopo sessão/projeto/todas e busca junto ao composer: Claude Code (mesma página); Codex mostra a busca no rodapé do composer (<a href="https://raw.githubusercontent.com/openai/codex/main/codex-rs/tui/src/bottom_pane/chat_composer.rs">chat_composer.rs</a>).</li>
+  <li>Modo shell com marcador de texto além da cor: Warp troca o marcador e escreve “Shell mode” (<a href="https://docs.warp.dev/agents/cli/input-and-shell-commands">docs</a>); Gemini CLI troca prefixo e placeholder (<a href="https://raw.githubusercontent.com/google-gemini/gemini-cli/main/packages/cli/src/ui/components/Composer.tsx">Composer.tsx</a>).</li>
+  <li>Campo de busca: placeholder que diz o que se busca, resultado ao digitar, escopo refinável (<a href="https://developer.apple.com/design/human-interface-guidelines/search-fields">Apple HIG, Search fields</a>).</li>
+  <li>Estado não pode depender só de cor; indicadores precisam de 3:1 (<a href="https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html">WCAG 2.2, 1.4.11</a>); <a href="https://no-color.org/">NO_COLOR</a>.</li>
+  <li>Não verificado em fonte primária: aparência exata do composer do Codex, Amp e opencode; guias de design de TUI (Charm, Textual, Ratatui).</li>
+</ul>
+</main>
+<script>
+const vis = s => s.replace(/\{\w+:([^{}]*)\}/g, '$1')
+const html = s => s.replace(/</g, '&lt;').replace(/\{(\w+):([^{}]*)\}/g, '<span class="$1">$2</span>')
+const RULE = { '---': 't', '===': 'a', '+++': 'g' } // régua: cinza (painel), roxa (composer), verde (shell)
+function line(l, cols) {
+  const cls = RULE[l.slice(0, 3)]
+  if (cls) {
+    const [left, right = ''] = l.slice(3).split('>>'), r = c => `<span class="${cls}">${c}</span>`
+    const head = left.trim() ? `{${cls}:──} ${left.trim()} ` : '', tail = right ? ` ${right} {${cls}:──}` : ''
+    return html(head) + r('─'.repeat(Math.max(0, cols - vis(head).length - vis(tail).length))) + html(tail)
+  }
+  if (l.startsWith('~')) return `<span class="u">${html(l.slice(1).padEnd(cols + l.length - 1 - vis(l.slice(1)).length))}</span>`
+  const [left, right = ''] = l.split('>>')
+  return html(left + ' '.repeat(Math.max(1, cols - vis(left).length - vis(right).length - 1)) + right)
+}
+for (const pre of document.querySelectorAll('pre.term')) {
+  const src = pre.textContent.replace(/^\n|\n$/g, '')
+  pre.innerHTML = src.split('\n').map(l => line(l, +pre.dataset.cols)).join('\n')
+}
+</script>
+</html>

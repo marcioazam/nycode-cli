@@ -12,7 +12,9 @@
   },
   // Upstream changelogs keep upstream formatting (rewriting them would conflict on every sync, 08); nycode entries
   // go under [Unreleased] as AGENTS.md says.
-  "ignores": ["packages/*/CHANGELOG.md"],
+  // docs/migration/ny-pi-arquivo/: verbatim ny-pi archive, not maintained (owner decision 2026-11-21). Only its
+  // README.md is linted: the second glob skips the top-level files that do not start with R.
+  "ignores": ["packages/*/CHANGELOG.md", "docs/migration/ny-pi-arquivo/*/**", "docs/migration/ny-pi-arquivo/[^R]*.md"],
   "gitignore": false,
   "noProgress": true
 }

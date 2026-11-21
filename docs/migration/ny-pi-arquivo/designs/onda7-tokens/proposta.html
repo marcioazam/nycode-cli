@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Onda 7 · Tokens de design · proposta</title>
+<style>
+:root{
+  color-scheme:light dark;
+  --page:light-dark(#f5f5f7,#000);
+  --card:light-dark(#fff,#161618);
+  --line:light-dark(#d2d2d7,#2c2c2e);
+  --t1:light-dark(#1d1d1f,#f5f5f7);
+  --t2:light-dark(#6e6e73,#a1a1a6);
+  --accent:light-dark(#0066cc,#409cff);
+  --ok:light-dark(#1d7a34,#30d158);
+  --er:light-dark(#d70015,#ff6961);
+  --warn:light-dark(#8a5a00,#ffd60a);
+  --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter","Segoe UI",system-ui,sans-serif;
+  --mono:"SF Mono","JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  --r:14px;
+}
+:root[data-page=light]{color-scheme:light}
+:root[data-page=dark]{color-scheme:dark}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:64px}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important;animation:none!important}}
+body{margin:0;background:var(--page);color:var(--t1);font:400 17px/1.5 var(--sans);-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-underline-offset:3px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+main{max-width:1120px;margin:0 auto;padding:0 20px 96px}
+h1{font-size:clamp(34px,5.2vw,56px);line-height:1.06;letter-spacing:-.022em;font-weight:600;margin:0 0 16px;text-wrap:balance}
+h2{font-size:clamp(24px,3vw,32px);line-height:1.15;letter-spacing:-.015em;font-weight:600;margin:0 0 8px;text-wrap:balance}
+h3{font-size:17px;font-weight:600;margin:0 0 4px}
+p{margin:0 0 12px;max-width:68ch}
+.sub{color:var(--t2)}
+section{padding-top:72px}
+small,.small{font-size:14px}
+code{font:500 .88em var(--mono)}
+
+/* barra: único material translúcido da página */
+.bar{position:sticky;top:0;z-index:5;display:flex;gap:2px;align-items:center;padding:10px 20px;overflow-x:auto;
+  background:color-mix(in srgb,var(--page) 72%,transparent);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);
+  border-bottom:1px solid var(--line);font-size:14px;white-space:nowrap}
+.bar strong{margin-right:auto;font-weight:600;padding-right:16px}
+.bar a{color:var(--t1);text-decoration:none;padding:6px 10px;border-radius:8px}
+.bar a:hover{background:color-mix(in srgb,var(--t1) 8%,transparent)}
+button{font:inherit;color:inherit;cursor:pointer}
+.btn{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:5px 12px;min-height:32px}
+
+.hero{padding-top:64px}
+.tag{display:inline-block;font-size:13px;color:var(--t2);border:1px solid var(--line);border-radius:999px;padding:3px 12px;margin-bottom:20px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:36px 0 0;padding:0;list-style:none}
+.stats li{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px}
+.stats b{display:block;font-size:28px;font-weight:600;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.stats span{color:var(--t2);font-size:14px}
+
+/* mapa em camadas */
+.layers{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:28px;counter-reset:l}
+@media (max-width:860px){.layers{grid-template-columns:1fr 1fr}}
+@media (max-width:480px){.layers{grid-template-columns:1fr}}
+.layer{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px;position:relative}
+.layer::before{counter-increment:l;content:counter(l);font:600 13px var(--sans);color:var(--t2);display:block;margin-bottom:6px}
+.layer p{font-size:15px;color:var(--t2);margin:0}
+.layer b{font-size:28px;font-weight:600;display:block;margin:6px 0 2px;font-variant-numeric:tabular-nums}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:20px;margin-top:20px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:860px){.grid2{grid-template-columns:1fr}}
+
+/* controles do mock */
+.controls{display:flex;flex-wrap:wrap;gap:16px 24px;margin:24px 0 16px;align-items:center}
+.seg{display:inline-flex;background:color-mix(in srgb,var(--t1) 6%,transparent);border-radius:9px;padding:2px;gap:2px}
+.seg button{border:0;background:transparent;border-radius:7px;padding:5px 12px;min-height:30px;font-size:14px;color:var(--t1)}
+.seg button[aria-pressed=true]{background:var(--card);box-shadow:0 1px 2px rgb(0 0 0/.12),0 0 0 .5px rgb(0 0 0/.06);font-weight:600}
+.ctl{display:flex;flex-direction:column;gap:6px}
+.ctl>span{font-size:13px;color:var(--t2)}
+
+/* terminal: só o que um terminal faz — grade mono, fg/bg, negrito, itálico, sublinhado, inverso */
+.win{border-radius:var(--r);border:1px solid var(--line);overflow:hidden;background:var(--bg);color:var(--text)}
+.chrome{display:flex;align-items:center;gap:8px;padding:9px 14px;background:color-mix(in srgb,var(--bg) 85%,var(--text));font:500 12px var(--sans);color:var(--muted)}
+.chrome i{width:12px;height:12px;border-radius:50%;background:color-mix(in srgb,var(--text) 22%,var(--bg));display:inline-block}
+.chrome span{margin-left:auto;margin-right:auto}
+.scroll{overflow-x:auto}
+.term{font:400 clamp(11px,1.25vw,13.5px)/1.55 var(--mono);width:calc(var(--cols,96)*1ch + 4ch);padding:14px 2ch;margin:0 auto;font-variant-ligatures:none}
+.r{white-space:pre;min-height:1.55em;overflow:hidden;text-overflow:ellipsis}
+.u{background:var(--surface);margin:0 -2ch;padding:0 2ch}
+.selrow{background:var(--sel);margin:0 -2ch;padding:0 2ch}
+.hit{background:var(--search);color:var(--text)}
+.b{font-weight:700}.i{font-style:italic}.ul{text-decoration:underline}
+.muted{color:var(--muted)}.dim{color:var(--dim)}.ac{color:var(--accent)}.ok{color:var(--ok)}.er{color:var(--err)}.wn{color:var(--warn)}
+.code{color:var(--code)}.link{color:var(--link)}.lurl{color:var(--linkUrl)}.hd{color:var(--heading)}.bul{color:var(--bullet)}.qt{color:var(--quote)}
+.kw{color:var(--kw)}.str{color:var(--str)}.num{color:var(--num)}.typ{color:var(--typ)}.fn{color:var(--fn)}.com{color:var(--com)}
+.add{background:var(--addBg)}.del{background:var(--delBg)}
+.thumb{color:var(--thumb)}
+.edge{border-top:1px solid var(--edge);border-bottom:1px solid var(--edge);margin:.4em -2ch;padding:0 2ch}
+.th{color:var(--think)}
+/* NO_COLOR: tudo vira fg/bg padrão; o significado fica em glifo, negrito, sublinhado e inverso */
+.win[data-color=off] .term *{color:inherit!important}
+.win[data-color=off] .selrow{font-weight:700}
+.win[data-color=off] .hit{text-decoration:underline;font-weight:700}
+.win[data-color=off] .edge{border-color:var(--text)}
+.win[data-color=off] .er,.win[data-color=off] .del{font-weight:700}
+.motion-off .spin{animation:none}
+@media (prefers-reduced-motion:no-preference){.spin{display:inline-block}}
+
+/* tabelas */
+.tbl{overflow-x:auto;margin-top:20px;border:1px solid var(--line);border-radius:var(--r);background:var(--card)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;vertical-align:top;padding:10px 12px;border-bottom:1px solid var(--line)}
+tr:last-child td{border-bottom:0}
+th{font-weight:600;color:var(--t2);font-size:13px;position:sticky;top:0;background:var(--card)}
+td code{font-size:12.5px}
+.sw{display:inline-flex;align-items:center;gap:6px;font:500 12px var(--mono);white-space:nowrap}
+.sw i{width:14px;height:14px;border-radius:4px;border:1px solid rgb(127 127 127/.35);display:inline-block}
+.pass{color:var(--ok);font-weight:600}.fail{color:var(--er);font-weight:600}
+.pill{display:inline-block;font-size:12px;font-weight:600;border-radius:999px;padding:1px 9px;border:1px solid currentColor;white-space:nowrap}
+.rec{color:var(--accent)}
+.num-cell{font-variant-numeric:tabular-nums;white-space:nowrap}
+
+.pair{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:24px}
+@media (max-width:860px){.pair{grid-template-columns:1fr 1fr}}
+@media (max-width:480px){.pair{grid-template-columns:1fr}}
+.pair figure{margin:0}
+.pair img{display:block;width:100%;height:auto;border-radius:10px;border:1px solid var(--line)}
+.pair figcaption{font-size:13px;color:var(--t2);margin-top:6px}
+
+.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:24px}
+.rules div{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px}
+.rules p{font-size:15px;color:var(--t2);margin:0}
+details{margin-top:12px}
+summary{cursor:pointer;font-weight:600}
+ul.src{padding-left:18px;font-size:14px}
+ul.src li{margin:6px 0}
+footer{color:var(--t2);font-size:13px;margin-top:64px}
+</style>
+</head>
+<body>
+<nav class="bar" aria-label="Seções">
+  <strong>Onda 7 · tokens</strong>
+  <a href="#mapa">Mapa</a><a href="#mock">Proposta</a><a href="#papeis">Papéis</a><a href="#contraste">Contraste</a><a href="#auditoria">Auditoria</a><a href="#movimento">Movimento e a11y</a><a href="#decidir">Decidir</a><a href="#fontes">Fontes</a>
+  <button class="btn" id="pageTheme" type="button" aria-label="Alternar tema da página">◐ Página</button>
+</nav>
+<main>
+
+<header class="hero">
+  <span class="tag">Proposta · 2026-11-14 · nada aplicado, sem commit</span>
+  <h1>Menos cores. Cada uma com um papel.</h1>
+  <p class="sub">A Onda 7 cuida da base de tudo: cores, fundos, bordas, espaçamento, ícones, animação e acessibilidade (G01–G14). A proposta põe 13 papéis semânticos entre a paleta e os 56 tokens do pi, mede todo contraste e deixa um só movimento.</p>
+  <ul class="stats" aria-label="Resumo antes e depois">
+    <li><b>56 → 13</b><span>tokens do pi governados por 13 papéis</span></li>
+    <li><b>21 → 16</b><span>cores de primeiro plano (syntax incluída)</span></li>
+    <li><b>9 → 0</b><span>pares de texto abaixo de 4,5:1 em uso real</span></li>
+    <li><b>3 → 1</b><span>animações paralelas (indicador, título, fleet)</span></li>
+  </ul>
+</header>
+
+<section id="mapa" aria-labelledby="h-mapa">
+  <h2 id="h-mapa">O mapa em 30 segundos</h2>
+  <p class="sub">Quatro camadas, sempre nesta ordem. Uma mudança entra na camada mais alta possível e desce sozinha.</p>
+  <div class="layers">
+    <div class="layer"><h3>Paleta</h3><b>~14</b><p>Hex crus (<code>vars</code> do tema). Ninguém usa direto.</p></div>
+    <div class="layer"><h3>Papéis</h3><b>13</b><p>Texto, secundário, terciário, superfície, seleção, destaque, sucesso, erro, atenção, código…</p></div>
+    <div class="layer"><h3>Tokens do pi</h3><b>56</b><p><code>colors</code> do tema. Cada um aponta para um papel, nunca para hex.</p></div>
+    <div class="layer"><h3>Componentes</h3><b>55</b><p>Chamadas <code>theme.fg(…)</code> nas extensões. Só usam token, nunca cor literal.</p></div>
+  </div>
+  <div class="tbl" role="region" aria-label="Onde mexer" tabindex="0">
+    <table>
+      <thead><tr><th>Quero…</th><th>Mexo em</th><th>Arquivo</th></tr></thead>
+      <tbody>
+        <tr><td>Trocar o tom de azul de todo o app</td><td>1 hex na paleta</td><td><code>themes/&lt;tema&gt;.json</code> → <code>vars.blue</code></td></tr>
+        <tr><td>Fazer links usarem outra cor</td><td>1 apontamento papel → token</td><td><code>colors.mdLink</code></td></tr>
+        <tr><td>Seguir o claro/escuro do terminal</td><td>1 linha de settings</td><td><code>"theme": "pi-claro/pi-escuro"</code> (nativo do pi 1.5.2)</td></tr>
+        <tr><td>Garantir que nada ficou ilegível</td><td>rodar o portão de contraste</td><td><code>node docs/designs/onda7-tokens/contraste.mjs</code> (vira teste ao aplicar)</td></tr>
+        <tr><td>Desligar cor ou animação</td><td>variável de ambiente</td><td><code>NO_COLOR=1</code> · <code>PI_REDUCED_MOTION=1</code> · <code>NO_PROGRESS=1</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="mock" aria-labelledby="h-mock">
+  <h2 id="h-mock">A proposta, interativa</h2>
+  <p class="sub">Mock em HTML (não é captura): só usa o que um terminal faz. Troque a paleta e compare com o tema atual. As cores vêm do mesmo bloco de dados que o portão de contraste lê.</p>
+  <div class="controls">
+    <div class="ctl"><span id="l-pal">Paleta</span><div class="seg" role="group" aria-labelledby="l-pal" data-k="pal">
+      <button type="button" data-v="atual">Atual</button><button type="button" data-v="tokyo">Tokyo afinado</button><button type="button" data-v="escuro">pi-escuro</button><button type="button" data-v="claro">pi-claro</button></div></div>
+    <div class="ctl"><span id="l-cor">Cor</span><div class="seg" role="group" aria-labelledby="l-cor" data-k="cor">
+      <button type="button" data-v="on">Ligada</button><button type="button" data-v="off">NO_COLOR</button></div></div>
+    <div class="ctl"><span id="l-mov">Movimento</span><div class="seg" role="group" aria-labelledby="l-mov" data-k="mov">
+      <button type="button" data-v="on">Normal</button><button type="button" data-v="off">Reduzido</button></div></div>
+    <div class="ctl"><span id="l-ico">Ícones</span><div class="seg" role="group" aria-labelledby="l-ico" data-k="ico">
+      <button type="button" data-v="uni">Unicode</button><button type="button" data-v="ascii">ASCII</button></div></div>
+    <div class="ctl"><span id="l-lar">Largura</span><div class="seg" role="group" aria-labelledby="l-lar" data-k="lar">
+      <button type="button" data-v="96">96 col</button><button type="button" data-v="60">60 col</button></div></div>
+  </div>
+
+  <div class="win" id="win" data-color="on">
+    <div class="chrome" aria-hidden="true"><i></i><i></i><i></i><span id="wtitle">● parser de datas · projeto-demo</span></div>
+    <div class="scroll" tabindex="0" role="region" aria-label="Terminal simulado">
+    <div class="term" id="term" aria-live="off">
+<div class="r"><span class="b">pi</span> <span class="dim">1.5.2</span>   <span class="b">?</span> <span class="dim">atalhos</span>  <span class="b">/</span> <span class="dim">comandos</span>  <span class="b">!</span> <span class="dim">shell</span></div>
+<div class="r"> </div>
+<div class="r u"> </div>
+<div class="r u">refatora o <span class="hit">parser</span> de datas e roda os testes</div>
+<div class="r u"> </div>
+<div class="r"> </div>
+<div class="r"><span class="dim i"><span data-i="think">◇</span> pensou 4s</span></div>
+<div class="r"> </div>
+<div class="r"><span class="ok" data-i="ok">✓</span> <span class="b">edit</span> src/parse.ts <span class="dim">0,2s</span></div>
+<div class="r"><span class="er">-1</span> <span class="del">  return Date.parse(s)</span></div>
+<div class="r"><span class="ok">+1</span> <span class="add">  return parseISO(s, { tz })</span></div>
+<div class="r"><span class="dim"> 2  }</span></div>
+<div class="r"> </div>
+<div class="r"><span class="er" data-i="err">✗</span> <span class="b">bash</span> npm test <span class="dim">1,4s</span></div>
+<div class="r">  <span class="er">saiu com código 1</span> <span class="dim">· 1 de 42 testes falhou · ctrl+o expande</span></div>
+<div class="r"> </div>
+<div class="r"><span class="b hd">Resumo</span></div>
+<div class="r">Troquei <span class="code">Date.parse</span> por <span class="link ul">parseISO</span> <span class="lurl">(https://date-fns.org)</span>.</div>
+<div class="r"><span class="qt i">│ fuso padrão: America/Sao_Paulo</span></div>
+<div class="r"><span class="bul">•</span> 41 testes passam</div>
+<div class="r"><span class="bul">•</span> <span class="wn">1 falha em</span> <span class="wn b">parse.test.ts:18</span></div>
+<div class="r"> </div>
+<div class="r"><span class="kw">export function</span> <span class="fn">parse</span>(s: <span class="typ">string</span>, tz = <span class="str">"UTC"</span>): <span class="typ">Date</span> {</div>
+<div class="r">  <span class="com">// aceita ISO 8601; rejeita vazio</span></div>
+<div class="r">  <span class="kw">if</span> (!s) <span class="kw">throw new</span> <span class="typ">RangeError</span>(<span class="str">"vazio"</span>) <span class="com">// 0</span> <span class="num">0</span></div>
+<div class="r">}</div>
+<div class="r"> </div>
+<div class="r dim">histórico  <span class="b">parser</span></div>
+<div class="r selrow"><span class="ac">❯</span> refatora o <span class="b">parser</span> de datas e roda os testes</div>
+<div class="r">  adiciona teste do <span class="b">parser</span> com fuso</div>
+<div class="r"> </div>
+<div class="r"><span class="ac spin" id="spin">⠋</span> <span class="muted">bash · npm test · 12s</span> <span class="dim">· esc interrompe</span></div>
+<div class="r edge"> </div>
+<div class="r">Modelo Demo <span class="dim">·</span> <span class="th" id="thk">medium</span> <span class="dim">· ctx 38% · 1h10m</span><span class="thumb" style="float:right">┃</span></div>
+    </div>
+    </div>
+  </div>
+  <p class="small sub" style="margin-top:10px">Raciocínio: <span class="seg" role="group" aria-label="Nível de raciocínio" data-k="thk" style="vertical-align:middle">
+    <button type="button" data-v="0">off</button><button type="button" data-v="1">minimal</button><button type="button" data-v="2">low</button><button type="button" data-v="3">medium</button><button type="button" data-v="4">high</button><button type="button" data-v="5">xhigh</button><button type="button" data-v="6">max</button></span>
+    — no atual são 7 cores; na proposta, 3 (terciário, destaque, atenção) e o nome diz o nível.</p>
+</section>
+
+<section id="papeis" aria-labelledby="h-pap">
+  <h2 id="h-pap">Os 13 papéis</h2>
+  <p class="sub">Vocabulário da Apple (<code>label</code>, <code>secondaryLabel</code>, <code>separator</code>, <code>tint</code>…) traduzido para o terminal. Hex de pi-claro/pi-escuro partem das system colors da Apple e foram ajustados até passar 4,5:1 — não são cópia oficial (a Apple não publica hex no HIG).</p>
+  <div class="tbl" role="region" aria-label="Papéis" tabindex="0"><table id="rolesTbl"><thead><tr><th>Papel</th><th>Equivalente Apple</th><th>Tokens do pi que apontam para ele</th><th>Atual</th><th>Tokyo afinado</th><th>pi-escuro</th><th>pi-claro</th></tr></thead><tbody></tbody></table></div>
+  <details><summary>Syntax highlight (6 cores, inspirado no Xcode)</summary>
+    <div class="tbl" role="region" aria-label="Syntax" tabindex="0"><table id="synTbl"><thead><tr><th>Token</th><th>Atual</th><th>Tokyo afinado</th><th>pi-escuro</th><th>pi-claro</th></tr></thead><tbody></tbody></table></div>
+    <p class="small sub">Operador, pontuação e variável usam texto/secundário: cor só onde distingue.</p>
+  </details>
+</section>
+
+<section id="contraste" aria-labelledby="h-con">
+  <h2 id="h-con">Contraste medido, não presumido</h2>
+  <p class="sub">WCAG 2.2 (sem arredondar): texto ≥ 4,5:1, glifo/controle ≥ 3:1. Calculado ao vivo, no navegador, a partir da paleta escolhida acima. O mesmo cálculo roda em <code>contraste.mjs</code> e falha (exit 1) se uma paleta proposta reprovar.</p>
+  <p id="conSummary" class="b"></p>
+  <div class="tbl" role="region" aria-label="Pares de contraste" tabindex="0"><table id="conTbl"><thead><tr><th>Primeiro plano</th><th>Sobre</th><th>Mínimo</th><th>Razão</th><th></th></tr></thead><tbody></tbody></table></div>
+</section>
+
+<section id="auditoria" aria-labelledby="h-aud">
+  <h2 id="h-aud">Auditoria G01–G14</h2>
+  <p class="sub">Estado lido em 2026-11-14 em <code>themes/</code>, <code>extensions/ui/</code>, <code>extensions/ui-visual/</code> e no pi 1.5.2 (<code>dist/modes/interactive/theme/</code>). Contrastes do tema real calculados do arquivo, não da captura.</p>
+  <div class="tbl" role="region" aria-label="Auditoria" tabindex="0"><table>
+    <thead><tr><th>ID</th><th>Defeito / estado</th><th>Evidência</th><th>Proposta</th><th>Onde</th></tr></thead>
+    <tbody>
+<tr><td>G01</td><td>56 tokens com 21 cores de texto distintas; 3 <code>vars</code> sem uso (<code>comment</code>, <code>cyan</code>, <code>red1</code>). Sem tema claro.</td><td><code>themes/tokyo-night.json</code></td><td>13 papéis; remover vars mortas; par claro/escuro.</td><td>tema</td></tr>
+<tr><td>G02</td><td>Correto: <code>mono</code> com tokens vazios = cores padrão do terminal.</td><td><code>themes/mono.json</code></td><td>Manter.</td><td>—</td></tr>
+<tr><td>G03</td><td><code>searchMatchText</code> sobre <code>searchMatchBg</code> = 4,14:1. <code>customMessageBg</code> (#16161e) é 1,05:1 contra o fundo: superfície invisível.</td><td>cálculo do arquivo</td><td>Busca = fundo âmbar (padrão Apple de “localizar”); uma só superfície.</td><td>tema</td></tr>
+<tr><td>G04</td><td><code>border</code> (#50699d) e <code>borderMuted</code> (#5f688e) têm 3,13 e 3,14:1: dois tokens, nenhuma diferença visível.</td><td>cálculo</td><td><code>separator</code> único; destaque só na borda com foco.</td><td>tema</td></tr>
+<tr><td>G05</td><td>Texto real abaixo de 4,5:1: <code>syntaxComment</code>, <code>toolDiffContext</code>, <code>mdLinkUrl</code> = 3,88:1 (o token se chama <code>commentA11y</code>). 7 matizes no Markdown.</td><td><code>commentA11y #6d76a3</code></td><td>Comentário/contexto/URL = terciário (≥ 5,2:1). Link = destaque; título = texto em negrito.</td><td>tema</td></tr>
+<tr><td>G06</td><td><code>scrollbarThumb</code> = 2,61:1 (&lt; 3:1 de controle).</td><td><code>dark3 #545c7e</code></td><td>Polegar ≥ 3:1.</td><td>tema</td></tr>
+<tr><td>G07</td><td><code>editorPaddingX</code> existe (0–3, padrão 0) e não está definido.</td><td>pi <code>docs/settings.md:102</code></td><td><code>editorPaddingX: 1</code> — respiro sem custo de colunas.</td><td>settings</td></tr>
+<tr><td>G08</td><td>Fonte é do terminal; hierarquia hoje mistura cor e negrito.</td><td>—</td><td>Hierarquia = peso + 3 cinzas; itálico só em pensamento/citação. Sugestão de fonte no kitty: SF Mono ou JetBrains Mono.</td><td>docs</td></tr>
+<tr><td>G09</td><td><code>PI_ASCII_ICONS</code> não dá ASCII: devolve o conjunto Unicode (<code>✓ ✗ ⎇ ◷</code>). <code>NO_COLOR</code> também desliga Nerd Font (cor ≠ glifo).</td><td><code>icons.ts:41-44</code></td><td>Conjunto ASCII real (<code>+ x * &gt;</code>) para <code>PI_ASCII_ICONS</code> e <code>TERM=dumb|linux</code>; <code>NO_COLOR</code> só tira cor.</td><td>icons.ts</td></tr>
+<tr><td>G10</td><td>3 animações diferentes: braille 8 quadros/80 ms (indicador), braille 10 quadros/90 ms escrevendo o título do terminal 11×/s, pulse dot no fleet.</td><td><code>working.ts:7,60</code>; <code>terminal.ts:12,83</code></td><td>Um spinner (braille 10 quadros, 80 ms, padrão <code>cli-spinners</code>); título estático <code>●</code> enquanto trabalha.</td><td>working.ts, terminal.ts</td></tr>
+<tr><td>G11</td><td>Correto: <code>PI_REDUCED_MOTION</code>/<code>NO_PROGRESS</code> → <code>●</code> no indicador e no título.</td><td><code>a11y.ts:12</code></td><td>Acrescentar <code>TERM=dumb</code> (clig.dev).</td><td>a11y.ts</td></tr>
+<tr><td>G12</td><td>Correto no essencial (tema mono + cabeçalho sem SGR). Seleção sem fundo depende do <code>❯</code>: ok.</td><td><code>a11y.ts:40-46</code>; <code>history.ts:247</code></td><td>Manter; ver G09.</td><td>—</td></tr>
+<tr><td>G13</td><td>9 pares em uso abaixo do mínimo: os 3 de G05, <code>thinkingOff</code> 2,61, <code>thinkingMinimal</code> 1,97, <code>error</code> sobre seleção 4,12, <code>dim</code> sobre a mensagem do usuário 4,47, busca 4,14, polegar 2,61. Nenhum portão impede regressão.</td><td><code>contraste.mjs</code></td><td>Corrigir e transformar o cálculo em teste do harness.</td><td>teste novo</td></tr>
+<tr><td>G14</td><td>Truncagem existe (<code>truncateToWidth</code>, alvo de 40 colunas); ok a 60 col.</td><td><code>tools.ts:34-45</code>; captura 83</td><td>Manter; testar 60 col no mock.</td><td>—</td></tr>
+    </tbody></table></div>
+  <div class="pair">
+    <figure><img src="../../ui-ux-gallery/images/08-markdown-codigo.png" alt="Captura real: Markdown e código no tema atual" loading="lazy"><figcaption>Antes (real): Markdown com 7 matizes; comentário a 3,88:1.</figcaption></figure>
+    <figure><img src="../../ui-ux-gallery/images/05-tools-colapsadas.png" alt="Captura real: ferramentas colapsadas no tema atual" loading="lazy"><figcaption>Antes (real): ferramentas e diff.</figcaption></figure>
+    <figure><img src="../../ui-ux-gallery/images/80-nocolor-header.png" alt="Captura real: cabeçalho com NO_COLOR" loading="lazy"><figcaption>Antes (real): NO_COLOR — já correto.</figcaption></figure>
+  </div>
+</section>
+
+<section id="movimento" aria-labelledby="h-mov">
+  <h2 id="h-mov">Regras de movimento e acessibilidade</h2>
+  <div class="rules">
+    <div><h3>Cor nunca é o único canal</h3><p>Todo estado tem glifo (✓ ✗ ●) ou palavra. Teste: NO_COLOR no mock acima continua legível.</p></div>
+    <div><h3>Três cinzas, não sete</h3><p>Texto, secundário, terciário. Terciário ainda passa 4,5:1 — o <code>tertiaryLabel</code> da Apple (30% de alfa) não passa e não é usado para texto.</p></div>
+    <div><h3>Cor no fundo, não no glifo</h3><p>Como o HIG manda para ação primária: seleção, busca e diff marcam pelo fundo; o texto fica neutro.</p></div>
+    <div><h3>Um movimento</h3><p>Só o spinner do indicador anima. Título, fleet e status são estáticos. Reduzido → <code>●</code>.</p></div>
+    <div><h3>Segue o terminal</h3><p>Par claro/escuro nativo: o pi relê as cores via OSC 10/11 e ouve o modo 2031 (kitty ≥ 0.38.1, Ghostty ≥ 1.0).</p></div>
+    <div><h3>Contraste é teste</h3><p>Paleta nova só entra se o portão passar. Sem exceção por token.</p></div>
+  </div>
+</section>
+
+<section id="decidir" aria-labelledby="h-dec">
+  <h2 id="h-dec">O que decidir</h2>
+  <p class="sub">Atenção: em 2026-11-14 (Onda 1) o dono decidiu manter o Tokyo Night e removeu o tema <code>graphite</code>. A opção Apple-like reverte essa decisão; por isso há o caminho “Tokyo afinado”.</p>
+  <div class="tbl" role="region" aria-label="Decisões" tabindex="0"><table>
+    <thead><tr><th>#</th><th>Decisão</th><th>Opções</th><th>Recomendação</th><th>Custo / risco</th></tr></thead>
+    <tbody>
+<tr><td>1</td><td>Paleta</td><td>a) Tokyo afinado · b) pi-claro/pi-escuro (Apple-like) · c) <code>system</code> nativo</td><td><span class="pill rec">b</span> — é o pedido desta onda; <b>a</b> se o Tokyo Night continuar.</td><td>b pede trocar o fundo do kitty para #1c1c1e/#fff (o tema do pi não pinta o fundo). Rollback: <code>"theme": "tokyo-night"</code>.</td></tr>
+<tr><td>2</td><td>Claro/escuro automático</td><td><code>"theme": "claro/escuro"</code> · fixo</td><td><span class="pill rec">automático</span></td><td>Nativo do pi; zero código.</td></tr>
+<tr><td>3</td><td>Raciocínio: 7 → 3 cores</td><td>sim · não</td><td><span class="pill rec">sim</span></td><td>Só tema. O nome do nível já está escrito.</td></tr>
+<tr><td>4</td><td>Um movimento (G10)</td><td>sim · não</td><td><span class="pill rec">sim</span></td><td><code>working.ts</code>, <code>terminal.ts</code> + testes. Pulse do fleet é patch do pi-code: fica para depois.</td></tr>
+<tr><td>5</td><td>ASCII real e <code>NO_COLOR</code> ≠ glifo (G09)</td><td>sim · não</td><td><span class="pill rec">sim</span></td><td><code>icons.ts</code> + teste.</td></tr>
+<tr><td>6</td><td>Portão de contraste como teste</td><td>sim · não</td><td><span class="pill rec">sim</span></td><td>1 teste lendo <code>themes/*.json</code>.</td></tr>
+<tr><td>7</td><td>Exportar tokens no formato DTCG 2025.10</td><td>sim · não</td><td><span class="pill">não, por ora</span></td><td><code>vars → colors</code> do pi já é primitivo → semântico. Vale quando surgir 2º consumidor (Figma, web).</td></tr>
+<tr><td>8</td><td>Variante “mais contraste”</td><td>sim · não</td><td><span class="pill">não</span></td><td>O HIG pede alto contraste quando o padrão não atinge o mínimo; a proposta já atinge 4,5:1 em todo texto.</td></tr>
+    </tbody></table></div>
+</section>
+
+<section id="fontes" aria-labelledby="h-fon">
+  <h2 id="h-fon">Fontes</h2>
+  <p class="sub">Acessadas em 2026-11-14 via Perplexity + Keenable (perplexity-scout) e Keenable + Exa + Parallel (web-scout). “Lido” = página aberta; “trecho” = só resultado de busca.</p>
+  <ul class="src">
+    <li>Apple HIG · Color — variantes claro/escuro/contraste; não depender só de cor; cor no fundo, não no glifo. <a href="https://developer.apple.com/design/human-interface-guidelines/color">developer.apple.com</a> (lido)</li>
+    <li>Apple HIG · Accessibility — 4,5:1 até 17 pt; esquema de alto contraste se o padrão não atingir. <a href="https://developer.apple.com/design/human-interface-guidelines/accessibility">developer.apple.com</a> (lido)</li>
+    <li>Apple HIG · Typography — hierarquia por peso, tamanho e cor; SF Mono. <a href="https://developer.apple.com/design/human-interface-guidelines/typography">developer.apple.com</a> (lido)</li>
+    <li>Hex das system colors: <a href="https://whattheswift.com/system-colors-ios-macos">whattheswift.com</a> (lido, secundária) e sarunw.com (trecho). O HIG não publica hex.</li>
+    <li>WCAG 2.2 · 1.4.3 — limiares sem arredondar. <a href="https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html">w3.org</a> (lido). WCAG 3.0 é Working Draft (<a href="https://www.w3.org/TR/wcag-3.0/">w3.org</a>, lido) — APCA não é normativo (não corroborado em página).</li>
+    <li>DTCG Format 2025.10 — Final Community Group Report, não padrão W3C. <a href="https://www.designtokens.org/tr/2025.10/format/">designtokens.org</a> (lido)</li>
+    <li>Modo 2031 / DSR 997 — kitty 0.38.1, Ghostty 1.0.0, Contour, VTE. <a href="https://contour-terminal.org/vt-extensions/color-palette-update-notifications/">contour-terminal.org</a> e <a href="https://sw.kovidgoyal.net/kitty/changelog/">changelog do kitty</a> (lidos)</li>
+    <li>pi 1.5.2 · themes — tema <code>system</code> (OKHSL, 4,5:1 garantido), par <code>claro/escuro</code>, cores <code>oklch()</code>. <code>docs/themes.md</code> e <code>dist/modes/interactive/theme/*.js</code> (código local lido)</li>
+    <li>Claude Code · tema <code>auto</code> segue o fundo do terminal. <a href="https://code.claude.com/docs/en/terminal-config">code.claude.com</a> (lido). Codex lê OSC 10/11 só ao iniciar: <a href="https://github.com/openai/codex/issues/38575">issue #38575</a> (lido, issue)</li>
+    <li>Lip Gloss v2 — <code>LightDark</code>, downsampling na impressão. <a href="https://github.com/charmbracelet/lipgloss/blob/main/UPGRADE_GUIDE_V2.md">UPGRADE_GUIDE_V2</a> (lido). Textual — tokens <code>$surface/$panel/$boost</code>. <a href="https://textual.textualize.io/guide/design/">textual.textualize.io</a> (lido)</li>
+    <li>NO_COLOR <a href="https://no-color.org/">no-color.org</a> (lido) · clig.dev — sem animação fora de TTY; <code>TERM=dumb</code>. <a href="https://clig.dev/">clig.dev</a> (lido) · cli-spinners <code>dots</code> 80 ms/10 quadros <a href="https://github.com/sindresorhus/cli-spinners">github</a> (lido)</li>
+  </ul>
+</section>
+
+<section aria-labelledby="h-lim">
+  <h2 id="h-lim">Limites desta proposta</h2>
+  <ul class="src">
+    <li>Mock em HTML com fonte do navegador; Nerd Font não é simulada. Nada foi aplicado nem capturado em kitty real.</li>
+    <li>Hex Apple vêm de fonte secundária (iOS); no macOS Tahoe alguns diferem. Tratados como referência de design, ajustados por medição.</li>
+    <li>Leitor de tela e <code>forced-colors</code> não testados (terminal não expõe árvore de acessibilidade).</li>
+    <li>Pulse dot do fleet e etiquetas do HUD vêm da pilha de patches do pi-code: fora desta onda (decisão do dono na Onda 1).</li>
+  </ul>
+  <footer>pi-harness · docs/designs/onda7-tokens · proposta para avaliação</footer>
+</section>
+</main>
+
+<!-- Fonte única das paletas: o mock, as tabelas e contraste.mjs leem daqui. -->
+<script type="application/json" id="paletas">
+{
+ "atual":  {"nome":"Atual (tokyo-night)","bg":"#1a1b26","surface":"#292e42","sel":"#2e3c5e","search":"#3d59a1","text":"#c0caf5","muted":"#a9b1d6","dim":"#8a93bd","line":"#5f688e","edge":"#bb9af7","accent":"#bb9af7","ok":"#9ece6a","err":"#f7768e","warn":"#e0af68","code":"#9ece6a","link":"#1abc9c","linkUrl":"#6d76a3","heading":"#7aa2f7","bullet":"#89ddff","quote":"#8a93bd","kw":"#9d7cd8","str":"#9ece6a","num":"#ff9e64","typ":"#2ac3de","fn":"#7aa2f7","com":"#6d76a3","addBg":"transparent","delBg":"transparent","thumb":"#545c7e","think":["#545c7e","#394b70","#7aa2f7","#9d7cd8","#bb9af7","#f7768e","#ff9e64"]},
+ "tokyo":  {"nome":"Tokyo afinado","bg":"#1a1b26","surface":"#24283b","sel":"#283457","search":"#34497f","text":"#c0caf5","muted":"#a9b1d6","dim":"#8a93bd","line":"#414868","edge":"#414868","accent":"#bb9af7","ok":"#9ece6a","err":"#f7768e","warn":"#e0af68","code":"#9ece6a","link":"#1abc9c","linkUrl":"#8a93bd","heading":"#c0caf5","bullet":"#89ddff","quote":"#a9b1d6","kw":"#9d7cd8","str":"#9ece6a","num":"#ff9e64","typ":"#2ac3de","fn":"#7aa2f7","com":"#8a93bd","addBg":"#20303b","delBg":"#37222c","thumb":"#737aa2","think":["#8a93bd","#a9b1d6","#a9b1d6","#bb9af7","#bb9af7","#e0af68","#e0af68"]},
+ "escuro": {"nome":"pi-escuro","bg":"#1c1c1e","surface":"#2c2c2e","sel":"#17304d","search":"#5c4a00","text":"#f5f5f7","muted":"#aeaeb2","dim":"#98989d","line":"#48484a","edge":"#48484a","accent":"#409cff","ok":"#30d158","err":"#ff6961","warn":"#ffd60a","code":"#da8fff","link":"#409cff","linkUrl":"#98989d","heading":"#f5f5f7","bullet":"#98989d","quote":"#aeaeb2","kw":"#ff7ab2","str":"#ff8170","num":"#d9c97c","typ":"#6bdfff","fn":"#78c2b3","com":"#98a4b0","addBg":"#12301c","delBg":"#3a1716","thumb":"#757579","think":["#98989d","#aeaeb2","#aeaeb2","#409cff","#409cff","#ffd60a","#ffd60a"]},
+ "claro":  {"nome":"pi-claro","bg":"#ffffff","surface":"#f2f2f7","sel":"#e8f1fd","search":"#fff0a8","text":"#1d1d1f","muted":"#424245","dim":"#6a6a6f","line":"#c7c7cc","edge":"#c7c7cc","accent":"#0066cc","ok":"#1d7a34","err":"#d70015","warn":"#8a5a00","code":"#8944ab","link":"#0066cc","linkUrl":"#6a6a6f","heading":"#1d1d1f","bullet":"#6a6a6f","quote":"#424245","kw":"#9b2393","str":"#c41a16","num":"#1c00cf","typ":"#0b4f79","fn":"#326d74","com":"#5d6c79","addBg":"#dff5e3","delBg":"#fff0ef","thumb":"#8e8e93","think":["#6a6a6f","#424245","#424245","#0066cc","#0066cc","#8a5a00","#8a5a00"]}
+}
+</script>
+<!-- Pares avaliados: [primeiro plano, fundo, mínimo]. Mesmo conjunto em contraste.mjs (lê este bloco). -->
+<script type="application/json" id="pares">
+[["text","bg",4.5],["muted","bg",4.5],["dim","bg",4.5],["accent","bg",4.5],["ok","bg",4.5],["err","bg",4.5],["warn","bg",4.5],
+ ["code","bg",4.5],["link","bg",4.5],["linkUrl","bg",4.5],["heading","bg",4.5],["quote","bg",4.5],
+ ["kw","bg",4.5],["str","bg",4.5],["num","bg",4.5],["typ","bg",4.5],["fn","bg",4.5],["com","bg",4.5],
+ ["think0","bg",4.5],["think1","bg",4.5],["think2","bg",4.5],["think3","bg",4.5],["think4","bg",4.5],["think5","bg",4.5],["think6","bg",4.5],
+ ["text","surface",4.5],["muted","surface",4.5],["dim","surface",4.5],["accent","surface",4.5],["ok","surface",4.5],["err","surface",4.5],
+ ["text","sel",4.5],["muted","sel",4.5],["accent","sel",4.5],["ok","sel",4.5],["err","sel",4.5],
+ ["text","search",4.5],["ok","addBg",4.5],["err","delBg",4.5],["text","addBg",4.5],["text","delBg",4.5],
+ ["bullet","bg",3],["thumb","bg",3]]
+</script>
+<script>
+const P = JSON.parse(document.getElementById('paletas').textContent)
+const PAIRS = JSON.parse(document.getElementById('pares').textContent)
+const KEYS = ['atual', 'tokyo', 'escuro', 'claro']
+// WCAG 2.x: luminância relativa sRGB; "transparent" = fundo do terminal.
+const lum = (h) => { const c = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).map((x) => (x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2] }
+const get = (p, k) => { const v = /^think\d$/.test(k) ? p.think[+k[5]] : p[k]; return v === 'transparent' ? p.bg : v }
+const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m); return (x + 0.05) / (y + 0.05) }
+const fmt = (n) => n.toFixed(2).replace('.', ',')
+
+const ROLES = [
+  ['text', 'Texto', 'label', 'text, userMessageText, toolTitle, mdHeading, syntaxVariable, searchMatchText'],
+  ['muted', 'Secundário', 'secondaryLabel', 'muted, toolOutput, customMessageText, mdQuote, mdCodeBlock, syntaxOperator, syntaxPunctuation'],
+  ['dim', 'Terciário (≥ 4,5:1)', 'tertiaryLabel*', 'dim, thinkingText, mdLinkUrl, mdCodeBlockBorder, toolDiffContext, syntaxComment, mdListBullet, thinkingOff'],
+  ['line', 'Separador', 'separator', 'border, borderMuted, mdHr, mdQuoteBorder, scrollbarTrack'],
+  ['surface', 'Superfície', 'secondarySystemBackground', 'userMessageBg, customMessageBg (pending/success/error = fundo)'],
+  ['sel', 'Seleção', 'selectedContentBackground', 'selectedBg'],
+  ['search', 'Busca', 'findHighlight', 'searchMatchBg'],
+  ['accent', 'Destaque', 'tint / systemBlue', 'accent, borderAccent, mdLink, customMessageLabel, thinkingMedium/High'],
+  ['ok', 'Sucesso', 'systemGreen', 'success, toolDiffAdded'],
+  ['err', 'Erro', 'systemRed', 'error, toolDiffRemoved'],
+  ['warn', 'Atenção', 'systemYellow / Orange', 'warning, thinkingXhigh/Max'],
+  ['code', 'Código', 'systemPurple', 'mdCode, bashMode'],
+  ['thumb', 'Controle', 'systemGray', 'scrollbarThumb']
+]
+const SYN = [['kw', 'syntaxKeyword'], ['str', 'syntaxString'], ['num', 'syntaxNumber'], ['typ', 'syntaxType'], ['fn', 'syntaxFunction'], ['com', 'syntaxComment']]
+const sw = (h) => `<span class="sw"><i style="background:${h}"></i>${h}</span>`
+document.querySelector('#rolesTbl tbody').innerHTML = ROLES.map(([k, n, a, t]) => `<tr><td><b>${n}</b></td><td><code>${a}</code></td><td><small>${t}</small></td>${KEYS.map((p) => `<td>${sw(P[p][k])}</td>`).join('')}</tr>`).join('')
+document.querySelector('#synTbl tbody').innerHTML = SYN.map(([k, t]) => `<tr><td><code>${t}</code></td>${KEYS.map((p) => `<td>${sw(P[p][k])}</td>`).join('')}</tr>`).join('')
+
+const state = { pal: 'escuro', cor: 'on', mov: 'on', ico: 'uni', lar: '96', thk: '3' }
+// ?pal=claro&cor=off… abre já num estado (para comparar e capturar)
+for (const [k, v] of new URLSearchParams(location.search)) if (k in state && document.querySelector(`.seg[data-k=${k}] [data-v="${CSS.escape(v)}"]`)) state[k] = v
+const win = document.getElementById('win'), term = document.getElementById('term')
+const ICONS = { uni: { ok: '✓', err: '✗', think: '◇' }, ascii: { ok: '+', err: 'x', think: '*' } }
+const FR = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+let timer
+function render () {
+  const p = P[state.pal]
+  for (const [k, v] of Object.entries(p)) if (typeof v === 'string' && k !== 'nome') win.style.setProperty('--' + k, v)
+  // NO_COLOR: sem fundos de estado (como o tema mono, tokens vazios)
+  if (state.cor === 'off') for (const k of ['surface', 'sel', 'search', 'addBg', 'delBg']) win.style.setProperty('--' + k, 'transparent')
+  win.style.setProperty('--think', p.think[+state.thk])
+  document.getElementById('thk').textContent = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'][+state.thk]
+  win.dataset.color = state.cor
+  term.style.setProperty('--cols', state.lar)
+  term.querySelectorAll('[data-i]').forEach((e) => { e.textContent = ICONS[state.ico][e.dataset.i] })
+  const spin = document.getElementById('spin')
+  clearInterval(timer)
+  const reduce = state.mov === 'off' || matchMedia('(prefers-reduced-motion: reduce)').matches
+  if (reduce) spin.textContent = '●'
+  else { let f = 0; timer = setInterval(() => { spin.textContent = FR[f++ % FR.length] }, 80) }
+  document.getElementById('wtitle').textContent = (state.pal === 'atual' ? '⠙ pi - parser de datas - projeto-demo' : '● parser de datas · projeto-demo')
+  document.querySelectorAll('.seg[data-k]').forEach((g) => g.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === state[g.dataset.k]))))
+  // contraste ao vivo
+  let fails = 0
+  document.querySelector('#conTbl tbody').innerHTML = PAIRS.map(([f, b, min]) => {
+    const r = ratio(get(p, f), get(p, b)), ok = r >= min
+    if (!ok) fails++
+    return `<tr><td>${sw(get(p, f))} <code>${f}</code></td><td>${sw(get(p, b))} <code>${b}</code></td><td class="num-cell">${fmt(min)}:1</td><td class="num-cell">${fmt(r)}:1</td><td>${ok ? '<span class="pass">✓ passa</span>' : '<span class="fail">✗ reprova</span>'}</td></tr>`
+  }).join('')
+  document.getElementById('conSummary').innerHTML = `${p.nome}: ${PAIRS.length - fails} de ${PAIRS.length} pares passam${fails ? ` · <span class="fail">${fails} reprovam</span>` : ' · <span class="pass">todos passam</span>'}.`
+}
+document.querySelectorAll('.seg[data-k]').forEach((g) => g.addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; state[g.dataset.k] = b.dataset.v; render() }))
+document.getElementById('pageTheme').addEventListener('click', () => {
+  const r = document.documentElement, cur = r.dataset.page || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+  r.dataset.page = cur === 'dark' ? 'light' : 'dark'
+})
+render()
+</script>
+</body>
+</html>

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Onda 12 · redesenho do pi no estilo macOS: escolha as variantes</title>
+<link rel="stylesheet" href="proposta.css">
+<main>
+<h1>Onda 12 · redesenho do pi no estilo macOS, minimalista</h1>
+<p class="lead">Revisão de toda a interface do pi no terminal e até três variantes para cada componente. <b>Nada foi aplicado.</b> Marque o que quer, escreva observações e, no fim, clique em "Pegar as escolhas" para copiar o resultado e colar no pi.</p>
+
+<nav aria-label="Seções">
+  <a href="#revisao">Revisão</a><a href="#principios">Princípios</a><span id="grupos" style="display:contents"></span><a href="#decidir">Decidir</a>
+  <label>Tema dos mocks <select id="tema"><option value="noite">pi-noite (em uso)</option><option value="escuro">macOS escuro</option><option value="claro">macOS claro</option><option value="grafite">Grafite</option></select></label>
+</nav>
+
+<h2 id="revisao">Revisão: o que o pi desenha hoje</h2>
+<p class="lead">Levantado no código e nos testes das extensões, do HUD, dos patches e do pi-code. Cada item aponta o componente onde as variantes tratam o problema.</p>
+<div class="cols">
+<ol class="rev">
+  <li><b>Acentos demais.</b> Azul (seta, links), ciano (régua do campo, "executando"), roxo (shell, código, uso alto) e verde aparecem juntos. O macOS usa um só acento. <a href="#paleta">Paleta</a></li>
+  <li><b>Seis jeitos de dizer estado</b> na mesma linha: fundo, palavra, cor, barra, cápsula e hora. <a href="#tool-linha">Ferramenta de uma linha</a></li>
+  <li><b>Três estilos de moldura:</b> régua fina nas folhas, caixa azul arredondada no diagnóstico e borda grossa no /btw. <a href="#moldura">Molduras</a></li>
+  <li><b>Três marcas de seleção:</b> <code>❯</code> com fundo nas folhas, <code>›</code> no /diff e vídeo invertido nos runs. <a href="#diff">/diff</a>, <a href="#runs">runs</a></li>
+  <li><b>Rodapés de tecla longos:</b> 10 itens no diagnóstico e 9 nos runs, contra a regra de 4 da onda 4. <a href="#teclas">Dicas de tecla</a></li>
+</ol>
+<ol class="rev" start="6">
+  <li><b>Inglês que sobrou:</b> lista de tarefas ("Press Escape to close"), painel de agentes ("thinking…", "↓ to manage"), seletores do core. <a href="#todos">Tarefas</a>, <a href="#agentes">agentes</a>, <a href="#seletores">seletores</a></li>
+  <li><b>Emoji ao lado de glifos de uma cor</b> no rodapé (🔒, ⚠). <a href="#rodape">Avisos fixos</a></li>
+  <li><b>Cromo alto:</b> campo, HUD de três linhas, seção do plano e avisos somam sete ou mais linhas fixas. <a href="#hud">HUD</a>, <a href="#plano">plano</a></li>
+  <li><b>Separadores diferentes:</b> <code>|</code> no painel de agentes, <code>│</code> no HUD e <code>·</code> no resto. <a href="#agentes">Agentes</a></li>
+  <li><b>Limite de uso em duas caixas</b> com dois nomes e hora em formato americano. <a href="#limite">Limite de uso</a></li>
+</ol>
+</div>
+
+<h2 id="principios">Princípios usados nas variantes</h2>
+<div class="cols">
+<ul>
+  <li><b>Hierarquia por cinza e peso, não por cor.</b> Quatro níveis de texto, como os rótulos da Apple (primário a quaternário).</li>
+  <li><b>Um acento.</b> Cor fica para ação primária e estado; verde, âmbar e vermelho só significam estado.</li>
+  <li><b>Conteúdo plano, controle com superfície.</b> A Apple reserva o material para controles e navegação; aqui, moldura só no campo e nas folhas.</li>
+  <li><b>Estado nunca só por cor.</b> Vale a regra do pi e a do Primer: toda informação importante tem texto.</li>
+</ul>
+<ul>
+  <li><b>Revelar aos poucos.</b> Um nível de detalhe por padrão, o resto atrás de uma tecla.</li>
+  <li><b>Texto curto, frase normal, verbo na ação.</b> O erro diz o que houve e o que fazer.</li>
+  <li><b>Alerta raro.</b> Folha modal só quando falta uma decisão; informação vira linha.</li>
+  <li><b>Sem fonte obrigatória.</b> Cada glifo tem reserva em Unicode simples e em ASCII.</li>
+</ul>
+</div>
+<p>As letras seguem uma linha: <b>A</b> refina o que existe, <b>B</b> é a leitura macOS (plano, cinzas, um acento, cantos redondos só em controles), <b>C</b> é a mais silenciosa. Quando uma variante contraria uma decisão sua de outra onda, o texto avisa em âmbar. Fontes e limites da pesquisa estão no <a href="README.md">README</a>.</p>
+
+<div id="comps"></div>
+
+<h2 id="decidir">Decidir</h2>
+<p class="lead">Pode marcar mais de uma variante no mesmo componente para pedir uma combinação; explique na observação.</p>
+<label for="geral"><b>Observação geral</b></label>
+<textarea id="geral" class="obs" placeholder="O que vale para tudo: cores, densidade, o que não pode mudar…"></textarea>
+<div class="acoes">
+  <button class="pri" data-gerar>Pegar as escolhas</button>
+  <button id="copiar">Copiar</button>
+  <button id="baixar">Baixar .md</button>
+  <span id="aviso" role="status"></span>
+</div>
+<label for="saida"><b>Resultado</b> (cole no pi)</label>
+<textarea id="saida" readonly placeholder="Clique em “Pegar as escolhas”."></textarea>
+</main>
+
+<div class="bar">
+  <span class="cont" id="cont" role="status"></span>
+  <span>Marcar tudo:</span>
+  <button data-tudo="A">A</button><button data-tudo="B">B</button><button data-tudo="C">C</button><button data-tudo="hoje">como está</button>
+  <button id="limpar">Limpar</button>
+  <button class="pri" data-gerar>Pegar as escolhas</button>
+</div>
+
+<script>window.ONDA12 = []</script>
+<script src="dados-1-base.js"></script>
+<script src="dados-2-conversa.js"></script>
+<script src="dados-3-sinais.js"></script>
+<script src="dados-4-folhas.js"></script>
+<script src="app.js"></script>
+</html>

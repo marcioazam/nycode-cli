@@ -1,0 +1,176 @@
+{
+  "units": [
+    {
+      "id": "vim",
+      "goal": "Paridade de modos, movimentos, operadores, objetos e repetição Vim sem perda de dados",
+      "files": [
+        "extensions/claude-compat/vim/**",
+        "extensions/ui/editor.ts",
+        "extensions/ui/test/editor.test.ts",
+        "extensions/ui/test/vim/**"
+      ],
+      "tier": "sonnet",
+      "agent": "swarm-worker",
+      "risk": "high",
+      "acceptance": "Tabela Vim inteira demonstrada por testes e integração no editor; controles e dados preservados"
+    },
+    {
+      "id": "commands",
+      "goal": "Implementar comandos locais restantes com contratos reais e sem stubs",
+      "files": [
+        "extensions/claude-compat/commands/**",
+        "extensions/claude-compat/index.ts",
+        "extensions/claude-compat/aliases.ts",
+        "extensions/claude-compat/test/clear.test.ts",
+        "extensions/claude-compat/test/aliases.test.ts",
+        "claude-home/commands/subtask.md",
+        "extensions/claude-compat/background/**",
+        "claude-home/bin/pi-session",
+        "claude-home/bin/session-transport/**",
+        "claude-home/commands/verify.md",
+        "claude-home/commands/update-config.md",
+        "claude-home/commands/run.md",
+        "claude-home/commands/batch.md",
+        "claude-home/commands/workflows.md",
+        "claude-home/commands/workflow-authoring.md",
+        "claude-home/commands/team-onboarding.md",
+        "docs/specs/claude-code-parity/local-commands.md"
+      ],
+      "tier": "sonnet",
+      "agent": "swarm-worker",
+      "risk": "medium",
+      "acceptance": "Cada comando implementado tem efeitos, argumentos e erros testados; gaps identificam API concreta faltante"
+    },
+    {
+      "id": "service-contracts",
+      "goal": "Verificar interfaces oficiais e disponibilidade condicional de serviços e comandos de links públicos",
+      "files": [
+        "docs/specs/claude-code-parity/service-contracts.md"
+      ],
+      "tier": "haiku",
+      "agent": "research-scout",
+      "risk": "medium",
+      "acceptance": "Descrição primária exata, URLs verificadas, pré-requisitos e interfaces suportadas; sem usar tokens ou iniciar serviços"
+    },
+    {
+      "id": "editor-actions",
+      "goal": "API semântica nativa para ações de edição e agrupamento de undo sem dependência dos atalhos",
+      "files": [
+        "claude-home/patches/pi-core/editor-actions/**",
+        "docs/specs/claude-code-parity/editor-actions.md"
+      ],
+      "tier": "sonnet",
+      "agent": "quality-toolkit-engineer",
+      "risk": "high",
+      "acceptance": "Ações independentes do keymap e undo único preservam texto, cursor, colagens e histórico; patch idempotente e reversível sem apagar outros patches"
+    },
+    {
+      "id": "integration",
+      "goal": "Integrar consumidores, instalação, matriz e contrato de serviços sem falsa paridade",
+      "files": [
+        "extensions/claude-compat/matrix.ts",
+        "extensions/claude-compat/shortcuts.ts",
+        "extensions/claude-compat/services/**",
+        "publish.list",
+        "docs/claude-code-compat.md",
+        "docs/claude-code-keybindings.md",
+        "docs/specs/claude-code-parity/work.md"
+      ],
+      "after": [
+        "vim",
+        "commands",
+        "service-contracts",
+        "editor-actions"
+      ],
+      "tier": "session",
+      "risk": "high",
+      "acceptance": "Gate integrado por arquivo e comportamento, TUI isolada e bloqueios de serviço distintos de funcionalidades prontas"
+    },
+    {
+      "id": "permission-modes",
+      "goal": "Modos acceptEdits/manual/plan/bypass reais (AUTO indisponível: sem API)",
+      "files": [
+        "extensions/claude-compat/permissions/**",
+        "claude-home/hooks/permissions/**",
+        "claude-home/patches/pi-code/permission-control/**"
+      ],
+      "tier": "sonnet",
+      "agent": "swarm-worker",
+      "risk": "high",
+      "status": "implemented-unverified",
+      "acceptance": "Guardas preservadas; gate integrado pendente"
+    },
+    {
+      "id": "interface",
+      "goal": "focus/color/transcript e Ctrl+O/Alt+O",
+      "files": [
+        "extensions/claude-compat/interface/**"
+      ],
+      "tier": "sonnet",
+      "agent": "swarm-worker",
+      "risk": "medium",
+      "status": "implemented-unverified",
+      "acceptance": "TUI isolada pendente"
+    },
+    {
+      "id": "public-services",
+      "goal": "mobile/ios/android/stickers/upgrade",
+      "files": [
+        "extensions/claude-compat/services/**"
+      ],
+      "tier": "sonnet",
+      "agent": "swarm-worker",
+      "risk": "medium",
+      "status": "implemented-unverified",
+      "acceptance": "Gate pendente"
+    },
+    {
+      "id": "runbooks",
+      "goal": "Helper CLI de runbooks",
+      "files": [
+        "extensions/claude-compat/runbooks/**"
+      ],
+      "tier": "sonnet",
+      "agent": "swarm-worker",
+      "risk": "medium",
+      "status": "implemented-unverified",
+      "acceptance": "PATH do helper deve existir; gate pendente"
+    },
+    {
+      "id": "lifecycle",
+      "goal": "restart/update/terminal-setup + helper do wrapper",
+      "files": [
+        "(a definir pelo lead)"
+      ],
+      "tier": "sonnet",
+      "agent": "swarm-worker",
+      "risk": "high",
+      "status": "in-progress",
+      "acceptance": "Entradas no publish.list após entrega"
+    },
+    {
+      "id": "install-inventory",
+      "goal": "Manifesto, symlinks globais, matriz, docs e keybindings",
+      "files": [
+        "publish.list",
+        "extensions/claude-compat/matrix.ts",
+        "extensions/claude-compat/shortcuts.ts",
+        "extensions/claude-compat/test/aliases.test.ts",
+        "extensions/claude-compat/test/shortcuts.test.ts",
+        "docs/claude-code-compat.md",
+        "docs/claude-code-keybindings.md",
+        "docs/specs/claude-code-parity/work.md",
+        "docs/specs/claude-code-parity/units.json"
+      ],
+      "tier": "sonnet",
+      "agent": "swarm-worker",
+      "risk": "medium",
+      "status": "implemented-unverified",
+      "acceptance": "Gate final pendente; nenhuma unidade marcada done"
+    }
+  ],
+  "finalGate": {
+    "status": "pending",
+    "note": "não executado; nenhuma unidade done"
+  }
+}
