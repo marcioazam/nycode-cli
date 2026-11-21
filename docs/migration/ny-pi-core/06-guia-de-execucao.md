@@ -806,8 +806,7 @@ serviço, não verificado). A remoção do Nix e o `release.mjs` novo revertem p
 4. **Remover `import/ny-pi/`**, já esvaziado por F2 a F11 (as exclusões de F1 passo 4 podem ficar): ramo
    `mig/f12-remove-import`; `find import/ny-pi -type f | wc -l` (o que sobrou tem destino em 03 ou justificativa);
    `git rm -r import/ny-pi`, commit `docs: remove import/ny-pi after migration (history stays in git)`; critério
-   global 2 (00 §8), sem saída: `rg -n "patch -p1|sed -i|CLAUDE_CONFIG_DIR|node_modules/pi-code|\.pi/agent" . -g
-   '!docs/**' -g '!node_modules' -g '!packages/coding-agent/src/migrations/from-pi.ts' -g '!CHANGELOG.md'`.
+   global 2 (00 §8, D-41): `python3 scripts/ci/lint/criterio2/criterio2.py` termina em `criterio2 OK`.
 5. **Fechar o checklist** [12](12-checklist-mestre.md) em 100%, com a sincronização com o upstream executada ao menos 2
    vezes depois de F6 (critério 7) e a política de sincronização em `docs/fork/` ([08](08-sincronizacao-upstream.md)).
    **[AUTORIZAÇÃO]** atualizar a descrição e os tópicos do repositório (`gh repo edit $UP --description "..."`).
