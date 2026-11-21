@@ -25,12 +25,13 @@
  *   radius                          with 582, without 582 (+0 of 463 output tokens)
  *   radius, level "high" injected   with 997, without 582
  *
- * Credentials: RADIUS_API_KEY or a `radius` entry in ~/.nycode/agent/auth.json; ANTHROPIC_API_KEY, ANTHROPIC_OAUTH_TOKEN or
+ * Credentials: NYCODE_RADIUS_GATEWAY plus RADIUS_API_KEY or a `radius` entry in ~/.nycode/agent/auth.json; ANTHROPIC_API_KEY, ANTHROPIC_OAUTH_TOKEN or
  * an `anthropic` entry for the control. Each test makes three paid requests.
  */
 import { describe, expect, it } from "vitest";
 import { completeSimple, getModel } from "../src/compat.ts";
 import { getEnvApiKey } from "../src/env-api-keys.ts";
+import { getRadiusModelsFromConfig } from "../src/providers/radius-config.ts";
 import type { Api, AssistantMessage, Context, Message, Model, Tool, ToolResultMessage } from "../src/types.ts";
 import { resolveApiKey } from "./oauth.ts";
 
@@ -38,6 +39,27 @@ import { resolveApiKey } from "./oauth.ts";
 const radiusKey = process.env.NYCODE_RADIUS_GATEWAY
 	? (process.env.RADIUS_API_KEY ?? (await resolveApiKey("radius")))
 	: undefined;
+
+/** The Radius model, built for the configured gateway: no catalog ships with the binary. */
+function radiusModel(): Model<"nycode-messages"> {
+	const [model] = getRadiusModelsFromConfig("radius", {
+		baseUrl: `${process.env.NYCODE_RADIUS_GATEWAY?.replace(/\/+$/, "")}/v1`,
+		models: [
+			{
+				id: "claude-opus-5-5",
+				name: "Claude Opus 5.5",
+				reasoning: true,
+				input: ["text"],
+				cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+				contextWindow: 200_000,
+				maxTokens: 64_000,
+			},
+		],
+	});
+	if (!model) throw new Error("radius model was not built");
+	return model;
+}
+
 const anthropicKey = getEnvApiKey("anthropic") ?? (await resolveApiKey("anthropic"));
 
 const tool: Tool = {
@@ -121,7 +143,7 @@ describe("replayed Claude thinking stays in context", () => {
 	});
 
 	it.skipIf(!radiusKey)("radius keeps it", { timeout: 180000 }, async () => {
-		const model = getModel("radius" as "anthropic", "claude-opus-5-5");
+		const model = radiusModel();
 		const { reply, result } = await thinkingTurn(model, radiusKey!);
 		// Cause: without this level, the replayed block has no effort marker and Anthropic drops it.
 		expect.soft(reply.providerThinkingLevel, "radius done event omits providerThinkingLevel").toBe("high");
@@ -131,7 +153,7 @@ describe("replayed Claude thinking stays in context", () => {
 	});
 
 	it.skipIf(!radiusKey)("radius keeps it when the client supplies the level", { timeout: 180000 }, async () => {
-		const model = getModel("radius" as "anthropic", "claude-opus-5-5");
+		const model = radiusModel();
 		const { reply, result } = await thinkingTurn(model, radiusKey!);
 		const added = await replayedThinkingTokens(
 			model,
