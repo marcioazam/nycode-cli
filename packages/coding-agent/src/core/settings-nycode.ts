@@ -9,7 +9,8 @@ import type { Settings } from "./settings-schema.ts";
 export type Env = Readonly<Record<string, string | undefined>>;
 
 export interface NycodeSettings {
-	permissions: { engine: "script" | "native" };
+	/** Kept as written (text) so the permission gate can deny a value it does not know. */
+	permissions: { engine: string };
 	compaction: { maxContextTokens: number };
 	harness: {
 		effortSandwich: { enabled: boolean; turns: number };
@@ -56,9 +57,10 @@ const TOOLS: Field<"lean" | "all"> = {
 	fromEnv: (raw) => (raw === "lean" || raw === "all" ? raw : undefined),
 	fromSettings: (raw) => (raw === "lean" || raw === "all" ? raw : undefined),
 };
-const ENGINE: Field<"script" | "native"> = {
+/** Unlike the other keys a malformed value is kept as text, never skipped: the permission gate denies what it does not know. */
+const ENGINE: Field<string> = {
 	fromEnv: () => undefined,
-	fromSettings: (raw) => (raw === "script" || raw === "native" ? raw : undefined),
+	fromSettings: (raw) => (raw === undefined ? undefined : typeof raw === "string" ? raw : JSON.stringify(raw)),
 };
 const TEXT: Field<string> = {
 	fromEnv: (raw) => (raw === "" ? undefined : raw),

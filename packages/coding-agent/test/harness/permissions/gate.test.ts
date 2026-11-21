@@ -1,20 +1,32 @@
 // K11 (C-F8-11): the permission gate that agent-session calls before every tool call: the engine switch, the ask
 // confirmation, bypass, and the hooks the native engine replaces.
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type * as BuiltinResources from "../../../src/core/builtin-resources.ts";
 import type { ExtensionContext } from "../../../src/core/extensions/types.ts";
 import { setBypassState } from "../../../src/core/permissions/bypass-state.ts";
 import { type GateHost, gateToolCall, hooksForEngine } from "../../../src/core/permissions/gate.ts";
 import { SettingsManager } from "../../../src/core/settings-manager.ts";
 
-const { initialBypass } = vi.hoisted(() => ({ initialBypass: process.env.NYCODE_BYPASS_PERMISSIONS }));
+const { initialBypass, resourcesRoot } = vi.hoisted(() => ({
+	initialBypass: process.env.NYCODE_BYPASS_PERMISSIONS,
+	resourcesRoot: { override: undefined as string | undefined },
+}));
 
-function host(engine: "script" | "native", ui: { hasUI: boolean; confirm?: () => Promise<boolean> }): GateHost {
+vi.mock("../../../src/core/builtin-resources.ts", async (importOriginal) => {
+	const original = await importOriginal<typeof BuiltinResources>();
+	return { ...original, getBuiltinResourcesRoot: () => resourcesRoot.override ?? original.getBuiltinResourcesRoot() };
+});
+
+function host(engine: string, ui: { hasUI: boolean; confirm?: () => Promise<boolean> }): GateHost {
 	const ctx = {
 		cwd: "/tmp/gate-project",
 		hasUI: ui.hasUI,
 		ui: { confirm: ui.confirm },
 	} as unknown as ExtensionContext;
-	return { settings: SettingsManager.inMemory({ permissions: { engine } }), runner: { createContext: () => ctx } };
+	return {
+		settings: SettingsManager.inMemory({ permissions: { engine } } as never),
+		runner: { createContext: () => ctx },
+	};
 }
 
 afterEach(() => {
@@ -25,6 +37,21 @@ afterEach(() => {
 describe("gateToolCall", () => {
 	it('leaves every call to the guard.py hook when the engine is "script"', async () => {
 		expect(await gateToolCall("bash", { command: "rm -rf /" }, host("script", { hasUI: false }))).toBeUndefined();
+	});
+
+	it("denies every call for an unknown engine, even a harmless one", async () => {
+		const result = await gateToolCall("bash", { command: "ls" }, host("wasm", { hasUI: true }));
+		expect(result).toEqual({ block: true, reason: expect.stringContaining('"wasm" is not known') });
+	});
+
+	it('denies when the engine is "script" and the guard script is gone', async () => {
+		resourcesRoot.override = "/nonexistent-resources";
+		try {
+			const result = await gateToolCall("bash", { command: "ls" }, host("script", { hasUI: true }));
+			expect(result).toEqual({ block: true, reason: expect.stringContaining("guard.py") });
+		} finally {
+			resourcesRoot.override = undefined;
+		}
 	});
 
 	it("blocks what guard.py denies", async () => {

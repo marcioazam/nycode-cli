@@ -27,7 +27,11 @@ function oracle(args: string[], input: unknown, bypass: boolean): unknown {
 }
 
 const roots: string[] = [];
+let judged = 0;
+let diverged = 0;
+
 afterAll(() => {
+	console.log(`differential: ${judged - diverged}/${judged} identical`);
 	for (const root of roots) rmSync(root, { recursive: true });
 });
 
@@ -118,12 +122,14 @@ function nativeOrError(c: Case, bypass: boolean): OracleVerdict {
 
 function firstMismatch(cases: Case[], bypass: boolean): string | undefined {
 	const expected = oracle(["decide"], cases, bypass) as OracleVerdict[];
+	judged += cases.length;
 	for (const [i, c] of cases.entries()) {
 		const got = nativeOrError(c, bypass);
 		// A guard.py exception is the guard's internal error, which the gate maps; here only that both fail matters.
 		const want = expected[i];
 		const bothFail = want?.[0] === "error" && got?.[0] === "error";
 		if (!bothFail && JSON.stringify(got) !== JSON.stringify(want)) {
+			diverged++;
 			return `${JSON.stringify(c)}\n  guard.py: ${JSON.stringify(want)}\n  native:   ${JSON.stringify(got)}`;
 		}
 	}

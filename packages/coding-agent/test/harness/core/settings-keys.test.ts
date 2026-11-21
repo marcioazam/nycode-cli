@@ -55,7 +55,6 @@ const rows: Row[] = [
 		envRaw: "0",
 		envExpected: false,
 	},
-	{ key: "permissions.engine", def: "script", set: "native", invalid: "wasm" },
 	{
 		key: "compaction.maxContextTokens",
 		env: "NYCODE_COMPACT_AT",
@@ -320,6 +319,16 @@ describe("settings keys of 02 section 5", () => {
 		const manager = SettingsManager.inMemory({ plan: { gate: false }, compaction: { maxContextTokens: 5 } });
 		expect(manager.getNycodeSettings().plan.gate).toBe(false);
 		expect(manager.getNycodeSettings().compaction.maxContextTokens).toBe(5);
+	});
+
+	it("permissions.engine defaults to script, accepts native and keeps an unknown value for the gate to deny", () => {
+		expect(SettingsManager.inMemory().getNycodeSettings().permissions.engine).toBe("script");
+		const native = { permissions: { engine: "native" as const } };
+		expect(validator.Check(native)).toBe(true);
+		expect(SettingsManager.inMemory(native).getNycodeSettings().permissions.engine).toBe("native");
+		const unknown = { permissions: { engine: "wasm" } } as never;
+		expect(validator.Check(unknown)).toBe(false);
+		expect(SettingsManager.inMemory(unknown).getNycodeSettings().permissions.engine).toBe("wasm");
 	});
 
 	it("reads hooks, statusLine and env as typed keys", () => {
