@@ -1,9 +1,11 @@
 import type { InlineExtension } from "../core/extensions/types.ts";
 import codemodeExtension from "./codemode/index.ts";
+import envSettingsExtension from "./env-settings/index.ts";
 import hooksExtension from "./hooks/index.ts";
 import llamaExtension from "./llama/index.ts";
 import mcpExtension from "./mcp/index.ts";
 import questionExtension from "./question/index.ts";
+import settingsFlagsExtension from "./settings-flags/index.ts";
 import todoExtension from "./todo/index.ts";
 import toolSearchExtension from "./tool-search/index.ts";
 
@@ -15,7 +17,9 @@ export const builtInExtensions: InlineExtension[] = [
 	{ name: "tool-search", factory: toolSearchExtension, replaceable: true, builtin: true },
 	{ name: "mcp", factory: mcpExtension, replaceable: true, builtin: true },
 	// Embedded pi-code extensions, in pi-code's load order (claude-rules first, then by name).
+	{ name: "env-settings", factory: envSettingsExtension, builtin: true },
 	{ name: "hooks", factory: hooksExtension, builtin: true },
 	{ name: "question", factory: questionExtension, builtin: true },
+	{ name: "settings-flags", factory: settingsFlagsExtension, builtin: true },
 	{ name: "todo", factory: todoExtension, builtin: true },
 ];
