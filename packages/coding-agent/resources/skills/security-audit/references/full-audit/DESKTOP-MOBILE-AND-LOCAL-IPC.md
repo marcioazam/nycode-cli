@@ -1,6 +1,6 @@
 # Desktop, Mobile, and Local IPC Hunting
 
-#### When to use this file
+## When to use this file
 
 Reach for this file when the target is a desktop or mobile app, privileged helper, updater, local daemon, webview host, deep-link handler, browser native-messaging host, or local IPC client/server. Relevant untrusted actors may be a downloaded document, remote web content, another local app, another OS user, a sandboxed process, or a lower-privilege account. State that starting capability instead of treating all local users as equivalent.
 
@@ -8,7 +8,7 @@ Use `CLIENT-SIDE.md` for browser-side webview behavior, `MEMORY-SAFETY-AND-BINAR
 
 ## Core discipline (include in every agent prompt for this domain)
 
-```
+```text
 - Establish the realistic local or remote-content attacker: another app, another OS user, a sandboxed child, an untrusted document, or a remote origin. Self-harm within the same account and authority is not a boundary violation.
 - Paths, process names, bundle/package IDs, and claimed sender fields are not peer authentication. Use OS peer credentials, code identity, capability handles, or protected channel state.
 - The native bridge or helper must authorize each operation and final resource after parsing. A trusted UI or broker does not make attacker-influenceable arguments trusted.

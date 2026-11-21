@@ -5,6 +5,7 @@ listed there). Never resolve one from memory: models pick versions with known CV
 and an instruction does not fix that; anchoring to a source does (arXiv 2605.06279, 2026).
 
 ## Targets seen 2026-10-30 (re-resolve)
+
 | Runtime | Target | Source |
 | --- | --- | --- |
 | Node.js | 26 Active LTS since 2026-10-28 (v26.13.0); 24 Maintenance; 22 Maintenance until 2027-04-30 | github.com/nodejs/Release schedule.json; nodejs.org/dist/index.json |
@@ -16,6 +17,7 @@ and an instruction does not fix that; anchoring to a source does (arXiv 2605.062
 | TypeScript | 7.0.2 (native compiler, GA 2026-07-08); `@typescript/typescript6` only for tools that still need the 6.x API | registry.npmjs.org/typescript; devblogs.microsoft.com/typescript |
 
 ## Checks
+
 - Every declared runtime floor: `engines`, `requires-python`, `go` directive, `rust-version`,
   `<TargetFramework>`, Docker `FROM`, CI `node-version`/`python-version` matrix, `.nvmrc`, `.tool-versions`.
   Report each place that pins a version below the target, once per defect, with `alt` locations.
@@ -28,6 +30,7 @@ and an instruction does not fix that; anchoring to a source does (arXiv 2605.062
   `govulncheck ./...`.
 
 ## Anti-signals and severity
+
 - Critical: an end-of-life runtime facing the internet; a dependency with an exploitable advisory on a
   reachable path.
 - High: a pre-release in production; a deprecated package with known advisories; no lockfile for a deployed app.

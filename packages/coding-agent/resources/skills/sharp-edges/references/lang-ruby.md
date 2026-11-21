@@ -23,6 +23,7 @@ obj.instance_variable_set("@#{user_input}", value)
 - Countless Rails apps vulnerable to controller#action injection
 
 **Fix**: Whitelist allowed values:
+
 ```ruby
 ALLOWED_METHODS = %w[create update delete].freeze
 raise unless ALLOWED_METHODS.include?(user_input)
@@ -50,6 +51,7 @@ YAML.load(user_input)
 ```
 
 **Fix**: Use `YAML.safe_load`:
+
 ```ruby
 YAML.safe_load(user_input)
 YAML.safe_load(user_input, permitted_classes: [Date, Time])
@@ -67,6 +69,7 @@ user.update_attributes(params[:user])
 ```
 
 **Fix**: Strong Parameters (Rails 4+):
+
 ```ruby
 def user_params
     params.require(:user).permit(:name, :email)  # Allowlist
@@ -91,6 +94,7 @@ User.order(params[:sort])  # Can inject: "name; DROP TABLE users--"
 ```
 
 **Fix**: Use parameterized queries:
+
 ```ruby
 User.where(name: params[:name])
 User.where("name = ?", params[:name])
@@ -110,6 +114,7 @@ exec("ls #{params[:dir]}")
 ```
 
 **Fix**: Use array form:
+
 ```ruby
 system("ls", params[:dir])  # Argument passed safely
 Open3.capture3("ls", params[:dir])
@@ -130,6 +135,7 @@ string.match(pattern)
 ```
 
 **Fix**: Use `\A` and `\z` for string boundaries:
+
 ```ruby
 /\Aadmin\z/  # Only matches exactly "admin"
 Regexp.escape(user_input)  # Escape special characters
@@ -176,6 +182,7 @@ add_item(2)  # [1, 2] - same array!
 ```
 
 **Fix**: Use nil default:
+
 ```ruby
 def add_item(item, list = nil)
     list ||= []
@@ -213,6 +220,7 @@ File.read("|whoami")  # Returns output of whoami
 ```
 
 **Fix**: Validate and sanitize paths:
+
 ```ruby
 path = File.expand_path(params[:filename], uploads_dir)
 raise unless path.start_with?(uploads_dir)
@@ -250,6 +258,7 @@ threads.each(&:join)
 ```
 
 **Fix**: Use Mutex or atomic operations:
+
 ```ruby
 mutex = Mutex.new
 mutex.synchronize { @counter += 1 }
@@ -269,5 +278,5 @@ mutex.synchronize { @counter += 1 }
 | `Regexp.new(user_input)` | ReDoS |
 | `params[:x].to_sym` | Symbol DoS (old Ruby) |
 | `ERB.new(user_input)` | Template injection |
-| `File.read("|...` or `File.open("|...` | Command execution |
+| `File.read("\|...` or `File.open("\|...` | Command execution |
 | `File.read(params[` without path validation | Path traversal |

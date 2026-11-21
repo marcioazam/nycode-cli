@@ -1,12 +1,12 @@
 # Validation, Structured Output, Verification, and Reporting
 
-### Phase 3: Independently validate every candidate
+## Phase 3: Independently validate every candidate
 
 After the clean coverage-critic pass or an explicitly recorded early stop, consolidate Phase 2 candidates and carried same-source prior confirmations by stable fingerprint and root cause. Give every unique proposed `confirmed` and `needs_validation` candidate to a fresh `general` verifier (nycode: `general-purpose`) that did not hunt it. A carried prior confirmation follows the same current verification path even though hunters exclude that unchanged root cause. A verifier may read hunter or prior artifacts but must re-read every cited current source location and independently run any decisive check it can reproduce safely.
 
 Assign each verifier a canonical lowercase unique ID and `<output-dir>/agents/<verifier-id>/scratch/` plus parent-owned `artifacts/`. The verifier writes only to `scratch/` and never writes retained artifacts. It receives only the candidate, its linked coverage-unit checks and artifact paths, architecture facts needed to interpret the path, exact relevant companion validation blocks, the promotion procedure block below, the source/local execution boundary, the `confirmed`, `needs_validation`, and `rejected` branches of `report-schema.json` copied verbatim, and prior records with the same fingerprint. It must not receive another verifier's conclusion.
 
-#### Candidate-verifier prompt
+### Candidate-verifier prompt
 
 ```text
 You did not write this candidate. Try to refute it from repository source and bounded

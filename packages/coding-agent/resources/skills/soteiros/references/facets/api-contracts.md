@@ -1,6 +1,7 @@
 # Facet: API and data contracts
 
 ## Editions seen 2026-10-30 (re-resolve)
+
 | Item | Edition | Source |
 | --- | --- | --- |
 | OpenAPI | 3.2.1 (2026-09-10); 3.2.0 added the QUERY method; Schema Object based on JSON Schema 2020-12 | spec.openapis.org/oas/latest.html |
@@ -9,6 +10,7 @@
 | AsyncAPI | 3.x for event contracts | asyncapi.com |
 
 ## Checks
+
 - A versioned, machine-readable contract on the current OpenAPI line. Its paths, parameters, responses and
   error responses match the handlers.
 - Errors use RFC 9457 problem details with a stable `type`, and never leak internals.
@@ -18,6 +20,7 @@
 - Migrations are additive first (expand, migrate, contract), reversible, and do not lock large tables.
 
 ## Severity
+
 - High: an undocumented breaking change; a destructive migration without a backup or reversal path.
 - Medium: an outdated contract line (OpenAPI 3.0 while 3.2 is current); ad-hoc error bodies; offset
   pagination on large tables.

@@ -46,6 +46,7 @@ After baseline analysis, checkout back to head commit to analyze changes.
 ## Phase 0: Intake & Triage
 
 **Extract changes:**
+
 ```bash
 # For commit range
 git diff <base>..<head> --stat
@@ -59,6 +60,7 @@ git diff <base>..<head> --name-only
 ```
 
 **Assess codebase size:**
+
 ```bash
 find . -name "*.sol" -o -name "*.rs" -o -name "*.go" -o -name "*.ts" | wc -l
 ```
@@ -82,7 +84,8 @@ For each changed file:
 1. **Read both versions** (baseline and changed)
 
 2. **Analyze each diff region:**
-   ```
+
+   ```text
    BEFORE: [exact code]
    AFTER: [exact code]
    CHANGE: [behavioral impact]
@@ -90,6 +93,7 @@ For each changed file:
    ```
 
 3. **Git blame removed code:**
+
    ```bash
    # When was it added? Why?
    git log -S "removed_code" --all --oneline
@@ -101,6 +105,7 @@ For each changed file:
    - Recently added (<1 month) then removed → HIGH
 
 4. **Check for regressions (re-added code):**
+
    ```bash
    git log -S "added_code" --all -p
    ```
@@ -114,7 +119,8 @@ For each changed file:
    - Are checks weaker? Edge cases covered?
 
 6. **Generate concrete attack scenarios:**
-   ```
+
+   ```text
    SCENARIO: [attack goal]
    PRECONDITIONS: [required state]
    STEPS:
@@ -130,6 +136,7 @@ For each changed file:
 ## Phase 2: Test Coverage Analysis
 
 **Identify coverage gaps:**
+
 ```bash
 # Production code changes (exclude tests)
 git diff <range> --name-only | grep -v "test"
@@ -151,6 +158,7 @@ grep -r "test.*functionName" test/ --include="*.sol" --include="*.js"
 ## Phase 3: Blast Radius Analysis
 
 **Calculate impact:**
+
 ```bash
 # Count callers for each modified function
 grep -r "functionName(" --include="*.sol" . | wc -l
@@ -216,6 +224,7 @@ audit-context-building --scope [file containing changed function] --focus flow-a
 **If `audit-context-building` skill is NOT available**, manually perform the line-by-line analysis above using `read`, `rg` (via `bash`) and code tracing. (optional)
 
 **Cross-cutting pattern detection:**
+
 ```bash
 # Find repeated validation patterns
 grep -r "require.*amount > 0" --include="*.sol" .

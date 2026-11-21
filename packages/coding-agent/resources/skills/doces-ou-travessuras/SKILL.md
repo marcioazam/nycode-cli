@@ -14,6 +14,7 @@ It compares the working tree, untracked files included, with `--base` (default `
 branch point, such as `--base origin/main`). It only reads. Exit 0 DOCE, 1 TRAVESSURA, 2 error.
 
 ## Reading the findings
+
 - `TRAVESSURA file:line - reason` (high): treat it as test gaming until justified; revert it or fix the code.
   - Tests: assert-removed, assert-loosened, tolerance-loosened, test-removed, test-deleted, skip-added (skip,
     xfail, only, todo, ignore, deselect), harness-hook (conftest hooks that change collection or outcomes).
@@ -27,6 +28,7 @@ branch point, such as `--base origin/main`). It only reads. Exit 0 DOCE, 1 TRAVE
 - DOCE means no known pattern matched. The analyzer is heuristic; it does not prove the change honest.
 
 ## Contract
+
 - The request and the spec outrank the tests. Change a test only when the test itself is wrong: cite the spec,
   doc or observed behavior that proves it, and record the old and new contract with that evidence in the task's
   `/docs` record and in the final report.
@@ -38,6 +40,7 @@ branch point, such as `--base origin/main`). It only reads. Exit 0 DOCE, 1 TRAVE
 - List every TRAVESSURA you keep, with its justification, in the handback.
 
 ## Integration
+
 - In nycode nothing runs it for you: the Claude Code sensors (`test_edit_sensor` in `~/.claude/hooks/hook-dispatch.sh`
   and the cadê-o-print Stop hook) are not installed here (`~/.nycode/agent/settings.json` registers only
   `guard.py`). Run it yourself at the moments listed above, and require it in a worker's handback when a delegated

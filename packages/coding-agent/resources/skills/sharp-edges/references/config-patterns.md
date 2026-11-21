@@ -83,6 +83,7 @@ sanitize_input: false
 **Pattern**: Any boolean that disables a security control.
 
 **The typo problem:**
+
 ```yaml
 verify_ssl: fasle   # Typo - what does the parser do?
 verify_ssl: "false" # String "false" - truthy in many languages!

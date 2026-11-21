@@ -1,6 +1,6 @@
 # AI, LLM, and Agent Hunting
 
-#### When to use this file
+## When to use this file
 
 Reach for this file when a language model participates in a trust-sensitive decision: chatbots and assistants, RAG pipelines, persistent agent memory, agent/tool-calling loops, MCP servers and clients, code that builds prompts from untrusted input, or code that consumes model output and acts on it. The important data flow is *untrusted content → model or memory → capability, authority, or sink*.
 
@@ -8,7 +8,7 @@ Use this alongside `ATTACK-CLASSES.md`, not instead of it. Transport, access con
 
 ## Core discipline (include in every agent prompt for this domain)
 
-```
+```text
 - Prompt injection alone is not a finding. Require a code-level boundary failure: content reaches another principal's context, invokes authority the requester lacks, discloses data they cannot read, or drives a sink they cannot reach directly.
 - Model output, memory, tool descriptions, and MCP responses are untrusted inputs. Point to the code that grants authority, trusts output, writes durable state, or feeds a sink.
 - A guardrail prompt is not a security boundary. Count only deterministic checks, resource-scoped authorization, isolation, binding, and constrained credentials.
@@ -62,7 +62,7 @@ Tool descriptions, resource metadata, prompts, completion hints, or schemas supp
 **MCP authorization by protocol version**
 Local addition (kept in the nycode port) from the MCP 2026-07-28 [versioning](https://modelcontextprotocol.io/docs/2026-07-28/learn/versioning), [security best practices](https://modelcontextprotocol.io/docs/2026-07-28/tutorials/security/security_best_practices) and [changelog](https://modelcontextprotocol.io/specification/2026-07-28/changelog) pages, read 2026-10-24.
 - Identify the protocol version first: in 2026-07-28 each request declares it in `_meta` and, on Streamable HTTP, in the `MCP-Protocol-Version` header; one server may accept several versions.
-- On Streamable HTTP (2026-07-28) the `MCP-Protocol-Version`, `Mcp-Method`, `Mcp-Name` and `Mcp-Param-*` headers mirror the body, which stays the source of truth: a server that processes the body MUST reject a missing required header or any header/body mismatch with 400 and `HeaderMismatch` (-32020), decoding Base64-sentinel `Mcp-Name`/`Mcp-Param-*` values before comparing; an intermediary that routes, authorizes or rate-limits on those headers SHOULD reject requests whose `MCP-Protocol-Version` is absent or predates header-body validation. A component that authorizes on a header while another executes the body is an authorization bypass (https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http, read 2026-10-26).
+- On Streamable HTTP (2026-07-28) the `MCP-Protocol-Version`, `Mcp-Method`, `Mcp-Name` and `Mcp-Param-*` headers mirror the body, which stays the source of truth: a server that processes the body MUST reject a missing required header or any header/body mismatch with 400 and `HeaderMismatch` (-32020), decoding Base64-sentinel `Mcp-Name`/`Mcp-Param-*` values before comparing; an intermediary that routes, authorizes or rate-limits on those headers SHOULD reject requests whose `MCP-Protocol-Version` is absent or predates header-body validation. A component that authorizes on a header while another executes the body is an authorization bypass (<https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http>, read 2026-10-26).
 - 2026-07-28 has no protocol session (no `initialize`, no `Mcp-Session-Id`). State lives in server-minted handles that must be random, expiring and bound server-side to the verified user; holding a handle is not authentication. Session-hijacking checks apply only to 2025-11-25 and earlier.
 - A server accepts only tokens issued for it (audience check) and never passes a client token through to downstream APIs.
 - A client validates the `iss` authorization response parameter when present (RFC 9207) before exchanging the code, and never reuses client credentials with another authorization server; PKCE alone does not stop mix-up.

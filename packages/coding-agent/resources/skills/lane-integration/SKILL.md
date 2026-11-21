@@ -10,12 +10,14 @@ set branch, commit and verification rules). This skill fills gaps and defers to 
 combine finished lanes; you do not redo their work.
 
 ## Setup
+
 1. Use one integration branch off the base. Keep a state table in the task's record:
    lane | owned paths | head SHA | last green head | status.
 2. Before each commit or pick, compare `git rev-parse HEAD` with the table. A head you did not write means
    another writer is active: re-read `git status` and the log before acting.
 
 ## Per lane, in dependency order
+
 1. Bring the lane in with `git cherry-pick -x <sha>`, or `git merge --ff-only` for linear history, or
    `git merge --no-ff` to keep the lane visible.
 2. Generated files: never hand-merge. Take either side, regenerate from the sources, keep the generator's
@@ -31,19 +33,23 @@ A conflict that needs a product decision (two valid behaviours, two competing co
 `blocked` with both hunks, the file:line and the lanes. Decide nothing.
 
 ## Stopped lanes
+
 Save the work as a WIP commit or a patch bundle (`git format-patch`, or `git diff` into a file). Resume with a
 fresh `subagent` call (e.g. `lane-integrator` or `swarm-worker`) briefed from `git status`, the diff and the
 logs, never from memory of the old session or by `resume` of the stopped run.
 
 ## Never
+
 `git stash`, `git rebase`, `--no-verify`, `rm -rf`, push. Commit only when the brief authorizes it.
 
 ## Verify once
+
 Note a pre-existing failure only after reproducing it on the base commit. Run no gate per lane: hand the exact
 integrated head SHA to `gate-runner` (`subagent` `{agent: "gate-runner", task: ...}`, pinned to `haiku`) for one
 verification.
 
 ## Handback
+
 - Per-lane result and head SHA.
 - Resolution table: file, conflict, resolution, source of truth.
 - Regenerations run, with `--check` results.

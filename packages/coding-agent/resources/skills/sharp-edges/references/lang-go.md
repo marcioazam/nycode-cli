@@ -102,6 +102,7 @@ type Config struct {
 ```
 
 **Fix**:
+
 ```go
 decoder := json.NewDecoder(r.Body)
 decoder.DisallowUnknownFields()  // Reject unknown fields

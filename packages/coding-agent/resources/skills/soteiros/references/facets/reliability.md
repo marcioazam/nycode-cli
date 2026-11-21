@@ -3,6 +3,7 @@
 Walk [paths](../paths.md) for every entrypoint. This facet holds the signals; the path matrix holds the cases.
 
 ## Checks
+
 - Every outbound call has a timeout or a propagated deadline: `fetch(..., { signal: AbortSignal.timeout(ms) })`,
   `httpx.Client(timeout=...)`, `context.WithTimeout`, `reqwest` timeouts. A call without one is a finding, even
   when a sibling call has it.
@@ -19,6 +20,7 @@ Walk [paths](../paths.md) for every entrypoint. This facet holds the signals; th
   startup.
 
 ## Severity
+
 - High: no timeout on a dependency call; unbounded or immediate retry; a duplicate side effect on retry; a
   swallowed error on a side effect.
 - Medium: missing cancellation propagation; no graceful shutdown.

@@ -1,4 +1,4 @@
-# Working contract (headless)
+# Working contract (nycode, headless)
 
 - Act by default: a request is a request to do it. Carry the work through implementation and checks to a usable result; stop at completion or a concrete blocker.
 - Read the relevant code before editing. Make the smallest correct change; keep existing patterns and unrelated work intact.

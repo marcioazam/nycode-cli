@@ -16,6 +16,7 @@ Generate markdown report with these mandatory sections:
 - Key metrics (test gaps, blast radius, red flags)
 
 **Template:**
+
 ```markdown
 # Executive Summary
 
@@ -45,6 +46,7 @@ Generate markdown report with these mandatory sections:
 - Lines changed stats
 
 **Template:**
+
 ```markdown
 ## What Changed
 
@@ -92,6 +94,7 @@ For each HIGH/CRITICAL issue:
 ```
 
 **Example:**
+
 ```markdown
 ### 🔴 CRITICAL: Authorization Bypass in Withdraw
 
@@ -122,13 +125,15 @@ vault.withdraw(vault.balance());
 ```
 
 **Recommendation**:
+
 ```solidity
 function withdraw(uint256 amount) external {
 +   require(msg.sender == owner, "Unauthorized");
     // ... rest of function
 }
 ```
-```
+
+```text
 
 ---
 
@@ -163,6 +168,7 @@ N HIGH-risk functions without tests → Recommend blocking merge
 - Impact quantification
 
 **Template:**
+
 ```markdown
 ## Blast Radius Analysis
 
@@ -182,6 +188,7 @@ N HIGH-risk functions without tests → Recommend blocking merge
 - Commit message red flags
 
 **Template:**
+
 ```markdown
 ## Historical Context
 
@@ -202,6 +209,7 @@ N HIGH-risk functions without tests → Recommend blocking merge
 - Technical debt (future)
 
 **Template:**
+
 ```markdown
 ## Recommendations
 
@@ -229,6 +237,7 @@ N HIGH-risk functions without tests → Recommend blocking merge
 - Confidence level
 
 **Template:**
+
 ```markdown
 ## Analysis Methodology
 
@@ -268,9 +277,11 @@ N HIGH-risk functions without tests → Recommend blocking merge
 **Tables:** Use markdown tables for structured data
 
 **Code blocks:** Always include syntax highlighting
+
 ```solidity
 // Solidity code
 ```
+
 ```rust
 // Rust code
 ```
@@ -287,6 +298,7 @@ N HIGH-risk functions without tests → Recommend blocking merge
 - 🟢 LOW
 
 **Before/After comparisons:**
+
 ```markdown
 **BEFORE:**
 ```code
@@ -294,10 +306,12 @@ old code
 ```
 
 **AFTER:**
+
 ```code
 new code
 ```
-```
+
+```text
 
 **Line number references:** Always include
 - Format: `file.sol:L123`
@@ -314,10 +328,12 @@ new code
 
 **Filename format:**
 ```
+
 <PROJECT>_DIFFERENTIAL_REVIEW_<DATE>.md
 
 Example: VeChain_Stargate_DIFFERENTIAL_REVIEW_2025-12-26.md
-```
+
+```text
 
 ---
 

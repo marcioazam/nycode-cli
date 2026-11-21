@@ -10,7 +10,6 @@ Turn something the user can't answer alone into a **questionnaire**: a Markdown 
 
 Topic: $ARGUMENTS (if empty, ask the user for the topic first). Steps 1 and 2 take open answers, so ask them in plain text; use the `question` tool only when offering concrete choices (for example the recipient's role among candidates you already know).
 
-
 1. **Who is it going to?** Ask, in one exchange, the recipient's role, expertise, and relationship to the user. This fixes the questionnaire's tone and how much context it must carry. Done when you know who the recipient is and what they know that the user doesn't.
 
 2. **What do you need back?** Ask, in one exchange, the specific decisions or facts the user can't resolve alone and needs from this person. Done when you have a concrete list of what the user must walk away able to do or decide.

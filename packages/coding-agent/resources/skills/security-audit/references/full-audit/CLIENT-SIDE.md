@@ -1,6 +1,6 @@
 # Client-Side and Browser Hunting
 
-#### When to use this file
+## When to use this file
 
 Reach for this file when meaningful trust decisions or untrusted rendering happen in a browser: single-page apps, browser extensions, embedded webviews, service workers, offline applications, and code that renders attacker-influenceable content into the DOM, receives cross-window messages, or uses browser storage. These paths include sources the server never sees, such as URL fragments, `window.name`, `postMessage`, and previously cached content.
 
@@ -8,7 +8,7 @@ Use alongside `ATTACK-CLASSES.md`. This file covers browser sources and sinks, o
 
 ## Core discipline (include in every agent prompt for this domain)
 
-```
+```text
 - A client-side candidate needs a controllable source and an executing or disclosing sink. Name both and show attacker-influenced data reaching the sink.
 - The impact must reach a victim's session, another origin, or shared persistence. Self-injection and disclosure of the attacker's own data are not findings.
 - Framework escaping, browser same-origin policy, CSP, COOP/CORP, service-worker scope, and modern noopener defaults are real controls. Verify them before assigning impact.

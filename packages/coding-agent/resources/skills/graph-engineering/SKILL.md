@@ -29,12 +29,13 @@ description: "Decompose a multi-file task into a unit graph (disjoint files, dep
    `{id, goal, files: [], after?: [], tier?, acceptance?, agent?, risk?}`, paths repository-relative.
 
 ## Evidence (read 2026-11-08)
-- https://arxiv.org/abs/2503.21710, https://arxiv.org/abs/2502.00350 (repository graphs: +30-156% relative resolve, +6.33 pp; preprints) and https://arxiv.org/html/2610.33958 (embedding index carries the gain, graph tools add nothing for small open models; 1 hop dominates); https://arxiv.org/abs/2512.08296 (+80.8% decomposable, -70% sequential). Research 2026-11-13: `docs/harness/research/2026-11-13-graph-loop-harness-sota.md`
 
-- https://arxiv.org/abs/2610.08647 (SquidAgent: parallel multi-agent often slower than one agent from re-exploration and alignment overhead; parallelize a layer only when critical path plus overheads beats serial; 2.6x mean wall-time speedup over Claude Code; preprint, self-reported)
-- https://arxiv.org/abs/2610.17471 (implementers and verifiers plateau beyond four workers; extra implementers fragment code; preprint)
-- https://arxiv.org/abs/2610.07261 (declared disjoint scopes plus producer-to-consumer merge order: conflicts 13 to 0, clean integration 1/9 to 9/9; single author, small n)
-- https://arxiv.org/abs/2510.18893 (CodeCRDT: zero textual merge failures but about 5-10% semantic conflicts; parallel speedup up to 21.1% or slowdown up to 39.4% depending on interdependence; preliminary)
-- https://arxiv.org/abs/2605.06320 (LATTE: an evolving shared task-dependency graph beats static decomposition and leader-worker on tokens, time and coordination failures; abstract only)
-- https://arxiv.org/abs/2604.17111 (uncoordinated parallel agents on one rate-limited endpoint fail 72-100%; cap concurrency)
-- https://arxiv.org/abs/2610.10263 and https://arxiv.org/abs/2604.02460 (parallel coding agents spend 1.41-3.31x tokens; one agent matches several at equal thinking tokens)
+- <https://arxiv.org/abs/2503.21710>, <https://arxiv.org/abs/2502.00350> (repository graphs: +30-156% relative resolve, +6.33 pp; preprints) and <https://arxiv.org/html/2610.33958> (embedding index carries the gain, graph tools add nothing for small open models; 1 hop dominates); <https://arxiv.org/abs/2512.08296> (+80.8% decomposable, -70% sequential). Research 2026-11-13: `docs/harness/research/2026-11-13-graph-loop-harness-sota.md`
+
+- <https://arxiv.org/abs/2610.08647> (SquidAgent: parallel multi-agent often slower than one agent from re-exploration and alignment overhead; parallelize a layer only when critical path plus overheads beats serial; 2.6x mean wall-time speedup over Claude Code; preprint, self-reported)
+- <https://arxiv.org/abs/2610.17471> (implementers and verifiers plateau beyond four workers; extra implementers fragment code; preprint)
+- <https://arxiv.org/abs/2610.07261> (declared disjoint scopes plus producer-to-consumer merge order: conflicts 13 to 0, clean integration 1/9 to 9/9; single author, small n)
+- <https://arxiv.org/abs/2510.18893> (CodeCRDT: zero textual merge failures but about 5-10% semantic conflicts; parallel speedup up to 21.1% or slowdown up to 39.4% depending on interdependence; preliminary)
+- <https://arxiv.org/abs/2605.06320> (LATTE: an evolving shared task-dependency graph beats static decomposition and leader-worker on tokens, time and coordination failures; abstract only)
+- <https://arxiv.org/abs/2604.17111> (uncoordinated parallel agents on one rate-limited endpoint fail 72-100%; cap concurrency)
+- <https://arxiv.org/abs/2610.10263> and <https://arxiv.org/abs/2604.02460> (parallel coding agents spend 1.41-3.31x tokens; one agent matches several at equal thinking tokens)

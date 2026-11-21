@@ -24,7 +24,7 @@ This skill performs comprehensive security review of code changes:
 
 ## Installation
 
-```
+```text
 /plugin install trailofbits/skills/plugins/differential-review
 ```
 
@@ -41,6 +41,7 @@ This skill performs comprehensive security review of code changes:
 This skill uses a **modular documentation architecture** for token efficiency and progressive disclosure:
 
 ### Core Entry Point
+
 - **[SKILL.md](skills/differential-review/SKILL.md)** - Main entry point (224 lines)
   - Quick reference tables for triage
   - Decision tree routing to detailed docs
@@ -48,6 +49,7 @@ This skill uses a **modular documentation architecture** for token efficiency an
   - Integration with other skills
 
 ### Supporting Documentation
+
 - **[methodology.md](skills/differential-review/methodology.md)** - Detailed phase-by-phase workflow (234 lines)
   - Pre-Analysis: Baseline context building
   - Phase 0: Intake & Triage
@@ -74,6 +76,7 @@ This skill uses a **modular documentation architecture** for token efficiency an
   - Quick detection bash commands
 
 ### Benefits of This Structure
+
 - **Token Efficient** - Load only the documentation you need
 - **Progressive Disclosure** - Quick reference for triage, detailed docs for deep analysis
 - **Maintainable** - Each concern separated into its own file
@@ -106,7 +109,7 @@ Generates a markdown report with:
 
 ## Example Usage
 
-```
+```text
 Review the security implications of this PR:
 git diff main..feature/auth-changes
 ```

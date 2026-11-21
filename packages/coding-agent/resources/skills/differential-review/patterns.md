@@ -25,6 +25,7 @@ These complement the generic patterns below.
 **Pattern:** Previously removed code is re-added
 
 **Detection:**
+
 ```bash
 # Code previously removed for security
 git log -S "pattern" --all --grep="security\|fix\|CVE"
@@ -36,6 +37,7 @@ git log -S "pattern" --all --grep="security\|fix\|CVE"
 - No explanation in current PR for re-addition
 
 **Example:**
+
 ```solidity
 // Removed in commit abc123 "Fix reentrancy CVE-2024-1234"
 // Re-added in current PR
@@ -53,6 +55,7 @@ function emergencyWithdraw() {
 **Detection:** Look for two state updates in related functions for same logical action
 
 **Example:**
+
 ```solidity
 // Request exit
 function requestExit() {
@@ -74,6 +77,7 @@ function processExit() {
 **Pattern:** Removed `require`/`assert`/`check` without replacement
 
 **Detection:**
+
 ```bash
 git diff <range> | grep "^-.*require"
 git diff <range> | grep "^-.*assert"
@@ -86,6 +90,7 @@ git diff <range> | grep "^-.*revert"
 - Does removal expose vulnerability?
 
 **Example:**
+
 ```diff
 function withdraw(uint256 amount) {
 -   require(amount > 0, "Zero amount");
@@ -108,6 +113,7 @@ function withdraw(uint256 amount) {
 - Look for unchecked blocks in Solidity >=0.8.0
 
 **Example:**
+
 ```solidity
 // Solidity 0.7 without SafeMath
 balance[user] -= amount;  // Can underflow if amount > balance
@@ -129,6 +135,7 @@ unchecked {
 **Detection:** Look for CEI (Checks-Effects-Interactions) pattern violations
 
 **Example:**
+
 ```solidity
 // VULNERABLE: External call before state update
 function withdraw() {
@@ -156,6 +163,7 @@ function withdraw() {
 **Pattern:** Removed or relaxed permission checks
 
 **Detection:**
+
 ```bash
 git diff <range> | grep "^-.*onlyOwner"
 git diff <range> | grep "^-.*onlyAdmin"
@@ -168,6 +176,7 @@ git diff <range> | grep "^-.*require.*msg.sender"
 - Was check moved to caller?
 
 **Example:**
+
 ```diff
 - function setConfig(uint value) external onlyOwner {
 + function setConfig(uint value) external {
@@ -186,6 +195,7 @@ git diff <range> | grep "^-.*require.*msg.sender"
 **Detection:** Look for two-step processes without commit-reveal or timelocks
 
 **Example:**
+
 ```solidity
 // Step 1: Approve
 function approve(address spender, uint amount) {
@@ -206,12 +216,14 @@ function approve(address spender, uint amount) {
 **Pattern:** Security logic depending on `block.timestamp`
 
 **Detection:**
+
 ```bash
 grep -r "block.timestamp" --include="*.sol"
 grep -r "now\b" --include="*.sol"  # Solidity <0.7
 ```
 
 **Example:**
+
 ```solidity
 // VULNERABLE
 require(block.timestamp > deadline, "Too early");
@@ -231,11 +243,13 @@ require(block.number > deadlineBlock, "Too early");
 **Pattern:** External call without checking success
 
 **Detection:**
+
 ```bash
 git diff <range> | grep "\.call\|\.send\|\.transfer"
 ```
 
 **Example:**
+
 ```solidity
 // VULNERABLE
 token.transfer(user, amount);  // Ignores return value
@@ -259,6 +273,7 @@ require(token.transfer(user, amount), "Transfer failed");
 - Critical function depends on external call success
 
 **Example:**
+
 ```solidity
 // DOS: Attacker adds many users, making loop too expensive
 function distributeRewards() {
@@ -275,21 +290,25 @@ function distributeRewards() {
 ## Quick Detection Commands
 
 **Find removed security checks:**
+
 ```bash
 git diff <range> | grep "^-" | grep -E "require|assert|revert"
 ```
 
 **Find new external calls:**
+
 ```bash
 git diff <range> | grep "^+" | grep -E "\.call|\.delegatecall|\.staticcall"
 ```
 
 **Find changed access modifiers:**
+
 ```bash
 git diff <range> | grep -E "onlyOwner|onlyAdmin|internal|private|public|external"
 ```
 
 **Find arithmetic changes:**
+
 ```bash
 git diff <range> | grep -E "\+|\-|\*|/"
 ```

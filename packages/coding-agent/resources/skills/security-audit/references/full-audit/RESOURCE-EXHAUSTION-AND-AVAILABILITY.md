@@ -1,6 +1,6 @@
 # Resource Exhaustion and Availability Hunting
 
-#### When to use this file
+## When to use this file
 
 Reach for this file when untrusted requests, messages, files, tenant state, or agent work can consume CPU, memory, disk, connections, worker slots, paid APIs, or queue capacity, or can deadlock/crash a shared service. This domain distinguishes a source-reviewable availability vulnerability from a general performance issue. Never validate by stressing a shared or live service.
 
@@ -8,7 +8,7 @@ Use `MEMORY-SAFETY-AND-BINARY.md` for memory-integrity defects and `PROTOCOLS-RP
 
 ## Core discipline (include in every agent prompt for this domain)
 
-```
+```text
 - Require an input-to-cost path, a missing effective bound, and impact on another user, shared service, safety function, or operator-owned spend. Self-limiting work in the requester's own process is not a service vulnerability.
 - A missing rate limit is not enough. Check body/message/file caps, concurrency, queues, deadlines, database constraints, upstream gateways, and per-tenant quotas before calling a path unbounded.
 - Do not run stress, saturation, or production tests. Use asymptotic analysis, small boundary fixtures, mocked paid calls, strict local resource limits, and deterministic cancellation tests.

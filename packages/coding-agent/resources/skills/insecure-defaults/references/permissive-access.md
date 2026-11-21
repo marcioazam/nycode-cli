@@ -9,15 +9,18 @@ Ask who gains access, not how wide the value looks. `0o644` on a CDN asset is co
 ## VULNERABLE - Report These
 
 **File permissions world-writable**
+
 ```python
 # File: src/storage/files.py
 def create_secure_file(path):
     fd = os.open(path, os.O_CREAT | os.O_WRONLY, 0o666)  # rw-rw-rw-
     return fd
 ```
+
 **Why vulnerable:** Any user can write to file. Should be 0o600 or 0o644.
 
 **S3 bucket public by default**
+
 ```python
 # File: infrastructure/storage.py
 def create_storage_bucket(name):
@@ -26,9 +29,11 @@ def create_storage_bucket(name):
         ACL='public-read'  # Publicly readable by default
     )
 ```
+
 **Why vulnerable:** Sensitive data exposed publicly. Should require explicit configuration.
 
 **API allows any origin**
+
 ```python
 # File: app.py
 @app.after_request
@@ -37,11 +42,13 @@ def after_request(response):
     response.headers['Access-Control-Allow-Credentials'] = 'true'
     return response
 ```
+
 **Why vulnerable:** CORS misconfiguration. Allows credential theft from any site.
 
 ## SECURE - Skip These
 
 **Explicitly configured permissiveness with justification**
+
 ```python
 # File: src/storage/public_assets.py
 def create_public_asset(path):
@@ -52,6 +59,7 @@ def create_public_asset(path):
 ```
 
 **Restrictive by default**
+
 ```python
 # File: infrastructure/storage.py
 def create_storage_bucket(name, public=False):

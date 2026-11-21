@@ -311,7 +311,7 @@ fun process() {
 
 ---
 
-## C#
+## C
 
 ### Nullable Reference Types Opt-In
 

@@ -20,6 +20,7 @@ md5("240610708") == md5("QNKCDZO")  // TRUE!
 ```
 
 **Fix**: Use strict comparison `===`:
+
 ```php
 "0e123" === "0e456"  // FALSE
 $hash1 === $hash2    // Compares actual strings
@@ -41,6 +42,7 @@ strcmp(array(), "password")  // Returns NULL, not -1 or 1
 ```
 
 **Fix**: Validate input type and use `===`:
+
 ```php
 if (is_string($_POST['password']) &&
     strcmp($_POST['password'], $stored_password) === 0) {
@@ -85,6 +87,7 @@ $obj = unserialize($_GET['data']);
 
 **Fix**: Never unserialize untrusted data. Use JSON instead.
 If you must, use `allowed_classes` parameter (PHP 7.0+):
+
 ```php
 unserialize($data, ['allowed_classes' => false]);
 unserialize($data, ['allowed_classes' => ['SafeClass']]);
@@ -171,6 +174,7 @@ passthru("convert " . $_FILES['image']['name']);
 ```
 
 **Fix**: Use `escapeshellarg()` and `escapeshellcmd()`:
+
 ```php
 system("ls " . escapeshellarg($_GET['dir']));
 ```
@@ -223,6 +227,7 @@ session_start();
 ```
 
 **Fix**: Regenerate session ID after authentication:
+
 ```php
 session_start();
 // ... authenticate user ...
@@ -233,7 +238,7 @@ session_regenerate_id(true);  // true deletes old session
 
 | Pattern | Risk |
 |---------|------|
-| `== ` comparison with user input | Type juggling |
+| `==` comparison with user input | Type juggling |
 | `strcmp($user_input, ...)` | NULL comparison bypass |
 | `$$var` or `extract($_` | Variable injection |
 | `unserialize($user_input)` | Object injection RCE |

@@ -12,7 +12,7 @@ Concurrency guidance adapted 2026-09-20 from Jeffallan's [Go concurrency referen
 
 Current specifics: Go runtime and test rules (Go release notes read 2026-10-24). Apply each item only from the Go version it names, as set by the module's `go` directive and its toolchain:
 
-- Only the two newest majors get fixes, per https://go.dev/doc/devel/release (1.27 and 1.26 on 2026-10-24); report a CI Go version or `toolchain` directive older than both as unsupported. A lower `go` directive alone is a compatibility floor, not a defect: since [1.26](https://go.dev/doc/go1.26), `go mod init` writes one major lower.
+- Only the two newest majors get fixes, per <https://go.dev/doc/devel/release> (1.27 and 1.26 on 2026-10-24); report a CI Go version or `toolchain` directive older than both as unsupported. A lower `go` directive alone is a compatibility floor, not a defect: since [1.26](https://go.dev/doc/go1.26), `go mod init` writes one major lower.
 - Test timeouts, retries and disconnects in `testing/synctest` bubbles ([1.25+](https://go.dev/doc/go1.25); `synctest.Sleep` and `httptest.NewTestServer` in [1.27](https://go.dev/doc/go1.27)), never with fixed sleeps or longer timeouts. With real I/O (sockets, containers, databases), wait on an observable readiness condition under a bounded deadline. Benchmarks use `for b.Loop()` ([1.24](https://go.dev/doc/go1.24)).
 - Back cancel, disconnect and leak claims with the `goroutineleak` profile (1.27); capture latency spikes with `runtime/trace.FlightRecorder` (1.25+).
 - On 1.27, `encoding/json` runs on v2, so its error text is no contract; timer channels are always unbuffered (`asynctimerchan` is gone); tracebacks print pprof labels, so keep tenant data out of them.

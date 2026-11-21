@@ -27,6 +27,7 @@
 | v2 | [abstract] | semgrep | N | N | N |
 
 **Final Pattern:**
+
 ```yaml
 # Pattern used
 ```
@@ -65,9 +66,11 @@
 ## Recommendations
 
 ### Immediate
+
 1. Fix variant in [location]
 
 ### Preventive
+
 1. Add Semgrep rule to CI
 
 ```yaml

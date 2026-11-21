@@ -1,6 +1,6 @@
 # Protocols, RPC, and Messaging Hunting
 
-#### When to use this file
+## When to use this file
 
 Reach for this file when the target uses gRPC, GraphQL transports, Cap'n Proto, Thrift, Protobuf, custom binary protocols, streaming RPC, webhooks, brokers, queues, pub/sub, or event buses. It covers peer identity, logical message interpretation, routing, replay, ordering, and delivery semantics. Use `MEMORY-SAFETY-AND-BINARY.md` for parser memory safety, `WEB-PROTOCOL-AND-AUTH.md` for HTTP framing, and `RESOURCE-EXHAUSTION-AND-AVAILABILITY.md` for availability impact.
 
@@ -8,7 +8,7 @@ Split large systems by producer/consumer pair, external/internal peer role, sync
 
 ## Core discipline (include in every agent prompt for this domain)
 
-```
+```text
 - "Internal" is not authentication. Name the peer identity at every hop and show how it becomes the application principal used for authorization.
 - Schema validation proves message shape, not provenance, resource authority, ordering, or safe values. Follow decoded fields to policy and side effects.
 - Broker guarantees and application guarantees differ. Write down retry, ordering, acknowledgement, deduplication, and transaction behavior before evaluating state changes.

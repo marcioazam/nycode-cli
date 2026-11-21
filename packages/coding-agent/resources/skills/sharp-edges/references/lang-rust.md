@@ -16,6 +16,7 @@ fn calculate_size(count: usize, element_size: usize) -> usize {
 **The Problem**: Behavior differs between debug and release. Bugs may only manifest in production.
 
 **Fix**: Use explicit methods:
+
 ```rust
 // Wrapping (explicitly allows overflow)
 let y = x.wrapping_add(1);

@@ -192,20 +192,20 @@ reaches only sessions that can still delegate.
 ## Evidence (read 2026-11-08)
 
 - Lead with subagents beat a single agent on research at about 15x tokens; coding has fewer parallel tasks:
-  https://www.anthropic.com/research/multi-agent-research-system
-- Tiers: https://www.anthropic.com/claude-sonnet-5-5, https://www.anthropic.com/claude-haiku-5-5; prices:
-  https://platform.claude.com/docs/en/about-claude/pricing (read 2026-11-11)
-- Parallel coding agents spend 1.41-3.31x tokens: https://arxiv.org/abs/2610.10263; one agent matches several at
-  equal thinking tokens: https://arxiv.org/abs/2604.02460; share decisions with workers:
-  https://cognition.ai/blog/dont-build-multi-agents
+  <https://www.anthropic.com/research/multi-agent-research-system>
+- Tiers: <https://www.anthropic.com/claude-sonnet-5-5>, <https://www.anthropic.com/claude-haiku-5-5>; prices:
+  <https://platform.claude.com/docs/en/about-claude/pricing> (read 2026-11-11)
+- Parallel coding agents spend 1.41-3.31x tokens: <https://arxiv.org/abs/2610.10263>; one agent matches several at
+  equal thinking tokens: <https://arxiv.org/abs/2604.02460>; share decisions with workers:
+  <https://cognition.ai/blog/dont-build-multi-agents>
 - nycode model order for a child (agent `model:` id, resolved tier alias, `CLAUDE_CODE_SUBAGENT_MODEL`, session model):
   `src/extensions/subagent/` (read 2026-11-11); Claude Code's order:
-  https://code.claude.com/docs/en/sub-agents
-- An independent gate, not the agent's own tests: https://arxiv.org/abs/2609.27871,
-  https://arxiv.org/abs/2606.16062, https://arxiv.org/abs/2610.03984; constraints erode unless copied verbatim:
-  https://arxiv.org/abs/2608.24569
-- Re-plan per batch, one gate per integration: https://cursor.com/blog/self-driving-codebases; agents resolve
-  their own merge conflicts: https://www.anthropic.com/engineering/building-c-compiler
-- Loops and graphs: https://addyosmani.com/blog/loop-engineering/, https://ghuntley.com/ralph/,
-  https://www.langchain.com/blog/3-years-of-graph-engineering-with-langgraph
+  <https://code.claude.com/docs/en/sub-agents>
+- An independent gate, not the agent's own tests: <https://arxiv.org/abs/2609.27871>,
+  <https://arxiv.org/abs/2606.16062>, <https://arxiv.org/abs/2610.03984>; constraints erode unless copied verbatim:
+  <https://arxiv.org/abs/2608.24569>
+- Re-plan per batch, one gate per integration: <https://cursor.com/blog/self-driving-codebases>; agents resolve
+  their own merge conflicts: <https://www.anthropic.com/engineering/building-c-compiler>
+- Loops and graphs: <https://addyosmani.com/blog/loop-engineering/>, <https://ghuntley.com/ralph/>,
+  <https://www.langchain.com/blog/3-years-of-graph-engineering-with-langgraph>
 - Record and measurements (Claude Code): `~/.claude/docs/swarm-orchestration-2026-11-08.md`.

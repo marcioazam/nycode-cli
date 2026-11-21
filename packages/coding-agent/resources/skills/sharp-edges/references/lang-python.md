@@ -21,6 +21,7 @@ def register(name, registry={}):
 **The Problem**: Default arguments are evaluated once at function definition, not at each call.
 
 **Fix**: Use `None` sentinel:
+
 ```python
 def append_to(item, target=None):
     if target is None:
@@ -70,6 +71,7 @@ funcs = [lambda: i for i in range(3)]
 ```
 
 **Fix**: Capture by value using default argument:
+
 ```python
 funcs = []
 for i in range(3):
@@ -186,6 +188,7 @@ print(u2.permissions)  # ['admin'] - u2 is also admin!
 ```
 
 **Fix**: Initialize in `__init__`:
+
 ```python
 class User:
     def __init__(self):

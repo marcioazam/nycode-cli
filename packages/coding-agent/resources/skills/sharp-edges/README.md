@@ -24,7 +24,7 @@ Analyzes code and designs through the lens of three adversaries:
 
 ## Installation
 
-```
+```text
 /plugin install trailofbits/skills/plugins/sharp-edges
 ```
 

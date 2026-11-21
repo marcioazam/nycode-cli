@@ -9,7 +9,7 @@ Explique ao usuário, em português, sem usar ferramentas:
 
 ## O que é o Ralph Loop
 
-A técnica "Ralph Wiggum" de Geoffrey Huntley (https://ghuntley.com/ralph/): o mesmo prompt é dado ao agente várias
+A técnica "Ralph Wiggum" de Geoffrey Huntley (<https://ghuntley.com/ralph/>): o mesmo prompt é dado ao agente várias
 vezes. O lado "autorreferente" vem de o agente ver o próprio trabalho anterior nos arquivos e no histórico do git, não de
 a saída voltar como entrada. A cada iteração: o agente recebe o MESMO prompt, trabalha, tenta parar, o Stop hook
 intercepta e devolve o prompt, e ele continua de onde os arquivos estão, até concluir.

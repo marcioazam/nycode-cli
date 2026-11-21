@@ -57,6 +57,7 @@ APIs that let developers choose algorithms invite choosing wrong ones.
 - Configuration options for security mechanisms
 
 **Example - PHP password_hash allowing weak algorithms:**
+
 ```php
 // DANGEROUS: allows crc32, md5, sha1
 password_hash($password, PASSWORD_DEFAULT); // Good - no choice
@@ -68,6 +69,7 @@ hash($algorithm, $password); // BAD: accepts "crc32"
 Defaults that are insecure, or zero/empty values that disable security.
 
 **The OTP Lifetime Pattern:**
+
 ```python
 # What happens when lifetime=0?
 def verify_otp(code, lifetime=300):  # 300 seconds default
@@ -110,6 +112,7 @@ Crypto::seal($message, new EncryptionPublicKey($key));
 - Same type used for keys, nonces, ciphertexts, signatures
 
 **The comparison footgun:**
+
 ```go
 // Timing-safe comparison looks identical to unsafe
 if hmac == expected { }           // BAD: timing attack
@@ -129,6 +132,7 @@ One wrong setting creates catastrophic failure, with no warning.
 - Constructor parameters with sensible defaults but no validation (callers can override with insecure values)
 
 **Examples:**
+
 ```yaml
 # One typo = disaster
 verify_ssl: fasle  # Typo silently accepted as truthy?
@@ -163,6 +167,7 @@ Errors that don't surface, or success that masks failure.
 - Verification functions that "succeed" on malformed input
 
 **Examples:**
+
 ```python
 # Silent bypass
 def verify_signature(sig, data, key):
@@ -186,6 +191,7 @@ Security-critical values as plain strings enable injection and confusion.
 - URLs constructed by joining strings
 
 **The permission accumulation footgun:**
+
 ```python
 permissions = "read,write"
 permissions += ",admin"  # Too easy to escalate

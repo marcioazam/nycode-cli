@@ -87,7 +87,7 @@ Matches 50-100+, high FP. Comprehensive coverage, requires real triage.
 
 Never generalize multiple elements at once.
 
-```
+```text
 BAD:  exact code -> fully abstract pattern
 GOOD: exact code -> abstract var1 -> abstract var2 -> abstract operation
 ```
@@ -134,21 +134,25 @@ rather than pushing further up the same one.
 ### Common FP sources and filters
 
 **Test code** — exclude test trees:
+
 ```bash
 rg "pattern" --glob '!**/test*' --glob '!**/*_test.*'
 ```
 
 **Already sanitized** — subtract the safe form:
+
 ```yaml
 pattern-not: dangerous_func(sanitize($X))
 ```
 
 **Literal values** — not attacker-controlled:
+
 ```yaml
 pattern-not: dangerous_func("...")
 ```
 
 **Dead code** — add reachability constraints:
+
 ```yaml
 pattern-not-inside: |
   if False:

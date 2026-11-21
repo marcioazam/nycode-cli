@@ -74,6 +74,7 @@ memset(password, 0, sizeof(password));  // May be removed!
 ```
 
 **Safe Alternatives**:
+
 ```c
 // Option 1: explicit_bzero (BSD, glibc 2.25+)
 explicit_bzero(password, sizeof(password));

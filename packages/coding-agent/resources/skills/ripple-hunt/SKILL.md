@@ -12,6 +12,7 @@ them. It reads and reports; it edits nothing unless the brief says so, and it ru
 Inputs: the diff (`git diff`, plus untracked paths from `git status --porcelain`) and the repo's limits.
 
 ## Sweep
+
 1. Names: list each renamed, removed or retyped identifier, path, flag, config key, enum value, field, error
    code and environment variable. Run `rg -n -F` for the old and the new name across code, tests, docs,
    config, CI files, vector tables and `CHANGELOG.md`.
@@ -27,10 +28,12 @@ Inputs: the diff (`git diff`, plus untracked paths from `git status --porcelain`
 7. Leftovers: `rg -n '^(<<<<<<<|=======|>>>>>>>)'` for conflict markers.
 
 ## Reading the result
+
 Zero hits is a sensor, not proof: names built from strings, reflection and generated code escape `rg`. Then
 run the gate once (`subagent` `{agent: "gate-runner", ...}`). Structural callers and blast radius belong to the `codegraph` MCP (load it with `tool_search` first).
 
 ## Output
+
 One line per hit:
 
 `file:line — stale reference — suggested fix`

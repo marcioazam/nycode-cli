@@ -50,11 +50,12 @@ ferramenta com propósito; somente leitura.
    Verificados bugs e aderência a AGENTS.md/CLAUDE.md." Sem `--comment`, pare aqui.
 8. Com `--comment` e sem achados: `gh pr comment <PR> --body` com:
 
-   ```
+   ```text
    ## Code review
 
    Nenhum problema encontrado. Verificados bugs e aderência a AGENTS.md/CLAUDE.md.
    ```
+
 9. Com `--comment` e achados: liste para você os comentários (um por problema único, nunca duplicado) e publique
    todos numa única review: escreva o JSON num arquivo (`mktemp`) e rode
    `gh api repos/{owner}/{repo}/pulls/<PR>/reviews --method POST --input <arquivo>` com

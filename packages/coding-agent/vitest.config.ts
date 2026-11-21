@@ -1,4 +1,4 @@
-import { defineConfig, mergeConfig } from "vitest/config";
+import { configDefaults, defineConfig, mergeConfig } from "vitest/config";
 import baseConfig, { workspaceSourcePaths } from "../../vitest.base.ts";
 
 export default mergeConfig(
@@ -7,6 +7,8 @@ export default mergeConfig(
 		test: {
 			globals: true,
 			environment: "node",
+			// resources/ holds embedded skill tests that run under node:test (see the "test" script), not vitest.
+			exclude: [...configDefaults.exclude, "resources/**"],
 			testTimeout: 30000,
 			// Tests run offline by default; opt in with allowNetwork() from test/test-network-env.ts.
 			env: { NYCODE_OFFLINE: "1" },

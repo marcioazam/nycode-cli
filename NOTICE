@@ -15,3 +15,54 @@ LICENSE.
 
 ny-pi, licença MIT, Copyright (c) 2026 ny-pi contributors; o texto da licença
 é o mesmo de LICENSE.
+
+Skills de terceiros (packages/coding-agent/resources/skills/)
+-------------------------------------------------------------
+
+Texto adaptado de projetos de terceiros, com alterações de nycode; cada
+referência cita a revisão de origem.
+
+Licença MIT (texto abaixo), com os direitos de:
+- Copyright (c) 2025 Addy Osmani, https://github.com/addyosmani/agent-skills
+  (code-simplification; cópia em skills/code-simplification/LICENSE).
+- Copyright (c) 2025 Jesse Vincent, https://github.com/obra/superpowers
+  (revisão b36e0829c6d0; referências de tdd, diagnose, quality-gates, pr-review,
+  git-workflow e sdd-workflow).
+- Copyright (c) 2026 Matt Pocock, https://github.com/mattpocock/skills
+  (to-questionnaire, plan-workflow, sdd-workflow, diagnose, agent-systems,
+  git-workflow).
+- Copyright (c) 2026 HumanLayer, https://github.com/humanlayer/skills
+  (quality-gates, agent-systems, engineering-standards; sem arquivos copiados).
+- Copyright GitHub, Inc., https://github.com/github/spec-kit (plan-workflow).
+- Copyright (c) 2025-2026 Cloudflare, Inc. (skills/security-audit/references/
+  full-audit; cópia em LICENSE na mesma pasta).
+
+Licença CC-BY-SA-4.0 (https://creativecommons.org/licenses/by-sa/4.0/; texto em
+skills/insecure-defaults/LICENSE), Trail of Bits, https://github.com/trailofbits/skills:
+insecure-defaults 2.0.3, property-based-testing (revisão d3323cefbcf6),
+sharp-edges 1.1.3, differential-review 1.1.4 e variant-analysis. Adaptações
+dessas skills seguem a mesma licença.
+
+Licença Apache-2.0 (https://www.apache.org/licenses/LICENSE-2.0), Anthropic,
+https://github.com/anthropics/knowledge-work-plugins (revisão 67e216dbe562;
+sdd-workflow/references/product-outcomes.md), modificado.
+
+Licença MIT:
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+of the Software, and to permit persons to whom the Software is furnished to do
+so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

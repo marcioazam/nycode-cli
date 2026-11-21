@@ -9,6 +9,7 @@ The algorithm alone is never the finding. `hashlib.md5` over a cache key is fine
 ## VULNERABLE - Report These
 
 **MD5 for password hashing**
+
 ```python
 # File: src/auth/passwords.py
 import hashlib
@@ -17,9 +18,11 @@ def hash_password(password):
     """Hash user password"""
     return hashlib.md5(password.encode()).hexdigest()
 ```
+
 **Why vulnerable:** MD5 is cryptographically broken. Rainbow tables exist. Use bcrypt/Argon2.
 
 **DES encryption for sensitive data**
+
 ```java
 // File: Encryption.java
 public static byte[] encrypt(String data, byte[] key) {
@@ -29,9 +32,11 @@ public static byte[] encrypt(String data, byte[] key) {
     return cipher.doFinal(data.getBytes());
 }
 ```
+
 **Why vulnerable:** DES has 56-bit keys (brute-forceable). ECB mode leaks patterns.
 
 **SHA1 for signature verification**
+
 ```javascript
 // File: webhooks.js
 function verifySignature(payload, signature) {
@@ -40,11 +45,13 @@ function verifySignature(payload, signature) {
   return computed === signature;
 }
 ```
+
 **Why vulnerable:** SHA1 collisions exist. Use SHA256 or better.
 
 ## SECURE - Skip These
 
 **Weak crypto for non-security checksums**
+
 ```python
 # File: src/utils/cache.py
 import hashlib
@@ -55,6 +62,7 @@ def cache_key(data):
 ```
 
 **Modern crypto for passwords**
+
 ```python
 # File: src/auth/passwords.py
 import bcrypt
@@ -64,6 +72,7 @@ def hash_password(password):
 ```
 
 **Strong encryption**
+
 ```java
 // File: Encryption.java
 Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");

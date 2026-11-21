@@ -106,5 +106,4 @@ function UserBadge({ user }: Props) {
 // This is a judgment call — flag it, don't auto-refactor.
 ```
 
-
 Source: [Claude Code Simplifier](https://github.com/anthropics/claude-plugins-official/blob/main/plugins/code-simplifier/agents/code-simplifier.md); local process and examples retained from the prior adaptation.

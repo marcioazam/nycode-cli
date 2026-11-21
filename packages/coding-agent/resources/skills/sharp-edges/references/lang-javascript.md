@@ -44,6 +44,7 @@ user.isAdmin  // true - authentication bypassed!
 ```
 
 **Fix**:
+
 ```javascript
 // Check for dangerous keys
 const dangerous = ['__proto__', 'constructor', 'prototype'];
@@ -259,7 +260,7 @@ function isAdmin(user: User): user is Admin {
 |---------|------|
 | `==` instead of `===` | Type coercion bugs |
 | `obj[userInput]` | Prototype pollution |
-| `/__proto__|constructor|prototype/` in merge | Pollution vectors |
+| `/__proto__\|constructor\|prototype/` in merge | Pollution vectors |
 | `(a+)+`, `(.*)+` in regex | ReDoS |
 | `parseInt(x)` without radix | Parsing inconsistency |
 | `eval(`, `Function(`, `setTimeout(string` | Code execution |

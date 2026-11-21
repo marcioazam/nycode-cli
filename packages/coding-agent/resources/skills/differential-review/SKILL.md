@@ -53,7 +53,7 @@ Security-focused code review for PRs, commits, and diffs.
 
 ## Workflow Overview
 
-```
+```text
 Pre-Analysis → Phase 0: Triage → Phase 1: Code Analysis → Phase 2: Test Coverage
     ↓              ↓                    ↓                        ↓
 Phase 3: Blast Radius → Phase 4: Deep Context → Phase 5: Adversarial → Phase 6: Report
@@ -65,7 +65,7 @@ Phase 3: Blast Radius → Phase 4: Deep Context → Phase 5: Adversarial → Pha
 
 **Starting a review?**
 
-```
+```text
 ├─ Need detailed phase-by-phase methodology?
 │  └─ Read: methodology.md
 │     (Pre-Analysis + Phases 0-4: triage, code analysis, test coverage, blast radius)
@@ -132,7 +132,8 @@ Before delivering:
 ## Example Usage
 
 ### Quick Triage (Small PR)
-```
+
+```text
 Input: 5 file PR, 2 HIGH RISK files
 Strategy: Use Quick Reference
 1. Classify risk level per file (2 HIGH, 3 LOW)
@@ -143,7 +144,8 @@ Time: ~30 minutes
 ```
 
 ### Standard Review (Medium Codebase)
-```
+
+```text
 Input: 80 files, 12 HIGH RISK changes
 Strategy: FOCUSED (see methodology.md)
 1. Full workflow on HIGH RISK files
@@ -154,7 +156,8 @@ Time: ~3-4 hours
 ```
 
 ### Deep Audit (Large, Critical Change)
-```
+
+```text
 Input: 450 files, auth system rewrite
 Strategy: SURGICAL + audit-context-building
 1. Baseline context with audit-context-building

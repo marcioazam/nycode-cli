@@ -90,6 +90,7 @@ int verify_callback(int preverify_ok, X509_STORE_CTX *ctx) {
 - Copy-paste examples that return 1 for "debugging"
 
 **Correct Pattern**:
+
 ```c
 int verify_callback(int preverify_ok, X509_STORE_CTX *ctx) {
     if (!preverify_ok) {
@@ -211,6 +212,7 @@ data = yaml.load(untrusted_input)
 ```
 
 **The Problem**: YAML's tag system allows arbitrary object instantiation. The "safe" loader is:
+
 ```python
 data = yaml.safe_load(untrusted_input)  # Safe
 data = yaml.load(untrusted_input, Loader=yaml.SafeLoader)  # Also safe
@@ -242,6 +244,7 @@ if (strcmp($_POST['password'], $stored_password) == 0) {
 - Authentication bypassed
 
 **Fix**:
+
 ```php
 if (hash_equals($stored_hash, hash('sha256', $_POST['password']))) {
     // Use hash_equals for timing-safe comparison

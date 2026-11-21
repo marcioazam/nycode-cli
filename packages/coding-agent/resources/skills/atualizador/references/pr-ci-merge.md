@@ -45,8 +45,8 @@ means the base moved: fetch, merge `origin/<default>` into the branch, gate agai
 ## Sources
 
 - `merge_group` trigger, `gh-readonly-queue/{base_branch}` branches, removal on failed checks, conflicts or timeout:
-  https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue,
+  <https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue>,
   read 2026-10-25.
 - Rulesets and branch protection apply together:
-  https://docs.github.com/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets,
+  <https://docs.github.com/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets>,
   read 2026-10-25.

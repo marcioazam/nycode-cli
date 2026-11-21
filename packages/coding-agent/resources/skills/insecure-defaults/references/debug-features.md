@@ -9,6 +9,7 @@ The finding needs both halves: enabled-by-default *and* an exposure path. A verb
 ## VULNERABLE - Report These
 
 **Stack traces in API responses**
+
 ```python
 # File: app.py
 @app.errorhandler(Exception)
@@ -18,9 +19,11 @@ def handle_error(error):
         'traceback': traceback.format_exc()  # Leaks internal paths, library versions
     }), 500
 ```
+
 **Why vulnerable:** Exposes internal implementation details to attackers.
 
 **GraphQL introspection enabled**
+
 ```javascript
 // File: server.js
 const server = new ApolloServer({
@@ -30,9 +33,11 @@ const server = new ApolloServer({
   playground: true
 });
 ```
+
 **Why vulnerable:** Attackers can discover entire API schema, including admin-only fields.
 
 **Verbose error messages**
+
 ```java
 // File: UserController.java
 catch (SQLException e) {
@@ -41,11 +46,13 @@ catch (SQLException e) {
     );
 }
 ```
+
 **Why vulnerable:** SQL error messages reveal database structure.
 
 ## SECURE - Skip These
 
 **Debug features in logging only**
+
 ```python
 # File: app.py
 @app.errorhandler(Exception)
@@ -55,6 +62,7 @@ def handle_error(error):
 ```
 
 **Environment-aware debug settings**
+
 ```javascript
 // File: server.js
 const server = new ApolloServer({
@@ -66,6 +74,7 @@ const server = new ApolloServer({
 ```
 
 **Generic user-facing errors**
+
 ```java
 // File: UserController.java
 catch (SQLException e) {

@@ -1,6 +1,6 @@
 # Supply Chain and Release Hunting
 
-#### When to use this file
+## When to use this file
 
 Reach for this file when the target resolves dependencies, builds from untrusted contributions, runs CI, creates release artifacts, signs or promotes builds, loads plugins, or updates deployed software. This domain covers trust handoffs from source and dependency to the artifact a user runs. Use `MEMORY-SAFETY-AND-BINARY.md` for flaws inside a local binary loader and `CLOUD-AND-DEPLOYMENT.md` for runtime workload authority.
 
@@ -8,7 +8,7 @@ Split large targets into dependency resolution, CI isolation, artifact provenanc
 
 ## Core discipline (include in every agent prompt for this domain)
 
-```
+```text
 - A mutable or known-vulnerable dependency is not a finding by itself. Show who can influence resolution, which build consumes it, and what execution or release boundary follows.
 - Follow integrity across every handoff: source identity, resolved inputs, build worker, artifact identity, test result, signature/attestation, promotion, and update consumer.
 - CI configuration is authorization code. Establish which event triggered a workflow, whose code runs, which secrets and tokens exist, and what it may publish or mutate.

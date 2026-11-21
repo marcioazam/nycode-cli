@@ -20,6 +20,7 @@ class ViewController: UIViewController {
 ```
 
 **Fix**: Use optional binding or nil-coalescing:
+
 ```swift
 if let value = optionalValue {
     use(value)
@@ -47,6 +48,7 @@ do {
 ```
 
 **Fix**: Handle errors explicitly:
+
 ```swift
 do {
     let data = try Data(contentsOf: url)
@@ -69,6 +71,7 @@ let cell = tableView.dequeueReusableCell(...) as! CustomCell
 ```
 
 **Fix**: Use conditional cast:
+
 ```swift
 if let user = object as? User {
     use(user)
@@ -128,6 +131,7 @@ class MyClass {
 ```
 
 **Fix**: Use `weak` or `unowned`:
+
 ```swift
 class Apartment {
     weak var tenant: Person?  // Weak breaks cycle
@@ -154,6 +158,7 @@ array.append(2)
 ```
 
 **Fix**: Use serial dispatch queue, locks, or actors (Swift 5.5+):
+
 ```swift
 actor SafeStorage {
     private var items = [Int]()
@@ -245,6 +250,7 @@ struct User: Codable {
 ```
 
 **Fix**: Use explicit CodingKeys and handle errors:
+
 ```swift
 struct User: Codable {
     var id: Int

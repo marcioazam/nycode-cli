@@ -1,6 +1,6 @@
 # Data Isolation and Lifecycle Hunting
 
-#### When to use this file
+## When to use this file
 
 Reach for this file when the target stores multi-tenant or access-controlled data, derives search/index/cache/analytics copies, issues object links, exports or restores records, migrates schemas, or promises deletion, revocation, and retention behavior. This domain follows one data item through every copy and state transition. Use `ATTACK-CLASSES.md` for endpoint-level access control and `CLOUD-AND-DEPLOYMENT.md` for provider-level storage policy.
 
@@ -8,7 +8,7 @@ Split large targets by primary storage, cache/search, object/blob storage, analy
 
 ## Core discipline (include in every agent prompt for this domain)
 
-```
+```text
 - A tenant or owner field on a record is not isolation. Find the query, key, path, policy, or row-level control that enforces it for each read and write path.
 - Trace derived copies. Sanitized primary data can become unsafe in search, cache, analytics, export, previews, logs, replicas, and backups with different ACL and retention rules.
 - Deletion and revocation are lifecycle contracts. Check current, historical, cached, indexed, exported, restored, and queued copies within the product's stated boundary.

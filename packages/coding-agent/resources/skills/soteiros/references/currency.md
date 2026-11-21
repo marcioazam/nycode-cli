@@ -62,9 +62,9 @@ stable version that is reachable now.
 
 ## Sources (accessed 2026-10-08)
 
-- SemVer 2.0.0: https://semver.org/
-- Python version specifiers (PEP 440): https://packaging.python.org/en/latest/specifications/version-specifiers/
-- Go modules reference, version queries: https://go.dev/ref/mod
-- GitHub REST, get the latest release: https://docs.github.com/en/rest/releases/releases#get-the-latest-release
-- PyPI JSON API: https://docs.pypi.org/api/json/
-- endoflife.date API v1: https://endoflife.date/docs/api/v1/
+- SemVer 2.0.0: <https://semver.org/>
+- Python version specifiers (PEP 440): <https://packaging.python.org/en/latest/specifications/version-specifiers/>
+- Go modules reference, version queries: <https://go.dev/ref/mod>
+- GitHub REST, get the latest release: <https://docs.github.com/en/rest/releases/releases#get-the-latest-release>
+- PyPI JSON API: <https://docs.pypi.org/api/json/>
+- endoflife.date API v1: <https://endoflife.date/docs/api/v1/>

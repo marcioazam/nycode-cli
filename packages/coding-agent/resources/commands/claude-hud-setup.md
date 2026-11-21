@@ -20,7 +20,7 @@ Configure o claude-hud como status line do nycode. Nada aqui mexe no `~/.claude`
 command -v node; ls -d ~/.claude*/plugins/cache/*/claude-hud/*/scripts/setup.mjs 2>/dev/null | awk -F/ '{print $(NF-2) "\t" \$0}' | sort -V | tail -1 | cut -f2
 ```
 
-- Sem `node`: pare e diga que o nycode precisa do Node.js no PATH para rodar o HUD (Node LTS em https://nodejs.org).
+- Sem `node`: pare e diga que o nycode precisa do Node.js no PATH para rodar o HUD (Node LTS em <https://nodejs.org>).
 - Sem `setup.mjs`: pare e diga que o claude-hud não está instalado em nenhum perfil do Claude Code; instale lá com
   `/plugin install claude-hud` e rode `/claude-hud-setup` de novo.
 
@@ -44,7 +44,7 @@ Em "Manter", pare sem mudar nada. Mostre só o `existingPreview`, nunca o comand
 ## Passo 3: instalar
 
 ```bash
-CLAUDE_CONFIG_DIR="$HOME/.nycode/agent" "{RUNTIME}" "{SETUP}" install --shell posix && cp ${NYCODE_RESOURCES}/statusline/claude-hud-statusline.mjs ${NYCODE_RESOURCES}/statusline/statusline.mjs
+CLAUDE_CONFIG_DIR="$HOME/.nycode/agent" "{RUNTIME}" "{SETUP}" install --shell posix && cp ${NYCODE_RESOURCES}/statusline/claude-hud-statusline.mjs "$HOME/.nycode/agent/plugins/claude-hud/statusline.mjs"
 ```
 
 O helper faz backup do `settings.json` em `backupPath`, guarda um comando substituído em `previousCommandPath` e grava

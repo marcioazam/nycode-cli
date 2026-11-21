@@ -9,6 +9,7 @@ A credential in prose is a credential nobody can use. A credential in `bootstrap
 ## VULNERABLE - Report These
 
 **Hardcoded admin account**
+
 ```python
 # File: src/models/user.py
 def bootstrap_admin():
@@ -22,18 +23,22 @@ def bootstrap_admin():
         db.session.add(admin)
         db.session.commit()
 ```
+
 **Why vulnerable:** Default admin account created on first run with known credentials.
 
 **API key in code**
+
 ```javascript
 // File: src/integrations/payment.js
 const STRIPE_API_KEY = process.env.STRIPE_KEY || 'sk_tes...';
 
 const stripe = require('stripe')(STRIPE_API_KEY);
 ```
+
 **Why vulnerable:** Uses test API key if env var missing. Might reach production.
 
 **Database connection string**
+
 ```java
 // File: DatabaseConfig.java
 private static final String DB_URL = System.getenv().getOrDefault(
@@ -41,11 +46,13 @@ private static final String DB_URL = System.getenv().getOrDefault(
     "postgresql://admin:password@localhost:5432/prod"
 );
 ```
+
 **Why vulnerable:** Hardcoded database credentials as fallback.
 
 ## SECURE - Skip These
 
 **Disabled default account**
+
 ```python
 # File: src/models/user.py
 def bootstrap_admin():
@@ -59,6 +66,7 @@ def bootstrap_admin():
 ```
 
 **Example/documentation credentials**: a credential appearing inside prose in `README.md`:
+
 ```markdown
 ## Setup
 
@@ -68,6 +76,7 @@ Configure your API key:
 ```
 
 **Test fixture credentials**
+
 ```python
 # File: tests/conftest.py
 @pytest.fixture

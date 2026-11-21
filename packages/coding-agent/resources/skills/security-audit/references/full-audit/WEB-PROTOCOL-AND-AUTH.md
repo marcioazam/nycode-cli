@@ -1,6 +1,6 @@
 # HTTP-Protocol and Authentication Hunting
 
-#### When to use this file
+## When to use this file
 
 Reach for this file when the target speaks HTTP at a parsing, caching, browser-authentication, or identity boundary: web applications, APIs, reverse proxies, CDNs, gateways, custom HTTP servers, and services implementing sessions, JWT, OAuth/OIDC, SAML, password recovery, MFA, passkeys, API keys, or mTLS. Use this with `ATTACK-CLASSES.md`: access-control review asks whether a principal may perform an operation; this file asks whether the HTTP or identity layer can confuse which principal, request, assurance level, or token the operation belongs to.
 
@@ -8,7 +8,7 @@ Pick classes from Phase 1. Split a large target into request framing and cache p
 
 ## Core discipline (include in every agent prompt for this domain)
 
-```
+```text
 - Framing and cache findings require two interpretations of the same request, response, or key. Name both components and the exact normalized value on each side.
 - For every credential, find the signature or secret verification and every binding required for its role: issuer, audience, origin, RP, client, session, principal, resource, assurance, expiry, and one-time state.
 - Host, Forwarded, X-Forwarded-*, Origin, Referer, redirect targets, callback state, and request-derived URLs are trust decisions. Trace each to the affected identity or response.

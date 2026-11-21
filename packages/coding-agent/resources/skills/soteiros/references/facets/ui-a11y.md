@@ -1,6 +1,7 @@
 # Facet: UI and accessibility
 
 ## Editions seen 2026-10-30 (re-resolve)
+
 | Item | Edition | Source |
 | --- | --- | --- |
 | WCAG | 2.2, W3C Recommendation (edition 2024-12-12); ISO/IEC 40500:2025 is the October 2023 text | w3.org/TR/WCAG22/; w3.org/WAI/standards-guidelines/wcag/ |
@@ -9,6 +10,7 @@
 | Web platform | Use Baseline "Widely available" features freely (30 months after interop); feature-detect "Newly available" ones | web.dev/baseline |
 
 ## Checks (cite the WCAG 2.2 success criterion)
+
 - Semantics: a `<button>` or `<a href>` for controls, never a `div` or `span` with `onclick` (2.1.1 Keyboard,
   4.1.2 Name, Role, Value). Landmarks and a heading order. `lang` on `<html>`.
 - Forms: a programmatic `<label>` for every input, errors linked with `aria-describedby`, no
@@ -23,9 +25,11 @@
   logical properties.
 
 ## Tools
+
 axe-core or Lighthouse accessibility through the `mcp__playwright__*` tools (`tool_search` first); a manual keyboard pass; contrast checks.
 
 ## Severity
+
 - High: controls unreachable by keyboard; inputs without labels; motion that cannot be disabled on large
   movements.
 - Medium: low contrast; small targets; layout-property animations.

@@ -31,7 +31,7 @@ Structured methodology for finding vulnerabilities through attacker modeling.
 
 ## 2. Identify Concrete Attack Vectors
 
-```
+```text
 ENTRY POINT: [Exact function/endpoint attacker can access]
 
 ATTACK SEQUENCE:
@@ -69,7 +69,7 @@ PROOF OF ACCESSIBILITY:
 
 ## 4. Build Complete Exploit Scenario
 
-```
+```text
 ATTACKER STARTING POSITION:
 [What the attacker has at the beginning]
 
@@ -138,7 +138,8 @@ Generate this for each finding:
 
 **Blast Radius:** [N callers affected]
 **Baseline Violation:** [Which invariant/pattern broken]
-```
+
+```text
 
 ---
 
@@ -194,6 +195,7 @@ Step 3: Accounting mismatch exploited
 - Estimated $50K impact on pool prices
 
 ### 5. Baseline Violation
+
 - Violates invariant: "All withdrawals must transfer non-zero value"
 - Breaks validation pattern: Amount checks present in all other value transfers
 - Regression: Check added in commit abc123 "Fix zero-amount exploit"

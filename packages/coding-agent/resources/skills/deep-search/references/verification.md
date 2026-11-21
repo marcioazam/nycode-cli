@@ -42,7 +42,7 @@
 
 ## Source vetting
 
-For an unfamiliar source apply SIFT: stop, investigate the publisher through other sites (lateral reading), find better coverage, trace the claim to its original. Prefer standards, official docs, filings, peer-reviewed work and the original report over aggregators, SEO content farms and AI summaries. Wikipedia's Perennial sources list (https://en.wikipedia.org/wiki/Wikipedia:Reliable_sources/Perennial_sources) is a claim-dependent prior for a publisher's reliability, never an allowlist or blocklist: a source missing from it is not more or less reliable. Copies of one press release are one source. Search snippets never count as reading the page.
+For an unfamiliar source apply SIFT: stop, investigate the publisher through other sites (lateral reading), find better coverage, trace the claim to its original. Prefer standards, official docs, filings, peer-reviewed work and the original report over aggregators, SEO content farms and AI summaries. Wikipedia's Perennial sources list (<https://en.wikipedia.org/wiki/Wikipedia:Reliable_sources/Perennial_sources>) is a claim-dependent prior for a publisher's reliability, never an allowlist or blocklist: a source missing from it is not more or less reliable. Copies of one press release are one source. Search snippets never count as reading the page.
 
 ## Conflicts
 

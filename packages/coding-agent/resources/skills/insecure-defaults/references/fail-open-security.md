@@ -9,6 +9,7 @@ Read the default, not the flag name. `REQUIRE_AUTH` defaulting to `'false'` requ
 ## VULNERABLE - Report These
 
 **Authentication disabled by default**
+
 ```python
 # File: config/security.py
 REQUIRE_AUTH = os.getenv('REQUIRE_AUTH', 'false').lower() == 'true'
@@ -19,18 +20,22 @@ def check_auth():
         return  # Skip auth check
     # ... auth logic
 ```
+
 **Why vulnerable:** Default is no authentication. App runs insecurely if env var missing.
 
 **CORS allows all origins**
+
 ```javascript
 // File: server.js
 const allowedOrigins = process.env.ALLOWED_ORIGINS || '*';
 
 app.use(cors({ origin: allowedOrigins }));
 ```
+
 **Why vulnerable:** Default allows requests from any origin. XSS/CSRF risk.
 
 **Debug mode enabled by default**
+
 ```python
 # File: config.py
 DEBUG = os.getenv('DEBUG', 'true').lower() != 'false'  # Default: true
@@ -39,11 +44,13 @@ if DEBUG:
     app.config['DEBUG'] = True
     app.config['PROPAGATE_EXCEPTIONS'] = True
 ```
+
 **Why vulnerable:** Debug mode default. Stack traces leak sensitive info in production.
 
 ## SECURE - Skip These
 
 **Authentication required by default**
+
 ```python
 # File: config/security.py
 REQUIRE_AUTH = os.getenv('REQUIRE_AUTH', 'true').lower() == 'true'  # Default: true
@@ -53,6 +60,7 @@ REQUIRE_AUTH = os.environ['REQUIRE_AUTH'].lower() == 'true'
 ```
 
 **CORS requires explicit configuration**
+
 ```javascript
 // File: server.js
 if (!process.env.ALLOWED_ORIGINS) {
@@ -64,6 +72,7 @@ app.use(cors({ origin: allowedOrigins }));
 ```
 
 **Debug mode disabled by default**
+
 ```python
 # File: config.py
 DEBUG = os.getenv('DEBUG', 'false').lower() == 'true'  # Default: false

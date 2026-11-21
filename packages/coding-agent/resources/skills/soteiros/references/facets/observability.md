@@ -1,6 +1,7 @@
 # Facet: observability
 
 ## Editions seen 2026-10-30 (re-resolve)
+
 - OpenTelemetry: the tracing specification is stable with long-term support; logs (Bridge API, SDK,
   protocol) are stable; profiles are still in development, so they are not a target.
 - HTTP span semantic conventions: stable. GenAI conventions live in a separate repository; check their
@@ -8,6 +9,7 @@
 - Sources: opentelemetry.io/docs/specs/status/, opentelemetry.io/docs/specs/semconv/http/http-spans/.
 
 ## Checks
+
 - Structured logs (JSON or logfmt) with level, timestamp, message and a correlation or trace ID; no
   `print`/`console.log` debugging in request paths.
 - Redaction: no secrets, tokens, `Authorization`/`Cookie` headers or personal data in logs, spans or metric
@@ -21,6 +23,7 @@
 - Every failure path emits a log, metric or span; there is no silent catch.
 
 ## Severity
+
 - High: secrets or personal data in logs (also a security finding; report it once, under security).
 - Medium: unstructured logs; a received `traceparent` not forwarded; unbounded label cardinality.
 

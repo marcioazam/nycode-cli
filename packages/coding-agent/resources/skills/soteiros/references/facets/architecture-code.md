@@ -1,6 +1,7 @@
 # Facet: architecture and code
 
 ## Checks
+
 - One responsibility per module. Dependencies point toward the domain. No cycles (check the codegraph or the
   import graph). No god modules. The harness size gates hold: at most 800 lines per file and 7 code files per
   directory, where the repository adopts them.
@@ -19,6 +20,7 @@
   defect, duplicated logic). Otherwise it is a note.
 
 ## Severity
+
 - High: a dependency cycle or a god module that blocks safe change; a deprecated API scheduled for removal in
   the target version.
 - Medium: missing strict typing on the public surface; no enforced formatter or linter.

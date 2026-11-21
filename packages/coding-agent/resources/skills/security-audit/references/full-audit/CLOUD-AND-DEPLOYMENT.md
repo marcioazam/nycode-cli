@@ -1,6 +1,6 @@
 # Cloud and Deployment Hunting
 
-#### When to use this file
+## When to use this file
 
 Reach for this file when the repository defines cloud identity, infrastructure, containers, Kubernetes, service mesh, serverless functions, edge workers, ingress, object storage, managed services, or environment-specific configuration. This domain asks whether deployed components receive the intended identity, isolation, network reachability, secrets, and policy. Source often expresses intent rather than live fact, so separate source-confirmed defects from deployment validation needs.
 
@@ -8,7 +8,7 @@ Use `SUPPLY-CHAIN-AND-RELEASE.md` for build and promotion trust, `WEB-PROTOCOL-A
 
 ## Core discipline (include in every agent prompt for this domain)
 
-```
+```text
 - Do not infer a live exposure from a manifest alone. Establish which environment consumes it, what defaults or overlays modify it, and whether the source path is active.
 - Map each workload's identity to specific operations and resources. Broad policy is a finding only when lower-trust input can reach an unauthorized action.
 - Ingress, proxies, service mesh, metadata services, and admission policy are real boundaries, but only count a control when its configuration and attachment are visible.

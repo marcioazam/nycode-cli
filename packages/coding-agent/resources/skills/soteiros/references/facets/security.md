@@ -1,6 +1,7 @@
 # Facet: security
 
 ## Editions seen 2026-10-30 (re-resolve)
+
 | Standard | Edition | Source |
 | --- | --- | --- |
 | OWASP Top 10 | 2025 (A01 Broken Access Control … A03 Software Supply Chain Failures, new; A10 Mishandling of Exceptional Conditions, new) | owasp.org/Top10/2025/ |
@@ -9,6 +10,7 @@
 | CWE Top 25 | 2025, plus the 2025 KEV weaknesses list | cwe.mitre.org/top25/ |
 
 ## Checks (cite the ASVS 5.0 requirement or the Top 10:2025 category per finding)
+
 - Trust boundaries: validation by schema at every external input (body, query, headers, files, messages).
   Length and size limits. OWASP API4:2023 (Unrestricted Resource Consumption) is a finding when a limit it
   lists is missing (execution timeouts, memory, file descriptors, processes, upload size, operations per
@@ -30,10 +32,12 @@
   least-privilege tools.
 
 ## Tools
+
 `semgrep scan --config p/default` (1.183.0); `gitleaks`/`trufflehog` for
 secrets; language linters' security rules (`bandit`, `eslint-plugin-security`, `gosec`).
 
 ## Severity
+
 - Critical: exploitable injection, auth bypass, secret exposure, credentialed CORS wildcard.
 - High: stack traces or internals in responses; missing authorization on a non-public route; disabled TLS
   verification.

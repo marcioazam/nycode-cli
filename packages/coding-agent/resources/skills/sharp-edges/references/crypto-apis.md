@@ -9,9 +9,11 @@ Detailed patterns for identifying misuse-prone cryptographic interfaces.
 The JSON Web Token standard allows the token itself to specify which algorithm to use for verification. This is catastrophically wrong.
 
 **Attack 1: "none" algorithm**
+
 ```json
 {"alg": "none", "typ": "JWT"}
 ```
+
 Many libraries accept this and skip signature verification entirely.
 
 **Attack 2: Algorithm confusion (RS256 → HS256)**
@@ -142,7 +144,7 @@ def decrypt(ciphertext, key):
 
 ### Error Message Differentiation
 
-```
+```text
 # DANGEROUS error messages
 "Invalid padding"           # Padding oracle signal
 "MAC verification failed"   # Different error = oracle

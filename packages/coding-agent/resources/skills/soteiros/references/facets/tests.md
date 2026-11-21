@@ -1,6 +1,7 @@
 # Facet: tests and gates
 
 ## Checks
+
 - Behavior tests cover the failure paths of [paths](../paths.md): invalid input, dependency timeout or error,
   authorization denied, and concurrency where it applies. Happy-path-only suites are a gap.
 - Tests are hermetic: they need no live server, network or shared database. They use in-process apps, fakes
@@ -14,6 +15,7 @@
 - The test runner is current: Node's built-in `node:test`, `pytest` 8+, `go test`, `cargo nextest`.
 
 ## Severity
+
 - High: no tests on a critical flow; tests that depend on a running server or a shared live database, so CI
   cannot run them; assertions weakened to pass.
 - Medium: happy path only; flaky tests retried rather than fixed; coverage not measured.

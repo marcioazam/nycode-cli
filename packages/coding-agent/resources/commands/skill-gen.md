@@ -73,7 +73,7 @@ Resumo do que foi feito, a árvore com contagem de linhas, os resultados da vali
 
 ## Referência do formato
 
-```
+```text
 <nome>/
 ├── SKILL.md       (obrigatório)
 ├── scripts/       (opcional: código para tarefas determinísticas)

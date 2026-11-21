@@ -18,6 +18,7 @@ string value = possiblyNull!;  // Suppresses warning, doesn't fix bug
 ```
 
 **Fix**: Enable NRT AND treat warnings as errors:
+
 ```xml
 <Nullable>enable</Nullable>
 <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
@@ -58,6 +59,7 @@ var outer = new Outer();  // Creates inner disposable
 ```
 
 **Fix**: Use `using` statement or declaration:
+
 ```csharp
 using var conn = new SqlConnection(connectionString);
 conn.Open();
@@ -93,6 +95,7 @@ async Task Process() {
 ```
 
 **Fix**: Always return Task, use `ConfigureAwait(false)` in libraries:
+
 ```csharp
 async Task DoWorkAsync() {
     await Task.Delay(100).ConfigureAwait(false);
@@ -134,6 +137,7 @@ string.Compare("a", "A");  // Culture-dependent
 ```
 
 **Fix**: Use ordinal comparison for identifiers:
+
 ```csharp
 string.Equals(a, b, StringComparison.Ordinal);
 string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
@@ -174,6 +178,7 @@ class MyClass {
 ```
 
 **Fix**: Implement correctly or use records (C# 9+):
+
 ```csharp
 record MyRecord(int Id);  // Equality implemented correctly
 ```
@@ -196,6 +201,7 @@ lock ("mylock") { }  // String interning makes this shared!
 ```
 
 **Fix**: Lock on private readonly object:
+
 ```csharp
 private readonly object _lock = new object();
 lock (_lock) { }
@@ -218,6 +224,7 @@ class Problematic {
 ```
 
 **Fix**: Implement dispose pattern, avoid finalizers:
+
 ```csharp
 class Proper : IDisposable {
     private bool _disposed;

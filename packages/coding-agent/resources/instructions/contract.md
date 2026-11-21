@@ -1,6 +1,6 @@
 <!-- nycode working contract (self-contained: no imports). Keep it short; detail lives in on-demand rules/ref/. -->
 
-# Working contract
+# Working contract (nycode)
 
 ## Precedence
 

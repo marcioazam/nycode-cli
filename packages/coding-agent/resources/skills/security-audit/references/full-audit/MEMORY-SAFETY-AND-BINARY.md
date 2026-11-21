@@ -1,6 +1,6 @@
 # Memory Safety, Binary, and Kernel Hunting
 
-#### When to use this file
+## When to use this file
 
 Reach for this file when the target processes untrusted bytes in a memory-unsafe or privileged context: C/C++/Objective-C, Rust `unsafe`, FFI, kernel modules and drivers, parsers and decoders, network daemons, firmware, binary loaders, language runtimes, and JITs. Use `PROTOCOLS-RPC-AND-MESSAGING.md` for protocol authorization and state-machine logic, and this file for process integrity, memory safety, ABI boundaries, and loader behavior.
 
@@ -8,7 +8,7 @@ Pick relevant classes from Phase 1 and split large targets by parser, allocator/
 
 ## Core discipline (include in every agent prompt for this domain)
 
-```
+```text
 - Re-derive every bound and lifetime from attacker-controlled inputs and all callers. Validate against the worst accepted case, not a typical test vector.
 - A panic, sanitizer finding, or crash proves a defect only when a realistic untrusted input reaches it. Do not infer memory corruption, code execution, or shared availability impact from a label alone.
 - Validate in a local harness with sanitizers, deterministic concurrency tests, existing fuzz targets, and debugger-assisted fault classification. Stop after proving the violated invariant and observable impact; do not develop post-corruption techniques.
