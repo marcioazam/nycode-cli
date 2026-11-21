@@ -14,6 +14,7 @@ import memoryExtension from "./memory/index.ts";
 import notifyExtension from "./notify/index.ts";
 import outputStylesExtension from "./output-styles/index.ts";
 import questionExtension from "./question/index.ts";
+import runExtension from "./run/index.ts";
 import sessionTitleExtension from "./session-title/index.ts";
 import settingsFlagsExtension from "./settings-flags/index.ts";
 import skillsCompatExtension from "./skills-compat/index.ts";
@@ -44,6 +45,7 @@ export const builtInExtensions: InlineExtension[] = [
 	{ name: "notify", factory: notifyExtension, builtin: true },
 	{ name: "output-styles", factory: outputStylesExtension, builtin: true },
 	{ name: "question", factory: questionExtension, builtin: true },
+	{ name: "run", factory: runExtension, builtin: true },
 	{ name: "session-title", factory: sessionTitleExtension, builtin: true },
 	{ name: "settings-flags", factory: settingsFlagsExtension, builtin: true },
 	{ name: "skills-compat", factory: skillsCompatExtension, builtin: true },
