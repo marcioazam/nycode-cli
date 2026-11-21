@@ -37,6 +37,7 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import type { ExtensionAPI, ExtensionContext } from "../../core/extensions/types.ts";
+import { readGlobalSettings } from "../../core/permissions/global-settings.ts";
 import { SETTINGS_DEFAULTS } from "../../core/settings-defaults.ts";
 import { approvalRecheck, isProjectApprovedSilently } from "../_shared/project/project-approval.ts";
 import { readManagedSettings } from "../_shared/settings/managed-settings.ts";
@@ -172,6 +173,13 @@ export function sanitizeProjectEnv(
 	return kept;
 }
 
+/** nycode's own `env`: the default, then the global settings.json, then what the project's settings.json adds or
+ * changes (the entries of the merged settings that differ from the global ones), sanitized like any project env. */
+function ownEnv(global: Record<string, string>, merged: Record<string, string>): Record<string, string> {
+	const project = Object.fromEntries(Object.entries(merged).filter(([key, value]) => global[key] !== value));
+	return { ...SETTINGS_DEFAULTS.env, ...global, ...sanitizeProjectEnv(project) };
+}
+
 export default function envSettingsExtension(nycode: ExtensionAPI) {
 	const owned = new Map<string, string | undefined>();
 	/** Stops the watcher of the previous session, as the hooks extension does. */
@@ -211,7 +219,7 @@ export default function envSettingsExtension(nycode: ExtensionAPI) {
 		const cwd = ctx.cwd;
 		// A reload asks again rather than reusing `approved`: see approvalRecheck.
 		const stillApproved = approvalRecheck(ctx);
-		const own = { ...SETTINGS_DEFAULTS.env, ...envFromSettings(nycode.getSettings()) };
+		const own = ownEnv(envFromSettings(readGlobalSettings()), envFromSettings(nycode.getSettings()));
 		const reapply = (): void => apply(home, cwd, approved && stillApproved(), own);
 		reapply();
 		// Claude: "Claude Code watches your settings files and reloads them when they change,
