@@ -84,7 +84,7 @@ imports relativos com `.ts`, comentários dos testes em português, ≥80% de li
 |:-|:-|:-|
 | U1 | `extensions/ui/editor.ts`, `extensions/ui/history.ts`, `extensions/ui/test/editor.test.ts`, `extensions/ui/test/history.test.ts` | - |
 | U2 | `extensions/ui/diff.ts`, `extensions/ui/test/diff.test.ts` | - |
-| U3 | `themes/tokyo-night.json`, `extensions/sticky-prompt/*`, `claude-home/plugins/claude-hud/config.json` | - |
+| U3 | `themes/tokyo-night.json`, `extensions/sticky-prompt/*`, `plugins/claude-hud/config.json` | - |
 | U4 | `extensions/dev-commands/**` | - |
 
 Sem arestas: nenhuma unidade importa arquivo de outra. Uma onda, 4 escritores em paralelo; verificação única no fim.

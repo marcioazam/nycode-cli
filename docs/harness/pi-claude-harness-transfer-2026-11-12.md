@@ -2,7 +2,7 @@
 
 Pedido: verificar o que ainda vale trazer do `~/.claude` para o pi por custo x benefício, com pesquisa web e
 benchmarks. Escopo aprovado: tudo, com gates; teto pago US$ 10 (pesquisa ≤ 2,5; eval limpeza ≤ 2; eval catálogo ≤ 4,5;
-reserva 1). Sem entrega git (`~/.pi/agent` não é repositório).
+reserva 1). Sem entrega git (`~/.nycode/agent` não é repositório).
 
 ## Medições de partida (sessões do pi, 2026-11-10 → 2026-11-12, só agregados)
 
@@ -25,7 +25,7 @@ reserva 1). Sem entrega git (`~/.pi/agent` não é repositório).
 
 ## Rollback
 
-- Compactação: `PI_COMPACT_AT=400000` no wrapper e `python3 ~/.pi/agent/scripts/compaction-400k.py`; backups em
+- Compactação: `PI_COMPACT_AT=400000` no wrapper e `python3 ~/.nycode/agent/scripts/compaction-400k.py`; backups em
   `backups/transfer-2026-11-12/` (wrapper, settings.json, compact-at-400k.ts).
 - Limpeza: `PI_CONTEXT_CLEARING=0` ou mover `extensions/context-clearing/` para os backups.
 - Catálogo: tirar `disable-model-invocation: true` das skills listadas (cópias dos SKILL.md nos backups).

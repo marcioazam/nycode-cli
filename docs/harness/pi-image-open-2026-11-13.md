@@ -1,6 +1,6 @@
 # pi: clicar na imagem do chat abre a imagem (2026-11-13)
 
-Pedido do usuário. Extensão `extensions/image-open/index.ts` (linkada em `~/.pi/agent/extensions/image-open/`).
+Pedido do usuário. Extensão `extensions/image-open/index.ts` (linkada em `~/.nycode/agent/extensions/image-open/`).
 
 - Define `Image.prototype.handleMouse` do pi-tui 1.5.2 (fullscreen: `dispatchMouseToLayout` chama `handleMouse`). Verificado nativamente que o `Image` importado pela extensão é o do bundle (teste em tmux: clique SGR na imagem do transcript chama o abridor; sem a extensão não chama).
 - Só `click` esquerdo sem modificadores age (retorna `{handled:true}`); press, release, hover, arrasto, outros botões e wheel retornam `undefined` (seleção e rolagem intactas).

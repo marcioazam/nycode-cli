@@ -10,7 +10,7 @@ aplicar no time de agentes e no workflow do pi o que rende mais acerto por dóla
 - deep-search modo `deep` (≤10 agentes, 1 rodada de lacunas, ≤12 chamadas Perplexity).
 - Ferramenta/MCP nova: vetar com `presente-de-grego` e instalar se passar (e virar padrão só com eval).
 - Teto da eval pareada (`pelo-em-ovo`): US$10.
-- Escopo: harness pi global (`~/.pi/agent`); nunca `~/.claude`, `~/.codex` ou repositórios.
+- Escopo: harness pi global (`~/.nycode/agent`); nunca `~/.claude`, `~/.codex` ou repositórios.
 - Outra sessão pi concorrente edita o harness (patches `zz-*`): não tocar nem contar as falhas dela.
 
 ## Aceite
@@ -85,8 +85,8 @@ Nenhuma instalada; `presente-de-grego` não rodou porque nenhum candidato passou
 
 ## Eval (passo 5-6)
 
-Mudanças aplicadas: `claude-home/skills/graph-engineering/SKILL.md` (passo 2 e Evidence), `claude-home/skills/loop-engineering/SKILL.md`
-(Caps e Evidence), `claude-home/skills/swarm-orchestration/SKILL.md` (Brief: orçamento). Nenhuma muda o padrão de forma que a suite
+Mudanças aplicadas: `packages/coding-agent/resources/skills/graph-engineering/SKILL.md` (passo 2 e Evidence), `packages/coding-agent/resources/skills/loop-engineering/SKILL.md`
+(Caps e Evidence), `packages/coding-agent/resources/skills/swarm-orchestration/SKILL.md` (Brief: orçamento). Nenhuma muda o padrão de forma que a suite
 de eval meça (só estreitam gatilhos já existentes ou acrescentam uma linha de brief), e nada novo virou padrão. Eval não
 rodada: US$0 de US$10. Além disso o limite de 5 h da conta estava em 99% (screenshot do usuário).
 
@@ -98,7 +98,7 @@ rodada: US$0 de US$10. Além disso o limite de 5 h da conta estava em 99% (scree
    `renderPanel` (região reescrita pelo `zz-panel-main-root` da outra sessão) no novo `zzz-panel-column0.patch`, que
    aplica depois dele. Pilha = instalado, reverso = pristino.
 2. `📋 n/m` do plano na linha de tools do HUD: `status-line.ts` (`renderStatusRows` com trailers, `hudFooterBridge`,
-   canal `pi-code:footer-bridge`) + `~/.pi/agent/extensions/footer-no-stats.ts` (publica o provedor e omite as chaves
+   canal `pi-code:footer-bridge`) + `~/.nycode/agent/extensions/footer-no-stats.ts` (publica o provedor e omite as chaves
    absorvidas enquanto o widget existe). Testes `statusline-multiline.test.ts` 7/7 (2 vermelhos antes). Patch
    `statusline-multiline.patch` regenerado.
 3. Limite da conta (429 "would exceed your account's rate limit"): sem retry e retomada no reset, como o Claude Code.
@@ -131,17 +131,17 @@ rodada: US$0 de US$10. Além disso o limite de 5 h da conta estava em 99% (scree
 - Critério (d): vácuo, porque nada virou padrão.
 - knowledge vault: 2 entradas em `Resources/Patterns/pi-harness-multi-agent-2026-11.md`. A nota passou de 20 KB; consolidação feita depois (nota com 18.753 B; seções movidas para `pi-terminal-ui-2026-11` e `pi-agent-fleet-panel-2026-11`), antes listada como pendente via vault_lint.
 - sha256:
-  - f2b2bc51463d…  ~/.pi/agent/claude-home/skills/graph-engineering/SKILL.md
-  - 673d40c6f8c9…  ~/.pi/agent/claude-home/skills/loop-engineering/SKILL.md
-  - 786f21a2b2ce…  ~/.pi/agent/claude-home/skills/swarm-orchestration/SKILL.md
-  - d4fc726004da…  ~/.pi/agent/extensions/auto-resume/index.ts
-  - 521544918ef3…  ~/.pi/agent/extensions/auto-resume/index.test.ts
-  - 4b05bb8f883e…  ~/.pi/agent/extensions/footer-no-stats.ts
-  - 8d864aa3f651…  ~/.pi/agent/claude-home/patches/pi-code/statusline-multiline.patch
-  - da1506885e3b…  ~/.pi/agent/claude-home/patches/pi-code/subagent-panel.patch
-  - 18251bfbf8a9…  ~/.pi/agent/claude-home/patches/pi-code/zzz-panel-column0.patch
-  - 5ea96ec9e8ac…  ~/.pi/agent/claude-home/docs/research/2026-11-13-graph-loop-harness-sota.md
-  - f0f81a18f561…  ~/.pi/agent/claude-home/docs/research/2026-11-13-graph-loop-harness-sota.ledger.json
+  - f2b2bc51463d…  packages/coding-agent/resources/skills/graph-engineering/SKILL.md
+  - 673d40c6f8c9…  packages/coding-agent/resources/skills/loop-engineering/SKILL.md
+  - 786f21a2b2ce…  packages/coding-agent/resources/skills/swarm-orchestration/SKILL.md
+  - d4fc726004da…  ~/.nycode/agent/extensions/auto-resume/index.ts
+  - 521544918ef3…  ~/.nycode/agent/extensions/auto-resume/index.test.ts
+  - 4b05bb8f883e…  ~/.nycode/agent/extensions/footer-no-stats.ts
+  - 8d864aa3f651…  packages/coding-agent/src/extensions/status-line/
+  - da1506885e3b…  packages/coding-agent/src/extensions/subagent/
+  - 18251bfbf8a9…  packages/coding-agent/src/extensions/subagent/
+  - 5ea96ec9e8ac…  docs/harness/research/2026-11-13-graph-loop-harness-sota.md
+  - f0f81a18f561…  docs/harness/research/2026-11-13-graph-loop-harness-sota.ledger.json
 
 ## Fechamento sem pendências (2026-11-13, goal "finalizar tudo sem gaps")
 
@@ -176,12 +176,12 @@ rodada: US$0 de US$10. Além disso o limite de 5 h da conta estava em 99% (scree
   do limite nem link quebrado.
   - Outras notas grandes do vault (Debug-Journal e notas de projetos) ficam fora do escopo.
 - sha256:
-  - 2e087e240945…  ~/.pi/agent/extensions/auto-resume/index.ts
-  - 709d90d9e32b…  ~/.pi/agent/extensions/auto-resume/index.test.ts
-  - 53f95340f228…  ~/.pi/agent/claude-home/patches/pi-code/zz-panel-main-root.patch
-  - 0cff2745c86a…  ~/.pi/agent/claude-home/patches/pi-code/zz-subagent-respawn.patch
-  - 673c61df8d20…  ~/.pi/agent/claude-home/patches/pi-code/zz-subagent-respawn/respawn.test.ts
-  - 199655c62f6a…  ~/.pi/agent/claude-home/patches/pi-code/subagent-panel/fleet-ui.test.ts
+  - 2e087e240945…  ~/.nycode/agent/extensions/auto-resume/index.ts
+  - 709d90d9e32b…  ~/.nycode/agent/extensions/auto-resume/index.test.ts
+  - 53f95340f228…  packages/coding-agent/src/extensions/subagent/
+  - 0cff2745c86a…  packages/coding-agent/src/extensions/subagent/
+  - 673c61df8d20…  packages/coding-agent/test/harness/extensions/subagent/zz-subagent-respawn/respawn.test.ts
+  - 199655c62f6a…  packages/coding-agent/test/harness/extensions/subagent/subagent-panel/fleet-ui.test.ts
   - 4c88fe02b8ec…  ~/.cache/pi-fleet-work/gate.sh
 
 ## Fechamento, rodada 2 (o avaliador do goal apontou 3 itens abertos)
@@ -208,10 +208,10 @@ rodada: US$0 de US$10. Além disso o limite de 5 h da conta estava em 99% (scree
 - Pilha: completa = instalado, reverso = pristino, 0 `.orig`/`.rej`.
 - knowledge vault: lição do `[DONE:n]` em `Pi-Global-Instructions`.
 - sha256:
-  - 79f354fb9474…  ~/.pi/agent/extensions/auto-resume/index.ts
-  - 240b7a05f0f7…  ~/.pi/agent/extensions/auto-resume/index.test.ts
-  - 0486bd691d02…  ~/.pi/agent/claude-home/patches/pi-code/zzzz-plan-done-rule.patch
-  - 30885bbacc00…  ~/.pi/agent/claude-home/patches/pi-code/zzzz-plan-done-rule/plan-done-rule.test.ts
+  - 79f354fb9474…  ~/.nycode/agent/extensions/auto-resume/index.ts
+  - 240b7a05f0f7…  ~/.nycode/agent/extensions/auto-resume/index.test.ts
+  - 0486bd691d02…  packages/coding-agent/src/extensions/plan-mode/
+  - 30885bbacc00…  packages/coding-agent/test/harness/extensions/plan-mode/plan-done-rule.test.ts
   - b83fa32b4de9…  ~/.cache/pi-fleet-work/gate.sh
   - 1aa380c52680…  ~/.cache/pi-fleet-work/gate-extra.sh
 - Verificação final (13:37:08, depois de a outra sessão regenerar `todo-collapse.patch` às 13:33:37 para outro pedido do

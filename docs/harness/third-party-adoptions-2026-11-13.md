@@ -9,9 +9,9 @@ Aprovado pelo usuário: o bloco "A ADOTAR" (6 itens). Os 12 "A MEDIR" e os confl
 |---|---|---|---|---|
 | A1+A2 | git não interativo e pagers desligados | `settings.json` → `shellCommandPrefix` = `export GIT_EDITOR=true GIT_SEQUENCE_EDITOR=true GIT_MERGE_AUTOEDIT=no GIT_PAGER=cat PAGER=cat AWS_PAGER= LESS=FRX` (recurso nativo, `docs/settings.md:143`) | ~110 bytes por comando bash, zero processo extra | acaba com a classe "agente pendurado no editor/pager do git" (fonte: kitevi `git-editor-guard.ts`, Mic92 `git-rebase-env.ts`, joelazar `modify_settings.json:9`) |
 | A3 | timeout padrão e teto no bash | nova extensão `extensions/bash-timeout/` (`index.ts` + 6 testes): sem `timeout` → **600 s**; acima de **1800 s** → `block` com instrução de `nohup` | 1 hook `tool_call`, O(1) | o pi **não tem timeout padrão** (`dist/core/tools/bash.js:17`, máximo 2147483647 ms): um comando travado só morre com Esc (fonte: Bekaboo `bash-timeout.ts`, woksin `wait-guard.ts`) |
-| A4 | `pi-doctor` | `claude-home/bin/doctor/pi-doctor` (shell + python3): JSON de settings/mcp/keybindings, caminhos locais do settings resolvidos como o pi, extensões sem `index.ts/js`, e a pilha de patches revertendo na árvore instalada | só sob demanda | hoje path quebrado ou JSON inválido só aparece como aviso silencioso no startup (fonte: nicknisi `bin/pi-doctor`) |
-| A5 | typecheck das extensões | `claude-home/bin/doctor/pi-typecheck`: gera tsconfig em /tmp apontando para `install/releases/$(cat current-version)` e roda `tsc --noEmit` (tsc 7.0.2 global); testes excluídos (stubs parciais de propósito) | ~30 s sob demanda | o LSP não sobe neste diretório; erro de tipo só aparecia em runtime (fonte: MariaSolOs `.pi/AGENTS.md:5-8`, nicknisi `home/.pi/package.json`) |
-| A6 | `prune-sessions` | `claude-home/bin/doctor/prune-sessions`: retenção por mtime, dry-run por padrão, `--apply`, backup `.tar.gz`, `umask 077`, nunca remove `$PI_SESSION_FILE` | só sob demanda | 152 MB / 142 transcritos com os prompts em texto, sem nenhuma política (fonte: cskwork `scripts/prune-sessions.sh`) |
+| A4 | `pi-doctor` | `scripts/harness/doctor/pi-doctor` (shell + python3): JSON de settings/mcp/keybindings, caminhos locais do settings resolvidos como o pi, extensões sem `index.ts/js`, e a pilha de patches revertendo na árvore instalada | só sob demanda | hoje path quebrado ou JSON inválido só aparece como aviso silencioso no startup (fonte: nicknisi `bin/pi-doctor`) |
+| A5 | typecheck das extensões | `scripts/harness/doctor/pi-typecheck`: gera tsconfig em /tmp apontando para `install/releases/$(cat current-version)` e roda `tsc --noEmit` (tsc 7.0.2 global); testes excluídos (stubs parciais de propósito) | ~30 s sob demanda | o LSP não sobe neste diretório; erro de tipo só aparecia em runtime (fonte: MariaSolOs `.pi/AGENTS.md:5-8`, nicknisi `home/.pi/package.json`) |
+| A6 | `prune-sessions` | `scripts/harness/doctor/prune-sessions`: retenção por mtime, dry-run por padrão, `--apply`, backup `.tar.gz`, `umask 077`, nunca remove `$PI_SESSION_FILE` | só sob demanda | 152 MB / 142 transcritos com os prompts em texto, sem nenhuma política (fonte: cskwork `scripts/prune-sessions.sh`) |
 
 ## Decisão: 600 s de padrão, não 120 s
 
@@ -38,15 +38,15 @@ mantém o efeito de matar comando pendurado sem atrapalhar o gate obrigatório.
 
 ## Estrutura e relatórios
 
-Os três scripts vivem em `claude-home/bin/doctor/` e os quatro lints em `claude-home/bin/checks/` (com seus testes
+Os três scripts vivem em `scripts/harness/doctor/` e os quatro lints em `scripts/harness/checks/` (com seus testes
 ao lado): `bin/` passou de 11 arquivos de código na raiz para 4 e agora sai sem findings no
 `bin/structure/structure.py`. Os relatórios da auditoria ficaram em `docs/research/2026-11-13-pirev-reports.md` e
 `docs/research/2026-11-13-pirev-synthesis.md`; os 2,6 GB de clones em `/tmp/pirev` foram removidos.
 
 ## Não adotado (continua valendo)
 
-Os 12 itens "A MEDIR" da síntese (versionar `~/.pi/agent` sem drift, guarda de pin de modelo, cache de 5 min para
+Os 12 itens "A MEDIR" da síntese (versionar `~/.nycode/agent` sem drift, guarda de pin de modelo, cache de 5 min para
 filhos, background real, gitleaks no commit, custo por sessão, etc.) e todos os CONFLICTS (trust "ask"/"always",
 sistemas de permissão, codemode, context-mode, model-router, fallback para Codex).
 
-Reverter: `settings.json.bak-shellprefix`; apagar `extensions/bash-timeout/` e o diretório `claude-home/bin/doctor/`.
+Reverter: `settings.json.bak-shellprefix`; apagar `extensions/bash-timeout/` e o diretório `scripts/harness/doctor/`.

@@ -8,7 +8,7 @@ usuário). Piloto diagnóstico, não veredito: 10 tarefas e k1, então só uma d
 - Harbor 0.25.0 (`uvx --from harbor`), dataset `terminal-bench@2.0` (89 tarefas), modelo `anthropic/claude-opus-5-5`
   nos dois braços, OAuth da assinatura via env em tempo de execução. Nenhum token foi gravado em disco ou no bundle.
 - Braços:
-  - `pi-harness`: agente próprio em `bin/evals/harbor/pi_harness_agent.py`. Leva `~/.pi/agent` mais o wrapper para
+  - `pi-harness`: agente próprio em `bin/evals/harbor/pi_harness_agent.py`. Leva `~/.nycode/agent` mais o wrapper para
     `~` no container, sem sessões, credenciais e backups (`bundle.sh` confere isso).
   - `claude-code`: o agente embutido do Harbor, Claude Code sem harness.
   - `pi-vanilla`: o pi embutido do Harbor, 1.5.2, sem harness; usado só no teste de recusas.

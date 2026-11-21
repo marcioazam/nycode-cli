@@ -1,6 +1,6 @@
 # Principal editável durante subagentes: async por padrão + enviar-agora (2026-11-13)
 
-Status: implementação local instalada; gate integrado pendente após os ajustes visuais pedidos durante a execução. Testes em `bin/tests/interactive-input/`. Fonte canônica: `<repo>/claude-home`; os caminhos correspondentes em `~/.pi/agent/claude-home` são symlinks individuais.
+Status: implementação local instalada; gate integrado pendente após os ajustes visuais pedidos durante a execução. Testes em `bin/tests/interactive-input/`. Fonte canônica: `<repo>/claude-home`; os caminhos correspondentes em `~/.nycode/agent` são symlinks individuais.
 
 ## Objetivo
 

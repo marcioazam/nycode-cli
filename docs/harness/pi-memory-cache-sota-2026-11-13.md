@@ -69,7 +69,7 @@ ou ajuste mínimo de extensão, zero bytes novos sempre carregados. Teto potenci
   `message:user` entre as chamadas (gap 1 e 47 min). Com cacheRead = 0 nem tools/system (≈48K, 1h) foram lidos.
 - Teste rápido (Haiku, tmux): entrar no modo plano **não** quebra o cache (tools/system iguais no payload, histórico
   intacto, cacheRead 47.764): o pi manda a troca de ferramentas como mensagem no meio da conversa.
-- Sonda temporária `~/.pi/agent/extensions/cache-prefix-probe/` (só hashes e índices em
+- Sonda temporária `~/.nycode/agent/extensions/cache-prefix-probe/` (só hashes e índices em
   `~/.cache/pi-cache-probe/<data>.jsonl`, sessão principal): por requisição, se tools/system mudaram e o primeiro
   bloco de mensagem divergente. Na remedição, cruzar cada perda com a sonda para achar o gatilho (compactação,
   execução do plano, `/goal`) e decidir o conserto. A sonda é removida no passo 6.

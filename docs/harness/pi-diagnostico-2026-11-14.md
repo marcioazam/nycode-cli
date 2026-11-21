@@ -12,7 +12,7 @@ harmonia com o que existe, gerenciável e observável pelo programador.
    só na primeira ocorrência; repetição só soma `×n`.
 4. `/diagnostico` abre o painel: lista mais nova primeiro, filtro por severidade, Enter abre o detalhe (rolável até o
    fim), `s` silencia ou reativa a entrada, `l` limpa a lista, caminho do log no rodapé.
-5. Cada ocorrência vai para `~/.pi/agent/diag/diag.jsonl` (campos OTel), com segredos redigidos e rotação em 1 MiB.
+5. Cada ocorrência vai para `~/.nycode/agent/diag/diag.jsonl` (campos OTel), com segredos redigidos e rotação em 1 MiB.
 6. `PI_DIAG=0` desliga tudo (rollback); subagentes e modo print não são tocados.
 7. Nada muda no texto enviado ao modelo nem no comportamento de falha existente (quem permitia continua permitindo).
 
@@ -44,7 +44,7 @@ Chave de agrupamento: `fonte|tipo|msg`. No máximo 200 registros em memória.
 Sink global (patches e extensões): `globalThis[Symbol.for('pi-harness:diag')]?.({ sev, fonte, tipo, msg, detalhe? })`.
 
 Caixa de entrada (processos externos): arquivo `$PI_DIAG_INBOX` (o wrapper exporta
-`~/.pi/agent/diag/inbox-<pid>.tsv`), uma linha por evento, `sev<TAB>fonte<TAB>tipo<TAB>msg[<TAB>detalhe]`; tab e
+`~/.nycode/agent/diag/inbox-<pid>.tsv`), uma linha por evento, `sev<TAB>fonte<TAB>tipo<TAB>msg[<TAB>detalhe]`; tab e
 quebra de linha dentro de um campo viram `\t` e `\n` literais. A extensão lê do último offset em `session_start`,
 `tool_execution_end`, `turn_end`, `agent_settled` e ao abrir o painel. Caixas com mais de 7 dias são apagadas no start.
 
@@ -67,7 +67,7 @@ Mapeamento de severidade: `notify` error/warning/info → 17/13/9; `console.erro
 - Painel: moldura do `PainelAvisos` (régua `── Diagnóstico ── ● tudo  erros  avisos ──`, `❯` + `selectedBg` na linha
   escolhida, régua de fecho). Linha: `HH:MM  ✕  fonte  msg  ×n`. Detalhe aberto com a barra `│` do `hook-msgs`.
   Vazio: `Nenhum erro ou aviso nesta sessão`. Rodapé: `↑↓ escolher · enter detalhe · tab filtro · s silenciar · l limpar
-  lista · esc fechar` e, na linha seguinte, `registro completo: ~/.pi/agent/diag/diag.jsonl`.
+  lista · esc fechar` e, na linha seguinte, `registro completo: ~/.nycode/agent/diag/diag.jsonl`.
 
 ### Depois da revisão de UX (`ux-reviewer`, 2026-11-14; substitui o que diverge acima)
 
@@ -124,15 +124,15 @@ Qualidade comprada: falhas do harness deixam de ser silenciosas. Nenhum gate ou 
 
 - `node --experimental-strip-types --test extensions/diagnostico/test/*.test.ts`: 41 de 41.
 - `extensions/hook-msgs/index.test.ts`: 15 de 15. `extensions/ui-visual/test/*.test.ts`: 100 passam, 1 skip.
-  `claude-home/bin/tests/plan-gate.test.ts`: 20 de 20. `extensions/avisos/test`: 54 de 54.
-  `claude-home/bin/tests/avisos-core`: 76 de 76.
+  `packages/coding-agent/test/harness/extensions/plan-gate/index.test.ts`: 20 de 20. `extensions/avisos/test`: 54 de 54.
+  `bin/tests/avisos-core`: 76 de 76.
 - `python3 -m unittest test_guard test_graph_context test_impeccable_gate`: 37 OK. `dispatch/test_dispatch`: 32 OK.
 - `sh -n bin/pi` e `bash -n hook-dispatch.sh`: limpos. `structure.py`: nenhum achado nos diretórios desta entrega.
 - Ponta a ponta no pi real (tmux, `~/.local/bin/pi --no-session`): o `notify` de outra extensão entrou no painel
   (o `ctx.ui` é mesmo compartilhado); uma linha na caixa de entrada gerou o aviso `✕ wrapper: …`, o painel abriu em
   `erros`, o detalhe mostrou `token=«redigido»` e o `diag.jsonl` recebeu a linha com os campos OTel; o crash de
   `crashes.json` apareceu como anterior.
-- `bash claude-home/bin/tests/pi-ui-final-gate.sh`: sai com 1; 9 checks passam e 6 falham (1 cobertura da extensão
+- `bash scripts/harness/ui-gates/pi-ui-final-gate.sh`: sai com 1; 9 checks passam e 6 falham (1 cobertura da extensão
   `ui`, 8 `structure.py`, 9 `check-instructions`, 10 a 12 pilha de patches do pi-code). Nenhum desses domínios foi
   tocado aqui, mas não há linha de base medida antes da mudança: tratar como não verificado.
 - Não executado: wrapper de ponta a ponta com um patch real falhando; cobertura por arquivo; retry real do modelo.
