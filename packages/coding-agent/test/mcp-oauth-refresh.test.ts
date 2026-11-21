@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -204,8 +203,8 @@ describe("MCP OAuth sign-in", () => {
 	});
 });
 
-// #10302
-describe("MCP OAuth client ID metadata documents", () => {
+// nycode publishes no Client ID Metadata Documents (no default document): it always registers.
+describe("MCP OAuth client registration", () => {
 	const cleanups: (() => Promise<void>)[] = [];
 	const cimd: McpOAuthSettings = { clientRegistration: "cimd" };
 	const dcr: McpOAuthSettings = { clientRegistration: "dcr" };
@@ -236,23 +235,18 @@ describe("MCP OAuth client ID metadata documents", () => {
 	});
 
 	// #11426
-	it("uses nycode's document by default when authorization responses name their issuer", async () => {
+	it("registers dynamically by default, even when the server supports documents", async () => {
 		const { server, store, signIn } = await startServer({ cimd: true, issParameter: true });
 		await signIn({});
 		const [authorization] = server.authorizations;
-		expect(authorization.get("client_id")).toBe("https://pi.dev/oauth/client.json");
-		const redirect = new URL(authorization.get("redirect_uri") ?? "");
-		expect(`${redirect.hostname}${redirect.pathname}`).toBe("127.0.0.1/callback");
-		expect(redirect.port).not.toBe("");
-		expect(server.registrations).toEqual([]);
-		expect(server.tokenRequests[0].get("client_id")).toBe("https://pi.dev/oauth/client.json");
-		expect(server.tokenRequests[0].get("redirect_uri")).toBe(redirect.href);
-		// The document is not stored, so signing in again refreshes the tokens instead of discarding them.
-		expect((await store.load())?.clientInformation).toBeUndefined();
+		expect(authorization.get("client_id")).toBe("client-1");
+		expect(server.registrations).toHaveLength(1);
+		expect(server.tokenRequests[0].get("client_id")).toBe("client-1");
+		expect((await store.load())?.clientInformation?.client_id).toBe("client-1");
+		// The registered client is stored, so signing in again refreshes the tokens.
 		await signIn({});
 		expect(server.authorizations).toHaveLength(1);
 		expect(server.tokenRequests[1].get("grant_type")).toBe("refresh_token");
-		expect(server.tokenRequests[1].get("client_id")).toBe("https://pi.dev/oauth/client.json");
 	});
 
 	// #11426
@@ -282,57 +276,9 @@ describe("MCP OAuth client ID metadata documents", () => {
 		expect((await store.load())?.clientInformation?.client_id).toBe("client-1");
 	});
 
-	it("uses a document and callback path specific to the MCP server without the iss parameter", async () => {
-		const { server, signIn } = await startServer({ cimd: true });
-		await signIn(cimd);
-		// Computed like Codex: the first 9 bytes of the SHA-256 of the MCP server URL.
-		const id = createHash("sha256").update(server.url).digest().subarray(0, 9).toString("base64url");
-		const [authorization] = server.authorizations;
-		expect(authorization.get("client_id")).toBe(`https://pi.dev/oauth/${id}/client.json`);
-		const redirect = new URL(authorization.get("redirect_uri") ?? "");
-		expect(redirect.pathname).toBe(`/callback/${id}`);
-		expect(server.registrations).toEqual([]);
-		expect(server.tokenRequests[0].get("redirect_uri")).toBe(redirect.href);
-	});
-
-	it("replaces a registered client when switching to the document", async () => {
-		const { server, store, signIn } = await startServer({ cimd: true, issParameter: true });
-		await signIn(dcr);
-		expect((await store.load())?.clientInformation?.client_id).toBe("client-1");
-		await signIn(cimd);
-		// The registered client's tokens are not refreshed with another client.
-		expect(server.authorizations.map((authorization) => authorization.get("client_id"))).toEqual([
-			"client-1",
-			"https://pi.dev/oauth/client.json",
-		]);
-		expect((await store.load())?.clientInformation).toBeUndefined();
-	});
-
-	it("accepts the authorization response only on the server-specific redirect URI", async () => {
-		// A mixed-up authorization server redirects to the shared callback path.
-		const { signIn } = await startServer({ cimd: true, redirectPath: "/callback" });
-		await expect(signIn(cimd)).rejects.toThrow("arrived on another redirect URI");
-
-		// The same for a redirect URL pasted from the browser.
-		const { signIn: signInByPaste } = await startServer({ cimd: true });
-		let shown: URL | undefined;
-		const paste: McpSignInPrompt = {
-			showAuthorizationUrl: (url) => {
-				shown = url;
-			},
-			promptForRedirectUrl: async () => {
-				const redirect = new URL(shown?.searchParams.get("redirect_uri") ?? "");
-				redirect.pathname = "/callback";
-				redirect.search = `?code=code-1&state=${shown?.searchParams.get("state")}`;
-				return redirect.href;
-			},
-		};
-		await expect(signInByPaste(cimd, paste)).rejects.toThrow("does not match this sign-in's redirect URI");
-	});
-
-	it("fails instead of registering when the server does not support documents", async () => {
-		const { server, signIn } = await startServer({ issParameter: true });
-		await expect(signIn(cimd)).rejects.toThrow("does not support Client ID Metadata Documents");
+	it("fails instead of registering with cimd, because nycode has no documents", async () => {
+		const { server, signIn } = await startServer({ cimd: true, issParameter: true });
+		await expect(signIn(cimd)).rejects.toThrow("needs Client ID Metadata Documents");
 		expect(server.registrations).toEqual([]);
 	});
 });

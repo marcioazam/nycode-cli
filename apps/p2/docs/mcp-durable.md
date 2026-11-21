@@ -335,7 +335,7 @@ request (its `/mcp/callback` route, a pasted URL, or a loopback server it runs).
 | Today in coding-agent `oauth.ts` | In nycode-mcp | Change |
 | --- | --- | --- |
 | `McpOAuthSettings`, `callbackSettings`, `mergeScopes`, `timedFetch` | same names | none |
-| `offersClientMetadataDocument`, `clientMetadataDocument`, `callbackId` | same | the document base URL (today `https://pi.dev/oauth`) and the application name (today `APP_NAME`) become options |
+| `offersClientMetadataDocument`, `clientMetadataDocument`, `callbackId` | same | the application name (today `APP_NAME`) become options |
 | `responseFromRedirectUrl` | exported | none |
 | `createMcpAuthProvider` | exported | `McpOAuthServerStore.withRefreshLock` stays an interface; nycode-mcp gets no lockfile dependency |
 | `signInMcpServer` | split | see below |
@@ -638,7 +638,7 @@ quoting unit tests.
 
    | Principal | Redirect URI | Code arrives through | Registration |
    | --- | --- | --- | --- |
-   | `owner`, `access: "local"` | `http://127.0.0.1:<port>/callback` (nycode-mcp `OAuthCallbackServer` on the p2 host) | the loopback server | pi.dev Client ID Metadata Documents when supported, else dynamic registration |
+   | `owner`, `access: "local"` | `http://127.0.0.1:<port>/callback` (nycode-mcp `OAuthCallbackServer` on the p2 host) | the loopback server | dynamic registration |
    | `owner`, `access: "relay"` | `https://<cortex origin>/mcp/callback` (from `radius/relay-access.ts`) | route `GET /mcp/callback` | dynamic registration |
    | `owner`, `access: "device"` on an allowed public host | `https://<P2_PUBLIC_URL host>/mcp/callback` | route `GET /mcp/callback` | dynamic registration |
 

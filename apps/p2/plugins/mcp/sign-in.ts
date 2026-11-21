@@ -12,7 +12,6 @@ import {
 	listenForLoopbackSignIn,
 	type McpAuthorizationResponse,
 	type McpAuthProvider,
-	type McpClientMetadataDocuments,
 	type McpOAuthSettings,
 	type McpSignInOptions,
 	type McpSignInRedirect,
@@ -50,23 +49,6 @@ export type CredentialsChanged = (server: string) => void;
 
 /** How long a sign-in waits for its browser step. */
 export const SIGN_IN_TIMEOUT_MS = 10 * 60_000;
-
-/**
- * nycode's Client ID Metadata Documents on pi.dev: they list the loopback redirect URIs `http://127.0.0.1/callback` and
- * `http://localhost/callback` (any port), so loopback sign-ins may use them; p2's https callback route registers
- * dynamically.
- */
-const NYCODE_CLIENT_METADATA_DOCUMENTS: McpClientMetadataDocuments = {
-	baseUrl: "https://pi.dev/oauth",
-	listsRedirectUrl: (redirectUrl) => {
-		const url = new URL(redirectUrl);
-		return (
-			url.protocol === "http:" &&
-			(url.hostname === "127.0.0.1" || url.hostname === "localhost") &&
-			url.pathname === "/callback"
-		);
-	},
-};
 
 /** One sign-in under way (or failed, kept for the owner to see until replaced or dismissed). */
 type Flow = {
@@ -127,7 +109,6 @@ export class SignIns {
 			settings: () => settingsOf(server.config),
 			onChallenge: (challenge) => this.#challenges.set(keyOf(server), challenge),
 			clientName: this.#clientName,
-			clientMetadataDocuments: NYCODE_CLIENT_METADATA_DOCUMENTS,
 		});
 	}
 
@@ -145,7 +126,6 @@ export class SignIns {
 						serverUrl: server.url,
 						store,
 						settings,
-						clientMetadataDocuments: NYCODE_CLIENT_METADATA_DOCUMENTS,
 						renderPage: (page) => callbackPage(server.name, page),
 					});
 		const options: McpSignInOptions = {
@@ -155,7 +135,6 @@ export class SignIns {
 			redirectUrl: listening.redirectUrl,
 			challenge: this.#challenges.get(keyOf(server)),
 			clientName: this.#clientName,
-			clientMetadataDocuments: NYCODE_CLIENT_METADATA_DOCUMENTS,
 		};
 		let start: Awaited<ReturnType<typeof startMcpSignIn>>;
 		try {

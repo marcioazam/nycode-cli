@@ -67,7 +67,7 @@ Options for add:
   --oauth-client-name <name>
                           Client name sent when registering with the OAuth server
   --oauth-client-registration <mode>
-                          auto (default), cimd, or dcr
+                          auto (default) or dcr
   --exposure <mode>       codemode (default), deferred, direct, or hidden
   --description <text>    What the server offers, shown in the system prompt
 
