@@ -17,6 +17,7 @@ export interface ResourcesFixture {
 
 const ENV_KEYS = [
 	"NYCODE_PACKAGE_DIR",
+	"NYCODE_RESOURCES",
 	"NYCODE_CODING_AGENT_DIR",
 	"HOME",
 	"USERPROFILE",

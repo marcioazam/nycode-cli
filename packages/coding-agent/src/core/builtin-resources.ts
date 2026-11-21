@@ -26,6 +26,15 @@ export function getBuiltinResourcesRoot(): string {
 	return join(getPackageDir(), "resources");
 }
 
+/**
+ * Exports the resources root as NYCODE_RESOURCES so the shell commands the embedded texts show
+ * (`python3 ${NYCODE_RESOURCES}/skills/x/y.py`) expand. A user value wins and nothing is set without `resources/`.
+ */
+export function exportResourcesRoot(): void {
+	const root = getBuiltinResourcesRoot();
+	if (process.env.NYCODE_RESOURCES === undefined && existsSync(root)) process.env.NYCODE_RESOURCES = root;
+}
+
 /** The built-in directory of `kind`, or undefined when it does not exist. */
 export function builtinResourceDir(kind: BuiltinResourceKind, root = getBuiltinResourcesRoot()): string | undefined {
 	const dir = join(root, kind);

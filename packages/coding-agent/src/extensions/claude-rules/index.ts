@@ -22,7 +22,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { setBuiltinInstructions } from "../../core/builtin-instructions.ts";
-import { builtinResourceDir, resolveResourcesMarker } from "../../core/builtin-resources.ts";
+import { builtinResourceDir, exportResourcesRoot, resolveResourcesMarker } from "../../core/builtin-resources.ts";
 import type { ExtensionAPI } from "../../core/extensions/types.ts";
 import type { ThemeColor } from "../../modes/interactive/theme/theme-tokens.ts";
 import { publishInstructionLoad } from "../_shared/events/instruction-events.ts";
@@ -436,6 +436,8 @@ export default function claudeRulesExtension(nycode: ExtensionAPI) {
 	if (shouldOmitClaudeMd(process.argv.slice(2))) process.env.CLAUDE_CODE_DISABLE_CLAUDE_MDS = "1";
 	// K7: this extension owns the instruction context files, so the built-in contract rides with it
 	setBuiltinInstructions(true);
+	// Same load point: every process (interactive, print, child subagents, which inherit the env) loads this extension
+	exportResourcesRoot();
 	const globalRulesDir = path.join(claudeConfigDir(os.homedir()), "rules");
 	const globalRulesBase = userRulesBase(globalRulesDir, os.homedir());
 	let rules: PromptRules = NO_PROMPT_RULES;
