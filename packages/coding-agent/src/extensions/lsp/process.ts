@@ -6,9 +6,9 @@ import type { ChildProcess } from "node:child_process";
 const isAlive = (c: ChildProcess): boolean => c.exitCode === null && c.signalCode === null;
 
 export function terminateChild(child: ChildProcess, graceMs = 2_000): void {
-  if (!isAlive(child)) return;
-  child.kill("SIGTERM");
-  setTimeout(() => {
-    if (isAlive(child)) child.kill("SIGKILL");
-  }, graceMs).unref();
+	if (!isAlive(child)) return;
+	child.kill("SIGTERM");
+	setTimeout(() => {
+		if (isAlive(child)) child.kill("SIGKILL");
+	}, graceMs).unref();
 }
