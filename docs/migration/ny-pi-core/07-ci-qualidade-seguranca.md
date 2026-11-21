@@ -165,7 +165,10 @@ Legenda: **igual** (sem mudança além de nome), **caminho** (muda de→para), *
 - **5**. Etapa (nome no script): `biome (changed extensions ts)`. Destino: absorvida. O que muda: o Biome do fork
   (tabulação, 120) em `npm run check`; o do ny-pi some (D-06).
 - **6**. Etapa (nome no script): `shellcheck -x` (alterados). Destino: igual. O que muda: nenhuma.
-- **7**. Etapa (nome no script): `shfmt -i 2 -d` (alterados). Destino: igual. O que muda: nenhuma.
+- **7**. Etapa (nome no script): `shfmt -i 2 -d` (alterados). Destino: igual. O que muda: nenhuma. Os passos 6 e 7 pulam
+  os `.sh` do upstream que têm costura `ativa` em `scripts/fork/seams.txt` (lista em `scripts/ci/seams/seam-files.sh`) e
+  imprimem `skip (upstream seam): <arquivo>`: a regra 2 do [08](08-sincronizacao-upstream.md) §7 proíbe reformatar
+  arquivo do upstream, e o lint do estilo dele só geraria conflito no sync.
 - **8**. Etapa (nome no script): `markdownlint` (alterados). Destino: igual. O que muda: `scripts/ci/markdownlint.jsonc`
   desliga MD013 (linhas longas).
 - **9**. Etapa (nome no script): `structure (changed)`. Destino: caminho. O que muda: seção 3.5.

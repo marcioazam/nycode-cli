@@ -52,6 +52,13 @@ for f in "${CHANGED[@]}"; do [[ $f =~ $FIXTURE_RE ]] || CHANGED_FILTERED+=("$f")
 CHANGED=("${CHANGED_FILTERED[@]}")
 mapfile -t PY < <(pick '\.py$')
 mapfile -t SH < <(pick_shell)
+# Upstream .sh files that carry an active seam keep the upstream style (08 section 7, rule 2): no shell lint, but visible.
+mapfile -t SEAM_FILES < <(bash "$CIDIR/seams/seam-files.sh")
+SH_CHECKED=()
+for f in "${SH[@]}"; do
+  if printf '%s\n' "${SEAM_FILES[@]}" | grep -qxF -- "$f"; then echo "skip (upstream seam): $f"; else SH_CHECKED+=("$f"); fi
+done
+SH=("${SH_CHECKED[@]}")
 mapfile -t MD < <(pick '\.md$')
 
 each() { # cmd... -- files...: run cmd once with all files, skip when none
