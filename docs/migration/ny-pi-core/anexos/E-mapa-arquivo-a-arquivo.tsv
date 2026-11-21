@@ -933,19 +933,19 @@ claude-home/bin/doctor/README.md	scripts/harness/doctor/README.md	converter	F8	R
 claude-home/bin/doctor/pi-doctor	scripts/harness/doctor/pi-doctor	converter	F8	R15
 claude-home/bin/doctor/pi-typecheck	scripts/harness/doctor/pi-typecheck	converter	F8	R15
 claude-home/bin/doctor/prune-sessions	scripts/harness/doctor/prune-sessions	converter	F8	R15
-claude-home/bin/evals/harbor/README.md	bench/evals/harbor/README.md	converter	F3	B05
-claude-home/bin/evals/harbor/bundle.sh	bench/evals/harbor/bundle.sh	converter	F3	B05
+claude-home/bin/evals/harbor/README.md	(sem referência no nycode)	remover	F3	X01
+claude-home/bin/evals/harbor/bundle.sh	bench/harbor/pi_bundle.sh	converter	F3	B05
 claude-home/bin/evals/harbor/omp-release.sh	(braço omp fora das medições, D-26)	remover	F3	B04
 claude-home/bin/evals/harbor/omp_agent.py	(braço omp fora das medições, D-26)	remover	F3	B04
-claude-home/bin/evals/harbor/pi_harness_agent.py	bench/evals/harbor/pi_harness_agent.py	converter	F3	B05
-claude-home/bin/evals/harbor/pi_vanilla_api_agent.py	bench/evals/harbor/pi_vanilla_api_agent.py	converter	F3	B05
-claude-home/bin/evals/harbor/run.sh	bench/evals/harbor/run.sh	converter	F3	B05
+claude-home/bin/evals/harbor/pi_harness_agent.py	bench/harbor/pi_harness_agent.py	converter	F3	B05
+claude-home/bin/evals/harbor/pi_vanilla_api_agent.py	bench/harbor/pi_vanilla_api_agent.py	converter	F3	B05
+claude-home/bin/evals/harbor/run.sh	(sem referência no nycode)	remover	F3	X01
 claude-home/bin/evals/harbor/tests/test_omp_agent.py	(braço omp fora das medições, D-26)	remover	F3	B04
-claude-home/bin/evals/harbor/tests/test_pi_harness_agent.py	(o código testado fica em import/ny-pi até F12)	remover	F3	X01
-claude-home/bin/evals/harbor/tests/test_pi_vanilla_api_agent.py	(o código testado fica em import/ny-pi até F12)	remover	F3	X01
-claude-home/bin/evals/plan_ab.py	bench/evals/plan_ab.py	converter	F3	B05
-claude-home/bin/evals/plan_ab_cases.jsonl	bench/evals/plan_ab_cases.jsonl	converter	F3	B05
-claude-home/bin/evals/test_plan_ab.py	(o código testado fica em import/ny-pi até F12)	remover	F3	X01
+claude-home/bin/evals/harbor/tests/test_pi_harness_agent.py	bench/tests/harbor/test_pi_harness_agent.py	converter	F3	B05
+claude-home/bin/evals/harbor/tests/test_pi_vanilla_api_agent.py	bench/tests/harbor/test_pi_vanilla_api_agent.py	converter	F3	B05
+claude-home/bin/evals/plan_ab.py	(sem referência no nycode)	remover	F3	X01
+claude-home/bin/evals/plan_ab_cases.jsonl	(sem referência no nycode)	remover	F3	X01
+claude-home/bin/evals/test_plan_ab.py	(sem referência no nycode)	remover	F3	X01
 claude-home/bin/git-deliver	scripts/harness/git-deliver	converter	F8	R15
 claude-home/bin/hud/claude-hud-pi-transcript.mjs	packages/coding-agent/resources/statusline/claude-hud-pi-transcript.mjs	converter	F8	R14
 claude-home/bin/hud/claude-hud-provider.mjs	packages/coding-agent/resources/statusline/claude-hud-provider.mjs	converter	F8	R14
@@ -961,7 +961,7 @@ claude-home/bin/port-agents.py	scripts/harness/port-agents.py	converter	F8	R15
 claude-home/bin/puxar/puxar.py	scripts/harness/puxar/puxar.py	mover	F7	E21
 claude-home/bin/puxar/test_puxar.py	scripts/harness/puxar/test_puxar.py	mover	F7	E21
 claude-home/bin/structure/structure.py	scripts/ci/lint/structure/structure.py	converter	F3	C09
-claude-home/bin/structure/test_structure.py	(o código testado fica em import/ny-pi até F12)	remover	F3	X01
+claude-home/bin/structure/test_structure.py	scripts/ci/lint/structure/test_structure.py	converter	F3	C09
 claude-home/bin/telemetry/cache-remeasure.sh	(acompanha cache-prefix-probe, D-10)	remover	F7	E04
 claude-home/bin/telemetry/cache_probe_join.py	(acompanha cache-prefix-probe, D-10)	remover	F7	E04
 claude-home/bin/telemetry/pi_telemetry.py	scripts/harness/telemetry/pi_telemetry.py	converter	F8	R15

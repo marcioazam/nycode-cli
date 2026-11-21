@@ -6,7 +6,7 @@ Lista completa, uma linha por arquivo: [E-mapa-arquivo-a-arquivo.tsv](E-mapa-arq
 
 | Regra | Arquivos | Padrão de origem | Destino | Ação | Fase |
 |---|---:|---|---|---|---|
-| X01 | 4 | `^claude-home/bin/(evals/harbor/tests/test_pi_(?:harness\|vanilla_api)_agent\|evals/test_plan_ab\|structure/test_structure)\.py$` | `(o código testado fica em import/ny-pi até F12)` | remover | F3 |
+| X01 | 5 | `^claude-home/bin/evals/(?:plan_ab\.py\|plan_ab_cases\.jsonl\|test_plan_ab\.py\|harbor/(?:run\.sh\|README\.md))$` | `(sem referência no nycode)` | remover | F3 |
 | G01 | 1 | `^README\.md$` | `README.md` | fundir | F2 |
 | G02 | 1 | `^CHANGELOG\.md$` | `docs/harness/CHANGELOG-ny-pi.md` | mover | F2 |
 | G03 | 2 | `^(CODE_OF_CONDUCT\|SUPPORT)\.md$` | `$1.md` | mover | F2 |
@@ -28,13 +28,13 @@ Lista completa, uma linha por arquivo: [E-mapa-arquivo-a-arquivo.tsv](E-mapa-arq
 | C06 | 1 | `^scripts/check-leaks\.sh$` | `scripts/ci/check-leaks.sh` | mover | F3 |
 | C07 | 3 | `^scripts/(check-refs\.py\|refs-allow\.txt\|test_check_refs\.py)$` | `scripts/ci/lint/$1` | converter | F3 |
 | C08 | 1 | `^scripts/fixtures/leak/(.+)$` | `scripts/ci/fixtures/leak/$1` | mover | F3 |
-| C09 | 1 | `^claude-home/bin/structure/(.+)$` | `scripts/ci/lint/structure/$1` | converter | F3 |
+| C09 | 2 | `^claude-home/bin/structure/(.+)$` | `scripts/ci/lint/structure/$1` | converter | F3 |
 | C10 | 1 | `^docs/ci-local\.md$` | `docs/ci-local.md` | converter | F3 |
 | B01 | 1 | `^bench/arms/omp$` | `(braço omp fora das medições, D-26)` | remover | F3 |
 | B02 | 869 | `^bench/(.+)$` | `bench/$1` | converter | F3 |
 | B03 | 31 | `^docs/bench/(.+)$` | `docs/bench/$1` | mover | F3 |
 | B04 | 3 | `^claude-home/bin/evals/harbor/(omp-release\.sh\|omp_agent\.py\|tests/test_omp_agent\.py)$` | `(braço omp fora das medições, D-26)` | remover | F3 |
-| B05 | 7 | `^claude-home/bin/evals/(.+)$` | `bench/evals/$1` | converter | F3 |
+| B05 | 5 | `^claude-home/bin/evals/(.+)$` | `bench/evals/$1` | converter | F3 |
 | K01 | 1 | `^bin/pi$` | `packages/coding-agent/src/cli/args.ts + src/core/settings-defaults.ts (K3, K4)` | absorver | F4 |
 | K02 | 1 | `^bin/test_pi_env\.sh$` | `packages/coding-agent/test/harness/core/settings-env.test.ts` | converter | F4 |
 | K03 | 2 | `^(settings\.json\|local\.env)\.example$` | `packages/coding-agent/src/core/settings-defaults.ts + docs/settings.md (K4)` | absorver | F4 |
@@ -116,7 +116,7 @@ Lista completa, uma linha por arquivo: [E-mapa-arquivo-a-arquivo.tsv](E-mapa-arq
 | Fase | mover | converter | fundir | absorver | remover | Total |
 |---|---:|---:|---:|---:|---:|---:|
 | F2 | 11 | 8 | 10 | 1 | 1 | 31 |
-| F3 | 34 | 906 | 0 | 0 | 9 | 949 |
+| F3 | 34 | 905 | 0 | 0 | 10 | 949 |
 | F4 | 3 | 4 | 0 | 5 | 0 | 12 |
 | F5 | 0 | 5 | 0 | 6 | 13 | 24 |
 | F6 | 0 | 19 | 0 | 13 | 2 | 34 |
@@ -124,4 +124,4 @@ Lista completa, uma linha por arquivo: [E-mapa-arquivo-a-arquivo.tsv](E-mapa-arq
 | F8 | 9 | 338 | 0 | 2 | 0 | 349 |
 | F9 | 0 | 2 | 0 | 1 | 1 | 4 |
 | F11 | 0 | 0 | 0 | 0 | 6 | 6 |
-| **Total** | 90 | 1313 | 11 | 32 | 39 | **1485** |
+| **Total** | 90 | 1312 | 11 | 32 | 40 | **1485** |

@@ -19,11 +19,11 @@ TEST = f"{CA}/test/harness"
 
 # (id, regex, destino, ação, fase). Ações: mover, fundir, converter, absorver, remover.
 RULES: list[tuple[str, str, str, str, str]] = [
-    # Exceção de F10 (03 §2.3): o código testado fica em import/ny-pi e sai com ele em F12; o teste sai junto.
+    # Exceção de F10 (03 §2.3): sem referência viva no nycode (nada em bench/, scripts/ ou packages/ os lê); saem agora.
     (
         "X01",
-        r"^claude-home/bin/(evals/harbor/tests/test_pi_(?:harness|vanilla_api)_agent|evals/test_plan_ab|structure/test_structure)\.py$",
-        "(o código testado fica em import/ny-pi até F12)",
+        r"^claude-home/bin/evals/(?:plan_ab\.py|plan_ab_cases\.jsonl|test_plan_ab\.py|harbor/(?:run\.sh|README\.md))$",
+        "(sem referência no nycode)",
         "remover",
         "F3",
     ),
@@ -581,6 +581,11 @@ RULES: list[tuple[str, str, str, str, str]] = [
 # F5/F6 foi reorganizada (F10), `replay.test.ts` não tem o que testar sem a pilha de patches (03 §2.3), e
 # `docs-pointer` e os temas embutidos mudaram de lugar (D-36, D-37). Colunas: origem | destino | ação | fase | regra.
 OVERRIDES_TEXT = """
+claude-home/bin/evals/harbor/bundle.sh | bench/harbor/pi_bundle.sh | converter | F3 | B05
+claude-home/bin/evals/harbor/pi_harness_agent.py | bench/harbor/pi_harness_agent.py | converter | F3 | B05
+claude-home/bin/evals/harbor/pi_vanilla_api_agent.py | bench/harbor/pi_vanilla_api_agent.py | converter | F3 | B05
+claude-home/bin/evals/harbor/tests/test_pi_harness_agent.py | bench/tests/harbor/test_pi_harness_agent.py | converter | F3 | B05
+claude-home/bin/evals/harbor/tests/test_pi_vanilla_api_agent.py | bench/tests/harbor/test_pi_vanilla_api_agent.py | converter | F3 | B05
 claude-home/patches/pi-code/goal-lifecycle.test.ts | packages/coding-agent/test/harness/goal/goal-lifecycle.test.ts | converter | F6 | P10
 claude-home/patches/pi-code/goal.test.ts | packages/coding-agent/test/harness/goal/goal.test.ts | converter | F6 | P10
 claude-home/patches/pi-code/notify-focus.test.ts | packages/coding-agent/test/harness/notify/notify-focus.test.ts | converter | F5 | P07

@@ -53,23 +53,33 @@ def test_override_wins_over_the_rule_that_would_match() -> None:
     )
 
 
-def test_x01_removes_the_tests_of_code_that_stays_in_import_until_f12() -> None:
+def test_x01_removes_what_nothing_in_nycode_reads() -> None:
     module = load()
     compiled = [
         (rid, module.re.compile(rx), dest, act, ph)
         for rid, rx, dest, act, ph in module.RULES
     ]
     for path in (
-        "claude-home/bin/structure/test_structure.py",
+        "claude-home/bin/evals/plan_ab.py",
+        "claude-home/bin/evals/plan_ab_cases.jsonl",
         "claude-home/bin/evals/test_plan_ab.py",
-        "claude-home/bin/evals/harbor/tests/test_pi_harness_agent.py",
-        "claude-home/bin/evals/harbor/tests/test_pi_vanilla_api_agent.py",
+        "claude-home/bin/evals/harbor/run.sh",
+        "claude-home/bin/evals/harbor/README.md",
     ):
         row = module.classify(path, compiled)
         assert row and row[1:] == ("remover", "F3", "X01")
-    # the code itself keeps its conversion rule
-    row = module.classify("claude-home/bin/structure/structure.py", compiled)
-    assert row and row[3] == "C09"
+    # structure and the Harbor agents are converted, with their tests
+    assert module.classify("claude-home/bin/structure/structure.py", compiled) == (
+        "scripts/ci/lint/structure/structure.py", "converter", "F3", "C09"
+    )  # fmt: skip
+    for path, dest in (
+        ("claude-home/bin/structure/test_structure.py", "scripts/ci/lint/structure/test_structure.py"),
+        ("claude-home/bin/evals/harbor/bundle.sh", "bench/harbor/pi_bundle.sh"),
+        ("claude-home/bin/evals/harbor/pi_harness_agent.py", "bench/harbor/pi_harness_agent.py"),
+        ("claude-home/bin/evals/harbor/tests/test_pi_vanilla_api_agent.py", "bench/tests/harbor/test_pi_vanilla_api_agent.py"),
+    ):  # fmt: skip
+        row = module.classify(path, compiled)
+        assert row and row[:3] == (dest, "converter", "F3")
     assert module.classify("no/such/rule.xyz", compiled) is None
 
 

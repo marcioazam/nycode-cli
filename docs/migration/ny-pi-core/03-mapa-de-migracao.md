@@ -33,13 +33,13 @@ git -C ~/source/ny-pi ls-tree -r --name-only origin/main \
 | Ação | Significado | Arquivos |
 |---|---|---:|
 | mover | `git mv` sem mudar o conteúdo | 90 |
-| converter | `git mv` e ajuste mecânico: caminhos, imports `@earendil-works/pi-*` para `@nycode/*`, nomes `PI_*`, formatação | 1313 |
+| converter | `git mv` e ajuste mecânico: caminhos, imports `@earendil-works/pi-*` para `@nycode/*`, nomes `PI_*`, formatação | 1312 |
 | fundir | O destino já existe no fork; o conteúdo é combinado | 11 |
 | absorver | O arquivo some e seu comportamento passa a morar em código do core ou de uma extensão | 32 |
-| remover | Não migra; o motivo está na regra | 39 |
+| remover | Não migra; o motivo está na regra | 40 |
 | **Total** | | **1485** |
 
-Dos 1313 "converter", 869 são `bench/` (784 deles são tarefas de teste em `bench/suites/`, que só mudam de lugar) e
+Dos 1312 "converter", 869 são `bench/` (784 deles são tarefas de teste em `bench/suites/`, que só mudam de lugar) e
 261 são agentes, comandos e skills.
 
 ### 2.2 Totais por fase
@@ -56,7 +56,7 @@ Dos 1313 "converter", 869 são `bench/` (784 deles são tarefas de teste em `ben
 | F9 | 4 | Patches de terceiros, `third-party.json` |
 | F11 | 6 | Instalador, `publish.list`, `npm/` |
 
-### 2.3 O que é removido e por quê (39 arquivos)
+### 2.3 O que é removido e por quê (40 arquivos)
 
 | Arquivos | Motivo | Decisão |
 |---|---|---|
@@ -67,7 +67,7 @@ Dos 1313 "converter", 869 são `bench/` (784 deles são tarefas de teste em `ben
 | `scripts/check-patch-stack.sh`, `claude-home/patches/pi-code/zzzzzzz-subagent-model-effort/replay.test.ts` | Não há mais pilha de patches; o teste só reverte e reaplica essa pilha (o comportamento de roteamento tem `render.test.ts` e `tracker.test.ts` no destino) | — |
 | `extensions/cache-prefix-probe/index.ts`, `claude-home/bin/telemetry/cache_probe_join.py`, seu teste, `cache-remeasure.sh` | Diagnóstico marcado como temporário | D-10 |
 | `extensions/no-web-search.ts`, `extensions/no-context-files-covers-claude-md.ts`, `scripts/compaction-400k.py` | Contornos de um acoplamento que acaba | D-10 |
-| `claude-home/bin/evals/harbor/tests/test_pi_harness_agent.py`, `claude-home/bin/evals/harbor/tests/test_pi_vanilla_api_agent.py`, `claude-home/bin/evals/test_plan_ab.py`, `claude-home/bin/structure/test_structure.py` | O código que eles testam não foi convertido e continua só em `import/ny-pi/` (`bench/run.py` ainda lê os agentes de Harbor de lá), de onde sai em F12; o teste sai com ele. O nycode não ganha código de produção só para guardar um teste. A estrutura do CI é medida por `scripts/ci/lint/structure_changed.py` (limites só dos arquivos criados, D-06) | D-06 |
+| `claude-home/bin/evals/plan_ab.py`, `plan_ab_cases.jsonl`, `test_plan_ab.py`, `claude-home/bin/evals/harbor/run.sh`, `harbor/README.md` | Nada em `bench/`, `scripts/` ou `packages/` os referencia. `run.sh` e o README descreviam a execução manual do braço `ny-pi` com as credenciais do dono (`~/.claude-2`); `bench/run.py` a substituiu. Os agentes de Harbor (`pi_harness_agent.py`, `pi_vanilla_api_agent.py`, o `bundle.sh` do ny-pi como `pi_bundle.sh`) e os dois testes foram convertidos para `bench/harbor/` e `bench/tests/harbor/`; `structure.py` e seu teste para `scripts/ci/lint/structure/` | — |
 | `third-party.json` | Terceiros embutidos ou pacotes opcionais | D-11 |
 | `install.sh`, `publish.list`, `scripts/install-lib.sh`, `scripts/test_install.sh`, `npm/package.json`, `npm/package-lock.json` | Instalação e publicação do fork | — |
 
