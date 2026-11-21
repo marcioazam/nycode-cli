@@ -6,7 +6,7 @@ For native Windows setup, read [Windows Setup](windows.md). For Android, read [T
 
 ## 1. Install Nycode
 
-Download the release for macOS, Linux, or Windows from https://github.com/marcioazam/nycode/releases. Alternatively, install Nycode from npm, which does not pin transitive dependencies. This requires Node.js 22.19 or newer:
+Download the release for macOS, Linux, or Windows from <https://github.com/marcioazam/nycode/releases>. Alternatively, install Nycode from npm, which does not pin transitive dependencies. This requires Node.js 22.19 or newer:
 
 ```bash
 npm install -g --ignore-scripts @nycode/coding-agent

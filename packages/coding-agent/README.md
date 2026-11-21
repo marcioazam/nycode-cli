@@ -17,7 +17,7 @@ Use Nycode [interactively](docs/usage.md), automate it in [print or JSON mode](d
 
 ## Getting started
 
-Download the release for your platform from https://github.com/marcioazam/nycode/releases. Alternatively, install directly with npm, which does not pin transitive dependencies:
+Download the release for your platform from <https://github.com/marcioazam/nycode/releases>. Alternatively, install directly with npm, which does not pin transitive dependencies:
 
 ```bash
 npm install -g --ignore-scripts @nycode/coding-agent
