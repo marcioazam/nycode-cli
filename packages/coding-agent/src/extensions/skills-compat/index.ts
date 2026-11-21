@@ -22,20 +22,20 @@
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
-import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent'
-import { expandCommand, shellExecutionDisabled } from './commands.ts'
-import { runAgent } from './internal/agent-run.ts'
-import { parseCommandFile } from './internal/command-file.ts'
-import { claudeConfigDir } from './internal/config-dir.ts'
-import { parseClaudeFrontmatter } from './internal/frontmatter.ts'
-import { managedSettingsFile } from './internal/managed-settings.ts'
-import { installedPlugins, pluginComponentPath } from './internal/plugins.ts'
-import { isProjectApprovedSilently } from './internal/project-approval.ts'
-import { ancestorDirs } from './internal/project-root.ts'
-import { sessionHasTurns, sessionMailbox } from './internal/session-mailbox.ts'
-import { claudeSettingsChain, readSettingsChain } from './internal/settings-chain.ts'
-import { SKILL_HOOKS_CHANNEL } from './internal/skill-hooks.ts'
-import { errorMessage, isDirectory, isRecord } from './internal/values.ts'
+import type { ExtensionAPI, ExtensionContext } from '../../core/extensions/types.ts'
+import { expandCommand, shellExecutionDisabled } from '../commands/index.ts'
+import { runAgent } from '../_shared/seams/agent-run.ts'
+import { parseCommandFile } from '../_shared/commands/command-file.ts'
+import { claudeConfigDir } from '../_shared/settings/config-dir.ts'
+import { parseClaudeFrontmatter } from '../_shared/commands/frontmatter.ts'
+import { managedSettingsFile } from '../_shared/settings/managed-settings.ts'
+import { installedPlugins, pluginComponentPath } from '../_shared/settings/plugins.ts'
+import { isProjectApprovedSilently } from '../_shared/project/project-approval.ts'
+import { ancestorDirs } from '../_shared/project/project-root.ts'
+import { sessionHasTurns, sessionMailbox } from '../_shared/events/session-mailbox.ts'
+import { claudeSettingsChain, readSettingsChain } from '../_shared/settings/settings-chain.ts'
+import { SKILL_HOOKS_CHANNEL } from '../_shared/events/skill-hooks.ts'
+import { errorMessage, isDirectory, isRecord } from '../_shared/util/values.ts'
 
 /** The extra skill directories a manifest declares, as a list. A string is one entry,
  * a list is itself, anything else declares none. */
@@ -134,14 +134,14 @@ function findClaudeSkill(name: string, roots: string[]): FoundSkill | undefined 
   return undefined
 }
 
-export default function skillsExtension(pi: ExtensionAPI) {
-  pi.on('session_start', (_event, ctx) => forkResults.attach(pi, sessionHasTurns(ctx)))
-  pi.on('agent_start', () => forkResults.markPrompted(pi))
-  pi.on('session_shutdown', () => forkResults.detach(pi))
+export default function skillsExtension(nycode: ExtensionAPI) {
+  nycode.on('session_start', (_event, ctx) => forkResults.attach(nycode, sessionHasTurns(ctx)))
+  nycode.on('agent_start', () => forkResults.markPrompted(nycode))
+  nycode.on('session_shutdown', () => forkResults.detach(nycode))
 
-  pi.on('resources_discover', (_event, ctx) => {
+  nycode.on('resources_discover', (_event, ctx) => {
     // pi's --no-skills does not cover paths an extension hands over here; a routed subagent has no skill catalog.
-    if (process.env.PI_CODE_SUBAGENT_NO_SKILLS === '1') return undefined
+    if (process.env.NYCODE_SUBAGENT_NO_SKILLS === '1') return undefined
     // resources_discover fires after session_start, so the approval is already
     // resolved; reading it silently keeps a second trust dialog off the screen.
     const skillPaths = skillDirs(ctx.cwd, os.homedir(), isProjectApprovedSilently(ctx))
@@ -150,9 +150,9 @@ export default function skillsExtension(pi: ExtensionAPI) {
 
   // The dynamic-content shim: only for skills this extension contributed; pi's own
   // `.pi/skills` (or an unknown name) pass through to pi's plain expansion.
-  pi.on('input', async (event, ctx) => {
+  nycode.on('input', async (event, ctx) => {
     if (event.source === 'extension') return
-    return expandSkillInvocation(pi, event.text, ctx)
+    return expandSkillInvocation(nycode, event.text, ctx)
   })
 }
 
@@ -226,8 +226,8 @@ async function runForkedSkill(name: string, filePath: string, expanded: string, 
 /** Whether pi resolved this skill name to another file: pi loads its own skill directories
  * ahead of the ones this extension adds and the first name wins, so its listing then
  * shows that skill, and the invocation is left to pi's own expansion of it. */
-function shadowedByPi(pi: ExtensionAPI, name: string, filePath: string): boolean {
-  const loaded = pi.getCommands?.().find((command) => command.source === 'skill' && command.name === `skill:${name}`)
+function shadowedByPi(nycode: ExtensionAPI, name: string, filePath: string): boolean {
+  const loaded = nycode.getCommands?.().find((command) => command.source === 'skill' && command.name === `skill:${name}`)
   if (loaded === undefined) return false
   const real = (target: string): string => {
     try {
@@ -249,13 +249,13 @@ function parseSkillInvocation(rawText: string): { name: string; args: string } |
   return { name, args: space === -1 ? '' : text.slice(space + 1).trim() }
 }
 
-async function expandSkillInvocation(pi: ExtensionAPI, rawText: string, ctx: ExtensionContext): Promise<{ action: 'transform'; text: string } | { action: 'handled' } | undefined> {
+async function expandSkillInvocation(nycode: ExtensionAPI, rawText: string, ctx: ExtensionContext): Promise<{ action: 'transform'; text: string } | { action: 'handled' } | undefined> {
   const invocation = parseSkillInvocation(rawText)
   if (!invocation) return
   const { name, args } = invocation
   const trusted = isProjectApprovedSilently(ctx)
   const found = findClaudeSkill(name, skillDirs(ctx.cwd, os.homedir(), trusted))
-  if (!found || shadowedByPi(pi, name, found.filePath)) return
+  if (!found || shadowedByPi(nycode, name, found.filePath)) return
   const refused = refusedByOverride(name, ctx, trusted)
   if (refused) return refused
   let parsed: ReturnType<typeof parseCommandFile>
@@ -275,11 +275,11 @@ async function expandSkillInvocation(pi: ExtensionAPI, rawText: string, ctx: Ext
   const frontmatter = parseClaudeFrontmatter<Record<string, unknown>>(content).frontmatter
   const declaredHooks = frontmatter.hooks
   if (declaredHooks !== null && typeof declaredHooks === 'object' && !Array.isArray(declaredHooks)) {
-    pi.events?.emit(SKILL_HOOKS_CHANNEL, { skillName: name, hooks: declaredHooks })
+    nycode.events?.emit(SKILL_HOOKS_CHANNEL, { skillName: name, hooks: declaredHooks })
   }
   let expanded: string
   try {
-    expanded = await expandCommand(pi, parsed, args, { cwd: ctx.cwd }, found.filePath, undefined, { allowShell: !shellExecutionDisabled(ctx.cwd, os.homedir(), trusted) })
+    expanded = await expandCommand(nycode, parsed, args, { cwd: ctx.cwd }, found.filePath, undefined, { allowShell: !shellExecutionDisabled(ctx.cwd, os.homedir(), trusted) })
   } catch (error) {
     // A failed injected command aborts the invocation, as it does for a command: pi logs a
     // throwing input handler and continues with the raw text, which would send the body
