@@ -4,6 +4,7 @@ import codemodeExtension from "./codemode/index.ts";
 import commandsExtension from "./commands/index.ts";
 import contextImportsExtension from "./context-imports/index.ts";
 import contextUsageExtension from "./context-usage/index.ts";
+import docsPointerExtension from "./docs-pointer/index.ts";
 import envSettingsExtension from "./env-settings/index.ts";
 import footerExtension from "./footer/index.ts";
 import gitCheckpointExtension from "./git-checkpoint/index.ts";
@@ -62,4 +63,5 @@ export const builtInExtensions: InlineExtension[] = [
 	{ name: "web", factory: webExtension, builtin: true, enabledByDefault: false },
 	// Embedded ny-pi extensions, in ny-pi's load order (after pi-code, by source file name).
 	{ name: "footer", factory: footerExtension, builtin: true },
+	{ name: "docs-pointer", factory: docsPointerExtension, builtin: true },
 ];
