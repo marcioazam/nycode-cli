@@ -23,7 +23,8 @@ echo "arvore antes: $B"
 
 H=test/harness
 r=$(vcov ui $H/extensions/ui/a11y.test.ts $H/extensions/ui/btw.test.ts $H/extensions/ui/diff.test.ts \
-  $H/extensions/ui/editor.test.ts $H/extensions/ui/history.test.ts $H/extensions/ui/terminal.test.ts)
+  $H/extensions/ui/editor.test.ts $H/extensions/ui/history.test.ts $H/extensions/ui/terminal.test.ts \
+  $H/extensions/ui/index.test.ts)
 chk "1 ui tests + cobertura>=80" "${r%%|*}" "${r#*|}"
 
 r=$(vcov ui-visual $H/extensions/ui-visual/header.test.ts $H/extensions/ui-visual/icons.test.ts \
@@ -33,7 +34,7 @@ chk "1b ui-visual tests + cobertura>=80" "${r%%|*}" "${r#*|}"
 # 2: the three pi-code patches of the task (rewind-tree, todo-collapse, notify-focus) are core extensions now.
 r=$(vcov git-checkpoint $H/git-checkpoint/git-checkpoint.test.ts)
 chk "2 git-checkpoint (rewind-tree) + cobertura>=80" "${r%%|*}" "${r#*|}"
-r=$(vcov todo $H/todo/todo-collapse.test.ts)
+r=$(vcov todo $H/todo/todo-collapse.test.ts $H/extensions/todo/stale-reminder.test.ts)
 chk "2 todo (todo-collapse) + cobertura>=80" "${r%%|*}" "${r#*|}"
 r=$(vcov notify $H/notify/notify-focus.test.ts $H/extensions/notify/index.test.ts)
 chk "2 notify (notify-focus) + cobertura>=80" "${r%%|*}" "${r#*|}"

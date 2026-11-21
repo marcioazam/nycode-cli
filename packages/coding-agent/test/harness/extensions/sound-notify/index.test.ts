@@ -1,8 +1,14 @@
 // Ported from import/ny-pi/claude-home/bin/tests/sound-notify.test.ts (1 case), plus the settled handler gated by
 // `notify.sound` / NYCODE_SOUND_NOTIFY.
-import { afterEach, describe, expect, it } from "vitest";
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ExtensionAPI } from "../../../../src/core/extensions/types.ts";
 import soundNotifyExtension, { playerCommand } from "../../../../src/extensions/sound-notify/index.ts";
+
+const { spawnMock } = vi.hoisted(() => ({ spawnMock: vi.fn() }));
+vi.mock("node:child_process", () => ({ spawn: spawnMock }));
 
 type Settled = (event: unknown, ctx: { hasUI: boolean }) => Promise<void>;
 
@@ -44,5 +50,60 @@ describe("sound-notify", () => {
 		expect(handler).toBeDefined();
 		// Off by key: no player is looked up, so the call is a no-op even with a UI.
 		await expect(handler?.({}, { hasUI: true })).resolves.toBeUndefined();
+	});
+});
+
+describe("sound-notify playback", () => {
+	const savedPath = process.env.PATH;
+	let bin: string;
+
+	beforeEach(() => {
+		spawnMock.mockReset();
+		bin = fs.mkdtempSync(path.join(os.tmpdir(), "sound-bin-"));
+		fs.writeFileSync(path.join(bin, "canberra-gtk-play"), "");
+		process.env.PATH = bin;
+		delete process.env.NYCODE_SOUND_NOTIFY;
+		delete process.env.NYCODE_SUBAGENT;
+	});
+
+	afterEach(() => {
+		process.env.PATH = savedPath;
+		fs.rmSync(bin, { recursive: true });
+	});
+
+	it("spawns the found player detached when a UI session settles", async () => {
+		const unref = vi.fn();
+		spawnMock.mockReturnValue({ unref });
+		await register({})?.({}, { hasUI: true });
+		expect(spawnMock).toHaveBeenCalledWith("canberra-gtk-play", ["-i", "complete", "-d", "nycode turn complete"], {
+			stdio: "ignore",
+			detached: true,
+		});
+		expect(unref).toHaveBeenCalled();
+	});
+
+	it("plays nothing without a UI", async () => {
+		await register({})?.({}, { hasUI: false });
+		expect(spawnMock).not.toHaveBeenCalled();
+	});
+
+	it("plays nothing when the key is off", async () => {
+		process.env.NYCODE_SOUND_NOTIFY = "0";
+		await register({})?.({}, { hasUI: true });
+		expect(spawnMock).not.toHaveBeenCalled();
+	});
+
+	it("survives a failing spawn and falls back to the bell without throwing", async () => {
+		spawnMock.mockImplementation(() => {
+			throw new Error("spawn failed");
+		});
+		await expect(register({})?.({}, { hasUI: true })).resolves.toBeUndefined();
+		expect(spawnMock).toHaveBeenCalledTimes(1);
+	});
+
+	it("falls back to the bell without throwing when no player exists", async () => {
+		process.env.PATH = "";
+		await expect(register({})?.({}, { hasUI: true })).resolves.toBeUndefined();
+		expect(spawnMock).not.toHaveBeenCalled();
 	});
 });
