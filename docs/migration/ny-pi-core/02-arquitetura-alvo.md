@@ -42,8 +42,7 @@ nycode/
 │   │   │   ├── hooks/          guard.py, graph_context.py, dispatch/, claims/
 │   │   │   ├── instructions/   contrato de trabalho (ex-CLAUDE.md), headless, lite
 │   │   │   ├── rules/          safety.md e rules-ref/
-│   │   │   ├── skills/         30 skills
-│   │   │   └── themes/         tokyo-night.json, mono.json
+│   │   │   └── skills/         30 skills
 │   │   ├── src/
 │   │   │   ├── cli/args.ts     + flags do wrapper (N1)
 │   │   │   ├── core/
@@ -162,7 +161,7 @@ Lista fechada. Cada linha é uma costura no upstream e entra em [08](08-sincroni
 | K1 | `packages/coding-agent/src/core/sdk.ts:370` | `messages.every((m, i) => current[i] === m)` passa a comparar por identidade de conteúdo (`piSameContextMessage`) | `claude-home/patches/pi-core/cache-warm-identity.mjs` | F4 |
 | K2 | `packages/mcp/src/transports/stdio.ts:10` | `STDIN_CLOSE_GRACE_MS` de 500 para 100 | `mcp-close-grace.mjs`, especificação 0003 | F4 |
 | K3 | `packages/coding-agent/src/cli/args.ts` | Flags `--bypass`, `--dangerously-skip-permissions`, `--safe`, `--no-bypass` | `bin/pi` | F4 |
-| K4 | `packages/coding-agent/src/core/settings-schema.ts`, `settings-defaults.ts` | Bloco `harness` e `permissions` (seção 5); `defaultProjectTrust` padrão `never`; `quietStartup` padrão `header`; `retry` padrão do ny-pi | `bin/pi`, `settings.json.example`, `local.env.example` | F4 |
+| K4 | `packages/coding-agent/src/core/settings-schema.ts`, `settings-defaults.ts`, `settings-manager.ts`, `src/modes/interactive/theme/theme.ts` | Bloco `harness` e `permissions` (seção 5); `defaultProjectTrust` padrão `never`; `quietStartup` padrão `header`; `retry` padrão do ny-pi; temas `tokyo-night` e `mono` embutidos, `tokyo-night` padrão (D-37) | `bin/pi`, `settings.json.example`, `local.env.example` | F4 |
 | K5 | `packages/coding-agent/src/extensions/index.ts` | Uma linha de registro por extensão embutida | — | F5 a F9 |
 | K6 | `packages/coding-agent/src/core/resource-loader.ts` | Escopo `builtin` para agentes, skills, comandos, regras e instruções em `resources/`, com a menor precedência | `CLAUDE_CONFIG_DIR`, `publish.list` | F8 |
 | K7 | `packages/coding-agent/src/core/system-prompt.ts` | Inclusão das instruções embarcadas (a seção `docs` em uma linha ficou na extensão `docs-pointer`, D-36) | `claude-home/CLAUDE.md` | F8 |
@@ -225,7 +224,7 @@ chaves novas.
 | Skills | `claude-home/skills/*/` (30 pastas, 227 arquivos) | `resources/skills/` | idem; `core`, `ui` ou `optional` segundo a 0005 |
 | Comandos | `claude-home/commands/*.md` (17) | `resources/commands/` | idem |
 | Hooks | `claude-home/hooks/` (21 arquivos) | `resources/hooks/` | Registrados por padrão em `hooks` de `settings-defaults.ts` |
-| Temas | `themes/tokyo-night.json`, `themes/mono.json` | `resources/themes/` (tema padrão `tokyo-night`) | Junto de `dark` e `light` do upstream |
+| Temas | `themes/tokyo-night.json`, `themes/mono.json` | `src/modes/interactive/theme/` (tema padrão `tokyo-night`; D-37) | Junto de `dark` e `light` do upstream |
 | Linha de status | `claude-home/plugins/claude-hud/` + `bin/hud/` | `resources/statusline/` | `statusLine` padrão |
 
 Os caminhos dentro dos textos mudam de `$CLAUDE_CONFIG_DIR/...` e `~/.pi/agent/claude-home/...` para um marcador
