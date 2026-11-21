@@ -15,26 +15,32 @@ Delegate tasks to specialized subagents with isolated context windows.
 
 ## Structure
 
-```
+```text
 subagent/
 ├── README.md            # This file
 ├── index.ts             # The extension: tool schema, dispatch, session hooks
-├── agents.ts            # Agent discovery and frontmatter
-├── child.ts             # How a child is configured before it is spawned
-├── run.ts               # Spawning one child and parsing its event stream
-├── modes.ts             # Single, parallel, chain, background, and the project-agent gate
-├── background.ts        # Background run registry and spawning
-├── worktree.ts          # isolation: worktree setup and teardown
-├── params.ts            # The tool schema and the types derived from it
-├── types.ts             # Result shapes shared by the tool and its renderers
-├── concurrency.ts       # Parallel-run caps and the bounded worker pool
-├── registry-text.ts     # Text for /tasks, /agents and completion notices
-├── render.ts            # Transcript formatting shared with the parent
-├── render-result.ts     # How a call and its results are drawn
 ├── agents/              # Bundled builtin agents, always available (lowest precedence)
 │   ├── explore.md       # Explore: fast read-only codebase exploration
 │   ├── plan.md          # Plan: read-only implementation planning
 │   └── general-purpose.md   # general-purpose: full capabilities
+├── core/                # Running a call
+│   ├── run.ts           # Spawning one child and parsing its event stream
+│   ├── child.ts         # How a child is configured before it is spawned
+│   ├── modes.ts         # Single, parallel, chain, background, and the project-agent gate
+│   ├── params.ts        # The tool schema and the types derived from it
+│   ├── types.ts         # Result shapes shared by the tool and its renderers
+│   ├── concurrency.ts   # Parallel-run caps and the bounded worker pool
+│   └── worktree.ts      # isolation: worktree setup and teardown
+├── registry/            # agents.ts: agent discovery and frontmatter; registry-text.ts: text for /tasks, /agents
+├── render/              # render.ts: transcript formatting; render-result.ts: how a call and its results are drawn
+├── fleet/               # Run records, tracker, inbox, detach, background registry (background.ts)
+├── fleet-ui/            # Agent panel, viewer, /tasks browser; style/ holds palette, chrome and labels
+├── transcript/          # The subagent tool's call and result rendering
+├── routing/             # Model and effort routing policy, /subagents-setup
+├── nesting/             # Depth, tree budget and the child's environment
+├── respawn/             # Foreground respawn after a child crash
+├── section-nav/         # Group navigation shared by the panel sections
+└── team/                # Opt-in agent team: messages, board, tasks
 ```
 
 ## Installation
@@ -56,17 +62,20 @@ When running interactively, the tool prompts for confirmation before running pro
 ## Usage
 
 ### Single agent
-```
+
+```text
 Use Explore to find all authentication code
 ```
 
 ### Parallel execution
-```
+
+```text
 Run 2 Explore agents in parallel: one to find models, one to find providers
 ```
 
 ### Chained workflow
-```
+
+```text
 Use a chain: first have Explore find the read tool, then have Plan suggest improvements
 ```
 

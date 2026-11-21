@@ -17,6 +17,7 @@ import questionExtension from "./question/index.ts";
 import sessionTitleExtension from "./session-title/index.ts";
 import settingsFlagsExtension from "./settings-flags/index.ts";
 import skillsCompatExtension from "./skills-compat/index.ts";
+import subagentExtension from "./subagent/index.ts";
 import thinkingExtension from "./thinking/index.ts";
 import todoExtension from "./todo/index.ts";
 import toolSearchExtension from "./tool-search/index.ts";
@@ -45,6 +46,7 @@ export const builtInExtensions: InlineExtension[] = [
 	{ name: "session-title", factory: sessionTitleExtension, builtin: true },
 	{ name: "settings-flags", factory: settingsFlagsExtension, builtin: true },
 	{ name: "skills-compat", factory: skillsCompatExtension, builtin: true },
+	{ name: "subagent", factory: subagentExtension, builtin: true },
 	{ name: "thinking", factory: thinkingExtension, builtin: true },
 	{ name: "todo", factory: todoExtension, builtin: true },
 	{ name: "web", factory: webExtension, builtin: true, enabledByDefault: false },
