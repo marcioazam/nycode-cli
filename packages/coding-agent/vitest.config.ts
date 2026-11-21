@@ -23,10 +23,6 @@ export default mergeConfig(
 			alias: [
 				{ find: /^@nycode\/ai$/, replacement: workspaceSourcePaths.aiIndex },
 				{ find: /^@nycode\/agent-core$/, replacement: workspaceSourcePaths.agentIndex },
-				{ find: /^@mariozechner\/nycode-ai$/, replacement: workspaceSourcePaths.aiIndex },
-				{ find: /^@mariozechner\/nycode-ai\/oauth$/, replacement: workspaceSourcePaths.aiOAuth },
-				{ find: /^@mariozechner\/nycode-agent-core$/, replacement: workspaceSourcePaths.agentIndex },
-				{ find: /^@mariozechner\/nycode-tui$/, replacement: workspaceSourcePaths.tuiIndex },
 			],
 		},
 	}),

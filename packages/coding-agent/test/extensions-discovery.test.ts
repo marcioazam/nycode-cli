@@ -69,6 +69,25 @@ describe("extensions discovery", () => {
 		expect(result.extensions).toHaveLength(1);
 	});
 
+	it("does not resolve the legacy @mariozechner/* module names", async () => {
+		fs.writeFileSync(
+			path.join(extensionsDir, "legacy-import.ts"),
+			`
+				import { getAgentDir } from "@mariozechner/pi-coding-agent";
+				void getAgentDir;
+				export default function(nycode) {
+					nycode.registerCommand("test", { handler: async () => {} });
+				}
+			`,
+		);
+
+		const result = await discoverAndLoadExtensions([], tempDir, tempDir);
+
+		expect(result.extensions).toHaveLength(0);
+		expect(result.errors).toHaveLength(1);
+		expect(result.errors[0].error).toContain("@mariozechner/pi-coding-agent");
+	});
+
 	it("does not infer package ownership from ancestor manifests", async () => {
 		// Regression for #9863.
 		const dependencyDir = path.join(tempDir, "node_modules", "@nycode", "coding-agent");

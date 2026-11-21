@@ -3,6 +3,7 @@ import { existsSync, lstatSync, readdirSync, readFileSync, realpathSync, statSyn
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { convertMcp, convertSettings, type LocalEnv, mergeSettings, parseLocalEnv } from "./from-pi-convert.ts";
+import { legacyImportNotes } from "./from-pi-imports.ts";
 
 export type FileAction = "create" | "overwrite" | "unchanged" | "keep";
 
@@ -242,6 +243,8 @@ export function buildPlan(source: string, dest: string): Plan {
 			`--from is not the default ${defaultSource(homedir())}: these origin entries run code at the next nycode start, review them first: ${codeRunners.join(", ")}`,
 		);
 	}
+
+	plan.notes.push(...legacyImportNotes(source, piSettings));
 
 	const claudeHome = join(source, "claude-home");
 	if (existsSync(claudeHome) && statSync(claudeHome).isDirectory()) {
