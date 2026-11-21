@@ -151,10 +151,12 @@ chegam por fase e o `core_scope.py` é convertido em F3.
 | extension | prefix-cache-1h | core | Cache do prefixo |
 | extension | puxar | optional | Importa sessão de outro perfil, uso pessoal |
 | extension | question | core | Pergunta ao usuário com opções |
+| extension | run | core | Processos em segundo plano e a seção de execução |
 | extension | session-title | ui | Título da sessão |
 | extension | settings-flags | core | Flags de settings do Claude |
 | extension | skills-compat | core | Skills no formato do Claude Code |
 | extension | sound-notify | optional | Som ao fim do turno, gosto pessoal |
+| extension | status-line | ui | Linha de status |
 | extension | sticky-prompt | ui | Última mensagem fixa |
 | extension | subagent | core | Subagentes, frota e times |
 | extension | syntax-check | core | Erro de sintaxe após edição |
