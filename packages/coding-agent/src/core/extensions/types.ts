@@ -2121,6 +2121,12 @@ export type InlineExtension =
 			 * extensions use it.
 			 */
 			builtin?: boolean;
+			/**
+			 * With `builtin`, set `false` to ship the extension off: it does not load until the user turns it
+			 * on, with `-e builtin:<name>` or a `builtin:<name>` or `+builtin:<name>` entry in the `extensions`
+			 * setting (project settings override user settings). Omitted or `true` loads it by default.
+			 */
+			enabledByDefault?: boolean;
 	  };
 
 // ============================================================================

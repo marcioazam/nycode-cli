@@ -20,6 +20,7 @@ import skillsCompatExtension from "./skills-compat/index.ts";
 import thinkingExtension from "./thinking/index.ts";
 import todoExtension from "./todo/index.ts";
 import toolSearchExtension from "./tool-search/index.ts";
+import webExtension from "./web/index.ts";
 
 export const builtInExtensions: InlineExtension[] = [
 	{ name: "llama.cpp", factory: llamaExtension, builtin: true },
@@ -46,4 +47,5 @@ export const builtInExtensions: InlineExtension[] = [
 	{ name: "skills-compat", factory: skillsCompatExtension, builtin: true },
 	{ name: "thinking", factory: thinkingExtension, builtin: true },
 	{ name: "todo", factory: todoExtension, builtin: true },
+	{ name: "web", factory: webExtension, builtin: true, enabledByDefault: false },
 ];
