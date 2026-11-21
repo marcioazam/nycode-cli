@@ -31,6 +31,7 @@ function matchesRule(segment: string, rule: string): boolean {
 	)
 		return true;
 	if (normalized.includes("*"))
+		// nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- every piece of the rule is escaped by escapeRegExp; only `*` becomes `[^]*`
 		return new RegExp(`^${normalized.split("*").map(escapeRegExp).join("[^]*")}$`).test(segment);
 	return segment === normalized;
 }

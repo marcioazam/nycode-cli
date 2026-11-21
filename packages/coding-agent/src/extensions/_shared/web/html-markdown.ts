@@ -101,6 +101,7 @@ function replaceTagSpans(
 		if (openStart < cursor) continue; // inside a span an earlier open of this pass already consumed
 		const source = closeSource(open);
 		if (!closeSpans.has(source)) {
+			// nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- closeSource is a fixed closing-tag pattern or a tag name captured by a literal opening pattern (strong|b, em|i, ...)
 			closeSpans.set(source, matchSpans(html, new RegExp(source, "gi")));
 			closeCursor.set(source, 0);
 		}

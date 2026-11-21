@@ -344,6 +344,7 @@ function splitArgs(args: string): string[] {
  * names are declared. */
 function argPattern(names: string[]): RegExp {
 	const nameAlt = names.length > 0 ? names.map(escapeRegExp).join("|") : "(?!)";
+	// nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- the source is fixed text plus escapeRegExp of the declared names
 	return new RegExp(
 		String.raw`\\{2}(?=\$)` + // doubled backslash: both stay, the token after still expands
 			String.raw`|\\\$(?=\d|@|\{|ARGUMENTS\b|(?:${nameAlt})\b)` + // escape: before any placeholder this expands, incl. $@ and ${...:-}
