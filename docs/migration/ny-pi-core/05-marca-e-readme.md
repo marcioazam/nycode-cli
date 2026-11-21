@@ -164,6 +164,10 @@ entra como se fosse do nycode: se aparecer, a frase é "medido como ny-pi sobre 
 Os números atuais do README do ny-pi (97,8% de 42 tarefas, 134 de 168 no Terminal-Bench, 0,57x de custo) não foram
 reverificados neste plano: não verificado.
 
+**Ajustada em 2026-11-21 por D-31:** a pedido do dono o README de F4 já traz as tabelas do ny-pi, rotuladas como
+medidas no ny-pi sobre pi 1.5.2 e não no binário nycode, com a lista do que o `docs/bench/` tem e não tem. Em F10 as
+tabelas são substituídas pelas do braço `nycode` e as menções a ny-pi e Pi Vanilla saem ou mudam de função.
+
 ### 4.2 Sumário proposto do README final
 
 ```markdown
@@ -208,13 +212,18 @@ F4 por causa do motor de permissão (K3). "Contributing" (98) perde o link de RF
 
 ## 6. Exceções: o que continua citando o pi
 
-**Superada em 2026-11-20 por D-30** ([11](11-decisoes-e-pendencias.md)): o pi fica escondido ao máximo, inclusive nos
-internos (P-17). Só continuam citando o pi, por exigência legal ou histórica:
+**Superada em 2026-11-20 por D-30 e ajustada em 2026-11-21 por D-31** ([11](11-decisoes-e-pendencias.md)): o pi fica
+escondido ao máximo, inclusive nos internos (P-17). Só continuam citando o pi, por exigência legal ou histórica ou, por
+D-31, para nomear a referência do benchmark:
 
 - `LICENSE` (MIT, "Copyright (c) 2025 Mario Zechner"): intacto. `NOTICE`: curto, só o que a atribuição exige.
 - `CHANGELOG.md` dos pacotes: histórico imutável (`AGENTS.md`, seção Changelog).
 - `docs/fork` e `docs/migration`: registro do fork e da migração.
 - `nycode migrate from-pi` (`src/migrations/from-pi*`): lê a configuração antiga do usuário (D-09).
+- `docs/harness/`: cópia de `claude-home/docs` do ny-pi, trazida por outro PR (D-31 b); `docs/migration/ny-pi-arquivo` já
+  cabe em `docs/migration`.
+- `README.md`, **só** nas seções de proposta e de benchmark: "Pi Vanilla" (pi 1.5.2 sem harness) e o nome ny-pi, para
+  dizer de onde vêm os números (D-31 a). O resto do README continua sem pi.
 
 Deixam de ser exceção: a seção "Origin" do README (vira "License: MIT, see LICENSE and NOTICE"), os aliases
 `@mariozechner/*`, `pi.dev` como fonte do catálogo de modelos (supera D-12) e o código importado do upstream, renomeado
