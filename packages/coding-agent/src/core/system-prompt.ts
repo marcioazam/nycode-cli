@@ -4,6 +4,7 @@
 
 import { getSystemMessageText } from "@nycode/ai";
 import { getDocsPath, getExamplesPath, getReadmePath } from "../config.ts";
+import { withBuiltinInstructions } from "./builtin-instructions.ts";
 import { formatSkillsForPrompt, type Skill } from "./skills.ts";
 
 export interface BuildSystemPromptOptions {
@@ -169,7 +170,9 @@ export function buildSystemPromptSections(input: BuildSystemPromptOptions): Syst
 	}
 
 	if (appendSystemPrompt) promptSections.addendum = appendSystemPrompt;
-	if (contextFiles.length > 0) promptSections.project_context = renderProjectContext(contextFiles);
+	// nycode: K7 built-in contract as the lowest-precedence context file, before the global and project AGENTS.md
+	const projectContext = withBuiltinInstructions(contextFiles);
+	if (projectContext.length > 0) promptSections.project_context = renderProjectContext(projectContext);
 	// A hidden reader is still reachable through another tool, so skills stay but the hint names no tool.
 	const readers = ["read", "bash"] as const;
 	const skillFileReadTool =

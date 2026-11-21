@@ -1,5 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { builtinResourceDir, resolveResourcesMarker } from "../../core/builtin-resources.ts";
 import {
 	type DiscoveredCommand,
 	discoverCommandFiles,
@@ -40,7 +41,9 @@ export interface VarContext {
  * overrides personal, and personal overrides project". The project directories
  * are included only for approved projects. */
 export function commandDirs(cwd: string, home: string, trusted: boolean): string[] {
-	const candidates: string[] = [];
+	// K6: the embedded commands come first, the lowest precedence, so any same-named command replaces them.
+	const embedded = builtinResourceDir("commands");
+	const candidates: string[] = embedded ? [embedded] : [];
 	// Claude scans every .claude/commands between cwd and the repository root, the
 	// nearest winning an intra-project name clash: root-first with the nearest last.
 	if (trusted) candidates.push(...ancestorDirs(cwd, path.join(".claude", "commands")).reverse());
@@ -179,7 +182,7 @@ export async function expandCommand(
 	const { text: withArgs, consumed } = substituteArgsDetailed(parsed.body, args, parsed.argumentNames ?? []);
 	// `${user_config.KEY}` is a plugin-command variable only; leave it literal in an
 	// ordinary command so a body that happens to contain the syntax is not stripped.
-	const substituted = substituteVars(withArgs, vars);
+	const substituted = resolveResourcesMarker(substituteVars(withArgs, vars));
 	const withVars = plugin
 		? substituted.replace(/\$\{user_config\.(\w+)\}/g, (_, key: string) => plugin.userConfig?.[key] ?? "")
 		: substituted;

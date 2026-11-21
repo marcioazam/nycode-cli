@@ -25,6 +25,7 @@
 		"docs",
 		"examples",
 		"schemas",
+		"resources",
 		"containerization.md",
 		"CHANGELOG.md"
 	],
