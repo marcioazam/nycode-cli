@@ -127,18 +127,21 @@ chegam por fase e o `core_scope.py` é convertido em F3.
 | extension | bash-timeout | core | Limite de tempo do shell |
 | extension | bypass-permissions | core | Modo de permissão |
 | extension | cache-prefix-probe | remove | Diagnóstico temporário |
+| extension | commands | core | Comandos de barra do Claude Code |
 | extension | compact-at-400k | core | Compactação de segurança |
 | extension | completion-gate | core | Verificação antes de encerrar |
 | extension | dev-commands | ui | `/copy-code` e `/keybindings` |
 | extension | effort-sandwich | optional | Raciocínio high só no 1º turno do `pi -p` de topo (opt-in, spec 0009) |
 | extension | footer-no-stats | ui | Rodapé |
 | extension | headless-lean | core | Custo sem interface |
+| extension | init | core | `/init` |
 | extension | no-context-files-covers-claude-md | core | Contexto sem duplicata |
 | extension | no-web-search | core | Desliga busca que falha |
 | extension | pi-docs | core | Prompt menor |
 | extension | plan-gate | core | Plano aprovado vai ao fim |
 | extension | prefix-cache-1h | core | Cache do prefixo |
 | extension | puxar | optional | Importa sessão de outro perfil, uso pessoal |
+| extension | skills-compat | core | Skills no formato do Claude Code |
 | extension | sound-notify | optional | Som ao fim do turno, gosto pessoal |
 | extension | sticky-prompt | ui | Última mensagem fixa |
 | extension | syntax-check | core | Erro de sintaxe após edição |
