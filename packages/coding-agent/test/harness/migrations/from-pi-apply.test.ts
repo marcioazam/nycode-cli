@@ -62,4 +62,25 @@ describe("migrate from-pi --apply", () => {
 		await h.run(["--apply"]);
 		expect(existsSync(join(h.agentDir, ".backup-from-pi"))).toBe(false);
 	});
+
+	it("copies the memory directory, nested files included, and keeps existing destination files (P-20)", async () => {
+		const h = makeHome();
+		const nested = join(h.source, "memory", "proj-slug");
+		mkdirSync(nested, { recursive: true });
+		writeFileSync(join(nested, "MEMORY.md"), "index\n");
+		writeFileSync(join(nested, "note.md"), "note\n");
+		const target = join(h.agentDir, "memory", "proj-slug");
+		mkdirSync(target, { recursive: true });
+		writeFileSync(join(target, "note.md"), "mine\n");
+		await h.run(["--apply"]);
+		expect(readFileSync(join(target, "MEMORY.md"), "utf8")).toBe("index\n");
+		expect(readFileSync(join(target, "note.md"), "utf8")).toBe("mine\n");
+		expect(existsSync(join(h.agentDir, ".backup-from-pi"))).toBe(false);
+	});
+
+	it("does not fail when the origin has no memory directory", async () => {
+		const h = makeHome();
+		expect(await h.run(["--apply"])).toBe(0);
+		expect(existsSync(join(h.agentDir, "memory"))).toBe(false);
+	});
 });

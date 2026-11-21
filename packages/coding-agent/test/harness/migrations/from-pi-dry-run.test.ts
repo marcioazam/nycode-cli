@@ -1,5 +1,5 @@
 // `nycode migrate from-pi` plan mode: default dry run writes nothing, leaves the origin intact and never prints secrets.
-import { cpSync, existsSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { hashTree, makeHome, SECRET } from "./from-pi-fixture.ts";
@@ -98,5 +98,23 @@ describe("migrate from-pi dry run", () => {
 		const h = makeHome();
 		await h.run([]);
 		expect(h.out.join("\n")).not.toMatch(/run code/);
+	});
+
+	it("lists the memory directory in the plan and writes nothing (P-20)", async () => {
+		const h = makeHome();
+		mkdirSync(join(h.source, "memory", "proj-slug"), { recursive: true });
+		writeFileSync(join(h.source, "memory", "proj-slug", "MEMORY.md"), "index\n");
+		expect(await h.run([])).toBe(0);
+		expect(h.out.join("\n")).toMatch(/memory\/\s+1 file\(s\) to copy, 0 already present/);
+		expect(existsSync(h.agentDir)).toBe(false);
+	});
+
+	it("skips a memory symlink, saying so", async () => {
+		const h = makeHome();
+		mkdirSync(join(h.home, "real-memory"));
+		symlinkSync(join(h.home, "real-memory"), join(h.source, "memory"));
+		expect(await h.run(["--apply"])).toBe(0);
+		expect(existsSync(join(h.agentDir, "memory"))).toBe(false);
+		expect(h.out.join("\n")).toMatch(/memory is not a regular directory/);
 	});
 });

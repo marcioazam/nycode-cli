@@ -4,7 +4,7 @@ import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { questionTerminal } from "../utils/terminal-question.ts";
 import { applyPlan } from "./from-pi-apply.ts";
-import { buildPlan, defaultSource, type Plan, type PlanFile } from "./from-pi-plan.ts";
+import { buildPlan, defaultSource, KEPT_DIRS, type Plan, type PlanFile } from "./from-pi-plan.ts";
 
 export interface MigrateIo {
 	log: (message: string) => void;
@@ -32,7 +32,7 @@ Options:
 Converts settings.json and local.env (only read when owned by you with mode 0600 or 0400) to nycode settings;
 copies mcp.json (env and headers values become \${ENV} placeholders; credential-like args and urls are
 listed, not rewritten), models.json, lsp.json, keybindings.json,
-sessions/ and the project trust file. auth*.json is copied only with --apply, after an interactive
+sessions/, memory/ (the memory extension store) and the project trust file. auth*.json is copied only with --apply, after an interactive
 confirmation. The origin directory is never changed or deleted. Backups go to
 <agent dir>/.backup-from-pi/<timestamp>/.`;
 
@@ -96,13 +96,13 @@ function formatPlan(plan: Plan, apply: boolean, interactive: boolean): string[] 
 		"",
 		"Plan:",
 	];
-	const sessions = plan.files.filter((f) => f.rel.startsWith("sessions/"));
-	for (const file of plan.files.filter((f) => !f.rel.startsWith("sessions/"))) {
-		lines.push(describeFile(file, apply, interactive));
-	}
-	if (sessions.length > 0) {
-		const fresh = sessions.filter((f) => f.action === "create").length;
-		lines.push(`  sessions/ ${fresh} file(s) to copy, ${sessions.length - fresh} already present (kept)`);
+	const inKept = (f: PlanFile) => KEPT_DIRS.some((dir) => f.rel.startsWith(`${dir}/`));
+	for (const file of plan.files.filter((f) => !inKept(f))) lines.push(describeFile(file, apply, interactive));
+	for (const dir of KEPT_DIRS) {
+		const entries = plan.files.filter((f) => f.rel.startsWith(`${dir}/`));
+		if (entries.length === 0) continue;
+		const fresh = entries.filter((f) => f.action === "create").length;
+		lines.push(`  ${`${dir}/`.padEnd(9)} ${fresh} file(s) to copy, ${entries.length - fresh} already present (kept)`);
 	}
 	if (plan.notes.length > 0) lines.push("", "Notes:", ...plan.notes.map((n) => `  ${n}`));
 	return lines;
