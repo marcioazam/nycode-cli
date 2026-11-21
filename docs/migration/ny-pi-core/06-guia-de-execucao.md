@@ -700,10 +700,12 @@ Verificação: `gh attestation verify <artefato> -R marcioazam/nycode`. Fonte:
 **Passos** (um PR cada, salvo indicação):
 
 1. **`release.mjs` sem npm e sem empurrar para a `main`.** Tirar `assertPackagesAreRegisteredWithNpm` (anexo B §5) e o
-   passo do catálogo do Nix (`nix/model-catalog.json`), e parar no commit `Release vX.Y.Z` do ramo atual: o ruleset da
+   que restava do passo do catálogo do Nix (só um comentário e uma mensagem: o código que fixava `nix/model-catalog.json` já
+   tinha saído), e parar no commit `Release vX.Y.Z` do ramo atual: o ruleset da
    `main` exige PR e não tem exceção, então `git push origin main` seria recusado. A etiqueta `vX.Y.Z` é criada no commit
    que o squash deixou na `main`, depois do merge (`git tag -a v2.0.0 <sha> && git push origin v2.0.0`). O commit
-   `Add [Unreleased] section for next cycle` vai em outro PR, depois da etiqueta. Remover `scripts/publish.mjs`,
+   `Add [Unreleased] section for next cycle` vai em outro PR, depois da etiqueta, feito à mão (o skill `release.md` descreve):
+   `addUnreleasedSection` saiu do script. Remover `scripts/publish.mjs`,
    `publish-model-catalog.mjs` e `publish-release-announcement.mjs` (com os testes), que falam com o registro npm e o R2
    do upstream, e os scripts `publish*` do `package.json` raiz.
 2. **Nix (P-18): remover da distribuição** (`flake.nix`, `nix/package.nix`, a seção "Run with Nix" do `README.md`).
