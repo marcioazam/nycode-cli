@@ -125,7 +125,6 @@ chegam por fase e o `core_scope.py` é convertido em F3.
 | agent | claim-verifier | optional | Papel do `deep-search` |
 | extension | auto-resume | core | Retoma após erro transitório do provedor |
 | extension | bypass-permissions | core | Modo de permissão |
-| extension | cache-prefix-probe | remove | Diagnóstico temporário |
 | extension | claude-rules | core | Regras do Claude Code em .claude/rules |
 | extension | commands | core | Comandos de barra do Claude Code |
 | extension | completion-gate | core | Verificação antes de encerrar |
@@ -135,15 +134,13 @@ chegam por fase e o `core_scope.py` é convertido em F3.
 | extension | docs-pointer | core | Prompt menor |
 | extension | effort-sandwich | optional | Raciocínio high só no 1º turno do `pi -p` de topo (opt-in, spec 0009) |
 | extension | env-settings | core | Variáveis de ambiente do settings do Claude |
-| extension | footer-no-stats | ui | Rodapé |
+| extension | footer | ui | Rodapé só com os status das extensões |
 | extension | git-checkpoint | core | Checkpoints git e `/rewind` |
 | extension | goal | core | Objetivo de sessão (/goal) |
 | extension | headless-lean | core | Custo sem interface |
 | extension | hooks | core | Hooks no formato do Claude Code |
 | extension | init | core | `/init` |
 | extension | memory | core | Memória do projeto |
-| extension | no-context-files-covers-claude-md | core | Contexto sem duplicata |
-| extension | no-web-search | core | Desliga busca que falha |
 | extension | notify | ui | Aviso de fim de turno |
 | extension | output-styles | core | Estilos de saída |
 | extension | plan-gate | core | Plano aprovado vai ao fim |
