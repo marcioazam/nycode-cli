@@ -5,6 +5,7 @@ import { getRadiusGatewayUrl } from "./radius.ts";
 interface UploadBugReportOptions {
 	token?: string;
 	signal?: AbortSignal;
+	/** Defaults to `NYCODE_RADIUS_GATEWAY`; without either there is nowhere to upload. */
 	gatewayUrl?: string;
 }
 
@@ -13,11 +14,13 @@ export async function uploadBugReport(
 	bundle: BugReportBundle,
 	options: UploadBugReportOptions = {},
 ): Promise<{ id: string }> {
+	const gatewayUrl = options.gatewayUrl ?? getRadiusGatewayUrl();
+	if (!gatewayUrl) throw new Error("Bug report upload needs NYCODE_RADIUS_GATEWAY; export a zip instead.");
 	const body = new FormData();
 	for (const file of bugReportFiles(bundle)) {
 		body.append(file.name, new Blob([file.data], { type: file.contentType }), file.name);
 	}
-	const response = await fetch(new URL("/v1/bug-reports", options.gatewayUrl ?? getRadiusGatewayUrl()), {
+	const response = await fetch(new URL("/v1/bug-reports", gatewayUrl), {
 		method: "POST",
 		headers: options.token ? { Authorization: `Bearer ${options.token}` } : undefined,
 		body,

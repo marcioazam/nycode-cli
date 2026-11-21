@@ -335,7 +335,8 @@ export const SettingsSchema = Type.Object(
 		),
 		enableInstallTelemetry: Type.Optional(
 			Type.Boolean({
-				description: "Send the nycode attribution headers to providers that accept them. There is no install report.",
+				description:
+					"Send the nycode attribution headers to providers that accept them. There is no install report.",
 				default: SETTINGS_DEFAULTS.enableInstallTelemetry,
 			}),
 		),

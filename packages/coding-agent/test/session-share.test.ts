@@ -133,7 +133,6 @@ describe("shareSession", () => {
 		expect(statuses[0]).toContain("Gist: ");
 		expect(statuses[0]).toContain("https://gist.github.com/test/forced-gist");
 		expect(statuses[0]).not.toContain("Share URL");
-		expect(statuses[0]).not.toContain("pi.dev");
 	});
 
 	async function shareToGist(): Promise<string[]> {

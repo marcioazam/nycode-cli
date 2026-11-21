@@ -91,14 +91,23 @@ describe("version checks", () => {
 	});
 
 	it("reads the version from the release tag, with or without a leading v", async () => {
-		vi.stubGlobal("fetch", vi.fn(async () => Response.json({ tag_name: "1.2.4" })));
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async () => Response.json({ tag_name: "1.2.4" })),
+		);
 		await expect(getLatestNycodeRelease("1.2.3")).resolves.toEqual({ version: "1.2.4" });
 	});
 
 	it("returns nothing for a release without a usable tag or a failed request", async () => {
-		vi.stubGlobal("fetch", vi.fn(async () => Response.json({ tag_name: " " })));
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async () => Response.json({ tag_name: " " })),
+		);
 		await expect(getLatestNycodeRelease("1.2.3")).resolves.toBeUndefined();
-		vi.stubGlobal("fetch", vi.fn(async () => new Response("rate limited", { status: 403 })));
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async () => new Response("rate limited", { status: 403 })),
+		);
 		await expect(getLatestNycodeRelease("1.2.3")).resolves.toBeUndefined();
 	});
 

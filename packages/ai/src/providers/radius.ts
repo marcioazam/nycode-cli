@@ -3,9 +3,7 @@ import { envApiKeyAuth, lazyOAuth } from "../auth/helpers.ts";
 import { loadRadiusOAuth } from "../auth/oauth/load.ts";
 import type { Provider } from "../models.ts";
 import type { Model } from "../types.ts";
-import { RADIUS_MODELS } from "./radius.models.ts";
 import {
-	DEFAULT_RADIUS_GATEWAY,
 	getRadiusModels,
 	getRadiusModelsFromConfig,
 	loadRadiusGatewayConfig,
@@ -15,20 +13,16 @@ import {
 export interface RadiusProviderOptions {
 	id?: string;
 	name?: string;
-	gateway?: string;
+	/** Gateway origin. There is no default gateway. */
+	gateway: string;
 }
 
-/** Radius gateway provider with a persisted, dynamically refreshed catalog. */
-export function radiusProvider(options: RadiusProviderOptions = {}): Provider<"nycode-messages"> {
+/** Radius gateway provider with a persisted catalog, refreshed from the gateway. */
+export function radiusProvider(options: RadiusProviderOptions): Provider<"nycode-messages"> {
 	const id = options.id ?? "radius";
 	const name = options.name ?? "Radius";
-	const gateway = normalizeRadiusGatewayUrl(options.gateway ?? DEFAULT_RADIUS_GATEWAY);
-	const baselineModels: Model<"nycode-messages">[] =
-		gateway === normalizeRadiusGatewayUrl(DEFAULT_RADIUS_GATEWAY)
-			? Object.values(RADIUS_MODELS).map((model) => ({ ...model, provider: id }))
-			: [];
-	// Gateway catalog for this account. Radius org owners can disable models, so once known it replaces
-	// the shipped baseline instead of overlaying it. The baseline only covers the time before any catalog exists.
+	const gateway = normalizeRadiusGatewayUrl(options.gateway);
+	// Gateway catalog for this account (Radius org owners can disable models). Empty until one is restored or fetched.
 	let dynamicModels: Model<"nycode-messages">[] | undefined;
 	const streams = nycodeMessagesApi();
 
@@ -39,7 +33,7 @@ export function radiusProvider(options: RadiusProviderOptions = {}): Provider<"n
 			apiKey: envApiKeyAuth("Radius API key", ["RADIUS_API_KEY"]),
 			oauth: lazyOAuth({ name, load: () => loadRadiusOAuth({ name, gateway }) }),
 		},
-		getModels: () => dynamicModels ?? baselineModels,
+		getModels: () => dynamicModels ?? [],
 		refreshModels: async (context) => {
 			const stored = context.stored;
 			if (stored) {

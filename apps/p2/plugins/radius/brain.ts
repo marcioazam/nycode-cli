@@ -4,7 +4,7 @@ import { request as httpRequest, type IncomingMessage } from "node:http";
 import { join } from "node:path";
 import type { OAuthCredential } from "@nycode/ai";
 import { radiusProvider } from "@nycode/ai/providers/radius";
-import { DEFAULT_RADIUS_GATEWAY, normalizeRadiusGatewayUrl } from "@nycode/ai/providers/radius-config";
+import { requireRadiusGateway } from "@nycode/ai/providers/radius-config";
 import { SERVER_PART_LIMITS } from "@p2/app/v1";
 import { WebSocket } from "ws";
 import type { Forwards } from "../ports/contract.ts";
@@ -292,9 +292,9 @@ export function currentShellPage(saved: string): string {
 	return saved.replace(/^(https?:\/\/[^/]+)\/nycode\/brains\//, "$1/nycode/");
 }
 
-/** Gateway for new logins: `NYCODE_RADIUS_GATEWAY`, as in the coding agent, else production. */
+/** Gateway for new logins: `NYCODE_RADIUS_GATEWAY`, as in the coding agent; there is no default. */
 export function radiusGatewayFromEnv(): string {
-	return normalizeRadiusGatewayUrl(process.env.NYCODE_RADIUS_GATEWAY ?? DEFAULT_RADIUS_GATEWAY);
+	return requireRadiusGateway(process.env.NYCODE_RADIUS_GATEWAY);
 }
 
 export function newServerId(): string {

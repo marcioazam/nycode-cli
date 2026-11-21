@@ -476,6 +476,7 @@ ${chalk.bold("Environment Variables:")}
   NYCODE_OFFLINE                       - Disable startup network operations when set to 1/true/yes
   NYCODE_SELF_UPDATE_COMMAND           - Command nycode update runs to update nycode itself ({packageName}, {version}, {installSpec})
   NYCODE_TELEMETRY                     - Override provider attribution headers when set to 1/true/yes or 0/false/no
+  NYCODE_MODEL_CATALOG_URL             - Model catalog server base URL (no default: only the bundled model data is used)
   NYCODE_SHARE_VIEWER_URL              - Viewer base URL for /share (no default: without it /share prints only the gist link)
 
 ${chalk.bold("Built-in Tool Names:")}

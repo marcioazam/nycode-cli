@@ -1,10 +1,4 @@
 import {
-	DEFAULT_RADIUS_GATEWAY,
-	getRadiusModelsFromConfig,
-	loadRadiusGatewayConfig,
-} from "../../src/providers/radius-config.ts";
-import type { Model } from "../../src/types.ts";
-import {
 	MODELS_DEV_DECISIONS_URL,
 	MODELS_DEV_URL,
 	type ModelsDevDecisionMetadata,
@@ -23,7 +17,6 @@ export interface CatalogSources {
 	aiGateway: AiGatewayCatalog;
 	/** Live NVIDIA NIM ids, keyed by both the raw and the normalized id. */
 	nvidiaModelIds: Map<string, string>;
-	radius: Model<"nycode-messages">[];
 }
 
 async function fetchJson<T>(url: string, label: string): Promise<T> {
@@ -44,13 +37,6 @@ async function fetchNvidiaModelIds(): Promise<Map<string, string>> {
 		modelIds.set(normalizeNvidiaModelId(model.id), model.id);
 	}
 	return modelIds;
-}
-
-async function fetchRadiusModels(): Promise<Model<"nycode-messages">[]> {
-	const config = await loadRadiusGatewayConfig(DEFAULT_RADIUS_GATEWAY);
-	const models = getRadiusModelsFromConfig("radius", config);
-	if (models.length === 0) throw new Error("Radius API returned no models");
-	return models;
 }
 
 /**
@@ -89,7 +75,6 @@ export async function loadCatalogSources(strict: boolean): Promise<CatalogSource
 	});
 	if (strict && openRouter.images.length === 0) throw new Error("OpenRouter API returned no usable image models");
 	const aiGateway = await load("Vercel AI Gateway models", fetchAiGatewayCatalog, { chat: [], classifiers: [] });
-	const radius = await load("Radius models", fetchRadiusModels, []);
 
-	return { modelsDev, modelsDevDecisions, openRouter, aiGateway, nvidiaModelIds, radius };
+	return { modelsDev, modelsDevDecisions, openRouter, aiGateway, nvidiaModelIds };
 }

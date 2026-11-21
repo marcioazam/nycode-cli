@@ -3,11 +3,11 @@ import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { DEFAULT_RADIUS_GATEWAY } from "@nycode/ai/providers/radius-config";
 import { type Container, type EditorComponent, hyperlink, type TUI } from "@nycode/tui";
 import { getAuthCredential } from "../../cli/auth-command.ts";
 import { getShareViewerUrl } from "../../config.ts";
 import type { AgentSession } from "../../core/agent-session.ts";
+import { getRadiusGatewayUrl } from "../../core/radius.ts";
 import { exportSessionToJsonl } from "../../core/session-export.ts";
 import { BorderedLoader } from "./components/bordered-loader.ts";
 import { theme } from "./theme/theme.ts";
@@ -104,7 +104,8 @@ export async function shareSession(context: SessionShareContext): Promise<void> 
 
 async function tryShareViaRadius(tmpFile: string, context: SessionShareContext): Promise<boolean> {
 	const provider = context.session.modelRuntime.getProvider("radius");
-	if (!provider) return false;
+	const gateway = getRadiusGatewayUrl();
+	if (!provider || !gateway) return false;
 
 	const token = getAuthCredential(
 		await context.session.modelRuntime.getAuth("radius", { minOAuthValidityMs: 5 * 60_000 }),
@@ -123,7 +124,7 @@ async function tryShareViaRadius(tmpFile: string, context: SessionShareContext):
 
 	try {
 		const body = fs.readFileSync(tmpFile);
-		const url = new URL("/v1/artifacts", DEFAULT_RADIUS_GATEWAY);
+		const url = new URL("/v1/artifacts", gateway);
 		url.searchParams.set("visibility", "organization");
 		url.searchParams.set("title", "Nycode session");
 		const response = await fetch(url, {
