@@ -1,0 +1,100 @@
+--- a/plan-mode/index.ts
++++ b/plan-mode/index.ts
+@@ -26,6 +26,7 @@
+ 
+ import { PLAN_MODE_CHANNEL } from '../internal/plan-mode-state.ts'
+ import { extractTodoItems, isPlanModeToolAllowed, isSafeCommand, lintPlan, plansDir, markCompletedSteps, planToTodos, restoredPlanState, type TodoItem } from './utils.ts'
++import { plainPaint, renderDoneTags, type DonePaint } from './done-view.ts'
+ 
+ // Tools
+ const PLAN_MODE_TOOLS = [
+@@ -96,6 +97,22 @@
+   }
+   let executionMode = false
+   let todoItems: TodoItem[] = []
++  // Títulos da execução mais recente: endExecution zera todoItems, e as tags já mostradas são redesenhadas depois.
++  let finishedTodos: TodoItem[] = []
++  // Só a exibição: a sessão, o modelo e markCompletedSteps seguem com a tag [DONE:n] literal.
++  pi.registerMarkdownTransformer?.(
++    (markdown, context) => {
++      let paint: DonePaint = plainPaint
++      try {
++        const theme = lastCtx?.ui.theme
++        if (theme) paint = { ok: (s) => theme.fg('success', s), muted: (s) => theme.fg('muted', s), text: (s) => theme.fg('text', s) }
++      } catch {
++        // contexto de sessão antiga: sem cor
++      }
++      return renderDoneTags(markdown, todoItems.length > 0 ? todoItems : finishedTodos, paint, context.isStreaming)
++    },
++    { messageTypes: ['assistant'] },
++  )
+   let planFromTool = false
+   let savedTools: string[] = []
+   /** Every tool pi had registered when the set was saved, active or not: a tool outside it
+@@ -212,6 +229,7 @@
+   function endExecution(ctx: ExtensionContext, content: string, customType = 'plan-complete'): void {
+     pi.sendMessage({ customType, content, display: true }, { triggerTurn: false })
+     executionMode = false
++    finishedTodos = todoItems
+     todoItems = []
+     restoreTools()
+     updateStatus(ctx)
+@@ -500,6 +518,7 @@
+     lintRejections = 0
+     executionMode = false
+     todoItems = []
++    finishedTodos = []
+     planFromTool = false
+     stalledRuns = 0
+     runProgress = false
+--- /dev/null
++++ b/plan-mode/done-view.ts
+@@ -0,0 +1,48 @@
++// Exibição das tags [DONE:n] no chat (pedido do dono, 2026-11-14): só o texto mostrado muda; a sessão, o modelo e o rastreador seguem com a tag literal.
++// Puro, sem pi: texto + etapas do plano -> texto exibido. Código (``` e `inline`) fica literal.
++export interface DoneStep {
++  step: number
++  text: string
++}
++export interface DonePaint {
++  ok: (s: string) => string
++  muted: (s: string) => string
++  text: (s: string) => string
++}
++
++export const plainPaint: DonePaint = { ok: (s) => s, muted: (s) => s, text: (s) => s }
++
++const TAG = /\[DONE:(\d+)\]/gi
++const ONLY_TAGS = /^\s*(?:\[DONE:\d+\]\s*)+$/i
++const FENCE = /^\s*(```|~~~)/
++// Prefixo incompleto de tag no fim do texto em streaming: some até a tag fechar, em vez de piscar cru.
++const PARTIAL = /\[(?:D(?:O(?:N(?:E(?::\d*)?)?)?)?)?$/i
++
++export function renderDoneTags(text: string, steps: readonly DoneStep[] | undefined, paint: DonePaint = plainPaint, streaming = false): string {
++  if (!text.includes('[')) return text
++  const titles = new Map((steps ?? []).map((s) => [s.step, s.text]))
++  const total = steps && steps.length > 0 ? Math.max(...steps.map((s) => s.step), steps.length) : 0
++  const ok = paint.ok('✓')
++  const one = (n: number, block: boolean): string => {
++    const title = titles.get(n)
++    if (block && title !== undefined) return `${ok} ${paint.muted(`etapa ${n}/${total}`)} ${paint.muted('·')} ${paint.text(title)}`
++    return `${ok} ${paint.muted(block ? `etapa ${n} concluída` : `etapa ${n}`)}`
++  }
++  let fenced = false
++  const lines = text.split('\n').map((line) => {
++    if (FENCE.test(line)) {
++      fenced = !fenced
++      return line
++    }
++    if (fenced || !line.includes('[')) return line
++    if (ONLY_TAGS.test(line)) return [...line.matchAll(TAG)].map((m) => one(Number(m[1]), true)).join('\n')
++    // Pares de crases primeiro: o que está entre eles não é tocado.
++    return line
++      .split(/(`[^`]*`)/)
++      .map((part, i) => (i % 2 === 1 ? part : part.replace(TAG, (_m, n) => one(Number(n), false))))
++      .join('')
++  })
++  let out = lines.join('\n')
++  if (streaming && !fenced) out = out.replace(PARTIAL, '')
++  return out
++}

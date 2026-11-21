@@ -1,0 +1,46 @@
+--- a/hooks/runners.ts
++++ b/hooks/runners.ts
+@@ -145,12 +145,42 @@
+   return env
+ }
+ 
++/** Um registro por execução no sink de diagnóstico do harness (ausente: não faz nada). Nunca lança. */
++function reportHook(command: string, payload: unknown, t0: number, r: HookRunResult): void {
++  try {
++    const sink = (globalThis as any)[Symbol.for('pi-harness:diag')]
++    if (typeof sink !== 'function') return
++    const ev = (payload as { hook_event_name?: unknown } | null)?.hook_event_name
++    const evento = typeof ev === 'string' && ev ? ev : 'hook'
++    const durMs = Math.round(Date.now() - t0)
++    const timedOut = r.timedOut === true
++    const spawnFailed = r.spawnFailed === true
++    const estado = spawnFailed ? 'não iniciou' : timedOut ? 'timeout' : r.code === 0 ? 'ok' : r.code === 2 ? 'bloqueou (2)' : `saiu ${r.code}`
++    const curto = (command.trim().split(/\s+/)[0] ?? '').split(/[\\/]/).pop() || command.slice(0, 40)
++    const quieto = r.code === 0 && !timedOut && !spawnFailed
++    sink({
++      sev: quieto ? 9 : r.code === 2 && !timedOut ? 13 : 17,
++      fonte: 'hook',
++      tipo: 'hook',
++      msg: `${evento} · ${curto} · ${estado} · ${durMs} ms`,
++      detalhe: r.stderr ? r.stderr.slice(0, 2048) : undefined,
++      quieto,
++      dados: { evento, comando: command.slice(0, 200), code: r.code, durMs, timedOut, spawnFailed },
++    })
++  } catch {}
++}
++
+ /** The shell path specifically; the statusline reuses it for its own command. With an
+  * `args` array it becomes the exec path: `command` is spawned directly with those args.
+  * `onChild` hands the caller a kill for the spawned tree, so a background hook that is
+  * still running at session end can be reaped (Claude kills async hooks at teardown). */
+ export const runHookCommand: HookCommandRunner = (command, payload, timeoutMs, { projectDir, args, onChild, shell, plugin, sessionId } = {}) =>
+-  new Promise((resolve) => {
++  new Promise((resolve0) => {
++    const t0 = Date.now()
++    const resolve = (r: HookRunResult): void => {
++      reportHook(command, payload, t0, r)
++      resolve0(r)
++    }
+     // /bin/sh by absolute path off Windows, so the shell can't be resolved through an
+     // attacker-controlled PATH; on Windows the resolver follows Claude's documented Git
+     // Bash lookup. `detached` makes the shell its own process group leader so the

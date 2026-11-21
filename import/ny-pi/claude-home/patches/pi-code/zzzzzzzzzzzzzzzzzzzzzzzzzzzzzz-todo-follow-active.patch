@@ -1,0 +1,15 @@
+--- a/plan-mode/section.ts	2026-11-15 01:38:11.487971243 -0300
++++ b/plan-mode/section.ts	2026-11-15 01:38:11.496366968 -0300
+@@ -116,6 +116,12 @@
+     this.cursor = Math.min(this.cursor, Math.max(0, items.length - 1))
+     this.times.observe(items, this.now())
+     this.offset = clampOffset(this.offset, items.length, this.visible())
++    // The window follows the work: a list longer than the window used to stay on its finished head, with the
++    // running and pending rows off screen (2026-11-15). One finished row stays above as context.
++    const open = items.findIndex((i) => !i.completed)
++    if (open >= 0 && (open < this.offset || open >= this.offset + this.visible())) {
++      this.offset = clampOffset(Math.max(0, open - 1), items.length, this.visible())
++    }
+     this.syncTimer()
+     // A finished todo list hides itself (a plan keeps its done state); a new open item brings it back.
+     const hide = items.length === 0 || (source === 'todo' && items.every((i) => i.completed))

@@ -111,7 +111,7 @@ test('colapso mostra (+N) e esconde descendentes; N conta visíveis', () => {
   assert.deepEqual(ids(rows), ['a', 'b'])
   assert.equal(rows[0].hiddenDescendants, 5)
   assert.equal(rows[0].collapsed, true)
-  assert.match(panel.renderRow(rows[0], false, theme, 80), /a-a \(\+5\)/)
+  assert.match(panel.renderRow(rows[0], false, theme, 80), /a-a \(\+5( · [●✕] \d+)*\)/)
   const inner = rowsOf(tree3(), { collapsed: new Set(['a1']) })
   assert.equal(inner.find((r: any) => r.id === 'a1').hiddenDescendants, 2)
   assert.equal(inner.find((r: any) => r.id === 'a').hiddenDescendants, 0)
@@ -129,7 +129,7 @@ test('dica de terminados: só depth 1 done nos últimos 30 s', () => {
   ]
   assert.equal(vm.finishedCount(records, NOW), 2)
   const view = { rows: [], focused: false, selectedId: null, hint: '', hintColor: 'muted', running: 0, finished: 2 }
-  assert.deepEqual(panel.renderPanel(view, theme, 80), ['✓ 2 finished · /tasks', ''])
+  assert.deepEqual(panel.renderPanel(view, theme, 80), [], 'finished runs only: no footer line (the title summary counts them)')
   assert.deepEqual(panel.renderPanel({ ...view, finished: 0 }, theme, 80), [])
 })
 
@@ -234,20 +234,19 @@ function controllerOf(records: any[]) {
   return { c, src, clock }
 }
 
-test('controller: ativa só com editor vazio, editor focado e linhas; release ignorado', () => {
+test('controller: não entra sozinho com ↓ (a entrada é o título em section-nav); enterBody() dá o teclado à primeira linha; release ignorado', () => {
   const { c } = controllerOf([rec('a', null, 1), rec('b', 'a', 2)])
-  assert.deepEqual(c.handleKey(K.down, { ...OK, editorText: 'hi' }), { consume: false })
+  assert.deepEqual(c.handleKey(K.down, OK), { consume: false }, 'sem foco o controller não toma ↓')
   assert.equal(c.focused, false)
   assert.deepEqual(c.handleKey('\x1b[1;1:3B', OK), { consume: false }, 'release')
-  assert.equal(c.focused, false)
   assert.deepEqual(c.handleKey('a', OK), { consume: false })
-  assert.deepEqual(c.handleKey(K.down, { ...OK, editorFocused: false }), { consume: false })
-  assert.equal(c.focused, false)
-  assert.deepEqual(c.handleKey(K.down, OK), { consume: true })
+  assert.equal(c.enterBody(), true)
   assert.equal(c.focused, true)
   assert.equal(c.selectedId, 'a')
+  assert.deepEqual(c.handleKey(K.down, { ...OK, editorFocused: false }), { consume: false }, 'foco alheio desfoca')
+  assert.equal(c.focused, false)
   const empty = controllerOf([])
-  assert.deepEqual(empty.c.handleKey(K.down, OK), { consume: false })
+  assert.equal(empty.c.enterBody(), false, 'sem linhas não há corpo')
   const noSource = new panel.PanelController({ getSource: () => undefined, now: () => NOW })
   assert.deepEqual(noSource.rows(), [])
   assert.equal(noSource.view().finished, 0)
@@ -256,7 +255,7 @@ test('controller: ativa só com editor vazio, editor focado e linhas; release ig
 
 test('controller: overlay e foco alheio desfocam sem consumir', () => {
   const { c } = controllerOf([rec('a', null, 1)])
-  c.handleKey(K.down, OK)
+  c.enterBody()
   assert.equal(c.focused, true)
   assert.deepEqual(c.handleKey(K.down, { ...OK, overlayOpen: true }), { consume: false })
   assert.equal(c.focused, false)
@@ -267,7 +266,7 @@ test('controller: overlay e foco alheio desfocam sem consumir', () => {
 
 test('controller: navegação, enter, esc, ↑ no main', () => {
   const { c } = controllerOf([rec('a', null, 1), rec('b', 'a', 2), rec('z', null, 1, { startedAt: NOW })])
-  c.handleKey(K.down, OK)
+  c.enterBody()
   c.handleKey(K.down, OK)
   assert.equal(c.selectedId, 'b')
   assert.deepEqual(c.handleKey(K.enter, OK), { consume: true, action: { type: 'open', id: 'b' } })
@@ -280,19 +279,19 @@ test('controller: navegação, enter, esc, ↑ no main', () => {
   assert.equal(c.selectedId, null)
   assert.deepEqual(c.handleKey(K.enter, OK), { consume: true })
   assert.equal(c.focused, false, 'enter no main volta ao prompt')
-  c.handleKey(K.down, OK)
+  c.enterBody()
   c.handleKey(K.up, OK)
   assert.equal(c.selectedId, null)
   assert.deepEqual(c.handleKey(K.up, OK), { consume: true })
   assert.equal(c.focused, false, '↑ acima do topo')
-  c.handleKey(K.down, OK)
+  c.enterBody()
   assert.deepEqual(c.handleKey(K.esc, OK), { consume: true })
   assert.equal(c.focused, false)
 })
 
 test('controller: → e ← expandem, recolhem e sobem ao pai', () => {
   const { c } = controllerOf(tree3())
-  c.handleKey(K.down, OK) // a
+  c.enterBody() // a
   c.handleKey(K.left, OK) // recolhe
   assert.ok(c.collapsed.has('a'))
   assert.deepEqual(ids(c.rows()), ['a', 'b'])
@@ -316,7 +315,7 @@ test('controller: → e ← expandem, recolhem e sobem ao pai', () => {
 
 test('controller: x x para (arma por 2 s), expira, e dispensa terminado', () => {
   const { c, clock } = controllerOf([rec('a', null, 1), rec('f', null, 1, { state: 'failed', endedAt: NOW - 1, startedAt: NOW - 5 })])
-  c.handleKey(K.down, OK)
+  c.enterBody()
   assert.deepEqual(c.handleKey('x', OK), { consume: true })
   assert.match(c.view().hint, /^press x again to stop a-a$/)
   clock.now += 1999
@@ -350,10 +349,10 @@ test('controller: ctrl+b com e sem chamada em primeiro plano, em qualquer foco',
 
 test('controller: tecla imprimível desfoca sem consumir; linha que some é reparada', () => {
   const { c, src } = controllerOf([rec('a', null, 1), rec('b', null, 1, { startedAt: NOW - 1 }), rec('c', null, 1, { startedAt: NOW })])
-  c.handleKey(K.down, OK)
+  c.enterBody()
   assert.deepEqual(c.handleKey('h', OK), { consume: false })
   assert.equal(c.focused, false)
-  c.handleKey(K.down, OK)
+  c.enterBody()
   c.handleKey(K.down, OK)
   assert.equal(c.selectedId, 'b')
   src.records = [src.records[0], src.records[2]] // b some
@@ -401,21 +400,23 @@ test('formatadores do viewer: itens do transcript', () => {
   assert.deepEqual(f({ kind: 'assistant', text: '' }), ['<text></text>'])
   const wrapped = f({ kind: 'assistant', text: 'word '.repeat(20) })
   assert.ok(wrapped.length > 1 && wrapped.every((l: string) => visibleWidth(l) <= 40))
-  assert.deepEqual(f({ kind: 'tool_result', text: 'a\nb\nc\nd\ne' }), ['<dim>  ⎿ a</dim>', '<dim>    b</dim>', '<dim>    c</dim>', '<dim>  … 2 more lines</dim>'])
+  assert.deepEqual(f({ kind: 'tool_result', text: 'a\nb\nc\nd\ne' }), ['<dim>  ⎿ a</dim>', '<dim>    b</dim>', '<dim>    c</dim>', '<dim>  … mais 2 linhas</dim>'])
   assert.deepEqual(f({ kind: 'tool_result', text: 'bad', isError: true }), ['<error>  ⎿ bad</error>'])
   assert.ok(f({ kind: 'tool_result', text: 'x'.repeat(200) }, 20).every((l: string) => visibleWidth(l) <= 20))
 })
 
 test('formatadores do viewer: desfechos de envio, estado, breadcrumb e navegação', () => {
-  assert.equal(viewer.sendOutcomeText('queued'), '↪ sent; the agent reads it after its current tool step')
-  assert.equal(viewer.sendOutcomeText('resumed'), '↪ resumed with your message')
-  assert.equal(viewer.sendOutcomeText('not-running'), 'run finished; message not sent')
-  assert.equal(viewer.sendOutcomeText('unknown'), 'run not found')
-  assert.deepEqual(['running', 'done', 'failed', 'cancelled'].map(viewer.stateLabel), ['● running', '✓ done', '✗ failed', '■ stopped'])
+  assert.equal(viewer.sendOutcomeText('queued'), '↪ enviada; o agente lê depois do passo atual')
+  assert.equal(viewer.sendOutcomeText('resumed'), '↪ retomado com a sua mensagem')
+  assert.equal(viewer.sendOutcomeText('not-running'), 'o agente já terminou; mensagem não enviada')
+  assert.equal(viewer.sendOutcomeText('unknown'), 'agente não encontrado')
+  assert.deepEqual(['running', 'done', 'failed', 'cancelled'].map(viewer.stateLabel), ['● rodando', '✓ concluído', '✗ falhou', '■ parado'])
   assert.equal(viewer.breadcrumb(tree3(), 'a1x'), 'main › a-a › a-a1² › a-a1x³')
   assert.equal(viewer.breadcrumb(tree3(), 'a'), 'main › a-a')
-  assert.equal(viewer.navBar(tree3(), 'a1'), 'siblings: [a-a1] a-a2   children: a-a1x a-a1y')
-  assert.equal(viewer.navBar(tree3(), 'a1x'), 'siblings: [a-a1x] a-a1y   children: -')
+  const header = (id: string) => viewer.headerLines(tree3(), id, NOW, theme, 200)
+  assert.match(header('a1')[1], /ao lado: a-a2 · filhos: a-a1x, a-a1y$/)
+  assert.match(header('a1x')[1], /ao lado: a-a1y$/)
+  assert.doesNotMatch(header('a1x')[1], /filhos/)
 })
 
 function viewerOf(records: any[], transcripts: Record<string, any[]> = {}, rows = 20) {
@@ -431,15 +432,15 @@ test('viewer: render com cabeçalho, nav, corpo, input e rodapé; largura respei
   const { v, src } = viewerOf(tree3(), { a: [item('user', 'faça'), item('assistant', 'ok'), item('tool_call', 'bash ls'), item('tool_result', '1\n2')] })
   const lines = v.render(60)
   assert.equal(lines[0], '─'.repeat(60), 'régua no topo do overlay')
-  assert.equal(lines[1], 'main › a-a')
-  assert.match(lines[2], /^● running · 16m 40s · 114\.4k tok · \$1\.23$/)
-  assert.match(lines[3], /^siblings: \[a-a\] a-b {3}children: a-a1 a-a2$/)
+  assert.match(lines[1], /^main › a-a +● rodando · 16m 40s · 114\.4k tok · \$1\.23$/)
+  assert.match(lines[2], /^ainda não informado · ainda não informado · ao lado: a-b/)
+  assert.match(viewer.headerLines(tree3(), 'a', NOW, theme, 200)[1], /ao lado: a-b · filhos: a-a1, a-a2$/)
   assert.ok(lines.includes('› faça') && lines.includes('⏺ bash ls') && lines.includes('  ⎿ 1'))
-  assert.ok(lines.at(-1).startsWith('↑↓ scroll'))
+  assert.ok(lines.at(-1).startsWith('↑↓ rolar'))
   assert.ok(lines.every((l: string) => visibleWidth(l) <= 60))
-  assert.equal(lines.at(-2), '> ')
+  assert.equal(lines.at(-2), '❯ Mensagem para este agente')
   src.records = []
-  assert.match(v.render(60)[1], /run not found/)
+  assert.match(v.render(60)[1], /main › \(agente não encontrado\)/)
 })
 
 test('viewer: leitura incremental, teto de 2000 itens e auto-follow / rolagem', () => {
@@ -510,8 +511,8 @@ test('viewer: input, backspace, esc limpa antes de fechar, enter envia e mostra 
   v.handleInput(K.enter)
   assert.deepEqual(src.calls.send, [['a', 'pare']])
   assert.equal(v.input, '')
-  assert.match(v.render(100).at(-3), /^↪ sent; the agent reads it/)
-  for (const [out, text] of [['resumed', '↪ resumed with your message'], ['not-running', 'run finished; message not sent'], ['unknown', 'run not found']]) {
+  assert.match(v.render(100).at(-3), /^↪ enviada; o agente lê depois/)
+  for (const [out, text] of [['resumed', '↪ retomado com a sua mensagem'], ['not-running', 'o agente já terminou; mensagem não enviada'], ['unknown', 'agente não encontrado']]) {
     src.sendOutcome = out
     v.handleInput('m')
     v.handleInput(K.enter)
@@ -522,7 +523,8 @@ test('viewer: input, backspace, esc limpa antes de fechar, enter envia e mostra 
 test('viewer: x x para em 2 s; expira; terminado é somente leitura', () => {
   const { v, src, clock } = viewerOf([rec('a', null, 1)])
   v.handleInput('x')
-  assert.match(v.outcome, /press x again to stop a-a/)
+  assert.equal(v.outcome, '')
+  assert.equal(v.render(100).at(-1), '▲ x de novo para parar a-a · o trabalho em andamento se perde · esc fecha')
   clock.now += 2001
   v.handleInput('x')
   assert.deepEqual(src.calls.stop, [])
@@ -531,15 +533,15 @@ test('viewer: x x para em 2 s; expira; terminado é somente leitura', () => {
   assert.deepEqual(src.calls.stop, ['a'])
   assert.equal(v.outcome, 'Stopping a-a…')
   const done = viewerOf([rec('d', null, 1, { state: 'done', endedAt: NOW })])
-  assert.equal(done.v.render(100).at(-3), 'read-only: run finished')
+  assert.equal(done.v.render(100).at(-3), 'somente leitura: o agente já terminou')
   done.v.handleInput('x')
-  assert.match(done.v.outcome, /nothing to stop/)
+  assert.match(done.v.outcome, /o agente já terminou; nada a parar/)
   const bg = viewerOf([rec('bg', null, 1, { state: 'done', endedAt: NOW, background: true })])
   assert.equal(bg.v.render(100).at(-3), '')
   const gone = viewerOf([rec('g', null, 1)])
   gone.src.records = []
   gone.v.handleInput('x')
-  assert.equal(gone.v.outcome, 'run not found')
+  assert.equal(gone.v.outcome, 'agente não encontrado')
 })
 
 test('viewer: com poll liga timer e onChange, dispose solta', () => {
@@ -586,7 +588,7 @@ function fakeCtx(results: any[]) {
 test('/tasks: sem runs avisa; lista todos (sem esconder), enter abre o viewer e volta à lista', async () => {
   const empty = fakeCtx([])
   await viewer.openTasksBrowser(empty.ctx, fakeSource([]))
-  assert.deepEqual(empty.notes, [['No subagent runs in this session.', 'info']])
+  assert.deepEqual(empty.notes, [['Nenhum agente nesta sessão.', 'info']])
 
   const records = [rec('a', null, 1, { startedAt: 1 }), rec('d', null, 1, { state: 'done', endedAt: NOW, startedAt: 2 })]
   const src = fakeSource(records)
@@ -594,7 +596,7 @@ test('/tasks: sem runs avisa; lista todos (sem esconder), enter abre o viewer e 
     (c: any) => { // lista: desce e abre
       const lines = c.render(80)
       assert.equal(lines[0].replace(/\x1b\[[0-9;]*m/g, ''), '─'.repeat(80), 'régua no topo do overlay (HUD-colored)')
-      assert.match(lines[1], /Subagent runs \(2\)/)
+      assert.match(lines[1], /Agentes \(2\)/)
       assert.match(lines[2], /a-d/, 'raiz mais nova primeiro')
       c.handleInput('\x1b[1;1:3B')
       c.handleInput(K.down)
@@ -679,7 +681,12 @@ test('registerFleetUi: widget abaixo do editor, teclas, sem UI/filho não regist
   comp.invalidate()
 
   source = src // aparece depois
-  assert.equal(comp.render(80).length, 3, 'main + row + blank gap')
+  const out = comp.render(80).map((l: string) => l.replace(/\x1b\[[0-9;]*m/g, ''))
+  assert.equal(out.length, 5, 'blank spacing + tab bar + rule + main + row')
+  assert.equal(out[0], '', 'the group opens with a blank line')
+  assert.match(out[1]!, /^Agentes \d+( +\d+\/\d+)?$/)
+  assert.match(out[2]!, /^━+─*$/, 'rule right below the tab bar, ━ under the open tab')
+  assert.notEqual(out.at(-1), '', 'the group does not end with a blank line')
   assert.equal(r.inputs.length, 1)
   assert.equal(r.inputs[0]('a'), undefined)
   assert.deepEqual(r.inputs[0](K.down), { consume: true })
@@ -687,16 +694,17 @@ test('registerFleetUi: widget abaixo do editor, teclas, sem UI/filho não regist
   tui.focusedComponent = { render() {} } // diálogo: não é o editor
   assert.equal(r.inputs[0](K.down), undefined)
   tui.focusedComponent = { getText() {}, setText() {} }
-  r.inputs[0](K.down) // refoca
+  r.inputs[0](K.down) // refoca: a aba aberta
+  r.inputs[0](K.enter) // aba → corpo
   src.foreground = true
   r.inputs[0](K.ctrlB)
   assert.deepEqual(r.notes.at(-1), ['Moved 2 subagent call(s) to the background', 'info'])
   r.editorText = ''
   r.inputs[0](K.enter) // open → ctx.ui.custom
   await new Promise((res) => setTimeout(res, 0)) // o overlay (flag) fecha
-  r.inputs[0](K.esc)
+  r.inputs[0](K.esc) // corpo → aba
   src.records.push(rec('f', null, 1, { startedAt: NOW + 1 }))
-  r.inputs[0](K.down)
+  r.inputs[0](K.enter)
   r.inputs[0](K.down)
   r.inputs[0]('x')
   r.inputs[0]('x')
@@ -755,7 +763,8 @@ test('registerFleetUi: o main desenha estado, tempo, contexto e custo da sessão
     { type: 'message', message: { role: 'assistant', usage: { cost: { total: 0.25 } } } },
   ]
   const { ctx, rec: r, tui } = fakeUi({ sessionManager: { getBranch: () => branch }, getContextUsage: () => ({ tokens: 163_000 }) })
-  const lines = (): string => r.widgets[0].content(tui, theme).render(120)[0].replace(/\x1b\[[0-9;]*m/g, '')
+  // [0] is the blank spacing, [1] the tab bar, [2] its rule (interactive-display contract); the main line is [3]
+  const lines = (): string => r.widgets[0].content(tui, theme).render(120)[3].replace(/\x1b\[[0-9;]*m/g, '')
   await handlers.session_start({}, ctx)
   assert.match(lines(), /main idle/)
   assert.match(lines(), /163\.0k tok \| +\$1\.75$/)
@@ -774,5 +783,5 @@ test('registerFleetUi: o main desenha estado, tempo, contexto e custo da sessão
   assert.match(lines(), /main idle/)
   const { ctx: bare } = fakeUi()
   await handlers.session_start({}, bare)
-  assert.doesNotMatch(r.widgets[0].content(tui, theme).render(120)[0].replace(/\x1b\[[0-9;]*m/g, ''), /tok/, 'sem fonte de contexto/custo a coluna some em branco')
+  assert.doesNotMatch(r.widgets[0].content(tui, theme).render(120)[3].replace(/\x1b\[[0-9;]*m/g, ''), /tok/, 'sem fonte de contexto/custo a coluna some em branco')
 })

@@ -1,0 +1,229 @@
+diff -ruN a/plan-mode/done-view.ts b/plan-mode/done-view.ts
+--- a/plan-mode/done-view.ts	2026-11-15 01:10:52.447108432 -0300
++++ b/plan-mode/done-view.ts	2026-11-15 01:10:52.448210440 -0300
+@@ -36,7 +36,7 @@
+ }
+ // Fecho do plan-gate numa linha só dele (mesmas palavras de extensions/plan-gate.ts). No meio da frase fica literal.
+ const HOLD = /^\s*(?:PLAN (WAITING|BLOCKED)|PLANO (AGUARDANDO|BLOQUEADO)):\s*(.+?)\s*$/i
+-const CANCELLED = /^\s*(?:PLAN CANCELLED|PLANO CANCELADO)\.?\s*$/i
++export const CANCELLED = /^\s*(?:PLAN CANCELLED|PLANO CANCELADO)\.?\s*$/i
+ const BG_ID = /\s*\(?\b(bg-[0-9a-f]+)\)?/i
+ const lista = (ns: number[]): string => (ns.length < 2 ? String(ns[0]) : `${ns.slice(0, -1).join(', ')} e ${ns[ns.length - 1]}`)
+ 
+diff -ruN a/plan-mode/index.ts b/plan-mode/index.ts
+--- a/plan-mode/index.ts	2026-11-15 01:10:52.446213398 -0300
++++ b/plan-mode/index.ts	2026-11-15 01:10:52.447213401 -0300
+@@ -28,8 +28,8 @@
+ import { PLAN_MODE_CHANNEL } from '../internal/plan-mode-state.ts'
+ import { hudTheme } from '../subagent/fleet-ui/palette.ts'
+ import type { UiTheme } from '../subagent/fleet-ui/panel.ts'
+-import { extractTodoItems, isPlanModeToolAllowed, isSafeCommand, lintPlan, plansDir, markCompletedSteps, planToTodos, restoredPlanState, type TodoItem } from './utils.ts'
+-import { plainPaint, renderDoneTags, type DonePaint } from './done-view.ts'
++import { isPlanModeToolAllowed, isSafeCommand, lintPlan, plansDir, markCompletedSteps, planToTodos, restoredPlanState, type TodoItem } from './utils.ts'
++import { CANCELLED, plainPaint, renderDoneTags, type DonePaint } from './done-view.ts'
+ 
+ // Tools
+ const PLAN_MODE_TOOLS = [
+@@ -38,13 +38,12 @@
+   'todo', 'subagent', 'write', 'edit', // subagent, write and edit are narrowed by isPlanModeToolAllowed
+ ]
+ 
+-/** Agent runs in execution mode with no [DONE:n] progress before execution ends on
+- * its own. Kept small: each stalled run re-injects the stale plan into the turn. */
+-const STALLED_RUN_LIMIT = 2
+-
+ /** The tracker reads only this literal tag from the reply text; prose or ☑ checkboxes do not count. */
+ const DONE_RULE = 'When you finish step n, write the literal tag [DONE:n] (for example [DONE:1]) in your reply text; the progress tracker reads only this tag, not prose or checkboxes.'
+ 
++/** Only the end of the plan or an explicit user request ends plan mode (owner contract 2026-11-15): nothing else, no event, no command. */
++const CANCEL_RULE = 'Only when the user explicitly asks to leave plan mode or cancel the plan, end your reply with the line PLAN CANCELLED on its own; never on your own initiative.'
++
+ // Type guard for assistant messages
+ function isAssistantMessage(m: AgentMessage): m is AssistantMessage {
+   return m.role === 'assistant' && Array.isArray(m.content)
+@@ -58,6 +57,9 @@
+     .join('\n')
+ }
+ 
++// PLAN CANCELLED (or PLANO CANCELADO) alone on a line of the reply
++const isCancelled = (message: AssistantMessage | undefined): boolean => !!message && getTextContent(message).split('\n').some((line) => CANCELLED.test(line))
++
+ /** Said once when plan mode is left. The earlier [PLAN MODE ACTIVE] notes stay in the transcript:
+  * removing them changed the cached prefix and made pi replay the prompt and tools as a new head,
+  * a full prompt-cache miss on every exit (measured 2026-11-14: 0 of 35.7k tokens read). */
+@@ -144,8 +146,6 @@
+   /** Every tool pi had registered when the set was saved, active or not: a tool outside it
+    * was registered later, and pi activated it on top of whatever set was in force. */
+   let toolsAtSave = new Set<string>()
+-  let stalledRuns = 0
+-  let runProgress = false
+   /** Plan file of this session, fixed when plan mode is entered. */
+   let planFile = ''
+   /** Lint rejections since the last accepted plan or the last entry into plan mode. */
+@@ -221,8 +221,6 @@
+     todoItems = []
+     planFromTool = false
+     lintRejections = 0
+-    stalledRuns = 0
+-    runProgress = false
+ 
+     if (planModeEnabled) {
+       ensurePlanFile(ctx)
+@@ -269,33 +267,11 @@
+     endExecution(ctx, `**Plan Complete!** ✓\n\n${completedList}`)
+   }
+ 
+-  /** Models regularly drop or renumber a [DONE:n] marker; without a bounded exit the
+-   * stale plan would be injected into every later turn until the user turns plan mode off. */
+-  function endStalledExecution(ctx: ExtensionContext): void {
+-    const remaining = todoItems
+-      .filter((t) => !t.completed)
+-      .map((t) => `${t.step}. ${t.text}`)
+-      .join('\n')
+-    endExecution(ctx, `**Plan execution ended** after ${STALLED_RUN_LIMIT} turns without step progress. Unfinished steps:\n\n${remaining}`, 'plan-stalled')
+-  }
+-
+-  // Fall back to extracting a plan from the last assistant message's prose
+-  function deriveTodosFromProse(messages: AgentMessage[]): void {
+-    const lastAssistant = [...messages].reverse().find(isAssistantMessage)
+-    if (!lastAssistant) return
+-    const extracted = extractTodoItems(getTextContent(lastAssistant))
+-    if (extracted.length > 0) {
+-      todoItems = extracted
+-    }
+-  }
+-
+   // Leave plan mode and start a turn that executes the plan
+   function startExecution(ctx: ExtensionContext): void {
+     planModeEnabled = false
+     executionMode = todoItems.length > 0
+     planFromTool = false
+-    stalledRuns = 0
+-    runProgress = false
+     restoreTools()
+     publishPlanState()
+     updateStatus(ctx)
+@@ -303,7 +279,7 @@
+     // Persist before the turn: a crash before the first turn_end must resume into
+     // execution, not back into plan mode.
+     persistState()
+-    const execMessage = todoItems.length > 0 ? `Execute the plan. Start with: ${todoItems[0].text}\n${DONE_RULE}\nFirst materialize the plan file ${planFile} into the repository's /docs record (or the task's existing record) before changing code.\n${PLAN_ENDED_NOTE}` : `Execute the plan you just created.\n${PLAN_ENDED_NOTE}`
++    const execMessage = todoItems.length > 0 ? `Execute the plan. Start with: ${todoItems[0].text}\n${DONE_RULE}\n${CANCEL_RULE}\nFirst materialize the plan file ${planFile} into the repository's /docs record (or the task's existing record) before changing code.\n${PLAN_ENDED_NOTE}` : `Execute the plan you just created.\n${PLAN_ENDED_NOTE}`
+     pi.sendMessage({ customType: 'plan-mode-execute', content: execMessage, display: true }, { triggerTurn: true })
+   }
+ 
+@@ -314,8 +290,6 @@
+     if (choice?.startsWith('Execute')) {
+       startExecution(ctx)
+     } else if (choice === 'Refine the plan') {
+-      // The refined turn may answer in prose; without this reset agent_end would skip
+-      // deriveTodosFromProse and re-display the superseded todo list.
+       planFromTool = false
+       const refinement = await ctx.ui.editor('Refine the plan:', '')
+       if (refinement?.trim()) {
+@@ -326,20 +300,6 @@
+     }
+   }
+ 
+-  // Check if execution is complete, or has stalled without marker progress
+-  function settleExecutionRun(ctx: ExtensionContext): void {
+-    if (todoItems.every((t) => t.completed)) {
+-      finalizeCompletedExecution(ctx)
+-      stalledRuns = 0
+-    } else if (runProgress) {
+-      stalledRuns = 0
+-    } else {
+-      stalledRuns++
+-      if (stalledRuns >= STALLED_RUN_LIMIT) endStalledExecution(ctx)
+-    }
+-    runProgress = false
+-  }
+-
+   // Rebuild completion state from assistant messages after the last execute marker
+   function rescanCompletion(entries: SessionEntry[]): void {
+     const executeIndex = findLastExecuteIndex(entries)
+@@ -465,7 +425,8 @@
+ Submit the full plan once with plan_mode_complete, which lints it and saves it to the plan file. Lint: first line "Tier: Tn (signals)"; task titles ≤50 chars; every task has ≥1 '-' bullet under it (shown as its description); every A# line has a %; T1+ has "AC1: WHEN … THE SYSTEM SHALL …" lines, each AC cited by a task, and a "check:" per task; T2+ a risks line; T3 a rollback line.
+ Only tracked tasks are numbered (1., 2., … globally); phases are headings, steps and checklists are '-' bullets, never numbered.
+ Never settle these yourself, ask with the question tool: a contradiction in the request; a choice of data format, public contract, security or deletion.
+-Make no other changes.`,
++Make no other changes.
++${CANCEL_RULE}`,
+           display: false,
+         },
+       }
+@@ -483,7 +444,8 @@
+ ${todoList}
+ 
+ Execute each step in order.
+-${DONE_RULE}`,
++${DONE_RULE}
++${CANCEL_RULE}`,
+           display: false,
+         },
+       }
+@@ -497,41 +459,31 @@
+ 
+     const text = getTextContent(event.message)
+     if (markCompletedSteps(text, todoItems) > 0) {
+-      runProgress = true
+       updateStatus(ctx)
+     }
+     persistState()
+   })
+ 
+-  // Handle plan completion and plan mode UI
++  // Only the end of the plan or an explicit PLAN CANCELLED ends it: Esc, send-now, chat or a run that
++  // stops without progress leave plan mode and execution as they are (owner contract 2026-11-15).
+   pi.on('agent_end', async (event, ctx) => {
++    const last = [...event.messages].reverse().find(isAssistantMessage)
+     if (executionMode && todoItems.length > 0) {
+-      // A run the user interrupted says nothing about progress: it neither counts as stalled nor resets the count.
+-      const last = [...event.messages].reverse().find(isAssistantMessage)
+-      if (last?.stopReason !== 'aborted') settleExecutionRun(ctx)
++      if (isCancelled(last)) {
++        const remaining = todoItems.filter((t) => !t.completed).map((t) => `${t.step}. ${t.text}`).join('\n')
++        endExecution(ctx, `**Plan cancelled** at the user's request. Unfinished steps:\n\n${remaining}`, 'plan-cancelled')
++      } else finalizeCompletedExecution(ctx)
+       return
+     }
+ 
+-    if (!planModeEnabled || !ctx.hasUI) return
+-
+-    // Prefer an explicitly submitted plan; fall back to extracting from prose
+-    if (!planFromTool) {
+-      deriveTodosFromProse(event.messages)
+-    }
+-
+-    // Show plan steps and prompt for next action
+-    if (todoItems.length > 0) {
+-      const todoListText = todoItems.map((t, i) => `${i + 1}. ☐ ${t.text}`).join('\n')
+-      pi.sendMessage(
+-        {
+-          customType: 'plan-todo-list',
+-          content: `**Plan Steps (${todoItems.length}):**\n\n${todoListText}`,
+-          display: true,
+-        },
+-        { triggerTurn: false },
+-      )
++    if (!planModeEnabled) return
++    if (isCancelled(last)) {
++      togglePlanMode(ctx)
++      return
+     }
+-
++    // The menu only follows a plan accepted by plan_mode_complete in a run the user did not interrupt.
++    if (!ctx.hasUI || !planFromTool || last?.stopReason === 'aborted') return
++    planFromTool = false
+     await promptPlanNextAction(ctx)
+   })
+ 
+@@ -546,8 +498,6 @@
+     todoItems = []
+     finishedTodos = []
+     planFromTool = false
+-    stalledRuns = 0
+-    runProgress = false
+     planFile = ''
+ 
+     if (pi.getFlag('plan') === true) {

@@ -1,0 +1,153 @@
+--- a/status-line.ts
++++ b/status-line.ts
+@@ -44,6 +44,8 @@
+ import { readSettingsChain } from './internal/settings-chain.ts'
+ import { watchSettingsFiles } from './internal/settings-watch.ts'
+ import { readActiveStyleName, settingsFiles } from './output-styles.ts'
++import { frameStatusLine, labelFooter, tidyClock } from './subagent/fleet-ui/chrome.ts'
++import { hudTheme } from './subagent/fleet-ui/palette.ts'
+ 
+ const COMMAND_TIMEOUT_MS = 5_000
+ const DEBOUNCE_MS = 300
+@@ -331,7 +333,7 @@
+   function setRows(ctx: ExtensionContext, rows: string[]): void {
+     if (rows.length === 0 && !widgetShown) return
+     try {
+-      ctx.ui.setWidget(WIDGET_KEY, rows.length === 0 ? undefined : () => ({ render: (width: number) => renderStatusRows(rows, width, footer.trailers()), invalidate() {} }), { placement: 'belowEditor' })
++      ctx.ui.setWidget(WIDGET_KEY, rows.length === 0 ? undefined : (_tui, theme) => ({ render: (width: number) => frameStatusLine(renderStatusRows(rows.map(tidyClock), width, footer.trailers()), hudTheme(theme), width), invalidate() {} }), { placement: 'belowEditor' })
+       widgetShown = rows.length > 0
+       footer.claim(widgetShown)
+     } catch {
+@@ -340,7 +342,9 @@
+   }
+ 
+   function show(ctx: ExtensionContext, builtIn: string): void {
+-    ctx.ui.setStatus('pi-code-status', commandLine ?? builtIn)
++    // The widget (2+ rows) carries the Status Line title itself; the footer-only path leads with it inline.
++    const text = commandLine ?? builtIn
++    ctx.ui.setStatus('pi-code-status', widgetShown ? text : labelFooter(text, hudTheme(ctx.ui.theme)))
+   }
+ 
+   /** The stdin payload per Claude's documented statusline contract. */
+--- a/subagent/fleet-ui/index.ts
++++ b/subagent/fleet-ui/index.ts
+@@ -6,6 +6,7 @@
+ import type { ExtensionAPI, ExtensionCommandContext, ExtensionContext } from '@earendil-works/pi-coding-agent'
+ 
+ import type { FleetSource } from '../fleet/types.ts'
++import { frameSubAgents } from './chrome.ts'
+ import { hudTheme } from './palette.ts'
+ import { executeAction, PanelController, renderPanel } from './panel.ts'
+ import type { MainStats, PanelView } from './panel.ts'
+@@ -88,7 +89,7 @@
+         return {
+           render: (width: number) => {
+             lastView = controller.view()
+-            return renderPanel(lastView, hud, width)
++            return frameSubAgents(renderPanel(lastView, hud, width), lastView.rows.length > 0, hud, width)
+           },
+           invalidate: () => {},
+         }
+--- a/subagent/fleet-ui/panel.ts
++++ b/subagent/fleet-ui/panel.ts
+@@ -11,6 +11,7 @@
+ import type { FleetRow } from './view-model.ts'
+ import { motionEnabled, SPINNER, spinnerAt } from './palette.ts'
+ import { unreadCounts } from '../team/ui.ts'
++import { styleModelMeta } from './chrome.ts'
+ 
+ /** The part of pi's Theme the fleet UI uses. */
+ export interface UiTheme {
+@@ -187,7 +188,7 @@
+   // 1. task and activity at their minimums, stats dropping cost then tokens (the layout without a label);
+   // 2. task alone at its minimum, activity gone, tokens kept but no cost;
+   // 3. elapsed only, task truncated; 4. elapsed only, no task. Only then is the label itself dropped.
+-  const heads = (row.meta ?? []).map((m) => head + ' ' + theme.fg('dim', m))
++  const heads = (row.meta ?? []).map((m) => head + ' ' + styleModelMeta(m, theme, !finished))
+   const first = (mode: Mode, minLast = 1, labelled = false): string | undefined => heads.map((h) => place(h, mode, minLast, labelled)).find((l) => l !== undefined)
+   return (
+     first('strict') ??
+--- a/subagent/fleet-ui/chrome.ts
++++ b/subagent/fleet-ui/chrome.ts
+@@ -0,0 +1,81 @@
++/**
++ * Terminal chrome of the agent panel and the status line widget (local patch): section headings, the thin
++ * rule between them, the model label colors and the duration clock. Pure; colors come from the UI roles
++ * (Tokyo Night through palette.ts), never from literals. Record: docs/pi-interactive-display-2026-11-13.md.
++ */
++import { truncateToWidth } from '@earendil-works/pi-tui'
++
++import type { UiTheme } from './panel.ts'
++
++export const SUBAGENTS_TITLE = 'Sub Agents'
++export const STATUSLINE_TITLE = 'Status Line'
++/** U+25F7: a text glyph, one cell in pi-tui and no emoji presentation (the stopwatch emoji is two cells in some terminals). */
++export const CLOCK = '◷'
++
++/** Themes in older hosts may lack `bold`: plain text then. */
++const bold = (theme: UiTheme, text: string): string => (typeof theme.bold === 'function' ? theme.bold(text) : text)
++
++/** Section kinds: an upper-case name and one UI role each, so the three chips differ at a glance. */
++export const HEADING_KINDS = {
++  subagents: { role: 'accent', name: SUBAGENTS_TITLE.toUpperCase() },
++  statusline: { role: 'success', name: STATUSLINE_TITLE.toUpperCase() },
++  plan: { role: 'warning', name: 'PLAN' },
++} as const
++export type HeadingKind = keyof typeof HEADING_KINDS
++
++/** Title chip: ` NAME ` in reverse video of the role's color (the inverse of the fg is a colored background, no hex), bold. */
++export function chip(kind: HeadingKind, theme: UiTheme, role: string = HEADING_KINDS[kind].role): string {
++  return bold(theme, `\x1b[7m${theme.fg(role, ` ${HEADING_KINDS[kind].name} `)}\x1b[27m`)
++}
++
++/** Heading line: the kind's chip, then the detail (count, state, range) dim. `title` starts with the kind's name
++ * (any case); `role` overrides the chip color (Plan focused). Cut to the width. */
++export function heading(title: string, theme: UiTheme, width: number, kind: HeadingKind, role?: string): string {
++  const detail = title.slice(HEADING_KINDS[kind].name.length)
++  return truncateToWidth(chip(kind, theme, role) + (detail ? theme.fg('dim', detail) : ''), width)
++}
++
++/** Thin rule across the full width. */
++export function rule(theme: UiTheme, width: number): string {
++  return theme.fg('dim', '─'.repeat(Math.max(0, width)))
++}
++
++/** Sub Agents chip and its rule above the panel lines; the group opens with a blank line (the spacing after the editor or the previous group) and never ends with one.
++ * Only with child rows does it add the title and rule: no orphan title or rule without them. */
++export function frameSubAgents(lines: string[], hasRows: boolean, theme: UiTheme, width: number): string[] {
++  if (lines.length === 0) return lines
++  // No child rows (only the finished hint): still a group, so it opens with the blank line and does not end with one.
++  if (!hasRows) return ['', ...(lines.at(-1) === '' ? lines.slice(0, -1) : lines)]
++  const body = lines.at(-1) === '' ? lines.slice(0, -1) : lines
++  return ['', heading(SUBAGENTS_TITLE, theme, width, 'subagents'), rule(theme, width), ...body]
++}
++
++/** Status Line group: a blank line, the chip and its rule above the rows; the widget only exists while there are rows. */
++export function frameStatusLine(rows: string[], theme: UiTheme, width: number): string[] {
++  return rows.length === 0 ? rows : ['', heading(STATUSLINE_TITLE, theme, width, 'statusline'), rule(theme, width), ...rows]
++}
++
++/** Footer-only status line (one row, or the built-in segment): the chip leads the value inline,
++ * `<chip> value`, no rule; the clock is tidied too. */
++export function labelFooter(value: string, theme: UiTheme): string {
++  return chip('statusline', theme) + ' ' + tidyClock(value)
++}
++
++/** `[provider/model · effort]` as painted: model bold accent (plain accent once finished), provider and effort dim.
++ * The text is exactly the candidate's, so widths and truncation are unchanged. */
++export function styleModelMeta(meta: string, theme: UiTheme, live: boolean): string {
++  const m = /^\[(.*?)( ?· ?)(.*)\]$/.exec(meta)
++  if (!m) return theme.fg('dim', meta)
++  const [, id = '', sep = '', effort = ''] = m
++  const slash = id.indexOf('/')
++  const provider = slash > 0 ? id.slice(0, slash + 1) : ''
++  const model = theme.fg('accent', id.slice(provider.length))
++  const dim = (s: string): string => (s ? theme.fg('dim', s) : '')
++  return dim('[') + dim(provider) + (live ? bold(theme, model) : model) + dim(sep) + dim(effort) + dim(']')
++}
++
++/** The HUD's stopwatch emoji (with or without VS16, any spaces) and its duration become `◷ 1h10m`:
++ * a single-cell glyph, one space, units tight. Only a duration right after the clock is touched. */
++export function tidyClock(row: string): string {
++  return row.replace(/⏱\uFE0F?[ \t]*(\d+[dhms](?: \d+[dhms])*)/g, (_all, dur: string) => `${CLOCK} ${dur.replace(/ /g, '')}`)
++}

@@ -108,10 +108,11 @@ test('stats columns have fixed widths so values do not shift', () => {
 test('spinner: time-driven frame for running rows, static under NO_COLOR or reduced motion', () => {
   const [row] = rowsOf([rec('a', null, 1)])
   const spin = (f: number) => panel.renderRow(row, false, tagTheme, 300, f)
-  assert.ok(spin(0).includes(palette.SPINNER[0]) && spin(3).includes(palette.SPINNER[3]))
+  assert.ok(spin(0).includes(`<success>${palette.SPINNER[0]}</success>`) && spin(2).includes(`<success>${palette.SPINNER[2]}</success>`), 'green dot, swelling')
+  assert.deepEqual([...new Set(palette.SPINNER)].sort(), ['·', '•', '●'].sort(), 'only the three dot sizes')
   assert.ok(panel.renderRow(row, false, tagTheme, 300).includes('<text>○</text>'), 'no frame: static glyph')
   const done = rowsOf([rec('d', null, 1, { state: 'failed', endedAt: NOW - 1 })], { panel: false })[0]
-  assert.ok(!panel.renderRow(done, false, tagTheme, 300, 2).includes(palette.SPINNER[2]), 'finished rows never spin')
+  assert.ok(!panel.renderRow(done, false, tagTheme, 300, 2).includes(`<success>${palette.SPINNER[2]}</success>`), 'finished rows never spin')
   assert.equal(palette.spinnerAt(0), 0)
   assert.notEqual(palette.spinnerAt(0), palette.spinnerAt(palette.SPINNER_MS))
   const view = () => controllerOf([rec('a', null, 1)]).c.view().frame

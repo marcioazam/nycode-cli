@@ -31,7 +31,7 @@ const ctx = {
   cwd,
   get model() { return model },
   thinkingLevel: 'medium',
-  ui: { theme: { fg: (_c: string, s: string) => s }, setStatus() {}, setWidget() {}, notify() {} },
+  ui: { theme: { fg: (_c: string, s: string) => s, bold: (s: string) => s }, setStatus() {}, setWidget() {}, notify() {} },
   sessionManager: { getSessionId: () => 's1', getSessionFile: () => undefined, getSessionName: () => undefined, getBranch: () => [] },
   getContextUsage: () => undefined,
   isProjectTrusted: () => false,

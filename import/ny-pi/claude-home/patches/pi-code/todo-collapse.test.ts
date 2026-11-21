@@ -24,11 +24,12 @@ const todo = (id: number, status: string, text: string, activeForm?: string) => 
 
 test('collapsedLine: contagem completed/total e o in_progress com activeForm', () => {
   const line = mod.collapsedLine([todo(1, 'completed', 'a'), todo(2, 'in_progress', 'write', 'Writing'), todo(3, 'pending', 'c')], theme)
-  assert.equal(line, '<accent>Todos 1/3</accent> · <accent>◐</accent> Writing')
+  assert.equal(line, '<accent>Todos 1/3</accent><dim> · </dim>Writing')
 })
 
 test('collapsedLine: sem activeForm usa o texto; sem in_progress só a contagem', () => {
-  assert.ok(mod.collapsedLine([todo(1, 'in_progress', 'write')], theme).endsWith('◐</accent> write'))
+  assert.ok(mod.collapsedLine([todo(1, 'in_progress', 'write')], theme).endsWith('<dim> · </dim>write'))
+  assert.equal(mod.collapsedLine([todo(1, 'completed', 'a')], theme), '<dim>Todos 1/1</dim><dim> · </dim><success>concluídos</success>')
   assert.equal(mod.collapsedLine([todo(1, 'completed', 'a'), todo(2, 'pending', 'b')], theme), '<accent>Todos 1/2</accent>')
 })
 
@@ -36,7 +37,8 @@ test('collapsedLine: sem activeForm usa o texto; sem in_progress só a contagem'
 function start(todos: object[]) {
   const handlers = new Map<string, (...a: any[]) => any>()
   const shortcuts = new Map<string, any>()
-  const pi: any = new Proxy({ on: (n: string, h: any) => handlers.set(n, h), registerShortcut: (k: string, o: any) => shortcuts.set(k, o) }, { get: (t: any, k) => t[k] ?? (() => {}) })
+  const emitted: any[] = []
+  const pi: any = new Proxy({ events: { emit: (c: string, d: any) => emitted.push([c, d]) }, on: (n: string, h: any) => handlers.set(n, h), registerShortcut: (k: string, o: any) => shortcuts.set(k, o) }, { get: (t: any, k) => t[k] ?? (() => {}) })
   mod.default(pi)
   const widgets: any[] = []
   let renders = 0
@@ -46,23 +48,22 @@ function start(todos: object[]) {
   handlers.get('session_start')!({}, ctx)
   const tui = { requestRender: () => renders++ }
   const component = widgets.at(-1)?.factory(tui, theme)
-  return { shortcuts, widgets, component, renders: () => renders }
+  return { shortcuts, widgets, component, emitted, renders: () => renders }
 }
+
+test('o chat nunca desenha os todos: o widget renderiza vazio (lista parcial ou concluída) e a lista vai ao Plan por evento', () => {
+  for (const list of [[todo(1, 'completed', 'a'), todo(2, 'in_progress', 'b', 'Doing b')], [todo(1, 'completed', 'a')]]) {
+    const s = start(list)
+    assert.deepEqual(s.component.render(80), [])
+    s.shortcuts.get('ctrl+shift+t').handler()
+    assert.deepEqual(s.component.render(80), [])
+  }
+  const s = start([todo(1, 'completed', 'a'), todo(2, 'in_progress', 'b', 'Doing b'), todo(3, 'pending', 'c')])
+  assert.deepEqual(s.emitted.at(-1), ['pi-code:todos', [{ id: 1, text: 'a', status: 'completed' }, { id: 2, text: 'Doing b', status: 'in_progress' }, { id: 3, text: 'c', status: 'pending' }]])
+})
 
 test('registra ctrl+shift+t', () => {
   assert.ok(start([todo(1, 'pending', 'a')]).shortcuts.has('ctrl+shift+t'))
-})
-
-test('ctrl+shift+t alterna entre a lista completa e uma linha, e pede re-render', () => {
-  const s = start([todo(1, 'completed', 'a'), todo(2, 'in_progress', 'b', 'Doing b')])
-  const full = s.component.render(80)
-  assert.ok(full.length > 3)
-  s.shortcuts.get('ctrl+shift+t').handler()
-  assert.equal(s.renders(), 1)
-  assert.deepEqual(s.component.render(80), ['<accent>Todos 1/2</accent> · <accent>◐</accent> Doing b', ''])
-  s.shortcuts.get('ctrl+shift+t').handler()
-  assert.equal(s.renders(), 2)
-  assert.deepEqual(s.component.render(80), full)
 })
 
 test('ctrl+shift+t sem todos não faz nada', () => {
@@ -70,12 +71,6 @@ test('ctrl+shift+t sem todos não faz nada', () => {
   assert.doesNotThrow(() => s.shortcuts.get('ctrl+shift+t').handler())
   assert.equal(s.widgets.length, 0)
   assert.equal(s.renders(), 0)
-})
-
-test('a linha recolhida respeita a largura', () => {
-  const s = start([todo(1, 'in_progress', 'x'.repeat(100))])
-  s.shortcuts.get('ctrl+shift+t').handler()
-  assert.ok(s.component.render(20)[0].length < 60)
 })
 
 // ---- cobertura do comportamento completo de todo.ts ----
@@ -88,6 +83,7 @@ function boot(entries: any[] = [], ctxOver: any = {}) {
   const appended: any[] = []
   let tool: any
   const pi: any = {
+    events: { emit() {} },
     on: (n: string, h: any) => handlers.set(n, h),
     registerShortcut: () => {},
     registerCommand: (n: string, c: any) => commands.set(n, c),
@@ -176,14 +172,15 @@ test('renderResult: sem details, erro, mutação, start e list (curto/expandido/
   assert.equal(r(undefined, 'plain'), 'plain')
   assert.equal(dump(b.tool.renderResult({ content: [], details: undefined }, { expanded: false }, theme2, {})), '')
   assert.equal(r({ action: 'add', todos: [], nextId: 1, error: 'bad' }), '<error>Error: bad</error>')
-  assert.equal(r({ action: 'add', todos: [], nextId: 1 }), '<success>✓ </success><muted>msg</muted>')
-  assert.equal(r({ action: 'start', todos: [], nextId: 1 }), '<accent>◐ </accent><muted>msg</muted>')
+  assert.equal(r({ action: 'add', todos: [], nextId: 1 }), '<muted>msg</muted>')
+  assert.equal(r({ action: 'start', todos: [], nextId: 1 }), '<accent>em andamento</accent><dim> · </dim><muted>msg</muted>')
+  assert.equal(r({ action: 'complete', todos: [], nextId: 1 }), '<success>concluída</success><dim> · </dim><muted>msg</muted>')
   assert.equal(r({ action: 'list', todos: [], nextId: 1 }), '<dim>No todos</dim>')
   const many = Array.from({ length: 7 }, (_, i) => todo(i + 1, i === 0 ? 'completed' : 'pending', `t${i + 1}`))
   const short = r({ action: 'list', todos: many, nextId: 8 }).split('\n')
   assert.equal(short[0], '<muted>7 todo(s):</muted>')
   assert.equal(short.length, 1 + 5 + 1)
-  assert.equal(short[1], '<success>✓</success> <accent>#1</accent> <dim>t1</dim>')
+  assert.equal(short[1], '<success>concluída   </success> <accent>#1</accent> <dim>t1</dim>')
   assert.equal(short.at(-1), '<dim>... 2 more</dim>')
   const full = r({ action: 'list', todos: many, nextId: 8 }, 'm', true).split('\n')
   assert.equal(full.length, 8)
@@ -274,76 +271,11 @@ test('widget: invalidate força novo registro; novo ui (/reload) re-registra; se
   assert.equal(nb.widgets.length, 0)
 })
 
-test('widget: render normal com glifos, └─ no último e cabeçalho dim quando tudo concluído', () => {
-  const b = boot([snap([todo(1, 'completed', 'done'), todo(2, 'in_progress', 'b', 'Doing b'), todo(3, 'pending', 'c')])])
-  b.handlers.get('session_start')!({}, b.ctx)
-  const lines = b.widgets[0].f({ requestRender() {} }, theme2).render(80)
-  assert.deepEqual(lines, [
-    '<accent>● Todos (1/3)</accent>',
-    '<dim>├─</dim> <success>✓</success> <dim>done</dim>',
-    '<dim>├─</dim> <accent>◐</accent> <text>Doing b</text>',
-    '<dim>└─</dim> <dim>○</dim> <muted>c</muted>',
-    '',
-  ])
-  // Tudo concluído: recolhe sozinho numa linha (pedido do usuário 2026-11-13), em vez do cabeçalho dim.
-  const all = boot([snap([todo(1, 'completed', 'x')])])
-  all.handlers.get('session_start')!({}, all.ctx)
-  assert.deepEqual(all.widgets[0].f({ requestRender() {} }, theme2).render(80), ['<success>✓</success> <dim>Todos 1/1</dim>', ''])
-})
-
-test('widget concluído: clique expande, novo clique recolhe', () => {
-  const b = boot([snap([todo(1, 'completed', 'x'), todo(2, 'completed', 'y')])])
-  b.handlers.get('session_start')!({}, b.ctx)
-  const w = b.widgets[0].f({ requestRender() {} }, theme2)
-  assert.equal(w.render(80).length, 2) // recolhido
-  w.handleMouse({ type: 'click' })
-  const open = b.widgets.at(-1).f({ requestRender() {} }, theme2).render(80)
-  assert.ok(open.length > 2 && open[0].includes('Todos (2/2)'))
-  b.widgets.at(-1).f({ requestRender() {} }, theme2).handleMouse({ type: 'click' })
-  assert.equal(b.widgets.at(-1).f({ requestRender() {} }, theme2).render(80).length, 2)
-})
-
-test('widget: roda do mouse rola a lista longa e mostra ↑↓', () => {
-  const many = Array.from({ length: 20 }, (_, i) => todo(i + 1, 'pending', `p${i + 1}`))
-  const b = boot([snap(many)])
-  b.handlers.get('session_start')!({}, b.ctx)
-  const w = b.widgets[0].f({ requestRender() {} }, theme2)
-  assert.deepEqual(w.handleMouse({ type: 'wheel', wheelDelta: -1 }), undefined) // já no topo
-  assert.deepEqual(w.handleMouse({ type: 'wheel', wheelDelta: 1 }), { render: true })
-  const lines = b.widgets.at(-1).f({ requestRender() {} }, theme2).render(80)
-  assert.match(lines.at(-2), /↑1 ↓9/)
-  assert.ok(lines.some((l: string) => l.includes('p2')) && !lines.some((l: string) => l.includes('p1<')))
-})
-
 test('scrollWindow: cabe, satura no fim e conta acima/abaixo', () => {
   const items = [1, 2, 3, 4, 5]
   assert.deepEqual(mod.scrollWindow(items, 5, 3), { visible: items, above: 0, below: 0, offset: 0 })
   assert.deepEqual(mod.scrollWindow(items, 3, 1), { visible: [2, 3], above: 1, below: 2, offset: 1 })
   assert.deepEqual(mod.scrollWindow(items, 3, 99), { visible: [4, 5], above: 3, below: 0, offset: 3 })
-})
-
-test('allDone e retomada: item novo volta a expandir', () => {
-  assert.equal(mod.allDone([]), false)
-  assert.equal(mod.allDone([todo(1, 'completed', 'x')]), true)
-  assert.equal(mod.allDone([todo(1, 'completed', 'x'), todo(2, 'pending', 'y')]), false)
-  const list = [todo(1, 'completed', 'x')]
-  const b = boot([snap(list)])
-  b.handlers.get('session_start')!({}, b.ctx)
-  assert.equal(b.widgets[0].f({ requestRender() {} }, theme2).render(80).length, 2)
-  list.push(todo(2, 'pending', 'y'))
-  b.handlers.get('session_start')!({}, b.ctx)
-  assert.ok(b.widgets.at(-1).f({ requestRender() {} }, theme2).render(80)[0].includes('Todos (1/2)'))
-})
-
-test('widget: estouro mostra "+N more" e trunca à largura', () => {
-  const many = [...Array.from({ length: 6 }, (_, i) => todo(i + 1, 'completed', `c${i + 1}`)), ...Array.from({ length: 12 }, (_, i) => todo(i + 7, 'pending', `p${i + 1}`))]
-  const b = boot([snap(many)])
-  b.handlers.get('session_start')!({}, b.ctx)
-  const lines = b.widgets[0].f({ requestRender() {} }, theme2).render(80)
-  assert.equal(lines.length, 12 + 1) // heading + 10 linhas + resumo + espaçador
-  assert.equal(lines.at(-2), '<dim>└─ +8 more (6 completed, 2 pending)</dim>')
-  assert.ok(lines.slice(1, -2).every((l: string) => l.includes('○')))
-  assert.ok(b.widgets[0].f({ requestRender() {} }, theme2).render(12).every((l: string) => l.length < 60))
 })
 
 test('layoutOverlay: cabe, descarta concluídos primeiro e trunca a cauda', () => {
@@ -384,15 +316,15 @@ test('/todos em tui: componente lista, mostra vazio, cacheia por largura e fecha
   let closed = 0
   b.ctx.ui.custom = async (f: any) => { comp = f({}, theme2, {}, () => closed++) }
   await b.commands.get('todos').handler('', b.ctx)
-  const lines = comp.render(80)
+  const lines = comp.render(100)
   assert.ok(lines.includes('  <muted>1/2 completed</muted>'))
-  assert.ok(lines.includes('  <dim>○</dim>'.replace('<dim>○</dim>', '<success>✓</success> <accent>#1</accent> <dim>a</dim>')))
-  assert.ok(lines.includes('  <accent>◐</accent> <accent>#2</accent> <text>b</text> <dim>(Doing b)</dim>'))
+  assert.ok(lines.includes('  <success>concluída   </success> <accent>#1</accent> <dim>a</dim>'))
+  assert.ok(lines.includes('  <accent>em andamento</accent> <accent>#2</accent> <text>b</text> <dim>(Doing b)</dim>'))
   assert.ok(lines.includes('  <dim>Press Escape to close</dim>'))
-  assert.equal(comp.render(80), lines) // cache
+  assert.equal(comp.render(100), lines) // cache
   assert.notEqual(comp.render(40), lines)
   comp.invalidate()
-  assert.notEqual(comp.render(80), lines)
+  assert.notEqual(comp.render(100), lines)
   comp.handleInput('x')
   assert.equal(closed, 0)
   comp.handleInput('\x1b')

@@ -1,0 +1,921 @@
+/**
+ * MCP Adapter Extension
+ *
+ * Connects MCP (Model Context Protocol) servers and registers their tools in pi
+ * as `<server>_<tool>`. Connects on `session_start`, not from the factory (pi runs
+ * the factory for invocations that never start a session); per-server timeout,
+ * failures skip with a notice; stdio and HTTP (streamable with SSE fallback)
+ * transports; /mcp shows status.
+ *
+ * Reads Claude Code's MCP config too. User config (~/.claude.json top-level plus its
+ * per-project `projects[cwd].mcpServers` local scope, and ~/.pi/agent/mcp.json) is the
+ * user's own and loads on the first session. Project config (.mcp.json, .pi/mcp.json)
+ * can run arbitrary commands on connect, so it loads only once the project is approved
+ * (see project-approval). The two scopes are loaded separately, not merged. Claude's
+ * precedence is project over user for a duplicate name, so a project server the user has
+ * consented to (or an approved project's) wins; a merely-present untrusted project entry
+ * cannot shadow a user server, and a gated project server does not preempt it.
+ * Values support ${VAR} / ${VAR:-default} interpolation, connect and per-call timeouts
+ * honor MCP_TIMEOUT / MCP_TOOL_TIMEOUT, and a stdio server receives only the SDK's default
+ * environment plus its own `env` block, not the whole process environment.
+ *
+ * Servers advertising the `prompts` capability get their prompts registered as Claude's
+ * /mcp__<server>__<prompt> slash commands (server-name characters outside A-Za-z0-9_-
+ * fold to underscores, args split on whitespace and mapped positionally, one token
+ * per declared argument); the prompt result drives a turn via
+ * sendUserMessage, exactly how custom slash commands do. Servers advertising `resources`
+ * make the global list_mcp_resources / read_mcp_resource tools available, mirroring
+ * Claude's automatic resource tools. Resource and prompt output rides the same
+ * mapContent/capForContext budget as tool output. That budget is byte/line based
+ * (pi's DEFAULT_MAX_BYTES in the shared output guard); Claude's MAX_MCP_OUTPUT_TOKENS
+ * is a token budget and cannot be folded into it without making the guard token-aware,
+ * so the byte cap stands in for it.
+ */
+
+import * as fs from 'node:fs'
+import * as os from 'node:os'
+import type { ExtensionAPI, ExtensionCommandContext, ExtensionContext } from '@earendil-works/pi-coding-agent'
+import type { Client } from '@modelcontextprotocol/sdk/client/index.js'
+import { PromptListChangedNotificationSchema, ResourceListChangedNotificationSchema, ToolListChangedNotificationSchema } from '@modelcontextprotocol/sdk/types.js'
+import { Type } from 'typebox'
+import { cliSettings } from '../internal/cli-settings.ts'
+import { MCP_TOOLS_CHANNEL, type McpToolAlias } from '../internal/mcp-alias.ts'
+import { setMcpToolCaller } from '../internal/mcp-call.ts'
+import { capForContext } from '../internal/output-guard.ts'
+import { installedPlugins } from '../internal/plugins.ts'
+import { isProjectApproved, isProjectApprovedSilently } from '../internal/project-approval.ts'
+import { checkoutRoot } from '../internal/project-root.ts'
+import { claudeSettingsChain } from '../internal/settings-chain.ts'
+import { errorMessage } from '../internal/values.ts'
+import { claudeProjectConfigPaths, claudeUserConfigPaths, disabledServerNames, flagScopeServers, loadConfigFrom, loadPluginServers, loadUserScope, localScopeServerNames, projectConfigPaths, type ServerConfig, userConfigPaths, warnOnTypelessUrl } from './config.ts'
+import { collectServerResourceEntries, listAllPrompts, listAllTools, type McpToolInfo, resourceServerFilter } from './listing.ts'
+import { formatPromptCommandName, formatToolName, type McpContentBlock, type McpPromptInfo, mapContent, mapPromptArguments, normalizeSchema, promptMessageContent } from './mapping.ts'
+import { type NativeServer, nativeMode, nativeToolAliases, nativeToolPrefixes, piMcpRunning, toNativeServer } from './native.ts'
+import { applyServerPolicy, loadManagedMcpServers, type McpPolicy, mcpAllowDeny, projectServerPolicy, splitByPolicy } from './policy.ts'
+import { type AuthUi, callRequestOptions, callTimeoutMs, connect, connectTimeoutMs, connectWithRetries, isConnectionLost, isUnauthorized, mcpConnectTimeoutMs, type ServerCallTuning, type SessionDirs, serverCallTuning, withTimeout } from './transport.ts'
+
+export { managedMcpPath, managedSettingsPath, setManagedSettingsPath } from '../internal/managed-settings.ts'
+// Re-exports for consumers: the module split keeps the extension's public surface
+// (imported by the test suite) reachable from this entry point unchanged.
+export type { HttpServerConfig, ServerConfig, StdioServerConfig } from './config.ts'
+export { expandCwd, interpolateEnv, loadConfigFrom, loadPluginServers, loadUserScope, projectConfigPaths, userConfigPaths, warnOnTypelessUrl } from './config.ts'
+export type { McpToolInfo } from './listing.ts'
+export type { McpPromptArgumentInfo, McpPromptInfo, ToolContent } from './mapping.ts'
+export { capTotal, formatPromptCommandName, formatToolName, mapContent, mapPromptArguments, normalizeSchema, promptMessageContent } from './mapping.ts'
+export type { ProjectServerPolicy } from './policy.ts'
+export { applyServerPolicy, loadManagedMcpServers, type McpPolicy, type McpPolicyEntry, mcpAllowDeny, projectServerPolicy, splitByPolicy, urlPatternMatches } from './policy.ts'
+export type { AuthUi } from './transport.ts'
+export { parseHelperHeaders, resolveBearerToken } from './transport.ts'
+
+// Tool names an MCP server must never take over. formatToolName always emits
+// `<server>_<tool>`, so only names containing an underscore are actually reachable:
+// pi's own built-ins (read, bash, edit, ...) cannot be produced and are not listed.
+// These are pi-code's own tools, and mcp.ts registers before the extensions owning
+// them, so without this guard a server named `web` would replace the SSRF-checked fetch.
+// The resource tools are this extension's own globals; a server named `list` or `read`
+// must not take their names either.
+const RESERVED_NAMES = new Set(['web_fetch', 'web_search', 'plan_mode_complete', 'list_mcp_resources', 'read_mcp_resource'])
+
+/** The OAuth flow's UI seams, absent in headless runs. */
+function authUiFor(ctx: ExtensionContext): AuthUi | undefined {
+  if (!ctx.hasUI) return undefined
+  return {
+    confirm: (title, body) => ctx.ui.confirm(title, body),
+    notify: (message, level) => ctx.ui.notify(message, level),
+  }
+}
+
+/** Create a plugin server's data directory before pi starts it. */
+function ensurePluginDataDir(config: ServerConfig): void {
+  if (config.pluginDataDir === undefined) return
+  try {
+    fs.mkdirSync(config.pluginDataDir, { recursive: true })
+  } catch {
+    // The server still starts; one that needs the directory reports its own failure.
+  }
+}
+
+export default function mcpExtension(pi: ExtensionAPI) {
+  const clients = new Map<string, Client>()
+  // pi 0.99 and later connect MCP servers themselves (docs/specs/mcp-native.md). Decided
+  // at load, since registering /mcp here is what drops pi's own, which is before project
+  // approval: the project's settings are read here even unapproved. A list there can only
+  // keep pi-code's own client, where session_start applies it once the project is approved.
+  // The factory sees no session cwd and pi never chdirs on /resume, so process.cwd() is the
+  // launch directory here; session_start decides again from the session's own project.
+  const native = nativeMode(pi, loadManagedMcpServers(), mcpAllowDeny(claudeSettingsChain(process.cwd(), os.homedir(), true)))
+  // Whether pi's /mcp is running this session, and the names handed to pi.registerMcpServer.
+  let nativeActive = false
+  const nativeRegistered = new Set<string>()
+  let waitedForNative = false
+  // Names with a connect in flight. A name enters `clients` only once its connect
+  // resolves, and shutdown clears that map without awaiting anything in flight, so
+  // without this set a session switch during a slow connect (or a backoff sleep) let
+  // the next session_start connect the same name again; the first client then resolved
+  // into an entry the second overwrote and was never closed.
+  const connecting = new Set<string>()
+  // The session's OAuth UI seams, captured at session_start. The reconnect paths below
+  // run outside that handler, and passing undefined there made an INTERACTIVE session
+  // report the headless "cannot log in" advice on a re-auth it could actually perform.
+  let sessionAuthUi: AuthUi | undefined
+  const status = new Map<string, { state: string; tools: number }>()
+  // Config per server name, kept for call-time timeout tuning: the idle tier follows
+  // the transport kind, and a declared per-server timeout governs the wall budget.
+  const serverConfigs = new Map<string, ServerConfig>()
+  // The session's directories, set at session_start before any connect: the launch
+  // directory answers roots/list, the project root feeds CLAUDE_PROJECT_DIR.
+  let sessionDirs: SessionDirs | undefined
+  // Shutdown closes clients while they are still in the map; the onclose handlers
+  // must not schedule reconnects for that deliberate teardown.
+  let shuttingDown = false
+  // Bumped by every session_start and session_shutdown. A late-connecting server's
+  // deferred summary captured the ctx of the session that started it; pi disposes that
+  // ctx on /new, /resume, /fork and reload (any use of it throws), so the publish must
+  // check it still belongs to the live session before touching ctx.
+  let sessionGeneration = 0
+  const callTuning = (name: string): ServerCallTuning => {
+    const config = serverConfigs.get(name)
+    return config ? serverCallTuning(config) : {}
+  }
+  // Let other extensions (hooks' mcp_tool type) call a connected server's tool.
+  // The same 401/403 reconnect-and-retry-once as registered tools, when the
+  // server's config is known; a name with no stored config calls through once.
+  setMcpToolCaller(async (server, tool, input) => {
+    const config = serverConfigs.get(server)
+    const result = config
+      ? await callToolWithAuthRetry(server, config, { name: tool, arguments: input }, `${server}: ${tool}`)
+      : await (async () => {
+          const client = clients.get(server)
+          if (!client) throw new Error(`MCP server "${server}" is not connected`)
+          return await client.callTool({ name: tool, arguments: input }, undefined, callRequestOptions(callTimeoutMs()))
+        })()
+    const text = mapContent(result.content as McpContentBlock[], result.structuredContent)
+      .filter((part): part is { type: 'text'; text: string } => part.type === 'text')
+      .map((part) => part.text)
+      .join('\n')
+    return { text, isError: result.isError === true }
+  })
+  // pi tool name -> owning server, so a refresh can tell its own tools from a conflict.
+  const registered = new Map<string, string>()
+  // Original server/tool names per registered pi name, for Claude-style hook matchers.
+  const aliases: McpToolAlias[] = []
+  // The roster other extensions read: pi-code's own aliases plus the tools pi connected.
+  const roster = (): McpToolAlias[] => [...aliases, ...(nativeActive ? nativeToolAliases(pi.getAllTools(), nativeRegistered) : [])]
+
+  /** How many tools a server actually has registered. Counted from `registered` (the
+   * durable owner map) rather than registerTools' return, so a reconnect on a second
+   * session, where every tool is already registered and registerTools adds 0, still
+   * reports the true count in /mcp and the startup banner instead of zero. */
+  const serverToolCount = (name: string): number => [...registered.values()].filter((owner) => owner === name).length
+
+  /** Register every not-yet-registered tool of a server; returns how many were added. */
+  function registerTools(name: string, config: ServerConfig, tools: McpToolInfo[]): number {
+    let count = 0
+    for (const tool of tools) {
+      // A plugin server's registry key carries its plugin: scope; its tools keep the bare
+      // server name, as their Claude alias does.
+      const toolName = formatToolName(config.baseName ?? name, tool.name)
+      const owner = registered.get(toolName)
+      if (owner === name) continue // already registered for this server: a refresh re-listing it
+      if (RESERVED_NAMES.has(toolName) || owner !== undefined) {
+        console.warn(`pi-code-mcp: skipping colliding tool name ${toolName}`)
+        continue
+      }
+      registered.set(toolName, name)
+      aliases.push({ pi: toolName, claude: config.aliasPrefix ? `${config.aliasPrefix}${tool.name}` : `mcp__${name}__${tool.name}` })
+      count++
+      pi.registerTool({
+        name: toolName,
+        label: `${name}: ${tool.name}`,
+        description: tool.description ?? `MCP tool ${tool.name} from ${name}`,
+        parameters: Type.Unsafe(normalizeSchema(tool.inputSchema)),
+        async execute(_id, params) {
+          // Resolve the live client by name at call time rather than capturing the one
+          // present at registration: pi has no tool unregister, so after a server drops
+          // and a later session_start reconnects it, registerTools skips re-registration
+          // and this closure would otherwise keep calling the old, closed client.
+          // The per-server timeout (Claude's, 1s floor) or MCP_TOOL_TIMEOUT is the
+          // wall-clock ceiling; callRequestOptions layers the idle timeout under it, which
+          // the SDK enforces (resetting on progress). The outer race uses the wall
+          // budget, never the idle window, so a progressing call is not cut off at the
+          // idle timeout. A 401/403 reconnects once (fresh helper headers or refreshed
+          // OAuth tokens) and retries once.
+          const result = await callToolWithAuthRetry(name, config, { name: tool.name, arguments: params as Record<string, unknown> }, toolName)
+          const content = mapContent(result.content as McpContentBlock[], result.structuredContent)
+          const details: { error?: string } = {}
+          if (result.isError) {
+            details.error = 'tool_error'
+            const hint = JSON.stringify(normalizeSchema(tool.inputSchema))
+            content.push({ type: 'text', text: capForContext(`Tool reported an error. Expected input schema: ${hint}`) })
+          }
+          return { content, details }
+        },
+      })
+    }
+    return count
+  }
+
+  /** A client that is gone: flip the status and free the name so a reconnect can take it.
+   * Claude reconnects a dropped remote server with exponential backoff; stdio servers are
+   * local processes and are not reconnected. Shutdown closes clients while they are still
+   * in the map, so the flag guards against scheduling a reconnect for a deliberate
+   * teardown. Called by the transport's onclose and by a call that found the connection
+   * dead (isConnectionLost), so several calls failing together schedule one reconnect. */
+  function dropClient(name: string, client: Client, config: ServerConfig): void {
+    if (clients.get(name) !== client) return
+    clients.delete(name)
+    status.set(name, { state: 'disconnected', tools: 0 })
+    if (!shuttingDown && !serverCallTuning(config).stdio) void reconnectWithBackoff(name, config)
+  }
+
+  /** Claude's mid-session reconnect for a dropped remote server: five attempts with
+   * a delay doubling from one second. connectServers redoes the full bring-up
+   * (tools, prompts, subscriptions, a fresh onclose) and its duplicate guard skips
+   * out if another path already reconnected the name. Uses the session's authUi, so a
+   * server that now needs a login can prompt for it in an interactive session; headless
+   * still ends failed, and after the fifth failure the last attempt's failed status
+   * stands, with a session restart as the manual retry. */
+  async function reconnectWithBackoff(name: string, config: ServerConfig): Promise<void> {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, 1000 * 2 ** attempt))
+      if (shuttingDown || clients.has(name) || connecting.has(name)) return
+      await connectServers({ [name]: config }, sessionAuthUi, true)
+      if (clients.has(name)) return
+    }
+  }
+
+  // One auth recovery per server at a time, shared by every call that met the same 401.
+  const authReconnects = new Map<string, Promise<void>>()
+
+  /** Claude's 401/403 tool-call recovery: drop the client and reconnect once, so the
+   * headersHelper re-runs (fresh credential) or the OAuth tokens refresh, then the
+   * caller retries the call once. The map delete precedes the close so the onclose
+   * guard does not also schedule a backoff reconnect. Parallel calls that all met the
+   * expired credential share the one reconnect: `failed` is the client a call was made
+   * on, and a map holding another one means a sibling already replaced it, so closing
+   * "the client in the map" would tear down the fresh connection under that sibling. */
+  function reconnectForAuth(name: string, config: ServerConfig, failed: Client | undefined): Promise<void> {
+    const inFlight = authReconnects.get(name)
+    if (inFlight !== undefined) return inFlight
+    if (clients.get(name) !== failed) return Promise.resolve()
+    const recovery = (async () => {
+      clients.delete(name)
+      if (failed) await withTimeout(failed.close(), 3000, 'close').catch(() => {})
+      await connectServers({ [name]: config }, sessionAuthUi, true)
+    })().finally(() => authReconnects.delete(name))
+    authReconnects.set(name, recovery)
+    return recovery
+  }
+
+  /** A tool call with the auth retry: on a 401/403 rejection, reconnect once and
+   * retry once; a second auth failure surfaces to the caller. */
+  async function callToolWithAuthRetry(name: string, config: ServerConfig, args: { name: string; arguments: Record<string, unknown> }, label: string): Promise<Awaited<ReturnType<Client['callTool']>>> {
+    const tuning = serverCallTuning(config)
+    const wall = tuning.serverTimeoutMs ?? callTimeoutMs()
+    let used: Client | undefined
+    const callOnce = async () => {
+      const current = clients.get(name)
+      if (!current) throw new Error(`MCP server "${name}" is not connected`)
+      used = current
+      try {
+        return await withTimeout(current.callTool(args, undefined, callRequestOptions(wall, tuning)), wall, label)
+      } catch (error) {
+        if (isConnectionLost(error)) {
+          dropClient(name, current, config)
+          void withTimeout(current.close(), 3000, 'close').catch(() => {})
+        }
+        throw error
+      }
+    }
+    try {
+      return await callOnce()
+    } catch (error) {
+      if (!isUnauthorized(error)) throw error
+      await reconnectForAuth(name, config, used)
+      return await callOnce()
+    }
+  }
+
+  // Prompt command name -> the server and prompt that own it, so a refresh re-listing
+  // the same prompt is told apart both from a cross-server collision and from a second
+  // prompt on the same server whose name normalizes to the one already taken (e.g.
+  // `deploy-prod` and `deploy_prod`), mirroring `registered` for tools.
+  const registeredPrompts = new Map<string, { server: string; prompt: string }>()
+
+  /** The body of a prompt's slash command: fetch the prompt from the server and drive a
+   * turn with its content, notifying instead of throwing on every failure. */
+  async function runPromptCommand(name: string, prompt: McpPromptInfo, commandName: string, args: string, ctx: ExtensionCommandContext): Promise<void> {
+    try {
+      // Resolve the live client at call time, not the one captured at registration:
+      // pi has no command unregister, so after a reconnect this closure must not keep
+      // calling the old, closed client (see registerTools for the same reason).
+      const current = clients.get(name)
+      if (!current) {
+        ctx.ui.notify(`${commandName}: MCP server "${name}" is not connected`, 'error')
+        return
+      }
+      const promptArgs = mapPromptArguments(prompt.arguments, args)
+      const params: { name: string; arguments?: Record<string, string> } = { name: prompt.name }
+      if (Object.keys(promptArgs).length > 0) params.arguments = promptArgs
+      const wall = callTimeoutMs()
+      const result = await withTimeout(current.getPrompt(params, callRequestOptions(wall, callTuning(name))), wall, commandName)
+      // The prompt drives a turn exactly the way a custom slash command does
+      // (see commands.ts), carrying its image blocks through. A prompt that
+      // yields no content is reported rather than sent as an empty turn.
+      const content = promptMessageContent(result.messages)
+      if (content.length === 0) {
+        ctx.ui.notify(`${commandName}: prompt returned no content`, 'info')
+        return
+      }
+      // A bare send throws (and is silently swallowed) while the agent is
+      // streaming, so mid-stream invocations queue as a follow-up turn.
+      pi.sendUserMessage(content, ctx.isIdle() ? {} : { deliverAs: 'followUp' })
+    } catch (error) {
+      ctx.ui.notify(`${commandName}: ${errorMessage(error)}`, 'error')
+    }
+  }
+
+  /** Register a slash command for every not-yet-registered prompt of a server. pi has
+   * no command unregister, so, like tools, a withdrawn prompt keeps its registration
+   * and surfaces the server's own error when invoked; an edit to a prompt's declared
+   * arguments only lands on new names, since an existing command keeps its binding. */
+  function registerPrompts(name: string, prompts: McpPromptInfo[]): void {
+    for (const prompt of prompts) {
+      const commandName = formatPromptCommandName(name, prompt.name)
+      const owner = registeredPrompts.get(commandName)
+      if (owner) {
+        if (owner.server === name && owner.prompt === prompt.name) continue // a refresh re-listing the same prompt
+        console.warn(`pi-code-mcp: skipping colliding prompt command ${commandName}`)
+        continue
+      }
+      registeredPrompts.set(commandName, { server: name, prompt: prompt.name })
+      const hint = (prompt.arguments ?? []).map((argument) => (argument.required ? `<${argument.name}>` : `[${argument.name}]`)).join(' ')
+      const base = prompt.description ?? `MCP prompt ${prompt.name} from ${name}`
+      pi.registerCommand(commandName, {
+        description: hint ? `${base} ${hint}` : base,
+        handler: (args, ctx) => runPromptCommand(name, prompt, commandName, args, ctx),
+      })
+    }
+  }
+
+  /** Claude exposes prompts as slash commands only for servers advertising the
+   * prompts capability; a listing failure loses the prompts, not the server. */
+  async function connectPrompts(name: string, client: Client): Promise<void> {
+    if (!client.getServerCapabilities()?.prompts) return
+    try {
+      registerPrompts(name, await withTimeout(listAllPrompts(client), connectTimeoutMs(), `list prompts ${name}`))
+    } catch (error) {
+      console.warn(`pi-code-mcp: prompt listing failed for ${name}: ${errorMessage(error)}`)
+    }
+  }
+
+  /** Mirror of subscribeToToolChanges for the prompt list: a newly announced prompt
+   * registers without a restart, a withdrawn one keeps its registration. */
+  function subscribeToPromptChanges(name: string, client: Client): void {
+    try {
+      client.setNotificationHandler(PromptListChangedNotificationSchema, async () => {
+        try {
+          registerPrompts(name, await withTimeout(listAllPrompts(client), connectTimeoutMs(), `list prompts ${name}`))
+        } catch (error) {
+          console.warn(`pi-code-mcp: prompt refresh failed for ${name}: ${errorMessage(error)}`)
+        }
+      })
+    } catch {
+      // a transport or client without notification support simply never refreshes
+    }
+  }
+
+  /** Servers currently connected that advertise the resources capability. */
+  const resourceServers = (): Array<[string, Client]> => [...clients.entries()].filter(([, client]) => Boolean(client.getServerCapabilities()?.resources))
+
+  let resourceToolsRegistered = false
+
+  /** Claude auto-provides tools to list and read MCP resources when servers support
+   * them. Registered once, globally, the first time a connected server advertises the
+   * resources capability: the tools span servers, taking the server name as an
+   * argument, so per-server registration would only produce duplicates. Listings are
+   * fetched live on every call, so a resources list_changed needs no cache
+   * invalidation; its handler only re-checks this gate (see subscribeToResourceChanges). */
+  function ensureResourceTools(): void {
+    // pi registers list_mcp_resources and read_mcp_resource for the servers it connects.
+    if (nativeActive) return
+    if (resourceToolsRegistered || resourceServers().length === 0) return
+    resourceToolsRegistered = true
+    pi.registerTool({
+      name: 'list_mcp_resources',
+      label: 'List MCP resources',
+      description: 'List available resources and resource templates from connected MCP servers. Optionally filter to a single server by name.',
+      parameters: Type.Object({ server: Type.Optional(Type.String({ description: 'Only list resources from this server' })) }),
+      async execute(_id, params) {
+        const filter = resourceServerFilter(params)
+        if (filter && !clients.has(filter)) throw new Error(`MCP server "${filter}" is not connected`)
+        // Each server is listed at once, so a slow one does not hold the others back; the
+        // entries keep server order.
+        const targets = [...resourceServers()].filter(([name]) => !filter || name === filter)
+        const perServer = await Promise.all(
+          targets.map(async ([name, client]) => {
+            const own: Array<Record<string, unknown>> = []
+            await collectServerResourceEntries(own, name, client, callTimeoutMs())
+            return own
+          }),
+        )
+        const entries = perServer.flat()
+        return { content: mapContent([{ type: 'text', text: JSON.stringify(entries, null, 2) }]), details: {} }
+      },
+    })
+    pi.registerTool({
+      name: 'read_mcp_resource',
+      label: 'Read MCP resource',
+      description: 'Read a resource from a connected MCP server by URI.',
+      parameters: Type.Object({ server: Type.String({ description: 'The MCP server name' }), uri: Type.String({ description: 'The resource URI to read' }) }),
+      async execute(_id, params) {
+        const { server, uri } = params as { server: string; uri: string }
+        const client = clients.get(server)
+        if (!client) throw new Error(`MCP server "${server}" is not connected`)
+        const wall = callTimeoutMs()
+        const result = await withTimeout(client.readResource({ uri }, callRequestOptions(wall, callTuning(server))), wall, `read ${uri}`)
+        const blocks = (result.contents as Array<{ uri: string; text?: string; blob?: string; mimeType?: string }>).map((entry): McpContentBlock => {
+          if (typeof entry.text === 'string') return { type: 'resource', resource: { uri: entry.uri, text: entry.text } }
+          if (entry.blob && entry.mimeType?.startsWith('image/')) return { type: 'image', data: entry.blob, mimeType: entry.mimeType }
+          // Non-image binary has no useful text form; a placeholder beats megabytes
+          // of base64 reaching the model as JSON.
+          return { type: 'text', text: `[Binary resource ${entry.uri} (${entry.mimeType ?? 'unknown type'})]` }
+        })
+        return { content: mapContent(blocks), details: {} }
+      },
+    })
+  }
+
+  /** Resource listings are fetched live per call, so the notification has no cache to
+   * invalidate; re-checking the registration gate covers a server whose capabilities
+   * settled after the connect-time check. */
+  function subscribeToResourceChanges(client: Client): void {
+    try {
+      client.setNotificationHandler(ResourceListChangedNotificationSchema, () => {
+        ensureResourceTools()
+      })
+    } catch {
+      // a transport or client without notification support simply never refreshes
+    }
+  }
+
+  /** Claude refreshes tools on a server's list_changed notification. pi has no
+   * unregister, so a withdrawn tool keeps its registration and surfaces the server's
+   * own error when called; a newly announced one is registered without a restart. */
+  function subscribeToToolChanges(name: string, config: ServerConfig, client: Client): void {
+    try {
+      client.setNotificationHandler(ToolListChangedNotificationSchema, async () => {
+        try {
+          const refreshed = await withTimeout(listAllTools(client), connectTimeoutMs(), `list tools ${name}`)
+          const added = registerTools(name, config, refreshed)
+          if (added === 0) return
+          const current = status.get(name)
+          status.set(name, { state: current?.state ?? 'connected', tools: serverToolCount(name) })
+          pi.events.emit(MCP_TOOLS_CHANNEL, roster())
+        } catch (error) {
+          console.warn(`pi-code-mcp: tool refresh failed for ${name}: ${errorMessage(error)}`)
+        }
+      })
+    } catch {
+      // a transport or client without notification support simply never refreshes
+    }
+  }
+
+  /** The pi registration for a server, or undefined when pi-code's own client connects it. */
+  function nativeServerFor(name: string, config: ServerConfig): NativeServer | undefined {
+    // A malformed entry (a non-string arg or env value, no url) stays with pi-code's
+    // client, whose per-server connect reports it as failed without stopping the rest.
+    let translated: ReturnType<typeof toNativeServer>
+    try {
+      translated = toNativeServer(name, config, sessionDirs)
+    } catch {
+      return undefined
+    }
+    return 'native' in translated ? translated.native : undefined
+  }
+
+  /** Hands every server pi can connect to pi.registerMcpServer and returns the rest, which
+   * pi-code connects itself. */
+  function registerWithPi(servers: Record<string, ServerConfig>): Record<string, ServerConfig> {
+    const own: Record<string, ServerConfig> = {}
+    for (const [name, config] of Object.entries(servers)) {
+      const native = nativeServerFor(name, config)
+      if (!native) {
+        own[name] = config
+        continue
+      }
+      // pi replaces a name this extension registers again, so the first scope to register
+      // a name keeps it, as connectServers keeps the first client (local over project). A
+      // name pi-code's own client holds keeps it too: a server pi rejects (sse, a
+      // headersHelper) stays here, and a later scope must not reach pi under it.
+      if (nativeRegistered.has(native.name) || clients.has(name)) {
+        console.warn(`pi-code-mcp: skipping duplicate server name ${name}`)
+        continue
+      }
+      ensurePluginDataDir(config)
+      try {
+        pi.registerMcpServer(native.name, native.config)
+        nativeRegistered.add(native.name)
+      } catch (error) {
+        console.warn(`pi-code-mcp: pi did not accept server ${name} (${errorMessage(error)}); connecting it directly`)
+        own[name] = config
+      }
+    }
+    return own
+  }
+
+  async function connectServers(servers: Record<string, ServerConfig>, authUi?: AuthUi, noRetry = false): Promise<void> {
+    const pending: [string, ServerConfig][] = []
+    for (const [name, config] of Object.entries(nativeActive ? registerWithPi(servers) : servers)) {
+      // A later scope must not take the name of a server that already connected: it
+      // would evict that client from the map, leaking it at shutdown, and misreport
+      // the earlier server's status.
+      if (clients.has(name) || nativeRegistered.has(name)) {
+        console.warn(`pi-code-mcp: skipping duplicate server name ${name}`)
+        continue
+      }
+      // The one guard for every connect path (session_start scopes, backoff, auth
+      // reconnect): a name still connecting from the previous session is adopted when
+      // that connect resolves, not connected again.
+      if (connecting.has(name)) continue
+      // Seed in config order before connecting: parallel connects settle in completion
+      // order, and /mcp plus the session summary iterate the map's insertion order.
+      status.set(name, { state: 'connecting', tools: 0 })
+      serverConfigs.set(name, config)
+      connecting.add(name)
+      pending.push([name, config])
+    }
+    await Promise.all(
+      pending.map(async ([name, config]) => {
+        warnOnTypelessUrl(name, config)
+        try {
+          // First connections retry transient failures (Claude: up to three times for
+          // HTTP/SSE); the backoff reconnect below carries its own schedule instead.
+          const client = noRetry ? await connect(name, config, authUi, sessionDirs) : await connectWithRetries(name, config, authUi, sessionDirs)
+          // A session switch resets shuttingDown before this resolves and adopts the
+          // client; still set, pi is exiting and the shutdown handler already closed
+          // every client it could see, so this late one must close itself.
+          if (shuttingDown) {
+            await withTimeout(client.close(), 3000, 'close').catch(() => {})
+            status.delete(name)
+            return
+          }
+          clients.set(name, client)
+          const tools = await withTimeout(listAllTools(client), connectTimeoutMs(), `list tools ${name}`)
+          registerTools(name, config, tools)
+          subscribeToToolChanges(name, config, client)
+          // Prompts and resources are additive surfaces: their failures warn (inside
+          // connectPrompts) rather than flipping a tool-serving server to failed.
+          await connectPrompts(name, client)
+          subscribeToPromptChanges(name, client)
+          ensureResourceTools()
+          subscribeToResourceChanges(client)
+          // Count from `registered`, not registerTools' return: a reconnect re-lists tools
+          // that are already registered (return 0) but still serves them, so the banner
+          // must reflect the true count.
+          status.set(name, { state: 'connected', tools: serverToolCount(name) })
+          // A server that dies mid-session would otherwise stay "connected" in /mcp
+          // while every call fails with the SDK's bare "Not connected"; flip the
+          // status and free the name so a later session start can reconnect it.
+          client.onclose = () => dropClient(name, client, config)
+        } catch (error) {
+          status.set(name, { state: `failed: ${errorMessage(error)}`, tools: 0 })
+          // Connected but failed after (tool listing hung or errored): left in the
+          // map, the client idles its process for the whole session and the
+          // duplicate-name guard blocks the name for every later attempt.
+          const leaked = clients.get(name)
+          if (leaked) {
+            clients.delete(name)
+            void leaked.close().catch(() => {})
+          }
+        } finally {
+          connecting.delete(name)
+        }
+      }),
+    )
+  }
+
+  /** Connect the approval-gated project servers, behind the whole-project confirm.
+   * Returns whether the scope is settled, so a refused confirm can be retried on a
+   * later session start. The consented half of the project scope connects earlier,
+   * concurrently with the user scope, from session_start itself. */
+  async function connectGatedProjectServers(ctx: ExtensionContext, gated: Record<string, ServerConfig>, authUi?: AuthUi): Promise<boolean> {
+    if (Object.keys(gated).length === 0) return true
+    if (!(await isProjectApproved(ctx))) return false
+    await connectServers(gated, authUi)
+    return true
+  }
+
+  let projectConnected = false
+
+  /** managed-mcp.json exclusive mode: a policy deployed mid-process must not leave
+   * already-connected user/project servers running alongside the managed set. Evict every
+   * connected client not in the managed set (delete it from the map first so the onclose
+   * handler's guard sees it gone and does not overwrite the status, then close it
+   * best-effort and mark it disabled), then connect only the managed servers. */
+  async function connectManagedExclusive(managed: Record<string, ServerConfig>, policy: McpPolicy, authUi?: AuthUi): Promise<void> {
+    const managedServers = applyServerPolicy(managed, policy)
+    const managedNames = new Set(Object.keys(managedServers))
+    const evicted = Array.from(clients.entries()).filter(([name]) => !managedNames.has(name))
+    for (const [name] of evicted) clients.delete(name)
+    // Bound each close like session_shutdown does, and close them together: a hung server
+    // must not stall the new session start, which awaits this eviction before connecting
+    // the managed set.
+    await Promise.all(evicted.map(([, client]) => withTimeout(client.close(), 3000, 'close').catch(() => {})))
+    for (const [name] of evicted) status.set(name, { state: 'disabled by managed policy', tools: 0 })
+    await connectServers(managedServers, authUi)
+  }
+
+  /** The normal user + plugin + project scopes, when no managed-mcp.json is present.
+   * Connecting spawns processes and opens sockets, so it belongs here rather than in the
+   * factory: pi runs the factory for invocations that never start a session. Names still
+   * connected are filtered out, so a later session start only retries servers that failed
+   * or whose transport dropped, without duplicate-name warnings. */
+  /** A project server's headersHelper, dropped while the project is unapproved. */
+  function withoutUntrustedHelper(name: string, config: ServerConfig): ServerConfig {
+    if (!('headersHelper' in config) || config.headersHelper === undefined) return config
+    console.warn(`pi-code-mcp: headersHelper not run for server ${name}: the project is not trusted yet; connecting with its static headers alone`)
+    const { headersHelper: _dropped, ...rest } = config
+    return rest as ServerConfig
+  }
+
+  /** The plugin and user scope servers, policy applied, without the disabled ones and the
+   * names the flag scope defines. */
+  function userScopeServers(ctx: ExtensionContext, policy: McpPolicy, flagNames: Set<string>): Record<string, ServerConfig> {
+    // Plugin servers merge under the user scope (plugins are user-installed). Their keys
+    // are plugin:<plugin>:<server>, so a plugin server never shares a name with the user's. A server toggled off
+    // in ~/.claude.json's per-project disabledMcpServers list never connects.
+    const pluginServers = loadPluginServers(installedPlugins(os.homedir()), checkoutRoot(ctx.cwd))
+    const disabled = disabledServerNames(os.homedir(), ctx.cwd)
+    const merged = Object.fromEntries(Object.entries({ ...pluginServers, ...loadUserScope(os.homedir(), ctx.cwd, nativeActive ? claudeUserConfigPaths(os.homedir()) : userConfigPaths(os.homedir())) }).filter(([name]) => !disabled.has(name) && !flagNames.has(name)))
+    return applyServerPolicy(merged, policy)
+  }
+
+  /** The project scope servers, before policy and approval, without the names the flag
+   * scope defines. */
+  function projectScopeServers(ctx: ExtensionContext, flagNames: Set<string>): Record<string, ServerConfig> {
+    // Tag the scope on each project server: a repository-supplied headersHelper runs
+    // with credential variables stripped, unlike a user-scope one. Claude's
+    // --setting-sources without project reads no project .mcp.json, and .pi/mcp.json is
+    // the same kind of repository-supplied config.
+    const projectConfigFiles = nativeActive ? claudeProjectConfigPaths(ctx.cwd) : projectConfigPaths(ctx.cwd)
+    const projectConfig = cliSettings().sources.has('project') ? loadConfigFrom(projectConfigFiles) : {}
+    return Object.fromEntries(
+      Object.entries(projectConfig)
+        .filter(([name]) => !flagNames.has(name))
+        .map(([name, config]) => [name, { ...config, projectScope: true }]),
+    )
+  }
+
+  /** The consented project servers to connect: none after an interactive refusal. */
+  function consentedToConnect(consentedNamed: Array<[string, ServerConfig]>, approved: boolean, interactivelyRefused: boolean): Record<string, ServerConfig> {
+    // Claude: until the folder is trusted, a project server connects with its static
+    // headers alone. Consenting to the server is not consenting to run the command it
+    // ships, so the helper is dropped (and named once) while the project is unapproved.
+    return Object.fromEntries(interactivelyRefused ? [] : consentedNamed.map(([name, config]) => [name, approved ? config : withoutUntrustedHelper(name, config)]))
+  }
+
+  async function connectNormalScopes(ctx: ExtensionContext, policy: McpPolicy, authUi?: AuthUi): Promise<void> {
+    // The --mcp-config servers outrank every other scope on a shared name (measured: a
+    // flag server named like a .mcp.json one replaced it), and --strict-mcp-config leaves
+    // them as the only scope. They are the user's own input: no approval, but the
+    // allow/deny lists apply, as Claude's managed-mcp page documents.
+    const flags = cliSettings().mcp
+    const validFlagServers = flagScopeServers(flags?.servers ?? {})
+    const flagServers = Object.fromEntries(Object.entries(applyServerPolicy(validFlagServers, policy)).filter(([name]) => !clients.has(name)))
+    if (flags?.strict) {
+      await connectServers(flagServers, authUi)
+      return
+    }
+    const flagNames = new Set(Object.keys(validFlagServers))
+    const scoped = userScopeServers(ctx, policy, flagNames)
+    // Claude's precedence is project over user for a duplicate name. A project .mcp.json
+    // server only outranks the user's own when it will actually connect (the user already
+    // consented to it, or an approved project's), so a merely-present untrusted project
+    // entry cannot shadow a trusted user server by reusing its name. A gated project
+    // server still awaiting the approval prompt does not preempt the user server: that is
+    // a deliberate narrowing of Claude's rule to keep the safe default.
+    // The stored project decision, read without prompting: consent recorded inside
+    // the project only counts once the project itself has been approved.
+    const projectApproved = isProjectApprovedSilently(ctx)
+    const projectPolicy = projectServerPolicy(ctx.cwd, os.homedir(), projectApproved)
+    const projectServers = projectScopeServers(ctx, flagNames)
+    const { consented: consentedRaw, gated } = splitByPolicy(applyServerPolicy(projectServers, policy), projectPolicy)
+    // Claude's scope precedence is local over project: a name the local scope defines
+    // stays with the local (user-side) definition, so the project's entry is dropped
+    // here rather than allowed to shadow it.
+    const localNames = localScopeServerNames(os.homedir(), ctx.cwd)
+    const consentedNamed = Object.entries(consentedRaw).filter(([name]) => !localNames.has(name))
+    // Claude: in an interactive session it "asks you before connecting" the .mcp.json
+    // servers of a folder whose trust is not settled, the user's own consent included;
+    // only a headless run connects them without asking. Declined, none of them connect.
+    const approved = projectApproved || (ctx.hasUI && !projectConnected && consentedNamed.length > 0 && (await isProjectApproved(ctx)))
+    const interactivelyRefused = ctx.hasUI && !approved
+    const consented = consentedToConnect(consentedNamed, approved, interactivelyRefused)
+    const projectWinners = new Set(Object.keys(consented))
+    const userServers = Object.fromEntries(Object.entries(scoped).filter(([name]) => !clients.has(name) && !projectWinners.has(name)))
+    // The consented project servers carry no ordering dependency on the user scope:
+    // projectWinners already excludes their names from userServers, so the two batches
+    // are disjoint and connect concurrently, and startup pays the slower scope rather
+    // than the sum of both. Reconnect attempts after a refused confirm are safe:
+    // connectServers skips names that already connected.
+    const connects: Promise<void>[] = []
+    if (Object.keys(flagServers).length > 0) connects.push(connectServers(flagServers, authUi))
+    if (Object.keys(userServers).length > 0) connects.push(connectServers(userServers, authUi))
+    if (!projectConnected && Object.keys(consented).length > 0) connects.push(connectServers(consented, authUi))
+    await Promise.all(connects)
+    // A project .mcp.json can run arbitrary commands on connect, so only honor it once
+    // the project is trusted. Per-server settings refine that: disabled servers never
+    // connect, servers the user consented to individually connected above (headless:
+    // without the whole-project confirm; interactive: once it was approved before any
+    // connect), and the rest stay behind it, sequentially after both
+    // scopes so the confirm dialog never races a connect.
+    if (!projectConnected) projectConnected = await connectGatedProjectServers(ctx, gated, authUi)
+  }
+
+  /** Publishes the current alias set and the connection banner. `'connecting'`
+   * servers are excluded from both connected and failed counts: they are neither,
+   * and while the non-blocking startup race below is still in flight some legitimately
+   * are. Called once right after startup (whether or not every server settled by
+   * then) and again when a still-connecting tail finishes, so a server that connects
+   * late still gets its aliases published and counted. */
+  function publishConnectionSummary(ctx: ExtensionContext): void {
+    pi.events.emit(MCP_TOOLS_CHANNEL, roster())
+    const connected = [...status.values()].filter((s) => s.state === 'connected')
+    const failed = [...status.entries()].filter(([, s]) => s.state !== 'connected' && s.state !== 'connecting')
+    if (connected.length > 0 || failed.length > 0) {
+      const total = connected.reduce((sum, s) => sum + s.tools, 0)
+      const failNote = failed.length > 0 ? `, ${failed.length} failed` : ''
+      ctx.ui.notify(`MCP: ${total} tools from ${connected.length} servers${failNote}`, failed.length > 0 ? 'warning' : 'info')
+    }
+  }
+
+  pi.on('session_start', async (_event, ctx) => {
+    // Reset the status map so /mcp and the banner reflect only this session's config: a
+    // server present last session but not this one must not linger as "connected". The
+    // registered tools, aliases, and prompt commands stay: pi has no unregister (a
+    // withdrawn tool keeps its registration and surfaces the server's own error), which
+    // is why serverToolCount reads from `registered` to recover the true count here.
+    status.clear()
+    const generation = ++sessionGeneration
+    // A same-process session switch (/new, /resume) shut the last session down;
+    // this one may reconnect again. projectConnected guards against connecting the project
+    // scope twice within one session, so it belongs to the session that set it: leaving it
+    // set here left every project server disconnected for the rest of the process, since
+    // the shutdown had already dropped their clients.
+    shuttingDown = false
+    projectConnected = false
+    // Claude answers roots/list with the session's launch directory and exports the
+    // project root as CLAUDE_PROJECT_DIR to stdio servers; both derive from ctx.cwd.
+    sessionDirs = { projectDir: checkoutRoot(ctx.cwd), launchDir: ctx.cwd, sessionId: ctx.sessionManager?.getSessionId?.() }
+    const managed = loadManagedMcpServers()
+    nativeActive = native && piMcpRunning(pi.getCommands()) && nativeMode(pi, managed, mcpAllowDeny(claudeSettingsChain(ctx.cwd, os.homedir(), true)))
+    waitedForNative = false
+    const authUi = authUiFor(ctx)
+    sessionAuthUi = authUi
+    // The allow/deny lists filter every scope, including a managed-mcp.json set. They
+    // merge from managed settings plus the trust-gated settings chain, as Claude
+    // documents (a repo's file counts only once the project is approved).
+    const policy = mcpAllowDeny(claudeSettingsChain(ctx.cwd, os.homedir(), isProjectApprovedSilently(ctx)))
+    // managed-mcp.json (beside managed-settings.json) takes exclusive control when present:
+    // only its servers load, and the user, project, and plugin scopes plus the whole
+    // project-approval flow below are skipped. An empty map disables MCP entirely. An absent
+    // file leaves the normal scopes untouched; a present but corrupt file fails closed to an
+    // empty set (see loadManagedMcpServers).
+    const connecting = managed !== null ? connectManagedExclusive(managed, policy, authUi) : connectNormalScopes(ctx, policy, authUi)
+    // Claude: "MCP startup is non-blocking by default: servers connect in the
+    // background and their tools become available as they finish." A slow or
+    // unreachable server no longer costs the whole session's startup its own
+    // MCP_TIMEOUT x retries; alwaysLoad-style forced waiting and the ToolSearch/
+    // WaitForMcpServers mechanism that lets the model itself wait on a pending
+    // server's tools are not implemented, so a call to a tool that has not
+    // registered yet still just finds no such tool, same as before it connected.
+    //
+    // Claude also states non-interactive mode "waits for still-pending servers
+    // before the first turn regardless of this variable", because a -p run has no
+    // later turn to react to late-arriving tools; a headless ctx (no UI) keeps the
+    // prior fully-blocking wait for the same reason.
+    const settled = !ctx.hasUI
+      ? await connecting.then(() => true)
+      : await withTimeout(connecting, mcpConnectTimeoutMs(), 'mcp startup').then(
+          () => true,
+          () => false,
+        )
+    publishConnectionSummary(ctx)
+    if (!settled) {
+      // The rejection path exists for the throw a disposed ctx would raise if the
+      // generation check were ever wrong: from a bare `.then` it would be an unhandled
+      // rejection, and pi installs no handler, so Node would take the process down.
+      void connecting
+        .then(() => {
+          if (generation === sessionGeneration) publishConnectionSummary(ctx)
+        })
+        .catch(() => {})
+    }
+  })
+
+  pi.on('session_shutdown', async () => {
+    // Closing fires each client's onclose while it is still in the map; the flag
+    // stops those handlers (and any in-flight backoff loop) from reconnecting.
+    shuttingDown = true
+    sessionGeneration++
+    // Close in parallel with a per-client timeout so one hung server can't stall pi's exit.
+    await Promise.all([...clients.values()].map((client) => withTimeout(client.close(), 3000, 'close').catch(() => {})))
+    // Drop the closed clients and their status now rather than waiting on each client's
+    // onclose, which the SDK fires late: a same-process session switch (/new, /resume,
+    // /fork) runs the next session_start right after this, and a lingering dead client
+    // there would make connectServers skip reconnecting the name, stranding every tool
+    // closure on a closed client. session_start resets status too, so a switch rebuilds it.
+    clients.clear()
+    status.clear()
+    for (const name of nativeRegistered) {
+      try {
+        pi.unregisterMcpServer(name)
+      } catch {
+        // pi is tearing the session down; a name it no longer knows needs no removal.
+      }
+    }
+    nativeRegistered.clear()
+  })
+
+  /** Whether pi has registered a tool for this server, in either spelling pi uses. */
+  function hasNativeTools(name: string): boolean {
+    const prefixes = nativeToolPrefixes(name)
+    return pi.getAllTools().some((tool) => prefixes.some((prefix) => tool.name.startsWith(prefix)))
+  }
+
+  /** Resolves once every server handed to pi has a tool registered, or at the deadline. */
+  function waitForNativeTools(deadline: number): Promise<void> {
+    const settled = (): boolean => Date.now() >= deadline || [...nativeRegistered].every(hasNativeTools)
+    return new Promise((resolve) => {
+      if (settled()) {
+        resolve()
+        return
+      }
+      const timer = setInterval(() => {
+        if (!settled()) return
+        clearInterval(timer)
+        resolve()
+      }, 100)
+    })
+  }
+
+  // pi waits at most 10 s for its servers before the first turn. A headless run has no
+  // later turn to use a server that connects after it, so it waits for the servers handed
+  // to pi as long as one connect may take, as session_start waits for pi-code's own.
+  pi.on('before_agent_start', async (_event, ctx) => {
+    if (!nativeActive || ctx.hasUI || waitedForNative) return
+    waitedForNative = true
+    await waitForNativeTools(Date.now() + connectTimeoutMs())
+  })
+
+  // pi's MCP tools register as their servers connect, after session_start; each turn
+  // republishes the roster so hook matchers and subagent patterns see them.
+  pi.on('turn_start', () => {
+    if (nativeActive) pi.events.emit(MCP_TOOLS_CHANNEL, roster())
+  })
+
+  // Claude references MCP resources with @server:uri mentions, fetched into the
+  // conversation when referenced. Only mentions naming a connected server expand;
+  // anything else (an email, a handle) stays untouched.
+  pi.on('input', async (event) => {
+    if (event.source === 'extension') return
+    const mentions = [...event.text.matchAll(/@([A-Za-z0-9_-]+):(\S+)/g)].filter((match) => clients.has(match[1]))
+    if (mentions.length === 0) return
+    // Every mention is read at once, so the prompt waits for the slowest read, not their
+    // sum; the sections keep mention order.
+    const read = async ([, server, uri]: RegExpMatchArray): Promise<string | undefined> => {
+      try {
+        const client = clients.get(server)
+        if (!client) return undefined
+        const wall = callTimeoutMs()
+        const result = await withTimeout(client.readResource({ uri }, callRequestOptions(wall, callTuning(server))), wall, `read ${uri}`)
+        const text = (result.contents as Array<{ text?: string }>)
+          .map((entry) => entry.text)
+          .filter((value): value is string => typeof value === 'string')
+          .join('\n')
+        return text ? capForContext(`<mcp-resource server="${server}" uri="${uri}">\n${text}\n</mcp-resource>`) : undefined
+      } catch {
+        // An unreadable resource leaves the mention as plain text.
+        return undefined
+      }
+    }
+    const sections = (await Promise.all(mentions.map(read))).filter((section): section is string => section !== undefined)
+    if (sections.length === 0) return
+    return { action: 'transform', text: `${event.text}\n\n${sections.join('\n\n')}` }
+  })
+
+  // In native mode /mcp is pi's.
+  if (!native)
+    pi.registerCommand('mcp', {
+      description: 'Show MCP server status and tools',
+      handler: async (_args, ctx) => /* NOSONAR typescript:S7503 - pi types a command handler as returning Promise<void> */ {
+        if (status.size === 0) {
+          ctx.ui.notify('No MCP servers configured. Add them to .mcp.json, .pi/mcp.json, ~/.claude.json, or ~/.pi/agent/mcp.json', 'info')
+          return
+        }
+        const lines = [...status.entries()].map(([name, s]) => `${name}: ${s.state} (${s.tools} tools)`)
+        ctx.ui.notify(lines.join('\n'), 'info')
+      },
+    })
+}

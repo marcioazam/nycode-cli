@@ -1,0 +1,58 @@
+--- a/status-line.ts
++++ b/status-line.ts
+@@ -44,7 +44,7 @@
+ import { readSettingsChain } from './internal/settings-chain.ts'
+ import { watchSettingsFiles } from './internal/settings-watch.ts'
+ import { readActiveStyleName, settingsFiles } from './output-styles.ts'
+-import { dropTodoRows, frameStatusLine, labelFooter, layoutStatus, modelNames, tabbed, tidyRow } from './subagent/fleet-ui/chrome.ts'
++import { dropTodoRows, frameStatusLine, labelFooter, layoutStatus, modelNames, setThinkingSource, tabbed, tidyRow } from './subagent/fleet-ui/chrome.ts'
+ import { hudTheme } from './subagent/fleet-ui/palette.ts'
+ import { bridge as sectionBridge } from './subagent/fleet-ui/section.ts'
+ import { nav } from './subagent/section-nav/nav.ts'
+@@ -289,6 +289,7 @@
+ }
+ 
+ export default function statusLine(pi: ExtensionAPI) {
++  setThinkingSource(() => pi.getThinkingLevel?.())
+   let turnCount = 0
+   let config: StatusLineConfig | undefined
+   let sessionCtx: ExtensionContext | undefined
+--- a/subagent/fleet-ui/chrome.ts
++++ b/subagent/fleet-ui/chrome.ts
+@@ -56,8 +56,17 @@
+ 
+ const TAB_GAP = '   '
+ 
++/** Session thinking level, read when the bar is drawn: pi paints the editor border with `thinking<Level>`, and the open
++ * tab takes that same role so both match (falls back to `text` without a level). Set by status-line.ts. */
++let thinkingLevel: () => string | undefined = () => undefined
++export const setThinkingSource = (read: () => string | undefined): void => void (thinkingLevel = read)
++const openRole = (): string => {
++  const level = thinkingLevel()
++  return level ? `thinking${level[0]!.toUpperCase()}${level.slice(1)}` : 'text'
++}
++
+ /** Tab bar (docs/pi-group-tabs-2026-11-14.md): a blank line, the tab names then the open group's detail (two spaces after the
+- * last tab, cut to the width), and a rule with `━` under the open tab (HUD text color, bold) and under the focused one
++ * last tab, cut to the width), and a rule with `━` under the open tab (editor border color, bold) and under the focused one
+  * (bold, no role color); other tabs dim, rule `─`. Without color the `━` alone marks the open tab. `bands` are the name columns (clicks). */
+ export function tabBar(tabs: TabSpec[], detail: string, theme: UiTheme, width: number): { lines: string[]; bands: TabBand[]; tabsWidth: number } {
+   const bands: TabBand[] = []
+@@ -66,7 +75,7 @@
+     const w = visibleWidth(t.label)
+     bands.push({ id: t.id, from: col, to: col + w })
+     col += w + TAB_GAP.length
+-    return t.open ? bold(theme, theme.fg('text', t.label)) : t.focus ? bold(theme, t.label) : theme.fg('dim', t.label)
++    return t.open ? bold(theme, theme.fg(openRole(), t.label)) : t.focus ? bold(theme, t.label) : theme.fg('dim', t.label)
+   })
+   const tabsWidth = Math.max(0, col - TAB_GAP.length)
+   let line = ''
+@@ -78,7 +87,7 @@
+     dash(from - at)
+     const n = to - at
+     if (n <= 0) return
+-    line += t.open ? bold(theme, theme.fg('text', '━'.repeat(n))) : t.focus ? bold(theme, '━'.repeat(n)) : theme.fg('dim', '─'.repeat(n))
++    line += t.open ? bold(theme, theme.fg(openRole(), '━'.repeat(n))) : t.focus ? bold(theme, '━'.repeat(n)) : theme.fg('dim', '─'.repeat(n))
+     at = to
+   })
+   dash(width - at)

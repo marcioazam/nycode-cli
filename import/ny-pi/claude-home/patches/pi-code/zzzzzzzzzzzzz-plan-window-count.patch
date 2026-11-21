@@ -1,0 +1,13 @@
+--- a/plan-mode/section.ts
++++ b/plan-mode/section.ts
+@@ -284,7 +284,9 @@
+     const visible = this.visible()
+     this.offset = clampOffset(this.offset, total, visible)
+     const focus = this.focusedVisible()
+-    const range = !this.collapsed && total > visible ? ` · ${this.offset + 1}–${Math.min(total, this.offset + visible)}` : ''
++    // Scrolled window as done/shown (user request 2026-11-13: a bare `1–6` read as a count).
++    const shown = this.items.slice(this.offset, this.offset + visible)
++    const range = !this.collapsed && total > visible ? ` · ${shown.filter((i) => i.completed).length}/${shown.length} na tela` : ''
+     const paused = this.times.paused
+     // Keys live in the title: a line that appears on focus would move the transcript under the user's eyes.
+     const flash = this.flash && this.flash.until > this.now() ? ` · ${this.flash.text}` : ''

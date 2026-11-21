@@ -1,0 +1,111 @@
+--- a/question.ts	2026-11-14 13:37:51.447709467 -0300
++++ b/question.ts	2026-11-14 13:37:51.448280556 -0300
+@@ -209,24 +209,51 @@
+     .join(', ')
+ }
+ 
+-/** The result line for a question that was not cancelled. */
+-function renderAnswered(details: QuestionDetails, answer: string, theme: Theme): Text {
+-  if (details.timedOut) {
+-    const already = answer ? theme.fg('muted', ` (already selected: ${answer})`) : ''
+-    return new Text(theme.fg('warning', '⏱ Auto-continued (no response)') + already, 0, 0)
+-  }
++/** One option row: a trailing "(…)" in the label moves after it, dim, lowercase, no parentheses. */
++function optionRow(label: string, mark: 'on' | 'off' | 'pending', theme: Theme): string {
++  const m = /^(.*\S)\s*\(([^()]*)\)\s*$/.exec(label)
++  const text = m ? m[1] : label
++  const suffix = m ? `  ${theme.fg('dim', m[2].toLowerCase().replaceAll('recomendado', 'recomendada'))}` : ''
++  if (mark === 'on') return `  ${theme.fg('success', '●')} ${theme.fg('text', text)}${suffix}`
++  const tone = mark === 'pending' ? 'muted' : 'dim'
++  return `  ${theme.fg(tone, '○')} ${theme.fg(tone, text)}${suffix}`
++}
+ 
+-  if (details.wasCustom) {
+-    return new Text(theme.fg('success', '✓ ') + theme.fg('muted', '(wrote) ') + theme.fg('accent', answer), 0, 0)
+-  }
+-  if (details.multiSelect) {
+-    return new Text(theme.fg('success', '✓ ') + theme.fg('accent', answer || '(none)'), 0, 0)
++interface QuestionView1 {
++  question: string
++  header?: string
++  labels: string[]
++  multiSelect?: boolean
++  /** Undefined while awaiting the answer; null when cancelled. */
++  answer?: string | null
++  wasCustom?: boolean
++  timedOut?: boolean
++}
++
++/** The list block of one question: header, blank line, one row per option (display only). */
++function questionBlock(v: QuestionView1, theme: Theme): string[] {
++  const title = v.header ? theme.fg('toolTitle', theme.bold(v.header)) : theme.fg('toolTitle', theme.bold('pergunta'))
++  const lines = [`${theme.fg('accent', '?')} ${title}  ${theme.fg('muted', v.question)}`, '']
++  const pending = v.answer === undefined
++  const answer = v.answer ?? ''
++  const rows = v.labels.map((label) => {
++    if (pending) return optionRow(label, 'pending', theme)
++    const hit = v.wasCustom ? false : v.multiSelect ? `, ${answer}, `.includes(`, ${label}, `) : answer === label
++    return optionRow(label, hit ? 'on' : 'off', theme)
++  })
++  lines.push(...rows)
++  if (!v.multiSelect) {
++    if (pending) lines.push(optionRow('Outra resposta', 'pending', theme))
++    else if (v.wasCustom) lines.push(`  ${theme.fg('success', '●')} ${theme.fg('text', answer)}`)
++    else lines.push(optionRow('Outra resposta', 'off', theme))
+   }
+-  const idx = details.options.indexOf(answer) + 1
+-  const display = idx > 0 ? `${idx}. ${answer}` : answer
+-  return new Text(theme.fg('success', '✓ ') + theme.fg('accent', display), 0, 0)
++  if (v.answer === null) lines.push(`  ${theme.fg('warning', 'cancelada')}`)
++  if (v.timedOut) lines.push(`  ${theme.fg('warning', '⏱ Auto-continued (no response)')}`)
++  return lines
+ }
+ 
++const blocks = (views: QuestionView1[], theme: Theme): Text => new Text(views.map((v) => questionBlock(v, theme).join('\n')).join('\n\n'), 0, 0)
++
+ export default function question(pi: ExtensionAPI) {
+   pi.registerTool({
+     name: 'question',
+@@ -259,32 +286,22 @@
+       return { content: [{ type: 'text', text: texts.join('\n\n') }], details: { ...collected[0], questions: collected } as QuestionDetails }
+     },
+ 
+-    renderCall(args, theme, _context) {
+-      const multi = args.multiSelect === true
+-      const heading = args.header ? `[${shortHeader(String(args.header))}] ` : ''
+-      let text = theme.fg('toolTitle', theme.bold('question ')) + theme.fg('muted', heading + String(args.question ?? ''))
+-      const opts = Array.isArray(args.options) ? args.options : []
+-      if (opts.length) {
+-        const labels = opts.map((o: OptionWithDesc) => o.label)
+-        const shown = multi ? labels : [...labels, 'Type something.']
+-        const numbered = shown.map((o, i) => `${i + 1}. ${o}`)
+-        const optionsLine = `  Options${multi ? ' (multi)' : ''}: ${numbered.join(', ')}`
+-        text += `\n${theme.fg('dim', optionsLine)}`
+-      }
+-      return new Text(text, 0, 0)
++    // pi draws call and result one after the other: the list is drawn once, by the call while
++    // pending and by the result (final state) after, so the call goes blank once the result is in.
++    renderCall(args, theme, context) {
++      if (context?.isPartial === false) return new Text('', 0, 0)
++      const specs = questionList(args as Partial<QuestionSpec> & { questions?: QuestionSpec[] })
++      const views = specs.map((s) => ({ question: String(s.question ?? ''), header: shortHeader(s.header), labels: (Array.isArray(s.options) ? s.options : []).map((o) => o.label), multiSelect: s.multiSelect === true }))
++      return blocks(views, theme)
+     },
+     renderResult(result, _options, theme, _context) {
+-      const details = result.details as QuestionDetails | undefined
++      const details = result.details as (QuestionDetails & { questions?: QuestionDetails[] }) | undefined
+       if (!details) {
+         const text = result.content[0]
+         return new Text(text?.type === 'text' ? text.text : '', 0, 0)
+       }
+-
+-      if (details.answer === null) {
+-        return new Text(theme.fg('warning', 'Cancelled'), 0, 0)
+-      }
+-
+-      return renderAnswered(details, details.answer, theme)
++      const list = details.questions && details.questions.length > 0 ? details.questions : [details]
++      return blocks(list.map((d) => ({ question: d.question, header: d.header, labels: d.options, multiSelect: d.multiSelect, answer: d.answer, wasCustom: d.wasCustom, timedOut: d.timedOut })), theme)
+     },
+   })
+ }

@@ -1,0 +1,1680 @@
+--- a/plan-mode/index.ts
++++ b/plan-mode/index.ts
+@@ -12,7 +12,10 @@
+  * - Progress tracking widget during execution
+  */
+ 
+-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
++import { openPlanFile } from './manage.ts'
++import { PlanSection, setPlanPath } from './section.ts'
++import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
++import { tmpdir } from 'node:os'
+ import { dirname, join } from 'node:path'
+ 
+ import type { AgentMessage } from '@earendil-works/pi-agent-core'
+@@ -81,6 +84,22 @@
+ 
+ export default function planModeExtension(pi: ExtensionAPI): void {
+   let planModeEnabled = false
++  const planSection = new PlanSection()
++  // Management keys of the Plan section (skip, pause, open) reach the agent and the desktop through here.
++  planSection.host = {
++    notify: (text, trigger) => {
++      // Idle: the note rides with the user's next prompt (a resume starts the turn); running: it steers the current run.
++      if (trigger || lastCtx?.isIdle() === false) pi.sendUserMessage(text, { deliverAs: 'steer' })
++      else pi.sendMessage({ customType: 'plan-note', content: text, display: false }, { deliverAs: 'nextTurn' })
++    },
++    abort: () => lastCtx?.abort(),
++    ask: async (title) => (await lastCtx?.ui.input(title, '')) ?? undefined,
++    open: async (markdown) => {
++      const file = planFile && existsSync(planFile) ? planFile : join(tmpdir(), `pi-plan-${process.pid}.md`)
++      if (file !== planFile) writeFileSync(file, markdown)
++      return (await openPlanFile(file)) ? undefined : `não consegui abrir: ${file}`
++    },
++  }
+   let executionMode = false
+   let todoItems: TodoItem[] = []
+   let planFromTool = false
+@@ -100,6 +119,7 @@
+     const sid = (ctx.sessionManager as { getSessionId?: () => string }).getSessionId?.()
+     const id = sid ? sid.slice(0, 8) : `plan-${Date.now()}`
+     planFile = join(plansDir(), `${new Date().toISOString().slice(0, 10)}-${id}.md`)
++    setPlanPath(planFile)
+   }
+ 
+   const registeredTools = (): Set<string> => new Set((pi.getAllTools?.() ?? []).map((tool) => tool.name))
+@@ -142,20 +162,24 @@
+       ctx.ui.setStatus('plan-mode', undefined)
+     }
+ 
+-    // Widget showing todo list
+-    if (executionMode && todoItems.length > 0) {
+-      const lines = todoItems.map((item) => {
+-        if (item.completed) {
+-          return ctx.ui.theme.fg('success', '☑ ') + ctx.ui.theme.fg('muted', ctx.ui.theme.strikethrough(item.text))
+-        }
+-        return `${ctx.ui.theme.fg('muted', '☐ ')}${item.text}`
+-      })
+-      ctx.ui.setWidget('plan-todos', lines)
+-    } else {
+-      ctx.ui.setWidget('plan-todos', undefined)
+-    }
++    // Checklist: the Plan section below the status line (title, done/total, bounded scrolling body, rule).
++    lastCtx = ctx
++    planSection.update(ctx, executionMode ? todoItems : externalTodos)
+   }
+ 
++  // Todos from the todo tool (todo.ts) share this list when no plan is executing: always in the Plan section, never in the chat.
++  let externalTodos: TodoItem[] = []
++  let lastCtx: ExtensionContext | undefined
++  pi.events.on('pi-code:todos', (data) => {
++    externalTodos = (data as Array<{ id: number; text: string; status: string }>).map((t, i) => ({ step: i + 1, text: t.text, completed: t.status === 'completed' }))
++    if (!lastCtx || executionMode) return
++    try {
++      planSection.update(lastCtx, externalTodos)
++    } catch {
++      lastCtx = undefined // stale session context
++    }
++  })
++
+   function togglePlanMode(ctx: ExtensionContext): void {
+     planModeEnabled = !planModeEnabled
+     executionMode = false
+@@ -554,4 +578,6 @@
+     }
+     updateStatus(ctx)
+   })
++
++  pi.on('session_shutdown', (_event, ctx) => planSection.shutdown(ctx))
+ }
+--- /dev/null
++++ b/plan-mode/manage.ts
+@@ -0,0 +1,90 @@
++/**
++ * Plan management (UI): the user's own marks over the plan items (skip), the detail drawer of one step,
++ * the keys that are valid for it, and opening the plan as a file. No I/O except `openPlanFile`.
++ * Record: docs/pi-interactive-display-2026-11-13.md ("Plan: gestão interativa").
++ */
++import { spawn } from 'node:child_process'
++import { truncateToWidth } from '@earendil-works/pi-tui'
++
++import type { UiTheme } from '../subagent/fleet-ui/panel.ts'
++import { formatDuration, formatSpend, PlanTimes, spendSince } from './table.ts'
++import type { TodoItem } from './utils.ts'
++
++/** What the user did to a step; never touches a step the agent has already completed. */
++export interface Mark {
++  status: 'skipped'
++  note: string
++}
++
++export function applyMarks(items: readonly TodoItem[], marks: ReadonlyMap<number, Mark>): TodoItem[] {
++  if (marks.size === 0) return items.slice()
++  return items.map((i) => {
++    const mark = marks.get(i.step)
++    return mark && !i.completed ? { ...i, status: mark.status, note: mark.note } : i
++  })
++}
++
++/** Keys that work on `item` right now (Plan focused). Order is the order shown. */
++export function validKeys(item: TodoItem | undefined, paused: boolean): Array<[string, string]> {
++  const keys: Array<[string, string]> = [['↵', 'detalhes'], ['o', 'abrir plano']]
++  if (item && !item.completed) keys.push(item.status === 'skipped' ? ['r', 'reabrir'] : ['s', 'pular'])
++  keys.push(['p', paused ? 'retomar' : 'pausar'], ['esc', 'back'])
++  return keys
++}
++
++export interface DrawerInfo {
++  state: string
++  agent?: string
++  tookMs?: number
++  runningMs?: number
++  spend?: { tokens: number; cost: number }
++  file?: string
++}
++
++/** The drawer under the selected row: a framed block of facts; empty facts are left out. */
++export function drawerLines(item: TodoItem, info: DrawerInfo, theme: UiTheme, width: number): string[] {
++  const dim = (s: string): string => theme.fg('dim', s)
++  const facts = [
++    info.state,
++    info.agent ? `agente ${info.agent}` : '',
++    info.tookMs !== undefined ? `levou ${formatDuration(info.tookMs)}` : info.runningMs !== undefined ? `há ${formatDuration(info.runningMs)}` : '',
++    info.spend && (info.spend.tokens > 0 || info.spend.cost > 0) ? formatSpend(info.spend) : '',
++  ].filter(Boolean)
++  const body = [
++    dim('│ ') + facts.join(dim(' · ')),
++    item.note ? dim('│ ') + theme.fg(item.status === 'skipped' ? 'dim' : 'warning', `nota: ${item.note}`) : '',
++    dim('│ ') + dim(`tarefa: ${item.text}`),
++    info.file ? dim('│ ') + dim(`plano: ${info.file}`) : '',
++  ].filter(Boolean)
++  const title = `passo ${String(item.step).padStart(2, '0')}`
++  return [dim(`┌ ${title} ${'─'.repeat(Math.max(0, Math.min(width, 72) - title.length - 3))}`), ...body, dim('└' + '─'.repeat(Math.max(0, Math.min(width, 72) - 1)))].map((l) => truncateToWidth(' ' + l, width))
++}
++
++/** Spend of one step: the session's assistant messages between its start and finish (or now). */
++export function stepSpend(entries: readonly unknown[], times: PlanTimes, step: number, now: number): { tokens: number; cost: number } | undefined {
++  const w = times.window(step, now)
++  return w ? spendSince(entries, w.from, w.to) : undefined
++}
++
++/** A checklist file for plans that live only as todos (no plan-mode file). */
++export function planMarkdown(items: readonly TodoItem[]): string {
++  const box = (i: TodoItem): string => (i.completed ? 'x' : i.status === 'skipped' ? '-' : ' ')
++  return `# Plan\n\n${items.map((i) => `- [${box(i)}] ${i.step}. ${i.text}${i.note ? ` — ${i.note}` : ''}`).join('\n')}\n`
++}
++
++/** Opens a file with the desktop handler, detached. Resolves false when nothing could be started (no handler, headless). */
++export function openPlanFile(path: string, platform: string = process.platform): Promise<boolean> {
++  const cmd = platform === 'darwin' ? 'open' : platform === 'win32' ? 'explorer' : 'xdg-open'
++  return new Promise((resolve) => {
++    try {
++      const child = spawn(cmd, [path], { stdio: 'ignore', detached: true })
++      child.once('error', () => resolve(false))
++      child.once('spawn', () => {
++        child.unref()
++        resolve(true)
++      })
++    } catch {
++      resolve(false)
++    }
++  })
++}
+--- a/plan-mode/section.ts
++++ b/plan-mode/section.ts
+@@ -0,0 +1,458 @@
++/**
++ * Plan section below the status line (replaces the string[] `plan-todos` widget, which pi cut at 10 lines
++ * above the editor). One persistent component: a blank spacing line, the PLAN chip with `done/total`, a rule, then a bounded scrolling body;
++ * nothing at all while the plan has no items. Fullscreen mode (default) routes mouse events to `handleMouse`
++ * with local coordinates; regular mode has no mouse, so ↓ on an empty editor reaches the same focus by keyboard.
++ * Focus: a body click returns `focus:true` (pi gives Plan keyboard focus and blurs the editor); Esc, a click
++ * elsewhere (the editor takes focus) or any other key returns to the editor, which keeps its draft.
++ * Record: docs/pi-interactive-display-2026-11-13.md ("Plan section").
++ */
++import type { ExtensionContext } from '@earendil-works/pi-coding-agent'
++import { matchesKey, truncateToWidth, visibleWidth } from '@earendil-works/pi-tui'
++
++import { heading, rule } from '../subagent/fleet-ui/chrome.ts'
++import { hudTheme, motionEnabled } from '../subagent/fleet-ui/palette.ts'
++import { bridge, clampOffset, editorOwnsFocus, viewportSize } from '../subagent/fleet-ui/section.ts'
++import type { UiTheme } from '../subagent/fleet-ui/panel.ts'
++import { applyMarks, drawerLines, planMarkdown, validKeys, stepSpend, type Mark } from './manage.ts'
++import { formatDuration, formatSpend, markCounts, spendSince, PlanTimes, activeStep, tableDetail, tableHeader, tableRow } from './table.ts'
++import type { TodoItem } from './utils.ts'
++
++const KEY = 'plan-section'
++
++/** Set by plan-mode/index.ts: where the plan file lives (shown in the drawer). */
++let planPath = ''
++export const setPlanPath = (p: string): void => {
++  planPath = p
++}
++const planFileHint = (): string | undefined => planPath || undefined
++type Tui = { requestRender(): void; setFocus?(c: unknown): void; focusedComponent?: unknown; terminal?: { rows?: number } }
++type Prev = { handleInput?(data: string): void; focused?: boolean }
++type MouseEvent = { type?: string; y?: number; wheelDelta?: number }
++
++/** What the section asks of its owner (plan-mode/index.ts): tell the agent, stop its run, open the plan file. */
++export interface PlanHost {
++  /** A note for the agent about what the user did to the plan (delivered with the next turn, or steered into a running one). */
++  notify(text: string, trigger?: boolean): void
++  /** Stops the agent's current run (Pause). */
++  abort(): void
++  /** Opens the plan as a file; resolves a short message to show when it could not. */
++  open(markdown: string): Promise<string | undefined>
++  /** Asks the user for a short text (skip reason); undefined = cancelled. */
++  ask?(title: string): Promise<string | undefined>
++}
++
++export class PlanSection {
++  collapsed = false
++  offset = 0
++  /** Selected step (index into the items); the keys below act on it while Plan is focused. */
++  cursor = 0
++  drawer = false
++  host?: PlanHost
++  private raw: TodoItem[] = []
++  private marks = new Map<number, Mark>()
++  private items: TodoItem[] = []
++  private tui?: Tui
++  private theme?: UiTheme
++  private ctx?: ExtensionContext
++  private prev?: Prev
++  private nativeFocus = false
++  private registered = false
++  private offInput?: () => void
++  private readonly times = new PlanTimes()
++  private timer?: ReturnType<typeof setInterval>
++  /** Clock the table reads; tests replace it. */
++  now: () => number = Date.now
++
++  /** Set by pi's TUI when focus moves: losing it (a click elsewhere, an overlay) forgets the editor to return to. */
++  get focused(): boolean {
++    return this.nativeFocus
++  }
++  set focused(value: boolean) {
++    this.nativeFocus = value
++    if (!value) this.prev = undefined
++  }
++
++  /** Native focus, from a click or from ↓: pi's fullscreen viewport would take PageUp/PageDown/Home/End for the transcript
++   * unless the focused component says it captures them (pi-tui `capturesViewportInput`). */
++  get capturesViewportInput(): boolean {
++    return this.nativeFocus
++  }
++
++  /** Plan owns the keyboard. */
++  focusedVisible(): boolean {
++    return this.nativeFocus
++  }
++
++  private visible(): number {
++    return viewportSize(this.tui?.terminal?.rows ?? 24)
++  }
++
++  update(ctx: ExtensionContext, items: TodoItem[]): void {
++    this.ctx = ctx
++    const hadItems = this.items.length > 0
++    if (items.length === 0) this.resetManagement()
++    this.raw = items
++    items = applyMarks(items, this.marks)
++    this.items = items
++    this.cursor = Math.min(this.cursor, Math.max(0, items.length - 1))
++    this.times.observe(items, this.now())
++    this.offset = clampOffset(this.offset, items.length, this.visible())
++    this.syncTimer()
++    if (items.length === 0) {
++      this.remove()
++    } else {
++      this.ensure()
++      this.syncTimer()
++      this.tui?.requestRender()
++    }
++    bridge.planActive = () => this.items.length > 0
++    bridge.reassertPlan = () => this.reassert()
++    bridge.focusPlan = () => this.focusByKeyboard()
++    bridge.planFocused = () => this.nativeFocus
++    if (hadItems !== items.length > 0) bridge.onPlanChange?.()
++  }
++
++  private resetManagement(): void {
++    this.marks.clear()
++    this.cursor = 0
++    this.drawer = false
++    this.times.resume(this.now())
++  }
++
++  get paused(): boolean {
++    return this.times.paused
++  }
++
++  private selected(): TodoItem | undefined {
++    return this.items[this.cursor]
++  }
++
++  private moveCursor(delta: number): void {
++    this.cursor = Math.max(0, Math.min(this.items.length - 1, this.cursor + delta))
++    const v = this.visible()
++    if (this.cursor < this.offset) this.offset = this.cursor
++    else if (this.cursor >= this.offset + v) this.offset = this.cursor - v + 1
++    this.offset = clampOffset(this.offset, this.items.length, v)
++  }
++
++  private flash?: { text: string; until: number }
++
++  private say(text: string): void {
++    this.flash = { text, until: this.now() + 4000 }
++    this.tui?.requestRender()
++  }
++
++  /** s: skip the selected step (asks why); r: reopen it. The agent is told either way. */
++  private async skipOrReopen(): Promise<void> {
++    const item = this.selected()
++    if (!item || item.completed) return
++    if (item.status === 'skipped') {
++      this.marks.delete(item.step)
++      this.refresh()
++      this.host?.notify(`O usuário reabriu o passo ${item.step} do plano ("${item.text}"): execute-o.`)
++      return
++    }
++    const reason = this.host?.ask ? await this.host.ask(`Pular passo ${item.step}: motivo (opcional)`) : ''
++    if (reason === undefined) return
++    this.marks.set(item.step, { status: 'skipped', note: reason.trim() || 'pulado pelo usuário' })
++    this.refresh()
++    this.host?.notify(`O usuário pulou o passo ${item.step} do plano ("${item.text}")${reason.trim() ? `: ${reason.trim()}` : ''}. Não o execute; siga para o próximo.`)
++  }
++
++  private togglePause(): void {
++    const now = this.now()
++    if (this.times.paused) {
++      this.times.resume(now)
++      this.host?.notify('O usuário retomou o plano: continue do passo atual.', true)
++    } else {
++      this.times.pause(now)
++      this.host?.abort()
++      this.host?.notify('O usuário pausou o plano. Não continue até ele retomar.')
++    }
++    this.syncTimer()
++    this.tui?.requestRender()
++  }
++
++  private async openFile(): Promise<void> {
++    const msg = await this.host?.open(planMarkdown(this.items))
++    if (msg) this.say(msg)
++  }
++
++  private refresh(): void {
++    if (this.ctx) this.update(this.ctx, this.raw)
++  }
++
++  /** Session boundary: widget, listener and bridge links go away. */
++  shutdown(ctx: ExtensionContext | undefined = this.ctx): void {
++    this.items = []
++    this.raw = []
++    this.marks.clear()
++    this.drawer = false
++    this.times.reset()
++    this.syncTimer()
++    this.prev = undefined
++    this.nativeFocus = false
++    this.offInput?.()
++    this.offInput = undefined
++    this.remove(ctx)
++    bridge.planActive = () => false
++    bridge.reassertPlan = () => {}
++    bridge.focusPlan = () => false
++    bridge.planFocused = () => false
++  }
++
++  /** One tick per second while a step is running and the body shows: the counter runs without other events. */
++  private syncTimer(): void {
++    const want = !this.collapsed && this.registered && activeStep(this.items) !== undefined
++    if (want && !this.timer) {
++      this.timer = setInterval(() => this.tui?.requestRender(), 1000)
++      this.timer.unref?.()
++    } else if (!want && this.timer) {
++      clearInterval(this.timer)
++      this.timer = undefined
++    }
++  }
++
++  private ensure(): void {
++    const ui = this.ctx?.ui
++    // Print/RPC modes hand out a ctx.ui without TUI hooks: no widget, no key listener there.
++    if (!ui || this.ctx?.hasUI === false || typeof ui.setWidget !== 'function') return
++    if (!this.registered) {
++      this.register()
++      if (typeof ui.onTerminalInput === 'function') this.offInput ??= ui.onTerminalInput((data) => this.onKey(data))
++    }
++  }
++
++  private register(): void {
++    this.ctx?.ui.setWidget(
++      KEY,
++      (tui, theme) => {
++        this.tui = tui as unknown as Tui
++        this.theme = hudTheme(theme as unknown as UiTheme)
++        return this as never
++      },
++      { placement: 'belowEditor' },
++    )
++    this.registered = true
++  }
++
++  private reassert(): void {
++    if (this.registered && this.items.length > 0) this.register()
++  }
++
++  private remove(ctx: ExtensionContext | undefined = this.ctx): void {
++    if (!this.registered) return
++    try {
++      ctx?.ui.setWidget(KEY, undefined)
++    } catch {
++      // Session gone: the widget went with it.
++    }
++    this.registered = false
++    this.syncTimer()
++  }
++
++  // ---- render ----
++
++  invalidate(): void {}
++
++  private spendCache?: { at: number; text: string }
++
++  /** Tokens and dollars of this session since the plan began, cached for 2 s (the branch is walked once per refresh, not per frame). */
++  private spend(now: number): string {
++    if (this.spendCache && Math.abs(now - this.spendCache.at) < 2000) return this.spendCache.text
++    let text = ''
++    try {
++      const since = this.times.startedAt
++      const entries = this.ctx?.sessionManager?.getBranch?.() ?? []
++      if (since !== undefined && entries.length > 0) {
++        const spent = spendSince(entries, since)
++        text = spent.tokens > 0 || spent.cost > 0 ? formatSpend(spent) : ''
++      }
++    } catch {
++      text = '' // stale session context
++    }
++    this.spendCache = { at: now, text }
++    return text
++  }
++
++  render(width: number): string[] {
++    const theme = this.theme
++    if (!theme || this.items.length === 0) return []
++    const total = this.items.length
++    const done = this.items.filter((i) => i.completed).length
++    const visible = this.visible()
++    this.offset = clampOffset(this.offset, total, visible)
++    const focus = this.focusedVisible()
++    const range = !this.collapsed && total > visible ? ` · ${this.offset + 1}–${Math.min(total, this.offset + visible)}` : ''
++    const paused = this.times.paused
++    // Keys live in the title: a line that appears on focus would move the transcript under the user's eyes.
++    const flash = this.flash && this.flash.until > this.now() ? ` · ${this.flash.text}` : ''
++    let hint = ''
++    const now = this.now()
++    const elapsed = this.times.elapsed(now)
++    const spend = this.spend(now)
++    const lead = `PLAN ${done}/${total}${elapsed === undefined ? '' : ` · ${formatDuration(elapsed)}`}${spend ? ` · ${spend}` : ''}${paused ? ' · pausado' : ''}${range}${flash}`
++    if (focus) {
++      // Keys that fit, most useful first; `esc back` always stays (the way out must never be cut).
++      const keys = validKeys(this.selected(), paused).filter(([k]) => k !== 'esc').map(([k, l]) => `${k} ${l}`)
++      const room = width - visibleWidth(lead) - 12 - ' · esc back'.length
++      const fit: string[] = []
++      for (const k of keys) if (visibleWidth(` · ${[...fit, k].join(' · ')}`) <= room) fit.push(k)
++      hint = `${fit.length ? ` · ${fit.join(' · ')}` : ''} · esc back`
++    }
++    const title = `${lead}${hint}`
++    // Focused: the chip turns accent (the hint says how to leave); the leading blank line separates the group from Status Line.
++    const marks = markCounts(this.items)
++    const colored = [
++      marks.blocked ? theme.fg('warning', `${marks.blocked} bloqueado${marks.blocked > 1 ? 's' : ''}`) : '',
++      marks.failed ? theme.fg('error', `${marks.failed} falhou`) : '',
++      marks.skipped ? theme.fg('dim', `${marks.skipped} pulado${marks.skipped > 1 ? 's' : ''}`) : '',
++      done + marks.skipped === total && done > 0 ? theme.fg('success', '✓ concluído') : '',
++    ].filter(Boolean)
++    const current = this.collapsed ? this.items.find((i) => i.step === activeStep(this.items)) : undefined
++    const tail = [current ? theme.fg('dim', `fazendo: ${current.text}`) : '', ...colored].filter(Boolean).join(theme.fg('dim', ' · '))
++    const base = heading(title, theme, width, 'plan', focus ? 'accent' : undefined, this.collapsed)
++    const head = tail ? truncateToWidth(base + theme.fg('dim', ' · ') + tail, width) : base
++    if (this.collapsed) return ['', head, rule(theme, width)]
++    const motion = motionEnabled()
++    const active = activeStep(this.items)
++    const body = this.items.slice(this.offset, this.offset + visible).flatMap((i) => {
++      const sel = focus && this.items[this.cursor] === i
++      const out = [tableRow(i, theme, width, this.times, now, motion, active, { selected: sel, paused })]
++      const detail = tableDetail(i, theme, width, active)
++      if (detail !== null && !(sel && this.drawer)) out.push(detail)
++      if (sel && this.drawer) out.push(...this.drawerFor(i, active, width, theme))
++      return out
++    })
++    const header = tableHeader(theme, width)
++    return ['', head, rule(theme, width), ...(header ? [header] : []), ...body]
++  }
++
++  private drawerFor(item: TodoItem, active: number | undefined, width: number, theme: UiTheme): string[] {
++    const now = this.now()
++    const key = item.completed ? 'feito' : item.status === 'skipped' ? 'pulado' : active === item.step ? (this.times.paused ? 'pausado' : 'fazendo') : 'a fazer'
++    const w = this.times.window(item.step, now)
++    const entries = this.ctx?.sessionManager?.getBranch?.() ?? []
++    const done = item.completed
++    return drawerLines(
++      item,
++      {
++        state: key,
++        agent: item.agent,
++        tookMs: done && w ? w.to - w.from : undefined,
++        runningMs: !done && w && key !== 'a fazer' ? w.to - w.from : undefined,
++        spend: stepSpend(entries, this.times, item.step, now),
++        file: planFileHint(),
++      },
++      theme,
++      width,
++    )
++  }
++
++  // ---- mouse (fullscreen mode): local coordinates, row 1 is the chip title (row 0 the blank) ----
++
++  handleMouse(event: MouseEvent): { handled?: boolean; focus?: boolean; render?: boolean } | undefined {
++    if (this.items.length === 0) return undefined
++    if (event.type === 'click') {
++      // Local rows: 0 is the spacing blank, 1 the chip title, 2 the rule, then the body.
++      if (event.y === 0) return undefined
++      if (event.y === 1) {
++        this.toggle()
++        return { handled: true, render: true }
++      }
++      if (this.collapsed) return undefined
++      // Remember who held the keyboard (the editor) so Esc and typing can give it back.
++      const current = this.tui?.focusedComponent as Prev | undefined
++      if (current && current !== (this as unknown)) this.prev = current
++      return { focus: true, render: true }
++    }
++    // The wheel belongs to Plan only while it is focused and has a body; otherwise it scrolls the chat.
++    if (event.type === 'wheel' && this.focusedVisible() && !this.collapsed) {
++      const lines = event.wheelDelta ?? 0 // logical lines, negative = up (pi's wheel acceleration included)
++      this.scrollBy(lines === 0 ? 0 : Math.trunc(lines) || Math.sign(lines))
++      return { handled: true, render: true }
++    }
++    return undefined
++  }
++
++  private scrollBy(delta: number): void {
++    this.offset = clampOffset(this.offset + delta, this.items.length, this.visible())
++  }
++
++  private toggle(): void {
++    this.collapsed = !this.collapsed
++    this.syncTimer()
++    this.offset = clampOffset(this.offset, this.items.length, this.visible())
++  }
++
++  /** Keys shared by both focus modes; true when Plan used the key. */
++  private navigate(data: string): boolean {
++    const page = this.visible()
++    const list = !this.collapsed
++    if (matchesKey(data, 'down')) list ? this.moveCursor(1) : this.scrollBy(1)
++    else if (matchesKey(data, 'up')) {
++      // On the first step, ↑ goes back to the Status Line (when it shows), else the last Sub Agents row (the editor takes native focus; the list keeps the keys).
++      if (this.cursor === 0 && this.offset === 0 && (bridge.focusStatus() || bridge.focusFleetLast?.())) {
++        this.release()
++        return true
++      }
++      list ? this.moveCursor(-1) : this.scrollBy(-1)
++    } else if (matchesKey(data, 'pageDown')) list ? this.moveCursor(page) : this.scrollBy(page)
++    else if (matchesKey(data, 'pageUp')) list ? this.moveCursor(-page) : this.scrollBy(-page)
++    else if (matchesKey(data, 'home')) list ? this.moveCursor(-Infinity) : (this.offset = 0)
++    else if (matchesKey(data, 'end')) list ? this.moveCursor(Infinity) : (this.offset = clampOffset(Infinity, this.items.length, page))
++    else if (matchesKey(data, 'space')) this.toggle()
++    else if (matchesKey(data, 'enter') && list) this.drawer = !this.drawer
++    else if (list && data === 's') void this.skipOrReopen()
++    else if (list && data === 'r' && this.selected()?.status === 'skipped') void this.skipOrReopen()
++    else if (data === 'p') this.togglePause()
++    else if (data === 'o') void this.openFile()
++    else if (matchesKey(data, 'left') || matchesKey(data, 'right')) {
++      // ← folds, → unfolds (Space toggles), the same keys as the other two sections.
++      if (matchesKey(data, 'left') !== this.collapsed) this.toggle()
++    } else return false
++    return true
++  }
++
++  // ---- keys while pi gave Plan native focus (after a body click) ----
++
++  handleInput(data: string): void {
++    if (this.navigate(data)) return void this.tui?.requestRender()
++    const editor = this.prev
++    this.release()
++    if (matchesKey(data, 'escape')) return
++    // Anything else is for the editor: typing and chords alike arrive there once, nothing is lost. Ctrl+Enter
++    // (send now) is a core shortcut that only fires while the editor holds focus: from Plan, Esc first, then the chord.
++    editor?.handleInput?.(data)
++  }
++
++  private release(): void {
++    const editor = this.prev
++    if (this.nativeFocus && editor) this.tui?.setFocus?.(editor)
++    this.nativeFocus = false
++    this.prev = undefined
++    this.tui?.requestRender()
++  }
++
++  // ---- keyboard path: ↓ on an empty editor gives Plan REAL native focus (same as a body click) ----
++
++  private focusByKeyboard(): boolean {
++    const tui = this.tui
++    if (this.items.length === 0 || !tui?.setFocus) return false
++    const current = tui.focusedComponent as Prev | undefined
++    if (current && current !== (this as unknown)) this.prev = current
++    tui.setFocus(this)
++    tui.requestRender()
++    return true
++  }
++
++  /** Entry only: once Plan is focused, pi routes keys to `handleInput`. The empty-editor guard keeps ↓ for history/cursor. */
++  private onKey(data: string): { consume: boolean } | undefined {
++    if (this.items.length === 0 || this.nativeFocus) return undefined
++    // Sub Agents (rows) and the Status Line come first in the chain: they hand over to Plan with ↓.
++    if (bridge.fleetActive() || bridge.statusActive() || bridge.statusFocused()) return undefined
++    if (matchesKey(data, 'down') && editorOwnsFocus(this.tui) && this.ctx?.ui.getEditorText() === '' && this.focusByKeyboard()) return { consume: true }
++    return undefined
++  }
++}
+--- /dev/null
++++ b/plan-mode/table.ts
+@@ -0,0 +1,226 @@
++/**
++ * Plan table (UI only): `# · estado · tarefa · tempo · agente` rows for the Plan section.
++ * Times come from what the UI observes in this session (when a step became active or done), never from
++ * the plan file: a step already done when first seen shows `--:--`. State beyond done/doing/todo
++ * (`status`) and the `agent` column render when a producer sets them on the item; none does yet.
++ * Record: docs/pi-interactive-display-2026-11-13.md ("Plan table").
++ */
++import { truncateToWidth, visibleWidth } from '@earendil-works/pi-tui'
++
++import type { UiTheme } from '../subagent/fleet-ui/panel.ts'
++import type { TodoItem } from './utils.ts'
++
++/** `mm:ss`, or `h:mm:ss` from one hour. */
++export function formatDuration(ms: number): string {
++  const total = Math.max(0, Math.floor(ms / 1000))
++  const h = Math.floor(total / 3600)
++  const m = Math.floor((total % 3600) / 60)
++  const s = total % 60
++  const pair = (n: number): string => String(n).padStart(2, '0')
++  return h > 0 ? `${h}:${pair(m)}:${pair(s)}` : `${pair(m)}:${pair(s)}`
++}
++
++/** Start/finish instants of the steps as this session saw them; in memory only. */
++export class PlanTimes {
++  private origin?: number
++  /** Instant the last open step finished; the clock stops there until a step opens again. */
++  private doneAt?: number
++  /** Instant the user paused the plan: the clock and the running step stand still until `resume`. */
++  private pausedAt?: number
++  private readonly started = new Map<number, number>()
++  private readonly finished = new Map<number, number>()
++
++  /** Records transitions seen in `items` at `now`; the first open step starts when the previous one finished. */
++  observe(items: readonly TodoItem[], now: number): void {
++    if (items.length === 0) return this.reset()
++    this.origin ??= now
++    this.doneAt = items.every((i) => i.completed || i.status === 'skipped') ? (this.doneAt ?? now) : undefined
++    let last = this.origin
++    for (const item of items) {
++      if (item.completed) {
++        if (!this.finished.has(item.step)) this.finished.set(item.step, now)
++        last = Math.max(last, this.finished.get(item.step) ?? last)
++      } else if (item.status === 'skipped' && this.started.has(item.step) && !this.finished.has(item.step)) {
++        this.finished.set(item.step, now)
++      } else if (!item.status && !this.started.has(item.step)) {
++        this.started.set(item.step, last)
++        break
++      }
++    }
++  }
++
++  reset(): void {
++    this.origin = undefined
++    this.doneAt = undefined
++    this.pausedAt = undefined
++    this.started.clear()
++    this.finished.clear()
++  }
++
++  /** Instant the plan was first seen: spend is counted from here. */
++  get startedAt(): number | undefined {
++    return this.origin
++  }
++
++  get paused(): boolean {
++    return this.pausedAt !== undefined
++  }
++
++  pause(now: number): void {
++    this.pausedAt ??= now
++  }
++
++  /** The pause gap is cut out of the origin and of every open step. */
++  resume(now: number): void {
++    if (this.pausedAt === undefined) return
++    const gap = now - this.pausedAt
++    this.pausedAt = undefined
++    if (this.origin !== undefined) this.origin += gap
++    for (const [step, at] of this.started) if (!this.finished.has(step)) this.started.set(step, at + gap)
++  }
++
++  elapsed(now: number): number | undefined {
++    return this.origin === undefined ? undefined : (this.doneAt ?? this.pausedAt ?? now) - this.origin
++  }
++
++  /** [start, end] of a step in ms: end is its finish, else the pause or now; undefined when it never started. */
++  window(step: number, now: number): { from: number; to: number } | undefined {
++    const from = this.started.get(step)
++    return from === undefined ? undefined : { from, to: this.finished.get(step) ?? this.pausedAt ?? now }
++  }
++
++  /** Duration of a finished step; undefined when it was already done the first time it was seen. */
++  took(step: number): number | undefined {
++    const end = this.finished.get(step)
++    const start = this.started.get(step)
++    return end === undefined || start === undefined ? undefined : end - start
++  }
++
++  running(step: number, now: number): number | undefined {
++    const start = this.started.get(step)
++    return start === undefined || this.finished.has(step) ? undefined : (this.pausedAt ?? now) - start
++  }
++}
++
++/** The step in progress: the first one neither done nor marked (blocked/failed/skipped). */
++export const activeStep = (items: readonly TodoItem[]): number | undefined => items.find((i) => !i.completed && !i.status)?.step
++
++type Role = 'success' | 'task' | 'dim' | 'warning' | 'error' | 'text'
++const STATES: Record<string, { sym: string; label: string; role: Role }> = {
++  done: { sym: '✓', label: 'feito', role: 'success' },
++  doing: { sym: '▸', label: 'fazendo', role: 'task' },
++  todo: { sym: '○', label: 'a fazer', role: 'dim' },
++  blocked: { sym: '‖', label: 'bloqueado', role: 'warning' },
++  failed: { sym: '✕', label: 'falhou', role: 'error' },
++  skipped: { sym: '⊘', label: 'pulado', role: 'dim' },
++  paused: { sym: '∥', label: 'pausado', role: 'warning' },
++}
++const MIN_TASK = 24
++
++/** Column plan for a width. Ladder: full → no agent → short time (the label already says "finalizado") →
++ * state as a symbol only → symbol + task. Each level keeps at least MIN_TASK cells (16 once compact) for the task. */
++export interface Cols {
++  num: number
++  state: number
++  label: boolean
++  time: number
++  short: boolean
++  agent: number
++  task: number
++  header: boolean
++}
++const LEVELS: Array<Omit<Cols, 'task'>> = [
++  { num: 4, state: 12, label: true, time: 17, short: false, agent: 14, header: true },
++  { num: 4, state: 12, label: true, time: 17, short: false, agent: 0, header: true },
++  { num: 4, state: 12, label: true, time: 8, short: true, agent: 0, header: true },
++  { num: 3, state: 2, label: false, time: 8, short: true, agent: 0, header: true },
++  { num: 0, state: 2, label: false, time: 0, short: true, agent: 0, header: false },
++]
++export function columns(width: number): Cols {
++  for (const [i, l] of LEVELS.entries()) {
++    const task = width - l.num - l.state - l.time - l.agent - 1
++    if (task >= (i < 3 ? MIN_TASK : 12) || i === LEVELS.length - 1) return { ...l, task: Math.max(4, task) }
++  }
++  throw new Error('unreachable')
++}
++
++const pad = (text: string, width: number): string => text + ' '.repeat(Math.max(0, width - visibleWidth(text)))
++const cut = (text: string, width: number): string => pad(truncateToWidth(text, width, '…'), width)
++
++/** Detail line under a row that carries a `note`: indented to the task column, painted with the state's role.
++ * Aligned with the task text so the columns stay straight; null when there is nothing to say or the layout has no room (symbol-only levels). */
++export function tableDetail(item: TodoItem, theme: UiTheme, width: number, active: number | undefined): string | null {
++  const note = item.note?.trim()
++  if (!note) return null
++  const c = columns(width)
++  if (!c.header) return null
++  const key = item.completed ? 'done' : (item.status ?? (active === item.step ? 'doing' : 'todo'))
++  const role: Role = key === 'todo' || key === 'done' || key === 'skipped' ? 'dim' : STATES[key]!.role
++  const indent = ' '.repeat(c.num + (c.label ? c.state : 2))
++  return truncateToWidth(indent + theme.fg(role, `↳ ${note}`), width, theme.fg(role, '…'))
++}
++
++/** Tokens and dollars the session spent since `since` (ms): assistant messages of the branch, as pi records them. */
++export function spendSince(entries: readonly unknown[], since: number, until = Infinity): { tokens: number; cost: number } {
++  let tokens = 0
++  let cost = 0
++  for (const e of entries as Array<{ type?: string; timestamp?: string; message?: { role?: string; usage?: { totalTokens?: number; cost?: { total?: number } } } }>) {
++    if (e.type !== 'message' || e.message?.role !== 'assistant' || !e.message.usage) continue
++    const at = e.timestamp ? Date.parse(e.timestamp) : undefined
++    if (at !== undefined && (at < since || at > until)) continue
++    tokens += e.message.usage.totalTokens ?? 0
++    cost += e.message.usage.cost?.total ?? 0
++  }
++  return { tokens, cost }
++}
++
++/** `41k tok · $0.62`, `$<0.01` is shown as `<$0.01`. */
++export function formatSpend(spend: { tokens: number; cost: number }): string {
++  const tok = spend.tokens >= 1_000_000 ? `${(spend.tokens / 1e6).toFixed(1)}M` : spend.tokens >= 1000 ? `${Math.round(spend.tokens / 1000)}k` : String(spend.tokens)
++  return `${tok} tok · ${spend.cost > 0 && spend.cost < 0.01 ? '<$0.01' : `$${spend.cost.toFixed(2)}`}`
++}
++
++/** Counts of marked steps for the Plan title, in the order the user cares about: blocked, failed. */
++export function markCounts(items: readonly TodoItem[]): { blocked: number; failed: number; skipped: number } {
++  const n = (status: string): number => items.filter((i) => !i.completed && i.status === status).length
++  return { blocked: n('blocked'), failed: n('failed'), skipped: n('skipped') }
++}
++
++export function tableHeader(theme: UiTheme, width: number): string {
++  const c = columns(width)
++  if (!c.header) return ''
++  const line = pad('#', c.num) + pad(c.label ? '  estado' : '', c.state) + pad('tarefa', c.task + 1) + (c.time ? pad('tempo', c.time) : '') + (c.agent ? 'agente' : '')
++  return truncateToWidth(theme.fg('dim', line.trimEnd()), width)
++}
++
++export function tableRow(item: TodoItem, theme: UiTheme, width: number, times: PlanTimes, now: number, motion: boolean, active: number | undefined, opts: { selected?: boolean; paused?: boolean } = {}): string {
++  const c = columns(width)
++  const key = item.completed ? 'done' : (item.status ?? (active === item.step ? (opts.paused ? 'paused' : 'doing') : 'todo'))
++  const st = STATES[key]!
++  const doing = key === 'doing' || key === 'paused'
++  const paint = (text: string, role: Role = st.role): string => (doing ? theme.bold(theme.fg(role, text)) : theme.fg(role, text))
++  let time = '—'
++  if (key === 'paused') time = `${formatDuration(times.running(item.step, now) ?? 0)} ∥`
++  else if (key === 'done') {
++    const took = times.took(item.step)
++    const d = took === undefined ? '--:--' : formatDuration(took)
++    time = c.short ? d : `finalizado ${d}`
++  } else if (doing) {
++    const run = times.running(item.step, now)
++    time = run === undefined ? '' : `${formatDuration(run)}${motion && Math.floor(now / 1000) % 2 === 0 ? ' ▮' : ''}`
++  } else if (key === 'failed') time = c.short ? '' : 'falhou'
++  else if (key === 'blocked') time = c.short ? '' : 'bloqueado'
++  const taskRole: Role = key === 'done' || key === 'todo' || key === 'skipped' ? 'dim' : doing ? 'text' : st.role
++  const mark = opts.selected ? '❯' : ' '
++  const num = c.num ? theme.fg(opts.selected ? 'accent' : doing ? 'task' : 'dim', pad(String(item.step).padStart(2, '0'), 2) + mark + ' '.repeat(Math.max(0, c.num - 3))) : ''
++  const state = paint(c.label ? `${st.sym} ${st.label}` : st.sym)
++  const text = cut(item.text, c.task)
++  const line =
++    num +
++    pad(state, c.state) +
++    (doing ? theme.bold(theme.fg(taskRole, text)) : theme.fg(taskRole, text)) +
++    ' ' +
++    (c.time ? pad(paint(time, key === 'todo' || key === 'skipped' ? 'dim' : st.role), c.time) : '') +
++    (c.agent ? paint(item.agent ?? '—', item.agent ? st.role : 'dim') : '')
++  return truncateToWidth(line, width)
++}
+--- a/plan-mode/utils.ts
++++ b/plan-mode/utils.ts
+@@ -233,6 +233,12 @@
+   step: number
+   text: string
+   completed: boolean
++  /** Shown by the Plan table when set (no producer yet): a step that is neither done nor in progress. */
++  status?: 'blocked' | 'failed' | 'skipped'
++  /** Reason, question or error of a blocked/failed/skipped step (or any step): the Plan table prints it under the row (no producer yet). */
++  note?: string
++  /** Sub agent running the step; shown by the Plan table when set (no producer yet). */
++  agent?: string
+ }
+ 
+ /** The plan state persisted in a session entry, once each field has been checked.
+--- a/status-line.ts
++++ b/status-line.ts
+@@ -44,8 +44,9 @@
+ import { readSettingsChain } from './internal/settings-chain.ts'
+ import { watchSettingsFiles } from './internal/settings-watch.ts'
+ import { readActiveStyleName, settingsFiles } from './output-styles.ts'
+-import { frameStatusLine, labelFooter, tidyClock } from './subagent/fleet-ui/chrome.ts'
++import { dropTodoRows, frameStatusLine, labelFooter, layoutStatus, modelNames, tidyRow } from './subagent/fleet-ui/chrome.ts'
+ import { hudTheme } from './subagent/fleet-ui/palette.ts'
++import { bridge as sectionBridge, editorOwnsFocus, StatusFold } from './subagent/fleet-ui/section.ts'
+ 
+ const COMMAND_TIMEOUT_MS = 5_000
+ const DEBOUNCE_MS = 300
+@@ -79,6 +80,8 @@
+ interface FooterBridge {
+   footerData: { getExtensionStatuses(): ReadonlyMap<string, string> }
+   absorbed: Set<string>
++  /** Set while the widget is folded: the footer then drops every extension status (bypass warning included). */
++  folded?: boolean
+ }
+ 
+ /** Live view of the footer's statuses: read at render time, and the keys it shows are claimed so the
+@@ -100,8 +103,12 @@
+     trailers: (): Array<string | undefined> => (bridge ? ABSORBED.map((k) => bridge!.footerData.getExtensionStatuses().get(k)) : []),
+     claim(shown: boolean): void {
+       claimed = shown
++      if (!shown) this.fold(false)
+       apply()
+     },
++    fold(folded: boolean): void {
++      if (bridge) bridge.folded = folded
++    },
+   }
+ }
+ 
+@@ -322,6 +329,11 @@
+   let running = false
+   let rerunQueued = false
+ 
++  /** Fold and keyboard focus of the widget; kept for the session, so each widget re-set keeps them. */
++  let statusTui: { requestRender(): void } | undefined
++  const fold = new StatusFold({ active: () => widgetShown, render: () => { footer.fold(widgetShown && fold.collapsed); statusTui?.requestRender() } })
++  let offFoldInput: (() => void) | undefined
++
+   function segmentText(ctx: ExtensionContext, symbol: string): string {
+     const theme = ctx.ui.theme
+     const costText = costTotal > 0 ? theme.fg('muted', ` ${formatCost(costTotal)}`) : ''
+@@ -333,18 +345,52 @@
+   function setRows(ctx: ExtensionContext, rows: string[]): void {
+     if (rows.length === 0 && !widgetShown) return
+     try {
+-      ctx.ui.setWidget(WIDGET_KEY, rows.length === 0 ? undefined : (_tui, theme) => ({ render: (width: number) => frameStatusLine(renderStatusRows(rows.map(tidyClock), width, footer.trailers()), hudTheme(theme), width), invalidate() {} }), { placement: 'belowEditor' })
++      ctx.ui.setWidget(WIDGET_KEY, rows.length === 0 ? undefined : (tui, theme) => {
++        statusTui = tui
++        return {
++          // Fullscreen mode routes the click here with local coordinates: row 0 is the blank spacing line, row 1 the chip. Regular mode: ↓ then ←/→/Space.
++          handleMouse: (event: { type?: string; y?: number }) => {
++            if (event.type !== 'click' || event.y !== 1) return undefined
++            fold.toggle()
++            return { handled: true, render: true }
++          },
++          render: (width: number) => frameStatusLine(layoutStatus(renderStatusRows(dropTodoRows(rows).map((r, i) => tidyRow(r, i === 0, modelNames(ctx.model as { id?: string; name?: string } | undefined))), Infinity, footer.trailers()), hudTheme(theme), width), hudTheme(theme), width, { collapsed: fold.collapsed, focused: fold.focused }),
++          invalidate() {},
++        }
++      }, { placement: 'belowEditor' })
+       widgetShown = rows.length > 0
++      if (!widgetShown) fold.focused = false
+       footer.claim(widgetShown)
++      // pi moves a re-set widget last: the Plan section, when showing, goes back below the status line.
++      if (widgetShown) sectionBridge.reassertPlan()
+     } catch {
+       // Session gone: the widget went with it.
+     }
+   }
+ 
++  /** Rows of the last script run: 2+ rows are the widget, none means the footer-only path. */
++  let scriptRows: string[] = []
++  let lastBuiltIn = ''
++  /** Footer-only status promoted into the widget: pi renders the footer below every widget, which would put it
++   * under the Plan section; while Plan shows, the one-row (or built-in) status joins the widget above it. */
++  let promoted = false
++
+   function show(ctx: ExtensionContext, builtIn: string): void {
+-    // The widget (2+ rows) carries the Status Line title itself; the footer-only path leads with it inline.
++    lastBuiltIn = builtIn
+     const text = commandLine ?? builtIn
+-    ctx.ui.setStatus('pi-code-status', widgetShown ? text : labelFooter(text, hudTheme(ctx.ui.theme)))
++    const promote = scriptRows.length === 0 && sectionBridge.planActive()
++    if (promote) {
++      promoted = true
++      setRows(ctx, [text])
++      ctx.ui.setStatus('pi-code-status', undefined)
++      return
++    }
++    if (promoted) {
++      promoted = false
++      if (scriptRows.length === 0) setRows(ctx, [])
++    }
++    // The widget (2+ rows) carries the Status Line title itself; the footer-only path leads with it inline.
++    ctx.ui.setStatus('pi-code-status', widgetShown ? text : labelFooter(text, hudTheme(ctx.ui.theme), modelNames(ctx.model as { id?: string; name?: string } | undefined)))
+   }
+ 
+   /** The stdin payload per Claude's documented statusline contract. */
+@@ -466,6 +512,7 @@
+       // go to a widget below the editor instead; the footer then keeps the built-in segment.
+       const parsed = statusRows(result.stdout, config.padding)
+       commandLine = parsed.footer
++      scriptRows = parsed.rows
+       setRows(ctx, parsed.rows)
+       show(ctx, segmentText(ctx, ctx.ui.theme.fg('dim', '○')))
+     } catch {
+@@ -569,6 +616,19 @@
+     // One instance serves every session, so a fresh session must not inherit state.
+     turnCount = 0
+     commandLine = undefined
++    scriptRows = []
++    promoted = false
++    sectionBridge.onPlanChange = () => show(ctx, lastBuiltIn)
++    fold.reset()
++    sectionBridge.statusActive = () => widgetShown
++    sectionBridge.statusFocused = () => fold.focused
++    sectionBridge.focusStatus = () => fold.focusByKeyboard()
++    offFoldInput?.()
++    offFoldInput = undefined
++    // Print/RPC modes hand out a ctx.ui without TUI hooks: no key listener there.
++    if (ctx.hasUI !== false && typeof ctx.ui.onTerminalInput === 'function') {
++      offFoldInput = ctx.ui.onTerminalInput((data) => (fold.handleKey(data, { editorText: ctx.ui.getEditorText(), editorFocused: editorOwnsFocus(statusTui) }) ? { consume: true } : undefined))
++    }
+     sessionCtx = ctx
+     widgetShown = false
+     sessionStartMs = Date.now()
+@@ -622,6 +682,7 @@
+       if (!config) {
+         if (previousCommand === undefined) return
+         commandLine = undefined
++        scriptRows = []
+         setRows(ctx, [])
+         show(ctx, segmentText(ctx, ctx.ui.theme.fg('dim', '○')))
+         return
+@@ -683,6 +744,13 @@
+ 
+   pi.on('session_shutdown', () => {
+     if (sessionCtx) setRows(sessionCtx, [])
++    sectionBridge.onPlanChange = undefined
++    offFoldInput?.()
++    offFoldInput = undefined
++    fold.reset()
++    sectionBridge.statusActive = () => false
++    sectionBridge.statusFocused = () => false
++    sectionBridge.focusStatus = () => false
+     clearInterval(refreshTimer)
+     clearTimeout(debounceTimer)
+     clearTimeout(expiryTimer)
+--- a/subagent/fleet-ui/chrome.ts
++++ b/subagent/fleet-ui/chrome.ts
+@@ -3,7 +3,7 @@
+  * rule between them, the model label colors and the duration clock. Pure; colors come from the UI roles
+  * (Tokyo Night through palette.ts), never from literals. Record: docs/pi-interactive-display-2026-11-13.md.
+  */
+-import { truncateToWidth } from '@earendil-works/pi-tui'
++import { truncateToWidth, visibleWidth } from '@earendil-works/pi-tui'
+ 
+ import type { UiTheme } from './panel.ts'
+ 
+@@ -24,15 +24,17 @@
+ export type HeadingKind = keyof typeof HEADING_KINDS
+ 
+ /** Title chip: ` NAME ` in reverse video of the role's color (the inverse of the fg is a colored background, no hex), bold. */
+-export function chip(kind: HeadingKind, theme: UiTheme, role: string = HEADING_KINDS[kind].role): string {
+-  return bold(theme, `\x1b[7m${theme.fg(role, ` ${HEADING_KINDS[kind].name} `)}\x1b[27m`)
++export function chip(kind: HeadingKind, theme: UiTheme, role: string = HEADING_KINDS[kind].role, collapsed?: boolean): string {
++  // Fold state inside the chip, one cell: `▾` open, `▸` folded. Undefined = not foldable (footer-only status), no symbol.
++  const mark = collapsed === undefined ? '' : collapsed ? '▸ ' : '▾ '
++  return bold(theme, `\x1b[7m${theme.fg(role, ` ${mark}${HEADING_KINDS[kind].name} `)}\x1b[27m`)
+ }
+ 
+ /** Heading line: the kind's chip, then the detail (count, state, range) dim. `title` starts with the kind's name
+- * (any case); `role` overrides the chip color (Plan focused). Cut to the width. */
+-export function heading(title: string, theme: UiTheme, width: number, kind: HeadingKind, role?: string): string {
++ * (any case); `role` overrides the chip color (focused); `collapsed` puts the fold symbol in the chip. Cut to the width. */
++export function heading(title: string, theme: UiTheme, width: number, kind: HeadingKind, role?: string, collapsed?: boolean): string {
+   const detail = title.slice(HEADING_KINDS[kind].name.length)
+-  return truncateToWidth(chip(kind, theme, role) + (detail ? theme.fg('dim', detail) : ''), width)
++  return truncateToWidth(chip(kind, theme, role, collapsed) + (detail ? theme.fg('dim', detail) : ''), width)
+ }
+ 
+ /** Thin rule across the full width. */
+@@ -40,25 +42,62 @@
+   return theme.fg('dim', '─'.repeat(Math.max(0, width)))
+ }
+ 
++/** Summary kept visible while Sub Agents is collapsed: `2 running · 1 failed`, else the count. */
++export function collapsedSummary(rows: ReadonlyArray<{ state: string }>): string {
++  const n = (state: string): number => rows.filter((r) => r.state === state).length
++  const parts = [[n('running'), 'running'], [n('failed'), 'failed']].filter(([c]) => c !== 0).map(([c, w]) => `${c} ${w}`)
++  return parts.length > 0 ? parts.join(' · ') : `${rows.length} agent${rows.length === 1 ? '' : 's'}`
++}
++
+ /** Sub Agents chip and its rule above the panel lines; the group opens with a blank line (the spacing after the editor or the previous group) and never ends with one.
+- * Only with child rows does it add the title and rule: no orphan title or rule without them. */
+-export function frameSubAgents(lines: string[], hasRows: boolean, theme: UiTheme, width: number): string[] {
++ * Only with child rows does it add the title and rule: no orphan title or rule without them.
++ * `collapsed` (a summary) folds the body away: one title line carrying the summary, then the rule. */
++export function frameSubAgents(lines: string[], hasRows: boolean, theme: UiTheme, width: number, collapsed?: string, summary?: string): string[] {
+   if (lines.length === 0) return lines
+   // No child rows (only the finished hint): still a group, so it opens with the blank line and does not end with one.
+   if (!hasRows) return ['', ...(lines.at(-1) === '' ? lines.slice(0, -1) : lines)]
++  if (collapsed !== undefined) return ['', summary ? truncateToWidth(heading(SUBAGENTS_TITLE, theme, width, 'subagents', undefined, true) + ' ' + summary, width) : heading(`${SUBAGENTS_TITLE} ${collapsed}`, theme, width, 'subagents', undefined, true), rule(theme, width)]
+   const body = lines.at(-1) === '' ? lines.slice(0, -1) : lines
+-  return ['', heading(SUBAGENTS_TITLE, theme, width, 'subagents'), rule(theme, width), ...body]
++  const head = summary ? truncateToWidth(chip('subagents', theme, undefined, false) + ' ' + summary, width) : heading(SUBAGENTS_TITLE, theme, width, 'subagents', undefined, false)
++  return ['', head, rule(theme, width), ...body]
+ }
+ 
+-/** Status Line group: a blank line, the chip and its rule above the rows; the widget only exists while there are rows. */
+-export function frameStatusLine(rows: string[], theme: UiTheme, width: number): string[] {
+-  return rows.length === 0 ? rows : ['', heading(STATUSLINE_TITLE, theme, width, 'statusline'), rule(theme, width), ...rows]
++export interface FleetCounts {
++  running: number
++  quiet: number
++  failed: number
++  done: number
++}
++
++/** Chip-row summary: `x/y`, x = runs that ended (done or failed), y = all counted runs; nothing while there are none.
++ * Cyan (the HUD `text` role) while any run is going, red when one failed, green once every run ended cleanly. */
++export function summaryLine(c: FleetCounts, theme: UiTheme): string {
++  const total = c.running + c.failed + c.done
++  if (total === 0) return ''
++  const role = c.failed ? 'error' : c.running ? 'text' : 'success'
++  return theme.fg(role, `${c.failed + c.done}/${total}`)
++}
++
++/** Fold state of the Status Line widget: `collapsed` keeps only the chip and the rule (every row is hidden); `focused` is the keyboard focus. */
++export interface StatusView {
++  collapsed?: boolean
++  focused?: boolean
++}
++export const FOCUS_HINT = ' · space fold · esc back'
++
++/** Status Line group: a blank line, the chip and its rule above the rows; the widget only exists while there are rows.
++ * Collapsed: the first row alone, ANSI-stripped and dim, cut to the width. Focused: accent chip and a short hint. */
++export function frameStatusLine(rows: string[], theme: UiTheme, width: number, view: StatusView = {}): string[] {
++  if (rows.length === 0) return rows
++  const collapsed = view.collapsed ?? false
++  const head = heading(STATUSLINE_TITLE + (view.focused ? FOCUS_HINT : ''), theme, width, 'statusline', view.focused ? 'accent' : undefined, collapsed)
++  return collapsed ? ['', head, rule(theme, width)] : ['', head, rule(theme, width), ...rows]
+ }
+ 
+ /** Footer-only status line (one row, or the built-in segment): the chip leads the value inline,
+  * `<chip> value`, no rule; the clock is tidied too. */
+-export function labelFooter(value: string, theme: UiTheme): string {
+-  return chip('statusline', theme) + ' ' + tidyClock(value)
++export function labelFooter(value: string, theme: UiTheme, names: readonly string[] = []): string {
++  return chip('statusline', theme) + ' ' + tidyClock(unbracketModel(value, names))
+ }
+ 
+ /** `[provider/model · effort]` as painted: model bold accent (plain accent once finished), provider and effort dim.
+@@ -69,13 +108,103 @@
+   const [, id = '', sep = '', effort = ''] = m
+   const slash = id.indexOf('/')
+   const provider = slash > 0 ? id.slice(0, slash + 1) : ''
+-  const model = theme.fg('accent', id.slice(provider.length))
++  // Neutral on purpose (design study 2026-11-13): color is for state and deviations, so only a costly effort stands out.
++  const model = theme.fg(live ? 'text' : 'dim', id.slice(provider.length))
+   const dim = (s: string): string => (s ? theme.fg('dim', s) : '')
+-  return dim('[') + dim(provider) + (live ? bold(theme, model) : model) + dim(sep) + dim(effort) + dim(']')
++  const eff = /^(max|xhigh)$/i.test(effort) && live ? theme.fg('warning', effort) : dim(effort)
++  return dim('[') + dim(provider) + model + dim(sep) + eff + dim(']')
+ }
+ 
+ /** The HUD's stopwatch emoji (with or without VS16, any spaces) and its duration become `◷ 1h10m`:
+  * a single-cell glyph, one space, units tight. Only a duration right after the clock is touched. */
+ export function tidyClock(row: string): string {
+-  return row.replace(/⏱\uFE0F?[ \t]*(\d+[dhms](?: \d+[dhms])*)/g, (_all, dur: string) => `${CLOCK} ${dur.replace(/ /g, '')}`)
++  return row.replace(/⏱\uFE0F?[ \t]*(<?\d+[dhms](?: \d+[dhms])*)/g, (_all, dur: string) => `${CLOCK} ${dur.replace(/ /g, '')}`)
++}
++
++/** Display names of the live model (`name`, `id`, bare id): what the HUD prints first in its model segment. */
++export function modelNames(model: { id?: string; name?: string } | undefined): string[] {
++  return [model?.name, model?.id, model?.id?.split('/').at(-1)].filter((n): n is string => !!n)
++}
++
++/** The HUD's first row opens with `[Model ◐ effort]`: drop only those outer brackets (colors, text and the effort
++ * icon stay). Anchored at the row start after any SGR codes, and only when the bracketed text starts with the live
++ * model's name: a first segment that is not the model (a folder, with the model hidden) keeps its brackets. */
++export function unbracketModel(row: string, names: readonly string[]): string {
++  const m = /^((?:\x1b\[[0-9;:]*m)*)\[(.*?)\]/.exec(row)
++  if (!m) return row
++  const inner = (m[2] ?? '').replace(/\x1b\[[0-9;:]*m/g, '').toLowerCase()
++  if (!names.some((n) => inner === n.toLowerCase() || inner.startsWith(n.toLowerCase() + ' '))) return row
++  return (m[1] ?? '') + (m[2] ?? '') + row.slice(m[0].length)
++}
++
++/** A status row as shown: the model segment unbracketed (first row only) and the clock tidied. */
++export function tidyRow(row: string, first: boolean, names: readonly string[]): string {
++  return tidyClock(first ? unbracketModel(row, names) : row)
++}
++
++const ANSI = /\x1b\[[0-9;:]*m/g
++const plainOf = (t: string): string => t.replace(ANSI, '')
++const HUD_LABELS: Record<string, string> = { Context: 'ctx', Usage: '5h', Weekly: 'wk' }
++
++/** Label rename for the context/usage rows (`Context` → `ctx`, `Usage` → `5h`, `Weekly` → `wk`), keeping the color codes around it. */
++function shortLabels(part: string): string {
++  return part.replace(/(Context|Usage|Weekly)\b/, (m) => HUD_LABELS[m] ?? m)
++}
++
++const ANSI_RUN = '(?:\\x1b\\[[0-9;:]*m)*'
++const BAR = new RegExp(`(?:${ANSI_RUN}[━─╸╺╾╼]+)+`)
++
++/** Redraws the meter bar of `part` with `cells` cells (0 drops it), keeping the filled/empty colors in proportion. */
++export function fitBar(part: string, cells: number): string {
++  const m = BAR.exec(part)
++  if (!m) return part
++  if (cells <= 0) return part.slice(0, m.index).replace(/\s+$/, ' ') + part.slice(m.index + m[0].length).replace(/^((?:\x1b\[[0-9;:]*m)*)\s+/, '$1')
++  const segs = [...m[0].matchAll(new RegExp(`(${ANSI_RUN})([━─╸╺╾╼]+)`, 'g'))].map((x) => ({ code: x[1] ?? '', len: [...(x[2] ?? '')].length, ch: (x[2] ?? '')[0] ?? '━' }))
++  const total = segs.reduce((n, x) => n + x.len, 0)
++  if (total <= cells) return part
++  let seen = 0
++  let used = 0
++  const out = segs.map((x) => {
++    seen += x.len
++    const upto = Math.round((seen * cells) / total)
++    const n = upto - used
++    used = upto
++    return n > 0 ? x.code + x.ch.repeat(n) : ''
++  })
++  return part.slice(0, m.index) + out.join('') + part.slice(m.index + m[0].length)
++}
++
++/** HUD rows laid out as the one default (design study 2026-11-13, chosen by the user), at every width:
++ * one identity line (two when it does not fit), ONE meters line (parenthetical details go, then the bars shrink, then they drop,
++ * then one meter per line), then tools and the extra rows each on a line; no blank lines or rules.
++ * Only when the first row is the HUD's `│`-separated model row; else the rows come back truncated and untouched. */
++export function layoutStatus(rows: string[], theme: UiTheme, width: number): string[] {
++  const fit = (lines: string[]): string[] => lines.map((l) => truncateToWidth(l, width))
++  const split = (row: string): string[] => row.split(/\s*│\s*/).map((p) => p.trim()).filter(Boolean)
++  const head = rows[0] === undefined ? [] : split(rows[0])
++  if (rows.length < 2 || head.length < 2 || !head.some((p) => /◷|⏱/.test(p) || /^\S*Cost\b/.test(plainOf(p)))) return fit(rows)
++  const dot = theme.fg('dim', ' · ')
++  const isRight = (p: string): boolean => /◷|⏱/.test(p) || /^Cost\b/.test(plainOf(p))
++  const stripCost = (p: string): string => p.replace(/Cost (?=\S)/, '')
++  const reset = (p: string): string => p.replace(/\s+((?:\x1b\[[0-9;:]*m)*)$/, '$1') + '\x1b[0m' // no stray space before the separator
++  const idLeft = head.filter((p) => !isRight(p)).map(reset)
++  const idRight = head.filter(isRight).map((p) => reset(stripCost(p)))
++  const meters = split(rows[1] ?? '').map((p) => reset(shortLabels(p)))
++  const tools = rows[2] === undefined ? '' : rows[2].replace(/\s\|\s/g, '  ')
++  const extra = rows.slice(3).map((r) => r.replace(/\s\|\s/g, '  '))
++
++  const oneLine = [...idLeft, ...idRight].join(dot)
++  const lines = visibleWidth(oneLine) <= width ? [oneLine] : [idLeft.join(dot), idRight.join(dot)].filter(Boolean)
++  const tries: string[][] = [meters, meters.map((p) => p.replace(/\s*\([^)]*\)/g, ''))]
++  for (const cells of [8, 5, 3, 0]) tries.push(tries[1]!.map((p) => fitBar(p, cells)))
++  const flow = tries.map((t) => t.join(dot)).find((l) => visibleWidth(l) <= width)
++  lines.push(...(flow === undefined ? tries.at(-1)! : [flow]))
++  if (tools) lines.push(tools)
++  lines.push(...extra)
++  return fit(lines)
++}
++
++/** The HUD's todo line (`All todos complete (7/7)`, `▸ task (2/7)`) is not shown: the Plan section owns task progress. */
++export function dropTodoRows(rows: string[]): string[] {
++  return rows.filter((r, i) => i < 2 || !/\(\d+\/\d+\)\s*$/.test(plainOf(r)))
+ }
+--- a/subagent/fleet-ui/index.ts
++++ b/subagent/fleet-ui/index.ts
+@@ -6,7 +6,8 @@
+ import type { ExtensionAPI, ExtensionCommandContext, ExtensionContext } from '@earendil-works/pi-coding-agent'
+ 
+ import type { FleetSource } from '../fleet/types.ts'
+-import { frameSubAgents } from './chrome.ts'
++import { collapsedSummary, frameSubAgents, summaryLine } from './chrome.ts'
++import { bridge } from './section.ts'
+ import { hudTheme } from './palette.ts'
+ import { executeAction, PanelController, renderPanel } from './panel.ts'
+ import type { MainStats, PanelView } from './panel.ts'
+@@ -89,7 +90,14 @@
+         return {
+           render: (width: number) => {
+             lastView = controller.view()
+-            return frameSubAgents(renderPanel(lastView, hud, width), lastView.rows.length > 0, hud, width)
++            return frameSubAgents(renderPanel(lastView, hud, width), lastView.rows.length > 0, hud, width, lastView.collapsed ? collapsedSummary(lastView.rows) : undefined, summaryLine(lastView.counts, hud))
++          },
++          // Fullscreen mode (default) routes the click here with local coordinates: row 0 is the blank spacing line, row 1 the Sub Agents title.
++          // Regular mode has no mouse; ↓ then ← / → / Space on the title do the same.
++          handleMouse: (event: { type?: string; y?: number }) => {
++            if (event.type !== 'click' || event.y !== 1 || !lastView || lastView.rows.length === 0) return undefined
++            controller.toggleSection()
++            return { handled: true, render: true }
+           },
+           invalidate: () => {},
+         }
+@@ -97,6 +105,8 @@
+       { placement: 'belowEditor' },
+     )
+     const render = (): void => tui?.requestRender()
++    bridge.focusFleetLast = () => controller.focusLast()
++    bridge.fleetActive = () => controller.rows().length > 0
+     const offInput = ctx.ui.onTerminalInput((data) => {
+       const source = getSource()
+       const result = controller.handleKey(data, {
+@@ -134,6 +144,8 @@
+       offInput()
+       offChange?.()
+       clearInterval(timer)
++      bridge.focusFleetLast = undefined
++      bridge.fleetActive = () => false
+       ctx.ui.setWidget(WIDGET_KEY, undefined)
+     }
+   })
+--- a/subagent/fleet-ui/panel.ts
++++ b/subagent/fleet-ui/panel.ts
+@@ -7,11 +7,12 @@
+ 
+ import { formatDuration, formatTokens } from '../../internal/goal-evaluator.ts'
+ import type { FleetSource, StopOutcome } from '../fleet/types.ts'
+-import { buildRows, finishedCount, runningCount } from './view-model.ts'
++import { buildRows, finishedCount, QUIET_MS, runningCount } from './view-model.ts'
+ import type { FleetRow } from './view-model.ts'
+ import { motionEnabled, SPINNER, spinnerAt } from './palette.ts'
+ import { unreadCounts } from '../team/ui.ts'
+ import { styleModelMeta } from './chrome.ts'
++import { bridge } from './section.ts'
+ 
+ /** The part of pi's Theme the fleet UI uses. */
+ export interface UiTheme {
+@@ -121,9 +122,21 @@
+   if (row.state === 'done') return { text: '✓ done', color: 'success' }
+   if (row.state === 'failed') return { text: `✗ ${row.error || 'failed'}`, color: 'error' }
+   if (row.state === 'cancelled') return { text: '■ stopped', color: 'warning' }
++  if (isQuiet(row)) return { text: `quiet ${formatDuration(row.quietMs)}`, color: 'warning' }
+   return { text: row.activity, color: style.activity }
+ }
+ 
++/** Running with no recorded activity for QUIET_MS. */
++export const isQuiet = (row: Pick<FleetRow, 'state' | 'quietMs'>): boolean => row.state === 'running' && row.quietMs >= QUIET_MS
++
++/** `(+3)` for a folded parent, with what runs or failed below it: `(+3 · ● 1 · ✕ 1)`. */
++function hiddenMark(row: FleetRow, theme: UiTheme): string {
++  const sum = row.hiddenSummary
++  const parts = [`+${row.hiddenDescendants}`]
++  const colored = [sum?.running ? theme.fg('success', `● ${sum.running}`) : '', sum?.failed ? theme.fg('error', `✕ ${sum.failed}`) : ''].filter(Boolean)
++  return theme.fg('dim', ` (${parts[0]}`) + colored.map((c) => theme.fg('dim', ' · ') + c).join('') + theme.fg('dim', ')')
++}
++
+ const MIN_ACTIVITY = 12
+ const MIN_TASK = 12
+ /** Fewest task columns a row gives up for the full model label before it settles for less. */
+@@ -143,8 +156,9 @@
+   const nameColor = selected ? 'accent' : finished ? 'dim' : style.name
+   const spinning = !finished && frame !== undefined
+   // Column 0 like the status line below: the selection shows as ❯ in the glyph slot, not as a gutter.
+-  const glyph = selected ? '❯' : spinning ? SPINNER[frame % SPINNER.length]! : style.glyph
+-  const glyphColor = selected ? 'accent' : spinning ? 'success' : nameColor
++  const quiet = isQuiet(row)
++  const glyph = selected ? '❯' : quiet ? '◌' : spinning ? SPINNER[frame % SPINNER.length]! : style.glyph
++  const glyphColor = selected ? 'accent' : quiet ? 'warning' : spinning ? 'success' : nameColor
+   const name = row.depth === 1 && !finished ? theme.bold(theme.fg(nameColor, row.agent)) : theme.fg(nameColor, row.agent)
+   const head =
+     (row.guides ? theme.fg('dim', row.guides) : '') +
+@@ -154,7 +168,7 @@
+     (row.nth > 0 ? theme.fg('dim', `#${row.nth}`) : '') +
+     (style.badge ? theme.fg('dim', style.badge) : '') +
+     (row.unread ? theme.fg('warning', ` ✉${row.unread}`) : '') +
+-    (row.hiddenDescendants > 0 ? theme.fg('dim', ` (+${row.hiddenDescendants})`) : '')
++    (row.hiddenDescendants > 0 ? hiddenMark(row, theme) : '')
+   const act = activityOf(row, style)
+   const variants = statVariants(formatStats(row), theme)
+   const taskW = visibleWidth(row.task)
+@@ -225,13 +239,17 @@
+   hintColor: 'muted' | 'dim' | 'warning'
+   running: number
+   finished: number
++  /** Chip-row summary counts (running and quiet over every visible row, any depth). */
++  counts: { running: number; quiet: number; failed: number; done: number }
+   /** Spinner frame for running rows; undefined = static glyphs (reduced motion, NO_COLOR). */
+   frame?: number
++  /** Sub Agents section folded: the widget shows its title and summary only. */
++  collapsed?: boolean
+ }
+ 
+ export function renderPanel(view: PanelView, theme: UiTheme, width: number): string[] {
+-  const hintLine = view.finished > 0 ? [truncateToWidth(theme.fg('success', `✓ ${view.finished} finished`) + theme.fg('dim', ' · /tasks'), width)] : []
+-  if (view.rows.length === 0) return hintLine.length > 0 ? [...hintLine, ''] : []
++  // Finished runs are counted in the title summary (`✓ N done`); no footer line for them.
++  if (view.rows.length === 0) return []
+   const mainSelected = view.focused && view.selectedId === null
+   const mainLeft = `${mainSelected ? '❯' : view.focused ? '○' : '●'} main`
+   const main = layoutMain(view, mainLeft, theme, width)
+@@ -245,7 +263,7 @@
+   const more = view.rows.length - shown.length
+   if (more > 0) lines.push(truncateToWidth(theme.fg('dim', `… ${more} more`), width))
+   // One blank line separates the panel from the status line widget below it.
+-  return [...lines, ...hintLine, '']
++  return [...lines, '']
+ }
+ 
+ // ---- controller -------------------------------------------------------------------
+@@ -265,11 +283,25 @@
+   getMain?: (now: number) => MainStats | undefined
+ }
+ 
++/** Keys that do something for the selected row only: x stops a running row but dismisses a finished one, →← fold only parents. */
++export function focusHint(row: FleetRow | undefined): string {
++  if (!row) return '↑↓ select · →← fold · esc back'
++  return ['↑↓ select', 'enter open', row.childCount > 0 ? '→← fold' : '', row.state === 'running' ? 'x stop' : 'x dismiss', 'esc back'].filter(Boolean).join(' · ')
++}
++
++/** Every record below `id`, any depth (the stop key acts on one run: this is what stays under it). */
++export function descendantCount(records: ReadonlyArray<{ id: string; parentId: string | null }>, id: string): number {
++  const kids = (of: string): number => records.filter((r) => r.parentId === of).reduce((n, r) => n + 1 + kids(r.id), 0)
++  return kids(id)
++}
++
+ export class PanelController {
+   focused = false
+   selectedId: string | null = null
+   readonly collapsed = new Set<string>()
+   readonly dismissed = new Set<string>()
++  /** The Sub Agents section is folded (title and summary only); runs go on, ↓ still reaches the title. */
++  sectionCollapsed = false
+   private armed: { id: string; until: number } | undefined
+   private lastIndex = 0
+   private readonly deps: ControllerDeps
+@@ -294,10 +326,10 @@
+     let hintColor: PanelView['hintColor'] = 'muted'
+     const armedRow = this.armed && now < this.armed.until ? rows.find((r) => r.id === this.armed?.id) : undefined
+     if (armedRow) {
+-      hint = `press x again to stop ${armedRow.agent}`
++      hint = `press x again to stop ${armedRow.agent}${armedRow.childCount > 0 ? ` (${descendantCount(this.deps.getSource()?.list() ?? [], armedRow.id)} below)` : ''}`
+       hintColor = 'warning'
+     } else if (this.focused) {
+-      hint = '↑↓ select · enter open · →← fold · x stop · esc back'
++      hint = focusHint(rows.find((r) => r.id === this.selectedId))
+       hintColor = 'dim'
+     } else {
+       hint = `${running} running · ↓ to manage`
+@@ -310,11 +342,34 @@
+       hintColor,
+       running,
+       finished: source ? finishedCount(source.list(), now) : 0,
++      counts: {
++        running,
++        quiet: rows.filter(isQuiet).length,
++        failed: rows.filter((r) => r.state === 'failed').length,
++        done: source ? finishedCount(source.list(), now) : 0,
++      },
+       frame: motionEnabled() ? spinnerAt(now) : undefined,
+       main: this.deps.getMain?.(now),
++      collapsed: this.sectionCollapsed,
+     }
+   }
+ 
++  toggleSection(): void {
++    this.sectionCollapsed = !this.sectionCollapsed
++    // Folded: the rows are hidden, so the selection can only rest on the title (main).
++    if (this.sectionCollapsed && this.focused) this.select(this.rows(), null)
++    this.armed = undefined
++  }
++
++  /** Keyboard focus on the last row (or the title when folded or empty): the way back from Plan. */
++  focusLast(): boolean {
++    const rows = this.rows()
++    if (rows.length === 0) return false
++    this.focused = true
++    this.select(rows, this.sectionCollapsed ? null : rows.at(-1)!.id)
++    return true
++  }
++
+   /** Keep the selection on a visible row: nearest remaining row, else main; unfocus when empty. */
+   repair(rows: FleetRow[]): void {
+     if (!this.focused) return
+@@ -352,9 +407,9 @@
+     }
+     const rows = this.rows()
+     if (!this.focused) {
+-      if (matchesKey(data, 'down') && env.editorText === '' && rows.length >= 1) {
++      if (matchesKey(data, 'down') && env.editorText === '' && rows.length >= 1 && !bridge.planFocused() && !bridge.statusFocused()) {
+         this.focused = true
+-        this.select(rows, rows[0]!.id)
++        this.select(rows, this.sectionCollapsed ? null : rows[0]!.id)
+         return { consume: true }
+       }
+       return { consume: false }
+@@ -363,8 +418,15 @@
+     if (!this.focused) return { consume: false }
+     const ids: Array<string | null> = [null, ...rows.map((r) => r.id)]
+     const pos = Math.max(0, ids.indexOf(this.selectedId))
+-    const row = this.selectedId === null ? undefined : rows[pos - 1]
++    // Folded: no row is visible, so none can be opened, stopped or dismissed by a key.
++    const row = this.selectedId === null || this.sectionCollapsed ? undefined : rows[pos - 1]
+     if (matchesKey(data, 'down')) {
++      // Folded: nothing below the title but the Status Line and Plan. At the end of the list ↓ hands the keyboard to the Status Line, else Plan, when they show.
++      if ((this.sectionCollapsed || pos === ids.length - 1) && (bridge.focusStatus() || bridge.focusPlan())) {
++        this.unfocus()
++        return { consume: true }
++      }
++      if (this.sectionCollapsed) return { consume: true }
+       this.select(rows, ids[Math.min(ids.length - 1, pos + 1)] ?? null)
+       return { consume: true }
+     }
+@@ -380,6 +442,13 @@
+       }
+       return { consume: true, action: { type: 'open', id: row.id } }
+     }
++    // The title (main) folds and unfolds the section: ← folds, → or Space unfolds, Space also folds.
++    if (this.selectedId === null) {
++      if (matchesKey(data, 'space') || (matchesKey(data, 'left') && !this.sectionCollapsed) || (matchesKey(data, 'right') && this.sectionCollapsed)) {
++        this.toggleSection()
++        return { consume: true }
++      }
++    }
+     if (matchesKey(data, 'right') && row) {
+       if (row.collapsed) this.collapsed.delete(row.id)
+       else if (row.childCount > 0) this.select(rows, ids[pos + 1] ?? null)
+--- a/subagent/fleet-ui/section.ts
++++ b/subagent/fleet-ui/section.ts
+@@ -0,0 +1,121 @@
++/**
++ * Shared mechanics of the two collapsible sections under the editor (Sub Agents, Status Line and Plan): viewport size,
++ * offset clamp, focus ownership test and the bridge the status line and the fleet panel use to reach the Plan
++ * section. Pure apart from the `bridge` singleton, which the Plan section fills in. Record:
++ * docs/pi-interactive-display-2026-11-13.md ("Plan section").
++ */
++import { isKeyRelease, matchesKey } from '@earendil-works/pi-tui'
++
++/** Plan body rows: at most 6, at least 3, fewer on short terminals. Never unbounded. */
++export const MAX_VISIBLE = 6
++export const MIN_VISIBLE = 3
++export const viewportSize = (terminalRows: number): number => Math.max(MIN_VISIBLE, Math.min(MAX_VISIBLE, terminalRows - 18))
++
++/** Offset kept inside [0, total - visible]. */
++export const clampOffset = (offset: number, total: number, visible: number): number => Math.max(0, Math.min(offset, Math.max(0, total - visible)))
++
++/** pi's TUI keeps the focused component private: the editor (getText + setText) owns it; unknown counts as the editor. */
++export function editorOwnsFocus(tui: unknown): boolean {
++  const focused = (tui as { focusedComponent?: unknown } | undefined)?.focusedComponent
++  if (focused == null) return true
++  const c = focused as { getText?: unknown; setText?: unknown }
++  return typeof c.getText === 'function' && typeof c.setText === 'function'
++}
++
++/** Links between the Plan section (plan-mode), the status line and the fleet panel; one process, one section each. */
++export interface SectionBridge {
++  /** A Plan section is showing (items exist). The status line then keeps its row in the widget, above Plan. */
++  planActive(): boolean
++  /** Re-set the Plan widget so it renders after the status widget (pi moves a re-set widget last). */
++  reassertPlan(): void
++  /** Plan appeared, changed visibility or went away: the status line re-places its footer-only row. */
++  onPlanChange?: () => void
++  /** Plan holds the keyboard (keyboard path): the fleet panel must not take ↓ meanwhile. */
++  planFocused(): boolean
++  /** ↓ from the Sub Agents list: give the keyboard to Plan. False when Plan is not showing. */
++  focusPlan(): boolean
++  /** ↑ from the top of Plan: back to the last Sub Agents row. False when there is no list. */
++  focusFleetLast?: () => boolean
++  /** The Status Line widget shows (it can fold and take the keyboard). */
++  statusActive(): boolean
++  /** The Status Line holds the keyboard (virtual focus, the editor keeps native focus). */
++  statusFocused(): boolean
++  /** ↓ from the last Sub Agents row, ↑ from the top of Plan: give the keyboard to the Status Line. False when it is not showing. */
++  focusStatus(): boolean
++  /** Sub Agents has child rows: the Status Line and Plan then leave the empty-editor ↓ entry to it. */
++  fleetActive(): boolean
++}
++export const bridge: SectionBridge = {
++  planActive: () => false,
++  reassertPlan: () => {},
++  focusPlan: () => false,
++  planFocused: () => false,
++  statusActive: () => false,
++  statusFocused: () => false,
++  focusStatus: () => false,
++  fleetActive: () => false,
++}
++
++/** Fold + keyboard focus of the Status Line widget, kept in memory for the session (a re-set widget keeps it).
++ * Chain from an empty editor: Sub Agents → Status Line → Plan (each only when it shows), ↑ the way back, Esc the editor. */
++export class StatusFold {
++  collapsed = false
++  focused = false
++  private readonly deps: { active(): boolean; render(): void }
++
++  constructor(deps: { active(): boolean; render(): void }) {
++    this.deps = deps
++  }
++
++  reset(): void {
++    this.collapsed = false
++    this.focused = false
++  }
++
++  toggle(): void {
++    this.collapsed = !this.collapsed
++    this.deps.render()
++  }
++
++  focusByKeyboard(): boolean {
++    if (!this.deps.active()) return false
++    this.focused = true
++    this.deps.render()
++    return true
++  }
++
++  /** True when the key was used (consume). */
++  handleKey(data: string, env: { editorText: string; editorFocused: boolean }): boolean {
++    if (isKeyRelease(data)) return false
++    if (!env.editorFocused || !this.deps.active()) {
++      this.focused = false
++      return false
++    }
++    if (!this.focused) {
++      // A draft keeps ↓ for the editor; Sub Agents (when it has rows) and a focused Plan own the entry.
++      if (!matchesKey(data, 'down') || env.editorText !== '' || bridge.fleetActive() || bridge.planFocused()) return false
++      return this.focusByKeyboard()
++    }
++    const used = (): true => (this.deps.render(), true)
++    if (matchesKey(data, 'down')) {
++      if (bridge.focusPlan()) this.focused = false
++      return used()
++    }
++    if (matchesKey(data, 'up')) {
++      this.focused = false
++      if (bridge.fleetActive()) bridge.focusFleetLast?.()
++      return used()
++    }
++    if (matchesKey(data, 'escape')) {
++      this.focused = false
++      return used()
++    }
++    if (matchesKey(data, 'space') || (matchesKey(data, 'left') && !this.collapsed) || (matchesKey(data, 'right') && this.collapsed)) {
++      this.collapsed = !this.collapsed
++      return used()
++    }
++    this.focused = false
++    this.deps.render()
++    return false
++  }
++}
+--- a/subagent/fleet-ui/view-model.ts
++++ b/subagent/fleet-ui/view-model.ts
+@@ -7,6 +7,8 @@
+ import { listMeta } from './runtime-label.ts'
+ 
+ export const FINISHED_TTL_MS = 30_000
++/** A running run silent this long shows as quiet (◌). */
++export const QUIET_MS = 120_000
+ 
+ export interface FleetRow {
+   id: string
+@@ -28,6 +30,10 @@
+   cost: number
+   /** Visible descendants hidden by a collapse. */
+   hiddenDescendants: number
++  /** Running runs with no recorded activity for QUIET_MS (the record's `updatedAt`; there is no heartbeat, so a long tool call can look quiet: it says "quiet", never "stalled"). */
++  quietMs: number
++  /** Collapsed rows: state of the hidden descendants, so a failure below a folded parent stays visible. */
++  hiddenSummary?: { running: number; failed: number }
+   /** Visible direct children, whether or not collapsed. */
+   childCount: number
+   collapsed: boolean
+@@ -96,6 +102,20 @@
+   for (const child of node.children) markVisible(child, node, node.visible, opts)
+ }
+ 
++function summarize(node: Node): { running: number; failed: number } {
++  const sum = { running: 0, failed: 0 }
++  const walk = (n: Node): void => {
++    for (const child of n.children) {
++      if (!child.visible) continue
++      if (child.rec.state === 'running') sum.running += 1
++      else if (child.rec.state === 'failed') sum.failed += 1
++      walk(child)
++    }
++  }
++  walk(node)
++  return sum
++}
++
+ function countVisible(node: Node): number {
+   let n = 0
+   for (const child of node.children) if (child.visible) n += 1 + countVisible(child)
+@@ -126,7 +146,9 @@
+       elapsedMs: Math.max(0, (rec.endedAt ?? opts.now) - rec.startedAt),
+       contextTokens: rec.tokens.context,
+       cost: rec.cost,
++      quietMs: rec.state === 'running' ? Math.max(0, opts.now - rec.updatedAt) : 0,
+       hiddenDescendants: isCollapsed ? countVisible(node) : 0,
++      ...(isCollapsed ? { hiddenSummary: summarize(node) } : {}),
+       childCount: visibleChildren.length,
+       collapsed: isCollapsed,
+       guides,

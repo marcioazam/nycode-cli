@@ -553,18 +553,30 @@ test('raceDetach: done, detach-then-abort keeps running, rejection propagates', 
   assert.equal(detach.hasForeground(), false)
 })
 
-test('fleetStatusLines lists detached depth-1 running runs outside the registry', () => {
+// D8 (docs/sync-observabilidade.md): contrato antigo era só depth 1 + running + background, com "(Ctrl+B)" e sem turnos/custo/tempo/atividade.
+test('D8 fleetStatusLines lists every lane of the tree (any depth, running + finished < 30 min) with state, turns, cost, time and activity', () => {
   const dir = mainFleet()
-  store.writeRecord(dir, baseRecord(id(70), { background: true, agent: 'ghost' }))
-  store.writeRecord(dir, baseRecord(id(71), { background: false }))
-  store.writeRecord(dir, baseRecord(id(72), { background: true, depth: 2 }))
-  store.writeRecord(dir, baseRecord(id(73), { background: true, state: 'done' }))
-  assert.deepEqual(sourceMod.fleetStatusLines(), [`${id(70)} (ghost) running — moved to the background (Ctrl+B)`])
-  assert.match(registryText.statusWithFleet(), /Moved to the background:\n.*ghost/)
+  const now = Date.now()
+  store.writeRecord(dir, baseRecord(id(70), { background: true, agent: 'ghost', turns: 3, cost: 0.5, startedAt: now - 90_000, activity: 'editando x.ts' }))
+  store.writeRecord(dir, baseRecord(id(71), { background: false, agent: 'fgone', startedAt: now - 5_000, activity: 'starting' }))
+  store.writeRecord(dir, baseRecord(id(72), { background: true, depth: 2, parentId: id(70), agent: 'nested', ownerPid: process.ppid, startedAt: now - 3_000 }))
+  store.writeRecord(dir, baseRecord(id(73), { background: true, state: 'done', agent: 'fin', startedAt: now - 200_000, endedAt: now - 60_000, turns: 2 }))
+  store.writeRecord(dir, baseRecord(id(74), { state: 'done', agent: 'old', startedAt: now - 3 * 3600_000, endedAt: now - 2 * 3600_000 }))
+  const lines = sourceMod.fleetStatusLines()
+  assert.equal(lines.length, 4, lines.join('\n'))
+  const by = (rid: string) => lines.find((l) => l.includes(rid)) as string
+  assert.match(by(id(70)), /ghost running .*3t · \$0\.50 · 01:3\d · editando x\.ts/)
+  assert.match(by(id(71)), /fgone running .*starting/)
+  assert.match(by(id(72)), /^ {2}\S+ nested running .*depth 2/, 'nested lanes are indented and say their depth')
+  assert.match(by(id(73)), /fin done .*2t · .* · 02:20/)
+  assert.ok(!lines.join('\n').includes(id(74)), 'finished long ago: gone')
+  const text = registryText.statusWithFleet()
+  assert.doesNotMatch(text, /No background runs|Ctrl\+B/)
+  assert.match(text, /ghost running/)
   assert.equal(registryText.cancelResultText(id(73)), `Run ${id(73)} already finished; nothing to cancel.`)
   assert.match(registryText.cancelResultText(id(99)), /^Unknown background run/)
   store.removeFleetDir()
-  assert.doesNotMatch(registryText.statusWithFleet(), /Moved to the background/)
+  assert.match(registryText.statusWithFleet(), /^No background runs in this session\./, 'both lists empty: the old header')
 })
 
 test('inbox: pollInboxOnce steers each message and acks; a throwing pi acks too-late', () => {
@@ -701,7 +713,8 @@ test('F4 foreign-owner runs: hidden from fleetStatusLines, stopOwnRun refuses (f
   const dir = mainFleet()
   store.writeRecord(dir, baseRecord(id(220), { background: true, agent: 'mine' }))
   store.writeRecord(dir, baseRecord(id(221), { background: true, agent: 'theirs', ownerPid: process.ppid }))
-  assert.deepEqual(sourceMod.fleetStatusLines(), [`${id(220)} (mine) running — moved to the background (Ctrl+B)`])
+  assert.equal(sourceMod.fleetStatusLines().length, 1)
+  assert.match(sourceMod.fleetStatusLines()[0], new RegExp(`${id(220)} mine running`))
   assert.equal(sourceMod.stopOwnRun(id(221)), 'not-owned')
   assert.equal(store.stopOrigin(dir, id(221)), undefined)
   assert.equal(sourceMod.stopOwnRun(id(229)), 'unknown')

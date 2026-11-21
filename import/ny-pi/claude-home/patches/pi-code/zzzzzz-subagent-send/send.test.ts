@@ -369,7 +369,8 @@ test('AC4: a conclusão e o status avisam as mensagens não entregues; chave des
   assert.ok(!registryText.backgroundCompletionText(run(id(43))).includes('sent with send'), 'sem inbox: nada a avisar')
   const status = registryText.statusWithFleet()
   assert.ok(status.includes(`${id(40)}: ${NOTE}`), status)
-  assert.ok(!status.includes(id(41)), 'run vivo: a mensagem ainda pode chegar')
+  // o status agora lista as faixas vivas (D8); a nota de não entregue é que não sai para um run vivo
+  assert.ok(!status.includes(`${id(41)}: ${NOTE}`), 'run vivo: a mensagem ainda pode chegar')
   assert.ok(!status.includes(id(42)), 'run de outro dono não é listado')
   store.appendAck(dir, id(40), { id: 'b', t: 4, outcome: 'consumed' })
   assert.ok(!registryText.statusWithFleet().includes('sent with send'))

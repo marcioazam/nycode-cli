@@ -1,0 +1,78 @@
+--- a/memory.ts
++++ b/memory.ts
+@@ -431,6 +431,11 @@
+   const ascii = Boolean(env.PI_ASCII_ICONS) || env.TERM === 'dumb' || env.TERM === 'linux'
+   return !ascii && (env.PI_NERD_FONT === '1' || env.TERM === 'xterm-kitty' || Boolean(env.KITTY_WINDOW_ID)) ? '\uee9c' : '◆'
+ }
++/** Space after the glyph: kitty draws a Nerd Font icon over the following cell, so there it takes two to keep a gap. */
++const glyphGap = (env: Record<string, string | undefined>): string => {
++  const ascii = Boolean(env.PI_ASCII_ICONS) || env.TERM === 'dumb' || env.TERM === 'linux'
++  return !ascii && (env.TERM === 'xterm-kitty' || Boolean(env.KITTY_WINDOW_ID)) ? '  ' : ' '
++}
+ 
+ export function memoryNotice(dir: string, index: string, theme?: NoticeTheme, env: Record<string, string | undefined> = process.env): string | undefined {
+   const entries = index.split('\n').filter((l) => l.startsWith('- '))
+@@ -457,7 +462,7 @@
+   const fg = theme ? (color: string, text: string) => theme.fg(color, text) : (_color: string, text: string) => text
+   const bold = theme?.bold ? (text: string) => theme.bold!(text) : (text: string) => text
+   const total = `${entries.length} ${entries.length === 1 ? 'nota' : 'notas'}`
+-  return `${fg('accent', memoryGlyph(env))} ${fg('text', bold('memória'))}  ${fg('muted', total)} ${fg('dim', '·')} ${fg('muted', byType)} ${fg('dim', '· /memory')}`
++  return `${fg('accent', memoryGlyph(env))}${glyphGap(env)}${fg('text', bold('memória'))}  ${fg('muted', total)} ${fg('dim', '·')} ${fg('muted', byType)} ${fg('dim', '· /memory')}`
+ }
+ 
+ export default function memoryExtension(pi: ExtensionAPI): void {
+--- a/claude-rules.ts
++++ b/claude-rules.ts
+@@ -355,6 +355,11 @@
+   const ascii = Boolean(env.PI_ASCII_ICONS) || env.TERM === 'dumb' || env.TERM === 'linux'
+   return !ascii && (env.PI_NERD_FONT === '1' || env.TERM === 'xterm-kitty' || Boolean(env.KITTY_WINDOW_ID)) ? '\uf0e3' : '§'
+ }
++/** Space after the glyph: kitty draws a Nerd Font icon over the following cell, so there it takes two to keep a gap. */
++const glyphGap = (env: Record<string, string | undefined>): string => {
++  const ascii = Boolean(env.PI_ASCII_ICONS) || env.TERM === 'dumb' || env.TERM === 'linux'
++  return !ascii && (env.TERM === 'xterm-kitty' || Boolean(env.KITTY_WINDOW_ID)) ? '  ' : ' '
++}
+ 
+ export function rulesLoadedMessage(globalRules: RuleSet, projectRules: RuleSet, theme?: NoticeTheme, env: Record<string, string | undefined> = process.env): string | undefined {
+   const globalCount = globalRules.inline.length + globalRules.scoped.length
+@@ -369,7 +374,7 @@
+   const mode = scoped === 0 ? (always === 1 ? 'sempre ativa' : 'sempre ativas')
+     : always === 0 ? 'por arquivo'
+     : `${always} ${always === 1 ? 'sempre ativa' : 'sempre ativas'} · ${scoped} por arquivo`
+-  return `${fg('accent', rulesGlyph(env))} ${fg('text', bold('regras'))}  ${fg('muted', globalPart)} ${fg('dim', '·')} ${fg('muted', projectPart)} ${fg('dim', `· ${mode}`)}`
++  return `${fg('accent', rulesGlyph(env))}${glyphGap(env)}${fg('text', bold('regras'))}  ${fg('muted', globalPart)} ${fg('dim', '·')} ${fg('muted', projectPart)} ${fg('dim', `· ${mode}`)}`
+ }
+ 
+ // Module level because the working list lives in each extension instance's closure.
+--- a/question.ts
++++ b/question.ts
+@@ -145,6 +145,11 @@
+   const ascii = Boolean(env.PI_ASCII_ICONS) || env.TERM === 'dumb' || env.TERM === 'linux'
+   return !ascii && (env.PI_NERD_FONT === '1' || env.TERM === 'xterm-kitty' || Boolean(env.KITTY_WINDOW_ID)) ? '\ueac7' : '?'
+ }
++/** Space after the glyph: kitty draws a Nerd Font icon over the following cell, so there it takes two to keep a gap. */
++const glyphGap = (env: Record<string, string | undefined>): string => {
++  const ascii = Boolean(env.PI_ASCII_ICONS) || env.TERM === 'dumb' || env.TERM === 'linux'
++  return !ascii && (env.TERM === 'xterm-kitty' || Boolean(env.KITTY_WINDOW_ID)) ? '  ' : ' '
++}
+ 
+ interface QuestionView {
+   width: number
+@@ -178,7 +183,7 @@
+   // the tallest description so the dialog does not jump while moving. Nothing is cut with "...".
+   const wrapped = (text: string, indent: string): string[] => wrapTextWithAnsi(text, Math.max(1, width - indent.length)).map((row) => indent + row)
+   const kind = theme.fg('dim', multiSelect ? 'escolha um ou mais' : 'escolha uma')
+-  const title = ` ${theme.fg('accent', questionGlyph())} ${theme.bold('pergunta')}${header && !batch ? theme.fg('dim', ` · ${header}`) : ''}`
++  const title = ` ${theme.fg('accent', questionGlyph())}${glyphGap(process.env)}${theme.bold('pergunta')}${header && !batch ? theme.fg('dim', ` · ${header}`) : ''}`
+   add(theme.fg('accent', '─'.repeat(width)))
+   if (batch) for (const row of batchHeader(title, tabsLine(batch.tabs, batch.current, theme), theme.fg('dim', `${batch.current + 1}/${batch.tabs.length} · ${multiSelect ? 'escolha um ou mais' : 'escolha uma'}`), width)) add(row)
+   else add(`${title}${' '.repeat(Math.max(2, width - visibleWidth(title) - visibleWidth(kind) - 1))}${kind}`)
+@@ -295,7 +300,7 @@
+   const rail = theme.fg('dim', '│')
+   const asked = v.question.split('\n').map((row) => `${rail} ${theme.fg('muted', row)}`)
+   asked[asked.length - 1] += theme.fg('dim', ` · ${hint} ${expanded ? 'fecha' : 'abre'}`)
+-  const lines = [`${state}${theme.fg('accent', questionGlyph())} ${title}  ${outcome}`, ...asked]
++  const lines = [`${state}${theme.fg('accent', questionGlyph())}${glyphGap(process.env)}${title}  ${outcome}`, ...asked]
+   if (!expanded) return lines
+   for (const label of v.labels) {
+     const hit = failed || v.wasCustom ? false : v.multiSelect ? `, ${answer}, `.includes(`, ${label}, `) : answer === label

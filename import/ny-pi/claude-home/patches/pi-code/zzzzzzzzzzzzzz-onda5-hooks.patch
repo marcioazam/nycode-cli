@@ -1,0 +1,188 @@
+--- a/hooks/index.ts
++++ b/hooks/index.ts
+@@ -240,7 +240,7 @@
+  */
+ function rewrittenUserBash(typed: string, rewritten: unknown, ctx: ExtensionContext): UserBashEventResult | undefined {
+   if (typeof rewritten !== 'string' || rewritten === typed) return undefined
+-  ctx.ui.notify(`A PreToolUse hook rewrote this command; running: ${rewritten}`, 'warning')
++  ctx.ui.notify(hookAttention('PreToolUse reescreveu o comando', `rodando: ${rewritten}`), 'warning')
+   let shellPath: string | undefined
+   try {
+     shellPath = SettingsManager.create(ctx.cwd, undefined, { projectTrusted: ctx.isProjectTrusted?.() === true }).getShellPath()
+@@ -255,6 +255,18 @@
+   }
+ }
+ 
++/** User-visible tiers (display only, never sent to the model): info ◇, needs attention ▲ (warning), failure ✗ (error).
++ * `mayFail` sinks also carry the runners' failure notices ("Hook failed to run", "<hook> hook error"). */
++export function hookNotice(event: string, message: string, mayFail = false): { text: string; level: 'info' | 'error' } {
++  if (mayFail && /^Hook failed to run: | hook error: /.test(message)) return { text: `✗ Hook ${event} falhou · ${message}`, level: 'error' }
++  return { text: `◇ hook ${event} · ${message}`, level: 'info' }
++}
++export const hookAttention = (what: string, detail: string): string => `▲ Hook ${what} · ${detail}`
++const hookSink = (ctx: ExtensionContext, event: string, mayFail = false) => (message: string): void => {
++  const notice = hookNotice(event, message, mayFail)
++  ctx.ui.notify(notice.text, notice.level)
++}
++
+ export default function hooksExtension(pi: ExtensionAPI) {
+   let config: HooksConfig = {}
+   let projectDir = ''
+@@ -308,7 +320,7 @@
+   const pendingStops = new Map<string, string>()
+   const stopRun = (ctx: ExtensionContext, reason: string | undefined): void => {
+     if (reason === undefined) return
+-    ctx.ui.notify(reason, 'warning')
++    ctx.ui.notify(hookAttention('interrompeu a execução', reason), 'warning')
+     ctx.abort()
+   }
+   /** Holds a PreToolUse continue false until this call's result is in (see pendingStops). */
+@@ -461,12 +473,12 @@
+     const payload = { hook_event_name: 'SubagentStop', agent_type: data.agentType, agent_id: data.agentId, ...(data.lastAssistantMessage !== undefined ? { last_assistant_message: data.lastAssistantMessage } : {}) }
+     try {
+       const results = await runNotifyHooks(matchingCommands(config.SubagentStop, data.agentType), payload, boundRunner(ctx))
+-      surfaceSystemMessages(results, (message) => ctx.ui.notify(message, 'warning'))
++      surfaceSystemMessages(results, hookSink(ctx, 'SubagentStop'))
+       // The child has finished, so a continue false has nothing left to stop; its
+       // stopReason is still the message Claude shows the user.
+       for (const result of results) {
+         const parsed = tryParseJson(result.stdout)
+-        if (parsed?.continue === false && parsed.stopReason) ctx.ui.notify(String(parsed.stopReason), 'warning')
++        if (parsed?.continue === false && parsed.stopReason) ctx.ui.notify(hookAttention('SubagentStop interrompeu', String(parsed.stopReason)), 'warning')
+       }
+     } catch {
+       // The bus outlives the session: an event landing between /new disposing this
+@@ -484,7 +496,7 @@
+     const commands = matchingCommands(config.SubagentStart, agentType)
+     if (commands.length === 0) return []
+     const results = await runNotifyHooks(commands, { hook_event_name: 'SubagentStart', agent_type: agentType, agent_id: agentId }, boundRunner(ctx))
+-    surfaceSystemMessages(results, (message) => ctx.ui.notify(message, 'warning'))
++    surfaceSystemMessages(results, hookSink(ctx, 'SubagentStart'))
+     return results.map((result) => promptContext(result.stdout)).filter(Boolean)
+   })
+ 
+@@ -579,7 +591,7 @@
+     const payload = { hook_event_name: 'SessionStart', source: source.value }
+     const run = boundRunner(ctx)
+     const results = await Promise.all(commands.map((command) => run(command, payload, timeoutMs(command))))
+-    surfaceSystemMessages(results, (message) => ctx.ui.notify(message, 'warning'))
++    surfaceSystemMessages(results, hookSink(ctx, 'SessionStart'))
+     pendingSessionContext = results.map((result) => promptContext(result.stdout)).filter(Boolean)
+   })
+ 
+@@ -599,7 +611,7 @@
+ 
+   pi.on('tool_call', async (event, ctx) => {
+     const anchors = { cwd: ctx.cwd, projectRoot: projectDir || ctx.cwd, home: os.homedir() }
+-    const decision = await runPreToolUse(config, event.toolName, event.input, boundRunner(ctx, { tool_use_id: event.toolCallId }), mcpAliases.get(event.toolName), (message) => ctx.ui.notify(message, 'warning'), anchors)
++    const decision = await runPreToolUse(config, event.toolName, event.input, boundRunner(ctx, { tool_use_id: event.toolCallId }), mcpAliases.get(event.toolName), hookSink(ctx, 'PreToolUse', true), anchors)
+     if (!decision.block) {
+       // additionalContext is delivered alongside the tool result, so stash it for
+       // this call's tool_result to append.
+@@ -686,7 +698,7 @@
+     const payload = postToolPayload(event, ctx, eventName, alias, translatedName)
+     const run = boundRunner(ctx, { tool_use_id: event.toolCallId })
+     const results = await Promise.all(commands.map((command) => run(command, payload, timeoutMs(command))))
+-    surfaceSystemMessages(results, (message) => ctx.ui.notify(message, 'warning'))
++    surfaceSystemMessages(results, hookSink(ctx, eventName))
+     // Claude: continue false applies to PostToolUse too, stopping the run after the call.
+     stopRun(ctx, preToolStop ?? continueFalseReason(results))
+     // Claude's updatedToolOutput replaces the output the model sees; a value that
+@@ -711,7 +723,7 @@
+   // no PostToolUse for it.
+   pi.on('user_bash', async (event, ctx) => {
+     const input: { command?: unknown } = { command: event.command }
+-    const decision = await runPreToolUse(config, 'bash', input, boundRunner(ctx), 'Bash', (message) => ctx.ui.notify(message, 'warning'), { cwd: ctx.cwd, projectRoot: projectDir || ctx.cwd, home: os.homedir() })
++    const decision = await runPreToolUse(config, 'bash', input, boundRunner(ctx), 'Bash', hookSink(ctx, 'PreToolUse', true), { cwd: ctx.cwd, projectRoot: projectDir || ctx.cwd, home: os.homedir() })
+     // Claude's "ask": prompt before running and let the command through on approval; with
+     // no UI (headless) the block stands, the same safe default as the tool_call path.
+     const approved = decision.block && decision.ask && ctx.hasUI && (await ctx.ui.confirm('Allow this command?', decision.reason ?? 'A hook asks you to confirm this command.'))
+@@ -731,10 +743,10 @@
+     // Genuine user input is progress, so it breaks a Stop-hook continuation streak: the
+     // block cap counts only consecutive blocks with nothing from the user in between.
+     stopHookBlockCount = 0
+-    const decision = await runUserPromptSubmit(config, event.text, boundRunner(ctx), (message) => ctx.ui.notify(message, 'warning'))
++    const decision = await runUserPromptSubmit(config, event.text, boundRunner(ctx), hookSink(ctx, 'UserPromptSubmit', true))
+     if (decision.block) {
+       // pi's input result has no reason channel, so surface why before consuming it.
+-      ctx.ui.notify(decision.reason ?? 'Prompt blocked by hook', 'error')
++      ctx.ui.notify(hookAttention('UserPromptSubmit bloqueou', decision.reason ?? 'Prompt blocked by hook'), 'warning')
+       return { action: 'handled' }
+     }
+     // "UserPromptSubmit: can't replace the prompt; it only injects additionalContext
+@@ -802,7 +814,7 @@
+       // run forever. Reset the count so a later run (or user turn) starts clean.
+       stopHookActive = false
+       stopHookBlockCount = 0
+-      ctx.ui.notify(`Stop hook block cap reached (${cap} consecutive blocks); ending the turn.`, 'warning')
++      ctx.ui.notify(hookAttention(`Stop bloqueou ${cap} vezes seguidas`, 'encerrando o turno'), 'warning')
+       return
+     }
+     stopHookActive = true
+@@ -833,11 +845,11 @@
+     const payload = { hook_event_name: 'Stop', stop_hook_active: stopHookActive, ...(lastText ? { last_assistant_message: lastText } : {}) }
+     const run = boundRunner(ctx)
+     const results = await Promise.all(commands.map((command) => run(command, payload, timeoutMs(command))))
+-    surfaceSystemMessages(results, (message) => ctx.ui.notify(message, 'warning'))
++    surfaceSystemMessages(results, hookSink(ctx, 'Stop'))
+     const stopMessages: string[] = []
+     const verdicts = results.filter((result) => !result.timedOut).map((result) => stopVerdict(result, stopMessages))
+     const block = verdicts.some((verdict) => verdict.stop) ? undefined : verdicts.find((verdict) => verdict.block)
+-    for (const message of stopMessages) ctx.ui.notify(message, 'warning')
++    for (const message of stopMessages) ctx.ui.notify(hookAttention('Stop interrompeu o turno', message), 'warning')
+     if (!block) {
+       // A non-blocking Stop breaks the streak: the next block starts a fresh count.
+       stopHookActive = false
+@@ -857,7 +869,7 @@
+     // wrong command in the notice whenever an `if`-carrying hook preceded the blocker.
+     const commands = matchingCommands(config.PreCompact, trigger.names).filter((command) => passesIfFilter(command, undefined))
+     const results = await runNotifyHooks(commands, payload, boundRunner(ctx))
+-    surfaceSystemMessages(results, (message) => ctx.ui.notify(message, 'warning'))
++    surfaceSystemMessages(results, hookSink(ctx, 'PreCompact'))
+     // Claude: "Exit with code 2 to block compaction. For a manual /compact, the stderr
+     // message is shown to the user. You can also block by returning JSON with
+     // `decision: block`." pi cancels through the result, and a blocked automatic
+@@ -866,7 +878,7 @@
+       const parsed = tryParseJson(result.stdout)
+       const blocked = result.code === 2 && !result.timedOut ? { reason: result.stderr.trim() || 'Compaction blocked by hook' } : jsonBlockVerdict(parsed, 'Compaction blocked by hook')
+       if (!blocked) continue
+-      ctx.ui.notify(`Compaction blocked by ${commands[index]?.command ?? 'hook'}: ${blocked.reason}`, 'warning')
++      ctx.ui.notify(hookAttention('bloqueou a compactação', blocked.reason), 'warning')
+       return { cancel: true }
+     }
+   })
+@@ -877,14 +889,14 @@
+     const summary = (event as { compactionEntry?: { summary?: unknown } }).compactionEntry?.summary
+     const payload = { hook_event_name: 'PostCompact', trigger: trigger.value, ...(typeof summary === 'string' ? { compact_summary: summary } : {}) }
+     const results = await runNotifyHooks(matchingCommands(config.PostCompact, trigger.names), payload, boundRunner(ctx))
+-    surfaceSystemMessages(results, (message) => ctx.ui.notify(message, 'warning'))
++    surfaceSystemMessages(results, hookSink(ctx, 'PostCompact'))
+     // Claude also fires SessionStart with source "compact" when the session
+     // continues after compaction; its stdout context rides the next agent start,
+     // the same as any other SessionStart context.
+     const sessionStart = matchingCommands(config.SessionStart, 'compact')
+     if (sessionStart.length > 0) {
+       const startResults = await runNotifyHooks(sessionStart, { hook_event_name: 'SessionStart', source: 'compact' }, boundRunner(ctx))
+-      surfaceSystemMessages(startResults, (message) => ctx.ui.notify(message, 'warning'))
++      surfaceSystemMessages(startResults, hookSink(ctx, 'SessionStart'))
+       pendingSessionContext.push(...startResults.map((result) => promptContext(result.stdout)).filter(Boolean))
+     }
+   })
+@@ -901,7 +913,7 @@
+     // requested_model is null: pi does not carry the alias the request named.
+     const payload = { hook_event_name: 'PostModelSwitch', from_model: previousModel.id, to_model: model.id, requested_model: null, source: MODEL_SELECT_SOURCE[source] ?? 'command' }
+     const results = await runNotifyHooks(commands, payload, boundRunner(ctx))
+-    surfaceSystemMessages(results, (message) => ctx.ui.notify(message, 'warning'))
++    surfaceSystemMessages(results, hookSink(ctx, 'PostModelSwitch'))
+     // Claude delivers the hook's stdout (or additionalContext) to Claude with the
+     // next request after the switch; pi's seam for that is the next agent start.
+     pendingSessionContext.push(...results.map((result) => promptContext(result.stdout)).filter(Boolean))
+@@ -921,7 +933,7 @@
+     const sessionEndCommands = inSubagentChild() ? [] : matchingCommands(config.SessionEnd, reason.names).filter((command) => passesIfFilter(command, undefined))
+     const runner = boundRunner(ctx)
+     const results = await Promise.all(sessionEndCommands.map((command) => runner(command, { hook_event_name: 'SessionEnd', reason: reason.value }, sessionEndTimeoutMs(command))))
+-    surfaceSystemMessages(results, (message) => ctx.ui.notify(message, 'warning'))
++    surfaceSystemMessages(results, hookSink(ctx, 'SessionEnd'))
+     // Claude: "In non-interactive mode with the -p flag, Claude Code kills any async hook
+     // still running at teardown". Only there: an interactive session leaves them running, so
+     // an async SessionEnd hook, started by this very shutdown, can finish instead of being

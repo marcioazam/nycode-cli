@@ -1,0 +1,11 @@
+--- a/subagent/section-nav/nav.ts	2026-11-14 12:47:08.887528990 -0300
++++ b/subagent/section-nav/nav.ts	2026-11-14 12:47:08.890630879 -0300
+@@ -231,4 +231,7 @@
+   }
+ }
+ 
+-export const nav = new GroupNav()
++/** One instance per process: pi loads each extension in its own module graph (moduleCache: false), so a plain
++ * module-level instance would give status-line and each section its own bar (internal/shared-slot.ts). */
++const NAV_SLOT = Symbol.for('pi-code.group-nav')
++export const nav: GroupNav = ((globalThis as Record<symbol, unknown>)[NAV_SLOT] ??= new GroupNav()) as GroupNav

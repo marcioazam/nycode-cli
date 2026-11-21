@@ -1,0 +1,73 @@
+--- a/question.ts
++++ b/question.ts
+@@ -125,14 +125,19 @@
+   return checked ? '[x] ' : '[ ] '
+ }
+ 
+-function optionLine(opt: DisplayOption, index: number, selected: boolean, editMode: boolean, checked: boolean | undefined, theme: Theme): string {
+-  const label = `${index + 1}. ${checkbox(checked)}${opt.label}`
+-  const prefix = selected ? theme.fg('accent', '> ') : '  '
++/** Shown in the overlay in place of the free-text option's label; the label itself
++ * stays the logic value (`isOther` is what the code keys on). No number keys select
++ * options, so the lines are not numbered. */
++const OTHER_LABEL = 'Outra resposta…'
++
++export function optionLine(opt: DisplayOption, selected: boolean, editMode: boolean, checked: boolean | undefined, theme: Theme): string {
++  const label = `${checkbox(checked)}${opt.isOther === true ? OTHER_LABEL : opt.label}`
++  const prefix = selected ? theme.fg('accent', '❯ ') : '  '
+   if (opt.isOther === true && editMode) {
+-    return prefix + theme.fg('accent', `${label} ✎`)
++    return prefix + theme.fg('accent', theme.bold(`${label} ✎`))
+   }
+   if (selected) {
+-    return prefix + theme.fg('accent', label)
++    return prefix + theme.fg('accent', theme.bold(label))
+   }
+   return `  ${theme.fg('text', label)}`
+ }
+@@ -153,20 +158,20 @@
+   countdownSeconds?: number
+ }
+ 
+-function buildQuestionLines(view: QuestionView): string[] {
++export function buildQuestionLines(view: QuestionView): string[] {
+   const { width, question, header, options, optionIndex, editMode, multiSelect, checked, editor, theme, countdownSeconds } = view
+   const lines: string[] = []
+   const add = (s: string) => lines.push(truncateToWidth(s, width))
+ 
+   add(theme.fg('accent', '─'.repeat(width)))
+-  if (header) add(theme.fg('muted', ` [${header}]`))
++  add(` ${header ? `${theme.bold(header)} ` : ''}${theme.fg('dim', multiSelect ? 'escolha um ou mais' : 'escolha uma')}`)
+   add(theme.fg('text', ` ${question}`))
+   lines.push('')
+ 
+   for (let i = 0; i < options.length; i++) {
+     const opt = options[i]
+     const box = multiSelect && opt.isOther !== true ? checked[i] : undefined
+-    add(optionLine(opt, i, i === optionIndex, editMode, box, theme))
++    add(optionLine(opt, i === optionIndex, editMode, box, theme))
+     if (opt.description) {
+       add(`     ${theme.fg('muted', opt.description)}`)
+     }
+@@ -174,7 +179,7 @@
+ 
+   if (editMode) {
+     lines.push('')
+-    add(theme.fg('muted', ' Your answer:'))
++    add(theme.fg('muted', ' Sua resposta:'))
+     for (const line of editor.render(width - 2)) {
+       add(` ${line}`)
+     }
+@@ -191,9 +196,9 @@
+ }
+ 
+ function navHint(editMode: boolean, multiSelect: boolean): string {
+-  if (editMode) return ' Enter to submit • Esc to go back'
+-  if (multiSelect) return ' ↑↓ navigate • Space to toggle • Enter to confirm • Esc to cancel'
+-  return ' ↑↓ navigate • Enter to select • Esc to cancel'
++  if (editMode) return ' ⏎ envia · esc volta'
++  if (multiSelect) return ' ↑↓ escolher · espaço marca · ⏎ confirma · esc cancela'
++  return ' ↑↓ escolher · ⏎ confirma · esc cancela'
+ }
+ 
+ /** The comma-joined labels of the checked options, in order. */

@@ -5,6 +5,8 @@ import { homedir } from 'node:os'
 import { test } from 'node:test'
 import { fleetTestEnv } from '../subagent-panel/setup.ts'
 
+// The color assertions need a colored baseline; an ambient NO_COLOR (CI, the gate) made them fail. The NO_COLOR tests set it themselves.
+delete process.env.NO_COLOR
 const { ext } = fleetTestEnv('subagent-render-')
 const tr = await import(`${ext}/subagent/transcript/index.ts`)
 const fmt = await import(`${ext}/subagent/transcript/format.ts`)

@@ -2,18 +2,27 @@
 // node --experimental-strip-types --test ~/.pi/agent/claude-home/patches/pi-code/zzzzzzz-subagent-model-effort/replay.test.ts
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs'
+import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { after, test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 
-const patches = join(dirname(fileURLToPath(import.meta.url)), '..')
-const installed = process.env.FLEET_TEST_PKG ? join(process.env.FLEET_TEST_PKG, 'extensions') : `${homedir()}/.pi/agent/npm/node_modules/pi-code/extensions`
+// Pilha instalada (a do wrapper bin/pi); o symlink resolve para o harness, que não tem os patches locais.
+const here = join(dirname(fileURLToPath(import.meta.url)), '..')
+const live = `${homedir()}/.pi/agent/claude-home/patches/pi-code`
+const patches = existsSync(live) ? live : here
+const pkg = process.env.FLEET_TEST_PKG ? join(process.env.FLEET_TEST_PKG, 'extensions') : `${homedir()}/.pi/agent/npm/node_modules/pi-code/extensions`
 const stack = readdirSync(patches).filter((f) => f.endsWith('.patch')).sort((a, b) => a.localeCompare(b)).map((f) => join(patches, f))
 const MINE = ['zzzzzzz-subagent-model-effort.patch', 'zzzzzzzz-statusline-provider.patch'].map((f) => join(patches, f))
+const later = stack.slice(stack.indexOf(MINE[1]!) + 1) // patches after mine: they must be reverted first
 const tmp = mkdtempSync(join(tmpdir(), 'model-effort-replay-'))
 after(() => rmSync(tmp, { recursive: true }))
+// O bloco permission-control é inserido pelo bin/pi depois da pilha e não faz parte dos patches: a referência é a árvore instalada sem ele (mesmo corte do awk de pi_patch_stack_applied).
+const installed = join(tmp, 'installed')
+cpSync(pkg, installed, { recursive: true })
+const planIndex = join(installed, 'plan-mode/index.ts')
+if (existsSync(planIndex)) writeFileSync(planIndex, readFileSync(planIndex, 'utf8').replace(/^.*pi-harness permission-control BEGIN[\s\S]*?permission-control END.*\n\n?/m, ''))
 
 const patch = (dir: string, file: string, ...flags: string[]) => spawnSync('patch', ['-p1', '-s', '-f', '--no-backup-if-mismatch', '-d', dir, ...flags], { input: readFileSync(file) })
 function files(dir: string, base = dir): string[] {
@@ -38,6 +47,7 @@ test('reverter a pilha inteira dá o original; reaplicar reconstrói a árvore i
   const after = files(work)
   assert.deepEqual(after.sort(), files(installed).sort())
   for (const f of after) assert.equal(readFileSync(join(work, f), 'utf8'), readFileSync(join(installed, f), 'utf8'), f)
+  for (const l of [...later].reverse()) assert.equal(patch(work, l, '-R').status, 0, `reverter ${l}`)
   for (const m of MINE) {
     assert.equal(patch(work, m, '-R', '--dry-run').status, 0, `visto como aplicado: ${m}`)
     assert.notEqual(patch(work, m, '-N', '--dry-run').status, 0, `não reaplica: ${m}`)
@@ -49,7 +59,8 @@ test('reverter só os meus patches deixa o tracker da pilha anterior, sem o rast
   cpSync(installed, work, { recursive: true })
   const tracker = join(work, 'subagent/fleet/tracker.ts')
   assert.ok(readFileSync(tracker, 'utf8').includes('configuredRuntime'), 'instalado tem o patch')
-  for (const m of [...MINE].reverse()) assert.equal(patch(work, m, '-R').status, 0, `reverter ${m}`)
+  // last applied first
+  for (const m of [...MINE, ...later].reverse()) assert.equal(patch(work, m, '-R').status, 0, `reverter ${m}`)
   assert.ok(!readFileSync(tracker, 'utf8').includes('configuredRuntime'), 'anterior ao patch')
   assert.ok(!files(work).includes('/subagent/fleet-ui/runtime-label.ts'), 'arquivo novo some junto')
 })

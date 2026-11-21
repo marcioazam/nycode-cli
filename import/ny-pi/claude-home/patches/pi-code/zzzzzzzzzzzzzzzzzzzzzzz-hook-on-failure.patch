@@ -1,0 +1,60 @@
+--- a/hooks/config.ts
++++ b/hooks/config.ts
+@@ -22,6 +22,9 @@
+    * `args` is set. */
+   shell?: string
+   timeout?: number
++  /** Claude's `onFailure` (v2.1.295+): with "block", a failed hook (exit other than 0 and 2) blocks
++   * a gated event like a timeout does. Default "continue" (non-blocking error). */
++  onFailure?: 'continue' | 'block'
+   /** Claude's background contract, honored on `type: "command"` hooks only: `async` runs
+    * without blocking its event and with no timeout enforced; `asyncRewake` also runs in
+    * the background but keeps its timeout, and wakes the model when the hook exits 2
+@@ -321,6 +324,12 @@
+     const objects = candidate.hooks.filter((hook: unknown) => isRecord(hook))
+     if (objects.length !== candidate.hooks.length) console.warn(`pi-code-hooks: ignoring ${candidate.hooks.length - objects.length} non-object hook(s) in a ${event} entry in ${file}`)
+     candidate.hooks = objects as HookCommand[]
++    for (const hook of candidate.hooks) {
++      if (hook.onFailure !== undefined && hook.onFailure !== 'continue' && hook.onFailure !== 'block') {
++        console.warn(`pi-code-hooks: ignoring onFailure in a ${event} hook in ${file}: must be "continue" or "block"`)
++        delete hook.onFailure
++      }
++    }
+   }
+   if (candidate.matcher !== undefined && typeof candidate.matcher !== 'string') {
+     console.warn(`pi-code-hooks: ignoring ${event} entry in ${file}: "matcher" must be a string`)
+--- a/hooks/decisions.ts
++++ b/hooks/decisions.ts
+@@ -198,6 +198,14 @@
+   if (replacement) replaceRecord(toolInput, replacement)
+ }
+ 
++/** Claude's `onFailure: "block"`: an exit other than 0 and 2 (2 is the hook's own block) fails the
++ * call closed. Timeout and spawn failure are handled by the callers. */
++function onFailureBlock(command: HookCommand, result: HookRunResult): string | undefined {
++  if (command.onFailure !== 'block' || result.timedOut || result.spawnFailed || result.code === 0 || result.code === 2) return undefined
++  const firstLine = result.stderr.trim().split('\n')[0]
++  return `Hook failed (exit ${result.code}, onFailure: block): ${command.command}${firstLine ? `: ${firstLine}` : ''}`
++}
++
+ /** The fail-closed scan for the gated events: a timed-out or never-spawned hook
+  * reached no verdict, and its silence must not read as an allow. */
+ function failClosedVerdict(commands: HookCommand[], results: HookRunResult[]): HookDecision | undefined {
+@@ -209,6 +217,8 @@
+     // its code 0 must fail closed like a timeout, not read as an allow exactly when
+     // the machine is degraded.
+     if (result.spawnFailed) return { block: true, reason: `Hook failed to run: ${commands[i].command}: ${result.stderr.trim() || 'unknown error'}` }
++    const failed = onFailureBlock(commands[i], result)
++    if (failed) return { block: true, reason: failed }
+   }
+   return undefined
+ }
+@@ -315,6 +325,8 @@
+     if (result.timedOut) return { block: true, reason: `Hook timed out after ${timeoutMs(commands[i])}ms: ${commands[i].command}`, context: '' }
+     // No verdict was delivered, so fail closed like a timeout (see runPreToolUse).
+     if (result.spawnFailed) return { block: true, reason: `Hook failed to run: ${commands[i].command}: ${result.stderr.trim() || 'unknown error'}`, context: '' }
++    const failed = onFailureBlock(commands[i], result)
++    if (failed) return { block: true, reason: failed, context: '' }
+   }
+   if (onSystemMessage) surfaceSystemMessages(results, onSystemMessage)
+   const contexts: string[] = []

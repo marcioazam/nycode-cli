@@ -1,5 +1,6 @@
 // Testes do patch do /goal: node --experimental-strip-types --test ~/.pi/agent/claude-home/patches/pi-code/goal.test.ts
 import assert from 'node:assert/strict'
+import { execFileSync } from 'node:child_process'
 import { cpSync, readFileSync, mkdirSync, mkdtempSync, symlinkSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -9,7 +10,17 @@ import { test } from 'node:test'
 // ao lado para resolver @earendil-works/*.
 const tmp = mkdtempSync(join(tmpdir(), 'goal-test-'))
 const base = join(tmp, 'internal')
-cpSync(`${homedir()}/.pi/agent/npm/node_modules/pi-code/extensions/internal`, base, { recursive: true })
+cpSync(`${homedir()}/.pi/agent/npm/node_modules/pi-code/extensions`, tmp, { recursive: true })
+// O patch onda5-goal entra por último na pilha: aplica na cópia se o pacote vivo ainda não o tem.
+const ONDA5 = new URL('./zzzzzzzzzzzzzz-onda5-goal.patch', import.meta.url).pathname
+function ensureOnda5(ext: string): void {
+  try {
+    execFileSync('patch', ['-d', ext, '-p1', '-R', '-s', '--dry-run', '-i', ONDA5], { stdio: 'ignore' })
+  } catch {
+    execFileSync('patch', ['-d', ext, '-p1', '-N', '-s', '--no-backup-if-mismatch', '-i', ONDA5])
+  }
+}
+ensureOnda5(tmp)
 mkdirSync(join(tmp, 'node_modules'))
 symlinkSync(`${homedir()}/.pi/agent/install/releases/${readFileSync(`${homedir()}/.pi/agent/install/current-version`, "utf8").trim()}/node_modules/@earendil-works`, join(tmp, 'node_modules', '@earendil-works'))
 const ev = await import(`${base}/goal-evaluator.ts`)
@@ -102,41 +113,43 @@ test('goalMessageLines: achieved recolhido e expandido', () => {
   const d = { kind: 'achieved', condition: 'tests pass', reason: 'all green', summary }
   const c = ui.goalMessageLines('body', d, false, style, 'HINT')
   assert.equal(c.length, 1)
-  assert.match(c[0], /^✓ Goal achieved \(5m 3s · 3 turns · 12\.3k tokens\) HINT$/)
-  assert.deepEqual(ui.goalMessageLines('body', d, true, style, 'HINT').slice(1), ['  Goal: tests pass', '  Reason: all green', '  Evaluator: anthropic/haiku'])
+  assert.match(c[0], /^✓ Objetivo atingido \(5m 3s · 3 turnos · 12\.3k tok\) HINT$/)
+  assert.deepEqual(ui.goalMessageLines('body', d, true, style, 'HINT').slice(1), ['  Objetivo: tests pass', '  Motivo: all green', '  Avaliador: anthropic/haiku'])
 })
 
 test('goalMessageLines: failed mostra a reason mesmo recolhido', () => {
   const d = { kind: 'failed', condition: 'x', reason: 'impossible', summary }
   const c = ui.goalMessageLines('body', d, false, style, 'HINT')
-  assert.match(c[0], /^✗ Goal could not be achieved \(/)
+  assert.match(c[0], /^✗ Objetivo não pôde ser atingido \(/)
   assert.equal(c[1], '  impossible')
 })
 
 test('goalMessageLines: not_met, set, cleared e sem details', () => {
-  assert.deepEqual(ui.goalMessageLines('b', { kind: 'not_met', condition: 'c', reason: 'r' }, false, style, 'H'), ['○ Goal not yet met… continuing H'])
-  assert.deepEqual(ui.goalMessageLines('b', { kind: 'not_met', condition: 'c', reason: 'r' }, true, style, 'H'), ['○ Goal not yet met… continuing', '  Goal: c', '  Reason: r'])
-  assert.deepEqual(ui.goalMessageLines('DIRECTIVE', { kind: 'set', condition: 'c' }, false, style, 'H'), ['◎ Goal set: c'])
-  assert.deepEqual(ui.goalMessageLines('DIRECTIVE', { kind: 'set', condition: 'c' }, true, style, 'H'), ['◎ Goal set: c', 'DIRECTIVE'])
-  assert.deepEqual(ui.goalMessageLines('x', { kind: 'cleared', condition: 'c' }, false, style, 'H'), ['Goal cleared: c'])
+  assert.deepEqual(ui.goalMessageLines('b', { kind: 'not_met', condition: 'c', reason: 'r' }, false, style, 'H'), ['○ Objetivo ainda não atingido · continuando H'])
+  assert.deepEqual(ui.goalMessageLines('b', { kind: 'not_met', condition: 'c', reason: 'r' }, true, style, 'H'), ['○ Objetivo ainda não atingido · continuando', '  Objetivo: c', '  Motivo: r'])
+  assert.deepEqual(ui.goalMessageLines('DIRECTIVE', { kind: 'set', condition: 'c' }, false, style, 'H'), ['◎ Objetivo definido c'])
+  assert.deepEqual(ui.goalMessageLines('DIRECTIVE', { kind: 'set', condition: 'c' }, true, style, 'H'), ['◎ Objetivo definido c', 'DIRECTIVE'])
+  assert.deepEqual(ui.goalMessageLines('x', { kind: 'cleared', condition: 'c' }, false, style, 'H'), ['Objetivo encerrado: c'])
   assert.deepEqual(ui.goalMessageLines('l1\nl2', undefined, false, style, 'H'), ['l1 H'])
   assert.deepEqual(ui.goalMessageLines('l1\nl2', undefined, true, style, 'H'), ['l1\nl2'])
 })
 
-test('indicatorText omite o tempo no primeiro segundo', () => {
-  assert.equal(ui.indicatorText(500), '◎ /goal active')
-  assert.equal(ui.indicatorText(300_000), '◎ /goal active (5m 0s)')
+test('indicatorText: turnos e tempo só quando existem', () => {
+  assert.equal(ui.indicatorText(500), '◎ objetivo')
+  assert.equal(ui.indicatorText(300_000), '◎ objetivo · 5m 0s')
+  assert.equal(ui.indicatorText(300_000, 1), '◎ objetivo · 1 turno · 5m 0s')
+  assert.equal(ui.indicatorText(300_000, 3), '◎ objetivo · 3 turnos · 5m 0s')
 })
 
 test('goalPanelLines: ativo, concluído e vazio', () => {
   const a = ui.goalPanelLines({ active: summary }, style)
-  assert.equal(a[0], '◎ Goal active')
-  assert.equal(a[1], 'running 5m 3s · 3 turns · 12.3k tokens')
-  assert.ok(a.includes('Goal: tests pass') && a.includes('Last check: all green') && a.includes('Evaluator: anthropic/haiku'))
-  assert.equal(a.at(-1), '/goal clear to stop early · esc to dismiss')
-  assert.equal(ui.goalPanelLines({ active: { ...summary, iterations: 0 } }, style)[1], 'running 5m 3s · 12.3k tokens')
+  assert.equal(a[0], '◎ Objetivo ativo')
+  assert.equal(a[1], 'há 5m 3s · 3 turnos · 12.3k tok')
+  assert.ok(a.includes('Objetivo: tests pass') && a.includes('Última checagem: all green') && a.includes('Avaliador: anthropic/haiku'))
+  assert.equal(a.at(-1), '/goal clear encerra · esc fecha')
+  assert.equal(ui.goalPanelLines({ active: { ...summary, iterations: 0 } }, style)[1], 'há 5m 3s · 12.3k tok')
   const d = ui.goalPanelLines({ achieved: summary }, style)
-  assert.equal(d[0], '✓ Goal achieved')
-  assert.equal(d.at(-1), '/goal <condition> to set another · esc to dismiss')
-  assert.deepEqual(ui.goalPanelLines({}, style), ['Goal', '', 'No goal set /goal <condition> to set one', '', 'esc to dismiss'])
+  assert.equal(d[0], '✓ Objetivo atingido')
+  assert.equal(d.at(-1), '/goal <condição> define outro · esc fecha')
+  assert.deepEqual(ui.goalPanelLines({}, style), ['Nenhum objetivo · /goal <condição> define um', '', 'esc fecha'])
 })
