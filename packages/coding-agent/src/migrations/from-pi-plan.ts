@@ -108,7 +108,7 @@ export function buildPlan(source: string, dest: string): Plan {
 	if (piSettings && (existsSync(settingsPath) || Object.keys(env.values).length > 0)) {
 		const result = convertSettings(piSettings, env);
 		add(
-			{ rel: "settings.json", label: `converted, ${result.converted.length} key(s) from local.env` },
+			{ rel: "settings.json", label: `converted, ${result.converted.length} key(s) from local.env`, mode: 0o600 },
 			`${JSON.stringify(result.settings, null, 2)}\n`,
 		);
 		for (const line of result.converted) plan.notes.push(`local.env: ${line}`);
