@@ -53,7 +53,7 @@ Mensagem a um agente rodando: pi tem `pi.sendUserMessage(text, { deliverAs: "ste
   `nesting.ts` (arquivo nosso, do `subagent-nesting.patch`) mudou para `subagent/nesting/index.ts`; os 7 arquivos
   upstream que nenhum patch toca (`agents`, `child`, `params`, `render-result`, `render`, `types`, `worktree`) ganharam
   pins de blob no `VENDORED` do `structure.py` (desde o desvínculo do Codex, a cópia do pi
-  `claude-home/bin/structure/structure.py`; o `~/.codex` voltou ao original) (blob = `npm pack pi-code@1.7.0`, shasum `8ba1f81…`), o
+  `scripts/ci/lint/structure/structure.py`; o `~/.codex` voltou ao original) (blob = `npm pack pi-code@1.7.0`, shasum `8ba1f81…`), o
   mecanismo da ferramenta para terceiros byte a byte iguais ao upstream. Resultado: `structure.py` na árvore
   `subagent/` inteira dá `findings: []` (raiz com os 6 arquivos patchados) e o gate exige `findings: []` sem exceção.
   Um pi-code novo que mude um desses arquivos tira o pin do ar e o gate reprova até reverificar e refazer o pin.
@@ -184,7 +184,7 @@ Gate único (`~/.cache/pi-fleet-work/gate.sh` via `gate-runner`, árvore final):
   `fleet/` e `fleet-ui/` 100) e toda linha acrescentada pelo patch executada (ex.: `index.ts` 72/72, `run.ts` 20/20,
   `background.ts` 23/23, `store.ts` 287/287); patches antigos passam; typecheck `new_errors=0 base_errors=0`;
   `structure`: `patches/pi-code` sem achados (26 arquivos), `subagent/` inteiro só com `over-7-code-files:.:13`
-  (raiz idêntica, em nomes, aos 13 arquivos publicados pelo pi-code 1.7.0; raiz dona `~/.pi/agent/npm` exclui
+  (raiz idêntica, em nomes, aos 13 arquivos publicados pelo pi-code 1.7.0; raiz dona `~/.nycode/agent/npm` exclui
   `node_modules`); vermelho: 9 variantes exit 1, cada uma no seu teste (nova: `bg-cancel`); `patch-roundtrip` e
   `upgrade` (pristino do `npm pack` + laço do wrapper = instalado; a pilha reversa volta ao pristino) exit 0. Sem
   sobras em `/tmp`. Estabilidade: a suíte rodou 4 vezes com cobertura e 1 sem, 100/100 em todas.
@@ -228,7 +228,7 @@ sincronizar com o Codex; rodapés históricos ficam como texto).
 - ~~Link `~/.agents/skills/cua-driver`: mantido (o `cua-driver skills update` o atualiza; o pi carrega a skill por ele).~~ Substituído em "Separação total do Codex" (2026-11-13).
   As reprovações `skills: cua-driver:symlink-skill` e `structure: cua-driver:unsafe-or-missing-project-root` são do
   `harness-check` do Codex, que o pi não roda mais; aceitas pelo usuário, não são pendência do pi.
-- Checador de estrutura próprio: `claude-home/bin/structure/structure.py` (cópia de
+- Checador de estrutura próprio: `scripts/ci/lint/structure/structure.py` (cópia de
   `~/.codex/bin/harness_checks/structure.py` sem `harness_roots`, com os pins do impeccable e do pi-code) e
   `test_structure.py` (16 testes; trace stdlib: 96,4% das linhas). Consumidores repontados: `CLAUDE.md`,
   `rules/harness-economy.md` (no lugar do `harness-check` do Codex), skills engineering-standards, `ripple-hunt`,
@@ -238,7 +238,7 @@ sincronizar com o Codex; rodapés históricos ficam como texto).
   mais o pi nesses arquivos.
 - Contrato: `~/.codex/AGENTS.md` saiu do `PORTS` do `check-instructions.py`, do manifesto e do snapshot; links de
   "working contract" para o AGENTS.md (skills `tdd`, `engineering-standards`, `accessibility-audit`,
-  `agent-routing`; agentes `test-author`, `pente-fino`; `/pre-launch`) apontam para `claude-home/CLAUDE.md`;
+  `agent-routing`; agentes `test-author`, `pente-fino`; `/pre-launch`) apontam para `packages/coding-agent/resources/instructions/contract.md`;
   `agent-contract.md` diz que o pi não roda nada em `~/.codex`.
 - Roteamento: `codex exec` saiu de `rules/research-and-tools.md` e das skills agent-routing, `evidence-research`
   e `perplexity-mcp-sota` (que também deixou de ler a config do Codex).
@@ -263,7 +263,7 @@ sincronizar com o Codex; rodapés históricos ficam como texto).
   - 4 links reais quebrados em `offensive-initial-access` (`exploit/edr.md`, `exploit/shellcode.md`, arquivos que nem o
     upstream tem) apontam para as skills irmãs `offensive-edr-evasion` e `offensive-shellcode`.
   - `skills/claude-red` (bundle-recurso sem `SKILL.md`, nenhuma skill o referencia por caminho) mudou para
-    `~/.pi/agent/vendor/claude-red`; o `pi_harness_check` acusava "no SKILL.md".
+    `~/.nycode/agent/vendor/claude-red`; o `pi_harness_check` acusava "no SKILL.md".
   - `agents/test-author.md` cita "pi's global contract" em vez do nome do arquivo (regra do `check-agents.py`).
   - Resultado: `pi_harness_check --quiet` 16 erros → 0 (rc 0; os 29 avisos foram zerados na 4ª rodada, abaixo),
     `check-agents` OK (53),

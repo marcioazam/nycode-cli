@@ -1,6 +1,6 @@
-# Hooks do `~/.claude` no pi: porta por custo x benefício (2026-11-11, quarta rodada)
+# Hooks do `~/.claude` no nycode: porta por custo x benefício (2026-11-11, quarta rodada)
 
-Pedido do usuário (2026-11-11): trazer os hooks do `.claude` para o pi, adaptar e melhorar cada um, ler um a um e
+Pedido do usuário (2026-11-11): trazer os hooks do `.claude` para o nycode, adaptar e melhorar cada um, ler um a um e
 terminar sem bugs, pendências ou gaps. Restrição dada no meio da tarefa: **"não coloque o que não for custo x
 benefício e o que não valer"**. Este registro atualiza a tabela da terceira rodada em `pi-instructions.md`.
 
@@ -12,24 +12,24 @@ efeito nos dados do Claude.
 
 Fontes: `~/.claude/settings.json` (`hooks`), `~/.claude/hooks/**` e os hooks dos plugins **ligados** em `enabledPlugins`.
 
-| Hook do Claude | Decisão no pi | Por quê (evidência) |
+| Hook do Claude | Decisão no nycode | Por quê (evidência) |
 |---|---|---|
-| `hook-dispatch.sh` SessionStart: nota pós-compactação, repo, `/tmp`, launchers MCP, updates, scan de skills, lint do knowledge vault | **portado** `hooks/dispatch/hook-dispatch.sh` | roda 1 vez por sessão; a nota pós-compactação é a regra de retomada do CLAUDE.md. Launchers lidos de `~/.pi/agent/mcp.json`: o `harness_currency.py --missing` do Claude lê `.claude.json` e, com o `CLAUDE_CONFIG_DIR` do pi, acusava 14 servidores "faltando" |
+| `hook-dispatch.sh` SessionStart: nota pós-compactação, repo, `/tmp`, launchers MCP, updates, scan de skills, lint do knowledge vault | **portado** `hooks/dispatch/hook-dispatch.sh` | roda 1 vez por sessão; a nota pós-compactação é a regra de retomada do CLAUDE.md. Launchers lidos de `~/.nycode/agent/mcp.json`: o `harness_currency.py --missing` do Claude lê `.claude.json` e, com o `CLAUDE_CONFIG_DIR` do nycode, acusava 14 servidores "faltando" |
 | `hook-dispatch.sh` PostToolUse: aviso de teste editado, alerta de injeção, nota do Perplexity, lembrete do knowledge vault, lembrete de entrega git | **portado** (mesmo script) | texto só quando o gatilho casa; 4,5 ms ± 0,3 por chamada de ferramenta (hyperfine, 30 execuções) |
-| Sensor de exclusão de cobertura (PostToolUse Edit/Write; só no pi, 2026-11-12) | **novo** no mesmo script (`edit_sensors`) | na eval `pi-outcome-k2` o agente pôs `pragma: no cover` (doces-ou-travessuras: TRAVESSURA, `coverage-pragma`); o sensor devolve o lembrete do contrato na hora, sem bloquear; teste `test_coverage_exclusion_sensor` (vermelho antes, verde depois) |
+| Sensor de exclusão de cobertura (PostToolUse Edit/Write; só no nycode, 2026-11-12) | **novo** no mesmo script (`edit_sensors`) | na eval `pi-outcome-k2` o agente pôs `pragma: no cover` (doces-ou-travessuras: TRAVESSURA, `coverage-pragma`); o sensor devolve o lembrete do contrato na hora, sem bloquear; teste `test_coverage_exclusion_sensor` (vermelho antes, verde depois) |
 | `hook-dispatch.sh` auditoria (`audit.jsonl`, notify-send) | **fora** | só observa; `pi_telemetry.py audit` reconstrói das sessões; o guard já nega o catastrófico |
 | `hook-dispatch.sh` ledger + `claims/cade_o_print.py` (Stop) | **fora** | no Claude, 85 julgamentos e 0 avisos ao modelo (modo feedback nunca ligado; 51 `unknown`); `pi_telemetry.py claims` faz o mesmo julgamento offline |
-| `hook-dispatch.sh` PreToolUse (worktree preflight) | **nativo do pi-code** | `subagent/worktree.ts` falha a execução fora de um checkout Git; nenhum agente do pi declara `isolation` |
-| `route_hint.py` + `route_hints.json` (UserPromptSubmit) | **fora** | no Claude está ligado, mas "seguida" é só coincidência: mediana ~38% (multiagent 7%, reliability 12%), sem par controle; no goal8 o modelo ignorou a skill indicada em 10 de 10 casos; custa até 1200 caracteres por prompt que casa e 26 ms; o pi já lista skills e agentes no prompt |
-| `subagent_telemetry.py`, `tool_use_telemetry.py`, `lib/telemetry_io.py` | **fora** | só observam; o SubagentStop do pi não traz usage; `pi_telemetry.py tools\|subagents\|cost` lê tudo das sessões |
+| `hook-dispatch.sh` PreToolUse (worktree preflight) | **nativo do pi-code** | `subagent/worktree.ts` falha a execução fora de um checkout Git; nenhum agente do nycode declara `isolation` |
+| `route_hint.py` + `route_hints.json` (UserPromptSubmit) | **fora** | no Claude está ligado, mas "seguida" é só coincidência: mediana ~38% (multiagent 7%, reliability 12%), sem par controle; no goal8 o modelo ignorou a skill indicada em 10 de 10 casos; custa até 1200 caracteres por prompt que casa e 26 ms; o nycode já lista skills e agentes no prompt |
+| `subagent_telemetry.py`, `tool_use_telemetry.py`, `lib/telemetry_io.py` | **fora** | só observam; o SubagentStop do nycode não traz usage; `pi_telemetry.py tools\|subagents\|cost` lê tudo das sessões |
 | `plan/plan_gate.py` | `extensions/plan-gate.ts` (terceira rodada) | cumpre a decisão de 2026-11-08 |
 | `sound-notify.py` | `extensions/sound-notify/index.ts` (terceira rodada) | 1 processo por turno interativo |
 | `graph_context.py` | `hooks/graph_context.py` (segunda rodada) | linhas `Graph:`/`knowledge vault:` |
-| `context-mode-cache-heal.mjs`, hooks do plugin context-mode | **não se aplica** | o pi não usa context-mode |
+| `context-mode-cache-heal.mjs`, hooks do plugin context-mode | **não se aplica** | o nycode não usa context-mode |
 | plugin impeccable (SessionStart, PostToolUse Edit\|Write, Stop) | **portado com gate** `hooks/impeccable_gate.sh hook` | só roda em projeto com `PRODUCT.md`, `DESIGN.md` ou `.impeccable/` na raiz; fora deles ~5 ms por Edit/Write e nada mais (no Claude roda e cria `.impeccable/` em todo projeto). `impeccable hooks status` diz "not wired" (compara o comando exato do pacote) e o `context` pede um `detect` manual no fim. Medido: o pedido continua mesmo numa simulação fiel do Claude (comando exato, `CLAUDE_ENV_FILE`, `IMPECCABLE_SESSION_ID`, `CLAUDECODE`, `CLAUDE_PROJECT_DIR`), e o pi-code não implementa `CLAUDE_ENV_FILE`; o custo é um `detect` por trabalho de design, então fica aceito |
 | plugin ponytail (SessionStart, SubagentStart, UserPromptSubmit) | extensão `vendor/ponytail/pi-extension` + `PONYTAIL_SUBAGENT_MATCHER` no `settings.json` | os filhos herdam o modo do pai e só os agentes writers recebem as regras (~1870 tokens por turno a menos nos outros), como no Claude |
 
-## Registro em `claude-home/settings.json`
+## Registro em `settings.json`
 
 | Evento | Hooks |
 |---|---|
@@ -40,7 +40,7 @@ Fontes: `~/.claude/settings.json` (`hooks`), `~/.claude/hooks/**` e os hooks dos
 | Stop | `ralph-loop`, `impeccable_gate.sh hook` (30 s) |
 | `env` | `PONYTAIL_SUBAGENT_MATCHER` (lista de writers do Claude) |
 
-O pi-code roda os eventos de ferramenta também nos filhos do `subagent` (`PI_CODE_SUBAGENT=1`) e pula neles
+O pi-code roda os eventos de ferramenta também nos filhos do `subagent` (`NYCODE_SUBAGENT=1`) e pula neles
 SessionStart, Stop e UserPromptSubmit, como o Claude (`extensions/hooks/index.ts`, `inSubagentChild`); os lembretes de
 marco e entrega são só da sessão principal.
 
@@ -58,8 +58,8 @@ marco e entrega são só da sessão principal.
 - Testes: `hooks/` (guard, graph_context, impeccable_gate) e `hooks/dispatch` verdes; ponytail `npm test` 30/30;
   shellcheck limpo; `check-instructions.py` 0 problema; `structure.py` sem achados em `hooks/`, `bin/` (dividido em
   `telemetry/`, `hud/`, `tests/`) e `vendor/ponytail/pi-extension`. Saídas na conversa da tarefa.
-- E2E `pi -p` (Sonnet 5.5): notas de SessionStart, "Test file edited", achado `[gradient-text]` do impeccable num
-  projeto com `PRODUCT.md`, lembretes de knowledge vault e entrega depois de `git commit`; stderr do pi vazio. Ponytail:
+- E2E `nycode -p` (Sonnet 5.5): notas de SessionStart, "Test file edited", achado `[gradient-text]` do impeccable num
+  projeto com `PRODUCT.md`, lembretes de knowledge vault e entrega depois de `git commit`; stderr do nycode vazio. Ponytail:
   Explore "No", general-purpose "Yes" para "PONYTAIL MODE ACTIVE" no prompt.
 - Pesquisa MCP: Perplexity em <https://code.claude.com/docs/en/hooks> e <https://code.claude.com/docs/en/hooks-guide>
   (`additionalContext`, `async`, `if`, `SessionStart.source`); Keenable na doc de hooks do pi-code e em pacotes
@@ -78,7 +78,7 @@ Porta como hook da proposta P1 do Claude (`~/.claude/docs/harness-audit-2026-11-
 regra). A regra de economia diz que um requisito sem exceção pertence a um hook, então aqui é uma negação no guard.
 
 - Falha: a ferramenta `bash` roda `bash -c "<comando>"`, e um padrão `-f` que aparece no próprio comando casa com o
-  shell e o mata. No Claude foram 216 erros e 153 saídas 144 em 1.668 chamadas. No pi aconteceu de novo ao vivo em
+  shell e o mata. No Claude foram 216 erros e 153 saídas 144 em 1.668 chamadas. No nycode aconteceu de novo ao vivo em
   2026-11-12 (exit 143).
 - Regra: `pkill -f`/`--full`, ou `pgrep -f` cuja saída vai para `kill` (`| xargs kill`, `kill $(...)` ou crases), é
   negado quando o padrão casa com o comando inteiro. A negação vale também sob bypass. A mensagem manda usar o

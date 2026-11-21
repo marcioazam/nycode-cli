@@ -100,7 +100,7 @@ apagar `team.patch` e desligar `PI_CODE_TEAMS`.
 - [DONE:3] decisão acima.
 - [DONE:4] HUD sem agents (13/13 testes HUD; red 5/1 → green).
 - [DONE:5] painel no tema do HUD (38/38 fleet-ui; patch reproduz byte a byte; teste dividido 745+176 linhas).
-- [DONE:6] alavancas em `claude-home/skills/swarm-orchestration/SKILL.md` (+644 B, `check-instructions` 0 problemas).
+- [DONE:6] alavancas em `packages/coding-agent/resources/skills/swarm-orchestration/SKILL.md` (+644 B, `check-instructions` 0 problemas).
 - [DONE:7] teams: `subagent/team/{types,store,route,tasks,feed,ui,index}.ts` em `team.patch` (depois de
   `subagent-panel.patch`); `child.ts` e `modes.ts` intocados (o `withTeamTool` entra em `run.ts` e nos agentes do
   background em `index.ts`); headless com `PI_CODE_TEAMS=1` cria a frota (smoke Haiku: `TEAM_SMOKE_OK` do Explore
@@ -108,7 +108,7 @@ apagar `team.patch` e desligar `PI_CODE_TEAMS`.
 - [DONE:8] eval pareada (`run_pi.py`, outcome, k=2, jobs 1, Opus 5.5, os 8 casos da rodada 6; braços off/on
   simultâneos): `teams-off-20261113T104427` e `teams-on-20261113T104427` (`~/.local/state/pelo-em-ovo/results/`).
   Abortada pela checagem de drift após 6 unidades por braço: outra sessão (pid 298917) gravou `retry` em
-  `~/.pi/agent/settings.json` às 10:48:47 (backup dela `settings.json.bak-retry`). Parcial pareado: off 6/6, on 5/6
+  `~/.nycode/agent/settings.json` às 10:48:47 (backup dela `settings.json.bak-retry`). Parcial pareado: off 6/6, on 5/6
   (`out-review-adjacent` `findings_min_recall`, 1 run, diagnóstico), custo $1,98 vs $2,00 (1,01x); o modelo não
   chamou a ferramenta `team` em nenhum caso. Gasto $3,98 de 20. **Veredito: `no_worse` não demonstrado → teams
   ficam opt-in** (regra do pedido). Não refeita: a outra sessão seguia editando o harness (nova rodada sairia

@@ -14,7 +14,7 @@ Pedido do dono: fechar as seis lacunas do `/diagnostico` (`pi-diagnostico-2026-1
    parada e erro, inclusive chamadas fora do laço do agente (compactação, `/btw`, avaliador do `/goal`).
 4. **Filhos**: falhas e avisos de subagentes (primeiro plano, segundo plano, lote) chegam ao painel do pai com a fonte
    `sub:<agente>`; os filhos usam o mesmo trace id (`TRACEPARENT`).
-5. **Exportação**: spans em OTLP JSON Lines (`~/.pi/agent/diag/traces.jsonl`); com `OTEL_EXPORTER_OTLP_ENDPOINT` definido,
+5. **Exportação**: spans em OTLP JSON Lines (`~/.nycode/agent/diag/traces.jsonl`); com `OTEL_EXPORTER_OTLP_ENDPOINT` definido,
    envio OTLP/HTTP JSON em lotes, limitado, sem derrubar o pi.
 6. **`/doctor`**: verifica a saúde do harness e imprime `✓ / ▲ / ✕` por item com a correção sugerida; só leitura.
 7. **Tela**: faixa acima do editor com os últimos avisos e erros no momento em que acontecem; nível ajustável
@@ -59,7 +59,7 @@ Decisões que saem da pesquisa:
   confirmado por sonda); o retorno tem `.result()`.
 - Filhos: `subagent/run.ts:346`, `background.ts:336` herdam `process.env` (logo `PI_DIAG_INBOX` e `TRACEPARENT`);
   `diagnostico/index.ts:44` hoje sai cedo com `PI_CODE_SUBAGENT=1`.
-- Já existe `claude-home/bin/doctor/pi-doctor` (97 linhas: JSON de config, caminhos do settings, extensões sem index,
+- Já existe `scripts/harness/doctor/pi-doctor` (97 linhas: JSON de config, caminhos do settings, extensões sem index,
   pilha de patches); não há `/doctor` na sessão.
 
 ## Desenho
