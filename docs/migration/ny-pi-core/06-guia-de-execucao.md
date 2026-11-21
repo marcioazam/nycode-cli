@@ -517,7 +517,7 @@ Cada item segue o [ciclo de uma unidade](#ciclo). Das 23 unidades, 21 têm "Fase
 e `no-web-search` é F5); 19 migram e 2 não. Ordem de dependência, com o teste que vira o da extensão (`ext/` =
 `extensions/`, `bt/` = `claude-home/bin/tests/`):
 
-1. `docs-pointer` (K7, de `pi-docs`), `bash-timeout` (K8, opção da ferramenta `bash`), `compact-threshold` (K9, de
+1. `docs-pointer` (de `pi-docs`, extensão embutida, D-36), `bash-timeout` (K8, opção da ferramenta `bash`), `compact-threshold` (K9, de
    `compact-at-400k.ts`), `footer` (de `footer-no-stats.ts`, sem teste em `origin/main`).
 2. `up-dequeue`, `sound-notify`, `auto-resume`, `completion-gate`, `prefix-cache-1h`, `todo-sync` (funde em `todo`),
    `syntax-check` (`@vscode/tree-sitter-wasm` 0.3.1 exata), `dev-commands` (2 testes), `headless-lean`, depois

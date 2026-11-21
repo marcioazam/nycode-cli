@@ -131,7 +131,7 @@ ganha a atribuição e o commit de origem.
 | `headless-lean` | `extensions/headless-lean/` | N2 | Só no modo `print` | F7 |
 | `context-files` | `extensions/no-context-files-covers-claude-md.ts` | — | **Some**: existia para contornar a injeção de `CLAUDE.md` pelo pi-code; com `claude-rules` embutida a regra é escrita direto nela | F7 |
 | `no-web-search` | `extensions/no-web-search.ts` | — | **Some**: `web` nasce desligada | F5 |
-| `docs-pointer` | `extensions/pi-docs/` | N1 | A seção `docs` do prompt de sistema passa a ser uma linha por padrão | F7 |
+| `docs-pointer` | `extensions/pi-docs/` | N2 | A seção `docs` do prompt de sistema passa a ser uma linha por padrão; extensão que sobrescreve `sections.docs`, como no ny-pi (D-36) | F7 |
 | `plan-gate` | `extensions/plan-gate.ts` | N2 | Depende de `plan-mode` e do agente `plan-reviewer` | F7 |
 | `prefix-cache-1h` | `extensions/prefix-cache-1h/` | N2 | Só sessão interativa | F7 |
 | `import-claude-session` | `extensions/puxar.ts` | N2 | Opcional; chama `scripts/harness/puxar/puxar.py` | F7 |
@@ -165,7 +165,7 @@ Lista fechada. Cada linha é uma costura no upstream e entra em [08](08-sincroni
 | K4 | `packages/coding-agent/src/core/settings-schema.ts`, `settings-defaults.ts` | Bloco `harness` e `permissions` (seção 5); `defaultProjectTrust` padrão `never`; `quietStartup` padrão `header`; `retry` padrão do ny-pi | `bin/pi`, `settings.json.example`, `local.env.example` | F4 |
 | K5 | `packages/coding-agent/src/extensions/index.ts` | Uma linha de registro por extensão embutida | — | F5 a F9 |
 | K6 | `packages/coding-agent/src/core/resource-loader.ts` | Escopo `builtin` para agentes, skills, comandos, regras e instruções em `resources/`, com a menor precedência | `CLAUDE_CONFIG_DIR`, `publish.list` | F8 |
-| K7 | `packages/coding-agent/src/core/system-prompt.ts` | Seção `docs` em uma linha; inclusão das instruções embarcadas | `extensions/pi-docs`, `claude-home/CLAUDE.md` | F7, F8 |
+| K7 | `packages/coding-agent/src/core/system-prompt.ts` | Inclusão das instruções embarcadas (a seção `docs` em uma linha ficou na extensão `docs-pointer`, D-36) | `claude-home/CLAUDE.md` | F8 |
 | K8 | `packages/coding-agent/src/core/tools/bash.ts` | Tempo limite padrão e teto configuráveis; opção de seguir em segundo plano | `extensions/bash-timeout`, especificação 0008 | F7 |
 | K9 | `packages/coding-agent/src/core/compaction/` | Limite absoluto de contexto para compactar | `compact-at-400k.ts` | F7 |
 | K10 | `packages/tui/src/` | API pública: widget fixo no topo, clique no cabeçalho, observador de entrada do terminal | `sticky-prompt`, `ui/a11y`, `ui/terminal` | F7 |
