@@ -35,7 +35,7 @@ r=$(vcov git-checkpoint $H/git-checkpoint/git-checkpoint.test.ts)
 chk "2 git-checkpoint (rewind-tree) + cobertura>=80" "${r%%|*}" "${r#*|}"
 r=$(vcov todo $H/todo/todo-collapse.test.ts)
 chk "2 todo (todo-collapse) + cobertura>=80" "${r%%|*}" "${r#*|}"
-r=$(vcov notify $H/notify/notify-focus.test.ts)
+r=$(vcov notify $H/notify/notify-focus.test.ts $H/extensions/notify/index.test.ts)
 chk "2 notify (notify-focus) + cobertura>=80" "${r%%|*}" "${r#*|}"
 
 # 3: every harness test of the package (was: every pi-code test).

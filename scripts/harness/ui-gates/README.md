@@ -4,7 +4,7 @@ Prova de C-F7-27: o nycode não tem diferença visual em relação ao ny-pi. Os 
 escrevem fica num `mktemp -d`, apagado ao sair. Saem 0 só se todos os checks passam.
 
 Pré-requisitos: `npm ci --ignore-scripts`, `npm run build` (o binário é `packages/coding-agent/dist/bundle/cli.js`),
-`@vitest/coverage-v8` (devDependency, ainda não declarada no repo), `jq`, `rg`; o e2e também pede `tmux`.
+`@vitest/coverage-v8` (devDependency da raiz), `jq`, `rg`; o e2e também pede `tmux`.
 
 ```bash
 bash scripts/harness/ui-gates/pi-ui-final-gate.sh          # portão final (nome histórico de prova)
@@ -12,8 +12,10 @@ bash scripts/harness/ui-gates/terminal-sota/gate.sh        # terminal-sota: U1..
 bash scripts/harness/ui-gates/terminal-sota/e2e.sh         # nycode real no tmux; 1 chamada de modelo
 ```
 
-O e2e usa `auth.json` e `settings.json` de `$NYCODE_E2E_AUTH_DIR` (padrão `~/.nycode/agent`), copiados para o diretório
-temporário.
+O e2e usa o modelo de `NYCODE_E2E_MODEL` (padrão `anthropic/claude-haiku-5-5`, conta claude) via `--model`. Copia
+`auth.json` e `settings.json` de `$NYCODE_E2E_AUTH_DIR` (padrão `~/.nycode/agent`) para o diretório temporário
+(umask 077, apagado ao sair, conteúdo nunca impresso). Sem `auth.json`, os passos 4 a 6 (modelo) imprimem SKIP e o
+script sai 1: pulo não é verde.
 
 ## Mapa: check antigo → novo
 
@@ -39,7 +41,7 @@ temporário.
 | Antigo | Novo / motivo |
 | --- | --- |
 | 1 ui, 2 dev-commands, 3 sticky | testes vitest de `ui`, `dev-commands`, `sticky-prompt` com cobertura ≥ 80 por arquivo da extensão |
-| 4 tema tokyo-night | `loadThemeFromPath` e `validateThemeJson` do core (`modes/interactive/theme`) sobre `resources/themes/tokyo-night.json`, mesmo mapeamento de cores |
+| 4 tema tokyo-night | `loadThemeFromPath` e `validateThemeJson` do core (`modes/interactive/theme`) sobre `src/modes/interactive/theme/tokyo-night.json` (e `mono.json`, que também precisa carregar), mesmo mapeamento de cores (D-37) |
 | 5 HUD colors | removido: dependência externa do dono, fora do produto |
 | 6 structure.py | `structure_changed.py` (igual ao 8 acima) |
 | 7 check-agents, 10 check-instructions | removidos: migram na F8 (R15) |

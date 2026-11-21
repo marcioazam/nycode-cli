@@ -27,22 +27,24 @@ chk "2 dev-commands (U4) + cobertura>=80" "${r%%|*}" "${r#*|}"
 r=$(vcov sticky-prompt $H/sticky-prompt/sticky.test.ts)
 chk "3 sticky-prompt (U3) + cobertura>=80" "${r%%|*}" "${r#*|}"
 
-# 4: theme valid in the core schema with the official tokyonight.nvim colors (core loader, the one nycode runs).
+TH=$CA/src/modes/interactive/theme
+# 4: theme (tokyo-night.json and mono.json live beside the core themes, D-37) valid in the core schema with the official tokyonight.nvim colors (core loader, the one nycode runs).
 cat >"$W/theme.mts" <<MJS
 import { loadThemeFromPath, setThemeJsonValidator } from "$CA/src/modes/interactive/theme/theme.ts";
 import { validateThemeJson } from "$CA/src/modes/interactive/theme/theme-schema.ts";
 setThemeJsonValidator(validateThemeJson);
-const t = loadThemeFromPath("$CA/resources/themes/tokyo-night.json", "truecolor");
+loadThemeFromPath("$TH/mono.json", "truecolor");
+const t = loadThemeFromPath("$TH/tokyo-night.json", "truecolor");
 const want = { syntaxKeyword: "157;124;216", syntaxOperator: "137;221;255", mdLink: "26;188;156", mdListBullet: "137;221;255", mdCode: "158;206;106" };
 const bad = Object.entries(want).filter(([k, rgb]) => !t.getFgAnsi(k as never).includes(rgb)).map(([k]) => k);
 console.log(bad.length ? "divergem: " + bad.join(" ") : "ok " + Object.keys(want).join(","));
 process.exit(bad.length ? 1 : 0);
 MJS
-if [ -f "$CA/resources/themes/tokyo-night.json" ]; then
+if [ -f "$TH/tokyo-night.json" ] && [ -f "$TH/mono.json" ]; then
   node "$W/theme.mts" >"$W/theme.out" 2>&1
   chk "4 tema tokyo-night (esquema + cores oficiais)" $? "$(tail -3 "$W/theme.out" | tr '\n' ' ')"
 else
-  chk "4 tema tokyo-night (esquema + cores oficiais)" 1 "esperado: falta F7 ui, resources/themes/tokyo-night.json ausente"
+  chk "4 tema tokyo-night (esquema + cores oficiais)" 1 "esperado: falta F7 ui, tokyo-night.json ou mono.json ausente em src/modes/interactive/theme"
 fi
 
 f=$(structure)
