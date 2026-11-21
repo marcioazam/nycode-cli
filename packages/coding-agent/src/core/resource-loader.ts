@@ -63,10 +63,6 @@ const HOST_PROVIDED_EXTENSION_PACKAGES = new Set([
 	"@nycode/ai",
 	"@nycode/coding-agent",
 	"@nycode/tui",
-	"@mariozechner/pi-agent-core",
-	"@mariozechner/pi-ai",
-	"@mariozechner/pi-coding-agent",
-	"@mariozechner/pi-tui",
 	"@sinclair/typebox",
 	"typebox",
 ]);

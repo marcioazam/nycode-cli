@@ -163,7 +163,7 @@ Settings also accept built-in extensions as `builtin:<name>` entries; see [Setti
 | `@nycode/ai/compat`, `/models`, `/oauth`, `/providers/all` | Provider construction, built-in APIs, and OAuth helpers |
 | `@nycode/tui` | TUI components for custom rendering |
 
-Nycode maps these imports to its own copies, so extensions share Nycode's classes and registries. The legacy `@mariozechner/*` and `@sinclair/typebox` names map to the same modules.
+Nycode maps these imports to its own copies, so extensions share Nycode's classes and registries. The legacy `@sinclair/typebox` name maps to the same module. The pi names (`@mariozechner/*`, `@earendil-works/pi-*`) are no longer resolved: an extension that imports them fails to load, so rename them to the `@nycode/*` names above.
 
 npm dependencies work too. Add a `package.json` next to your extension (or in a parent directory), run `npm install`, and imports from `node_modules/` are resolved automatically.
 

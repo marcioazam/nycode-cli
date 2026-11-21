@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Changed the `CustomAgentMessages` declaration-merging example to the `@nycode/agent-core` module name.
+
 ## [1.6.0] - 2026-11-20
 
 ### Fixed
