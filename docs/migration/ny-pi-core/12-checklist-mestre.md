@@ -141,11 +141,11 @@ Identificador: `C-F<fase>-<n>`. A coluna "prova" diz o que tem de ser observado.
 
 ## F9. Terceiros
 
-- [ ] C-F9-01 `lsp` embutida a partir do pi-lsp 0.1.7 remendado; testes verdes; `lsp.json` em `~/.nycode/agent/`.
-- [ ] C-F9-02 `ponytail` e `ralph-loop` em fork próprio com o patch como commit; proposta ao autor aberta.
-- [ ] C-F9-03 `pr-review-toolkit` e `claude-red` instaláveis por SHA fixo.
-- [ ] C-F9-04 Comandos que dependem de pacote opcional marcados `(optional)`.
-- [ ] C-F9-05 `third-party.json` e `patches/third-party/` removidos de `import/`; `NOTICE` atualizado.
+- [x] C-F9-01 `lsp` embutida a partir do pi-lsp 0.1.7 remendado; testes verdes; `lsp.json` em `~/.nycode/agent/`.
+- [x] C-F9-02 `ponytail` e `ralph-loop` em fork próprio com o patch como commit; proposta ao autor aberta.
+- [x] C-F9-03 `pr-review-toolkit` e `claude-red` instaláveis por SHA fixo.
+- [x] C-F9-04 Comandos que dependem de pacote opcional marcados `(optional)`.
+- [x] C-F9-05 `third-party.json` e `patches/third-party/` removidos de `import/`; `NOTICE` atualizado.
 
 ## F10. Paridade final e nova linha de base
 

@@ -288,15 +288,15 @@ unidade 0 avulsa não existe: a cópia congelada do #231 e o commit 1 do PR cump
 | Componente | Fixado em | Licença | Patch local | Destino | Fase |
 |---|---|---|---|---|---|
 | `pi-lsp` | npm 0.1.7 (integridade sha512 em `third-party.json`) | MIT | 4080 linhas | Extensão embutida `lsp` (cópia do pacote com o patch aplicado, mesmo método da seção 3.1) | F9 |
-| `ponytail` | git `ef8ca48` (v4.10.3) | MIT | 351 linhas | Pacote opcional; patch como commit num fork próprio; proposta ao autor | F9 |
-| `ralph-loop` | claude-plugins-official `893173f` | Apache-2.0 | 26 linhas | Pacote opcional; idem | F9 |
-| `pr-review-toolkit` | claude-plugins-official `893173f` | Apache-2.0 | nenhum | Pacote opcional instalado da origem com SHA fixo | F9 |
-| `claude-red` | git `a8de813` | MIT | nenhum | Pacote opcional (já era opcional) | F9 |
+| `ponytail` | git `ef8ca48` (v4.10.3) | MIT | 351 linhas | Pacote opcional instalado do fork `marcioazam/ponytail` (ramo `nycode`, commit `a75382e` = `ef8ca48` + patch); proposta ao autor: issue DietrichGebert/ponytail#1533 e PR #1534 (só a correção do matcher de subagent, sobre v5.3.3). Feito em F9 | F9 |
+| `ralph-loop` | claude-plugins-official `893173f` | Apache-2.0 | 26 linhas | Pacote opcional instalado do fork `marcioazam/ralph-loop` (`main` `9e7f895`: subtree de `plugins/ralph-loop` com histórico + a correção; o script virou `scripts/start-ralph-loop.sh`); o upstream não aceita PR externo, a correção foi comentada em anthropics/claude-plugins-official#748. Feito em F9 | F9 |
+| `pr-review-toolkit` | claude-plugins-official `893173f` | Apache-2.0 | nenhum | Pacote opcional instalado da origem com SHA fixo (`893173f`; o instalador clona o repositório inteiro e os agentes ficam em `plugins/pr-review-toolkit/agents/`). Feito em F9 | F9 |
+| `claude-red` | git `a8de813` | MIT | nenhum | Pacote opcional (já era opcional), instalado da origem com SHA fixo; a pasta `Skills/` pede a entrada `skills` em `settings.json` (79 skills). Feito em F9 | F9 |
 
 Arquivos do ny-pi que referenciam estes componentes e mudam junto: `claude-home/commands/ralph-loop.md`,
 `ralph-help.md`, `cancel-ralph.md`, `review-pr.md` (comandos que só funcionam com o pacote instalado: ficam marcados
 `(optional)` e `check-refs.py` aceita), `claude-home/hooks` no bloco `Stop` (`vendor/ralph-loop/hooks/stop-hook.sh`
-deixa de ser padrão e passa a ser registrado pelo pacote opcional).
+deixa de ser padrão; o instalador não registra hooks, então o `hooks.Stop` é uma entrada manual de `settings.json`, documentada em `packages/coding-agent/docs/optional-packages.md`).
 
 ## 5. Dados na máquina do usuário
 

@@ -5,7 +5,7 @@ disable-model-invocation: true
 ---
 
 <!-- Porte para o nycode (2026-11-11) do /ralph-loop:cancel-ralph (ralph-loop 1.0.1). Mesmo arquivo de estado do porte do
-/ralph-loop. -->
+/ralph-loop. Pacote opcional ralph-loop (optional). -->
 
 # Cancelar o Ralph
 

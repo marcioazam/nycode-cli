@@ -140,6 +140,7 @@ chegam por fase e o `core_scope.py` é convertido em F3.
 | extension | hooks | core | Hooks no formato do Claude Code |
 | extension | import-claude-session | optional | Importa sessão de outro perfil, uso pessoal |
 | extension | init | core | `/init` |
+| extension | lsp | core | Diagnósticos e navegação por servidor de linguagem, para qualquer linguagem |
 | extension | memory | core | Memória do projeto |
 | extension | notify | ui | Aviso de fim de turno |
 | extension | output-styles | core | Estilos de saída |

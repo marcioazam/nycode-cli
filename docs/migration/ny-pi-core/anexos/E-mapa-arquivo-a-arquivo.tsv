@@ -1448,8 +1448,8 @@ models.json.example	packages/coding-agent/examples/config/models.json	mover	F4	K
 npm/package-lock.json	(pi-code é fonte do repositório)	remover	F11	I02
 npm/package.json	(pi-code é fonte do repositório)	remover	F11	I02
 patches/third-party/pi-lsp.patch	packages/coding-agent/src/extensions/lsp/	absorver	F9	T01
-patches/third-party/ponytail.patch	fork próprio de ponytail (D-11)	converter	F9	T02
-patches/third-party/ralph-loop.patch	fork próprio de ralph-loop (D-11)	converter	F9	T02
+patches/third-party/ponytail.patch	pacote opcional marcioazam/ponytail@a75382e (fork, D-11)	remover	F9	T02
+patches/third-party/ralph-loop.patch	pacote opcional marcioazam/ralph-loop@9e7f895 (fork, D-11)	remover	F9	T02
 publish.list	instalador e campo files do pacote	remover	F11	I01
 scripts/check-leaks.sh	scripts/ci/check-leaks.sh	mover	F3	C06
 scripts/check-patch-stack.sh	(sem pilha de patches)	remover	F6	P16
