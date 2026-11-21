@@ -95,6 +95,7 @@
  */
 
 import * as os from "node:os";
+import { exportResourcesRoot } from "../../core/builtin-resources.ts";
 import type { ExtensionAPI, ExtensionContext } from "../../core/extensions/types.ts";
 import { INSTRUCTIONS_CHANNEL, isInstructionLoadEvent } from "../_shared/events/instruction-events.ts";
 import { isMcpToolAliases, MCP_TOOLS_CHANNEL } from "../_shared/events/mcp-alias.ts";
@@ -122,6 +123,7 @@ import {
 	loadHooks,
 	loadManagedHooks,
 	loadPluginHooks,
+	loadSettingsHooks,
 	mergeAgentEnvHooks,
 	mergeSkillHooks,
 	readAllowedHttpHookUrls,
@@ -185,6 +187,8 @@ export default function hooksExtension(nycode: ExtensionAPI) {
 	let disposeSettingsWatch: () => void = () => {};
 	/** Claude's disableAllHooks escape hatch was set somewhere in the honored chain. */
 	let hooksDisabled = false;
+	/** The `hooks` key of nycode's settings.json, read at session start (a reload must not call the API of a replaced session). */
+	let settingsHooks: Record<string, unknown> | undefined;
 	/** Which settings file each resolved entry came from, for the /hooks viewer. */
 	const hookSources = new Map<HookMatcher, string>();
 	/** Claude sends session_id, transcript_path, cwd and effort on every payload. */
@@ -473,7 +477,12 @@ export default function hooksExtension(nycode: ExtensionAPI) {
 	/** Merge the non-managed hook sources into the managed config resolveConfig loaded:
 	 * settings files, plugins, a subagent child's agent hooks, and this session's skill hooks. */
 	function mergeNonManagedHooks(files: string[]): void {
-		for (const [eventName, matchers] of Object.entries(loadHooks(files, hookSources)))
+		// The embedded commands name ${NYCODE_RESOURCES}; claude-rules exports it too, but nothing here may depend on its order.
+		exportResourcesRoot();
+		for (const [eventName, matchers] of [
+			...Object.entries(loadSettingsHooks(settingsHooks, hookSources)),
+			...Object.entries(loadHooks(files, hookSources)),
+		])
 			config[eventName] = [...(config[eventName] ?? []), ...matchers];
 		// Plugins are user-installed and enabled by user settings (see installedPlugins),
 		// so a checked-out repo cannot toggle which code-bearing plugin hooks run.
@@ -507,6 +516,7 @@ export default function hooksExtension(nycode: ExtensionAPI) {
 		// referencing $CLAUDE_PROJECT_DIR/.claude/hooks/helper.sh must resolve from a
 		// subdirectory session too.
 		projectDir = checkoutRoot(ctx.cwd);
+		settingsHooks = nycode.getSettings().hooks;
 		resolveConfig(ctx.cwd, trusted);
 		// Claude picks up direct settings edits mid-session via a file watcher. The reload
 		// closes over the cwd value, never ctx: the poll has no awaiter, and every getter of

@@ -1,3 +1,4 @@
+import { SETTINGS_DEFAULTS } from "../../core/settings-defaults.ts";
 import { readManagedSettings } from "../_shared/settings/managed-settings.ts";
 import { readSettingsChain } from "../_shared/settings/settings-chain.ts";
 import { readSettingsDisableAllHooks } from "../hooks/index.ts";
@@ -14,7 +15,7 @@ export interface StatusLineConfig {
 function parseStatusLineEntry(entry: unknown): StatusLineConfig | undefined {
 	if (entry === null || typeof entry !== "object") return undefined;
 	const record = entry as { type?: unknown; command?: unknown; padding?: unknown; refreshInterval?: unknown };
-	if (typeof record.command !== "string") return undefined;
+	if (typeof record.command !== "string" || record.command.trim() === "") return undefined;
 	if (record.type !== undefined && record.type !== "command") return undefined;
 	return {
 		command: record.command,
@@ -24,17 +25,20 @@ function parseStatusLineEntry(entry: unknown): StatusLineConfig | undefined {
 	};
 }
 
-/** The `statusLine` recorded in settings, last file winning; a managed policy
- * entry wins over every file, and allowManagedHooksOnly narrows the setting to
- * managed settings entirely, as Claude documents. */
+/** The `statusLine` that applies: a managed policy entry wins over everything, and allowManagedHooksOnly narrows
+ * the setting to managed settings entirely, as Claude documents. Below them, nycode's own settings.json entry
+ * (`own`: an empty `command` turns the status line off), then the Claude settings files, last file winning, and
+ * the embedded default (claude-hud) as the floor. */
 export function readStatusLineConfig(
 	files: string[],
 	managed: Record<string, unknown> = readManagedSettings(),
+	own?: unknown,
 ): StatusLineConfig | undefined {
 	const managedConfig = parseStatusLineEntry(managed.statusLine);
 	if (managedConfig) return managedConfig;
 	if (managed.allowManagedHooksOnly === true) return undefined;
-	let found: StatusLineConfig | undefined;
+	if (own !== undefined) return parseStatusLineEntry(own);
+	let found = parseStatusLineEntry(SETTINGS_DEFAULTS.statusLine);
 	for (const settings of readSettingsChain(files)) found = parseStatusLineEntry(settings.statusLine) ?? found;
 	return found;
 }
@@ -45,8 +49,9 @@ export function readStatusLineConfig(
 export function activeStatusLine(
 	files: string[],
 	managed: Record<string, unknown> = readManagedSettings(),
+	own?: unknown,
 ): StatusLineConfig | undefined {
 	if (managed.disableAllHooks === true) return undefined;
 	if (readSettingsDisableAllHooks(files)) return parseStatusLineEntry(managed.statusLine);
-	return readStatusLineConfig(files, managed);
+	return readStatusLineConfig(files, managed, own);
 }
