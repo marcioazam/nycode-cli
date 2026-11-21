@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Builds the image commit R of an upstream commit (08 section 4.3): tree = P(U), parents R_prev and U, trailers
-# Upstream-Commit and Rename-Pipeline. P is all.sh (workflows, rename.py, post*.sh, locks), run in a temporary
-# worktree: the caller's working tree and index are not touched. Only the branch --branch is created, locally.
+# Upstream-Commit and Rename-Pipeline. P is all.sh (workflows, rename.py, post*.sh, locks, biome), run in a temporary
+# worktree: the caller's working tree and index are not touched (biome comes from the caller's node_modules). Only
+# the branch --branch is created, locally.
 # Deterministic: LC_ALL=C, fixed identity, dates copied from U (no clock in the tree or the commit).
 # Usage: image.sh --upstream U --prev R_prev --branch NAME
 set -euo pipefail

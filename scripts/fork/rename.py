@@ -34,7 +34,7 @@ masks = [
 
 REPO = r"(?:earendil-works|badlogic)/pi(?:-mono)?(?![\w-])"
 pre = [  # URLs do repo
-    (re.compile(r"(?:(?<=github\.com/)|(?<=github:)|(?<=github\.com:)|(?<![\w@./:-]))" + REPO), "marcioazam/nycode-cli"),
+    (re.compile(r"(?:(?<=github\.com/)|(?<=github:)|(?<=github\.com:)|(?<![\w@./:-]))" + REPO), "marcioazam/nycode"),
 ]
 WS = "agent-core|ai|codemode|coding-agent-install|coding-agent|durable|env|evals|mcp|schema|telemetry|tui"
 SEP = r"(\\\\|\\/|/|\+|[\"'`]\s*,\s*[\"'`])"

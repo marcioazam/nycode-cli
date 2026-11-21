@@ -164,7 +164,7 @@ Abreviação: `CA` = `packages/coding-agent/src`; `core/` e `cli/` abaixo são d
 | K9 | `CA/core/compaction/` | Limite absoluto de contexto | 15 / 4 | n. med. | médio |
 | K10 | `packages/tui/src/` | API pública nova | 91 / 30 | n. med. | alto |
 | K11 | `core/permissions/` (novo) + gancho `tool_call` | Arquivo novo, 1 chamada | novo | indef. | médio |
-| K12 | `CA/migrations.ts` | Uma chamada ao importador | 1 / 0 | n. med. | baixo |
+| K12 | `CA/main.ts` (ramo `migrate`; o importador mora em `CA/migrations/from-pi.ts`) | Uma chamada ao importador | n. med. | n. med. | baixo |
 | K13 | `packages/coding-agent/package.json` (`files`) | Inclui `resources/` | 50 / 11 | 0 | médio |
 | K14 | `CA/config.ts:605` | "π" de reserva vira "nycode" | 12 / 2 | 0 (`APP_TITLE`) | baixo |
 
@@ -207,7 +207,8 @@ arquivos de código, o limite de `structure_changed.py`):
 
 Para cada costura: como reduzir (arquivo novo e chamada única) e o teste que falha se ela sumir.
 
-- **K1.** Função `piSameContextMessage` em arquivo novo de `core/`; `sdk.ts` a chama no lugar de `.every`.
+- **K1.** Implementada em F4 com a função `nycodeSameContextMessage` **no próprio `sdk.ts`** (não em arquivo novo): `.every`
+  a chama. Mover a função para arquivo novo de `core/` reduziria o conflito; fica como melhoria, sem prazo.
   Teste: `cache-warm-identity` portado (F4).
 - **K2.** Constante: sem arquivo novo possível; marcador na linha com a razão. Teste: `mcp-close-grace` portado (F4).
 - **K3.** Tabela de flags do harness em arquivo novo; `args.ts` recebe uma chamada que a registra. Teste: `args` com as
@@ -224,7 +225,8 @@ Para cada costura: como reduzir (arquivo novo e chamada única) e o teste que fa
 - **K10.** API pública em arquivos novos de `packages/tui/src/`, mais uma linha de exportação. Teste: teste da API e
   `check-entry-graphs` do repositório (documento: anexo B, seção 1).
 - **K11.** Motor inteiro em `core/permissions/`; o gancho é uma chamada. Teste: diferencial dos dois motores (D-08).
-- **K12.** `migrations/from-pi.ts`; `migrations.ts` recebe uma chamada. Teste: `nycode migrate from-pi`.
+- **K12.** `migrations/from-pi.ts`; a chamada (`runMigrateCommand`) está em `main.ts`, no ramo `args[0] === "migrate"`, e não
+  em `migrations.ts` como a arquitetura alvo previa. Teste: `from-pi-apply.test.ts` e os demais de `test/harness/migrations/`.
 - **K13.** JSON não aceita comentário: marcador só em `seams.txt`. Teste: `check-package-install` falha sem
   `resources/` no pacote (documento: arquitetura alvo, seção 8).
 - **K14.** Uma string: marcador na linha. Teste: `--version` e `--help` com `HOME` isolado (critério do registro do
@@ -246,47 +248,52 @@ O registro do fork diz "Script: `/tmp/nycode-rename/rename.py` (+ `post.sh`), de
 
 - O script ainda existe, mas só em `/tmp/nycode-rename/` (122 linhas, sha256
   `b69479192fa9e7eeeaf720517facb32df003dc331dfe48e2ec5d0340d8de2c46`), junto de `post.sh`, `post2.sh`, `all.sh` e logs.
-  **Nenhum deles está no repositório** (`git ls-files` não lista `rename`, e não existe `scripts/fork/`). `/tmp` é
+  **Nenhum deles estava no repositório** (`git ls-files` não lista `rename`, e não existe `scripts/fork/`). `/tmp` é
   volátil: perdê-lo perde a única definição do renome.
 - O renome não é só o `rename.py`. `all.sh` roda: `git rm` de 14 workflows, `rename.py`, `post.sh` (edições `sed`
   em arquivos nomeados à mão), `npm install --package-lock-only`, `generate-coding-agent-install-lock.mjs`. O registro
   do fork acrescenta o `biome --write`, que reformatou 175 arquivos em `packages/` e 49 em `apps/p2`. `post2.sh`
-  (restaura `from earendil-works/pi` em 8 arquivos de `apps/p2/plugins` e `apps/p2/src`) não é chamado por `all.sh`;
-  a ordem real de execução não está registrada (não verificado).
+  (restaura `from earendil-works/pi` em 8 arquivos de `apps/p2/plugins` e `apps/p2/src`) não era chamado por `all.sh`.
+  Verificado em 2026-11-21 (seção 4.3.1): a ordem `all.sh` (workflows, `rename.py`, `post.sh`, `post2.sh`, locks) e
+  depois `biome` reproduz `f523ebd25`; `post2.sh` repete os dois últimos `sed` de `post.sh` e não muda o resultado.
 - Fidelidade medida: num clone temporário (removido depois) do commit base, `git rm` dos 14 workflows, `rename.py` e
   `post.sh` produziram uma árvore que difere de `f523ebd25` em 230 de 2316 arquivos: 2 lockfiles, 224 esperados do
   `biome` e do `post2.sh` (a divisão entre os dois não foi medida), mais cerca de 4 não explicados (um é `NOTICE`;
-  não verificado). Ou seja, a imagem determinística é possível, mas o procedimento completo ainda não está capturado
-  em um só script.
+  não verificado). Resolvido em 2026-11-21 (seção 4.3.1): os locks saem idênticos quando `P` os regenera, o `post2.sh`
+  não tem efeito, 226 arquivos são do `biome` e os 2 restantes são `NOTICE` e `docs/fork/2026-11-20-fork-do-pi.md`,
+  escritos à mão no commit de renome. O procedimento completo está agora em um só script (`scripts/fork/all.sh`).
 - As edições `sed` de `post.sh` citam arquivos por nome. Se o upstream apagar ou mover um deles, o script falha
   (`set -e`). O script versionado precisa ser reescrito para ser dirigido por regras e tolerar arquivo ausente.
 
 **Pendência crítica (nova, PC-1):** versionar o pipeline de renome em `scripts/fork/rename.py` (mais `post.sh`
-fundido nele, a ordem do `biome` e a lista de caminhos excluídos) **na F0**, com teste de reprodução do `f523ebd25`.
+fundido nele e a ordem do `biome`) **na F0**, com teste de reprodução do `f523ebd25`.
 Sem isso, nenhuma das duas opções abaixo é executável com garantia, e o objetivo 5 do mega plano (receber o upstream
 com custo controlado) fica sem dono.
 
 #### 4.3.1 Pipeline versionado e reprodução medida (C-F6-17, 2026-11-21)
 
-`scripts/fork/all.sh ROOT` é o `P`: remove os 14 workflows da Earendil, roda `rename.py`, `post.sh`, `post2.sh` e regenera
-os locks, numa árvore git limpa e sem caminhos fixos em `/tmp`. `post2.sh` repete os dois últimos `sed` de `post.sh`
-(idempotente), então o resultado não muda por chamá-lo. `scripts/fork/image.sh --upstream U --prev R_prev --branch NOME`
-gera `R` num worktree temporário (pais `R_prev` e `U`; trailers `Upstream-Commit` e `Rename-Pipeline`, este o sha256 de
-`rename.py` e `post*.sh` concatenados em ordem `LC_ALL=C`; `all.sh` e a lista de workflows ficam fora do hash).
+`scripts/fork/all.sh ROOT` é o `P`: remove os 14 workflows da Earendil, roda `rename.py`, `post.sh`, `post2.sh`, regenera
+os locks e roda o `biome` (`scripts/fork/biome.sh`: `biome check --write` na raiz, em `apps/p2` e em `apps/p3`), numa árvore
+git limpa e sem caminhos fixos em `/tmp`. O `biome` é o do repositório que chama (`node_modules/.bin/biome`, versão fixada
+no `package.json`; `npm ci --ignore-scripts` antes); sem ele o script falha com mensagem. O `biome` faz parte de `P` por
+decisão do plano (2026-11-21): o renome do fork o rodou, e recalcular `P(U)` no `merge-policy` o inclui. `post2.sh` repete
+os dois últimos `sed` de `post.sh` (idempotente). `scripts/fork/image.sh --upstream U --prev R_prev --branch NOME` gera `R`
+num worktree temporário (pais `R_prev` e `U`; trailers `Upstream-Commit` e `Rename-Pipeline`, este o sha256 de
+`rename.py` e `post*.sh` concatenados em ordem `LC_ALL=C`; `all.sh`, `biome.sh`, a lista de workflows e a versão do
+`biome` ficam fora do hash).
+
+Mudança de regra: o #195 (`f76fb03b9`) renomeou o repositório para `marcioazam/nycode`; `rename.py`, `post.sh` e
+`post2.sh` passaram a emitir esse nome em vez de `marcioazam/nycode-cli`, neste PR de squash, antes de qualquer fusão
+(seção "Quando o script de renome muda").
 
 Teste: `scripts/fork/test_reproduction.sh` aplica `P` a `073b0bae8` (lado upstream da base) e compara com a árvore de
-`f523ebd25`, sem excluir nenhum caminho. Medido em 2026-11-21, 9 s (15 s com `--with-biome`):
+`f523ebd25`. Única normalização: `marcioazam/nycode-cli` vira `marcioazam/nycode` no lado de `f523ebd25` (98 linhas), com
+o `biome` reformatando as linhas que encurtam; nenhum caminho é excluído, locks inclusos. Medido em 2026-11-21, 13 a 19 s:
 
 | Execução | Resultado |
 |---|---|
-| `P` puro | 226 arquivos de conteúdo diferem (111 em `packages/durable`, 49 em `apps/p2`, 37 em `packages/coding-agent`, o resto em 10 diretórios); 0 só em `P`; 2 só no commit de renome (`NOTICE`, `docs/fork/2026-11-20-fork-do-pi.md`, escritos à mão) |
-| `P` + `biome check --write` (raiz, `apps/p2`, `apps/p3`) | 0 diferenças além dos 2 arquivos escritos à mão |
-
-Os locks (`package-lock.json`, `packages/coding-agent/install-lock/`) saem idênticos; nenhuma exclusão foi necessária. As
-diferenças são, portanto, só da formatação do `biome` (175 arquivos na raiz, 49 em `apps/p2`, 2 em `apps/p3`), que o
-registro do fork já citava e que `P` não executa. Consequência: a imagem de `image.sh` não vem formatada; a fusão
-herda arquivos sem formatação até o próximo `npm run check`. Decisão aberta (registrar em [11](11-decisoes-e-pendencias.md)): incluir o `biome` em
-`P` (precisa de `node_modules` com o `biome` fixado em `package.json`) ou aceitar a formatação posterior.
+| `P` sem `biome` (diagnóstico da primeira medição, antes da decisão) | 226 arquivos de conteúdo diferiam (111 em `packages/durable`, 49 em `apps/p2`, 37 em `packages/coding-agent`, o resto em 10 diretórios) |
+| `P` completo (com `biome`) | 0 `M`, 0 `D`, 2 `A` (`NOTICE` e `docs/fork/2026-11-20-fork-do-pi.md`, escritos à mão); locks idênticos; exit 0 |
 
 #### Duas opções
 
@@ -418,7 +425,12 @@ Ordem de resolução quando há conflito (regra de cada arquivo, nesta ordem):
    lançadas são imutáveis.
 4. **Costuras K1..K14**: resolver mantendo a linha com o marcador `// nycode: K<n>`; conferir com
    `scripts/ci/seams/check-seams.sh` e o teste da costura (seção 4.2).
-5. **Todo o resto**: aceitar o upstream, salvo se o arquivo for da lista de base de estrutura (seção 7).
+5. **Arquivos do fork que não vêm do upstream** (`NOTICE`, `docs/fork/2026-11-20-fork-do-pi.md`): manter o nosso. A
+   imagem não os tem, porque `P` não os cria; já `R_prev = f523ebd25` os tem, então a primeira fusão os vê como
+   apagados no lado do upstream e dá conflito modify/delete (medido no ensaio de 2026-11-21). Só a primeira fusão:
+   depois `R_prev` é uma imagem, que não os tem, e o conflito some. Resolver com `git checkout --ours -- <arquivo>` e
+   `git add`.
+6. **Todo o resto**: aceitar o upstream, salvo se o arquivo for da lista de base de estrutura (seção 7).
 
 Depois da resolução:
 
@@ -561,7 +573,7 @@ Registro completo e reversão em [10](10-riscos-e-rollback.md); os riscos abaixo
 
 | # | Pendência | Fecha em |
 |---|---|---|
-| PC-1 | Versionar o pipeline de renome (`/tmp/nycode-rename/`) em `scripts/fork/` com teste de reprodução | F0; versionado e testado em C-F6-17 (seção 4.3.1); falta decidir o `biome` |
+| PC-1 | Versionar o pipeline de renome (`/tmp/nycode-rename/`) em `scripts/fork/` com teste de reprodução | F0; fechada em C-F6-17 (seção 4.3.1): pipeline versionado, `biome` incluído, teste de reprodução verde |
 | PC-2 | Definir o ponto do gancho `tool_call` de K11 | F8 |
 | PC-3 | Medir o custo de tempo do job `merge-policy` | F3 |
 | PC-4 | Conferir se K1 e K2 já foram corrigidos no upstream | Antes de propor o PR (8.1) |
@@ -569,8 +581,6 @@ Registro completo e reversão em [10](10-riscos-e-rollback.md); os riscos abaixo
 
 ## 11. Não verificado neste documento
 
-- Ordem real de execução de `rename.py`, `post.sh`, `post2.sh` e `biome` no commit `f523ebd25`: a seção 4.3.1 mede que a
-  ordem `all.sh` e depois `biome` reproduz a árvore; a ordem em que o fork de fato rodou continua não registrada.
 - Se o upstream planeja subagentes, plan mode ou outra mudança de `ExtensionAPI`.
 - Duração do job `merge-policy`; ponto do gancho de K11; região de K5 a K12 (só K1 a K4, K13 e K14 foram medidas).
 - Se os 8 commits à frente da base corrigem K1 ou K2.

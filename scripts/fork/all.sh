@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # P: applies the rename pipeline to a clean git tree of upstream (earendil-works/pi), in place.
 # Order: remove the Earendil workflows, rename.py, post.sh, post2.sh, regenerate the locks (package-lock.json and
-# packages/coding-agent/install-lock/). The tree it produces is the "image" of the upstream commit (08 section 4.3).
+# packages/coding-agent/install-lock/), biome.sh (`biome check --write`). The tree it produces is the
+# "image" of the upstream commit (08 section 4.3); the biome step is biome.sh (needs `npm ci --ignore-scripts` in the
+# repository that holds these scripts).
 # The old /tmp version also ran `npm ci` and `npm run build` afterwards; neither changes a tracked file.
 # Usage: all.sh ROOT
 set -euo pipefail
@@ -28,3 +30,4 @@ npm install --package-lock-only --ignore-scripts >"$log/lock.log" 2>&1 || {
   exit 1
 }
 node scripts/generate-coding-agent-install-lock.mjs
+bash "$here/biome.sh" "$root"

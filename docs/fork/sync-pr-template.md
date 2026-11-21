@@ -32,6 +32,10 @@ Arquivos em conflito e regra aplicada a cada um (ordem da seção 6 do 08):
 
 - `<caminho>`: <regra>
 
+Primeira sincronização (R_prev = `f523ebd25`): `NOTICE` e `docs/fork/2026-11-20-fork-do-pi.md` aparecem como conflito
+modify/delete. Arquivos do fork que não vêm do upstream: manter o nosso (`git checkout --ours -- <arquivo>`; seção 6 do
+08, regra 5). Nas sincronizações seguintes esse conflito não existe.
+
 ## Resultado do `merge-policy`
 
 Job `merge-policy` do push em `main` depois da fusão: passou / falhou (link da execução). Para falha: hash do merge
