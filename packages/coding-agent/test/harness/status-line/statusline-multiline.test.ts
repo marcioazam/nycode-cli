@@ -1,8 +1,9 @@
-// Ported from statusline-multiline.test.ts (statusline-multiline.patch). The last case (footer-no-stats reading the
-// bridge's `folded` flag) has no counterpart yet: that extension is not embedded; it comes with the footer extension.
+// Ported from statusline-multiline.test.ts (statusline-multiline.patch).
 import { stripVTControlCharacters } from "node:util";
 import { visibleWidth } from "@nycode/tui";
 import { describe, expect, it } from "vitest";
+import type { ExtensionAPI, ExtensionContext } from "../../../src/core/extensions/types.ts";
+import footerExtension from "../../../src/extensions/footer/index.ts";
 import { hudFooterBridge, renderStatusRows, statusRows } from "../../../src/extensions/status-line/rows.ts";
 
 const ESC = String.fromCharCode(27);
@@ -93,5 +94,35 @@ describe("hudFooterBridge", () => {
 		hud.claim(false);
 		expect(bridge.folded).toBe(false); // sem widget o footer volta a mostrar tudo
 		hudFooterBridge().fold(true); // sem footer publicado: sem efeito, sem erro
+	});
+});
+
+describe("footer", () => {
+	it("os status ficam alinhados à esquerda (sem preenchimento à frente), um fold os esconde", () => {
+		let handler: ((event: unknown, ctx: ExtensionContext) => void) | undefined;
+		let built: { render(width: number): string[] } | undefined;
+		let bridge: { folded: boolean } | undefined;
+		const api = {
+			on: (_name: string, fn: typeof handler) => {
+				handler = fn;
+			},
+			events: {
+				emit: (_channel: string, b: { folded: boolean }) => {
+					bridge = b;
+				},
+			},
+		};
+		footerExtension(api as unknown as ExtensionAPI);
+		const theme = { fg: (_color: string, text: string) => text };
+		const data = { getExtensionStatuses: () => new Map([["bypass-permissions", "▲ BYPASS PERMISSIONS ON"]]) };
+		const ui = {
+			setFooter: (factory: (tui: unknown, theme: unknown, data: unknown) => typeof built) => {
+				built = factory(undefined, theme, data);
+			},
+		};
+		handler?.({}, { ui } as unknown as ExtensionContext);
+		expect(built?.render(80)).toEqual(["▲ BYPASS PERMISSIONS ON"]);
+		if (bridge) bridge.folded = true;
+		expect(built?.render(80)).toEqual([]);
 	});
 });

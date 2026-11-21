@@ -149,6 +149,7 @@ import {
 	normalizeBuildSystemPromptOptions,
 } from "./system-prompt.ts";
 import { type BashOperations, createLocalBashOperations } from "./tools/bash.ts";
+import { withTimeoutHint } from "./tools/bash-timeout.ts";
 import { createAllToolDefinitions } from "./tools/index.ts";
 import { createToolDefinitionFromAgentTool } from "./tools/tool-definition-wrapper.ts";
 import { addUsageToTotals, combineUsage, createUsageTotals } from "./usage-totals.ts";
@@ -767,7 +768,10 @@ export class AgentSession {
 				})
 			: undefined;
 
-		const content = hookResult?.content ?? result.content ?? [];
+		const effectiveIsError = hookResult?.isError ?? isError;
+		const hookedContent = hookResult?.content ?? result.content ?? [];
+		// nycode: K8 timeout hint as its own block, after the extension hooks (parity with the ny-pi extension)
+		const content = withTimeoutHint(toolCall.name, effectiveIsError, hookedContent);
 		// Runs after the extension hook so images injected or replaced by extensions are normalized too.
 		const resizeOptions = this._limitsModel()?.inputLimits?.images?.resize;
 		const normalizedContent = await normalizeToolResultImages(content, {
@@ -775,7 +779,7 @@ export class AgentSession {
 			...(resizeOptions ? { resizeOptions } : {}),
 		});
 
-		if (!hookResult && normalizedContent === content) {
+		if (!hookResult && normalizedContent === hookedContent) {
 			return undefined;
 		}
 
@@ -784,7 +788,7 @@ export class AgentSession {
 			content: normalizedContent,
 			details: hookResult?.details,
 			structuredContent: hookResult ? hookResult.structuredContent : result.structuredContent,
-			isError: hookResult?.isError ?? isError,
+			isError: effectiveIsError,
 			usage: hookResult?.usage,
 		};
 	}
@@ -3808,7 +3812,12 @@ export class AgentSession {
 				)
 			: createAllToolDefinitions(this._cwd, {
 					read: { autoResizeImages },
-					bash: { commandPrefix: shellCommandPrefix, shellPath },
+					// nycode: K8 background-on-timeout comes from the resolved nycode settings
+					bash: {
+						commandPrefix: shellCommandPrefix,
+						shellPath,
+						backgroundOnTimeout: this.settingsManager.getNycodeSettings().tools.bash.backgroundOnTimeout,
+					},
 				});
 
 		this._baseToolDefinitions = new Map(
