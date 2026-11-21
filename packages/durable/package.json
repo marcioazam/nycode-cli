@@ -170,11 +170,11 @@
 		"@nycode/schema": "1.6.0",
 		"@nycode/telemetry": "1.6.0",
 		"@silvia-odwyer/photon": "0.3.3",
-		"diff": "8.0.4"
+		"diff": "9.0.0"
 	},
 	"devDependencies": {
-		"@cloudflare/vitest-plugin": "1.4.10",
-		"fake-indexeddb": "6.2.6",
-		"vitest": "4.1.12"
+		"@cloudflare/vitest-plugin": "1.8.2",
+		"fake-indexeddb": "6.2.8",
+		"vitest": "5.1.0"
 	}
 }
