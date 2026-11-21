@@ -24,6 +24,7 @@ import type { SessionEntry } from "../../core/session-manager.ts";
 import type { Theme } from "../../modes/interactive/theme/theme.ts";
 
 import { stringEnum } from "../_shared/model/string-enum.ts";
+import { registerStaleReminder } from "./stale-reminder.ts";
 
 type TodoStatus = "pending" | "in_progress" | "completed";
 type TodoAction = "add" | "start" | "complete" | "delete" | "clear" | "list";
@@ -390,6 +391,7 @@ const persistedTodoDetails = (entry: SessionEntry, includeLegacy: boolean): Pers
 
 /** Register the branch-local Todo provider, viewer, and live widget. */
 export default function todoExtension(nycode: ExtensionAPI) {
+	const setStaleItems = registerStaleReminder(nycode);
 	// In-memory state (reconstructed from session on load)
 	let todos: Todo[] = [];
 	let nextId = 1;
@@ -397,14 +399,13 @@ export default function todoExtension(nycode: ExtensionAPI) {
 	/** Todos go to the Plan section (plan-mode/index.ts listens); the chat widget stays empty. */
 	const refresh = () => {
 		overlay.update();
-		nycode.events.emit(
-			"pi-code:todos",
-			todos.map((t) => ({
-				id: t.id,
-				text: t.status === "in_progress" ? (t.activeForm ?? t.text) : t.text,
-				status: t.status,
-			})),
-		);
+		const shown = todos.map((t) => ({
+			id: t.id,
+			text: t.status === "in_progress" ? (t.activeForm ?? t.text) : t.text,
+			status: t.status,
+		}));
+		setStaleItems(shown);
+		nycode.events.emit("pi-code:todos", shown);
 	};
 
 	/**

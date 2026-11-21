@@ -6,6 +6,7 @@ import commandsExtension from "./commands/index.ts";
 import completionGateExtension from "./completion-gate/index.ts";
 import contextImportsExtension from "./context-imports/index.ts";
 import contextUsageExtension from "./context-usage/index.ts";
+import devCommandsExtension from "./dev-commands/index.ts";
 import docsPointerExtension from "./docs-pointer/index.ts";
 import envSettingsExtension from "./env-settings/index.ts";
 import footerExtension from "./footer/index.ts";
@@ -28,6 +29,7 @@ import skillsCompatExtension from "./skills-compat/index.ts";
 import soundNotifyExtension from "./sound-notify/index.ts";
 import statusLineExtension from "./status-line/index.ts";
 import subagentExtension from "./subagent/index.ts";
+import syntaxCheckExtension from "./syntax-check/index.ts";
 import thinkingExtension from "./thinking/index.ts";
 import todoExtension from "./todo/index.ts";
 import toolSearchExtension from "./tool-search/index.ts";
@@ -69,9 +71,11 @@ export const builtInExtensions: InlineExtension[] = [
 	// Embedded ny-pi extensions, in ny-pi's load order (after pi-code, by source file name).
 	{ name: "auto-resume", factory: autoResumeExtension, builtin: true },
 	{ name: "completion-gate", factory: completionGateExtension, builtin: true },
+	{ name: "dev-commands", factory: devCommandsExtension, builtin: true },
 	{ name: "footer", factory: footerExtension, builtin: true },
 	{ name: "docs-pointer", factory: docsPointerExtension, builtin: true },
 	{ name: "prefix-cache-1h", factory: prefixCache1hExtension, builtin: true },
 	{ name: "sound-notify", factory: soundNotifyExtension, builtin: true },
+	{ name: "syntax-check", factory: syntaxCheckExtension, builtin: true },
 	{ name: "up-dequeue", factory: upDequeueExtension, builtin: true },
 ];
