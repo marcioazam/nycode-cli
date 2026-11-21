@@ -4,9 +4,9 @@
  * `.claude/` directory is unaffected.
  */
 
-import * as path from 'node:path'
+import * as path from "node:path";
 
 /** The home-scope Claude config directory: always `<home>/.claude`. */
 export function claudeConfigDir(home: string): string {
-  return path.join(home, '.claude')
+	return path.join(home, ".claude");
 }

@@ -4,27 +4,31 @@
  * SubagentStop; pi loads extensions without a shared module cache, so state rides the bus.
  */
 
-export const SUBAGENT_CHANNEL = 'pi-code:subagent'
+export const SUBAGENT_CHANNEL = "pi-code:subagent";
 /** Published by plan-mode: `{executing: boolean, step?: number, done: number, total: number}`; `step` = the first open step. Read-only here. */
-export const PLAN_STATE_CHANNEL = 'pi-code:plan-state'
+export const PLAN_STATE_CHANNEL = "pi-code:plan-state";
 
 export interface SubagentPhaseEvent {
-  phase: 'start' | 'stop'
-  agentType: string
-  agentId: string
-  /** The run's final assistant text, on stop: Claude's SubagentStop delivers it
-   * as last_assistant_message so hooks need not parse a transcript. */
-  lastAssistantMessage?: string
-  /** Correlation (additive; consumers that do not know them ignore them): the `subagent` tool call, the plan step open at the
-   * start, and on stop how the lane ended. */
-  toolCallId?: string
-  planStep?: number
-  state?: string
-  exitCode?: number
-  partial?: boolean
+	phase: "start" | "stop";
+	agentType: string;
+	agentId: string;
+	/** The run's final assistant text, on stop: Claude's SubagentStop delivers it
+	 * as last_assistant_message so hooks need not parse a transcript. */
+	lastAssistantMessage?: string;
+	/** Correlation (additive; consumers that do not know them ignore them): the `subagent` tool call, the plan step open at the
+	 * start, and on stop how the lane ended. */
+	toolCallId?: string;
+	planStep?: number;
+	state?: string;
+	exitCode?: number;
+	partial?: boolean;
 }
 
 export function isSubagentPhaseEvent(data: unknown): data is SubagentPhaseEvent {
-  const event = data as SubagentPhaseEvent
-  return (event?.phase === 'start' || event?.phase === 'stop') && typeof event.agentType === 'string' && typeof event.agentId === 'string'
+	const event = data as SubagentPhaseEvent;
+	return (
+		(event?.phase === "start" || event?.phase === "stop") &&
+		typeof event.agentType === "string" &&
+		typeof event.agentId === "string"
+	);
 }

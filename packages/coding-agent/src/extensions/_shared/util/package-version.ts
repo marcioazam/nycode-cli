@@ -3,6 +3,6 @@
  * meaning inside the core, where `VERSION` in src/config.ts already reads the package manifest.
  */
 
-import { VERSION } from '../../../config.ts'
+import { VERSION } from "../../../config.ts";
 
-export const PACKAGE_VERSION: string = VERSION
+export const PACKAGE_VERSION: string = VERSION;

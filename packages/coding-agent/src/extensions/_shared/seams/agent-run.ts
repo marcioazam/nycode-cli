@@ -9,43 +9,43 @@
  * are skipped rather than failing the event.
  */
 
-import { sharedSlot } from './shared-slot.ts'
+import { sharedSlot } from "./shared-slot.ts";
 
 export interface AgentRunRequest {
-  /** The agent's task prompt, with `$ARGUMENTS` already substituted. */
-  prompt: string
-  /** Optional model id override; the runner falls back to a fast default. */
-  model?: string
-  /** Optional extra system prompt (Claude's experimental `systemPrompt` field). */
-  systemPrompt?: string
-  /** A discovered agent to run as (Claude's `agent` field on context: fork
-   * skills); unknown names fall back per fullTools. */
-  agent?: string
-  /** Run with the full toolset instead of the read-only hook shape, for
-   * context: fork skills. */
-  fullTools?: boolean
-  /** Aborts the run at the hook's deadline. */
-  signal?: AbortSignal
+	/** The agent's task prompt, with `$ARGUMENTS` already substituted. */
+	prompt: string;
+	/** Optional model id override; the runner falls back to a fast default. */
+	model?: string;
+	/** Optional extra system prompt (Claude's experimental `systemPrompt` field). */
+	systemPrompt?: string;
+	/** A discovered agent to run as (Claude's `agent` field on context: fork
+	 * skills); unknown names fall back per fullTools. */
+	agent?: string;
+	/** Run with the full toolset instead of the read-only hook shape, for
+	 * context: fork skills. */
+	fullTools?: boolean;
+	/** Aborts the run at the hook's deadline. */
+	signal?: AbortSignal;
 }
 
 /** Run a subagent to completion and return its final assistant text. */
-export type AgentRunner = (request: AgentRunRequest) => Promise<string>
+export type AgentRunner = (request: AgentRunRequest) => Promise<string>;
 
-const slot = sharedSlot<AgentRunner>('agent-runner')
+const slot = sharedSlot<AgentRunner>("agent-runner");
 
 /** The subagent extension registers its runner here; pass undefined to clear it. */
 export function setAgentRunner(fn: AgentRunner | undefined): void {
-  slot.set(fn)
+	slot.set(fn);
 }
 
 /** Test seam: whether a runner is registered. */
 export function hasAgentRunner(): boolean {
-  return slot.get() !== undefined
+	return slot.get() !== undefined;
 }
 
 /** Run a subagent for an agent hook. Rejects when no runner is registered. */
 export function runAgent(request: AgentRunRequest): Promise<string> {
-  const runner = slot.get()
-  if (!runner) return Promise.reject(new Error('no subagent runner registered for agent hooks'))
-  return runner(request)
+	const runner = slot.get();
+	if (!runner) return Promise.reject(new Error("no subagent runner registered for agent hooks"));
+	return runner(request);
 }

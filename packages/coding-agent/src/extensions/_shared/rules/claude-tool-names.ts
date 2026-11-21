@@ -17,51 +17,61 @@
  */
 
 interface ToolNamePair {
-  /** Canonical Claude tool name, or null when the reference has no such tool. */
-  claude: string | null
-  /** pi's registered tool name. */
-  pi: string
-  /** Further Claude spellings accepted when reading a grant: renamed tools and
-   * secondary tools that share one pi implementation. Never used for payloads. */
-  aliases?: string[]
+	/** Canonical Claude tool name, or null when the reference has no such tool. */
+	claude: string | null;
+	/** pi's registered tool name. */
+	pi: string;
+	/** Further Claude spellings accepted when reading a grant: renamed tools and
+	 * secondary tools that share one pi implementation. Never used for payloads. */
+	aliases?: string[];
 }
 
 const TOOL_NAMES: ToolNamePair[] = [
-  { claude: 'Read', pi: 'read' },
-  { claude: 'Write', pi: 'write' },
-  { claude: 'Edit', pi: 'edit' },
-  { claude: 'Bash', pi: 'bash' },
-  { claude: 'Grep', pi: 'grep' },
-  { claude: 'Glob', pi: 'find' },
-  { claude: 'WebFetch', pi: 'web_fetch' },
-  { claude: 'WebSearch', pi: 'web_search' },
-  // `Task` was renamed `Agent`; both spellings resolve, the payload reports `Agent`.
-  { claude: 'Agent', pi: 'subagent', aliases: ['Task'] },
-  { claude: 'AskUserQuestion', pi: 'question' },
-  { claude: 'ExitPlanMode', pi: 'plan_mode_complete' },
-  // Custom commands were folded into skills and the reference no longer lists a
-  // SlashCommand tool, so `Skill` is canonical and `SlashCommand` is the legacy name.
-  { claude: 'Skill', pi: 'slash_command', aliases: ['SlashCommand'] },
-  // pi's single todo tool serves Claude's whole todo/task-list family. Claude now
-  // prefers TaskCreate/TaskGet/TaskList/TaskUpdate over TodoWrite/TodoRead; every
-  // spelling resolves so an allowed-tools entry naming the current tools still grants
-  // something, and TodoWrite stays the name a payload reports.
-  { claude: 'TodoWrite', pi: 'todo', aliases: ['TodoRead', 'TaskCreate', 'TaskGet', 'TaskList', 'TaskUpdate'] },
-  // pi tools the tools reference has no entry for.
-  { claude: null, pi: 'ls', aliases: ['LS'] },
-]
+	{ claude: "Read", pi: "read" },
+	{ claude: "Write", pi: "write" },
+	{ claude: "Edit", pi: "edit" },
+	{ claude: "Bash", pi: "bash" },
+	{ claude: "Grep", pi: "grep" },
+	{ claude: "Glob", pi: "find" },
+	{ claude: "WebFetch", pi: "web_fetch" },
+	{ claude: "WebSearch", pi: "web_search" },
+	// `Task` was renamed `Agent`; both spellings resolve, the payload reports `Agent`.
+	{ claude: "Agent", pi: "subagent", aliases: ["Task"] },
+	{ claude: "AskUserQuestion", pi: "question" },
+	{ claude: "ExitPlanMode", pi: "plan_mode_complete" },
+	// Custom commands were folded into skills and the reference no longer lists a
+	// SlashCommand tool, so `Skill` is canonical and `SlashCommand` is the legacy name.
+	{ claude: "Skill", pi: "slash_command", aliases: ["SlashCommand"] },
+	// pi's single todo tool serves Claude's whole todo/task-list family. Claude now
+	// prefers TaskCreate/TaskGet/TaskList/TaskUpdate over TodoWrite/TodoRead; every
+	// spelling resolves so an allowed-tools entry naming the current tools still grants
+	// something, and TodoWrite stays the name a payload reports.
+	{ claude: "TodoWrite", pi: "todo", aliases: ["TodoRead", "TaskCreate", "TaskGet", "TaskList", "TaskUpdate"] },
+	// pi tools the tools reference has no entry for.
+	{ claude: null, pi: "ls", aliases: ["LS"] },
+];
 
-const fold = (name: string): string => name.trim().toLowerCase()
+const fold = (name: string): string => name.trim().toLowerCase();
 
 /** Every Claude spelling -> pi tool name, for reading a grant list. Includes each
  * pi name itself so a list written in pi's own vocabulary still resolves. */
-export const CLAUDE_TOOL_MAP: Record<string, string> = Object.fromEntries(TOOL_NAMES.flatMap(({ claude, pi, aliases }) => [...(claude === null ? [] : [[fold(claude), pi]]), ...(aliases ?? []).map((alias) => [fold(alias), pi]), [fold(pi), pi]]))
+export const CLAUDE_TOOL_MAP: Record<string, string> = Object.fromEntries(
+	TOOL_NAMES.flatMap(({ claude, pi, aliases }) => [
+		...(claude === null ? [] : [[fold(claude), pi]]),
+		...(aliases ?? []).map((alias) => [fold(alias), pi]),
+		[fold(pi), pi],
+	]),
+);
 
-const CLAUDE_NAME_BY_TOOL: Record<string, string> = Object.fromEntries(TOOL_NAMES.filter((pair): pair is ToolNamePair & { claude: string } => pair.claude !== null).map(({ claude, pi }) => [pi, claude]))
+const CLAUDE_NAME_BY_TOOL: Record<string, string> = Object.fromEntries(
+	TOOL_NAMES.filter((pair): pair is ToolNamePair & { claude: string } => pair.claude !== null).map(
+		({ claude, pi }) => [pi, claude],
+	),
+);
 
 /** pi built-in -> canonical Claude tool name for hook payloads and matchers, or
  * undefined for a pi tool the reference has no counterpart for. MCP tools ride the
  * alias bus instead and never reach here. */
 export function claudeToolName(piName: string): string | undefined {
-  return CLAUDE_NAME_BY_TOOL[piName]
+	return CLAUDE_NAME_BY_TOOL[piName];
 }

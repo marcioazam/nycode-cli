@@ -4,12 +4,12 @@
  * pi loads extensions without a shared module cache, so state rides the bus.
  */
 
-export const PLAN_MODE_CHANNEL = 'pi-code:plan-mode'
+export const PLAN_MODE_CHANNEL = "pi-code:plan-mode";
 
 export interface PlanModeState {
-  active: boolean
+	active: boolean;
 }
 
 export function isPlanModeState(data: unknown): data is PlanModeState {
-  return typeof (data as PlanModeState)?.active === 'boolean'
+	return typeof (data as PlanModeState)?.active === "boolean";
 }

@@ -10,8 +10,8 @@
  * closed, as plan mode's guard does.
  */
 
-import { hasSubstitution, splitSegments } from '../shell/shell-split.ts'
-import { escapeRegExp } from '../util/values.ts'
+import { hasSubstitution, splitSegments } from "../shell/shell-split.ts";
+import { escapeRegExp } from "../util/values.ts";
 
 /**
  * One rule against one command segment, per Claude's permission table:
@@ -23,30 +23,36 @@ import { escapeRegExp } from '../util/values.ts'
  *   colon anywhere else is a literal character.
  */
 function matchesRule(segment: string, rule: string): boolean {
-  const normalized = rule.endsWith(':*') ? `${rule.slice(0, -2)} *` : rule
-  if (normalized.endsWith(' *') && normalized.indexOf('*') === normalized.length - 1 && segment === normalized.slice(0, -2)) return true
-  if (normalized.includes('*')) return new RegExp(`^${normalized.split('*').map(escapeRegExp).join('[^]*')}$`).test(segment)
-  return segment === normalized
+	const normalized = rule.endsWith(":*") ? `${rule.slice(0, -2)} *` : rule;
+	if (
+		normalized.endsWith(" *") &&
+		normalized.indexOf("*") === normalized.length - 1 &&
+		segment === normalized.slice(0, -2)
+	)
+		return true;
+	if (normalized.includes("*"))
+		return new RegExp(`^${normalized.split("*").map(escapeRegExp).join("[^]*")}$`).test(segment);
+	return segment === normalized;
 }
 
 /** Leading `VAR=value` assignments, which Claude strips before matching an `if` pattern. */
-const LEADING_ASSIGNMENTS = /^(?:[A-Za-z_]\w*=(?:"[^"]*"|'[^']*'|\S*)\s+)+/
+const LEADING_ASSIGNMENTS = /^(?:[A-Za-z_]\w*=(?:"[^"]*"|'[^']*'|\S*)\s+)+/;
 
 /** The bodies of `$(...)`, `` `...` ``, `<(...)` and `>(...)`, which run commands of their own. */
 function substitutionBodies(command: string): string[] {
-  const bodies: string[] = []
-  for (const match of command.matchAll(/\$\(([^()]*)\)|`([^`]*)`|[<>]\(([^()]*)\)/g)) {
-    const body = match[1] ?? match[2] ?? match[3]
-    if (body?.trim()) bodies.push(body.trim())
-  }
-  return bodies
+	const bodies: string[] = [];
+	for (const match of command.matchAll(/\$\(([^()]*)\)|`([^`]*)`|[<>]\(([^()]*)\)/g)) {
+		const body = match[1] ?? match[2] ?? match[3];
+		if (body?.trim()) bodies.push(body.trim());
+	}
+	return bodies;
 }
 
 /** Whether the first word of a segment is something only the shell can resolve. */
-const headUnresolvable = (segment: string): boolean => /[$`]/.test(segment.split(/\s+/, 1)[0] ?? '')
+const headUnresolvable = (segment: string): boolean => /[$`]/.test(segment.split(/\s+/, 1)[0] ?? "");
 
 /** Whether a pattern names more than the command itself, like `git push *` against `git *`. */
-const namesMoreThanCommand = (rule: string): boolean => rule.split('*', 1)[0].trim().includes(' ')
+const namesMoreThanCommand = (rule: string): boolean => rule.split("*", 1)[0].trim().includes(" ");
 
 /**
  * Claude's `if` filter for a Bash call, which decides whether a hook gets to SEE the
@@ -63,18 +69,23 @@ const namesMoreThanCommand = (rule: string): boolean => rule.split('*', 1)[0].tr
  * the pattern names more than the command.
  */
 export function matchesBashIfFilter(command: string, rule: string): boolean {
-  const trimmed = rule.trim()
-  const candidates = splitSegments(command).flatMap((segment) => {
-    const stripped = segment.replace(LEADING_ASSIGNMENTS, '')
-    return [stripped, ...substitutionBodies(stripped).flatMap((body) => splitSegments(body).map((inner) => inner.replace(LEADING_ASSIGNMENTS, '')))]
-  })
-  if (candidates.some((candidate) => matchesRule(candidate, trimmed))) return true
-  if (candidates.some(headUnresolvable)) return true
-  return namesMoreThanCommand(trimmed) && (hasSubstitution(command) || /\$[A-Za-z_{]/.test(command))
+	const trimmed = rule.trim();
+	const candidates = splitSegments(command).flatMap((segment) => {
+		const stripped = segment.replace(LEADING_ASSIGNMENTS, "");
+		return [
+			stripped,
+			...substitutionBodies(stripped).flatMap((body) =>
+				splitSegments(body).map((inner) => inner.replace(LEADING_ASSIGNMENTS, "")),
+			),
+		];
+	});
+	if (candidates.some((candidate) => matchesRule(candidate, trimmed))) return true;
+	if (candidates.some(headUnresolvable)) return true;
+	return namesMoreThanCommand(trimmed) && (hasSubstitution(command) || /\$[A-Za-z_{]/.test(command));
 }
 
 export function matchesBashRules(command: string, rules: string[]): boolean {
-  if (hasSubstitution(command)) return false
-  const segments = splitSegments(command)
-  return segments.length > 0 && segments.every((segment) => rules.some((rule) => matchesRule(segment, rule.trim())))
+	if (hasSubstitution(command)) return false;
+	const segments = splitSegments(command);
+	return segments.length > 0 && segments.every((segment) => rules.some((rule) => matchesRule(segment, rule.trim())));
 }

@@ -14,61 +14,61 @@
  */
 
 export interface TurnOverride<T> {
-  /** The value to restore, captured only on the first arm of a turn; undefined when
-   * nothing is armed. */
-  readonly prior: T | undefined
-  /** The value last armed as the move target, for a conditional restore. */
-  readonly target: T | undefined
-  /** Record the value to restore (kept only the first time per turn) and, optionally, the
-   * value moved to for a conditional restore. Does not apply the override. */
-  arm(prior: T, target?: T): void
-  /** Drop the pending capture without restoring: a session boundary. */
-  reset(): void
-  /** Restore the captured prior via `set` and clear the capture. A conditional override
-   * stands down when the current value has moved off the target. No-op when nothing is
-   * armed. Returns what `set` returns, so a caller that must not exit before an async
-   * restore has landed (a shutdown) can await it. */
-  settle(): void | Promise<void>
+	/** The value to restore, captured only on the first arm of a turn; undefined when
+	 * nothing is armed. */
+	readonly prior: T | undefined;
+	/** The value last armed as the move target, for a conditional restore. */
+	readonly target: T | undefined;
+	/** Record the value to restore (kept only the first time per turn) and, optionally, the
+	 * value moved to for a conditional restore. Does not apply the override. */
+	arm(prior: T, target?: T): void;
+	/** Drop the pending capture without restoring: a session boundary. */
+	reset(): void;
+	/** Restore the captured prior via `set` and clear the capture. A conditional override
+	 * stands down when the current value has moved off the target. No-op when nothing is
+	 * armed. Returns what `set` returns, so a caller that must not exit before an async
+	 * restore has landed (a shutdown) can await it. */
+	settle(): void | Promise<void>;
 }
 
 export function createTurnOverride<T>(opts: {
-  /** Applies the restore value. Consumers wrap their setter here (async-with-catch for
-   * commands' model, plain for the thinking level). */
-  set: (value: T) => void | Promise<void>
-  /** Reads the current value, for a conditional restore. Only consulted when
-   * `conditional` is set. */
-  get?: () => T | undefined
-  /** When set, restore only if the current value still equals the armed target. */
-  conditional?: boolean
+	/** Applies the restore value. Consumers wrap their setter here (async-with-catch for
+	 * commands' model, plain for the thinking level). */
+	set: (value: T) => void | Promise<void>;
+	/** Reads the current value, for a conditional restore. Only consulted when
+	 * `conditional` is set. */
+	get?: () => T | undefined;
+	/** When set, restore only if the current value still equals the armed target. */
+	conditional?: boolean;
 }): TurnOverride<T> {
-  let prior: T | undefined
-  let target: T | undefined
-  return {
-    get prior() {
-      return prior
-    },
-    get target() {
-      return target
-    },
-    arm(priorValue, targetValue) {
-      prior = prior ?? priorValue
-      target = targetValue
-    },
-    reset() {
-      prior = undefined
-      target = undefined
-    },
-    settle() {
-      if (prior === undefined) return
-      const restore = prior
-      const movedTo = target
-      prior = undefined
-      target = undefined
-      if (opts.conditional) {
-        const current = opts.get?.()
-        if (current !== undefined && current !== movedTo) return
-      }
-      return opts.set(restore)
-    },
-  }
+	let prior: T | undefined;
+	let target: T | undefined;
+	return {
+		get prior() {
+			return prior;
+		},
+		get target() {
+			return target;
+		},
+		arm(priorValue, targetValue) {
+			prior = prior ?? priorValue;
+			target = targetValue;
+		},
+		reset() {
+			prior = undefined;
+			target = undefined;
+		},
+		settle() {
+			if (prior === undefined) return;
+			const restore = prior;
+			const movedTo = target;
+			prior = undefined;
+			target = undefined;
+			if (opts.conditional) {
+				const current = opts.get?.();
+				if (current !== undefined && current !== movedTo) return;
+			}
+			return opts.set(restore);
+		},
+	};
 }

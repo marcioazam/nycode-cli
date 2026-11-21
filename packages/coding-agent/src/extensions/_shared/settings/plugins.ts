@@ -14,93 +14,95 @@
  * ~/.claude/plugins/data/<id>, id being the qualified name folded to dashes.
  */
 
-import * as crypto from 'node:crypto'
-import * as fs from 'node:fs'
-import * as path from 'node:path'
-import { claudeConfigDir } from './config-dir.ts'
-import { readManagedSettings } from './managed-settings.ts'
-import { userSettingsFiles } from './settings-chain.ts'
-import { statToken } from '../util/stat-token.ts'
-import { errorMessage, isRecord } from '../util/values.ts'
+import * as crypto from "node:crypto";
+import * as fs from "node:fs";
+import * as path from "node:path";
+import { statToken } from "../util/stat-token.ts";
+import { errorMessage, isRecord } from "../util/values.ts";
+import { claudeConfigDir } from "./config-dir.ts";
+import { readManagedSettings } from "./managed-settings.ts";
+import { userSettingsFiles } from "./settings-chain.ts";
 
 export interface InstalledPlugin {
-  name: string
-  /** The version directory: ${CLAUDE_PLUGIN_ROOT}. */
-  root: string
-  /** ${CLAUDE_PLUGIN_DATA}; may not exist yet. */
-  dataDir: string
-  manifest: Record<string, unknown>
-  /** The keys `enabledPlugins` names this plugin by: `<directory>@<marketplace>`, then the
-   * bare directory, which can differ from the manifest `name`. */
-  enablementKeys: { qualified: string; directory: string }
-  /** Resolved `pluginConfigs[id].options` values, exposed as `${user_config.KEY}`. */
-  userConfig?: Record<string, string>
+	name: string;
+	/** The version directory: ${CLAUDE_PLUGIN_ROOT}. */
+	root: string;
+	/** ${CLAUDE_PLUGIN_DATA}; may not exist yet. */
+	dataDir: string;
+	manifest: Record<string, unknown>;
+	/** The keys `enabledPlugins` names this plugin by: `<directory>@<marketplace>`, then the
+	 * bare directory, which can differ from the manifest `name`. */
+	enablementKeys: { qualified: string; directory: string };
+	/** Resolved `pluginConfigs[id].options` values, exposed as `${user_config.KEY}`. */
+	userConfig?: Record<string, string>;
 }
 
 function readJson(file: string): Record<string, unknown> {
-  let raw: string
-  try {
-    raw = fs.readFileSync(file, 'utf-8')
-  } catch {
-    return {} // no such file: nothing to read, and most callers expect that
-  }
-  try {
-    const parsed: unknown = JSON.parse(raw)
-    // isRecord, not a hand-written object check: a manifest or settings file that is a
-    // JSON array is not a config object, and every caller here reads it by key.
-    return isRecord(parsed) ? parsed : {}
-  } catch (error) {
-    // A manifest that does not parse leaves the plugin with no components at all, and
-    // settings that do not parse drop the enablement or configuration they carried.
-    console.warn(`nycode-plugins: ignoring ${file}: ${errorMessage(error)}`)
-    return {}
-  }
+	let raw: string;
+	try {
+		raw = fs.readFileSync(file, "utf-8");
+	} catch {
+		return {}; // no such file: nothing to read, and most callers expect that
+	}
+	try {
+		const parsed: unknown = JSON.parse(raw);
+		// isRecord, not a hand-written object check: a manifest or settings file that is a
+		// JSON array is not a config object, and every caller here reads it by key.
+		return isRecord(parsed) ? parsed : {};
+	} catch (error) {
+		// A manifest that does not parse leaves the plugin with no components at all, and
+		// settings that do not parse drop the enablement or configuration they carried.
+		console.warn(`nycode-plugins: ignoring ${file}: ${errorMessage(error)}`);
+		return {};
+	}
 }
 
 function listDirs(dir: string): string[] {
-  try {
-    return fs
-      .readdirSync(dir, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => entry.name)
-  } catch {
-    return []
-  }
+	try {
+		return fs
+			.readdirSync(dir, { withFileTypes: true })
+			.filter((entry) => entry.isDirectory())
+			.map((entry) => entry.name);
+	} catch {
+		return [];
+	}
 }
 
 /** The plugin directories of a marketplace. A dot-directory is never one: Claude clones a
  * marketplace into `temp_git_*` first, and its `.git` was loaded as a plugin. */
 function listPluginDirs(marketplaceDir: string): string[] {
-  return listDirs(marketplaceDir).filter((name) => !name.startsWith('.'))
+	return listDirs(marketplaceDir).filter((name) => !name.startsWith("."));
 }
 
 /** One version string split for comparison: optional v prefix dropped, numeric
  * base segments, and whatever follows a dash as the prerelease tag. */
 function parseVersion(version: string): { base: number[]; pre: string | undefined } {
-  const stripped = version.replace(/^v/i, '')
-  const dash = stripped.indexOf('-')
-  const base = (dash === -1 ? stripped : stripped.slice(0, dash)).split('.').map((segment) => Number.parseInt(segment, 10) || 0)
-  return { base, pre: dash === -1 ? undefined : stripped.slice(dash + 1) }
+	const stripped = version.replace(/^v/i, "");
+	const dash = stripped.indexOf("-");
+	const base = (dash === -1 ? stripped : stripped.slice(0, dash))
+		.split(".")
+		.map((segment) => Number.parseInt(segment, 10) || 0);
+	return { base, pre: dash === -1 ? undefined : stripped.slice(dash + 1) };
 }
 
 /** Semver ordering to the depth plugin cache dirs need: 1.10.0 beats 1.9.0,
  * 10.0.0 beats v2.0.0, and a release outranks its own prerelease (a plain
  * string sort got both of the latter wrong). */
 function compareVersions(a: string, b: string): number {
-  const left = parseVersion(a)
-  const right = parseVersion(b)
-  for (let i = 0; i < Math.max(left.base.length, right.base.length); i++) {
-    const diff = (left.base[i] ?? 0) - (right.base[i] ?? 0)
-    if (diff !== 0) return diff
-  }
-  if (left.pre === right.pre) return 0
-  if (left.pre === undefined) return 1
-  if (right.pre === undefined) return -1
-  return left.pre.localeCompare(right.pre, 'en', { numeric: true })
+	const left = parseVersion(a);
+	const right = parseVersion(b);
+	for (let i = 0; i < Math.max(left.base.length, right.base.length); i++) {
+		const diff = (left.base[i] ?? 0) - (right.base[i] ?? 0);
+		if (diff !== 0) return diff;
+	}
+	if (left.pre === right.pre) return 0;
+	if (left.pre === undefined) return 1;
+	if (right.pre === undefined) return -1;
+	return left.pre.localeCompare(right.pre, "en", { numeric: true });
 }
 
 function newestVersion(versions: string[]): string | undefined {
-  return [...versions].sort(compareVersions).at(-1)
+	return [...versions].sort(compareVersions).at(-1);
 }
 
 /** Claude's record of what is installed, `plugins/installed_plugins.json`: per plugin id a
@@ -109,19 +111,21 @@ function newestVersion(versions: string[]): string | undefined {
  * user's own, and a project or local install is another project's copy. Undefined when the
  * file is absent or unusable, which leaves the directory walk to decide. */
 function readInstallIndex(home: string): Map<string, string[]> | undefined {
-  const file = path.join(claudeConfigDir(home), 'plugins', 'installed_plugins.json')
-  const plugins = readJson(file).plugins
-  if (plugins === null || typeof plugins !== 'object') return undefined
-  const installs = new Map<string, string[]>()
-  for (const [id, entry] of Object.entries(plugins)) {
-    const recorded = (Array.isArray(entry) ? entry : [entry]).filter((one): one is { scope?: unknown; installPath: string } => typeof one?.installPath === 'string')
-    recorded.sort((a, b) => Number(b.scope === 'user') - Number(a.scope === 'user'))
-    installs.set(
-      id,
-      recorded.map((one) => one.installPath),
-    )
-  }
-  return installs
+	const file = path.join(claudeConfigDir(home), "plugins", "installed_plugins.json");
+	const plugins = readJson(file).plugins;
+	if (plugins === null || typeof plugins !== "object") return undefined;
+	const installs = new Map<string, string[]>();
+	for (const [id, entry] of Object.entries(plugins)) {
+		const recorded = (Array.isArray(entry) ? entry : [entry]).filter(
+			(one): one is { scope?: unknown; installPath: string } => typeof one?.installPath === "string",
+		);
+		recorded.sort((a, b) => Number(b.scope === "user") - Number(a.scope === "user"));
+		installs.set(
+			id,
+			recorded.map((one) => one.installPath),
+		);
+	}
+	return installs;
 }
 
 /** The version directory of one cached plugin that loads: a recorded install that still
@@ -129,58 +133,62 @@ function readInstallIndex(home: string): Map<string, string[]> | undefined {
  * path into another plugin's tree would load that plugin's code under this one's name),
  * else the newest version not marked orphaned. */
 function versionDir(pluginPath: string, recorded: string[] | undefined): string | undefined {
-  const installed = recorded?.find((dir) => path.dirname(path.resolve(dir)) === pluginPath && listDirs(pluginPath).includes(path.basename(dir)))
-  if (installed) return installed
-  const live = listDirs(pluginPath).filter((version) => !fs.existsSync(path.join(pluginPath, version, '.orphaned_at')))
-  const newest = newestVersion(live)
-  return newest === undefined ? undefined : path.join(pluginPath, newest)
+	const installed = recorded?.find(
+		(dir) => path.dirname(path.resolve(dir)) === pluginPath && listDirs(pluginPath).includes(path.basename(dir)),
+	);
+	if (installed) return installed;
+	const live = listDirs(pluginPath).filter(
+		(version) => !fs.existsSync(path.join(pluginPath, version, ".orphaned_at")),
+	);
+	const newest = newestVersion(live);
+	return newest === undefined ? undefined : path.join(pluginPath, newest);
 }
 
 /** The enablement map, later files winning per key, as settings scopes merge. */
 function enabledMap(settingsFiles: string[]): Record<string, boolean> {
-  const merged: Record<string, boolean> = {}
-  for (const file of settingsFiles) {
-    const entry = readJson(file).enabledPlugins
-    if (entry === null || typeof entry !== 'object') continue
-    for (const [name, value] of Object.entries(entry)) {
-      if (typeof value === 'boolean') merged[name] = value
-    }
-  }
-  return merged
+	const merged: Record<string, boolean> = {};
+	for (const file of settingsFiles) {
+		const entry = readJson(file).enabledPlugins;
+		if (entry === null || typeof entry !== "object") continue;
+		for (const [name, value] of Object.entries(entry)) {
+			if (typeof value === "boolean") merged[name] = value;
+		}
+	}
+	return merged;
 }
 
 /** Copy one plugin config's `options` into `target`, coercing scalars to strings and
  * ignoring the rest, later keys winning. */
 function mergeOptionValues(target: Record<string, string>, options: object): void {
-  for (const [key, value] of Object.entries(options)) {
-    if (typeof value === 'string') target[key] = value
-    else if (typeof value === 'number' || typeof value === 'boolean') target[key] = String(value)
-  }
+	for (const [key, value] of Object.entries(options)) {
+		if (typeof value === "string") target[key] = value;
+		else if (typeof value === "number" || typeof value === "boolean") target[key] = String(value);
+	}
 }
 
 /** `pluginConfigs[id].options` per plugin id, later files winning per key. */
 function pluginConfigsMap(settingsFiles: string[]): Record<string, Record<string, string>> {
-  const merged: Record<string, Record<string, string>> = {}
-  for (const file of settingsFiles) {
-    const entry = readJson(file).pluginConfigs
-    if (entry === null || typeof entry !== 'object') continue
-    for (const [id, config] of Object.entries(entry)) {
-      const options = (config as Record<string, unknown>)?.options
-      if (options === null || typeof options !== 'object') continue
-      const values = merged[id] ?? {}
-      mergeOptionValues(values, options)
-      merged[id] = values
-    }
-  }
-  return merged
+	const merged: Record<string, Record<string, string>> = {};
+	for (const file of settingsFiles) {
+		const entry = readJson(file).pluginConfigs;
+		if (entry === null || typeof entry !== "object") continue;
+		for (const [id, config] of Object.entries(entry)) {
+			const options = (config as Record<string, unknown>)?.options;
+			if (options === null || typeof options !== "object") continue;
+			const values = merged[id] ?? {};
+			mergeOptionValues(values, options);
+			merged[id] = values;
+		}
+	}
+	return merged;
 }
 
 /** Memoized discovery per (home, extra settings files), revalidated by fingerprint. */
-const pluginCache = new Map<string, { fingerprint: string; plugins: InstalledPlugin[] }>()
+const pluginCache = new Map<string, { fingerprint: string; plugins: InstalledPlugin[] }>();
 
 /** Drop every memoized discovery; the next installedPlugins call walks afresh. */
 export function resetInstalledPluginsCache(): void {
-  pluginCache.clear()
+	pluginCache.clear();
 }
 
 /** mtime plus size; cheap, but blind to a same-size rewrite within one timestamp tick, so
@@ -188,21 +196,21 @@ export function resetInstalledPluginsCache(): void {
  * (internal/stat-token.ts); it throws where this caller wants a value for a path that is
  * simply not there, which is the catch below rather than a second copy of the format. */
 function statTokenOrMissing(target: string): string {
-  try {
-    return statToken(target)
-  } catch {
-    return 'missing'
-  }
+	try {
+		return statToken(target);
+	} catch {
+		return "missing";
+	}
 }
 
 /** Content hash for the small settings files: a same-size rewrite within one
  * mtime tick (the settings-watch flake class) must still invalidate the cache. */
 function contentToken(target: string): string {
-  try {
-    return crypto.createHash('sha256').update(fs.readFileSync(target)).digest('hex')
-  } catch {
-    return 'missing'
-  }
+	try {
+		return crypto.createHash("sha256").update(fs.readFileSync(target)).digest("hex");
+	} catch {
+		return "missing";
+	}
 }
 
 /**
@@ -212,25 +220,32 @@ function contentToken(target: string): string {
  * so an in-place edit of it invalidates the cache. Costs a few stats where the full
  * walk reads and parses the settings and every manifest.
  */
-function pluginFingerprint(cacheDir: string, settingsFiles: string[], index: Map<string, string[]> | undefined): string {
-  const parts = settingsFiles.map(contentToken)
-  for (const marketplace of listDirs(cacheDir)) {
-    const marketplaceDir = path.join(cacheDir, marketplace)
-    parts.push(`${marketplace}:${statTokenOrMissing(marketplaceDir)}`)
-    for (const pluginDir of listPluginDirs(marketplaceDir)) {
-      const pluginPath = path.join(marketplaceDir, pluginDir)
-      parts.push(`${marketplace}/${pluginDir}:${statTokenOrMissing(pluginPath)}`)
-      const versions = listDirs(pluginPath)
-      for (const version of versions) {
-        parts.push(`${marketplace}/${pluginDir}/${version}:${statTokenOrMissing(path.join(pluginPath, version))}`)
-      }
-      // resolvePlugin reads only the resolved version's manifest, so its stat token is
-      // what an in-place edit (no directory entry changing) must move.
-      const resolved = versionDir(pluginPath, index?.get(`${pluginDir}@${marketplace}`))
-      if (resolved) parts.push(`${marketplace}/${pluginDir}/${path.basename(resolved)}/manifest:${statTokenOrMissing(path.join(resolved, '.claude-plugin', 'plugin.json'))}`)
-    }
-  }
-  return parts.join('\n')
+function pluginFingerprint(
+	cacheDir: string,
+	settingsFiles: string[],
+	index: Map<string, string[]> | undefined,
+): string {
+	const parts = settingsFiles.map(contentToken);
+	for (const marketplace of listDirs(cacheDir)) {
+		const marketplaceDir = path.join(cacheDir, marketplace);
+		parts.push(`${marketplace}:${statTokenOrMissing(marketplaceDir)}`);
+		for (const pluginDir of listPluginDirs(marketplaceDir)) {
+			const pluginPath = path.join(marketplaceDir, pluginDir);
+			parts.push(`${marketplace}/${pluginDir}:${statTokenOrMissing(pluginPath)}`);
+			const versions = listDirs(pluginPath);
+			for (const version of versions) {
+				parts.push(`${marketplace}/${pluginDir}/${version}:${statTokenOrMissing(path.join(pluginPath, version))}`);
+			}
+			// resolvePlugin reads only the resolved version's manifest, so its stat token is
+			// what an in-place edit (no directory entry changing) must move.
+			const resolved = versionDir(pluginPath, index?.get(`${pluginDir}@${marketplace}`));
+			if (resolved)
+				parts.push(
+					`${marketplace}/${pluginDir}/${path.basename(resolved)}/manifest:${statTokenOrMissing(path.join(resolved, ".claude-plugin", "plugin.json"))}`,
+				);
+		}
+	}
+	return parts.join("\n");
 }
 
 /**
@@ -245,24 +260,24 @@ function pluginFingerprint(cacheDir: string, settingsFiles: string[], index: Map
  * because any settings edit or cache-tree change invalidates it.
  */
 export function installedPlugins(home: string, extraSettingsFiles: string[] = []): InstalledPlugin[] {
-  const cacheDir = path.join(claudeConfigDir(home), 'plugins', 'cache')
-  const settingsFiles = [...userSettingsFiles(home), ...extraSettingsFiles]
-  const key = [home, ...extraSettingsFiles].join('\n')
-  const index = readInstallIndex(home)
-  const fingerprint = pluginFingerprint(cacheDir, settingsFiles, index)
-  const cached = pluginCache.get(key)
-  if (cached?.fingerprint === fingerprint) return cached.plugins
-  const enabled = enabledMap(settingsFiles)
-  const configs = pluginConfigsMap(settingsFiles)
-  const plugins: InstalledPlugin[] = []
-  for (const marketplace of listDirs(cacheDir)) {
-    for (const pluginDir of listPluginDirs(path.join(cacheDir, marketplace))) {
-      const plugin = resolvePlugin(home, cacheDir, marketplace, pluginDir, enabled, configs, index)
-      if (plugin) plugins.push(plugin)
-    }
-  }
-  pluginCache.set(key, { fingerprint, plugins })
-  return plugins
+	const cacheDir = path.join(claudeConfigDir(home), "plugins", "cache");
+	const settingsFiles = [...userSettingsFiles(home), ...extraSettingsFiles];
+	const key = [home, ...extraSettingsFiles].join("\n");
+	const index = readInstallIndex(home);
+	const fingerprint = pluginFingerprint(cacheDir, settingsFiles, index);
+	const cached = pluginCache.get(key);
+	if (cached?.fingerprint === fingerprint) return cached.plugins;
+	const enabled = enabledMap(settingsFiles);
+	const configs = pluginConfigsMap(settingsFiles);
+	const plugins: InstalledPlugin[] = [];
+	for (const marketplace of listDirs(cacheDir)) {
+		for (const pluginDir of listPluginDirs(path.join(cacheDir, marketplace))) {
+			const plugin = resolvePlugin(home, cacheDir, marketplace, pluginDir, enabled, configs, index);
+			if (plugin) plugins.push(plugin);
+		}
+	}
+	pluginCache.set(key, { fingerprint, plugins });
+	return plugins;
 }
 
 /** The plugins a managed `enabledPlugins` entry force-enables. Claude exempts their
@@ -270,58 +285,85 @@ export function installedPlugins(home: string, extraSettingsFiles: string[] = []
  * hooks to run. Keys are matched the way pluginEnabled matches them, by the qualified
  * `name@marketplace` or the bare directory name, so the two cannot drift apart. */
 export function managedForceEnabled(plugins: InstalledPlugin[]): InstalledPlugin[] {
-  const managed = readManagedSettings().enabledPlugins
-  return plugins.filter((plugin) => enablementEntry(managed, plugin.enablementKeys.qualified, plugin.enablementKeys.directory) === true)
+	const managed = readManagedSettings().enabledPlugins;
+	return plugins.filter(
+		(plugin) => enablementEntry(managed, plugin.enablementKeys.qualified, plugin.enablementKeys.directory) === true,
+	);
 }
 
 /** The value an `enabledPlugins` object holds for one plugin: its qualified key first,
  * then its bare directory. */
 function enablementEntry(entries: unknown, qualified: string, directory: string): unknown {
-  if (entries === null || typeof entries !== 'object') return undefined
-  const record = entries as Record<string, unknown>
-  return record[qualified] ?? record[directory]
+	if (entries === null || typeof entries !== "object") return undefined;
+	const record = entries as Record<string, unknown>;
+	return record[qualified] ?? record[directory];
 }
 
 /** The plugin's effective enablement per Claude's precedence: a managed
  * enabledPlugins entry force-enables or blocks, then the user's setting, then the
  * manifest's defaultEnabled, which defaults to true ("starts in an enabled state
  * when the user has not set one"). */
-function pluginEnabled(qualified: string, pluginDir: string, enabled: Record<string, boolean>, manifest: Record<string, unknown>): boolean {
-  const managedState = enablementEntry(readManagedSettings().enabledPlugins, qualified, pluginDir)
-  if (typeof managedState === 'boolean') return managedState
-  const userState = enabled[qualified] ?? enabled[pluginDir]
-  if (typeof userState === 'boolean') return userState
-  return manifest.defaultEnabled !== false
+function pluginEnabled(
+	qualified: string,
+	pluginDir: string,
+	enabled: Record<string, boolean>,
+	manifest: Record<string, unknown>,
+): boolean {
+	const managedState = enablementEntry(readManagedSettings().enabledPlugins, qualified, pluginDir);
+	if (typeof managedState === "boolean") return managedState;
+	const userState = enabled[qualified] ?? enabled[pluginDir];
+	if (typeof userState === "boolean") return userState;
+	return manifest.defaultEnabled !== false;
 }
 
 /** Resolve one cached plugin directory into an enabled InstalledPlugin, or null to skip
  * it: turned off by managed/user settings or defaultEnabled, or no version yet. */
-function resolvePlugin(home: string, cacheDir: string, marketplace: string, pluginDir: string, enabled: Record<string, boolean>, configs: Record<string, Record<string, string>>, installs: Map<string, string[]> | undefined): InstalledPlugin | null {
-  const qualified = `${pluginDir}@${marketplace}`
-  const root = versionDir(path.join(cacheDir, marketplace, pluginDir), installs?.get(qualified))
-  if (!root) return null
-  const manifest = readJson(path.join(root, '.claude-plugin', 'plugin.json'))
-  if (!pluginEnabled(qualified, pluginDir, enabled, manifest)) return null
-  const name = typeof manifest.name === 'string' && manifest.name.length > 0 ? manifest.name : pluginDir
-  // Claude: "{id} is the plugin identifier with characters outside a-z, A-Z, 0-9,
-  // _, and - replaced by -", one dash per character, underscores kept.
-  const id = qualified.replace(/[^A-Za-z0-9_-]/g, '-')
-  const userConfig = configs[qualified] ?? configs[pluginDir] ?? configs[name]
-  return { name, root, dataDir: path.join(claudeConfigDir(home), 'plugins', 'data', id), manifest, enablementKeys: { qualified, directory: pluginDir }, ...(userConfig ? { userConfig } : {}) }
+function resolvePlugin(
+	home: string,
+	cacheDir: string,
+	marketplace: string,
+	pluginDir: string,
+	enabled: Record<string, boolean>,
+	configs: Record<string, Record<string, string>>,
+	installs: Map<string, string[]> | undefined,
+): InstalledPlugin | null {
+	const qualified = `${pluginDir}@${marketplace}`;
+	const root = versionDir(path.join(cacheDir, marketplace, pluginDir), installs?.get(qualified));
+	if (!root) return null;
+	const manifest = readJson(path.join(root, ".claude-plugin", "plugin.json"));
+	if (!pluginEnabled(qualified, pluginDir, enabled, manifest)) return null;
+	const name = typeof manifest.name === "string" && manifest.name.length > 0 ? manifest.name : pluginDir;
+	// Claude: "{id} is the plugin identifier with characters outside a-z, A-Z, 0-9,
+	// _, and - replaced by -", one dash per character, underscores kept.
+	const id = qualified.replace(/[^A-Za-z0-9_-]/g, "-");
+	const userConfig = configs[qualified] ?? configs[pluginDir] ?? configs[name];
+	return {
+		name,
+		root,
+		dataDir: path.join(claudeConfigDir(home), "plugins", "data", id),
+		manifest,
+		enablementKeys: { qualified, directory: pluginDir },
+		...(userConfig ? { userConfig } : {}),
+	};
 }
 
 /** A plugin component path, resolved inside the plugin root. Claude "rejects a component
  * path that resolves outside the plugin root, such as `../shared-utils`", so an escaping
  * entry yields undefined and its caller skips that component. The check is lexical, which
  * is the rule as documented: a plugin's own root may itself be a symlink (link mode). */
-export function pluginComponentPath(plugin: Pick<InstalledPlugin, 'name' | 'root'>, declared: string): string | undefined {
-  const resolved = path.resolve(plugin.root, declared)
-  const inside = path.relative(plugin.root, resolved)
-  if (inside !== '' && (inside.startsWith(`..${path.sep}`) || inside === '..' || path.isAbsolute(inside))) {
-    console.warn(`nycode-plugins: plugin ${plugin.name} declares the component path "${declared}", which resolves outside its root; ignoring it`)
-    return undefined
-  }
-  return resolved
+export function pluginComponentPath(
+	plugin: Pick<InstalledPlugin, "name" | "root">,
+	declared: string,
+): string | undefined {
+	const resolved = path.resolve(plugin.root, declared);
+	const inside = path.relative(plugin.root, resolved);
+	if (inside !== "" && (inside.startsWith(`..${path.sep}`) || inside === ".." || path.isAbsolute(inside))) {
+		console.warn(
+			`nycode-plugins: plugin ${plugin.name} declares the component path "${declared}", which resolves outside its root; ignoring it`,
+		);
+		return undefined;
+	}
+	return resolved;
 }
 
 /** The two plugin path variables, textually substituted into plugin-shipped
@@ -329,9 +371,17 @@ export function pluginComponentPath(plugin: Pick<InstalledPlugin, 'name' | 'root
  * substituting into text that is still raw JSON must pass an escapeValue that
  * JSON-escapes: a Windows root (C:\Users\...) inserted verbatim injects invalid
  * escape sequences and the subsequent parse throws. */
-export function substitutePluginVars(value: string, plugin: InstalledPlugin, escapeValue: (substituted: string) => string = (substituted) => substituted): string {
-  return value
-    .replaceAll('${CLAUDE_PLUGIN_ROOT}', escapeValue(plugin.root))
-    .replaceAll('${CLAUDE_PLUGIN_DATA}', escapeValue(plugin.dataDir))
-    .replace(/\$\{user_config\.(\w+)\}/g, (_, key: string) => escapeValue(plugin.userConfig?.[key] ?? ''))
+export function substitutePluginVars(
+	value: string,
+	plugin: InstalledPlugin,
+	escapeValue: (substituted: string) => string = (substituted) => substituted,
+): string {
+	return (
+		value
+			// biome-ignore lint/suspicious/noTemplateCurlyInString: the placeholder is a literal, not a template
+			.replaceAll("${CLAUDE_PLUGIN_ROOT}", escapeValue(plugin.root))
+			// biome-ignore lint/suspicious/noTemplateCurlyInString: the placeholder is a literal, not a template
+			.replaceAll("${CLAUDE_PLUGIN_DATA}", escapeValue(plugin.dataDir))
+			.replace(/\$\{user_config\.(\w+)\}/g, (_, key: string) => escapeValue(plugin.userConfig?.[key] ?? ""))
+	);
 }

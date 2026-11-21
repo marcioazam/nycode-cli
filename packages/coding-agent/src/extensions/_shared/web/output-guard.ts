@@ -10,7 +10,7 @@
  * content at all. That trap is handled here once rather than at each call site.
  */
 
-import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, formatSize, truncateHead } from '../../../core/tools/truncate.ts'
+import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, formatSize, truncateHead } from "../../../core/tools/truncate.ts";
 
 /**
  * Trim `text` to a byte budget. `String.slice` counts UTF-16 units, so slicing a CJK
@@ -21,15 +21,15 @@ import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, formatSize, truncateHead } from '
  * negative budget yields nothing, so callers need no length check of their own.
  */
 export function sliceBytes(text: string, maxBytes: number): string {
-  return new TextDecoder().decode(Buffer.from(text, 'utf-8').subarray(0, Math.max(0, maxBytes)), { stream: true })
+	return new TextDecoder().decode(Buffer.from(text, "utf-8").subarray(0, Math.max(0, maxBytes)), { stream: true });
 }
 
 /** Trim `text` to pi's documented tool-output budget, noting what was dropped. */
 export function capForContext(text: string): string {
-  const cut = truncateHead(text, { maxLines: DEFAULT_MAX_LINES, maxBytes: DEFAULT_MAX_BYTES })
-  if (!cut.truncated) return text
-  const kept = cut.content || sliceBytes(text, DEFAULT_MAX_BYTES)
-  const capped = `${kept}\n\n[truncated: ${formatSize(cut.totalBytes)} total, ${cut.totalLines} lines]`
-  // Just over the budget, the notice can cost more than the trim saves.
-  return capped.length < text.length ? capped : text
+	const cut = truncateHead(text, { maxLines: DEFAULT_MAX_LINES, maxBytes: DEFAULT_MAX_BYTES });
+	if (!cut.truncated) return text;
+	const kept = cut.content || sliceBytes(text, DEFAULT_MAX_BYTES);
+	const capped = `${kept}\n\n[truncated: ${formatSize(cut.totalBytes)} total, ${cut.totalLines} lines]`;
+	// Just over the budget, the notice can cost more than the trim saves.
+	return capped.length < text.length ? capped : text;
 }

@@ -7,25 +7,25 @@
  * callMcpTool. It is the direct-call analogue of the MCP_TOOLS_CHANNEL alias bus.
  */
 
-import { sharedSlot } from './shared-slot.ts'
+import { sharedSlot } from "./shared-slot.ts";
 
 export interface McpToolResult {
-  text: string
-  isError: boolean
+	text: string;
+	isError: boolean;
 }
 
-export type McpToolCaller = (server: string, tool: string, input: Record<string, unknown>) => Promise<McpToolResult>
+export type McpToolCaller = (server: string, tool: string, input: Record<string, unknown>) => Promise<McpToolResult>;
 
-const slot = sharedSlot<McpToolCaller>('mcp-tool-caller')
+const slot = sharedSlot<McpToolCaller>("mcp-tool-caller");
 
 /** The mcp extension registers its caller here; pass undefined to clear it. */
 export function setMcpToolCaller(fn: McpToolCaller | undefined): void {
-  slot.set(fn)
+	slot.set(fn);
 }
 
 /** Invoke a tool on a connected MCP server. Throws when no server is connected. */
 export function callMcpTool(server: string, tool: string, input: Record<string, unknown>): Promise<McpToolResult> {
-  const caller = slot.get()
-  if (!caller) return Promise.reject(new Error(`no MCP server connected to serve ${server}/${tool}`))
-  return caller(server, tool, input)
+	const caller = slot.get();
+	if (!caller) return Promise.reject(new Error(`no MCP server connected to serve ${server}/${tool}`));
+	return caller(server, tool, input);
 }

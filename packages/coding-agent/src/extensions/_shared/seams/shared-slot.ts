@@ -12,12 +12,12 @@
  * replace the previous instance's function.
  */
 export function sharedSlot<T>(name: string): { get: () => T | undefined; set: (value: T | undefined) => void } {
-  const key = Symbol.for(`pi-code.${name}`)
-  const holder = globalThis as Record<symbol, unknown>
-  return {
-    get: () => holder[key] as T | undefined,
-    set: (value) => {
-      holder[key] = value
-    },
-  }
+	const key = Symbol.for(`pi-code.${name}`);
+	const holder = globalThis as Record<symbol, unknown>;
+	return {
+		get: () => holder[key] as T | undefined,
+		set: (value) => {
+			holder[key] = value;
+		},
+	};
 }

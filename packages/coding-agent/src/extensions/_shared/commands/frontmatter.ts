@@ -15,45 +15,47 @@
  * rejected.
  */
 
-import { parseFrontmatter } from '../../../utils/frontmatter.ts'
+import { parseFrontmatter } from "../../../utils/frontmatter.ts";
 
 /** Top-level keys whose value is prose. `name` is an identifier and stays strict. */
-const FREE_TEXT_KEYS = new Set(['description', 'argument-hint', 'when_to_use'])
+const FREE_TEXT_KEYS = new Set(["description", "argument-hint", "when_to_use"]);
 
 /** A plain scalar, as opposed to a quoted one or a block scalar indicator. */
-const isPlainScalar = (value: string): boolean => value !== '' && !'"\'|>'.includes(value[0])
+const isPlainScalar = (value: string): boolean => value !== "" && !"\"'|>".includes(value[0]);
 
 /** `line` with its free-text plain scalar quoted. A JSON string is a YAML double-quoted
  * scalar, and its escaping keeps a literal backslash literal, as a plain scalar does. */
 function quoteFreeText(line: string): string {
-  const colon = line.indexOf(':')
-  if (colon === -1 || !FREE_TEXT_KEYS.has(line.slice(0, colon))) return line
-  const value = line.slice(colon + 1).trim()
-  return isPlainScalar(value) ? `${line.slice(0, colon)}: ${JSON.stringify(value)}` : line
+	const colon = line.indexOf(":");
+	if (colon === -1 || !FREE_TEXT_KEYS.has(line.slice(0, colon))) return line;
+	const value = line.slice(colon + 1).trim();
+	return isPlainScalar(value) ? `${line.slice(0, colon)}: ${JSON.stringify(value)}` : line;
 }
 
 /** `content` with the free-text fields of its frontmatter block quoted, or undefined
  * when there is no block or nothing in it changed. */
 function withQuotedFreeText(content: string): string | undefined {
-  if (!content.startsWith('---')) return undefined
-  const start = content.indexOf('\n') + 1
-  const end = content.indexOf('\n---', start)
-  if (start === 0 || end === -1) return undefined
-  const block = content.slice(start, end)
-  const quoted = block.split('\n').map(quoteFreeText).join('\n')
-  return quoted === block ? undefined : content.slice(0, start) + quoted + content.slice(end)
+	if (!content.startsWith("---")) return undefined;
+	const start = content.indexOf("\n") + 1;
+	const end = content.indexOf("\n---", start);
+	if (start === 0 || end === -1) return undefined;
+	const block = content.slice(start, end);
+	const quoted = block.split("\n").map(quoteFreeText).join("\n");
+	return quoted === block ? undefined : content.slice(0, start) + quoted + content.slice(end);
 }
 
-export function parseClaudeFrontmatter<T extends Record<string, unknown>>(content: string): { frontmatter: T; body: string } {
-  try {
-    return parseFrontmatter<T>(content)
-  } catch (error) {
-    const retry = withQuotedFreeText(content)
-    if (retry === undefined) throw error
-    try {
-      return parseFrontmatter<T>(retry)
-    } catch {
-      throw error
-    }
-  }
+export function parseClaudeFrontmatter<T extends Record<string, unknown>>(
+	content: string,
+): { frontmatter: T; body: string } {
+	try {
+		return parseFrontmatter<T>(content);
+	} catch (error) {
+		const retry = withQuotedFreeText(content);
+		if (retry === undefined) throw error;
+		try {
+			return parseFrontmatter<T>(retry);
+		} catch {
+			throw error;
+		}
+	}
 }

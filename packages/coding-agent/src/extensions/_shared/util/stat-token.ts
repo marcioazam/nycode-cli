@@ -5,10 +5,10 @@
  * Throws when the file cannot be stat'd; callers that treat "missing" as a value catch it.
  */
 
-import * as fs from 'node:fs'
+import * as fs from "node:fs";
 
 /** `${mtimeMs}:${size}` for `file`. Throws if the file cannot be stat'd. */
 export function statToken(file: string): string {
-  const stat = fs.statSync(file)
-  return `${stat.mtimeMs}:${stat.size}`
+	const stat = fs.statSync(file);
+	return `${stat.mtimeMs}:${stat.size}`;
 }

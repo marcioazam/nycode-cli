@@ -8,7 +8,7 @@
  */
 
 /** pi's per-directory candidates, first hit wins. */
-export const CONTEXT_FILE_CANDIDATES = ['AGENTS.override.md', 'AGENTS.md', 'AGENTS.MD', 'CLAUDE.md', 'CLAUDE.MD']
+export const CONTEXT_FILE_CANDIDATES = ["AGENTS.override.md", "AGENTS.md", "AGENTS.MD", "CLAUDE.md", "CLAUDE.MD"];
 
 /** The candidates pi prefers over CLAUDE.md in the same directory. */
-export const AGENTS_FILE_NAMES: ReadonlySet<string> = new Set(['AGENTS.override.md', 'AGENTS.md', 'AGENTS.MD'])
+export const AGENTS_FILE_NAMES: ReadonlySet<string> = new Set(["AGENTS.override.md", "AGENTS.md", "AGENTS.MD"]);

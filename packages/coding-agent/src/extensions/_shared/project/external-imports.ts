@@ -16,58 +16,62 @@
  * is a separate checkout and is asked separately.
  */
 
-import * as fs from 'node:fs'
-import * as path from 'node:path'
+import * as fs from "node:fs";
+import * as path from "node:path";
 
-import { getAgentDir } from '../../../config.ts'
+import { getAgentDir } from "../../../config.ts";
 
-import { atomicWriteFile } from '../util/atomic-write.ts'
-import { gitRoot } from './project-root.ts'
-import { isRecord } from '../util/values.ts'
+import { atomicWriteFile } from "../util/atomic-write.ts";
+import { isRecord } from "../util/values.ts";
+import { gitRoot } from "./project-root.ts";
 
 /** The key for a working directory: its checkout, resolved, so the same checkout
  * reached through a symlink is the same project. */
 export function externalImportKey(cwd: string): string {
-  const root = gitRoot(cwd) ?? cwd
-  try {
-    return fs.realpathSync(root)
-  } catch {
-    return root
-  }
+	const root = gitRoot(cwd) ?? cwd;
+	try {
+		return fs.realpathSync(root);
+	} catch {
+		return root;
+	}
 }
 
 /** The store file, inside pi's agent directory (tests relocate that through NYCODE_CODING_AGENT_DIR). */
 export function externalImportStorePath(agentDir: string = getAgentDir()): string {
-  return path.join(agentDir, 'pi-code-external-imports.json')
+	return path.join(agentDir, "pi-code-external-imports.json");
 }
 
 function readStore(storePath: string): Record<string, unknown> {
-  try {
-    const parsed: unknown = JSON.parse(fs.readFileSync(storePath, 'utf-8'))
-    return isRecord(parsed) ? parsed : {}
-  } catch {
-    // No store yet, or one a hand-edit left unparseable: no decision recorded.
-    return {}
-  }
+	try {
+		const parsed: unknown = JSON.parse(fs.readFileSync(storePath, "utf-8"));
+		return isRecord(parsed) ? parsed : {};
+	} catch {
+		// No store yet, or one a hand-edit left unparseable: no decision recorded.
+		return {};
+	}
 }
 
 /** The recorded answer for `root`, or null when the project has never been asked.
  * Only a boolean counts: anything else in the file reads as unasked, so a corrupt
  * entry re-asks rather than silently allowing or silently refusing forever. */
 export function externalImportDecision(root: string, storePath: string = externalImportStorePath()): boolean | null {
-  const value = readStore(storePath)[root]
-  return typeof value === 'boolean' ? value : null
+	const value = readStore(storePath)[root];
+	return typeof value === "boolean" ? value : null;
 }
 
 /** Record the answer for `root`, keeping every other project's. */
-export function rememberExternalImportDecision(root: string, allowed: boolean, storePath: string = externalImportStorePath()): void {
-  const store = readStore(storePath)
-  store[root] = allowed
-  try {
-    fs.mkdirSync(path.dirname(storePath), { recursive: true })
-    atomicWriteFile(storePath, `${JSON.stringify(store, null, 2)}\n`)
-  } catch {
-    // An unwritable agent directory costs the memory of the answer, not the session:
-    // the next start asks again, which is the safe direction.
-  }
+export function rememberExternalImportDecision(
+	root: string,
+	allowed: boolean,
+	storePath: string = externalImportStorePath(),
+): void {
+	const store = readStore(storePath);
+	store[root] = allowed;
+	try {
+		fs.mkdirSync(path.dirname(storePath), { recursive: true });
+		atomicWriteFile(storePath, `${JSON.stringify(store, null, 2)}\n`);
+	} catch {
+		// An unwritable agent directory costs the memory of the answer, not the session:
+		// the next start asks again, which is the safe direction.
+	}
 }

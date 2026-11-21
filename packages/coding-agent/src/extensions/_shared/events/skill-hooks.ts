@@ -5,15 +5,20 @@
  * announces the declaration.
  */
 
-export const SKILL_HOOKS_CHANNEL = 'pi-code:skill-hooks'
+export const SKILL_HOOKS_CHANNEL = "pi-code:skill-hooks";
 
 export interface SkillHooksEvent {
-  skillName: string
-  hooks: Record<string, unknown>
+	skillName: string;
+	hooks: Record<string, unknown>;
 }
 
 export function isSkillHooksEvent(data: unknown): data is SkillHooksEvent {
-  if (typeof data !== 'object' || data === null) return false
-  const event = data as { skillName?: unknown; hooks?: unknown }
-  return typeof event.skillName === 'string' && typeof event.hooks === 'object' && event.hooks !== null && !Array.isArray(event.hooks)
+	if (typeof data !== "object" || data === null) return false;
+	const event = data as { skillName?: unknown; hooks?: unknown };
+	return (
+		typeof event.skillName === "string" &&
+		typeof event.hooks === "object" &&
+		event.hooks !== null &&
+		!Array.isArray(event.hooks)
+	);
 }

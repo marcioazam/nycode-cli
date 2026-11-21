@@ -8,6 +8,6 @@
 
 /** The Claude effort level for a pi thinking level, or undefined when thinking is off. */
 export function claudeEffortLevel(thinkingLevel: string | undefined): string | undefined {
-  if (!thinkingLevel || thinkingLevel === 'off') return undefined
-  return thinkingLevel === 'minimal' ? 'low' : thinkingLevel
+	if (!thinkingLevel || thinkingLevel === "off") return undefined;
+	return thinkingLevel === "minimal" ? "low" : thinkingLevel;
 }
