@@ -18,7 +18,7 @@ data indicada, ou está marcado como não verificado.
 | Extensões embutidas do fork | `packages/coding-agent/src/extensions/index.ts:8-13` | `llama.cpp`, `codemode`, `tool-search`, `mcp` |
 | Costura K1 | `rg -n "messages\.every" packages/coding-agent/src/core/sdk.ts` | linha 370 |
 | Costura K2 | `rg -n STDIN_CLOSE_GRACE_MS packages/mcp/src/transports/stdio.ts` | linha 10, valor 500 |
-| Escopo npm | `npm view @nycode/coding-agent version` | 404 |
+| Escopo npm (D-17: descartado) | `npm view @nycode/coding-agent version` | 404 em 2026-11-20; o plano não usa mais o npm |
 | Arquivos acima de 800 linhas no fork | `git ls-files 'packages/*/src/**/*.ts' \| xargs wc -l \| awk '$1>800'` | 50 de 939 |
 | Ruleset da origem | `gh api repos/marcioazam/ny-pi/rulesets/27240802` | [anexo D](anexos/D-regras-github-brutas.md), seção 2 |
 | Proteção do destino | `gh api repos/marcioazam/nycode/branches/main/protection` | anexo D, seção 3 |
@@ -31,7 +31,8 @@ data indicada, ou está marcado como não verificado.
 
 | Assunto | Fonte | Data da fonte | O que sustenta | Usado em |
 |---|---|---|---|---|
-| Publicação confiável no npm | <https://docs.npmjs.com/trusted-publishers/> | 2026-10-06 | npm CLI 11.5.1 ou mais novo e Node 22.14.0 ou mais novo; executor hospedado pelo GitHub; permissão `id-token: write`; proveniência automática para repositório e pacote públicos; primeira publicação em até 2 dias depois de configurar; opção de proibir tokens | [07](07-ci-qualidade-seguranca.md), F11 |
+| ~~Publicação confiável no npm~~ (superada pela D-17; ver a linha seguinte) | <https://docs.npmjs.com/trusted-publishers/> | 2026-10-06 | npm CLI 11.5.1 ou mais novo e Node 22.14.0 ou mais novo; executor hospedado pelo GitHub; permissão `id-token: write`; proveniência automática para repositório e pacote públicos; primeira publicação em até 2 dias depois de configurar; opção de proibir tokens | [07](07-ci-qualidade-seguranca.md), F11 |
+| Atestação de proveniência de binários (F11) | <https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations> e <https://github.com/actions/attest-build-provenance> | 2026-11-21 | `actions/attest` (v4.2.2) com `id-token: write`, `attestations: write`, `contents: read` e `subject-path`; `gh attestation verify <arquivo> -R <dono>/<repo>`; `actions/attest-build-provenance` é só um invólucro desde a v4 | [06](06-guia-de-execucao.md#f11), [07](07-ci-qualidade-seguranca.md) §6.5 |
 | Rulesets | <https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets> | sem data | Vários rulesets por ramo; a versão mais restritiva vale; convivem com a proteção clássica | [04](04-regras-do-repositorio.md) |
 | API de rulesets | <https://docs.github.com/en/rest/repos/rules> | sem data | `GET` e `POST /repos/{owner}/{repo}/rulesets`; `bypass_mode` | 04 |
 | Espera do Dependabot | <https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference> | sem data | `cooldown.default-days`; não vale para atualização de segurança | 04, 07 |

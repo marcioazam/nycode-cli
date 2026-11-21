@@ -650,45 +650,125 @@ linha de base é um PR; reverter o PR restaura a anterior.
 
 ## F11. Distribuição
 
-**Objetivo:** publicar `@nycode/coding-agent` 2.0.0 com proveniência, binários, Nix e instalador próprio (D-12, D-13).
+**Objetivo:** publicar o nycode `2.0.0` (D-13) pelo repositório público `marcioazam/nycode`: etiqueta `v2.0.0`, GitHub
+Release com binários autocontidos e atestação de proveniência (D-17, D-42). Sem organização, sem registro e sem token de
+longa duração: `@nycode/*` não vai ao npm (`npm whoami` devolve 401 e as dependências `@nycode/*` não existem lá).
 
-**Pré-condições:** F10 fechada; resposta de D-17; `npm view @nycode/coding-agent` coerente com ela.
+**Pré-condições:** F10 fechada; D-17 (canal do repositório) e D-42 (autorização da publicação) registradas em
+[11](11-decisoes-e-pendencias.md); repositório público (`gh repo view marcioazam/nycode --json visibility`, `PUBLIC` em
+2026-11-21); `gh` 2.49 ou mais novo para `gh attestation verify` (a máquina do dono tem 2.46.0: instalar uma versão nova
+em `~/.local/bin` antes do passo 7); Docker (`docker version`, servidor 29.1.3 em 2026-11-21).
+
+**Estado real do aviso de versão e da autoatualização** (lido em `origin/main` `21243b690`, depois do K15, #228):
+
+- Aviso de versão e changelog **já** usam o GitHub Releases: `packages/coding-agent/src/utils/version-check.ts:5-6`
+  (`RELEASES_URL = https://github.com/marcioazam/nycode/releases`, consulta
+  `api.github.com/repos/marcioazam/nycode/releases/latest`, `tag_name` sem o `v`), coberto por
+  `test/version-check.test.ts`. `rg -n "pi\.dev" packages/*/src -g '!*.test.ts'` não devolve nada.
+- Binário `bun` (`detectInstallMethod() === "bun-binary"`): `nycode update` não executa nada e imprime
+  `Download from: https://github.com/marcioazam/nycode/releases/latest` (`config.ts:371`). É o comportamento certo para o
+  canal escolhido.
+- Instalação "gerenciada" (`package-manager-cli.ts:229-239`): sem `NYCODE_INSTALLER_API_BASE` falha e aponta para
+  `RELEASES_URL`; nenhum canal do nycode grava o marcador `nycode-managed-install`, então o ramo fica inerte (não mexer:
+  é código do upstream).
+- Instalações por `npm`, `pnpm`, `yarn` ou `bun` (`config.ts:121-170`) montam `<gerenciador> install -g @nycode/coding-agent@<v>`,
+  que dá E404 sem registro. Nenhum canal de F11 produz essas instalações; o passo 5 troca o texto que ainda as sugere.
+
+**Escolha do artefato** (item 1 da investigação, testada em 2026-11-21 no ramo `docs/f11-repo-channel` sobre `21243b690`,
+versão 1.6.0, `npm run release:local -- --out ~/.local/share/nycode-mig/rel/r1 --force --skip-check --skip-test`, exit 0):
+
+| Opção | Resultado medido | Veredito |
+|---|---|---|
+| (a) binário `bun` autocontido (`scripts/build-binaries.sh`, `nycode-<plataforma>.tar.gz`/`.zip`) | `node:22` limpo: `tar -xzf nycode-linux-x64.tar.gz && nycode/nycode --version` imprime `1.6.0`. 59 MB; sem Node, sem `npm install`, sem rede | **escolhida** |
+| (b) tarballs dos 11 pacotes públicos instalados juntos | `npm i -g --ignore-scripts /t/*.tgz` no `node:22` instala e `nycode --version` imprime `1.6.0`; 17 MB, mas exige baixar 11 arquivos com hash no nome e `nycode update` do `npm` pediria o registro | só para desenvolvimento (`release:local`, `use-local-packages.mjs`); não vai ao Release |
+| (c) tarball de `@nycode/coding-agent` sozinho | `npm i -g /t/nycode-coding-agent-*.tgz`: `E404 GET https://registry.npmjs.org/@nycode%2fagent-core`; `bundleDependencies` exigiria reescrever o `package.json` de um pacote já com 5 dependências `@nycode/*` | descartada |
+
+`release:local` também gera `node/nycode` (a opção b instalada, `--version` = `1.6.0`) e `bun/nycode` (a opção a, `--version`
+= `1.6.0`). O `release:local` completo roda `generate:models` e `./test.sh`; com `--skip-check --skip-test` ele só provou
+empacotamento e instalação, então o passo 7 roda sem esses dois cortes. Binários de `darwin-*`, `windows-*` e `linux-arm64`
+saem do mesmo `bun build --compile` cruzado, mas só `linux-x64` foi executado aqui; os outros ficam com a matriz de fumaça
+do passo 3 (macOS e Windows hospedados).
+
+**Proveniência sem npm:** `actions/attest` na versão estável `v4.2.2`
+(`1e69f48acb82d1966a394da916b4c1698aa569d6`; `actions/attest-build-provenance` `v4.2.2`,
+`4d101475d8b20a2381f78447822ac1eab6504dd8`, é só um invólucro dela desde a versão 4 e "novas implementações devem usar
+`actions/attest`"). Permissões: `id-token: write`, `contents: read`, `attestations: write`; entrada `subject-path`.
+Verificação: `gh attestation verify <artefato> -R marcioazam/nycode`. Fonte:
+<https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations> e
+<https://github.com/actions/attest-build-provenance> (leitura de 2026-11-21; SHAs por `gh api repos/<repo>/git/ref/tags/<tag>`).
 
 **Passos** (um PR cada, salvo indicação):
 
-1. **Escopo npm [AUTORIZAÇÃO do dono]:** criar a organização `@nycode` (ou plano B `@marcioazam` com prefixo `nycode-`,
-   que troca os nomes `@nycode/*` em todo `package.json`, em `tsconfig.json` `paths` e em `install-lock`).
-   `scripts/release.mjs` exige pacotes **já registrados** (anexo B §5): a primeira publicação de cada um dos 12 pacotes
-   cria o registro; procedimento exato: não verificado.
-2. **Trusted publisher:** configurar no npmjs.com, por pacote, o publicador confiável apontando para `marcioazam/nycode`
-   e o workflow de publicação (nomes da interface: não verificado); sem token de longa duração.
-3. **Workflow `.github/workflows/publish.yml`** (actions por SHA, `permissions: id-token: write`), porque
-   `build-binaries.yml` e `nix.yml` foram removidos (anexo B §5). Chama
-   `npm publish <tarball> --access public --provenance --ignore-scripts` como `scripts/publish.mjs:54`, mais
-   `npm audit signatures`. Validar com `actionlint` e `zizmor`.
-4. **Binários:** reintroduzir o job (bun) a partir de `scripts/build-binaries.sh`, publicando em GitHub Releases
-   (D-12). **Nix:** `flake.nix:1-54` e `nix/package.nix` (`release.mjs` fixa `nix/model-catalog.json`).
-5. **README de instalação:** `README.md:28,34`, `package-manager-cli.ts:1244-1245` e `quickstart.md:12,16,131` passam a
-   `npm install -g --ignore-scripts @nycode/coding-agent` e aos binários; `config.ts:324-363` (autoatualização) aponta
-   para o registro npm. O catálogo de modelos de `pi.dev` fica (D-12).
-6. **Skill `release.md` (P-7):** reescrever os passos 4 e 5 de `.nycode/skills/release.md` (citam `build-binaries.yml` e
-   `nix.yml`, removidos). O skill diz "no major releases" e D-13 exige `2.0.0`: registrar a exceção no PR e no skill.
-7. **Versão 2.0.0 [AUTORIZAÇÃO, publicação]**, só com o `release:local` verde:
+1. **`release.mjs` sem npm e sem empurrar para a `main`.** Tirar `assertPackagesAreRegisteredWithNpm` (anexo B §5) e o
+   passo do catálogo do Nix (`nix/model-catalog.json`), e parar no commit `Release vX.Y.Z` do ramo atual: o ruleset da
+   `main` exige PR e não tem exceção, então `git push origin main` seria recusado. A etiqueta `vX.Y.Z` é criada no commit
+   que o squash deixou na `main`, depois do merge (`git tag -a v2.0.0 <sha> && git push origin v2.0.0`). O commit
+   `Add [Unreleased] section for next cycle` vai em outro PR, depois da etiqueta. Remover `scripts/publish.mjs`,
+   `publish-model-catalog.mjs` e `publish-release-announcement.mjs` (com os testes), que falam com o registro npm e o R2
+   do upstream, e os scripts `publish*` do `package.json` raiz.
+2. **Nix (P-18): remover da distribuição** (`flake.nix`, `nix/package.nix`, a seção "Run with Nix" do `README.md`).
+   Justificativa: `npm run build:offline` precisa dos dados de modelo hidratados pela rede e o build do Nix é isolado,
+   então não constrói desde o K15; não há `nix` nesta máquina nem workflow para provar um conserto; manter exigiria
+   versionar um instantâneo do catálogo de modelos só para um canal sem uso medido. Reversão: `git revert`, o conteúdo
+   volta do histórico. Reabrir por pedido do dono com a opção "instantâneo versionado".
+3. **Workflow `.github/workflows/publish.yml`**, a partir do `build-binaries.yml` removido
+   (`git show f523ebd25^:.github/workflows/build-binaries.yml`, que já tinha o rascunho de Release, a matriz de fumaça
+   `ubuntu`/`macos`/`windows` e o `smoke-test-codemode-binary.mjs`), sem o `publish-npm` e o R2. Disparo `on: push: tags:
+   ['v*']` (mais `workflow_dispatch` com a etiqueta, para recuperação). Regras do `run-security.sh`: `permissions: {}` no
+   topo, actions por SHA de 40 hex, sem `pull_request_target` nem `workflow_run`, executor hospedado pelo GitHub,
+   `persist-credentials: false`, `bun-version` fixa. Jobs: `build` (`contents: read`; `hydrate:model-data`,
+   `create-source-archive.sh`, `build-binaries.sh --offline-model-data` para os 6 alvos, `SHA256SUMS`, `upload-artifact`);
+   `smoke` (matriz de 3 SOs: extrai o arquivo da plataforma e roda `--version`); `release` (`contents: write`,
+   `id-token: write`, `attestations: write`; baixa os artefatos, `actions/attest@1e69f48…` com `subject-path` nos 6
+   arquivos, no `.tar.gz` do código-fonte e no `SHA256SUMS`, cria o Release como rascunho com `RELEASE_NOTES.md`, sobe os
+   ativos e só então o publica). O único segredo é o `GITHUB_TOKEN` do próprio run. Validar com `actionlint`, `zizmor
+   --min-severity medium` e `bash scripts/ci/run-security.sh` (o PR passa por `ci-security`).
+4. **Binários:** `scripts/build-binaries.sh` já cobre os 6 alvos e é o que o workflow chama; o `README.md` "Building
+   standalone binaries" passa a dizer que os binários vêm do Release.
+5. **README de instalação, aviso de versão e autoatualização:** `README.md` (seção "Getting started" e "Supply-chain
+   hardening", que hoje dizem "Nothing is published yet") e `packages/coding-agent/docs/quickstart.md:12,15,115` passam a
+   baixar `nycode-<plataforma>` do Release, conferir `SHA256SUMS` e `gh attestation verify`. `package-manager-cli.ts:1196-1197`
+   (aviso de instalação `npm`) e o comentário de `:229-231` ("not published yet (F11)") deixam de citar a publicação
+   futura; o texto de `config.ts:371` já está certo. Sem mudar a lógica do aviso de versão; um teste novo confirma que
+   `nycode update` de um binário imprime a URL do Release.
+6. **Skill `.nycode/skills/release.md` (P-7):** reescrever os passos 3 a 6 (citam `build-binaries.yml`, `nix.yml`, `npm`,
+   R2 e `pi.dev`) para o fluxo: PR de versão por `release.mjs`, merge por squash, etiqueta no commit da `main`, run de
+   `publish.yml`, verificação. O skill diz "No major releases" e D-13 exige `2.0.0`: registrar a exceção no PR e no skill.
+7. **Versão `2.0.0` [AUTORIZAÇÃO coberta pela D-42], só com o `release:local` completo verde:**
 
    ```bash
-   npm run release:local -- --out /tmp/nycode-local-release --force
-   /tmp/nycode-local-release/node/nycode --version && /tmp/nycode-local-release/bun/nycode --version
-   NYCODE_ALLOW_LOCKFILE_CHANGE=1 npm_config_min_release_age=0 npm run release:major
+   systemd-run --user --scope --slice=build.slice --quiet --collect -- \
+     npm run release:local -- --out ~/.local/share/nycode-mig/rel/r2 --force
+   ~/.local/share/nycode-mig/rel/r2/node/nycode --version && ~/.local/share/nycode-mig/rel/r2/bun/nycode --version
+   NYCODE_ALLOW_LOCKFILE_CHANGE=1 npm_config_min_release_age=0 npm run release:major   # ramo release/v2.0.0, sem push
    ```
 
-8. **Fumaça em contêiner limpo:** `docker run --rm node:22 sh -c 'npm i -g --ignore-scripts @nycode/coding-agent &&
-   nycode --version'` (esperado `2.0.0`). Docker nesta máquina: não verificado.
+   Abrir o PR de versão, fundir (squash), criar e empurrar a etiqueta `v2.0.0` no commit da `main` e acompanhar o run
+   (`gh run watch`). A publicação do Release sem nova pergunta é a D-42.
+8. **Fumaça em contêiner limpo, do Release publicado (fora do CI):**
 
-**Verificação de saída:** `npm view @nycode/coding-agent version dist.attestations` mostra `2.0.0` e a atestação de
-proveniência; `gh release view v2.0.0 -R "$UP" --json assets --jq '.assets[].name'` lista os binários.
+   ```bash
+   docker run --rm node:22 sh -c 'set -e; cd /tmp; b=https://github.com/marcioazam/nycode/releases/download/v2.0.0
+     curl -fsSLO "$b/nycode-linux-x64.tar.gz"; curl -fsSLO "$b/SHA256SUMS"
+     grep " nycode-linux-x64.tar.gz\$" SHA256SUMS | sha256sum -c -
+     tar -xzf nycode-linux-x64.tar.gz; nycode/nycode --version'    # esperado: 2.0.0
+   gh release download v2.0.0 -R marcioazam/nycode -p nycode-linux-x64.tar.gz -D /tmp/f11v   # no host, gh >= 2.49
+   gh attestation verify /tmp/f11v/nycode-linux-x64.tar.gz -R marcioazam/nycode
+   ```
 
-**Evidência:** versão publicada, link da atestação, saída do `release:local` e do contêiner, SHA do `release.md`.
-**Reversão:** `npm deprecate` da versão (publicação não se desfaz depois da janela de remoção) e nova versão corrigida.
+9. **Limpeza de `import/` (C-F11-10):** `git rm import/ny-pi/install.sh import/ny-pi/publish.list` e `git rm -r
+   import/ny-pi/npm`, em PR próprio (o `install.sh` instalava o pi por symlinks; o fluxo do nycode é o do Release).
+
+**Verificação de saída:** `gh release view v2.0.0 -R marcioazam/nycode --json assets,isDraft,isPrerelease --jq
+'{draft:.isDraft,pre:.isPrerelease,assets:[.assets[].name]}'` lista os 6 arquivos, o código-fonte, `SHA256SUMS` e
+`isDraft=false`; o contêiner imprime `2.0.0`; `gh attestation verify` sai com 0 para cada arquivo.
+
+**Evidência:** `evidencias/F11.md` com a saída do `release:local` completo e do contêiner, o link do run de
+`publish.yml`, a saída de `gh attestation verify`, o SHA do commit de `release.md` e os do PR de remoção de `import/`.
+**Reversão:** o Release é um objeto do GitHub: `gh release delete v2.0.0 --cleanup-tag -R marcioazam/nycode` o retira
+(sem imutabilidade de Release ligada em 2026-11-21: `repos/marcioazam/nycode/immutable-releases` devolve `enabled: false`) e a
+correção sai como `2.0.1`. A atestação continua nos registros públicos do Sigstore depois de apagar o Release (limite do
+serviço, não verificado). A remoção do Nix e o `release.mjs` novo revertem por `git revert`.
 
 <a id="f12"></a>
 
@@ -717,7 +797,7 @@ proveniência; `gh release view v2.0.0 -R "$UP" --json assets --jq '.assets[].na
 
    ```markdown
    > **Este repositório está arquivado.** O ny-pi foi incorporado ao core do
-   > [nycode](https://github.com/marcioazam/nycode). Instale com `npm install -g --ignore-scripts @nycode/coding-agent`.
+   > [nycode](https://github.com/marcioazam/nycode). Baixe o binário em <https://github.com/marcioazam/nycode/releases>.
    > **This repository is archived.** ny-pi now lives in the core of nycode.
    ```
 
@@ -762,6 +842,8 @@ proveniência; `gh release view v2.0.0 -R "$UP" --json assets --jq '.assets[].na
    `CHANGELOG.md`: `git ls-remote --tags origin 'v*.*.*'` e criar a etiqueta (F0 passo 8).
 9. **Braço `ny-pi-pi160` sai com código 2 nos patches de core.** Esperado: os 2 patches de `dist` só aplicam em pi
    1.5.2. Registrar como parte do resultado de D-25; não "consertar" o patch.
-10. **`npm publish` falha com E404 ou E403 em F11.** O escopo `@nycode` não existe ou o publicador confiável aponta
-    para outro workflow: voltar a D-17 (criar a organização ou plano B) e conferir repositório e workflow no pacote.
+10. **`publish.yml` falha ou o Release fica em rascunho.** Etiqueta `v*` criada em commit que não é o da `main` com a
+    versão, ou permissão faltando no job `release` (`contents: write`, `id-token: write`, `attestations: write`): ler o log
+    do run, `gh release delete v2.0.0 --cleanup-tag` se o rascunho ficou, corrigir pelo PR e reetiquetar; nunca rodar
+    `release.mjs` de novo para a mesma versão.
 Falha fora da lista: reproduzir, uma hipótese, uma nova tentativa; depois parar e avisar o dono ([10](10-riscos-e-rollback.md)).

@@ -422,20 +422,21 @@ listas separadas. A implementação (o `.mjs` ler o `.toml`) não foi desenhada 
   2 alertas abertos de Scorecard (SAST e CII-Best-Practices, anexo D, seção 5); o critério 8 de [00](00-mega-plano.md)
   pede nenhum alerta que o código possa fechar.
 
-### 6.5 Publicação por trusted publishing (F11)
+### 6.5 Publicação com atestação de proveniência pelo repositório (F11)
 
-Verificado em `docs.npmjs.com/trusted-publishers` em 2026-10-06 (data da conferência desta frente, não revista):
+**Supera** o texto anterior desta seção (publicação por *trusted publishing* no npm, conferida em 2026-10-06), que a D-17
+(2026-11-20) tornou sem objeto: não há organização nem registro npm. O canal é o GitHub Release de
+`marcioazam/nycode`; o passo a passo está em [06, F11](06-guia-de-execucao.md#f11).
 
-- Exige npm CLI >= 11.5.1 e Node >= 22.14.0, runner hospedado pelo GitHub e `id-token: write`.
-- A proveniência é gerada automaticamente para repositório e pacote públicos.
-- A primeira publicação precisa ocorrer em até 2 dias depois de configurar o publicador confiável; depois, desabilitar
-  tokens ("disallow tokens") no pacote.
-- Isso casa com `engines.node >=22.19.0` do nycode. O escopo npm depende de D-17 (organização `@nycode` ou
-  `@marcioazam` com prefixo `nycode-`), que aguarda o dono.
-
-`actions/attest-build-provenance` entra como passo adicional do job de publicação. O nível SLSA que ele atende:
-**não verificado**; o documento não alega nível SLSA. O fluxo de publicação (`scripts/publish.mjs`, `release.mjs`,
-`release-packages.mjs` existem em `scripts/` do nycode) é assunto de F11 e não foi lido aqui.
+- Workflow `publish.yml` por etiqueta `v*`, no executor hospedado pelo GitHub, com `permissions: {}` no topo e
+  `id-token: write`, `attestations: write` e `contents: write` só no job `release`; actions por SHA (o `run-security.sh`
+  já exige) e nenhum segredo além do `GITHUB_TOKEN`.
+- Atestação por `actions/attest` v4.2.2 (`1e69f48acb82d1966a394da916b4c1698aa569d6`), com `subject-path` nos binários,
+  no código-fonte e no `SHA256SUMS`; verificação por `gh attestation verify <arquivo> -R marcioazam/nycode`
+  (`gh` 2.49 ou mais novo). Fonte:
+  <https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations>
+  (2026-11-21). O nível SLSA que a atestação atende: **não verificado**; o plano não alega nível SLSA.
+- `scripts/publish.mjs`, `publish-model-catalog.mjs` e `publish-release-announcement.mjs` saem (passo 1 de F11).
 
 ## 7. CI local (`docs/ci-local.md`, `scripts/ci/local.sh`)
 
