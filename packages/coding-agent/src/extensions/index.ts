@@ -16,9 +16,11 @@ import notifyExtension from "./notify/index.ts";
 import outputStylesExtension from "./output-styles/index.ts";
 import planModeExtension from "./plan-mode/index.ts";
 import questionExtension from "./question/index.ts";
+import runExtension from "./run/index.ts";
 import sessionTitleExtension from "./session-title/index.ts";
 import settingsFlagsExtension from "./settings-flags/index.ts";
 import skillsCompatExtension from "./skills-compat/index.ts";
+import statusLineExtension from "./status-line/index.ts";
 import subagentExtension from "./subagent/index.ts";
 import thinkingExtension from "./thinking/index.ts";
 import todoExtension from "./todo/index.ts";
@@ -47,9 +49,11 @@ export const builtInExtensions: InlineExtension[] = [
 	{ name: "output-styles", factory: outputStylesExtension, builtin: true },
 	{ name: "plan-mode", factory: planModeExtension, builtin: true },
 	{ name: "question", factory: questionExtension, builtin: true },
+	{ name: "run", factory: runExtension, builtin: true },
 	{ name: "session-title", factory: sessionTitleExtension, builtin: true },
 	{ name: "settings-flags", factory: settingsFlagsExtension, builtin: true },
 	{ name: "skills-compat", factory: skillsCompatExtension, builtin: true },
+	{ name: "status-line", factory: statusLineExtension, builtin: true },
 	{ name: "subagent", factory: subagentExtension, builtin: true },
 	{ name: "thinking", factory: thinkingExtension, builtin: true },
 	{ name: "todo", factory: todoExtension, builtin: true },

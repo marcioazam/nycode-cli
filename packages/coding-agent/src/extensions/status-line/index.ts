@@ -1,0 +1,622 @@
+/**
+ * Status Line Extension
+ *
+ * Honors Claude Code's `statusLine` settings contract: a configured command runs
+ * with the session JSON on stdin (model, workspace, cost, context_window, effort,
+ * output_style, session ids) and its first stdout line becomes the footer segment,
+ * padded per `padding`. It re-runs, debounced 300ms as Claude does, at session
+ * start, after turns and each assistant message, after compaction, on plan-mode
+ * changes (the permission-mode analogue, off the shared bus), when a rate-limit
+ * window in the last payload reaches its resets_at time, when the statusLine
+ * settings change mid-session (file watcher), and on the optional
+ * `refreshInterval` timer (minimum 1s). A new trigger while the script is still
+ * running cancels the in-flight run, as Claude does. A project-defined command is
+ * arbitrary shell, so project settings count only once the project is already
+ * approved, read without prompting.
+ * Claude's `disableAllHooks` setting turns the configured command off too, and
+ * the built-in segment stands in.
+ *
+ * Without a configured statusLine, the built-in segment shows turn state plus
+ * running session cost: a total seeded from the branch's per-message usage at
+ * session start, accumulated per message_end, and reseeded when compaction or
+ * /tree navigation reshapes the branch, so it stays correct across navigation
+ * and forks without re-walking the branch on every render. The built-in segment is also
+ * the fallback while a configured command produces no output. Output of 2+ rows
+ * renders as one row each in a widget below the editor (the footer keeps the built-in
+ * segment); a single row stays in the footer.
+ *
+ * Docs: https://code.claude.com/docs/en/statusline.md
+ */
+
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
+import type { ExtensionAPI, ExtensionContext } from "../../core/extensions/types.ts";
+import { isPlanModeState, PLAN_MODE_CHANNEL } from "../_shared/events/plan-mode-state.ts";
+import { claudeEffortLevel } from "../_shared/model/effort.ts";
+import { approvalRecheck, isProjectApprovedSilently } from "../_shared/project/project-approval.ts";
+import { checkoutRoot, gitRoot } from "../_shared/project/project-root.ts";
+import { addDirFlagValue } from "../_shared/seams/add-dir-flag.ts";
+import { watchSettingsFiles } from "../_shared/settings/settings-watch.ts";
+import { PACKAGE_VERSION } from "../_shared/util/package-version.ts";
+import { hookFiles, runHookCommand } from "../hooks/index.ts";
+import { readActiveStyleName, settingsFiles } from "../output-styles/index.ts";
+import { bridge as sectionBridge } from "../subagent/fleet-ui/section.ts";
+import {
+	dropTodoRows,
+	frameStatusLine,
+	labelFooter,
+	layoutStatus,
+	modelNames,
+	setThinkingSource,
+	tabbed,
+	tidyRow,
+} from "../subagent/fleet-ui/style/chrome.ts";
+import { hudTheme } from "../subagent/fleet-ui/style/palette.ts";
+import { nav } from "../subagent/section-nav/nav.ts";
+import { activeStatusLine, type StatusLineConfig } from "./config.ts";
+import { liveRateLimits, normalizeHeaders, parseRateLimits, type RateLimitSnapshot } from "./rate-limits.ts";
+import { FOOTER_BRIDGE_CHANNEL, hudFooterBridge, renderStatusRows, statusRows } from "./rows.ts";
+
+const COMMAND_TIMEOUT_MS = 5_000;
+const DEBOUNCE_MS = 300;
+const WIDGET_KEY = "pi-code-statusline";
+
+/** Whether cwd sits in a git worktree: `.git` is a file pointing at the main
+ * checkout there, and a directory in an ordinary clone. */
+/** git's name for the linked worktree cwd is in: the directory under .git/worktrees that
+ * the worktree's `.git` file points at. Undefined in a main checkout (whose `.git` is a
+ * directory) and outside a repository. */
+function gitWorktreeName(cwd: string): string | undefined {
+	// gitRoot, not repoRoot: repoRoot resolves a worktree to its main checkout, which is
+	// exactly the thing this needs to see before it is resolved away.
+	const root = gitRoot(cwd);
+	if (root === undefined) return undefined;
+	try {
+		const line = fs
+			.readFileSync(path.join(root, ".git"), "utf-8")
+			.split("\n")
+			.find((entry) => entry.startsWith("gitdir:"));
+		return line === undefined ? undefined : path.basename(line.slice("gitdir:".length).trim());
+	} catch {
+		return undefined;
+	}
+}
+
+interface UsageEntry {
+	type: string;
+	message?: { usage?: { cost?: { total?: number } } };
+}
+
+/** Full branch walk: used only to (re)seed the running total, at session start
+ * and on the events that reshape the branch. Renders read the total instead. */
+function sessionCost(ctx: ExtensionContext): number {
+	let total = 0;
+	for (const entry of ctx.sessionManager.getBranch() as UsageEntry[]) {
+		total += entry.message?.usage?.cost?.total ?? 0;
+	}
+	return total;
+}
+
+function formatCost(cost: number): string {
+	return cost >= 0.01 ? `$${cost.toFixed(2)}` : `$${cost.toFixed(4)}`;
+}
+
+/** The --add-dir directories, the flag context-imports registers for Claude's additional
+ * working directories. Empty when none were given, which is the documented shape. */
+function addedDirs(): string[] {
+	const raw = addDirFlagValue();
+	if (typeof raw !== "string") return [];
+	return raw
+		.split(",")
+		.map((dir) => dir.trim())
+		.filter(Boolean);
+}
+
+export default function statusLine(nycode: ExtensionAPI) {
+	setThinkingSource(() => nycode.getThinkingLevel?.());
+	let turnCount = 0;
+	let config: StatusLineConfig | undefined;
+	let sessionCtx: ExtensionContext | undefined;
+	let commandLine: string | undefined;
+	let widgetShown = false;
+	let permissionMode = "default";
+	let sessionStartMs = Date.now();
+	// Running session cost; seeded and reseeded by sessionCost(), see below.
+	let costTotal = 0;
+	// The output-style settings chain and active style name, resolved once at
+	// session start: the chain's upward walk and per-file reads are too costly for
+	// every refresh tick. /output-style persists a choice straight to settings with
+	// no bus event, and the new style applies from the next turn anyway, so the
+	// cached name is re-read lazily at most once per turn (styleDirty, turn_start).
+	let styleFiles: string[] = [];
+	let styleName: string | undefined;
+	let styleDirty = false;
+	// Lines changed, counted from successful edit/write inputs: newText and content
+	// lines add, oldText lines remove. An approximation of Claude's counters, which
+	// is honest for the tools nycode has; bash-side changes are invisible to both.
+	let linesAdded = 0;
+	let linesRemoved = 0;
+	// API timing and the last message's token usage, from provider/message events:
+	// the fields ctx.getContextUsage() does not expose (output/cache tokens, API time).
+	let apiDurationMs = 0;
+	let requestStartMs: number | undefined;
+	let lastUsage:
+		| { input: number; output: number; cacheRead: number; cacheWrite: number; totalTokens: number }
+		| undefined;
+	// The most recent rate-limit snapshot parsed from provider response headers, and
+	// a once-per-session guard so a 429 warns the user only the first time it lands.
+	let rateLimits: RateLimitSnapshot | undefined;
+	let rateLimitWarned = false;
+	let refreshTimer: ReturnType<typeof setInterval> | undefined;
+	let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+	let expiryTimer: ReturnType<typeof setTimeout> | undefined;
+	/** Kills the script currently in flight; Claude cancels it on a new trigger. */
+	let killInflight: (() => void) | undefined;
+	/** Stops the settings watcher of the previous session. */
+	let disposeSettingsWatch: () => void = () => {};
+	let running = false;
+	let rerunQueued = false;
+
+	/** Render handle of the widget, for tab changes. */
+	let statusTui: { requestRender(): void } | undefined;
+
+	function segmentText(ctx: ExtensionContext, symbol: string): string {
+		const theme = ctx.ui.theme;
+		const costText = costTotal > 0 ? theme.fg("muted", ` ${formatCost(costTotal)}`) : "";
+		const turnText = turnCount > 0 ? theme.fg("dim", ` turn ${turnCount}`) : theme.fg("dim", " ready");
+		return symbol + turnText + costText;
+	}
+
+	/** Sets or clears the rows widget; ctx may be disposed, which is not worth surfacing. */
+	function setRows(ctx: ExtensionContext, rows: string[]): void {
+		if (rows.length === 0 && !widgetShown) return;
+		try {
+			ctx.ui.setWidget(
+				WIDGET_KEY,
+				rows.length === 0
+					? undefined
+					: (tui, theme) => {
+							statusTui = tui;
+							return {
+								// Fullscreen mode routes the click here with local coordinates: when this group draws the tab bar, rows 0-2 are the bar. Regular mode: ↓ then ←/→/Enter/Space.
+								handleMouse: (event: { type?: string; x?: number; y?: number }) => {
+									if (event.type !== "click" || (event.y ?? -1) >= nav.barRows("status")) return undefined;
+									return nav.clickBar(event.x, event.y) ? { handled: true, render: true } : undefined;
+								},
+								render: (width: number) => {
+									nav.stamp("status");
+									const hud = hudTheme(theme);
+									const names = modelNames(ctx.model as { id?: string; name?: string } | undefined);
+									const tidy = dropTodoRows(rows).map((r, i) => tidyRow(r, i === 0, names));
+									const framed = frameStatusLine(
+										layoutStatus(renderStatusRows(tidy, Infinity, footer.trailers()), hud, width),
+										hud,
+										width,
+									);
+									return tabbed("status", framed, "", hud, width, () => tui.requestRender());
+								},
+								invalidate() {},
+							};
+						},
+				{ placement: "belowEditor" },
+			);
+			widgetShown = rows.length > 0;
+			footer.claim(widgetShown);
+			// nycode moves a re-set widget last: the Plan section, when showing, goes back below the status line.
+			if (widgetShown) sectionBridge.reassertPlan();
+		} catch {
+			// Session gone: the widget went with it.
+		}
+	}
+
+	/** Rows of the last script run: 2+ rows are the widget, none means the footer-only path. */
+	let scriptRows: string[] = [];
+	let lastBuiltIn = "";
+	/** Footer-only status promoted into the widget: nycode renders the footer below every widget, which would put it
+	 * under the Plan section; while Plan shows, the one-row (or built-in) status joins the widget above it. */
+	let promoted = false;
+
+	function show(ctx: ExtensionContext, builtIn: string): void {
+		lastBuiltIn = builtIn;
+		const text = commandLine ?? builtIn;
+		const promote = scriptRows.length === 0 && sectionBridge.planActive();
+		if (promote) {
+			promoted = true;
+			setRows(ctx, [text]);
+			ctx.ui.setStatus("pi-code-status", undefined);
+			return;
+		}
+		if (promoted) {
+			promoted = false;
+			if (scriptRows.length === 0) setRows(ctx, []);
+		}
+		// The widget (2+ rows) carries the Status Line title itself; the footer-only path leads with it inline.
+		ctx.ui.setStatus(
+			"pi-code-status",
+			widgetShown
+				? text
+				: labelFooter(
+						text,
+						hudTheme(ctx.ui.theme),
+						modelNames(ctx.model as { id?: string; name?: string } | undefined),
+					),
+		);
+	}
+
+	/** The stdin payload per Claude's documented statusline contract. */
+	function buildPayload(ctx: ExtensionContext): Record<string, unknown> {
+		const usage = ctx.getContextUsage() ?? { tokens: null, contextWindow: 0, percent: null };
+		const model = ctx.model as { id?: string; name?: string; provider?: string } | undefined;
+		// Refresh the cached style name only when a turn boundary may have changed it.
+		if (styleDirty) {
+			styleName = readActiveStyleName(styleFiles);
+			styleDirty = false;
+		}
+		const worktreeName = gitWorktreeName(ctx.cwd);
+		const payload: Record<string, unknown> = {
+			hook_event_name: "Status",
+			session_id: ctx.sessionManager.getSessionId(),
+			cwd: ctx.cwd,
+			// Claude sends its CLI version; nycode's own version is the honest analogue.
+			version: PACKAGE_VERSION,
+			// project_dir is the repository, not the directory the session started in: a
+			// script labelling the project showed whichever subdirectory it was launched
+			// from. git_worktree names a linked worktree and is absent in a main checkout, as
+			// Claude sends it. added_dirs comes from the --add-dir flag nycode registers.
+			workspace: {
+				current_dir: ctx.cwd,
+				project_dir: checkoutRoot(ctx.cwd),
+				...(worktreeName === undefined ? {} : { git_worktree: worktreeName }),
+				added_dirs: addedDirs(),
+			},
+			// Both fields, per Claude's documented contract: published statusline scripts
+			// read .model.display_name and render the literal "null" when it is missing.
+			model: {
+				id: model?.id ?? "",
+				display_name: model?.name ?? model?.id ?? "",
+				...(model?.provider ? { provider: model.provider } : {}),
+			},
+			cost: {
+				total_cost_usd: costTotal,
+				total_duration_ms: Date.now() - sessionStartMs,
+				total_api_duration_ms: apiDurationMs,
+				total_lines_added: linesAdded,
+				total_lines_removed: linesRemoved,
+			},
+			context_window: contextWindowField(usage),
+			// The true combined total when a message usage is known, else the input-side estimate.
+			exceeds_200k_tokens: (lastUsage?.totalTokens ?? usage.tokens ?? 0) > 200_000,
+			permission_mode: permissionMode,
+		};
+		addOptionalFields(ctx, payload);
+		return payload;
+	}
+
+	function contextWindowField(usage: {
+		tokens: number | null;
+		contextWindow: number;
+		percent: number | null;
+	}): Record<string, unknown> {
+		return {
+			context_window_size: usage.contextWindow,
+			used_percentage: usage.percent,
+			remaining_percentage: usage.percent === null ? null : 100 - usage.percent,
+			total_input_tokens: usage.tokens,
+			// The per-component breakdown from the last message's usage, which
+			// ctx.getContextUsage() (input-side estimate only) cannot provide.
+			// Present before the first response too, as Claude sends them: a script
+			// reading current_usage gets null rather than undefined.
+			total_output_tokens: lastUsage?.output ?? 0,
+			current_usage: lastUsage
+				? {
+						input_tokens: lastUsage.input,
+						output_tokens: lastUsage.output,
+						cache_read_input_tokens: lastUsage.cacheRead,
+						cache_creation_input_tokens: lastUsage.cacheWrite,
+					}
+				: null,
+		};
+	}
+
+	function addThinkingFields(ctx: ExtensionContext, payload: Record<string, unknown>): void {
+		// Thinking disabled says the rest, so off carries no effort field of its own.
+		payload.thinking = { enabled: ctx.thinkingLevel !== "off" };
+		const effort = claudeEffortLevel(ctx.thinkingLevel);
+		if (effort) payload.effort = { level: effort };
+	}
+
+	/** The payload fields Claude sends only when they carry a value. */
+	function addOptionalFields(ctx: ExtensionContext, payload: Record<string, unknown>): void {
+		const transcript = ctx.sessionManager.getSessionFile();
+		if (transcript) payload.transcript_path = transcript;
+		const sessionName = ctx.sessionManager.getSessionName?.();
+		if (sessionName) payload.session_name = sessionName;
+		if (ctx.thinkingLevel) addThinkingFields(ctx, payload);
+		if (styleName) payload.output_style = { name: styleName };
+		// The current utilization of the account's rate-limit windows, when the
+		// provider reported them; omitted until a response has carried them, and an
+		// expired window is dropped rather than left stale.
+		if (rateLimits) {
+			const live = liveRateLimits(rateLimits);
+			if (live) payload.rate_limits = live;
+		}
+	}
+
+	async function runCommand(ctx: ExtensionContext): Promise<void> {
+		if (!config) return;
+		if (running) {
+			// Claude cancels the in-flight script when a new update triggers; the
+			// rerun below then runs the fresh one.
+			killInflight?.();
+			rerunQueued = true;
+			return;
+		}
+		running = true;
+		try {
+			// Everything below can touch ctx after an await, and every ctx getter throws
+			// once the session is disposed. This promise is started from a timer with no
+			// awaiter, so an escaping rejection becomes an uncaughtException and exits nycode.
+			const result = await runHookCommand(config.command, buildPayload(ctx), COMMAND_TIMEOUT_MS, {
+				onChild: (kill) => {
+					killInflight = kill;
+				},
+			});
+			// A newer trigger killed this run and queued its rerun: what a killed script left
+			// behind is not its output, and applying it blanked the custom segment until the
+			// rerun finished. Claude cancels the in-flight script and shows nothing for it.
+			if (rerunQueued) return;
+			// Claude: "Your script can output multiple lines to create a richer display."
+			// A footer status is one row (footer.js sanitizeStatusText joins newlines), so 2+ rows
+			// go to a widget below the editor instead; the footer then keeps the built-in segment.
+			const parsed = statusRows(result.stdout, config.padding);
+			commandLine = parsed.footer;
+			scriptRows = parsed.rows;
+			setRows(ctx, parsed.rows);
+			show(ctx, segmentText(ctx, ctx.ui.theme.fg("dim", "○")));
+		} catch {
+			// A replaced or reloaded session invalidates ctx while the command is in
+			// flight; there is nothing left to update, and the next session starts fresh.
+		} finally {
+			killInflight = undefined;
+			running = false;
+			if (rerunQueued) {
+				rerunQueued = false;
+				void runCommand(ctx);
+			}
+		}
+	}
+
+	/** Claude re-runs the script when a rate-limit window in the last data reaches
+	 * its resets_at time, so an expired segment clears without another event. */
+	function scheduleExpiryRefresh(snapshot: RateLimitSnapshot): void {
+		clearTimeout(expiryTimer);
+		const resets = [snapshot.five_hour?.resets_at, snapshot.seven_day?.resets_at].filter(
+			(value): value is number => typeof value === "number",
+		);
+		if (resets.length === 0) return;
+		const delayMs = Math.min(...resets) * 1000 - Date.now();
+		if (delayMs <= 0) return;
+		expiryTimer = setTimeout(() => scheduleRefresh(), delayMs);
+		expiryTimer.unref?.();
+	}
+
+	/** Claude debounces statusline updates at 300ms so rapid triggers batch. */
+	function scheduleRefresh(): void {
+		if (!config || !sessionCtx) return;
+		const ctx = sessionCtx;
+		clearTimeout(debounceTimer);
+		debounceTimer = setTimeout(() => {
+			void runCommand(ctx);
+		}, DEBOUNCE_MS);
+	}
+
+	const footer = hudFooterBridge();
+	nycode.events.on(FOOTER_BRIDGE_CHANNEL, (data) => footer.attach(data));
+
+	nycode.events.on(PLAN_MODE_CHANNEL, (data) => {
+		if (!isPlanModeState(data)) return;
+		permissionMode = data.active ? "plan" : "default";
+		scheduleRefresh();
+	});
+
+	// Counted here rather than in buildPayload so the numbers accumulate across the
+	// session the way Claude's counters do.
+	nycode.on("tool_result", (event) => {
+		if (event.isError) return;
+		const input = event.input as Record<string, unknown>;
+		const lines = (text: unknown): number =>
+			typeof text === "string" && text.length > 0 ? text.split("\n").length : 0;
+		if (event.toolName === "write") linesAdded += lines(input.content);
+		if (event.toolName === "edit" && Array.isArray(input.edits)) {
+			for (const edit of input.edits as Array<{ oldText?: unknown; newText?: unknown }>) {
+				linesAdded += lines(edit.newText);
+				linesRemoved += lines(edit.oldText);
+			}
+		}
+	});
+
+	// API round-trip timing: the window between the request and its response, summed
+	// across the session. ctx exposes no API-duration getter, so it is measured here.
+	nycode.on("before_provider_request", () => {
+		requestStartMs = Date.now();
+	});
+	nycode.on("after_provider_response", (event, ctx) => {
+		if (requestStartMs !== undefined) apiDurationMs += Date.now() - requestStartMs;
+		requestStartMs = undefined;
+		// Rate-limit windows and 429 handling ride on the same response event. Header
+		// names and presence vary, so parse only what is there and never throw.
+		const headers = normalizeHeaders(event.headers);
+		const snapshot = parseRateLimits(headers);
+		if (snapshot) {
+			rateLimits = snapshot;
+			scheduleExpiryRefresh(snapshot);
+		}
+		if (event.status === 429 && !rateLimitWarned) {
+			rateLimitWarned = true;
+			const retryAfter = headers["retry-after"];
+			const detail = retryAfter ? `; retry after ${retryAfter}s` : "";
+			try {
+				ctx.ui.notify(`Provider rate limit reached (429)${detail}`, "warning");
+			} catch {
+				// The session may be gone by the time a late response lands; nothing to warn.
+			}
+		}
+	});
+	// The last message's token usage, for the breakdown getContextUsage() omits,
+	// and the running cost total, so renders never re-walk the branch.
+	nycode.on("message_end", (event) => {
+		const usage = (event as { message?: { usage?: NonNullable<typeof lastUsage> & { cost?: { total?: number } } } })
+			.message?.usage;
+		if (!usage) return;
+		lastUsage = usage;
+		costTotal += usage.cost?.total ?? 0;
+		// Claude re-runs the status line after each assistant message.
+		scheduleRefresh();
+	});
+
+	nycode.on("session_start", (_event, ctx) => {
+		// One instance serves every session, so a fresh session must not inherit state.
+		turnCount = 0;
+		commandLine = undefined;
+		scriptRows = [];
+		promoted = false;
+		sectionBridge.onPlanChange = () => show(ctx, lastBuiltIn);
+		nav.resetTabs();
+		nav.register({
+			id: "status",
+			active: () => widgetShown,
+			hasBody: false,
+			label: () => "Status",
+			changed: () => statusTui?.requestRender(),
+			enter: () => false,
+		});
+		sessionCtx = ctx;
+		widgetShown = false;
+		sessionStartMs = Date.now();
+		linesAdded = 0;
+		linesRemoved = 0;
+		apiDurationMs = 0;
+		requestStartMs = undefined;
+		lastUsage = undefined;
+		rateLimits = undefined;
+		rateLimitWarned = false;
+		clearInterval(refreshTimer);
+		// Seed the running cost from the branch: a resumed or forked session starts
+		// with history, and message_end only accumulates from here on.
+		costTotal = sessionCost(ctx);
+		// Reading config must never open a trust dialog: several extensions resolve
+		// approval at session start, and a second prompt stacks over the first and eats
+		// the keys meant for it. An undecided project simply skips project settings.
+		const trusted = isProjectApprovedSilently(ctx);
+		// Same gate for the style chain: an unapproved project's style is not applied,
+		// so reporting it in the payload would describe a style the session is not using.
+		styleFiles = settingsFiles(ctx.cwd, os.homedir(), trusted);
+		styleName = readActiveStyleName(styleFiles);
+		styleDirty = false;
+		const files = hookFiles(ctx.cwd, os.homedir(), trusted);
+		// Claude's disableAllHooks also turns off the custom statusLine command; the
+		// built-in segment still renders as the fallback.
+		config = activeStatusLine(files);
+		// Re-armed rather than armed once: a refreshInterval added or changed mid-session
+		// had no effect until the next session, though Claude applies a settings change as
+		// soon as the file is saved.
+		const armRefresh = (): void => {
+			clearInterval(refreshTimer);
+			refreshTimer = config?.refreshInterval
+				? setInterval(() => scheduleRefresh(), config.refreshInterval * 1000)
+				: undefined;
+		};
+		armRefresh();
+		// Claude re-runs the script when the statusLine settings change mid-session; a
+		// command change re-resolves and re-runs.
+		// The reload asks again rather than reusing `trusted` (see approvalRecheck), and reads
+		// the chain that answer allows: a statusLine command is executed, not just displayed.
+		const watchCwd = ctx.cwd;
+		const stillApproved = approvalRecheck(ctx);
+		disposeSettingsWatch();
+		disposeSettingsWatch = watchSettingsFiles(files, () => {
+			const previousCommand = config?.command;
+			const liveFiles = hookFiles(watchCwd, os.homedir(), trusted && stillApproved());
+			config = activeStatusLine(liveFiles);
+			armRefresh();
+			// With the setting gone nothing runs again, so the last script output would stay.
+			// Only a removal resets the segment: with no statusLine before either, the built-in
+			// segment is already showing and keeps its state.
+			if (!config) {
+				if (previousCommand === undefined) return;
+				commandLine = undefined;
+				scriptRows = [];
+				setRows(ctx, []);
+				show(ctx, segmentText(ctx, ctx.ui.theme.fg("dim", "○")));
+				return;
+			}
+			// The debounce batches rapid triggers, but a command the user just edited has
+			// nothing to batch with: run it now so the result of the edit is immediate.
+			if (config?.command !== previousCommand) void runCommand(ctx);
+			else scheduleRefresh();
+		});
+		show(ctx, segmentText(ctx, ctx.ui.theme.fg("dim", "○")));
+		scheduleRefresh();
+	});
+
+	nycode.on("turn_start", (_event, ctx) => {
+		turnCount++;
+		// A /output-style between turns lands in settings silently; its style applies
+		// from this turn, so this is the moment the cached name can go stale.
+		styleDirty = true;
+		const theme = ctx.ui.theme;
+		show(ctx, theme.fg("accent", "●") + theme.fg("dim", ` turn ${turnCount}...`));
+	});
+
+	nycode.on("turn_end", (_event, ctx) => {
+		show(ctx, segmentText(ctx, ctx.ui.theme.fg("success", "✓")));
+		scheduleRefresh();
+	});
+
+	nycode.on("agent_end", (_event, ctx) => {
+		show(ctx, segmentText(ctx, ctx.ui.theme.fg("success", "✓")));
+		scheduleRefresh();
+	});
+
+	// The model and effort segments of the payload go stale between turns; a switch
+	// fires these events, so refresh at once instead of waiting for the next tick.
+	// The rate-limit snapshot belongs to the provider that sent it: drop it on a switch, so
+	// Anthropic -> GPT -> Anthropic does not revive the old headers (docs/hud-provider-usage.md).
+	nycode.on("model_select", () => {
+		rateLimits = undefined;
+		clearTimeout(expiryTimer);
+		scheduleRefresh();
+	});
+	nycode.on("thinking_level_select", () => {
+		scheduleRefresh();
+	});
+
+	nycode.on("session_compact", (_event, ctx) => {
+		// Compaction replaces the branch entries; reseed the total from what remains. The last
+		// response's usage describes the context that was just replaced: Claude sends
+		// current_usage null until the next API call.
+		costTotal = sessionCost(ctx);
+		lastUsage = undefined;
+		scheduleRefresh();
+	});
+
+	nycode.on("session_tree", (_event, ctx) => {
+		// Tree navigation swaps the branch wholesale with no message_end events.
+		costTotal = sessionCost(ctx);
+	});
+
+	nycode.on("session_shutdown", () => {
+		if (sessionCtx) setRows(sessionCtx, []);
+		sectionBridge.onPlanChange = undefined;
+		nav.resetTabs();
+		nav.unregister("status");
+		clearInterval(refreshTimer);
+		clearTimeout(debounceTimer);
+		clearTimeout(expiryTimer);
+		// nycode's CLI loads a fresh extension instance for every session replacement, so no later
+		// session_start reaches this watcher: left armed, it polls for the life of the process.
+		disposeSettingsWatch();
+		disposeSettingsWatch = () => {};
+	});
+}
