@@ -1,15 +1,13 @@
 """Arms `nycode` (09 §2.2) and `ny-pi-pi160` (D-25): definition, dry-run, stage lookup and the arm scripts. No
 network, no spend: the stage is pre-built (`.ready`) and the binary is a fake."""
 
+import hashlib
 import json
-import shutil
 import subprocess
 from pathlib import Path
 
 from bench import run as rb
 from bench.tests.helpers import BENCH, CF, MP, RA, script
-
-NODE = shutil.which("node") or "/usr/bin/node"  # the arm writes mcp.json with node
 
 FAKE_BIN = """
 echo "HOME=$HOME"
@@ -91,7 +89,7 @@ def run_arm(tmp: Path, *args: str, **env: str) -> subprocess.CompletedProcess[st
     key.write_text("sk-ant-fake\n")
     fake = script(tmp / "fake", FAKE_BIN)
     base = {
-        "PATH": f"/usr/bin:/bin:{Path(NODE).parent}",
+        "PATH": "/usr/bin:/bin",
         "BENCH_STAGE": str(stage),
         "BENCH_NYCODE_BIN": str(fake),
         "BENCH_CC_CREDENTIALS": str(creds),
@@ -134,22 +132,26 @@ def test_arm_api_key_mode(tmp_path: Path) -> None:
     assert "wrk_1" in models
 
 
-def test_arm_writes_a_secret_free_disabled_mcp_json(tmp_path: Path) -> None:
-    """The stage gets the repo example with every server disabled: nothing starts, nothing reaches the network."""
+# sha256 of mcp.json.example of ny-pi at e4f8729, the file its install.sh copies into the stage as mcp.json.
+NYPI_MCP_EXAMPLE_SHA = (
+    "faf18e46c15a45b05b525859a4572ca446820dd070d5d2a72fe548bcfc826cc4"
+)
+
+
+def test_arm_writes_the_same_mcp_json_as_the_ny_pi_stage(tmp_path: Path) -> None:
+    """D-40: both arms are measured with the same mcp.json (6 servers, none with `exposure` or `enabled`)."""
     assert run_arm(tmp_path, "-p", "x", ANTHROPIC_API_KEY="leak").returncode == 0
-    written = (tmp_path / "stage/.nycode/agent/mcp.json").read_text()
-    example = json.loads(
-        (BENCH.parent / "packages/coding-agent/examples/config/mcp.json").read_text()
-    )
-    servers = json.loads(written)["mcpServers"]
-    assert servers.keys() == example["mcpServers"].keys() and servers
-    assert all(s["enabled"] is False for s in servers.values())
-    assert "leak" not in written
-    (tmp_path / "stage/.nycode/agent/mcp.json").write_text(
-        "{}"
-    )  # an existing file is kept
+    written = tmp_path / "stage/.nycode/agent/mcp.json"
+    example = BENCH.parent / "packages/coding-agent/examples/config/mcp.json"
+    assert written.read_bytes() == example.read_bytes()
+    assert hashlib.sha256(written.read_bytes()).hexdigest() == NYPI_MCP_EXAMPLE_SHA
+    servers = json.loads(written.read_text())["mcpServers"]
+    assert len(servers) == 6
+    assert all("exposure" not in s and "enabled" not in s for s in servers.values())
+    assert "leak" not in written.read_text()
+    written.write_text("{}")  # an existing file is kept
     run_arm(tmp_path, "-p", "x")
-    assert (tmp_path / "stage/.nycode/agent/mcp.json").read_text() == "{}"
+    assert written.read_text() == "{}"
 
 
 def test_arm_builds_with_the_ci_commands() -> None:
