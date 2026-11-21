@@ -362,12 +362,14 @@ da costura, reescrito em vitest em `packages/coding-agent/test/harness/` (K2: `p
 ### K14. Título de reserva em `config.ts`
 
 - `packages/coding-agent/src/config.ts:605`: `export const APP_TITLE: string = nycodeConfigName ? APP_NAME : "π";`; o
-  literal `"π"` vira `"nycode"`. Entra em F2 pela marca; o teste (`--version` e `--help` com `HOME` vazio mostram
-  "nycode") fecha em F4. Sem teste de origem; teste novo em `packages/coding-agent/test/`.
+  literal `"π"` vira `"nycode"`. Entra em F2 pela marca; o teste (`--help` com `HOME` vazio mostra "nycode";
+  `--version` imprime só a versão, sem "π", como no upstream, que faz `console.log(VERSION)`) fecha em F4. Sem teste
+  de origem; teste novo em `packages/coding-agent/test/`.
 
-**Verificação de saída:** `npm run check && ./test.sh`; `rg -n "PI_[A-Z_]+|CLAUDE_CONFIG_DIR|\.pi/agent"
-packages/coding-agent/src packages/mcp/src | rg -v "migrations/from-pi"` sem saída; com build, `HOME=$(mktemp -d) node
-packages/coding-agent/dist/cli.js --version` contém "nycode" e `... migrate from-pi` imprime só o plano.
+**Verificação de saída:** `npm run check && ./test.sh`; `rg -nw "PI_[A-Z_]+|CLAUDE_CONFIG_DIR|\.pi/agent"
+packages/coding-agent/src packages/mcp/src | rg -v "migrations/from-pi"` sem saída (`-w`: sem ele o padrão casa
+`ANTHROPIC_API_KEY` e outras 36 linhas do upstream); com build, `HOME=$(mktemp -d) node packages/coding-agent/dist/cli.js
+--help` contém "nycode", `--version` imprime a versão sem "π" e `... migrate from-pi` imprime só o plano.
 
 **Evidência:** SHAs dos PRs K1 a K4, K12, K14; saída do `rg` negativo; trecho do dry-run; testes portados com o arquivo
 de origem; laudo do `security-reviewer` (obrigatório em F4, 00 §10). **Reversão:** `git revert` do PR da costura; a
