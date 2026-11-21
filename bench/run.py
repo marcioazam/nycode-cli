@@ -39,11 +39,9 @@ from bench.power import sim as power_sim
 
 BENCH = Path(__file__).resolve().parent
 REPO = BENCH.parent
-# ny-pi harness tree still lives under import/ny-pi until F8 moves its pieces; the Harbor agent ships there.
-HARBOR_DIR = REPO / "import/ny-pi/claude-home/bin/evals/harbor"
-NYCODE_HARBOR_DIR = (
-    BENCH / "harbor"
-)  # the nycode arm's Harbor agent and its bundle.sh (09 §2.2)
+HARBOR_DIR = BENCH / "harbor"  # Harbor agents and bundle scripts of every arm (09 §2.2)
+# The omp arm is outside the measurements (D-26); its agent stays under import/ until the arm is removed (F12).
+OMP_DIR = REPO / "import/ny-pi/claude-home/bin/evals/harbor"
 NOT_VERIFIED_EXIT = 5
 MAX_ERROR_SHARE = (
     0.10  # a stage with more errored runs than this ends the round (infra, not a score)
@@ -277,7 +275,7 @@ def _harbor_step(
     ws = os.environ.get("BENCH_ANTHROPIC_WORKSPACE_ID")
     nyc = arm == "nycode"
     agent_args, extra, tok_name = runners.harbor_agent(
-        arm, model, NYCODE_HARBOR_DIR if nyc else HARBOR_DIR, api=bool(kf), workspace=ws
+        arm, model, OMP_DIR if arm == "omp" else HARBOR_DIR, api=bool(kf), workspace=ws
     )
     if kf:
         env = {"ANTHROPIC_API_KEY": read_api_key(kf), **extra}
@@ -301,14 +299,14 @@ def _harbor_step(
         # Per-round path: arms running side by side must not overwrite one shared bundle.
         out.mkdir(parents=True, exist_ok=True)
         # nycode ships the monorepo build and has its own bundle.sh and variable (09 §2.2); the ny-pi arms ship ~/.pi.
-        hd, var, name = (
-            (NYCODE_HARBOR_DIR, "NYCODE_HARNESS_BUNDLE", "nycode-harness-bundle.tgz")
+        script, var, name = (
+            ("bundle.sh", "NYCODE_HARNESS_BUNDLE", "nycode-harness-bundle.tgz")
             if nyc
-            else (HARBOR_DIR, "PI_HARNESS_BUNDLE", "pi-harness-bundle.tgz")
+            else ("pi_bundle.sh", "PI_HARNESS_BUNDLE", "pi-harness-bundle.tgz")
         )
         bundle = out / name
         subprocess.run(
-            ["bash", str(hd / "bundle.sh"), str(bundle)],
+            ["bash", str(HARBOR_DIR / script), str(bundle)],
             check=True, capture_output=True, env={**os.environ, "HOME": str(stage)},
         )  # fmt: skip
         env[var] = str(bundle)
@@ -316,7 +314,7 @@ def _harbor_step(
         arm == "omp"
     ):  # fetch and checksum the pinned binaries the agent uploads (idempotent)
         subprocess.run(
-            ["bash", str(HARBOR_DIR / "omp-release.sh")],
+            ["bash", str(OMP_DIR / "omp-release.sh")],
             check=True,
             capture_output=True,
         )
