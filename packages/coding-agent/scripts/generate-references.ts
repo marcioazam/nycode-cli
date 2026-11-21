@@ -124,6 +124,11 @@ function documentedObject(schema: ReferenceSchema): { suffix: string; schema: Re
 
 const escapeTableText = (text: string) => text.replaceAll("|", "\\|").replaceAll("<", "&lt;");
 
+/** Wraps bare URLs in angle brackets so the generated page passes markdownlint MD034. */
+function autolinkUrls(text: string): string {
+	return text.replace(/(?<![<(])https?:\/\/\S+?(?=[.,;:]?(?:\s|$))/g, "<$&>");
+}
+
 function referenceRows(schema: ReferenceSchema, section: ReferenceSection, prefix = ""): string[] {
 	const rows: string[] = [];
 	for (const [name, field] of Object.entries(schema.properties ?? {})) {
@@ -136,7 +141,7 @@ function referenceRows(schema: ReferenceSchema, section: ReferenceSection, prefi
 			.filter((text) => text !== undefined)
 			.join(" ");
 		rows.push(
-			`| \`${path}\` | ${link ? `[${typeText}](${link})` : typeText} | ${defaultText} | ${escapeTableText(description)} |`,
+			`| \`${path}\` | ${link ? `[${typeText}](${link})` : typeText} | ${defaultText} | ${autolinkUrls(escapeTableText(description))} |`,
 		);
 		if (link || (prefix === "" && section.collapsed?.includes(name))) continue;
 		const nested = documentedObject(field);
