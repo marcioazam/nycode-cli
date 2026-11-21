@@ -27,10 +27,10 @@ Nycode does not require dependency lifecycle scripts for a normal npm installati
 With Nix on macOS or Linux, install the latest release from Nycode's flake. Nix builds Nycode from source:
 
 ```bash
-nix profile add github:marcioazam/nycode-cli/stable
+nix profile add github:marcioazam/nycode/stable
 ```
 
-Older Nix versions use `nix profile install` instead. Update with `nix profile upgrade nycode`; `nycode update` cannot update a Nix installation. To pin a release, use a tag such as `github:marcioazam/nycode-cli/v1.0.0`.
+Older Nix versions use `nix profile install` instead. Update with `nix profile upgrade nycode`; `nycode update` cannot update a Nix installation. To pin a release, use a tag such as `github:marcioazam/nycode/v1.0.0`.
 
 Verify the installation:
 

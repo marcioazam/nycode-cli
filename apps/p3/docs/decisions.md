@@ -8,7 +8,7 @@ older entries that say `docs/<file>` or `apps/p3/docs/<file>` now are `apps/p3/d
   nycode folder"):** the shared checkout is switched to `p3`; p3 work, and Chord changes p3 needs, are committed there and
   pushed to `origin/p3`; Chord changes are brought to main afterwards. Build subagents work in the same checkout.
 - **p3 lives on main (owner, 2026-11-07: "switch to main, p3 can live there too, branch sucks"; supersedes "Work on
-  branch p3"):** `apps/p3/` on main of marcioazam/nycode-cli; commit only your own files, never `git add -A`.
+  branch p3"):** `apps/p3/` on main of marcioazam/nycode; commit only your own files, never `git add -A`.
 - **Reloads first (owner, 2026-11-06: "first order is actually the whole reload shit. that needs to be smooth and
   perfect ... keep [server restarts] to its absolute minimum"):** base code is vocabulary (the API re-exports Chord's
   plugin surface once; the principal, `defineFacet`, host kinds; the start script, the worker entry, a web entry

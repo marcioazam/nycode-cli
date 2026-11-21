@@ -6,30 +6,20 @@
 
 import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
-import {
-	allow,
-	type ChordStore,
-	createHost,
-	defineFacet,
-	deny,
-	type Facet,
-	type HostError,
-	openStore,
-	orderedEntries,
-	sqliteBackend,
-} from "@nycode/chord";
+import { type ChordStore, createHost, type Facet, type HostError, openStore, sqliteBackend } from "@nycode/chord";
 import { type Context, withAbortSignal } from "@nycode/chord/context";
 import { createHttp, type HttpError, HttpListener, type ListenAddress } from "@nycode/chord/http";
 import { createPlugins, type PluginsError } from "@nycode/chord/plugins";
 import { openNodeSqliteDatabase } from "@nycode/chord/sqlite/node";
 import { processLock } from "@nycode/chord/workers/child";
 import { Server, Session } from "@nycode/p3/v1";
-import { LinkOpened, type LinkOpenedHook, ServerRuntime, SessionRoute, WorkerRunners } from "@nycode/p3/v1/server";
+import { LinkOpened, type LinkOpenedHook, type ServerRuntime, WorkerRunners } from "@nycode/p3/v1/server";
 import { API, KINDS, SERVER, workerPrincipal } from "./app.ts";
 import { openDataDir, privateDirectory, privateStore, writePrivate } from "./files.ts";
 import { SERVER_MODULES } from "./modules-server.ts";
 import type { P3Principal } from "./principals.ts";
 import { type ServerRecord, serverFile, serverLock } from "./records.ts";
+import { admitSession, serverCoreFacet } from "./server-core.ts";
 
 /** What the server's start takes. */
 export type ServerOptions = {
@@ -143,12 +133,7 @@ export async function startServer(options: ServerOptions, context: Context): Pro
 			{
 				// Admission decides; a worker never reaches another session's worker.
 				authorize: () => true,
-				admit: (principal, address, self) => {
-					const route = self.get(SessionRoute, { session: address.params.id });
-					return self.derive([route.exists], ([exists]) =>
-						principal.kind !== "worker" && exists ? allow(null) : deny("no such session"),
-					);
-				},
+				admit: admitSession,
 				resolve: async (address, routing) => {
 					const runner = (await host.registry(WorkerRunners, routing)).value;
 					if (runner === undefined) throw new Error("p3: no runner for session workers");
@@ -178,7 +163,7 @@ export async function startServer(options: ServerOptions, context: Context): Pro
 		};
 		const core = [
 			{ name: "chord.http", facet: http.facet },
-			{ name: "p3.server", facet: coreFacet(runtime) },
+			{ name: "p3.server", facet: serverCoreFacet(runtime) },
 			...(options.facets ?? []),
 		];
 		await plugins.load(host, { kind: "server", core, modules: SERVER_MODULES }, context);
@@ -198,29 +183,6 @@ export async function startServer(options: ServerOptions, context: Context): Pro
 		await close(context);
 		throw error;
 	}
-}
-
-/**
- * The base's facet: it serves `ServerRuntime` (the process values), `WorkerRunners` (the first runner by plugin name) and
- * `LinkOpened` (every hook called, in plugin order).
- */
-function coreFacet(runtime: ServerRuntime): Facet<P3Principal> {
-	return defineFacet<P3Principal>((host) => {
-		host.serve(ServerRuntime, { compose: () => runtime });
-		host.serve(WorkerRunners, { compose: (table) => table[0]?.value });
-		host.serve(LinkOpened, {
-			compose: (table) => {
-				const hooks = orderedEntries(table, (hook) => [hook]);
-				return (request, close) => {
-					const ends = hooks.map(({ value }) => value(request, close)).filter((end) => end !== undefined);
-					if (ends.length === 0) return undefined;
-					return () => {
-						for (const end of ends) end();
-					};
-				};
-			},
-		});
-	});
 }
 
 /** The error of a listen on `address` that failed with `cause`: `EADDRINUSE` names the port. */

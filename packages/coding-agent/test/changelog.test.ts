@@ -22,10 +22,10 @@ describe("normalizeChangelogLinks", () => {
 
 		expect(normalizeChangelogLinks(markdown, entry)).toBe(
 			[
-				"[Project Trust](https://github.com/marcioazam/nycode-cli/blob/v0.79.0/packages/coding-agent/README.md#project-trust)",
-				"[Extensions](https://github.com/marcioazam/nycode-cli/blob/v0.79.0/packages/coding-agent/docs/extensions.md#project_trust)",
-				"[Examples](https://github.com/marcioazam/nycode-cli/tree/v0.79.0/packages/coding-agent/examples/extensions/)",
-				"[Root README](https://github.com/marcioazam/nycode-cli/blob/v0.79.0/README.md#supply-chain-hardening)",
+				"[Project Trust](https://github.com/marcioazam/nycode/blob/v0.79.0/packages/coding-agent/README.md#project-trust)",
+				"[Extensions](https://github.com/marcioazam/nycode/blob/v0.79.0/packages/coding-agent/docs/extensions.md#project_trust)",
+				"[Examples](https://github.com/marcioazam/nycode/tree/v0.79.0/packages/coding-agent/examples/extensions/)",
+				"[Root README](https://github.com/marcioazam/nycode/blob/v0.79.0/README.md#supply-chain-hardening)",
 			].join("\n"),
 		);
 	});
@@ -34,16 +34,16 @@ describe("normalizeChangelogLinks", () => {
 		const markdown = [
 			"[#5167](https://github.com/earendil-works/pi-mono/pull/5167)",
 			"[#4163](https://github.com/badlogic/pi-mono/issues/4163)",
-			"[Agent README](https://github.com/marcioazam/nycode-cli/blob/main/packages/agent/README.md)",
+			"[Agent README](https://github.com/marcioazam/nycode/blob/main/packages/agent/README.md)",
 			"[External](https://example.com/docs)",
 			"[Local anchor](#settings)",
 		].join("\n");
 
 		expect(normalizeChangelogLinks(markdown, "0.79.0")).toBe(
 			[
-				"[#5167](https://github.com/marcioazam/nycode-cli/pull/5167)",
-				"[#4163](https://github.com/marcioazam/nycode-cli/issues/4163)",
-				"[Agent README](https://github.com/marcioazam/nycode-cli/blob/v0.79.0/packages/agent/README.md)",
+				"[#5167](https://github.com/marcioazam/nycode/pull/5167)",
+				"[#4163](https://github.com/marcioazam/nycode/issues/4163)",
+				"[Agent README](https://github.com/marcioazam/nycode/blob/v0.79.0/packages/agent/README.md)",
 				"[External](https://example.com/docs)",
 				"[Local anchor](#settings)",
 			].join("\n"),
