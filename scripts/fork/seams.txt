@@ -12,8 +12,8 @@ K4 | packages/coding-agent/src/core/settings-schema.ts packages/coding-agent/src
 K5 | packages/coding-agent/src/extensions/index.ts | nycode: K5[[:space:]] | - | ativa
 K6 | packages/coding-agent/src/core/resource-loader.ts | nycode: K6[[:space:]] | - | pendente: fase F8
 K7 | packages/coding-agent/src/core/system-prompt.ts | nycode: K7[[:space:]] | - | pendente: fase F8
-K8 | packages/coding-agent/src/core/tools/bash.ts | nycode: K8[[:space:]] | - | pendente: fase F7
-K9 | packages/coding-agent/src/core/compaction/ | nycode: K9[[:space:]] | - | pendente: fase F7
+K8 | packages/coding-agent/src/core/tools/bash.ts packages/coding-agent/src/core/agent-session.ts | nycode: K8[[:space:]] | packages/coding-agent/test/harness/core/bash-timeout.test.ts | ativa
+K9 | packages/coding-agent/src/core/compaction/ packages/coding-agent/src/core/agent-session.ts | nycode: K9[[:space:]] | packages/coding-agent/test/harness/core/compact-threshold.test.ts | ativa
 K10 | packages/tui/src/ | nycode: K10[[:space:]] | - | pendente: fase F7
 K11 | packages/coding-agent/src/core/permissions/ | nycode: K11[[:space:]] | - | pendente: fase F8
 K12 | packages/coding-agent/src/main.ts | nycode: K12[[:space:]] | packages/coding-agent/test/harness/migrations/from-pi-apply.test.ts | ativa
