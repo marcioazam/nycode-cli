@@ -131,6 +131,7 @@ chegam por fase e o `core_scope.py` é convertido em F3.
 | extension | completion-gate | core | Verificação antes de encerrar |
 | extension | dev-commands | ui | `/copy-code` e `/keybindings` |
 | extension | effort-sandwich | optional | Raciocínio high só no 1º turno do `pi -p` de topo (opt-in, spec 0009) |
+| extension | env-settings | core | Variáveis de ambiente do settings do Claude |
 | extension | footer-no-stats | ui | Rodapé |
 | extension | headless-lean | core | Custo sem interface |
 | extension | no-context-files-covers-claude-md | core | Contexto sem duplicata |
