@@ -734,6 +734,7 @@ async function editMemoryFile(ctx: ExtensionCommandContext, home: string): Promi
 			done(exit);
 		};
 		const [editor, ...editorArgs] = command.split(" ");
+		// nosemgrep: javascript.lang.security.audit.spawn-shell-true.spawn-shell-true -- the editor comes from the user's own $VISUAL/$EDITOR; the shell is only used on win32, as in modes/interactive/external-editor.ts
 		const child = spawn(editor, [...editorArgs, picked.file], {
 			stdio: "inherit",
 			shell: process.platform === "win32",

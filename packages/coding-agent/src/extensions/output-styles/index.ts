@@ -22,6 +22,7 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { getBuiltinStylesDir } from "../../config.ts";
 import type { ExtensionAPI, ExtensionCommandContext } from "../../core/extensions/types.ts";
 import { isFlagEnabled } from "../_shared/commands/command-file.ts";
 import { parseClaudeFrontmatter } from "../_shared/commands/frontmatter.ts";
@@ -77,7 +78,7 @@ export function forcedPluginStyle(styles: OutputStyle[]): OutputStyle | undefine
 
 /** Equivalents of Claude's built-in styles, shipped with nycode as the
  * lowest-precedence source: a user or project style of the same name wins. */
-export const BUILTIN_STYLES_DIR = path.join(import.meta.dirname, "..", "_shared", "builtin-styles");
+// The directory resolves per install kind (source, dist, bundle, Bun binary): getBuiltinStylesDir in config.ts.
 
 /** The last line of pi's default coding instructions. Everything after it (append
  * text, project context, skills, cwd, other extensions' additions) survives a style
@@ -237,7 +238,7 @@ export default function outputStylesExtension(nycode: ExtensionAPI) {
 		const trusted = await isProjectApproved(ctx);
 		// Precedence low to high: builtin, plugin, then the user's and project's own
 		// dirs, so a same-named user or project style overrides a plugin's.
-		styles = loadStyles([BUILTIN_STYLES_DIR, ...pluginStyleDirs(home), ...styleDirs(ctx.cwd, home, trusted)]);
+		styles = loadStyles([getBuiltinStylesDir(), ...pluginStyleDirs(home), ...styleDirs(ctx.cwd, home, trusted)]);
 		// Persist the choice to the file the read chain reads last, so it is read back:
 		// the nearest local file or .claude directory could sit at an intermediate
 		// ancestor the chain never consults.
