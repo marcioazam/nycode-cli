@@ -1,0 +1,263 @@
+{
+  "arm": "ny-pi",
+  "commit": "d594d675753f",
+  "exit": 1,
+  "summary": {
+    "ok": 28,
+    "falha": 1,
+    "pulado": 4
+  },
+  "inventory": {
+    "tools": [
+      {
+        "name": "read",
+        "chars": 857
+      },
+      {
+        "name": "bash",
+        "chars": 669
+      },
+      {
+        "name": "edit",
+        "chars": 1248
+      },
+      {
+        "name": "write",
+        "chars": 451
+      },
+      {
+        "name": "web_fetch",
+        "chars": 677
+      },
+      {
+        "name": "codemode",
+        "chars": 1525
+      },
+      {
+        "name": "__pi_deferred_placeholder__",
+        "chars": 107
+      }
+    ],
+    "tools_count": 7,
+    "tools_chars": 5534,
+    "system_chars": 15346,
+    "system_sections": {
+      "tools": 324,
+      "rules": 726,
+      "headless": 664,
+      "project_context": 919,
+      "cwd": 51,
+      "(texto)": 12662
+    },
+    "skills_listed": 0,
+    "agents_listed": 0,
+    "skills": {
+      "files": 30,
+      "description_chars": 6784
+    },
+    "agents": {
+      "files": 17,
+      "description_chars": 2045
+    }
+  },
+  "cases": [
+    {
+      "name": "inventario/pedido-capturado",
+      "group": "inventario",
+      "status": "ok",
+      "evidence": "7 ferramentas, system 15346 chars, 0 skills, 0 agentes"
+    },
+    {
+      "name": "regras/plan_mode_complete-ausente",
+      "group": "regras",
+      "status": "ok",
+      "evidence": "plan_mode_complete ausente em -p sem --plan"
+    },
+    {
+      "name": "regras/question-ausente",
+      "group": "regras",
+      "status": "ok",
+      "evidence": "question ausente em -p"
+    },
+    {
+      "name": "regras/sem-erro-de-interface:read",
+      "group": "regras",
+      "status": "ok",
+      "evidence": "tool_result: contract-probe"
+    },
+    {
+      "name": "regras/sem-erro-de-interface:bash",
+      "group": "regras",
+      "status": "ok",
+      "evidence": "tool_result: ok"
+    },
+    {
+      "name": "regras/sem-erro-de-interface:edit",
+      "group": "regras",
+      "status": "ok",
+      "evidence": "tool_result: Successfully replaced 1 block(s) in /tmp/contract-fgknt54_/work/t-edit/probe.txt."
+    },
+    {
+      "name": "regras/sem-erro-de-interface:write",
+      "group": "regras",
+      "status": "ok",
+      "evidence": "tool_result: Successfully wrote to /tmp/contract-fgknt54_/work/t-write/written.txt"
+    },
+    {
+      "name": "regras/sem-erro-de-interface:web_fetch",
+      "group": "regras",
+      "status": "pulado",
+      "evidence": "rede"
+    },
+    {
+      "name": "regras/sem-erro-de-interface:codemode",
+      "group": "regras",
+      "status": "pulado",
+      "evidence": "executa código arbitrário"
+    },
+    {
+      "name": "regras/sem-erro-de-interface:__pi_deferred_placeholder__",
+      "group": "regras",
+      "status": "pulado",
+      "evidence": "marcador interno, não é ferramenta"
+    },
+    {
+      "name": "basicas/read",
+      "group": "basicas",
+      "status": "ok",
+      "evidence": "ok; tool_result: contract-probe"
+    },
+    {
+      "name": "basicas/write",
+      "group": "basicas",
+      "status": "ok",
+      "evidence": "ok; tool_result: Successfully wrote to /tmp/contract-fgknt54_/work/t-write/written.txt"
+    },
+    {
+      "name": "basicas/edit",
+      "group": "basicas",
+      "status": "ok",
+      "evidence": "ok; tool_result: Successfully replaced 1 block(s) in /tmp/contract-fgknt54_/work/t-edit/probe.txt."
+    },
+    {
+      "name": "basicas/bash",
+      "group": "basicas",
+      "status": "ok",
+      "evidence": "ok; tool_result: ok"
+    },
+    {
+      "name": "basicas/todo",
+      "group": "basicas",
+      "status": "falha",
+      "evidence": "todo não enviada ao modelo em -p"
+    },
+    {
+      "name": "plano/plan_mode_complete-presente",
+      "group": "plano",
+      "status": "ok",
+      "evidence": "plan_mode_complete presente em -p com --plan"
+    },
+    {
+      "name": "plano/sem-escrita",
+      "group": "plano",
+      "status": "ok",
+      "evidence": "edit, write enviadas com --plan, escrita recusada: Plan mode: write blocked (only .md plan files). Plan file: /tmp/d39/v2/stage-ny-pi/.pi/agent/plans/2026-11-2…"
+    },
+    {
+      "name": "comandos/goal",
+      "group": "comandos",
+      "status": "ok",
+      "evidence": "estático: registrado em npm/node_modules/pi-code/extensions/goal.ts:589"
+    },
+    {
+      "name": "comandos/plan",
+      "group": "comandos",
+      "status": "ok",
+      "evidence": "estático: registrado em npm/node_modules/pi-code/extensions/plan-mode/index.ts:295"
+    },
+    {
+      "name": "comandos/agents",
+      "group": "comandos",
+      "status": "ok",
+      "evidence": "estático: registrado em npm/node_modules/pi-code/extensions/subagent/index.ts:409"
+    },
+    {
+      "name": "comandos/tasks",
+      "group": "comandos",
+      "status": "ok",
+      "evidence": "estático: registrado em npm/node_modules/pi-code/extensions/subagent/index.ts:398"
+    },
+    {
+      "name": "comandos/team",
+      "group": "comandos",
+      "status": "ok",
+      "evidence": "estático: registrado em npm/node_modules/pi-code/extensions/subagent/team/index.ts:160"
+    },
+    {
+      "name": "skills/skill-frontmatter",
+      "group": "skills",
+      "status": "ok",
+      "evidence": "30 arquivos com name e description"
+    },
+    {
+      "name": "skills/skill-nomes-unicos",
+      "group": "skills",
+      "status": "ok",
+      "evidence": "30 nomes distintos"
+    },
+    {
+      "name": "skills/agente-frontmatter",
+      "group": "skills",
+      "status": "ok",
+      "evidence": "17 arquivos com name e description"
+    },
+    {
+      "name": "skills/agente-nomes-unicos",
+      "group": "skills",
+      "status": "ok",
+      "evidence": "17 nomes distintos"
+    },
+    {
+      "name": "mcp/brave-search",
+      "group": "mcp",
+      "status": "ok",
+      "evidence": "estático: comando npx no PATH"
+    },
+    {
+      "name": "mcp/codegraph",
+      "group": "mcp",
+      "status": "ok",
+      "evidence": "estático: comando codegraph no PATH"
+    },
+    {
+      "name": "mcp/context7",
+      "group": "mcp",
+      "status": "ok",
+      "evidence": "estático: URL https://mcp.context7.com"
+    },
+    {
+      "name": "mcp/exa",
+      "group": "mcp",
+      "status": "ok",
+      "evidence": "estático: URL https://mcp.exa.ai"
+    },
+    {
+      "name": "mcp/perplexity",
+      "group": "mcp",
+      "status": "ok",
+      "evidence": "estático: comando npx no PATH"
+    },
+    {
+      "name": "mcp/playwright",
+      "group": "mcp",
+      "status": "ok",
+      "evidence": "estático: comando npx no PATH"
+    },
+    {
+      "name": "mcp/tools-list",
+      "group": "mcp",
+      "status": "pulado",
+      "evidence": "precisa de rede/login: nenhum servidor é iniciado"
+    }
+  ]
+}
