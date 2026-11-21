@@ -1,4 +1,4 @@
-// Ported from import/ny-pi/claude-home/bin/tests/gates/completion-gate.test.ts (14 cases; the PI_COMPLETION_GATE=0 half
+// Ported from import/ny-pi/claude-home/bin/tests/gates/completion-gate.test.ts (14 cases; the kill-switch half
 // of the plan-mode case now goes through the handler and `harness.completionGate` / NYCODE_COMPLETION_GATE).
 import { strict as assert } from "node:assert";
 import { afterEach, describe, it } from "vitest";
@@ -119,7 +119,7 @@ describe("completion-gate", () => {
 			"node --experimental-strip-types --test a.test.ts",
 			"FOO=1 timeout 60 cargo test",
 			"./gradlew test",
-			"python3 ~/.pi/agent/claude-home/bin/checks/check-instructions.py",
+			"python3 scripts/checks/check-instructions.py",
 			"npx tsc --noEmit",
 			"make check 2>&1",
 			"ls; ruff check .",

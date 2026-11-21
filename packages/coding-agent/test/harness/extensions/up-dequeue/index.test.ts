@@ -23,14 +23,14 @@ describe("up-dequeue", () => {
 
 	it("registers the handler and consults the editor and the queue", () => {
 		let onStart: StartHandler | undefined;
-		let handler: Handler | undefined;
+		const registered: { handler?: Handler } = {};
 		const ctx = (hasUI: boolean, text: string, pending: boolean) => ({
 			hasUI,
 			hasPendingMessages: () => pending,
 			ui: {
 				getEditorText: () => text,
 				onTerminalInput: (h: Handler) => {
-					handler = h;
+					registered.handler = h;
 				},
 			},
 		});
@@ -39,12 +39,11 @@ describe("up-dequeue", () => {
 				onStart = fn;
 			},
 		} as unknown as ExtensionAPI);
-		handler = undefined;
 		onStart?.({}, ctx(false, "", true));
-		expect(handler).toBeUndefined();
+		expect(registered.handler).toBeUndefined();
 		onStart?.({}, ctx(true, "  ", true));
-		expect(handler?.("\x1b[A")).toEqual({ data: "\x1b[1;3A" });
+		expect(registered.handler?.("\x1b[A")).toEqual({ data: "\x1b[1;3A" });
 		onStart?.({}, ctx(true, "texto", true));
-		expect(handler?.("\x1b[A")).toBeUndefined();
+		expect(registered.handler?.("\x1b[A")).toBeUndefined();
 	});
 });
