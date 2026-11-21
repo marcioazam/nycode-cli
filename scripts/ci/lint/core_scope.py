@@ -26,6 +26,8 @@ EXTENSIONS = Path("packages/coding-agent/src/extensions")
 EXT_SKIP = {"test", "tests", "node_modules"}
 # Extensions and the registry the fork had before the harness: not pieces of the 0005 table.
 EXT_NATIVE = {"index", "codemode", "llama", "mcp", "tool-search"}
+# A directory starting with "_" is a shared library the extensions import (`_shared`, 03 §3.2), never registered.
+EXT_LIBRARY_PREFIX = "_"
 HOOK_SKIP = ("test_", "fixtures", "__pycache__", ".")
 
 Piece = tuple[str, str]
@@ -50,7 +52,11 @@ def discover(root: Path) -> set[Piece]:
         if p.suffix == ".md":
             found.add(("agent", p.stem))
     for p in _children(root / EXTENSIONS):
-        if p.name.startswith(".") or p.name in EXT_SKIP or p.name.endswith(".test.ts"):
+        if (
+            p.name.startswith((".", EXT_LIBRARY_PREFIX))
+            or p.name in EXT_SKIP
+            or p.name.endswith(".test.ts")
+        ):
             continue
         if p.is_dir() and p.name not in EXT_NATIVE:
             found.add(("extension", p.name))
