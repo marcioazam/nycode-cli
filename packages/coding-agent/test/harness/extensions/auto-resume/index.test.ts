@@ -1,4 +1,4 @@
-// Ported from import/ny-pi/extensions/auto-resume/index.test.ts (19 cases; the kill-switch case now goes through the
+// Ported from import/ny-pi/extensions/auto-resume/index.test.ts (17 cases; the kill-switch case now goes through the
 // handler and `harness.autoResume` / NYCODE_AUTO_RESUME). HOME points at an empty directory so the HUD usage cache of
 // the machine running the tests never feeds the account-limit wait.
 import { strict as assert } from "node:assert";

@@ -3,6 +3,7 @@ import autoResumeExtension from "./auto-resume/index.ts";
 import claudeRulesExtension from "./claude-rules/index.ts";
 import codemodeExtension from "./codemode/index.ts";
 import commandsExtension from "./commands/index.ts";
+import completionGateExtension from "./completion-gate/index.ts";
 import contextImportsExtension from "./context-imports/index.ts";
 import contextUsageExtension from "./context-usage/index.ts";
 import docsPointerExtension from "./docs-pointer/index.ts";
@@ -66,6 +67,7 @@ export const builtInExtensions: InlineExtension[] = [
 	{ name: "web", factory: webExtension, builtin: true, enabledByDefault: false },
 	// Embedded ny-pi extensions, in ny-pi's load order (after pi-code, by source file name).
 	{ name: "auto-resume", factory: autoResumeExtension, builtin: true },
+	{ name: "completion-gate", factory: completionGateExtension, builtin: true },
 	{ name: "docs-pointer", factory: docsPointerExtension, builtin: true },
 	{ name: "prefix-cache-1h", factory: prefixCache1hExtension, builtin: true },
 	{ name: "sound-notify", factory: soundNotifyExtension, builtin: true },
