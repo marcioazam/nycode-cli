@@ -192,3 +192,20 @@ def test_real_repo(capsys: pytest.CaptureFixture[str]) -> None:
     code = core_scope.main([])
     cap = capsys.readouterr()
     assert code == 0, cap.err
+
+
+def test_row_waiting_in_import_is_pending(tmp_path: Path) -> None:
+    touch(tmp_path / "packages/coding-agent/src/extensions/todo/index.ts")
+    touch(tmp_path / "import/ny-pi/extensions/bash-timeout/index.ts")
+    touch(tmp_path / "import/ny-pi/claude-home/skills/tdd/SKILL.md")
+    found = core_scope.discover(tmp_path)
+    pending = core_scope.discover(
+        tmp_path, core_scope.IMPORT_RESOURCES, core_scope.IMPORT_EXTENSIONS
+    )
+    rows = [
+        ("extension", "todo", "core"),
+        ("extension", "bash-timeout", "core"),
+        ("extension", "gone", "core"),
+    ]
+    assert pending == {("extension", "bash-timeout"), ("skill", "tdd")}
+    assert core_scope.compare(found, rows, pending) == ["stale: extension gone"]
