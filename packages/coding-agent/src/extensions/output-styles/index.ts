@@ -1,0 +1,319 @@
+/**
+ * Output Styles Extension
+ *
+ * Bridges Claude Code's output styles into pi. It discovers `.claude/output-styles/*.md`
+ * (user then project) plus styles shipped by enabled plugins (manifest `outputStyles`,
+ * default `output-styles/`, ranked below the user's and project's own), honors the
+ * active style recorded as `outputStyle` in
+ * `.claude/settings.json` (user, project, then settings.local.json, last wins),
+ * and appends that style's body to the system prompt so the agent adopts its
+ * tone and role. `/output-style` lists the styles and persists a choice to the
+ * project's settings.local.json.
+ *
+ * Claude semantics: a style replaces the built-in coding instructions unless its
+ * frontmatter sets `keep-coding-instructions: true`. The replacement excises pi's
+ * default coding prose up to a stable marker line and keeps everything after it
+ * (append text, project context, skills, other extensions' additions); when the
+ * marker is absent (custom SYSTEM.md), the style falls back to appending.
+ *
+ * Docs: https://code.claude.com/docs/en/output-styles.md
+ */
+
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
+import { getBuiltinStylesDir } from "../../config.ts";
+import type { ExtensionAPI, ExtensionCommandContext } from "../../core/extensions/types.ts";
+import { isFlagEnabled } from "../_shared/commands/command-file.ts";
+import { parseClaudeFrontmatter } from "../_shared/commands/frontmatter.ts";
+import { addPromptSection, replaceDefaultInstructions } from "../_shared/commands/prompt-options.ts";
+import { isProjectApproved } from "../_shared/project/project-approval.ts";
+import { ancestorDirs } from "../_shared/project/project-root.ts";
+import { claudeConfigDir } from "../_shared/settings/config-dir.ts";
+import { readManagedSettings } from "../_shared/settings/managed-settings.ts";
+import { installedPlugins, pluginComponentPath } from "../_shared/settings/plugins.ts";
+import { claudeSettingsChain, localSettingsFile, readSettingsChain } from "../_shared/settings/settings-chain.ts";
+import { atomicWriteFile } from "../_shared/util/atomic-write.ts";
+import { errorMessage, isDirectory } from "../_shared/util/values.ts";
+
+export interface OutputStyle {
+	name: string;
+	description: string;
+	body: string;
+	keepCodingInstructions: boolean;
+	/** Claude's `force-for-plugin`: a plugin style applying automatically. */
+	forceForPlugin: boolean;
+}
+
+/** A frontmatter field as text, or '' when absent or not scalar. */
+function field(frontmatter: Record<string, unknown>, key: string): string {
+	const value = frontmatter[key];
+	if (typeof value === "string") return value.trim();
+	if (typeof value === "number" || typeof value === "boolean") return String(value);
+	return "";
+}
+
+/** Parse an output-style markdown file into its name, description, and body. pi's
+ * own YAML frontmatter parser, as the command loader uses: a line regex captured to
+ * end of line, so `"Terse" # short` came back as `Terse" # short`. */
+export function parseStyle(content: string, fallbackName: string): OutputStyle {
+	const { frontmatter, body } = parseClaudeFrontmatter(content);
+	return {
+		name: field(frontmatter, "name") || fallbackName,
+		description: field(frontmatter, "description"),
+		body: body.trim(),
+		// Both are YAML booleans (Claude: default `false`), so `yes`/`on`/`True` count as
+		// set, the same reading commands give their own frontmatter flags.
+		keepCodingInstructions: isFlagEnabled(field(frontmatter, "keep-coding-instructions")),
+		forceForPlugin: isFlagEnabled(field(frontmatter, "force-for-plugin")),
+	};
+}
+
+/** Claude's `force-for-plugin` (plugin output styles only): the first loaded style
+ * carrying it applies automatically, overriding the outputStyle setting. The
+ * caller passes only plugin-loaded styles. */
+export function forcedPluginStyle(styles: OutputStyle[]): OutputStyle | undefined {
+	return styles.find((style) => style.forceForPlugin);
+}
+
+/** Equivalents of Claude's built-in styles, shipped with nycode as the
+ * lowest-precedence source: a user or project style of the same name wins. */
+// The directory resolves per install kind (source, dist, bundle, Bun binary): getBuiltinStylesDir in config.ts.
+
+/** The last line of pi's default coding instructions. Everything after it (append
+ * text, project context, skills, cwd, other extensions' additions) survives a style
+ * replacement. Tracks pi's dist/core/system-prompt.js; a canary test pins it. */
+export const CODING_BASE_MARKER =
+	"- Before implementing harness changes, read the relevant docs and examples in full, following related cross-references.";
+/** The same line on hosts before pi 1.5, which peerDependencies still admit. */
+export const LEGACY_CODING_BASE_MARKER =
+	"- Always read pi .md files completely and follow links to related docs (e.g., tui.md for TUI API details)";
+
+function styleText(style: OutputStyle): string {
+	return `## Output Style: ${style.name}\n\n${style.body}`;
+}
+
+/** Apply a style per Claude semantics: replace the coding instructions unless the
+ * style keeps them; fall back to appending when the marker is absent. */
+export function applyStyle(systemPrompt: string, style: OutputStyle): string {
+	const styleSection = styleText(style);
+	if (!style.keepCodingInstructions) {
+		for (const marker of [CODING_BASE_MARKER, LEGACY_CODING_BASE_MARKER]) {
+			const idx = systemPrompt.indexOf(marker);
+			if (idx !== -1) return `${styleSection}${systemPrompt.slice(idx + marker.length)}`;
+		}
+	}
+	return `${systemPrompt}\n\n${styleSection}`;
+}
+
+/**
+ * Existing `.claude/output-styles` directories, user first then project. The project
+ * directory is included only for trusted projects, since its style body is injected
+ * verbatim into the system prompt.
+ */
+export function styleDirs(cwd: string, home: string, trusted: boolean): string[] {
+	const dirs = [path.join(claudeConfigDir(home), "output-styles")];
+	// Claude loads every .claude/output-styles between cwd and the repository root, using
+	// the one closest to cwd for a name clash. loadStyles keys by name and later dirs win,
+	// so the ancestors go farthest first and the nearest lands last.
+	if (trusted) dirs.push(...ancestorDirs(cwd, path.join(".claude", "output-styles")).reverse());
+	return dirs.filter((dir) => isDirectory(dir));
+}
+
+/**
+ * Output-style directories of every enabled plugin: `output-styles/` unless the
+ * manifest's `outputStyles` points elsewhere, in which case it replaces the
+ * default scan (Claude Code semantics). Plugins are user-installed, so user scope
+ * alone decides; they rank below the user's and project's own styles.
+ */
+export function pluginStyleDirs(home: string): string[] {
+	return installedPlugins(home).flatMap((plugin) => {
+		const declared = plugin.manifest.outputStyles;
+		const dirs = Array.isArray(declared) ? declared : [typeof declared === "string" ? declared : "output-styles"];
+		return dirs
+			.map((dir) => pluginComponentPath(plugin, String(dir)))
+			.filter((dir): dir is string => dir !== undefined);
+	});
+}
+
+/** One style file, or undefined when it cannot be used. A directory named *.md or an
+ * unreadable file is skipped silently. pi's frontmatter parser is strict YAML and throws:
+ * one unparseable file must cost that style, not every style of the session. */
+function readStyleFile(dir: string, entry: string): OutputStyle | undefined {
+	const file = path.join(dir, entry);
+	let content: string;
+	try {
+		content = fs.readFileSync(file, "utf-8");
+	} catch {
+		return undefined;
+	}
+	try {
+		return parseStyle(content, entry.replace(/\.md$/, ""));
+	} catch (error) {
+		console.warn(`nycode-output-styles: skipping ${file}: ${errorMessage(error).split("\n")[0]}`);
+		return undefined;
+	}
+}
+
+/** All output styles, project entries overriding user entries of the same name. */
+export function loadStyles(dirs: string[]): OutputStyle[] {
+	const byName = new Map<string, OutputStyle>();
+	for (const dir of dirs) {
+		let entries: string[];
+		try {
+			entries = fs.readdirSync(dir);
+		} catch {
+			continue;
+		}
+		for (const entry of entries.filter((name) => name.endsWith(".md"))) {
+			const style = readStyleFile(dir, entry);
+			if (style) byName.set(style.name, style);
+		}
+	}
+	return [...byName.values()];
+}
+
+/** Settings files that carry `outputStyle`. Project settings apply only when trusted,
+ * each the nearest of its name at or above cwd, as the hooks settings chain reads. */
+export function settingsFiles(cwd: string, home: string, trusted: boolean): string[] {
+	return claudeSettingsChain(cwd, home, trusted);
+}
+
+/** The `outputStyle` recorded in settings, last file winning; a managed policy
+ * value wins over every file, per Claude's settings precedence. */
+export function readActiveStyleName(
+	files: string[],
+	managed: Record<string, unknown> = readManagedSettings(),
+): string | undefined {
+	if (typeof managed.outputStyle === "string") return managed.outputStyle;
+	let name: string | undefined;
+	for (const settings of readSettingsChain(files)) {
+		if (typeof settings.outputStyle === "string") name = settings.outputStyle;
+	}
+	return name;
+}
+
+export function styleForName(styles: OutputStyle[], name: string | undefined): OutputStyle | undefined {
+	return name ? styles.find((style) => style.name === name) : undefined;
+}
+
+/** Record the choice in the local settings file, returning a message to show when it
+ * cannot be recorded. The file also carries permissions, hooks and env, so a present but
+ * unparseable one is left alone rather than replaced by the style choice alone. */
+function persistActiveStyle(file: string, name: string): string | undefined {
+	const label = path.basename(file);
+	let raw: string | undefined;
+	try {
+		raw = fs.readFileSync(file, "utf-8");
+	} catch (error) {
+		// Only a missing file means start fresh; anything else is the user's file to keep.
+		if ((error as NodeJS.ErrnoException).code !== "ENOENT")
+			return `${label} could not be read; the style applies to this session only`;
+	}
+	let config: Record<string, unknown> = {};
+	if (raw !== undefined) {
+		try {
+			const parsed: unknown = JSON.parse(raw);
+			if (parsed !== null && typeof parsed === "object") config = parsed as Record<string, unknown>;
+		} catch {
+			return `${label} is not valid JSON; the style applies to this session only`;
+		}
+	}
+	config.outputStyle = name;
+	fs.mkdirSync(path.dirname(file), { recursive: true });
+	atomicWriteFile(file, `${JSON.stringify(config, null, 2)}\n`);
+	return undefined;
+}
+
+export default function outputStylesExtension(nycode: ExtensionAPI) {
+	let styles: OutputStyle[] = [];
+	let activeName: string | undefined;
+	let localSettingsPath = "";
+
+	nycode.on("session_start", async (_event, ctx) => {
+		const home = os.homedir();
+		// A project style body is injected verbatim into the system prompt, so only honor
+		// project styles / selection once the project is approved. isProjectTrusted alone
+		// is true for a repo pi never asked about; see project-approval.
+		const trusted = await isProjectApproved(ctx);
+		// Precedence low to high: builtin, plugin, then the user's and project's own
+		// dirs, so a same-named user or project style overrides a plugin's.
+		styles = loadStyles([getBuiltinStylesDir(), ...pluginStyleDirs(home), ...styleDirs(ctx.cwd, home, trusted)]);
+		// Persist the choice to the file the read chain reads last, so it is read back:
+		// the nearest local file or .claude directory could sit at an intermediate
+		// ancestor the chain never consults.
+		localSettingsPath = localSettingsFile(ctx.cwd, home);
+		// Claude's force-for-plugin: the first loaded forced plugin style applies
+		// automatically, overriding the outputStyle setting.
+		const forced = forcedPluginStyle(loadStyles(pluginStyleDirs(home)));
+		activeName = forced?.name ?? readActiveStyleName(settingsFiles(ctx.cwd, home, trusted));
+		const active = styleForName(styles, activeName);
+		if (active) ctx.ui.notify(`Output style: ${active.name}`, "info");
+	});
+
+	nycode.on("before_agent_start", (event) => {
+		const active = styleForName(styles, activeName);
+		if (!active || active.body.length === 0) return;
+		const text = styleText(active);
+		if (
+			active.keepCodingInstructions
+				? addPromptSection(event, "output_style", text)
+				: replaceDefaultInstructions(event, text)
+		)
+			return;
+		return { systemPrompt: applyStyle(event.systemPrompt, active) };
+	});
+
+	const activateStyle = (ctx: ExtensionCommandContext, name: string): void => {
+		activeName = name;
+		const failure = persistActiveStyle(localSettingsPath, name);
+		ctx.ui.notify(failure ?? `Output style set to ${name} (applies next turn)`, failure ? "error" : "info");
+	};
+
+	nycode.registerCommand("output-style", {
+		description: "Choose the active Claude output style (or /output-style <name>)",
+		// /output-style <name> takes a style name, so complete the discovered names by the
+		// typed prefix (case-insensitive, like the handler's own name lookup). An empty
+		// prefix offers every style.
+		getArgumentCompletions: (argumentPrefix) => {
+			const prefix = argumentPrefix.trim().toLowerCase();
+			return styles
+				.filter((style) => style.name.toLowerCase().startsWith(prefix))
+				.map((style) => ({
+					value: style.name,
+					label: style.name,
+					...(style.description ? { description: style.description } : {}),
+				}));
+		},
+		handler: async (args, ctx) => {
+			const requested = args.trim();
+			if (requested) {
+				const picked = styles.find((style) => style.name.toLowerCase() === requested.toLowerCase());
+				if (!picked) {
+					ctx.ui.notify(
+						`Unknown output style: ${requested}. Available: ${styles.map((style) => style.name).join(", ")}`,
+						"error",
+					);
+					return;
+				}
+				activateStyle(ctx, picked.name);
+				return;
+			}
+			if (!ctx.hasUI) {
+				ctx.ui.notify("/output-style requires interactive mode", "error");
+				return;
+			}
+			if (styles.length === 0) {
+				ctx.ui.notify("No output styles found in .claude/output-styles", "info");
+				return;
+			}
+			const labels = styles.map((style) =>
+				style.description ? `${style.name} — ${style.description}` : style.name,
+			);
+			const choice = await ctx.ui.select("Output style:", labels);
+			if (!choice) return;
+			const picked = styles[labels.indexOf(choice)];
+			activateStyle(ctx, picked.name);
+		},
+	});
+}
