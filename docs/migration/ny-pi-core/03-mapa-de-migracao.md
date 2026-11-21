@@ -226,13 +226,13 @@ medido. Só então a cópia entra no repositório.
 | `claude-rules.ts`, `context-imports.ts`, `memory.ts`, `output-styles.ts` | 4 | um diretório por extensão | F5 | 4 |
 | `skills.ts`, `commands.ts`, `init.ts` | 3 | `skills-compat/`, `commands/`, `init/` | F5 | 5 |
 | `todo.ts`, `question.ts` | 2 | `todo/`, `question/` | F5 | 6 |
-| `status-line.ts`, `notify.ts`, `session-title.ts`, `thinking.ts`, `context-usage.ts` | 5 | um diretório por extensão | F5 | 7 |
+| `notify.ts`, `session-title.ts`, `thinking.ts`, `context-usage.ts` | 4 | um diretório por extensão | F5 | 7 |
 | `git-checkpoint.ts` | 1 | `git-checkpoint/` | F5 | 8 |
-| `run/` | 7 | `run/` | F5 | 9 |
 | `web.ts` | 1 | `web/` (desligada) | F5 | 10 |
 | `goal.ts` | 1 | `goal/` | F6 | 3 |
 | `plan-mode/` | 8 | `plan-mode/` | F6 | 2 |
 | `subagent/` | 53 | `subagent/` | F6 | 1 |
+| `status-line.ts`, `run/` | 8 | `status-line/`, `run/` (importam `subagent/fleet-ui`, `section-nav`, `fleet`, `background`; D-34) | F6 | 1b |
 | `mcp/` | 9 | **não migra** (D-10) | — | — |
 | `version-floor.ts` | 1 | **não migra** (D-10) | — | — |
 | **Total** | **159** | 149 migram, 10 não | | |
@@ -261,9 +261,12 @@ nesta ordem; cada PR só passa com os testes da coluna da direita.
 | 9 | Envio | parte de `fleet/inbox`, `params.ts` | `zzzzzz-subagent-send` | `zzzzzz-subagent-send/send.test.ts` |
 | 10 | Times | `team/` (7) | `team` | `team/team.test.ts`, `team/team-faults.test.ts` |
 
-A cópia byte a byte de `subagent/` inteiro entra num único commit (unidade 0), fora do registro de extensões e fora
-do `tsconfig`. As unidades 1 a 10 ligam um pedaço por vez: trocam imports, incluem os arquivos no `tsconfig`, portam
-os testes. A extensão só é registrada em `src/extensions/index.ts` na unidade 10. Depois, `plan-mode` (testes
+Correção (D-35): o código não permite ligar as unidades uma a uma. `index.ts`, `modes.ts` e `run.ts` importam `fleet`,
+`routing`, `nesting`, `respawn`, `team`, `transcript` e `fleet-ui`, e `fleet` importa `background.ts`, que importa
+`run.ts`. O código de `subagent/` inteiro entra num PR com um trio de commits (cópia byte a byte da árvore congelada no
+PR #231, imports, Biome e registro), já reorganizado em subdiretórios de até 7 arquivos. Os testes das unidades 1 a 10
+entram em seguida, em PRs por grupo de unidades; C-F6-01 a C-F6-10 fecham com os testes de cada unidade verdes. A
+unidade 0 avulsa não existe: a cópia congelada do #231 e o commit 1 do PR cumprem esse papel. Depois, `plan-mode` (testes
 `plan-done-rule.test.ts`, `plan-sota.test.ts` e a suíte `bench/suites/plan`) e `goal` (`goal.test.ts`,
 `goal-lifecycle.test.ts`).
 

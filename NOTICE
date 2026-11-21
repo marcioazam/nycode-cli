@@ -7,8 +7,11 @@ Zechner". O texto da licença e o aviso de copyright estão em LICENSE.
 Componentes de terceiros
 ------------------------
 
-pi-code 1.7.0, licença MIT, Copyright (c) 2025 Mario Zechner e Copyright (c)
-2026 ilovepixelart. O texto da licença acompanha o código.
+pi-code 1.7.0 (pacote npm `pi-code`, sha1 8ba1f814773da6897f6708c62c7c517cee2baf4e,
+https://github.com/ilovepixelart/pi-code), com os patches do ny-pi, embutido em
+packages/coding-agent/src/extensions/. Licença MIT, Copyright (c) 2025 Mario
+Zechner e Copyright (c) 2026 ilovepixelart; o texto da licença é o mesmo de
+LICENSE.
 
-ny-pi, licença MIT. Copyright dos contribuidores do ny-pi, nos termos da
-licença MIT do próprio ny-pi (import/ny-pi/LICENSE).
+ny-pi, licença MIT, Copyright (c) 2026 ny-pi contributors; o texto da licença
+é o mesmo de LICENSE.

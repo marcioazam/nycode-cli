@@ -78,7 +78,7 @@ Nome do diretório e do registro `builtin:<nome>`. "Padrão" é o estado numa in
 | `todo` | `todo.ts` | 611 | `todo-collapse` | ligada | F5 |
 | `question` | `question.ts` | 752 | — | ligada | F5 |
 | `commands` | `commands.ts` | 701 | `commands-print` | ligada | F5 |
-| `status-line` | `status-line.ts` | 748 | `statusline-multiline`, `zzzzzzzz-statusline-provider` | ligada | F5 |
+| `status-line` | `status-line.ts` | 748 | `statusline-multiline`, `zzzzzzzz-statusline-provider` | ligada | F6 (D-34) |
 | `notify` | `notify.ts` | 170 | `notify-focus` | ligada | F5 |
 | `git-checkpoint` | `git-checkpoint.ts` | 740 | `rewind-tree` | ligada | F5 |
 | `memory` | `memory.ts` | 698 | — | ligada | F5 |
@@ -91,7 +91,7 @@ Nome do diretório e do registro `builtin:<nome>`. "Padrão" é o estado numa in
 | `env-settings` | `env-settings.ts` | 201 | — | ligada | F5 |
 | `settings-flags` | `settings-flags.ts` | 89 | — | ligada | F5 |
 | `init` | `init.ts` | 85 | — | ligada | F5 |
-| `run` | `run/` | 1413 | — | ligada | F5 |
+| `run` | `run/` | 1413 | — | ligada | F6 (D-34) |
 | `context-usage` | `context-usage.ts` | 45 | — | ligada | F5 |
 | `web` | `web.ts` | 450 | — | **desligada** (hoje `--exclude-tools web_search` e `no-web-search.ts`) | F5 |
 | `subagent` | `subagent/` | 8526 | `subagent-nesting`, `subagent-panel`, `subagent-render`, `team`, `zz-panel-main-root`, `zz-subagent-respawn`, `zzz-panel-column0`, `zzzzzz-subagent-send`, `zzzzzzz-subagent-model-effort` | ligada | F6 |
