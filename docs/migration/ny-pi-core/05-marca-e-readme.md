@@ -85,8 +85,9 @@ consolida. Veredito: remover, substituir (por quê) ou manter (exceção D-12).
 - Linha 13: `# Nycode`. Veredito: manter (único H1). Fase: —.
 - Linha 19: "skips features like sub-agents and plan mode". Veredito: substituir: o harness vem como extensões
   embutidas (04, A12). Fase: F6.
-- Linha 28: `curl` de `pi.dev/install.sh` com pipe para o shell. Veredito: substituir por `npm install -g
-  --ignore-scripts @nycode/coding-agent` (README:40); instalador próprio só em F11 (D-12). Fase: F2, F11.
+- Linha 28: `curl` de `pi.dev/install.sh` com pipe para o shell. Veredito: substituir pelo
+  download do binário do GitHub Release de `marcioazam/nycode` (D-17: sem npm; [06, F11](06-guia-de-execucao.md#f11)); até
+  F11 o README fica na instalação por código-fonte. Fase: F2, F11.
 - Linha 34: `irm` de `pi.dev/install.ps1` (PowerShell). Veredito: remover o bloco do Windows até F11. Fase: F2, F11.
 - Linha 37: "The installer pins all dependencies and updates ... `nycode update`". Veredito: reescrever para o npm; o
   instalador volta em F11. Fase: F11.
