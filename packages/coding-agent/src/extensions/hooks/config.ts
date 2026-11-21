@@ -6,6 +6,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { SETTINGS_DEFAULTS } from "../../core/settings-defaults.ts";
 import { readManagedSettings } from "../_shared/settings/managed-settings.ts";
 import { type InstalledPlugin, pluginComponentPath, substitutePluginVars } from "../_shared/settings/plugins.ts";
 import { claudeSettingsChain, readSettingsChain } from "../_shared/settings/settings-chain.ts";
@@ -205,6 +206,22 @@ export function loadHooks(files: string[], sources?: Map<HookMatcher, string>): 
 		}
 		mergeHooksJson(config, raw, file, sources);
 	}
+	return config;
+}
+
+/** The hooks of nycode's own settings: the embedded defaults, each event replaced whole by the settings.json
+ * `hooks` entry of the same name (an empty list turns that event's default off). */
+export function loadSettingsHooks(
+	settingsHooks: Record<string, unknown> | undefined,
+	sources?: Map<HookMatcher, string>,
+): HooksConfig {
+	const config: HooksConfig = {};
+	mergeHooksJson(
+		config,
+		JSON.stringify({ hooks: { ...SETTINGS_DEFAULTS.hooks, ...settingsHooks } }),
+		"nycode settings",
+		sources,
+	);
 	return config;
 }
 

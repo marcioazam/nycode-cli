@@ -37,6 +37,7 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import type { ExtensionAPI, ExtensionContext } from "../../core/extensions/types.ts";
+import { SETTINGS_DEFAULTS } from "../../core/settings-defaults.ts";
 import { approvalRecheck, isProjectApprovedSilently } from "../_shared/project/project-approval.ts";
 import { readManagedSettings } from "../_shared/settings/managed-settings.ts";
 import {
@@ -180,13 +181,13 @@ export default function envSettingsExtension(nycode: ExtensionAPI) {
 	 * `--setting-sources` filter match every other consumer: the shared settings.json
 	 * comes from the session's own directory and never an ancestor, settings.local.json
 	 * from the repository root. The project scope is read only when approved. */
-	const apply = (home: string, cwd: string, approved: boolean): void => {
+	const apply = (home: string, cwd: string, approved: boolean, own: Record<string, string>): void => {
 		const sources = claudeSettingsSources(cwd, home, approved);
 		const project = sanitizeProjectEnv(scopeEnv(sources, ["project", "local"]));
 		applyEnvSettings(
 			mergeEnvScopes(
 				envFromSettings(readManagedSettings()),
-				scopeEnv(sources, ["user"]),
+				{ ...own, ...scopeEnv(sources, ["user"]) },
 				project,
 				scopeEnv(sources, ["flag"]),
 			),
@@ -198,7 +199,9 @@ export default function envSettingsExtension(nycode: ExtensionAPI) {
 	// Factory time: managed + user only. Approval needs the session ctx, so the project
 	// scope waits for session_start; running here means these vars land before the first
 	// turn. pi parses flags after loading, so the --settings level also waits.
-	apply(os.homedir(), process.cwd(), false);
+	// nycode's own `env` (the embedded default plus settings.json) is the floor below the user scope; settings.json
+	// is read once the session binds, so the factory applies the default alone.
+	apply(os.homedir(), process.cwd(), false, SETTINGS_DEFAULTS.env);
 
 	nycode.on("session_start", (_event, ctx: ExtensionContext) => {
 		const home = os.homedir();
@@ -208,7 +211,8 @@ export default function envSettingsExtension(nycode: ExtensionAPI) {
 		const cwd = ctx.cwd;
 		// A reload asks again rather than reusing `approved`: see approvalRecheck.
 		const stillApproved = approvalRecheck(ctx);
-		const reapply = (): void => apply(home, cwd, approved && stillApproved());
+		const own = { ...SETTINGS_DEFAULTS.env, ...envFromSettings(nycode.getSettings()) };
+		const reapply = (): void => apply(home, cwd, approved && stillApproved(), own);
 		reapply();
 		// Claude: "Claude Code watches your settings files and reloads them when they change,
 		// so it applies most edits to the running session without a restart." `env` is not

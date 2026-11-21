@@ -6,31 +6,47 @@ import socket
 import subprocess
 import tempfile
 import unittest
+from collections.abc import Callable
 
-GATE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "resources", "hooks", "impeccable_gate.sh")
+GATE = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "..",
+    "..",
+    "..",
+    "resources",
+    "hooks",
+    "impeccable_gate.sh",
+)
 FAKE = '#!/bin/sh\nprintf "%s" "$*" > "$0.argv"\ncat > "$0.stdin"\necho ran\n'
 
 
-def mkexe(path):
+def mkexe(path: str) -> None:
     with open(path, "w") as f:
         f.write(FAKE)
     os.chmod(path, 0o755)
 
 
 class GateTest(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
         self.tmp = os.path.realpath(self._tmp.name)
         self.launcher = os.path.join(self.tmp, "fake-launcher")
         mkexe(self.launcher)
 
-    def mkdir(self, *parts):
+    def mkdir(self, *parts: str) -> str:
         d = os.path.join(self.tmp, *parts)
         os.makedirs(d, exist_ok=True)
         return d
 
-    def run_gate(self, args, cwd, payload=b"", env_extra=None, sock=True):
+    def run_gate(
+        self,
+        args: list[str],
+        cwd: str,
+        payload: bytes = b"",
+        env_extra: dict[str, str] | None = None,
+        sock: bool = True,
+    ) -> "subprocess.CompletedProcess[bytes]":
         env = dict(os.environ, IMPECCABLE_GATE_LAUNCHER=self.launcher)
         env.update(env_extra or {})
         if sock:  # nycode hands hooks a Unix socket as stdin
@@ -38,30 +54,51 @@ class GateTest(unittest.TestCase):
             a.sendall(payload)
             a.shutdown(socket.SHUT_WR)
             try:
-                return subprocess.run([GATE, *args], stdin=b, capture_output=True, env=env, cwd=cwd, timeout=10)
+                return subprocess.run(
+                    [GATE, *args],
+                    stdin=b.fileno(),
+                    capture_output=True,
+                    check=False,
+                    env=env,
+                    cwd=cwd,
+                    timeout=10,
+                )
             finally:
                 a.close()
                 b.close()
-        return subprocess.run([GATE, *args], input=payload, capture_output=True, env=env, cwd=cwd, timeout=10)
+        return subprocess.run(
+            [GATE, *args],
+            input=payload,
+            capture_output=True,
+            check=False,
+            env=env,
+            cwd=cwd,
+            timeout=10,
+        )
 
-    def read(self, path, suffix):
+    def read(self, path: str, suffix: str) -> str:
         with open(path + suffix, "rb") as f:
             return f.read().decode()
 
-    def payload(self, cwd):
-        return (json.dumps({"hook_event_name": "PostToolUse", "cwd": cwd}) + "\n").encode()
+    def payload(self, cwd: str) -> bytes:
+        return (
+            json.dumps({"hook_event_name": "PostToolUse", "cwd": cwd}) + "\n"
+        ).encode()
 
-    def test_hook_non_design_dir_is_silent(self):
+    def test_hook_non_design_dir_is_silent(self) -> None:
         d = self.mkdir("plain")
         p = self.run_gate(["hook"], d, self.payload(d))
         self.assertEqual((p.returncode, p.stdout, p.stderr), (0, b"", b""))
         self.assertFalse(os.path.exists(self.launcher + ".argv"))
         self.assertFalse(os.path.exists(os.path.join(d, ".impeccable")))
 
-    def test_hook_opt_in_markers_call_launcher_with_same_stdin(self):
-        for name, make in (("dir", lambda d: os.mkdir(os.path.join(d, ".impeccable"))),
-                           ("product", lambda d: open(os.path.join(d, "PRODUCT.md"), "w").close()),
-                           ("design", lambda d: open(os.path.join(d, "DESIGN.md"), "w").close())):
+    def test_hook_opt_in_markers_call_launcher_with_same_stdin(self) -> None:
+        markers: tuple[tuple[str, Callable[[str], object]], ...] = (
+            ("dir", lambda d: os.mkdir(os.path.join(d, ".impeccable"))),
+            ("product", lambda d: open(os.path.join(d, "PRODUCT.md"), "w").close()),
+            ("design", lambda d: open(os.path.join(d, "DESIGN.md"), "w").close()),
+        )
+        for name, make in markers:
             d = self.mkdir(name)
             make(d)
             if os.path.exists(self.launcher + ".argv"):
@@ -72,7 +109,7 @@ class GateTest(unittest.TestCase):
             self.assertEqual(self.read(self.launcher, ".argv"), "hook", name)
             self.assertEqual(self.read(self.launcher, ".stdin").encode(), pl, name)
 
-    def test_hook_git_subdir_resolves_to_root(self):
+    def test_hook_git_subdir_resolves_to_root(self) -> None:
         root = self.mkdir("repo")
         subprocess.run(["git", "init", "-q", root], check=True)
         open(os.path.join(root, "PRODUCT.md"), "w").close()
@@ -82,16 +119,21 @@ class GateTest(unittest.TestCase):
         self.assertEqual(p.stdout, b"ran\n")
         self.assertEqual(self.read(self.launcher, ".stdin").encode(), pl)
 
-    def test_hook_without_cwd_uses_pwd(self):
+    def test_hook_without_cwd_uses_pwd(self) -> None:
         d = self.mkdir("nocwd")
         open(os.path.join(d, "DESIGN.md"), "w").close()
         p = self.run_gate(["hook"], d, b"{}\n", sock=False)
         self.assertEqual(p.stdout, b"ran\n")
 
-    def test_missing_launcher_exits_zero(self):
+    def test_missing_launcher_exits_zero(self) -> None:
         d = self.mkdir("fb")
         open(os.path.join(d, "PRODUCT.md"), "w").close()
-        p = self.run_gate(["hook"], d, self.payload(d), env_extra={"IMPECCABLE_GATE_LAUNCHER": os.path.join(self.tmp, "nope")})
+        p = self.run_gate(
+            ["hook"],
+            d,
+            self.payload(d),
+            env_extra={"IMPECCABLE_GATE_LAUNCHER": os.path.join(self.tmp, "nope")},
+        )
         self.assertEqual((p.returncode, p.stdout, p.stderr), (0, b"", b""))
 
 

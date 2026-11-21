@@ -85,7 +85,7 @@ session_start() {
   local scans fail_now fail_was
   scans="$(find "$scans_dir" -mindepth 2 -maxdepth 2 -name plugin-skills.txt 2>/dev/null | sort | tail -2 || true)"
   if [ "$(grep -c . <<<"$scans")" -eq 2 ] && [ -n "$(find "$(tail -1 <<<"$scans")" -mtime -8 2>/dev/null)" ]; then
-    fail_now="$(grep -c '^[[:space:]]*\[FAIL\]' "$(tail -1 <<<"$scans")" || true)"  # 0 matches exits 1
+    fail_now="$(grep -c '^[[:space:]]*\[FAIL\]' "$(tail -1 <<<"$scans")" || true)" # 0 matches exits 1
     fail_was="$(grep -c '^[[:space:]]*\[FAIL\]' "$(head -1 <<<"$scans")" || true)"
     if [ "${fail_now:-0}" -gt "${fail_was:-0}" ] 2>/dev/null; then
       notes+=("Skill scan: ${fail_now} failing plugin skills (was ${fail_was}); report $(tail -1 <<<"$scans")")
@@ -152,9 +152,9 @@ milestone_note() {
   [ "${NYCODE_HARNESS_MILESTONE:-1}" != 0 ] || return 0
   [ -z "${NYCODE_SUBAGENT:-}" ] || return 0
   case "$tool" in
-    Bash) [[ $bash_command =~ $MILESTONE ]] || return 0 ;;
-    Agent) [[ " $agents " == *" git-delivery "* ]] || return 0 ;;
-    *) return 0 ;;
+  Bash) [[ $bash_command =~ $MILESTONE ]] || return 0 ;;
+  Agent) [[ " $agents " == *" git-delivery "* ]] || return 0 ;;
+  *) return 0 ;;
   esac
   sid="${session_id//[^A-Za-z0-9_-]/}"
   [ -n "$sid" ] || return 0
@@ -186,10 +186,10 @@ post_tool_use() {
   fi
   # Harness confirmations of the agent's own edits, task updates and questions are not external input.
   case "$tool" in
-    Edit | Write | NotebookEdit | TodoWrite | TaskCreate | TaskUpdate | TaskList | TaskGet | AskUserQuestion | ExitPlanMode)
-      edit_sensors
-      return 0
-      ;;
+  Edit | Write | NotebookEdit | TodoWrite | TaskCreate | TaskUpdate | TaskList | TaskGet | AskUserQuestion | ExitPlanMode)
+    edit_sensors
+    return 0
+    ;;
   esac
   # Search policy (rules-ref/research-and-tools.md): Perplexity is one provider, never the whole search.
   local provider_note=""
@@ -216,7 +216,7 @@ post_tool_use() {
 }
 
 case "$event" in
-  SessionStart) session_start ;;
-  PostToolUse) post_tool_use ;;
+SessionStart) session_start ;;
+PostToolUse) post_tool_use ;;
 esac
 exit 0

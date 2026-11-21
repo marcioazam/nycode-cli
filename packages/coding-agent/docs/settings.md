@@ -196,11 +196,46 @@ These keys only exist, validate, and are read here; the built-in extensions that
 | `codegraph.statusTtl` | number ≥ 0 | None | `CODEGRAPH_STATUS_TTL` | Seconds a codegraph status stays valid; `0` disables. |
 | `codegraph.autoState` | string | None | `CODEGRAPH_AUTO_STATE` | State directory of the codegraph auto-indexer. |
 | `mcp.configPath` | string | `mcp.json` in the agent directory | `NYCODE_MCP_CONFIG` | MCP servers file. |
-| `hooks` | object | None | none | Command hooks by event name, each `[{ "matcher": "Bash", "hooks": [{ "type": "command", "command": "...", "timeout": 30 }] }]`; run by the hooks extension. |
-| `statusLine` | object | None | none | `{ "type": "command", "command": "...", "padding": 0 }`; status line command. |
-| `env` | `Record<string, string>` | None | none | Variables exported to hooks and the status line command. |
+| `hooks` | object | Embedded hooks (below) | none | Command hooks by event name, each `[{ "matcher": "Bash", "hooks": [{ "type": "command", "command": "...", "timeout": 30 }] }]`; run by the hooks extension. An event named here replaces that event's embedded default. |
+| `statusLine` | object | Embedded claude-hud launcher (below) | none | `{ "type": "command", "command": "...", "padding": 0 }`; status line command. An empty `command` turns the status line off. |
+| `env` | `Record<string, string>` | `{ "EIO_BACKEND": "posix" }` | none | Variables exported to the nycode process, so to hooks and the status line command. A value here overrides the default. |
 
 `quietStartup`, `defaultProjectTrust`, `retry`, and `shellCommandPrefix` above carry the ny-pi defaults.
+
+### Embedded hooks and status line
+
+nycode registers these hooks by default. The scripts live in the package's `resources/hooks/`; the commands name them
+through `${NYCODE_RESOURCES}`, which the hooks extension exports. They need `python3` and `jq` on the `PATH`.
+
+| Event | Matcher | Command | Timeout (s) |
+| --- | --- | --- | --- |
+| `PreToolUse` | `Bash\|Edit\|Write\|Read` | `guard.py` | 30 |
+| `SessionStart` | `startup\|resume\|clear\|compact` | `graph_context.py`, `hook-dispatch.sh`, `impeccable_gate.sh hook` | 10, 10, 5 |
+| `SubagentStart` | `*` | `graph_context.py` | 10 |
+| `PostToolUse` | `*` | `hook-dispatch.sh` | 10 |
+| `PostToolUse` | `Edit\|Write` | `impeccable_gate.sh hook` | 5 |
+| `Stop` | none | `impeccable_gate.sh hook` | 30 |
+
+`guard.py` is the permission guard: it denies catastrophic commands and secret reads, and asks before risky ones (a
+`NYCODE_BYPASS_PERMISSIONS=1` environment turns the asks into allows; denials stay). If `python3` is missing, the shell
+cannot start the command and the hook fails as a non-blocking error: the guard then allows the call, as it did in ny-pi.
+A guard that starts but crashes on a Bash call asks instead of allowing. `hook-dispatch.sh` exits 0 without `jq`, and
+`impeccable_gate.sh` then reads the working directory instead of the event's.
+
+To turn hooks off or replace them:
+
+- One event: set it in `settings.json`, for example `"hooks": { "PreToolUse": [] }` drops the guard, and a non-empty
+  list replaces the default for that event. The other events keep their defaults.
+- Every hook: set `"disableAllHooks": true` in a Claude settings file (`~/.claude/settings.json` or the project's
+  `.claude/settings.json`).
+
+The ralph-loop `Stop` hook and the `ponytail` variables (`PONYTAIL_SUBAGENT_MATCHER`) belong to the optional packages of
+the same names and are not registered here.
+
+The default `statusLine` runs `node "${NYCODE_RESOURCES}/statusline/statusline.mjs"`, the claude-hud launcher. It prints
+nothing until the claude-hud plugin is installed in a Claude Code profile (`/claude-hud-setup`), and then the built-in
+footer segment is all that shows. A `statusLine` in a Claude settings file replaces the default, and one in nycode's
+`settings.json` replaces both. `"statusLine": { "type": "command", "command": "" }` turns it off.
 
 ## Updates, telemetry, and warnings
 

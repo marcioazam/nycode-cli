@@ -5,20 +5,16 @@ Terminal-Bench, com a CPU tomada por um treino, o guard (~30 ms ocioso) passou d
 bloqueadas sem rodar em 3 sessões (followup-A 2026-11-16, E3). 30 s não custam nada no caso normal.
 """
 
-import json
+import re
 from pathlib import Path
 
-SETTINGS = Path(__file__).resolve().parent.parent / "settings.json.example"
+SETTINGS = Path(__file__).resolve().parents[3] / "src" / "core" / "settings-defaults.ts"
 
 
 def guard_timeouts() -> list[int]:
-    hooks = json.loads(SETTINGS.read_text(encoding="utf-8"))["hooks"]["PreToolUse"]
-    return [
-        h["timeout"]
-        for e in hooks
-        for h in e["hooks"]
-        if h["command"].endswith("hooks/guard.py")
-    ]
+    # hook(`python3 "${RES}/hooks/guard.py"`, 30): the default PreToolUse registration
+    text = SETTINGS.read_text(encoding="utf-8")
+    return [int(n) for n in re.findall(r'hooks/guard\.py"`,\s*(\d+)\)', text)]
 
 
 def test_guard_timeout_survives_cpu_saturation() -> None:

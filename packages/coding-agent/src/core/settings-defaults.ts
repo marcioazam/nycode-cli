@@ -1,5 +1,17 @@
 import { DEFAULT_MAX_AGENT_RETRY_DELAY_MS } from "@nycode/ai/utils/retry";
 
+// nycode: K4 embedded hooks, status line and env defaults (docs/migration/ny-pi-core/02-arquitetura-alvo.md sections 5 and 6)
+// The embedded resources root as the shell sees it: the `claude-rules` and `hooks` extensions export NYCODE_RESOURCES
+// (core/builtin-resources.ts), so the commands below expand when they run. Quoted in the commands: the root may have spaces.
+// biome-ignore lint/suspicious/noTemplateCurlyInString: shell variable, expanded when the hook runs
+const RES = "${NYCODE_RESOURCES}";
+
+/** One embedded command hook; `type` is always "command". */
+const hook = (command: string, timeout: number) => ({ type: "command", command, timeout }) as const;
+const graphContext = hook(`python3 "${RES}/hooks/graph_context.py"`, 10);
+const dispatch = hook(`bash "${RES}/hooks/dispatch/hook-dispatch.sh"`, 10);
+const impeccableGate = (timeout: number) => hook(`sh "${RES}/hooks/impeccable_gate.sh" hook`, timeout);
+
 /** Runtime defaults shared by settings accessors and the published JSON Schema. */
 export const SETTINGS_DEFAULTS = {
 	transport: "auto",
@@ -85,4 +97,23 @@ export const SETTINGS_DEFAULTS = {
 	todo: { staleReminder: true },
 	plan: { gate: true },
 	notify: { sound: true },
+	// nycode: K4 hooks, statusLine and env defaults
+	// Hooks registered by default, run by the `hooks` extension (needs python3 and jq). A `hooks` entry in settings.json
+	// replaces the default list of that event; `"PreToolUse": []` turns the guard off. The ralph-loop Stop hook is a
+	// third-party package (F9) and registers itself when installed.
+	hooks: {
+		PreToolUse: [{ matcher: "Bash|Edit|Write|Read", hooks: [hook(`python3 "${RES}/hooks/guard.py"`, 30)] }],
+		SessionStart: [{ matcher: "startup|resume|clear|compact", hooks: [graphContext, dispatch, impeccableGate(5)] }],
+		SubagentStart: [{ matcher: "*", hooks: [graphContext] }],
+		PostToolUse: [
+			{ matcher: "*", hooks: [dispatch] },
+			{ matcher: "Edit|Write", hooks: [impeccableGate(5)] },
+		],
+		Stop: [{ hooks: [impeccableGate(30)] }],
+	},
+	// Status line: the claude-hud launcher. It prints nothing until the claude-hud plugin is installed (/claude-hud-setup).
+	// A `statusLine` entry in settings.json replaces it; an empty `command` turns it off.
+	statusLine: { type: "command", command: `node "${RES}/statusline/statusline.mjs"` },
+	// Exported to every process by the `env-settings` extension; a `env` entry in settings.json adds to or overrides it.
+	env: { EIO_BACKEND: "posix" },
 } as const;

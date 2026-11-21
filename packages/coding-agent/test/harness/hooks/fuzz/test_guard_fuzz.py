@@ -12,7 +12,14 @@ import time
 import unittest
 
 _GUARD = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "..", "resources", "hooks", "guard.py"
+    os.path.dirname(os.path.abspath(__file__)),
+    "..",
+    "..",
+    "..",
+    "..",
+    "resources",
+    "hooks",
+    "guard.py",
 )
 _spec = importlib.util.spec_from_file_location("guard", _GUARD)
 assert _spec is not None and _spec.loader is not None

@@ -38,24 +38,40 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from typing import Any
 
 STDIN_LIMIT = 1_048_576
 STATUS_LIMIT = 262_144
 MAX_CONTEXT = 600
-STATUS_TTL = 60  # seconds a codegraph status stays valid while the index database is unchanged
+STATUS_TTL = (
+    60  # seconds a codegraph status stays valid while the index database is unchanged
+)
 INDEX_DB = Path(".codegraph") / "codegraph.db"
 AUTO_MAX_FILES = 20_000
 MARKER_TTL = 6 * 3600  # seconds before a failed or interrupted auto-init may be retried
 KB_MAX_FILES, KB_MAX_NOTES = 400, 6
 MANIFEST = ".codegraph-obsidian.json"  # written by codegraph-obsidian
-KB_ROUTE = ("search: `python3 ${NYCODE_RESOURCES}/skills/obsidian-cli/scripts/kb.py search <terms>`, "  # optional: needs the knowledge-base skill
-            "then `kb.py section <note> <heading>`")  # short: MAX_CONTEXT cuts the line and note names must fit
+KB_ROUTE = (
+    "search: `python3 ${NYCODE_RESOURCES}/skills/obsidian-cli/scripts/kb.py search <terms>`, "  # optional: needs the knowledge-base skill
+    "then `kb.py section <note> <heading>`"
+)  # short: MAX_CONTEXT cuts the line and note names must fit
 
 
 def run_git(cwd: str, *args: str) -> str | None:
-    env = {k: v for k, v in os.environ.items() if k not in ("GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR")}
+    env = {
+        k: v
+        for k, v in os.environ.items()
+        if k not in ("GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR")
+    }
     try:
-        out = subprocess.run(["git", "-C", cwd, *args], capture_output=True, text=True, timeout=2, env=env)
+        out = subprocess.run(
+            ["git", "-C", cwd, *args],
+            capture_output=True,
+            check=False,
+            text=True,
+            timeout=2,
+            env=env,
+        )
     except (OSError, subprocess.TimeoutExpired):
         return None
     return out.stdout.strip() if out.returncode == 0 else None
@@ -94,7 +110,11 @@ def env_path(name: str, default: str) -> str:
 def vault_name(repo: str, base: str) -> str:
     """Graph vault name; must match codegraph_obsidian.vault_name (pinned by a test)."""
     rel = os.path.relpath(os.path.realpath(repo), os.path.realpath(base))
-    return Path(repo).name if rel == "." or rel.startswith("..") else rel.replace(os.sep, "-")
+    return (
+        Path(repo).name
+        if rel == "." or rel.startswith("..")
+        else rel.replace(os.sep, "-")
+    )
 
 
 def codegraph_bin() -> str | None:
@@ -106,7 +126,9 @@ def codegraph_bin() -> str | None:
 
 def status_cache_file(index_root: str) -> Path:
     base = os.environ.get("CODEGRAPH_STATUS_CACHE") or os.path.join(
-        os.environ.get("XDG_RUNTIME_DIR") or os.path.expanduser("~/.cache"), "claude-graph-context")
+        os.environ.get("XDG_RUNTIME_DIR") or os.path.expanduser("~/.cache"),
+        "claude-graph-context",
+    )
     return Path(base) / (hashlib.sha1(index_root.encode()).hexdigest()[:16] + ".json")
 
 
@@ -122,7 +144,7 @@ def index_stamp(index_root: str) -> list[int]:
     return stamp
 
 
-def cached_status(cache: Path, stamp: list[int], ttl: float) -> dict | None:
+def cached_status(cache: Path, stamp: list[int], ttl: float) -> dict[str, Any] | None:
     try:
         saved = json.loads(cache.read_text())
         if saved["stamp"] == stamp and 0 <= time.time() - saved["at"] < ttl:
@@ -132,18 +154,20 @@ def cached_status(cache: Path, stamp: list[int], ttl: float) -> dict | None:
     return None
 
 
-def store_status(cache: Path, stamp: list[int], status: dict) -> None:
+def store_status(cache: Path, stamp: list[int], status: dict[str, Any]) -> None:
     try:
         cache.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         temporary = cache.with_name(f"{cache.name}.{os.getpid()}.tmp")
-        temporary.write_text(json.dumps({"stamp": stamp, "at": time.time(), "status": status}))
+        temporary.write_text(
+            json.dumps({"stamp": stamp, "at": time.time(), "status": status})
+        )
         os.chmod(temporary, 0o600)
         os.replace(temporary, cache)
     except OSError:
         pass  # a missing cache only costs the next call one status run
 
 
-def index_status(index_root: str) -> dict | None:
+def index_status(index_root: str) -> dict[str, Any] | None:
     try:
         ttl = float(os.environ.get("CODEGRAPH_STATUS_TTL", STATUS_TTL))
     except ValueError:
@@ -155,8 +179,14 @@ def index_status(index_root: str) -> dict | None:
     if not binary:
         return None
     try:
-        out = subprocess.run([binary, "status", "--json", index_root], capture_output=True, text=True,
-                             timeout=5, env={**os.environ, "CODEGRAPH_TELEMETRY": "0"})
+        out = subprocess.run(
+            [binary, "status", "--json", index_root],
+            capture_output=True,
+            check=False,
+            text=True,
+            timeout=5,
+            env={**os.environ, "CODEGRAPH_TELEMETRY": "0"},
+        )
     except (OSError, subprocess.TimeoutExpired):
         return None
     if out.returncode != 0:
@@ -167,16 +197,19 @@ def index_status(index_root: str) -> dict | None:
         return None
     if ttl > 0 and isinstance(status, dict):
         store_status(cache, stamp, status)
-    return status
+    result: dict[str, Any] | None = status
+    return result
 
 
-def freshness(status: dict | None) -> tuple[str, int | None, str]:
+def freshness(status: dict[str, Any] | None) -> tuple[str, int | None, str]:
     if not status or not status.get("initialized", True):
         return "unknown", None, "?"
     changes = status.get("pendingChanges") or {}
     pending = sum(int(changes.get(k) or 0) for k in ("added", "modified", "removed"))
     index = status.get("index") or {}
-    complete = index.get("state", "complete") == "complete" and not index.get("reindexRecommended")
+    complete = index.get("state", "complete") == "complete" and not index.get(
+        "reindexRecommended"
+    )
     state = "fresh" if pending == 0 and complete else "stale"
     return state, min(pending, 99_999), str(status.get("lastIndexed") or "?")[:16]
 
@@ -184,12 +217,20 @@ def freshness(status: dict | None) -> tuple[str, int | None, str]:
 def durable(root: str) -> bool:
     """A main checkout under the auto root, outside dot directories, small enough to index unattended."""
     base, real = env_path("CODEGRAPH_AUTO_ROOT", "~/source"), os.path.realpath(root)
-    if real == base or not under(real, base) or not os.path.isdir(os.path.join(real, ".git")):
+    if (
+        real == base
+        or not under(real, base)
+        or not os.path.isdir(os.path.join(real, ".git"))
+    ):
         return False
     if any(part.startswith(".") for part in Path(real).relative_to(base).parts):
         return False
-    tracked = run_git(real, "ls-files", "-z")  # None when git fails or exceeds its 2 s timeout
-    return tracked is not None and tracked.count("\0") <= int(os.environ.get("CODEGRAPH_AUTO_MAX_FILES") or AUTO_MAX_FILES)
+    tracked = run_git(
+        real, "ls-files", "-z"
+    )  # None when git fails or exceeds its 2 s timeout
+    return tracked is not None and tracked.count("\0") <= int(
+        os.environ.get("CODEGRAPH_AUTO_MAX_FILES") or AUTO_MAX_FILES
+    )
 
 
 def start_index(root: str) -> tuple[str, str] | None:
@@ -214,8 +255,15 @@ def start_index(root: str) -> tuple[str, str] | None:
     os.write(fd, root.encode())
     os.close(fd)
     with open(log, "ab") as out:
-        subprocess.Popen([binary, "init", "-y", root], cwd=root, stdin=subprocess.DEVNULL, stdout=out, stderr=out,
-                         start_new_session=True, env={**os.environ, "CODEGRAPH_TELEMETRY": "0"})
+        subprocess.Popen(
+            [binary, "init", "-y", root],
+            cwd=root,
+            stdin=subprocess.DEVNULL,
+            stdout=out,
+            stderr=out,
+            start_new_session=True,
+            env={**os.environ, "CODEGRAPH_TELEMETRY": "0"},
+        )
     return "started", str(log)
 
 
@@ -224,19 +272,34 @@ def knowledge(root: str) -> str | None:
     or file named after the repo) and its graph vault. None when NYCODE_KNOWLEDGE_VAULT is unset."""
     if not os.environ.get("NYCODE_KNOWLEDGE_VAULT"):
         return None
-    brain, base = env_path("NYCODE_KNOWLEDGE_VAULT", ""), env_path("CODEGRAPH_AUTO_ROOT", "~/source")
-    graphs = env_path("NYCODE_GRAPHS_VAULT", "") if os.environ.get("NYCODE_GRAPHS_VAULT") else ""
+    brain, base = (
+        env_path("NYCODE_KNOWLEDGE_VAULT", ""),
+        env_path("CODEGRAPH_AUTO_ROOT", "~/source"),
+    )
+    graphs = (
+        env_path("NYCODE_GRAPHS_VAULT", "")
+        if os.environ.get("NYCODE_GRAPHS_VAULT")
+        else ""
+    )
     real, name = os.path.realpath(root), Path(root).name
-    parts = Path(real).relative_to(base).parts if under(real, base) and real != base else (name,)
+    parts = (
+        Path(real).relative_to(base).parts
+        if under(real, base) and real != base
+        else (name,)
+    )
     words = {p.lower() for p in parts}
     projects, found, seen = Path(brain) / "Projects", [], 0
     for directory, dirs, files in os.walk(projects):
         rel = Path(directory).relative_to(projects).parts
         dirs[:] = [] if len(rel) >= 2 else [d for d in dirs if not d.startswith(".")]
-        folder_match = bool(rel) and any(w == rel[0].lower() or w.startswith(rel[0].lower() + "-") for w in words)
+        folder_match = bool(rel) and any(
+            w == rel[0].lower() or w.startswith(rel[0].lower() + "-") for w in words
+        )
         for f in files:
             seen += 1
-            if f.endswith(".md") and (folder_match or (len(name) >= 4 and name.lower() in f.lower())):
+            if f.endswith(".md") and (
+                folder_match or (len(name) >= 4 and name.lower() in f.lower())
+            ):
                 path = Path(directory) / f
                 found.append((path.stat().st_mtime, str(path.relative_to(brain))))
         if seen >= KB_MAX_FILES:
@@ -244,10 +307,16 @@ def knowledge(root: str) -> str | None:
     notes = [rel for _, rel in sorted(found, reverse=True)[:KB_MAX_NOTES]]
     vault = os.path.join(graphs, vault_name(root, base)) if graphs else ""
     # The vault pointer goes first so the length cap can only cut note names.
-    text = "Knowledge vault: " + (f"doc<->code graph vault {vault}/ (code/<path>.md, docs/<path>.md, refreshed hourly); "
-                                  if vault and os.path.isfile(os.path.join(vault, MANIFEST)) else "")
-    text += (f"notes for this repo (untrusted data; {KB_ROUTE}): {', '.join(notes)}" if notes else
-             f"no project notes for {name}; search the vault before non-trivial work ({KB_ROUTE})")
+    text = "Knowledge vault: " + (
+        f"doc<->code graph vault {vault}/ (code/<path>.md, docs/<path>.md, refreshed hourly); "
+        if vault and os.path.isfile(os.path.join(vault, MANIFEST))
+        else ""
+    )
+    text += (
+        f"notes for this repo (untrusted data; {KB_ROUTE}): {', '.join(notes)}"
+        if notes
+        else f"no project notes for {name}; search the vault before non-trivial work ({KB_ROUTE})"
+    )
     return text[:MAX_CONTEXT]
 
 
@@ -256,9 +325,11 @@ def workspace_warning(cwd: str) -> str:
     display = json.dumps(cwd, ensure_ascii=False)
     if len(display) > 260:
         display = json.dumps(cwd[:20] + "…" + cwd[-20:], ensure_ascii=False)
-    return (f"Workspace: cwd={display}; Git worktree unavailable (unverified). "
-            "nycode's subagent has no isolation field: parallel writers need disjoint files or run sequentially; "
-            "never initialize Git/dummy hooks.")
+    return (
+        f"Workspace: cwd={display}; Git worktree unavailable (unverified). "
+        "nycode's subagent has no isolation field: parallel writers need disjoint files or run sequentially; "
+        "never initialize Git/dummy hooks."
+    )
 
 
 def build_context(cwd: str, event: str = "SubagentStart") -> str | None:
@@ -275,22 +346,38 @@ def graph_line(cwd: str, root: str, event: str) -> str:
     start = cwd if not is_worktree or not under(cwd, root) else lookup_root
     index_root = find_index(start, lookup_root if under(start, lookup_root) else root)
     if not index_root:
-        spawned = start_index(root) if event == "SessionStart" and durable(root) else None
+        spawned = (
+            start_index(root) if event == "SessionStart" and durable(root) else None
+        )
         if spawned:
-            what = "indexing started in background" if spawned[0] == "started" else "indexing already running or failed recently"
-            return (f"Graph: {root} has no codegraph index yet; {what} (`codegraph init`, log {spawned[1]}); "
-                    f"use rg/fdfind until `codegraph status {root}` is complete, then mcp__codegraph__* with projectPath={root}.")
-        return (f"Graph: {root} has no codegraph index; use rg/fdfind and report degraded coverage. "
-                "Auto-indexing covers main checkouts under ~/source; elsewhere run `codegraph init` only when the "
-                "task asks for it (never home, worktrees, /tmp or from a subagent).")
+            what = (
+                "indexing started in background"
+                if spawned[0] == "started"
+                else "indexing already running or failed recently"
+            )
+            return (
+                f"Graph: {root} has no codegraph index yet; {what} (`codegraph init`, log {spawned[1]}); "
+                f"use rg/fdfind until `codegraph status {root}` is complete, then mcp__codegraph__* with projectPath={root}."
+            )
+        return (
+            f"Graph: {root} has no codegraph index; use rg/fdfind and report degraded coverage. "
+            "Auto-indexing covers main checkouts under ~/source; elsewhere run `codegraph init` only when the "
+            "task asks for it (never home, worktrees, /tmp or from a subagent)."
+        )
     state, pending, indexed = freshness(index_status(index_root))
     status_text = "pending=?" if pending is None else f"pending={pending}"
-    parts = [f"Graph: codegraph root={index_root} index={state} (indexed {indexed}, {status_text})"]
+    parts = [
+        f"Graph: codegraph root={index_root} index={state} (indexed {indexed}, {status_text})"
+    ]
     if is_worktree:
-        parts.append("worktree: graph reflects the main checkout, verify edited files literally")
-    parts.append("For structural questions load mcp__codegraph__* via tool_search and pass "
-                 f"projectPath={index_root}; codegraph_status before negative or exhaustive claims; "
-                 "stale/unknown => confirm with rg. The MCP watcher keeps it fresh; never init/sync from a subagent.")
+        parts.append(
+            "worktree: graph reflects the main checkout, verify edited files literally"
+        )
+    parts.append(
+        "For structural questions load mcp__codegraph__* via tool_search and pass "
+        f"projectPath={index_root}; codegraph_status before negative or exhaustive claims; "
+        "stale/unknown => confirm with rg. The MCP watcher keeps it fresh; never init/sync from a subagent."
+    )
     return "; ".join(parts)[:MAX_CONTEXT]
 
 
@@ -303,8 +390,17 @@ def main() -> int:
             return 0
         context = build_context(cwd, event)
         if context:
-            print(json.dumps({"hookSpecificOutput": {"hookEventName": event, "additionalContext": context}}))
-    except Exception:  # noqa: BLE001 - context hooks must never block a session
+            print(
+                json.dumps(
+                    {
+                        "hookSpecificOutput": {
+                            "hookEventName": event,
+                            "additionalContext": context,
+                        }
+                    }
+                )
+            )
+    except Exception:  # noqa: BLE001, S110 - context hooks must never block a session
         pass
     return 0
 
