@@ -5,7 +5,7 @@
  *
  * Snapshots commit the files this session's edit tools touched (the project's
  * .gitignore and .git/info/exclude are honored) into a bare repo under
- * ~/.pi/agent/checkpoints/<session>, using --git-dir/--work-tree so the
+ * <agent dir>/checkpoints/<session>, using --git-dir/--work-tree so the
  * project's own git state is never touched. Scope is the edit set, not the
  * working tree: Claude tracks "only files that have been edited within the
  * current session", and a whole-tree snapshot instead sizes every checkpoint
@@ -21,15 +21,16 @@ import { createHash } from 'node:crypto'
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
-import { type ExtensionAPI, type ExtensionCommandContext, type ExtensionContext, getAgentDir } from '@earendil-works/pi-coding-agent'
-import { readUserSetting } from './internal/settings-chain.ts'
-import { fileToolTarget } from './internal/tool-target.ts'
-import { contentText, errorMessage } from './internal/values.ts'
+import { getAgentDir } from '../../config.ts'
+import type { ExtensionAPI, ExtensionCommandContext, ExtensionContext } from '../../core/extensions/types.ts'
+import { fileToolTarget } from '../_shared/rules/tool-target.ts'
+import { readUserSetting } from '../_shared/settings/settings-chain.ts'
+import { contentText, errorMessage } from '../_shared/util/values.ts'
 
 const CUSTOM_TYPE = 'git-checkpoint'
 /** Sidecar inside the bare shadow repo recording the work tree it snapshots. */
 const WORK_TREE_FILE = 'pi-work-tree'
-/** pi's tools that change a file. `read` is deliberately absent: checkpoint scope is
+/** nycode's tools that change a file. `read` is deliberately absent: checkpoint scope is
  * the set of files the session edited, and that set is what bounds the snapshot. */
 const EDIT_TOOLS: ReadonlySet<string> = new Set(['edit', 'write'])
 /** A run's checkpoint commit is published under a ref rather than recorded as a raw
@@ -236,7 +237,7 @@ async function restoreConversation(ctx: ExtensionCommandContext, entryId: string
   }
 }
 
-export default function gitCheckpointExtension(pi: ExtensionAPI) {
+export default function gitCheckpointExtension(nycode: ExtensionAPI) {
   const checkpoints = new Map<string, Checkpoint>()
   let pending: { ref: string; createdAt: string } | undefined
   // A run (one user message) needs a single pre-run snapshot, no matter how many
@@ -266,7 +267,7 @@ export default function gitCheckpointExtension(pi: ExtensionAPI) {
     // A snapshot layer must be byte-faithful: with the host's autocrlf (the
     // Windows default) the shadow checkout would rewrite every restored file's
     // line endings, so conversion is pinned off for every shadow operation.
-    return pi.exec('git', ['-c', 'core.autocrlf=false', '--git-dir', shadowDir, '--work-tree', workTree, ...args], { cwd: workTree })
+    return nycode.exec('git', ['-c', 'core.autocrlf=false', '--git-dir', shadowDir, '--work-tree', workTree, ...args], { cwd: workTree })
   }
 
   async function ensureShadow(ctx: ExtensionContext): Promise<void> {
@@ -286,17 +287,17 @@ export default function gitCheckpointExtension(pi: ExtensionAPI) {
       ctx.ui.notify(`Os checkpoints desta sessão foram gravados em ${recorded}; começando checkpoints novos para ${ctx.cwd} (os anteriores não podem ser restaurados aqui)`, 'warning')
     }
     pruneCheckpointRepos(checkpointsRoot, checkpointRetentionDays(os.homedir()), shadowDir)
-    const check = await pi.exec('git', ['--git-dir', shadowDir, 'rev-parse', '--git-dir'], { cwd: ctx.cwd })
+    const check = await nycode.exec('git', ['--git-dir', shadowDir, 'rev-parse', '--git-dir'], { cwd: ctx.cwd })
     if (check.code !== 0) {
-      const init = await pi.exec('git', ['init', '--bare', '-b', 'main', shadowDir], { cwd: ctx.cwd })
+      const init = await nycode.exec('git', ['init', '--bare', '-b', 'main', shadowDir], { cwd: ctx.cwd })
       if (init.code !== 0) {
         // Every later snapshot fails against the missing repo, so without this the
         // user first learns /rewind is dead at the moment they need it.
         ctx.ui.notify(`Checkpoints desligados: ${init.stderr.trim() || 'git init failed'}`, 'warning')
         return
       }
-      await pi.exec('git', ['--git-dir', shadowDir, 'config', 'user.email', 'checkpoint@pi-code'], { cwd: ctx.cwd })
-      await pi.exec('git', ['--git-dir', shadowDir, 'config', 'user.name', 'pi-code-checkpoint'], { cwd: ctx.cwd })
+      await nycode.exec('git', ['--git-dir', shadowDir, 'config', 'user.email', 'checkpoint@pi-code'], { cwd: ctx.cwd })
+      await nycode.exec('git', ['--git-dir', shadowDir, 'config', 'user.name', 'pi-code-checkpoint'], { cwd: ctx.cwd })
     }
     // Written on every start, so repos that predate the sidecar pick it up too.
     rememberWorkTree(shadowDir, ctx.cwd)
@@ -325,7 +326,7 @@ export default function gitCheckpointExtension(pi: ExtensionAPI) {
     if (!shadowDir) return
     // Resolved through git so a linked worktree maps to its common dir; outside a repo
     // git exits 128 and there is nothing to mirror.
-    const located = await pi.exec('git', ['rev-parse', '--git-path', 'info/exclude'], { cwd })
+    const located = await nycode.exec('git', ['rev-parse', '--git-path', 'info/exclude'], { cwd })
     const target = path.join(shadowDir, 'info', 'exclude')
     try {
       const source = located.code === 0 ? path.resolve(cwd, located.stdout.trim()) : undefined
@@ -566,8 +567,8 @@ export default function gitCheckpointExtension(pi: ExtensionAPI) {
     ctx.ui.notify(rewindResult(checkpoint.prompt, mode, promptInEditor), 'info')
   }
 
-  pi.on('session_start', async (event, ctx) => {
-    // pi's CLI builds a fresh extension instance per session replacement; only RPC mode can
+  nycode.on('session_start', async (event, ctx) => {
+    // nycode's CLI builds a fresh extension instance per session replacement; only RPC mode can
     // reuse one across sessions. A mid-turn /new there fires session_start on
     // the same instance after turn_start took the pre-run snapshot but before turn_end saved
     // it; that pending ref belongs to the previous session and must not attach to the next
@@ -595,7 +596,7 @@ export default function gitCheckpointExtension(pi: ExtensionAPI) {
   // extension instance) alive, and 'fork' can write a session from the live run's
   // in-memory entries and then fetch refs from exactly this shadow at its own
   // session_start, so this one case is left for the retention sweep as before.
-  pi.on('session_shutdown', (event) => {
+  nycode.on('session_shutdown', (event) => {
     if (ephemeralShadow && shadowDir && event.reason === 'quit') fs.rmSync(shadowDir, { recursive: true, force: true })
   })
 
@@ -605,7 +606,7 @@ export default function gitCheckpointExtension(pi: ExtensionAPI) {
   // follow-up's user message with no checkpoint. agent_start re-fires per agent.continue
   // (a retry, a compaction, or a follow-up), and the extra snapshot a retry produces is
   // discarded at turn_end, since that user message already has its checkpoint.
-  pi.on('agent_start', () => {
+  nycode.on('agent_start', () => {
     runNeedsSnapshot = true
   })
 
@@ -616,7 +617,7 @@ export default function gitCheckpointExtension(pi: ExtensionAPI) {
   // resolved value.
   // Only a prompt fires before_agent_start. A provider retry, an overflow recovery and a
   // queued follow-up all re-enter through agent.continue(), with agent_start alone.
-  pi.on('before_agent_start', () => {
+  nycode.on('before_agent_start', () => {
     promptedRun = true
   })
 
@@ -627,13 +628,13 @@ export default function gitCheckpointExtension(pi: ExtensionAPI) {
    * file first edited in that turn had its baseline folded into the discarded ref. */
   function continuedCheckpoint(ctx: ExtensionContext): Checkpoint | undefined {
     // A queued follow-up is a new user message and needs its own snapshot. Optional: the
-    // supported pi range reaches runtimes that may not have the method.
+    // supported nycode range reaches runtimes that may not have the method.
     if (ctx.hasPendingMessages?.()) return undefined
     const target = findLastUserMessage(ctx)
     return target ? checkpoints.get(target.entryId) : undefined
   }
 
-  pi.on('turn_start', async (_event, ctx) => {
+  nycode.on('turn_start', async (_event, ctx) => {
     if (!runNeedsSnapshot) return
     runNeedsSnapshot = false
     const prompted = promptedRun
@@ -653,7 +654,7 @@ export default function gitCheckpointExtension(pi: ExtensionAPI) {
   // A checkpoint covers the files the session edited, so the tracked set grows as the
   // model works. The baseline is taken here, before the tool writes, because once the
   // tool has run the pre-edit content is gone.
-  pi.on('tool_call', async (event, ctx) => {
+  nycode.on('tool_call', async (event, ctx) => {
     if (!EDIT_TOOLS.has(event.toolName)) return
     const target = fileToolTarget(event)
     if (target === undefined) return
@@ -663,7 +664,7 @@ export default function gitCheckpointExtension(pi: ExtensionAPI) {
     await captureBaseline(file)
   })
 
-  pi.on('turn_end', (_event, ctx) => {
+  nycode.on('turn_end', (_event, ctx) => {
     const snap = pending
     pending = undefined
     if (!snap) return
@@ -685,10 +686,10 @@ export default function gitCheckpointExtension(pi: ExtensionAPI) {
     for (const stale of [...checkpoints.keys()].slice(0, Math.max(0, checkpoints.size - MAX_CHECKPOINTS_PER_SESSION))) {
       checkpoints.delete(stale)
     }
-    pi.appendEntry(CUSTOM_TYPE, checkpoint)
+    nycode.appendEntry(CUSTOM_TYPE, checkpoint)
   })
 
-  pi.registerCommand('rewind', {
+  nycode.registerCommand('rewind', {
     description: 'Voltar o código e/ou a conversa a um ponto anterior',
     handler: async (_args, ctx) => {
       if (!ctx.hasUI) return
@@ -710,7 +711,7 @@ export default function gitCheckpointExtension(pi: ExtensionAPI) {
   // rewinding to a prompt; any other target (an assistant reply, a tool result) has no snapshot
   // of its own state, so only an exact match asks. Declining or cancelling keeps the code and
   // never blocks the navigation.
-  pi.on('session_before_tree', async (event, ctx) => {
+  nycode.on('session_before_tree', async (event, ctx) => {
     if (rewinding || !ctx.hasUI) return
     const checkpoint = checkpoints.get(event.preparation.targetId)
     if (!checkpoint?.ref) return
@@ -723,7 +724,7 @@ export default function gitCheckpointExtension(pi: ExtensionAPI) {
     }
   })
 
-  pi.on('session_before_fork', async (event, ctx) => {
+  nycode.on('session_before_fork', async (event, ctx) => {
     const checkpoint = checkpoints.get(event.entryId)
     if (!checkpoint?.ref || !ctx.hasUI) return
 
