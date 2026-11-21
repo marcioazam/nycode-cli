@@ -1,7 +1,7 @@
 /**
- * Pi Notify Extension
+ * Nycode Notify Extension
  *
- * Sends a native terminal notification when Pi agent is done and waiting for input.
+ * Sends a native terminal notification when the Nycode agent is done and waiting for input.
  * Supports multiple terminal protocols:
  * - OSC 777: Ghostty, iTerm2, WezTerm, rxvt-unicode
  * - OSC 99: Kitty
@@ -18,9 +18,9 @@
 
 import { execFile } from 'node:child_process'
 import * as os from 'node:os'
-import type { ExtensionAPI } from '@earendil-works/pi-coding-agent'
+import type { ExtensionAPI } from '../../core/extensions/types.ts'
 
-import { readUserSetting } from './internal/settings-chain.ts'
+import { readUserSetting } from '../_shared/settings/settings-chain.ts'
 
 /** How a finished turn is announced, from Claude's `preferredNotifChannel`. */
 export type NotifChannel = 'desktop' | 'bell' | 'both' | 'off'
@@ -103,7 +103,7 @@ function notifyDesktop(title: string, body: string): void {
   }
 }
 
-export default function notifyExtension(pi: ExtensionAPI) {
+export default function notifyExtension(nycode: ExtensionAPI) {
   let channel: NotifChannel = 'desktop'
   // When the user last submitted a prompt, so a turn's duration can stand in for
   // Claude's "appear to be away" check. Undefined until the first prompt this session.
@@ -125,11 +125,11 @@ export default function notifyExtension(pi: ExtensionAPI) {
   // Terminal focus from the 'pi-ui:terminal-focus' bus event; undefined until the first one.
   // Optional-chained so a host or test stub without an event bus still loads.
   let focused: boolean | undefined
-  pi.events?.on('pi-ui:terminal-focus', (data) => {
+  nycode.events?.on('pi-ui:terminal-focus', (data) => {
     focused = (data as { focused: boolean }).focused
   })
 
-  pi.on('session_start', (_event, _ctx) => {
+  nycode.on('session_start', (_event, _ctx) => {
     channel = resolveNotifChannel(readPreferredNotifChannel(os.homedir()))
     lastInputAt = undefined
     pending = false
@@ -138,24 +138,24 @@ export default function notifyExtension(pi: ExtensionAPI) {
   // extensions/avisos announces itself at session_start as the one that notifies (its own title, body and
   // OSC 99 id); without it this extension keeps the old behavior.
   let ownedElsewhere = false
-  pi.events?.on('pi-harness:notify-owner', () => {
+  nycode.events?.on('pi-harness:notify-owner', () => {
     ownedElsewhere = true
   })
 
-  pi.on('input', (event) => {
+  nycode.on('input', (event) => {
     // A goal continuation or a subagent's own prompt is not the user; only their own
     // input is evidence they are at the keyboard (mirroring goal.ts's own check).
     if (event.source === 'extension') return
     lastInputAt = Date.now()
   })
 
-  pi.on('agent_end', (event) => {
+  nycode.on('agent_end', (event) => {
     const last = [...event.messages].reverse().find((message) => message.role === 'assistant')
     lastAborted = last?.stopReason === 'aborted'
     pending = !ownedElsewhere && channel !== 'off' && process.stdout.isTTY === true
   })
 
-  pi.on('agent_settled', () => {
+  nycode.on('agent_settled', () => {
     if (!pending) return
     pending = false
     if (lastAborted) return
@@ -164,7 +164,7 @@ export default function notifyExtension(pi: ExtensionAPI) {
       process.stdout.write('\x07')
       return
     }
-    notifyDesktop('Pi', 'Ready for input')
+    notifyDesktop('Nycode', 'Ready for input')
     if (channel === 'both') process.stdout.write('\x07')
   })
 }
