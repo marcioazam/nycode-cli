@@ -41,6 +41,9 @@ BENCH = Path(__file__).resolve().parent
 REPO = BENCH.parent
 # ny-pi harness tree still lives under import/ny-pi until F8 moves its pieces; the Harbor agent ships there.
 HARBOR_DIR = REPO / "import/ny-pi/claude-home/bin/evals/harbor"
+NYCODE_HARBOR_DIR = (
+    BENCH / "harbor"
+)  # the nycode arm's Harbor agent and its bundle.sh (09 §2.2)
 NOT_VERIFIED_EXIT = 5
 MAX_ERROR_SHARE = (
     0.10  # a stage with more errored runs than this ends the round (infra, not a score)
@@ -272,8 +275,9 @@ def _harbor_step(
     cfg = s["cfg"]
     kf = api_key_file(arm)
     ws = os.environ.get("BENCH_ANTHROPIC_WORKSPACE_ID")
+    nyc = arm == "nycode"
     agent_args, extra, tok_name = runners.harbor_agent(
-        arm, model, HARBOR_DIR, api=bool(kf), workspace=ws
+        arm, model, NYCODE_HARBOR_DIR if nyc else HARBOR_DIR, api=bool(kf), workspace=ws
     )
     if kf:
         env = {"ANTHROPIC_API_KEY": read_api_key(kf), **extra}
@@ -285,11 +289,7 @@ def _harbor_step(
             )  # run_harbor inherits os.environ: no OAuth in this mode
     else:
         env = {tok_name: oauth_token(), **extra}
-    if arm == "nycode":
-        # 09 §2.2: the Harbor agent for nycode (a sibling of pi_harness_agent that installs the monorepo build) is
-        # not designed. Falling through to the ny-pi agent would measure the wrong harness.
-        raise RuntimeError("Harbor agent for nycode is not designed yet (09 §2.2)")
-    if arm in ("ny-pi", "ny-pi-pi160"):
+    if arm in STAGED_ARMS:
         # Bundle the stage of THIS checkout, never the live ~/.pi (2026-11-14: Harbor measured the local harness).
         short = subprocess.run(
             ["git", "-C", str(REPO), "rev-parse", "--short=12", "HEAD"],
@@ -300,12 +300,18 @@ def _harbor_step(
             raise RuntimeError(f"{arm} stage for {short} not built; run the arm first")
         # Per-round path: arms running side by side must not overwrite one shared bundle.
         out.mkdir(parents=True, exist_ok=True)
-        bundle = out / "pi-harness-bundle.tgz"
+        # nycode ships the monorepo build and has its own bundle.sh and variable (09 §2.2); the ny-pi arms ship ~/.pi.
+        hd, var, name = (
+            (NYCODE_HARBOR_DIR, "NYCODE_HARNESS_BUNDLE", "nycode-harness-bundle.tgz")
+            if nyc
+            else (HARBOR_DIR, "PI_HARNESS_BUNDLE", "pi-harness-bundle.tgz")
+        )
+        bundle = out / name
         subprocess.run(
-            ["bash", str(HARBOR_DIR / "bundle.sh"), str(bundle)],
+            ["bash", str(hd / "bundle.sh"), str(bundle)],
             check=True, capture_output=True, env={**os.environ, "HOME": str(stage)},
         )  # fmt: skip
-        env["PI_HARNESS_BUNDLE"] = str(bundle)
+        env[var] = str(bundle)
     if (
         arm == "omp"
     ):  # fetch and checksum the pinned binaries the agent uploads (idempotent)

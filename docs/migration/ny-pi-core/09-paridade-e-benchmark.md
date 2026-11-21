@@ -209,8 +209,8 @@ O nycode não tem instalador, patch nem wrapper; o braço passa a construir o mo
 - Estágio `bench-nycode-<sha12>[-dirty]` (campo `stage_prefix` do `arms.toml`); `meta.json` leva `overlay_sha` como nos braços ny-pi.
 - As flags só do pi-code (`--settings`, `--mcp-config`, `--setting-sources`, `--add-dir`, `--strict-mcp-config`) são descartadas
   pelo braço até a extensão `settings-flags` (F5), como no `pi-vanilla`. Continua **não verificado** se o conjunto é o mesmo.
-- Agente Harbor do nycode (S2, S3, S6): **não desenhado**; `--arm nycode` para com erro explícito nesses passos, em vez de
-  rodar o agente do ny-pi com o nome errado. Uma rodada real do `pr`/`smoke` só passa do S2 depois dele.
+- Agente Harbor do nycode (S2, S3, S6): **implementado** em `bench/harbor/nycode_agent.py` (`NycodeAgent`) e `bench/harbor/bundle.sh`
+  (detalhe abaixo); `_harbor_step` deixou de parar o braço. Substitui a decisão anterior de parar com erro explícito.
 - Runner do `pi` (decisão do dono em F3): mantida a skill `pelo-em-ovo`, localizada por `BENCH_PELO_RUN_PI`; nada é copiado
   para `bench/`. A saída da skill de `claude-home` em F8 obriga a apontar a variável para a nova origem (ou copiar o
   `run_pi.py` então). `BENCH_EVALS_RUN` segue igual.
@@ -222,9 +222,29 @@ binário em `PELO_PI_BIN`. Decisão do dono em F3: copiar o `run_pi.py` para `be
 `pelo-em-ovo` sai de `claude-home` em F8). Por enquanto, **não verificado** o que o `run_pi.py` assume sobre o
 diretório de configuração do `pi`.
 
-O Harbor (S2, S3, S6) usa um agente dentro do contêiner: `claude-home/bin/evals/harbor/pi_harness_agent.py`, que
-instala `~/.pi/agent` e o wrapper a partir de um `bundle.sh`. Para o `nycode` é preciso um agente irmão que instale o
-build do monorepo (Node via `nvm`, como o agente atual) em `/opt/nycode-home`; **proposta**, não desenhada.
+O Harbor (S2, S3, S6) usa um agente dentro do contêiner. O do ny-pi é `claude-home/bin/evals/harbor/pi_harness_agent.py`, que
+instala `~/.pi/agent` e o wrapper a partir de um `bundle.sh`. O do `nycode` é o agente irmão `bench/harbor/nycode_agent.py`
+(`-a nycode_agent:NycodeAgent`, `PYTHONPATH=bench/harbor`), subclasse do agente `Pi` do Harbor como o do ny-pi (flags
+`--print --mode json --session-dir`, trajetória e custo herdados; o nycode mantém esse contrato):
+
+- **Pacote** (`bench/harbor/bundle.sh`, `HOME=<estágio do braço>`, saída por rodada em `<rodada>/nycode-harness-bundle.tgz`, variável
+  `NYCODE_HARNESS_BUNDLE`): a camada do dono do estágio (só os arquivos de `bench/arms/overlay-nycode.list`, nunca `auth.json` nem
+  `models.json`) em `.nycode/agent`, e o runtime do checkout em `.local/lib/nycode`: `package.json`, `dist/bundle` (o `cli.js` e os
+  chunks do `npm run build`), `dist/modes/interactive/{theme,assets}`, `dist/core/export-html`, `docs`, `examples`, `README.md`,
+  `CHANGELOG.md` e `node_modules/{jiti,@silvia-odwyer/photon-node}`, os dois únicos pacotes que `build-coding-agent-bundle.mjs` deixa
+  externos além de opcionais nativos. Verificado em cópia isolada (`git archive` + `npm ci --ignore-scripts` + `npm run build`,
+  bundle de 6,8 MB): `node .local/lib/nycode/dist/bundle/cli.js --version` imprime `1.6.0` e `--list-models` roda, sem nenhum
+  `node_modules` acima do pacote. O script falha sem `dist/bundle/cli.js` ou sem os dois pacotes e confere que nenhum caminho de
+  credencial entrou.
+- **Contêiner**: `install()` garante `curl` e `tar` (root; o nycode não precisa de `python3` nem `patch`), extrai o pacote em
+  `/opt/nycode-home`, instala o Node com `nvm` (o mesmo trecho com tentativas do agente do ny-pi) e roda `--version` e `--help` (aquece o cache de compilação).
+  A execução é `node /opt/nycode-home/.local/lib/nycode/dist/bundle/cli.js --print --mode json ...` com
+  `HOME=/opt/nycode-home`, `NYCODE_CODING_AGENT_DIR=/opt/nycode-home/.nycode/agent` e `NYCODE_SKIP_VERSION_CHECK=1` (as variáveis do
+  braço local). Token: `ANTHROPIC_OAUTH_TOKEN`; no modo de chave de API, `ANTHROPIC_WORKSPACE_ID` entra em `models.json`.
+- **Diferença para o braço local**: o local usa `--no-session` e lê o stdout; o Harbor precisa do `--session-dir` para a trajetória, como no ny-pi.
+- **Não verificado**: uma tarefa real do Terminal-Bench no contêiner (nenhuma rodada foi feita, nenhum custo); o `harbor run --dry-run`
+  só valida a carga do agente. Se o nycode troca o formato de sessão do pi, o custo e os turnos do S2 saem vazios (o
+  `parse_harbor_job` marca isso como erro de infraestrutura).
 
 ### 2.3 Braço temporário `ny-pi@1.6.0` (D-25)
 
