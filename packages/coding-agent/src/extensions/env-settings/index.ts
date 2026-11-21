@@ -36,12 +36,12 @@
 
 import * as fs from 'node:fs'
 import * as os from 'node:os'
-import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent'
-import { readManagedSettings } from './internal/managed-settings.ts'
-import { approvalRecheck, isProjectApprovedSilently } from './internal/project-approval.ts'
-import { claudeSettingsChain, claudeSettingsSources, type SettingsScope, type SettingsSource } from './internal/settings-chain.ts'
-import { watchSettingsFiles } from './internal/settings-watch.ts'
-import { isRecord } from './internal/values.ts'
+import type { ExtensionAPI, ExtensionContext } from "../../core/extensions/types.ts";
+import { readManagedSettings } from "../_shared/settings/managed-settings.ts";
+import { claudeSettingsChain, claudeSettingsSources, type SettingsScope, type SettingsSource } from "../_shared/settings/settings-chain.ts";
+import { watchSettingsFiles } from "../_shared/settings/settings-watch.ts";
+import { approvalRecheck, isProjectApprovedSilently } from "../_shared/project/project-approval.ts";
+import { isRecord } from "../_shared/util/values.ts";
 
 /** The `env` object of one settings scope, coerced to string values. A string is kept
  * as-is, a number or boolean becomes its String() form, and anything else (object,
@@ -108,8 +108,8 @@ function scopeEnv(sources: SettingsSource[], scopes: readonly SettingsScope[]): 
  * documented drop list: variables that choose where config and files are written
  * (redirecting later home-scope reads and every subprocess), variables that export
  * session content, and variables that change how the agent starts or syncs.
- * PI_CODING_AGENT_DIR is pi's own config-dir analogue of CLAUDE_CONFIG_DIR, and the
- * PI_CODE_ prefix covers pi-code's own control variables (see isRepoHostileEnvKey). */
+ * NYCODE_CODING_AGENT_DIR is nycode's own config-dir analogue of CLAUDE_CONFIG_DIR, and the
+ * NYCODE_ prefix covers nycode's own control variables (see isRepoHostileEnvKey). */
 const REPO_HOSTILE_ENV_KEYS = new Set([
   'CLAUDE_CONFIG_DIR',
   'CLAUDE_CODE_TMPDIR',
@@ -125,24 +125,24 @@ const REPO_HOSTILE_ENV_KEYS = new Set([
   'CLAUDE_CODE_SYNC_PLUGINS',
   'CLAUDE_CODE_PLUGIN_CACHE_DIR',
   'CLAUDE_CODE_PLUGIN_SEED_DIR',
-  'PI_CODING_AGENT_DIR',
+  'NYCODE_CODING_AGENT_DIR',
 ])
 
 /** Whether a repository's settings must not set this key: Claude's documented drop list,
- * the XDG_ family, and pi-code's own PI_CODE_ control variables. The last matter because
- * they are read as instructions rather than data: PI_CODE_SUBAGENT makes a session believe
+ * the XDG_ family, and nycode's own NYCODE_ control variables. The last matter because
+ * they are read as instructions rather than data: NYCODE_SUBAGENT makes a session believe
  * it is a subagent child, which suppresses the USER's own SessionStart, UserPromptSubmit,
- * Stop and SessionEnd hooks and their auto memory, and PI_CODE_AGENT_HOOKS is then parsed
+ * Stop and SessionEnd hooks and their auto memory, and NYCODE_AGENT_HOOKS is then parsed
  * into hook definitions, which are shell commands. Approving a repository means running the
  * config it ships, never silently disabling the user's own guardrails. */
 function isRepoHostileEnvKey(key: string): boolean {
-  return REPO_HOSTILE_ENV_KEYS.has(key) || key.startsWith('XDG_') || key.startsWith('PI_CODE_')
+  return REPO_HOSTILE_ENV_KEYS.has(key) || key.startsWith('XDG_') || key.startsWith('NYCODE_')
 }
 
 /** Drop the keys a repository's settings must not set, warning each, as Claude
  * documents ("Claude Code drops each one and logs a warning"). Set them in the
  * shell, user settings, or managed settings instead. */
-export function sanitizeProjectEnv(env: Record<string, string>, warn: (key: string) => void = (key) => console.warn(`pi-code-env: dropping ${key} from project settings env (a checked-out repository must not control it; set it in user or managed settings)`)): Record<string, string> {
+export function sanitizeProjectEnv(env: Record<string, string>, warn: (key: string) => void = (key) => console.warn(`nycode-env: dropping ${key} from project settings env (a checked-out repository must not control it; set it in user or managed settings)`)): Record<string, string> {
   const kept: Record<string, string> = {}
   for (const [key, value] of Object.entries(env)) {
     if (isRepoHostileEnvKey(key)) warn(key)
@@ -151,7 +151,7 @@ export function sanitizeProjectEnv(env: Record<string, string>, warn: (key: stri
   return kept
 }
 
-export default function envSettingsExtension(pi: ExtensionAPI) {
+export default function envSettingsExtension(nycode: ExtensionAPI) {
   const owned = new Map<string, string | undefined>()
   /** Stops the watcher of the previous session, as the hooks extension does. */
   let disposeWatch: () => void = () => {}
@@ -171,7 +171,7 @@ export default function envSettingsExtension(pi: ExtensionAPI) {
   // turn. pi parses flags after loading, so the --settings level also waits.
   apply(os.homedir(), process.cwd(), false)
 
-  pi.on('session_start', (_event, ctx: ExtensionContext) => {
+  nycode.on('session_start', (_event, ctx: ExtensionContext) => {
     const home = os.homedir()
     const approved = isProjectApprovedSilently(ctx)
     // The watcher's reapply closes over the cwd value, never ctx: the poll has no awaiter,
@@ -190,7 +190,7 @@ export default function envSettingsExtension(pi: ExtensionAPI) {
     disposeWatch = watchSettingsFiles(claudeSettingsChain(cwd, home, approved), reapply)
   })
 
-  pi.on('session_shutdown', () => {
+  nycode.on('session_shutdown', () => {
     disposeWatch()
     disposeWatch = () => {}
     // pi's CLI loads a fresh extension instance for every session replacement, and its
