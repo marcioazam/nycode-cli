@@ -141,7 +141,6 @@ chegam por fase e o `core_scope.py` é convertido em F3.
 | extension | plan-gate | core | Plano aprovado vai ao fim |
 | extension | prefix-cache-1h | core | Cache do prefixo |
 | extension | puxar | optional | Importa sessão de outro perfil, uso pessoal |
-||||||| 7f88f51ce
 | extension | question | core | Pergunta ao usuário com opções |
 | extension | settings-flags | core | Flags de settings do Claude |
 | extension | sound-notify | optional | Som ao fim do turno, gosto pessoal |
