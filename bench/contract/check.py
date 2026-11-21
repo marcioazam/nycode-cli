@@ -30,24 +30,57 @@ ARMS_DIR = Path(__file__).resolve().parents[1] / "arms"
 GROUPS = ("inventario", "regras", "basicas", "plano", "comandos", "skills", "mcp")
 DYNAMIC = frozenset({"inventario", "regras", "basicas", "plano"})
 BASIC_TOOLS = ("read", "write", "edit", "bash", "todo")
-COMMANDS = ("goal", "plan", "subagents")
+COMMANDS = ("goal", "plan", "agents", "tasks", "team")
 STAGE_TIMEOUT_S = 600
 PI_TIMEOUT_S = 90
 WORKERS = 6
 PRUNED = frozenset({"node_modules", ".git"})
-SESSION_PREFIXES = ("PI_", "CLAUDE_", "ANTHROPIC_")
+SESSION_PREFIXES = ("PI_", "CLAUDE_", "ANTHROPIC_", "NYCODE_")
+
+
+@dataclass(frozen=True)
+class Layout:
+    """Where an arm keeps its agent directory and where its commands, skills and agents are loaded from.
+
+    ``embedded``: commands, skills and agents ship inside the checkout (``packages/coding-agent``), not in the
+    stage; the stage then holds only the agent directory (settings, ``mcp.json``, ``models.json``).
+    """
+
+    agent_dir: str = ".pi/agent"
+    embedded: bool = False
+    offline_env: str = "PI_OFFLINE"
+
+
+LAYOUTS = {
+    "nycode": Layout(".nycode/agent", embedded=True, offline_env="NYCODE_OFFLINE")
+}
+EMBEDDED_ROOT = Path("packages/coding-agent")
+
+
+def layout_of(arm: str) -> Layout:
+    """Layout of the arm named ``arm`` (pi layout when it has no entry)."""
+    return LAYOUTS.get(arm, Layout())
 
 
 class EnvError(Exception):
     """The environment cannot run the check (exit 2); the message is the reason."""
 
 
-def clean_env(environ: Mapping[str, str], stage: Path) -> dict[str, str]:
+def clean_env(environ: Mapping[str, str], stage: Path, arm: str = "") -> dict[str, str]:
     """Environment of the arm: the caller's minus harness session variables, so a run started inside a
-    pi session (or a subagent) sees the same harness as one started from a plain shell.
+    pi or nycode session (or a subagent) sees the same harness as one started from a plain shell. The arm's
+    own offline switch is set; its agent directory is the arm script's business (it exports it from the stage).
     """
     env = {k: v for k, v in environ.items() if not k.startswith(SESSION_PREFIXES)}
-    return {**env, "BENCH_STAGE": str(stage), "PI_OFFLINE": "1"}
+    return {**env, "BENCH_STAGE": str(stage), layout_of(arm).offline_env: "1"}
+
+
+def given_stage(environ: Mapping[str, str]) -> Path | None:
+    """The caller's own stage (``BENCH_STAGE``) or None; a shared ``bench-*`` stage is refused."""
+    given = environ.get("BENCH_STAGE")
+    if given and Path(given).name.startswith("bench-"):
+        raise EnvError("BENCH_STAGE aponta para um stage compartilhado do bench")
+    return Path(given).resolve() if given else None
 
 
 def run_arm(
@@ -78,9 +111,10 @@ def prepare_stage(arm: Path, stage: Path, env: dict[str, str]) -> Path:
         raise EnvError(
             f"montagem do stage falhou (exit {done.returncode}): {done.stderr.strip()[-400:]}"
         )
-    agent = stage / ".pi" / "agent"
+    where = layout_of(arm.name).agent_dir
+    agent = stage / where
     if not agent.is_dir():
-        raise EnvError("o braço não montou <stage>/.pi/agent (ele honra BENCH_STAGE?)")
+        raise EnvError(f"o braço não montou <stage>/{where} (ele honra BENCH_STAGE?)")
     return agent
 
 
@@ -98,25 +132,40 @@ def read_tree(root: Path, base: Path, keep: Callable[[str], bool]) -> dict[str, 
     return out
 
 
-def static_cases(agent: Path) -> tuple[list[cr.Case], dict[str, object]]:
-    """Cases read from the stage files alone: commands, skills, agents and MCP declarations."""
-    home = agent / "claude-home"
-    sources = {
-        **read_tree(agent / "extensions", agent, lambda n: n.endswith(".ts")),
-        **read_tree(
+def static_cases(
+    agent: Path, embedded: Path | None = None
+) -> tuple[list[cr.Case], dict[str, object]]:
+    """Cases read from files: commands, skills, agents and MCP declarations.
+
+    The stage's ``claude-home`` and pi-code tree by default; with ``embedded`` (the checkout of an embedded
+    layout) the extensions in ``src/extensions`` and the ``resources`` of ``packages/coding-agent``. ``mcp.json``
+    is always the stage's.
+    """
+    if embedded is None:
+        base, home = agent, agent / "claude-home"
+        ext = [
+            agent / "extensions",
             agent / "npm" / "node_modules" / "pi-code" / "extensions",
-            agent,
-            lambda n: n.endswith(".ts"),
-        ),
-        **read_tree(home / "commands", agent, lambda n: n.endswith(".md")),
+        ]
+    else:
+        base = embedded
+        home = embedded / EMBEDDED_ROOT / "resources"
+        ext = [embedded / EMBEDDED_ROOT / "src" / "extensions"]
+    sources = {
+        **{
+            k: v
+            for folder in ext
+            for k, v in read_tree(folder, base, lambda n: n.endswith(".ts")).items()
+        },
+        **read_tree(home / "commands", base, lambda n: n.endswith(".md")),
     }
     cases = cr.find_commands(sources, COMMANDS)
     skill_cases, skills = cr.check_documents(
-        "skill", read_tree(home / "skills", agent, lambda n: n == "SKILL.md")
+        "skill", read_tree(home / "skills", base, lambda n: n == "SKILL.md")
     )
     agents_dir = home / "agents"
     agent_files = {
-        p.relative_to(agent).as_posix(): p.read_text(encoding="utf-8", errors="replace")
+        p.relative_to(base).as_posix(): p.read_text(encoding="utf-8", errors="replace")
         for p in (sorted(agents_dir.glob("*.md")) if agents_dir.is_dir() else [])
     }
     agent_cases, agents = cr.check_documents("agente", agent_files)
@@ -287,9 +336,12 @@ def collect(
     arm: Path, stage: Path, scratch: Path, groups: frozenset[str]
 ) -> tuple[list[cr.Case], dict[str, object]]:
     """Build the stage, run the selected groups and return their cases plus the inventory."""
-    env = clean_env(os.environ, stage)
+    env = clean_env(os.environ, stage, arm.name)
     agent = prepare_stage(arm, stage, env)
-    cases, inventory = static_cases(agent)
+    embedded = (
+        ARMS_DIR.parents[1] if layout_of(arm.name).embedded else None
+    )  # <repo>/bench/arms
+    cases, inventory = static_cases(agent, embedded)
     if groups & DYNAMIC:
         captures = scratch / "captures"
         captures.mkdir()
@@ -322,20 +374,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--only", choices=GROUPS, help="roda só um grupo de casos")
     args = parser.parse_args(argv)
     groups = frozenset({args.only} if args.only else GROUPS)
-    given = os.environ.get("BENCH_STAGE")
-    if given and Path(given).name.startswith("bench-"):
-        print(
-            "ambiente indisponível: BENCH_STAGE aponta para um stage compartilhado do bench",
-            file=sys.stderr,
-        )
+    try:
+        given = given_stage(os.environ)
+        with tempfile.TemporaryDirectory(prefix="contract-") as tmp:
+            cases, inventory = collect(
+                ARMS_DIR / args.arm, given or Path(tmp) / "stage", Path(tmp), groups
+            )
+    except EnvError as exc:
+        print(f"ambiente indisponível: {exc}", file=sys.stderr)
         return 2
-    with tempfile.TemporaryDirectory(prefix="contract-") as tmp:
-        stage = Path(given).resolve() if given else Path(tmp) / "stage"
-        try:
-            cases, inventory = collect(ARMS_DIR / args.arm, stage, Path(tmp), groups)
-        except EnvError as exc:
-            print(f"ambiente indisponível: {exc}", file=sys.stderr)
-            return 2
     counts = {
         status: sum(1 for c in cases if c.status == status)
         for status in (cr.OK, cr.FAIL, cr.SKIP)

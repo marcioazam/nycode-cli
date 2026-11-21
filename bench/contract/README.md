@@ -14,10 +14,32 @@ redirecionado para um servidor local falso (`fake_api.py`), que devolve um rotei
   o efeito no arquivo existe).
 - `plano`: com `--plan`, `plan_mode_complete` está presente e não há escrita: `write`/`edit` ausentes ou, se
   enviadas, uma escrita fora do arquivo de plano é recusada (o arquivo não é criado).
-- `comandos`: `/goal`, `/plan` e `/subagents` existem.
+- `comandos`: `/goal`, `/plan`, `/agents`, `/tasks` e `/team` existem (`COMMANDS` em `check.py`; `/subagents` não é comando).
 - `skills`: todo `SKILL.md` e todo agente do stage tem frontmatter com `name` e `description`, sem `name`
   repetido.
 - `mcp`: cada servidor de `mcp.json` está declarado e bem formado (comando no PATH ou URL http(s) com host).
+
+## Braços
+
+| Braço | Diretório de agente no stage | Comandos, skills e agentes lidos de |
+|---|---|---|
+| `ny-pi` (e demais com `pi`) | `<stage>/.pi/agent` | o stage (`claude-home/`, extensões do `pi-code`) |
+| `nycode` | `<stage>/.nycode/agent` | o checkout: `packages/coding-agent/src/extensions` e `packages/coding-agent/resources` |
+
+- O mapa está em `LAYOUTS` (`check.py`). O braço `nycode` recebe `NYCODE_OFFLINE=1` (os demais, `PI_OFFLINE=1`); o
+  `NYCODE_CODING_AGENT_DIR` é exportado pelo próprio `bench/arms/nycode`.
+- O stage do `nycode` monta `mcp.json` copiando `packages/coding-agent/examples/config/mcp.json` sem alteração (marcadores
+  `${VAR}`, sem segredo, nunca o arquivo do dono). É o mesmo arquivo, byte a byte, que o `install.sh` do ny-pi copia do
+  `mcp.json.example` (e4f8729), então os dois braços são medidos com as mesmas declarações (D-40): 6 servidores, nenhum com
+  `exposure` nem `enabled`. Sem `exposure`, a extensão `mcp` ativa o `codemode` a partir da configuração, antes de qualquer
+  servidor conectar; por isso o inventário tem a ferramenta `codemode` nos dois braços, com ou sem rede.
+- Os servidores `npx` sobem na partida do `pi`/`nycode`: sem rede eles só falham (o `pi -p` segue). Fora de um sandbox
+  sem rede o `npx` baixa pacotes do npm; rode o verificador num sandbox de rede fechada quando isso importar.
+- Referência `ny-pi`: `import/ny-pi` não tem `bin/pi` desde F5. Aponte `BENCH_NYPI_SRC` para um checkout do ny-pi (ou um
+  `git archive` extraído; sem `.git` ali, defina também `BENCH_STAGE`). Sem a variável o braço sai 2 com a causa.
+- Medição em rede fechada: monte o stage fora do sandbox (`BENCH_STAGE=<dir> bench/arms/<braço> --version`; o build
+  precisa de npm) e rode o verificador dentro de um sandbox sem rede com o mesmo `BENCH_STAGE`. `BENCH_STAGE` que
+  começa com `bench-` é recusado.
 
 ## Como rodar
 
@@ -32,9 +54,9 @@ python3 bench/contract/check.py --arm ny-pi --only regras
   seu (o `models.json` dele é sobrescrito); um stage compartilhado `bench-*` é recusado.
 - O braço lê o token de `BENCH_CC_CREDENTIALS`, mas o token só chega a `127.0.0.1`; os corpos capturados não
   incluem cabeçalhos.
-- Variáveis de sessão (`PI_*`, `CLAUDE_*`, `ANTHROPIC_*`) são removidas do ambiente, para o resultado ser o
+- Variáveis de sessão (`PI_*`, `CLAUDE_*`, `ANTHROPIC_*`, `NYCODE_*`) são removidas do ambiente, para o resultado ser o
   mesmo dentro e fora de uma sessão do pi.
-- Testes: `python -m pytest -q bench/contract` (usam um `pi` falso em shell, sem o binário real).
+- Testes: `python -m pytest -q bench/contract` (usam um `pi` ou `nycode` falso em shell, sem o binário real).
 
 ## Como ler o JSON
 
