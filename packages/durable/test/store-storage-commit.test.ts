@@ -557,6 +557,9 @@ describe("failures: a rollback rejects, an unknown outcome stops the store", () 
 				await again.store.close(context);
 			}
 		},
+		// About 30 on-disk open, commit, close and reopen cycles: ~100 ms locally, ~400 ms on CI, past vitest's 5 s default
+		// when a shared runner starves the CPU (P-15). 30 s still fails a hang.
+		30_000,
 	);
 
 	it("a call on a closed storage, or on a stopped store, rejects and stores nothing", async () => {
