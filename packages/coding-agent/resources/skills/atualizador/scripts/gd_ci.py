@@ -1,9 +1,11 @@
 """Remote CI status: watch `gh pr checks` and tell a real failure from a job GitHub never started (billing)."""
 
+import argparse
 import json
 from time import monotonic, sleep
+from typing import Any
 
-from gd_common import CI_RED, Fail
+from gd_common import CI_RED, Ctx, Fail
 from gd_pr import gh_fail, pr_view
 
 STATES = {"pass", "fail", "pending", "skipping", "cancel"}
@@ -14,9 +16,9 @@ MAX_CHECKS = 50
 NO_CHECKS = ("no checks reported", "no required checks reported")
 
 
-def parse_checks(text):
+def parse_checks(text: str) -> list[dict[str, str]]:
     """`gh pr checks` (non-tty): name, state, elapsed, url per line; a later row replaces an earlier one."""
-    rows = {}
+    rows: dict[str, dict[str, str]] = {}
     for line in text.splitlines():
         cols = line.split("\t")
         if len(cols) >= 2 and cols[1].strip() in STATES:
@@ -28,7 +30,7 @@ def parse_checks(text):
     return list(rows.values())
 
 
-def _api(ctx, path):
+def _api(ctx: Ctx, path: str) -> Any:
     proc = ctx.gh("api", path)
     if proc.rc != 0:
         return None
@@ -38,7 +40,7 @@ def _api(ctx, path):
         return None
 
 
-def _billing(ctx, pr):
+def _billing(ctx: Ctx, pr: int) -> tuple[bool, list[str]] | None:
     """(billing, run_urls) once classified; None when the API cannot answer (caller reports ci_unknown)."""
     try:
         sha = pr_view(ctx, pr, "headRefOid")["headRefOid"]
@@ -54,7 +56,8 @@ def _billing(ctx, pr):
     # fail closed: unseen runs (past page one) or too many to inspect may hide a real failure
     if len(bad) > MAX_RUNS or data.get("total_count", len(runs)) > len(runs):
         return None
-    texts, urls = [], []
+    texts: list[Any] = []
+    urls: list[str] = []
     for run in bad:
         try:
             run_id = int(run["id"])
@@ -76,12 +79,14 @@ def _billing(ctx, pr):
     return any(phrase in blob for phrase in BILLING_PHRASES), urls
 
 
-def _has_workflows(ctx):
+def _has_workflows(ctx: Ctx) -> bool:
     out = ctx.git("ls-tree", "--name-only", "HEAD", ".github/workflows/").out
     return any(line.endswith((".yml", ".yaml")) for line in out.splitlines())
 
 
-def _await_checks(ctx, pr, required, interval, grace_min):
+def _await_checks(
+    ctx: Ctx, pr: int, required: bool, interval: int, grace_min: float
+) -> bool:
     """gh 2.46 `--watch` errors while no check is registered yet: poll until one appears or the grace ends."""
     argv = ["pr", "checks", str(pr)] + (["--required"] if required else [])
     deadline = monotonic() + grace_min * 60
@@ -98,8 +103,14 @@ def _await_checks(ctx, pr, required, interval, grace_min):
 
 
 def ci_status(
-    ctx, pr, budget_min=45, required=False, watch=True, interval=30, grace_min=5
-):
+    ctx: Ctx,
+    pr: int,
+    budget_min: float = 45,
+    required: bool = False,
+    watch: bool = True,
+    interval: int = 30,
+    grace_min: float = 5,
+) -> dict[str, Any]:
     if _has_workflows(ctx) and not _await_checks(
         ctx, pr, required, interval, grace_min
     ):
@@ -113,7 +124,7 @@ def ci_status(
     checks = parse_checks(proc.out)[:MAX_CHECKS]
     low = f"{proc.out}\n{proc.err}".lower()
 
-    def result(status, **extra):
+    def result(status: str, **extra: Any) -> dict[str, Any]:
         return {"status": status, "checks": checks, **extra}
 
     if proc.rc == 124:
@@ -136,7 +147,7 @@ def ci_status(
     return result("red", reason="ci_red", runs=failed)
 
 
-def ci_outcome(status):
+def ci_outcome(status: dict[str, Any]) -> dict[str, Any]:
     """green, billing and no_checks are reported; red and pending become exit 5."""
     if status["status"] in ("green", "not_started_billing", "no_checks"):
         return status
@@ -145,7 +156,7 @@ def ci_outcome(status):
     raise Fail(CI_RED, status.get("reason") or default, **extra)
 
 
-def ci(ctx, args):
+def ci(ctx: Ctx, args: argparse.Namespace) -> dict[str, Any]:
     return ci_outcome(
         ci_status(
             ctx,

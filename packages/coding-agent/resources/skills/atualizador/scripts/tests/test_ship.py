@@ -3,6 +3,8 @@
 import json
 import os
 import unittest
+from pathlib import Path
+from typing import Any
 from unittest import mock
 
 from support import Base, conflict_setup, git, pr_json
@@ -13,7 +15,13 @@ RED = "build\tfail\t1m\thttps://ci.test/build\t\n"
 
 
 class Ship(Base):
-    def rules(self, sha, views, listing="[]", checks=None):
+    def rules(
+        self,
+        sha: str,
+        views: list[str],
+        listing: str = "[]",
+        checks: dict[str, Any] | None = None,
+    ) -> None:
         self.gh_rules(
             {"match": ["pr", "list"], "stdout": listing},
             {"match": ["pr", "create"], "stdout": CREATE_URL},
@@ -25,12 +33,14 @@ class Ship(Base):
             },
         )
 
-    def ship(self, repo, *extra, check="t=true"):
+    def ship(
+        self, repo: Path, *extra: object, check: str = "t=true"
+    ) -> tuple[int, dict[str, Any]]:
         return self.call(
             "ship", "--repo", repo, "--base", "main", "--check", check, *extra
         )
 
-    def test_full_chain_from_a_linked_worktree(self):
+    def test_full_chain_from_a_linked_worktree(self) -> None:
         wt = self.worktree()
         sha = git(wt, "rev-parse", "HEAD")
         self.rules(sha, ["OPEN", "OPEN", "MERGED", "MERGED"])
@@ -59,7 +69,7 @@ class Ship(Base):
             ("", ""),
         )
 
-    def test_full_chain_from_the_main_checkout_itself(self):
+    def test_full_chain_from_the_main_checkout_itself(self) -> None:
         self.feature()
         sha = git(self.work, "rev-parse", "HEAD")
         self.rules(sha, ["OPEN", "OPEN", "MERGED", "MERGED"])
@@ -68,7 +78,7 @@ class Ship(Base):
         self.assertEqual(out["steps"]["cleanup"]["removed"]["worktree"], None)
         self.assertEqual(git(self.work, "branch", "--list", "feat"), "")
 
-    def test_chain_without_a_main_checkout_defaults_to_the_main_worktree(self):
+    def test_chain_without_a_main_checkout_defaults_to_the_main_worktree(self) -> None:
         # Post-delivery finding 2026-11-08 (Nylla-AI/contracts #64): the merge used to
         # return success while sync and cleanup were skipped without a trace.
         self.feature()
@@ -93,7 +103,7 @@ class Ship(Base):
 
     def test_chain_from_a_linked_worktree_without_a_main_checkout_syncs_the_main_one(
         self,
-    ):
+    ) -> None:
         wt = self.worktree()
         git(
             self.work, "switch", "-q", "-c", "scratch"
@@ -110,7 +120,7 @@ class Ship(Base):
         self.assertFalse(wt.exists())
         self.assertEqual(git(self.work, "branch", "--list", "feat"), "")
 
-    def test_an_explicit_main_checkout_wins_over_the_default(self):
+    def test_an_explicit_main_checkout_wins_over_the_default(self) -> None:
         self.feature()
         sha = git(self.work, "rev-parse", "HEAD")
         self.rules(sha, ["OPEN", "OPEN", "MERGED", "MERGED"])
@@ -122,7 +132,9 @@ class Ship(Base):
         self.assertEqual(git(self.work, "branch", "--show-current"), "feat")
         self.assertNotIn("skipped", out)
 
-    def test_a_bare_common_dir_has_no_main_worktree_and_reports_the_skipped_steps(self):
+    def test_a_bare_common_dir_has_no_main_worktree_and_reports_the_skipped_steps(
+        self,
+    ) -> None:
         bare = self.root / "bare.git"
         git(self.root, "clone", "-q", "--bare", str(self.origin), str(bare))
         git(
@@ -142,7 +154,7 @@ class Ship(Base):
         self.assertEqual(out["skipped"], ["sync", "cleanup"])
         self.assertTrue(wt.exists())
 
-    def test_commit_step_runs_first_and_no_merge_stops_after_publish(self):
+    def test_commit_step_runs_first_and_no_merge_stops_after_publish(self) -> None:
         self.feature()
         (self.work / "new.txt").write_text("n\n")
         self.gh_rules(
@@ -160,7 +172,7 @@ class Ship(Base):
         self.assertIn("Assisted-by: tests", git(self.work, "log", "-1", "--format=%B"))
         self.assertEqual(self.gh_calls_of("pr", "checks"), [])
 
-    def test_commit_step_without_message_stops_at_commit(self):
+    def test_commit_step_without_message_stops_at_commit(self) -> None:
         self.feature()
         (self.work / "new.txt").write_text("n\n")
         code, out = self.ship(self.work, "--path", "new.txt")
@@ -169,12 +181,12 @@ class Ship(Base):
         )
         self.assertEqual(out["steps"], {})
 
-    def path_args(self, *extra):
+    def path_args(self, *extra: str | Path) -> tuple[str | Path, ...]:
         return ("--path", "new.txt", "-m", "feat: new", *extra)
 
     def test_ship_from_the_default_branch_creates_the_branch_and_delivers_end_to_end(
         self,
-    ):
+    ) -> None:
         (self.work / "new.txt").write_text("n\n")
         head = "{REV:feat/x}"  # the stub resolves the committed head when gh asks
         self.gh_rules(
@@ -213,7 +225,7 @@ class Ship(Base):
         self.assertEqual(git(self.work, "branch", "--list", "feat/x"), "")
         self.assertEqual(git(self.origin, "branch", "--list", "feat/x"), "")
 
-    def test_ship_on_the_default_branch_without_branch_touches_nothing(self):
+    def test_ship_on_the_default_branch_without_branch_touches_nothing(self) -> None:
         (self.work / "new.txt").write_text("n\n")
         before = git(self.work, "rev-parse", "HEAD")
         code, out = self.ship(self.work, *self.path_args())
@@ -227,7 +239,7 @@ class Ship(Base):
             (self.gh_calls(), git(self.work, "branch", "--list")), ([], "* main")
         )
 
-    def test_ship_protects_the_base_branch_as_well_as_the_default(self):
+    def test_ship_protects_the_base_branch_as_well_as_the_default(self) -> None:
         git(self.work, "switch", "-q", "-c", "develop")
         (self.work / "new.txt").write_text("n\n")
         code, out = self.call(
@@ -238,7 +250,7 @@ class Ship(Base):
         )
         self.assertEqual(git(self.work, "rev-parse", "HEAD"), self.base_sha)
 
-    def test_ship_branch_exists_mismatch_and_detached_head(self):
+    def test_ship_branch_exists_mismatch_and_detached_head(self) -> None:
         (self.work / "new.txt").write_text("n\n")
         git(self.work, "branch", "feat/x")
         out = self.fails(6, "branch_exists", "ship", "--repo", self.work, "--base", "main", "--check", "t=true",
@@ -253,7 +265,7 @@ class Ship(Base):
                          *self.path_args())  # fmt: skip
         self.assertEqual(out["detail"], "detached_head")
 
-    def test_ship_resumes_on_its_own_branch_with_the_same_branch_option(self):
+    def test_ship_resumes_on_its_own_branch_with_the_same_branch_option(self) -> None:
         self.feature()
         (self.work / "new.txt").write_text("n\n")
         self.gh_rules(
@@ -268,7 +280,9 @@ class Ship(Base):
         self.assertNotIn("branch_created", out)
         self.assertEqual(git(self.work, "branch", "--show-current"), "feat")
 
-    def test_a_failure_after_the_branch_switch_still_reports_branch_created(self):
+    def test_a_failure_after_the_branch_switch_still_reports_branch_created(
+        self,
+    ) -> None:
         (self.work / "new.txt").write_text("n\n")
         (self.work / "stray.txt").write_text("s\n")
         args = (
@@ -292,13 +306,13 @@ class Ship(Base):
             (out["stopped_at"], out["branch_created"]), ("commit", "feat/x")
         )
 
-    def test_ship_with_a_bad_path_never_creates_the_branch(self):
+    def test_ship_with_a_bad_path_never_creates_the_branch(self) -> None:
         out = self.fails(2, "usage", "ship", "--repo", self.work, "--base", "main", "--check", "t=true",
                          "--path", "sub/..", "-m", "x", "--branch", "feat/x")  # fmt: skip
         self.assertEqual(out["detail"], "explicit_paths_required")
         self.assertEqual(git(self.work, "branch", "--list", "feat/x"), "")
 
-    def test_conflict_stops_at_integrate_for_the_llm(self):
+    def test_conflict_stops_at_integrate_for_the_llm(self) -> None:
         conflict_setup(self)
         self.gh_rules({"match": ["pr", "list"], "stdout": "[]"})
         code, out = self.ship(self.work)
@@ -307,7 +321,7 @@ class Ship(Base):
             (3, "conflict", "integrate", ["README.md"]),
         )
 
-    def test_stops_at_the_first_failure_then_resumes(self):
+    def test_stops_at_the_first_failure_then_resumes(self) -> None:
         wt = self.worktree()
         sha = git(wt, "rev-parse", "HEAD")
         self.rules(sha, ["OPEN"])
@@ -338,7 +352,7 @@ class Ship(Base):
         code, out = self.ship(wt)
         self.assertEqual((code, out["steps"]["merge"]["merged"]), (0, True), out)
 
-    def test_already_merged_pr_skips_straight_to_the_end(self):
+    def test_already_merged_pr_skips_straight_to_the_end(self) -> None:
         wt = self.worktree()
         sha = git(wt, "rev-parse", "HEAD")
         self.rules(
@@ -353,7 +367,7 @@ class Ship(Base):
         )
         self.assertFalse(wt.exists())
 
-    def test_require_remote_ci_blocks_when_no_checks_exist(self):
+    def test_require_remote_ci_blocks_when_no_checks_exist(self) -> None:
         self.feature()
         sha = git(self.work, "rev-parse", "HEAD")
         self.rules(
@@ -366,7 +380,7 @@ class Ship(Base):
             (code, out["reason"], out["stopped_at"]), (5, "ci_required", "merge")
         )
 
-    def test_unexpected_failure_inside_a_step_stays_mapped(self):
+    def test_unexpected_failure_inside_a_step_stays_mapped(self) -> None:
         self.feature()
         self.gh_rules({"match": ["pr", "list"], "rc": 1, "stderr": "gh auth login"})
         code, out = self.ship(self.work)
@@ -378,7 +392,7 @@ class Ship(Base):
             (code, out["reason"], out["stopped_at"]), (6, "secret", "publish")
         )
 
-    def test_unknown_paths_stop_the_chain_before_any_step(self):
+    def test_unknown_paths_stop_the_chain_before_any_step(self) -> None:
         self.feature()
         head = git(self.work, "rev-parse", "HEAD")
         (self.work / "notes.txt").write_text("n\n")
@@ -392,7 +406,9 @@ class Ship(Base):
         self.assertEqual(git(self.work, "rev-parse", "HEAD"), head)
         self.assertEqual(self.gh_calls(), [])
 
-    def test_an_untracked_source_file_with_a_credential_word_stops_the_chain(self):
+    def test_an_untracked_source_file_with_a_credential_word_stops_the_chain(
+        self,
+    ) -> None:
         self.feature()
         (self.work / "src").mkdir()
         (self.work / "src" / "token.py").write_text("X = 1\n")
@@ -403,7 +419,7 @@ class Ship(Base):
         )
         self.assertEqual(git(self.origin, "branch", "--list", "feat"), "")
 
-    def test_untracked_secret_named_paths_are_listed_as_kept_local(self):
+    def test_untracked_secret_named_paths_are_listed_as_kept_local(self) -> None:
         self.feature()
         (self.work / ".env").write_text("K=v\n")
         self.rules(git(self.work, "rev-parse", "HEAD"), ["OPEN"])
@@ -411,7 +427,7 @@ class Ship(Base):
         self.assertEqual((code, out["kept_local"]), (0, [".env"]), out)
         self.assertEqual(out["steps"]["gate"]["kept_local"], [".env"])
 
-    def test_keep_local_lets_the_chain_ignore_an_untracked_path(self):
+    def test_keep_local_lets_the_chain_ignore_an_untracked_path(self) -> None:
         self.feature()
         sha = git(self.work, "rev-parse", "HEAD")
         (self.work / "notes.txt").write_text("n\n")
@@ -421,7 +437,7 @@ class Ship(Base):
         self.assertFalse(out["steps"]["gate"].get("dirty", False))
         self.assertTrue((self.work / "notes.txt").exists())
 
-    def test_method_reaches_the_merge(self):
+    def test_method_reaches_the_merge(self) -> None:
         self.feature()
         sha = git(self.work, "rev-parse", "HEAD")
         self.rules(sha, ["OPEN", "OPEN", "MERGED", "MERGED"])
@@ -433,7 +449,7 @@ class Ship(Base):
         self.assertIn("--merge", merge)
         self.assertNotIn("--squash", merge)
 
-    def test_ci_grace_and_interval_options_are_accepted(self):
+    def test_ci_grace_and_interval_options_are_accepted(self) -> None:
         self.feature()
         self.commit(self.work, ".github/workflows/ci.yml", "on: push\n", "ci: workflow")
         sha = git(self.work, "rev-parse", "HEAD")
@@ -448,7 +464,7 @@ class Ship(Base):
         )  # fmt: skip
         self.assertEqual((code, out["steps"]["ci"]["status"]), (0, "no_checks"), out)
 
-    def test_merged_pr_on_another_base_does_not_skip_the_chain(self):
+    def test_merged_pr_on_another_base_does_not_skip_the_chain(self) -> None:
         self.feature()
         sha = git(self.work, "rev-parse", "HEAD")
         other_base = pr_json("MERGED", headRefOid=sha, baseRefName="develop")
@@ -458,7 +474,7 @@ class Ship(Base):
         self.assertEqual(list(out["steps"]), ["integrate", "gate", "publish"])
         self.assertEqual(len(self.gh_calls_of("pr", "create")), 1)
 
-    def test_keep_branch_reaches_the_cleanup(self):
+    def test_keep_branch_reaches_the_cleanup(self) -> None:
         wt = self.worktree()
         sha = git(wt, "rev-parse", "HEAD")
         self.rules(sha, ["OPEN", "OPEN", "MERGED", "MERGED"])
@@ -468,7 +484,7 @@ class Ship(Base):
         self.assertFalse(wt.exists())
         self.assertNotEqual(git(self.work, "branch", "--list", "feat"), "")
 
-    def test_discard_ignored_resumes_a_cleanup_blocked_by_a_secret_file(self):
+    def test_discard_ignored_resumes_a_cleanup_blocked_by_a_secret_file(self) -> None:
         wt = self.worktree()
         self.commit(wt, ".gitignore", ".env\n", "ignore .env")
         (wt / ".env").write_text("K=v\n")
@@ -486,8 +502,11 @@ class Ship(Base):
         self.assertEqual(code, 0, out)
         self.assertFalse(wt.exists())
 
-    def read_rules(self):
-        return json.loads((self.stub_dir / "rules.json").read_text())
+    def read_rules(self) -> list[dict[str, Any]]:
+        rules: list[dict[str, Any]] = json.loads(
+            (self.stub_dir / "rules.json").read_text()
+        )
+        return rules
 
 
 if __name__ == "__main__":

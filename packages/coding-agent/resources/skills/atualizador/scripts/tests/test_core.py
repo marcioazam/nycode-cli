@@ -1,5 +1,6 @@
 """Plumbing, parser, entry point, status and commit."""
 
+import argparse  # noqa: I001 -- support must import before gd_* (it extends sys.path)
 import fcntl
 import json
 import os
@@ -19,15 +20,15 @@ from support import (  # first: puts the scripts dir on sys.path
     pr_json,
 )
 
-import gd_common
-import gd_git
-import gd_pr
-import git_deliver
+import gd_common  # type: ignore[import-not-found]  # sibling module, scripts dir is off MYPYPATH
+import gd_git  # type: ignore[import-not-found]  # sibling module, scripts dir is off MYPYPATH
+import gd_pr  # type: ignore[import-not-found]  # sibling module, scripts dir is off MYPYPATH
+import git_deliver  # type: ignore[import-not-found]  # sibling module, scripts dir is off MYPYPATH
 from gd_common import Ctx, Fail, Proc
 
 
 class Plumbing(Base):
-    def test_run_timeout_missing_binary_and_log(self):
+    def test_run_timeout_missing_binary_and_log(self) -> None:
         ctx = Ctx(self.work, "t")
         self.assertEqual(ctx.run(["sleep", "5"], timeout=0.2).rc, 124)
         self.assertEqual(ctx.run(["definitely-not-a-binary-xyz"]).rc, 127)
@@ -36,7 +37,7 @@ class Plumbing(Base):
             str(self.root / "cache" / "git-deliver" / "work"), str(ctx.log_path)
         )
 
-    def test_log_dir_falls_back_to_the_temp_dir_then_to_no_log(self):
+    def test_log_dir_falls_back_to_the_temp_dir_then_to_no_log(self) -> None:
         blocked = self.root / "blocked"
         blocked.write_text("a file: nothing can be created under it")
         tmp = self.root / "tmp"
@@ -54,20 +55,20 @@ class Plumbing(Base):
             ctx.log("dropped")
             self.assertNotIn("log", self.ok("status", "--repo", self.work))
 
-    def test_must_raises_blocked(self):
+    def test_must_raises_blocked(self) -> None:
         with self.assertRaises(Fail) as caught:
             Ctx(self.work, "t").must("rev-parse", "--verify", "nope")
         self.assertEqual(
             (caught.exception.code, caught.exception.reason), (6, "git_failed")
         )
 
-    def test_ref_validation(self):
+    def test_ref_validation(self) -> None:
         self.assertEqual(gd_common.ref("feat/x-1.2"), "feat/x-1.2")
         for bad in ("", "-x", "a..b", "x.lock", "a/", "a b"):
             with self.assertRaises(Fail, msg=bad):
                 gd_common.ref(bad)
 
-    def test_at_and_run_file_errors(self):
+    def test_at_and_run_file_errors(self) -> None:
         ctx = Ctx(self.work, "t")
         self.assertEqual(ctx.at(self.root).repo, str(self.root))
         self.assertEqual(
@@ -76,11 +77,11 @@ class Plumbing(Base):
         with self.assertRaises(Fail):
             Ctx(self.root / "missing", "t")
 
-    def test_loads_rejects_bad_json(self):
+    def test_loads_rejects_bad_json(self) -> None:
         with self.assertRaises(Fail):
             gd_common.loads("not json")
 
-    def test_gh_fail_reasons(self):
+    def test_gh_fail_reasons(self) -> None:
         cases = [
             (Proc(127, "", ""), "gh_missing"),
             (Proc(1, "", "To get started, please run: gh auth login"), "auth"),
@@ -100,9 +101,9 @@ class Plumbing(Base):
 
 
 class Entry(Base):
-    def test_usage_errors_exit_2(self):
-        readme = ["--repo", self.work, "--path", "README.md"]
-        cases = [
+    def test_usage_errors_exit_2(self) -> None:
+        readme: list[str | Path] = ["--repo", self.work, "--path", "README.md"]
+        cases: list[list[str | Path]] = [
             [],
             ["bogus"],
             ["status", "--nope"],
@@ -128,7 +129,7 @@ class Entry(Base):
                 (code, out["ok"], out["reason"]), (2, False, "usage"), argv
             )
 
-    def test_option_abbreviations_are_not_accepted(self):
+    def test_option_abbreviations_are_not_accepted(self) -> None:
         wt = self.root / "wt"
         for argv in (
             ["cleanup", "--repo", self.work, "--pr", "7", "--worktree", wt, "--disc"],
@@ -139,10 +140,10 @@ class Entry(Base):
             code, out = self.call(*argv)
             self.assertEqual((code, out["reason"]), (2, "usage"), argv)
 
-    def test_a_held_lock_blocks_mutating_commands_but_not_status(self):
+    def test_a_held_lock_blocks_mutating_commands_but_not_status(self) -> None:
         folder = Path(git(self.work, "rev-parse", "--absolute-git-dir"), "git-deliver")
         folder.mkdir(parents=True, exist_ok=True)
-        holder = open(folder / "lock", "a", encoding="utf-8")
+        holder = open(folder / "lock", "a", encoding="utf-8")  # noqa: SIM115 -- closed by the caller or at cleanup
         self.addCleanup(holder.close)
         fcntl.flock(holder, fcntl.LOCK_EX | fcntl.LOCK_NB)
         mutating = (
@@ -163,8 +164,8 @@ class Entry(Base):
         self.ok("sync", "--repo", self.work, "--main-checkout", self.work)
         self.ok("sync", "--repo", self.work, "--main-checkout", self.work)
 
-    def test_internal_error_has_no_traceback_on_stdout(self):
-        def boom(ctx, args):
+    def test_internal_error_has_no_traceback_on_stdout(self) -> None:
+        def boom(ctx: Ctx, args: argparse.Namespace) -> None:
             raise RuntimeError("kaput")
 
         with mock.patch.dict(git_deliver.COMMANDS, {"status": boom}):
@@ -172,7 +173,7 @@ class Entry(Base):
         self.assertIn("kaput", out["detail"])
         self.assertIn("Traceback", Path(out["log"]).read_text())
 
-    def test_subprocess_isolated_mode_and_wrapper(self):
+    def test_subprocess_isolated_mode_and_wrapper(self) -> None:
         script = SCRIPTS / "git_deliver.py"
         done = subprocess.run(
             [sys.executable, "-I", str(script), "status", "--repo", str(self.work)],
@@ -206,7 +207,7 @@ class Entry(Base):
 
 
 class SecretNamed(unittest.TestCase):
-    def test_credential_looking_names_only(self):
+    def test_credential_looking_names_only(self) -> None:
         secret = [
             ".env", ".env.local", "server.pem", "pkg/id_rsa", "credentials",
             "config/credentials.yaml", "app/Credentials.JSON", "gh_token.json", "token.txt",
@@ -223,7 +224,7 @@ class SecretNamed(unittest.TestCase):
 
 
 class Status(Base):
-    def test_clean_main(self):
+    def test_clean_main(self) -> None:
         out = self.ok("status", "--repo", self.work)
         self.assertEqual(
             (
@@ -242,7 +243,7 @@ class Status(Base):
         self.assertEqual((out["stashes"]["count"], len(out["worktrees"])), (0, 1))
         self.assertEqual(out["head"], self.base_sha)
 
-    def test_feature_branch_counts_and_worktrees(self):
+    def test_feature_branch_counts_and_worktrees(self) -> None:
         self.feature()
         self.worktree("other-wt", "wt2")
         out = self.ok("status", "--repo", self.work)
@@ -252,7 +253,7 @@ class Status(Base):
         self.assertEqual(len(out["worktrees"]), 2)
         self.assertEqual(out["worktrees"][1]["branch"], "other-wt")
 
-    def test_classification(self):
+    def test_classification(self) -> None:
         w = self.work
         self.commit(w, "old.txt", "o\n", "add old")
         (w / "README.md").write_text("changed\n")
@@ -280,7 +281,7 @@ class Status(Base):
         )
         self.assertEqual(sorted(files["keep_local"]), [".env", "added.pem", "id_rsa"])
 
-    def test_tracked_modified_secret_named_file_stays_keep_local(self):
+    def test_tracked_modified_secret_named_file_stays_keep_local(self) -> None:
         self.commit(self.work, "server.pem", "p\n", "add pem")
         (self.work / "server.pem").write_text("rotated\n")
         (self.work / "README.md").write_text("changed\n")
@@ -288,7 +289,7 @@ class Status(Base):
         self.assertEqual(files["keep_local"], ["server.pem"])
         self.assertEqual(files["publish"], ["README.md"])
 
-    def test_stash_names_and_truncation(self):
+    def test_stash_names_and_truncation(self) -> None:
         git(
             self.work,
             "update-ref",
@@ -307,7 +308,7 @@ class Status(Base):
         )
         self.assertEqual((out["truncated"], len(out["files"]["unknown"])), (True, 1))
 
-    def test_merge_in_progress(self):
+    def test_merge_in_progress(self) -> None:
         conflict_setup(self)
         git(self.work, "fetch", "-q")
         subprocess.run(
@@ -320,7 +321,7 @@ class Status(Base):
         self.assertEqual(out["operation"], "merge")
         self.assertIn("README.md", out["files"]["publish"])
 
-    def test_detached_and_unborn(self):
+    def test_detached_and_unborn(self) -> None:
         git(self.work, "checkout", "-q", "--detach")
         self.assertIsNone(self.ok("status", "--repo", self.work)["branch"])
         fresh = self.root / "fresh"
@@ -328,12 +329,12 @@ class Status(Base):
         out = self.ok("status", "--repo", fresh)
         self.assertEqual((out["head"], out["default_branch"]), (None, None))
 
-    def test_not_a_repository(self):
+    def test_not_a_repository(self) -> None:
         plain = self.root / "plain"
         plain.mkdir()
         self.fails(6, "git_failed", "status", "--repo", plain)
 
-    def test_default_branch_falls_back_to_refs(self):
+    def test_default_branch_falls_back_to_refs(self) -> None:
         git(self.work, "symbolic-ref", "--delete", "refs/remotes/origin/HEAD")
         self.assertEqual(
             self.ok("status", "--repo", self.work)["default_branch"], "main"
@@ -341,17 +342,17 @@ class Status(Base):
 
 
 class Commit(Base):
-    def setUp(self):
+    def setUp(self) -> None:
         super().setUp()
         git(
             self.work, "switch", "-q", "-c", "topic"
         )  # commit never runs on the default branch
 
-    def new_files(self, *names):
+    def new_files(self, *names: str) -> None:
         for name in names:
             (self.work / name).write_text(f"{name}\n")
 
-    def test_stages_only_paths_and_adds_trailers(self):
+    def test_stages_only_paths_and_adds_trailers(self) -> None:
         self.new_files("a.txt", "b.txt")
         out = self.ok(
             "commit", "--repo", self.work, "--path", "a.txt", "-m", "feat: a",
@@ -369,7 +370,7 @@ class Commit(Base):
             [["git", "--staged", "--redact", "--no-banner", "--exit-code", "77"]],
         )
 
-    def test_message_file(self):
+    def test_message_file(self) -> None:
         self.new_files("a.txt")
         (self.root / "msg.txt").write_text("feat: from file\n")
         self.ok(
@@ -383,7 +384,7 @@ class Commit(Base):
         )
         self.assertEqual(git(self.work, "log", "-1", "--format=%s"), "feat: from file")
 
-    def test_on_the_default_branch_commit_refuses_without_branch(self):
+    def test_on_the_default_branch_commit_refuses_without_branch(self) -> None:
         git(self.work, "switch", "-q", "main")
         self.new_files("a.txt")
         before = git(self.work, "rev-parse", "HEAD")
@@ -395,7 +396,7 @@ class Commit(Base):
         self.assertEqual(git(self.work, "diff", "--cached", "--name-only"), "")
         self.assertEqual(git(self.work, "branch", "--show-current"), "main")
 
-    def test_branch_creates_it_from_the_default_branch_and_commits_there(self):
+    def test_branch_creates_it_from_the_default_branch_and_commits_there(self) -> None:
         git(self.work, "switch", "-q", "main")
         self.new_files("a.txt")
         out = self.ok(
@@ -410,7 +411,7 @@ class Commit(Base):
         )
         self.assertEqual(git(self.work, "stash", "list"), "")
 
-    def test_branch_from_a_detached_head_and_without_one(self):
+    def test_branch_from_a_detached_head_and_without_one(self) -> None:
         git(self.work, "switch", "-q", "--detach", "main")
         self.new_files("a.txt")
         args = ("commit", "--repo", self.work, "--path", "a.txt", "-m", "x")
@@ -420,7 +421,7 @@ class Commit(Base):
             self.ok(*args, "--branch", "feat/a")["branch_created"], "feat/a"
         )
 
-    def test_branch_that_exists_or_names_the_default_is_refused(self):
+    def test_branch_that_exists_or_names_the_default_is_refused(self) -> None:
         git(self.work, "switch", "-q", "main")
         git(self.work, "branch", "feat/a")
         self.new_files("a.txt")
@@ -432,7 +433,7 @@ class Commit(Base):
         self.assertEqual(git(self.work, "branch", "--show-current"), "main")
         self.assertEqual(git(self.work, "diff", "--cached", "--name-only"), "")
 
-    def test_branch_on_a_feature_branch_is_a_no_op_or_a_mismatch(self):
+    def test_branch_on_a_feature_branch_is_a_no_op_or_a_mismatch(self) -> None:
         self.new_files("a.txt")
         args = ("commit", "--repo", self.work, "--path", "a.txt", "-m", "x")
         out = self.fails(6, "branch_mismatch", *args, "--branch", "other")
@@ -441,7 +442,7 @@ class Commit(Base):
         out = self.ok(*args, "--branch", "topic")
         self.assertNotIn("branch_created", out)
 
-    def test_a_failure_after_the_switch_reports_the_created_branch(self):
+    def test_a_failure_after_the_switch_reports_the_created_branch(self) -> None:
         git(self.work, "switch", "-q", "main")
         (self.work / "server.pem").write_text("k\n")
         out = self.fails(
@@ -450,7 +451,9 @@ class Commit(Base):
         )  # fmt: skip
         self.assertEqual(out["branch_created"], "feat/a")
 
-    def test_paths_that_resolve_to_the_repository_or_outside_it_are_refused(self):
+    def test_paths_that_resolve_to_the_repository_or_outside_it_are_refused(
+        self,
+    ) -> None:
         self.new_files("a.txt")
         for bad in ("sub/..", "../x", "a.txt/..", "./", "sub/../.."):
             out = self.fails(
@@ -459,18 +462,18 @@ class Commit(Base):
             self.assertEqual(out["detail"], "explicit_paths_required", bad)
         self.assertEqual(git(self.work, "diff", "--cached", "--name-only"), "")
 
-    def test_no_message_exits_3_before_staging(self):
+    def test_no_message_exits_3_before_staging(self) -> None:
         self.new_files("a.txt")
         self.fails(3, "no_message", "commit", "--repo", self.work, "--path", "a.txt")
         self.assertEqual(git(self.work, "status", "--porcelain"), "?? a.txt")
 
-    def test_nothing_to_commit_is_idempotent(self):
+    def test_nothing_to_commit_is_idempotent(self) -> None:
         out = self.ok(
             "commit", "--repo", self.work, "--path", "README.md", "-m", "noop"
         )
         self.assertEqual((out["committed"], out["sha"]), (False, self.base_sha))
 
-    def test_secret_blocks_and_unstages(self):
+    def test_secret_blocks_and_unstages(self) -> None:
         self.new_files("a.txt")
         with mock.patch.dict(os.environ, {"GL_RC": "77"}):
             self.fails(
@@ -479,7 +482,7 @@ class Commit(Base):
         self.assertEqual(git(self.work, "diff", "--cached", "--name-only"), "")
         self.assertEqual(git(self.work, "rev-parse", "HEAD"), self.base_sha)
 
-    def test_scanner_error_is_not_reported_as_a_secret(self):
+    def test_scanner_error_is_not_reported_as_a_secret(self) -> None:
         self.new_files("a.txt")
         with mock.patch.dict(os.environ, {"GL_RC": "1"}):
             out = self.fails(
@@ -497,7 +500,7 @@ class Commit(Base):
         self.assertIn("stub gitleaks", out["detail"])
         self.assertEqual(git(self.work, "diff", "--cached", "--name-only"), "")
 
-    def test_stderr_error_with_exit_zero_is_scan_failed(self):
+    def test_stderr_error_with_exit_zero_is_scan_failed(self) -> None:
         # gitleaks#1981: it exits 0 when the underlying git command fails
         self.new_files("a.txt")
         for line in (
@@ -514,7 +517,7 @@ class Commit(Base):
             self.assertEqual(git(self.work, "diff", "--cached", "--name-only"), "")
         self.assertEqual(git(self.work, "rev-parse", "HEAD"), self.base_sha)
 
-    def test_keep_local_path_under_a_directory_is_unstaged(self):
+    def test_keep_local_path_under_a_directory_is_unstaged(self) -> None:
         (self.work / "pkg").mkdir()
         (self.work / "pkg" / "m.py").write_text("x\n")
         (self.work / "pkg" / "id_rsa").write_text("k\n")
@@ -528,7 +531,7 @@ class Commit(Base):
         self.assertEqual(git(self.work, "rev-parse", "HEAD"), self.base_sha)
         self.assertEqual(self.gitleaks_calls(), [])
 
-    def test_a_secret_named_file_is_refused_even_when_named(self):
+    def test_a_secret_named_file_is_refused_even_when_named(self) -> None:
         (self.work / "server.pem").write_text("p\n")
         out = self.fails(
             6,
@@ -546,7 +549,7 @@ class Commit(Base):
         )
         self.assertEqual(git(self.work, "diff", "--cached", "--name-only"), "")
 
-    def test_explicit_paths_commit_even_when_the_name_looks_local(self):
+    def test_explicit_paths_commit_even_when_the_name_looks_local(self) -> None:
         names = (
             "pkg/lexer/token.go", "auth/credentials.py", "tools/build/run.sh", "testdata/sample.log",
         )  # fmt: skip
@@ -561,7 +564,7 @@ class Commit(Base):
             shown = git(self.work, "show", "--name-only", "--format=", "HEAD")
             self.assertEqual(shown, name)
 
-    def test_a_swept_local_looking_file_is_refused_unless_named(self):
+    def test_a_swept_local_looking_file_is_refused_unless_named(self) -> None:
         (self.work / "tools" / "build").mkdir(parents=True)
         (self.work / "tools" / "build" / "run.sh").write_text("x\n")
         (self.work / "tools" / "ok.sh").write_text("x\n")
@@ -572,7 +575,7 @@ class Commit(Base):
         self.assertEqual(git(self.work, "diff", "--cached", "--name-only"), "")
         self.assertEqual(git(self.work, "rev-parse", "HEAD"), self.base_sha)
 
-    def test_missing_scanner_blocks(self):
+    def test_missing_scanner_blocks(self) -> None:
         self.new_files("a.txt")
         with mock.patch.dict(os.environ, {"PATH": f"{self.bin}:/usr/bin:/bin"}):
             (self.bin / "gitleaks").unlink()
@@ -589,7 +592,7 @@ class Commit(Base):
             )
         self.assertTrue(out["scanner_missing"])
 
-    def test_other_staged_paths_block(self):
+    def test_other_staged_paths_block(self) -> None:
         self.new_files("a.txt", "b.txt")
         git(self.work, "add", "b.txt")
         out = self.fails(
@@ -597,7 +600,7 @@ class Commit(Base):
         )
         self.assertEqual(out["staged_other"], ["b.txt"])
 
-    def test_directory_path_covers_staged_children(self):
+    def test_directory_path_covers_staged_children(self) -> None:
         (self.work / "pkg").mkdir()
         (self.work / "pkg" / "m.py").write_text("x")
         git(self.work, "add", "pkg/m.py")
@@ -607,7 +610,7 @@ class Commit(Base):
             ]
         )
 
-    def test_hook_failure_reports_commit_failed(self):
+    def test_hook_failure_reports_commit_failed(self) -> None:
         hook = self.work / ".git" / "hooks" / "pre-commit"
         hook.write_text("#!/bin/sh\necho nope >&2\nexit 1\n")
         hook.chmod(0o755)
@@ -625,7 +628,7 @@ class Commit(Base):
         )
         self.assertIn("nope", out["detail"])
 
-    def test_concludes_a_resolved_merge(self):
+    def test_concludes_a_resolved_merge(self) -> None:
         conflict_setup(self)
         self.fails(3, "conflict", "integrate", "--repo", self.work, "--base", "main")
         (self.work / "README.md").write_text("resolved\n")
@@ -641,13 +644,13 @@ class Commit(Base):
 class RealGitleaks(Base):
     real_gitleaks = True
 
-    def setUp(self):
+    def setUp(self) -> None:
         super().setUp()
         git(
             self.work, "switch", "-q", "-c", "topic"
         )  # commit refuses the default branch
 
-    def test_fake_aws_key_is_blocked_and_clean_file_passes(self):
+    def test_fake_aws_key_is_blocked_and_clean_file_passes(self) -> None:
         (self.work / "creds.py").write_text(
             'aws_access_key_id = "AKIAQYLPMN5HHHFPZAM2"\n'
         )
@@ -662,7 +665,7 @@ class RealGitleaks(Base):
             ]
         )
 
-    def merge_commit(self, extra=None):
+    def merge_commit(self, extra: tuple[str, str] | None = None) -> None:
         """feat plus a moved base joined by a 2-parent merge commit that may add `extra` itself."""
         self.feature()
         self.move_base()
@@ -682,13 +685,13 @@ class RealGitleaks(Base):
             {"match": ["pr", "view"], "stdout": pr_json()},
         )
 
-    def test_secret_added_by_a_merge_commit_is_blocked_at_publish(self):
+    def test_secret_added_by_a_merge_commit_is_blocked_at_publish(self) -> None:
         self.merge_commit(("creds.py", 'aws_access_key_id = "AKIAQYLPMN5HHHFPZAM2"\n'))
         self.fails(6, "secret", "publish", "--repo", self.work, "--base", "main")
         self.assertEqual(git(self.origin, "branch", "--list", "feat"), "")
         self.assertEqual(self.gh_calls_of("pr", "create"), [])
 
-    def test_clean_merge_commit_publishes(self):
+    def test_clean_merge_commit_publishes(self) -> None:
         self.merge_commit(("notes.txt", "fine\n"))
         out = self.ok("publish", "--repo", self.work, "--base", "main")
         self.assertEqual((out["pr"], out["created"]), (7, True))

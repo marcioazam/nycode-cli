@@ -1,25 +1,53 @@
 """Behavior tests for report_check.py: every Findings bullet asserts supported ledger claims, offline."""
+
 import io
 import json
-from pathlib import Path
 import sys
 import tempfile
 import unittest
+from pathlib import Path
+from typing import Any, cast
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import report_check as rc  # noqa: E402
+import report_check as rc  # type: ignore[import-not-found]  # sibling module, put on sys.path above
 
 A, B, C, D, E, F = (f"https://example.org/{p}" for p in "abcdef")
 LEDGER = [
-    {"id": "C1", "url": "https://www.example.org/a", "verdict": "supported", "script_status": "verified"},
+    {
+        "id": "C1",
+        "url": "https://www.example.org/a",
+        "verdict": "supported",
+        "script_status": "verified",
+    },
     {"id": "C2", "url": B + "/", "verdict": "partial", "script_status": "mismatch"},
     # Shares C1's URL: the page carries one supported and one unsupported claim.
     {"id": "C3", "url": A, "verdict": "unsupported", "script_status": "verified"},
-    {"id": "C4", "url": C, "verdict": "unverifiable", "script_status": "blocked", "script_reason": "HTTP 403"},
-    {"id": "C5", "url": D, "verdict": "supported", "script_status": "unreachable", "script_reason": "HTTP 404"},
-    {"id": "C6", "url": E, "verdict": "supported", "script_status": "unreachable",
-     "script_reason": "URLError: timed out"},
-    {"id": "C7", "url": F, "script_status": "verified"},  # the verifier returned no verdict for it
+    {
+        "id": "C4",
+        "url": C,
+        "verdict": "unverifiable",
+        "script_status": "blocked",
+        "script_reason": "HTTP 403",
+    },
+    {
+        "id": "C5",
+        "url": D,
+        "verdict": "supported",
+        "script_status": "unreachable",
+        "script_reason": "HTTP 404",
+    },
+    {
+        "id": "C6",
+        "url": E,
+        "verdict": "supported",
+        "script_status": "unreachable",
+        "script_reason": "URLError: timed out",
+    },
+    {
+        "id": "C7",
+        "url": F,
+        "script_status": "verified",
+    },  # the verifier returned no verdict for it
 ]
 
 GOOD = f"""# Is the broker ready?
@@ -53,83 +81,126 @@ One verifier.
 """
 
 
-def check(report, ledger=LEDGER):
-    return rc.check(report, {row["id"]: row for row in ledger})
+def check(report: str, ledger: list[dict[str, Any]] = LEDGER) -> dict[str, Any]:
+    return cast("dict[str, Any]", rc.check(report, {row["id"]: row for row in ledger}))
 
 
-def reasons(result):
+def reasons(result: dict[str, Any]) -> list[str]:
     return [p["reason"] for p in result["problems"]]
 
 
 class GateTest(unittest.TestCase):
-    def test_report_citing_only_supported_rows_passes(self):
+    def test_report_citing_only_supported_rows_passes(self) -> None:
         result = check(GOOD)
         self.assertEqual(result["status"], "pass", result)
         self.assertEqual(result["cited"], ["C1", "C2", "C5", "C6"])
 
-    def test_answer_bullets_each_cite_their_claim(self):
+    def test_answer_bullets_each_cite_their_claim(self) -> None:
         # 2026-10-31 (evals srch-write-01): three Answer bullets with one [C1, C2, C6] group on the last one passed
         # this gate while the eval grader counted two uncited claims; an Answer bullet now cites like a finding.
-        grouped = GOOD.replace("**Answer.** Yes for most loads [C1] ({A}).".format(A=A),
-                               "**Answer.** Yes for most loads:\n- 4.0 shipped on 2026-03-12.\n- Recovery takes 4 s "
-                               "[C1, C5].")
+        grouped = GOOD.replace(
+            f"**Answer.** Yes for most loads [C1] ({A}).",
+            "**Answer.** Yes for most loads:\n- 4.0 shipped on 2026-03-12.\n- Recovery takes 4 s "
+            "[C1, C5].",
+        )
         result = check(grouped)
         self.assertEqual(reasons(result), ["uncited"], result)
-        cited = grouped.replace("- 4.0 shipped on 2026-03-12.", "- 4.0 shipped on 2026-03-12 [C1].")
+        cited = grouped.replace(
+            "- 4.0 shipped on 2026-03-12.", "- 4.0 shipped on 2026-03-12 [C1]."
+        )
         self.assertEqual(check(cited)["status"], "pass")
 
-    def test_finding_without_a_ledger_id_is_uncited_output(self):
+    def test_finding_without_a_ledger_id_is_uncited_output(self) -> None:
         result = check(GOOD.replace("[C1] — " + A, "— " + A))
         self.assertEqual(reasons(result), ["uncited"])
         self.assertEqual(result["status"], "fail")
 
-    def test_prose_paragraph_in_findings_needs_a_citation_too(self):
-        self.assertEqual(reasons(check(GOOD.replace("### Operations", "Adoption is broad.\n\n### Operations"))),
-                         ["uncited"])
+    def test_prose_paragraph_in_findings_needs_a_citation_too(self) -> None:
+        self.assertEqual(
+            reasons(
+                check(
+                    GOOD.replace(
+                        "### Operations", "Adoption is broad.\n\n### Operations"
+                    )
+                )
+            ),
+            ["uncited"],
+        )
 
-    def test_id_missing_from_the_ledger_fails(self):
-        self.assertEqual(reasons(check(GOOD.replace("[C1] — " + A, "[C9] — " + A))), ["not_in_ledger"])
+    def test_id_missing_from_the_ledger_fails(self) -> None:
+        self.assertEqual(
+            reasons(check(GOOD.replace("[C1] — " + A, "[C9] — " + A))),
+            ["not_in_ledger"],
+        )
 
-    def test_unsupported_claim_fails_even_when_its_url_also_carries_a_supported_one(self):
+    def test_unsupported_claim_fails_even_when_its_url_also_carries_a_supported_one(
+        self,
+    ) -> None:
         result = check(GOOD.replace("[C1] — " + A, "[C3] — " + A))
         self.assertEqual(reasons(result), ["not_supported"])
         self.assertEqual(result["problems"][0]["verdict"], "unsupported")
 
-    def test_unverifiable_and_unjudged_rows_never_carry_a_finding(self):
-        self.assertEqual(reasons(check(GOOD.replace(f"[C2] — {B}", f"[C4] — {C}"))), ["not_supported"])
+    def test_unverifiable_and_unjudged_rows_never_carry_a_finding(self) -> None:
+        self.assertEqual(
+            reasons(check(GOOD.replace(f"[C2] — {B}", f"[C4] — {C}"))),
+            ["not_supported"],
+        )
         result = check(GOOD.replace(f"[C2] — {B}", f"[C7] — {F}"))
         self.assertEqual(result["problems"][0]["verdict"], "unjudged")
 
-    def test_url_must_be_the_cited_rows_url(self):
-        self.assertEqual(reasons(check(GOOD.replace(f"[C1] — {A}", f"[C1] — {B}"))), ["url_mismatch", "url_mismatch"])
-        self.assertEqual(reasons(check(GOOD.replace(f"[C1] — {A}", "[C1]"))), ["url_mismatch"])
+    def test_url_must_be_the_cited_rows_url(self) -> None:
+        self.assertEqual(
+            reasons(check(GOOD.replace(f"[C1] — {A}", f"[C1] — {B}"))),
+            ["url_mismatch", "url_mismatch"],
+        )
+        self.assertEqual(
+            reasons(check(GOOD.replace(f"[C1] — {A}", "[C1]"))), ["url_mismatch"]
+        )
 
-    def test_url_variants_match(self):
-        report = GOOD.replace(f"[C1] — {A}", f"[C1] — {A}/#release").replace(f"[C2] — {B}", "[C2] — https://www.example.org/b.")
+    def test_url_variants_match(self) -> None:
+        report = GOOD.replace(f"[C1] — {A}", f"[C1] — {A}/#release").replace(
+            f"[C2] — {B}", "[C2] — https://www.example.org/b."
+        )
         self.assertEqual(check(report)["status"], "pass")
 
-    def test_answer_may_not_cite_unsupported_ids_or_urls(self):
-        self.assertEqual(reasons(check(GOOD.replace(f"[C1] ({A})", f"[C3] ({A})"))), ["not_supported"])
-        self.assertEqual(reasons(check(GOOD.replace(f"[C1] ({A})", f"({C})"))), ["not_supported"])
-        self.assertEqual(check(GOOD.replace(f"[C1] ({A})", "")).get("status"), "pass")  # Answer needs no citation
+    def test_answer_may_not_cite_unsupported_ids_or_urls(self) -> None:
+        self.assertEqual(
+            reasons(check(GOOD.replace(f"[C1] ({A})", f"[C3] ({A})"))),
+            ["not_supported"],
+        )
+        self.assertEqual(
+            reasons(check(GOOD.replace(f"[C1] ({A})", f"({C})"))), ["not_supported"]
+        )
+        self.assertEqual(
+            check(GOOD.replace(f"[C1] ({A})", "")).get("status"), "pass"
+        )  # Answer needs no citation
 
-    def test_other_sections_may_cite_any_known_id_but_not_unknown_ones(self):
-        self.assertEqual(reasons(check(GOOD.replace("[C4] — blocked", "[C42] — blocked"))), ["not_in_ledger"])
+    def test_other_sections_may_cite_any_known_id_but_not_unknown_ones(self) -> None:
+        self.assertEqual(
+            reasons(check(GOOD.replace("[C4] — blocked", "[C42] — blocked"))),
+            ["not_in_ledger"],
+        )
 
-    def test_liveness_only_warns_and_only_for_a_dead_page(self):
+    def test_liveness_only_warns_and_only_for_a_dead_page(self) -> None:
         result = check(GOOD)
         self.assertEqual(result["status"], "pass")
-        self.assertEqual([(w["id"], w["reason"]) for w in result["warnings"]], [("C5", "dead_link: HTTP 404")])
+        self.assertEqual(
+            [(w["id"], w["reason"]) for w in result["warnings"]],
+            [("C5", "dead_link: HTTP 404")],
+        )
 
-    def test_findings_heading_without_findings_fails(self):
+    def test_findings_heading_without_findings_fails(self) -> None:
         start, end = GOOD.index("### Release"), GOOD.index("## Conflicts")
         self.assertEqual(reasons(check(GOOD[:start] + GOOD[end:])), ["no_findings"])
 
-    def test_table_rows_in_findings_are_checked_for_what_they_cite(self):
+    def test_table_rows_in_findings_are_checked_for_what_they_cite(self) -> None:
         table = f"| x | y |\n|---|---|\n| 4.0 | [C3] {A} |\n"
-        self.assertEqual(reasons(check(GOOD.replace("### Operations", table + "### Operations"))), ["not_supported"])
+        self.assertEqual(
+            reasons(check(GOOD.replace("### Operations", table + "### Operations"))),
+            ["not_supported"],
+        )
 
-    def test_portuguese_report_with_the_template_headings_passes(self):
+    def test_portuguese_report_with_the_template_headings_passes(self) -> None:
         report = f"""# O broker está pronto?
 
 **Resposta.** Sim para a maioria das cargas [C1] ({A}).
@@ -153,7 +224,7 @@ class GateTest(unittest.TestCase):
 
 
 class CliTest(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
         self.dir = Path(self.tmp.name)
         self.ledger = self.dir / "LEDGER.json"
@@ -161,37 +232,53 @@ class CliTest(unittest.TestCase):
         self.report = self.dir / "REPORT.md"
         self.report.write_text(GOOD)
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         self.tmp.cleanup()
 
-    def run_main(self, *argv):
+    def run_main(
+        self, *argv: str
+    ) -> tuple[int, Any]:  # Any: decoded JSON, or None when empty
         out = io.StringIO()
         code = rc.main(list(argv), stdout=out)
         return code, json.loads(out.getvalue()) if out.getvalue() else None
 
-    def test_pass_and_fail_exit_codes(self):
-        self.assertEqual(self.run_main(str(self.report), "--ledger", str(self.ledger))[0], 0)
+    def test_pass_and_fail_exit_codes(self) -> None:
+        self.assertEqual(
+            self.run_main(str(self.report), "--ledger", str(self.ledger))[0], 0
+        )
         self.report.write_text(GOOD.replace("[C1] — " + A, "— " + A))
         code, out = self.run_main(str(self.report), "--ledger", str(self.ledger))
         self.assertEqual((code, out["status"]), (1, "fail"))
 
-    def test_ledger_is_mandatory(self):
+    def test_ledger_is_mandatory(self) -> None:
         self.assertEqual(self.run_main(str(self.report))[0], 2)
 
-    def test_unreadable_or_malformed_inputs_are_invalid(self):
-        for ledger in ("not json", json.dumps({"C1": {}}), json.dumps([{"id": "C1"}, {"id": "C1"}]),
-                       json.dumps([{"url": A}])):
+    def test_unreadable_or_malformed_inputs_are_invalid(self) -> None:
+        for ledger in (
+            "not json",
+            json.dumps({"C1": {}}),
+            json.dumps([{"id": "C1"}, {"id": "C1"}]),
+            json.dumps([{"url": A}]),
+        ):
             self.ledger.write_text(ledger)
             code, out = self.run_main(str(self.report), "--ledger", str(self.ledger))
             self.assertEqual((code, out["status"]), (2, "invalid"), ledger)
-        code, out = self.run_main(str(self.dir / "missing.md"), "--ledger", str(self.ledger))
+        code, out = self.run_main(
+            str(self.dir / "missing.md"), "--ledger", str(self.ledger)
+        )
         self.assertEqual(code, 2)
 
-    def test_size_and_url_caps(self):
+    def test_size_and_url_caps(self) -> None:
         self.report.write_text(GOOD + "x" * rc.MAX_BYTES)
-        self.assertEqual(self.run_main(str(self.report), "--ledger", str(self.ledger))[0], 2)
+        self.assertEqual(
+            self.run_main(str(self.report), "--ledger", str(self.ledger))[0], 2
+        )
         many = "\n".join(f"- https://example.org/n{i}" for i in range(rc.MAX_URLS + 1))
-        self.report.write_text(GOOD.replace("## Method and cost", "## Sources\n" + many + "\n## Method and cost"))
+        self.report.write_text(
+            GOOD.replace(
+                "## Method and cost", "## Sources\n" + many + "\n## Method and cost"
+            )
+        )
         code, out = self.run_main(str(self.report), "--ledger", str(self.ledger))
         self.assertEqual(code, 2)
         self.assertIn("URLs", out["problems"][0]["detail"])

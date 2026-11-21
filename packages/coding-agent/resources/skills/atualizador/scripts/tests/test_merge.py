@@ -1,13 +1,15 @@
 """merge: proof, head and base checks, CI policy, argv hygiene, queued merges."""
 
-import json
+import json  # noqa: I001 -- support must import before gd_* (it extends sys.path)
 import unittest
 from pathlib import Path
+from collections.abc import Sequence
+from typing import Any
 from unittest import mock
 
 from support import Base, git, pr_json  # first: puts the scripts dir on sys.path
 
-import gd_merge
+import gd_merge  # type: ignore[import-not-found]  # sibling module, scripts dir is off MYPYPATH
 
 GREEN = "build\tpass\t1m\thttps://ci.test/build\t\n"
 RED = "build\tfail\t1m\thttps://ci.test/build\t\n"
@@ -15,16 +17,22 @@ BILLING = "payments have failed"
 
 
 class MergeBase(Base):
-    def setUp(self):
+    def setUp(self) -> None:
         super().setUp()
         self.feature()
         self.sha = git(self.work, "rev-parse", "HEAD")
 
-    def proven(self, *extra):
+    def proven(self, *extra: str) -> None:
         code, out = self.gate(self.work, *extra)
         self.assertEqual(code, 0, out)
 
-    def rules(self, views=None, merge=None, checks=None, extra=()):
+    def rules(
+        self,
+        views: list[str] | None = None,
+        merge: dict[str, Any] | None = None,
+        checks: dict[str, Any] | None = None,
+        extra: Sequence[dict[str, Any]] = (),
+    ) -> None:
         self.gh_rules(
             *extra,
             {"match": ["pr", "checks"], **(checks or {"stdout": GREEN})},
@@ -37,12 +45,12 @@ class MergeBase(Base):
             },
         )
 
-    def merge(self, *extra):
+    def merge(self, *extra: str) -> tuple[int, dict[str, Any]]:
         return self.call("merge", "--repo", self.work, "--pr", "7", *extra)
 
 
 class Merge(MergeBase):
-    def test_merges_with_match_head_commit_and_no_forbidden_flags(self):
+    def test_merges_with_match_head_commit_and_no_forbidden_flags(self) -> None:
         self.proven()
         self.rules()
         code, out = self.merge()
@@ -58,20 +66,20 @@ class Merge(MergeBase):
         (checks,) = self.gh_calls_of("pr", "checks")
         self.assertNotIn("--watch", checks)
 
-    def test_methods(self):
+    def test_methods(self) -> None:
         self.proven()
         for method in ("merge", "rebase"):
             self.rules()
             self.ok("merge", "--repo", self.work, "--pr", "7", "--method", method)
             self.assertIn(f"--{method}", self.gh_calls_of("pr", "merge")[-1])
 
-    def test_already_merged_is_idempotent(self):
+    def test_already_merged_is_idempotent(self) -> None:
         self.rules(views=[pr_json("MERGED")])
         out = self.ok("merge", "--repo", self.work, "--pr", "7")
         self.assertEqual(out["merge_commit"], "m" * 40)
         self.assertEqual(self.gh_calls_of("pr", "merge"), [])
 
-    def test_unmergeable_states(self):
+    def test_unmergeable_states(self) -> None:
         self.proven()
         for view in (
             pr_json("CLOSED"),
@@ -82,18 +90,18 @@ class Merge(MergeBase):
             self.fails(6, "not_mergeable", "merge", "--repo", self.work, "--pr", "7")
         self.assertEqual(self.gh_calls_of("pr", "merge"), [])
 
-    def test_no_proof(self):
+    def test_no_proof(self) -> None:
         self.rules()
         self.fails(6, "no_proof", "merge", "--repo", self.work, "--pr", "7")
         self.assertEqual(self.gh_calls_of("pr", "merge"), [])
 
-    def test_failed_proof_blocks(self):
+    def test_failed_proof_blocks(self) -> None:
         self.gate(self.work, check="bad=exit 1")
         self.rules()
         out = self.fails(6, "no_proof", "merge", "--repo", self.work, "--pr", "7")
         self.assertEqual(out["detail"], "proof_checks_failed")
 
-    def test_dirty_proof_blocks_merge(self):
+    def test_dirty_proof_blocks_merge(self) -> None:
         (self.work / "feature.txt").write_text("wip\n")
         self.proven("--allow-dirty")
         self.assertTrue(self.proof(self.work, dirty=True)["dirty"])
@@ -102,13 +110,13 @@ class Merge(MergeBase):
         self.fails(6, "dirty", "merge", "--repo", self.work, "--pr", "7")
         self.assertEqual(self.gh_calls_of("pr", "merge"), [])
 
-    def test_pr_head_moved(self):
+    def test_pr_head_moved(self) -> None:
         self.proven()
         self.rules(views=[pr_json(headRefOid="e" * 40)])
         out = self.fails(6, "head_moved", "merge", "--repo", self.work, "--pr", "7")
         self.assertEqual(out["pr_head"], "e" * 40)
 
-    def test_local_head_moved_after_the_proof(self):
+    def test_local_head_moved_after_the_proof(self) -> None:
         self.proven()
         self.commit(self.work, "later.txt", "l\n", "later")
         self.rules(views=[pr_json(headRefOid=self.sha)])
@@ -116,7 +124,7 @@ class Merge(MergeBase):
         self.assertEqual(out["pr_head"], self.sha)
         self.assertNotEqual(out["local_head"], self.sha)
 
-    def test_base_moved(self):
+    def test_base_moved(self) -> None:
         self.proven()
         moved = self.move_base()
         self.rules()
@@ -125,7 +133,7 @@ class Merge(MergeBase):
             (out["base_sha"], out["proof_base_sha"]), (moved, self.base_sha)
         )
 
-    def test_branch_behind_a_fetched_base_is_base_moved(self):
+    def test_branch_behind_a_fetched_base_is_base_moved(self) -> None:
         # the gate ran after a fetch, so the proof's base_sha equals origin/main although HEAD lacks it
         moved = self.move_base()
         git(self.work, "fetch", "-q")
@@ -136,7 +144,7 @@ class Merge(MergeBase):
         self.assertEqual((out["base_sha"], out["proof_base_sha"]), (moved, moved))
         self.assertEqual(self.gh_calls_of("pr", "merge"), [])
 
-    def test_base_moved_but_already_contained_in_head_is_fine(self):
+    def test_base_moved_but_already_contained_in_head_is_fine(self) -> None:
         self.move_base()
         git(self.work, "fetch", "-q")
         git(self.work, "merge", "-q", "--no-edit", "origin/main")
@@ -149,12 +157,12 @@ class Merge(MergeBase):
         self.rules()
         self.ok("merge", "--repo", self.work, "--pr", "7")
 
-    def test_proof_for_another_base_is_stale(self):
+    def test_proof_for_another_base_is_stale(self) -> None:
         self.proven()
         self.rules(views=[pr_json(baseRefName="develop"), pr_json("MERGED")])
         self.fails(6, "base_moved", "merge", "--repo", self.work, "--pr", "7")
 
-    def test_ci_policy(self):
+    def test_ci_policy(self) -> None:
         self.proven()
         self.rules(
             checks={"rc": 1, "stdout": RED}, extra=[{"match": ["api"], "stdout": "[]"}]
@@ -167,7 +175,7 @@ class Merge(MergeBase):
         )
         self.fails(5, "pending_timeout", "merge", "--repo", self.work, "--pr", "7")
 
-    def billing_extra(self):
+    def billing_extra(self) -> list[dict[str, Any]]:
         run = {"id": 11, "conclusion": "failure", "output": {}}
         return [
             {
@@ -181,7 +189,7 @@ class Merge(MergeBase):
             },
         ]
 
-    def test_billing_allows_the_merge_unless_remote_ci_is_required(self):
+    def test_billing_allows_the_merge_unless_remote_ci_is_required(self) -> None:
         self.proven()
         views = [pr_json(), pr_json(), pr_json("MERGED")]
         self.rules(
@@ -207,7 +215,7 @@ class Merge(MergeBase):
         )
         self.assertEqual(out["status"], "not_started_billing")
 
-    def test_no_checks_is_allowed_unless_required(self):
+    def test_no_checks_is_allowed_unless_required(self) -> None:
         self.proven()
         self.rules(
             checks={"rc": 1, "stderr": "no checks reported on the 'feat' branch"}
@@ -228,7 +236,7 @@ class Merge(MergeBase):
             "--require-remote-ci",
         )
 
-    def test_gh_merge_errors_are_classified(self):
+    def test_gh_merge_errors_are_classified(self) -> None:
         self.proven()
         cases = {
             "protection": "the base branch policy prohibits the merge",
@@ -240,7 +248,7 @@ class Merge(MergeBase):
             self.rules(views=[pr_json()], merge={"rc": 1, "stderr": message})
             self.fails(6, reason, "merge", "--repo", self.work, "--pr", "7")
 
-    def test_method_and_budget_reach_gh(self):
+    def test_method_and_budget_reach_gh(self) -> None:
         self.proven()
         self.rules()
         self.ok(
@@ -260,12 +268,14 @@ class Merge(MergeBase):
 class MergeMessage(MergeBase):
     """--subject/--body-file reach gh; the merged commit's trailers come back in the JSON."""
 
-    def body(self, text="body\n\nAssisted-by: claude-code:claude-sonnet-5-5\n"):
+    def body(
+        self, text: str = "body\n\nAssisted-by: claude-code:claude-sonnet-5-5\n"
+    ) -> Path:
         path = self.root / "squash.md"
         path.write_text(text, encoding="utf-8")
         return path
 
-    def test_subject_and_body_file_are_forwarded_with_every_guard(self):
+    def test_subject_and_body_file_are_forwarded_with_every_guard(self) -> None:
         self.proven()
         self.rules()
         body = self.body()
@@ -286,7 +296,7 @@ class MergeMessage(MergeBase):
         self.assertEqual(call[call.index("--match-head-commit") + 1], self.sha)
         self.assertEqual(call[:4], ["pr", "merge", "7", "--squash"])
 
-    def test_without_the_options_the_command_line_is_unchanged(self):
+    def test_without_the_options_the_command_line_is_unchanged(self) -> None:
         self.proven()
         self.rules()
         self.ok("merge", "--repo", self.work, "--pr", "7")
@@ -295,11 +305,11 @@ class MergeMessage(MergeBase):
             call, ["pr", "merge", "7", "--squash", "--match-head-commit", self.sha]
         )
 
-    def test_invalid_options_are_usage_errors_before_any_gh_call(self):
+    def test_invalid_options_are_usage_errors_before_any_gh_call(self) -> None:
         self.proven()
         self.rules()
         (self.root / "bad.md").write_bytes(b"\xff\xfe\x00bad")
-        cases = [
+        cases: list[tuple[str, list[str | Path]]] = [
             ("body_file_missing", ["--body-file", self.root / "absent.md"]),
             ("body_file_unreadable", ["--body-file", self.root / "bad.md"]),
             ("subject_invalid", ["--subject", "one\ntwo"]),
@@ -314,7 +324,7 @@ class MergeMessage(MergeBase):
             self.assertEqual(out["detail"], detail)
         self.assertEqual(self.gh_calls(), [])
 
-    def test_merge_method_accepts_the_message(self):
+    def test_merge_method_accepts_the_message(self) -> None:
         self.proven()
         self.rules()
         self.ok(
@@ -330,7 +340,7 @@ class MergeMessage(MergeBase):
         )
         self.assertIn("--subject", self.gh_calls_of("pr", "merge")[-1])
 
-    def trailers(self, api, views=None):
+    def trailers(self, api: dict[str, Any], views: list[str] | None = None) -> object:
         self.proven()
         self.rules(
             views=views, extra=[{"match": ["api", "~git/commits/" + "m" * 40], **api}]
@@ -339,7 +349,7 @@ class MergeMessage(MergeBase):
             "merge_commit_trailers"
         ]
 
-    def test_trailers_of_the_merge_commit_are_reported(self):
+    def test_trailers_of_the_merge_commit_are_reported(self) -> None:
         message = "feat: x\n\nbody\n\nAssisted-by: claude-code:claude-sonnet-5-5\n\nCo-authored-by: A <a@x.test>\n"
         self.assertEqual(
             self.trailers({"stdout": json.dumps({"message": message})}),
@@ -353,7 +363,7 @@ class MergeMessage(MergeBase):
             call, ["api", f"repos/{{owner}}/{{repo}}/git/commits/{'m' * 40}"]
         )
 
-    def test_a_message_without_trailers_gives_an_empty_list(self):
+    def test_a_message_without_trailers_gives_an_empty_list(self) -> None:
         for message in (
             "feat: x\n\nplain body: with colon\n",
             "feat: x\n\nAssisted-by: a\n\ntext\n",
@@ -363,8 +373,8 @@ class MergeMessage(MergeBase):
                 self.trailers({"stdout": json.dumps({"message": message})}), [], message
             )
 
-    def test_unreadable_commit_message_gives_null(self):
-        replies = [
+    def test_unreadable_commit_message_gives_null(self) -> None:
+        replies: list[dict[str, Any]] = [
             {"rc": 1, "stderr": "HTTP 404"},
             {"stdout": "not json"},
             {"stdout": json.dumps(["x"])},
@@ -373,7 +383,7 @@ class MergeMessage(MergeBase):
         for api in replies:
             self.assertIsNone(self.trailers(api), api)
 
-    def test_no_merge_commit_oid_gives_null_without_an_api_call(self):
+    def test_no_merge_commit_oid_gives_null_without_an_api_call(self) -> None:
         out = self.trailers(
             {"stdout": "{}"}, views=[pr_json("MERGED", mergeCommit=None)]
         )
@@ -384,7 +394,7 @@ class MergeMessage(MergeBase):
 class MergeQueue(MergeBase):
     """gh 2.46 enqueues on a merge queue and still exits 0: the PR state decides."""
 
-    def test_rc0_then_merged_on_a_later_poll(self):
+    def test_rc0_then_merged_on_a_later_poll(self) -> None:
         self.proven()
         self.rules(views=[pr_json(), pr_json(), pr_json(), pr_json("MERGED")])
         with mock.patch.object(gd_merge, "POLL_SECS", 0):
@@ -394,7 +404,7 @@ class MergeQueue(MergeBase):
         self.assertNotIn("--auto", call)
         self.assertEqual(len(self.gh_calls_of("pr", "view")), 4)
 
-    def test_state_never_reaching_merged(self):
+    def test_state_never_reaching_merged(self) -> None:
         self.proven()
         self.rules(views=[pr_json()])
         out = self.fails(
@@ -412,7 +422,7 @@ class MergeQueue(MergeBase):
         (call,) = self.gh_calls_of("pr", "merge")
         self.assertNotIn("--auto", call)
 
-    def test_a_pr_closed_while_waiting_stops_at_once(self):
+    def test_a_pr_closed_while_waiting_stops_at_once(self) -> None:
         self.proven()
         self.rules(views=[pr_json(), pr_json("CLOSED")])
         with mock.patch.object(gd_merge, "POLL_SECS", 0):
@@ -422,7 +432,9 @@ class MergeQueue(MergeBase):
         )
         self.assertEqual(len(self.gh_calls_of("pr", "view")), 2)
 
-    def test_the_poll_budget_ends_in_pending_timeout_after_sleeping_between_polls(self):
+    def test_the_poll_budget_ends_in_pending_timeout_after_sleeping_between_polls(
+        self,
+    ) -> None:
         self.proven()
         self.rules(views=[pr_json()])
         clock = iter([0.0, 10.0, 70.0])  # deadline 60s: one sleep, then past it
@@ -439,7 +451,7 @@ class MergeQueue(MergeBase):
         self.assertEqual([c.args for c in sleep.call_args_list], [(7,)])
         self.assertEqual(len(self.gh_calls_of("pr", "view")), 3)
 
-    def test_pr_view_failure_blocks(self):
+    def test_pr_view_failure_blocks(self) -> None:
         self.gh_rules(
             {
                 "match": ["pr", "view"],

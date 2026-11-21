@@ -9,33 +9,48 @@ The store is append-only JSONL shared by Claude Code and nycode: $RESEARCH_CLAIM
 benchmarks) 14 days, docs 90, archival (papers, dated law) 365; a row's `ttl_days` overrides.
 ponytail: flat JSONL scanned per query; move to SQLite FTS or a graph store past ~10k rows.
 """
+
 import argparse
 import datetime as dt
 import hashlib
 import json
 import os
-from pathlib import Path
 import sys
+from pathlib import Path
+from typing import Any, TextIO
 
 TTL_DAYS = {"volatile": 14, "docs": 90, "archival": 365}
 KEPT = {"supported", "partial"}
 REQUIRED = ("claim", "url", "quote", "verdict", "origin_root")
-FIELDS = ("claim", "url", "quote", "verdict", "origin_root", "provider", "source_type", "published",
-          "fetched_at", "sha256", "caveat")
+FIELDS = (
+    "claim",
+    "url",
+    "quote",
+    "verdict",
+    "origin_root",
+    "provider",
+    "source_type",
+    "published",
+    "fetched_at",
+    "sha256",
+    "caveat",
+)
 
 
-def default_store():
+def default_store() -> Path:
     env = os.environ.get("RESEARCH_CLAIMS_FILE")
-    return Path(env) if env else Path.home() / ".local/share/research-claims/claims.jsonl"
+    return (
+        Path(env) if env else Path.home() / ".local/share/research-claims/claims.jsonl"
+    )
 
 
-def key(url, quote):
+def key(url: str, quote: str) -> str:
     return hashlib.sha256(f"{url}\n{quote}".encode()).hexdigest()[:16]
 
 
-def load(store):
+def load(store: Path) -> dict[str, dict[str, Any]]:
     """Newest row per key; later lines win, so a re-check refreshes as_of and verdict."""
-    rows = {}
+    rows: dict[str, dict[str, Any]] = {}
     if store.is_file():
         for line in store.read_text(encoding="utf-8").splitlines():
             try:
@@ -47,8 +62,10 @@ def load(store):
     return rows
 
 
-def skip_reason(item):
-    missing = [f for f in REQUIRED if not isinstance(item.get(f), str) or not item[f].strip()]
+def skip_reason(item: dict[str, Any]) -> str | None:
+    missing = [
+        f for f in REQUIRED if not isinstance(item.get(f), str) or not item[f].strip()
+    ]
     if missing:
         return "missing " + ", ".join(missing)
     if item["verdict"] not in KEPT:
@@ -58,21 +75,37 @@ def skip_reason(item):
     return None
 
 
-def add(items, store, as_of, topic):
-    known, added, skipped, lines = load(store), 0, [], []
+def add(items: list[Any], store: Path, as_of: str, topic: str) -> dict[str, Any]:
+    known, added = load(store), 0
+    skipped: list[dict[str, Any]] = []
+    lines: list[str] = []
     for item in items:
         reason = skip_reason(item) if isinstance(item, dict) else "not an object"
         if reason:
-            skipped.append({"id": item.get("id") if isinstance(item, dict) else None, "reason": reason})
+            skipped.append(
+                {
+                    "id": item.get("id") if isinstance(item, dict) else None,
+                    "reason": reason,
+                }
+            )
             continue
         k = key(item["url"], item["quote"])
         old = known.get(k)
         if old and old["as_of"] >= as_of and old["verdict"] == item["verdict"]:
             continue
         ttl = item.get("ttl_days")
-        ttl = ttl if isinstance(ttl, int) and ttl > 0 else TTL_DAYS.get(str(item.get("ttl_class")), TTL_DAYS["docs"])
-        record = {"key": k, **{f: item[f] for f in FIELDS if item.get(f) is not None},
-                  "topic": topic or item.get("topic") or "", "as_of": as_of, "ttl_days": ttl}
+        ttl = (
+            ttl
+            if isinstance(ttl, int) and ttl > 0
+            else TTL_DAYS.get(str(item.get("ttl_class")), TTL_DAYS["docs"])
+        )
+        record = {
+            "key": k,
+            **{f: item[f] for f in FIELDS if item.get(f) is not None},
+            "topic": topic or item.get("topic") or "",
+            "as_of": as_of,
+            "ttl_days": ttl,
+        }
         known[k] = record
         lines.append(json.dumps(record, ensure_ascii=False))
         added += 1
@@ -84,11 +117,16 @@ def add(items, store, as_of, topic):
     return {"added": added, "skipped": skipped, "store": str(store)}
 
 
-def find(terms, store, today, fresh, limit):
+def find(
+    terms: list[str], store: Path, today: dt.date, fresh: bool, limit: int
+) -> list[dict[str, Any]]:
     terms = [t.lower() for t in terms]
-    hits = []
+    hits: list[dict[str, Any]] = []
     for record in load(store).values():
-        text = " ".join(str(record.get(f, "")) for f in ("claim", "quote", "topic", "origin_root", "url")).lower()
+        text = " ".join(
+            str(record.get(f, ""))
+            for f in ("claim", "quote", "topic", "origin_root", "url")
+        ).lower()
         if not all(t in text for t in terms):
             continue
         age = (today - dt.date.fromisoformat(record["as_of"])).days
@@ -99,7 +137,12 @@ def find(terms, store, today, fresh, limit):
     return hits[:limit]
 
 
-def main(argv=None, stdin=None, stdout=None, today=None):
+def main(
+    argv: list[str] | None = None,
+    stdin: TextIO | None = None,
+    stdout: TextIO | None = None,
+    today: dt.date | None = None,
+) -> int:
     stdin, stdout = stdin or sys.stdin, stdout or sys.stdout
     today = today or dt.date.today()
     ap = argparse.ArgumentParser(prog="claim_store.py")
@@ -125,10 +168,14 @@ def main(argv=None, stdin=None, stdout=None, today=None):
                 stdout.write(json.dumps(hit, ensure_ascii=False) + "\n")
             return 0
         dt.date.fromisoformat(args.as_of)
-        raw = stdin.read() if args.ledger == "-" else Path(args.ledger).read_text(encoding="utf-8")
+        raw = (
+            stdin.read()
+            if args.ledger == "-"
+            else Path(args.ledger).read_text(encoding="utf-8")
+        )
         items = json.loads(raw)
         if not isinstance(items, list):
-            raise ValueError("ledger must be a JSON list of claim rows")
+            raise ValueError("ledger must be a JSON list of claim rows")  # noqa: TRY004 -- ValueError is the documented contract
     except (OSError, ValueError) as exc:
         json.dump({"error": str(exc)}, stdout)
         return 2

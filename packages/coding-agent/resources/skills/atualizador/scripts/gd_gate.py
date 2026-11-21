@@ -1,13 +1,15 @@
 """The local gate: run named checks, keep full logs on disk and write the proof that publish and merge read."""
 
+import argparse
 import datetime
 import json
 import os
 import re
 import time
 from pathlib import Path
+from typing import Any
 
-from gd_common import BLOCKED, GATE_RED, USAGE, Fail, ref
+from gd_common import BLOCKED, GATE_RED, USAGE, Ctx, Fail, ref
 from gd_git import default_branch, dirty_paths, git_dir, head, kept_local_paths
 
 NAME_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
@@ -15,8 +17,9 @@ TAIL_LINES = 40
 TAIL_BYTES = 65536
 
 
-def parse_checks(specs):
-    checks, seen = [], set()
+def parse_checks(specs: list[str] | None) -> list[tuple[str, str]]:
+    checks: list[tuple[str, str]] = []
+    seen: set[str] = set()
     for spec in specs or []:
         name, sep, cmd = spec.partition("=")
         if not sep or not NAME_RE.match(name) or not cmd.strip() or name in seen:
@@ -28,13 +31,13 @@ def parse_checks(specs):
     return checks
 
 
-def proof_path(ctx, sha, dirty=False):
+def proof_path(ctx: Ctx, sha: str, dirty: bool = False) -> Path:
     """A dirty-tree proof has its own file so it never replaces the clean proof of the same head."""
     suffix = "-dirty" if dirty else ""
     return Path(git_dir(ctx)) / "git-deliver" / f"proof-{sha}{suffix}.json"
 
 
-def load_proof(ctx, sha):
+def load_proof(ctx: Ctx, sha: str) -> dict[str, Any] | None:
     """The clean proof only: publish, merge and ship read nothing taken on a dirty tree."""
     try:
         data = json.loads(proof_path(ctx, sha).read_text(encoding="utf-8"))
@@ -43,12 +46,12 @@ def load_proof(ctx, sha):
     return data if isinstance(data, dict) and data.get("head") == sha else None
 
 
-def proof_green(proof):
+def proof_green(proof: dict[str, Any]) -> bool:
     checks = proof.get("checks") or []
     return bool(checks) and all(c.get("exit") == 0 for c in checks)
 
 
-def require_proof(ctx, sha):
+def require_proof(ctx: Ctx, sha: str) -> dict[str, Any]:
     """publish and merge accept only a green, clean proof for exactly this head."""
     proof = load_proof(ctx, sha)
     if proof is None:
@@ -60,7 +63,9 @@ def require_proof(ctx, sha):
     return proof
 
 
-def proof_matches(proof, checks, base_sha):
+def proof_matches(
+    proof: dict[str, Any] | None, checks: list[tuple[str, str]], base_sha: str | None
+) -> bool:
     """True when an existing proof already covers these checks on the current base (ship resume)."""
     if (
         proof is None
@@ -72,7 +77,7 @@ def proof_matches(proof, checks, base_sha):
     return [(c["name"], c["cmd"]) for c in proof["checks"]] == list(checks)
 
 
-def _tail(path):
+def _tail(path: Path) -> str:
     size = os.path.getsize(path)
     with open(path, "rb") as fh:
         fh.seek(max(0, size - TAIL_BYTES))
@@ -80,7 +85,7 @@ def _tail(path):
     return "\n".join(line[:300] for line in lines)[-6000:]
 
 
-def _base(ctx, base):
+def _base(ctx: Ctx, base: str | None) -> tuple[str | None, str | None]:
     name = ref(base, "base") if base else default_branch(ctx)
     if not name:
         return None, None
@@ -88,7 +93,7 @@ def _base(ctx, base):
     return name, (proc.out.strip() if proc.rc == 0 else None)
 
 
-def gate(ctx, args):
+def gate(ctx: Ctx, args: argparse.Namespace) -> dict[str, Any]:
     checks = parse_checks(args.check)
     timeout = max(1, int(args.timeout_min * 60))
     keep = args.keep_local or []
@@ -99,7 +104,8 @@ def gate(ctx, args):
     base_ref, base_sha = _base(ctx, args.base)
     logs = ctx.scratch(f"{ctx.stamp}-gate")
     logs.mkdir(parents=True, exist_ok=True)
-    rows, record = [], []
+    rows: list[dict[str, Any]] = []
+    record: list[dict[str, Any]] = []
     for name, cmd in checks:
         logfile = logs / f"{name}.log"
         started = time.monotonic()
@@ -118,9 +124,7 @@ def gate(ctx, args):
         "base_ref": base_ref,
         "base_sha": base_sha,
         "dirty": dirty,
-        "created": datetime.datetime.now(datetime.timezone.utc).isoformat(
-            timespec="seconds"
-        ),
+        "created": datetime.datetime.now(datetime.UTC).isoformat(timespec="seconds"),
         "checks": record,
     }
     target = proof_path(ctx, sha, dirty)

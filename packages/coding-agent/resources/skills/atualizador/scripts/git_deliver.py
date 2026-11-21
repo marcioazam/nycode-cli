@@ -11,17 +11,19 @@ import contextlib
 import os
 import re
 import sys
+from collections.abc import Callable, Sequence
+from typing import Any, NoReturn
 
 sys.path.insert(
     0, os.path.dirname(os.path.realpath(__file__))
 )  # -I drops the script dir from sys.path
 
-import gd_ci  # noqa: E402
-import gd_gate  # noqa: E402
-import gd_git  # noqa: E402
-import gd_merge  # noqa: E402
-import gd_pr  # noqa: E402
-from gd_common import (  # noqa: E402
+import gd_ci
+import gd_gate
+import gd_git
+import gd_merge
+import gd_pr
+from gd_common import (
     BLOCKED,
     NEEDS_LLM,
     USAGE,
@@ -37,27 +39,29 @@ TRAILER_RE = r"^[A-Za-z][A-Za-z0-9-]*\s*[:=]\s*\S"
 
 
 class Parser(argparse.ArgumentParser):
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         kwargs.setdefault(
             "allow_abbrev", False
         )  # --disc must never mean --discard-ignored
         super().__init__(**kwargs)
 
-    def error(self, message):
+    def error(self, message: str) -> NoReturn:
         raise Fail(USAGE, "usage", detail=message)
 
 
-def _trailer(value):
+def _trailer(value: str) -> str:
     if "\n" in value or not re.match(TRAILER_RE, value):
         raise argparse.ArgumentTypeError("trailer must look like 'Key: value'")
     return value
 
 
-def _abs(value):
+def _abs(value: str) -> str:
     return os.path.abspath(value)
 
 
-def _common(sub, name, help_text):
+def _common(
+    sub: "argparse._SubParsersAction[Parser]", name: str, help_text: str
+) -> Parser:
     p = sub.add_parser(name, help=help_text, add_help=False)
     p.add_argument(
         "--repo", default=argparse.SUPPRESS, help="repository path (default: cwd)"
@@ -65,7 +69,7 @@ def _common(sub, name, help_text):
     return p
 
 
-def _ci_opts(p):
+def _ci_opts(p: argparse.ArgumentParser) -> None:
     p.add_argument("--interval", type=int, default=30, help="seconds between polls")
     p.add_argument(
         "--checks-grace-min",
@@ -75,7 +79,7 @@ def _ci_opts(p):
     )
 
 
-def _branch_opts(p):
+def _branch_opts(p: argparse.ArgumentParser) -> None:
     p.add_argument("--keep-branch", action="store_true")
     p.add_argument(
         "--discard-ignored",
@@ -84,7 +88,7 @@ def _branch_opts(p):
     )
 
 
-def _new_branch_opt(p):
+def _new_branch_opt(p: argparse.ArgumentParser) -> None:
     p.add_argument(
         "--branch",
         metavar="NAME",
@@ -92,7 +96,7 @@ def _new_branch_opt(p):
     )
 
 
-def _keep_local_opt(p):
+def _keep_local_opt(p: argparse.ArgumentParser) -> None:
     p.add_argument(
         "--keep-local",
         action="append",
@@ -102,13 +106,13 @@ def _keep_local_opt(p):
     )
 
 
-def _message_opts(p):
+def _message_opts(p: argparse.ArgumentParser) -> None:
     p.add_argument("-m", "--message")
     p.add_argument("--message-file", type=_abs)
     p.add_argument("--trailer", action="append", type=_trailer, default=[])
 
 
-def _publish_opts(p):
+def _publish_opts(p: argparse.ArgumentParser) -> None:
     p.add_argument("--title")
     p.add_argument("--body-file", type=_abs)
     p.add_argument(
@@ -119,7 +123,7 @@ def _publish_opts(p):
     )
 
 
-def build_parser():
+def build_parser() -> Parser:
     parser = Parser(
         prog="git-deliver", description=__doc__.splitlines()[0], add_help=False
     )
@@ -198,28 +202,31 @@ def build_parser():
     return parser
 
 
-def _ns(**kw):
+def _ns(**kw: Any) -> argparse.Namespace:
     return argparse.Namespace(**kw)
 
 
-def _is_linked_worktree(ctx):
+def _is_linked_worktree(ctx: Ctx) -> bool:
     common = os.path.realpath(
         os.path.join(ctx.repo, ctx.must("rev-parse", "--git-common-dir"))
     )
     return gd_git.git_dir(ctx) != common
 
 
-def _main_worktree(ctx):
+def _main_worktree(ctx: Ctx) -> str | None:
     """The first `git worktree list` entry is the main worktree; None when the common dir is bare."""
     first = ctx.must("worktree", "list", "--porcelain").split("\n\n", 1)[0].splitlines()
     return None if "bare" in first else os.path.realpath(first[0][len("worktree ") :])
 
 
-def ship(ctx, args):
+def ship(ctx: Ctx, args: argparse.Namespace) -> dict[str, Any]:
     """Chain the steps; each one checks state first, so a rerun resumes at the step that stopped."""
-    base, steps, held, extra = ref(args.base, "base"), {}, {}, {}
+    steps: dict[str, Any] = {}
+    extra: dict[str, Any] = {}
+    base = ref(args.base, "base")
+    held: dict[str, dict[str, Any]] = {}
 
-    def step(name, fn, *a, **kw):
+    def step(name: str, fn: Callable[..., Any], *a: Any, **kw: Any) -> Any:
         try:
             result = fn(*a, **kw)
         except Fail as exc:
@@ -318,7 +325,7 @@ def ship(ctx, args):
                 **extra,
             }
 
-        def ci_step():
+        def ci_step() -> dict[str, Any]:
             held["ci"] = gd_ci.ci_status(
                 ctx,
                 number,
@@ -388,7 +395,7 @@ COMMANDS = {
 }
 
 
-def main(argv=None):
+def main(argv: Sequence[str] | None = None) -> int:
     cmd, ctx = "usage", None
     try:
         args = build_parser().parse_args(argv)

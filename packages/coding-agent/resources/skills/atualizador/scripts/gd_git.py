@@ -1,9 +1,12 @@
 """Local git operations: status, commit (secret-scanned), integrate and sync, plus shared helpers."""
 
+import argparse
 import fnmatch
 import os
+from collections.abc import Iterable, Sequence
+from typing import Any
 
-from gd_common import BLOCKED, NEEDS_LLM, USAGE, Fail, ref, tail
+from gd_common import BLOCKED, NEEDS_LLM, USAGE, Ctx, Fail, ref, tail
 
 LIST_CAP = 200
 LEAK_EXIT = 77  # gitleaks --exit-code: distinguishes a finding from a scanner failure
@@ -33,25 +36,25 @@ OPERATIONS = {
 }  # fmt: skip
 
 
-def head(ctx):
+def head(ctx: Ctx) -> str:
     return ctx.must("rev-parse", "HEAD", cwd=ctx.repo)
 
 
-def head_or_none(ctx):
+def head_or_none(ctx: Ctx) -> str | None:
     proc = ctx.git("rev-parse", "--verify", "-q", "HEAD")
     return proc.out.strip() if proc.rc == 0 else None
 
 
-def current_branch(ctx):
+def current_branch(ctx: Ctx) -> str | None:
     proc = ctx.git("symbolic-ref", "--short", "-q", "HEAD")
     return proc.out.strip() if proc.rc == 0 else None
 
 
-def git_dir(ctx):
+def git_dir(ctx: Ctx) -> str:
     return os.path.realpath(ctx.must("rev-parse", "--absolute-git-dir"))
 
 
-def default_branch(ctx):
+def default_branch(ctx: Ctx) -> str | None:
     proc = ctx.git("symbolic-ref", "--short", "refs/remotes/origin/HEAD")
     if proc.rc == 0 and proc.out.strip().startswith("origin/"):
         return proc.out.strip()[len("origin/") :]
@@ -64,15 +67,15 @@ def default_branch(ctx):
     return None
 
 
-def tracked_changes(ctx):
+def tracked_changes(ctx: Ctx) -> list[str]:
     return ctx.must("status", "--porcelain", "--untracked-files=no").splitlines()
 
 
-def unmerged(ctx):
+def unmerged(ctx: Ctx) -> list[str]:
     return ctx.must("diff", "--name-only", "--diff-filter=U").splitlines()
 
 
-def operation(ctx):
+def operation(ctx: Ctx) -> str | None:
     gdir = git_dir(ctx)
     for marker, name in OPERATIONS.items():
         if os.path.exists(os.path.join(gdir, marker)):
@@ -80,11 +83,11 @@ def operation(ctx):
     return None
 
 
-def is_ancestor(ctx, ancestor, descendant):
+def is_ancestor(ctx: Ctx, ancestor: str, descendant: str) -> bool:
     return ctx.git("merge-base", "--is-ancestor", ancestor, descendant).rc == 0
 
 
-def keep_local(path):
+def keep_local(path: str) -> bool:
     parts = path.split("/")
     name = parts[-1].lower()
     if any(part in KEEP_DIRS for part in parts[:-1]):
@@ -94,7 +97,7 @@ def keep_local(path):
     return any(fnmatch.fnmatch(name, pattern) for pattern in KEEP_NAMES)
 
 
-def secret_named(path):
+def secret_named(path: str) -> bool:
     """A credential-looking file name outside cache and dependency trees (vendored keys are not secrets)."""
     parts = path.rstrip("/").split("/")
     name = parts[-1].lower()
@@ -103,19 +106,22 @@ def secret_named(path):
     return any(fnmatch.fnmatch(name, pattern) for pattern in SECRET_NAMES)
 
 
-def classify(xy, path):
+def classify(xy: str, path: str) -> str:
     """Secret-named paths stay local, tracked or not; every other untracked path is unknown."""
     if secret_named(path):
         return "keep_local"
     return "unknown" if xy == "??" else "publish"
 
 
-def porcelain(ctx, cwd=None, ignored=False):
+def porcelain(
+    ctx: Ctx, cwd: str | None = None, ignored: bool = False
+) -> list[tuple[str, str]]:
     flags = ["--ignored"] if ignored else []
     raw = ctx.must(
         "status", "--porcelain=v1", "-z", "--untracked-files=all", *flags, cwd=cwd
     )
-    parts, i, rows = raw.split("\0"), 0, []
+    parts, i = raw.split("\0"), 0
+    rows: list[tuple[str, str]] = []
     while i < len(parts):
         entry = parts[i]
         i += 1
@@ -128,9 +134,9 @@ def porcelain(ctx, cwd=None, ignored=False):
     return rows
 
 
-def dirty_paths(ctx, keep=()):
+def dirty_paths(ctx: Ctx, keep: Sequence[str] = ()) -> list[str]:
     """Tracked changes plus untracked, non-ignored paths that are neither secret-named nor in `keep`."""
-    rows = []
+    rows: list[str] = []
     for xy, path in porcelain(ctx):
         if xy == "??" and (secret_named(path) or _covered(path, keep, ctx.repo)):
             continue
@@ -138,13 +144,13 @@ def dirty_paths(ctx, keep=()):
     return rows
 
 
-def kept_local_paths(ctx):
+def kept_local_paths(ctx: Ctx) -> list[str]:
     """Untracked secret-named paths the dirty check skips; results list them, never silently."""
     rows = [p for xy, p in porcelain(ctx) if xy == "??" and secret_named(p)]
     return rows[:LIST_CAP]
 
 
-def scan_secrets(ctx, *args):
+def scan_secrets(ctx: Ctx, *args: str) -> None:
     """gitleaks exits 1 on a leak and on an error alike, so a leak gets its own exit code (77)."""
     argv = [
         "gitleaks",
@@ -171,7 +177,7 @@ def scan_secrets(ctx, *args):
         )
 
 
-def _counts(ctx, other):
+def _counts(ctx: Ctx, other: str) -> tuple[int | None, int | None]:
     proc = ctx.git("rev-list", "--left-right", "--count", f"{other}...HEAD")
     if proc.rc != 0 or len(proc.out.split()) != 2:
         return None, None
@@ -179,8 +185,9 @@ def _counts(ctx, other):
     return int(behind), int(ahead)
 
 
-def _worktrees(ctx):
-    rows, cur = [], {}
+def _worktrees(ctx: Ctx) -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+    cur: dict[str, str] = {}
     for line in ctx.must("worktree", "list", "--porcelain").splitlines() + [""]:
         if not line:
             if cur:
@@ -197,7 +204,7 @@ def _worktrees(ctx):
     return rows
 
 
-def status(ctx, args):
+def status(ctx: Ctx, args: argparse.Namespace) -> dict[str, Any]:
     up = ctx.git("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}")
     upstream = up.out.strip() if up.rc == 0 else None
     default = default_branch(ctx)
@@ -207,7 +214,7 @@ def status(ctx, args):
     )
     stash = ctx.git("reflog", "show", "--format=%gs", "refs/stash")
     names = stash.out.splitlines() if stash.rc == 0 else []
-    files = {"publish": [], "unknown": [], "keep_local": []}
+    files: dict[str, list[str]] = {"publish": [], "unknown": [], "keep_local": []}
     for xy, path in porcelain(ctx):
         files[classify(xy, path)].append(path)
     truncated = any(len(v) > LIST_CAP for v in files.values())
@@ -229,13 +236,13 @@ def status(ctx, args):
     }
 
 
-def _norm(path, repo):
+def _norm(path: str, repo: str) -> str:
     return (
         os.path.relpath(path, repo) if os.path.isabs(path) else os.path.normpath(path)
     )
 
 
-def _covered(staged, paths, repo):
+def _covered(staged: str, paths: Iterable[str], repo: str) -> bool:
     for path in paths:
         norm = _norm(path, repo)
         if staged == norm or staged.startswith(norm.rstrip("/") + "/"):
@@ -243,7 +250,7 @@ def _covered(staged, paths, repo):
     return False
 
 
-def _message_args(args):
+def _message_args(args: argparse.Namespace) -> list[str]:
     if args.message and args.message_file:
         raise Fail(USAGE, "usage", detail="message_and_file")
     if args.message_file:
@@ -255,7 +262,7 @@ def _message_args(args):
     return ["-m", args.message]
 
 
-def explicit_paths(ctx, paths):
+def explicit_paths(ctx: Ctx, paths: Sequence[str] | None) -> None:
     """Every path must name something below the repository root: never the root, a parent or nothing."""
     bad = [
         p
@@ -266,7 +273,7 @@ def explicit_paths(ctx, paths):
         raise Fail(USAGE, "usage", detail="explicit_paths_required")
 
 
-def ensure_branch(ctx, name, protected):
+def ensure_branch(ctx: Ctx, name: str | None, protected: set[str | None]) -> str | None:
     """Return the branch this call created, or None; refuse to stay on a protected branch or a detached HEAD.
 
     Work from a protected branch moves to NAME with `switch -c`, which carries the index and worktree as is
@@ -290,7 +297,7 @@ def ensure_branch(ctx, name, protected):
     return name
 
 
-def commit(ctx, args):
+def commit(ctx: Ctx, args: argparse.Namespace) -> dict[str, Any]:
     paths = args.path or []
     explicit_paths(ctx, paths)
     message = _message_args(args)
@@ -307,7 +314,9 @@ def commit(ctx, args):
     return result
 
 
-def _stage_and_commit(ctx, args, paths, message):
+def _stage_and_commit(
+    ctx: Ctx, args: argparse.Namespace, paths: list[str], message: list[str]
+) -> dict[str, Any]:
     merging = operation(ctx) == "merge"
     if not merging:
         staged = ctx.must("diff", "--cached", "--name-only", "-z").split("\0")
@@ -347,7 +356,7 @@ def _stage_and_commit(ctx, args, paths, message):
     return {"committed": True, "sha": head(ctx), "paths": paths}
 
 
-def integrate(ctx, args):
+def integrate(ctx: Ctx, args: argparse.Namespace) -> dict[str, Any]:
     base = ref(args.base, "base")
     conflicts = unmerged(ctx)
     if conflicts:
@@ -375,7 +384,7 @@ def integrate(ctx, args):
     raise Fail(BLOCKED, "merge_failed", detail=tail(proc.err or proc.out))
 
 
-def sync(ctx, args):
+def sync(ctx: Ctx, args: argparse.Namespace) -> dict[str, Any]:
     main = ctx.at(args.main_checkout)
     dirty = tracked_changes(main)
     if dirty:

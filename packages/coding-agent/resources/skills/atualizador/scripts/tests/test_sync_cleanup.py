@@ -1,16 +1,18 @@
 """sync and cleanup."""
 
-import subprocess
+import subprocess  # noqa: I001 -- support must import before gd_* (it extends sys.path)
 import unittest
+from pathlib import Path
+from typing import Any
 from unittest import mock
 
 from support import Base, git, pr_json
 
-from gd_common import Ctx
+from gd_common import Ctx, Proc  # type: ignore[import-not-found]  # sibling module, scripts dir is off MYPYPATH
 
 
 class Sync(Base):
-    def test_fast_forwards_main_to_origin(self):
+    def test_fast_forwards_main_to_origin(self) -> None:
         moved = self.move_base()
         out = self.ok("sync", "--repo", self.work, "--main-checkout", self.work)
         self.assertEqual(
@@ -19,20 +21,20 @@ class Sync(Base):
         )
         self.assertTrue(out["equal"])
 
-    def test_switches_from_a_feature_branch(self):
+    def test_switches_from_a_feature_branch(self) -> None:
         self.feature()
         out = self.ok("sync", "--repo", self.work, "--main-checkout", self.work)
         self.assertEqual(git(self.work, "branch", "--show-current"), "main")
         self.assertTrue(out["equal"])
 
-    def test_dirty_checkout_blocks(self):
+    def test_dirty_checkout_blocks(self) -> None:
         (self.work / "README.md").write_text("dirty\n")
         out = self.fails(
             6, "dirty", "sync", "--repo", self.work, "--main-checkout", self.work
         )
         self.assertEqual(len(out["files"]), 1)
 
-    def test_diverged_main_is_not_fast_forward(self):
+    def test_diverged_main_is_not_fast_forward(self) -> None:
         self.commit(self.work, "local.txt", "l\n", "local only")
         self.move_base()
         self.fails(
@@ -45,7 +47,7 @@ class Sync(Base):
             self.work,
         )
 
-    def test_unknown_default_branch(self):
+    def test_unknown_default_branch(self) -> None:
         git(self.work, "symbolic-ref", "--delete", "refs/remotes/origin/HEAD")
         git(self.work, "update-ref", "-d", "refs/remotes/origin/main")
         self.fails(
@@ -54,7 +56,7 @@ class Sync(Base):
 
 
 class Cleanup(Base):
-    def merged(self, sha, branch="feat", **over):
+    def merged(self, sha: str, branch: str = "feat", **over: object) -> None:
         self.gh_rules(
             {
                 "match": ["pr", "view"],
@@ -62,13 +64,13 @@ class Cleanup(Base):
             }
         )
 
-    def cleanup(self, *extra):
+    def cleanup(self, *extra: object) -> tuple[int, dict[str, Any]]:
         return self.call("cleanup", "--repo", self.work, "--pr", "7", *extra)
 
-    def branches(self, repo):
+    def branches(self, repo: Path) -> str:
         return git(repo, "branch", "--list", "feat")
 
-    def test_only_a_merged_pr_is_cleaned(self):
+    def test_only_a_merged_pr_is_cleaned(self) -> None:
         wt = self.worktree()
         self.gh_rules({"match": ["pr", "view"], "stdout": pr_json("OPEN")})
         out = self.fails(
@@ -85,7 +87,7 @@ class Cleanup(Base):
         self.assertEqual(out["state"], "OPEN")
         self.assertTrue(wt.exists())
 
-    def test_removes_worktree_branch_and_remote_branch(self):
+    def test_removes_worktree_branch_and_remote_branch(self) -> None:
         wt = self.worktree()
         git(wt, "push", "-q", "origin", "feat")
         self.merged(git(wt, "rev-parse", "HEAD"))
@@ -99,13 +101,13 @@ class Cleanup(Base):
             (self.branches(self.work), self.branches(self.origin)), ("", "")
         )
 
-    def test_remote_branch_is_deleted_by_exact_ref_and_never_forced(self):
+    def test_remote_branch_is_deleted_by_exact_ref_and_never_forced(self) -> None:
         wt = self.worktree()
         git(wt, "push", "-q", "origin", "feat")
         self.merged(git(wt, "rev-parse", "HEAD"))
         real, seen = Ctx.git, []
 
-        def spy(ctx, *args, **kw):
+        def spy(ctx: Ctx, *args: str, **kw: Any) -> Proc:
             seen.append(args)
             return real(ctx, *args, **kw)
 
@@ -116,7 +118,7 @@ class Cleanup(Base):
         flags = [a for args in seen for a in args if a.startswith(("--force", "-f"))]
         self.assertEqual(flags, [])
 
-    def test_a_remote_branch_that_moved_is_kept(self):
+    def test_a_remote_branch_that_moved_is_kept(self) -> None:
         wt = self.worktree()
         git(wt, "push", "-q", "origin", "feat")
         merged_head = git(wt, "rev-parse", "HEAD")
@@ -133,18 +135,19 @@ class Cleanup(Base):
         self.assertEqual(out["kept"], [{"remote_branch": "feat", "why": "moved"}])
         self.assertNotEqual(self.branches(self.origin), "")
 
-    def tracking(self, name):
+    def tracking(self, name: str) -> str | None:
         proc = subprocess.run(
             ["git", "rev-parse", "--verify", "-q", f"refs/remotes/origin/{name}"],
             cwd=self.work,
             capture_output=True,
             text=True,
+            check=False,
         )
         return proc.stdout.strip() if proc.returncode == 0 else None
 
     def test_a_remote_branch_auto_deleted_by_the_host_drops_only_its_stale_tracking_ref(
         self,
-    ):
+    ) -> None:
         wt = self.worktree()
         sha = git(wt, "rev-parse", "HEAD")
         git(wt, "push", "-q", "origin", "feat", "HEAD:refs/heads/sibling")
@@ -156,7 +159,7 @@ class Cleanup(Base):
         self.assertIsNone(self.tracking("feat"))
         self.assertEqual(self.tracking("sibling"), sha)  # other refs are never touched
 
-    def test_a_moved_remote_branch_keeps_its_tracking_ref(self):
+    def test_a_moved_remote_branch_keeps_its_tracking_ref(self) -> None:
         wt = self.worktree()
         git(wt, "push", "-q", "origin", "feat")
         merged_head = git(wt, "rev-parse", "HEAD")
@@ -169,7 +172,9 @@ class Cleanup(Base):
         self.ok("cleanup", "--repo", self.work, "--pr", "7", "--worktree", wt)
         self.assertEqual(self.tracking("feat"), merged_head)
 
-    def test_a_deeper_remote_ref_matching_the_ls_remote_pattern_is_not_the_branch(self):
+    def test_a_deeper_remote_ref_matching_the_ls_remote_pattern_is_not_the_branch(
+        self,
+    ) -> None:
         wt = self.worktree()
         sha = git(wt, "rev-parse", "HEAD")
         deeper = (
@@ -181,7 +186,7 @@ class Cleanup(Base):
         self.assertEqual((out["removed"]["remote_branch"], out["kept"]), (False, []))
         self.assertEqual(git(self.origin, "rev-parse", "--verify", deeper), sha)
 
-    def test_only_the_exact_remote_ref_is_deleted_beside_a_deeper_one(self):
+    def test_only_the_exact_remote_ref_is_deleted_beside_a_deeper_one(self) -> None:
         wt = self.worktree()
         sha = git(wt, "rev-parse", "HEAD")
         deeper = "refs/heads/x/refs/heads/feat"
@@ -192,7 +197,7 @@ class Cleanup(Base):
         self.assertEqual(self.branches(self.origin), "")
         self.assertEqual(git(self.origin, "rev-parse", "--verify", deeper), sha)
 
-    def test_a_fork_pr_never_touches_the_remote(self):
+    def test_a_fork_pr_never_touches_the_remote(self) -> None:
         wt = self.worktree()
         git(wt, "push", "-q", "origin", "feat")
         self.merged(git(wt, "rev-parse", "HEAD"), isCrossRepository=True)
@@ -202,7 +207,7 @@ class Cleanup(Base):
         )
         self.assertNotEqual(self.branches(self.origin), "")
 
-    def test_default_and_base_branches_are_protected(self):
+    def test_default_and_base_branches_are_protected(self) -> None:
         git(self.work, "branch", "release")
         sha = git(self.work, "rev-parse", "HEAD")
         for head, base in (("main", "develop"), ("release", "release")):
@@ -213,7 +218,7 @@ class Cleanup(Base):
             )
             self.assertNotEqual(git(self.work, "branch", "--list", head), "")
 
-    def test_keep_branch_removes_the_worktree_only(self):
+    def test_keep_branch_removes_the_worktree_only(self) -> None:
         wt = self.worktree()
         git(wt, "push", "-q", "origin", "feat")
         self.merged(git(wt, "rev-parse", "HEAD"))
@@ -225,7 +230,7 @@ class Cleanup(Base):
         self.assertNotEqual(self.branches(self.work), "")
         self.assertNotEqual(self.branches(self.origin), "")
 
-    def ignored_env(self):
+    def ignored_env(self) -> Path:
         wt = self.worktree()
         self.commit(wt, ".gitignore", ".env\nout.bin\n", "ignore local files")
         (wt / ".env").write_text("K=v\n")
@@ -233,7 +238,7 @@ class Cleanup(Base):
         self.merged(git(wt, "rev-parse", "HEAD"))
         return wt
 
-    def test_ignored_secret_file_in_the_worktree_blocks_unless_discarded(self):
+    def test_ignored_secret_file_in_the_worktree_blocks_unless_discarded(self) -> None:
         wt = self.ignored_env()
         out = self.fails(
             6, "dirty", "cleanup", "--repo", self.work, "--pr", "7", "--worktree", wt
@@ -248,13 +253,13 @@ class Cleanup(Base):
         )  # fmt: skip
         self.assertFalse(wt.exists())
 
-    def test_ignored_files_that_are_not_secrets_do_not_block(self):
+    def test_ignored_files_that_are_not_secrets_do_not_block(self) -> None:
         wt = self.ignored_env()
         (wt / ".env").unlink()
         self.ok("cleanup", "--repo", self.work, "--pr", "7", "--worktree", wt)
         self.assertFalse(wt.exists())
 
-    def test_ignored_caches_and_build_output_do_not_block(self):
+    def test_ignored_caches_and_build_output_do_not_block(self) -> None:
         wt = self.worktree()
         self.commit(
             wt, ".gitignore", "__pycache__/\nnode_modules/\n*.log\n", "ignore caches"
@@ -268,7 +273,7 @@ class Cleanup(Base):
         self.ok("cleanup", "--repo", self.work, "--pr", "7", "--worktree", wt)
         self.assertFalse(wt.exists())
 
-    def dependency_trees(self, wt, ignore):
+    def dependency_trees(self, wt: Path, ignore: str) -> None:
         """Ignored vendor trees that hold key-looking files no human wrote."""
         self.commit(wt, ".gitignore", ignore, "ignore dependency trees")
         certs = wt / ".venv/lib/python3.12/site-packages/pip/_vendor/certifi"
@@ -277,14 +282,14 @@ class Cleanup(Base):
             folder.mkdir(parents=True)
             (folder / name).write_text("x\n")
 
-    def test_key_named_files_inside_ignored_dependency_trees_do_not_block(self):
+    def test_key_named_files_inside_ignored_dependency_trees_do_not_block(self) -> None:
         wt = self.worktree()
         self.dependency_trees(wt, ".venv/\nnode_modules/\n")
         self.merged(git(wt, "rev-parse", "HEAD"))
         self.ok("cleanup", "--repo", self.work, "--pr", "7", "--worktree", wt)
         self.assertFalse(wt.exists())
 
-    def test_a_root_env_still_blocks_beside_ignored_dependency_trees(self):
+    def test_a_root_env_still_blocks_beside_ignored_dependency_trees(self) -> None:
         wt = self.worktree()
         self.dependency_trees(wt, ".venv/\nnode_modules/\n.env\n")
         (wt / ".env").write_text("K=v\n")
@@ -297,7 +302,7 @@ class Cleanup(Base):
         )
         self.assertTrue((wt / ".env").exists())
 
-    def test_untracked_files_in_the_worktree_block_everything(self):
+    def test_untracked_files_in_the_worktree_block_everything(self) -> None:
         wt = self.worktree()
         (wt / "scratch.txt").write_text("keep me\n")
         self.merged(git(wt, "rev-parse", "HEAD"))
@@ -308,7 +313,9 @@ class Cleanup(Base):
         self.assertTrue((wt / "scratch.txt").exists())
         self.assertNotEqual(self.branches(self.work), "")
 
-    def test_branch_is_deleted_only_when_it_still_points_at_the_merged_head(self):
+    def test_branch_is_deleted_only_when_it_still_points_at_the_merged_head(
+        self,
+    ) -> None:
         wt = self.worktree()
         self.merged("a" * 40)
         out = self.ok("cleanup", "--repo", self.work, "--pr", "7", "--worktree", wt)
@@ -318,7 +325,7 @@ class Cleanup(Base):
         self.assertEqual((out["branch_kept"], out["kept"]), ("moved", []))
         self.assertNotEqual(self.branches(self.work), "")
 
-    def test_branch_without_a_worktree_and_missing_branch(self):
+    def test_branch_without_a_worktree_and_missing_branch(self) -> None:
         sha = self.feature()
         git(self.work, "switch", "-q", "main")
         self.merged(sha)
@@ -330,7 +337,7 @@ class Cleanup(Base):
         out = self.ok("cleanup", "--repo", self.work, "--pr", "7")
         self.assertEqual((out["removed"]["branch"], out["kept"]), (False, []))
 
-    def test_worktree_argument_is_validated(self):
+    def test_worktree_argument_is_validated(self) -> None:
         self.merged("a" * 40)
         self.fails(
             2,
@@ -357,7 +364,7 @@ class Cleanup(Base):
             plain,
         )
 
-    def test_gh_failure_is_blocked(self):
+    def test_gh_failure_is_blocked(self) -> None:
         self.gh_rules({"match": ["pr", "view"], "rc": 1, "stderr": "boom"})
         self.fails(6, "gh_failed", "cleanup", "--repo", self.work, "--pr", "7")
 

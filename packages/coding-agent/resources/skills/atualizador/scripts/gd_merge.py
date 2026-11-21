@@ -1,12 +1,14 @@
 """Merge a PR only against its local-gate proof, then verify it reached MERGED."""
 
+import argparse
 import json
 import os
 import re
 from time import monotonic, sleep
+from typing import Any
 
 from gd_ci import ci_outcome, ci_status
-from gd_common import BLOCKED, CI_RED, USAGE, Fail
+from gd_common import BLOCKED, CI_RED, USAGE, Ctx, Fail
 from gd_gate import require_proof
 from gd_git import head, is_ancestor
 from gd_pr import gh_fail, pr_view
@@ -17,7 +19,7 @@ TRAILER_LINE = re.compile(r"^[A-Za-z][A-Za-z0-9-]*\s*:\s*\S")
 FIELDS = "number,url,state,headRefOid,headRefName,baseRefName,mergeable,mergeStateStatus,mergeCommit"
 
 
-def _trailers(ctx, sha):
+def _trailers(ctx: Ctx, sha: str | None) -> list[str] | None:
     """Trailer lines of the merge commit's message (GitHub may append Co-authored-by); None when unreadable."""
     if not sha:
         return None
@@ -31,7 +33,7 @@ def _trailers(ctx, sha):
     message = data.get("message") if isinstance(data, dict) else None
     if not isinstance(message, str):
         return None
-    found = []
+    found: list[str] = []
     for para in reversed(message.strip().split("\n\n")[1:]):  # [0] is the subject
         lines = para.splitlines()
         if not all(TRAILER_LINE.match(line) for line in lines):
@@ -40,7 +42,7 @@ def _trailers(ctx, sha):
     return found
 
 
-def _merged(ctx, view):
+def _merged(ctx: Ctx, view: dict[str, Any]) -> dict[str, Any]:
     commit = (view.get("mergeCommit") or {}).get("oid")
     return {
         "merged": True,
@@ -51,7 +53,7 @@ def _merged(ctx, view):
     }
 
 
-def _message_argv(args):
+def _message_argv(args: argparse.Namespace) -> list[str]:
     """--subject/--body-file for gh, validated before any remote call; [] when neither is given."""
     subject, body = args.subject, args.body_file
     if subject is not None and (
@@ -76,7 +78,7 @@ def _message_argv(args):
     ]
 
 
-def _wait_merged(ctx, pr, seconds):
+def _wait_merged(ctx: Ctx, pr: int, seconds: float) -> dict[str, Any] | None:
     deadline = monotonic() + seconds
     while True:
         view = pr_view(ctx, pr, FIELDS)
@@ -91,7 +93,9 @@ def _wait_merged(ctx, pr, seconds):
         sleep(POLL_SECS)
 
 
-def merge(ctx, args, ci=None):
+def merge(
+    ctx: Ctx, args: argparse.Namespace, ci: dict[str, Any] | None = None
+) -> dict[str, Any]:
     message = _message_argv(args)
     view = pr_view(ctx, args.pr, FIELDS)
     if view["state"] == "MERGED":

@@ -16,8 +16,9 @@ import subprocess
 import sys
 import tempfile
 import traceback
+from collections.abc import Iterator
 from pathlib import Path
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 USAGE, NEEDS_LLM, GATE_RED, CI_RED, BLOCKED = 2, 3, 4, 5, 6
 REF_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]*$")
@@ -35,7 +36,7 @@ ENV_OVERRIDES = {
 class Fail(Exception):
     """A mapped failure: `code` is the process exit status, `extra` joins the JSON line."""
 
-    def __init__(self, code, reason, **extra):
+    def __init__(self, code: int, reason: str, **extra: Any) -> None:
         super().__init__(reason)
         self.code, self.reason, self.extra = code, reason, extra
 
@@ -46,32 +47,32 @@ class Proc(NamedTuple):
     err: str
 
 
-def tail(text, n=400):
+def tail(text: str | None, n: int = 400) -> str:
     return (text or "").strip()[-n:]
 
 
-def ref(value, what="ref"):
+def ref(value: str, what: str = "ref") -> str:
     """Reject anything that could be read as an option or escape a ref namespace."""
     if not REF_RE.match(value or "") or ".." in value or value.endswith((".lock", "/")):
         raise Fail(USAGE, "usage", detail=f"bad_{what}")
     return value
 
 
-def loads(text):
+def loads(text: Any) -> Any:
     try:
         return json.loads(text)
     except ValueError as exc:
         raise Fail(BLOCKED, "gh_failed", detail="bad_json") from exc
 
 
-def cache_root():
+def cache_root() -> Path:
     base = os.environ.get("XDG_CACHE_HOME") or os.path.join(
         os.path.expanduser("~"), ".cache"
     )
     return Path(base) / "git-deliver"
 
 
-def _log_dir(name):
+def _log_dir(name: str) -> Path | None:
     """The cache dir, else the temp dir; None when neither is writable (the run goes unlogged)."""
     for base in (cache_root(), Path(tempfile.gettempdir()) / "git-deliver"):
         path = base / name
@@ -84,39 +85,37 @@ def _log_dir(name):
     return None
 
 
-def emit(obj):
+def emit(obj: dict[str, Any]) -> None:
     sys.stdout.write(json.dumps(obj, separators=(",", ":")) + "\n")
     sys.stdout.flush()
 
 
-def _text(value):
+def _text(value: str | bytes | None) -> str:
     if isinstance(value, bytes):
         return value.decode("utf-8", "replace")
     return value or ""
 
 
 class Ctx:
-    def __init__(self, repo, cmd):
+    def __init__(self, repo: str, cmd: str) -> None:
         path = os.path.realpath(repo)
         if not os.path.isdir(path):
             raise Fail(USAGE, "usage", detail="repo_not_found")
         self.repo, self.cmd = path, cmd
-        self.stamp = datetime.datetime.now(datetime.timezone.utc).strftime(
-            "%Y%m%dT%H%M%SZ"
-        )
+        self.stamp = datetime.datetime.now(datetime.UTC).strftime("%Y%m%dT%H%M%SZ")
         name = re.sub(r"[^A-Za-z0-9._-]", "_", os.path.basename(path)) or "repo"
         self.log_dir = _log_dir(name)
         self.log_path = (
             self.log_dir / f"{self.stamp}-{cmd}.log" if self.log_dir else None
         )
 
-    def at(self, path):
+    def at(self, path: str) -> "Ctx":
         """Same run and log, another repository path (the main checkout)."""
         other = copy.copy(self)
         other.repo = os.path.realpath(path)
         return other
 
-    def log(self, text):
+    def log(self, text: str) -> None:
         if self.log_path is None:
             return
         try:
@@ -125,14 +124,14 @@ class Ctx:
         except OSError:
             self.log_path = None  # best effort: the JSON result must still reach stdout
 
-    def log_error(self):
+    def log_error(self) -> None:
         self.log(traceback.format_exc())
 
-    def scratch(self, name):
+    def scratch(self, name: str) -> Path:
         """A per-run path beside the log; a fresh temp dir when no log dir is writable."""
         return (self.log_dir or Path(tempfile.mkdtemp(prefix="git-deliver-"))) / name
 
-    def run(self, argv, cwd=None, timeout=120):
+    def run(self, argv: list[str], cwd: str | None = None, timeout: int = 120) -> Proc:
         cwd = cwd or self.repo
         env = {**os.environ, **ENV_OVERRIDES}
         try:
@@ -158,13 +157,13 @@ class Ctx:
         )
         return proc
 
-    def git(self, *args, cwd=None, timeout=120):
+    def git(self, *args: str, cwd: str | None = None, timeout: int = 120) -> Proc:
         return self.run(["git", *args], cwd=cwd, timeout=timeout)
 
-    def gh(self, *args, cwd=None, timeout=120):
+    def gh(self, *args: str, cwd: str | None = None, timeout: int = 120) -> Proc:
         return self.run(["gh", *args], cwd=cwd, timeout=timeout)
 
-    def must(self, *args, cwd=None, timeout=120):
+    def must(self, *args: str, cwd: str | None = None, timeout: int = 120) -> str:
         proc = self.git(*args, cwd=cwd, timeout=timeout)
         if proc.rc != 0:
             raise Fail(
@@ -175,7 +174,7 @@ class Ctx:
             )
         return proc.out.rstrip("\n")
 
-    def run_file(self, argv, path, timeout):
+    def run_file(self, argv: list[str], path: Path, timeout: int) -> int:
         """Run argv with output streamed to `path`; the process group dies on timeout."""
         with open(path, "wb") as fh:
             try:
@@ -202,7 +201,7 @@ class Ctx:
 
 
 @contextlib.contextmanager
-def repo_lock(ctx):
+def repo_lock(ctx: Ctx) -> Iterator[None]:
     """One mutating run per worktree: a non-blocking flock in its own git dir (lanes in other worktrees run)."""
     folder = Path(ctx.must("rev-parse", "--absolute-git-dir")) / "git-deliver"
     folder.mkdir(parents=True, exist_ok=True)
