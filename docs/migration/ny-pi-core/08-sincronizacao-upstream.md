@@ -181,9 +181,11 @@ Justificativas que a tabela não comporta:
 - K10: 91 commits em 3 meses no diretório inteiro; porém a edição é adição em arquivos novos mais uma linha de
   exportação em `index.ts`. O conflito esperado fica na linha de exportação; o risco alto é de frequência, não de
   sobreposição.
-- K11: o arquivo do gancho em `tool_call` não está definido no documento (arquitetura alvo diz só "gancho"); candidatos
-  por tamanho e frequência: `core/extensions/types.ts` (2358 linhas, 31 commits em 3 meses) e `runner.ts` (1576 linhas,
-  13). Fechar em F8 e reclassificar; até lá, não verificado.
+- K11: gancho decidido (PC-2, F8): `core/agent-session.ts`, em `_beforeToolCall`, antes de `runner.emitToolCall`, uma
+  chamada a `gateToolCall` (`core/permissions/gate.ts`); `agent-session.ts` muda ~2 vezes ao mês (K8, K9). Não é
+  `types.ts` nem `runner.ts`. Pontos auxiliares de uma linha cada, todos com `// nycode: K11`: `main.ts` (estado do
+  bypass a partir de `--bypass`/`--safe`), `extensions/hooks/index.ts` (sem o `PreToolUse` do `guard.py` com
+  `native`) e `extensions/index.ts` (registro de `bypass-permissions`, linha K5).
 - K13: o arquivo muda muito (dependências, versão), mas a chave `files` não foi tocada em 3 meses (0 commits). O risco
   real é de merge textual em JSON: o git funde por linha, e a vizinhança de `files` é estável.
 - K5: só 2 commits em 3 meses, mas o arquivo tem 14 linhas; duas adições vizinhas conflitam sempre. Cada extensão
@@ -580,7 +582,7 @@ Registro completo e reversão em [10](10-riscos-e-rollback.md); os riscos abaixo
 | # | Pendência | Fecha em |
 |---|---|---|
 | PC-1 | Versionar o pipeline de renome (`/tmp/nycode-rename/`) em `scripts/fork/` com teste de reprodução | F0; fechada em C-F6-17 (seção 4.3.1): pipeline versionado, `biome` incluído, teste de reprodução verde |
-| PC-2 | Definir o ponto do gancho `tool_call` de K11 | F8 |
+| PC-2 | Definir o ponto do gancho `tool_call` de K11 | F8; fechada: `AgentSession._beforeToolCall` (seção 4.2, K11) |
 | PC-3 | Medir o custo de tempo do job `merge-policy` | F3 |
 | PC-4 | Conferir se K1 e K2 já foram corrigidos no upstream | Antes de propor o PR (8.1) |
 | PC-5 | Região de cada costura medida com `git log -L` em vez de `-G` | Primeira sincronização |

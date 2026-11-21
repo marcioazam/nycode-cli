@@ -14,6 +14,13 @@ const PermissionsSettingsSchema = Type.Object({
 			default: SETTINGS_DEFAULTS.permissions.bypass,
 		}),
 	),
+	engine: Type.Optional(
+		Type.Union([Type.Literal("script"), Type.Literal("native")], {
+			description:
+				'Who decides the permission of each tool call: "script" (the embedded guard.py through the PreToolUse hook) or "native" (the TypeScript engine, same verdicts). Any other value denies every tool call. Global setting only.',
+			default: SETTINGS_DEFAULTS.permissions.engine,
+		}),
+	),
 });
 
 const HarnessSettingsSchema = Type.Object({

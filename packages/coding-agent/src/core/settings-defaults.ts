@@ -8,6 +8,8 @@ const RES = "${NYCODE_RESOURCES}";
 
 /** One embedded command hook; `type` is always "command". */
 const hook = (command: string, timeout: number) => ({ type: "command", command, timeout }) as const;
+/** The guard fails closed (D-08): an interpreter that cannot run it (python3 missing, a broken import) blocks the call. */
+const guardHook = { ...hook(`python3 "${RES}/hooks/guard.py"`, 30), onFailure: "block" } as const;
 const graphContext = hook(`python3 "${RES}/hooks/graph_context.py"`, 10);
 const dispatch = hook(`bash "${RES}/hooks/dispatch/hook-dispatch.sh"`, 10);
 const impeccableGate = (timeout: number) => hook(`sh "${RES}/hooks/impeccable_gate.sh" hook`, timeout);
@@ -84,7 +86,7 @@ export const SETTINGS_DEFAULTS = {
 	fullscreenCopyOnSelect: true,
 	fullscreenWheelScrollLines: "auto",
 	// nycode keys (docs/migration/ny-pi-core/02-arquitetura-alvo.md section 5); read by the extensions that own them.
-	permissions: { bypass: false },
+	permissions: { bypass: false, engine: "script" },
 	harness: {
 		effortSandwich: { enabled: false, turns: 1 },
 		headless: { lean: true, trim: true, tools: "lean", floor: true },
@@ -102,7 +104,7 @@ export const SETTINGS_DEFAULTS = {
 	// replaces the default list of that event; `"PreToolUse": []` turns the guard off. The ralph-loop Stop hook is a
 	// third-party package (F9) and registers itself when installed.
 	hooks: {
-		PreToolUse: [{ matcher: "Bash|Edit|Write|Read", hooks: [hook(`python3 "${RES}/hooks/guard.py"`, 30)] }],
+		PreToolUse: [{ matcher: "Bash|Edit|Write|Read", hooks: [guardHook] }],
 		SessionStart: [{ matcher: "startup|resume|clear|compact", hooks: [graphContext, dispatch, impeccableGate(5)] }],
 		SubagentStart: [{ matcher: "*", hooks: [graphContext] }],
 		PostToolUse: [

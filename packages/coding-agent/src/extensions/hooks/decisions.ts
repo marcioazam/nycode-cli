@@ -7,7 +7,7 @@
 import type { ToolCallEventResult } from "../../core/extensions/types.ts";
 import type { PathAnchors } from "../_shared/rules/path-rules.ts";
 import { errorMessage, isRecord } from "../_shared/util/values.ts";
-import { claudeToolInput, claudeToolName, piToolInput } from "./claude-tools.ts";
+import { claudePreCall, piToolInput } from "./claude-tools.ts";
 import type { HookCommand, HooksConfig } from "./config.ts";
 import { allCommands, matchingCommands, passesIfFilter } from "./matcher.ts";
 import { type HookRunner, type HookRunResult, timeoutMs } from "./runners.ts";
@@ -300,10 +300,11 @@ export async function runPreToolUse(
 	anchors?: PathAnchors,
 ): Promise<PreToolUseOutcome> {
 	const cwd = anchors?.cwd ?? process.cwd();
-	const translatedName = claudeName ?? claudeToolName(toolName);
+	const call = claudePreCall(toolName, toolInput, cwd);
+	const translatedName = claudeName ?? call.name;
 	// A built-in's payload input is the translated Claude shape; MCP and unknown
 	// tools keep the pi shape (MCP input passes through untranslated in Claude too).
-	const translatedInput = claudeName === undefined ? claudeToolInput(toolName, toolInput, cwd) : undefined;
+	const translatedInput = claudeName === undefined ? call.input : undefined;
 	const names = translatedName ? [toolName, translatedName] : [toolName];
 	const target = anchors ? { piName: toolName, claudeName: translatedName, input: toolInput, anchors } : undefined;
 	const commands = matchingCommands(config.PreToolUse, names).filter((command) => passesIfFilter(command, target));

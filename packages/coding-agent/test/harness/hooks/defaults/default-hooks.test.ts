@@ -1,8 +1,8 @@
 // The hooks nycode registers by default (settings-defaults.ts `hooks`): the hooks extension, started on default
 // settings, resolves every command to a file under the embedded resources, and the guard blocks a catastrophic command.
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getBuiltinResourcesRoot, resolveResourcesMarker } from "../../../../src/core/builtin-resources.ts";
 import type { ExtensionAPI, ExtensionContext } from "../../../../src/core/extensions/types.ts";
@@ -29,8 +29,22 @@ afterEach(() => {
 	rmSync(home, { recursive: true });
 });
 
+interface SessionOptions {
+	/** The settings.json of ~/.nycode/agent (the global one); `settings` is the merged view the extension gets. */
+	global?: Record<string, unknown>;
+	/** A project directory with this `.claude/settings.json`, trusted by the user. */
+	projectClaude?: Record<string, unknown>;
+	/** `~/.claude/settings.json`. */
+	userClaude?: Record<string, unknown>;
+}
+
+const writeJson = (file: string, value: unknown) => {
+	mkdirSync(dirname(file), { recursive: true });
+	writeFileSync(file, JSON.stringify(value));
+};
+
 /** Starts a session on `settings` and returns the `/hooks` summary and the tool_call handler. */
-async function startSession(settings: { hooks?: Record<string, unknown> } = {}) {
+async function startSession(settings: { hooks?: Record<string, unknown> } = {}, options: SessionOptions = {}) {
 	const handlers = new Map<string, Handler>();
 	const commands = new Map<string, Command>();
 	const api = {
@@ -42,11 +56,16 @@ async function startSession(settings: { hooks?: Record<string, unknown> } = {}) 
 	};
 	hooksExtension(api as unknown as ExtensionAPI);
 	const notify = vi.fn();
+	if (options.global) writeJson(join(home, ".nycode", "agent", "settings.json"), options.global);
+	if (options.userClaude) writeJson(join(home, ".claude", "settings.json"), options.userClaude);
+	const project = join(home, "project");
+	if (options.projectClaude) writeJson(join(project, ".claude", "settings.json"), options.projectClaude);
+	const trusted = options.projectClaude !== undefined;
 	const ctx = {
-		cwd: home,
-		hasUI: false,
-		isProjectTrusted: () => false,
-		ui: { notify },
+		cwd: trusted ? project : home,
+		hasUI: trusted,
+		isProjectTrusted: () => trusted,
+		ui: { notify, confirm: async () => true },
 		sessionManager: { getSessionId: () => "s1", getSessionFile: () => undefined },
 		abort: () => {},
 	} as unknown as ExtensionContext;
@@ -58,7 +77,9 @@ async function startSession(settings: { hooks?: Record<string, unknown> } = {}) 
 	};
 	const toolCall = (command: string) =>
 		handlers.get("tool_call")?.({ toolName: "bash", toolCallId: "t1", input: { command } }, ctx);
-	return { summary, toolCall };
+	const runCall = (input: Record<string, unknown>) =>
+		handlers.get("tool_call")?.({ toolName: "run", toolCallId: "t2", input }, ctx);
+	return { summary, toolCall, runCall, notify };
 }
 
 describe("default hooks", () => {
@@ -97,15 +118,68 @@ describe("default hooks", () => {
 		expect(await toolCall("echo ok")).toBeUndefined();
 	});
 
-	it("a settings.json event entry replaces that event's default; an empty list turns it off", async () => {
-		const session = await startSession({
-			hooks: { PreToolUse: [], Stop: [{ hooks: [{ type: "command", command: "true" }] }] },
-		});
+	// F1 (C-F8-13): `run start` executes `bash -lc <command>`; the guard judges it as Bash.
+	it("runs the guard on a run start command: rm -rf / is denied, sudo asks, harmless and no-command actions pass", async () => {
+		const { runCall } = await startSession();
+		expect(await runCall({ action: "start", command: "rm -rf /" })).toMatchObject({ block: true });
+		expect(await runCall({ action: "start", command: "sudo ls" })).toMatchObject({ block: true });
+		expect(await runCall({ action: "start", command: "echo ok" })).toBeUndefined();
+		expect(await runCall({ action: "list" })).toBeUndefined();
+		expect(await runCall({ action: "stop", id: "r1" })).toBeUndefined();
+	});
+
+	// F4 (C-F8-13): D-08, a guard that fails to run denies the call instead of failing open.
+	it.each([127, 1])("blocks the call when the guard interpreter exits %i", async (code) => {
+		const bin = join(home, "bin");
+		mkdirSync(bin);
+		writeFileSync(join(bin, "python3"), `#!/bin/sh\nexit ${code}\n`);
+		chmodSync(join(bin, "python3"), 0o755);
+		const savedPath = process.env.PATH;
+		process.env.PATH = `${bin}:${savedPath}`;
+		try {
+			const { toolCall } = await startSession();
+			expect(await toolCall("echo ok")).toMatchObject({ block: true, reason: expect.stringContaining("onFailure") });
+		} finally {
+			process.env.PATH = savedPath;
+		}
+	});
+
+	// F3 (C-F8-13): with the script engine the guard is always in the effective PreToolUse.
+	it("a PreToolUse of the settings adds to the guard instead of replacing it", async () => {
+		const mine = { matcher: "Bash", hooks: [{ type: "command", command: "true" }] };
+		const session = await startSession({ hooks: { PreToolUse: [mine] } });
 		const text = await session.summary();
-		expect(text).not.toContain("PreToolUse:");
+		expect(text).toContain("python3 ");
+		expect(text).toContain("[Bash] command: true");
+		expect(await session.toolCall("rm -rf /")).toMatchObject({ block: true });
+	});
+
+	it("other events of the settings still replace their default", async () => {
+		const session = await startSession({ hooks: { Stop: [{ hooks: [{ type: "command", command: "true" }] }] } });
+		const text = await session.summary();
 		expect(text).toContain("Stop:\n  [*] command: true");
 		expect(text.split("Stop:")[1]).not.toContain("impeccable_gate");
 		expect(text).toContain("SessionStart:");
+	});
+
+	it("an empty PreToolUse in the GLOBAL settings turns the guard off and warns once", async () => {
+		const hooks = { PreToolUse: [] };
+		const session = await startSession({ hooks }, { global: { hooks } });
+		expect(session.notify.mock.calls.filter(([text]) => String(text).includes("guard.py"))).toHaveLength(1);
+		expect(await session.summary()).not.toContain("PreToolUse:");
 		expect(await session.toolCall("rm -rf /")).toBeUndefined();
+	});
+
+	it("an empty PreToolUse that only the project's settings carries does not turn the guard off", async () => {
+		const session = await startSession({ hooks: { PreToolUse: [] } });
+		expect(await session.toolCall("rm -rf /")).toMatchObject({ block: true });
+	});
+
+	it("disableAllHooks in a project file keeps the guard; in the user's own file it turns everything off", async () => {
+		const project = await startSession({}, { projectClaude: { disableAllHooks: true } });
+		expect(await project.toolCall("rm -rf /")).toMatchObject({ block: true });
+		expect(await project.summary()).not.toContain("SessionStart:");
+		const user = await startSession({}, { userClaude: { disableAllHooks: true } });
+		expect(await user.toolCall("rm -rf /")).toBeUndefined();
 	});
 });

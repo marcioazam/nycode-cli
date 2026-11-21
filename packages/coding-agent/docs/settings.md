@@ -171,6 +171,7 @@ These keys only exist, validate, and are read here; the built-in extensions that
 | Setting | Type | Default | Variable | Description |
 |---|---|---|---|---|
 | `permissions.bypass` | boolean | `false` | `NYCODE_BYPASS_PERMISSIONS` | Auto-approve permission prompts; deny rules still apply. `--bypass` and `--dangerously-skip-permissions` turn it on for one run, `--safe` and `--no-bypass` turn it off; a flag beats the variable, which beats the file. **Can only be set in agent-directory settings.** |
+| `permissions.engine` | `"script" \| "native"` | `"script"` | none | Who decides the permission of each tool call. `"script"` runs the embedded `guard.py` as the `PreToolUse` hook (needs `python3`). `"native"` decides in-process with a TypeScript port of the same rules (same verdicts, no Python) and the `guard.py` hook does not run. A value that is not one of the two denies every tool call, as does `"script"` when the embedded `guard.py` is missing. Global setting only: a project `settings.json` cannot change it. |
 | `harness.effortSandwich.enabled` | boolean | `false` | `NYCODE_EFFORT_SANDWICH` | High thinking on the first turns of a top-level headless run. |
 | `harness.effortSandwich.turns` | integer ≥ 1 | `1` | `NYCODE_EFFORT_SANDWICH_TURNS` | Turns that use high thinking. |
 | `subagent.respawn` | boolean | `true` | `NYCODE_SUBAGENT_RESPAWN` | Respawn a crashed foreground subagent. |
@@ -217,17 +218,20 @@ through `${NYCODE_RESOURCES}`, which the hooks extension exports. They need `pyt
 | `Stop` | none | `impeccable_gate.sh hook` | 30 |
 
 `guard.py` is the permission guard: it denies catastrophic commands and secret reads, and asks before risky ones (a
-`NYCODE_BYPASS_PERMISSIONS=1` environment turns the asks into allows; denials stay). If `python3` is missing, the shell
-cannot start the command and the hook fails as a non-blocking error: the guard then allows the call, as it did in ny-pi.
-A guard that starts but crashes on a Bash call asks instead of allowing. `hook-dispatch.sh` exits 0 without `jq`, and
+`NYCODE_BYPASS_PERMISSIONS=1` environment turns the asks into allows; denials stay). The guard hook has `onFailure: "block"`:
+if `python3` is missing, or the interpreter fails before the guard runs (exit 127, a broken import), the call is
+blocked, not allowed. A guard that starts but crashes on a Bash call asks instead of allowing. `hook-dispatch.sh` exits 0 without `jq`, and
 `impeccable_gate.sh` then reads the working directory instead of the event's.
 
 To turn hooks off or replace them:
 
-- One event: set it in `settings.json`, for example `"hooks": { "PreToolUse": [] }` drops the guard, and a non-empty
-  list replaces the default for that event. The other events keep their defaults.
-- Every hook: set `"disableAllHooks": true` in a Claude settings file (`~/.claude/settings.json` or the project's
-  `.claude/settings.json`).
+- One event: an entry in `settings.json` replaces the default of that event, for example a `Stop` list. `PreToolUse` is
+  the exception: with `permissions.engine` `"script"` the guard always runs, and the entries of the user's or the
+  project's `settings.json` add to it. Only the global `~/.nycode/agent/settings.json` can drop the guard, with
+  `"hooks": { "PreToolUse": [] }`; nycode then warns once per session. The same entry in a project file does nothing.
+- Every hook: set `"disableAllHooks": true` in a Claude settings file. In `~/.claude/settings.json` (or the
+  `--settings` file) it turns every hook off, the guard included. In the project's `.claude/settings.json` or
+  `settings.local.json` it turns the other hooks off and the guard keeps running.
 
 The ralph-loop `Stop` hook and the `ponytail` variables (`PONYTAIL_SUBAGENT_MATCHER`) belong to the optional packages of
 the same names and are not registered here.

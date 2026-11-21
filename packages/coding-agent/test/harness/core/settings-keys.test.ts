@@ -321,6 +321,16 @@ describe("settings keys of 02 section 5", () => {
 		expect(manager.getNycodeSettings().compaction.maxContextTokens).toBe(5);
 	});
 
+	it("permissions.engine defaults to script, accepts native and keeps an unknown value for the gate to deny", () => {
+		expect(SettingsManager.inMemory().getNycodeSettings().permissions.engine).toBe("script");
+		const native = { permissions: { engine: "native" as const } };
+		expect(validator.Check(native)).toBe(true);
+		expect(SettingsManager.inMemory(native).getNycodeSettings().permissions.engine).toBe("native");
+		const unknown = { permissions: { engine: "wasm" } } as never;
+		expect(validator.Check(unknown)).toBe(false);
+		expect(SettingsManager.inMemory(unknown).getNycodeSettings().permissions.engine).toBe("wasm");
+	});
+
 	it("reads hooks, statusLine and env as typed keys", () => {
 		const hooks = {
 			PreToolUse: [{ matcher: "Bash", hooks: [{ type: "command" as const, command: "true", timeout: 5 }] }],

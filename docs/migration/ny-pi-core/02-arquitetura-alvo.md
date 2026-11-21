@@ -184,6 +184,7 @@ retrocompatibilidade não pedida); a conversão é feita uma vez por `nycode mig
 | Hoje (ny-pi) | Chave em `settings.json` | Variável | Padrão |
 |---|---|---|---|
 | `PI_BYPASS_PERMISSIONS`, `--bypass`, `--safe` | `permissions.bypass` | `NYCODE_BYPASS_PERMISSIONS` | `false` |
+| (novo, K11) escolha do motor de permissão | `permissions.engine` | — (sem variável) | `"script"` (`guard.py`); `"native"` liga o motor TypeScript. valor desconhecido nega. **Só global** (`~/.nycode/agent/settings.json`; o do projeto é ignorado, como em `permissions.bypass`; C-F8-13). O padrão só muda após `security-reviewer` e benchmark (D-29) |
 | `--no-approve` injetado pelo wrapper | `defaultProjectTrust` (já existe) | — | `"never"` |
 | `--exclude-tools web_search` | extensão `web` desligada | — | desligada |
 | `PI_COMPACT_AT` | `compaction.maxContextTokens` | `NYCODE_COMPACT_AT` | `250000` |

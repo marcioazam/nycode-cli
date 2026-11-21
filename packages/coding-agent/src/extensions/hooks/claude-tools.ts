@@ -27,9 +27,10 @@
  */
 
 import * as path from "node:path";
+import { claudeToolName } from "../_shared/rules/claude-tool-names.ts";
 import { asPiReadsIt } from "../_shared/rules/tool-target.ts";
 
-export { claudeToolName } from "../_shared/rules/claude-tool-names.ts";
+export { claudeToolName };
 
 /** Claude file-tool paths are always absolute before hooks run, and resolved the way pi's
  * tools resolve them (a leading @ stripped, `~` expanded, a file:// URL decoded), so a
@@ -91,9 +92,23 @@ export function claudeToolInput(piName: string, input: unknown, cwd: string): Re
 	return TO_CLAUDE_INPUT[piName]?.(raw, cwd);
 }
 
+/** The Claude name and `tool_input` a PreToolUse hook and the permission gate judge a call by. `run` with a `command`
+ * (action `start`) executes `bash -lc <command>`, so it is judged as Bash with that command; every other call keeps
+ * its own translation. */
+export function claudePreCall(
+	piName: string,
+	input: unknown,
+	cwd: string,
+): { name: string | undefined; input: Record<string, unknown> | undefined } {
+	const raw = record(input);
+	if (piName === "run" && typeof raw?.command === "string") return { name: "Bash", input: { command: raw.command } };
+	return { name: claudeToolName(piName), input: claudeToolInput(piName, input, cwd) };
+}
+
 type RewriteMapper = (updated: Record<string, unknown>) => Record<string, unknown> | undefined;
 
 const FROM_CLAUDE_INPUT: Record<string, RewriteMapper> = {
+	run: (updated) => (typeof updated.command === "string" ? { command: updated.command } : undefined),
 	bash: (updated) =>
 		typeof updated.command === "string"
 			? pick({

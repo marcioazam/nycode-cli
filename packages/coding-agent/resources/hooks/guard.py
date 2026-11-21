@@ -32,11 +32,12 @@ Política "Equilibrada":
 
 Bypass (igual ao "Bypass Permissions" do Claude Code): NYCODE_BYPASS_PERMISSIONS=1 transforma
 todo ASK em allow; DENY continua. O padrão é o modo seguro (confirmações ligadas); o bypass entra
-com NYCODE_BYPASS_PERMISSIONS=1 no ambiente do nycode. Este script só lê a variável: `--bypass` e
-`permissions.bypass` não chegam a ele (o motor nativo de permissão, K11, os honra).
+com NYCODE_BYPASS_PERMISSIONS=1 no ambiente do nycode. Este script só lê a variável: o nycode a exporta no
+startup a partir de `--bypass`/`--safe` e de `permissions.bypass`, e o `/bypass` a alterna (K11).
 
 Ajustar: edite as listas/funções abaixo e rode `python3 -m pytest test/harness/hooks/test_guard.py` em packages/coding-agent.
-Desligar: "hooks": {"PreToolUse": []} em ~/.nycode/agent/settings.json (ou "disableAllHooks": true).
+Desligar: "hooks": {"PreToolUse": []} em ~/.nycode/agent/settings.json (só o global vale; o do projeto não),
+ou "disableAllHooks": true em ~/.claude/settings.json (em arquivo do projeto o guard segue ativo).
 Falha interna: JSON inválido permite (stderr); exceção na ferramenta Bash vira ASK "guard: erro interno"
 (no bypass, aprovado sozinho como todo ASK); outras ferramentas permitem.
 Análise do Bash: agrupamento/palavras-chave, opções de envoltórios, `bash -c`/eval/xargs/find -exec, $(...) e
