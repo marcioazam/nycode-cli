@@ -48,13 +48,13 @@
 		"node": ">=22.19.0"
 	},
 	"devDependencies": {
-		"@cfworker/json-schema": "4.1.1",
-		"@oh-my-pi/omptype": "18.13.3",
+		"@cfworker/json-schema": "4.1.6",
+		"@oh-my-pi/omptype": "18.20.1",
 		"ajv": "8.20.0",
 		"ajv-formats": "3.0.1",
-		"ata-validator": "1.61.3",
-		"typebox": "1.3.27",
-		"vitest": "4.1.12",
+		"ata-validator": "1.63.2",
+		"typebox": "1.4.7",
+		"vitest": "5.1.0",
 		"zod": "4.6.7"
 	}
 }
