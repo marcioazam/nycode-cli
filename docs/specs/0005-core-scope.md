@@ -126,7 +126,6 @@ chegam por fase e o `core_scope.py` é convertido em F3.
 | extension | auto-resume | core | Retoma após erro transitório do provedor |
 | extension | bash-timeout | core | Limite de tempo do shell |
 | extension | bypass-permissions | core | Modo de permissão |
-| extension | cache-prefix-probe | remove | Diagnóstico temporário |
 | extension | claude-rules | core | Regras do Claude Code em .claude/rules |
 | extension | commands | core | Comandos de barra do Claude Code |
 | extension | compact-at-400k | core | Compactação de segurança |
@@ -143,8 +142,6 @@ chegam por fase e o `core_scope.py` é convertido em F3.
 | extension | hooks | core | Hooks no formato do Claude Code |
 | extension | init | core | `/init` |
 | extension | memory | core | Memória do projeto |
-| extension | no-context-files-covers-claude-md | core | Contexto sem duplicata |
-| extension | no-web-search | core | Desliga busca que falha |
 | extension | notify | ui | Aviso de fim de turno |
 | extension | output-styles | core | Estilos de saída |
 | extension | pi-docs | core | Prompt menor |
