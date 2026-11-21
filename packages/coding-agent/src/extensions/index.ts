@@ -1,4 +1,5 @@
 import type { InlineExtension } from "../core/extensions/types.ts";
+import autoResumeExtension from "./auto-resume/index.ts";
 import claudeRulesExtension from "./claude-rules/index.ts";
 import codemodeExtension from "./codemode/index.ts";
 import commandsExtension from "./commands/index.ts";
@@ -64,6 +65,7 @@ export const builtInExtensions: InlineExtension[] = [
 	{ name: "todo", factory: todoExtension, builtin: true },
 	{ name: "web", factory: webExtension, builtin: true, enabledByDefault: false },
 	// Embedded ny-pi extensions, in ny-pi's load order (after pi-code, by source file name).
+	{ name: "auto-resume", factory: autoResumeExtension, builtin: true },
 	{ name: "docs-pointer", factory: docsPointerExtension, builtin: true },
 	{ name: "prefix-cache-1h", factory: prefixCache1hExtension, builtin: true },
 	{ name: "sound-notify", factory: soundNotifyExtension, builtin: true },
