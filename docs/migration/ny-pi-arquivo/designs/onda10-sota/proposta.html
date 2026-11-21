@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="auto">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Onda 10 · Movimento com motivo · proposta</title>
+<meta name="description" content="Vinte e cinco propostas de animação, design e uso para o pi no terminal, com demo ao vivo e decisão por item.">
+<!-- Abre por duplo clique (file://): sem rede, sem dependência. Contrato: README.md desta pasta. -->
+<link rel="stylesheet" href="proposta.css">
+</head>
+<body>
+<header class="bar">
+  <strong>Onda 10</strong>
+  <nav aria-label="Seções">
+    <a href="#s1">Fundamentos</a><a href="#s2">Trabalho</a><a href="#s3">Texto</a><a href="#s4">Cromo</a><a href="#s5">Terminal</a><a href="#s6">Revisar</a>
+  </nav>
+  <span id="cnt" role="status">0 de 25 decididas</span>
+  <fieldset class="seg" id="modo">
+    <legend class="sr">Movimento das demos</legend>
+    <label><input type="radio" name="modo" value="normal">Normal</label>
+    <label><input type="radio" name="modo" value="reduzido">Reduzido</label>
+    <label><input type="radio" name="modo" value="desligado">Desligado</label>
+  </fieldset>
+  <button class="btn" id="pausa" type="button" aria-pressed="false">Pausar tudo</button>
+  <button class="btn" id="theme" type="button">Tema claro</button>
+</header>
+
+<main>
+<section class="hero" aria-labelledby="h-topo">
+  <span class="tag">Proposta · Onda 10 · 18 nov 2026</span>
+  <h1 id="h-topo">Movimento com motivo.</h1>
+  <p class="lede">Vinte e cinco melhorias de animação, design e uso para o pi no terminal, cada uma com uma demo ao vivo. Nada foi aplicado: marque o que quer e copie a lista no fim.</p>
+  <ul class="stats">
+    <li><b id="n-total">25</b><span>propostas, em seis grupos</span></li>
+    <li><b id="n-rec">10</b><span>recomendadas</span></li>
+    <li><b>0</b><span>aplicadas no pi</span></li>
+  </ul>
+  <div class="three">
+    <div><h2>O que muda</h2><p>O movimento ganha uma chave única e durações com nome. A espera passa a dizer o que está acontecendo: tempo vivo em cada tool, aviso de travamento e progresso fino.</p></div>
+    <div><h2>Por quê</h2><p>Hoje há dois critérios divergentes para reduzir movimento, um relógio de 120 Hz que roda mesmo sem foco e um shimmer cujo pico apaga a letra. Codex, Claude Code e GitHub CLI já têm uma chave para isso.</p></div>
+    <div><h2>Decisão pendente</h2><p>Em cada cartão, escolha Aprovar, Depois ou Rejeitar. As escolhas ficam salvas neste navegador e o botão Copiar decisões gera a lista para colar na conversa.</p></div>
+  </div>
+  <noscript><p class="note">Esta página precisa de JavaScript para desenhar as demos. A lista completa está no README.md desta pasta.</p></noscript>
+</section>
+
+<section id="existe" aria-labelledby="h-existe">
+  <h2 id="h-existe">O que já existe e fica como está</h2>
+  <p class="sub">Nada disto é proposto de novo. A lista evita aprovar o que o pi já faz.</p>
+  <div class="note"><ul id="ja"></ul><p id="nao-animar"></p></div>
+</section>
+
+<section id="decidir" aria-labelledby="h-decidir">
+  <h2 id="h-decidir">Como ler e decidir</h2>
+  <p class="sub">Em cada par, a janela da esquerda mostra o pi de hoje e a da direita, a proposta. As cores são as dos seus temas, pi-noite e pi-claro: troque o tema da página para ver o outro. O seletor Normal, Reduzido e Desligado lá em cima muda todas as demos de uma vez.</p>
+  <p class="sub">Cada cartão diz de onde vem: <b>código</b> é uma lacuna lida no repositório, <b>fonte</b> tem fonte primária verificada e <b>ideia</b> é juízo de design sem fonte verificada. Custo: P pequeno, M médio, G grande.</p>
+  <div class="tools">
+    <label>Grupo<select id="f-s"><option value="">Todos</option></select></label>
+    <label>Decisão<select id="f-d"><option value="">Todas</option><option value="P">Pendentes</option><option value="A">Aprovadas</option><option value="D">Depois</option><option value="X">Rejeitadas</option></select></label>
+    <label>Evidência<select id="f-e"><option value="">Todas</option><option>código</option><option>fonte</option><option>ideia</option></select></label>
+    <div class="sp">
+      <button class="btn" id="rec" type="button">Aprovar as recomendadas</button>
+      <button class="btn pri copy" type="button">Copiar decisões</button><span role="status"></span>
+    </div>
+  </div>
+  <p id="vazio" hidden>Nenhuma proposta com esses filtros.</p>
+</section>
+
+<div id="lista"></div>
+
+<section id="ambiente" aria-labelledby="h-amb">
+  <h2 id="h-amb">Seu ambiente, fontes e limites</h2>
+  <p class="sub">O que foi medido nesta máquina e o que esta página não prova.</p>
+  <div class="cols">
+    <div class="note"><h3>Ambiente</h3><ul>
+      <li>Terminal: kitty 0.45.0, com cor de 24 bits. A versão estável é a 0.50.0, de 3 nov 2026.</li>
+      <li>A barra de progresso da P22 precisa do kitty 0.47 ou mais novo.</li>
+      <li>tmux 3.6. A saída sincronizada chegou na 3.7 e a estável é a 3.8.</li>
+      <li>Atualizar kitty e tmux fica fora desta proposta.</li>
+    </ul></div>
+    <div class="note"><h3>Limites</h3><ul>
+      <li>As demos são HTML imitando o terminal célula a célula. No kitty, fonte, largura de glifo e tempo podem diferir.</li>
+      <li>Sem fonte primária verificada para suavização de streaming, contador de tokens e manchete de raciocínio. Por isso P10, P11 e P14 são ideia.</li>
+      <li>A viabilidade no pi 1.5.2 não foi lida para P07, P11, P15, P16 e P21. O custo delas pode subir.</li>
+      <li>Os kB/s da P02 são estimativa. Medir no kitty real antes de mudar a cadência.</li>
+      <li>Nada mudou no pi. Esta pasta é a única entrega.</li>
+    </ul></div>
+  </div>
+  <div class="note" id="fontes"><h3>Fontes lidas em 18 nov 2026</h3><ul id="lf"></ul></div>
+  <div class="fim">
+    <button class="btn pri copy" type="button">Copiar decisões</button><span role="status"></span>
+  </div>
+  <textarea id="saida" class="note" readonly hidden rows="14" style="width:100%;font:13px var(--mono)" aria-label="Decisões em Markdown, para copiar à mão"></textarea>
+</section>
+</main>
+
+<script src="dados.js"></script>
+<script src="demos.js"></script>
+<script>
+'use strict';
+const $ = (s, r = document) => r.querySelector(s);
+const KEY = 'onda10-decisoes';
+let st = { dec: {}, variante: {} };
+try { const x = JSON.parse(localStorage.getItem(KEY) || '{}'); st = { dec: x.dec || {}, variante: x.variante || {} }; } catch (_) {}
+const salva = () => { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (_) {} };
+const REC = { sim: '✔ recomendo', opc: '◐ opcional', nao: '✕ não agora' };
+/* Linhas mínimas de cada janela: evita que a página pule quando a demo ganha linhas. */
+const LINHAS = { P01: 8, P02: 5, P03: 7, P04: 4, P05: 2, P06: 5, P07: 3, P11: 4, P12: 5, P13: 6, P15: 4, P16: 6, P21: 6, P22: 6, P23: 7, P24: 6, P25: 5 };
+const radio = (name, val, rot, on) => `<label><input type="radio" name="${name}" value="${val}"${on ? ' checked' : ''}>${rot}</label>`;
+const varDe = p => st.variante[p.id] || p.padrao;
+
+function cartao(p) {
+  const fontes = p.src.length ? `Fontes: ${p.src.map(f => `<a href="${FONTES[f][1]}" target="_blank" rel="noopener">${esc(FONTES[f][0])}</a>`).join(' · ')}`
+    : p.ev.includes('código') ? 'Sem fonte externa: a lacuna foi lida no código.' : 'Sem fonte verificada: é juízo de design.';
+  const vivo = !PARADAS[p.id], jan = (lado, rot, txt) => `<figure><figcaption><b>${rot}</b>${esc(txt)}</figcaption>
+    <div class="win"><div class="term" id="${p.id}-${lado}" style="--n:${LINHAS[p.id] || 3}"${vivo ? ' aria-hidden="true"' : ''}></div></div></figure>`;
+  const d = st.dec[p.id];
+  return `<article class="card" id="${p.id}" aria-labelledby="t-${p.id}">
+  <header><span class="id">${p.id}</span><h3 id="t-${p.id}">${esc(p.t)}</h3>
+    <ul class="tags">${p.ev.map(e => `<li>${e}</li>`).join('')}<li>custo ${p.custo}</li><li class="${p.rec}">${REC[p.rec]}</li></ul></header>
+  <div class="pair">${jan('a', 'Hoje', p.antes)}${jan('b', 'Proposta', p.depois)}</div>
+  <p class="fb"><b>Sem movimento ou sem suporte:</b> ${esc(p.fb)}</p>
+  <p class="src">${fontes}</p>
+  <footer>
+    <fieldset class="dec"><legend>Decisão</legend>${radio(`d-${p.id}`, 'A', 'Aprovar', d === 'A')}${radio(`d-${p.id}`, 'D', 'Depois', d === 'D')}${radio(`d-${p.id}`, 'X', 'Rejeitar', d === 'X')}</fieldset>
+    ${p.variantes ? `<fieldset class="dec"><legend>Variante</legend>${p.variantes.map(([val, rot]) => radio(`v-${p.id}`, val, rot, varDe(p) === val)).join('')}</fieldset>` : ''}
+    ${p.uma ? `<button class="btn" type="button" data-rep="${p.id}">Repetir a demo</button>` : ''}
+  </footer></article>`;
+}
+
+/* montagem */
+$('#ja').innerHTML = JA_EXISTE.map(x => `<li>${esc(x)}</li>`).join('');
+$('#nao-animar').textContent = NAO_ANIMAR;
+$('#lf').innerHTML = Object.values(FONTES).map(([rot, url]) => `<li><a href="${url}" target="_blank" rel="noopener">${esc(rot)}</a></li>`).join('');
+$('#f-s').insertAdjacentHTML('beforeend', SECOES.map(([n, t]) => `<option value="${n}">${n} · ${esc(t)}</option>`).join(''));
+$('#lista').innerHTML = SECOES.map(([n, t, sub]) => `<section id="s${n}" aria-labelledby="h-s${n}"><h2 id="h-s${n}">${n} · ${esc(t)}</h2><p class="sub">${esc(sub)}</p>
+  ${PROPOSTAS.filter(p => p.s === n).map(cartao).join('')}</section>`).join('');
+$('#n-total').textContent = PROPOSTAS.length;
+$('#n-rec').textContent = PROPOSTAS.filter(p => p.rec === 'sim').length;
+if (st.variante.P25) VARIANTE.P25 = st.variante.P25;
+
+/* decisões */
+function conta() {
+  const n = PROPOSTAS.filter(p => st.dec[p.id]).length;
+  $('#cnt').textContent = `${n} de ${PROPOSTAS.length} decididas`;
+  return n;
+}
+function filtra() {
+  const s = $('#f-s').value, d = $('#f-d').value, e = $('#f-e').value;
+  let n = 0;
+  for (const p of PROPOSTAS) {
+    const dec = st.dec[p.id] || '', ok = (!s || String(p.s) === s) && (!d || (d === 'P' ? !dec : dec === d)) && (!e || p.ev.includes(e));
+    $(`#${p.id}`).hidden = !ok; n += ok;
+  }
+  for (const [num] of SECOES) $(`#s${num}`).hidden = !PROPOSTAS.some(p => p.s === num && !$(`#${p.id}`).hidden);
+  $('#vazio').hidden = n > 0;
+}
+function markdown() {
+  const g = { A: [], D: [], X: [], '': [] };
+  for (const p of PROPOSTAS) g[st.dec[p.id] || ''].push(`- ${p.id} · ${p.t} · custo ${p.custo}${p.variantes ? ` · variante: ${p.variantes.find(x => x[0] === varDe(p))[1]}` : ''}`);
+  const bloco = (t, l) => `## ${t}\n${l.length ? l.join('\n') : '- nenhuma'}\n`;
+  return ['# Decisões · Onda 10 (A = aprovar · D = depois · X = rejeitar)\n', bloco('Aprovadas', g.A), bloco('Depois', g.D), bloco('Rejeitadas', g.X), bloco('Sem decisão', g['']),
+    `Total: ${conta()} de ${PROPOSTAS.length} decididas.`].join('\n');
+}
+async function copia(status) {
+  const txt = markdown();
+  let ok = false;
+  try { await navigator.clipboard.writeText(txt); ok = true; } catch (_) {
+    const ta = Object.assign(document.createElement('textarea'), { value: txt });
+    document.body.append(ta); ta.select();
+    try { ok = document.execCommand('copy'); } catch (_) {}
+    ta.remove();
+  }
+  status.textContent = ok ? 'Copiado. Cole na conversa com o pi.' : 'Não deu para copiar. O texto está no fim da página.';
+  const saida = $('#saida');
+  saida.value = txt; saida.hidden = ok;
+}
+document.addEventListener('change', e => {
+  const [tipo, id] = (e.target.name || '').split('-');
+  if (tipo === 'd') st.dec[id] = e.target.value;
+  else if (tipo === 'v') { st.variante[id] = VARIANTE[id] = e.target.value; Motor.sujo = true; }
+  else if (e.target.name === 'modo') { MODE = e.target.value; Motor.sujo = true; return; }
+  else return filtra();
+  salva(); conta();
+});
+document.addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  if (b.dataset.rep) Motor.repete(b.dataset.rep);
+  else if (b.classList.contains('copy')) copia(b.nextElementSibling);
+});
+$('#rec').onclick = () => {
+  for (const p of PROPOSTAS) if (p.rec === 'sim' && !st.dec[p.id]) { st.dec[p.id] = 'A'; $(`input[name="d-${p.id}"][value=A]`).checked = true; }
+  salva(); conta();
+};
+$('#pausa').onclick = e => { Motor.pausado = !Motor.pausado; e.currentTarget.setAttribute('aria-pressed', Motor.pausado); };
+
+/* tema: segue o sistema até você escolher; o mock troca junto entre pi-noite e pi-claro */
+const mq = matchMedia('(prefers-color-scheme: dark)');
+let tema = 'auto';
+const escuro = () => (tema === 'auto' ? mq.matches : tema === 'dark');
+function pinta() {
+  document.documentElement.dataset.theme = tema;
+  aplicaTema(escuro());
+  $('#theme').textContent = escuro() ? 'Tema claro' : 'Tema escuro';
+}
+$('#theme').onclick = () => { tema = escuro() ? 'light' : 'dark'; pinta(); };
+mq.addEventListener('change', pinta);
+
+/* partida: respeita o pedido do sistema por menos movimento */
+MODE = matchMedia('(prefers-reduced-motion: reduce)').matches ? 'reduzido' : 'normal';
+$(`input[name=modo][value=${MODE}]`).checked = true;
+pinta(); conta();
+Motor.inicia();
+for (const p of PROPOSTAS) Motor.registra(p.id, $(`#${p.id}`), $(`#${p.id}-a`), $(`#${p.id}-b`));
+</script>
+</body>
+</html>

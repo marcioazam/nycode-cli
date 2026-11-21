@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Onda 12 · segunda rodada de escolhas</title>
+<link rel="stylesheet" href="../proposta.css">
+<main>
+<h1>Onda 12 · segunda rodada</h1>
+<p class="lead">Compare os detalhes que ficaram em aberto. As escolhas desta página não alteram as da proposta original.</p>
+<nav aria-label="Seções">
+  <a href="../proposta.html">Proposta original</a><span id="grupos" style="display:contents"></span><a href="#decidir">Decidir</a>
+  <label>Tema dos mocks <select id="tema"><option value="noite">pi-noite</option><option value="escuro">macOS escuro</option><option value="claro">macOS claro</option><option value="grafite">Grafite</option></select></label>
+</nav>
+<div id="comps"></div>
+<h2 id="decidir">Decidir</h2>
+<label for="geral"><b>Observação geral</b></label>
+<textarea id="geral" class="obs" placeholder="O que vale para toda a rodada…"></textarea>
+<div class="acoes">
+  <button class="pri" data-gerar>Pegar as escolhas</button>
+  <button id="copiar">Copiar</button><button id="baixar">Baixar .md</button><span id="aviso" role="status"></span>
+</div>
+<label for="saida"><b>Resultado</b> (cole no pi)</label>
+<textarea id="saida" readonly></textarea>
+</main>
+<div class="bar">
+  <span class="cont" id="cont" role="status"></span>
+  <button id="limpar">Limpar</button><button class="pri" data-gerar>Pegar as escolhas</button>
+</div>
+<script src="dados.js"></script>
+<script src="../app.js"></script>
+</html>

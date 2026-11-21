@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Status line — variantes</title>
+<style>
+  :root { color-scheme: light dark; --page: light-dark(#fbfbfd, #111113); --ink: light-dark(#1d1d1f, #f5f5f7); --ink2: light-dark(#5f5f64, #a1a1a6); --line: light-dark(#d9d9de, #303034); --card: light-dark(#fff, #18181a); }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1500px; margin: auto; padding: 40px 28px 80px; }
+  h1 { font-size: 2rem; letter-spacing: -.02em; margin: 0 0 4px; text-wrap: balance; }
+  h2 { font-size: 1.3rem; letter-spacing: -.01em; margin: 56px 0 6px; }
+  p, li { max-width: 75ch; } .lead { color: var(--ink2); margin-top: 0; }
+  .warn { border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; background: var(--card); max-width: 75ch; }
+  .bar { position: sticky; top: 0; z-index: 1; background: var(--page); padding: 10px 0; border-bottom: 1px solid var(--line); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  button { font: inherit; padding: 5px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; }
+  button[aria-pressed=true] { background: var(--ink); color: var(--page); border-color: var(--ink); }
+  button:focus-visible, a:focus-visible { outline: 2px solid #0a84ff; outline-offset: 2px; }
+  .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 560px), 1fr)); gap: 20px; align-items: start; margin: 14px 0; }
+  figure { margin: 0; min-width: 0; } figcaption { font-size: .85rem; color: var(--ink2); margin-bottom: 6px; }
+  figcaption b { color: var(--ink); }
+  img.bot { aspect-ratio: 1081 / 330; object-fit: cover; object-position: bottom; }
+  img { width: 100%; height: auto; border-radius: 10px; display: block; border: 1px solid var(--line); }
+  table { border-collapse: collapse; font-size: .9rem; margin: 10px 0; } td, th { border-bottom: 1px solid var(--line); padding: 6px 12px 6px 0; text-align: left; vertical-align: top; }
+  .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 6px; border: 1px solid var(--line); }
+  code { font: .88em ui-monospace, "JetBrains Mono", Menlo, monospace; }
+
+  /* terminal mock: cores do Tokyo Night */
+  body { --bg: #1a1b26; --surface: #292e42; --label: #c0caf5; --sec: #8a93bd; --ter: #414868; --accent: #7aa2f7; --ok: #9ece6a; --caution: #e0af68; --err: #f7768e; }
+  pre.term { margin: 0; background: var(--bg); color: var(--label); border-radius: 10px; padding: 10px 0; overflow-x: auto; font: 13px/1.5 "JetBrainsMono Nerd Font", "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace; }
+  .term .b, .term .k { font-weight: 700; } .term .s { color: var(--sec); } .term .t { color: var(--ter); }
+  .term .a { color: var(--accent); } .term .g { color: var(--ok); } .term .w { color: var(--caution); } .term .e { color: var(--err); }
+  .term .cur { background: var(--label); } .term .u { background: var(--surface); display: inline-block; }
+  .term .lc { color: #e48a7a; } .term .lb { color: #4f8eb3; } .term .ly { color: #eab65d; } .term .lg { color: #e48a7a; background: #4f8eb3; }
+  .term.nc span:not(.cur):not(.t):not(.s) { color: var(--label); font-weight: 700; } .term.nc .u { background: none; }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; font: 13px ui-monospace, monospace; }
+  .tabs span { background: var(--card); border: 1px solid var(--line); border-radius: 8px 8px 0 0; padding: 6px 14px; }
+  h3 { font-size: 1.02rem; margin: 26px 0 4px; } .tag { font-size: .75rem; border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; margin-left: 8px; color: var(--ink2); vertical-align: 2px; }
+  pre.term + figcaption { margin-top: 12px; } figure > img { max-width: 920px; }
+</style>
+<main>
+<h1>Status line — variantes “Calmo”</h1>
+<p class="lead">Quatro desenhos para a mesma informação da sua tela atual. Tudo aqui é <b>mock em HTML</b> com os seus números reais, nas cores do Tokyo Night; nada foi aplicado.</p>
+
+<h2>Hoje</h2>
+<figure><figcaption><b>Captura real</b> que você mandou</figcaption><img src="atual.png" alt="Status line atual: cinco linhas, com modelo em ciano, barra de contexto verde, barra de uso azul, barra semanal vermelha, contadores de tools e aviso de bypass"></figure>
+<ul>
+  <li><b>5 linhas e 6 cores</b> em estado normal. Ciano, verde e azul não avisam nada: só diferenciam linhas.</li>
+  <li><b>Três medidores, três desenhos.</b> Rótulos <code>ctx</code>, <code>Usage</code>, <code>Weekly</code> (caixa e idioma diferentes), barras de tamanhos diferentes, nada alinhado em coluna.</li>
+  <li><b>Detalhe sempre aberto.</b> <code>(208k/1.0M)</code> e <code>(resets in 4h 47m)</code> ocupam espaço mesmo com 8% de uso.</li>
+  <li><b>O único alerta real se perde.</b> O <code>▲</code> da semana (ritmo acima do esperado) é o dado mais importante da tela e não diz o que significa.</li>
+  <li><b><code>✓ Bash ×18</code> é histórico</b>, não estado. Parado, não ajuda a decidir nada.</li>
+</ul>
+
+<h2>As regras das variantes</h2>
+<ol>
+  <li><b>Responder três perguntas, nesta ordem:</b> onde estou (modelo, raciocínio, pasta) · quanto me resta (contexto, 5h, semana) · quanto gastei (tempo, custo).</li>
+  <li><b>Normal é monocromático.</b> Barra e número no texto claro e no cinza-azulado do Tokyo Night. Laranja a partir de 70% ou ritmo alto, vermelho a partir de 85%. Cor passa a ser sempre notícia.</li>
+  <li><b>Um vocabulário:</b> <code>ctx</code>, <code>5h</code>, <code>semana</code>, <code>renova em</code>. Mesma barra de 8 células para os três.</li>
+  <li><b>Detalhe só quando importa.</b> Tempo de renovação e números absolutos aparecem no alerta ou no nível detalhado.</li>
+  <li><b>O ▲ ganha tradução:</b> quando o ritmo estoura, a linha diz em quanto tempo o limite acaba.</li>
+</ol>
+
+<h2>B+ · a escolhida, com as informações a mais</h2>
+<p>É a variante B que você marcou, com o que faltava. Continua com duas linhas no estado normal; a terceira só existe quando há aviso.</p>
+<figure>
+<figcaption><b>Normal, dentro de um repositório, com subagentes rodando</b></figcaption><pre class="term" data-cols="96">
+ {b:Fable 5.2} {s:· medium · pi-harness ⎇ main*}>>{s:2 agentes · 12m · $1.08}
+ {s:ctx} ━{t:━━━━━━━} 9%       {s:5h} ━{t:━━━━━━━} 8%      {s:semana} ━━{t:━━━━━━} 22%
+</pre>
+<figcaption><b>Seu estado da captura</b> (fora de repositório, semana em ritmo alto)</figcaption><pre class="term" data-cols="96">
+ {b:Fable 5.2} {s:· medium · ~}>>{s:<1m · $5.63}
+ {s:ctx} ━━{t:━━━━━━} 21%      {s:5h} ━{t:━━━━━━━} 8%      {s:semana} {w:━━━━}{t:━━━━} {w:54% ▲} {s:nesse ritmo acaba em 1d 6h}
+ {w:⚠ bypass ligado}
+</pre>
+<figcaption><b>Pior caso</b>: tudo que pode dar aviso, ao mesmo tempo</figcaption><pre class="term" data-cols="96">
+ {b:Fable 5.2} {s:· medium · pi-harness ⎇ main*}>>{s:2h 14m · $41.20}
+ {s:ctx} {w:━━━━━━━}{t:━} {w:88%} {s:compacta em breve}     {s:5h} {e:━━━━━━━━} {e:93%} {s:renova em 22m}     {s:semana} ━━━━━{t:━━━} 61%
+ {w:⚠ cache 31%}    {e:✗ MCP linear fora do ar}    {w:⚠ bypass ligado}
+</pre>
+<figcaption><b>Limites sem atualizar</b>: barras apagadas e a idade do dado, em vez de um número que parece atual</figcaption><pre class="term" data-cols="96">
+ {b:Fable 5.2} {s:· medium · pi-harness ⎇ main}>>{s:47m · $9.12}
+ {s:ctx} ━━━{t:━━━━━} 34%      {s:5h} {t:━━━━━━━━} {s:8%}      {s:semana} {t:━━━━━━━━} {s:22%}    {s:limites de 40m atrás}
+</pre>
+<figcaption><b>Nível detalhado</b> (abre sob demanda)</figcaption><pre class="term" data-cols="96">
+ {b:Fable 5.2} {s:· medium · pi-harness ⎇ main*}>>{s:2h 14m · $41.20}
+ {s:Contexto}    ━━━{t:━━━━━━━━━}   21%    {s:208k de 1.0M}
+ {s:Sessão 5h}   ━{t:━━━━━━━━━━━}    8%    {s:renova em 4h 47m}
+ {s:Semana}      {w:━━━━━━}{t:━━━━━━}   {w:54% ▲}  {s:renova em 5d 13h · nesse ritmo acaba em 1d 6h}
+ {s:Cache}       ━━━━━━━━━━━{t:━}   92%    {s:lido do cache no último turno}
+ {s:Tokens}      {s:entrada 1.2M · saída 48k}
+ {s:Alterações}  {g:+142} {e:−38} {s:linhas · 6 arquivos}
+ {s:Atividade}   {s:Bash 18 · Read 2 · 2 agentes}
+ {s:Sessão}      {s:redesenho da status line · $18.40 por hora}
+</pre>
+</figure>
+<table>
+<tr><th>Informação</th><th>Onde aparece</th><th>Quando</th><th>O dado existe hoje?</th></tr>
+<tr><td>Branch e sujo (<code>*</code>)</td><td>linha 1, depois da pasta</td><td>sempre que for repositório</td><td>pasta e worktree chegam ao HUD; a branch o claude-hud lê do git</td></tr>
+<tr><td>Agentes ativos</td><td>linha 1, à direita</td><td>só com agente rodando</td><td>o painel de subagentes tem a contagem; hoje não é repassada ao status</td></tr>
+<tr><td>Compactação chegando</td><td>ao lado do <code>ctx</code></td><td>perto do limite de compactação</td><td>o uso do contexto existe; o limite configurado precisa ser lido</td></tr>
+<tr><td>Cache ruim</td><td>linha de avisos</td><td>abaixo de um piso (proposta: 50%)</td><td>tokens lidos e gravados em cache já vão no payload</td></tr>
+<tr><td>MCP fora do ar</td><td>linha de avisos</td><td>só na falha</td><td>não verificado</td></tr>
+<tr><td>Limites velhos</td><td>barras apagadas + idade</td><td>dado com mais de alguns minutos</td><td>o cache de uso guarda o horário da leitura</td></tr>
+<tr><td>Tokens, linhas alteradas, nome da sessão, custo por hora</td><td>nível detalhado</td><td>sob demanda</td><td>tokens, linhas e nome da sessão já vão no payload; custo por hora é conta</td></tr>
+</table>
+<p>O piso de 50% para o cache e o prazo para considerar os limites velhos são proposta minha. “MCP linear” e os números do nível detalhado são exemplos.</p>
+
+<h2>Variantes</h2>
+
+<h3>A · Uma linha <span class="tag">mais compacta</span></h3>
+<figure><figcaption>Seu estado atual (semana em ritmo alto)</figcaption><pre class="term" data-cols="96">
+ {b:Fable 5.2} {s:· medium · ~}>>{s:ctx 21%    5h 8%}    {w:semana 54% ▲}    {s:<1m    $5.63}
+ {w:⚠ bypass ligado}
+</pre><figcaption>Perto dos limites</figcaption><pre class="term" data-cols="96">
+ {b:Fable 5.2} {s:· medium · pi-harness}>>{w:ctx 88%}   {e:5h 93% · renova em 22m}   {s:semana 61%   2h 14m   $41.20}
+ {w:⚠ bypass ligado}
+</pre></figure>
+<p>Sem barras: só número. Lê-se num relance e sobra uma linha só. Perde a noção visual de “quanto falta”.</p>
+
+<h3>B · Medidores <span class="tag">recomendada como padrão</span></h3>
+<figure><figcaption>Seu estado atual</figcaption><pre class="term" data-cols="96">
+ {b:Fable 5.2} {s:· medium · ~}>>{s:<1m · $5.63}
+ {s:ctx} ━━{t:━━━━━━} 21%      {s:5h} ━{t:━━━━━━━} 8%      {s:semana} {w:━━━━}{t:━━━━} {w:54% ▲} {s:nesse ritmo acaba em 1d 6h}
+ {w:⚠ bypass ligado}
+</pre><figcaption>Tudo normal</figcaption><pre class="term" data-cols="96">
+ {b:Fable 5.2} {s:· medium · ~}>>{s:12m · $1.08}
+ {s:ctx} ━{t:━━━━━━━} 9%       {s:5h} ━{t:━━━━━━━} 8%      {s:semana} ━━{t:━━━━━━} 22%
+</pre><figcaption>Perto dos limites</figcaption><pre class="term" data-cols="96">
+ {b:Fable 5.2} {s:· medium · ~/code/pi-harness}>>{s:2h 14m · $41.20}
+ {s:ctx} {w:━━━━━━━}{t:━} {w:88%}      {s:5h} {e:━━━━━━━━} {e:93%} {s:renova em 22m}      {s:semana} ━━━━━{t:━━━} 61%
+ {w:⚠ bypass ligado}
+</pre></figure>
+<p>Duas linhas: identidade em cima, os três medidores iguais embaixo. Tempo e custo vão para a direita, discretos. Os contadores de tools saem (ficam no nível detalhado).</p>
+
+<h3>C · Painel <span class="tag">nível detalhado</span></h3>
+<figure><figcaption>Seu estado atual</figcaption><pre class="term" data-cols="96">
+ {b:Fable 5.2} {s:· medium · ~}>>{s:<1m · $5.63}
+ {s:Contexto}    ━━{t:━━━━━━━━━━}   21%    {s:208k de 1.0M}
+ {s:Sessão 5h}   ━{t:━━━━━━━━━━━}    8%    {s:renova em 4h 47m}
+ {s:Semana}      {w:━━━━━━}{t:━━━━━━}   {w:54% ▲}  {s:renova em 5d 13h · nesse ritmo acaba em 1d 6h}
+ {s:Atividade}   {s:Bash 18 · Read 2}
+ {w:⚠ bypass ligado}
+</pre></figure>
+<p>É o conteúdo de hoje, alinhado em colunas (rótulo, barra, número, detalhe) e em português. Bom para consultar, pesado para ficar sempre aberto.</p>
+
+<h3>D · Só exceções <span class="tag">nível mínimo</span></h3>
+<figure><figcaption>Tudo normal</figcaption><pre class="term" data-cols="96">
+ {b:Fable 5.2} {s:· medium · ~}>>{s:12m · $1.08}
+</pre><figcaption>Seu estado atual</figcaption><pre class="term" data-cols="96">
+ {b:Fable 5.2} {s:· medium · ~}>>{w:semana 54% ▲ acaba em 1d 6h}    {s:<1m · $5.63}
+ {w:⚠ bypass ligado}
+</pre><figcaption>Perto dos limites</figcaption><pre class="term" data-cols="96">
+ {b:Fable 5.2} {s:· medium · ~/code/pi-harness}>>{e:5h 93% · renova em 22m}    {w:ctx 88%}    {s:2h 14m · $41.20}
+ {w:⚠ bypass ligado}
+</pre></figure>
+<p>Medidor só aparece quando passa de 70% ou o ritmo estoura. É o mais “Apple”, mas você deixa de ver o contexto subindo aos poucos.</p>
+
+<h2>Gerenciamento: um sistema, três níveis</h2>
+<p>Em vez de escolher uma variante para sempre, a recomendação é tratar D, B e C como três níveis de densidade da mesma status line.</p>
+<table>
+<tr><th>Nível</th><th>Desenho</th><th>Linhas</th><th>Como chega</th></tr>
+<tr><td>Mínimo</td><td>D · só exceções</td><td>1</td><td>etiqueta <code>▸ STATUS LINE</code> recolhida (hoje recolhida não mostra nada)</td></tr>
+<tr><td>Padrão</td><td>B · medidores</td><td>2</td><td>etiqueta <code>▾ STATUS LINE</code> aberta</td></tr>
+<tr><td>Detalhe</td><td>C · painel</td><td>5</td><td>segundo clique ou <code>→</code> com a seção em foco; volta sozinho ao enviar o próximo prompt</td></tr>
+</table>
+<ul>
+  <li><b>Alerta fura o nível.</b> Laranja e vermelho aparecem em qualquer nível, inclusive no mínimo.</li>
+  <li><b>Um comando, <code>/statusline</code>,</b> para escolher nível padrão, itens (custo, tempo, atividade, git) e limiares. Hoje isso é o <code>/claude-hud-configure</code>, com nomes do plugin.</li>
+  <li><b>Estreito:</b> some primeiro o detalhe, depois as barras (fica o número), depois tempo e custo. Modelo e alertas ficam por último.</li>
+  <li><b>Sem cor:</b> o alerta continua legível pelo <code>▲</code> e pelo texto “acaba em…”.</li>
+</ul>
+
+<h2>Em aberto</h2>
+<ul>
+  <li>Limiares: 70% (atenção) e 85% (crítico) são os padrões do próprio claude-hud para o contexto (<code>contextWarningThreshold</code>, <code>contextCriticalThreshold</code>); usei os mesmos nos três medidores. Não achei norma externa para esses números.</li>
+  <li>O “acaba em 1d 6h” é conta com os seus números (54% usados em 1d 11h de 7d). Falta confirmar no código se o HUD entrega a projeção ou só o <code>▲</code>.</li>
+  <li>Alternativa ao texto de ritmo: um marcador na barra mostrando quanto da janela já passou (o ccstatusline chama de “time cursor”). Mais compacto, menos óbvio.</li>
+  <li>As cores de hoje vêm do próprio claude-hud, não do tema do pi. Aplicar exige recolorir as linhas na camada que já as reorganiza (patch do pi-code).</li>
+  <li>A etiqueta <code>STATUS LINE</code> e a linha de bypass ficam como estão em todas as variantes.</li>
+</ul>
+<h2>Fontes lidas</h2>
+<ul>
+  <li><a href="https://developer.apple.com/design/human-interface-guidelines/gauges">Apple HIG · Gauges</a>: rótulos curtos para o valor atual; mudar a cor do preenchimento quando o valor chega a níveis significativos.</li>
+  <li><a href="https://developer.apple.com/design/human-interface-guidelines/widgets">Apple HIG · Widgets</a>: equilibrar a densidade (“overly dense layouts are less glanceable”); mostrar só o que serve ao propósito principal.</li>
+  <li><a href="https://code.claude.com/docs/en/statusline">Claude Code · status line</a>: campos de contexto, limites de 5h e 7d com horário de renovação, custo e esforço; limites podem não vir.</li>
+  <li><a href="https://github.com/jarrodwatts/claude-hud">claude-hud</a>: duas linhas por padrão; tools, agentes e todos são linhas opcionais; contexto verde, amarelo, vermelho; limiares em <code>src/config.ts</code>.</li>
+  <li><a href="https://github.com/sirmalloc/ccstatusline">ccstatusline</a>: configuração por TUI; ocultar itens por condição; trocar porcentagem pela contagem do reset perto do limite; “time cursor”.</li>
+  <li><a href="https://raw.githubusercontent.com/openai/codex/main/codex-rs/tui/src/bottom_pane/status_line_setup.rs">Codex CLI · status_line_setup.rs</a>: lista ordenada de itens; itens somem quando não há dado.</li>
+  <li><a href="https://starship.rs/">Starship</a>: “as minimal or feature-rich as you'd like it to be”.</li>
+</ul>
+<p>Não verificado em fonte primária: estudos sobre barra contra número puro, projeção de esgotamento (“burn rate”) e o comportamento exato do <code>usagePace</code> do claude-hud.</p>
+</main>
+<script>
+const vis = s => s.replace(/\{\w+:([^{}]*)\}/g, '$1')
+const html = s => s.replace(/\{(\w+):([^{}]*)\}/g, '<span class="$1">$2</span>')
+function line(l, cols) {
+  if (l.startsWith('---')) {
+    const lab = l.slice(3).trim(), head = lab ? `{t:──} ${lab} ` : ''
+    return html(head) + `<span class="t">${'─'.repeat(Math.max(0, cols - vis(head).length))}</span>`
+  }
+  if (l.startsWith('~')) return `<span class="u">${html(l.slice(1).padEnd(cols + l.length - 1 - vis(l.slice(1)).length))}</span>`
+  const [left, right = ''] = l.split('>>')
+  return html(left + ' '.repeat(Math.max(1, cols - vis(left).length - vis(right).length - 1)) + right)
+}
+for (const pre of document.querySelectorAll('pre.term')) {
+  const src = pre.textContent.replace(/^\n|\n$/g, '')
+  pre.innerHTML = src.split('\n').map(l => line(l, +pre.dataset.cols)).join('\n')
+}
+</script>
+</html>

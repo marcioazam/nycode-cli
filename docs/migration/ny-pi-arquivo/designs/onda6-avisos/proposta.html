@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Onda 6 · notificação, erros e loading — proposta</title>
+<style>
+  :root { color-scheme: light dark; --page: light-dark(#fbfbfd, #111113); --ink: light-dark(#1d1d1f, #f5f5f7); --ink2: light-dark(#5f5f64, #a1a1a6); --line: light-dark(#d9d9de, #303034); --card: light-dark(#fff, #18181a); --link: light-dark(#0066cc, #4aa3ff); }
+  html { scroll-padding-top: 64px; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1500px; margin: auto; padding: 40px 28px 80px; }
+  h1 { font-size: 2rem; letter-spacing: -.02em; margin: 0 0 4px; text-wrap: balance; }
+  h2 { font-size: 1.3rem; letter-spacing: -.01em; margin: 56px 0 6px; } h2 small { font-weight: 400; color: var(--ink2); font-size: .8em; }
+  h3 { font-size: 1rem; margin: 22px 0 4px; }
+  p, li { max-width: 75ch; } .lead { color: var(--ink2); margin-top: 0; }
+  .warn { border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; background: var(--card); max-width: 75ch; }
+  nav { position: sticky; top: 0; z-index: 1; background: var(--page); padding: 10px 0; border-bottom: 1px solid var(--line); display: flex; gap: 6px 18px; flex-wrap: wrap; font-size: .9rem; }
+  a { color: var(--link); text-underline-offset: 2px; } a:focus-visible { outline: 2px solid #0a84ff; outline-offset: 2px; border-radius: 3px; }
+  .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 560px), 1fr)); gap: 20px; align-items: start; margin: 14px 0; }
+  figure { margin: 0; min-width: 0; } figcaption { font-size: .85rem; color: var(--ink2); margin-bottom: 6px; } figcaption b { color: var(--ink); }
+  img { width: 100%; height: auto; border-radius: 10px; display: block; border: 1px solid var(--line); object-fit: cover; object-position: bottom; margin-bottom: 10px; }
+  .scroll { overflow-x: auto; } .scroll table { min-width: 640px; }
+  table { border-collapse: collapse; font-size: .9rem; margin: 10px 0; font-variant-numeric: tabular-nums; } td, th { border-bottom: 1px solid var(--line); padding: 6px 14px 6px 0; text-align: left; vertical-align: top; }
+  th { color: var(--ink2); font-weight: 500; }
+  code, kbd { font: .88em ui-monospace, "JetBrains Mono", Menlo, monospace; }
+  .tag { display: inline-block; font-size: .75rem; font-weight: 400; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink2); white-space: nowrap; }
+
+  /* notificação do sistema (mock neutro, não é o desenho do GNOME nem do macOS) */
+  .notes { display: grid; gap: 8px; margin-bottom: 10px; }
+  .note { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; max-width: 380px; font-size: .9rem; line-height: 1.35; }
+  .note b { display: block; } .note span { color: var(--ink2); }
+
+  /* terminal mock no tema em uso (Tokyo Night) */
+  body { --bg: #1a1b26; --surface: #292e42; --label: #c0caf5; --sec: #a9b1d6; --dim: #737aa2; --ter: #414868; --accent: #bb9af7; --amber: #e0af68; --red: #f7768e; }
+  pre.term { margin: 0 0 10px; background: var(--bg); color: var(--label); border-radius: 10px; padding: 10px 0; overflow-x: auto; font: 13px/1.5 "JetBrainsMono Nerd Font", "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace; }
+  .term .b, .term .k { font-weight: 700; } .term .s { color: var(--sec); } .term .d { color: var(--dim); } .term .t { color: var(--ter); }
+  .term .a { color: var(--accent); } .term .m { color: var(--accent); font-weight: 700; } .term .w { color: var(--amber); } .term .e { color: var(--red); }
+  .term .cur { background: var(--label); } .term .u { background: var(--surface); display: inline-block; }
+</style>
+<main>
+<h1>Onda 6 · notificação, erros e loading — proposta</h1>
+<p class="lead">O que o pi diz enquanto trabalha, quando algo falha, quando você interrompe e quando termina com você longe (F01–F10). <b>Nada foi aplicado.</b> Auditoria, pesquisa e limites estão em <a href="README.md">README.md</a>.</p>
+<p class="warn"><b>Como ler.</b> “Antes” são capturas reais da galeria (olhe só a faixa recortada). “Depois” são <b>mocks em HTML</b> no tema Tokyo Night: mostram disposição, hierarquia e texto, não pixels do kitty. Dados de demonstração.</p>
+
+<nav><a href="#visao">Visão geral</a><a href="#regras">Regras</a><a href="#trabalho">1 Trabalhando</a><a href="#retry">2 Nova tentativa</a><a href="#erro">3 Erro</a><a href="#cancelar">4 Interrupção</a><a href="#notificar">5 Notificação e som</a><a href="#avisos">6 Painel de avisos</a><a href="#idioma">7 Idioma</a><a href="#decidir">O que decidir</a><a href="#fontes">Fontes</a></nav>
+
+<h2 id="visao">Visão geral <small>os 10 itens da onda, o defeito de hoje e para onde vão</small></h2>
+<div class="scroll"><table>
+<tr><th>ID</th><th>Item</th><th>Hoje</th><th>Proposta</th><th>Seção</th></tr>
+<tr><td>F01</td><td>Notificação de término</td><td>título <code>Pi</code>, corpo <code>Ready for input</code>, igual para sucesso e erro</td><td>diz a sessão e o que houve; 3 eventos; uma substitui a outra</td><td><a href="#notificar">5</a></td></tr>
+<tr><td>F02</td><td>Som</td><td>um som para tudo; só desliga por variável de ambiente</td><td>som só quando precisa de você ou parou com erro; ajuste no painel</td><td><a href="#notificar">5</a>, <a href="#avisos">6</a></td></tr>
+<tr><td>F03</td><td>Indicador de trabalho</td><td>já redesenhado na Onda 1</td><td>manter; somar progresso na aba do terminal</td><td><a href="#trabalho">1</a></td></tr>
+<tr><td>F04</td><td>Indicador sem movimento</td><td><code>●</code> fixo</td><td>manter</td><td><a href="#trabalho">1</a></td></tr>
+<tr><td>F05</td><td>Loaders nativos</td><td>inglês, outra gramática: <code>Compacting context... (esc to cancel)</code></td><td>mesma linha do indicador, em português</td><td><a href="#trabalho">1</a></td></tr>
+<tr><td>F06</td><td>Canal de mensagens</td><td><code>Warning:</code> e <code>Error:</code> em inglês antes de texto em português</td><td><code>▲</code> e <code>✕</code> no lugar do prefixo</td><td><a href="#erro">3</a></td></tr>
+<tr><td>F07</td><td>Novas tentativas</td><td>erro vermelho com JSON cru e, abaixo, <code>Retrying (1/3) in 4s...</code></td><td>uma linha âmbar: causa, contagem, tecla</td><td><a href="#retry">2</a></td></tr>
+<tr><td>F08</td><td>Interrupção</td><td><code>Operation aborted</code> em vermelho, como se fosse falha</td><td>linha cinza: foi você, e o que ficou</td><td><a href="#cancelar">4</a></td></tr>
+<tr><td>F09</td><td>Português × inglês</td><td>extensões em português, pi nativo em inglês</td><td>tabela única de textos</td><td><a href="#idioma">7</a></td></tr>
+<tr><td>F10</td><td>Tela cheia</td><td>sem defeito visível, só <code>↓ Jump to latest message</code></td><td>traduzir junto com F09</td><td><a href="#idioma">7</a></td></tr>
+</table></div>
+
+<h2 id="regras">As 5 regras desta onda</h2>
+<ol>
+  <li><b>Cada tipo de sinal tem um lugar só.</b> O que está acontecendo fica na régua do composer. O que aconteceu fica na conversa, em até três linhas. O que precisa de você enquanto você está fora vai para a notificação do sistema.</li>
+  <li><b>Todo erro responde três perguntas.</b> O que houve, o que o pi fez a respeito e o que você pode fazer agora. O JSON do provedor vira uma frase; o código fica ao lado, em cinza.</li>
+  <li><b>Urgência honesta.</b> Cinza para nota, âmbar para “estou resolvendo”, vermelho só quando o trabalho parou e depende de você. O que você mesmo pediu (interromper) nunca é vermelho.</li>
+  <li><b>Estado nunca é só cor nem só movimento.</b> <code>▲</code> atenção, <code>✕</code> erro, <code>■</code> interrompido, <code>●</code> trabalhando sem animação. Vale em <code>NO_COLOR</code> e com movimento reduzido.</li>
+  <li><b>Uma gramática só.</b> Português, frases separadas por <code>·</code>, tecla em negrito ao lado do que ela faz. Igual às Ondas 1 e 2.</li>
+</ol>
+
+<h2 id="trabalho">1 · Trabalhando <small>(F03, F04, F05)</small> <span class="tag">extensão + patch no core para os loaders nativos</span></h2>
+<div class="pair">
+<figure><figcaption><b>Atual</b> · captura real 30 (já no desenho da Onda 1)</figcaption><img src="../../ui-ux-gallery/images/30-loader-trabalhando.png" style="aspect-ratio:1081/200" alt="Indicador atual: spinner roxo, escrevendo, 3s, sobre a régua de cima do composer">
+<p>O indicador do harness já segue as regras. Os loaders do pi nativo (compactação, resumo de branch) usam outro texto e outro lugar: <code>Compacting context... (esc to cancel)</code>.</p></figure>
+<figure><figcaption><b>Depois</b> · mesma linha para tudo que demora</figcaption><pre class="term" data-cols="76">
+==={a:⠹ escrevendo · 3s ·} {k:esc} {a:interrompe}
+ {cur: }
+===
+</pre><pre class="term" data-cols="76">
+==={a:⠹ compactando o contexto · 12s ·} {k:esc} {a:cancela}
+ {cur: }
+===
+</pre>
+<figcaption><b>Depois</b> · movimento reduzido ou <code>NO_COLOR</code> (sem mudança)</figcaption><pre class="term" data-cols="76">
+===● escrevendo · 3s · {k:esc} interrompe
+ {cur: }
+===
+</pre></figure>
+</div>
+<ul>
+  <li><b>Manter</b> o indicador: fase, tempo e a tecla de sair já estão juntos, como no Codex (<code>Working (0s • esc to interrupt)</code>) e no Gemini CLI (<code>(esc to cancel, 5s)</code>).</li>
+  <li><b>Loaders nativos</b> passam a usar a mesma linha e o mesmo vocabulário. “interrompe” para o turno, “cancela” para uma operação que pode ser desfeita.</li>
+  <li><b>Progresso na aba do terminal</b> (novo, invisível na tela): enquanto trabalha, o pi envia o estado “indeterminado” do OSC 9;4; ao parar com erro, o estado “erro”; ao terminar, limpa. Você vê na aba ou na barra de tarefas sem abrir a janela. Só liga em terminais com suporte confirmado (ver <a href="#decidir">riscos</a>).</li>
+</ul>
+
+<h2 id="retry">2 · Nova tentativa automática <small>(F07)</small> <span class="tag">patch no core</span></h2>
+<div class="pair">
+<figure><figcaption><b>Antes</b> · captura real 13</figcaption><img src="../../ui-ux-gallery/images/13-retry-429.png" style="aspect-ratio:1081/300" alt="Hoje: erro 429 em vermelho com JSON cru na conversa e, na régua do composer, Retrying (1/3) in 4s... (escape to cancel) em inglês"></figure>
+<figure><figcaption><b>Depois</b> · enquanto tenta: uma linha, âmbar, nada na conversa</figcaption><pre class="term" data-cols="76">
+!!!{w:▲ limite de uso do provedor · nova tentativa em 4s · 1 de 3 ·} {k:esc} {w:cancela}
+ {cur: }
+===
+</pre>
+<figcaption><b>Depois</b> · voltou a funcionar: a linha some, a resposta segue. Não sobra erro na conversa.</figcaption>
+<figcaption><b>Depois</b> · esgotou as tentativas: vira erro, uma vez só</figcaption><pre class="term" data-cols="76">
+ {e:✕} {b:O provedor está limitando o uso} {d:· 429 rate_limit}
+   {s:Tentei 3 vezes em 14s e parei.}
+   {k:↑} {d:traz o pedido de volta para tentar de novo}
+
+===
+ {cur: }
+===
+</pre></figure>
+</div>
+<ul>
+  <li><b>Vermelho só no fim.</b> Hoje o erro aparece em vermelho antes de se saber se a nova tentativa resolve. Enquanto o pi ainda está resolvendo, é âmbar e fica na régua.</li>
+  <li><b>Causa em palavras.</b> <code>limite de uso do provedor</code>, <code>sem conexão</code>, <code>provedor sobrecarregado</code> no lugar do JSON. O Claude Code faz o mesmo: rótulo da causa e depois <code>Retrying in Ns · attempt x/y</code>.</li>
+  <li><b>Contagem legível.</b> <code>1 de 3</code> e o tempo que falta, na mesma ordem em que se lê.</li>
+  <li><b>Limite.</b> O texto do retry é montado no core do pi e não há evento para extensão; exige patch.</li>
+</ul>
+
+<h2 id="erro">3 · Erro <small>(F06, F09)</small> <span class="tag">patch no core</span></h2>
+<div class="pair">
+<figure><figcaption><b>Antes</b> · capturas reais 12 (erro do provedor) e 87 (canal de mensagens)</figcaption>
+<img src="../../ui-ux-gallery/images/12-erro-provider.png" style="aspect-ratio:1081/270" alt="Hoje: Error: 400 seguido do JSON cru do provedor em vermelho e uma linha em inglês sobre /bug">
+<img src="../../ui-ux-gallery/images/87-notificacoes.png" style="aspect-ratio:1081/170;object-position:top" alt="Hoje: informação em cinza, Warning: em âmbar e Error: em vermelho, prefixos em inglês e corpo em português"></figure>
+<figure><figcaption><b>Depois</b> · erro do provedor</figcaption><pre class="term" data-cols="76">
+ {e:✕} {b:O provedor recusou o pedido} {d:· 400 invalid_request_error}
+   {s:Erro de demonstração do provider fake (400)}
+   {d:nada foi reenviado ·} {k:↑} {d:traz o pedido de volta ·} {k:/bug} {d:relata ao pi}
+</pre>
+<figcaption><b>Depois</b> · canal de mensagens: nota, atenção, erro</figcaption><pre class="term" data-cols="76">
+ {d:Informação de demonstração}
+ {w:▲ Aviso de demonstração}
+ {e:✕ Erro de demonstração}
+</pre></figure>
+</div>
+<ul>
+  <li><b>Três linhas, três perguntas.</b> O que houve (negrito, com o código em cinza ao lado), o que o provedor disse (a mensagem, sem o JSON em volta), e o que fazer.</li>
+  <li><b>Ação específica por causa</b>, no lugar da frase genérica sobre <code>/bug</code>:</li>
+</ul>
+<div class="scroll"><table>
+<tr><th>Causa</th><th>Primeira linha</th><th>Última linha</th></tr>
+<tr><td>400 pedido inválido</td><td>O provedor recusou o pedido</td><td><kbd>↑</kbd> traz o pedido de volta · <kbd>/bug</kbd> relata ao pi</td></tr>
+<tr><td>401 / 403 credencial</td><td>O provedor não reconheceu a sua conta</td><td><kbd>/login</kbd> entra de novo</td></tr>
+<tr><td>429 depois das tentativas</td><td>O provedor está limitando o uso</td><td><kbd>↑</kbd> traz o pedido de volta · <kbd>/model</kbd> troca de modelo</td></tr>
+<tr><td>5xx / sobrecarga depois das tentativas</td><td>O provedor está fora do ar</td><td><kbd>↑</kbd> traz o pedido de volta</td></tr>
+<tr><td>rede</td><td>Sem conexão com o provedor</td><td><kbd>↑</kbd> traz o pedido de volta</td></tr>
+<tr><td>não reconhecida</td><td>Algo falhou no pi</td><td><kbd>/bug</kbd> relata ao pi</td></tr>
+</table></div>
+<ul>
+  <li><b>Prefixos</b>: <code>Warning:</code> vira <code>▲</code> e <code>Error:</code> vira <code>✕</code>. A cor continua, mas não é mais a única pista, e acaba a mistura de idiomas na mesma linha.</li>
+  <li><b>Sem mudança</b>: onde a mensagem aparece (na conversa, perto do que a causou) e as cores do tema.</li>
+</ul>
+
+<h2 id="cancelar">4 · Interrupção <small>(F08)</small> <span class="tag">patch no core</span></h2>
+<div class="pair">
+<figure><figcaption><b>Antes</b> · capturas reais 32 (Esc no meio da resposta) e 14 (Esc durante a nova tentativa)</figcaption>
+<img src="../../ui-ux-gallery/images/32-cancelado.png" style="aspect-ratio:1081/240;object-position:top" alt="Hoje: Operation aborted em vermelho depois da resposta parcial">
+<img src="../../ui-ux-gallery/images/14-retry-cancelado.png" style="aspect-ratio:1081/270" alt="Hoje: Error: Retry failed after 1 attempts: Retry cancelled em vermelho, abaixo do erro 429"></figure>
+<figure><figcaption><b>Depois</b> · Esc no meio da resposta</figcaption><pre class="term" data-cols="76">
+ parte 5 da resposta lenta de demonstração. parte 6 da resposta lenta de
+
+ {d:■ interrompido por você · o que já foi escrito ficou}
+</pre>
+<figcaption><b>Depois</b> · Esc durante a nova tentativa</figcaption><pre class="term" data-cols="76">
+ {w:▲ limite de uso do provedor} {d:· 429 rate_limit}
+ {d:■ novas tentativas canceladas por você · 1 de 3}
+</pre></figure>
+</div>
+<ul>
+  <li><b>Interromper não é erro.</b> Foi você quem pediu; a linha é cinza e diz o que ficou. Hoje o vermelho de <code>Operation aborted</code> é o mesmo de uma falha real.</li>
+  <li><b>Sem “Error: … failed … cancelled”.</b> A causa original aparece uma vez, em âmbar (o pi não chegou a desistir), e a linha seguinte diz que foi você quem parou.</li>
+</ul>
+
+<h2 id="notificar">5 · Notificação e som <small>(F01, F02)</small> <span class="tag">patch no pi-code + extensão do harness</span></h2>
+<div class="pair">
+<figure><figcaption><b>Antes</b> · sinal real registrado em <code>reports/sinais.txt</code> (não há captura: é o sistema que desenha)</figcaption>
+<div class="notes"><div class="note"><b>Pi</b><span>Ready for input</span></div></div>
+<p>Igual para “terminou”, “parou com erro” e qualquer sessão. Com várias janelas abertas, não dá para saber qual avisou nem se precisa de você. O som é um só e toca em todo fim de turno.</p></figure>
+<figure><figcaption><b>Depois</b> · título = sessão e pasta (o mesmo do título do terminal); corpo = o que houve</figcaption>
+<div class="notes">
+<div class="note"><b>refatora o parser · projeto-demo</b><span>Terminou · 2m 14s</span></div>
+<div class="note"><b>refatora o parser · projeto-demo</b><span>Precisa de você · pergunta aberta</span></div>
+<div class="note"><b>refatora o parser · projeto-demo</b><span>Parou com erro · limite de uso do provedor</span></div>
+</div></figure>
+</div>
+<div class="scroll"><table>
+<tr><th>Evento</th><th>Notificação</th><th>Som (padrão)</th><th>Urgência (OSC 99)</th></tr>
+<tr><td>Terminou</td><td>sim, se você estiver fora</td><td>não</td><td>baixa</td></tr>
+<tr><td>Precisa de você</td><td>sim, se você estiver fora</td><td>sim</td><td>normal</td></tr>
+<tr><td>Parou com erro</td><td>sim, se você estiver fora</td><td>sim</td><td>normal</td></tr>
+<tr><td>Você interrompeu</td><td>não (já é assim)</td><td>não</td><td>—</td></tr>
+</table></div>
+<ul>
+  <li><b>Só quando você está fora</b>: já é assim (foco do terminal ou tempo sem digitar). Mantido. Codex e Crush fazem o mesmo por padrão.</li>
+  <li><b>Uma por sessão</b>: a nova substitui a anterior (mesmo identificador no OSC 99) e some quando você volta à janela (<code>p=close</code>). Hoje elas se acumulam na central do sistema.</li>
+  <li><b>Nunca “crítica”</b>: nenhum evento do pi justifica furar o modo Não Perturbe. É a regra da Apple para níveis de interrupção: representar a urgência com exatidão.</li>
+  <li><b>Som com significado</b>: tocar em todo fim de turno ensina a ignorar. Por padrão só nos dois eventos em que você tem algo a fazer; “terminou” fica mudo, e quem quiser liga no painel.</li>
+  <li><b>Limite</b>: “precisa de você” depende de o pi-code avisar quando abre uma pergunta ou pedido de permissão; hoje a notificação só dispara no fim do turno. A confirmar no código antes de aplicar.</li>
+</ul>
+
+<h2 id="avisos">6 · Painel de avisos <small>(novo, <code>/avisos</code>)</small> <span class="tag">extensão do harness</span></h2>
+<div class="pair">
+<figure><figcaption><b>Antes</b></figcaption>
+<p>Não existe. Para mudar o som: variável <code>PI_SOUND_NOTIFY</code>. Para mudar o canal: chave <code>preferredNotifChannel</code> num JSON. Para rever um aviso que passou: rolar a conversa.</p></figure>
+<figure><figcaption><b>Depois</b> · aba “recentes”: o que aconteceu nesta sessão</figcaption><pre class="term" data-cols="76">
+---{b:Avisos}>>{m:● recentes}   {d:ajustes}
+ {d:14:02}  {e:✕}  O provedor está limitando o uso {d:· parou depois de 3 tentativas}
+ {d:13:58}  {d:●}  {s:Terminou · 2m 14s}
+ {d:13:41}  {w:▲}  {s:Contexto compactado sozinho · 182k → 41k}
+ {d:tab ajustes · esc fechar}
+---
+</pre>
+<figcaption><b>Depois</b> · aba “ajustes”: tudo que hoje está em variável de ambiente e JSON</figcaption><pre class="term" data-cols="76">
+---{b:Avisos}>>{d:recentes}   {m:● ajustes}
+~ {a:❯} Avisar quando eu estiver fora>>terminou · precisa de mim · erro 
+   Canal>>{s:notificação do sistema} 
+   Som>>{s:precisa de mim · erro} 
+   Progresso na aba do terminal>>{s:ligado} 
+   Testar agora
+ {d:↑↓ escolher · espaço muda · tab recentes · esc fechar}
+---
+</pre>
+<figcaption><b>Depois</b> · sem avisos</figcaption><pre class="term" data-cols="76">
+---{b:Avisos}>>{m:● recentes}   {d:ajustes}
+ {d:Nenhum aviso nesta sessão · Tab abre os ajustes}
+ {d:tab ajustes · esc fechar}
+---
+</pre></figure>
+</div>
+<ul>
+  <li><b>Um lugar para ver e um para ajustar</b>, no mesmo painel e com a moldura do histórico da Onda 2 (réguas, <code>●</code> na aba ativa, <code>❯</code> no item, dica na última linha).</li>
+  <li><b>“Testar agora”</b> dispara a notificação e o som configurados. É o único jeito de saber se o terminal, o tmux e o sistema deixam passar.</li>
+  <li><b>Limite da aba “recentes”</b>: a extensão registra o que ela mesma vê (fim de turno, compactação, avisos das extensões). Erros do pi nativo só entram se o patch da seção 3 também avisar a extensão.</li>
+  <li>O Warp tem o equivalente gráfico (caixa de notificações com filtro de erros). Em TUI de agente não achei outro com painel assim.</li>
+</ul>
+
+<h2 id="idioma">7 · Um idioma só <small>(F09, F10)</small> <span class="tag">patch no core · pode vir depois</span></h2>
+<div class="scroll"><table>
+<tr><th>Hoje (pi nativo)</th><th>Proposta</th></tr>
+<tr><td><code>Retrying (1/3) in 4s... (escape to cancel)</code></td><td><code>▲ causa · nova tentativa em 4s · 1 de 3 · esc cancela</code></td></tr>
+<tr><td><code>Error: Retry failed after 1 attempts: Retry cancelled</code></td><td><code>■ novas tentativas canceladas por você · 1 de 3</code></td></tr>
+<tr><td><code>Operation aborted</code></td><td><code>■ interrompido por você · o que já foi escrito ficou</code></td></tr>
+<tr><td><code>Compacting context... (esc to cancel)</code></td><td><code>compactando o contexto · 12s · esc cancela</code></td></tr>
+<tr><td><code>Auto-compacting...</code></td><td><code>compactando o contexto sozinho · 12s · esc cancela</code></td></tr>
+<tr><td><code>Compaction cancelled</code> (vermelho)</td><td><code>■ compactação cancelada por você</code> (cinza)</td></tr>
+<tr><td><code>Summarizing branch... (esc to cancel)</code></td><td><code>resumindo o branch · 3s · esc cancela</code></td></tr>
+<tr><td><code>A bash command is already running. Press Esc to cancel it first.</code></td><td><code>▲ Já há um comando rodando · esc cancela o atual</code></td></tr>
+<tr><td><code>Warning:</code> / <code>Error:</code></td><td><code>▲</code> / <code>✕</code></td></tr>
+<tr><td><code>If this looks like a pi bug, /bug sends a report to the developers.</code></td><td>ação por causa (tabela da seção 3)</td></tr>
+<tr><td><code>Pi</code> / <code>Ready for input</code></td><td>sessão · pasta / <code>Terminou · 2m 14s</code></td></tr>
+<tr><td><code>↓ Jump to latest message</code></td><td><code>↓ ir para o fim</code></td></tr>
+</table></div>
+
+<h2 id="decidir">O que decidir</h2>
+<div class="scroll"><table>
+<tr><th>#</th><th>Item</th><th>Onde mexe</th><th>Risco</th><th>Recomendo</th></tr>
+<tr><td>1</td><td>Indicador de trabalho</td><td>—</td><td>—</td><td>manter</td></tr>
+<tr><td>1b</td><td>Progresso na aba do terminal (OSC 9;4)</td><td>extensão nova, pequena</td><td>médio: terminal que trata OSC 9 só como notificação pode mostrar lixo; ligar só em Ghostty e Windows Terminal, desligado no kitty até confirmar o suporte</td><td>aplicar, com lista de terminais</td></tr>
+<tr><td>2</td><td>Nova tentativa numa linha âmbar</td><td>patch novo no core do pi</td><td>médio: manutenção a cada versão do pi</td><td>aplicar</td></tr>
+<tr><td>3</td><td>Erro em três linhas com ação por causa; <code>▲</code> / <code>✕</code></td><td>patch novo no core do pi</td><td>médio: idem; causa não reconhecida cai no texto genérico</td><td>aplicar</td></tr>
+<tr><td>4</td><td>Interrupção em cinza</td><td>mesmo patch do item 3</td><td>baixo</td><td>aplicar</td></tr>
+<tr><td>5a</td><td>Texto da notificação, substituir e fechar</td><td>patch no <code>notify.ts</code> do pi-code (já existe o patch <code>notify-focus</code> nele)</td><td>baixo</td><td>aplicar</td></tr>
+<tr><td>5b</td><td>Evento “precisa de você”</td><td>pi-code: pergunta e permissão</td><td>a confirmar no código</td><td>investigar antes</td></tr>
+<tr><td>5c</td><td>Som só com significado</td><td><code>extensions/sound-notify</code></td><td>baixo; muda um hábito (hoje toca sempre)</td><td>aplicar</td></tr>
+<tr><td>6</td><td>Painel <code>/avisos</code></td><td>extensão nova</td><td>médio: aba “recentes” fica incompleta sem o item 3</td><td>aplicar depois do 3 e do 5</td></tr>
+<tr><td>7</td><td>Demais textos nativos em português</td><td>patch no core</td><td>baixo ganho, mais superfície de patch</td><td>depois</td></tr>
+</table></div>
+<p>Os itens 2, 3, 4 e 7 cabem num patch só, no mesmo arquivo do pi (<code>interactive-mode.js</code> e o indicador de status). Se o pi mudar o texto, o patch deixa de casar e o visual nativo volta, sem quebrar.</p>
+
+<h2 id="fontes">Fontes da pesquisa <small>(2026-11-14)</small></h2>
+<p>“Lida” = página aberta nesta pesquisa. “Trecho” = só resultado de busca; serve de pista, não de prova.</p>
+<ul>
+  <li>Retry com rótulo da causa e <code>Retrying in Ns · attempt x/y</code>; Esc interrompe: Claude Code, <a href="https://code.claude.com/docs/en/errors">errors</a> (lida). Codex <code>4/5 (21s • esc to interrupt)</code>: <a href="https://github.com/openai/codex/issues/19121">issue 19121</a> (trecho). opencode <code>[retrying in Ns attempt #N]</code> (trecho).</li>
+  <li>Indicador com tempo e tecla juntos: Codex <a href="https://raw.githubusercontent.com/openai/codex/main/codex-rs/tui/src/status_indicator_widget.rs">status_indicator_widget.rs</a> (lida); Gemini CLI <a href="https://raw.githubusercontent.com/google-gemini/gemini-cli/main/packages/cli/src/ui/components/LoadingIndicator.tsx">LoadingIndicator.tsx</a> (lida).</li>
+  <li>Eventos de notificação separados (terminou, precisa de você, falha de API): Claude Code <a href="https://code.claude.com/docs/en/hooks">hooks</a> (lida: <code>Notification</code>, <code>Stop</code>, <code>StopFailure</code>; <code>Stop</code> não roda em interrupção do usuário); Gemini CLI <a href="https://github.com/google-gemini/gemini-cli/blob/main/docs/cli/notifications.md">notifications.md</a> (lida: “Action required” e “Session complete”). Notificar só sem foco: Codex e Crush (trecho).</li>
+  <li>OSC 99: identificador para atualizar, <code>p=close</code>, urgência, expiração: <a href="https://sw.kovidgoyal.net/kitty/desktop-notifications/">kitty, desktop notifications</a> (lida).</li>
+  <li>OSC 9;4, estados 0 a 4: <a href="https://ghostty.org/docs/vt/osc/conemu">Ghostty</a> (lida; zera após cerca de 15 s sem atualização) e <a href="https://learn.microsoft.com/en-us/windows/terminal/tutorials/progress-bar-sequences">Windows Terminal</a> (lida). Suporte em kitty, WezTerm, iTerm2 e VTE: não verificado.</li>
+  <li>Indicador de progresso sempre em movimento, com descrição útil e cancelar: <a href="https://developer.apple.com/design/human-interface-guidelines/progress-indicators">Apple HIG, Progress indicators</a> (lida). Níveis de interrupção e urgência exata: <a href="https://developer.apple.com/design/human-interface-guidelines/managing-notifications">Apple HIG, Managing notifications</a> (lida).</li>
+  <li>Erro perto da origem, pista além da cor, gravidade proporcional, conselho construtivo: <a href="https://www.nngroup.com/articles/error-message-guidelines/">NN/g, Error-message guidelines</a> (lida). Mensagem de status que não interrompe: <a href="https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html">WCAG 2.2, 4.1.3</a> (lida).</li>
+  <li>Caixa de notificações com filtro e limite de toasts: <a href="https://docs.warp.dev/agents/capabilities/agent-notifications">Warp</a> (trecho).</li>
+  <li>Não verificado em fonte primária: páginas Feedback, Alerts e Writing do Apple HIG (o leitor devolveu página vazia); texto de erro e de interrupção de Codex, Gemini, Amp e Crush; modo 2026 e DEC 1004.</li>
+</ul>
+</main>
+<script>
+const vis = s => s.replace(/\{\w+:([^{}]*)\}/g, '$1')
+const html = s => s.replace(/</g, '&lt;').replace(/\{(\w+):([^{}]*)\}/g, '<span class="$1">$2</span>')
+const RULE = { '---': 't', '===': 'a', '!!!': 'w' } // régua: cinza (painel), roxa (composer), âmbar (nova tentativa)
+function line(l, cols) {
+  const cls = RULE[l.slice(0, 3)]
+  if (cls) {
+    const [left, right = ''] = l.slice(3).split('>>'), r = c => `<span class="${cls}">${c}</span>`
+    const head = left.trim() ? `{${cls}:──} ${left.trim()} ` : '', tail = right ? ` ${right} {${cls}:──}` : ''
+    return html(head) + r('─'.repeat(Math.max(0, cols - vis(head).length - vis(tail).length))) + html(tail)
+  }
+  if (l.startsWith('~')) {
+    const [left, right = ''] = l.slice(1).split('>>')
+    return `<span class="u">${html(left + ' '.repeat(Math.max(1, cols - vis(left).length - vis(right).length)) + right)}</span>`
+  }
+  const [left, right = ''] = l.split('>>')
+  return html(left + ' '.repeat(Math.max(1, cols - vis(left).length - vis(right).length - 1)) + right)
+}
+for (const pre of document.querySelectorAll('pre.term')) {
+  const src = pre.textContent.replace(/^\n|\n$/g, '')
+  pre.innerHTML = src.split('\n').map(l => line(l, +pre.dataset.cols)).join('\n')
+}
+</script>
+</html>
