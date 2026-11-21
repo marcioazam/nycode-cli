@@ -46,7 +46,7 @@ próprias, sem trocar ferramenta nenhuma. Pedido do usuário: "execute estes" (i
 - E2E `pi -p --model anthropic/claude-haiku-5-5` em `/tmp/e2e-ce-1219175` (fora do pi): `seq 1 500` voltou com
   100 linhas + rodapé e log de 500 linhas em `/tmp/pi-bash-clamp/`; `edit` para `def f(:` voltou com
   `parse error at 1:7`; a sessão gravou a seção `docs` compacta.
-- `structure.py --project-root ~/.pi/agent/extensions`: `over-7-code-files:.:9`, pré-existente (9 arquivos na raiz
+- `structure.py --project-root ~/.nycode/agent/extensions`: `over-7-code-files:.:9`, pré-existente (9 arquivos na raiz
   antes desta mudança; as novas ficam em subdiretórios).
 - Não feito: A/B de custo (`pelo-em-ovo`) — precisa de teto de gasto do usuário.
 
@@ -55,7 +55,7 @@ próprias, sem trocar ferramenta nenhuma. Pedido do usuário: "execute estes" (i
 Origem: avaliação do `samfoy/pi-lsp-extension` v1.4.0 (não instalado: colide com os nomes de ferramenta do pi-lsp e
 cobre 5 servidores contra 18). Ideia aproveitada: o diagnóstico automático depois de `edit`/`write` mostra só erros.
 
-- Evidência (111 sessões em `~/.pi/agent/sessions`): 148 avisos de configuração ("root markers not found",
+- Evidência (111 sessões em `~/.nycode/agent/sessions`): 148 avisos de configuração ("root markers not found",
   "Request initialize failed"), 52 "✅ no diagnostics", 61 diagnósticos reais; ≈77% do texto pós-edit é ruído.
 - Aceitação: em `updateDiagnosticsForFile` (só o hook pós-edit) não sai "root markers not found" nem "skipped …
   maxFileSizeBytes"; avisos de config e falhas de servidor saem uma vez por sessão; só erros (severity 1 ou sem

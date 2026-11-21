@@ -1,7 +1,7 @@
 <!-- markdownlint-disable MD029 MD007 -->
 # Subagent send: coordenador redireciona subagente vivo (2026-11-13)
 
-Pesquisa: docs/research/2026-11-13-pi-agents-teams-sota.md (seção Delta). Plano: ~/.pi/agent/plans/2026-11-13-01a1d61d.md
+Pesquisa: docs/research/2026-11-13-pi-agents-teams-sota.md (seção Delta). Plano: ~/.nycode/agent/plans/2026-11-13-01a1d61d.md
 
 Tier: T3 (sinais: concorrência entre processos via inbox/ack, contrato da ferramenta `subagent` lido pelo modelo, rótulo de autoridade, eval com gasto)
 
@@ -10,7 +10,7 @@ Tier: T3 (sinais: concorrência entre processos via inbox/ack, contrato da ferra
 - Objetivo: o coordenador (modelo) redireciona um subagente de fundo vivo sem matá-lo, via `subagent {send: <id>, task: <texto>}`. Depois comparamos com cancelar e recomeçar, e com o harness sem a feature.
 - Fora de escopo: modo time (`team`) segue como está; steer em chamada de primeiro plano (o modelo fica bloqueado); interromper ferramenta no meio; Claude Code; deploy.
 - Estimativa: 11 tarefas, ~6 runs de worker (Sonnet), 1 gate, 1–2 rodadas de plan-reviewer; gasto de modelo ≤ US$15 (bench ~US$3, eval ~US$8, folga).
-- Registro na execução: ~/.pi/agent/claude-home/docs/pi-subagent-send-2026-11-13.md (Progresso, Surpresas, Log de decisões, Resultados).
+- Registro na execução: docs/harness/pi-subagent-send-2026-11-13.md (Progresso, Surpresas, Log de decisões, Resultados).
 - Autorização: pedido do usuário "crie uma execução SOTA disso e compare depois" + respostas: param `send`, ligado só se no_worse, teto US$15, rótulo do coordenador. claude-home não é repositório git: não há commit/PR; entrega = patch instalado + registro.
 
 ## Decisões e suposições
@@ -53,14 +53,14 @@ Tier: T3 (sinais: concorrência entre processos via inbox/ack, contrato da ferra
 - Eval no ruído: D8 separa adoção, bench e regressão; inconclusivo mantém `0`.
 - Sessão concorrente editando o harness contamina a eval (aconteceu na rodada anterior): checar drift do settings.json antes e depois; se mudar, a eval é descartada e fica registrada.
 - Porta de mão única: nenhuma. Gasto de modelo é o único irreversível, com teto de US$15 checado antes de cada lote.
-- Rollback: `PI_CODE_SUBAGENT_SEND=0` (desliga na hora). Remoção completa: `patch -R -p1 -d ~/.pi/agent/npm/node_modules/pi-code/extensions < zzzzzz-subagent-send.patch`, apagar o patch, o diretório de teste e as linhas novas do gate.sh, e rodar o gate (roundtrip igual ao instalado). Artefatos em `~/.cache/pi-fleet-work/bench-send/` e `*.inbox.jsonl` velhos são inofensivos e podem ser apagados.
+- Rollback: `PI_CODE_SUBAGENT_SEND=0` (desliga na hora). Remoção completa: `patch -R -p1 -d ~/.nycode/agent/npm/node_modules/pi-code/extensions < zzzzzz-subagent-send.patch`, apagar o patch, o diretório de teste e as linhas novas do gate.sh, e rodar o gate (roundtrip igual ao instalado). Artefatos em `~/.cache/pi-fleet-work/bench-send/` e `*.inbox.jsonl` velhos são inofensivos e podem ser apagados.
 
 ## Fases
 
 ### Fase 1: implementação (gate: diff revisado, lsp_diagnostics limpo nos arquivos tocados)
 
 1. Criar registro /docs da execução
-   - agente: main · arquivos: ~/.pi/agent/claude-home/docs/pi-subagent-send-2026-11-13.md
+   - agente: main · arquivos: docs/harness/pi-subagent-send-2026-11-13.md
    - ação: materializar este plano (D/A/AC, riscos, seções vivas) e linkar a pesquisa delta em docs/research/2026-11-13-pi-agents-teams-sota.md
    - after: (nenhum) · AC: AC9
    - check: `rg -c "AC10" <registro>` · pronto: registro com todas as seções
@@ -84,10 +84,10 @@ Tier: T3 (sinais: concorrência entre processos via inbox/ack, contrato da ferra
    - after: 3 · AC: AC10
    - check: `patch -R --dry-run` do patch novo na árvore instalada · pronto: patch reversível e gate.sh referenciando os arquivos novos
 5. Documentar send no swarm-orchestration
-   - agente: main · arquivos: ~/.pi/agent/claude-home/skills/swarm-orchestration/SKILL.md
+   - agente: main · arquivos: packages/coding-agent/resources/skills/swarm-orchestration/SKILL.md
    - ação: 1–2 linhas: corrigir worker de fundo com `send` em vez de cancelar e recomeçar; o rótulo não é autoridade do usuário; só quando a chave estiver ligada
    - after: 3 · AC: AC1
-   - check: `python3 ~/.pi/agent/claude-home/bin/check-instructions` (ou o check-instructions do gate-extra) · pronto: 0 problemas (optional)
+   - check: `python3 ~/.nycode/agent/bin/check-instructions` (ou o check-instructions do gate-extra) · pronto: 0 problemas (optional)
 
 ### Fase 2: comparação (gate: tabela de resultados no registro, gasto ≤ US$15)
 

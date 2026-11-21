@@ -46,7 +46,7 @@ Limites: strings ≤ 120 chars, sem controle; `effort` só `[a-z]{1,16}`.
 ## Replay
 
 ```text
-P=~/.pi/agent/claude-home/patches/pi-code; E=~/.pi/agent/npm/node_modules/pi-code/extensions
+P=~/.nycode/agent/patches/pi-code; E=~/.nycode/agent/npm/node_modules/pi-code/extensions
 patch -R --dry-run -p1 -d $E < $P/zzzzzzz-subagent-model-effort.patch     # applied? (exit 0)
 patch -R --dry-run -p1 -d $E < $P/zzzzzzzz-statusline-provider.patch
 patch -p1 -d <copia-pristina> < $P/zzzzzzz-subagent-model-effort.patch      # aplicar

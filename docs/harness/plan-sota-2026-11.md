@@ -18,7 +18,7 @@ O alvo é reduzir retrabalho e falta de especificação com custo controlado.
 
 - D1: liberar ferramentas read-only de pesquisa no plan mode: MCP de busca, docs e codegraph, `web_fetch`, `lsp_*` e subagents read-only.
 - D2: o modelo assume sozinho só com confiança ≥90%, com evidência e em decisão reversível. Abaixo disso, ou em decisão irreversível, de contrato, segurança, dinheiro ou dados, ele pergunta com recomendação e %.
-- D3: o rascunho do plano é persistido em `~/.pi/agent/plans/*.md`, o único destino de `write`/`edit` liberado no plan mode.
+- D3: o rascunho do plano é persistido em `~/.nycode/agent/plans/*.md`, o único destino de `write`/`edit` liberado no plan mode.
 - D4: eval pago no pelo-em-ovo com teto de US$ 20.
 
 ## Aceitação
@@ -27,8 +27,8 @@ O alvo é reduzir retrabalho e falta de especificação com custo controlado.
 - AC2: SE o plan mode está ativo e a chamada é a playwright, computer_use_linux, linear ou outro MCP fora da lista, ENTÃO O SISTEMA DEVE bloqueá-la.
 - AC3: SE o plan mode está ativo e um `subagent` (single, `tasks` ou `chain`) nomeia um agente fora da allowlist read-only, ENTÃO O SISTEMA DEVE bloquear a chamada inteira.
   - Allowlist: Explore, code-mapper, Plan, perplexity-scout, web-scout, research-scout, scholar-scout, claim-verifier, code-reviewer, security-reviewer, test-reviewer, reliability-reviewer, contract-migration-reviewer, agent-systems-auditor.
-- AC4: QUANDO o plan mode está ativo, O SISTEMA DEVE aceitar `write`/`edit` só em arquivo `.md` cujo caminho real fica dentro de `~/.pi/agent/plans/`. `../`, symlink e qualquer outro caminho são bloqueados.
-- AC5: QUANDO o plan mode está ativo, o contexto injetado DEVE apontar para `claude-home/skills/plan-workflow/SKILL.md` e para o arquivo de plano da sessão, e trazer a regra de numeração (só tarefas são numeradas).
+- AC4: QUANDO o plan mode está ativo, O SISTEMA DEVE aceitar `write`/`edit` só em arquivo `.md` cujo caminho real fica dentro de `~/.nycode/agent/plans/`. `../`, symlink e qualquer outro caminho são bloqueados.
+- AC5: QUANDO o plan mode está ativo, o contexto injetado DEVE apontar para `packages/coding-agent/resources/skills/plan-workflow/SKILL.md` e para o arquivo de plano da sessão, e trazer a regra de numeração (só tarefas são numeradas).
 - AC6: QUANDO o plano é executado, a mensagem de execução DEVE mandar materializar o arquivo de plano no `/docs` do repositório antes da primeira edição.
 - AC7: `planToTodos(template)` DEVE gerar exatamente as N tarefas numeradas e ignorar bullets, `- [ ]` e cabeçalhos.
 - AC8: a skill DEVE cobrir triagem T0–T3, ledger de ambiguidades, grill com % de confiança, protocolos "não sei" e de contradição, EARS, fases→tarefas→passos, checklists e revisão em contexto limpo.

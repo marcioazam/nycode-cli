@@ -33,7 +33,7 @@ pi's `setExtensionWidget` deletes the key from both maps and then `Map.set`s it,
 
 - `display.test.ts`: pure helpers, snapshots 80/120/200 (earlier round).
 - `assembled.test.ts`: REAL `registerFleetUi` + `status-line` extensions on a fake widget host that copies the two native functions above (a model of them, NOT the native TUI). Covers no agents / one agent / only finished at 80/120/200 (title, row order, a single rule adjacent to `Status Line`, no orphan title/rule, widths), plus the single-row footer and built-in paths (red before the `show()` fix: 5 failures; green after: 20/20 with `display.test.ts`).
-- `native-frame.test.ts`: real pi CLI in tmux, isolated agent dir/HOME/CLAUDE_CONFIG_DIR, fake provider and `printf` statusLine, no-agent state at 80/120/200. Run at the final gate only: `PI_DISPLAY_FRAME_OUT=/tmp/display-frame.txt node --experimental-strip-types --test ~/.pi/agent/claude-home/bin/tests/interactive-display/native-frame.test.ts` (saves the 120-col pane as the visual frame). Not run yet. Sub-agent rows are not driven natively (needs a model that calls the subagent tool): unverified natively, covered by `assembled.test.ts` only.
+- `native-frame.test.ts`: real pi CLI in tmux, isolated agent dir/HOME/CLAUDE_CONFIG_DIR, fake provider and `printf` statusLine, no-agent state at 80/120/200. Run at the final gate only: `PI_DISPLAY_FRAME_OUT=/tmp/display-frame.txt node --experimental-strip-types --test ~/.nycode/agent/bin/tests/interactive-display/native-frame.test.ts` (saves the 120-col pane as the visual frame). Not run yet. Sub-agent rows are not driven natively (needs a model that calls the subagent tool): unverified natively, covered by `assembled.test.ts` only.
 
 ## Expected static view (assembled test, width 120, ANSI stripped)
 
@@ -104,7 +104,7 @@ Reverse the patch (`patch -p1 -R` in the pi-code `extensions` dir); pre-edit bac
 
 - patches/pi-code suites 386/386 (after fixing 5 stale-contract/regression failures: title+rule layout in fleet-ui tests, `PlanSection` guard for a `ui` without `onTerminalInput`, theme mock `bold`, replay revert order); interactive-display 55/55 (unit + native); interactive-input 86/86 (incl. native e2e); cache-warm-identity 3/3; wrapper/install/guard exit 0; check-leaks clean; structure clean.
 - Found by the gate: `send-now/apply.mjs` CLI was a no-op when invoked through a symlink (run guard compared realpath with argv[1]); fixed with `realpathSync`.
-- Not measured: node coverage after the last edits, native replay after the pulse-dot patch, real-terminal visuals. Open outside this record: `check-refs.py` flags `swarm-orchestration/SKILL.md:21` (other lane); routing patches live only under `~/.pi/agent/claude-home`.
+- Not measured: node coverage after the last edits, native replay after the pulse-dot patch, real-terminal visuals. Open outside this record: `check-refs.py` flags `swarm-orchestration/SKILL.md:21` (other lane); routing patches live only under `~/.nycode/agent`.
 
 ## Fold symbol in the chips + collapsible Status Line (user request 2026-11-13; patch 10z `zzzzzzzzzz-plan-section` rebuilt over the 9z result, 9z unchanged)
 

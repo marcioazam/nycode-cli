@@ -36,8 +36,8 @@ Origem: `docs/research/2026-11-13-pi-harness-sota-nov.md` (itens 1 e 2). Aprovad
 
 ## Rollback
 
-`cd ~/.pi/agent/claude-home && tar xzf backups/preamble-diet-2026-11-13/before.tgz` e
-`rm ~/.pi/agent/extensions/completion-gate.ts`; `rules-ref/` pode ficar (não é carregado).
+`cd ~/.nycode/agent && tar xzf backups/preamble-diet-2026-11-13/before.tgz` e
+`rm ~/.nycode/agent/extensions/completion-gate.ts`; `rules-ref/` pode ficar (não é carregado).
 
 ## O que mudou
 
@@ -46,7 +46,7 @@ Origem: `docs/research/2026-11-13-pi-harness-sota-nov.md` (itens 1 e 2). Aprovad
   teste), `agent-routing`, `agent-systems`, `agent-systems-auditor`, `bin/telemetry/pi_telemetry.py`, `safety.md` e
   `check-instructions.py` (valida `rules-ref/` como "ondemand", fora da conta do carregamento fixo).
 - Descrições: 60/79 skills visíveis ≤ 250 chars (74.945 → ~15,8 KB) e 52/54 agentes ≤ 140 chars (16.945 → 6.169 B).
-- `~/.pi/agent/extensions/completion-gate.ts` + `bin/tests/gates/completion-gate.test.ts` (11 testes).
+- `~/.nycode/agent/extensions/completion-gate.ts` + `bin/tests/gates/completion-gate.test.ts` (11 testes).
 - CLAUDE.md + rules carregados sempre: 39.761 → 26.310 B (check-instructions).
 
 ## Checkpoint
@@ -137,7 +137,7 @@ Não são redundantes; ficam.
 
 ### 4. Antigravity só com Google e Keenable sob demanda (pedido do usuário, 2026-11-13)
 
-- `~/.pi/agent/extensions/google-only-agy/index.ts`: fora de modelo Google (provider `antigravity`/`google*` ou id (optional)
+- `~/.nycode/agent/extensions/google-only-agy/index.ts`: fora de modelo Google (provider `antigravity`/`google*` ou id (optional)
   `google/`/`gemini`), tira `AskAntigravity`, `antigravity` e `agy_*` do conjunto ativo em `session_start` e
   `model_select`; com Google, devolve. O provider continua registrado, para o `/model` achar o Gemini.
   `PI_AGY_TOOLS=always` volta ao antigo. Testes: `bin/tests/gates/google-only-agy.test.ts` (3/3).
@@ -151,7 +151,7 @@ Não são redundantes; ficam.
 - Checagens: instructions 0 problemas, agents OK (54).
 - Efeito colateral aceito: "ask gemini" numa sessão Claude não tem mais a ferramenta; é preciso trocar para um modelo
   Google ou usar `PI_AGY_TOOLS=always`.
-- Rollback: apagar a extensão; `cp backups/preamble-diet-2026-11-13/mcp.json.before ~/.pi/agent/mcp.json`; restaurar
+- Rollback: apagar a extensão; `cp backups/preamble-diet-2026-11-13/mcp.json.before ~/.nycode/agent/mcp.json`; restaurar
   os `*.pre-keenable`.
 
 ### 5. Hubs de skills (recomendação "versão segura", aprovada pelo usuário em 2026-11-13)
