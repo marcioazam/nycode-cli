@@ -17,11 +17,12 @@
  * and session_compact, so the list survives compaction without external files.
  */
 
-import type { ExtensionAPI, ExtensionContext, ExtensionUIContext, SessionEntry, Theme } from '@earendil-works/pi-coding-agent'
-import { Key, matchesKey, Text, type TUI, truncateToWidth } from '@earendil-works/pi-tui'
+import { Key, matchesKey, Text, type TUI, truncateToWidth } from '@nycode/tui'
+import type { ExtensionAPI, ExtensionContext, ExtensionUIContext, SessionEntry } from '../../core/extensions/types.ts'
+import type { Theme } from '../../modes/interactive/theme/theme.ts'
 import { type Static, Type } from 'typebox'
 
-import { stringEnum } from './internal/string-enum.ts'
+import { stringEnum } from '../_shared/model/string-enum.ts'
 
 type TodoStatus = 'pending' | 'in_progress' | 'completed'
 type TodoAction = 'add' | 'start' | 'complete' | 'delete' | 'clear' | 'list'
@@ -346,7 +347,7 @@ class TodoListComponent {
   }
 }
 
-// pi-core's ExtensionRunner throws this exact phrase from an invalidated ctx
+// nycode core's ExtensionRunner throws this exact phrase from an invalidated ctx
 // proxy after session replacement/reload. Match the stable substring so
 // genuine replay bugs still propagate instead of being silently swallowed.
 const isStaleCtxError = (e: unknown): boolean => /stale after session replacement/.test(String(e))
@@ -381,7 +382,7 @@ const persistedTodoDetails = (entry: SessionEntry, includeLegacy: boolean): Pers
 }
 
 /** Register the branch-local Todo provider, viewer, and live widget. */
-export default function todoExtension(pi: ExtensionAPI) {
+export default function todoExtension(nycode: ExtensionAPI) {
   // In-memory state (reconstructed from session on load)
   let todos: Todo[] = []
   let nextId = 1
@@ -389,7 +390,7 @@ export default function todoExtension(pi: ExtensionAPI) {
   /** Todos go to the Plan section (plan-mode/index.ts listens); the chat widget stays empty. */
   const refresh = () => {
     overlay.update()
-    pi.events.emit('pi-code:todos', todos.map((t) => ({ id: t.id, text: t.status === 'in_progress' ? (t.activeForm ?? t.text) : t.text, status: t.status })))
+    nycode.events.emit('pi-code:todos', todos.map((t) => ({ id: t.id, text: t.status === 'in_progress' ? (t.activeForm ?? t.text) : t.text, status: t.status })))
   }
 
   /**
@@ -405,7 +406,7 @@ export default function todoExtension(pi: ExtensionAPI) {
 
     for (const entry of ctx.sessionManager.getBranch()) {
       const details = persistedTodoDetails(entry, !hasProviderSnapshot)
-      // pi persists a failed tool call as `details: {}`, which is truthy: a rejected
+      // nycode persists a failed tool call as `details: {}`, which is truthy: a rejected
       // or blocked call would otherwise throw here and break replay for the rest of
       // the session, losing the list on every resume, fork and compaction.
       if (Array.isArray(details?.todos)) {
@@ -421,7 +422,7 @@ export default function todoExtension(pi: ExtensionAPI) {
 
   /**
    * Replay for session_tree/session_compact. Auto-compaction races session
-   * disposal: pi-core can emit these with an already-invalidated ctx proxy
+   * disposal: nycode core can emit these with an already-invalidated ctx proxy
    * whose getters throw the stale error. The replacement session's
    * session_start replays state, so keep current state on a stale ctx.
    */
@@ -434,19 +435,19 @@ export default function todoExtension(pi: ExtensionAPI) {
     refresh()
   }
 
-  pi.on('session_start', (_event, ctx) => {
+  nycode.on('session_start', (_event, ctx) => {
     reconstructState(ctx)
     if (ctx.hasUI) overlay.setUICtx(ctx.ui)
     refresh()
   })
-  pi.registerShortcut(Key.ctrlShift('t'), { description: 'Collapse or expand the todo list', handler: () => overlay.toggleCollapsed() })
-  pi.on('session_tree', (_event, ctx) => replayAndRefresh(ctx))
-  pi.on('session_compact', (_event, ctx) => replayAndRefresh(ctx))
-  pi.on('session_shutdown', () => overlay.dispose())
+  nycode.registerShortcut(Key.ctrlShift('t'), { description: 'Collapse or expand the todo list', handler: () => overlay.toggleCollapsed() })
+  nycode.on('session_tree', (_event, ctx) => replayAndRefresh(ctx))
+  nycode.on('session_compact', (_event, ctx) => replayAndRefresh(ctx))
+  nycode.on('session_shutdown', () => overlay.dispose())
 
   // Reads live state at render time; never replay the branch here (the
   // branch is stale until message_end runs after tool_execution_end).
-  pi.on('tool_execution_end', (event) => {
+  nycode.on('tool_execution_end', (event) => {
     if (event.toolName !== TOOL_NAME || event.isError) return
     refresh()
   })
@@ -455,13 +456,13 @@ export default function todoExtension(pi: ExtensionAPI) {
     content: [{ type: 'text' as const, text }],
     details,
   })
-  // pi keeps a result's details by reference in the live session, and start/complete
+  // nycode keeps a result's details by reference in the live session, and start/complete
   // mutate the todo objects in place, so each result carries its own copies: without
   // them a rewind replays, and the TUI re-renders, today's statuses on earlier calls.
   const snapshot = () => todos.map((t) => ({ ...t }))
   /** Persist successful mutations before direct or nested execution returns. */
   const ok = (action: TodoAction, text: string) => {
-    if (action !== 'list') pi.appendEntry(STATE_ENTRY_TYPE, { todos: snapshot(), nextId })
+    if (action !== 'list') nycode.appendEntry(STATE_ENTRY_TYPE, { todos: snapshot(), nextId })
     return toolMessage(text, { action, todos: snapshot(), nextId })
   }
   const fail = (action: TodoAction, error: string) => toolMessage(`Error: ${error}`, { action, todos: snapshot(), nextId, error })
@@ -515,7 +516,7 @@ export default function todoExtension(pi: ExtensionAPI) {
   const handleList = () => ok('list', plainTodoList(todos))
 
   // Register the todo tool for the LLM
-  pi.registerTool({
+  nycode.registerTool({
     name: TOOL_NAME,
     label: 'Todo',
     description:
@@ -528,7 +529,7 @@ export default function todoExtension(pi: ExtensionAPI) {
     ],
     parameters: TodoParams,
 
-    async execute(_toolCallId, params, _signal, _onUpdate, _ctx) /* NOSONAR typescript:S7503 - pi types a tool execute as returning a Promise */ {
+    async execute(_toolCallId, params, _signal, _onUpdate, _ctx) /* NOSONAR typescript:S7503 - nycode types a tool execute as returning a Promise */ {
       switch (params.action) {
         case 'add':
           return handleAdd(params)
@@ -588,7 +589,7 @@ export default function todoExtension(pi: ExtensionAPI) {
   })
 
   // Register the /todos command for users
-  pi.registerCommand('todos', {
+  nycode.registerCommand('todos', {
     description: 'Show all todos on the current branch',
     handler: async (_args, ctx) => {
       if (!ctx.hasUI) {
