@@ -38,8 +38,8 @@ import syntaxCheckExtension from "./syntax-check/index.ts";
 import thinkingExtension from "./thinking/index.ts";
 import todoExtension from "./todo/index.ts";
 import toolSearchExtension from "./tool-search/index.ts";
-import uiVisualExtension from "./ui-visual/index.ts";
 import uiExtension from "./ui/index.ts";
+import uiVisualExtension from "./ui-visual/index.ts";
 import upDequeueExtension from "./up-dequeue/index.ts";
 import webExtension from "./web/index.ts";
 
