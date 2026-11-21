@@ -19,7 +19,7 @@ Limites duros:
 - Nunca --admin, --no-verify, force push nem bypass de check obrigatório.
 - Não tocar /home/marcio/code/pi-harness nem as branches feat/ui-onda9*; ler o ny-pi só por git show origin/main.
 - Sem compatibilidade PI_*: só nycode migrate from-pi (D-09). Segredos nunca em log, commit ou evidência.
-- Ações que exigem o dono (D-15 apagar ramos, D-16 alertas de secret scanning, D-17 escopo npm, D-22 arquivar ny-pi, publicar no npm, apagar proteção clássica): não execute sem autorização explícita nesta conversa. Sem ela, faça todo o trabalho independente e termine o turno com "PLAN BLOCKED: <decisão>".
+- Ações que exigem o dono (D-15 apagar ramos, D-16 alertas de secret scanning, D-22 arquivar ny-pi, apagar proteção clássica): não execute sem autorização explícita nesta conversa. Sem ela, faça todo o trabalho independente e termine o turno com "PLAN BLOCKED: <decisão>".
 - Primeiro passo de F0: copiar /tmp/nycode-rename/ para scripts/fork/ (P-9).
 
 A meta está cumprida quando, mostrado na conversa:
