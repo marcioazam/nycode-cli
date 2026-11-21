@@ -1,21 +1,22 @@
 /**
- * Gate de conclusão (2026-11-13, docs/preamble-diet-completion-gate-2026-11-13.md): se o turno editou código e
- * nenhuma checagem executada passou depois da última edição, o fim do turno é bloqueado uma vez, pedindo a
- * checagem ou a declaração explícita de que ela fica para depois (regra "verify once" do CLAUDE.md).
+ * Completion gate (2026-11-13, the preamble-diet record): if the turn edited code and no
+ * executed check passed after the last edit, the end of the turn is blocked once, asking for the check or for an
+ * explicit statement that it is deferred (the "verify once" rule).
  *
- * Evidência: um type checker bloqueando a entrega levou os resultados corretos aceitos de 1 para 11 em 12, e o
- * diagnóstico a cada edição foi neutro (github.com/ianbarber/lsps-for-llms); LangChain +13,7 pp no Terminal-Bench 2
- * com um checklist antes de concluir.
+ * Evidence: a type checker blocking delivery took accepted correct results from 1 to 11 of 12, while per-edit
+ * diagnostics were neutral (github.com/ianbarber/lsps-for-llms); LangChain +13.7 pp on Terminal-Bench 2 with a
+ * checklist before finishing.
  *
- * Escopo: desde a última mensagem do usuário. Edição = `edit`/`write` num arquivo de código (`bash` não conta, como
- * no plan-gate). Checagem = `bash` cujo comando casa com CHECK e terminou sem erro, ou `subagent` do `gate-runner`.
- * Limites: o sucesso vem do `isError` do resultado, então
- * `cmd | tail` vale o status do `tail` e um `gate-runner` conta mesmo se reportar check vermelho. Bloqueia no máximo 1 vez por turno (entrada `custom` `completion-gate`). Fica fora dos workers do `subagent`,
- * cujo orquestrador roda o gate, e do plan mode. `PI_COMPLETION_GATE=0` desliga. Em caso de falha, libera.
- * Testes: ~/.pi/agent/claude-home/bin/tests/gates/completion-gate.test.ts.
+ * Scope: since the last user message. Edit = `edit`/`write` on a code file (`bash` does not count, as in plan-gate).
+ * Check = `bash` whose command matches CHECK and ended without error, or `subagent` running `gate-runner`.
+ * Limits: success comes from the result's `isError`, so `cmd | tail` takes the status of `tail` and a `gate-runner`
+ * counts even if it reports a red check. Blocks at most once per turn (a `custom` entry `completion-gate`). Stays out
+ * of `subagent` workers, whose orchestrator runs the gate, and of plan mode. `harness.completionGate`
+ * (NYCODE_COMPLETION_GATE wins) switches it off. On failure, releases.
  */
 
-import type { ExtensionAPI } from '@earendil-works/pi-coding-agent'
+import type { ExtensionAPI } from '../../core/extensions/types.ts'
+import { resolveNycodeSettings } from '../../core/settings-nycode.ts'
 
 type Entry = Record<string, any>
 export interface CompletionDecision {
@@ -26,8 +27,9 @@ export interface CompletionDecision {
 
 const CODE =
   /\.(py|pyi|ts|tsx|mts|cts|js|jsx|mjs|cjs|go|rs|java|kt|kts|scala|rb|php|c|h|cc|cpp|hpp|cs|swift|dart|lua|sh|bash|zsh|sql|tf|proto|vue|svelte|astro|zig|ex|exs|erl|hs|ml|r|jl|nim)$/i
-// Ancorado no início de cada segmento do comando (depois de wrappers), para `rg pytest` ou `cat eslint.config.js`
-// não contarem como checagem.
+// Anchored at the start of each command segment (after wrappers), so `rg pytest` or `cat eslint.config.js` do not
+// count as a check.
+// nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- fixed literal alternatives joined at load
 const CHECK = new RegExp(
   '^(' +
     [
@@ -65,7 +67,7 @@ const CHECK = new RegExp(
       'tflint',
       'shellcheck',
       '(ba)?sh\\s+-n',
-      // Cada opção é um token inteiro (`-\\S*` não cruza espaço): sem a ambiguidade exponencial do CodeQL js/redos.
+      // Each option is a whole token (`-\\S*` does not cross a space): no exponential ambiguity (CodeQL js/redos).
       'node(?:\\s+-\\S*)*?\\s+--(?:test|check)\\b',
       'deno\\s+(test|check|lint)',
       'php\\s+-l',
@@ -79,7 +81,7 @@ const CHECK = new RegExp(
     ')(\\s|$)',
   'i',
 )
-// Prefixos que só embrulham o comando real.
+// Prefixes that only wrap the real command.
 const WRAP =
   /^(\w+=\S*|env|time|nice|sudo|timeout\s+\S+|npx|bunx|pnpm\s+(exec|dlx)|yarn\s+dlx|poetry\s+run|pipenv\s+run|python3?\s+-m|systemd-run(?:\s+(?!--(?:\s|$))\S+)*\s+--|uv\s+run(\s+(--(with|python|project|directory|package|extra|group)\s+\S+|-p\s+\S+|-\S+))*)\s+/i
 
@@ -108,11 +110,7 @@ function isCheckCall(b: Entry): boolean {
   return a.agent === 'gate-runner' || many.some((t: Entry) => t?.agent === 'gate-runner')
 }
 
-export function decideCompletionGate(
-  entries: Entry[],
-  env: Record<string, string | undefined> = process.env,
-): CompletionDecision {
-  if (env.PI_COMPLETION_GATE === '0') return { action: 'none' }
+export function decideCompletionGate(entries: Entry[]): CompletionDecision {
   let start = 0
   let planMode = false
   for (let i = 0; i < entries.length; i++) {
@@ -128,7 +126,7 @@ export function decideCompletionGate(
   const pending = new Map<string, number>()
   for (let i = start; i < entries.length; i++) {
     const e = entries[i]
-    if (e.type === 'custom' && e.customType === 'completion-gate') return { action: 'none' } // já bloqueou neste turno
+    if (e.type === 'custom' && e.customType === 'completion-gate') return { action: 'none' } // already blocked this turn
     for (const b of calls(e)) {
       const file = String(b.arguments?.path ?? b.arguments?.file_path ?? '')
       if ((b.name === 'edit' || b.name === 'write') && CODE.test(file)) {
@@ -151,10 +149,11 @@ export function decideCompletionGate(
   return { action: 'block', files, message }
 }
 
-export default function (pi: ExtensionAPI) {
-  if (process.env.PI_CODE_SUBAGENT === '1') return // workers: o orquestrador verifica
-  pi.on('agent_before_settle', async (event: any, ctx: any) => {
+export default function completionGateExtension(nycode: ExtensionAPI): void {
+  if (process.env.NYCODE_SUBAGENT === '1') return // workers: the orchestrator verifies
+  nycode.on('agent_before_settle', async (event: any, ctx: any) => {
     try {
+      if (!resolveNycodeSettings(nycode.getSettings(), process.env).harness.completionGate) return
       const decision = decideCompletionGate(ctx.sessionManager.getBranch() as Entry[])
       if (decision.action !== 'block') return
       return {
@@ -166,7 +165,7 @@ export default function (pi: ExtensionAPI) {
         continue: true,
       }
     } catch {
-      return // falha aberta: nunca prende a sessão
+      return // fail open: never traps the session
     }
   })
 }
