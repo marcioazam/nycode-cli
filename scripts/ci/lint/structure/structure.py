@@ -106,7 +106,10 @@ VENDORED = {
 
 def git_blob_sha1(path: Path) -> str:
     """Git blob id of a regular file, streamed (same value as `git hash-object`)."""
-    digest = hashlib.sha1(b"blob %d\0" % path.stat().st_size)
+    # Git object ids are SHA-1 by format; this pins file content, it is not a security digest.
+    digest = hashlib.new(
+        "sha1", b"blob %d\0" % path.stat().st_size, usedforsecurity=False
+    )
     with path.open("rb") as stream:
         while chunk := stream.read(65536):
             digest.update(chunk)
