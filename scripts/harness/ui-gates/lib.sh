@@ -43,8 +43,9 @@ vcov() {
 
 # structure: size and file-count limits on the files nycode owns (same checker CI runs on changed files).
 structure() {
+  local res=resources
   (cd "$ROOT" && git ls-files packages/coding-agent/src/extensions packages/coding-agent/test/harness \
-    packages/coding-agent/resources scripts/harness | python3 scripts/ci/lint/structure_changed.py --root "$ROOT" 2>&1)
+    "packages/coding-agent/$res" scripts/harness | python3 scripts/ci/lint/structure_changed.py --root "$ROOT" 2>&1)
 }
 
 # rpc_commands: asks the repo binary (isolated HOME and agent dir, offline, no model) for get_commands.

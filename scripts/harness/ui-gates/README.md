@@ -44,7 +44,7 @@ temporário.
 | 6 structure.py | `structure_changed.py` (igual ao 8 acima) |
 | 7 check-agents, 10 check-instructions | removidos: migram na F8 (R15) |
 | 8 pi_harness_check, 9 harness-audit pytest | removidos: auditoria da instalação do dono |
-| 11 RPC get_commands | binário do repo: `copy-code`, `keybindings`, `diff` presentes (a skill `cua-driver` é do dono e saiu) |
+| 11 RPC get_commands | binário do repo: `copy-code`, `keybindings`, `diff` presentes (a skill de computer-use do dono saiu) |
 | 12 `~/.agents/skills` vazio | removido: propriedade da máquina do dono |
 
 `terminal-sota/e2e.sh`: mesmos 8 passos, apontando para o binário do repo, com HOME, agent dir, sessões e repositório
