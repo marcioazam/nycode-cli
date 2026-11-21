@@ -163,9 +163,10 @@ Tamanho: P até 5 PRs, M até 15, G até 40, GG acima de 40. A ordem de grandeza
 
 - Trabalho: importar o pi-code 1.7.0 **com os 19 patches já aplicados** (a árvore que roda hoje), trocar os imports
   `@earendil-works/pi-*` por `@nycode/*`, registrar cada módulo como extensão embutida e portar seus testes. Nesta
-  fase entram: `hooks`, `todo`, `question`, `commands`, `status-line`, `notify`, `git-checkpoint`, `memory`,
+  fase entram: `hooks`, `todo`, `question`, `commands`, `notify`, `git-checkpoint`, `memory`,
   `claude-rules`, `context-imports`, `output-styles`, `skills`, `session-title`, `thinking`, `env-settings`,
-  `settings-flags`, `init`, `run`, `context-usage`, `web` (desligada) e o diretório `internal`.
+  `settings-flags`, `init`, `context-usage`, `web` (desligada) e o diretório `internal`. `status-line` e `run`
+  importam módulos de `subagent` e entram em F6, logo depois dele (D-34).
 - Saída: `nycode` sem pacote externo oferece esses recursos; `settings.json` não precisa de `packages`; os testes de
   cada patch (`*.test.ts`) passam contra o fonte, sem etapa de aplicar patch.
 

@@ -435,12 +435,12 @@ evento da `ExtensionAPI` mudou de 1.5.2 para 1.6.0.
 
 **Passo 5, ordem** ([02](02-arquitetura-alvo.md) §3.1; um PR por unidade): `_shared` (`internal/`, 5559 linhas;
 as demais importam dela; a parte de `goal` fica em F6); `hooks` (2501, base dos hooks de F8); `todo` + `todo-collapse`;
-`question`; `commands` + `commands-print`; `status-line` + `statusline-multiline` + `zzzzzzzz-statusline-provider`;
-`notify` + `notify-focus`; `git-checkpoint` + `rewind-tree`; sem patch: `memory`, `claude-rules` (absorve a regra de
+`question`; `commands` + `commands-print`; `notify` + `notify-focus`; `git-checkpoint` + `rewind-tree`; sem patch: `memory`, `claude-rules` (absorve a regra de
 `no-context-files-covers-claude-md.ts`, F7), `context-imports` (1392 linhas, lista de base), `output-styles`,
-`skills-compat`, `session-title`, `thinking`, `env-settings`, `settings-flags`, `init`, `run`, `context-usage`; por
-fim `web`, **desligada** (D-10). Não migram: `mcp/` e `version-floor.ts`. O campo que desliga uma extensão por padrão:
-não verificado (ler `InlineExtension` em `core/extensions/types.ts`).
+`skills-compat`, `session-title`, `thinking`, `env-settings`, `settings-flags`, `init`, `context-usage`; por
+fim `web`, **desligada** (D-10). `status-line` (+ `statusline-multiline`, `zzzzzzzz-statusline-provider`) e `run`
+importam `subagent/fleet-ui`, `section-nav`, `fleet` e `background`: vão a F6, item 1b abaixo (D-34). Não migram: `mcp/` e `version-floor.ts`. O campo que desliga uma extensão por padrão:
+`enabledByDefault: false` em `InlineExtension` (criado na unidade `web`).
 
 **Testes de patch:** vão a `packages/coding-agent/test/harness/<extensão>/`, convertidos de `node:test` para vitest por
 `git mv` de `import/ny-pi/claude-home/patches/pi-code/` (5 arquivos em F5: `todo-collapse`, `statusline-multiline`,
@@ -470,10 +470,13 @@ reformatando só no terceiro. Arquivos em [03](03-mapa-de-migracao.md#f6-orquest
 os patches grandes (`subagent-panel`, 2547 linhas; `goal`, 872). Patch que cruza submódulos entra como está na árvore
 de referência (a divisão em PRs segue diretórios); submódulo que não compile sem um irmão vai no mesmo PR, com desvio.
 
-**Ordem interna** (um PR por item; testes vitest em `test/harness/`, movidos de
+**Ordem interna** (D-35: o código de `subagent` entra num PR só, porque os submódulos se importam em ciclo; os testes
+de cada item entram depois, em PRs por grupo; testes vitest em `test/harness/`, movidos de
 `import/ny-pi/claude-home/patches/pi-code/`):
 
 1. `subagent` núcleo (`run`, `modes`, `concurrency`, `index`, `params`): `subagent-nesting.test.ts`; `background`.
+   1b. Depois de `fleet-ui` e `section-nav` (itens 2 e 4): `status-line` + `statusline-multiline` +
+   `zzzzzzzz-statusline-provider` e `run`, vindos de F5 (D-34); fecham C-F5-21, C-F5-22, C-F5-25 e C-F5-26.
 2. `fleet` (store, tracker, inbox, source): `fleet*.test.ts` (4); depois `fleet-ui` (patches `zz-panel-main-root` e
    `zzz-panel-column0`, sem teste próprio): `fleet-ui.test.ts`, `fleet-ui-layout.test.ts`.
 3. `transcript`: `subagent-render/render.test.ts`.
