@@ -299,12 +299,12 @@ describe("SettingsManager", () => {
 			expect(manager.getDefaultProjectTrust()).toBe("always");
 		});
 
-		it("should default invalid project trust settings to ask", () => {
+		it("should default invalid project trust settings to never", () => {
 			writeFileSync(join(agentDir, "settings.json"), JSON.stringify({ defaultProjectTrust: "sometimes" }));
 
 			const manager = SettingsManager.create(projectDir, agentDir);
 
-			expect(manager.getDefaultProjectTrust()).toBe("ask");
+			expect(manager.getDefaultProjectTrust()).toBe("never");
 		});
 	});
 
@@ -375,15 +375,15 @@ describe("SettingsManager", () => {
 		it("defaults and overrides agent retry delay cap", () => {
 			expect(SettingsManager.inMemory().getRetrySettings()).toEqual({
 				enabled: true,
-				maxRetries: 3,
+				maxRetries: 10,
 				baseDelayMs: 2000,
 				maxAgentDelayMs: 60000,
 			});
 			expect(
 				SettingsManager.inMemory({
-					retry: { enabled: true, maxRetries: 10, baseDelayMs: 500, maxAgentDelayMs: 5000 },
+					retry: { enabled: true, maxRetries: 4, baseDelayMs: 500, maxAgentDelayMs: 5000 },
 				}).getRetrySettings(),
-			).toEqual({ enabled: true, maxRetries: 10, baseDelayMs: 500, maxAgentDelayMs: 5000 });
+			).toEqual({ enabled: true, maxRetries: 4, baseDelayMs: 500, maxAgentDelayMs: 5000 });
 		});
 	});
 
@@ -608,13 +608,15 @@ describe("SettingsManager", () => {
 			expect(manager.getShellCommandPrefix()).toBe("shopt -s expand_aliases");
 		});
 
-		it("should return undefined when shellCommandPrefix is not set", () => {
+		it("should return the ny-pi default when shellCommandPrefix is not set", () => {
 			const settingsPath = join(agentDir, "settings.json");
 			writeFileSync(settingsPath, JSON.stringify({ theme: "dark" }));
 
 			const manager = SettingsManager.create(projectDir, agentDir);
 
-			expect(manager.getShellCommandPrefix()).toBeUndefined();
+			expect(manager.getShellCommandPrefix()).toBe(
+				"export GIT_EDITOR=true GIT_SEQUENCE_EDITOR=true GIT_MERGE_AUTOEDIT=no GIT_PAGER=cat PAGER=cat AWS_PAGER= LESS=FRX",
+			);
 		});
 
 		it("should preserve shellCommandPrefix when saving unrelated settings", async () => {

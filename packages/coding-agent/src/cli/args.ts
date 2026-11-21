@@ -51,6 +51,8 @@ export interface Args {
 	tuiMode?: TuiMode;
 	verbose?: boolean;
 	projectTrustOverride?: boolean;
+	/** --bypass/--dangerously-skip-permissions (true) or --safe/--no-bypass (false); undefined leaves the variable and settings in charge. */
+	bypassPermissions?: boolean;
 	messages: string[];
 	fileArgs: string[];
 	/** Unknown flags (potentially extension flags) - map of flag name to value */
@@ -242,6 +244,10 @@ export function parseArgs(args: string[]): Args {
 			result.projectTrustOverride = true;
 		} else if (arg === "--no-approve" || arg === "-na") {
 			result.projectTrustOverride = false;
+		} else if (arg === "--bypass" || arg === "--dangerously-skip-permissions") {
+			result.bypassPermissions = true;
+		} else if (arg === "--safe" || arg === "--no-bypass") {
+			result.bypassPermissions = false;
 		} else if (arg === "--offline") {
 			result.offline = true;
 		} else if (arg.startsWith("@")) {
@@ -340,6 +346,9 @@ ${chalk.bold("Options:")}
   --tui-mode <mode>              TUI mode: fullscreen (default) or regular
   --approve, -a                  Trust project-local files for this run
   --no-approve, -na              Ignore project-local files for this run
+  --bypass, --dangerously-skip-permissions
+                                 Auto-approve permission prompts for this run (deny rules still apply)
+  --safe, --no-bypass            Keep permission prompts for this run (overrides NYCODE_BYPASS_PERMISSIONS and settings)
   --offline                      Disable startup network operations (same as NYCODE_OFFLINE=1)
   --                             End option parsing; treat remaining arguments as messages/files
   --help, -h                     Show this help
