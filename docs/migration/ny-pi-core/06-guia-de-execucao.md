@@ -585,8 +585,9 @@ O resto de `claude-home/bin` (`git-deliver`, `doctor/`, `hud/`, `puxar/`, `struc
 `scripts/harness/` e aos subcomandos `nycode doctor` e `nycode deliver` ([03](03-mapa-de-migracao.md)); os 29
 documentos de `claude-home/docs` vão a `docs/harness/`.
 
-**Verificação de saída:** `rg -n "CLAUDE_CONFIG_DIR|~/.pi/agent/claude-home" packages/coding-agent/resources` sem
-saída; `ls packages/coding-agent/resources/{agents,skills,commands}` lista 17, 30 e 17 entradas;
+**Verificação de saída:** `rg -n '\$\{?CLAUDE_CONFIG_DIR|~/\.pi\b|claude-home' packages/coding-agent/resources` sem
+saída (C-F8-07; as 5 linhas que atribuem `CLAUDE_CONFIG_DIR=$HOME/.nycode/agent` para o plugin claude-hud ficam, porque
+ele lê essa variável: [evidência F8](evidencias/F8.md#correção-da-verificação-de-saída-do-06)); `ls packages/coding-agent/resources/{agents,skills,commands}` lista 17, 30 e 17 entradas;
 `cd packages/coding-agent && npx vitest --run test/harness/permissions` com o diferencial em 100%.
 
 **Evidência:** contagens (17 agentes, 30 skills, 17 comandos, 21 arquivos de hooks), saída de cada lint, concordância
