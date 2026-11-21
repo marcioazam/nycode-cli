@@ -16,6 +16,7 @@ import memoryExtension from "./memory/index.ts";
 import notifyExtension from "./notify/index.ts";
 import outputStylesExtension from "./output-styles/index.ts";
 import planModeExtension from "./plan-mode/index.ts";
+import prefixCache1hExtension from "./prefix-cache-1h/index.ts";
 import questionExtension from "./question/index.ts";
 import runExtension from "./run/index.ts";
 import sessionTitleExtension from "./session-title/index.ts";
@@ -64,6 +65,7 @@ export const builtInExtensions: InlineExtension[] = [
 	{ name: "web", factory: webExtension, builtin: true, enabledByDefault: false },
 	// Embedded ny-pi extensions, in ny-pi's load order (after pi-code, by source file name).
 	{ name: "docs-pointer", factory: docsPointerExtension, builtin: true },
+	{ name: "prefix-cache-1h", factory: prefixCache1hExtension, builtin: true },
 	{ name: "sound-notify", factory: soundNotifyExtension, builtin: true },
 	{ name: "up-dequeue", factory: upDequeueExtension, builtin: true },
 ];
