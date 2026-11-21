@@ -35,7 +35,7 @@ Example extensions demonstrating:
 Starting points for user configuration files in `~/.nycode/agent/`:
 - `mcp.json`: MCP servers (secrets are `${ENV}` placeholders; export the variables). See [MCP](../docs/mcp.md).
 - `models.json`: per-model overrides, here the refusal fallback of `claude-sonnet-5-5`. See [Models](../docs/models-configuration.md).
-- `lsp.json`: language servers for the LSP integration (not read by nycode yet).
+- `lsp.json`: language servers for the built-in `lsp` extension (diagnostics after `write`/`edit`, and the `lsp_*` tools). A project can add `.nycode/lsp.json`, which asks for trust first.
 
 ## Documentation
 

@@ -20,12 +20,12 @@ Cada decisão tem um identificador estável (D-nn) citado nos outros documentos.
 | D-08 | Hooks de permissão | Fase A: `guard.py` embarcado; fase B: motor nativo atrás de chave, ligado só com paridade total | adotada | — |
 | D-09 | Compatibilidade com `PI_*` e `~/.pi` | Nenhuma em tempo de execução; conversão única por `nycode migrate from-pi` | adotada | — |
 | D-10 | Peças que não migram | `cache-prefix-probe`, `version-floor`, `mcp` do pi-code, `no-web-search`, `no-context-files-covers-claude-md`, `compaction-400k.py` | adotada | — |
-| D-11 | Terceiros com patch local | `pi-lsp` embutido; `ponytail` e `ralph-loop` em fork próprio com o patch como commit e proposta ao autor | adotada | — |
+| D-11 | Terceiros com patch local | `pi-lsp` embutido; `ponytail` e `ralph-loop` em fork próprio com o patch como commit e proposta ao autor. Executada em F9 (#282, #283; [F9](evidencias/F9.md)) | adotada | — |
 | D-12 | Serviços do upstream ainda usados (`pi.dev`) | Catálogo de modelos: manter o do upstream. Instalador e aviso de versão: próprios (npm e GitHub Releases). **Superada por D-30 no catálogo**: nenhum serviço `pi.dev` fica | parcialmente superada (D-30) | F11 |
 | D-13 | Versão | Primeira versão com o harness: `2.0.0`, pacotes em sincronia | adotada | F11 |
 | D-14 | Referências do benchmark | ~~`pi-vanilla` e `cc-vanilla` são medidos de novo uma vez em F10~~ (superada em 2026-11-20). Revista pelo dono em 2026-11-20 ("benchmarks do claude code e pi vanilla já feitos"): valem as referências congeladas de `docs/bench/BASELINE-VANILLA-2026-11.md` (Claude Code 2.1.323, pi 1.5.2); sem nova medição dos vanilla em F10 | adotada | F10 |
-| D-15 | Apagar 213 ramos herdados do nycode em Rust | Apagar depois de conferir que nenhum tem PR aberto | **aguarda o dono** | F0 |
-| D-16 | 8 alertas de secret scanning no destino | Fechar como credencial pública de cliente OAuth do upstream; remover `plan.md` do alcance | **aguarda o dono** | F0 |
+| D-15 | Apagar 213 ramos herdados do nycode em Rust | Apagar depois de conferir que nenhum tem PR aberto. Resolvida: os 213 ramos já não existiam ao abrir F0 ([F0](evidencias/F0.md)) | feita | F0 |
+| D-16 | 8 alertas de secret scanning no destino | Fechar como credencial pública de cliente OAuth do upstream; remover `plan.md` do alcance. Resolvida: os 8 alertas fechados como `wont_fix` em 2026-11-20; nenhum aberto em 2026-11-21 ([F9](evidencias/F9.md)) | feita | F0 |
 | D-17 | Escopo npm | ~~Criar a organização `@nycode`~~ (substituída). Dono, 2026-11-20: "Sem org vai ser repo opensource": sem organização nem publicação no npm; o canal é o repositório público `marcioazam/nycode` (fonte, etiquetas e GitHub Releases). Os itens npm de F11 (C-F11-01 a C-F11-05, C-F11-07) são reescritos para esse canal num PR de docs no início de F11 | decidida pelo dono | F11 |
 | D-18 | Política de contribuição | A do ny-pi (aberta, com modelos); o portão `lgtm` do upstream sai junto com seus workflows já removidos | adotada | — |
 | D-19 | Quem edita `CHANGELOG.md` | Mantenedores e agentes, em `## [Unreleased]`; contribuidores externos não | adotada | — |

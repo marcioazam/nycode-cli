@@ -1,6 +1,6 @@
 // The hooks nycode registers by default (settings-defaults.ts `hooks`): the hooks extension, started on default
 // settings, resolves every command to a file under the embedded resources, and the guard blocks a catastrophic command.
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -160,6 +160,20 @@ describe("default hooks", () => {
 		expect(text).toContain("Stop:\n  [*] command: true");
 		expect(text.split("Stop:")[1]).not.toContain("impeccable_gate");
 		expect(text).toContain("SessionStart:");
+	});
+
+	// F9 (C-F9-04): the ralph-loop Stop hook is not registered by `nycode install`; the settings snippet of
+	// docs/optional-packages.md is the way in, so the test loads that very snippet.
+	it("registers the ralph-loop Stop hook from the optional-packages snippet and keeps the impeccable gate", async () => {
+		const doc = readFileSync(new URL("../../../../docs/optional-packages.md", import.meta.url), "utf8");
+		const snippet = /```json\n(\{\n {2}"hooks"[\s\S]*?)\n```/.exec(doc)?.[1] ?? "";
+		const settings = JSON.parse(snippet) as { hooks: Record<string, unknown> };
+		const text = await (await startSession(settings)).summary();
+		const stop = text.split("Stop:")[1] ?? "";
+		expect(stop).toContain(
+			'[*] command: bash "$HOME/.nycode/agent/git/github.com/marcioazam/ralph-loop/hooks/stop-hook.sh"',
+		);
+		expect(stop).toMatch(/impeccable_gate\.sh" hook/);
 	});
 
 	it("an empty PreToolUse in the GLOBAL settings turns the guard off and warns once", async () => {
