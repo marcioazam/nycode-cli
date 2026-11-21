@@ -1,11 +1,13 @@
 # pi multi-agente: árvore de agentes com aninhamento (2026-11-11)
 
 ## Objetivo e pedido
+
 O usuário pediu um harness pi "100% multi-agêntico", com time de agentes, um orquestrador sempre, número de agentes
 definido pela necessidade, subagentes de 2º e 3º grau, cada agente com seu agent e skill específicos, SOTA em custo x
 benefício e assertividade igual ou maior que a do Claude Code.
 
 ## Avaliação de cada pedido (evidência abaixo)
+
 | Pedido | Decisão |
 |---|---|
 | Um orquestrador sempre | Já valia (CLAUDE.md, Runtime): a sessão principal orquestra, os agentes fixados implementam. Mantido. |
@@ -17,6 +19,7 @@ benefício e assertividade igual ou maior que a do Claude Code.
 | Assertividade ≥ Claude Code | **Não verificada**: exige rodada pareada `pelo-em-ovo` (custo ≤ 1,20) com teto de gasto definido pelo usuário. |
 
 ## O que mudou
+
 - `patches/pi-code/subagent-nesting.patch` (substitui `subagent-roster.patch`; reaplicado pelo wrapper
   `~/.local/bin/pi`): novo `subagent/nesting.ts` (desde 2026-11-12 em `subagent/nesting/index.ts`, ver `pi-agent-fleet-2026-11-12.md`) (profundidade, cap, concorrência por nível, orçamento por árvore em
   `/tmp/pi-code-subagent-tree-<id>/`, um arquivo por spawn com criação exclusiva); `index.ts` (roster e ferramenta
@@ -33,6 +36,7 @@ benefício e assertividade igual ou maior que a do Claude Code.
   As skills EGM continuam sem aninhamento (seus agentes têm `tools:` sem `subagent`).
 
 ## Custo e qualidade
+
 - Custo: roster (~4,3k tokens) no prompt de cada escritor que ainda pode delegar; cada nível extra paga o prefixo de
   um filho. Ganho esperado: o líder Sonnet manda varreduras e o gate para Haiku (preço ~20x menor por token) em vez
   de gastar o próprio contexto; unidade grande demais para um contexto vira sub-unidades disjuntas.
@@ -44,18 +48,20 @@ benefício e assertividade igual ou maior que a do Claude Code.
   `backups/agents-models-2026-11-11/`).
 
 ## Evidência (lida em 2026-11-11)
-- Agent teams: https://code.claude.com/docs/en/agent-teams ("experimental and disabled by default"; "significantly more tokens"; "For sequential tasks, same-file edits, or work with many dependencies, a single session or subagents are more effective"). Decisão de não adotar superada em 2026-11-13:
+
+- Agent teams: <https://code.claude.com/docs/en/agent-teams> ("experimental and disabled by default"; "significantly more tokens"; "For sequential tasks, same-file edits, or work with many dependencies, a single session or subagents are more effective"). Decisão de não adotar superada em 2026-11-13:
   `pi-agents-ui-teams-sota-2026-11-13.md` (pesquisa + eval pareada decidem).
-- Workflows: https://code.claude.com/docs/en/workflows ("Up to 16 concurrent agents by default"; "1,000 agents total per run").
-- Single vs multi: https://arxiv.org/abs/2611.12953 (1,4-4,7x tokens, ganhos raramente significativos; implementação pesa mais que a escolha).
-- Sair do rumo 2-5x: https://arxiv.org/html/2610.39193v1. Tarefas conflitantes 62%→16%: https://arxiv.org/abs/2611.00314.
-- Arquivo compartilhado −42% tokens, coordenador nomeado sem ganho: https://arxiv.org/abs/2608.16801.
-- Avaliador separado e cético: https://www.anthropic.com/engineering/harness-design-long-running-apps.
-- Começar por orquestrador-subagentes: https://claude.com/resources/articles/multi-agent-coordination-patterns (trechos via Exa).
+- Workflows: <https://code.claude.com/docs/en/workflows> ("Up to 16 concurrent agents by default"; "1,000 agents total per run").
+- Single vs multi: <https://arxiv.org/abs/2611.12953> (1,4-4,7x tokens, ganhos raramente significativos; implementação pesa mais que a escolha).
+- Sair do rumo 2-5x: <https://arxiv.org/html/2610.39193v1>. Tarefas conflitantes 62%→16%: <https://arxiv.org/abs/2611.00314>.
+- Arquivo compartilhado −42% tokens, coordenador nomeado sem ganho: <https://arxiv.org/abs/2608.16801>.
+- Avaliador separado e cético: <https://www.anthropic.com/engineering/harness-design-long-running-apps>.
+- Começar por orquestrador-subagentes: <https://claude.com/resources/articles/multi-agent-coordination-patterns> (trechos via Exa).
 - Vetting do pacote de workflows: relatório do subagente bg-463efcc8 (arquivos em `/tmp/pdw`, `src/agent.ts:988-993` `noExtensions: true`).
 - Lacunas: rodada de eval pareada não executada; ADK/LangGraph só por trecho de busca.
 
 ## Verificação
+
 - `node --experimental-strip-types --test patches/pi-code/subagent-nesting.test.ts`: 6/6 pass (profundidade, cap,
   env do filho, concorrência, orçamento, patch instalado).
 - `bin/checks/check-instructions.py`: 22 arquivos, 0 problemas (sempre carregado 39.693 B). `bin/checks/check-agents.py`: 53 agentes OK.
@@ -68,6 +74,7 @@ benefício e assertividade igual ou maior que a do Claude Code.
 - Eval pareada: rodadas 4 e 5.
 
 ## Rodada 2: deep search (2026-11-11)
+
 Relatório e ledger: `docs/research/2026-11-11-pi-multiagent-sota.md` (+ `.ledger.json`; report_check pass, 38 claims,
 35 supported, 3 partial, nenhuma refutada). Aplicado em `skills/swarm-orchestration`:
 - Roteamento por dificuldade antes da execução, e escalonamento só por sinal determinístico (C7, C24, C25).
@@ -79,6 +86,7 @@ execuções (C22; o valor padrão em US$ é decisão de política); eval pareada
 e desligado (teto de gasto).
 
 ## Rodada 3: orçamento decidido por custo x benefício (usuário delegou, 2026-11-11)
+
 - Lane = cada filho da sessão principal e tudo abaixo dele (antes: a árvore era a sessão inteira, então 200
   execuções valiam pela vida da sessão). A sessão principal não tem teto: o usuário vê cada chamada dela.
 - 64 execuções por lane: o mesmo padrão do pi-subagents (`maxSubagentSpawnsPerRun`); a fuga documentada no Codex
@@ -90,6 +98,7 @@ e desligado (teto de gasto).
 - Teste: `subagent-nesting.test.ts` com 7 casos.
 
 ## Rodada 4: eval pareada (teto decidido: 40 USD; gasto real 21,26 USD)
+
 Suite `~/.claude/evals` via `pelo-em-ovo/run_pi.py`, 29 casos de roteamento e delegação, k=1, orquestrador
 claude-opus-5-5, pi 1.5.2 e pi-code 1.7.0. Resultados em `~/.local/state/pelo-em-ovo/results/` (marcados com `.keep`):
 `pi-nest-on-20261111T173338` e `pi-nest-off-r2-20261112T150614` (`PI_CODE_SUBAGENT_MAX_DEPTH=1`). Referência do
@@ -104,6 +113,7 @@ Claude Code: `~/.claude/evals/results/egm-post-20261106T190732` (2.1.319, mesma 
   k=1; a referência do Claude Code é de 2026-11-06; custos são estimativas a preço de lista.
 
 ## Rodada 5: fechamento (2026-11-12)
+
 - Eval de resultado (`outcome`, 4 casos de implementação, diagnóstico e revisão, k=1, Opus 5.5):
   `~/.local/state/pelo-em-ovo/results/pi-outcome-nest-20261112T153426`: pi 4/4, US$ 1,263 no total.
   Referência do Claude Code (gravada, mesmo modelo): `goal8-post-20261030T222631` (out-diagnose-crossfile,
@@ -120,6 +130,7 @@ Claude Code: `~/.claude/evals/results/egm-post-20261106T190732` (2.1.319, mesma 
   41-51% do custo. "Maior" não é afirmável com k=1 e esse tamanho de amostra.
 
 ## Rodada 6: referência atual do Claude Code, eval k=2 e correção de test gaming (2026-11-12)
+
 - Referência atual: `~/.claude` está no limite semanal (reseta 2026-11-14) e o "Not logged in" da rodada 5 foi
   transitório; `~/.claude-2` usa o mesmo harness (agents, skills, settings, hooks, plugins são symlinks para
   `~/.claude`), só outra conta, e rodou com `CLAUDE_CONFIG_DIR=~/.claude-2`.

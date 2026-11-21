@@ -1,6 +1,7 @@
 # Memória e cache SOTA no pi (2026-11-13)
 
 ## Objetivo e aceitação
+
 Reduzir o custo de cache do pi sem perder acerto, e escolher a memória SOTA para o harness (config antes de
 extensão/MCP nova). Aceitação (remedição com `bin/cache-misses.sh` após 2–3 dias de uso):
 1. perdas totais (cacheRead = 0) na faixa 3–30 min caem ≥ 50%;
@@ -9,10 +10,12 @@ extensão/MCP nova). Aceitação (remedição com `bin/cache-misses.sh` após 2�
 4. veredito por candidato de memória/cache com fonte primária; nada instalado sem ganho medido.
 
 ## Custo e qualidade (rules/harness-economy.md)
+
 Diagnóstico local sem custo de API além de sessões curtas em `claude-haiku-5-5` (< US$ 1). Correções esperadas: config
 ou ajuste mínimo de extensão, zero bytes novos sempre carregados. Teto potencial: ~US$ 33 de US$ 345 (faixa 3–60 min).
 
 ## Medição base (`bin/cache-misses.sh 2026-11-11`, 2026-11-13)
+
 - 4.457 chamadas, US$ 349,5: leitura de cache 160,1 (46%), gravação 127,2 (36%), saída 62,2 (18%).
 - Aquecimento (`cache_warm`): 93 eventos, US$ 5,15, só leitura (cacheWrite 0).
 - Perdas totais no meio da sessão (56, US$ 63,8 = 18%):
@@ -31,6 +34,7 @@ ou ajuste mínimo de extensão, zero bytes novos sempre carregados. Teto potenci
   acima de ~100K tokens. E cacheRead = 0 indica que nem o prefixo de 1h (`extensions/prefix-cache-1h`) foi lido.
 
 ## Hipóteses (a verificar)
+
 - H1: o aquecimento para com "conversation context changed": `sdk.js:213` exige identidade de cada mensagem; uma
   extensão que substitui mensagens após o turno o derruba.
 - H2: o processo do pi terminou na pausa (`pi -c` depois); aí o aquecimento não tem como rodar.
@@ -38,6 +42,7 @@ ou ajuste mínimo de extensão, zero bytes novos sempre carregados. Teto potenci
   `mcp_servers`, ferramentas do modo plano), invalidando também o cache de 1h.
 
 ## Passo 2: aquecimento (H1 confirmada, corrigida)
+
 - E2E (tmux, `claude-haiku-5-5`, `/tmp/warm-e2e`): um turno e `/session` já mostrava
   `Status: Inactive (conversation context changed)` em menos de 1 min.
 - Instrumentação temporária do `cacheContextIsCurrent` (revertida): a mensagem que perde a identidade é a
@@ -58,6 +63,7 @@ ou ajuste mínimo de extensão, zero bytes novos sempre carregados. Teto potenci
   chunk `chunk-VEJDBY3O.js`.
 
 ## Passo 3: prefixo (instrumentado; análise na remedição)
+
 - Perdas totais desde o `prefix-cache-1h` (2026-11-12 21:55Z): 7 na sessão principal. 2 após compactação (gap 0–1 min),
   2 após sair do modo plano para executar (`plan-mode-execute`), 1 no início de `/goal` (gap 20 min), 2 só com
   `message:user` entre as chamadas (gap 1 e 47 min). Com cacheRead = 0 nem tools/system (≈48K, 1h) foram lidos.
@@ -69,6 +75,7 @@ ou ajuste mínimo de extensão, zero bytes novos sempre carregados. Teto potenci
   execução do plano, `/goal`) e decidir o conserto. A sonda é removida no passo 6.
 
 ## Passo 4: pesquisa (2026-11-13; Perplexity + Keenable, páginas lidas com `web_fetch`)
+
 | Item | Fonte primária lida | Veredito |
 |---|---|---|
 | Preços de cache Anthropic | <https://platform.claude.com/docs/en/build-with-claude/prompt-caching>: Opus 5.5 $4 / escrita 5m $5 / 1h $8 / leitura $0,20 (0,05×); Sonnet 5.5 $2/$2,50/$4/$0,10; Haiku 5.5 ≤100K $0,10/…/$0,01; Fable 5.2 $8/$10/$16/$0,20 (0,025×) | Tabela do pi (`pi-ai/dist/providers/data/anthropic.json`) bate nos 4 modelos; a economia do aquecimento usa preço certo. Nada a mudar. |
@@ -81,10 +88,12 @@ ou ajuste mínimo de extensão, zero bytes novos sempre carregados. Teto potenci
 | Bug do aquecimento upstream | <https://github.com/earendil-works/pi/issues/10956> (aberta, mitsuhiko atribuído, "still present" até main 64c96d0 pós-1.5.2; correções propostas não mescladas, inclusive comparação por `isSameContextMessage`) | Mesma causa do passo 2. Manter o patch local; o wrapper avisa (saída 2) quando o upstream mudar o trecho, e aí remover o patch se a correção oficial entrar. Sem comentário externo (não autorizado). |
 
 ## Passo 5: correções mínimas
+
 Nenhuma além do passo 2: a pesquisa não achou config que reduza as perdas restantes. Os gatilhos do passo 3
 (compactação, execução do plano, `/goal`) só ganham conserto se a remedição com a sonda os confirmar.
 
 ## Plano
+
 1. [DONE:1] Este registro e `bin/cache-misses.sh`.
 2. [DONE:2] Diagnóstico e conserto do aquecimento.
 3. [DONE:3] Diagnóstico do prefixo: sonda instalada; gatilhos fechados na remedição.
@@ -93,11 +102,13 @@ Nenhuma além do passo 2: a pesquisa não achou config que reduza as perdas rest
 6. Remedição após 2–3 dias; checagens; plan-reviewer; knowledge vault.
 
 ## Checkpoint
+
 Passos 1–5 feitos. Próximo: passo 6, remedição a partir de 2026-11-15 com `bin/cache-misses.sh 2026-11-13`
 (aceitação: perdas 3–30 min −50%, aquecimento custa menos que economiza, sem regressão nas outras faixas),
 cruzar com a sonda e removê-la.
 
 ## Passo 6, prévia (2026-11-13 16h, ~1 dia de dados; a remedição formal continua em 2026-11-15)
+
 - `bin/cache-misses.sh 2026-11-13`: perdas de 3–30 min = **0** (antes: 21, US$ 24,68 em ~2 dias); ≤ 3 min = 13
   (US$ 10,96); 30–60 min = 1; > 60 min = 4. Aquecimento: 62 vezes, US$ 2,83.
 - Gatilhos (`bin/telemetry/cache_probe_join.py`, novo, testes `test_cache_probe_join.py` 3/3):
@@ -120,4 +131,5 @@ cruzar com a sonda e removê-la.
   aplicar a aceitação acima, remover a sonda e o timer (`systemctl --user disable --now pi-cache-remeasure.timer`).
 
 ## Rollback
+
 Cada correção lista o seu; `bin/cache-misses.sh` é só leitura.

@@ -4,6 +4,7 @@ Pedido do usuário: "na listagem de sub agent e quando acessar um sub agent deve
 Estado: concluído e verificado; revisão independente sem achados médios ou altos em aberto. Sem commit/deploy.
 
 ## Aceitação
+
 - AC1: cada linha do painel/`/tasks` mostra `agent [modelo · esforço]` ANTES da tarefa; a tarefa e a atividade truncam primeiro; nenhuma linha passa da largura (20/40/80/160, com ANSI).
 - AC2: o viewer mostra duas linhas rotuladas `Model:` (provedor/modelo completo) e `Effort:` (inclui `off`), com a origem: `configured` (argv do filho) ou `observed` (o filho confirmou).
 - AC3: valor desconhecido aparece como `?` na lista e `unknown` no viewer. Nunca se assume `medium` nem o esforço do pai: sem `effort` no agente e sem evento, o esforço fica desconhecido.
@@ -13,10 +14,12 @@ Estado: concluído e verificado; revisão independente sem achados médios ou al
 - AC7 (HUD): o payload do status line traz `model.provider`; `model_select` limpa `rateLimits` antes de `scheduleRefresh()` (ver `hud-provider-usage.md`).
 
 ## Contrato do registro (RunRecord, campos opcionais novos)
+
 `provider?`, `effort?`, `modelSeen?: true`, `effortSeen?: true`; `model?` já existia (configurado; vira o id físico ao observar).
 Limites: strings ≤ 120 chars, sem controle; `effort` só `[a-z]{1,16}`.
 
 ## Desenho
+
 - `fleet/tracker.ts`: `configuredRuntime(args)`, `onLine` trata `thinking_level_changed` e metadados do assistente.
 - `run.ts` / `background.ts`: passam o argv resolvido ao `startTracking`.
 - `fleet-ui/runtime-label.ts` (novo, puro): rótulos da lista (candidatos do mais largo ao mais curto) e linhas do viewer.
@@ -25,6 +28,7 @@ Limites: strings ≤ 120 chars, sem controle; `effort` só `[a-z]{1,16}`.
 - Testes: `patches/pi-code/zzzzzzz-subagent-model-effort/{tracker,render,replay}.test.ts`, `zzzzzzzz-statusline-provider/provider.test.ts`.
 
 ## Checkpoint
+
 - [x] Snapshot pré-fix: `/tmp/subagent-model-effort-before/extensions` (cópia da árvore instalada antes de qualquer edição).
 - [x] Aceitação escrita antes do código.
 - [x] Testes escritos antes do código (não executados na edição, por regra "verificar uma vez").
@@ -35,11 +39,13 @@ Limites: strings ≤ 120 chars, sem controle; `effort` só `[a-z]{1,16}`.
 - [x] Revisão independente final: três achados anteriores resolvidos; revisão manual dos testes sem asserções enfraquecidas.
 
 ## Limites
+
 - O esforço "default" do filho só aparece depois de uma mensagem do assistente trazer `thinkingLevel`; antes é `unknown`.
 - Fora de escopo: pins de agentes, settings globais, wrapper, fonte/testes do HUD.
 
 ## Replay
-```
+
+```text
 P=~/.pi/agent/claude-home/patches/pi-code; E=~/.pi/agent/npm/node_modules/pi-code/extensions
 patch -R --dry-run -p1 -d $E < $P/zzzzzzz-subagent-model-effort.patch     # applied? (exit 0)
 patch -R --dry-run -p1 -d $E < $P/zzzzzzzz-statusline-provider.patch
@@ -47,6 +53,7 @@ patch -p1 -d <copia-pristina> < $P/zzzzzzz-subagent-model-effort.patch      # ap
 ```
 
 ## Fix round 1 (após o 1º gate real)
+
 - Viewer: duas linhas (`Model: …`, `Effort: …`), `CHROME_ROWS` 9. Testes: rótulo e valor (`off`/`high`) presentes a 20/40/80/160, também com modelo de 80 chars.
 - Painel (`panel.ts`), ordem de degradação por candidato de rótulo (mais largo primeiro): (1) tarefa+atividade no mínimo, stats caem
   custo→tokens (comportamento sem rótulo; mantém o antigo `fleet-ui.test.ts` "descarta custo, depois tokens, depois atividade" a 48 colunas);

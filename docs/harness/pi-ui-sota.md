@@ -154,6 +154,7 @@ Testes: `node --experimental-strip-types --test patches/pi-code/{rewind-tree,tod
 (inclui dry-run do patch no original e do reverso no instalado).
 
 ## sticky-prompt (2026-11-12, pedido do usuário)
+
 `extensions/sticky-prompt/`: no modo fullscreen, quando o prompt do usuário mais recente acima da janela sai de vista,
 uma linha flutuante no topo do transcript mostra o texto (`❯ …`, fundo próprio azul-aço ANSI 256 cor 24, texto 255); clique rola até ele (atalho
 de teclado equivalente: `ctrl+up`; `ctrl+shift+up` passou a editar a fila, ver pi-interactive-display-2026-11-13.md). Usa campos internos do pi-tui 1.5.2 (`currentLayout`, `showOverlay`
@@ -182,6 +183,7 @@ Night oficial em sintaxe, markdown, sticky-prompt e HUD: `pi-terminal-sota-2026-
 > Atalhos: trocados em 2026-11-13 para não usar Alt — ver `hotkeys-no-alt-2026-11-13.md`.
 
 ## sticky-prompt × seleção com arraste (2026-11-13, verified)
+
 - Bug: com o sticky visível (transcript rolado para cima), arrastar uma seleção para baixo não rolava o chat e a
   seleção pegava editor e status line. Causa: o pi-tui 1.5.2 só ancora a seleção no transcript (e liga o
   auto-scroll) quando `hasOverlay()` é falso, e o sticky é um overlay, mesmo com `nonCapturing`.
@@ -192,6 +194,7 @@ Night oficial em sintaxe, markdown, sticky-prompt e HUD: `pi-terminal-sota-2026-
   depois `SCROLLED` nos dois; clique no sticky `SCROLLED`.
 
 ## sticky-prompt × arraste da barra de rolagem (2026-11-14, verified)
+
 - Bug: clicar e arrastar a barra de rolagem não fazia nada (o clique virava seleção de texto). Causa: o pi-tui 1.5.2
   desliga a barra (`getScrollbarTargetAt`) e a âncora da seleção sempre que `hasOverlay()` é verdadeiro, e o sticky
   é um overlay visível (mesmo `nonCapturing`) sempre que o transcript está rolado para cima. Não era o kitty.

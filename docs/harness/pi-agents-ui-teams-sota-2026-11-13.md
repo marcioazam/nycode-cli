@@ -1,6 +1,7 @@
 # pi: UI do painel de agentes SOTA no tema do HUD + subagentes e agent teams SOTA (2026-11-13)
 
 ## Pedido
+
 "Dar espaçamento entre os sub agents e status line padrão. Deixar UI, navegação, acesso e design SOTA [...] pesquisar
 com deep search na web e aplicar sub agents e time de agents SOTA no Pi [...] papers, documentos, github [...] quero o
 melhor possível. Auditar e planejar." Depois: "Quero o máximo de assertividade, custo x benefício" e "Retire do HUD mas
@@ -18,6 +19,7 @@ da mesma árvore (pai, filho, irmão, líder) e ela chega no turno seguinte dele
 Supera: "agent teams fora do escopo" em `pi-agent-fleet-2026-11-12.md` (Decisões) e `pi-multi-agent-2026-11-11.md`.
 
 ## Auditoria (screenshot do usuário + código, 2026-11-13)
+
 - F1 painel e status line colados: ambos widgets `belowEditor` (`subagent/fleet-ui/index.ts:36`, `status-line.ts:298`).
 - F2 linhas indistinguíveis (`general-purpose thinking…` x4): `panel.ts:layoutRow` não mostra a tarefa.
 - F3 coluna de stats alinhada à direita com largura variável: tremula.
@@ -27,6 +29,7 @@ Supera: "agent teams fora do escopo" em `pi-agent-fleet-2026-11-12.md` (Decisõe
 - F7 agent teams ausentes; pesquisa de 2026-11-11 não estudou teams.
 
 ## Aceite
+
 A1 uma linha em branco entre painel e status line · A2 linhas de mesmo tipo distinguíveis pela tarefa · A3 colunas
 estáveis em 40/80/160 · A4 paleta do HUD lida do mesmo config, com fallback e NO_COLOR · A5 HUD sem linha de agents,
 tools/todos/uso intactos · A6 relatório de pesquisa verificado (papers, docs, GitHub) · A7 teams opt-in com testes
@@ -34,6 +37,7 @@ tools/todos/uso intactos · A6 relatório de pesquisa verificado (papers, docs, 
 foreground/background/parallel/chain/resume/cancel/aninhamento · A10 gate verde e plan-reviewer `complete`.
 
 ## Grafo de unidades (fora de git: escritores com arquivos disjuntos ou em sequência)
+
 | id | arquivos | agente | depois de |
 |---|---|---|---|
 | R pesquisa | `docs/research/2026-11-13-pi-agents-teams-sota.md` + ledger | perplexity-scout, web-scout, scholar-scout, claim-verifier | — |
@@ -45,6 +49,7 @@ foreground/background/parallel/chain/resume/cancel/aninhamento · A10 gate verde
 | G gate | tudo acima | gate-runner | E |
 
 ## Decisão de design (passo 3, pela pesquisa `docs/research/2026-11-13-pi-agents-teams-sota.md`)
+
 Evidência central: um escritor + leitura + crítico independente ganha em tarefas sequenciais [C31, C12, C16]. Times ganham
 com coordenação **estruturada**: feed de ações dos pares [C40, revisado por pares], contexto compartilhado + fila com
 claim exclusivo [C39], validador separado [C43], coordenador acima de p2p [C33, C3]. Negociação livre rende, mas a ~6x
@@ -73,25 +78,29 @@ nunca em Haiku, Haiku só busca/mapa/planejamento barato [C44]; (4) o arquivo da
 - Fora: negociação por fases (custo 6x [C41]; fica como roteiro opcional no brief do líder, sem código).
 
 ## Custo e qualidade (harness-economy)
+
 - Painel: zero token; paleta lida uma vez por sessão. HUD: menos uma linha por render.
 - Alavancas e teams: custo medido na eval; só entram por padrão com ratio ≤ 1,20 e `no_worse`.
 
 ## Rollback
+
 `showAgents: true` e reverter `claude-hud-pi-transcript.mjs`; regenerar `subagent-panel.patch` sem `palette.ts`;
 apagar `team.patch` e desligar `PI_CODE_TEAMS`.
 
 ## Notas knowledge vault consultadas
+
 - `Resources/Patterns/pi-harness-multi-agent-2026-11.md` (L12): teams não adotados em 2026-11-11; arquivo
   compartilhado supera mensagens (arXiv 2608.16801), a reverificar na pesquisa.
 - `Resources/Patterns/pi-agent-fleet-panel-2026-11.md`: frota em disco, patch local provado pelo gate.
 
 ## Checkpoint
+
 - [DONE:1] registro criado.
 - [DONE:2] pesquisa: 10 agentes, 45 claims, report_check pass, 25 no claim store.
 - [DONE:3] decisão acima.
 - [DONE:4] HUD sem agents (13/13 testes HUD; red 5/1 → green).
 - [DONE:5] painel no tema do HUD (38/38 fleet-ui; patch reproduz byte a byte; teste dividido 745+176 linhas).
-- [DONE:6] alavancas em `skills/swarm-orchestration/SKILL.md` (+644 B, `check-instructions` 0 problemas).
+- [DONE:6] alavancas em `claude-home/skills/swarm-orchestration/SKILL.md` (+644 B, `check-instructions` 0 problemas).
 - [DONE:7] teams: `subagent/team/{types,store,route,tasks,feed,ui,index}.ts` em `team.patch` (depois de
   `subagent-panel.patch`); `child.ts` e `modes.ts` intocados (o `withTeamTool` entra em `run.ts` e nos agentes do
   background em `index.ts`); headless com `PI_CODE_TEAMS=1` cria a frota (smoke Haiku: `TEAM_SMOKE_OK` do Explore
@@ -147,6 +156,7 @@ apagar `team.patch` e desligar `PI_CODE_TEAMS`.
 - [DONE:10] plan-reviewer rodada 2: `PLAN_REVIEW: complete` (2026-11-13). Gasto da eval $3,98 de 20; E2E < $1.
 
 ## Extensão 2026-11-13: UI de subagentes no chat (pedido: "parecida com Claude Code ou melhor")
+
 Antes (screenshot): `subagent parallel (2 tasks)` + prévias cortadas (`OWNED FI...`), `⏳ parallel 0/2 done`, por
 tarefa `─── agente ⏳`, `... 1 earlier items`, cinco `→ read/$` e prosa solta misturada; alto e repetido.
 Aceite: R1 cabeçalho sem estado falso (a caixa da chamada não sabe o estado); R2 linha por agente em árvore

@@ -1,6 +1,6 @@
 # Knowledge Work Plugins adaptation
 
-Source: https://github.com/anthropics/knowledge-work-plugins/tree/67e216dbe5621470581dd3d944df22d1cc8231ce
+Source: <https://github.com/anthropics/knowledge-work-plugins/tree/67e216dbe5621470581dd3d944df22d1cc8231ce>
 
 Modified 2026-09-20 for the local Codex harness. These are adaptations, not
 verbatim plugin installations. Apache-2.0 license copies are retained exactly:
@@ -31,5 +31,5 @@ All three new skills permit implicit invocation. Existing skill discovery policy
 is preserved. No global AGENTS.md or runtime permission settings were changed.
 
 Source blob identities and hashes of changed skill/agent artifacts are recorded
-in [provenance.json](provenance.json). The integration status and validation record
-are in [skill curation](../../skill-curation.md).
+in `provenance.json` (ausente do ny-pi no commit e4f8729). The integration status and validation record
+are in `skill-curation.md` (ausente do ny-pi no commit e4f8729).

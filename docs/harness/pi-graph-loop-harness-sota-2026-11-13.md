@@ -1,10 +1,12 @@
 # Graph, loop e harness engineering SOTA no pi (custo x benefício) — 2026-11-13
 
 ## Objetivo
+
 Pesquisar a fundo (papers, docs, repositórios, MCPs) graph engineering, loop engineering e harness engineering e
 aplicar no time de agentes e no workflow do pi o que rende mais acerto por dólar.
 
 ## Autorização em vigor (usuário, 2026-11-13)
+
 - deep-search modo `deep` (≤10 agentes, 1 rodada de lacunas, ≤12 chamadas Perplexity).
 - Ferramenta/MCP nova: vetar com `presente-de-grego` e instalar se passar (e virar padrão só com eval).
 - Teto da eval pareada (`pelo-em-ovo`): US$10.
@@ -12,6 +14,7 @@ aplicar no time de agentes e no workflow do pi o que rende mais acerto por dóla
 - Outra sessão pi concorrente edita o harness (patches `zz-*`): não tocar nem contar as falhas dela.
 
 ## Aceite
+
 - (a) relatório citado sobre graph, loop e harness engineering (`docs/research/2026-11-13-graph-loop-harness-sota.md`);
 - (b) tabela de ferramentas/MCPs ranqueada por custo x benefício;
 - (c) mudanças aplicadas nos donos existentes (skills, agentes, regras; scripts só com ganho);
@@ -19,9 +22,11 @@ aplicar no time de agentes e no workflow do pi o que rende mais acerto por dóla
 - (e) checagens do harness verdes (fora as falhas conhecidas da outra sessão).
 
 ## Custo esperado e o que compra
+
 Pesquisa ~US$2-4; eval ≤ US$10. Mudanças de texto miram bytes líquidos ≤ 0 nas descrições sempre carregadas.
 
 ## Consulta prévia (knowledge vault)
+
 - `Code-Graph-Tools-Benchmark` (Findings): codegraph recall de chamadas 0,45-0,60, precisão 0,71-0,84; graphify pior
   em recall; codegraph `sync` 0,5 s com watcher.
 - `pi-harness-multi-agent-2026-11` (L28): com o mesmo modelo o harness muda custo 3-40x e acerto 0-8 pp; alavancas:
@@ -29,6 +34,7 @@ Pesquisa ~US$2-4; eval ≤ US$10. Mudanças de texto miram bytes líquidos ≤ 0
 - `claim_store find graph loop harness`: nada relevante e vigente.
 
 ## Plano
+
 1. [DONE:1] Registro.
 2. [DONE:2] Deep research (G1 grafos em papers, G2 ferramentas de code graph, G3 orquestradores de workflow, L1 loops em papers,
    L2 loops na prática, H1 harness custo x benefício, H2 benchmarks de harness), desafio, verificação.
@@ -40,13 +46,16 @@ Pesquisa ~US$2-4; eval ≤ US$10. Mudanças de texto miram bytes líquidos ≤ 0
 8. [DONE:8] Fechamento (hashes, knowledge vault, plan-reviewer).
 
 ## Checkpoint
+
 - Plano completo: passos 1-8 feitos; plan-reviewer rodada 2 deu PLAN_REVIEW: complete.
 
 ## Pesquisa (passo 2)
+
 `docs/research/2026-11-13-graph-loop-harness-sota.{md,ledger.json}`: 10 agentes, 39 claims, 39/39 citações verificadas
 por script, 30 supported e 9 partial, `report_check` pass, 38 linhas no claim_store (tópico `graph-loop-harness-2026-11`).
 
 ## Lacunas e decisões (passo 3)
+
 | Alavanca | Estado no pi | Evidência | Ganho / custo por execução | Decisão |
 |---|---|---|---|---|
 | Code graph para estrutura, chamadores e impacto | `rules/research-and-tools.md:15` (codegraph primeiro para estrutura) | C2, C4, C5, mas C36 (1 salto domina) | ganho na localização / ~4k tokens por resposta | manter; `graph-engineering` passo 2 diz quando pular e para depois de 1 expansão |
@@ -58,10 +67,13 @@ por script, 30 supported e 9 partial, `report_check` pass, 38 linhas no claim_st
 | Ferramentas adiadas, edição de contexto, cache, skills progressivas | `tool_search`, `compact-at-400k`, `prefix-cache-1h`, skills sob demanda | C28, C29, C31, C33 | já coberto | nada |
 | Roteamento por tier | pins Haiku/Sonnet | C34 | já coberto | nada |
 | AFlow (busca de workflow) | — | C12 | exige avaliador e muitas execuções | descartar até haver tarefa repetida e pontuável |
+
 Custo das mudanças: só corpos de skill, carregados sob demanda; descrições sempre carregadas inalteradas (+0 bytes).
 
 ## Ferramentas (passo 4)
+
 Nenhuma instalada; `presente-de-grego` não rodou porque nenhum candidato passou na triagem de custo x benefício.
+
 | Ferramenta | Motivo |
 |---|---|
 | codegraph 1.6.2 (instalado) | MCP com watcher; recall 0,45-0,60 medido aqui (knowledge vault `Code-Graph-Tools-Benchmark`); fica |
@@ -72,12 +84,14 @@ Nenhuma instalada; `presente-de-grego` não rodou porque nenhum candidato passou
 | GitNexus, ast-grep, repomix | README e engine não lidos (lead); repomix e ast-grep não são grafo de chamadas |
 
 ## Eval (passo 5-6)
-Mudanças aplicadas: `skills/graph-engineering/SKILL.md` (passo 2 e Evidence), `skills/loop-engineering/SKILL.md`
-(Caps e Evidence), `skills/swarm-orchestration/SKILL.md` (Brief: orçamento). Nenhuma muda o padrão de forma que a suite
+
+Mudanças aplicadas: `claude-home/skills/graph-engineering/SKILL.md` (passo 2 e Evidence), `claude-home/skills/loop-engineering/SKILL.md`
+(Caps e Evidence), `claude-home/skills/swarm-orchestration/SKILL.md` (Brief: orçamento). Nenhuma muda o padrão de forma que a suite
 de eval meça (só estreitam gatilhos já existentes ou acrescentam uma linha de brief), e nada novo virou padrão. Eval não
 rodada: US$0 de US$10. Além disso o limite de 5 h da conta estava em 99% (screenshot do usuário).
 
 ## Pedidos intercalados (2026-11-13)
+
 1. Painel de agentes alinhado ao status line (coluna 0): `fleet-ui/panel.ts` sem a calha de 2 colunas; a seleção vira
    `❯` no lugar do glifo de estado. Teste antes (3 vermelhos em `subagent-panel/fleet-ui.test.ts` e 1 em
    `fleet-ui-layout.test.ts`), depois 32/32 e 11/11. Patch: o hunk de `layoutRow` em `subagent-panel.patch`; o de
@@ -95,19 +109,21 @@ rodada: US$0 de US$10. Além disso o limite de 5 h da conta estava em 99% (scree
    (vermelho antes: import), cobertura 97%. Limite: o retry do SDK dentro do pi-ai (segundos, teto de 60 s) continua.
 
 ## Gate (passo 7, 2026-11-13T16:06:38Z)
+
 - `gate-extra.sh`: GATE pass. Passos novos: auto-resume-tests, no-context-files, ponytail, json-config e
   structure-ext, todos com exit 0. hud, ui, check-instructions, check-agents e hooks também com exit 0.
 - `gate.sh`: FAIL só nas falhas conhecidas da outra sessão (zz-panel-main-root / zz-subagent-respawn):
   - coverage `fleet-ui/index.ts` [59];
   - structure `respawn.ts` + `over-7-code-files:.:8`;
   - 3× TS2339 `contextTokens/cost/elapsedMs` em `panel.ts`, vindos do `mainStats` do zz.
-  - O resto passou: fleet-tests, os old-* (statusline-multiline incluído), patch-roundtrip e upgrade. Os 12 red-* saíram
+  - O resto passou: fleet-tests, os old-*(statusline-multiline incluído), patch-roundtrip e upgrade. Os 12 red-* saíram
     com exit 1, que é o passe deles. A cobertura agora inclui `zzz-panel-column0.patch`.
 - `unit_graph`: pytest 13/13.
 - Sem E2E por tmux do painel e do 📋: ficam cobertos pelos testes unitários de render (painel 32/32 + 11/11, HUD 7/7).
   A conta estava no limite de uso.
 
 ## Fechamento (passo 8)
+
 - plan-reviewer, rodada 1: incomplete. Corrigido:
   - (1) o teste do handler dependia de `PI_CODE_SUBAGENT`; agora isola o env.
   - (2) headers de um 429 antigo sobreviviam a respostas bem-sucedidas. Teste vermelho antes (10860000 ms), verde depois; 12/12 com e sem `PI_CODE_SUBAGENT=1`, cobertura 98,17%.
@@ -128,6 +144,7 @@ rodada: US$0 de US$10. Além disso o limite de 5 h da conta estava em 99% (scree
   - f0f81a18f561…  ~/.pi/agent/claude-home/docs/research/2026-11-13-graph-loop-harness-sota.ledger.json
 
 ## Fechamento sem pendências (2026-11-13, goal "finalizar tudo sem gaps")
+
 - Falhas zz do gate: a sessão `01a1d4d2` criou os patches zz e segue ativa, mas desde 11:21 não mexe nesses arquivos. Corrigi
   com mudanças mínimas:
   - TS2339 ×3: `const st: Partial<MainStats> = main ?? {}` em `fleet-ui/panel.ts`; `zz-panel-main-root.patch` regenerado
@@ -168,6 +185,7 @@ rodada: US$0 de US$10. Além disso o limite de 5 h da conta estava em 99% (scree
   - 4c88fe02b8ec…  ~/.cache/pi-fleet-work/gate.sh
 
 ## Fechamento, rodada 2 (o avaliador do goal apontou 3 itens abertos)
+
 - Headers de um 429 depois de Esc, TDD: o teste ficou vermelho antes (10860000 contra 900000). A espera agora consome os
   headers quando começa, seja qual for o desfecho. 14/14 com e sem `PI_CODE_SUBAGENT=1`, 100% de linhas.
 - E2E real em tmux com Haiku 5.5, em `/tmp/e2e-final`, custo total abaixo de US$0,05:
@@ -201,6 +219,7 @@ rodada: US$0 de US$10. Além disso o limite de 5 h da conta estava em 99% (scree
   os 12 red-* com exit 1) e `gate-extra.sh` deu `GATE pass`.
 
 ## Fechamento, rodada 3 (13:46:53)
+
 - E2E longo e real (tmux, Haiku 5.5, US$0,025): plano de 3 passos com `sleep 25`, subagente Explore de ~25 s e `sleep 15`.
   - Os quadros em `/tmp/e2l-frames.txt` mostram o `📋` avançar na linha de tools do HUD: 0/3 → 1/3 → 2/3 → `Plan Complete`.
   - Durante a espera aparece `◐ Bash: sleep 15; date | … | 📋 1/3`.
@@ -219,6 +238,7 @@ rodada: US$0 de US$10. Além disso o limite de 5 h da conta estava em 99% (scree
 - `gate-extra.sh` rodado de novo depois do `zz-fixes` (13:47:43): `GATE pass`, EXTRA_EXIT=0.
 
 ## Fechamento, rodada 4 (13:51:33): últimas sobras da revisão
+
 - auto-resume, TDD: um 429 comum, que não é limite da conta, deixava os headers guardados para a espera do próximo
   limite. O teste novo falhou antes da correção (10860000 contra 900000). Agora a limpeza em `message_end` acontece em
   qualquer resposta que não seja o erro de limite da conta. 15/15 testes, com e sem `PI_CODE_SUBAGENT=1`, 100% das linhas.
@@ -231,6 +251,7 @@ rodada: US$0 de US$10. Além disso o limite de 5 h da conta estava em 99% (scree
   `gate-extra.sh` deu `GATE pass`. Nenhum arquivo do escopo é mais novo que os gates.
 
 ## Fechamento, rodada 5 (13:52:35): risco da sessão concorrente fechado
+
 - O wrapper `~/.local/bin/pi` ganhou o `pi_fix_check`, que roda a cada partida, sobre a árvore instalada. Se sumir o
   `Partial<MainStats>`, o `subagent/respawn/index.ts` ou o `DONE_RULE`, ele avisa no stderr nomeando a correção. A
   proteção deixa de depender de alguém rodar o gate; no gate, o `zz-fixes` continua cobrindo os arquivos `.patch`.
@@ -243,6 +264,7 @@ rodada: US$0 de US$10. Além disso o limite de 5 h da conta estava em 99% (scree
   gates. `pi_fix_check` na árvore instalada: 0 avisos. Não resta pendência.
 
 ## Fechamento, rodada 6 (14:01:03): sessão concorrente
+
 O usuário cancelou a pergunta e mandou continuar. Escolhi a opção que não perde nada: os três patches estão só-leitura.
 - Prova: `echo >> patch` dá "Permission denied"; o `zzfix` dá rc 0; a pilha completa é igual ao instalado
   (FORWARD_EQUAL); `pi --version` sai sem aviso.
@@ -257,6 +279,7 @@ O usuário cancelou a pergunta e mandou continuar. Escolhi a opção que não pe
   Encerrar a sessão 01a1d4d2 descartado: perderia trabalho do usuário sem ganho, já que a perda seria detectada.
 
 ## Notas (reforço opcional, não pendência)
+
 - `sudo chattr +i` nos três patches zz bloquearia até a troca via `mv`. É reforço contra a própria sessão do usuário, não
   correção de defeito: a perda já é detectada pelos patches só-leitura, pelo `zz-fixes` do gate e pelo `pi_fix_check`
   a cada abertura. Pelo critério de custo × benefício do objetivo, fica como opção do usuário, não como item aberto.

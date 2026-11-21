@@ -1,25 +1,28 @@
 # pi: painel de agentes (frota) estilo Claude Code com subagentes de 2º e 3º grau (2026-11-12)
 
 ## Pedido
+
 "Fazer UI + funcionamento de subagentes em 1º, 2º e 3º grau parecidos com o Claude, onde posso navegar via status line e
 continuar mexendo no chat principal; [como] no Claude não há 2º e 3º grau como aqui, exiba-os diferente; SOTA em
 novembro de 2026, custo x benefício." Referência visual: painel do Claude Code abaixo do prompt
 (`● main` / `○ gateway-engineer  Reading connect_target.rs tests  50s · ↓ 114.4k tokens`).
 
 ## Evidência (lida em 2026-11-12)
+
 | Fato | Fonte | Provedor |
 |---|---|---|
-| Painel abaixo do prompt com uma linha `main` e uma por agente; `↑/↓` move, `Enter` abre o transcript e manda mensagens ao agente, `x` para (rodando) ou dispensa (terminado), `Esc` volta ao prompt | https://code.claude.com/docs/en/sub-agents (seção "Observe and steer running forks") | Perplexity + Parallel (web_fetch) |
-| Subagentes aninhados aparecem como árvore no painel; linha com descendentes leva `(+N)`; abrir uma linha mostra irmãos e filhos diretos com caminho até `main`; profundidade máx. 5 | https://code.claude.com/docs/en/sub-agents, https://code.claude.com/docs/en/whats-new/2026-w24 | Parallel (web_search), Exa (web_fetch) |
-| Terminado com sucesso some na hora (dica `/tasks` por 30 s); falho ou parado fica 30 s; `x` limpa antes | https://code.claude.com/docs/en/sub-agents ("Finished subagents in the panel and task list") | Parallel (web_fetch) |
-| `Ctrl+B` manda Bash e agentes em execução para o background; `Esc` com linha do painel selecionada só desseleciona | https://code.claude.com/docs/en/interactive-mode | Parallel (web_fetch) |
-| OpenCode navega sessões filhas por teclas (filho, irmãos, pai), inclusive netos; Codex CLI lista subagentes acima do composer e troca de thread com `/subagents` | https://open-code.ai/en/docs/agents, https://github.com/anomalyco/opencode/issues/15972, https://developers.openai.com/codex/developer-commands | Perplexity (não relido: só padrão de UX, não decide contrato) |
-| Já existe `@herbertgao/pi-subagents` (FleetView igual ao Claude, viewer, steering) | https://npmjs.com/package/@herbertgao/pi-subagents | Keenable |
+| Painel abaixo do prompt com uma linha `main` e uma por agente; `↑/↓` move, `Enter` abre o transcript e manda mensagens ao agente, `x` para (rodando) ou dispensa (terminado), `Esc` volta ao prompt | <https://code.claude.com/docs/en/sub-agents> (seção "Observe and steer running forks") | Perplexity + Parallel (web_fetch) |
+| Subagentes aninhados aparecem como árvore no painel; linha com descendentes leva `(+N)`; abrir uma linha mostra irmãos e filhos diretos com caminho até `main`; profundidade máx. 5 | <https://code.claude.com/docs/en/sub-agents>, <https://code.claude.com/docs/en/whats-new/2026-w24> | Parallel (web_search), Exa (web_fetch) |
+| Terminado com sucesso some na hora (dica `/tasks` por 30 s); falho ou parado fica 30 s; `x` limpa antes | <https://code.claude.com/docs/en/sub-agents> ("Finished subagents in the panel and task list") | Parallel (web_fetch) |
+| `Ctrl+B` manda Bash e agentes em execução para o background; `Esc` com linha do painel selecionada só desseleciona | <https://code.claude.com/docs/en/interactive-mode> | Parallel (web_fetch) |
+| OpenCode navega sessões filhas por teclas (filho, irmãos, pai), inclusive netos; Codex CLI lista subagentes acima do composer e troca de thread com `/subagents` | <https://open-code.ai/en/docs/agents>, <https://github.com/anomalyco/opencode/issues/15972>, <https://developers.openai.com/codex/developer-commands> | Perplexity (não relido: só padrão de UX, não decide contrato) |
+| Já existe `@herbertgao/pi-subagents` (FleetView igual ao Claude, viewer, steering) | <https://npmjs.com/package/@herbertgao/pi-subagents> | Keenable |
 
 Mensagem a um agente rodando: pi tem `pi.sendUserMessage(text, { deliverAs: "steer" })` (docs locais
 `extensions.md`), entregue após as ferramentas do turno atual; serve em modo `-p --mode json`, sem trocar o filho para RPC.
 
 ## Decisões
+
 - **Não adotar `@herbertgao/pi-subagents`**: substitui a ferramenta `subagent` do pi-code (contrato usado pelo
   CLAUDE.md, agentes, `swarm-orchestration`, patch de aninhamento e orçamento por lane) e esconde subagentes aninhados
   de toda superfície de topo, o oposto do pedido. Copiamos o padrão de UX (↓ no prompt vazio, ●/○, Enter, x x, Esc).
@@ -66,6 +69,7 @@ Mensagem a um agente rodando: pi tem `pi.sendUserMessage(text, { deliverAs: "ste
   poderia "falar como usuário" com um irmão). Não aumenta poder: ele já tem shell com os mesmos privilégios.
 
 ## Critérios de aceite (observáveis)
+
 - A1 Com subagente rodando, painel abaixo do editor: linha `main` e uma por run; graus 2 e 3 em árvore com estilo
   distinto; atividade, tempo, contexto e custo ao vivo; some quando não há runs visíveis.
 - A2 `↓` no prompt vazio foca o painel; `↑/↓` movem; `→/←` expandem/recolhem; `Esc` ou `↑` acima do topo voltam ao
@@ -88,6 +92,7 @@ Mensagem a um agente rodando: pi tem `pi.sendUserMessage(text, { deliverAs: "ste
   3 graus.
 
 ## Grafo de unidades (sem git aqui: escritores em sequência)
+
 | id | arquivos | agente | depois de |
 |---|---|---|---|
 | U1 plano de dados + Ctrl+B + inbox | `subagent/fleet/{store,tracker,inbox,source,detach}.ts`, hooks em `run.ts`, `background.ts`, `modes.ts`, `index.ts`, `registry-text.ts`; teste `patches/pi-code/subagent-panel/fleet.test.ts` | swarm-worker | contrato `types.ts` |
@@ -95,12 +100,14 @@ Mensagem a um agente rodando: pi tem `pi.sendUserMessage(text, { deliverAs: "ste
 | U3 integração | `patches/pi-code/subagent-panel.patch`, wrapper (comentário), `docs/goal.md`, E2E tmux, gate | sessão principal + gate-runner | U2 |
 
 ## Custo x benefício (rules/harness-economy.md)
+
 - Custo por execução: nenhum token; nenhum byte a mais no prompt (descrição da ferramenta inalterada: o próprio
   resultado do Ctrl+B instrui o modelo). Processo: um `fs.watch` + poll de 1 s só enquanto há runs vivos.
 - Ctrl+B agrega a conclusão por chamada (1 volta do modelo principal em vez de N).
 - Manutenção: um patch a mais para reaplicar a cada versão do pi-code (arquivos novos não conflitam; hooks pequenos).
 
 ## Checkpoint
+
 - 2026-11-12: pesquisa e contrato prontos; base do pi-code (com os 4 patches) copiada em `~/.cache/pi-fleet-work/base`
   (rollback: `rm` do patch novo e reinstalar/reaplicar). Próximo: U1.
 - 2026-11-12: U1, U2 e U3 concluídos; revisão (`code-reviewer`) com 5 achados corrigidos (F1-F5) mais o endurecimento
@@ -124,6 +131,7 @@ Mensagem a um agente rodando: pi tem `pi.sendUserMessage(text, { deliverAs: "ste
   **completo**.
 
 ## Evidência de verificação
+
 Gate único (`~/.cache/pi-fleet-work/gate.sh` via `gate-runner`, árvore final):
 - Testes da frota 55/55 (`subagent-panel/fleet.test.ts` + `fleet-ui.test.ts`); patches antigos (nesting,
   statusline, goal, goal-lifecycle) passam.
@@ -223,7 +231,7 @@ sincronizar com o Codex; rodapés históricos ficam como texto).
 - Checador de estrutura próprio: `claude-home/bin/structure/structure.py` (cópia de
   `~/.codex/bin/harness_checks/structure.py` sem `harness_roots`, com os pins do impeccable e do pi-code) e
   `test_structure.py` (16 testes; trace stdlib: 96,4% das linhas). Consumidores repontados: `CLAUDE.md`,
-  `rules/harness-economy.md` (no lugar do `harness-check` do Codex), skills `engineering-standards`, `ripple-hunt`,
+  `rules/harness-economy.md` (no lugar do `harness-check` do Codex), skills engineering-standards, `ripple-hunt`,
   `project-baseline`, `harness-audit`, `bin/tests/pi-ui-final-gate.sh` e o gate deste trabalho.
 - Lado do Codex: os 7 pins do pi-code saíram do `VENDORED` do `~/.codex/bin/harness_checks/structure.py` e a seção
   "pins for pi-code's subagent/" saiu de `~/.codex/docs/harness-check-residuals-2026-10-14.md`; o Codex não cita
@@ -232,7 +240,7 @@ sincronizar com o Codex; rodapés históricos ficam como texto).
   "working contract" para o AGENTS.md (skills `tdd`, `engineering-standards`, `accessibility-audit`,
   `agent-routing`; agentes `test-author`, `pente-fino`; `/pre-launch`) apontam para `claude-home/CLAUDE.md`;
   `agent-contract.md` diz que o pi não roda nada em `~/.codex`.
-- Roteamento: `codex exec` saiu de `rules/research-and-tools.md` e das skills `agent-routing`, `evidence-research`
+- Roteamento: `codex exec` saiu de `rules/research-and-tools.md` e das skills agent-routing, `evidence-research`
   e `perplexity-mcp-sota` (que também deixou de ler a config do Codex).
 - Ferramentas do Codex citadas em skills: `harness_evidence.py`, `harness_bench` (roda `codex exec`), o contrato de
   recibo v2 e o conjunto Astra saíram de `agent-systems` (o formato v1 do recibo continua no texto; evals do pi pelo

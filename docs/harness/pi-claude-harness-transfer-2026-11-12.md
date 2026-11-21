@@ -5,6 +5,7 @@ benchmarks. Escopo aprovado: tudo, com gates; teto pago US$ 10 (pesquisa ≤ 2,5
 reserva 1). Sem entrega git (`~/.pi/agent` não é repositório).
 
 ## Medições de partida (sessões do pi, 2026-11-10 → 2026-11-12, só agregados)
+
 - US$ 236 no total; Opus 5.5 = US$ 180 (76%), 2.296 chamadas.
 - Contexto por chamada (Opus): p50 161K, p90 336K, máx 401K; > 250K: 682 (29%); > 300K: 400.
 - 6 compactações, todas a ~400K; contexto na 1ª chamada depois: 67-89K (quase tudo reescrito no cache).
@@ -14,6 +15,7 @@ reserva 1). Sem entrega git (`~/.pi/agent` não é repositório).
   gravações (10,7M) pagaria +60% (~+US$ 32). Empate → fora.
 
 ## Candidatos e gates
+
 | # | Candidato | Origem no Claude | Gate |
 |---|---|---|---|
 | 3 | Compactar a 250K | `context-compaction-2026-11-08.md` (300K adotado; ótimo modelado 250K com restart 125K) | modelo recalculado com o restart do pi (~80K); config + `pi -p` |
@@ -22,21 +24,25 @@ reserva 1). Sem entrega git (`~/.pi/agent` não é repositório).
 | 8 | MCPs atrás (SOTA) | scan de currency | changelog + 1 chamada por servidor |
 
 ## Rollback
+
 - Compactação: `PI_COMPACT_AT=400000` no wrapper e `python3 ~/.pi/agent/scripts/compaction-400k.py`; backups em
   `backups/transfer-2026-11-12/` (wrapper, settings.json, compact-at-400k.ts).
 - Limpeza: `PI_CONTEXT_CLEARING=0` ou mover `extensions/context-clearing/` para os backups.
 - Catálogo: tirar `disable-model-invocation: true` das skills listadas (cópias dos SKILL.md nos backups).
 
 ## knowledge vault consultado
+
 - `Billion-Context-vs-Auto-Compact-2026-11` L30: a alavanca é o tamanho do restart, não a janela; o modelo de custo
   por turno vem dali.
 - `skills-curation-criteria` L298: zero uso não autoriza apagar; 20 de 24 skills sem caso de roteamento → o gate do
   passo 7 só cobre skills que têm caso; as demais exigem a regra "não exigida por ninguém" e ficam em `/skill:`.
 
 ## Checkpoint
+
 - [DONE:1] Registro criado, knowledge vault consultado, backups em `backups/transfer-2026-11-12/`.
 - [DONE:2] Pesquisa (perplexity-scout: Perplexity + keenable; web-scout: parallel, exa, paper_search; US$ 0,88 de 2,5).
   Fontes lidas por URL; data de acesso 2026-11-12.
+
   | Afirmação | Fonte | Efeito no plano |
   |---|---|---|
   | Limpar resultados de ferramenta invalida o prefixo em cache; `clear_at_least` existe para a limpeza valer a regravação | platform.claude.com/docs/en/build-with-claude/context-editing | simulador cobra regravação a 1,25× a partir da 1ª mensagem limpa |
@@ -49,8 +55,10 @@ reserva 1). Sem entrega git (`~/.pi/agent` não é repositório).
   | RAG-MCP: todas as ferramentas no prompt 13,6% vs 43,1% com recuperação (preprint, uma tarefa) | arxiv.org/pdf/2505.03275v1 | sinal de que catálogo grande custa acerto; é sobre schemas, não skills |
   | Claude Code: lista de skills limitada a 1% da janela; corta descrições das menos invocadas; `disable-model-invocation` tira a descrição do contexto | code.claude.com/docs/en/skills | o pi não tem orçamento; o corte manual do passo 7 é o equivalente |
   | Opus/Sonnet 5.5: leitura de cache **0,05×**, escrita 5 min 1,25×, 1h 2× (Opus 5.5: $4 / $5 / $8 / $0,20) | platform.claude.com/docs/en/build-with-claude/prompt-caching | confirma o empate do cache 1h (1h = +60% na escrita) |
+
   Lacunas: nenhum número de acurácia de Claude 5.x entre 150K e 400K verificado; defaults de context editing só por
   trecho; métodos e modelos do 2607.12161 não lidos no PDF; nenhum benchmark de "número de skills × acerto".
+
 - [DONE:3] Compactação 400K → 250K.
   - Compactação medida (6 eventos): resumo com entrada sem cache de 133-177K e saída de 3,5-5,8K, US$ 0,61-0,80 cada;
     reinício 67-89K regravado a 1,25×. Crescimento por turno: p50 1.120, média 2.994 (n = 2.297).
@@ -70,6 +78,7 @@ reserva 1). Sem entrega git (`~/.pi/agent` não é repositório).
   chars/2,75, stub de 30 tokens, exclusões do plano. O cache vale até o resultado limpo mais antigo, e tudo depois dele
   é regravado a 1,25×. A compactação acontece depois, porque o contexto fica menor. 85 sessões, 11 acima de 150K
   (US$ 114,58 de entrada).
+
   | Gatilho | Manter | Mínimo limpo | Δ custo (sessões > 150K) | Eventos |
   |---|---|---|---|---|
   | 80K | 4 | 20K | +5,4% | 62 |
@@ -78,11 +87,13 @@ reserva 1). Sem entrega git (`~/.pi/agent` não é repositório).
   | 150K | 4 | 80K | **−1,9% (melhor)** | 7 |
   | 160K | 8 | 40K | +1,6% | 19 |
   | 200K | 4 | 80K | −0,4% | 6 |
+
   A grade completa está na saída do script. O melhor caso dá −1,9%, longe da meta de 10%. O modelo ainda ignora o custo
   de trajetória: o agente relê o que foi limpo e faz mais turnos. O arXiv 2607.12161 mediu isso no Claude Code: −38,4%
   de tokens e +6,8% de custo. Causa: com leitura de cache a 0,05×, reenviar resultados antigos custa pouco, e cada
   limpeza regrava o contexto a partir do ponto limpo a 25× o preço de leitura. A compactação a 250K também encurta os
   trechos em que a limpeza poderia render.
+
 - [DONE:5] Não executado. A extensão `context-clearing` não foi criada porque o gate do passo 4 reprovou.
 - [DONE:6] Não executado pelo mesmo motivo. Os US$ 2 dessa eval voltam para a reserva.
 - [DONE:7] Catálogo de skills: 3 skills passaram a só-usuário, com gate aprovado.
@@ -130,6 +141,7 @@ reserva 1). Sem entrega git (`~/.pi/agent` não é repositório).
   - Node 24 → 26 do computer-use-linux: sem mudança. O `computer-use-linux.js` só lança o binário nativo
     (`computer-use-linux-linux-x64`) e o pacote exige `node >=18`, então trocar o runtime não muda o comportamento.
 - [DONE:9] Rejeitados e adiados, com os números.
+
   | Item | Veredito | Números |
   |---|---|---|
   | Cache 1h (`PI_CACHE_RETENTION=long`) | rejeitado | 60 chamadas após pausa de 5-60 min regravaram 6,86M tokens (~US$ 33 que o 1h pouparia); o 1h encarece todas as outras gravações (10,7M) em 60%, +US$ 32. Escrita 1h = 2× contra 1,25× (prompt-caching docs) |
@@ -141,6 +153,7 @@ reserva 1). Sem entrega git (`~/.pi/agent` não é repositório).
   | Tirar o catálogo de skills dos filhos | **rejeitado na rodada 2**, medido | ver "Fechamento, rodada 2" |
   | `route_hint.py` | rejeitado (mantido) | dicas seguidas em ~38% sem controle (`pi-hooks-port.md`) |
   | gsap-*, `containerization`, `validate-data`, `design-taste-frontend`, `hallmark` como só-usuário | rejeitado agora | citadas por outra skill ou com caso de roteamento positivo; o pi não tem `name-only` |
+
 - [DONE:10] Fechamento.
   - Checks:
     - `check-instructions.py`: 22 arquivos, 0 problemas, 39.745 B.
@@ -163,6 +176,7 @@ reserva 1). Sem entrega git (`~/.pi/agent` não é repositório).
   - Sem entrega git.
 
 ## Fechamento das pendências (2026-11-12, meta "terminar tudo sem pendências, gaps ou bugs")
+
 | Pendência | Resolução | Evidência |
 |---|---|---|
 | Compactação a 250K só verificada na config; retenção não medida | **Verificada ao vivo** | Haiku 5.5 (janela 1M, reserve 750K) leu 18 arquivos de 44 KB. `compaction_start` com reason `threshold`; `compaction_end` com tokensBefore 253.688. O resumo (3.223 chars) manteve os dois fatos plantados no 1º prompt (`ZEBRA-4417`, `orion.toml`). Na sessão continuada (`--continue`), sem ferramentas, a resposta foi "ZEBRA-4417; orion.toml; 18 partes". US$ 0,31 |
@@ -176,6 +190,7 @@ reserva 1). Sem entrega git (`~/.pi/agent` não é repositório).
 Gasto total do plano de transferência: US$ 4,10 + 0,31 + 3,94 + 0,76 = **US$ 9,11 de 10**.
 
 ### `structure.py` em `claude-home`: os 6 achados não são código próprio
+
 Nenhum dos 6 achados está em arquivo deste plano, e todos caem nas exclusões da regra (dependência vendorizada,
 backup, snapshot):
 - `skills/impeccable/scripts/live-browser.js` (13.872 linhas): upstream pbakaus/impeccable 4.8.2 (optional)
@@ -187,6 +202,7 @@ backup, snapshot):
   usa para detectar divergência (`--diff` e `--accept-sources`). Não são executadas.
 
 ## Fechamento, rodada 2 (2026-11-12)
+
 O avaliador do `/goal` apontou riscos que ficaram abertos na rodada 1. Esta rodada fecha cada um e também os três
 itens que estavam "adiados".
 

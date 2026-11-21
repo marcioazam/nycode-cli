@@ -67,10 +67,12 @@ check-ins, o restore no resume e o modo `-p`.
   2. Reaplique as mudanças.
   3. Gere `diff -ruN a b > goal.patch`, com `a/` = orig e `b/` = patched, caminhos relativos a `extensions/`.
 - Testes (copiam o pacote para /tmp, porque o Node não tira tipos dentro de node_modules):
-  ```
+
+  ```text
   node --experimental-strip-types --test ~/.pi/agent/claude-home/patches/pi-code/goal.test.ts \
     ~/.pi/agent/claude-home/patches/pi-code/goal-lifecycle.test.ts
   ```
+
   Os testes cobrem 17 casos: parse, classificador, reasoning mínimo, veredito por ferramenta forçada, retries do avaliador, retry e
   pausa de turno, cancelamento por prompt, modo headless e override do modelo.
 

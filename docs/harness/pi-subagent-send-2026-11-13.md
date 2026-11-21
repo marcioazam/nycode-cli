@@ -1,3 +1,4 @@
+<!-- markdownlint-disable MD029 MD007 -->
 # Subagent send: coordenador redireciona subagente vivo (2026-11-13)
 
 Pesquisa: docs/research/2026-11-13-pi-agents-teams-sota.md (seção Delta). Plano: ~/.pi/agent/plans/2026-11-13-01a1d61d.md
@@ -5,6 +6,7 @@ Pesquisa: docs/research/2026-11-13-pi-agents-teams-sota.md (seção Delta). Plan
 Tier: T3 (sinais: concorrência entre processos via inbox/ack, contrato da ferramenta `subagent` lido pelo modelo, rótulo de autoridade, eval com gasto)
 
 ## Resumo
+
 - Objetivo: o coordenador (modelo) redireciona um subagente de fundo vivo sem matá-lo, via `subagent {send: <id>, task: <texto>}`. Depois comparamos com cancelar e recomeçar, e com o harness sem a feature.
 - Fora de escopo: modo time (`team`) segue como está; steer em chamada de primeiro plano (o modelo fica bloqueado); interromper ferramenta no meio; Claude Code; deploy.
 - Estimativa: 11 tarefas, ~6 runs de worker (Sonnet), 1 gate, 1–2 rodadas de plan-reviewer; gasto de modelo ≤ US$15 (bench ~US$3, eval ~US$8, folga).
@@ -12,6 +14,7 @@ Tier: T3 (sinais: concorrência entre processos via inbox/ack, contrato da ferra
 - Autorização: pedido do usuário "crie uma execução SOTA disso e compare depois" + respostas: param `send`, ligado só se no_worse, teto US$15, rótulo do coordenador. claude-home não é repositório git: não há commit/PR; entrega = patch instalado + registro.
 
 ## Decisões e suposições
+
 - D1: param `send` no `subagent`, com o texto em `task`, reaproveitando `sendToRun` (fleet/source.ts:73). Rejeitadas: ferramenta nova `subagent_send` (+1 ferramenta sempre no prompt) e "só via /team" (fica preso ao opt-in).
 - D2: o texto entregue leva rótulo derivado da profundidade do remetente: `[message from lead (main session), not the user]` em depth 0, `[message from parent <agente> (<id>), not the user]` em depth ≥1. O mesmo rótulo vale também no caminho `resumed` (regra única). É instrução do pai, nunca aprovação do usuário. Rejeitado: entregar como mensagem do usuário (autoridade repassada sem rótulo).
 - D3: entrega confirmada. O filho grava a ack `consumed` só quando um turno começa depois do steer. A mensagem steered que nunca vira turno, ou que chega depois do `agent_end`, recebe ack `too-late` num dreno final. O aviso de não-entregue conta tudo que não estiver `consumed`. Rejeitado: confiar na ack `steered` atual (inbox.ts:21-25 marca antes de processar).
@@ -24,11 +27,13 @@ Tier: T3 (sinais: concorrência entre processos via inbox/ack, contrato da ferra
 - A2 (~90%, base: rodada anterior em pi-agents-ui-teams-sota checkpoint 8): `run_pi.py` aceita env por braço e o modelo da eval é o mesmo da rodada 6 (Opus 5.5), com outras sessões do pi paradas durante a eval.
 
 ## Glossário
+
 - steer: mensagem inserida no próximo limite de turno de um run vivo (pi `sendUserMessage(..., {deliverAs:'steer'})`).
 - consumed: o filho começou um turno depois de receber o steer.
 - STEER / RESTART: braços do bench; corrigir via `send` contra `cancel` + novo run com brief corrigido.
 
 ## Aceitação
+
 - AC1: WHEN o modelo chama `subagent {send:id, task}` para um run de fundo próprio em execução THE SYSTEM SHALL anexar a mensagem rotulada (D2) na inbox e retornar `queued`, dizendo que a entrega ocorre no próximo limite de turno.
 - AC2: WHEN um run de fundo depth 1 já terminou THE SYSTEM SHALL retomá-lo com o texto rotulado e retornar `resumed`.
 - AC3: WHEN o filho começa um turno depois de um steer THE SYSTEM SHALL gravar a ack `consumed` daquela mensagem.
@@ -41,6 +46,7 @@ Tier: T3 (sinais: concorrência entre processos via inbox/ack, contrato da ferra
 - AC10: WHEN o gate roda THE SYSTEM SHALL passar todos os passos de `~/.cache/pi-fleet-work/gate.sh`, incluindo os novos (testes e cobertura do patch novo, variante red, roundtrip, upgrade, structure).
 
 ## Riscos e rollback
+
 - Ack `steered` antes do processamento esconde perda: D3 + teste com mensagem chegando depois do `agent_end` (tarefa 2).
 - Corrida registro × saída do filho: D4 + teste de injeção (tarefa 3).
 - Canal de prompt injection (texto do modelo vira mensagem de usuário no filho): rótulo D2, limite de 4000 chars, só runs próprios; documentado no registro.
@@ -52,6 +58,7 @@ Tier: T3 (sinais: concorrência entre processos via inbox/ack, contrato da ferra
 ## Fases
 
 ### Fase 1: implementação (gate: diff revisado, lsp_diagnostics limpo nos arquivos tocados)
+
 1. Criar registro /docs da execução
    - agente: main · arquivos: ~/.pi/agent/claude-home/docs/pi-subagent-send-2026-11-13.md
    - ação: materializar este plano (D/A/AC, riscos, seções vivas) e linkar a pesquisa delta em docs/research/2026-11-13-pi-agents-teams-sota.md
@@ -83,6 +90,7 @@ Tier: T3 (sinais: concorrência entre processos via inbox/ack, contrato da ferra
    - check: `python3 ~/.pi/agent/claude-home/bin/check-instructions` (ou o check-instructions do gate-extra) · pronto: 0 problemas (optional)
 
 ### Fase 2: comparação (gate: tabela de resultados no registro, gasto ≤ US$15)
+
 6. Bench STEER vs RESTART
    - agente: swarm-worker (sonnet) · arquivos: ~/.cache/pi-fleet-work/bench-send/* (fora da árvore)
    - ação: fixture com repositório de teste e 2 tipos de tarefa (primeira ferramenta curta / primeira ferramenta longa ~30 s). O worker de fundo recebe uma restrição errada; depois da 1ª chamada de ferramenta, o braço STEER manda a correção via `sendFromLead` e o RESTART faz cancel + novo run. k=3 por braço e tipo, Sonnet fixo. Métricas do AC9 e check do fixture
@@ -101,6 +109,7 @@ Tier: T3 (sinais: concorrência entre processos via inbox/ack, contrato da ferra
    - check: `rg PI_CODE_SUBAGENT_SEND` mostra um único ponto de padrão · pronto: decisão com evidência no registro
 
 ### Fase final: verificação
+
 9. Gate único (gate-runner)
    - agente: gate-runner (haiku) · arquivos: nenhum
    - ação: `bash ~/.cache/pi-fleet-work/gate.sh` e `gate-extra.sh` na árvore final; colar exit por passo no registro; falha → fix no dono da tarefa → rerun dos passos que falharam → gate final
@@ -117,6 +126,7 @@ Tier: T3 (sinais: concorrência entre processos via inbox/ack, contrato da ferra
    - check: helper com hash do obsidian-cli ok
 
 ## Checklist
+
 - [x] Todo AC tem tarefa e check; toda tarefa cita AC [Coverage]
 - [x] Sem contradição aberta: a regra do rótulo vale para queued e resumed (D2) [Conflict]
 - [x] A1 e A2 têm % e base; A1 é validada na tarefa 2 antes de codar [Assumption]
@@ -126,7 +136,9 @@ Tier: T3 (sinais: concorrência entre processos via inbox/ack, contrato da ferra
 - [x] Pré-mortem: perda silenciosa (D3), corrida (D4), eval no ruído ou contaminada (D8 + checagem de drift), com mitigações em tarefas [Pre-mortem]
 - [x] Verificação independente: gate-runner + plan-reviewer, em contexto separado dos workers [Readiness]
 - [x] Revisão T3 em contexto novo feita (reliability-reviewer): 1 crítico e 5 maiores incorporados como D3–D8 e AC4–AC6 [Review]
+
 ## Progresso
+
 - [DONE:1] registro criado.
 - [DONE:2-4] swarm-worker: fleet/{inbox,store,types,source}.ts, params.ts, index.ts, registry-text.ts; teste `patches/pi-code/zzzzzz-subagent-send/send.test.ts` (20 testes); patch `zzzzzz-subagent-send.patch` (sha256 c2c96abf…2a00, 7 arquivos); gate.sh e red-green.sh (variante send-consumed) atualizados. Smoke do teste novo antes de gastar na comparação: 20/20 (desvio consciente da regra "verificar só no fim", para não pagar eval sobre código quebrado).
 - [DONE:5] swarm-orchestration: 3 linhas sobre `send`; check-instructions 0 problemas.
@@ -138,12 +150,15 @@ Tier: T3 (sinais: concorrência entre processos via inbox/ack, contrato da ferra
 - [DONE:6] bench STEER × RESTART (`~/.cache/pi-fleet-work/bench-send/summary.md`), Sonnet 5.5, k=3 por braço×tipo, 12/12 pass, 0 falha de protocolo, US$~2,7.
 
 ## Surpresas
+
 - Eval 1ª rodada (worker): `send` respondeu `Unknown run` em 7/7 runs. Causa raiz (verificada): o worker que lançou `run_pi.py` herdava `PI_CODE_SUBAGENT`/`PI_CODE_SUBAGENT_DEPTH` (depth ≥ 1), então as sessões da eval se achavam subagentes, não criavam a frota (index.ts:242 exige depth 0) e `sendFromLead` não achava o registro. Repro no sandbox bwrap a partir de depth 0: `queued` e inbox gravada. O bench limpou `PI_CODE_*` e funcionou. Não é defeito do `send`; é do lançamento da eval (`run_pi.py` não limpa o env de subagente). Achado colateral: a eval do modo time (checkpoint 8 de pi-agents-ui-teams-sota) também foi rodada por worker e pode ter o mesmo viés ("o modelo não chamou `team`"). Fora do escopo; reportado.
 
 ## Log de decisões
+
 - 2026-11-13, D8 aplicada → **padrão ligado** (`PI_CODE_SUBAGENT_SEND` ≠ `0`). Contrato antigo superado: "headless no nível 0 não cria frota" (teste `subagent-panel/fleet-entry.test.ts`) vale agora só com `PI_CODE_SUBAGENT_SEND=0`; o teste fixa a chave em 0 e o caminho ligado é coberto por `send.test.ts`. Motivo: o `send` precisa da frota em `pi -p` (evals, scripts). Custo: um diretório 0700 em /tmp por sessão headless, apagado na saída.
 
 ## Resultados
+
 Bench STEER × RESTART (Sonnet 5.5, k=3 por célula, `~/.cache/pi-fleet-work/bench-send/summary.md`):
 
 | braço | tipo | pass | custo médio | parede média | latência de entrega |

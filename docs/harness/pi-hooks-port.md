@@ -21,7 +21,7 @@ Fontes: `~/.claude/settings.json` (`hooks`), `~/.claude/hooks/**` e os hooks dos
 | `hook-dispatch.sh` ledger + `claims/cade_o_print.py` (Stop) | **fora** | no Claude, 85 julgamentos e 0 avisos ao modelo (modo feedback nunca ligado; 51 `unknown`); `pi_telemetry.py claims` faz o mesmo julgamento offline |
 | `hook-dispatch.sh` PreToolUse (worktree preflight) | **nativo do pi-code** | `subagent/worktree.ts` falha a execução fora de um checkout Git; nenhum agente do pi declara `isolation` |
 | `route_hint.py` + `route_hints.json` (UserPromptSubmit) | **fora** | no Claude está ligado, mas "seguida" é só coincidência: mediana ~38% (multiagent 7%, reliability 12%), sem par controle; no goal8 o modelo ignorou a skill indicada em 10 de 10 casos; custa até 1200 caracteres por prompt que casa e 26 ms; o pi já lista skills e agentes no prompt |
-| `subagent_telemetry.py`, `tool_use_telemetry.py`, `lib/telemetry_io.py` | **fora** | só observam; o SubagentStop do pi não traz usage; `pi_telemetry.py tools|subagents|cost` lê tudo das sessões |
+| `subagent_telemetry.py`, `tool_use_telemetry.py`, `lib/telemetry_io.py` | **fora** | só observam; o SubagentStop do pi não traz usage; `pi_telemetry.py tools\|subagents\|cost` lê tudo das sessões |
 | `plan/plan_gate.py` | `extensions/plan-gate.ts` (terceira rodada) | cumpre a decisão de 2026-11-08 |
 | `sound-notify.py` | `extensions/sound-notify/index.ts` (terceira rodada) | 1 processo por turno interativo |
 | `graph_context.py` | `hooks/graph_context.py` (segunda rodada) | linhas `Graph:`/`knowledge vault:` |
@@ -61,7 +61,7 @@ marco e entrega são só da sessão principal.
 - E2E `pi -p` (Sonnet 5.5): notas de SessionStart, "Test file edited", achado `[gradient-text]` do impeccable num
   projeto com `PRODUCT.md`, lembretes de knowledge vault e entrega depois de `git commit`; stderr do pi vazio. Ponytail:
   Explore "No", general-purpose "Yes" para "PONYTAIL MODE ACTIVE" no prompt.
-- Pesquisa MCP: Perplexity em https://code.claude.com/docs/en/hooks e https://code.claude.com/docs/en/hooks-guide
+- Pesquisa MCP: Perplexity em <https://code.claude.com/docs/en/hooks> e <https://code.claude.com/docs/en/hooks-guide>
   (`additionalContext`, `async`, `if`, `SessionStart.source`); Keenable na doc de hooks do pi-code e em pacotes
   alternativos (`pi-hooks`, `pi-claude-hooks`); fonte de verdade: código instalado do pi-code 1.7.0.
 - Vigilância: `check-instructions.py` vigia cada fonte acima (as não portadas também, com o motivo) e o inventário de
@@ -73,6 +73,7 @@ Remover as entradas do `settings.json`; os scripts ficam inertes sem registro. P
 vazio volta a injetar em todo subagente.
 
 ## `guard.py`: `pkill -f`/`pgrep -f` que matam o próprio shell (2026-11-12)
+
 Porta como hook da proposta P1 do Claude (`~/.claude/docs/harness-audit-2026-11-09.md`, que lá virou uma linha de
 regra). A regra de economia diz que um requisito sem exceção pertence a um hook, então aqui é uma negação no guard.
 

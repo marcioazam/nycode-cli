@@ -65,7 +65,7 @@ Mapeamento de severidade: `notify` error/warning/info → 17/13/9; `console.erro
 - Rodapé: `ctx.ui.setStatus('diag', '✕ 2 · ▲ 3 · /diagnostico')`, só com não vistos de sev ≥ 13.
 - Aviso de primeira ocorrência: `{fonte}: {msg}` pelo `notify` original (warning ou error).
 - Painel: moldura do `PainelAvisos` (régua `── Diagnóstico ── ● tudo  erros  avisos ──`, `❯` + `selectedBg` na linha
-  escolhida, régua de fecho). Linha: ` HH:MM  ✕  fonte  msg  ×n`. Detalhe aberto com a barra `│` do `hook-msgs`.
+  escolhida, régua de fecho). Linha: `HH:MM  ✕  fonte  msg  ×n`. Detalhe aberto com a barra `│` do `hook-msgs`.
   Vazio: `Nenhum erro ou aviso nesta sessão`. Rodapé: `↑↓ escolher · enter detalhe · tab filtro · s silenciar · l limpar
   lista · esc fechar` e, na linha seguinte, `registro completo: ~/.pi/agent/diag/diag.jsonl`.
 

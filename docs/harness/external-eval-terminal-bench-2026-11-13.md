@@ -4,6 +4,7 @@ Objetivo: comparar o harness do pi com o Claude Code num benchmark público, gas
 usuário). Piloto diagnóstico, não veredito: 10 tarefas e k1, então só uma diferença de mais de ~40 pp seria visível.
 
 ## Montagem
+
 - Harbor 0.25.0 (`uvx --from harbor`), dataset `terminal-bench@2.0` (89 tarefas), modelo `anthropic/claude-opus-5-5`
   nos dois braços, OAuth da assinatura via env em tempo de execução. Nenhum token foi gravado em disco ou no bundle.
 - Braços:
@@ -44,6 +45,7 @@ usuário). Piloto diagnóstico, não veredito: 10 tarefas e k1, então só uma d
   foi reportado.
 
 ## Leitura
+
 - Em acerto, empate dentro do ruído nas tarefas que o pi pode rodar. Em custo, o pi saiu 1,2× mais caro nessas 8.
   Isso inverte o resultado das evals internas (pi com 41–48% do custo do CC). Causa provável: o preâmbulo fixo de
   ~31k tokens pesa mais em tarefas curtas de terminal, como no smoke `fix-git` (270k contra 116k tokens de entrada).
@@ -51,4 +53,5 @@ usuário). Piloto diagnóstico, não veredito: 10 tarefas e k1, então só uma d
   Custo estimado: ~US$ 60–90 de cota.
 
 ## Gasto
+
 Cerca de US$ 4,6 a preço de lista, em cota da assinatura: smoke US$ 0,39, piloto US$ 3,33, reruns US$ 0,48.

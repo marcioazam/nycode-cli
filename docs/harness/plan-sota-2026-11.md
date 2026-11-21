@@ -28,7 +28,7 @@ O alvo é reduzir retrabalho e falta de especificação com custo controlado.
 - AC3: SE o plan mode está ativo e um `subagent` (single, `tasks` ou `chain`) nomeia um agente fora da allowlist read-only, ENTÃO O SISTEMA DEVE bloquear a chamada inteira.
   - Allowlist: Explore, code-mapper, Plan, perplexity-scout, web-scout, research-scout, scholar-scout, claim-verifier, code-reviewer, security-reviewer, test-reviewer, reliability-reviewer, contract-migration-reviewer, agent-systems-auditor.
 - AC4: QUANDO o plan mode está ativo, O SISTEMA DEVE aceitar `write`/`edit` só em arquivo `.md` cujo caminho real fica dentro de `~/.pi/agent/plans/`. `../`, symlink e qualquer outro caminho são bloqueados.
-- AC5: QUANDO o plan mode está ativo, o contexto injetado DEVE apontar para `skills/plan-workflow/SKILL.md` e para o arquivo de plano da sessão, e trazer a regra de numeração (só tarefas são numeradas).
+- AC5: QUANDO o plan mode está ativo, o contexto injetado DEVE apontar para `claude-home/skills/plan-workflow/SKILL.md` e para o arquivo de plano da sessão, e trazer a regra de numeração (só tarefas são numeradas).
 - AC6: QUANDO o plano é executado, a mensagem de execução DEVE mandar materializar o arquivo de plano no `/docs` do repositório antes da primeira edição.
 - AC7: `planToTodos(template)` DEVE gerar exatamente as N tarefas numeradas e ignorar bullets, `- [ ]` e cabeçalhos.
 - AC8: a skill DEVE cobrir triagem T0–T3, ledger de ambiguidades, grill com % de confiança, protocolos "não sei" e de contradição, EARS, fases→tarefas→passos, checklists e revisão em contexto limpo.
@@ -142,7 +142,7 @@ Leitura da rodada 2:
 ### Veredito por AC
 
 - AC1–AC7: verificados pelos testes do patch, 9/9 no gate final.
-- AC8: coberto pela skill `plan-workflow` e pelas 3 referências.
+- AC8: coberto pela skill plan-workflow e pelas 3 referências.
 - AC9: eval executado, números acima. A razão de custo de 1,62 excede o limite 1,20 da regra v3 e depende de decisão do usuário. (Superado: aceito pelo usuário; razão atual 1,39, seção "Rodada 2".)
 
 ## Rodada 2 (2026-11-13): qualidade perto do teto sem subir o custo

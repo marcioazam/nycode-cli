@@ -12,6 +12,7 @@ Pedido do usuário. Extensão `extensions/image-open/index.ts` (linkada em `~/.p
 - Reverter: apagar o diretório e o link.
 
 ## Fundo da tool atrás da imagem (2026-11-14)
+
 - Pedido: a imagem do resultado não deve "flutuar" no fundo do terminal. O pi põe Spacer e Image fora do Box com fundo da tool.
 - `extensions/image-open/fundo.ts` envolve `ToolExecutionComponent.prototype.render`: spacer, linhas da imagem e uma margem inferior recebem o fundo da tool (pendente/erro/sucesso) e o recuo do Box. Linha kitty (C=1): recuo, sequência, espaços; iTerm2 fica intacta. Sem tema ou com erro, devolve o render nativo.
 - O tema vem de `globalThis[Symbol.for('@earendil-works/pi-coding-agent:theme')]` (o pi não exporta `theme`).

@@ -16,16 +16,16 @@ Três `perplexity-scout` (Perplexity + Keenable, páginas lidas com `web_fetch`)
 
 | Fonte | O que trouxe |
 |:-|:-|
-| https://code.claude.com/docs/en/interactive-mode.md | Ctrl+R busca no histórico; Ctrl+S guarda o rascunho; ↑ depois de Ctrl+C devolve o rascunho apagado (v2.1.288+); `/copy [N]` com seletor de blocos de código (commands.md) |
-| https://code.claude.com/docs/en/commands.md | `/keybindings`, `/code-review`, `/context`, `/usage`, `/rewind`, `/btw`, `/diff` |
-| https://learn.chatgpt.com/docs/developer-commands.md?surface=cli | Codex: Ctrl+R histórico, `/keymap`, `/diff`, Enter direciona e Tab enfileira, Esc Esc edita e bifurca |
-| https://learn.chatgpt.com/docs/config-file/config-reference.md | Codex `tui.keymap`, `tui.notifications`, `tui.terminal_title` |
-| https://antigravity.google/docs/features/ | `/diff` com comentários por linha que direcionam o agente; `/keybindings`; `/statusline` |
-| https://cursor.com/docs/cli/using | Ctrl+R revisa mudanças e `i` acrescenta instruções |
-| https://ampcode.com/docs/cli/keybindings | Ctrl+R histórico; Enter direciona; edição da fila |
-| https://opencode.ai/docs/keybinds/ | `prompt_stash`, leader key, which-key |
-| https://geminicli.com/docs/cli/themes.md | Gemini CLI traz "Tokyo Night" embutido |
-| https://raw.githubusercontent.com/folke/tokyonight.nvim/main/lua/tokyonight/colors/storm.lua, `night.lua`, `groups/treesitter.lua` (sha256 `a96775b3…`, `a8d87bf7…`, `c0a7fc81…`) | paleta oficial Night e mapeamento de sintaxe |
+| <https://code.claude.com/docs/en/interactive-mode.md> | Ctrl+R busca no histórico; Ctrl+S guarda o rascunho; ↑ depois de Ctrl+C devolve o rascunho apagado (v2.1.288+); `/copy [N]` com seletor de blocos de código (commands.md) |
+| <https://code.claude.com/docs/en/commands.md> | `/keybindings`, `/code-review`, `/context`, `/usage`, `/rewind`, `/btw`, `/diff` |
+| <https://learn.chatgpt.com/docs/developer-commands.md?surface=cli> | Codex: Ctrl+R histórico, `/keymap`, `/diff`, Enter direciona e Tab enfileira, Esc Esc edita e bifurca |
+| <https://learn.chatgpt.com/docs/config-file/config-reference.md> | Codex `tui.keymap`, `tui.notifications`, `tui.terminal_title` |
+| <https://antigravity.google/docs/features/> | `/diff` com comentários por linha que direcionam o agente; `/keybindings`; `/statusline` |
+| <https://cursor.com/docs/cli/using> | Ctrl+R revisa mudanças e `i` acrescenta instruções |
+| <https://ampcode.com/docs/cli/keybindings> | Ctrl+R histórico; Enter direciona; edição da fila |
+| <https://opencode.ai/docs/keybinds/> | `prompt_stash`, leader key, which-key |
+| <https://geminicli.com/docs/cli/themes.md> | Gemini CLI traz "Tokyo Night" embutido |
+| <https://raw.githubusercontent.com/folke/tokyonight.nvim/main/lua/tokyonight/colors/storm.lua>, `night.lua`, `groups/treesitter.lua` (sha256 `a96775b3…`, `a8d87bf7…`, `c0a7fc81…`) | paleta oficial Night e mapeamento de sintaxe |
 | local: kitty 0.45.0 `/usr/lib/kitty/kitty/progress.py`, `window.py:1144-1156` | kitty aceita OSC 9;4 |
 
 Inventário do pi (Explore, `/tmp/sota-cli/pi-inventory.md`): já existem `@` arquivos, `!`/`!!` shell, colar

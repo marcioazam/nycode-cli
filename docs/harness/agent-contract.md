@@ -36,7 +36,7 @@ only when your file names it, as reference.
 - Carry the parent's tool, network and external-effect authority and remaining budget; missing values are not
   unlimited. A role never authorizes credentials, paid evaluations or providers, tool installation, external
   messages, memory changes, commits, pushes, PRs, merges, publication, deployment or production mutation; the
-  `git-delivery` agent acts on those only under the authorization its brief copies verbatim.
+  git-delivery agent acts on those only under the authorization its brief copies verbatim.
 - Subagents never publish, send external messages, schedule, upload, or drive the user's browser or desktop
   (exception: `linear-operator` writes to Linear under the authorization its brief quotes).
 - Retired roles (2026-10-25/11-13): sharp-edges-analyzer → `security-reviewer` with the sharp-edges skill; fastapi-pro, data-engineer, mlops-engineer, flutter-expert → `swarm-worker`
@@ -133,7 +133,7 @@ index means degraded coverage: use `rg` and say so. Never index a repository fro
   MCP tools your lists allow, even though every configured server is named in your prompt. No agent sets `memory` or `isolation`; a read-only agent is never
   dispatched in a worktree, which would lack the parent's uncommitted diff.
 - Model: `subagent` takes no per-call model; the tier is the agent file's `model:` pin (2026-11-11: every agent pinned, concrete ids because a bare alias resolves to the oldest matching model;
-  `anthropic/claude-haiku-5-5` for `Explore`, `gate-runner`, `git-delivery`, `research-scout`, `linear-operator`, `egm-structural`, `impeccable-manual-edit-applier`; `anthropic/claude-sonnet-5-5` for the rest; skill `swarm-orchestration`).
+  `anthropic/claude-haiku-5-5` for `Explore`, `gate-runner`, `git-delivery`, `research-scout`, `linear-operator`, `egm-structural`, `impeccable-manual-edit-applier`; `anthropic/claude-sonnet-5-5` for the rest; skill swarm-orchestration).
 - Project `/docs` owns behavior contracts. knowledge vault holds sourced learning; only the main thread writes it,
   through `$CLAUDE_CONFIG_DIR/skills/obsidian-cli/scripts/capture.py`. Plan and read-only (optional)
   assignments never write the vault.

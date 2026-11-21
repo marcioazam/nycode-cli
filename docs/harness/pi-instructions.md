@@ -41,7 +41,7 @@ Cuidado: no texto (fora de código) qualquer `@palavra` vira tentativa de import
   `test_guard`, testes do goal patch); custo pelo JSONL de sessão do pi (o `subagent_cost.py` só lê transcripts do
   Claude); adoção por eval via `pelo-em-ovo`. Melhoria: "requisito sem exceção vai para hook, não para prosa"
   (code.claude.com/docs/en/best-practices).
-- **research-and-tools**: provedores e leitores em `skills/deep-search/references/providers.md` (versão pi);
+- **research-and-tools**: provedores e leitores em `claude-home/skills/deep-search/references/providers.md` (versão pi);
   variantes de busca como `/skill:...`; workflows do Claude não portados (executar à mão); isolamento de writers
   com `git worktree add` + `cwd` (o `subagent` não tem `isolation`); codegraph sem auto-init; browser só playwright
   (sem chrome-devtools/browser-use); recall pelo `rg` nas sessões do pi; background via `nohup`.
@@ -53,9 +53,9 @@ Cuidado: no texto (fora de código) qualquer `@palavra` vira tentativa de import
 
 ## Fontes consultadas (2026-11-11)
 
-- https://code.claude.com/docs/en/memory: CLAUDE.md abaixo de 200 linhas; instruções específicas e verificáveis;
+- <https://code.claude.com/docs/en/memory>: CLAUDE.md abaixo de 200 linhas; instruções específicas e verificáveis;
   rules sem `paths` carregam sempre; regras do usuário em `~/.claude/rules`; imports não reduzem contexto.
-- https://code.claude.com/docs/en/best-practices: o que deve ficar sempre carregado; requisito sem exceção vai para
+- <https://code.claude.com/docs/en/best-practices>: o que deve ficar sempre carregado; requisito sem exceção vai para
   hook ou deny.
 - Docs locais do pi (`docs/configuration.md`, `security.md`): context files carregam sem trust; `AGENTS.md`
   global do pi existe, mas o caminho escolhido é o do pi-code para manter a estrutura do Claude (CLAUDE.md + rules).
