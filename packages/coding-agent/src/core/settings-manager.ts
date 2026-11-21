@@ -10,6 +10,8 @@ import { normalizePath, resolvePath } from "../utils/paths.ts";
 import { stripBom } from "../utils/text.ts";
 import { DEFAULT_HTTP_IDLE_TIMEOUT_MS, parseHttpIdleTimeoutMs } from "./http-dispatcher.ts";
 import { SETTINGS_DEFAULTS } from "./settings-defaults.ts";
+import { type NycodeSettings, resolveBypassPermissions, resolveNycodeSettings } from "./settings-nycode.ts";
+import type { HooksSettings, StatusLineSettings } from "./settings-nycode-schema.ts";
 import type {
 	CacheWarmingMode,
 	CompactionModelOverride,
@@ -925,6 +927,31 @@ export class SettingsManager {
 		};
 	}
 
+	/**
+	 * Whether permission prompts are auto-approved: `cliFlag` (--bypass/--safe), then NYCODE_BYPASS_PERMISSIONS, then the
+	 * global settings.json, then false. Global only: a project file must not disable its own prompts.
+	 */
+	getBypassPermissions(cliFlag?: boolean): boolean {
+		return resolveBypassPermissions({ flag: cliFlag, env: process.env, settings: this.globalSettings });
+	}
+
+	/** The nycode keys of docs/migration/ny-pi-core section 5, each with its NYCODE_* variable applied over settings.json. */
+	getNycodeSettings(): NycodeSettings {
+		return resolveNycodeSettings(this.settings, process.env);
+	}
+
+	getHooks(): HooksSettings | undefined {
+		return this.settings.hooks;
+	}
+
+	getStatusLine(): StatusLineSettings | undefined {
+		return this.settings.statusLine;
+	}
+
+	getEnv(): Record<string, string> | undefined {
+		return this.settings.env;
+	}
+
 	getHttpIdleTimeoutMs(): number {
 		return parseTimeoutSetting(this.settings.httpIdleTimeoutMs, "httpIdleTimeoutMs") ?? DEFAULT_HTTP_IDLE_TIMEOUT_MS;
 	}
@@ -1008,7 +1035,7 @@ export class SettingsManager {
 
 	getQuietStartup(): QuietStartup {
 		const value = this.settings.quietStartup;
-		return value === true || value === "header" ? value : SETTINGS_DEFAULTS.quietStartup;
+		return typeof value === "boolean" || value === "header" ? value : SETTINGS_DEFAULTS.quietStartup;
 	}
 
 	setQuietStartup(quiet: QuietStartup): void {
@@ -1019,7 +1046,7 @@ export class SettingsManager {
 
 	getDefaultProjectTrust(): DefaultProjectTrust {
 		const value = this.globalSettings.defaultProjectTrust;
-		return value === "always" || value === "never" ? value : SETTINGS_DEFAULTS.defaultProjectTrust;
+		return value === "ask" || value === "always" || value === "never" ? value : SETTINGS_DEFAULTS.defaultProjectTrust;
 	}
 
 	setDefaultProjectTrust(defaultProjectTrust: DefaultProjectTrust): void {
@@ -1029,7 +1056,7 @@ export class SettingsManager {
 	}
 
 	getShellCommandPrefix(): string | undefined {
-		return this.settings.shellCommandPrefix;
+		return this.settings.shellCommandPrefix ?? SETTINGS_DEFAULTS.shellCommandPrefix;
 	}
 
 	setShellCommandPrefix(prefix: string | undefined): void {

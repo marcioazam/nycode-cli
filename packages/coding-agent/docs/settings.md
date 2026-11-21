@@ -33,7 +33,7 @@ See [Choose a Model](models.md) for model selection and thinking controls.
 | `externalEditor` | string | `$VISUAL`, `$EDITOR`, then platform default | Command opened by the external-editor keybinding. |
 | `doubleEscapeAction` | `"tree" \| "fork" \| "none"` | `"tree"` | Action for double Escape with an empty editor. |
 | `treeFilterMode` | `"default" \| "no-tools" \| "user-only" \| "labeled-only" \| "all"` | `"default"` | Initial filter used by `/tree`. |
-| `defaultProjectTrust` | `"ask" \| "always" \| "never"` | `"ask"` | Fallback project-trust behavior. **Can only be set in agent-directory settings.** |
+| `defaultProjectTrust` | `"ask" \| "always" \| "never"` | `"never"` | Fallback project-trust behavior. **Can only be set in agent-directory settings.** |
 
 ## Tools
 
@@ -73,6 +73,7 @@ CLI tool options override this setting for one invocation. `--tools` with only `
 | `compaction.enabled` | boolean | `true` | Enable automatic compaction. |
 | `compaction.reserveTokens` | number | `16384` | Free context tokens below which automatic compaction starts. |
 | `compaction.keepRecentTokens` | number | `20000` | Recent tokens retained without summarization. |
+| `compaction.maxContextTokens` | number | `250000` | Absolute context size in tokens that triggers compaction, whatever the model window. `NYCODE_COMPACT_AT` takes precedence. |
 | `compaction.modelOverrides` | object | None | Per-model token settings keyed by exact `provider/modelId`. |
 
 <a id="per-model-compaction-overrides"></a>
@@ -93,7 +94,7 @@ See [Compaction Reference](compaction.md) for trigger, summarization, and valida
 | Setting | Type | Default | Description |
 |---|---|---|---|
 | `theme` | string | `"system"` | Built-in or custom theme name. `system` derives colors from the terminal theme. |
-| `quietStartup` | boolean \| `"header"` | `false` | `true` hides the startup header and loaded-resource listing. `"header"` keeps the header (version and key hints) but hides the model scope line and loaded-resource listing. |
+| `quietStartup` | boolean \| `"header"` | `"header"` | `true` hides the startup header and loaded-resource listing. `"header"` keeps the header (version and key hints) but hides the model scope line and loaded-resource listing. |
 | `tuiMode` | `"regular" \| "fullscreen"` | `"fullscreen"` | Interactive terminal UI mode. |
 | `fullscreenExitOutput` | `"transcript" \| "resume-hint"` | `"transcript"` | Output printed when fullscreen mode exits. |
 | `fullscreenScrollbar` | `"auto" \| "always" \| "hidden"` | `"auto"` | Fullscreen transcript scrollbar behavior. |
@@ -126,7 +127,7 @@ See [Themes](themes.md) and [Terminal Setup](terminal-setup.md) for format and p
 | `httpIdleTimeoutMs` | number \| `"disabled"` | `300000` | HTTP header and body idle timeout in milliseconds. Set to `0` or `"disabled"` to disable. |
 | `websocketConnectTimeoutMs` | number \| `"disabled"` | `15000` | WebSocket connection timeout in milliseconds. Set to `0` or `"disabled"` to disable. |
 | `retry.enabled` | boolean | `true` | Enable automatic agent-level retry for transient failures. |
-| `retry.maxRetries` | number | `3` | Maximum agent-level retry attempts. |
+| `retry.maxRetries` | number | `10` | Maximum agent-level retry attempts. |
 | `retry.baseDelayMs` | number | `2000` | Initial exponential-backoff delay in milliseconds. |
 | `retry.maxAgentDelayMs` | number | `60000` | Maximum agent-level retry delay in milliseconds. |
 | `retry.provider.timeoutMs` | number | `httpIdleTimeoutMs` | Provider request timeout in milliseconds. |
@@ -140,7 +141,7 @@ Keep `retry.provider.maxRetries` at `0` unless provider-level retries are requir
 | Setting | Type | Default | Description |
 |---|---|---|---|
 | `shellPath` | string | Platform default | Custom shell executable path. Supports a leading `~`. |
-| `shellCommandPrefix` | string | None | Prefix prepended to every shell command. |
+| `shellCommandPrefix` | string | `export GIT_EDITOR=true GIT_SEQUENCE_EDITOR=true GIT_MERGE_AUTOEDIT=no GIT_PAGER=cat PAGER=cat AWS_PAGER= LESS=FRX` | Prefix prepended to every shell command. The default keeps git and pagers from waiting on a terminal. |
 | `npmCommand` | `string[]` | `npm` | Command and arguments used for npm package lookup and installation. |
 | `selfUpdateCommand` | `string[]` | None | Command and arguments `nycode update` runs to update Nycode itself, with `{packageName}`, `{version}`, and `{installSpec}` placeholders. `NYCODE_SELF_UPDATE_COMMAND` takes precedence. **Can only be set in agent-directory settings.** See [Custom update command](cli.md#custom-update-command). |
 
@@ -162,6 +163,44 @@ Resource paths in user settings resolve from the agent directory. Paths in proje
 Resource arrays support glob exclusions with `!pattern`, exact inclusion with `+path`, and exact exclusion with `-path`. Nycode loads resources listed in both user-level and project settings.
 
 The built-in extensions are named `builtin:mcp`, `builtin:llama.cpp`, `builtin:codemode`, and `builtin:tool-search` in `extensions`. They load by default; `-builtin:mcp` disables one. A `+builtin:<name>` or `-builtin:<name>` entry in project settings overrides the user setting. `nycode config` lists them under Built-in. `--no-extensions` disables them too, and `-e builtin:<name>` loads one explicitly.
+
+## Permissions, harness, and integrations
+
+These keys only exist, validate, and are read here; the built-in extensions that use them read them through `SettingsManager.getNycodeSettings()`. Each key has a variable that takes precedence over `settings.json`, so automation can override a file without editing it. Variables that hold a switch accept `1`/`true` and `0`/`false`; a value that does not parse is ignored and the `settings.json` value applies. See [Environment variables](environment-variables.md#nycode-settings-variables).
+
+| Setting | Type | Default | Variable | Description |
+|---|---|---|---|---|
+| `permissions.bypass` | boolean | `false` | `NYCODE_BYPASS_PERMISSIONS` | Auto-approve permission prompts; deny rules still apply. `--bypass` and `--dangerously-skip-permissions` turn it on for one run, `--safe` and `--no-bypass` turn it off; a flag beats the variable, which beats the file. **Can only be set in agent-directory settings.** |
+| `harness.effortSandwich.enabled` | boolean | `false` | `NYCODE_EFFORT_SANDWICH` | High thinking on the first turns of a top-level headless run. |
+| `harness.effortSandwich.turns` | integer ≥ 1 | `1` | `NYCODE_EFFORT_SANDWICH_TURNS` | Turns that use high thinking. |
+| `subagent.respawn` | boolean | `true` | `NYCODE_SUBAGENT_RESPAWN` | Respawn a crashed foreground subagent. |
+| `harness.headless.lean` | boolean | `true` | `NYCODE_HEADLESS_LEAN` | Lean prompt and tools in top-level headless runs. |
+| `harness.headless.trim` | boolean | `true` | `NYCODE_HEADLESS_TRIM` | Trim docs and tool schemas in headless runs. |
+| `harness.headless.tools` | `"lean" \| "all"` | `"lean"` | `NYCODE_HEADLESS_TOOLS` | `"all"` keeps `subagent`, `memory`, `lsp_*`, and `todo` in headless runs. |
+| `harness.headless.floor` | boolean | `true` | `NYCODE_HEADLESS_FLOOR` | Add the headless instruction floor. |
+| `tools.bash.backgroundOnTimeout` | boolean | `false` | `NYCODE_BASH_TIMEOUT_BG` | Keep a command that hits its timeout running in the background. |
+| `todo.staleReminder` | boolean | `true` | `NYCODE_TODO_SYNC` | Remind the model of a stale todo list. |
+| `harness.prefixCache1h` | boolean \| `"auto"` | `"auto"` | `NYCODE_PREFIX_CACHE_1H` | One-hour prompt-prefix cache TTL; `"auto"` enables it in interactive sessions only. |
+| `harness.autoResume` | boolean | `true` | `NYCODE_AUTO_RESUME` | Resume a turn cut short by a transient failure. |
+| `plan.gate` | boolean | `true` | `NYCODE_PLAN_GATE` | Keep plan mode open until the plan is submitted. |
+| `harness.completionGate` | boolean | `true` | `NYCODE_COMPLETION_GATE` | Block a final answer while the task has unfinished steps. |
+| `notify.sound` | boolean | `false` | `NYCODE_SOUND_NOTIFY` | Play a sound when the agent finishes. |
+| `terminal.uiState` | string | `ui-state.json` in the agent directory | `NYCODE_UI_STATE` | File that stores the editor UI state. |
+| `terminal.reducedMotion` | boolean | `false` | `NYCODE_REDUCED_MOTION` | Reduce animation. |
+| `terminal.nerdFont` | boolean \| `"auto"` | `"auto"` | `NYCODE_NERD_FONT` | Use Nerd Font icons; `"auto"` detects kitty. |
+| `terminal.asciiIcons` | boolean | `false` | `NYCODE_ASCII_ICONS` | Use plain Unicode icons. |
+| `knowledge.vault` | string | None | `NYCODE_KNOWLEDGE_VAULT` | Absolute path of the knowledge vault. |
+| `knowledge.graphsVault` | string | None | `NYCODE_GRAPHS_VAULT` | Absolute path of the graphs vault. |
+| `codegraph.autoRoot` | string | None | `CODEGRAPH_AUTO_ROOT` | Root where codegraph auto-indexes repositories. |
+| `codegraph.bin` | string | None | `CODEGRAPH_BIN` | codegraph executable. |
+| `codegraph.statusTtl` | number ≥ 0 | None | `CODEGRAPH_STATUS_TTL` | Seconds a codegraph status stays valid; `0` disables. |
+| `codegraph.autoState` | string | None | `CODEGRAPH_AUTO_STATE` | State directory of the codegraph auto-indexer. |
+| `mcp.configPath` | string | `mcp.json` in the agent directory | `NYCODE_MCP_CONFIG` | MCP servers file. |
+| `hooks` | object | None | none | Command hooks by event name, each `[{ "matcher": "Bash", "hooks": [{ "type": "command", "command": "...", "timeout": 30 }] }]`; run by the hooks extension. |
+| `statusLine` | object | None | none | `{ "type": "command", "command": "...", "padding": 0 }`; status line command. |
+| `env` | `Record<string, string>` | None | none | Variables exported to hooks and the status line command. |
+
+`quietStartup`, `defaultProjectTrust`, `retry`, and `shellCommandPrefix` above carry the ny-pi defaults.
 
 ## Updates, telemetry, and warnings
 

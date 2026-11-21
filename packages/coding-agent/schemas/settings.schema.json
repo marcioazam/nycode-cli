@@ -125,6 +125,13 @@
           "maximum": 9007199254740991,
           "default": 20000
         },
+        "maxContextTokens": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991,
+          "description": "Absolute context size in tokens that triggers compaction, whatever the model window. NYCODE_COMPACT_AT takes precedence.",
+          "default": 250000
+        },
         "modelOverrides": {
           "type": "object",
           "patternProperties": {
@@ -172,7 +179,7 @@
         },
         "maxRetries": {
           "type": "number",
-          "default": 3
+          "default": 10
         },
         "baseDelayMs": {
           "type": "number",
@@ -236,7 +243,7 @@
         }
       ],
       "description": "When true, hide all startup output. When \"header\", keep only the startup header.",
-      "default": false
+      "default": "header"
     },
     "defaultProjectTrust": {
       "anyOf": [
@@ -254,11 +261,12 @@
         }
       ],
       "description": "Global setting only.",
-      "default": "ask"
+      "default": "never"
     },
     "shellCommandPrefix": {
       "type": "string",
-      "description": "Prefix prepended to every bash command, for example to enable shell aliases."
+      "description": "Prefix prepended to every bash command, for example to enable shell aliases.",
+      "default": "export GIT_EDITOR=true GIT_SEQUENCE_EDITOR=true GIT_MERGE_AUTOEDIT=no GIT_PAGER=cat PAGER=cat AWS_PAGER= LESS=FRX"
     },
     "npmCommand": {
       "type": "array",
@@ -466,6 +474,33 @@
               "const": "auto"
             }
           ]
+        },
+        "uiState": {
+          "type": "string",
+          "description": "File that stores the editor UI state; defaults to ui-state.json in the agent directory. NYCODE_UI_STATE takes precedence."
+        },
+        "reducedMotion": {
+          "type": "boolean",
+          "description": "Reduce animation. NYCODE_REDUCED_MOTION takes precedence.",
+          "default": false
+        },
+        "nerdFont": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "string",
+              "const": "auto"
+            }
+          ],
+          "description": "Use Nerd Font icons; auto detects kitty. NYCODE_NERD_FONT takes precedence.",
+          "default": "auto"
+        },
+        "asciiIcons": {
+          "type": "boolean",
+          "description": "Use plain Unicode icons. NYCODE_ASCII_ICONS takes precedence.",
+          "default": false
         }
       }
     },
@@ -762,6 +797,265 @@
       ],
       "description": "Lines scrolled per wheel event in fullscreen mode; numeric values are clamped from 1 to 100.",
       "default": "auto"
+    },
+    "permissions": {
+      "type": "object",
+      "properties": {
+        "bypass": {
+          "type": "boolean",
+          "description": "Auto-approve the permission prompts of the permission engine; deny rules still apply. Global setting only. NYCODE_BYPASS_PERMISSIONS and --bypass/--safe take precedence.",
+          "default": false
+        }
+      }
+    },
+    "harness": {
+      "type": "object",
+      "properties": {
+        "effortSandwich": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "High thinking on the first turns of a top-level headless run. NYCODE_EFFORT_SANDWICH takes precedence.",
+              "default": false
+            },
+            "turns": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Turns that use high thinking. NYCODE_EFFORT_SANDWICH_TURNS takes precedence.",
+              "default": 1
+            }
+          }
+        },
+        "headless": {
+          "type": "object",
+          "properties": {
+            "lean": {
+              "type": "boolean",
+              "description": "Lean prompt and tools in top-level headless runs. NYCODE_HEADLESS_LEAN takes precedence.",
+              "default": true
+            },
+            "trim": {
+              "type": "boolean",
+              "description": "Trim docs and tool schemas in headless runs. NYCODE_HEADLESS_TRIM takes precedence.",
+              "default": true
+            },
+            "tools": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "lean"
+                },
+                {
+                  "type": "string",
+                  "const": "all"
+                }
+              ],
+              "description": "\"all\" keeps subagent, memory, lsp and todo tools. NYCODE_HEADLESS_TOOLS takes precedence.",
+              "default": "lean"
+            },
+            "floor": {
+              "type": "boolean",
+              "description": "Add the headless instruction floor. NYCODE_HEADLESS_FLOOR takes precedence.",
+              "default": true
+            }
+          }
+        },
+        "prefixCache1h": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "string",
+              "const": "auto"
+            }
+          ],
+          "description": "One-hour prompt-prefix cache TTL. \"auto\" enables it in interactive sessions only. NYCODE_PREFIX_CACHE_1H takes precedence.",
+          "default": "auto"
+        },
+        "autoResume": {
+          "type": "boolean",
+          "description": "Resume a turn cut short by a transient failure. NYCODE_AUTO_RESUME takes precedence.",
+          "default": true
+        },
+        "completionGate": {
+          "type": "boolean",
+          "description": "Block a final answer while the task has unfinished steps. NYCODE_COMPLETION_GATE takes precedence.",
+          "default": true
+        }
+      }
+    },
+    "subagent": {
+      "type": "object",
+      "properties": {
+        "respawn": {
+          "type": "boolean",
+          "description": "Respawn a crashed foreground subagent. NYCODE_SUBAGENT_RESPAWN takes precedence.",
+          "default": true
+        }
+      }
+    },
+    "tools": {
+      "type": "object",
+      "properties": {
+        "bash": {
+          "type": "object",
+          "properties": {
+            "backgroundOnTimeout": {
+              "type": "boolean",
+              "description": "Keep a command that hits its timeout running in the background. NYCODE_BASH_TIMEOUT_BG takes precedence.",
+              "default": false
+            }
+          }
+        }
+      }
+    },
+    "todo": {
+      "type": "object",
+      "properties": {
+        "staleReminder": {
+          "type": "boolean",
+          "description": "Remind the model of a stale todo list. NYCODE_TODO_SYNC takes precedence.",
+          "default": true
+        }
+      }
+    },
+    "plan": {
+      "type": "object",
+      "properties": {
+        "gate": {
+          "type": "boolean",
+          "description": "Keep plan mode open until the plan is submitted. NYCODE_PLAN_GATE takes precedence.",
+          "default": true
+        }
+      }
+    },
+    "notify": {
+      "type": "object",
+      "properties": {
+        "sound": {
+          "type": "boolean",
+          "description": "Play a sound when the agent finishes. NYCODE_SOUND_NOTIFY takes precedence.",
+          "default": false
+        }
+      }
+    },
+    "knowledge": {
+      "type": "object",
+      "properties": {
+        "vault": {
+          "type": "string",
+          "description": "Absolute path of the knowledge vault. NYCODE_KNOWLEDGE_VAULT takes precedence."
+        },
+        "graphsVault": {
+          "type": "string",
+          "description": "Absolute path of the graphs vault. NYCODE_GRAPHS_VAULT takes precedence."
+        }
+      }
+    },
+    "codegraph": {
+      "type": "object",
+      "properties": {
+        "autoRoot": {
+          "type": "string",
+          "description": "Root where codegraph auto-indexes repositories. CODEGRAPH_AUTO_ROOT takes precedence."
+        },
+        "bin": {
+          "type": "string",
+          "description": "codegraph executable. CODEGRAPH_BIN takes precedence."
+        },
+        "statusTtl": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Seconds a codegraph status stays valid; 0 disables. CODEGRAPH_STATUS_TTL takes precedence."
+        },
+        "autoState": {
+          "type": "string",
+          "description": "State directory of the codegraph auto-indexer. CODEGRAPH_AUTO_STATE takes precedence."
+        }
+      }
+    },
+    "mcp": {
+      "type": "object",
+      "properties": {
+        "configPath": {
+          "type": "string",
+          "description": "MCP servers file; defaults to mcp.json in the agent directory. NYCODE_MCP_CONFIG takes precedence."
+        }
+      }
+    },
+    "hooks": {
+      "type": "object",
+      "patternProperties": {
+        "^.*$": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "hooks"
+            ],
+            "properties": {
+              "matcher": {
+                "type": "string"
+              },
+              "hooks": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "type",
+                    "command"
+                  ],
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "command"
+                    },
+                    "command": {
+                      "type": "string"
+                    },
+                    "timeout": {
+                      "type": "number",
+                      "minimum": 0
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "description": "Command hooks by event name, read by the hooks extension."
+    },
+    "statusLine": {
+      "type": "object",
+      "required": [
+        "type",
+        "command"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "command"
+        },
+        "command": {
+          "type": "string"
+        },
+        "padding": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "env": {
+      "type": "object",
+      "patternProperties": {
+        "^.*$": {
+          "type": "string"
+        }
+      },
+      "description": "Environment variables exported to hooks and the status line command."
     },
     "queueMode": {
       "anyOf": [
