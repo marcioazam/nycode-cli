@@ -9,7 +9,7 @@
  * fallback when the usage snapshot does not carry one.
  */
 
-import type { ContextUsage, ExtensionAPI } from '@earendil-works/pi-coding-agent'
+import type { ContextUsage, ExtensionAPI } from '../../core/extensions/types.ts'
 
 const fmt = (n: number): string => n.toLocaleString('en-US')
 
@@ -35,8 +35,8 @@ export function formatContextUsage(usage: ContextUsage | undefined, modelWindow?
   return lines.join('\n')
 }
 
-export default function contextUsageExtension(pi: ExtensionAPI) {
-  pi.registerCommand('context', {
+export default function contextUsageExtension(nycode: ExtensionAPI) {
+  nycode.registerCommand('context', {
     description: 'Show how much of the model context window this session is using',
     handler: async (_args, ctx) => /* NOSONAR typescript:S7503 - pi types a command handler as returning Promise<void> */ {
       ctx.ui.notify(formatContextUsage(ctx.getContextUsage(), ctx.model?.contextWindow), 'info')
