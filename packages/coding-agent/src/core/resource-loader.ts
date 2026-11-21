@@ -10,6 +10,7 @@ export type { ResourceCollision, ResourceDiagnostic } from "./diagnostics.ts";
 
 import { canonicalizePath, isLocalPath, isPathWithin, pathsEqual, resolvePath } from "../utils/paths.ts";
 import { stripBom } from "../utils/text.ts";
+import { loadSkillsWithBuiltin } from "./builtin-resources.ts";
 import { createEventBus, type EventBus } from "./event-bus.ts";
 import {
 	clearExtensionCache,
@@ -37,7 +38,6 @@ import type { PromptTemplate } from "./prompt-templates.ts";
 import { loadPromptTemplates } from "./prompt-templates.ts";
 import { SettingsManager } from "./settings-manager.ts";
 import type { Skill } from "./skills.ts";
-import { loadSkills } from "./skills.ts";
 import {
 	BUILTIN_PATH_PREFIX,
 	createSourceInfo,
@@ -889,12 +889,16 @@ export class DefaultResourceLoader implements ResourceLoader {
 		if (this.noSkills && skillPaths.length === 0) {
 			skillsResult = { skills: [], diagnostics: [] };
 		} else {
-			skillsResult = loadSkills({
-				cwd: this.cwd,
-				agentDir: this.agentDir,
-				skillPaths,
-				includeDefaults: false,
-			});
+			// nycode: K6 built-in scope: embedded skills load after every other path, so a same-named skill replaces them
+			skillsResult = loadSkillsWithBuiltin(
+				{
+					cwd: this.cwd,
+					agentDir: this.agentDir,
+					skillPaths,
+					includeDefaults: false,
+				},
+				!this.noSkills,
+			);
 		}
 		const resolvedSkills = this.skillsOverride ? this.skillsOverride(skillsResult) : skillsResult;
 		this.skills = resolvedSkills.skills.map((skill) => ({

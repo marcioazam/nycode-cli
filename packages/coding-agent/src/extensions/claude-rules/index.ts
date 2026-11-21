@@ -21,6 +21,8 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { setBuiltinInstructions } from "../../core/builtin-instructions.ts";
+import { builtinResourceDir, exportResourcesRoot, resolveResourcesMarker } from "../../core/builtin-resources.ts";
 import type { ExtensionAPI } from "../../core/extensions/types.ts";
 import type { ThemeColor } from "../../modes/interactive/theme/theme-tokens.ts";
 import { publishInstructionLoad } from "../_shared/events/instruction-events.ts";
@@ -230,7 +232,11 @@ const EMPTY_RULES: RuleSet = { inline: [], scoped: [] };
  * matching `claudeMdExcludes` are skipped entirely, as the docs' monorepo recipe
  * (excluding another team's `.claude/rules/**`) relies on; the check runs on the
  * realpath so a symlink cannot dodge an exclusion. */
-function readRules(rulesDir: string, isExcluded?: (realPath: string) => boolean): RuleSet {
+function readRules(
+	rulesDir: string,
+	isExcluded?: (realPath: string) => boolean,
+	prepare: (text: string) => string = (text) => text,
+): RuleSet {
 	const inline: InlineRule[] = [];
 	const scoped: ScopedRule[] = [];
 	for (const file of findMarkdownFiles(rulesDir)) {
@@ -243,7 +249,7 @@ function readRules(rulesDir: string, isExcluded?: (realPath: string) => boolean)
 		}
 		let parsed: Frontmatter;
 		try {
-			parsed = parseFrontmatter(fs.readFileSync(lexical, "utf-8"));
+			parsed = parseFrontmatter(prepare(fs.readFileSync(lexical, "utf-8")));
 		} catch {
 			continue; // one unreadable rule must not take down session start
 		}
@@ -258,6 +264,24 @@ function readRules(rulesDir: string, isExcluded?: (realPath: string) => boolean)
 		else inline.push({ file: lexical, body });
 	}
 	return { inline, scoped };
+}
+
+/**
+ * K6: the embedded rules (`resources/rules`) come first, the lowest precedence; a user rule file of the same name
+ * replaces one. Only the top level is read: `ref/` holds on-demand references the contract points to, not rules that
+ * always apply. Embedded rules are always inlined (a `paths:` scope is ignored).
+ */
+function withBuiltinRules(userRules: RuleSet, userDir: string, isExcluded: (realPath: string) => boolean): RuleSet {
+	const dir = builtinResourceDir("rules");
+	if (!dir) return userRules;
+	const refDir = path.join(dir, "ref") + path.sep;
+	const embedded = readRules(dir, (real) => real.startsWith(refDir) || isExcluded(real), resolveResourcesMarker);
+	const userNames = new Set([
+		...userRules.inline.map((rule) => path.relative(userDir, rule.file)),
+		...userRules.scoped.map((rule) => rule.rel),
+	]);
+	const inline = embedded.inline.filter((rule) => !userNames.has(path.basename(rule.file)));
+	return { inline: [...inline, ...userRules.inline], scoped: userRules.scoped };
 }
 
 /** The user's rules directory as a pointer names it, so the model's read resolves: against
@@ -410,6 +434,10 @@ export default function claudeRulesExtension(nycode: ExtensionAPI) {
 	// ex-no-context-files (02 §3.2): `-nc` and `omitClaudeMd` agents arm the switch both this extension and
 	// context-imports read at session_start/before_agent_start; this one loads first.
 	if (shouldOmitClaudeMd(process.argv.slice(2))) process.env.CLAUDE_CODE_DISABLE_CLAUDE_MDS = "1";
+	// K7: this extension owns the instruction context files, so the built-in contract rides with it
+	setBuiltinInstructions(true);
+	// Same load point: every process (interactive, print, child subagents, which inherit the env) loads this extension
+	exportResourcesRoot();
 	const globalRulesDir = path.join(claudeConfigDir(os.homedir()), "rules");
 	const globalRulesBase = userRulesBase(globalRulesDir, os.homedir());
 	let rules: PromptRules = NO_PROMPT_RULES;
@@ -433,7 +461,7 @@ export default function claudeRulesExtension(nycode: ExtensionAPI) {
 			readManagedSettings(),
 		);
 		const isExcluded = (realPath: string): boolean => isExcludedPath(realPath, excludeGlobs, os.homedir());
-		const globalRules = readRules(globalRulesDir, isExcluded);
+		const globalRules = withBuiltinRules(readRules(globalRulesDir, isExcluded), globalRulesDir, isExcluded);
 		const projectRulesDir = projectRulesDirFor(ctx.cwd, approved, globalRulesDir);
 		const projectRules = projectRulesDir ? readRules(projectRulesDir, isExcluded) : EMPTY_RULES;
 

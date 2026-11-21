@@ -22,15 +22,20 @@ describe("getBuiltinAgentsDir", () => {
 describe("discoverAgents", () => {
 	it("lists the built-in agents with the builtin source", () => {
 		const previous = process.env[ENV_AGENT_DIR];
+		const previousHome = process.env.HOME;
 		process.env[ENV_AGENT_DIR] = join(tmp, "agent");
+		process.env.HOME = join(tmp, "home"); // no user agents of the machine in the way
 		try {
 			const builtin = discoverAgents(tmp, "user")
 				.agents.filter((agent) => agent.source === "builtin")
 				.map((agent) => agent.name);
-			expect(builtin.sort()).toEqual(["Explore", "Plan", "general-purpose"]);
+			// resources/agents (K6) adds embedded agents of the same source, some with the bundled names
+			expect(builtin).toEqual(expect.arrayContaining(["Explore", "Plan", "general-purpose"]));
 		} finally {
 			if (previous === undefined) delete process.env[ENV_AGENT_DIR];
 			else process.env[ENV_AGENT_DIR] = previous;
+			if (previousHome === undefined) delete process.env.HOME;
+			else process.env.HOME = previousHome;
 		}
 	});
 

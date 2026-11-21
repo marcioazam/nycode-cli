@@ -13,8 +13,8 @@
  * 5. Sem UI, o prompt de sistema ganha o bloco `<headless>`: ninguém responde e a sessão acaba neste turno, então um
  *    pedido de plano é plano mais execução, sem "posso implementar?". Contradição real continua virando pergunta.
  * 6. Piso de prefixo, só na sessão headless de topo (sem UI e NYCODE_SUBAGENT_DEPTH ausente ou 0; subagentes
- *    precisam do contrato completo e das skills): o contrato de instruções (`# Working contract (pi)`) vira o texto de
- *    `CLAUDE.headless.md` do diretório do agente e a seção `<skills>` sai do prompt. Arquivo ausente ou formato inesperado
+ *    precisam do contrato completo e das skills): o contrato de instruções (`# Working contract (nycode)`, ou `(pi)`) vira o texto de
+ *    `CLAUDE.headless.md` do diretório do agente ou, sem ele, de `instructions/headless.md` embarcado e a seção `<skills>` sai do prompt. Arquivo ausente ou formato inesperado
  *    deixa o payload como está. harness.headless.floor (NYCODE_HEADLESS_FLOOR=0) desliga só este item.
  *
  * 7. Na sessão headless de topo (mesmo critério do item 6), `subagent`, `memory` e `lsp_*` ficam inativas: 0 de 2.091
@@ -32,6 +32,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { getAgentDir } from "../../config.ts";
+import { readBuiltinInstruction } from "../../core/builtin-instructions.ts";
 import type { ExtensionAPI } from "../../core/extensions/types.ts";
 import { SettingsManager } from "../../core/settings-manager.ts";
 
@@ -41,8 +42,9 @@ type Debug = (message: string) => void;
 const CWD = /<cwd>\n[^\n]*\n<\/cwd>\n\n?/;
 // o core monta cada contrato como <project_instructions path="..."> ...conteúdo... </project_instructions> e a lista de
 // skills como seção <skills> (introdução + <available_skills>); ver system-prompt.ts e skills.ts do core.
+// o título é `(pi)` no ny-pi e `(nycode)` no contrato embarcado; os dois valem
 const CONTRACT =
-	/(<project_instructions path="[^"]*">\n)# Working contract \(pi\)\n[\s\S]*?(\n<\/project_instructions>)/;
+	/(<project_instructions path="[^"]*">\n)# Working contract \((?:pi|nycode)\)\n[\s\S]*?(\n<\/project_instructions>)/;
 const SKILLS =
 	/<skills>\n\s*The following skills provide[\s\S]*?<available_skills>[\s\S]*?<\/available_skills>\n<\/skills>\n*/;
 const DOCS = /<docs>\n[\s\S]*?<\/docs>\n*/;
@@ -121,13 +123,18 @@ export function trimDocs(payload: unknown): unknown {
 	return changed ? payload : undefined;
 }
 
-/** Texto de CLAUDE.headless.md, ou undefined (com motivo no debug) se faltar ou estiver vazio. */
+/**
+ * Texto do contrato headless: `CLAUDE.headless.md` do diretório do agente, se existir (paridade com o ny-pi), senão
+ * `instructions/headless.md` embarcado (K7). undefined, com motivo no debug, se faltar ou estiver vazio.
+ */
 function floorContract(debug: Debug): string | undefined {
 	try {
 		const text = readFileSync(join(getAgentDir(), "CLAUDE.headless.md"), "utf8").trim();
 		return text || void debug("floor: CLAUDE.headless.md is empty; payload left unchanged");
 	} catch {
-		return void debug("floor: CLAUDE.headless.md unreadable; payload left unchanged");
+		return (
+			readBuiltinInstruction("headless") ?? void debug("floor: headless contract not found; payload left unchanged")
+		);
 	}
 }
 
