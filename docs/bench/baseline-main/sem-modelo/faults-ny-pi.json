@@ -1,0 +1,79 @@
+[
+  {
+    "arm": "ny-pi",
+    "scenario": "rate-limit",
+    "status": "ok",
+    "rc": 0,
+    "requests": 3,
+    "seconds": 3.7,
+    "note": "FAULTS-DONE-7731",
+    "success": true,
+    "masked": false
+  },
+  {
+    "arm": "ny-pi",
+    "scenario": "overloaded",
+    "status": "ok",
+    "rc": 0,
+    "requests": 3,
+    "seconds": 2.6,
+    "note": "FAULTS-DONE-7731",
+    "success": true,
+    "masked": false
+  },
+  {
+    "arm": "ny-pi",
+    "scenario": "mid-stream-cut",
+    "status": "ok",
+    "rc": 0,
+    "requests": 3,
+    "seconds": 2.6,
+    "note": "FAULTS-DONE-7731",
+    "success": true,
+    "masked": false
+  },
+  {
+    "arm": "ny-pi",
+    "scenario": "slow-first-byte",
+    "status": "ok",
+    "rc": 0,
+    "requests": 2,
+    "seconds": 8.6,
+    "note": "FAULTS-DONE-7731",
+    "success": true,
+    "masked": false
+  },
+  {
+    "arm": "ny-pi",
+    "scenario": "malformed-sse",
+    "status": "failed",
+    "rc": 1,
+    "requests": 1,
+    "seconds": 0.5,
+    "note": "ON input; data={\"type\": \"content_block_delta\", \"index\": 0, \"delta\": ; raw=event: content_block_delta\\ndata: {\"type\": \"content_block_delta\", \"index\": 0, \"delta\":",
+    "success": false,
+    "masked": false
+  },
+  {
+    "arm": "ny-pi",
+    "scenario": "bad-tool-json",
+    "status": "ok",
+    "rc": 0,
+    "requests": 2,
+    "seconds": 0.5,
+    "note": "FAULTS-DONE-7731",
+    "success": true,
+    "masked": false
+  },
+  {
+    "arm": "ny-pi",
+    "scenario": "unknown-tool",
+    "status": "ok",
+    "rc": 0,
+    "requests": 2,
+    "seconds": 0.5,
+    "note": "FAULTS-DONE-7731",
+    "success": true,
+    "masked": false
+  }
+]
