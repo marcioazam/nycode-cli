@@ -4,7 +4,6 @@
 
 import { getSystemMessageText } from "@nycode/ai";
 import { getDocsPath, getExamplesPath, getReadmePath } from "../config.ts";
-import { docsSection } from "./docs-pointer.ts";
 import { formatSkillsForPrompt, type Skill } from "./skills.ts";
 
 export interface BuildSystemPromptOptions {
@@ -160,17 +159,13 @@ export function buildSystemPromptSections(input: BuildSystemPromptOptions): Syst
 			visibleTools.length > 0 ? visibleTools.map((name) => `- ${name}: ${toolSnippets[name]}`).join("\n") : "(none)";
 		promptSections.tools = `${tools}\n\nAdditional tools may be available.`;
 		promptSections.rules = buildRules(declaredTools, toolGuidelines, promptGuidelines);
-		// nycode: K7 the docs section is one line unless the work is on nycode itself
-		promptSections.docs = docsSection(
-			cwd,
-			`Nycode documentation (read only when the user asks about the harness itself, its SDK, extensions, themes, skills, or TUI):
+		promptSections.docs = `Nycode documentation (read only when the user asks about the harness itself, its SDK, extensions, themes, skills, or TUI):
 - Main documentation: ${getReadmePath()}
 - Additional docs: ${getDocsPath()}
 - Examples: ${getExamplesPath()} (extensions, custom tools, SDK)
 - When reading nycode docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory
 - When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), packages (docs/packages.md), environment variables (docs/environment-variables.md), MCP servers (docs/mcp.md), codemode scripts and non-LLM models such as classifiers and image models (docs/codemode.md)
-- Before implementing harness changes, read the relevant docs and examples in full, following related cross-references.`,
-		);
+- Before implementing harness changes, read the relevant docs and examples in full, following related cross-references.`;
 	}
 
 	if (appendSystemPrompt) promptSections.addendum = appendSystemPrompt;

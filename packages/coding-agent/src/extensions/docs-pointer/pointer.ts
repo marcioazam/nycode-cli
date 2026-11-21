@@ -1,16 +1,15 @@
 /**
- * The `docs` section of the system prompt (~1.3 KB of paths and a reading guide) as a one-line pointer.
+ * Mode and rules for the one-line `docs` pointer.
  *
- * Outside work on nycode itself the full section is noise. Mode `auto` (default) keeps it when the cwd is the
- * home directory, sits under the agent directory, or has a package.json naming nycode (its package or the
- * "nycode-package" keyword); every other cwd gets the pointer. `/docs-pointer on|off|auto` switches per session
- * (`on` = full section). Custom prompts never reach this code.
+ * Mode `auto` (default) keeps the full section when the cwd is the home directory, sits under the agent
+ * directory, or has a package.json naming nycode (its package or the "nycode-package" keyword); every other cwd
+ * gets the pointer. `on` = full section, `off` = pointer.
  */
 
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, sep } from "node:path";
-import { getAgentDir, getDocsPath, getExamplesPath, getReadmePath } from "../config.ts";
+import { getAgentDir, getDocsPath, getExamplesPath, getReadmePath } from "../../config.ts";
 
 export type DocsPointerMode = "auto" | "on" | "off";
 
@@ -44,9 +43,4 @@ export function wantsFullDocs(m: DocsPointerMode, cwd: string, home: string = ho
 /** The one-line pointer to the nycode docs. */
 export function docsPointerLine(): string {
 	return `nycode docs live in ${getDocsPath()} (README at ${getReadmePath()}, examples at ${getExamplesPath()}); read them only when the task is about nycode itself.`;
-}
-
-/** The `docs` section for `cwd`: `full` when the mode and cwd ask for it, else the pointer line. */
-export function docsSection(cwd: string, full: string): string {
-	return wantsFullDocs(mode, cwd) ? full : docsPointerLine();
 }
