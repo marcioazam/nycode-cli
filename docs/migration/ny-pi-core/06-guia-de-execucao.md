@@ -723,8 +723,9 @@ Verificação: `gh attestation verify <artefato> -R marcioazam/nycode`. Fonte:
    arquivos, no `.tar.gz` do código-fonte e no `SHA256SUMS`, cria o Release como rascunho com `RELEASE_NOTES.md`, sobe os
    ativos e só então o publica). O único segredo é o `GITHUB_TOKEN` do próprio run. Validar com `actionlint`, `zizmor
    --min-severity medium` e `bash scripts/ci/run-security.sh` (o PR passa por `ci-security`).
-4. **Binários:** `scripts/build-binaries.sh` já cobre os 6 alvos e é o que o workflow chama; o `README.md` "Building
-   standalone binaries" passa a dizer que os binários vêm do Release.
+4. **Binários:** `scripts/build-binaries.sh` já cobre os 6 alvos e é o que o workflow chama. O laço "Copy shared files" ganha
+   `cp -r resources` (costura K6): sem isso o binário não acha `dirname(execPath)/resources` e nega toda ferramenta. O
+   `README.md` "Building standalone binaries" passa a dizer que os binários vêm do Release.
 5. **README de instalação, aviso de versão e autoatualização:** `README.md` (seção "Getting started" e "Supply-chain
    hardening", que hoje dizem "Nothing is published yet") e `packages/coding-agent/docs/quickstart.md:12,15,115` passam a
    baixar `nycode-<plataforma>` do Release, conferir `SHA256SUMS` e `gh attestation verify`. `package-manager-cli.ts:1196-1197`

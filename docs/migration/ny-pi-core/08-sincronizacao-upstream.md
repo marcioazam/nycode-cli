@@ -158,7 +158,7 @@ Abreviação: `CA` = `packages/coding-agent/src`; `core/` e `cli/` abaixo são d
 | K3 | `CA/cli/args.ts` | Acrescenta 4 flags | 20 / 5 | 0 (`approve`) | alto |
 | K4 | `core/settings-schema.ts` e `-defaults.ts`; `theme/theme.ts` e `interactive-mode.ts` (D-37) | Blocos novos, 3 padrões, tema padrão | 5+3 / 3+1 | 1 | médio |
 | K5 | `CA/extensions/index.ts` | Uma linha por extensão | 2 / 0 | n. med. | baixo |
-| K6 | `CA/core/resource-loader.ts` | Escopo `builtin` | 11 / 3 | n. med. | médio |
+| K6 | `CA/core/resource-loader.ts`, `scripts/build-binaries.sh` (uma linha) | Escopo `builtin` | 11 / 3 | n. med. | médio |
 | K7 | `CA/core/system-prompt.ts` | Instruções embarcadas (F8; seção `docs` na extensão, D-36) | 8 / 1 | n. med. | médio |
 | K8 | `CA/core/tools/bash.ts` | Limite padrão e teto | 12 / 3 | n. med. | médio |
 | K9 | `CA/core/compaction/` | Limite absoluto de contexto | 15 / 4 | n. med. | médio |

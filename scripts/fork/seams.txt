@@ -10,7 +10,7 @@ K2 | packages/mcp/src/transports/stdio.ts | nycode: K2[[:space:]] | packages/mcp
 K3 | packages/coding-agent/src/cli/args.ts | nycode: K3[[:space:]] | packages/coding-agent/test/harness/core/settings-env.test.ts | ativa
 K4 | packages/coding-agent/src/core/settings-schema.ts packages/coding-agent/src/core/settings-defaults.ts packages/coding-agent/src/modes/interactive/theme/theme.ts packages/coding-agent/src/modes/interactive/interactive-mode.ts | nycode: K4[[:space:]] | packages/coding-agent/test/harness/core/settings-keys.test.ts | ativa
 K5 | packages/coding-agent/src/extensions/index.ts | nycode: K5[[:space:]] | - | ativa
-K6 | packages/coding-agent/src/core/resource-loader.ts | nycode: K6[[:space:]] | packages/coding-agent/test/harness/core/resources/builtin-resources.test.ts | ativa
+K6 | packages/coding-agent/src/core/resource-loader.ts scripts/build-binaries.sh | nycode: K6[[:space:]] | packages/coding-agent/test/harness/core/resources/builtin-resources.test.ts | ativa
 K7 | packages/coding-agent/src/core/system-prompt.ts | nycode: K7[[:space:]] | packages/coding-agent/test/harness/core/resources/builtin-instructions.test.ts | ativa
 K8 | packages/coding-agent/src/core/tools/bash.ts packages/coding-agent/src/core/agent-session.ts | nycode: K8[[:space:]] | packages/coding-agent/test/harness/core/bash-timeout.test.ts | ativa
 K9 | packages/coding-agent/src/core/compaction/ packages/coding-agent/src/core/agent-session.ts | nycode: K9[[:space:]] | packages/coding-agent/test/harness/core/compact-threshold.test.ts | ativa
