@@ -73,15 +73,15 @@ Identificador: `C-F<fase>-<n>`. A coluna "prova" diz o que tem de ser observado.
 
 ## F4. Core nativo
 
-- [ ] C-F4-01 K1 no fonte; teste portado verde.
-- [ ] C-F4-02 K2 no fonte; teste portado verde.
-- [ ] C-F4-03 K3: quatro flags aceitas; `nycode --help` as lista.
-- [ ] C-F4-04 K4: chaves novas no esquema; esquema JSON regenerado; padrões do ny-pi (`defaultProjectTrust`, `quietStartup`, `retry`, `shellCommandPrefix`).
-- [ ] C-F4-05 Cada linha da tabela de variáveis de [02, seção 5](02-arquitetura-alvo.md#5-configuracao-e-variaveis-de-ambiente) com teste de leitura da variável e da chave.
-- [ ] C-F4-06 K12: `nycode migrate from-pi` em modo de simulação por padrão; nunca apaga a origem; credenciais só com confirmação. Prova: teste com `HOME` descartável.
-- [ ] C-F4-07 Exemplos `mcp`, `models`, `lsp` em `examples/config/`; teste do exemplo de modelos verde.
-- [ ] C-F4-08 Revisão de segurança das flags de permissão.
-- [ ] C-F4-09 `bin/pi` e `bin/test_pi_env.sh` removidos de `import/`.
+- [x] C-F4-01 K1 no fonte; teste portado verde.
+- [x] C-F4-02 K2 no fonte; teste portado verde.
+- [x] C-F4-03 K3: quatro flags aceitas; `nycode --help` as lista.
+- [x] C-F4-04 K4: chaves novas no esquema; esquema JSON regenerado; padrões do ny-pi (`defaultProjectTrust`, `quietStartup`, `retry`, `shellCommandPrefix`).
+- [x] C-F4-05 Cada linha da tabela de variáveis de [02, seção 5](02-arquitetura-alvo.md#5-configuracao-e-variaveis-de-ambiente) com teste de leitura da variável e da chave.
+- [x] C-F4-06 K12: `nycode migrate from-pi` em modo de simulação por padrão; nunca apaga a origem; credenciais só com confirmação. Prova: teste com `HOME` descartável.
+- [x] C-F4-07 Exemplos `mcp`, `models`, `lsp` em `examples/config/`; teste do exemplo de modelos verde.
+- [x] C-F4-08 Revisão de segurança das flags de permissão.
+- [x] C-F4-09 `bin/pi` e `bin/test_pi_env.sh` removidos de `import/`.
 
 ## F5. Camada base embutida
 

@@ -385,7 +385,8 @@ migração só escreve com `--apply` e com backup.
 **Objetivo:** importar a árvore do pi-code já remendada como extensões embutidas, 3 commits por extensão
 ([02](02-arquitetura-alvo.md) §3.1), com os testes de patch portados.
 
-**Pré-condições:** `ls import/ny-pi/claude-home/patches/pi-code/*.patch | wc -l` devolve 19;
+**Pré-condições:** `ls import/ny-pi/claude-home/patches/pi-code/*.patch | wc -l` devolve 67 depois da unidade que
+congela a pilha do checkout local (D-32; antes dela, 19);
 `rg -n 'name: "hooks"' packages/coding-agent/src/extensions/index.ts` sem saída.
 
 **Passo 1, árvore de referência:** `mkdir -p /tmp/pi-code-ref && cd /tmp/pi-code-ref && npm pack pi-code@1.7.0 --silent
