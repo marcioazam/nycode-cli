@@ -196,6 +196,7 @@ import { refreshModelCatalogs } from "./model-catalog-refresh.ts";
 import { getModelSearchText } from "./model-search.ts";
 import { type BlockedStatus, ProgramStatusReporter } from "./program-status-reporter.ts";
 import { shareSession } from "./session-share.ts";
+import { initialThemeSetting } from "./theme/nycode-themes.ts";
 import {
 	getAvailableThemes,
 	getAvailableThemesWithPaths,
@@ -762,7 +763,8 @@ export class InteractiveMode {
 			getSettingsManager: () => this.settingsManager,
 			showError: (message) => this.showError(message),
 			onChanged: () => this.updateEditorBorderColor(),
-			initialThemeSetting: options.initialThemeSetting,
+			// nycode: K4 tokyo-night is the session theme when none is chosen (not saved to settings.json)
+			initialThemeSetting: initialThemeSetting(options.initialThemeSetting, this.settingsManager.getThemeSetting()),
 		});
 	}
 
