@@ -55,7 +55,7 @@ else
   rpc_commands
   got=$(rg '"type":"response"' "$W/rpc.out" | head -1 | jq -r '.data.commands[] | select(.name | test("^(copy-code|keybindings|diff)$")) | .name' 2>/dev/null | sort | tr '\n' ' ')
   [ "$(echo "$got" | wc -w)" = 3 ]
-  chk "11 RPC get_commands (copy-code, keybindings, diff)" $? "$got"
+  chk "11 RPC get_commands (copy-code, keybindings, diff)" $? "achou=[$got] (esperado: falta F7 ui enquanto faltarem)"
 fi
 echo "GATE_EXIT=$FAIL"
 exit $FAIL
