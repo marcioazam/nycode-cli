@@ -4,7 +4,8 @@ hook, command and plugin has exactly one table row with a valid class, and no ro
 
 A type with no shipped piece yet is not compared for stale rows: the pieces arrive in F5-F8 and
 their rows already exist. The first piece of a type turns the stale check on for that type; a
-piece without a row is always a finding.
+row whose piece still waits in import/ny-pi (extensions/, claude-home/) is pending, not stale.
+A piece without a row is always a finding.
 
 Usage: core_scope.py [--root DIR]   (default: repository root)
 Exit 0 clean, 1 findings, 2 spec unreadable or malformed.
@@ -23,6 +24,9 @@ TYPES = ("skill", "agent", "extension", "hook", "command", "plugin")
 CLASSES = ("core", "ui", "optional", "remove")
 RESOURCES = Path("packages/coding-agent/resources")
 EXTENSIONS = Path("packages/coding-agent/src/extensions")
+# The ny-pi copy waiting to move (removed in F12): same layout, resources under claude-home/.
+IMPORT_RESOURCES = Path("import/ny-pi/claude-home")
+IMPORT_EXTENSIONS = Path("import/ny-pi/extensions")
 EXT_SKIP = {"test", "tests", "node_modules"}
 # Extensions and the registry the fork had before the harness: not pieces of the 0005 table.
 EXT_NATIVE = {"index", "codemode", "llama", "mcp", "tool-search"}
@@ -41,9 +45,11 @@ def _children(d: Path) -> list[Path]:
     return sorted(d.iterdir()) if d.is_dir() else []
 
 
-def discover(root: Path) -> set[Piece]:
+def discover(
+    root: Path, resources: Path = RESOURCES, extensions: Path = EXTENSIONS
+) -> set[Piece]:
     """Return the (type, name) pairs of the shipped pieces under root."""
-    home = root / RESOURCES
+    home = root / resources
     found: set[Piece] = set()
     for p in _children(home / "skills"):
         if (p / "SKILL.md").is_file():
@@ -51,7 +57,7 @@ def discover(root: Path) -> set[Piece]:
     for p in _children(home / "agents"):
         if p.suffix == ".md":
             found.add(("agent", p.stem))
-    for p in _children(root / EXTENSIONS):
+    for p in _children(root / extensions):
         if (
             p.name.startswith((".", EXT_LIBRARY_PREFIX))
             or p.name in EXT_SKIP
@@ -93,8 +99,12 @@ def parse_table(text: str) -> list[tuple[str, str, str]]:
     return rows
 
 
-def compare(found: set[Piece], rows: list[tuple[str, str, str]]) -> list[str]:
-    """Return sorted findings for pieces and rows that disagree."""
+def compare(
+    found: set[Piece],
+    rows: list[tuple[str, str, str]],
+    pending: set[Piece] | None = None,
+) -> list[str]:
+    """Return sorted findings for pieces and rows that disagree; `pending` rows are not stale."""
     out: list[str] = []
     for (typ, name), n in Counter((t, m) for t, m, _ in rows).items():
         if n > 1:
@@ -107,7 +117,11 @@ def compare(found: set[Piece], rows: list[tuple[str, str, str]]) -> list[str]:
     listed = {(t, m) for t, m, _ in rows}
     out += [f"missing: {t} {m}" for t, m in found - listed]
     present = {t for t, _ in found}
-    out += [f"stale: {t} {m}" for t, m in listed - found if t in present]
+    out += [
+        f"stale: {t} {m}"
+        for t, m in listed - found - (pending or set())
+        if t in present
+    ]
     return sorted(out)
 
 
@@ -125,7 +139,9 @@ def main(argv: list[str] | None = None) -> int:
     except SpecError as e:
         print(f"core-scope: {e}", file=sys.stderr)
         return 2
-    findings = compare(discover(root), rows)
+    findings = compare(
+        discover(root), rows, discover(root, IMPORT_RESOURCES, IMPORT_EXTENSIONS)
+    )
     if findings:
         print("\n".join(findings), file=sys.stderr)
         return 1
