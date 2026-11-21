@@ -226,13 +226,13 @@ medido. Só então a cópia entra no repositório.
 | `claude-rules.ts`, `context-imports.ts`, `memory.ts`, `output-styles.ts` | 4 | um diretório por extensão | F5 | 4 |
 | `skills.ts`, `commands.ts`, `init.ts` | 3 | `skills-compat/`, `commands/`, `init/` | F5 | 5 |
 | `todo.ts`, `question.ts` | 2 | `todo/`, `question/` | F5 | 6 |
-| `status-line.ts`, `notify.ts`, `session-title.ts`, `thinking.ts`, `context-usage.ts` | 5 | um diretório por extensão | F5 | 7 |
+| `notify.ts`, `session-title.ts`, `thinking.ts`, `context-usage.ts` | 4 | um diretório por extensão | F5 | 7 |
 | `git-checkpoint.ts` | 1 | `git-checkpoint/` | F5 | 8 |
-| `run/` | 7 | `run/` | F5 | 9 |
 | `web.ts` | 1 | `web/` (desligada) | F5 | 10 |
 | `goal.ts` | 1 | `goal/` | F6 | 3 |
 | `plan-mode/` | 8 | `plan-mode/` | F6 | 2 |
 | `subagent/` | 53 | `subagent/` | F6 | 1 |
+| `status-line.ts`, `run/` | 8 | `status-line/`, `run/` (importam `subagent/fleet-ui`, `section-nav`, `fleet`, `background`; D-34) | F6 | 1b |
 | `mcp/` | 9 | **não migra** (D-10) | — | — |
 | `version-floor.ts` | 1 | **não migra** (D-10) | — | — |
 | **Total** | **159** | 149 migram, 10 não | | |
