@@ -23,6 +23,7 @@ import settingsFlagsExtension from "./settings-flags/index.ts";
 import skillsCompatExtension from "./skills-compat/index.ts";
 import statusLineExtension from "./status-line/index.ts";
 import subagentExtension from "./subagent/index.ts";
+import syntaxCheckExtension from "./syntax-check/index.ts";
 import thinkingExtension from "./thinking/index.ts";
 import todoExtension from "./todo/index.ts";
 import toolSearchExtension from "./tool-search/index.ts";
@@ -62,4 +63,5 @@ export const builtInExtensions: InlineExtension[] = [
 	{ name: "web", factory: webExtension, builtin: true, enabledByDefault: false },
 	// Embedded ny-pi extensions, in ny-pi's load order (after pi-code, by source file name).
 	{ name: "docs-pointer", factory: docsPointerExtension, builtin: true },
+	{ name: "syntax-check", factory: syntaxCheckExtension, builtin: true },
 ];
