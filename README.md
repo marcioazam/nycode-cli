@@ -47,7 +47,7 @@ nix run github:marcioazam/nycode/stable
 
 Supports ARM64 and x86-64 on Linux and macOS. Use `nix build .` or `nix run .` to build or run your checkout.
 
-Nix builds are offline, so the bundled model data comes from a pi.dev model catalog revision pinned in `nix/model-catalog.json`. At runtime, Nycode still overlays newer catalog data from pi.dev as usual. The Nix workflow replaces the pin on `main` when it no longer matches the checkout, for example after a provider is added or gains a new model type. To refresh it by hand:
+Nix builds are offline, so the bundled model data comes from a pinned model catalog revision pinned in `nix/model-catalog.json`. At runtime, Nycode still overlays newer catalog data from the live model catalog as usual. The Nix workflow replaces the pin on `main` when it no longer matches the checkout, for example after a provider is added or gains a new model type. To refresh it by hand:
 
 ```bash
 npm run update:model-catalog-pin
@@ -161,13 +161,6 @@ We treat npm dependency changes as reviewed code changes.
 - CI installs with `npm ci --ignore-scripts`, and a scheduled GitHub workflow runs `npm audit --omit=dev` plus `npm audit signatures --omit=dev`.
 - Install lock generation has an explicit allowlist for dependency lifecycle scripts; new lifecycle-script deps fail checks until reviewed.
 
-## Origin
-
-nycode is a fork of [pi](https://github.com/earendil-works/pi) by Mario Zechner and contributors (MIT). The harness
-built into nycode started as [ny-pi](https://github.com/marcioazam/ny-pi), a harness for pi. nycode is not affiliated
-with, nor endorsed by, the pi project. The base commit, the changes and the third-party licenses are in
-[NOTICE](NOTICE); the sync policy is in [docs/fork](docs/fork).
-
 ## License
 
-MIT
+MIT. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
