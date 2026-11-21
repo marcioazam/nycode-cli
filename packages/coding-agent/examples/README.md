@@ -15,9 +15,11 @@ node examples/rpc-client.ts "Explain this repository"
 ## Directories
 
 ### [sdk/](sdk/)
+
 Programmatic usage via `createAgentSession()`. Shows how to customize models, prompts, tools, extensions, and session management.
 
 ### [extensions/](extensions/)
+
 Example extensions demonstrating:
 - Lifecycle event handlers (tool interception, safety gates, context modifications)
 - Custom tools (todo lists, questions, subagents, output truncation)
@@ -29,6 +31,7 @@ Example extensions demonstrating:
 - Custom providers (Anthropic with custom streaming, GitLab Duo)
 
 ### [config/](config/)
+
 Starting points for user configuration files in `~/.nycode/agent/`:
 - `mcp.json`: MCP servers (secrets are `${ENV}` placeholders; export the variables). See [MCP](../docs/mcp.md).
 - `models.json`: per-model overrides, here the refusal fallback of `claude-sonnet-5-5`. See [Models](../docs/models-configuration.md).
