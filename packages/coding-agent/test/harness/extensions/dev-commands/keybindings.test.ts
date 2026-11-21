@@ -37,7 +37,7 @@ test("validateKeybindings: válido, JSON inválido, não-objeto, valor inválido
 
 test("sem UI: avisa o caminho", async () => {
 	const s = setup(undefined, false);
-	await mod.editKeybindings(s.ctx, "/x/k.json");
+	await mod.editKeybindings(s.ctx as never, "/x/k.json");
 	assert.match(s.notes[0][0], /\/x\/k\.json/);
 	assert.equal(s.calls.length, 0);
 });
@@ -45,7 +45,7 @@ test("sem UI: avisa o caminho", async () => {
 test("arquivo ausente: prefill {} , grava sem .bak e recarrega", async () => {
 	const p = file();
 	const s = setup('{"app.exit":"ctrl+q"}');
-	await mod.editKeybindings(s.ctx, p);
+	await mod.editKeybindings(s.ctx as never, p);
 	assert.equal(s.calls[0], "{\n}\n");
 	assert.equal(readFileSync(p, "utf8"), '{"app.exit":"ctrl+q"}');
 	assert.equal(existsSync(`${p}.bak`), false);
@@ -57,7 +57,7 @@ test("arquivo existente: prefill atual, .bak com o antigo, aviso de id desconhec
 	const p = file();
 	writeFileSync(p, '{"app.exit":"a"}');
 	const s = setup('{"zzz":"b"}');
-	await mod.editKeybindings(s.ctx, p);
+	await mod.editKeybindings(s.ctx as never, p);
 	assert.equal(s.calls[0], '{"app.exit":"a"}');
 	assert.equal(readFileSync(`${p}.bak`, "utf8"), '{"app.exit":"a"}');
 	assert.equal(readFileSync(p, "utf8"), '{"zzz":"b"}');
@@ -68,7 +68,7 @@ test("arquivo existente: prefill atual, .bak com o antigo, aviso de id desconhec
 test("cancelar não grava nem recarrega", async () => {
 	const p = file();
 	const s = setup(undefined);
-	await mod.editKeybindings(s.ctx, p);
+	await mod.editKeybindings(s.ctx as never, p);
 	assert.equal(existsSync(p), false);
 	assert.equal(s.notes[0][1], "info");
 	assert.equal(s.calls.includes("reload"), false);
@@ -77,7 +77,7 @@ test("cancelar não grava nem recarrega", async () => {
 test("erro de validação: notify de erro, sem gravar nem recarregar", async () => {
 	const p = file();
 	const s = setup('{"app.exit":1}');
-	await mod.editKeybindings(s.ctx, p);
+	await mod.editKeybindings(s.ctx as never, p);
 	assert.equal(s.notes[0][1], "error");
 	assert.equal(existsSync(p), false);
 	assert.equal(s.calls.includes("reload"), false);

@@ -112,7 +112,7 @@ test("index registra os dois comandos e o handler delega", async () => {
 		registerCommand: (n: string, c: any) => {
 			cmds[n] = c;
 		},
-	});
+	} as never);
 	assert.deepEqual(Object.keys(cmds).sort(), ["copy-code", "keybindings"]);
 	const s = setup([]);
 	await cmds["copy-code"].handler(undefined, s.ctx);
