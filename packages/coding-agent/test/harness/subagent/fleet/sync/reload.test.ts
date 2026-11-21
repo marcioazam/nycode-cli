@@ -14,7 +14,6 @@ mkdirSync(join(agentDir, "agents"), { recursive: true });
 writeFileSync(join(agentDir, "agents", "fake.md"), "---\nname: fake\ndescription: agente falso\n---\nVoce e falso.\n");
 process.env.HOME = home;
 process.env.NYCODE_CODING_AGENT_DIR = agentDir;
-delete process.env.CLAUDE_CONFIG_DIR;
 delete process.env.NYCODE_SUBAGENT;
 delete process.env.NYCODE_SUBAGENT_DEPTH;
 for (const k of ["NYCODE_SUBAGENT_ALLOWED_AGENTS", "NYCODE_FLEET_DIR", "NYCODE_FLEET_RUN_ID", "NYCODE_SUBAGENT_TREE"])
