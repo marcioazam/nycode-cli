@@ -129,7 +129,6 @@ chegam por fase e o `core_scope.py` é convertido em F3.
 | extension | cache-prefix-probe | remove | Diagnóstico temporário |
 | extension | claude-rules | core | Regras do Claude Code em .claude/rules |
 | extension | commands | core | Comandos de barra do Claude Code |
-| extension | compact-at-400k | core | Compactação de segurança |
 | extension | completion-gate | core | Verificação antes de encerrar |
 | extension | context-imports | core | Imports @ do CLAUDE.md |
 | extension | context-usage | ui | Uso de contexto |
