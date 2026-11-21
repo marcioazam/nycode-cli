@@ -9,15 +9,15 @@
 import type { LookupAddress } from 'node:dns'
 import { lookup } from 'node:dns/promises'
 import type { LookupFunction } from 'node:net'
-import type { Usage } from '@earendil-works/pi-ai'
-import type { ExtensionAPI } from '@earendil-works/pi-coding-agent'
+import type { Usage } from '@nycode/ai'
 import { Type } from 'typebox'
+import type { ExtensionAPI } from '../../core/extensions/types.ts'
 
-import { htmlToMarkdown, removeTags } from './internal/html-markdown.ts'
-import { type CompletionRegistry, completeText } from './internal/model-complete.ts'
-import { capForContext } from './internal/output-guard.ts'
-import { parseNumericEnv } from './internal/values.ts'
-import { httpFetch } from './internal/web-transport.ts'
+import { htmlToMarkdown, removeTags } from '../_shared/web/html-markdown.ts'
+import { type CompletionRegistry, completeText } from '../_shared/model/model-complete.ts'
+import { capForContext } from '../_shared/web/output-guard.ts'
+import { parseNumericEnv } from '../_shared/util/values.ts'
+import { httpFetch } from '../_shared/web/web-transport.ts'
 
 const SEARCH_ENDPOINT = 'https://html.duckduckgo.com/html/?q='
 const USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) pi-code-web/0.1'
@@ -371,9 +371,9 @@ function pageBody(text: string, contentType: string): string {
   return capFetchChars(contentType.includes('html') ? htmlToMarkdown(text) : text)
 }
 
-export default function webExtension(pi: ExtensionAPI) {
+export default function webExtension(nycode: ExtensionAPI) {
   const fetchCache = new Map<string, { expires: number; body: string }>()
-  pi.registerTool({
+  nycode.registerTool({
     name: 'web_search',
     label: 'Web search',
     description: 'Search the web (DuckDuckGo). Returns titles, URLs, and snippets. Use web_fetch to read a result in full.',
@@ -397,7 +397,7 @@ export default function webExtension(pi: ExtensionAPI) {
     },
   })
 
-  pi.registerTool({
+  nycode.registerTool({
     name: 'web_fetch',
     label: 'Web fetch',
     description:
@@ -434,7 +434,7 @@ export default function webExtension(pi: ExtensionAPI) {
 
       // Best-effort prompt-over-page: a failure returns null, so web_fetch always
       // falls back to the raw markdown and returns something. The nested call's
-      // usage rides on the result either way, so pi counts it in session totals.
+      // usage rides on the result either way, so nycode counts it in session totals.
       let usage: Usage | undefined
       if (params.prompt && ctx?.model) {
         const answer = await answerFromPage(ctx.model, params.prompt, target, body, signal, ctx.modelRegistry)
@@ -442,7 +442,7 @@ export default function webExtension(pi: ExtensionAPI) {
         // An empty answer still cost the completion; the fallback carries its usage.
         usage = answer?.usage
       }
-      // The char cap alone admits thousands of short lines; pi's tool-output budget
+      // The char cap alone admits thousands of short lines; nycode's tool-output budget
       // bounds lines too, which the shared guard enforces.
       return { content: [{ type: 'text' as const, text: capForContext(body) || '(empty response)' }], details: {}, usage }
     },
