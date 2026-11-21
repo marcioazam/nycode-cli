@@ -69,6 +69,7 @@ beforeAll(() => {
 	const api = {
 		on: (name: string, handler: Handler) => handlers.set(name, [...(handlers.get(name) ?? []), handler]),
 		events: { on: () => () => {} },
+		getSettings: () => ({}),
 	};
 	statusLine(api as unknown as ExtensionAPI); // the fake carries only what the extension calls
 });

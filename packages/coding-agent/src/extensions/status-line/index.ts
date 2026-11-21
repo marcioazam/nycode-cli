@@ -517,7 +517,8 @@ export default function statusLine(nycode: ExtensionAPI) {
 		const files = hookFiles(ctx.cwd, os.homedir(), trusted);
 		// Claude's disableAllHooks also turns off the custom statusLine command; the
 		// built-in segment still renders as the fallback.
-		config = activeStatusLine(files);
+		const own: unknown = nycode.getSettings().statusLine;
+		config = activeStatusLine(files, undefined, own);
 		// Re-armed rather than armed once: a refreshInterval added or changed mid-session
 		// had no effect until the next session, though Claude applies a settings change as
 		// soon as the file is saved.
@@ -538,7 +539,7 @@ export default function statusLine(nycode: ExtensionAPI) {
 		disposeSettingsWatch = watchSettingsFiles(files, () => {
 			const previousCommand = config?.command;
 			const liveFiles = hookFiles(watchCwd, os.homedir(), trusted && stillApproved());
-			config = activeStatusLine(liveFiles);
+			config = activeStatusLine(liveFiles, undefined, own);
 			armRefresh();
 			// With the setting gone nothing runs again, so the last script output would stay.
 			// Only a removal resets the segment: with no statusLine before either, the built-in
