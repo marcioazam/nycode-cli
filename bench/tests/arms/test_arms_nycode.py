@@ -194,7 +194,7 @@ def test_ny_pi_arm_needs_a_tree_with_bin_pi(tmp_path: Path) -> None:
     for extra in ({}, {"BENCH_NYPI_SRC": str(tmp_path / "bare")}):
         p = subprocess.run(
             ["bash", str(BENCH / "arms/ny-pi")],
-            env={"PATH": "/usr/bin:/bin", "BENCH_STAGE": str(tmp_path / "stage"), "BENCH_CC_CREDENTIALS": "/dev/null", **extra},
+            env={"PATH": "/usr/bin:/bin", "BENCH_STAGE": str(tmp_path / "stage"), "BENCH_REAL_HOME": str(tmp_path), "BENCH_CC_CREDENTIALS": "/dev/null", **extra},
             capture_output=True, text=True, check=False,
         )  # fmt: skip
         assert p.returncode == 2 and "BENCH_NYPI_SRC" in p.stderr
@@ -231,3 +231,21 @@ def test_ny_pi_arm_builds_its_stage_from_bench_nypi_src(tmp_path: Path) -> None:
         src / "install.sh"
     )
     assert (tmp_path / "stage/.ready").exists()
+
+
+def test_ny_pi_arm_runs_a_built_stage_without_the_tree(tmp_path: Path) -> None:
+    """BENCH_NYPI_SRC is needed to build the stage only; a stage marked .ready runs with the default tree."""
+    stage = tmp_path / "stage"
+    (stage / ".local/bin").mkdir(parents=True)
+    script(stage / ".local/bin/pi", 'echo "ran:$*"')
+    (stage / ".ready").touch()
+    creds = tmp_path / "cred.json"
+    creds.write_text(
+        '{"claudeAiOauth":{"accessToken":"oauth-fake","expiresAt":99999999999999}}'
+    )
+    p = subprocess.run(
+        ["bash", str(BENCH / "arms/ny-pi"), "-p", "x"],
+        env={"PATH": "/usr/bin:/bin", "BENCH_STAGE": str(stage), "BENCH_REAL_HOME": str(tmp_path), "BENCH_CC_CREDENTIALS": str(creds)},
+        capture_output=True, text=True, check=False,
+    )  # fmt: skip
+    assert p.returncode == 0 and p.stdout.strip() == "ran:-p x", p.stderr
