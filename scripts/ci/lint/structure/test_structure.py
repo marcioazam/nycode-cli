@@ -1,4 +1,4 @@
-"""Testes do verificador estrutural do harness pi (em processo, para o tracer medir)."""
+"""Testes do verificador estrutural do nycode (em processo, para o tracer medir)."""
 import contextlib
 import importlib.util
 import io
@@ -12,7 +12,7 @@ import unittest
 from unittest import mock
 
 SCRIPT = Path(__file__).with_name('structure.py')
-_spec = importlib.util.spec_from_file_location('pi_structure', SCRIPT)
+_spec = importlib.util.spec_from_file_location('nycode_structure', SCRIPT)
 structure = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(structure)
 

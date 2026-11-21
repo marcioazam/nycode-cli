@@ -1,4 +1,4 @@
-"""Bounded first-party source inventory for the pi harness; never follows symlinks. pi-owned copy (2026-11-12) of ~/.codex/bin/harness_checks/structure.py; evolves independently of Codex."""
+"""Bounded first-party source inventory for nycode; never follows symlinks."""
 import argparse
 from collections import Counter
 import hashlib
@@ -17,20 +17,10 @@ ARTIFACT_DIRS = {'.git', 'node_modules', '__pycache__', '.pytest_cache', '.mypy_
 MAX_FILES = 100000
 # Third-party files kept byte-identical to upstream, keyed by (root name, relative path); each is
 # excluded only while its git blob hash equals the pinned upstream blob. The pins live here, never
-# in the scanned tree, so a scanned file cannot exempt itself. Record:
-# ~/.pi/agent/claude-home/docs/pi-agent-fleet-2026-11-12.md.
+# in the scanned tree, so a scanned file cannot exempt itself.
 VENDORED = {
     # pbakaus/impeccable@e103efe779e2dd01274dabae83531fef00bf2563:.agents/skills/impeccable/scripts/live-browser.js
     ('impeccable', 'scripts/live-browser.js'): '2b149cbd90cfd4d2392cec740ba8b75e22981ff5',
-    # npm pi-code@1.7.0 (shasum 8ba1f814773da6897f6708c62c7c517cee2baf4e):extensions/subagent/<file>, files the
-    # local pi patches never touch (~/.pi/agent/claude-home/docs/pi-agent-fleet-2026-11-12.md).
-    ('subagent', 'agents.ts'): '37b976fde0efd11fbdc046ff8e8c8dbe6991cfd7',
-    ('subagent', 'child.ts'): '60247f4015be87b71be2e24f7d63d5aa75446f73',
-    ('subagent', 'params.ts'): 'ef86f4e2eef678b4fe05ab0667b6396a00f3c2d4',
-    ('subagent', 'render-result.ts'): 'f916512e42e9b5cb360a30e11f596476adbdcfc2',
-    ('subagent', 'render.ts'): '2e9f1a023ec320f1e19ecdb9d0461b218850dfd0',
-    ('subagent', 'types.ts'): 'ef3cd062c68089be5d7983f7c25f27d93ea0c468',
-    ('subagent', 'worktree.ts'): 'd24c0a13a757450a7793a11479bea1cee9c7c4b5',
 }
 
 
@@ -52,8 +42,8 @@ def generated_outputs(root):
         if not (candidate / 'assets/generated-examples.json').exists():
             continue
         try:
-            # This implementation belongs to the installed harness, never the scanned tree.
-            source = Path(__file__).resolve().parents[2] / 'skills/diagram-design/scripts/compose_examples.py'  # optional: diagram-design skill not shipped
+            # This implementation belongs to the nycode checkout, never the scanned tree.
+            source = Path(__file__).resolve().parents[4] / 'packages/coding-agent/resources/skills/diagram-design/scripts/compose_examples.py'  # optional: diagram-design skill not shipped
             if any(path.is_symlink() for path in (source, *source.parents)):
                 raise ValueError('untrusted verifier alias')
             spec = importlib.util.spec_from_file_location('harness_diagram_recipe', source)
@@ -145,7 +135,7 @@ def scan(root: Path):
 
 
 def main(argv=None):
-    """Run a project inventory without importing harness configuration or checks."""
+    """Run a project inventory without importing nycode configuration or checks."""
     parser = argparse.ArgumentParser(description='Check 800-line and 7-code-file limits.')
     parser.add_argument('--project-root', required=True, type=Path,
                         help='Explicit project directory; home and filesystem roots are rejected.')
