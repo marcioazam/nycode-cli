@@ -135,6 +135,7 @@ chegam por fase e o `core_scope.py` é convertido em F3.
 | extension | headless-lean | core | Custo sem interface |
 | extension | no-context-files-covers-claude-md | core | Contexto sem duplicata |
 | extension | no-web-search | core | Desliga busca que falha |
+| extension | notify | ui | Aviso de fim de turno |
 | extension | pi-docs | core | Prompt menor |
 | extension | plan-gate | core | Plano aprovado vai ao fim |
 | extension | prefix-cache-1h | core | Cache do prefixo |
