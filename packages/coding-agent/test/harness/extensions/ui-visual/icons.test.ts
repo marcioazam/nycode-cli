@@ -32,8 +32,9 @@ test("nerdFont: kitty ou nerdFont=true ligam; resto desliga", () => {
 	assert.equal(nerdFont({ KITTY_WINDOW_ID: "3" }, AUTO), true);
 	assert.equal(nerdFont({}, NERD), true);
 	assert.equal(nerdFont({}, OFF), false);
-	// nerdFont explícito vale também no kitty
-	assert.equal(nerdFont({ TERM: "xterm-kitty" }, OFF), false);
+	// paridade com o ny-pi: o valor explícito "desligado" é ignorado, o kitty mantém a Nerd Font
+	assert.equal(nerdFont({ TERM: "xterm-kitty" }, OFF), true);
+	assert.equal(nerdFont({ KITTY_WINDOW_ID: "3" }, OFF), true);
 });
 
 test("nerdFont: asciiIcons e NO_COLOR vencem o kitty e o nerdFont explícito", () => {

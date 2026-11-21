@@ -61,11 +61,10 @@ export const setIconPrefs = (next: IconPrefs): void => {
 	prefs = next;
 };
 
-/** asciiIcons e NO_COLOR forçam o fallback; nerdFont explícito vale; "auto" só liga no kitty (sem sondar fontes). */
+/** asciiIcons e NO_COLOR forçam o fallback; nerdFont=true liga; senão só o kitty (sem sondar fontes), como no ny-pi. */
 export const nerdFont = (env: Env = process.env, p: IconPrefs = prefs): boolean => {
 	if (p.asciiIcons || set(env.NO_COLOR)) return false;
-	if (p.nerdFont !== "auto") return p.nerdFont;
-	return env.TERM === "xterm-kitty" || set(env.KITTY_WINDOW_ID);
+	return p.nerdFont === true || env.TERM === "xterm-kitty" || set(env.KITTY_WINDOW_ID);
 };
 
 export const icon = (name: IconName, env: Env = process.env, p: IconPrefs = prefs): string =>
