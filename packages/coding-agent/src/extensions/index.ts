@@ -5,6 +5,7 @@ import commandsExtension from "./commands/index.ts";
 import contextImportsExtension from "./context-imports/index.ts";
 import contextUsageExtension from "./context-usage/index.ts";
 import envSettingsExtension from "./env-settings/index.ts";
+import gitCheckpointExtension from "./git-checkpoint/index.ts";
 import hooksExtension from "./hooks/index.ts";
 import initExtension from "./init/index.ts";
 import llamaExtension from "./llama/index.ts";
@@ -33,6 +34,7 @@ export const builtInExtensions: InlineExtension[] = [
 	{ name: "context-imports", factory: contextImportsExtension, builtin: true },
 	{ name: "context-usage", factory: contextUsageExtension, builtin: true },
 	{ name: "env-settings", factory: envSettingsExtension, builtin: true },
+	{ name: "git-checkpoint", factory: gitCheckpointExtension, builtin: true },
 	{ name: "hooks", factory: hooksExtension, builtin: true },
 	{ name: "init", factory: initExtension, builtin: true },
 	{ name: "memory", factory: memoryExtension, builtin: true },
