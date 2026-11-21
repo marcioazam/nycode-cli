@@ -8,14 +8,20 @@ import * as typed from "../../../../src/extensions/ui-visual/tools.ts";
 const mod: any = typed;
 const visibleWidth = (s: string) => [...s].length; // sem largura dupla nos casos testados
 
-const theme = { fg: (c: string, t: string) => `<${c}>${t}</c>`, bold: (t: string) => `\u0001${t}\u0002` };
+// Color names the test theme has wrapped; stripping removes exactly those literal tags (no regex over markup).
+const usedColors = new Set<string>();
+const theme = {
+	fg: (c: string, t: string) => {
+		usedColors.add(c);
+		return `<${c}>${t}</c>`;
+	},
+	bold: (t: string) => `\u0001${t}\u0002`,
+};
 // truncateToWidth fecha com \x1b[0m; não ocupa coluna, então sai antes da medida.
-// Tira as tags do tema de teste até estabilizar (uma passada só deixaria tags aninhadas como `<<b>b>`).
 const stripTags = (s: string): string => {
-	let prev = s;
-	for (let next = prev.replace(/<\/?[a-zA-Z]*>/g, ""); next !== prev; next = prev.replace(/<\/?[a-zA-Z]*>/g, ""))
-		prev = next;
-	return prev;
+	let out = s.split("</c>").join("");
+	for (const c of usedColors) out = out.split(`<${c}>`).join("");
+	return out;
 };
 const plain = (s: string) =>
 	stripTags(s)
