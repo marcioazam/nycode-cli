@@ -14,9 +14,13 @@ export interface CompactThresholdContext {
 export interface CompactThresholdInput {
 	aborted: boolean;
 	isCompacting: boolean;
-	tokens: number | null | undefined;
+	/** Context window of the model in use; undefined when there is no model. */
+	contextWindow: number | undefined;
+	/** Lazy: the session projects its messages on each call. */
+	getTokens: () => number | null | undefined;
 	limit: number;
-	ctx: CompactThresholdContext;
+	/** Lazy: only built when the rule compacts or notifies. */
+	getContext: () => CompactThresholdContext;
 	compact: () => Promise<unknown>;
 }
 
@@ -44,9 +48,13 @@ export function reportCompactError(
 
 /** Compacts and waits when the settled session holds `limit` tokens or more. Never throws. */
 export async function compactWhenOverLimit(input: CompactThresholdInput): Promise<void> {
-	const { tokens, limit, ctx } = input;
+	const { limit, contextWindow } = input;
 	if (input.aborted || input.isCompacting) return;
+	// A window below the limit never reaches it (usage is unknown without a model or window); native overflow compaction covers it.
+	if (contextWindow === undefined || contextWindow <= 0 || contextWindow < limit) return;
+	const tokens = input.getTokens();
 	if (tokens == null || tokens < limit) return;
+	const ctx = input.getContext();
 	if (ctx.hasUI) ctx.ui.notify(`Contexto em ${Math.round(tokens / 1000)}k ≥ ${limit / 1000}k: compactando`, "info");
 	try {
 		await input.compact();

@@ -1147,9 +1147,10 @@ export class AgentSession {
 		await compactWhenOverLimit({
 			aborted,
 			isCompacting: this.isCompacting,
-			tokens: this.getContextUsage()?.tokens,
+			contextWindow: this._limitsModel()?.contextWindow,
+			getTokens: () => this.getContextUsage()?.tokens,
 			limit,
-			ctx: this._extensionRunner.createContext(),
+			getContext: () => this._extensionRunner.createContext(),
 			compact: () => this.compact(),
 		});
 	}

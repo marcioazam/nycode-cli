@@ -68,9 +68,10 @@ describe("compactWhenOverLimit", () => {
 		const input = {
 			aborted: false,
 			isCompacting: false,
-			tokens: 260_000,
+			contextWindow: 1_000_000 as number | undefined,
+			getTokens: vi.fn((): number | null | undefined => 260_000),
 			limit: 250_000,
-			ctx: { hasUI: true, ui: { notify: (m: string) => notes.push(m) } },
+			getContext: vi.fn(() => ({ hasUI: true, ui: { notify: (m: string) => notes.push(m) } })),
 			compact,
 			...over,
 		};
@@ -87,12 +88,30 @@ describe("compactWhenOverLimit", () => {
 	it.each([
 		["aborted run", { aborted: true }],
 		["compaction already running", { isCompacting: true }],
-		["unknown usage", { tokens: undefined }],
-		["below the limit", { tokens: 249_999 }],
+		["unknown usage", { getTokens: () => undefined }],
+		["below the limit", { getTokens: () => 249_999 }],
 	])("does nothing on %s", async (_name, over) => {
 		const { compact, input } = setup(over);
 		await compactWhenOverLimit(input);
 		expect(compact).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		["a window below the limit", 200_000],
+		["no model", undefined],
+		["a zero window", 0],
+	])("exits early on %s: no usage read, no context built", async (_name, contextWindow) => {
+		const { compact, input } = setup({ contextWindow });
+		await compactWhenOverLimit(input);
+		expect(input.getTokens).not.toHaveBeenCalled();
+		expect(input.getContext).not.toHaveBeenCalled();
+		expect(compact).not.toHaveBeenCalled();
+	});
+
+	it("builds the context only once it compacts", async () => {
+		const { input } = setup({ getTokens: () => 100 });
+		await compactWhenOverLimit(input);
+		expect(input.getContext).not.toHaveBeenCalled();
 	});
 
 	it("reports a failed compaction instead of throwing", async () => {
