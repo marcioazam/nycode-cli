@@ -1,6 +1,7 @@
 ---
 name: codegraph
 description: "Use the codegraph MCP index for symbols, callers, flows and blast radius. Use for structural code questions in an indexed repo; read it before the first codegraph_* call (status check for negative claims)."
+disable-model-invocation: true
 ---
 
 # Codegraph

@@ -17,7 +17,6 @@ writeFileSync(
 );
 process.env.HOME = home;
 process.env.NYCODE_CODING_AGENT_DIR = agentDir;
-delete process.env.CLAUDE_CONFIG_DIR;
 delete process.env.NYCODE_SUBAGENT;
 delete process.env.NYCODE_SUBAGENT_DEPTH;
 delete process.env.NYCODE_TEAMS;

@@ -238,7 +238,9 @@ F0 → F1 → F2 → F3 → F4 → F5 ─┬→ F6 ─┬→ F8 ─┐
 1. `nycode --version` e `nycode --help` funcionam em `HOME` vazio, sem `~/.pi`, sem wrapper e sem rede além do
    provedor do modelo.
 2. `rg -n "patch -p1|sed -i|CLAUDE_CONFIG_DIR|node_modules/pi-code|\.pi/agent"` no código migrado não devolve nada
-   fora de `import/`, `docs/` e do comando de migração.
+   fora de `import/`, `docs/`, do comando de migração e das exceções declaradas em
+   `scripts/ci/lint/criterio2/criterio2-allow.txt`, cada uma com classe e motivo; o passo `criterio2` do ci-static
+   falha em linha nova ([D-41](11-decisoes-e-pendencias.md)).
 3. Todos os testes do ny-pi têm um equivalente verde no nycode, ou uma linha em
    [03](03-mapa-de-migracao.md) que justifica a remoção.
 4. Gate do benchmark: braço `nycode` não inferior à referência do ny-pi em acerto, custo por tarefa não pior além da

@@ -29,9 +29,14 @@ def test_harbor_agent_flags_for_nycode() -> None:
 
 
 def test_nycode_harbor_dir_is_bench_harbor_and_holds_the_agent() -> None:
-    assert rb.NYCODE_HARBOR_DIR == BENCH / "harbor"
-    assert (rb.NYCODE_HARBOR_DIR / "nycode_agent.py").is_file()
-    assert (rb.NYCODE_HARBOR_DIR / "bundle.sh").stat().st_mode & 0o111
+    assert rb.HARBOR_DIR == BENCH / "harbor"
+    assert (rb.HARBOR_DIR / "nycode_agent.py").is_file()
+    assert (rb.HARBOR_DIR / "bundle.sh").stat().st_mode & 0o111
+
+
+def test_harbor_dir_holds_the_ny_pi_agents_and_their_bundle_script() -> None:
+    for name in ("pi_harness_agent.py", "pi_vanilla_api_agent.py", "pi_bundle.sh"):
+        assert (rb.HARBOR_DIR / name).is_file()
 
 
 def test_nycode_step_bundles_the_stage_and_runs_the_nycode_agent(
@@ -50,7 +55,7 @@ def test_nycode_step_bundles_the_stage_and_runs_the_nycode_agent(
     )
     monkeypatch.setenv("BENCH_HARBOR", str(harbor))
     monkeypatch.setenv("BENCH_STAGE", str(stage))
-    monkeypatch.setattr(rb, "NYCODE_HARBOR_DIR", hd)
+    monkeypatch.setattr(rb, "HARBOR_DIR", hd)
     monkeypatch.setattr(rb, "oauth_token", lambda: "tok")
     steps = rb.build_plan("pr", rb.load_toml(BENCH / "suites.toml"), ["s2"], k=1)
     out = tmp_path / "o"
