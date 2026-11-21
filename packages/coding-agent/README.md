@@ -25,8 +25,6 @@ npm install -g --ignore-scripts @nycode/coding-agent
 
 Nycode requires Node.js 22.19 or newer. The macOS, Linux, and Windows installers can install it if needed. Nycode does not require dependency lifecycle scripts for a normal npm installation.
 
-On macOS and Linux, Nix users can install the latest release with `nix profile add github:marcioazam/nycode/stable`. See the [quickstart](docs/quickstart.md#1-install-nycode) for updating and pinning releases.
-
 Start Nycode in the directory where you want it to work:
 
 ```bash
