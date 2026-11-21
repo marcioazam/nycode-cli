@@ -34,7 +34,10 @@ import { getEnvApiKey } from "../src/env-api-keys.ts";
 import type { Api, AssistantMessage, Context, Message, Model, Tool, ToolResultMessage } from "../src/types.ts";
 import { resolveApiKey } from "./oauth.ts";
 
-const radiusKey = process.env.RADIUS_API_KEY ?? (await resolveApiKey("radius"));
+// Radius has no bundled models or default gateway: the test runs only with NYCODE_RADIUS_GATEWAY set.
+const radiusKey = process.env.NYCODE_RADIUS_GATEWAY
+	? (process.env.RADIUS_API_KEY ?? (await resolveApiKey("radius")))
+	: undefined;
 const anthropicKey = getEnvApiKey("anthropic") ?? (await resolveApiKey("anthropic"));
 
 const tool: Tool = {
@@ -118,7 +121,7 @@ describe("replayed Claude thinking stays in context", () => {
 	});
 
 	it.skipIf(!radiusKey)("radius keeps it", { timeout: 180000 }, async () => {
-		const model = getModel("radius", "claude-opus-5-5");
+		const model = getModel("radius" as "anthropic", "claude-opus-5-5");
 		const { reply, result } = await thinkingTurn(model, radiusKey!);
 		// Cause: without this level, the replayed block has no effort marker and Anthropic drops it.
 		expect.soft(reply.providerThinkingLevel, "radius done event omits providerThinkingLevel").toBe("high");
@@ -128,7 +131,7 @@ describe("replayed Claude thinking stays in context", () => {
 	});
 
 	it.skipIf(!radiusKey)("radius keeps it when the client supplies the level", { timeout: 180000 }, async () => {
-		const model = getModel("radius", "claude-opus-5-5");
+		const model = getModel("radius" as "anthropic", "claude-opus-5-5");
 		const { reply, result } = await thinkingTurn(model, radiusKey!);
 		const added = await replayedThinkingTokens(
 			model,

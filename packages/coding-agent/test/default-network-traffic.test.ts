@@ -1,5 +1,5 @@
 import { InMemoryCredentialStore, InMemoryModelsStore } from "@nycode/ai";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, type MockInstance, vi } from "vitest";
 import { ModelRuntime } from "../src/core/model-runtime.ts";
 import { allowNetwork } from "./test-network-env.ts";
 
@@ -7,7 +7,7 @@ import { allowNetwork } from "./test-network-env.ts";
 // installer or viewer server is named by default (decision D-30).
 const PROVIDER_HOSTS = ["openrouter.ai"];
 
-function requestedHosts(fetchSpy: ReturnType<typeof vi.spyOn<typeof globalThis, "fetch">>): string[] {
+function requestedHosts(fetchSpy: MockInstance<typeof fetch>): string[] {
 	return fetchSpy.mock.calls.map(([input]) => new URL(input instanceof Request ? input.url : String(input)).host);
 }
 
