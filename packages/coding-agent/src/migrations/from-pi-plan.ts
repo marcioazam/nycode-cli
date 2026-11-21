@@ -1,7 +1,7 @@
 // Builds the plan of `nycode migrate from-pi`: reads the pi agent directory (read only) and decides each write.
 import { existsSync, lstatSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { convertMcp, convertSettings, type LocalEnv, parseLocalEnv } from "./from-pi-convert.ts";
+import { convertMcp, convertSettings, type LocalEnv, mergeSettings, parseLocalEnv } from "./from-pi-convert.ts";
 
 export type FileAction = "create" | "overwrite" | "unchanged" | "keep";
 
@@ -26,7 +26,7 @@ export interface Plan {
 	errors: string[];
 }
 
-const COPIED_FILES = ["models.json", "lsp.json", "keybindings.json", "trust.json"];
+const COPIED_FILES = ["models.json", "lsp.json", "keybindings.json"];
 const AUTH_FILE = /^auth.*\.json$/;
 const WARN_LIMIT = 20;
 
@@ -62,7 +62,11 @@ function actionFor(destPath: string, data: Buffer | string | undefined, from: st
 
 function readJson(path: string, errors: string[]): Record<string, unknown> | undefined {
 	try {
-		return JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
+		const parsed: unknown = JSON.parse(readFileSync(path, "utf8"));
+		if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed))
+			return parsed as Record<string, unknown>;
+		errors.push(`${path}: not a JSON object`);
+		return undefined;
 	} catch (error) {
 		errors.push(`${path}: invalid JSON (${error instanceof Error ? error.message : String(error)})`);
 		return undefined;
@@ -77,6 +81,34 @@ function listTree(root: string, rel: string): string[] {
 		else if (entry.isFile()) found.push(entryRel);
 	}
 	return found;
+}
+
+/** trust.json is merged into an existing destination file, whose entries prevail; otherwise copied as is. */
+function addTrust(
+	source: string,
+	dest: string,
+	add: (file: Omit<PlanFile, "action">, data?: string) => void,
+	errors: string[],
+	notes: string[],
+): void {
+	const from = join(source, "trust.json");
+	if (!isRegularFile(from)) return;
+	const destPath = join(dest, "trust.json");
+	if (!isRegularFile(destPath)) {
+		add({ rel: "trust.json", label: "copied", from });
+		return;
+	}
+	const incoming = readJson(from, errors);
+	const existing = readJson(destPath, errors);
+	if (!incoming || !existing) return;
+	const merged = { ...incoming, ...existing };
+	// Nothing new to add: keep the destination bytes so the file reports as unchanged.
+	const unchanged = Object.keys(merged).length === Object.keys(existing).length;
+	add(
+		{ rel: "trust.json", label: "merged, destination entries prevail" },
+		unchanged ? readFileSync(destPath, "utf8") : `${JSON.stringify(merged, null, 2)}\n`,
+	);
+	notes.push("trust.json: merged with the destination file; destination entries prevail");
 }
 
 /** Collects what would be written into `dest` from the pi agent directory `source`. */
@@ -107,9 +139,21 @@ export function buildPlan(source: string, dest: string): Plan {
 	const piSettings = existsSync(settingsPath) ? readJson(settingsPath, plan.errors) : {};
 	if (piSettings && (existsSync(settingsPath) || Object.keys(env.values).length > 0)) {
 		const result = convertSettings(piSettings, env);
+		let settings = result.settings;
+		const destSettings = join(dest, "settings.json");
+		const existing = isRegularFile(destSettings) ? readJson(destSettings, plan.errors) : undefined;
+		if (existing) {
+			const merged = mergeSettings(existing, settings);
+			settings = merged.settings;
+			if (merged.kept.length > 0) {
+				plan.notes.push(
+					`settings.json: kept destination value of security key(s), origin value not applied: ${merged.kept.join(", ")}`,
+				);
+			}
+		}
 		add(
 			{ rel: "settings.json", label: `converted, ${result.converted.length} key(s) from local.env`, mode: 0o600 },
-			`${JSON.stringify(result.settings, null, 2)}\n`,
+			`${JSON.stringify(settings, null, 2)}\n`,
 		);
 		for (const line of result.converted) plan.notes.push(`local.env: ${line}`);
 		for (const warning of result.warnings) plan.notes.push(`local.env: ${warning}`);
@@ -151,6 +195,8 @@ export function buildPlan(source: string, dest: string): Plan {
 	for (const name of COPIED_FILES) {
 		if (isRegularFile(join(source, name))) add({ rel: name, label: "copied", from: join(source, name) });
 	}
+
+	addTrust(source, dest, add, plan.errors, plan.notes);
 
 	const sessionsRoot = join(source, "sessions");
 	if (existsSync(sessionsRoot) && statSync(sessionsRoot).isDirectory()) {

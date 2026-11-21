@@ -87,6 +87,27 @@ export interface SettingsConversion {
 	packageEnvKey: string | undefined;
 }
 
+/** Keys that grant trust or run code; a value already in the destination is never replaced by the origin's. */
+const SECURITY_KEYS = ["defaultProjectTrust", "permissions", "packages", "hooks", "shellCommandPrefix"];
+
+export interface SettingsMerge {
+	settings: Json;
+	/** Security keys where the origin carried a different value that was dropped in favour of the destination's. */
+	kept: string[];
+}
+
+/** Merges the converted origin settings into an existing destination file; destination security keys prevail. */
+export function mergeSettings(existing: Json, incoming: Json): SettingsMerge {
+	const settings: Json = { ...existing, ...incoming };
+	const kept: string[] = [];
+	for (const key of SECURITY_KEYS) {
+		if (!(key in existing)) continue;
+		if (key in incoming && JSON.stringify(incoming[key]) !== JSON.stringify(existing[key])) kept.push(key);
+		settings[key] = existing[key];
+	}
+	return { settings, kept };
+}
+
 const EMBEDDED_PACKAGE = /^(npm:pi-code(@.*)?|\.\/vendor\/pi-lsp\/?)$/;
 const INSTALL_PACKAGE = /^\.\/vendor\/ponytail\/?$/;
 

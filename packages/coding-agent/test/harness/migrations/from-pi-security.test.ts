@@ -1,5 +1,5 @@
 // Security of the writing side of `migrate from-pi`: file modes from creation, merges that never raise trust.
-import { chmodSync, mkdirSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { makeHome } from "./from-pi-fixture.ts";
@@ -35,5 +35,75 @@ describe("migrate from-pi file modes", () => {
 		expect(mode(root)).toBe(0o700);
 		expect(mode(join(root, stamp))).toBe(0o700);
 		for (const name of ["settings.json", "auth.json"]) expect(mode(join(root, stamp, name))).toBe(0o600);
+	});
+});
+
+describe("migrate from-pi merges into an existing destination", () => {
+	it("merges trust.json with the destination entries prevailing", async () => {
+		const h = makeHome();
+		mkdirSync(h.agentDir, { recursive: true });
+		writeFileSync(join(h.agentDir, "trust.json"), JSON.stringify({ "/work/proj": false, "/mine": true }));
+		await h.run(["--apply"]);
+		expect(JSON.parse(readFileSync(join(h.agentDir, "trust.json"), "utf8"))).toEqual({
+			"/work/proj": false,
+			"/mine": true,
+		});
+	});
+
+	it("adds origin trust entries the destination does not have", async () => {
+		const h = makeHome();
+		mkdirSync(h.agentDir, { recursive: true });
+		writeFileSync(join(h.agentDir, "trust.json"), JSON.stringify({ "/mine": true }));
+		await h.run(["--apply"]);
+		expect(JSON.parse(readFileSync(join(h.agentDir, "trust.json"), "utf8"))).toEqual({
+			"/work/proj": true,
+			"/mine": true,
+		});
+	});
+
+	it("keeps the security keys already present in the destination settings.json and says so", async () => {
+		const h = makeHome();
+		writeFileSync(
+			join(h.source, "settings.json"),
+			JSON.stringify({
+				defaultProjectTrust: "always",
+				packages: ["npm:evil@1.0.0"],
+				hooks: { PreToolUse: ["evil"] },
+				shellCommandPrefix: "evil;",
+				theme: "tokyo-night",
+			}),
+		);
+		mkdirSync(h.agentDir, { recursive: true });
+		writeFileSync(
+			join(h.agentDir, "settings.json"),
+			JSON.stringify({ defaultProjectTrust: "never", permissions: { bypass: false }, theme: "old", mine: 1 }),
+		);
+		await h.run(["--apply"]);
+		const s = JSON.parse(readFileSync(join(h.agentDir, "settings.json"), "utf8"));
+		expect(s.defaultProjectTrust).toBe("never");
+		expect(s.permissions).toEqual({ bypass: false });
+		expect(s.mine).toBe(1);
+		expect(s.theme).toBe("tokyo-night");
+		// keys absent from the destination come from the origin
+		expect(s.packages).toEqual(["npm:evil@1.0.0"]);
+		expect(h.out.join("\n")).toMatch(/kept destination value.*defaultProjectTrust.*permissions/s);
+	});
+
+	it("does not let local.env raise permissions.bypass over an existing destination permissions", async () => {
+		const h = makeHome();
+		mkdirSync(h.agentDir, { recursive: true });
+		writeFileSync(join(h.agentDir, "settings.json"), JSON.stringify({ permissions: { bypass: false } }));
+		await h.run(["--apply"]);
+		expect(JSON.parse(readFileSync(join(h.agentDir, "settings.json"), "utf8")).permissions).toEqual({
+			bypass: false,
+		});
+	});
+
+	it("refuses an invalid destination trust.json without echoing its content", async () => {
+		const h = makeHome();
+		mkdirSync(h.agentDir, { recursive: true });
+		writeFileSync(join(h.agentDir, "trust.json"), '{"secret-path-zzz": oops}');
+		expect(await h.run(["--apply"])).toBe(1);
+		expect(h.err.join("\n")).not.toContain("secret-path-zzz");
 	});
 });
