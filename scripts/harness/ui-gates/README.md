@@ -17,6 +17,9 @@ O e2e usa o modelo de `NYCODE_E2E_MODEL` (padrão `anthropic/claude-haiku-5-5`, 
 (umask 077, apagado ao sair, conteúdo nunca impresso). Sem `auth.json`, os passos 4 a 6 (modelo) imprimem SKIP e o
 script sai 1: pulo não é verde.
 
+Não aponte `NYCODE_E2E_AUTH_DIR` para o diretório do pi: o `settings.json` dele lista pacotes do pi (`pi-code`), que o
+nycode tenta carregar e a sessão cai antes de abrir. Use um diretório só com o `auth.json`.
+
 ## Mapa: check antigo → novo
 
 `pi-ui-final-gate.sh`
