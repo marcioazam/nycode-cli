@@ -41,9 +41,13 @@ describe("migrate from-pi conversion", () => {
 		const raw = readFileSync(join(h.agentDir, "mcp.json"), "utf8");
 		expect(raw).not.toContain(SECRET);
 		const mcp = JSON.parse(raw).mcpServers;
-		expect(mcp.search.env).toEqual({ SEARCH_API_KEY: ph("SEARCH_API_KEY"), KEEP: ph("KEEP"), MODE: ph("MODE") });
+		expect(mcp.search.env).toEqual({
+			SEARCH_API_KEY: ph("SEARCH_SEARCH_API_KEY"),
+			KEEP: ph("KEEP"),
+			MODE: ph("SEARCH_MODE"),
+		});
 		expect(mcp.exa.headers["x-api-key"]).toMatch(/^\$\{[A-Z0-9_]+\}$/);
-		expect(h.out.join("\n")).toContain("SEARCH_API_KEY");
+		expect(h.out.join("\n")).toContain("SEARCH_SEARCH_API_KEY");
 	});
 
 	it("copies models, lsp, keybindings, trust and sessions", async () => {
@@ -83,7 +87,7 @@ describe("migrate from-pi conversion", () => {
 		expect(api.headers["x-custom"]).toBe(ph("API_X_CUSTOM"));
 		expect(api.headers["x-ok"]).toBe(`Bearer ${ph("TOK")}`);
 		expect(api.headers["x-mixed"]).toBe(ph("API_X_MIXED"));
-		expect(api.env).toEqual({ PLAIN: ph("PLAIN"), OK: ph("OK") });
+		expect(api.env).toEqual({ PLAIN: ph("API_PLAIN"), OK: ph("OK") });
 	});
 
 	it("lists credential-like args and urls as not migrated, by server and field, never by value", async () => {
@@ -120,5 +124,32 @@ describe("migrate from-pi conversion", () => {
 		const h = makeHome();
 		await h.run([]);
 		expect(h.out.join("\n")).toMatch(/mcp\.json\s+\(.*env and headers values replaced.*args and url copied as is/);
+	});
+
+	it("gives env placeholders of different servers distinct names, listed once each", async () => {
+		const h = makeHome();
+		writeFileSync(
+			join(h.source, "mcp.json"),
+			JSON.stringify({
+				mcpServers: {
+					one: { command: "a", env: { API_KEY: "v1" } },
+					two: { command: "b", env: { API_KEY: "v2" } },
+					"a-b": { command: "c", env: { c: "v3" } },
+					a: { command: "d", env: { b_c: "v4" } },
+				},
+			}),
+		);
+		await h.run(["--apply"]);
+		const servers = JSON.parse(readFileSync(join(h.agentDir, "mcp.json"), "utf8")).mcpServers;
+		const names = Object.values(servers).map(
+			(server) => Object.values((server as { env: Record<string, string> }).env)[0],
+		);
+		expect(names[0]).toBe(ph("ONE_API_KEY"));
+		expect(names[1]).toBe(ph("TWO_API_KEY"));
+		expect(new Set(names).size).toBe(4);
+		const note = h.out.find((line) => line.includes("export these variables")) ?? "";
+		const listed = note.split(": ").pop()?.split(", ") ?? [];
+		expect(listed).toHaveLength(4);
+		expect(new Set(listed).size).toBe(4);
 	});
 });

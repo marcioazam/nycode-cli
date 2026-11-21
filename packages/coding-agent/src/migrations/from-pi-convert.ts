@@ -159,6 +159,13 @@ function placeholderName(...parts: string[]): string {
 		.toUpperCase();
 }
 
+/** Different servers or keys can normalise to the same name; a numeric suffix keeps each placeholder distinct. */
+function uniqueName(base: string, used: string[]): string {
+	let name = base;
+	for (let n = 2; used.includes(name); n++) name = `${base}_${n}`;
+	return name;
+}
+
 function looksLikeCredential(text: string): boolean {
 	return CREDENTIAL_QUERY.test(text) || CREDENTIAL_USERINFO.test(text);
 }
@@ -192,7 +199,7 @@ export function convertMcp(piMcp: Json): McpConversion {
 			for (const [key, value] of Object.entries(table)) {
 				const scheme = typeof value === "string" ? (SCHEME_PREFIX.exec(value)?.[0] ?? "") : "";
 				if (typeof value === "string" && PLACEHOLDER.test(value.slice(scheme.length))) continue;
-				const name = field === "env" ? placeholderName(key) : placeholderName(serverName, key);
+				const name = uniqueName(placeholderName(serverName, key), placeholders);
 				table[key] = `${scheme}\${${name}}`;
 				placeholders.push(name);
 			}
@@ -202,5 +209,5 @@ export function convertMcp(piMcp: Json): McpConversion {
 			for (const index of credentialArgs(server.args)) unmigrated.push(`${serverName}.args[${index}]`);
 		}
 	}
-	return { mcp, placeholders: [...new Set(placeholders)], unmigrated };
+	return { mcp, placeholders, unmigrated };
 }
