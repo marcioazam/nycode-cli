@@ -155,6 +155,7 @@ chegam por fase e o `core_scope.py` é convertido em F3.
 | extension | settings-flags | core | Flags de settings do Claude |
 | extension | skills-compat | core | Skills no formato do Claude Code |
 | extension | sound-notify | optional | Som ao fim do turno, gosto pessoal |
+| extension | status-line | ui | Linha de status |
 | extension | sticky-prompt | ui | Última mensagem fixa |
 | extension | subagent | core | Subagentes, frota e times |
 | extension | syntax-check | core | Erro de sintaxe após edição |
