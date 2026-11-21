@@ -67,6 +67,7 @@ function compileMatcher(matcher: string): CompiledMatcher {
 		compiled = { tokens: exactTokens(matcher) };
 	} else {
 		try {
+			// nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- a hook matcher is a regex by contract (Claude Code hooks) from the user's settings; project settings load only after approval
 			compiled = { regex: new RegExp(matcher, "i") };
 		} catch (error) {
 			// The fallback matches the literal text, which almost never matches a tool name, so

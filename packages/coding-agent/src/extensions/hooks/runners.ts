@@ -430,6 +430,7 @@ function lookupPath(payload: unknown, dotted: string): unknown {
 	let current: unknown = payload;
 	for (const key of dotted.split(".")) {
 		if (current === null || typeof current !== "object") return undefined;
+		// nosemgrep: javascript.lang.security.audit.prototype-pollution.prototype-pollution-loop.prototype-pollution-loop -- read-only lookup, nothing is assigned
 		current = (current as Record<string, unknown>)[key];
 	}
 	return current;

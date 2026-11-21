@@ -189,6 +189,7 @@ export function httpUrlAllowed(url: string, allowlist: string[] | undefined): bo
 	if (allowlist === undefined) return true;
 	return allowlist.some((pattern) => {
 		const literal = pattern.split("*").map(escapeRegExp);
+		// nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- every literal piece is escaped by escapeRegExp; only `*` becomes `.*`
 		return new RegExp(`^${literal.join(".*")}$`).test(url);
 	});
 }
