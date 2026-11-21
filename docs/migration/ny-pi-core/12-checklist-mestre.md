@@ -56,20 +56,20 @@ Identificador: `C-F<fase>-<n>`. A coluna "prova" diz o que tem de ser observado.
 
 ## F3. CI unificado, gates e benchmark
 
-- [ ] C-F3-01 `scripts/ci/` no destino com caminhos novos; `run-static.sh` e `run-security.sh` passam localmente.
-- [ ] C-F3-02 Lints migrados passam: `core_scope.py`, `skill_lint.py`, `structure_changed.py` (com a lista de base do upstream), `check-refs.py`, `instruction_budget.py`.
-- [ ] C-F3-03 Workflows `ci-static`, `ci-security`, `instruction-budget`, `codeql`, `scorecard` presentes, com actions por SHA e gatilho `merge_group` nos obrigatórios.
-- [ ] C-F3-04 `ci.yml` do fork mantido; `npm-audit.yml` unificado com o `osv-scanner`.
-- [ ] C-F3-05 CodeQL "default setup" desligado; workflow próprio analisa `javascript-typescript`, `python`, `actions` (D-20).
-- [ ] C-F3-06 Job `merge-policy` presente (D-07).
-- [ ] C-F3-07 `bench/` no destino; testes do bench passam; `bench/suites` fora dos lints.
-- [ ] C-F3-08 Tier `smoke` criado (D-27) e modo de paridade (D-28); braço `nycode` definido em `bench/arms.toml`; `bench run --arm nycode --tier smoke` roda.
-- [ ] C-F3-09 Braço temporário `ny-pi@1.6.0` medido (D-25). Prova: `runs.jsonl` e veredito guardados.
-- [ ] C-F3-10 Verificador `bench-pr` apontado para o nycode; classifica mudança não funcional (D-21). Prova: status em um PR de documentação.
-- [ ] C-F3-11 PR de teste com os 10 checks obrigatórios verdes. Prova: `gh pr checks`.
-- [ ] C-F3-12 Ruleset `main` criado e ativo; JSON versionado em `.github/rulesets/main.json` igual ao aplicado. Prova: comparação.
-- [ ] C-F3-13 Proteção clássica removida depois do ruleset. Prova: API devolve 404 "Branch not protected".
-- [ ] C-F3-14 Merge por squash é o único possível fora de `sync/upstream-*` na prática. Prova: tentativa de merge commit comum barrada pelo `merge-policy`.
+- [x] C-F3-01 `scripts/ci/` no destino com caminhos novos; `run-static.sh` e `run-security.sh` passam localmente.
+- [x] C-F3-02 Lints migrados passam: `core_scope.py`, `skill_lint.py`, `structure_changed.py` (com a lista de base do upstream), `check-refs.py`, `instruction_budget.py`.
+- [x] C-F3-03 Workflows `ci-static`, `ci-security`, `instruction-budget`, `codeql`, `scorecard` presentes, com actions por SHA e gatilho `merge_group` nos obrigatórios.
+- [x] C-F3-04 `ci.yml` do fork mantido; `npm-audit.yml` unificado com o `osv-scanner`.
+- [x] C-F3-05 CodeQL "default setup" desligado; workflow próprio analisa `javascript-typescript`, `python`, `actions` (D-20).
+- [x] C-F3-06 Job `merge-policy` presente (D-07).
+- [x] C-F3-07 `bench/` no destino; testes do bench passam; `bench/suites` fora dos lints.
+- [x] C-F3-08 Tier `smoke` criado (D-27) e modo de paridade (D-28); braço `nycode` definido em `bench/arms.toml`; `bench run --arm nycode --tier smoke` roda.
+- [ ] C-F3-09 Braço temporário `ny-pi@1.6.0` medido (D-25). Prova: `runs.jsonl` e veredito guardados. **Adiado por D-29 (P-16).**
+- [ ] C-F3-10 Verificador `bench-pr` apontado para o nycode; classifica mudança não funcional (D-21). Prova: status em um PR de documentação. **Adiado por D-29 (P-16).**
+- [x] C-F3-11 PR de teste com os 10 checks obrigatórios verdes. Prova: `gh pr checks`.
+- [x] C-F3-12 Ruleset `main` criado e ativo; JSON versionado em `.github/rulesets/main.json` igual ao aplicado. Prova: comparação.
+- [x] C-F3-13 Proteção clássica removida depois do ruleset. Prova: API devolve 404 "Branch not protected".
+- [x] C-F3-14 Merge por squash é o único possível fora de `sync/upstream-*` na prática. Prova: tentativa de merge commit comum barrada pelo `merge-policy`.
 
 ## F4. Core nativo
 
