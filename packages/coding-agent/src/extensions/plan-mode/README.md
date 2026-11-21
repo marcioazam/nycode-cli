@@ -23,12 +23,12 @@ Read-only exploration mode for safe code analysis.
 2. Ask the agent to analyze code and create a plan
 3. The agent calls `plan_mode_complete` with the finished plan. If it writes prose instead, a numbered plan under a `Plan:` header is still picked up:
 
-```
-Plan:
-1. First step description
-2. Second step description
-3. Third step description
-```
+   ```text
+   Plan:
+   1. First step description
+   2. Second step description
+   3. Third step description
+   ```
 
 4. Choose "Execute the plan" when prompted
 5. During execution, the agent marks steps complete with `[DONE:n]` tags
@@ -37,11 +37,13 @@ Plan:
 ## How It Works
 
 ### Plan Mode (Read-Only)
+
 - Only read-only tools available
 - Bash commands filtered through allowlist
 - Agent creates a plan without making changes
 
 ### Execution Mode
+
 - Full tool access restored
 - Agent executes steps in order
 - `[DONE:n]` markers track completion
