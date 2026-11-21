@@ -403,8 +403,11 @@ test("piso fica de fora: subagente, interativo, opt-out, arquivo ausente", () =>
 		untouched(run({ NYCODE_CODING_AGENT_DIR: dir }, { hasUI: true, ...AN }));
 		untouched(run({ NYCODE_CODING_AGENT_DIR: dir, NYCODE_HEADLESS_FLOOR: "0" }, { hasUI: false, ...AN }));
 	});
-	withConfig(null, (dir) => untouched(run({ NYCODE_CODING_AGENT_DIR: dir }, { hasUI: false, ...AN })));
-	untouched(run({}, { hasUI: false, ...AN })); // diretório do agente sem o arquivo
+	// sem o arquivo do usuário e sem recursos embarcados (NYCODE_PACKAGE_DIR vazio): nada a trocar
+	withConfig(null, (dir) =>
+		untouched(run({ NYCODE_CODING_AGENT_DIR: dir, NYCODE_PACKAGE_DIR: dir }, { hasUI: false, ...AN })),
+	);
+	withConfig(null, (dir) => untouched(run({ NYCODE_PACKAGE_DIR: dir }, { hasUI: false, ...AN }))); // diretório do agente sem o arquivo
 	withConfig("", (dir) => untouched(run({ NYCODE_CODING_AGENT_DIR: dir }, { hasUI: false, ...AN })));
 });
 

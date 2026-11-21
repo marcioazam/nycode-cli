@@ -22,6 +22,7 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { builtinResourceDir } from "../../core/builtin-resources.ts";
 import type { ExtensionAPI, ExtensionContext } from "../../core/extensions/types.ts";
 import { parseCommandFile } from "../_shared/commands/command-file.ts";
 import { parseClaudeFrontmatter } from "../_shared/commands/frontmatter.ts";
@@ -88,6 +89,9 @@ export function skillDirs(cwd: string, home: string, trusted: boolean): string[]
 	// root; the list goes nearest-first so findClaudeSkill's first match is the
 	// closest definition (pi's loader receives the same order).
 	if (trusted) candidates.push(...ancestorDirs(cwd, path.join(".claude", "skills")));
+	// K6: the embedded skills come last, the lowest precedence of this first-match list.
+	const embedded = builtinResourceDir("skills");
+	if (embedded) candidates.push(embedded);
 	const dirs: string[] = [];
 	for (const dir of candidates) {
 		if (!dirs.includes(dir) && isDirectory(dir)) dirs.push(dir);

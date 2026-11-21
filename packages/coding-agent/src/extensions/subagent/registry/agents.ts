@@ -6,6 +6,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { CONFIG_DIR_NAME, getAgentDir, getBuiltinAgentsDir } from "../../../config.ts";
+import { builtinResourceDir, resolveResourcesMarker } from "../../../core/builtin-resources.ts";
 import { stripFrontmatter } from "../../../utils/frontmatter.ts";
 // The same mapping a command's `allowed-tools` gets: an agent's `tools:` is the same
 // Claude field, and `--tools` is an exact-name allowlist, so a name nycode has no tool for
@@ -414,7 +415,12 @@ function loadAgentsFromDir(dir: string, source: AgentSource, pluginName?: string
 			continue;
 		}
 
-		const agent = parseAgentFile(content, source, filePath, pluginName);
+		const agent = parseAgentFile(
+			source === "builtin" ? resolveResourcesMarker(content) : content,
+			source,
+			filePath,
+			pluginName,
+		);
 		if (agent) agents.push(agent);
 	}
 
@@ -438,7 +444,7 @@ function buildAgentMap(
 
 export type AgentSource = "user" | "project" | "builtin" | "plugin";
 
-/** Bundled default agents (Explore, Plan, general-purpose), lowest precedence. */
+/** Bundled default agents (Explore, Plan, general-purpose), lowest precedence (resources/agents come right after). */
 const BUILTIN_AGENTS_DIR = getBuiltinAgentsDir();
 
 /** Agent directories of every enabled plugin, each with its plugin name (Claude
@@ -459,6 +465,7 @@ export function discoverAgents(cwd: string, scope: AgentScope): AgentDiscoveryRe
 	const userDir = path.join(getAgentDir(), "agents");
 	const claudeUserDir = path.join(claudeConfigDir(os.homedir()), "agents");
 	const projectNycodeDir = findNearestDir(cwd, path.join(CONFIG_DIR_NAME, "agents"));
+	const resourceAgentsDir = builtinResourceDir("agents");
 	// Claude scans every .claude/agents between cwd and the repository root, the
 	// definition closest to cwd winning a name clash; root-first load order makes
 	// the nearer directory's entry overwrite in the map below.
@@ -476,6 +483,8 @@ export function discoverAgents(cwd: string, scope: AgentScope): AgentDiscoveryRe
 			? []
 			: [
 					...loadAgentsFromDir(BUILTIN_AGENTS_DIR, "builtin"),
+					// K6: the embedded agents (resources/agents) replace the bundled three of the same name
+					...(resourceAgentsDir ? loadAgentsFromDir(resourceAgentsDir, "builtin") : []),
 					...pluginAgentDirs(os.homedir()).flatMap((entry) =>
 						loadAgentsFromDir(entry.dir, "plugin", entry.pluginName),
 					),
