@@ -497,7 +497,8 @@ caso cobre `/goal`: não verificado); mapeamento para `s1`..`s8` de `bench/suite
 
 **Verificação de saída:** `npm run check && ./test.sh`;
 `cd packages/coding-agent && npx vitest --run test/harness/subagent test/harness/plan-mode test/harness/goal`;
-`rg -n "PI_CODE_SUBAGENT|PI_SUBAGENT_RESPAWN" packages/coding-agent/src` sem saída (viraram `NYCODE_SUBAGENT*`).
+`rg -n "PI_CODE_SUBAGENT|PI_SUBAGENT_RESPAWN" packages/coding-agent/src --glob '!**/migrations/**'` sem saída (viraram
+`NYCODE_SUBAGENT*`; `src/migrations/` guarda a tabela de conversão do `migrate from-pi`, D-09).
 
 **Evidência:** testes migrados por item (24 arquivos de teste de patch no total, 5 deles de F5), saídas do `--dry-run`
 e das rodadas reais, desvios de ordem. **Reversão:** `git revert` do PR do item; o último a reverter remove o registro.

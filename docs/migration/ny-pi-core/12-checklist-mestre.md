@@ -88,27 +88,28 @@ Identificador: `C-F<fase>-<n>`. A coluna "prova" diz o que tem de ser observado.
 - [x] C-F5-01 Árvore de referência do pi-code conferida: sha1 do tarball e `diff -r` vazio contra a instalada.
 - [x] C-F5-02 Cópia byte a byte de `internal/` e dos módulos base num commit sem outras mudanças.
 - [x] C-F5-03 a C-F5-20 Uma por extensão da tabela 3.1 de [02](02-arquitetura-alvo.md#31-vindas-do-pi-code-170-ja-com-os-19-patches) (as 18 de F5 depois da D-34): registrada como embutida, imports trocados, formatada, teste verde.
-- [ ] C-F5-21 a C-F5-22 `status-line` e `run`, que entram em F6 depois de `subagent` (D-34); fecham lá.
+- [x] C-F5-21 a C-F5-22 `status-line` e `run`, que entram em F6 depois de `subagent` (D-34); fecharam no #249
+  ([F6](evidencias/F6.md)).
 - [x] C-F5-23 Pendência P-3 fechada: `npm run check` sem erro de tipo contra a `ExtensionAPI` da 1.6.0.
 - [x] C-F5-24 `web` nasce desligada; `web_search` ausente da lista de ferramentas numa sessão nova.
-- [ ] C-F5-25 Testes de patch portados verdes: `notify-focus`, `rewind-tree`, `statusline-multiline`, `todo-collapse`, `statusline-provider` (os dois `statusline-*` com `status-line`, em F6,
-  D-34).
-- [ ] C-F5-26 `mcp/` e `version-floor.ts` do pi-code não entram; `internal` sem arquivo órfão (falta o consumidor de
-  `package-version.ts`, `status-line`, em F6, D-34).
+- [x] C-F5-25 Testes de patch portados verdes: `notify-focus`, `rewind-tree`, `statusline-multiline`, `todo-collapse`, `statusline-provider` (os dois `statusline-*` com `status-line`, em F6,
+  D-34; #249: 8/9 e 4/4, o caso do rodapé entra com `footer-no-stats` em F7).
+- [x] C-F5-26 `mcp/` e `version-floor.ts` do pi-code não entram; `internal` sem arquivo órfão (falta o consumidor de
+  `package-version.ts`, `status-line`, em F6, D-34; consumidor desde o #249).
 - [x] C-F5-27 `settings.json` novo não precisa de `packages`. Prova: sessão em `HOME` vazio com os recursos presentes.
 - [x] C-F5-28 `NOTICE` com a atribuição do pi-code.
 - [ ] C-F5-29 Smoke do benchmark não inferior à referência `ny-pi@1.6.0`.
 
 ## F6. Orquestração embutida
 
-- [ ] C-F6-01 a C-F6-10 As dez unidades de `subagent` da tabela 3.3 de [03](03-mapa-de-migracao.md#f6-orquestracao), cada uma com seus testes.
-- [ ] C-F6-11 `subagent` registrada como embutida.
-- [ ] C-F6-12 `plan-mode` embutida; `plan-done-rule.test.ts` e `plan-sota.test.ts` verdes.
-- [ ] C-F6-13 `goal` embutida, sem portão de confiança; `goal.test.ts` e `goal-lifecycle.test.ts` verdes.
+- [x] C-F6-01 a C-F6-10 As dez unidades de `subagent` da tabela 3.3 de [03](03-mapa-de-migracao.md#f6-orquestracao), cada uma com seus testes (D-35: código no #246, testes no #247 e #248).
+- [x] C-F6-11 `subagent` registrada como embutida.
+- [x] C-F6-12 `plan-mode` embutida; `plan-done-rule.test.ts` e `plan-sota.test.ts` verdes.
+- [x] C-F6-13 `goal` embutida, sem portão de confiança; `goal.test.ts` e `goal-lifecycle.test.ts` verdes.
 - [ ] C-F6-14 Suítes `bench/suites/plan` e `multi` não inferiores à referência.
-- [ ] C-F6-15 Aninhamento até a profundidade 3 e limite de 4 escritores preservados. Prova: teste de aninhamento.
-- [ ] C-F6-16 `scripts/check-patch-stack.sh` e `claude-home/patches/pi-code/` removidos de `import/`.
-- [ ] C-F6-17 Primeira sincronização com o upstream depois de F6 feita e medida.
+- [x] C-F6-15 Aninhamento até a profundidade 3 e limite de 4 escritores preservados. Prova: teste de aninhamento.
+- [x] C-F6-16 `scripts/check-patch-stack.sh` e `claude-home/patches/pi-code/` removidos de `import/`.
+- [x] C-F6-17 Primeira sincronização com o upstream depois de F6 feita e medida.
 
 ## F7. Extensões próprias
 
