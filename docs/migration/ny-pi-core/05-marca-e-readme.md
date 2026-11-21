@@ -222,8 +222,9 @@ D-31, para nomear a referência do benchmark:
 - `nycode migrate from-pi` (`src/migrations/from-pi*`): lê a configuração antiga do usuário (D-09).
 - `docs/harness/`: cópia de `claude-home/docs` do ny-pi, trazida por outro PR (D-31 b); `docs/migration/ny-pi-arquivo` já
   cabe em `docs/migration`.
-- `README.md`, **só** nas seções de proposta e de benchmark: "Pi Vanilla" (pi 1.5.2 sem harness) e o nome ny-pi, para
-  dizer de onde vêm os números (D-31 a). O resto do README continua sem pi.
+- `README.md`: "Pi Vanilla" (pi 1.5.2 sem harness) só nas seções de proposta e de benchmark, para dizer contra o que
+  os números foram medidos; o nome ny-pi onde o README explica de onde vem o harness e os números (D-31 a). O gate
+  R1 isenta o arquivo inteiro; a revisão do PR confere que "pi" sozinho só aparece nessas seções.
 
 Deixam de ser exceção: a seção "Origin" do README (vira "License: MIT, see LICENSE and NOTICE"), os aliases
 `@mariozechner/*`, `pi.dev` como fonte do catálogo de modelos (supera D-12) e o código importado do upstream, renomeado
