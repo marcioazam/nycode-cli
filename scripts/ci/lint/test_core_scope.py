@@ -181,6 +181,13 @@ def test_native_extensions_are_not_pieces(tmp_path: Path) -> None:
     assert core_scope.discover(tmp_path) == {("extension", "bash-timeout")}
 
 
+def test_shared_library_is_not_a_piece(tmp_path: Path) -> None:
+    ext = tmp_path / "packages/coding-agent/src/extensions"
+    touch(ext / "_shared/util/values.ts")
+    touch(ext / "todo/index.ts")
+    assert core_scope.discover(tmp_path) == {("extension", "todo")}
+
+
 def test_real_repo(capsys: pytest.CaptureFixture[str]) -> None:
     code = core_scope.main([])
     cap = capsys.readouterr()
