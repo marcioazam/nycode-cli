@@ -7,11 +7,11 @@
  * elsewhere (the editor takes focus) or any other key returns to the editor, which keeps its draft.
  * Record: docs/pi-interactive-display-2026-11-13.md ("Plan section").
  */
-import type { ExtensionContext } from '@earendil-works/pi-coding-agent'
-import { matchesKey, truncateToWidth, visibleWidth } from '@earendil-works/pi-tui'
+import type { ExtensionContext } from '../../core/extensions/types.ts'
+import { matchesKey, truncateToWidth, visibleWidth } from '@nycode/tui'
 
-import { heading, rule, tabbed } from '../subagent/fleet-ui/chrome.ts'
-import { hudTheme, motionEnabled } from '../subagent/fleet-ui/palette.ts'
+import { heading, rule, tabbed } from '../subagent/fleet-ui/style/chrome.ts'
+import { hudTheme, motionEnabled } from '../subagent/fleet-ui/style/palette.ts'
 import { nav } from '../subagent/section-nav/nav.ts'
 import { fleetSourceForUi } from '../subagent/fleet/source.ts'
 import { bridge, clampOffset, viewportSize } from '../subagent/fleet-ui/section.ts'

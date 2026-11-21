@@ -4,7 +4,7 @@
  * Record: docs/pi-interactive-display-2026-11-13.md ("Plan: gestão interativa").
  */
 import { spawn } from 'node:child_process'
-import { truncateToWidth, wrapTextWithAnsi } from '@earendil-works/pi-tui'
+import { truncateToWidth, wrapTextWithAnsi } from '@nycode/tui'
 
 import type { UiTheme } from '../subagent/fleet-ui/panel.ts'
 import { formatDuration, formatSpend, PlanTimes, spendSince } from './table.ts'

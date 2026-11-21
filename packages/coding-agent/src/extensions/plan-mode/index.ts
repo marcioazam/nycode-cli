@@ -18,18 +18,20 @@ import { PlanSection, setPlanPath } from './section.ts'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
+import { getAgentDir } from '../../config.ts'
 
-import type { AgentMessage } from '@earendil-works/pi-agent-core'
-import type { AssistantMessage, TextContent } from '@earendil-works/pi-ai'
-import type { ExtensionAPI, ExtensionContext, SessionEntry } from '@earendil-works/pi-coding-agent'
-import { Key } from '@earendil-works/pi-tui'
+import type { AgentMessage } from '@nycode/agent-core'
+import type { AssistantMessage, TextContent } from '@nycode/ai'
+import type { ExtensionAPI, ExtensionContext } from '../../core/extensions/types.ts'
+import type { SessionEntry } from '../../core/session-manager.ts'
+import { Key } from '@nycode/tui'
 import { Type } from 'typebox'
 
-import { PLAN_MODE_CHANNEL } from '../internal/plan-mode-state.ts'
+import { PLAN_MODE_CHANNEL } from '../_shared/events/plan-mode-state.ts'
 
 /** Plan progress for other extensions (agents correlate their runs with the open step): {executing, step?, done, total}, `step` = first open step; published only when it changes. */
 const PLAN_STATE_CHANNEL = 'pi-code:plan-state'
-import { hudTheme } from '../subagent/fleet-ui/palette.ts'
+import { hudTheme } from '../subagent/fleet-ui/style/palette.ts'
 import type { UiTheme } from '../subagent/fleet-ui/panel.ts'
 import { isPlanModeToolAllowed, isSafeCommand, lintPlan, plansDir, markCompletedSteps, planToTodos, restoredPlanState, type TodoItem } from './utils.ts'
 import { CANCELLED, HOLD, plainPaint, renderDoneTags, type DonePaint } from './done-view.ts'
@@ -94,15 +96,15 @@ function findLastExecuteIndex(entries: SessionEntry[]): number {
   return -1
 }
 
-export default function planModeExtension(pi: ExtensionAPI): void {
+export default function planModeExtension(nycode: ExtensionAPI): void {
   let planModeEnabled = false
   const planSection = new PlanSection()
   // Management keys of the Plan section (skip, pause, open) reach the agent and the desktop through here.
   planSection.host = {
     notify: (text, trigger) => {
       // Idle: the note rides with the user's next prompt (a resume starts the turn); running: it steers the current run.
-      if (trigger || lastCtx?.isIdle() === false) pi.sendUserMessage(text, { deliverAs: 'steer' })
-      else pi.sendMessage({ customType: 'plan-note', content: text, display: false }, { deliverAs: 'nextTurn' })
+      if (trigger || lastCtx?.isIdle() === false) nycode.sendUserMessage(text, { deliverAs: 'steer' })
+      else nycode.sendMessage({ customType: 'plan-note', content: text, display: false }, { deliverAs: 'nextTurn' })
     },
     abort: () => lastCtx?.abort(),
     persist: () => persistState(),
@@ -171,7 +173,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
     return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`
   }
   // Só a exibição: a sessão, o modelo e markCompletedSteps seguem com a tag [DONE:n] literal.
-  pi.registerMarkdownTransformer?.(
+  nycode.registerMarkdownTransformer?.(
     (markdown, context) => {
       let paint: DonePaint = plainPaint
       try {
@@ -190,7 +192,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
           const cyanRgb = parseRgb(theme.getFgAnsi?.('syntaxType'))
           const waitBgRgb = baseRgb && waitRgb ? tintBox(baseRgb, waitRgb, 0.16) : undefined
           const warnBgRgb = baseRgb && warnRgb ? tintBox(baseRgb, warnRgb, 0.20) : undefined
-          const liveComet = Boolean(context.isStreaming && dimRgb && (cyanRgb ?? waitRgb) && !process.env.PI_REDUCED_MOTION && process.env.NO_COLOR === undefined)
+          const liveComet = Boolean(context.isStreaming && dimRgb && (cyanRgb ?? waitRgb) && !process.env.NYCODE_REDUCED_MOTION && process.env.NO_COLOR === undefined)
           paint = {
             ok: (s) => theme.fg('success', s),
             muted: (s) => theme.fg('muted', s),
@@ -260,12 +262,12 @@ export default function planModeExtension(pi: ExtensionAPI): void {
     setPlanPath(planFile)
   }
 
-  const registeredTools = (): Set<string> => new Set((pi.getAllTools?.() ?? []).map((tool) => tool.name))
+  const registeredTools = (): Set<string> => new Set((nycode.getAllTools?.() ?? []).map((tool) => tool.name))
 
   function enterPlanTools(): void {
-    savedTools = pi.getActiveTools()
+    savedTools = nycode.getActiveTools()
     toolsAtSave = registeredTools()
-    pi.setActiveTools(PLAN_MODE_TOOLS.filter((t) => savedTools.includes(t)))
+    nycode.setActiveTools(PLAN_MODE_TOOLS.filter((t) => savedTools.includes(t)))
   }
 
   /** Put back the saved set, plus any tool registered since: pi activates a late one (an MCP
@@ -274,16 +276,16 @@ export default function planModeExtension(pi: ExtensionAPI): void {
    * active at entry is not late, and stays out. */
   function restoreTools(): void {
     if (savedTools.length === 0) return
-    const late = pi.getActiveTools().filter((name) => !toolsAtSave.has(name) && !savedTools.includes(name))
-    pi.setActiveTools([...savedTools, ...late])
+    const late = nycode.getActiveTools().filter((name) => !toolsAtSave.has(name) && !savedTools.includes(name))
+    nycode.setActiveTools([...savedTools, ...late])
   }
 
   /** Hooks report Claude's permission_mode from this bus state. */
   function publishPlanState(): void {
-    pi.events.emit(PLAN_MODE_CHANNEL, { active: planModeEnabled })
+    nycode.events.emit(PLAN_MODE_CHANNEL, { active: planModeEnabled })
   }
 
-  pi.registerFlag('plan', {
+  nycode.registerFlag('plan', {
     description: 'Start in plan mode (read-only exploration)',
     type: 'boolean',
     default: false,
@@ -309,7 +311,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
   // Todos from the todo tool (todo.ts) share this list when no plan is executing: always in the Plan section, never in the chat.
   let externalTodos: TodoItem[] = []
   let lastCtx: ExtensionContext | undefined
-  pi.events.on('pi-code:todos', (data) => {
+  nycode.events.on('pi-code:todos', (data) => {
     externalTodos = (data as Array<{ id: number; text: string; status: string }>).map((t) => ({ step: t.id, text: t.text, completed: t.status === 'completed', doing: t.status === 'in_progress' }))
     if (!lastCtx) return
     try {
@@ -330,10 +332,10 @@ export default function planModeExtension(pi: ExtensionAPI): void {
     if (planModeEnabled) {
       ensurePlanFile(ctx)
       enterPlanTools()
-      ctx.ui.notify(`Plan mode enabled. Tools: ${pi.getActiveTools().join(', ')}`)
+      ctx.ui.notify(`Plan mode enabled. Tools: ${nycode.getActiveTools().join(', ')}`)
     } else {
       restoreTools()
-      pi.sendMessage({ customType: 'plan-mode-ended', content: PLAN_ENDED_NOTE, display: false }, { deliverAs: 'nextTurn' })
+      nycode.sendMessage({ customType: 'plan-mode-ended', content: PLAN_ENDED_NOTE, display: false }, { deliverAs: 'nextTurn' })
       ctx.ui.notify('Plan mode disabled. Full access restored.')
     }
     // Persist the toggle so a resume does not restore a state the user left.
@@ -365,7 +367,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
     const json = JSON.stringify(data)
     if (json === lastPersisted) return
     lastPersisted = json
-    pi.appendEntry('plan-mode', data)
+    nycode.appendEntry('plan-mode', data)
   }
 
   function publishProgress(): void {
@@ -374,11 +376,11 @@ export default function planModeExtension(pi: ExtensionAPI): void {
     const json = JSON.stringify(progress)
     if (json === lastProgress) return
     lastProgress = json
-    pi.events.emit(PLAN_STATE_CHANNEL, progress)
+    nycode.events.emit(PLAN_STATE_CHANNEL, progress)
   }
 
   function endExecution(ctx: ExtensionContext, content: string, customType = 'plan-complete'): void {
-    pi.sendMessage({ customType, content, display: true }, { triggerTurn: false })
+    nycode.sendMessage({ customType, content, display: true }, { triggerTurn: false })
     executionMode = false
     finishedTodos = todoItems
     todoItems = []
@@ -407,7 +409,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
     // execution, not back into plan mode.
     persistState()
     const execMessage = todoItems.length > 0 ? `Execute the plan. Start with: ${todoItems[0].text}\n${DONE_RULE}\n${CANCEL_RULE}\nFirst materialize the plan file ${planFile} into the repository's /docs record (or the task's existing record) before changing code.\n${PLAN_ENDED_NOTE}` : `Execute the plan you just created.\n${PLAN_ENDED_NOTE}`
-    pi.sendMessage({ customType: 'plan-mode-execute', content: execMessage, display: true }, { triggerTurn: true })
+    nycode.sendMessage({ customType: 'plan-mode-execute', content: execMessage, display: true }, { triggerTurn: true })
   }
 
   // Ask the user how to proceed after a plan is ready
@@ -422,7 +424,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
       if (refinement?.trim()) {
         // A bare send throws (and is silently swallowed) while the agent is
         // streaming, so mid-stream invocations queue as a follow-up turn.
-        pi.sendUserMessage(refinement.trim(), ctx.isIdle() ? {} : { deliverAs: 'followUp' })
+        nycode.sendUserMessage(refinement.trim(), ctx.isIdle() ? {} : { deliverAs: 'followUp' })
       }
     }
   }
@@ -440,7 +442,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
     markCompletedSteps(messages.map(getTextContent).join('\n'), todoItems)
   }
 
-  pi.registerCommand('plan', {
+  nycode.registerCommand('plan', {
     description: 'Enter plan mode; an optional description starts that task (leave with Ctrl+Shift+P or by executing the plan)',
     handler: async (args, ctx) => /* NOSONAR typescript:S7503 - pi types a command handler as returning Promise<void> */ {
       const task = args.trim()
@@ -448,11 +450,11 @@ export default function planModeExtension(pi: ExtensionAPI): void {
       // Claude's wording with no plan yet; with one, only the first sentence applies.
       else if (!task) ctx.ui.notify(todoItems.length > 0 ? 'Already in plan mode.' : 'Already in plan mode. No plan written yet.', 'info')
       // A bare send throws (and is silently swallowed) while the agent is streaming.
-      if (task) pi.sendUserMessage(task, ctx.isIdle() ? {} : { deliverAs: 'followUp' })
+      if (task) nycode.sendUserMessage(task, ctx.isIdle() ? {} : { deliverAs: 'followUp' })
     },
   })
 
-  pi.registerTool({
+  nycode.registerTool({
     name: 'plan_mode_complete',
     label: 'Plan complete',
     description: 'Submit the finished plan for user review while in plan mode. Pass the full plan as numbered steps (1. ... 2. ...). Call this exactly once, when the plan is ready. The first line states the tier ("Tier: Tn (signals)"); the plan is linted and saved to the plan file. Pass "@file" to submit the plan file as it is.',
@@ -493,7 +495,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
     },
   })
 
-  pi.registerCommand('plan-todos', {
+  nycode.registerCommand('plan-todos', {
     description: 'Show current plan todo list',
     handler: async (_args, ctx) => /* NOSONAR typescript:S7503 - pi types a command handler as returning Promise<void> */ {
       if (todoItems.length === 0) {
@@ -505,7 +507,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
     },
   })
 
-  pi.registerShortcut(Key.ctrlShift('p'), {
+  nycode.registerShortcut(Key.ctrlShift('p'), {
     description: 'Toggle plan mode',
     handler: async (ctx) => togglePlanMode(ctx), // NOSONAR typescript:S7503 - pi catches only a rejected promise from a shortcut handler (Promise.resolve(handler()).catch)
   })
@@ -514,7 +516,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
   // activates tools registered after the restriction was applied (an MCP server
   // connecting during session_start, or a mid-session list_changed refresh), so the
   // set alone leaks write-capable tools into plan mode.
-  pi.on('tool_call', (event, _ctx) => {
+  nycode.on('tool_call', (event, _ctx) => {
     if (!planModeEnabled) return
     if (!PLAN_MODE_TOOLS.includes(event.toolName) && !event.toolName.startsWith('mcp__')) {
       return {
@@ -540,7 +542,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
   })
 
   // Inject plan/execution context before agent starts
-  pi.on('before_agent_start', (_event, ctx) => {
+  nycode.on('before_agent_start', (_event, ctx) => {
     if (hold) {
       hold = undefined
       updateStatus(ctx)
@@ -552,7 +554,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
           customType: 'plan-mode-context',
           content: `[PLAN MODE ACTIVE]
 Read-only planning mode. Allowed: read, bash (allowlisted), lsp_*, tool_search with read-only MCP (search, docs, codegraph), web_fetch, subagent with read-only agents only, question, todo. Use write/edit (bash cannot write) ONLY on the plan file ${planFile}, and only for draft notes in a long session.
-Triage first. T0 = a mechanical edit with no behavior change (typo, rename, comment) and nothing ambiguous: skip the skill, verify with one lookup, submit 1-3 tasks. Anything else: read ~/.pi/agent/claude-home/skills/plan-workflow/SKILL.md and follow it (tier, questions, decomposition, checklists).
+Triage first. T0 = a mechanical edit with no behavior change (typo, rename, comment) and nothing ambiguous: skip the skill, verify with one lookup, submit 1-3 tasks. Anything else: read ${join(getAgentDir(), 'skills', 'plan-workflow', 'SKILL.md')} and follow it (tier, questions, decomposition, checklists).
 Submit the full plan once with plan_mode_complete, which lints it and saves it to the plan file. Lint: first line "Tier: Tn (signals)"; task titles ≤50 chars; every task has ≥1 '-' bullet under it (shown as its description); every A# line has a %; T1+ has "AC1: WHEN … THE SYSTEM SHALL …" lines, each AC cited by a task, and a "check:" per task; T2+ a risks line; T3 a rollback line.
 Only tracked tasks are numbered (1., 2., … globally); phases are headings, steps and checklists are '-' bullets, never numbered.
 Never settle these yourself, ask with the question tool: a contradiction in the request; a choice of data format, public contract, security or deletion.
@@ -584,7 +586,7 @@ ${CANCEL_RULE}`,
   })
 
   // Track progress after each turn
-  pi.on('turn_end', (event, ctx) => {
+  nycode.on('turn_end', (event, ctx) => {
     if (!executionMode || todoItems.length === 0) return
     if (!isAssistantMessage(event.message)) return
 
@@ -600,7 +602,7 @@ ${CANCEL_RULE}`,
 
   // Only the end of the plan or an explicit PLAN CANCELLED ends it: Esc, send-now, chat or a run that
   // stops without progress leave plan mode and execution as they are (owner contract 2026-11-15).
-  pi.on('agent_end', async (event, ctx) => {
+  nycode.on('agent_end', async (event, ctx) => {
     const last = [...event.messages].reverse().find(isAssistantMessage)
     if (executionMode && todoItems.length > 0) {
       if (isCancelled(last)) {
@@ -635,7 +637,7 @@ ${CANCEL_RULE}`,
     planFile = ''
 
     hold = undefined
-    if (fromFlag && pi.getFlag('plan') === true) {
+    if (fromFlag && nycode.getFlag('plan') === true) {
       planModeEnabled = true
     }
 
@@ -644,7 +646,7 @@ ${CANCEL_RULE}`,
     const entries = ctx.sessionManager.getBranch()
 
     // Restore persisted state. The entry is JSON on disk, so every field is checked
-    // before it is used: savedTools reaches pi.setActiveTools.
+    // before it is used: savedTools reaches nycode.setActiveTools.
     const planModeEntry = findLast(entries, (e: { type: string; customType?: string }) => e.type === 'custom' && e.customType === 'plan-mode') as { data?: unknown } | undefined
     const restored = restoredPlanState(planModeEntry?.data)
 
@@ -677,9 +679,9 @@ ${CANCEL_RULE}`,
       // across /reload and cost the session edit and write for good; applying the
       // snapshot when plan mode is off would instead push a stale set over whatever
       // pi has registered since, so it stays scoped to this branch.
-      savedTools = restored.savedTools ?? pi.getActiveTools()
+      savedTools = restored.savedTools ?? nycode.getActiveTools()
       toolsAtSave = registeredTools()
-      pi.setActiveTools(PLAN_MODE_TOOLS.filter((t) => savedTools.includes(t)))
+      nycode.setActiveTools(PLAN_MODE_TOOLS.filter((t) => savedTools.includes(t)))
       // --plan enters plan mode without ever toggling, so nothing has persisted yet
       // and a /reload would find no snapshot to restore from. Record it now, while
       // the active set still says what was there before the restriction.
@@ -698,8 +700,8 @@ ${CANCEL_RULE}`,
     lastPersisted = planModeEntry ? JSON.stringify(planPayload()) : ''
     updateStatus(ctx)
   }
-  pi.on('session_start', (_event, ctx) => restoreFromBranch(ctx, true))
-  pi.on('session_tree', (_event, ctx) => restoreFromBranch(ctx, false))
+  nycode.on('session_start', (_event, ctx) => restoreFromBranch(ctx, true))
+  nycode.on('session_tree', (_event, ctx) => restoreFromBranch(ctx, false))
 
   // pi-harness permission-control BEGIN
   // Controle semântico para Shift+Tab e /permissions plan (claude-compat). Fonte: claude-home/patches/pi-code/permission-control.
@@ -719,16 +721,16 @@ ${CANCEL_RULE}`,
       return planModeEnabled === enabled
     },
   }
-  pi.on('session_start', (_event, ctx) => {
+  nycode.on('session_start', (_event, ctx) => {
     permissionCtx = ctx
     ;(globalThis as Record<symbol, unknown>)[PLAN_CONTROLLER_SLOT] = planController
   })
-  pi.on('session_shutdown', () => {
+  nycode.on('session_shutdown', () => {
     permissionCtx = undefined
     const g = globalThis as Record<symbol, unknown>
     if (g[PLAN_CONTROLLER_SLOT] === planController) delete g[PLAN_CONTROLLER_SLOT]
   })
   // pi-harness permission-control END
 
-  pi.on('session_shutdown', (_event, ctx) => planSection.shutdown(ctx))
+  nycode.on('session_shutdown', (_event, ctx) => planSection.shutdown(ctx))
 }

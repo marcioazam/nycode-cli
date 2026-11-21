@@ -7,7 +7,8 @@ import { lstatSync, mkdirSync, realpathSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, isAbsolute, join, resolve, sep } from 'node:path'
 
-import { hasAnsiCNumericEscape, hasSubstitution, type Quote, quoteCloser, quoteEscapes, quoteOpensAt, shellWords, splitSegments } from '../internal/shell-split.ts'
+import { getAgentDir } from '../../config.ts'
+import { hasAnsiCNumericEscape, hasSubstitution, type Quote, quoteCloser, quoteEscapes, quoteOpensAt, shellWords, splitSegments } from '../_shared/shell/shell-split.ts'
 
 // Destructive commands blocked in plan mode. Tested against the segment's command word,
 // the one word that runs: an allowlisted head never executes its arguments, so `code`
@@ -523,7 +524,7 @@ const READ_ONLY_AGENTS = new Set([
 
 /** Directory where plan mode may write its plan files. */
 export function plansDir(): string {
-  return process.env.PI_PLANS_DIR || join(homedir(), '.pi', 'agent', 'plans')
+  return process.env.NYCODE_PLANS_DIR || join(getAgentDir(), 'plans')
 }
 
 export interface ToolVerdict {

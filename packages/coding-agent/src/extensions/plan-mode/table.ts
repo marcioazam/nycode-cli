@@ -5,7 +5,7 @@
  * (`status`) renders when a producer sets it on the item; none does yet.
  * Record: docs/pi-interactive-display-2026-11-13.md ("Plan table").
  */
-import { truncateToWidth, visibleWidth } from '@earendil-works/pi-tui'
+import { truncateToWidth, visibleWidth } from '@nycode/tui'
 
 import type { UiTheme } from '../subagent/fleet-ui/panel.ts'
 import type { TodoItem } from './utils.ts'

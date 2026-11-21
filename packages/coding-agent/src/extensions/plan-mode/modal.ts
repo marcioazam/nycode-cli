@@ -4,7 +4,7 @@
  * the overlay, reads the plan title and opens the file.
  * Record: docs/pi-plan-modal-2026-11-14.md.
  */
-import { matchesKey, truncateToWidth, visibleWidth, wrapTextWithAnsi } from '@earendil-works/pi-tui'
+import { matchesKey, truncateToWidth, visibleWidth, wrapTextWithAnsi } from '@nycode/tui'
 
 import type { UiTheme } from '../subagent/fleet-ui/panel.ts'
 import { activeStep, STATES } from './table.ts'

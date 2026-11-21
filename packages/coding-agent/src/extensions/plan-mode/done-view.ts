@@ -50,8 +50,8 @@ export const CANCELLED = /^\s*(?:PLAN CANCELLED|PLANO CANCELADO)\.?\s*$/i
 const BG_ID = /\s*\(?\b((?:bg|fg)-[0-9a-f]+)\)?/i
 const lista = (ns: number[]): string => (ns.length < 2 ? String(ns[0]) : `${ns.slice(0, -1).join(', ')} e ${ns[ns.length - 1]}`)
 
-const isAscii = (env: Env): boolean => Boolean(env.PI_ASCII_ICONS) || env.TERM === 'dumb' || env.TERM === 'linux'
-const isNerd = (env: Env): boolean => !isAscii(env) && (env.PI_NERD_FONT === '1' || env.TERM === 'xterm-kitty' || Boolean(env.KITTY_WINDOW_ID))
+const isAscii = (env: Env): boolean => Boolean(env.NYCODE_ASCII_ICONS) || env.TERM === 'dumb' || env.TERM === 'linux'
+const isNerd = (env: Env): boolean => !isAscii(env) && (env.NYCODE_NERD_FONT === '1' || env.TERM === 'xterm-kitty' || Boolean(env.KITTY_WINDOW_ID))
 export const planGlyph = (env: Env = process.env): string => (isAscii(env) ? '^' : isNerd(env) ? '\ueb9d' : '◈')
 export const warnGlyph = (env: Env = process.env): string => (isAscii(env) ? '!' : isNerd(env) ? '\uf421' : '▲')
 export const glyphGap = (env: Env = process.env): string => (!isAscii(env) && (env.TERM === 'xterm-kitty' || Boolean(env.KITTY_WINDOW_ID)) ? '  ' : ' ')
