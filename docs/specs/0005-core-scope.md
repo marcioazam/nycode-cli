@@ -135,6 +135,7 @@ chegam por fase e o `core_scope.py` é convertido em F3.
 | extension | effort-sandwich | optional | Raciocínio high só no 1º turno do `pi -p` de topo (opt-in, spec 0009) |
 | extension | footer-no-stats | ui | Rodapé |
 | extension | headless-lean | core | Custo sem interface |
+| extension | memory | core | Memória do projeto |
 | extension | no-context-files-covers-claude-md | core | Contexto sem duplicata |
 | extension | no-web-search | core | Desliga busca que falha |
 | extension | pi-docs | core | Prompt menor |
