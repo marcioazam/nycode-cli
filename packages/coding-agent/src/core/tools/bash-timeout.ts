@@ -1,6 +1,6 @@
 /**
  * Time limit policy of the `bash` tool (nycode seam K8): no `timeout` or an invalid one gets 600 s, anything above
- * 1800 s is capped at 1800 s, and a timeout error carries a hint about running long work in the background.
+ * 1800 s is capped at 1800 s, and a timeout result carries a hint block about running long work in the background.
  *
  * Why: without a default a hung command freezes the session until the user presses Esc, and foreground sleeps or
  * CI polls burn wall time. Refusing a request above the cap discarded the whole tool call (heredocs included), so
@@ -21,8 +21,21 @@ export function decideTimeout(timeout: number | undefined): number {
 	return Math.min(timeout, MAX_TIMEOUT_S);
 }
 
-/** Appended to the "Command timed out" error: the tool only says how long it waited, not that more is capped. */
-export const TIMEOUT_HINT = `\n\n[bash-timeout] Timeouts are capped at ${MAX_TIMEOUT_S} s. For longer work run it in the background (nohup <cmd> > log 2>&1 & echo $!) and wait with: while kill -0 PID 2>/dev/null; do sleep 5; done (returns as soon as it ends; no fixed sleep), then read the log.`;
+/** Own content block added to a bash "Command timed out" result: the tool only says how long it waited, not that more is capped. */
+export const TIMEOUT_HINT = `[bash-timeout] Timeouts are capped at ${MAX_TIMEOUT_S} s. For longer work run it in the background (nohup <cmd> > log 2>&1 & echo $!) and wait with: while kill -0 PID 2>/dev/null; do sleep 5; done (returns as soon as it ends; no fixed sleep), then read the log.`;
+
+/** Content with the timeout hint as a last text block when a bash call failed with "Command timed out after"; else the same array. */
+export function withTimeoutHint<T extends { type: string }>(
+	toolName: string,
+	isError: boolean,
+	content: T[],
+): (T | { type: "text"; text: string })[] {
+	if (toolName !== "bash" || !isError) return content;
+	const timedOut = content.some(
+		(c) => c.type === "text" && (c as { text?: string }).text?.includes("Command timed out after"),
+	);
+	return timedOut ? [...content, { type: "text", text: TIMEOUT_HINT }] : content;
+}
 
 // biome-ignore lint/suspicious/noTemplateCurlyInString: shell expansion, not JS
 const BG_DIR = "${TMPDIR:-/tmp}/nycode-bg";

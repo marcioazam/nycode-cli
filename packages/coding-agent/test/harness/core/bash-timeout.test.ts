@@ -12,6 +12,7 @@ import {
 	DEFAULT_TIMEOUT_S,
 	decideTimeout,
 	MAX_TIMEOUT_S,
+	withTimeoutHint,
 	wrapForBackground,
 } from "../../../src/core/tools/bash-timeout.ts";
 
@@ -59,7 +60,7 @@ describe("bash tool timeout policy", () => {
 		expect(seen.timeout).toBe(MAX_TIMEOUT_S);
 	});
 
-	it("appends the background hint to a timeout error", async () => {
+	it("keeps the hint out of the timeout error message (it is its own block, see withTimeoutHint)", async () => {
 		const { tool } = fakeTool({ throwTimeout: 1800 });
 		const error = await tool.execute("c3", { command: "x" }).then(
 			() => undefined,
@@ -67,16 +68,37 @@ describe("bash tool timeout policy", () => {
 		);
 		const text = (error as Error).message;
 		expect(text).toMatch(/Command timed out after 1800 seconds/);
-		expect(text).toMatch(new RegExp(`${MAX_TIMEOUT_S} s`));
-		expect(text).toMatch(/nohup/);
-		expect(text).toMatch(/while kill -0 \S+ 2>\/dev\/null; do sleep \d+; done/);
-		expect(text).not.toMatch(/\bpoll\b/);
+		expect(text).not.toContain("[bash-timeout]");
 	});
 
 	it("leaves a normal result without the hint", async () => {
 		const { tool } = fakeTool();
 		const result = await tool.execute("c4", { command: "ls" });
 		expect(JSON.stringify(result.content)).not.toContain("[bash-timeout]");
+	});
+});
+
+describe("withTimeoutHint", () => {
+	const timedOut = [{ type: "text" as const, text: "out\n\nCommand timed out after 5 seconds" }];
+
+	it("appends the hint as its own last text block on a bash timeout error", () => {
+		const out = withTimeoutHint("bash", true, timedOut);
+		expect(out).toHaveLength(2);
+		expect(out[0]).toBe(timedOut[0]);
+		const hint = out[1] as { type: string; text: string };
+		expect(hint.type).toBe("text");
+		expect(hint.text).toMatch(new RegExp(`${MAX_TIMEOUT_S} s`));
+		expect(hint.text).toMatch(/nohup/);
+		expect(hint.text).toMatch(/while kill -0 \S+ 2>\/dev\/null; do sleep \d+; done/);
+		expect(hint.text).not.toMatch(/\bpoll\b/);
+	});
+
+	it.each([
+		["another tool", "read", true, timedOut],
+		["a non-error result", "bash", false, timedOut],
+		["another bash error", "bash", true, [{ type: "text" as const, text: "exit 1" }]],
+	])("leaves %s untouched", (_n, tool, isError, content) => {
+		expect(withTimeoutHint(tool, isError, content)).toBe(content);
 	});
 });
 

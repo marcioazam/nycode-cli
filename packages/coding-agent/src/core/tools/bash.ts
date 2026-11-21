@@ -13,7 +13,7 @@ import {
 	untrackDetachedChildPid,
 } from "../../utils/shell.ts";
 import type { ExtensionContext, ToolDefinition } from "../extensions/types.ts";
-import { applyBashTimeout, TIMEOUT_HINT } from "./bash-timeout.ts";
+import { applyBashTimeout } from "./bash-timeout.ts";
 import { OutputAccumulator } from "./output-accumulator.ts";
 import { BASH_UPDATE_THROTTLE_MS, createShellRenderers } from "./renderers/bash.ts";
 import { type TypeBoxAgentTool, wrapToolDefinition } from "./tool-definition-wrapper.ts";
@@ -419,8 +419,6 @@ export function createShellToolDefinition(
 							// were still writing output when the timeout hit (#11613).
 							status += `. The shell exited with code ${err.shellExit.exitCode} after ${err.shellExit.afterSeconds} seconds, but background processes it started kept writing output until the timeout.`;
 						}
-						// nycode: K8 hint that the cap exists and how to run longer work
-						if (config.name === "bash") status += TIMEOUT_HINT;
 						throw new Error(appendStatus(text, status));
 					}
 					throw err;
