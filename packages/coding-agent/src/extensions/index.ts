@@ -15,7 +15,6 @@ export const builtInExtensions: InlineExtension[] = [
 	{ name: "tool-search", factory: toolSearchExtension, replaceable: true, builtin: true },
 	{ name: "mcp", factory: mcpExtension, replaceable: true, builtin: true },
 	// Embedded pi-code extensions, in pi-code's load order (claude-rules first, then by name).
-	// Embedded pi-code extensions, in pi-code's load order (claude-rules first, then by name).
 	{ name: "hooks", factory: hooksExtension, builtin: true },
 	{ name: "question", factory: questionExtension, builtin: true },
 	{ name: "todo", factory: todoExtension, builtin: true },
