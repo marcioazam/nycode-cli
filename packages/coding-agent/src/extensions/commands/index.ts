@@ -41,26 +41,26 @@
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
-import type { ExtensionAPI, ExtensionCommandContext } from '@earendil-works/pi-coding-agent'
+import type { ExtensionAPI, ExtensionCommandContext } from '../../core/extensions/types.ts'
 import { Type } from 'typebox'
-import { matchesBashRules } from './internal/bash-rules.ts'
-import { type DiscoveredCommand, discoverCommandFiles, type ParsedCommand, type PathRuleTool, parseCommandFile, substituteArgsDetailed, substituteVars } from './internal/command-file.ts'
-import { type CommandExec, expandDynamicContent, resolvePowershellBinary, spanExec } from './internal/command-spans.ts'
-import { claudeConfigDir } from './internal/config-dir.ts'
-import { claudeEffortLevel } from './internal/effort.ts'
-import { managedSettingsFile, readManagedSettings } from './internal/managed-settings.ts'
-import { findModel } from './internal/model-lookup.ts'
-import { capForContext } from './internal/output-guard.ts'
-import { matchesPathRules } from './internal/path-rules.ts'
-import { isPlanModeState, PLAN_MODE_CHANNEL } from './internal/plan-mode-state.ts'
-import { type InstalledPlugin, installedPlugins, pluginComponentPath } from './internal/plugins.ts'
-import { isProjectApproved } from './internal/project-approval.ts'
-import { ancestorDirs, checkoutRoot } from './internal/project-root.ts'
-import { agentNamesIn, matchesAgentRules, matchesDomainRules, matchesSkillRules } from './internal/scope-rules.ts'
-import { claudeSettingsChain } from './internal/settings-chain.ts'
-import { fileToolTarget } from './internal/tool-target.ts'
-import { createTurnOverride } from './internal/turn-override.ts'
-import { errorMessage, isDirectory, parseNumericEnv } from './internal/values.ts'
+import { matchesBashRules } from '../_shared/rules/bash-rules.ts'
+import { type DiscoveredCommand, discoverCommandFiles, type ParsedCommand, type PathRuleTool, parseCommandFile, substituteArgsDetailed, substituteVars } from '../_shared/commands/command-file.ts'
+import { type CommandExec, expandDynamicContent, resolvePowershellBinary, spanExec } from '../_shared/shell/command-spans.ts'
+import { claudeConfigDir } from '../_shared/settings/config-dir.ts'
+import { claudeEffortLevel } from '../_shared/model/effort.ts'
+import { managedSettingsFile, readManagedSettings } from '../_shared/settings/managed-settings.ts'
+import { findModel } from '../_shared/model/model-lookup.ts'
+import { capForContext } from '../_shared/web/output-guard.ts'
+import { matchesPathRules } from '../_shared/rules/path-rules.ts'
+import { isPlanModeState, PLAN_MODE_CHANNEL } from '../_shared/events/plan-mode-state.ts'
+import { type InstalledPlugin, installedPlugins, pluginComponentPath } from '../_shared/settings/plugins.ts'
+import { isProjectApproved } from '../_shared/project/project-approval.ts'
+import { ancestorDirs, checkoutRoot } from '../_shared/project/project-root.ts'
+import { agentNamesIn, matchesAgentRules, matchesDomainRules, matchesSkillRules } from '../_shared/rules/scope-rules.ts'
+import { claudeSettingsChain } from '../_shared/settings/settings-chain.ts'
+import { fileToolTarget } from '../_shared/rules/tool-target.ts'
+import { createTurnOverride } from '../_shared/commands/turn-override.ts'
+import { errorMessage, isDirectory, parseNumericEnv } from '../_shared/util/values.ts'
 
 /** Just enough of pi's Model to match and restore; getAvailable returns these. */
 interface ModelLike {
@@ -191,7 +191,7 @@ export function shellExecutionDisabled(cwd: string, home: string, trusted: boole
     } catch {
       // Present but unreadable: the user may believe this file disables skill shells, so
       // say so rather than silently leaving them enabled.
-      console.warn(`pi-code: ignoring ${file}: not valid JSON; skill shell execution stays as the other settings leave it`)
+      console.warn(`nycode: ignoring ${file}: not valid JSON; skill shell execution stays as the other settings leave it`)
       return false
     }
   })
@@ -316,7 +316,7 @@ function splitCommandLine(input: string): { name: string; args: string } {
   return { name, args }
 }
 
-export default function commandsExtension(pi: ExtensionAPI) {
+export default function commandsExtension(nycode: ExtensionAPI) {
   const registered = new Set<string>()
   /** Patch local (commands-print.patch): quem espera o próximo agent_settled (pi -p / --mode json). */
   const settledWaiters: Array<() => void> = []
@@ -357,16 +357,16 @@ export default function commandsExtension(pi: ExtensionAPI) {
       // promise never rejects, so a caller that does not await it (agent_settled) cannot
       // float a rejection; the shutdown handler awaits it so the exit cannot outrun it.
       try {
-        await pi.setModel(model as Parameters<typeof pi.setModel>[0])
+        await nycode.setModel(model as Parameters<typeof nycode.setModel>[0])
       } catch (error) {
-        console.warn(`pi-code-commands: could not switch to ${typeof model === 'object' && model !== null && 'id' in model ? String((model as { id: unknown }).id) : String(model)}: ${errorMessage(error)}`)
+        console.warn(`nycode-commands: could not switch to ${typeof model === 'object' && model !== null && 'id' in model ? String((model as { id: unknown }).id) : String(model)}: ${errorMessage(error)}`)
       }
     },
   })
   /** The thinking level to restore after a command's `effort:` override drove its run,
    * captured once per turn the same way. */
   const effortOverride = createTurnOverride<string>({
-    set: (level) => pi.setThinkingLevel(level as Parameters<typeof pi.setThinkingLevel>[0]),
+    set: (level) => nycode.setThinkingLevel(level as Parameters<typeof nycode.setThinkingLevel>[0]),
   })
 
   // Claude's contract is "the grant clears when you send your next message", and
@@ -377,7 +377,7 @@ export default function commandsExtension(pi: ExtensionAPI) {
   // so restoring there lifts the scoping before that continued run executes.
   // agent_settled fires exactly once, after the run has fully settled and no such
   // continuation remains, which is the grant's true clearing point.
-  pi.on('agent_settled', () => {
+  nycode.on('agent_settled', () => {
     for (const resolve of settledWaiters.splice(0)) resolve()
     void modelOverride.settle()
     void effortOverride.settle()
@@ -388,7 +388,7 @@ export default function commandsExtension(pi: ExtensionAPI) {
   // for planning would judge every call of the execution and the tools it narrowed away
   // would stay gone. Leaving plan mode is the point the user approved more than the command
   // asked for; the model and effort overrides still last until the run settles.
-  pi.events?.on(PLAN_MODE_CHANNEL, (data) => {
+  nycode.events?.on(PLAN_MODE_CHANNEL, (data) => {
     if (isPlanModeState(data) && !data.active) liftToolScope()
   })
 
@@ -396,7 +396,7 @@ export default function commandsExtension(pi: ExtensionAPI) {
   // terminal, SIGTERM), and the switch is already in the transcript: `pi -c` resumed on the
   // command's override model at its raised level. A run that settled has nothing armed, so
   // this restores nothing twice.
-  pi.on('session_shutdown', async () => {
+  nycode.on('session_shutdown', async () => {
     await modelOverride.settle()
     await effortOverride.settle()
   })
@@ -410,7 +410,7 @@ export default function commandsExtension(pi: ExtensionAPI) {
   // (here every segment of a compound command must match a rule; there the filter is
   // best effort and errs toward running the hook). A new scoped tool must be added in
   // both; the shared roster is ARG_RULE_TOOLS in internal/command-file.ts.
-  pi.on('tool_call', (event, ctx) => {
+  nycode.on('tool_call', (event, ctx) => {
     const input = event.input as Record<string, unknown>
     const text = (value: unknown): string => (typeof value === 'string' ? value : '')
     // The four scalar-scope tools share one shape: rules in force, the part of the call
@@ -441,7 +441,7 @@ export default function commandsExtension(pi: ExtensionAPI) {
   /** Take the tool set to restore when this run ends, captured once per turn so a
    * second restricted command narrows against the original unrestricted set. */
   function captureRestorePoint(): string[] {
-    const original = pendingRestore ?? pi.getActiveTools()
+    const original = pendingRestore ?? nycode.getActiveTools()
     pendingRestore = original
     return original
   }
@@ -449,7 +449,7 @@ export default function commandsExtension(pi: ExtensionAPI) {
   /** Record what the restriction just applied took out, against the set captured before it. */
   function noteTakenAway(): void {
     if (!pendingRestore) return
-    const active = new Set(pi.getActiveTools())
+    const active = new Set(nycode.getActiveTools())
     tookAway = new Set(pendingRestore.filter((tool) => !active.has(tool)))
   }
 
@@ -465,9 +465,9 @@ export default function commandsExtension(pi: ExtensionAPI) {
     pendingPathRules = undefined
     const original = pendingRestore
     if (!original) return
-    const active = pi.getActiveTools()
+    const active = nycode.getActiveTools()
     const keep = new Set([...active, ...tookAway])
-    pi.setActiveTools([...original.filter((tool) => keep.has(tool)), ...active.filter((tool) => !original.includes(tool))])
+    nycode.setActiveTools([...original.filter((tool) => keep.has(tool)), ...active.filter((tool) => !original.includes(tool))])
     pendingRestore = undefined
     tookAway = new Set()
   }
@@ -486,7 +486,7 @@ export default function commandsExtension(pi: ExtensionAPI) {
     // `allowed-tools: []` says no tools, and is honored. A non-empty list that
     // intersects to nothing named only tools pi has none of: that restriction cannot
     // be expressed, and applying it as "no tools" is not what the command asked for.
-    if (granted.length > 0 || allowed.length === 0) pi.setActiveTools(granted)
+    if (granted.length > 0 || allowed.length === 0) nycode.setActiveTools(granted)
     noteTakenAway()
     // The latest restricted command speaks for the turn: a later unscoped grant
     // lifts an earlier command's scopes rather than stacking under them. Rules get
@@ -505,7 +505,7 @@ export default function commandsExtension(pi: ExtensionAPI) {
     const disallowed = parsed.disallowedTools
     if (!disallowed || disallowed.length === 0) return
     captureRestorePoint()
-    pi.setActiveTools(pi.getActiveTools().filter((tool) => !disallowed.includes(tool)))
+    nycode.setActiveTools(nycode.getActiveTools().filter((tool) => !disallowed.includes(tool)))
     noteTakenAway()
   }
 
@@ -516,7 +516,7 @@ export default function commandsExtension(pi: ExtensionAPI) {
     const target = resolveCommandModel(parsed.model, varCtx.modelRegistry?.getAvailable() ?? [])
     if (target && varCtx.model && target.id !== varCtx.model.id) {
       modelOverride.arm(varCtx.model)
-      await pi.setModel(target as Parameters<typeof pi.setModel>[0])
+      await nycode.setModel(target as Parameters<typeof nycode.setModel>[0])
     }
   }
 
@@ -529,7 +529,7 @@ export default function commandsExtension(pi: ExtensionAPI) {
     const target = parsed.effort
     if (target && varCtx.thinkingLevel && target !== varCtx.thinkingLevel) {
       effortOverride.arm(varCtx.thinkingLevel)
-      pi.setThinkingLevel(target as Parameters<typeof pi.setThinkingLevel>[0])
+      nycode.setThinkingLevel(target as Parameters<typeof nycode.setThinkingLevel>[0])
     }
   }
 
@@ -539,7 +539,7 @@ export default function commandsExtension(pi: ExtensionAPI) {
 
     let expanded: string
     try {
-      expanded = await expandCommand(pi, parsed, args, ctx, filePath, plugin, { allowShell: !shellExecutionDisabled(ctx.cwd, os.homedir(), projectApproved) })
+      expanded = await expandCommand(nycode, parsed, args, ctx, filePath, plugin, { allowShell: !shellExecutionDisabled(ctx.cwd, os.homedir(), projectApproved) })
     } catch (error) {
       // A failed injected command aborts the invocation; the model never sees a
       // half-expanded body. The notify carries Claude's failure message format.
@@ -563,7 +563,7 @@ export default function commandsExtension(pi: ExtensionAPI) {
     // frontmatter scoping is not applied in that case, since it cannot land on a run that
     // has not started yet.
     if (!ctx.isIdle()) {
-      pi.sendUserMessage(expanded, { deliverAs: 'followUp' })
+      nycode.sendUserMessage(expanded, { deliverAs: 'followUp' })
       return
     }
     applyAllowedTools(parsed, vars)
@@ -571,7 +571,7 @@ export default function commandsExtension(pi: ExtensionAPI) {
     await applyModelOverride(parsed, varCtx)
     applyEffortOverride(parsed, varCtx)
     if (ctx.hasUI) {
-      pi.sendUserMessage(expanded)
+      nycode.sendUserMessage(expanded)
       return
     }
     // Patch local (claude-home/patches/pi-code/commands-print.patch): no `pi -p` e no `--mode json` o
@@ -579,7 +579,7 @@ export default function commandsExtension(pi: ExtensionAPI) {
     // iniciada pelo sendUserMessage começar ("turn_end could not resolve...", ctx stale). Sem UI, o handler
     // espera essa execução assentar; se ela não começar em 60 s (o prompt falhou antes), segue.
     const settled = new Promise<void>((resolve) => settledWaiters.push(resolve))
-    pi.sendUserMessage(expanded)
+    nycode.sendUserMessage(expanded)
     const started = (async () => {
       for (let waited = 0; waited < 60_000; waited += 50) {
         if (!ctx.isIdle()) return true
@@ -595,7 +595,7 @@ export default function commandsExtension(pi: ExtensionAPI) {
     // original file binding; re-registering would only add a numbered duplicate.
     if (registered.has(command.name)) return
     registered.add(command.name)
-    pi.registerCommand(command.name, {
+    nycode.registerCommand(command.name, {
       description: parsed.argumentHint ? `${parsed.description} ${parsed.argumentHint}` : parsed.description,
       handler: async (args, commandCtx) => {
         // Re-read on invocation so an edited command file takes effect without a reload.
@@ -610,7 +610,7 @@ export default function commandsExtension(pi: ExtensionAPI) {
     })
   }
 
-  pi.on('session_start', async (_event, ctx) => {
+  nycode.on('session_start', async (_event, ctx) => {
     // pi's CLI builds a fresh extension instance per session replacement; only RPC mode can
     // reuse one across sessions. A mid-turn /new there fires session_start on
     // the same instance while a command's per-run scoping is still pending (its agent_settled
@@ -647,7 +647,7 @@ export default function commandsExtension(pi: ExtensionAPI) {
         // An unreadable file must not take down session start, but the command is then
         // absent from /help and unresolvable by the model, which looks like one that was
         // never written.
-        console.warn(`pi-code-commands: ignoring ${command.filePath}: ${errorMessage(error)}`)
+        console.warn(`nycode-commands: ignoring ${command.filePath}: ${errorMessage(error)}`)
         continue
       }
       discovered.set(command.name, command)
@@ -665,7 +665,7 @@ export default function commandsExtension(pi: ExtensionAPI) {
     // model to call: an empty tool would spend context saying "nothing available".
     if (toolRegistered || invocable.length === 0) return
     toolRegistered = true
-    pi.registerTool({
+    nycode.registerTool({
       name: 'slash_command',
       label: 'SlashCommand',
       description: slashCommandToolDescription(invocable, slashCommandBudget((ctx as unknown as VarContext).model?.contextWindow)),
@@ -690,7 +690,7 @@ export default function commandsExtension(pi: ExtensionAPI) {
         // Expansion only, never sendUserMessage (that would spawn a second turn):
         // the tool result is the channel, and frontmatter scoping stays user-path
         // territory (see the header).
-        const expanded = await expandCommand(pi, current, args, execCtx, command.filePath, command.plugin, { allowShell: false })
+        const expanded = await expandCommand(nycode, current, args, execCtx, command.filePath, command.plugin, { allowShell: false })
         // Cap the tool result: a command body can inline an arbitrarily large @file, and
         // an uncapped tool result overflows the model's context (every other pi-code tool
         // routes its output through capForContext). The user-invoked path stays uncapped.
