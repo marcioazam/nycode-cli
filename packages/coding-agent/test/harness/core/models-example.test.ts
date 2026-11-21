@@ -1,44 +1,54 @@
-// Contrato de models.json.example (fallback de recusa do claude-sonnet-5-5 -> claude-sonnet-5).
-// Rodar: NO_COLOR=1 node --experimental-strip-types --test claude-home/bin/tests/config/models-example.test.ts
-// Limite: buildParams do pi-ai não é exportado; o merge de compat do pi (provider-composer.js,
-// mergeCompat = {...base, ...override}) e o mapeamento params.fallbacks são replicados aqui.
-import { strict as assert } from 'node:assert'
-import { existsSync, readFileSync } from 'node:fs'
-import { homedir } from 'node:os'
-import { join } from 'node:path'
-import { test } from 'node:test'
+// Contract of examples/config/models.json: the refusal fallback of claude-sonnet-5-5 -> claude-sonnet-5.
+// The registry applies the example as a real models.json, so the merge with the built-in catalog is the product's own.
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import type { AnthropicMessagesCompat } from "@nycode/ai/compat";
+import { getModels } from "@nycode/ai/compat";
+import { afterEach, describe, expect, it } from "vitest";
+import { AuthStorage } from "../../../src/core/auth-storage.ts";
+import { createModelRegistry } from "../../model-runtime-test-utils.ts";
 
-const example = JSON.parse(readFileSync(new URL('../../../../models.json.example', import.meta.url), 'utf8'))
-const override = example.providers.anthropic.modelOverrides['claude-sonnet-5-5']
-const fallback = override.compat.allowedFallbackModels[0]
+const examplePath = new URL("../../../examples/config/models.json", import.meta.url);
+const example = JSON.parse(readFileSync(examplePath, "utf8"));
+const override = example.providers.anthropic.modelOverrides["claude-sonnet-5-5"];
+const fallback = override.compat.allowedFallbackModels[0];
 
-test('override pede fallback para claude-sonnet-5 com preço do sonnet-5', () => {
-  assert.equal(override.compat.allowedFallbackModels.length, 1)
-  assert.deepEqual(fallback, {
-    provider: 'anthropic',
-    model: 'claude-sonnet-5',
-    cost: { input: 2, output: 10, cacheRead: 0.2, cacheWrite: 2.5 },
-  })
-  assert.deepEqual(Object.keys(override), ['compat'])
-})
+let tempDir: string | undefined;
 
-const catalogPath = join(
-  process.env.PI_AGENT_DIR ?? join(homedir(), '.pi/agent'),
-  'install/releases/1.5.2/node_modules/@earendil-works/pi-ai/dist/providers/data/anthropic.json',
-)
+afterEach(() => {
+	if (tempDir) rmSync(tempDir, { recursive: true });
+	tempDir = undefined;
+});
 
-test('merge com o catálogo do pi preserva compat e gera params.fallbacks', {
-  skip: !existsSync(catalogPath) && 'pi 1.5.2 ausente',
-}, () => {
-  const catalog = JSON.parse(readFileSync(catalogPath, 'utf8'))
-  const models = catalog['anthropic-messages']
-  const find = (id: string) =>
-    Array.isArray(models) ? models.find((m: { id: string }) => m.id === id) : models['chat:' + id]
-  const base = find('claude-sonnet-5-5')
-  const sonnet5 = find('claude-sonnet-5')
-  assert.deepEqual(sonnet5.cost, fallback.cost)
-  const merged = { ...base.compat, ...override.compat }
-  for (const [k, v] of Object.entries(base.compat)) assert.deepEqual(merged[k], v)
-  const params = { fallbacks: merged.allowedFallbackModels.map((f: { model: string }) => ({ model: f.model })) }
-  assert.deepEqual(params.fallbacks, [{ model: 'claude-sonnet-5' }])
-})
+describe("examples/config/models.json", () => {
+	it("asks for a fallback to claude-sonnet-5 priced like claude-sonnet-5", () => {
+		expect(override.compat.allowedFallbackModels).toHaveLength(1);
+		expect(fallback).toEqual({
+			provider: "anthropic",
+			model: "claude-sonnet-5",
+			cost: { input: 2, output: 10, cacheRead: 0.2, cacheWrite: 2.5 },
+		});
+		expect(Object.keys(override)).toEqual(["compat"]);
+	});
+
+	it("matches the built-in price of the fallback model", () => {
+		const sonnet5 = getModels("anthropic").find((model) => model.id === "claude-sonnet-5");
+		expect(sonnet5?.cost).toEqual(fallback.cost);
+	});
+
+	it("loads as models.json, keeps the built-in compat and adds the fallback", async () => {
+		tempDir = mkdtempSync(join(tmpdir(), "models-example-"));
+		const modelsPath = join(tempDir, "models.json");
+		writeFileSync(modelsPath, JSON.stringify(example));
+		const registry = await createModelRegistry(AuthStorage.inMemory(), modelsPath);
+
+		const merged = registry.find("anthropic", "claude-sonnet-5-5")?.compat as AnthropicMessagesCompat | undefined;
+		const builtIn = getModels("anthropic").find((model) => model.id === "claude-sonnet-5-5")
+			?.compat as AnthropicMessagesCompat;
+
+		expect(registry.getError()).toBeUndefined();
+		expect(merged?.allowedFallbackModels).toEqual([fallback]);
+		expect(merged).toMatchObject({ ...builtIn, allowedFallbackModels: [fallback] });
+	});
+});
