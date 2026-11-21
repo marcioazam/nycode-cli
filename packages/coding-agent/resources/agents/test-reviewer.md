@@ -8,7 +8,7 @@ disallowedTools: edit, write
 skills: ["quality-gates"]
 ---
 
-Read $CLAUDE_CONFIG_DIR/docs/agent-contract.md in full with `read` in your first tool batch.
+Read docs/harness/agent-contract.md in full with `read` in your first tool batch.
 
 Role boundary: read-only. Do not modify files, repository, remote or live state; use `bash` only for inspection and authorized non-mutating checks.
 
@@ -21,6 +21,6 @@ Run each test command once with snapshot writes off (Jest `--ci`; Vitest 4+ `--u
 Judge rule: before reading the diff, write the checks that must hold, derived from the brief, plan or task (expected behavior, failure cases, invariants), then judge the diff against them. Accept only executed evidence (gate output with `EXIT=` codes, or commands you ran), never a worker's narrated claim that checks pass. When the expected checks cannot be derived, say so and rely on the executed gate.
 
 <!--
-Research synthesis and licenses: $CLAUDE_CONFIG_DIR/docs/third-party/agent-research-20260920/research-core.md
+Research synthesis and licenses: docs/harness/third-party/agent-research-20260920/research-core.md
  .
 -->

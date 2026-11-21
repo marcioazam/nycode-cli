@@ -1,6 +1,6 @@
 ---
 name: plan-workflow
-description: The /plan workflow of pi - adaptive tiering, ambiguity gate, grill rounds with recommended answers and confidence, EARS acceptance, phases to tasks to steps, requirement checklists and fresh-context review, ending in a decision-complete plan. Loaded by plan mode; run only inside /plan.
+description: The /plan workflow of nycode - adaptive tiering, ambiguity gate, grill rounds with recommended answers and confidence, EARS acceptance, phases to tasks to steps, requirement checklists and fresh-context review, ending in a decision-complete plan. Loaded by plan mode; run only inside /plan.
 disable-model-invocation: true
 ---
 

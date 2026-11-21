@@ -6,7 +6,7 @@ For each vertical slice, record the behavior, owned files/interfaces, prerequisi
 
 Before execution, check that all requested behavior is covered, dependencies are ordered, unrelated cleanup is excluded, and rollback or coexistence is addressed when relevant. Reuse the existing /docs source of truth and checkpoint. Resolve material ambiguity; do not require a separate design approval, automatic commit, visual server, or worker per task when implementation is already authorized.
 
-Adapted from obra/superpowers, revision `b36e0829c6d0140e93cfef2ca599b1b07d4a7797` (MIT). The upstream license is kept in [a local copy]($CLAUDE_CONFIG_DIR/docs/third-party/obra-superpowers/LICENSE); this reference replaces the selected techniques, not the upstream orchestration policy.
+Adapted from obra/superpowers, revision `b36e0829c6d0140e93cfef2ca599b1b07d4a7797` (MIT). The upstream license is recorded in the repository NOTICE; this reference replaces the selected techniques, not the upstream orchestration policy.
 
 Use the proportional document shape in [specification lifecycle](specification-lifecycle.md). Understood, bounded work uses one record and a brief acceptance/risk check; file count does not mandate extra artifacts. For critical or materially ambiguous work, review requirement quality and consistency across specification, plan and tasks, whether sections or documents. Before completion, converge affected behavior, checks, evidence and maintained docs. Plan mode keeps artifacts in the conversation until implementation is authorized.
 

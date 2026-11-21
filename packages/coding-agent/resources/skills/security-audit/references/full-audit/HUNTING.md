@@ -2,11 +2,11 @@
 
 ### Phase 2: Run coverage-led hunting waves
 
-The parent assigns `planned` ledger units to `general` agents (pi: `general-purpose`). Use enough focused hunters to cover the units without combining unrelated boundaries. One hunter may own closely related units in one subsystem; no unit may be silently unassigned because of an agent-count limit — a unit the budget cannot reach is explicitly `deferred` with reason `budget_cannot_reserve_critics_and_validation`.
+The parent assigns `planned` ledger units to `general` agents (nycode: `general-purpose`). Use enough focused hunters to cover the units without combining unrelated boundaries. One hunter may own closely related units in one subsystem; no unit may be silently unassigned because of an agent-count limit — a unit the budget cannot reach is explicitly `deferred` with reason `budget_cannot_reserve_critics_and_validation`.
 
 When a budget or profile caps hunter count, assign units in priority order and record the ordering rationale in the ledger. Rank by: (1) unauthenticated or lowest-trust entry surfaces before authenticated ones; (2) boundaries protecting the most valuable resources (credentials, cross-tenant data, code execution, release authority); (3) prior-run gaps, revalidation targets, and changed source before same-source re-passes; (4) units whose class historically yields confirmed findings for this target type over speculative ones. Ties break lexicographically by `coverage_id` so runs stay deterministic.
 
-Before launch, the parent changes assigned units to `in_progress`, sets a canonical lowercase `agent_id`, and creates that agent's `scratch/` and parent-owned `artifacts/`. Hunters read source and parent-provided context, write only to their unique `scratch/`, and return one structured result through the delegation tool (pi: the `subagent` tool, the JSON object as plain text; waves go out as `tasks: [...]` batches of at most 8, 4 running at once). They never write retained artifacts or edit target source, `architecture.md`, `coverage-ledger.json`, `findings.json`, or another agent's files.
+Before launch, the parent changes assigned units to `in_progress`, sets a canonical lowercase `agent_id`, and creates that agent's `scratch/` and parent-owned `artifacts/`. Hunters read source and parent-provided context, write only to their unique `scratch/`, and return one structured result through the delegation tool (nycode: the `subagent` tool, the JSON object as plain text; waves go out as `tasks: [...]` batches of at most 8, 4 running at once). They never write retained artifacts or edit target source, `architecture.md`, `coverage-ledger.json`, `findings.json`, or another agent's files.
 
 ## Required hunter prompt
 
@@ -220,7 +220,7 @@ Consolidate candidate entries by fingerprint and then by root cause. One root ca
 
 ## Coverage-critic waves
 
-Immediately after each hunter wave, spend the reserved invocation on one fresh `research` post-wave coverage critic (pi: `Explore`). It receives `architecture.md`, the full coverage ledger including each assignment block map, current candidate fingerprints and states, and the prior-ledger gap summary. It reads source but does not write or run targets. Require exactly this JSON:
+Immediately after each hunter wave, spend the reserved invocation on one fresh `research` post-wave coverage critic (nycode: `Explore`). It receives `architecture.md`, the full coverage ledger including each assignment block map, current candidate fingerprints and states, and the prior-ledger gap summary. It reads source but does not write or run targets. Require exactly this JSON:
 
 ```json
 {

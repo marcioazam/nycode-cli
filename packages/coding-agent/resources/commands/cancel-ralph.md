@@ -4,7 +4,7 @@ allowed-tools: ["Bash(test -f .claude/ralph-loop.local.md:*)", "Bash(rm .claude/
 disable-model-invocation: true
 ---
 
-<!-- Porte para o pi (2026-11-11) do /ralph-loop:cancel-ralph (ralph-loop 1.0.1). Mesmo arquivo de estado do porte do
+<!-- Porte para o nycode (2026-11-11) do /ralph-loop:cancel-ralph (ralph-loop 1.0.1). Mesmo arquivo de estado do porte do
 /ralph-loop. -->
 
 # Cancelar o Ralph

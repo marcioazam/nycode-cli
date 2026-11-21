@@ -38,5 +38,5 @@ secrets; language linters' security rules (`bandit`, `eslint-plugin-security`, `
 - High: stack traces or internals in responses; missing authorization on a non-public route; disabled TLS
   verification.
 
-Depth: `security-audit`, `security-reviewer` agent (exploit paths). The `offensive-*` skills do not exist in pi
+Depth: `security-audit`, `security-reviewer` agent (exploit paths). The `offensive-*` skills do not exist in nycode
 (not ported); an authorized offensive test is out of this skill's scope.

@@ -9,11 +9,11 @@ Choose the smallest execution shape that can finish the task reliably. This skil
 
 ## Resolve capabilities before execution
 
-- Treat the current runtime tool/agent catalog as callable authority (in pi: the tools in the system prompt, MCP tools after `tool_search`, and the agents the `subagent` tool lists). Configured
+- Treat the current runtime tool/agent catalog as callable authority (in nycode: the tools in the system prompt, MCP tools after `tool_search`, and the agents the `subagent` tool lists). Configured
   names and local files establish installation only; a missing capability may
   require a new session. Never invent tool names or assume a profile has loaded.
-- Pick one primary skill for the actual outcome (in pi, `read` its
-  `~/.pi/agent/claude-home/skills/<name>/SKILL.md`), then load only conditional
+- Pick one primary skill for the actual outcome (in nycode, `read` its
+  `${NYCODE_RESOURCES}/skills/<name>/SKILL.md`), then load only conditional
   references needed by that task. Skills guide direct work as well as agents.
 - Choose the relevant [MCP and CLI route](references/tool-routing.md) when tools
   overlap. Pass that choice, target identity and evidence requirements to workers.
@@ -33,9 +33,9 @@ Choose the smallest execution shape that can finish the task reliably. This skil
 - Keep localized, sequential work in the main thread.
 - Use `code-mapper` for substantial or uncertain ownership/caller reconnaissance when delegation is authorized; resolve a known local path directly.
 - Delegate only substantial, independently verifiable work. Parallel writes require disjoint declared `owned_files`; otherwise serialize.
-- Use at most three concurrent workers across the task tree, bounded further by the runtime limit (pi: one parallel `subagent` call runs at most 4 of its up to 8 tasks at once; at most 8 background runs) and currently occupied slots. In pi only writer agents nest, to depth 3 (`swarm-orchestration`, Nesting). Never assume three free slots. Stop fan-out when the next opinion is unlikely to change a decision.
+- Use at most three concurrent workers across the task tree, bounded further by the runtime limit (nycode: one parallel `subagent` call runs at most 4 of its up to 8 tasks at once; at most 8 background runs) and currently occupied slots. In nycode only writer agents nest, to depth 3 (`swarm-orchestration`, Nesting). Never assume three free slots. Stop fan-out when the next opinion is unlikely to change a decision.
 - Give each agent one responsibility, exact scope, constraints, evidence required, and done criteria. Agents are not alone in the workspace and must preserve others' changes.
-- Pass the shared research record and assigned gaps to workers. The working contract (`$CLAUDE_CONFIG_DIR/CLAUDE.md`, loaded in every pi session) owns research, TDD and structural requirements; this router does not create another quota or procedure.
+- Pass the shared research record and assigned gaps to workers. The working contract (`${NYCODE_RESOURCES}/instructions/contract.md`, loaded in every nycode session) owns research, TDD and structural requirements; this router does not create another quota or procedure.
 - Add independent review for a concrete substantial risk or unresolved finding, not every function, branch or small change. Reuse supplied immutable evidence instead of repeating equivalent discovery or reviews; verify material conclusions against their source.
 
 ## Native fleet
@@ -69,24 +69,24 @@ Skills in each row are alternatives selected by the concrete question, not a loa
 | Integrating finished parallel lanes, branches or worktrees into one integration branch | `lane-integrator` | `lane-integration` (preloaded) |
 | Static sweep for stale references after an edit, before the one gate run | main thread with `rg`, or `Explore`; `gate-runner` (`haiku`) then runs the gate once | `ripple-hunt` |
 | Decomposing a multi-module task into units with dependencies before parallel lanes | main thread | `graph-engineering`, `swarm-orchestration` |
-| Designing or running an iterative agent loop (fix until green, review and fix, plan completion, polling) | main thread (pi has no `swarm-lanes` workflow; `/goal` for a judged stop condition) | `loop-engineering` |
-| Final review of a whole approved plan's execution | `plan-reviewer` (session model; no per-call tier in pi) | `pr-review`, `ripple-hunt`, `doces-ou-travessuras` |
+| Designing or running an iterative agent loop (fix until green, review and fix, plan completion, polling) | main thread (nycode has no `swarm-lanes` workflow; `/goal` for a judged stop condition) | `loop-engineering` |
+| Final review of a whole approved plan's execution | `plan-reviewer` (session model; no per-call tier in nycode) | `pr-review`, `ripple-hunt`, `doces-ou-travessuras` |
 | Web frontend (React/Next.js, HTML/CSS/JS, Astro/TS, PHP templates) or Worker application | `web-platform-engineer` | `web-ui-craft`, `impeccable`, `engineering-standards`, `browser-testing-with-devtools` |
 | Phone/tablet layout fit and viewport-matrix fixes | `web-platform-engineer` | `responsive-fit` |
 | Bounded Linear triage and authorized issue changes | `linear-operator` | `linear`, `to-issues` |
 | Explicit paid OCR API review with verified findings | `ocr-reviewer` | `ocr-review`; `ocr-delegate-review` keeps review in the current session |
 | Crawl/indexation, localization and schema | parent or `swarm-worker` | `seo-audit` |
 | FastAPI and async persistence | `swarm-worker` or direct | `engineering-standards` (python reference), `api-contract-design`, `webhook-integration` |
-| Flutter widgets/state/platform integration | `swarm-worker` or direct | `engineering-standards` (flutter reference), `design-handoff` (the Claude Code dart-and-flutter plugin and its MCP do not exist in pi) |
+| Flutter widgets/state/platform integration | `swarm-worker` or direct | `engineering-standards` (flutter reference), `design-handoff` (the Claude Code dart-and-flutter plugin and its MCP do not exist in nycode) |
 | Terraform/Kubernetes resources and state | `terraform-specialist` | `engineering-standards`, `architecture-decision` |
 | Data pipelines, ML training, evaluation and serving | `swarm-worker` or direct | `engineering-standards` (data-and-ml-platforms reference), `validate-data`, `db-migration-safety` |
 
-In pi the agent name is the frontmatter `name` in `~/.pi/agent/claude-home/agents/<name>.md` (same kebab-case names as
+In nycode the agent name is the frontmatter `name` in `${NYCODE_RESOURCES}/agents/<name>.md` (same kebab-case names as
 Claude's agents, for example `ci-triage`, `test-reviewer`) plus the built-ins `Explore`, `Plan` and
 `general-purpose`; Codex TOML names keep underscores. Check that exact name in the `subagent` tool's agent list
-immediately before delegating. The shared agent contract (`$CLAUDE_CONFIG_DIR/docs/agent-contract.md`, which every
+immediately before delegating. The shared agent contract (`docs/harness/agent-contract.md`, which every
 ported agent reads first) owns execution limits and handoff evidence;
-pi's agent inventory is `$CLAUDE_CONFIG_DIR/agents/` (tier = each file's `model:` pin,
+nycode's agent inventory is `${NYCODE_RESOURCES}/agents/` (tier = each file's `model:` pin,
 `swarm-orchestration`); Claude retirements and their routes are in the shared contract and
 ~/.claude/docs/agents-sota-2026-10-25.md. Do not fan out a general review and every specialist
 over the same question. Assign specialist depth only for a concrete unresolved risk.
@@ -106,15 +106,15 @@ the entire catalog. `context-economy` applies to noisy output, not to hiding che
 ## Saved workflows (Claude Code only)
 
 Claude Code's saved workflows (`/review-fanout`, `/impact`, `/implement`, `/research-xcheck`, `/sota-audit`) live in
-`~/.claude/workflows/` and are not ported: pi has no Workflow tool. `/swarm` is ported as a command
-(`~/.pi/agent/claude-home/commands/swarm.md`, skill `swarm-orchestration`); the other ported commands are listed in
-`~/.pi/agent/claude-home/docs/pi-commands.md`. When the user asks for an unported workflow, run its steps by hand with `subagent`
+`~/.claude/workflows/` and are not ported: nycode has no Workflow tool. `/swarm` is ported as a command
+(`${NYCODE_RESOURCES}/commands/swarm.md`, skill `swarm-orchestration`); the other ported commands are listed in
+`docs/harness/pi-commands.md`. When the user asks for an unported workflow, run its steps by hand with `subagent`
 calls (single, `{tasks: [...]}` in parallel, or `{chain: [...]}` with `{previous}`) and say so. Their results stay
 input for the parent to verify, never permission to commit, merge or publish.
 
 ## Model inheritance
 
-Tier per spawn follows skill `swarm-orchestration` (Tiers, Thinking level). In pi the `subagent` tool takes no
+Tier per spawn follows skill `swarm-orchestration` (Tiers, Thinking level). In nycode the `subagent` tool takes no
 `model` or `effort`: a child runs on its agent file's `model:` pin (`swarm-worker` = `sonnet`, `gate-runner` and
 `git-delivery` = `haiku`), else on `CLAUDE_CODE_SUBAGENT_MODEL` when set, else on the session model; choose the tier
 by choosing the agent. A configured alias does not establish upstream identity or availability (an unresolved alias
@@ -146,12 +146,12 @@ Delegation may only reduce the parent's authorized scope, tools, external effect
 
 ## Stop conditions
 
-The shared agent contract (`$CLAUDE_CONFIG_DIR/docs/agent-contract.md`) owns retry budgets and termination. Keep routing to one owner per unresolved responsibility; avoid recursive reviewers and duplicate lanes. Verify returned conclusions against their evidence before synthesis.
+The shared agent contract (`docs/harness/agent-contract.md`) owns retry budgets and termination. Keep routing to one owner per unresolved responsibility; avoid recursive reviewers and duplicate lanes. Verify returned conclusions against their evidence before synthesis.
 
 ## Output
 
 For delegated work, state the selected responsibility, owner, evidence and stop
 condition concisely. Keep routine tool selection internal; do not add a routing
 report to every user response. Report unavailable capabilities and material
-tradeoffs. Routing lives in `$CLAUDE_CONFIG_DIR/rules-ref/research-and-tools.md`;
+tradeoffs. Routing lives in `${NYCODE_RESOURCES}/rules/ref/research-and-tools.md`;
 inventory checks run through the `harness-audit` skill. (optional)

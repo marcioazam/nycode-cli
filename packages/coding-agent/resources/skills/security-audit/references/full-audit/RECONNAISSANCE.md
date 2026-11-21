@@ -4,7 +4,7 @@
 
 The parent initializes `run-metadata.json`, applies the strict pre-reconnaissance budget gate in `WORKFLOW.md`, then creates agent scratch roots and the shared ledger before hunting. If the gate fails, record the incomplete status in metadata and launch no reconnaissance agent. Reconnaissance reads the target and locally available build/configuration state only. It does not contact deployed endpoints, external identity providers, registries, brokers, cloud APIs, or other shared services.
 
-Launch several `research` agents in parallel (pi: one `subagent` call with `tasks: [...]`, agent `Explore`, at most 8 per call; see the pi mapping in `WORKFLOW.md`). They return structured facts to the parent and do not write files.
+Launch several `research` agents in parallel (nycode: one `subagent` call with `tasks: [...]`, agent `Explore`, at most 8 per call; see the nycode mapping in `WORKFLOW.md`). They return structured facts to the parent and do not write files.
 
 **Agent 1a: Product, stack, and local operation**
 

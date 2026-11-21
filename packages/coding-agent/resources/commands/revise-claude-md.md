@@ -4,12 +4,12 @@ disable-model-invocation: true
 argument-hint: "[foco opcional]"
 ---
 
-<!-- Porte para o pi (2026-11-11) do /claude-md-management:revise-claude-md (plugin desligado no Claude). Mudanças: o pi
+<!-- Porte para o nycode (2026-11-11) do /claude-md-management:revise-claude-md (plugin desligado no Claude). Mudanças: o nycode
 lê AGENTS.md e CLAUDE.md (e o CLAUDE.local.md pessoal), então os dois entram; a aprovação usa a ferramenta `question`;
 o original procurava `.claude.local.md`, nome que o Claude Code não lê (o certo é `CLAUDE.local.md`, conferido em
-code.claude.com/docs/en/memory); no pi, CLAUDE.local.md e .claude/CLAUDE.md só carregam em projeto aprovado
-(pi-code context-imports.ts), e o wrapper roda --no-approve. Instruções
-globais (~/.pi/agent/claude-home/CLAUDE.md e rules/) ficam de fora: são mantidas por outro fluxo. -->
+code.claude.com/docs/en/memory); no nycode, CLAUDE.local.md e .claude/CLAUDE.md só carregam em projeto aprovado
+(extensão context-imports), e o nycode roda com --no-approve. Instruções
+globais (${NYCODE_RESOURCES}/instructions/contract.md e rules/) ficam de fora: são mantidas por outro fluxo. -->
 
 Foco pedido: `$ARGUMENTS`
 
@@ -29,9 +29,9 @@ sessões futuras, com evidência nesta conversa.
 Onde vai cada acréscimo:
 - `AGENTS.md` / `CLAUDE.md`: compartilhado (versionado). Se os dois existem, o que já for o principal do repositório;
   não duplique a mesma linha nos dois.
-- `CLAUDE.local.md`: pessoal (confira que está no `.gitignore` antes de sugerir). Avise que o pi só o carrega em
-  projeto aprovado (o wrapper roda `--no-approve`), igual a `./.claude/CLAUDE.md`, e que no Claude Code um
-  `CLAUDE.local.md` faz o `AGENTS.md` deixar de ser lido; o que o pi precisa ver vai em `AGENTS.md`/`CLAUDE.md`.
+- `CLAUDE.local.md`: pessoal (confira que está no `.gitignore` antes de sugerir). Avise que o nycode só o carrega em
+  projeto aprovado (o nycode roda com `--no-approve`), igual a `./.claude/CLAUDE.md`, e que no Claude Code um
+  `CLAUDE.local.md` faz o `AGENTS.md` deixar de ser lido; o que o nycode precisa ver vai em `AGENTS.md`/`CLAUDE.md`.
 - O do subdiretório quando a regra só vale ali.
 
 ## 3. Rascunhe

@@ -310,7 +310,7 @@ new code
 **Priority order for output:**
 1. Current working directory (if project repo)
 2. User's Desktop
-3. `~/.pi/agent/claude-home/skills/differential-review/output/` (optional)
+3. `${NYCODE_RESOURCES}/skills/differential-review/output/` (optional)
 
 **Filename format:**
 ```

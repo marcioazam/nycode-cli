@@ -4,9 +4,9 @@ disable-model-invocation: true
 argument-hint: "[aspectos: code tests errors comments types simplify all] [sequential]"
 ---
 
-<!-- Porte para o pi (2026-11-11) do /pr-review-toolkit:review-pr (plugin desligado no Claude, Apache-2.0). Os 6 agentes
-do plugin viraram prompts de referência em claude-home/vendor/pr-review-toolkit/agents/ (não registrados, para não mudar
-o roster); cada aspecto roda num agente do pi que segue o prompt do plugin. O pi não tem modelo por chamada: os
+<!-- Porte para o nycode (2026-11-11) do /pr-review-toolkit:review-pr (plugin desligado no Claude, Apache-2.0). Os 6 agentes
+do plugin viraram prompts de referência em ~/.nycode/agent/vendor/pr-review-toolkit/agents/ (não registrados, para não mudar
+o roster); cada aspecto roda num agente do nycode que segue o prompt do plugin. O nycode não tem modelo por chamada: os
 revisores herdam o modelo da sessão. Mudanças: paralelo por padrão (o original era sequencial), `simplify` só edita
 quando pedido explicitamente e depois da revisão, e todo achado precisa de arquivo:linha. -->
 
@@ -22,7 +22,7 @@ Aspectos pedidos: `$ARGUMENTS` (vazio = `all`).
 
 ## 2. Aspectos aplicáveis
 
-| Aspecto | Quando roda (em `all`) | Agente do pi | Prompt do plugin a seguir |
+| Aspecto | Quando roda (em `all`) | Agente do nycode | Prompt do plugin a seguir |
 |---|---|---|---|
 | code | sempre | `code-reviewer` | `vendor/pr-review-toolkit/agents/code-reviewer.md` |
 | tests | arquivos de teste mudaram, ou código sem teste novo | `test-reviewer` | `.../pr-test-analyzer.md` |
@@ -31,7 +31,7 @@ Aspectos pedidos: `$ARGUMENTS` (vazio = `all`).
 | types | tipos, interfaces, structs ou schemas novos/alterados | `code-reviewer` | `.../type-design-analyzer.md` |
 | simplify | **só se pedido por nome** (edita código) | `swarm-worker` | `.../code-simplifier.md` |
 
-(`vendor/` = `~/.pi/agent/claude-home/vendor`.) Aspecto pedido por nome roda mesmo fora da condição.
+(`vendor/` = `~/.nycode/agent/vendor`.) Aspecto pedido por nome roda mesmo fora da condição.
 
 ## 3. Revisão
 
@@ -61,5 +61,5 @@ Descarte achados sem `arquivo:linha`, pré-existentes ou duplicados (mantenha um
 
 Depois da revisão, e só se não houver crítico aberto: `subagent` `{agent: "swarm-worker", task: ...}` com os arquivos
 mudados como arquivos donos, "leia `vendor/pr-review-toolkit/agents/code-simplifier.md` e
-`~/.pi/agent/claude-home/skills/code-simplification/SKILL.md`; simplifique só o código mudado, sem mudar
+`${NYCODE_RESOURCES}/skills/code-simplification/SKILL.md`; simplifique só o código mudado, sem mudar
 comportamento, e rode os testes do projeto antes de devolver". Mostre ao usuário o diff resultante.

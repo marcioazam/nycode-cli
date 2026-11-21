@@ -10,4 +10,4 @@ Check wrong branch, wrong argument, missing side effect, empty/default result an
 
 Work in vertical slices: one failing test, the minimal code that passes it, then the next test; writing the whole test list first fixes the design before any feedback arrives. At an external boundary, prefer one typed function per remote operation (an SDK-style client) over a generic request helper, so each operation can be faked and asserted on its own. Slice and boundary guidance adapted 2026-10-03 from Matt Pocock [tdd](https://github.com/mattpocock/skills/blob/d81f3a183412e71a5b1e84ca21bc1a35eea03a60/skills/engineering/tdd/SKILL.md), MIT.
 
-Adapted from obra/superpowers, revision `b36e0829c6d0140e93cfef2ca599b1b07d4a7797` (MIT). The upstream license is kept in [a local copy]($CLAUDE_CONFIG_DIR/docs/third-party/obra-superpowers/LICENSE); this reference replaces the selected techniques, not the upstream orchestration policy.
+Adapted from obra/superpowers, revision `b36e0829c6d0140e93cfef2ca599b1b07d4a7797` (MIT). The upstream license is recorded in the repository NOTICE; this reference replaces the selected techniques, not the upstream orchestration policy.

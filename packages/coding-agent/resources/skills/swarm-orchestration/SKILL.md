@@ -13,18 +13,18 @@ the workers, not from running them on the most expensive model.
 
 | Tier | Model, list price in/out per MTok | Gets |
 |---|---|---|
-| `haiku` | Haiku 5.5, 0.10 / 0.50 USD (prompts up to 100k tokens; 0.50 / 2.50 above) | A fully specified narrow unit with no design choice left. In pi: `Explore`, `gate-runner`, `git-delivery`, `code-mapper`, `research-scout`, `linear-operator`, `egm-structural`, `impeccable-manual-edit-applier` (search, mapping, bounded lookups, CRUD, mechanical edits, command runs). Never an implementer of features or fixes: Haiku only for search, mapping and planning-style reads (research 2026-11-13 C44). |
-| `sonnet` | Sonnet 5.5, 2 / 10 USD | Every other worker: features, bug fixes, tests, bounded refactors, debugging from a failure, fix lanes, escalations, mechanical edits (renames, copy, config, boilerplate from a named example) batched into one lane. In pi: `swarm-worker` by default, and every other agent (specialist writers, reviewers, scouts, `general-purpose`, `Plan`). |
-| session | the model the session runs (`$PI_PROVIDER/$PI_MODEL`; Opus 5.5 is 4 / 20 USD) | Decomposition, ambiguous specs, architecture, integration judgment, final acceptance, and review of high-risk flows (auth, secrets, money, persistent data, migrations, concurrency, security, incompatible public contracts). In pi only the main thread runs here (only the session model orchestrates, whichever the user chose: Opus, Fable or another); no agent inherits it. |
+| `haiku` | Haiku 5.5, 0.10 / 0.50 USD (prompts up to 100k tokens; 0.50 / 2.50 above) | A fully specified narrow unit with no design choice left. In nycode: `Explore`, `gate-runner`, `git-delivery`, `code-mapper`, `research-scout`, `linear-operator`, `egm-structural`, `impeccable-manual-edit-applier` (search, mapping, bounded lookups, CRUD, mechanical edits, command runs). Never an implementer of features or fixes: Haiku only for search, mapping and planning-style reads (research 2026-11-13 C44). |
+| `sonnet` | Sonnet 5.5, 2 / 10 USD | Every other worker: features, bug fixes, tests, bounded refactors, debugging from a failure, fix lanes, escalations, mechanical edits (renames, copy, config, boilerplate from a named example) batched into one lane. In nycode: `swarm-worker` by default, and every other agent (specialist writers, reviewers, scouts, `general-purpose`, `Plan`). |
+| session | the model the session runs (`$NYCODE_PROVIDER/$NYCODE_MODEL`; Opus 5.5 is 4 / 20 USD) | Decomposition, ambiguous specs, architecture, integration judgment, final acceptance, and review of high-risk flows (auth, secrets, money, persistent data, migrations, concurrency, security, incompatible public contracts). In nycode only the main thread runs here (only the session model orchestrates, whichever the user chose: Opus, Fable or another); no agent inherits it. |
 
-How pi picks a subagent's model (pi-code `extensions/subagent/agents.ts`, `child.ts`): the `subagent` tool takes no
+How nycode picks a subagent's model (nycode `src/extensions/subagent/`): the `subagent` tool takes no
 `model` per call. A concrete model id in the agent's `model:` wins; a tier alias (`haiku`, `sonnet`, `opus`) is
 resolved by the first available model id that contains it, which picks the oldest tier (`sonnet` became
 `claude-sonnet-4-5`, refused with a 404, on 2026-11-11), so pins use concrete ids; otherwise the child runs on
 `CLAUDE_CODE_SUBAGENT_MODEL` when that variable is set (not for the built-ins `Explore` and `Plan`), else on the session
 model. Pins today (2026-11-11, every agent pinned): `Explore`, `gate-runner`, `git-delivery`, `code-mapper`, `research-scout`, `linear-operator`, `egm-structural`, `impeccable-manual-edit-applier` = `anthropic/claude-haiku-5-5`; every other agent =
 `anthropic/claude-sonnet-5-5`; when a new tier ships, update these ids. So the tier is
-chosen by choosing the agent. Changing a pin is a harness change (edit `~/.pi/agent/claude-home/agents/<name>.md`), not a
+chosen by choosing the agent. Changing a pin is a harness change (edit `${NYCODE_RESOURCES}/agents/<name>.md`), not a
 per-task routing step; never edit agent files mid-task to change a tier.
 
 Fable is never pinned on an agent unless the user names it; as the session model it is the user's choice and orchestrates like any other (Fable 5.2: 8 / 40 USD; 5 and 5.1: 10 / 50). Git delivery routes by the delivery rules (the `git-delivery`
@@ -32,9 +32,9 @@ agent), not by this table.
 
 ## Thinking level
 
-pi has no per-call effort either. A child runs at its agent file's `effort:` (mapped 1:1 to pi's thinking level,
-appended as `model:level` when a model is pinned) or, without one, at pi's `defaultThinkingLevel` (`medium` unless
-`~/.pi/agent/settings.json` sets it). Rules for agent files and for the main session's thinking level:
+nycode has no per-call effort either. A child runs at its agent file's `effort:` (mapped 1:1 to nycode's thinking level,
+appended as `model:level` when a model is pinned) or, without one, at nycode's `defaultThinkingLevel` (`medium` unless
+`~/.nycode/agent/settings.json` sets it). Rules for agent files and for the main session's thinking level:
 - High-risk work (the session row's list) never runs below its model's default level.
 - Never lower a reviewer's (`*-reviewer`) level.
 - `xhigh` only for a fix lane or an escalation after a failed check; since the call cannot raise it, run such a lane
@@ -51,16 +51,16 @@ Effort changes thinking, text and the number of tool calls; at `low` Haiku 5.5 m
 3. Decomposable into two or more independent units (disjoint files, no data dependency), as lanes or team mode: one parallel `subagent` call
    `{tasks: [...]}` per wave (at most 8 tasks, 4 run at once); more units run in waves from the unit graph.
    A unit too large for one lane gets a lead writer that nests (see Nesting).
-4. A gate, review and fix loop to automate: pi has no `swarm-lanes` workflow; drive it from the main thread (see
+4. A gate, review and fix loop to automate: nycode has no `swarm-lanes` workflow; drive it from the main thread (see
    "Run a multi-lane task" and `loop-engineering`), at most 4 writers at once.
 5. A named Claude Code procedure (`/impact`, `/implement`, `/research-xcheck`, `/sota-audit`): its saved workflow is
-   not ported to pi. On the user's ask, run its steps with `subagent` calls and say it ran by hand. `/swarm` is ported
-   as a command (`~/.pi/agent/claude-home/commands/swarm.md`) and runs "Run a multi-lane task" below.
+   not ported to nycode. On the user's ask, run its steps with `subagent` calls and say it ran by hand. `/swarm` is ported
+   as a command (`${NYCODE_RESOURCES}/commands/swarm.md`) and runs "Run a multi-lane task" below.
 
 Prefer `swarm-worker` over `general-purpose` for writer lanes: same Sonnet tier, but `swarm-worker` has `maxTurns` and the
 handback contract; `general-purpose` is for a multi-step task no specialist covers. Each handback, gate or fix step driven from the main thread is one main-thread turn that re-reads the main
 context (Claude Code measurement: about 0.12 USD of cache reads at 300k on Opus); every subagent starts from its own
-prefix (Claude Code: ~44k tokens, about 0.11 USD on Sonnet; pi's child prefix is not yet measured). Drive units one by
+prefix (Claude Code: ~44k tokens, about 0.11 USD on Sonnet; nycode's child prefix is not yet measured). Drive units one by
 one when each handback changes the next decision (exploration, unclear spec, one or two units); batch a wave in one
 parallel call when the units are specified upfront and the loop is mechanical.
 
@@ -68,13 +68,13 @@ Parallelism pays only for independent units: coupled coding work loses quality a
 when split, and one agent matches several at equal thinking tokens. Lane size, not the prefix, drives cost: writer
 lanes ran p50 161 turns at a peak context of p50 459k (Claude Code, 14 days to 2026-11-08). Size a unit to one
 acceptance item and about 100 tool calls, split along code-graph edges; a coupled unit that stays large runs as one
-lane, resumed from disk (agent contract). Children compact by the same `~/.pi/agent/settings.json` thresholds as the
+lane, resumed from disk (agent contract). Children compact by the same `~/.nycode/agent/settings.json` thresholds as the
 session (400k); `maxTurns` in the agent file is the outer bound, not the target. A run that stops at `maxTurns` returns
 partial output: continue it with `{resume: "<run id>", task: "..."}` (background runs), re-scope or split. Batch micro
 edits into one `swarm-worker` lane and never open a lane for a one-line change.
 Correct a running background worker with `{send: "<run id>", task: "..."}` instead of
 cancel and respawn: it lands at its next turn boundary, labelled as the lead's (never user authority); an undelivered
-note in the completion means resend with `resume` (`PI_CODE_SUBAGENT_SEND=0` turns `send` off).
+note in the completion means resend with `resume` (`NYCODE_SUBAGENT_SEND=0` turns `send` off).
 
 ## Brief (every delegation)
 
@@ -91,7 +91,7 @@ Stable text first, the unit last:
 - The budget left for the unit (tool calls, fix rounds): a bigger budget alone does not help an agent that cannot see it
   (2026-11-13 research C15).
 - When the target repo ships a role file for the unit (`harness/agents/<role>.md`), name its path in the brief (the child reads it per agent-contract).
-- Skills the worker should read (path `~/.pi/agent/claude-home/skills/<name>/SKILL.md`), e.g. the specialist's skill.
+- Skills the worker should read (path `${NYCODE_RESOURCES}/skills/<name>/SKILL.md`), e.g. the specialist's skill.
 - Output: the swarm-worker handback (status, block_kind, changed_files, summary up to 600 characters, risks).
 
 Writers: `swarm-worker` (Sonnet) by default, with the domain skill named in the brief. Use a specialist writer
@@ -108,10 +108,10 @@ needs reporting goes to `gate-runner`.
 One orchestrator at the root (the main session, depth 0); writer agents (no `tools:` list: `swarm-worker`,
 `general-purpose`, the specialist writers, `lane-integrator`) may call `subagent` while their depth is below 3, so the
 tree is main → lead (1) → specialist (2) → helper (3, leaf). Agents with a `tools:` list (reviewers, scouts, Haiku
-runners) are always leaves. Enforced by `patches/pi-code/subagent-nesting.patch`: depth cap
-`PI_CODE_SUBAGENT_MAX_DEPTH` (3); per lane (each child of the main session roots one) 64 runs
-`PI_CODE_SUBAGENT_BUDGET` and 20 USD of finished descendants `PI_CODE_SUBAGENT_COST_BUDGET`; the main session is uncapped; parallel concurrency 4 at depth 0
-and 2 below (`PI_CODE_SUBAGENT_NESTED_CONCURRENCY`), so a full tree holds at most 28 child processes; the roster
+runners) are always leaves. Enforced by the `subagent` extension: depth cap
+`NYCODE_SUBAGENT_MAX_DEPTH` (3); per lane (each child of the main session roots one) 64 runs
+`NYCODE_SUBAGENT_BUDGET` and 20 USD of finished descendants `NYCODE_SUBAGENT_COST_BUDGET`; the main session is uncapped; parallel concurrency 4 at depth 0
+and 2 below (`NYCODE_SUBAGENT_NESTED_CONCURRENCY`), so a full tree holds at most 28 child processes; the roster
 reaches only sessions that can still delegate.
 
 - Flat by default: native subagents cut Claude Code from 83% to 59% on SWE-bench Verified at 1.4-3.3x tokens, and
@@ -126,7 +126,7 @@ reaches only sessions that can still delegate.
   sub-unit own a file its siblings own.
 - Each level judges its own children's handbacks and returns one compact handback upward; the main thread never
   reads grandchild transcripts. The gate and the final review stay with the root.
-- Team mode is opt-in (`PI_CODE_TEAMS=1` or `/team on`): tree-wide typed messages, shared board, exclusive-claim task queue, peer action feed, lead = main session, 2 concurrent writers by default (research 2026-11-13 C39, C40; interference rises 3-4x from 2 to 5 agents). Otherwise no mailboxes: a shared file beats messaging (arXiv 2608.16801); the task's `/docs` unit graph is the shared task list.
+- Team mode is opt-in (`NYCODE_TEAMS=1` or `/team on`): tree-wide typed messages, shared board, exclusive-claim task queue, peer action feed, lead = main session, 2 concurrent writers by default (research 2026-11-13 C39, C40; interference rises 3-4x from 2 to 5 agents). Otherwise no mailboxes: a shared file beats messaging (arXiv 2608.16801); the task's `/docs` unit graph is the shared task list.
 
 ## Escalate, never repeat
 
@@ -198,8 +198,8 @@ reaches only sessions that can still delegate.
 - Parallel coding agents spend 1.41-3.31x tokens: https://arxiv.org/abs/2610.10263; one agent matches several at
   equal thinking tokens: https://arxiv.org/abs/2604.02460; share decisions with workers:
   https://cognition.ai/blog/dont-build-multi-agents
-- pi model order for a child (agent `model:` id, resolved tier alias, `CLAUDE_CODE_SUBAGENT_MODEL`, session model):
-  `~/.pi/agent/npm/node_modules/pi-code/extensions/subagent/child.ts` (read 2026-11-11); Claude Code's order:
+- nycode model order for a child (agent `model:` id, resolved tier alias, `CLAUDE_CODE_SUBAGENT_MODEL`, session model):
+  `src/extensions/subagent/` (read 2026-11-11); Claude Code's order:
   https://code.claude.com/docs/en/sub-agents
 - An independent gate, not the agent's own tests: https://arxiv.org/abs/2609.27871,
   https://arxiv.org/abs/2606.16062, https://arxiv.org/abs/2610.03984; constraints erode unless copied verbatim:

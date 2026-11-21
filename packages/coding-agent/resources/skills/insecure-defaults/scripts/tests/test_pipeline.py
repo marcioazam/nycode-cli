@@ -1,7 +1,7 @@
 """pipeline.py: guardas, dedup, lotes e cobertura do /insecure-defaults-audit (porte do audit.js), mais o
 seed-coverage do plugin (cada exemplo VULNERABLE do corpus casa algum seed via grep -E).
 
-Run: python3 ~/.pi/agent/claude-home/skills/insecure-defaults/scripts/tests/test_pipeline.py
+Run: python3 ${NYCODE_RESOURCES}/skills/insecure-defaults/scripts/tests/test_pipeline.py
 """
 import importlib.util
 import json

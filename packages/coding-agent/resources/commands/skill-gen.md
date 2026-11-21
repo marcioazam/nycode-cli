@@ -1,14 +1,14 @@
 ---
-description: "Gera uma skill do pi a partir da URL de uma documentação (Firecrawl MCP, com alternativa sem chave)"
+description: "Gera uma skill do nycode a partir da URL de uma documentação (Firecrawl MCP, com alternativa sem chave)"
 disable-model-invocation: true
 argument-hint: "<url-da-documentação>"
 ---
 
-<!-- Porte para o pi (2026-11-11) do /firecrawl:skill-gen (firecrawl 1.0.9, plugin desligado no Claude). Mudanças: a CLI
-`firecrawl` virou o MCP do pi (mcp__firecrawl__firecrawl_map/scrape/crawl, carregados com tool_search); map e crawl
+<!-- Porte para o nycode (2026-11-11) do /firecrawl:skill-gen (firecrawl 1.0.9, plugin desligado no Claude). Mudanças: a CLI
+`firecrawl` virou o MCP do nycode (mcp__firecrawl__firecrawl_map/scrape/crawl, carregados com tool_search); map e crawl
 exigem sessão autenticada, então sem chave a coleta cai para firecrawl_scrape/web_fetch página a página; locais de
-skill do pi (projeto .pi/skills ou .agents/skills, global ~/.pi/agent/claude-home/skills); perguntas com `question`;
-regras de nome e descrição conferidas nos docs do pi (skills.md: minúsculas, números e hífens, até 64; descrição até
+skill do nycode (projeto .nycode/skills ou .agents/skills, global ${NYCODE_RESOURCES}/skills); perguntas com `question`;
+regras de nome e descrição conferidas nos docs do nycode (skills.md: minúsculas, números e hífens, até 64; descrição até
 1024); skill global passa pelo validador do harness. -->
 
 URL da documentação: **$ARGUMENTS** (vazio: peça a URL com `question` e pare até ter).
@@ -47,8 +47,8 @@ pedido de mudança: revise e apresente de novo.
 ## 5. Pergunte onde salvar (OBRIGATÓRIO, sem padrão)
 
 Com `question`:
-1. **Projeto**: `.pi/skills/<nome>/` (ou `.agents/skills/<nome>/`, que outros agentes também leem) no cwd.
-2. **Global**: `~/.pi/agent/claude-home/skills/<nome>/` (todas as sessões do pi deste harness).
+1. **Projeto**: `.nycode/skills/<nome>/` (ou `.agents/skills/<nome>/`, que outros agentes também leem) no cwd.
+2. **Global**: `${NYCODE_RESOURCES}/skills/<nome>/` (todas as sessões do nycode deste harness).
 3. **Outro caminho**: o usuário informa.
 
 ## 6. Construa
@@ -63,8 +63,8 @@ entregar.
 2. `wc -l SKILL.md` abaixo de 500.
 3. Sem documentação auxiliar no diretório da skill (README.md, CHANGELOG.md, INSTALLATION_GUIDE.md).
 4. Arquivos de `references/` a um nível do SKILL.md (sem subdiretórios dentro de `references/`).
-5. Global: `python3 ~/.pi/agent/claude-home/bin/checks/check-instructions.py` sem problemas novos.
-6. Carga real: `pi --session-dir "\$(mktemp -d)" -p "/skill:<nome>"` não acusa erro de skill (ou `/reload` e
+5. Global: `python3 scripts/harness/checks/check-instructions.py` sem problemas novos.
+6. Carga real: `nycode --session-dir "\$(mktemp -d)" -p "/skill:<nome>"` não acusa erro de skill (ou `/reload` e
    `/skill:<nome>` na TUI).
 
 ## 8. Entregue

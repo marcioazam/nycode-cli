@@ -29,4 +29,4 @@ updates, adding analytics, or scheduling external reporting.
 
 Adapted and modified for this Codex harness from anthropics/knowledge-work-plugins@67e216dbe5621470581dd3d944df22d1cc8231ce (Apache-2.0), 2026-09-20. Source: `product-management/skills/metrics-review/SKILL.md`.
 
-License copies and provenance: [integration record]($CLAUDE_CONFIG_DIR/docs/third-party/knowledge-work-plugins/README.md).
+License copies and provenance: [integration record](docs/harness/third-party/knowledge-work-plugins/README.md).

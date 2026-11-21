@@ -8,4 +8,4 @@ Wait for an observable event or fresh state with a finite timeout, cancellation 
 
 Fix at the responsible boundary. Add another guard only for an independently reachable unsafe path, not at every layer mechanically. Regression checks must exercise the causal chain and relevant callers; passing them does not prove a bug impossible in every environment.
 
-Adapted from obra/superpowers, revision `b36e0829c6d0140e93cfef2ca599b1b07d4a7797` (MIT). The upstream license is kept in [a local copy]($CLAUDE_CONFIG_DIR/docs/third-party/obra-superpowers/LICENSE); this reference replaces the selected techniques, not the upstream orchestration policy.
+Adapted from obra/superpowers, revision `b36e0829c6d0140e93cfef2ca599b1b07d4a7797` (MIT). The upstream license is recorded in the repository NOTICE; this reference replaces the selected techniques, not the upstream orchestration policy.

@@ -1,25 +1,25 @@
 ---
-description: Configura as opções do claude-hud no pi (layout, idioma, elementos), preservando ajustes manuais avançados
+description: Configura as opções do claude-hud no nycode (layout, idioma, elementos), preservando ajustes manuais avançados
 allowed-tools: Read, Write, Glob, AskUserQuestion
 disable-model-invocation: true
 ---
 
-<!-- Porte para o pi (2026-11-11) do /claude-hud:configure (claude-hud 0.10.0): config do HUD do pi em
-~/.pi/agent/claude-home (separada da do Claude Code), AskUserQuestion -> `question`. As linhas de atividade funcionam
-porque o launcher do pi traduz a sessão do pi para o transcript do Claude (claude-home/bin/hud/claude-hud-pi-transcript.mjs). -->
+<!-- Porte para o nycode (2026-11-11) do /claude-hud:configure (claude-hud 0.10.0): config do HUD do nycode em
+~/.nycode/agent (separada da do Claude Code), AskUserQuestion -> `question`. As linhas de atividade funcionam
+porque o launcher do nycode traduz a sessão do nycode para o transcript do Claude (${NYCODE_RESOURCES}/statusline/claude-hud-pi-transcript.mjs). -->
 
-# Configurar o claude-hud do pi
+# Configurar o claude-hud do nycode
 
 ## Ler a config atual
 
-O diretório de config é `~/.pi/agent/claude-home` (o `CLAUDE_CONFIG_DIR` do pi). Leia, se existirem:
+O diretório de config é `~/.nycode/agent`. Leia, se existirem:
 
-1. `~/.pi/agent/claude-home/plugins/claude-hud/config.json`: a config base. Este comando só escreve esse arquivo.
-2. `~/.pi/agent/claude-home/claude-hud.json`: override manual. Mesmo formato, e os valores dele vencem. Nunca escreva nem
+1. `~/.nycode/agent/claude-hud/config.json`: a config base. Este comando só escreve esse arquivo.
+2. `~/.nycode/agent/claude-hud.json`: override manual. Mesmo formato, e os valores dele vencem. Nunca escreva nem
    apague esse arquivo.
 
 Se o `settings.json` do mesmo diretório não tiver um `statusLine` com `claude-hud` no comando, avise que o HUD não está
-ativo no pi e sugira `/claude-hud-setup` antes; continue só se o usuário quiser preparar a config mesmo assim.
+ativo no nycode e sugira `/claude-hud-setup` antes; continue só se o usuário quiser preparar a config mesmo assim.
 
 A config efetiva é a base com o override por cima: objetos aninhados se fundem chave a chave; arrays e escalares são
 substituídos. Chaves ausentes usam os padrões da tabela de configuração do README do plugin (o mais novo em
@@ -30,12 +30,12 @@ substituídos. Chaves ausentes usam os padrões da tabela de configuração do R
 Pergunte com a ferramenta `question`, em dois lotes de até quatro perguntas. Ponha o valor atual em cada pergunta. Nas
 de múltipla escolha, cada item listado vira `true` se marcado e `false` se não.
 
-**Layout** (escolha única; no pi o "Expandido" mostra cada linha acima do rodapé, como no Claude, e o "Compacto" cabe numa linha do rodapé)
+**Layout** (escolha única; no nycode o "Expandido" mostra cada linha acima do rodapé, como no Claude, e o "Compacto" cabe numa linha do rodapé)
 - "Expandido": `lineLayout: "expanded"`, `showSeparators: false`
 - "Compacto": `lineLayout: "compact"`, `showSeparators: false`
 - "Compacto + separadores": `lineLayout: "compact"`, `showSeparators: true`
 
-**Linhas de atividade** (múltipla escolha; no pi vêm da sessão do pi, traduzida pelo launcher; uma skill conta quando
+**Linhas de atividade** (múltipla escolha; no nycode vêm da sessão do nycode, traduzida pelo launcher; uma skill conta quando
 o modelo lê o `SKILL.md` dela)
 - "Tools": `display.showTools`
 - "Agents": `display.showAgents`
@@ -86,7 +86,7 @@ Depois pergunte "Salvar essas mudanças?".
 
 ## Gravar
 
-Grave `~/.pi/agent/claude-home/plugins/claude-hud/config.json`, criando as pastas se preciso. Parta do arquivo base
+Grave `~/.nycode/agent/claude-hud/config.json`, criando as pastas se preciso. Parta do arquivo base
 existente e mude só as chaves escolhidas. Mantenha todas as outras exatamente como estavam, inclusive as que este comando
 não pergunta (`colors`, limiares, `elementOrder`, `mergeGroups`, `display.externalUsage*`). JSON válido com 2 espaços de
 indentação.

@@ -208,7 +208,7 @@ def main(argv: list[str] | None = None) -> int:
     c = sub.add_parser("check", help="validate the graph and print waves and critical path")
     c.add_argument("units")
     c.add_argument("--max-units", type=int, default=12)
-    c.add_argument("--max-writers", type=int, default=4)  # pi subagent: 4 concurrent per parallel call
+    c.add_argument("--max-writers", type=int, default=4)  # nycode subagent: 4 concurrent per parallel call
     s = sub.add_parser("suggest", help="derive `after` edges from a codegraph index")
     s.add_argument("units")
     s.add_argument("--db", required=True, help="<repo>/.codegraph/codegraph.db, opened read-only")

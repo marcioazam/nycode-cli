@@ -12,15 +12,15 @@ description: "Decompose a multi-file task into a unit graph (disjoint files, dep
    blast radius merge. Skip the graph for a single known file or a sequential task (one worker; multi-agent loses up to 70% there).
    Graph answers earn their cost at name lookup and one hop (callers, impact), not in chained expansions: stop after one
    expansion and read the `file:line` slices. Map scope with `mcp__codegraph__codegraph_explore` / `mcp__codegraph__codegraph_impact` (load them with `tool_search` first; `projectPath` = the repository root) on the symbols each unit changes.
-3. Edges: `python3 ~/.pi/agent/claude-home/skills/graph-engineering/scripts/unit_graph.py suggest UNITS.json --db <repo>/.codegraph/codegraph.db`
+3. Edges: `python3 ${NYCODE_RESOURCES}/skills/graph-engineering/scripts/unit_graph.py suggest UNITS.json --db <repo>/.codegraph/codegraph.db`
    (read-only; `--kinds`, `--root` for absolute index paths). It adds `after` edges from calls, imports,
    references, extends and instantiates edges across owned files. Merge every `mutual` pair (a cycle cannot be
    scheduled). Treat `unindexed` files as unverified and check them with `rg`.
-4. Check: `unit_graph.py check UNITS.json [--max-units 12] [--max-writers 4]` (default 4: pi runs at most 4 subagents of one parallel call at once). Fix every error (missing id or
+4. Check: `unit_graph.py check UNITS.json [--max-units 12] [--max-writers 4]` (default 4: nycode runs at most 4 subagents of one parallel call at once). Fix every error (missing id or
    files, duplicate id, file owned twice, unknown or self `after`, cycle). Read `waves`, `critical_path`, `width`
    and the warnings. Exit 0 ok, 1 graph errors, 2 invalid input.
 5. Width: parallelize a wave only when its units are independent and the critical path plus re-exploration and
-   alignment overhead beats running them serially. Keep at most 4 implementers (pi's parallel cap); returns plateau beyond four and
+   alignment overhead beats running them serially. Keep at most 4 implementers (nycode's parallel cap); returns plateau beyond four and
    extra implementers fragment the code. Otherwise run one worker.
 6. Run the ready batch, then re-plan the next batch from the handbacks instead of fixing the whole graph upfront.
    Merge lanes in producer-to-consumer order. Run one gate on the integrated head: disjoint files remove textual
@@ -29,7 +29,7 @@ description: "Decompose a multi-file task into a unit graph (disjoint files, dep
    `{id, goal, files: [], after?: [], tier?, acceptance?, agent?, risk?}`, paths repository-relative.
 
 ## Evidence (read 2026-11-08)
-- https://arxiv.org/abs/2503.21710, https://arxiv.org/abs/2502.00350 (repository graphs: +30-156% relative resolve, +6.33 pp; preprints) and https://arxiv.org/html/2610.33958 (embedding index carries the gain, graph tools add nothing for small open models; 1 hop dominates); https://arxiv.org/abs/2512.08296 (+80.8% decomposable, -70% sequential). Research 2026-11-13: `~/.pi/agent/claude-home/docs/research/2026-11-13-graph-loop-harness-sota.md`
+- https://arxiv.org/abs/2503.21710, https://arxiv.org/abs/2502.00350 (repository graphs: +30-156% relative resolve, +6.33 pp; preprints) and https://arxiv.org/html/2610.33958 (embedding index carries the gain, graph tools add nothing for small open models; 1 hop dominates); https://arxiv.org/abs/2512.08296 (+80.8% decomposable, -70% sequential). Research 2026-11-13: `docs/harness/research/2026-11-13-graph-loop-harness-sota.md`
 
 - https://arxiv.org/abs/2610.08647 (SquidAgent: parallel multi-agent often slower than one agent from re-exploration and alignment overhead; parallelize a layer only when critical path plus overheads beats serial; 2.6x mean wall-time speedup over Claude Code; preprint, self-reported)
 - https://arxiv.org/abs/2610.17471 (implementers and verifiers plateau beyond four workers; extra implementers fragment code; preprint)

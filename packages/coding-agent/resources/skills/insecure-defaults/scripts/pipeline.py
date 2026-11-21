@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Pipeline do /insecure-defaults-audit no pi: porte do workflows/audit.js (trailofbits/insecure-defaults 2.0.3).
+"""Pipeline do /insecure-defaults-audit no nycode: porte do workflows/audit.js (trailofbits/insecure-defaults 2.0.3).
 
-O pi não tem a ferramenta Workflow do Claude Code. As partes que o script fazia sozinho (guardas, dedup, lotes,
-contabilidade de cobertura) ficam aqui, determinísticas e testadas; os agentes rodam pelo `subagent` do pi, cada um
+O nycode não tem a ferramenta Workflow do Claude Code. As partes que o script fazia sozinho (guardas, dedup, lotes,
+contabilidade de cobertura) ficam aqui, determinísticas e testadas; os agentes rodam pelo `subagent` do nycode, cada um
 lendo o prompt que este script grava em <run>/prompts/. Fases:
 
   pipeline.py init <scope>      checa o corpus, cria o run e grava prompts/recon.md          -> {"run", "status"}

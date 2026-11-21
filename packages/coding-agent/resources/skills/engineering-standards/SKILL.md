@@ -5,7 +5,7 @@ description: "Read before writing, changing, testing or reviewing code (Go, Pyth
 
 # Engineering standards
 
-Apply only the references needed for the current task. Do not load the whole collection, and do not override a user's request, repository `AGENTS.md`/`CLAUDE.md` (pi loads both as context files), manifests, CI, or an explicit architecture decision.
+Apply only the references needed for the current task. Do not load the whole collection, and do not override a user's request, repository `AGENTS.md`/`CLAUDE.md` (nycode loads both as context files), manifests, CI, or an explicit architecture decision.
 
 ## Always for substantial engineering work
 
@@ -33,4 +33,4 @@ Read [core engineering](references/core-engineering.md). Then select only the re
 | Data pipeline, warehouse, stream, ML platform, or model serving | [Data and ML platforms](references/data-and-ml-platforms.md) |
 | Flutter or Dart | [Flutter](references/flutter.md) |
 
-Use the shared quality-gate registry at `~/source/blueprint/base-software-rules/standard/GATES.md` when it exists. Cite gate IDs rather than copying its numeric values. The [working contract]($CLAUDE_CONFIG_DIR/CLAUDE.md) owns structure limits and validation by risk (loaded in every pi session): focused checks for ordinary work, required coverage/TDD/E2E for critical changed flows, and no universal research quota. Preserve stricter project gates. If the registry is unavailable, follow that contract and project CI without inventing additional thresholds.
+Use the shared quality-gate registry at `~/source/blueprint/base-software-rules/standard/GATES.md` when it exists. Cite gate IDs rather than copying its numeric values. The [working contract](${NYCODE_RESOURCES}/instructions/contract.md) owns structure limits and validation by risk (loaded in every nycode session): focused checks for ordinary work, required coverage/TDD/E2E for critical changed flows, and no universal research quota. Preserve stricter project gates. If the registry is unavailable, follow that contract and project CI without inventing additional thresholds.

@@ -9,13 +9,13 @@ Use the graph for structural questions and direct text search for literals, conf
 
 ## Reliable workflow
 
-0. Load the tools: the `codegraph` MCP server is deferred in pi, so call `tool_search` (e.g. "codegraph status explore callers impact node") once per session before the first call; the tools are `mcp__codegraph__codegraph_status`, `_explore`, `_callers`, `_impact` and `_node`. If they do not load, use the CLI below and say so.
+0. Load the tools: the `codegraph` MCP server is deferred in nycode, so call `tool_search` (e.g. "codegraph status explore callers impact node") once per session before the first call; the tools are `mcp__codegraph__codegraph_status`, `_explore`, `_callers`, `_impact` and `_node`. If they do not load, use the CLI below and say so.
 1. Locate the index: the nearest `.codegraph/` at or above the working directory. Pass that root as `projectPath` on every call. If none exists, only the main session runs `codegraph init`, and only in an authorized durable repository; never index the home directory, secret directories, ephemeral job directories, or disposable worktrees.
 2. Call `codegraph_status` before relying on an index for consequential, negative or exhaustive conclusions. Pending changes or `reindexRecommended` mean degraded: confirm affected files directly. The MCP watcher keeps indexes fresh; `codegraph sync` is only for scripts outside a session.
 3. Start with `codegraph_explore`: one call returns the relevant symbols' verbatim source, the call paths between them and a blast-radius summary. Name the symbols or files you already know in the query.
 4. Use `codegraph_callers` for exact callers and `codegraph_impact` (raise `depth` when needed) for what a change can break. Narrow same-named symbols with `file`.
 5. Read one symbol or a file range with `codegraph_node` (`includeCode` for the body, `symbolsOnly` for a cheap file overview).
-6. Spot-check load-bearing negative/exhaustive conclusions with `rg`. Absence from the graph is never proof of absence. Confirm load-bearing callers with the pi LSP tools (`lsp_references`, `lsp_definition`, `lsp_symbols`, `lsp_hover`; zero-based `line`/`character`) where a language server is configured (`~/.pi/agent/lsp.json`, 2026-11-11: TypeScript, Python via pyright, Go, Rust); an LSP error means degraded coverage, not absence. (optional)
+6. Spot-check load-bearing negative/exhaustive conclusions with `rg`. Absence from the graph is never proof of absence. Confirm load-bearing callers with the nycode LSP tools (`lsp_references`, `lsp_definition`, `lsp_symbols`, `lsp_hover`; zero-based `line`/`character`) where a language server is configured (`~/.nycode/agent/lsp.json`, 2026-11-11: TypeScript, Python via pyright, Go, Rust); an LSP error means degraded coverage, not absence. (optional)
 
 ## Tool routing
 

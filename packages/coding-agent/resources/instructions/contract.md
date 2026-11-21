@@ -1,11 +1,10 @@
-<!-- Public pi-harness contract, loaded as the user CLAUDE.md via CLAUDE_CONFIG_DIR (self-contained: no imports).
-Private overlay: rules/personal.md (untracked). Keep it short; detail lives in on-demand rules-ref/. -->
+<!-- nycode working contract (self-contained: no imports). Keep it short; detail lives in on-demand rules/ref/. -->
 
-# Working contract (pi)
+# Working contract
 
 ## Precedence
 
-- The user's current instructions win, then repository instructions (the stricter gate wins), then this file, `$CLAUDE_CONFIG_DIR/rules/` (including an optional private `personal.md` overlay) and the on-demand `rules-ref/`, then skills. Skills guide execution and never add approval gates; if guidance blocks progress, name the exact source and requirement.
+- The user's current instructions win, then repository instructions (the stricter gate wins), then this file, `${NYCODE_RESOURCES}/rules/` (a private overlay in `~/.nycode/agent/AGENTS.md` included) and the on-demand `${NYCODE_RESOURCES}/rules/ref/`, then skills. Skills guide execution and never add approval gates; if guidance blocks progress, name the exact source and requirement.
 
 ## Delivery
 
@@ -28,7 +27,7 @@ Private overlay: rules/personal.md (untracked). Keep it short; detail lives in o
 ## Engineering
 
 - A first-party code file has at most 800 physical lines, blanks and comments included; a directory has at most 7 direct code files (defaults; a repository's stricter or explicitly different limits win). Count code, tests and scripts; exclude only proven generated, dependency and build artifacts, and never hide owned code to pass.
-- Every function, file and directory has one coherent responsibility. When a change touches an oversized file or directory, split it by domain or behavior and update consumers. Check with `python3 $CLAUDE_CONFIG_DIR/bin/structure/structure.py --project-root ROOT --json` plus stricter repository gates; report pre-existing violations and never claim compliance while they remain.
+- Every function, file and directory has one coherent responsibility. When a change touches an oversized file or directory, split it by domain or behavior and update consumers. Check with `python3 scripts/ci/lint/structure/structure.py --project-root ROOT --json` plus stricter repository gates; report pre-existing violations and never claim compliance while they remain.
 - Search for existing implementations first and centralize duplicated rules with their domain owner; no speculative abstractions, catch-all modules or generics beyond preserving type information across two or more positions.
 - Keep failures explicit, inputs validated at trust boundaries and resources bounded. Use strict typing, reproducible dependencies and relevant lint, type and security checks.
 - Keep tests deterministic (controlled fixtures, isolated environments); no test or diagnostic may modify production resources.
@@ -51,16 +50,16 @@ Private overlay: rules/personal.md (untracked). Keep it short; detail lives in o
 
 ## On-demand rules
 
-Binding but not preloaded: `read` the file before acting.
+Binding but not preloaded: `read` the file under `${NYCODE_RESOURCES}/rules/ref/` before acting.
 
-- `$CLAUDE_CONFIG_DIR/rules-ref/research-and-tools.md`: before any web search, MCP or tool-route choice, codegraph lookup or `subagent` brief.
-- `rules-ref/delivery-and-orchestration.md`: before git delivery (commit, push, PR, merge), plan mode or a "plan first" request, choosing how much process a change needs (`sdd-workflow`), release or CI design, an architecture or dependency choice, designing retried, persistent or otherwise critical workflows, compaction or `/resume`, a findings list, an explicit delegated policy decision, or running subagents or `/goal`.
-- `rules-ref/docs-and-knowledge.md`: before choosing a spec mode or consulting or capturing knowledge in an optional vault.
-- `rules-ref/harness-economy.md`: before changing the pi harness or a repository's harness.
+- `research-and-tools.md`: before any web search, MCP or tool-route choice, codegraph lookup or `subagent` brief.
+- `delivery-and-orchestration.md`: before git delivery (commit, push, PR, merge), plan mode or a "plan first" request, choosing how much process a change needs (`sdd-workflow`), release or CI design, an architecture or dependency choice, designing retried, persistent or otherwise critical workflows, compaction or `/resume`, a findings list, an explicit delegated policy decision, or running subagents or `/goal`.
+- `docs-and-knowledge.md`: before choosing a spec mode or consulting or capturing knowledge in an optional vault.
+- `harness-economy.md`: before changing the nycode harness or a repository's harness.
 
-## Runtime: pi
+## Runtime
 
-- This harness is pi with the pi-code extensions, launched by the wrapper `bin/pi` (project `.claude` never loaded). Bypass is opt-in (`PI_BYPASS_PERMISSIONS=1` in `~/.pi/agent/local.env` or `pi --bypass`). There is no Skill, Agent/Task, ToolSearch, WebSearch, Workflow, Monitor or context-mode tool.
+- This harness is nycode. Bypass is opt-in (`NYCODE_BYPASS_PERMISSIONS=1` or `nycode --bypass`). There is no Skill, Agent/Task, ToolSearch, WebSearch, Workflow, Monitor or context-mode tool.
 - When a listed skill covers the task, `read` its `SKILL.md` before other tools; hidden skills run only on `/skill:<name>` or when a visible skill, brief or rule names them. MCP tools are deferred: load them with `tool_search` before the first call; names use `_` for `-`.
 - Act autonomously through to the verified result. Keep large output out of context: filter in `bash` or write it under `/tmp`. The `memory` tool holds user preferences, corrections and project decisions not derivable from code.
 - The main session orchestrates and pinned workers implement; independent substantial units go to `subagent` lanes. Subagent verdicts are input to verify, never permission to publish or merge.

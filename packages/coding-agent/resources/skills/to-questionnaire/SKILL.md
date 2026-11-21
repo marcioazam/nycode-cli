@@ -55,4 +55,4 @@ A closing catch-all: anything we didn't ask that we should know?
 
 </questionnaire-template>
 
-Adapted 2026-11-07 from Matt Pocock [to-questionnaire](https://github.com/mattpocock/skills/blob/49dd158d1076134a641b33efb035946536778336/skills/productivity/to-questionnaire/SKILL.md), MIT (Copyright (c) 2026 Matt Pocock); copied as a user-only skill; the pi port added only the topic line and the plain-text/`question` note.
+Adapted 2026-11-07 from Matt Pocock [to-questionnaire](https://github.com/mattpocock/skills/blob/49dd158d1076134a641b33efb035946536778336/skills/productivity/to-questionnaire/SKILL.md), MIT (Copyright (c) 2026 Matt Pocock); copied as a user-only skill; the nycode port added only the topic line and the plain-text/`question` note.

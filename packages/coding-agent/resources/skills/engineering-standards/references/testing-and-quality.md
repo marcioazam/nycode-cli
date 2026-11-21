@@ -1,6 +1,6 @@
 # Testing and quality
 
-The [working contract]($CLAUDE_CONFIG_DIR/CLAUDE.md) owns validation by risk, including when TDD, E2E and coverage are required.
+The [working contract](${NYCODE_RESOURCES}/instructions/contract.md) owns validation by risk, including when TDD, E2E and coverage are required.
 Use [tdd](../../tdd/SKILL.md) for the red/green/refactor procedure and
 [quality-gates](../../quality-gates/SKILL.md) to assess changed-code confidence.
 Refactors require before/after tests; non-executable documentation requires

@@ -6,7 +6,7 @@ Keep check evidence in the current task artifact. Bind it to the task and curren
 
 Capture receipts from the executor or independently inspected test artifacts. An agent's claimed tool list, absent stderr keywords, zero exit code without assertions, or a manually unevaluated check cannot prove completion. Timeout, skipped, missing, malformed, and stale results cannot pass. Hashes detect content differences; they do not authenticate execution or prove the truth of conclusions. Keep local, CI, and live-service evidence distinct.
 
-Record a receipt in this shape and check it yourself; pi ships no receipt validator (the Codex one was dropped 2026-11-12). Expectations must come from the task's acceptance criteria, independently of the receipt:
+Record a receipt in this shape and check it yourself; nycode ships no receipt validator (the Codex one was dropped 2026-11-12). Expectations must come from the task's acceptance criteria, independently of the receipt:
 
 Version 1 requires exactly:
 
@@ -32,9 +32,9 @@ test-first, do not claim a red/green sequence; require the relevant assertion ID
 risk and research requirements; expectations come from the task, not its receipt. Compare actual MCP outputs and chronological test logs before
 accepting a receipt; syntactic diversity or declared red failure is not proof.
 
-Model-behavior evals of the pi harness go through the `pelo-em-ovo` skill; live tasks need frozen workspace fixtures, (optional)
-independent graders and an approved budget. Telemetry already collected from pi sessions is summarized offline by
-`python3 $CLAUDE_CONFIG_DIR/bin/telemetry/pi_telemetry.py`; keep such a summary scoped to the supplied
+Model-behavior evals of the nycode harness go through the `pelo-em-ovo` skill; live tasks need frozen workspace fixtures, (optional)
+independent graders and an approved budget. Telemetry already collected from nycode sessions is summarized offline by
+`python3 scripts/harness/telemetry/pi_telemetry.py`; keep such a summary scoped to the supplied
 measurements: it does not certify collection, billing, completion or upstream model identity.
 
 Use reported output tokens over the explicitly recorded duration for effective TPS. Do not add reasoning tokens that may already be included. Visible streaming TPS requires first/last visible-text times and a separately measured count excluding the first chunk; complete-message events cannot provide it. Missing usage/cost remains unknown. Compare paired task outcomes and total cost per success, not throughput in isolation.

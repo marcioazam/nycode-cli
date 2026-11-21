@@ -8,7 +8,7 @@ description: "Check a git diff for test gaming (loosened assertions, skip/only, 
 Run it before a handback or commit that touched tests, test configuration or coverage settings, and whenever a
 fix turns a failing test green:
 
-`python3 ~/.pi/agent/claude-home/skills/doces-ou-travessuras/scripts/doces.py [--base REF] [--json]`
+`python3 ${NYCODE_RESOURCES}/skills/doces-ou-travessuras/scripts/doces.py [--base REF] [--json]`
 
 It compares the working tree, untracked files included, with `--base` (default `HEAD`; after commits pass the
 branch point, such as `--base origin/main`). It only reads. Exit 0 DOCE, 1 TRAVESSURA, 2 error.
@@ -38,12 +38,12 @@ branch point, such as `--base origin/main`). It only reads. Exit 0 DOCE, 1 TRAVE
 - List every TRAVESSURA you keep, with its justification, in the handback.
 
 ## Integration
-- In pi nothing runs it for you: the Claude Code sensors (`test_edit_sensor` in `~/.claude/hooks/hook-dispatch.sh`
-  and the cadê-o-print Stop hook) are not installed here (`~/.pi/agent/claude-home/settings.json` registers only
+- In nycode nothing runs it for you: the Claude Code sensors (`test_edit_sensor` in `~/.claude/hooks/hook-dispatch.sh`
+  and the cadê-o-print Stop hook) are not installed here (`~/.nycode/agent/settings.json` registers only
   `guard.py`). Run it yourself at the moments listed above, and require it in a worker's handback when a delegated
   change touched tests.
 - The analyzer's TEST_PATH pattern mirrors that hook's; `scripts/tests/test_doces.py` checks the two stay equal
   while `~/.claude/hooks/hook-dispatch.sh` exists and skips otherwise.
 
 Sources: ImpossibleBench (arXiv 2510.20270, §4.1 cheating strategies, §5.3 abort option);
-`~/.pi/agent/claude-home/skills/agent-systems/references/evaluation-design.md`, "Guard against reward hacking".
+`${NYCODE_RESOURCES}/skills/agent-systems/references/evaluation-design.md`, "Guard against reward hacking".

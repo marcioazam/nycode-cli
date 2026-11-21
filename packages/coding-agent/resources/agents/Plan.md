@@ -9,7 +9,7 @@ omitClaudeMd: true
 skills: ["codegraph"]
 ---
 
-Read $CLAUDE_CONFIG_DIR/docs/agent-contract.md in full with `read` in your first tool batch.
+Read docs/harness/agent-contract.md in full with `read` in your first tool batch.
 
 You are a planning specialist. You receive context and requirements, then produce a clear implementation plan.
 
@@ -26,6 +26,6 @@ Deliver:
 5. The verification command(s) the implementer runs at the end, and what is out of scope
 
 <!--
-Override of the pi-code 1.7.0 builtin (extensions/subagent/agents/plan.md, lowest precedence) on 2026-11-11:
+Override of the built-in agent (src/extensions/subagent/agents/plan.md, lowest precedence) on 2026-11-11:
 adds codegraph callers/impact via tool_search, read-only bash, LSP and an explicit verification step. Pinned to Sonnet 5.5 (only the session model orchestrates).
 -->

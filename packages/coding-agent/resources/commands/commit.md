@@ -4,10 +4,10 @@ disable-model-invocation: true
 argument-hint: "[paths...] [-- mensagem]"
 ---
 
-<!-- Porte para o pi (2026-11-11) do /commit-commands:commit (commit-commands, plugin desligado no Claude). Mudanças: o
+<!-- Porte para o nycode (2026-11-11) do /commit-commands:commit (commit-commands, plugin desligado no Claude). Mudanças: o
 commit não roda na conversa principal, vai para o agente git-delivery (`git-deliver commit`: stage só dos paths
 pedidos, varredura de segredos, nunca --no-verify); numa branch protegida ele cria uma branch nova em vez de commitar
-na base. allowed-tools saiu: no pi ele restringe o turno inteiro e bloquearia o `subagent`. -->
+na base. allowed-tools saiu: no nycode ele restringe o turno inteiro e bloquearia o `subagent`. -->
 
 ## Contexto (somente leitura)
 

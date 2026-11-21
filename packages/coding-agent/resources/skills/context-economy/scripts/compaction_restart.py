@@ -1,15 +1,15 @@
-"""compaction_restart.py: how much of the main-thread prompt traffic is context re-sent after a compaction (pi sessions).
+"""compaction_restart.py: how much of the main-thread prompt traffic is context re-sent after a compaction (nycode sessions).
 
-Run: python3 ~/.pi/agent/claude-home/skills/context-economy/scripts/compaction_restart.py [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--json]
+Run: python3 ${NYCODE_RESOURCES}/skills/context-economy/scripts/compaction_restart.py [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--json]
 
-Reads pi main-session files (~/.pi/agent/sessions/*/*.jsonl, aggregates only; subagents run with --no-session, so
+Reads nycode main-session files (~/.nycode/agent/sessions/*/*.jsonl, aggregates only; subagents run with --no-session, so
 every file there is a main session). A request's prompt is input plus cacheRead plus cacheWrite tokens of an assistant
 message; the restart size is the prompt of the first request after a `compaction` entry, and every later request of
 that segment carries min(prompt, restart) of restart context. restart_share is that carried context over all prompt
 tokens in the window. A high restart_share is expected near the cost-optimal window, so it is no decision by itself;
-the lever is the restart size, compared before and after a prefix change. pi records no auto/manual trigger, so
+the lever is the restart size, compared before and after a prefix change. nycode records no auto/manual trigger, so
 `under_window` counts compactions whose tokensBefore is at most 110% of --window (the 250k threshold set by
-compaction.modelOverrides in ~/.pi/agent/settings.json and ~/.pi/agent/extensions/compact-at-400k.ts). Entries are read
+compaction.modelOverrides in ~/.nycode/agent/settings.json and compaction.maxContextTokens). Entries are read
 in file order (a session file with /tree branches is treated as one stream). Dates are UTC days; --until is exclusive.
 """
 from __future__ import annotations
@@ -36,10 +36,10 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description='Share of main-thread prompt tokens that is post-compaction restart.')
     parser.add_argument('--since', type=_day, default=week_ago, help='first UTC day (default: 7 days ago)')
     parser.add_argument('--until', type=_day, help='UTC day to stop before (default: no end)')
-    parser.add_argument('--window', type=int, default=int(os.environ.get('PI_COMPACT_AT', '250000')),
-                        help='compaction threshold being evaluated (default: PI_COMPACT_AT or 250000)')
-    parser.add_argument('--sessions', type=Path, default=Path.home() / '.pi' / 'agent' / 'sessions',
-                        help='pi sessions directory (default: ~/.pi/agent/sessions)')
+    parser.add_argument('--window', type=int, default=int(os.environ.get('NYCODE_COMPACT_AT', '250000')),
+                        help='compaction threshold being evaluated (default: NYCODE_COMPACT_AT or 250000)')
+    parser.add_argument('--sessions', type=Path, default=Path.home() / '.nycode' / 'agent' / 'sessions',
+                        help='nycode sessions directory (default: ~/.nycode/agent/sessions)')
     parser.add_argument('--json', action='store_true', help='print JSON instead of text')
     return parser
 

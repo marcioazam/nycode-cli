@@ -5,7 +5,7 @@ description: "Statically sweep for stale references after an edit (renamed/remov
 
 # Ripple hunt
 
-A cheap static sweep: run it inline with `bash` (`rg`, `git`), or delegate it read-only through `subagent` `{agent: "swarm-worker", task: "ripple-hunt: read ~/.pi/agent/claude-home/skills/ripple-hunt/SKILL.md, sweep <diff/range>, edit nothing"}` (pi's `subagent` has no per-call Haiku tier, and `Explore` has no `bash`). The repository's own files win: its `AGENTS.md` or
+A cheap static sweep: run it inline with `bash` (`rg`, `git`), or delegate it read-only through `subagent` `{agent: "swarm-worker", task: "ripple-hunt: read ${NYCODE_RESOURCES}/skills/ripple-hunt/SKILL.md, sweep <diff/range>, edit nothing"}` (nycode's `subagent` has no per-call Haiku tier, and `Explore` has no `bash`). The repository's own files win: its `AGENTS.md` or
 `CLAUDE.md`, its project skills, its structure limits and its gate script. This skill fills gaps and defers to
 them. It reads and reports; it edits nothing unless the brief says so, and it runs no build, test or gate.
 
@@ -19,7 +19,7 @@ Inputs: the diff (`git diff`, plus untracked paths from `git status --porcelain`
    recompute them from source.
 3. A `README.md` in every new directory, when the repo requires one.
 4. Limits: 800 lines per code file and 7 direct code files per directory, with
-   `python3 ~/.pi/agent/claude-home/bin/structure/structure.py --project-root ROOT --json`, or the repo's stricter policy.
+   `python3 scripts/ci/lint/structure/structure.py --project-root ROOT --json`, or the repo's stricter policy.
 5. Syntax: the formatter and the parsers (JSON, YAML, TOML, schema, markdown links) on edited files only, and
    every generator `--check` that finishes in seconds.
 6. Agreement: the CHANGELOG entry, the record and the doc anchors name the same things; relative links and

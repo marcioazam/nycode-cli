@@ -6,7 +6,7 @@ description: "Design and run bounded agent loops (fix until green, review-fix, p
 # Loop engineering
 
 ## Anatomy
-Every loop has: a sensor (deterministic first: build, tests, lint, `EXIT=` sentinel, `doces-ou-travessuras` on test diffs), an actuator (a worker on the cheapest tier that holds quality; in pi the tier is the agent's `model:` pin, see `swarm-orchestration`), stop conditions a machine can check, a budget, state on disk, an escalation exit.
+Every loop has: a sensor (deterministic first: build, tests, lint, `EXIT=` sentinel, `doces-ou-travessuras` on test diffs), an actuator (a worker on the cheapest tier that holds quality; in nycode the tier is the agent's `model:` pin, see `swarm-orchestration`), stop conditions a machine can check, a budget, state on disk, an escalation exit.
 
 ## Checker
 The maker never grades itself: the gate runs first and its real output goes to one separate reviewer; never a fan-out of validators. Without external feedback, self-correction does not help and can hurt.
@@ -18,17 +18,17 @@ The maker never grades itself: the gate runs first and its real output goes to o
 - The user's token target when given (`+500k`): skip a further fix round when under about 100k tokens remain, and report instead.
 
 ## No progress
-Stop and escalate when a round changes nothing (same failing check, no new edit or evidence); check it after each fix round's gate by comparing the failing checks and `git diff --stat` with the previous round. pi's `/goal <condition>` (pi-code) has a separate model judge the condition each turn and pauses (goal still set) after 8 consecutive not-met verdicts on turns that used no tool (`CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`).
+Stop and escalate when a round changes nothing (same failing check, no new edit or evidence); check it after each fix round's gate by comparing the failing checks and `git diff --stat` with the previous round. nycode's `/goal <condition>` (nycode) has a separate model judge the condition each turn and pauses (goal still set) after 8 consecutive not-met verdicts on turns that used no tool (`CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`).
 
 ## State
 Beyond one call (more than 12 units, or across sessions) keep the unit graph and each unit's status in the task's `/docs` record; machine-edited state as JSON (models damage it less than Markdown). Progress plus git history let a fresh context resume. One feature or acceptance item per lane. Prefer a fresh context with state on disk over a long compacted one.
 
 ## Patterns
-[references/patterns.md](references/patterns.md): plan completion loop (an approved plan runs to the end until `plan-reviewer` returns `PLAN_REVIEW: complete`; pi has no plan Stop hook, so the loop is explicit or driven by `/goal`; exits `PLAN BLOCKED:`, `PLAN WAITING:`, `PLAN CANCELLED`), polling and scheduling (never poll background subagents; bounded polling only for external state), reward hacking inside loops (read the test hunks, run `doces-ou-travessuras`).
+[references/patterns.md](references/patterns.md): plan completion loop (an approved plan runs to the end until `plan-reviewer` returns `PLAN_REVIEW: complete`; nycode has no plan Stop hook, so the loop is explicit or driven by `/goal`; exits `PLAN BLOCKED:`, `PLAN WAITING:`, `PLAN CANCELLED`), polling and scheduling (never poll background subagents; bounded polling only for external state), reward hacking inside loops (read the test hunks, run `doces-ou-travessuras`).
 
 ## Evidence (read 2026-11-08)
 - https://arxiv.org/html/2411.17501v1 (imperfect verifier caps resampling), https://arxiv.org/abs/2603.00520 (1 in 5 solved patches wrong), https://arxiv.org/abs/2511.17006 (budget awareness), https://arxiv.org/abs/2504.01931 (high-fidelity feedback +10 pts over best-of-N); research 2026-11-13 in `docs/research/2026-11-13-graph-loop-harness-sota.md`
-- https://code.claude.com/docs/en/goal (pi-code's `/goal` mirrors it; small evaluator checks the condition each turn from the conversation, runs no commands; no-progress stop)
+- https://code.claude.com/docs/en/goal (nycode's `/goal` mirrors it; small evaluator checks the condition each turn from the conversation, runs no commands; no-progress stop)
 - https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents (JSON feature list; one feature per session; progress file plus git; vendor, qualitative)
 - https://arxiv.org/html/2510.20270 (ImpossibleBench: 10 submissions raise pass 80% to 83%, cheating 33% to 38%; monitors catch 86-89% on LiveCodeBench, 42-50% on SWE-bench; abort option cuts cheating)
 - https://arxiv.org/abs/2310.01798 (self-correction without external feedback does not help, can degrade)

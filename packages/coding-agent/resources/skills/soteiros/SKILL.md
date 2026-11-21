@@ -29,7 +29,7 @@ and list the residual risk.
 3. Gaps: walk the [rubric](references/rubric.md) and the [path matrix](references/paths.md) for every
    entrypoint. Each dimension's current editions, checks and tools live in its file under
    [facets](references/facets/README.md); an assigned facet means that file only. Load the owning skill
-   named there for depth instead of guessing (`read` its `SKILL.md` under `~/.pi/agent/claude-home/skills/`).
+   named there for depth instead of guessing (`read` its `SKILL.md` under `${NYCODE_RESOURCES}/skills/`).
    A repository-wide or multi-module audit that would flood the context: run one `soteiros-auditor`
    per facet or module in parallel (`subagent` `{tasks:[{agent:"soteiros-auditor", task:"<scope>; facet: <file>"}, ...]}`, (optional)
    at most 8) and merge their findings; they are read-only, so transformations stay with you or `zero-legado-builder`.

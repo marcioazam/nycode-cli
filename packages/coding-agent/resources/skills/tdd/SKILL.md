@@ -5,7 +5,7 @@ description: Required for bug fixes and critical executable flows, or when the r
 
 # Test-driven development
 
-The [working contract]($CLAUDE_CONFIG_DIR/CLAUDE.md) owns when this procedure is required.
+The [working contract](${NYCODE_RESOURCES}/instructions/contract.md) owns when this procedure is required.
 For ordinary behavior changes, focused acceptance tests are sufficient unless
 repository policy requires test-first. Do not mandate TDD solely because a
 file is executable; identify the risk and preserve stronger project rules.

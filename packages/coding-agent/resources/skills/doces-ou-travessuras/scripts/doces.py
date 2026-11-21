@@ -8,7 +8,7 @@ verdict line. Exit 0 DOCE (no high finding), 1 TRAVESSURA, 2 error (not a git re
 reason, snippet}], "truncated"}. Untracked files count as added. Reads only; never writes the repository.
 
 Rules (ImpossibleBench arXiv 2510.20270 §4.1: modify tests, overload comparison operators, record extra states,
-special-case the tests; ~/.pi/agent/claude-home/skills/agent-systems/references/evaluation-design.md "Guard against reward
+special-case the tests; ${NYCODE_RESOURCES}/skills/agent-systems/references/evaluation-design.md "Guard against reward
 hacking"). High: assert-removed, assert-loosened, tolerance-loosened, skip-added, test-deleted, test-removed,
 harness-hook (in test files and conftest); threshold-lowered, threshold-removed, coverage-exclusion (config);
 coverage-pragma, test-detection, special-case, always-equal (production code). Review: expected-changed (a test's

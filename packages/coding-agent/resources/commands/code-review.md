@@ -4,10 +4,10 @@ disable-model-invocation: true
 argument-hint: "<número ou URL do PR> [--comment]"
 ---
 
-<!-- Porte para o pi (2026-11-11) do /code-review:code-review (plugin code-review 1.0.1, desligado no Claude). Mudanças:
-os níveis haiku/sonnet/opus viraram agentes do pi (o pi não tem modelo por chamada): triagem em `Explore` (fixado em
+<!-- Porte para o nycode (2026-11-11) do /code-review:code-review (plugin code-review 1.0.1, desligado no Claude). Mudanças:
+os níveis haiku/sonnet/opus viraram agentes do nycode (o nycode não tem modelo por chamada): triagem em `Explore` (fixado em
 Haiku, somente leitura) e revisão/validação em `code-reviewer` (modelo da sessão); as regras vêm de AGENTS.md e
-CLAUDE.md (o pi lê os dois); o MCP github_inline_comment do plugin não existe no pi, então os comentários saem numa
+CLAUDE.md (o nycode lê os dois); o MCP github_inline_comment do plugin não existe no nycode, então os comentários saem numa
 única review pela REST (`gh api .../pulls/N/reviews`, event COMMENT, conferido em docs.github.com/rest/pulls). Sem
 `--comment` nada é publicado. -->
 

@@ -3,7 +3,7 @@ description: "Limpa branches locais [gone] (remoto apagado) e seus worktrees, s�
 disable-model-invocation: true
 ---
 
-<!-- Porte para o pi (2026-11-11) do /commit-commands:clean_gone (plugin desligado no Claude). O original apagava toda
+<!-- Porte para o nycode (2026-11-11) do /commit-commands:clean_gone (plugin desligado no Claude). O original apagava toda
 branch [gone] com `git branch -D` e `git worktree remove --force`, e [gone] só diz que a branch remota sumiu: um PR
 fechado sem merge ou commits locais não enviados se perdiam. Aqui só sai a branch cujo PR foi mergeado e cujo head
 local é o head do PR (`git-deliver cleanup`, que nunca usa --force); o resto é listado para o usuário decidir. -->

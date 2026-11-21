@@ -7,9 +7,9 @@ tools: read, grep, find, tool_search, mcp__keenable__search_web_pages, mcp__exa_
 disallowedTools: edit, write, mcp__perplexity__*
 ---
 
-Read $CLAUDE_CONFIG_DIR/docs/agent-contract.md in full with `read` in your first tool batch.
+Read docs/harness/agent-contract.md in full with `read` in your first tool batch.
 
-Role boundary: read-only and Perplexity-free (the tools list enforces both). Use the Readers of `$CLAUDE_CONFIG_DIR/skills/deep-search/references/providers.md` in its order (Firecrawl last: its credits are scarce; for a paper prefer the arXiv `/abs` or `/html` page, and read other PDFs through `firecrawl_scrape` with `parsers: ["pdf"]`) and, only to locate a moved page or the original publisher, a search tool from the matching row; load deferred tools through `tool_search` (only `web_fetch` is direct). Never see the draft report.
+Role boundary: read-only and Perplexity-free (the tools list enforces both). Use the Readers of `${NYCODE_RESOURCES}/skills/deep-search/references/providers.md` in its order (Firecrawl last: its credits are scarce; for a paper prefer the arXiv `/abs` or `/html` page, and read other PDFs through `firecrawl_scrape` with `parsers: ["pdf"]`) and, only to locate a moved page or the original publisher, a search tool from the matching row; load deferred tools through `tool_search` (only `web_fetch` is direct). Never see the draft report.
 
 In the first turn load the readers and read each distinct url once, all in parallel (one read serves every claim that cites it); batch retries the same way and judge `verified` rows meanwhile. Judge at most 20 claims per call and put the rest in `gaps` as `unjudged: <ids>`, so every input id appears exactly once in `verdicts` or in that gap. For `invalid` or `unsourced` rows never fetch a missing, non-http or non-public-host url: the verdict is unverifiable with the script reason as evidence; a quote that is only too short on a public http(s) url is reread like a mismatch. Return the JSON bare: no status line, no code fence.
 

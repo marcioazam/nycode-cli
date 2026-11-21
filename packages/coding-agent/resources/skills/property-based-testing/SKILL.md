@@ -14,4 +14,4 @@ Common libraries, when the project already has one: Hypothesis (Python), fast-ch
 
 For failures, preserve the smallest counterexample, distinguish a false property from a product bug, and add a regression example when the defect is fixed. Report generation limits, rejected cases, and any untested domain boundary.
 
-Source reviewed: Trail of Bits `property-based-testing`, revision `d3323cefbcf645678b8dc481de204b02ad3d02dc` (CC-BY-SA-4.0), adapted to this harness (pi port 2026-11: library pointers and reproducibility notes).
+Source reviewed: Trail of Bits `property-based-testing`, revision `d3323cefbcf645678b8dc481de204b02ad3d02dc` (CC-BY-SA-4.0), adapted to this harness (nycode port 2026-11: library pointers and reproducibility notes).

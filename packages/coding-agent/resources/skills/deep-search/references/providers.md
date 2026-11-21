@@ -1,12 +1,12 @@
-# Search providers (canonical, pi)
+# Search providers (canonical, nycode)
 
-The single provider map for every search skill and agent in the pi harness: `perplexity-urls`, `deep-search` and its variants (`fact-check`, `academic-search`, `tech-search`, `entity-search`, `legal-search`, `wide-search`), `evidence-research`, the scouts and `claim-verifier`. Other files point here instead of listing providers.
+The single provider map for every search skill and agent in the nycode harness: `perplexity-urls`, `deep-search` and its variants (`fact-check`, `academic-search`, `tech-search`, `entity-search`, `legal-search`, `wide-search`), `evidence-research`, the scouts and `claim-verifier`. Other files point here instead of listing providers.
 
-Tool names are the real pi names (`mcp__<server>__<tool>`, every character outside `[A-Za-z0-9_]` turned into `_`), confirmed with `tool_search` on 2026-11-11. Every MCP server is deferred: call `tool_search` with a descriptive query (for example "perplexity search", "exa web search company", "octen news broad", "brave news llm context", "firecrawl scrape gov", "paper search arxiv", "package versions registry") before the first call in a session. A tool missing from `tool_search` results is not available: say so and take the next tool; never assume.
+Tool names are the real nycode names (`mcp__<server>__<tool>`, every character outside `[A-Za-z0-9_]` turned into `_`), confirmed with `tool_search` on 2026-11-11. Every MCP server is deferred: call `tool_search` with a descriptive query (for example "perplexity search", "exa web search company", "octen news broad", "brave news llm context", "firecrawl scrape gov", "paper search arxiv", "package versions registry") before the first call in a session. A tool missing from `tool_search` results is not available: say so and take the next tool; never assume.
 
 Every web search: Perplexity first under `perplexity-urls`, plus at least one independent provider from the task's row, in the same turn. Take the first tool of the row; workers in one run take different tools of the row. "Next" means the next tool in the row, then the `fact` row.
 
-Parallel: the Claude Code plugin is disabled (owner decision 2026-11-04), but in pi the `parallel` server is registered in `~/.pi/agent/mcp.json` and its tools load (free tier, rate-limited). Use it where the row lists it; on 429 or an error take the next tool.
+Parallel: the Claude Code plugin is disabled (owner decision 2026-11-04), but in nycode the `parallel` server is registered in `~/.nycode/agent/mcp.json` and its tools load (free tier, rate-limited). Use it where the row lists it; on 429 or an error take the next tool.
 
 ## Rows by task class
 
@@ -28,7 +28,7 @@ Regional or Portuguese-language results: Brave `country: "BR"` and `search_lang:
 
 ## Readers
 
-In order: `mcp__exa__web_fetch_exa` → `mcp__parallel__web_fetch` (several URLs, one objective) → `mcp__youcom__you_contents` → `mcp__keenable__fetch_page_content` (`live: true` for current facts; `prompt` to pull one detail from a long page) or the pi `web_fetch` tool → the same readers on `https://r.jina.ai/<url>` for JavaScript-rendered or empty shell pages and some bot walls (keyless, 20 requests a minute, public URLs only; `quote_check.py` already retries a mismatch or blocked page this way) → `mcp__octen__extract` (`mode: "advanced"` for anti-bot or JavaScript sites) → `mcp__firecrawl__firecrawl_scrape` only for what the others cannot read: bot walls (in.gov.br, congress.gov, ecfr.gov), `parsers: ["pdf"]` (for papers try the arXiv `/abs` or `/html` page first, or `mcp__firecrawl__firecrawl_research_read_paper`), `formats: ["query"]` with a direct-quote prompt for long pages (check `mcp__firecrawl__firecrawl_credit_usage` first) → `mcp__fetch__fetch` (robots.txt blocks github.com) → `mcp__nimble__nimble_extract`. A reader confirms a page; it is never the independent provider. Bulky pages: cap the size (`max_chars`, `maxCharacters`, `max_length`) and read in slices instead of loading the whole page.
+In order: `mcp__exa__web_fetch_exa` → `mcp__parallel__web_fetch` (several URLs, one objective) → `mcp__youcom__you_contents` → `mcp__keenable__fetch_page_content` (`live: true` for current facts; `prompt` to pull one detail from a long page) or the nycode `web_fetch` tool → the same readers on `https://r.jina.ai/<url>` for JavaScript-rendered or empty shell pages and some bot walls (keyless, 20 requests a minute, public URLs only; `quote_check.py` already retries a mismatch or blocked page this way) → `mcp__octen__extract` (`mode: "advanced"` for anti-bot or JavaScript sites) → `mcp__firecrawl__firecrawl_scrape` only for what the others cannot read: bot walls (in.gov.br, congress.gov, ecfr.gov), `parsers: ["pdf"]` (for papers try the arXiv `/abs` or `/html` page first, or `mcp__firecrawl__firecrawl_research_read_paper`), `formats: ["query"]` with a direct-quote prompt for long pages (check `mcp__firecrawl__firecrawl_credit_usage` first) → `mcp__fetch__fetch` (robots.txt blocks github.com) → `mcp__nimble__nimble_extract`. A reader confirms a page; it is never the independent provider. Bulky pages: cap the size (`max_chars`, `maxCharacters`, `max_length`) and read in slices instead of loading the whole page.
 
 ## Hosted research
 
@@ -49,7 +49,7 @@ In order: `mcp__exa__web_fetch_exa` → `mcp__parallel__web_fetch` (several URLs
 - Claim verdict: `supported`, `partial`, `unsupported`, `unverifiable`. A `blocked` or `unreachable` page never makes a claim `unsupported`.
 - Record the provider and tool per claim (`provider:tool`, for example `octen:news_search`).
 
-## Tool index (pi, confirmed 2026-11-11)
+## Tool index (nycode, confirmed 2026-11-11)
 
 | server | search / research | readers and helpers |
 |---|---|---|

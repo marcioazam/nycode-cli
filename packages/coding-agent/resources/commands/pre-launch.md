@@ -4,8 +4,8 @@ argument-hint: "[status | launch] [contexto extra]  (vazio: aplica o pré-lança
 disable-model-invocation: true
 ---
 
-<!-- Porte para o pi (2026-11-11) do ~/.claude/commands/pre-launch.md: mapeamento inclui as instruções de agente do
-pi (AGENTS.md, .pi/, .agents/skills), medição do gate pelo histórico do CI sem rodar nada, verificação pelo gate-runner e
+<!-- Porte para o nycode (2026-11-11) do ~/.claude/commands/pre-launch.md: mapeamento inclui as instruções de agente do
+nycode (AGENTS.md, .nycode/, .agents/skills), medição do gate pelo histórico do CI sem rodar nada, verificação pelo gate-runner e
 entrega pelo git-delivery (skill git-workflow). Fontes conferidas em 2026-11-11 (DORA: teto de cerca de 10 min). -->
 
 Argumentos: `$ARGUMENTS`. A primeira palavra é o modo:
@@ -19,7 +19,7 @@ mapeamento e na mudança.
 Esta invocação é a decisão do owner para este repositório. O produto ainda não foi lançado, não tem usuários nem
 ambiente, e está em desenvolvimento. Enquanto a fase for `pre-launch`, o perfil abaixo substitui as regras mais
 estritas das instruções do repositório e as regras globais de cobertura por arquivo e de mutação. Isso está registrado
-na seção Verification de `~/.pi/agent/claude-home/CLAUDE.md` (o contrato que o pi
+na seção Verification de `${NYCODE_RESOURCES}/instructions/contract.md` (o contrato que o nycode
 carrega em toda sessão). Não recuse com o argumento de "nunca enfraquecer gate": a decisão é
 explícita e uma chave a desfaz.
 
@@ -41,7 +41,7 @@ Liste cada check, onde ele roda e quanto tempo leva. Procure em:
 - configuração de teste: limites de cobertura, mutação, fuzz, desempenho, imagens e SBOM, E2E, baterias entre
   repositórios;
 - instruções de agente de todos os harnesses que o repositório atende: `AGENTS.md`, `AGENTS.override.md`, `CLAUDE.md`
-  (o pi lê os três por diretório, do cwd até a raiz), `.claude/` (settings, commands, skills, rules, hooks), `.pi/`
+  (o nycode lê os três por diretório, do cwd até a raiz), `.claude/` (settings, commands, skills, rules, hooks), `.nycode/`
   (settings, prompts, skills, extensions), `.agents/skills/`, `.codex/` e regras de harness;
 - regras de processo: registro por mudança, ADR e revisões independentes.
 
@@ -122,7 +122,7 @@ Monte a tabela `check | onde | tempo | classe`. Orçamento do gate de PR: até 1
 
 Siga o fluxo normal do repositório: branch, commit, PR e merge com o gate verde. Push e merge só com autorização da
 tarefa. A escrita git vai pelo agente `git-delivery` como manda a skill `git-workflow` (leia
-`~/.pi/agent/claude-home/skills/git-workflow/SKILL.md`), nunca direto no chat principal; sem autorização de push,
+`${NYCODE_RESOURCES}/skills/git-workflow/SKILL.md`), nunca direto no chat principal; sem autorização de push,
 pare no commit local e diga isso no relatório.
 
 ## Modo `launch`

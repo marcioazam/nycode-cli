@@ -23,7 +23,7 @@ Evaluates whether APIs, configurations, and interfaces are resistant to develope
 
 ## Agent
 
-For a dedicated, isolated analysis, delegate to `security-reviewer` (pi: `subagent {agent: "security-reviewer", task: ...}`) and name this skill in the brief; the `sharp-edges-analyzer` agent was retired on 2026-11-13 (it duplicated this skill). (optional)
+For a dedicated, isolated analysis, delegate to `security-reviewer` (nycode: `subagent {agent: "security-reviewer", task: ...}`) and name this skill in the brief; the `sharp-edges-analyzer` agent was retired on 2026-11-13 (it duplicated this skill). (optional)
 
 ## Core Principle
 
@@ -291,4 +291,4 @@ Before concluding analysis:
 - [ ] Checked configuration validation
 - [ ] Constructor params validated (not just defaulted) - see [config-patterns.md](references/config-patterns.md#unvalidated-constructor-parameters)
 
-<!-- pi port 2026-11: from trailofbits/skills plugin sharp-edges 1.1.3 (Claude plugin cache); allowed-tools removed (in pi it restricts the turn), agent dispatch via pi `subagent`. -->
+<!-- nycode port 2026-11: from trailofbits/skills plugin sharp-edges 1.1.3 (Claude plugin cache); allowed-tools removed (in nycode it restricts the turn), agent dispatch via nycode `subagent`. -->

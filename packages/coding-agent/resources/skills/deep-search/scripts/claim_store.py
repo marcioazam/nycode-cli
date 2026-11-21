@@ -4,7 +4,7 @@
 add LEDGER.json|- [--topic T] [--as-of YYYY-MM-DD]: append ledger rows whose verdict is supported or partial.
 find TERM... [--fresh] [--limit N]: newest row per (url, quote) matching every term, with `stale` and `age_days`.
 
-The store is append-only JSONL shared by Claude Code and pi: $RESEARCH_CLAIMS_FILE, else
+The store is append-only JSONL shared by Claude Code and nycode: $RESEARCH_CLAIMS_FILE, else
 ~/.local/share/research-claims/claims.jsonl. TTL by `ttl_class`: volatile (versions, prices, news,
 benchmarks) 14 days, docs 90, archival (papers, dated law) 365; a row's `ttl_days` overrides.
 ponytail: flat JSONL scanned per query; move to SQLite FTS or a graph store past ~10k rows.

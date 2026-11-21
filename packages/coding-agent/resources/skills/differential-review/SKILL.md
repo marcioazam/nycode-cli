@@ -73,7 +73,7 @@ Phase 3: Blast Radius → Phase 4: Deep Context → Phase 5: Adversarial → Pha
 ├─ Analyzing HIGH RISK change?
 │  ├─ Read: adversarial.md
 │  │  (Phase 5: Attacker modeling, exploit scenarios, exploitability rating)
-│  └─ Or delegate to: the adversarial-modeler agent (pi `subagent`)
+│  └─ Or delegate to: the adversarial-modeler agent (nycode `subagent`)
 │     (Autonomous attacker modeling with concrete exploit scenarios)
 │
 ├─ Writing the final report?
@@ -224,4 +224,4 @@ These patterns require adversarial analysis even in quick triage.
 
 **For experienced users:** Use this page's Quick Reference and Decision Tree to navigate directly to needed content.
 
-<!-- pi port 2026-11: from trailofbits/skills plugin differential-review 1.1.4 (Claude plugin cache); allowed-tools removed (in pi it restricts the turn), agent dispatch via pi `subagent`. -->
+<!-- nycode port 2026-11: from trailofbits/skills plugin differential-review 1.1.4 (Claude plugin cache); allowed-tools removed (in nycode it restricts the turn), agent dispatch via nycode `subagent`. -->

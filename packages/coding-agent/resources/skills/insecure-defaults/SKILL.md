@@ -4,18 +4,18 @@ description: "Audit a file, directory or repository for insecure default configu
 disable-model-invocation: true
 ---
 
-# Insecure defaults audit (pi)
+# Insecure defaults audit (nycode)
 
 Porte do plugin `insecure-defaults` 2.0.3 da Trail of Bits (CC-BY-SA-4.0, `LICENSE`). No Claude Code o comando
-chamava a ferramenta `Workflow` com `workflows/audit.js`; o pi não tem essa ferramenta. Aqui a parte determinística do
+chamava a ferramenta `Workflow` com `workflows/audit.js`; o nycode não tem essa ferramenta. Aqui a parte determinística do
 script (guardas, dedup, lotes, cobertura) está em `scripts/pipeline.py` (testes em `scripts/tests/`) e os agentes rodam
 pelo `subagent`. O corpus (`references/<categoria>.json` com seeds e `.md` com Report when / Skip when e exemplos) é o
 do plugin, sem mudança.
 
-Variáveis: `P=~/.pi/agent/claude-home/skills/insecure-defaults/scripts/pipeline.py`. Cada fase do `$P` imprime uma
+Variáveis: `P=${NYCODE_RESOURCES}/skills/insecure-defaults/scripts/pipeline.py`. Cada fase do `$P` imprime uma
 linha JSON; **`status` diferente de `ok` encerra a auditoria**: vá direto ao passo 7 com esse status.
 
-| Fase | Quem | Modelo (pi) | Faz |
+| Fase | Quem | Modelo (nycode) | Faz |
 |---|---|---|---|
 | Recon | `swarm-worker` | Sonnet (pin) | classifica o escopo, perfila stack, acessores de config e manifestos de deploy |
 | Discover | 6 × `swarm-worker`, em paralelo | Sonnet | uma varredura por categoria, seeds + padrões derivados da stack |
@@ -32,7 +32,7 @@ linha JSON; **`status` diferente de `ok` encerra a auditoria**: vá direto ao pa
    $run`. `recon-failed` ou `scope-missing` encerram.
 3. **Discover.** Uma chamada paralela `subagent` `{tasks: [...]}` com as 6 varreduras que `sweeps` listou, cada uma
    `{agent: "swarm-worker", task: "Unidade única: siga <prompt> (leia com read). Arquivo dono: <out>, o único que você
-   escreve. Somente leitura no alvo."}` (o pi roda 4 por vez). Depois `python3 $P discover $run`.
+   escreve. Somente leitura no alvo."}` (o nycode roda 4 por vez). Depois `python3 $P discover $run`.
    `corpus-unreadable`, `search-failed` e `no-candidates` encerram (`no-candidates` é resultado real: imprima o `note`,
    inclusive que não é prova de ausência). Repasse ao usuário as `notes` (categorias sem busca, varreduras só com seeds).
 4. **Verify.** Para os lotes que `discover` listou, chamadas paralelas `subagent` `{tasks: [...]}` de no máximo 8

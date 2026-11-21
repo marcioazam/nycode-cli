@@ -1,4 +1,4 @@
-"""compaction_restart.py on synthetic pi sessions: restart share arithmetic, copy dedupe, UTC window and CLI output."""
+"""compaction_restart.py on synthetic nycode sessions: restart share arithmetic, copy dedupe, UTC window and CLI output."""
 import contextlib
 import io
 import json

@@ -4,21 +4,21 @@ argument-hint: "PROMPT [--max-iterations N] [--completion-promise TEXTO]"
 disable-model-invocation: true
 ---
 
-<!-- Porte para o pi (2026-11-11) do /ralph-loop:ralph-loop (ralph-loop 1.0.1, Apache-2.0). Scripts do plugin em
-claude-home/vendor/ralph-loop; o Stop hook está registrado em claude-home/settings.json (o pi-code roda Stop hooks com a
-semântica do Claude: decision block devolve o prompt). O hook lê o transcript do pi, que tem o mesmo formato que ele
+<!-- Porte para o nycode (2026-11-11) do /ralph-loop:ralph-loop (ralph-loop 1.0.1, Apache-2.0). Scripts do plugin em
+~/.nycode/agent/vendor/ralph-loop; o Stop hook está registrado em ~/.nycode/agent/settings.json (o nycode roda Stop hooks com a
+semântica do Claude: decision block devolve o prompt). O hook lê o transcript do nycode, que tem o mesmo formato que ele
 espera (`"role":"assistant"`, `.message.content[].text`). A sessão vem de ${CLAUDE_SESSION_ID}, porque o span de
 command não exporta CLAUDE_CODE_SESSION_ID. Os argumentos entram por heredoc em pi-ralph-start.sh (shlex), porque o
-original os colava crus no shell: `<promise>X</promise>` no prompt virava redirecionamento. Alternativa nativa do pi: /goal (avaliado por outro modelo). -->
+original os colava crus no shell: `<promise>X</promise>` no prompt virava redirecionamento. Alternativa nativa do nycode: /goal (avaliado por outro modelo). -->
 
 # Ralph Loop
 
 Rode o script de setup para iniciar o loop:
 
 ```!
-${CLAUDE_CONFIG_DIR:-$HOME/.pi/agent/claude-home}/vendor/ralph-loop/scripts/pi-ralph-start.sh '${CLAUDE_SESSION_ID}' <<'PI_RALPH_ARGS_EOF'
+$HOME/.nycode/agent/vendor/ralph-loop/scripts/pi-ralph-start.sh '${CLAUDE_SESSION_ID}' <<'NYCODE_RALPH_ARGS_EOF'
 $ARGUMENTS
-PI_RALPH_ARGS_EOF
+NYCODE_RALPH_ARGS_EOF
 ```
 
 Trabalhe na tarefa. Quando você tentar parar, o Ralph Loop devolve O MESMO PROMPT para a próxima iteração. Você vê o seu

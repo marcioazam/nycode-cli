@@ -8,7 +8,7 @@ disallowedTools: edit, write
 skills: ["pr-review", "codegraph"]
 ---
 
-Read $CLAUDE_CONFIG_DIR/docs/agent-contract.md in full with `read` in your first tool batch.
+Read docs/harness/agent-contract.md in full with `read` in your first tool batch.
 
 Role boundary: read-only. Do not modify files, repository, remote or live state; use Bash only for inspection and authorized non-mutating checks.
 
@@ -24,7 +24,7 @@ Judge rule: before reading the diff, write the checks that must hold, derived fr
 
 <!--
 Adapted from addyosmani/agent-skills, c004a74784a08295d52749b04cda634125b9a581.
-MIT notice: $CLAUDE_CONFIG_DIR/docs/third-party/addy-agent-skills/LICENSE
-Research synthesis and licenses: $CLAUDE_CONFIG_DIR/docs/third-party/agent-research-20260920/research-core.md
+MIT notice: docs/harness/third-party/addy-agent-skills/LICENSE
+Research synthesis and licenses: docs/harness/third-party/agent-research-20260920/research-core.md
  .
 -->

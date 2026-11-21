@@ -16,4 +16,4 @@ Claim and the evidence it needs:
 
 State completion only for the requested scope. Local success does not establish CI, merge permission, live-provider compatibility or deployment state. A draft finding or report may be prepared within the task; publishing it is a separate authority boundary.
 
-Adapted from obra/superpowers, revision `b36e0829c6d0140e93cfef2ca599b1b07d4a7797` (MIT). The upstream license is kept in [a local copy]($CLAUDE_CONFIG_DIR/docs/third-party/obra-superpowers/LICENSE); this reference replaces the selected techniques, not the upstream orchestration policy.
+Adapted from obra/superpowers, revision `b36e0829c6d0140e93cfef2ca599b1b07d4a7797` (MIT). The upstream license is recorded in the repository NOTICE; this reference replaces the selected techniques, not the upstream orchestration policy.
