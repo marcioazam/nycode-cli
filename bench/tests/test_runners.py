@@ -537,10 +537,7 @@ def test_s1_case_reps_without_cases_dir_uses_k(tmp_path: Path, monkeypatch: MP) 
     assert rn.s1_case_reps(["x"], 3) == {"x": 3}
 
 
-BUNDLE_SH = (
-    Path(__file__).resolve().parents[2]
-    / "import/ny-pi/claude-home/bin/evals/harbor/bundle.sh"
-)
+BUNDLE_SH = BENCH / "harbor/pi_bundle.sh"
 
 
 def test_bundle_dereferences_linked_install(tmp_path: Path) -> None:

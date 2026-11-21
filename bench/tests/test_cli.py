@@ -174,7 +174,7 @@ def test_ny_pi_harbor_bundles_the_checkout_stage(
     (stage / ".ready").touch()
     hd = tmp_path / "hd"
     hd.mkdir()
-    script(hd / "bundle.sh", f'echo "$HOME" > {tmp_path}/bundled_home\n')
+    script(hd / "pi_bundle.sh", f'echo "$HOME" > {tmp_path}/bundled_home\n')
     harbor = script(tmp_path / "harbor", "exit 0\n")
     monkeypatch.setenv("BENCH_HARBOR", str(harbor))
     monkeypatch.setenv("BENCH_STAGE", str(stage))
@@ -193,7 +193,7 @@ def test_ny_pi_harbor_bundle_is_per_round(tmp_path: Path, monkeypatch: MP) -> No
     (stage / ".ready").touch()
     hd = tmp_path / "hd"
     hd.mkdir()
-    script(hd / "bundle.sh", f'echo "$1" >> {tmp_path}/bundle_args\n')
+    script(hd / "pi_bundle.sh", f'echo "$1" >> {tmp_path}/bundle_args\n')
     harbor = script(
         tmp_path / "harbor", f'echo "$PI_HARNESS_BUNDLE" >> {tmp_path}/env_seen\n'
     )
@@ -473,7 +473,7 @@ def test_harbor_step_omp_fetches_release_first(tmp_path: Path, monkeypatch: MP) 
     hd = tmp_path / "hd"
     hd.mkdir()
     (hd / "omp-release.sh").write_text(f"echo fetched >> {rec}\n")
-    monkeypatch.setattr(rb, "HARBOR_DIR", hd)
+    monkeypatch.setattr(rb, "OMP_DIR", hd)
     s: rb.Step = {
         "suite": "s2", "k": 1, "st": {}, "tasks": ["a"],
         "cfg": {"dataset": "ds", "seed": 1, "heldout_pct": 10},

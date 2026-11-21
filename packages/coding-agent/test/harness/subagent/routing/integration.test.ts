@@ -36,8 +36,7 @@ process.env.HOME = home;
 process.env.NYCODE_CODING_AGENT_DIR = agentDir;
 const policyFile = join(tmp, "routing.json");
 process.env.NYCODE_SUBAGENT_ROUTING_FILE = policyFile;
-for (const k of ["CLAUDE_CONFIG_DIR", "NYCODE_SUBAGENT", "NYCODE_SUBAGENT_DEPTH", "CLAUDE_CODE_SUBAGENT_MODEL"])
-	delete process.env[k];
+for (const k of ["NYCODE_SUBAGENT", "NYCODE_SUBAGENT_DEPTH", "CLAUDE_CODE_SUBAGENT_MODEL"]) delete process.env[k];
 
 // O filho falso devolve o próprio argv (sem o prompt) e as variáveis de roteamento.
 const fakePi = join(tmp, "fake-pi-routing.mjs");

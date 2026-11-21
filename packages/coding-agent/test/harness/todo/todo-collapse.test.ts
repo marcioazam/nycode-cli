@@ -1,35 +1,15 @@
-// Port of the todo-collapse patch tests (pi-code 1.7.0) to vitest against the embedded source.
+// Port of the todo-collapse patch tests (pi-code 1.7.0) to vitest against the embedded source. The widget and
+// collapse cases are gone with the widget they tested (03 §2.3).
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import type { Todo } from "../../../src/extensions/todo/index.ts";
 import todoExtension, * as mod from "../../../src/extensions/todo/index.ts";
 
-const theme: any = { fg: (c: string, t: string) => `<${c}>${t}</${c}>` };
 const todo = (id: number, status: Todo["status"], text: string, activeForm?: string) => ({
 	id,
 	status,
 	text,
 	activeForm,
-});
-
-test("collapsedLine: contagem completed/total e o in_progress com activeForm", () => {
-	const line = mod.collapsedLine(
-		[todo(1, "completed", "a"), todo(2, "in_progress", "write", "Writing"), todo(3, "pending", "c")],
-		theme,
-	);
-	assert.equal(line, "<accent>Todos 1/3</accent><dim> · </dim>Writing");
-});
-
-test("collapsedLine: sem activeForm usa o texto; sem in_progress só a contagem", () => {
-	assert.ok(mod.collapsedLine([todo(1, "in_progress", "write")], theme).endsWith("<dim> · </dim>write"));
-	assert.equal(
-		mod.collapsedLine([todo(1, "completed", "a")], theme),
-		"<dim>Todos 1/1</dim><dim> · </dim><success>concluídos</success>",
-	);
-	assert.equal(
-		mod.collapsedLine([todo(1, "completed", "a"), todo(2, "pending", "b")], theme),
-		"<accent>Todos 1/2</accent>",
-	);
 });
 
 /** Starts the extension with a todo list replayed from a custom entry. */
@@ -47,27 +27,19 @@ function start(todos: object[]) {
 	);
 	todoExtension(nycode);
 	const widgets: any[] = [];
-	let renders = 0;
 	const ui = { setWidget: (key: string, factory: any) => widgets.push({ key, factory }) };
 	const entries = todos.length ? [{ type: "custom", customType: "pi-code:todo", data: { todos, nextId: 9 } }] : [];
 	const ctx: any = { hasUI: true, ui, sessionManager: { getBranch: () => entries } };
 	handlers.get("session_start")!({}, ctx);
-	const tui = { requestRender: () => renders++ };
-	const component = widgets.at(-1)?.factory(tui, theme);
-	return { shortcuts, widgets, component, emitted, renders: () => renders };
+	return { shortcuts, widgets, emitted };
 }
 
-test("o chat nunca desenha os todos: o widget renderiza vazio (lista parcial ou concluída) e a lista vai ao Plan por evento", () => {
-	for (const list of [
-		[todo(1, "completed", "a"), todo(2, "in_progress", "b", "Doing b")],
-		[todo(1, "completed", "a")],
-	]) {
-		const s = start(list);
-		assert.deepEqual(s.component.render(80), []);
-		s.shortcuts.get("ctrl+shift+t").handler();
-		assert.deepEqual(s.component.render(80), []);
-	}
+// The old chat widget rendered [] and, drawing no rows, could never receive a click or wheel event: it was removed
+// (03 §2.3). The list reaches the Plan section only through the event.
+test("o chat não registra widget nem atalho de todos; a lista vai ao Plan por evento", () => {
 	const s = start([todo(1, "completed", "a"), todo(2, "in_progress", "b", "Doing b"), todo(3, "pending", "c")]);
+	assert.equal(s.widgets.length, 0);
+	assert.equal(s.shortcuts.size, 0);
 	assert.deepEqual(s.emitted.at(-1), [
 		"pi-code:todos",
 		[
@@ -76,17 +48,6 @@ test("o chat nunca desenha os todos: o widget renderiza vazio (lista parcial ou 
 			{ id: 3, text: "c", status: "pending" },
 		],
 	]);
-});
-
-test("registra ctrl+shift+t", () => {
-	assert.ok(start([todo(1, "pending", "a")]).shortcuts.has("ctrl+shift+t"));
-});
-
-test("ctrl+shift+t sem todos não faz nada", () => {
-	const s = start([]);
-	assert.doesNotThrow(() => s.shortcuts.get("ctrl+shift+t").handler());
-	assert.equal(s.widgets.length, 0);
-	assert.equal(s.renders(), 0);
 });
 
 // ---- cobertura do comportamento completo de todo.ts ----
@@ -113,10 +74,8 @@ function boot(entries: any[] = [], ctxOver: any = {}) {
 		appendEntry: (type: string, data: any) => appended.push({ type, data }),
 	};
 	todoExtension(nycode);
-	const widgets: any[] = [];
 	const notes: any[] = [];
 	const ui = {
-		setWidget: (key: string, f: any, o: any) => widgets.push({ key, f, o }),
 		notify: (m: string, l: string) => notes.push([m, l]),
 		custom: async (f: any) => f({}, theme2, {}, () => {}),
 	};
@@ -126,7 +85,6 @@ function boot(entries: any[] = [], ctxOver: any = {}) {
 		commands,
 		appended,
 		tool,
-		widgets,
 		notes,
 		ctx,
 		ui,
@@ -318,83 +276,6 @@ test("session_tree/session_compact refazem o replay; ctx obsoleto mantém o esta
 		},
 	};
 	assert.throws(() => b.handlers.get("session_compact")!({}, broken), /disk on fire/);
-});
-
-test("widget: registra uma vez, re-renderiza, esconde com lista vazia e no shutdown", async () => {
-	const b = boot([snap([todo(1, "pending", "a")])]);
-	b.handlers.get("session_start")!({}, b.ctx);
-	assert.equal(b.widgets.length, 1);
-	assert.deepEqual([b.widgets[0].key, b.widgets[0].o], ["todos", { placement: "aboveEditor" }]);
-	let renders = 0;
-	const comp = b.widgets[0].f({ requestRender: () => renders++ }, theme2);
-	b.handlers.get("tool_execution_end")!({ toolName: "todo", isError: false });
-	assert.equal(renders, 1);
-	b.handlers.get("tool_execution_end")!({ toolName: "bash", isError: false });
-	b.handlers.get("tool_execution_end")!({ toolName: "todo", isError: true });
-	assert.equal(renders, 1);
-	b.handlers.get("session_start")!({}, b.ctx); // mesmo ui: idempotente
-	assert.equal(b.widgets.length, 1);
-	await b.run({ action: "clear" });
-	b.handlers.get("tool_execution_end")!({ toolName: "todo", isError: false });
-	assert.equal(b.widgets.at(-1).f, undefined); // setWidget(key, undefined)
-	assert.deepEqual(comp.render(80), []);
-	await b.run({ action: "add", text: "again" });
-	b.handlers.get("tool_execution_end")!({ toolName: "todo", isError: false });
-	assert.equal(typeof b.widgets.at(-1).f, "function");
-	const n = b.widgets.length;
-	b.handlers.get("session_shutdown")!({});
-	assert.equal(b.widgets.length, n + 1);
-	assert.equal(b.widgets.at(-1).f, undefined);
-	b.handlers.get("session_shutdown")!({}); // já escondido: nada
-	assert.equal(b.widgets.length, n + 1);
-});
-
-test("widget: invalidate força novo registro; novo ui (/reload) re-registra; sem UI não registra", () => {
-	const b = boot([snap([todo(1, "pending", "a")])]);
-	b.handlers.get("session_start")!({}, b.ctx);
-	const comp = b.widgets[0].f({ requestRender() {} }, theme2);
-	comp.invalidate();
-	b.handlers.get("tool_execution_end")!({ toolName: "todo", isError: false });
-	assert.equal(b.widgets.length, 2);
-	b.handlers.get("session_start")!(
-		{},
-		{ ...b.ctx, ui: { ...b.ui, setWidget: (k: string, f: any) => b.widgets.push({ k, f }) } },
-	);
-	assert.equal(b.widgets.length, 3);
-	const nb = boot([snap([todo(1, "pending", "a")])]);
-	nb.handlers.get("session_start")!({}, { ...nb.ctx, hasUI: false });
-	assert.equal(nb.widgets.length, 0);
-});
-
-test("scrollWindow: cabe, satura no fim e conta acima/abaixo", () => {
-	const items = [1, 2, 3, 4, 5];
-	assert.deepEqual(mod.scrollWindow(items, 5, 3), { visible: items, above: 0, below: 0, offset: 0 });
-	assert.deepEqual(mod.scrollWindow(items, 3, 1), { visible: [2, 3], above: 1, below: 2, offset: 1 });
-	assert.deepEqual(mod.scrollWindow(items, 3, 99), { visible: [4, 5], above: 3, below: 0, offset: 3 });
-});
-
-test("layoutOverlay: cabe, descarta concluídos primeiro e trunca a cauda", () => {
-	const t = (id: number, status: Todo["status"]) => todo(id, status, `t${id}`);
-	const fit = [t(1, "completed"), t(2, "pending")];
-	assert.deepEqual(mod.layoutOverlay(fit, 2), { visible: fit, hiddenCompleted: 0, truncatedTail: 0 });
-	const mixed = [t(1, "completed"), t(2, "completed"), t(3, "pending"), t(4, "in_progress")];
-	const keep = mod.layoutOverlay(mixed, 3); // innerBudget 2: só os não concluídos
-	assert.deepEqual([keep.visible.map((x: any) => x.id), keep.hiddenCompleted, keep.truncatedTail], [[3, 4], 2, 0]);
-	const six = [
-		t(1, "completed"),
-		t(2, "completed"),
-		t(3, "completed"),
-		t(4, "pending"),
-		t(5, "pending"),
-		t(6, "pending"),
-	];
-	const part = mod.layoutOverlay(six, 5); // innerBudget 4: um concluído sobra
-	assert.deepEqual(
-		[part.visible.map((x: any) => x.id), part.hiddenCompleted, part.truncatedTail],
-		[[1, 4, 5, 6], 2, 0],
-	);
-	const tail = mod.layoutOverlay([t(1, "completed"), t(2, "pending"), t(3, "pending"), t(4, "pending")], 3);
-	assert.deepEqual([tail.visible.map((x: any) => x.id), tail.hiddenCompleted, tail.truncatedTail], [[2, 3], 1, 1]);
 });
 
 test("normalizeTodo: status explícito, done legado e padrão pending", () => {

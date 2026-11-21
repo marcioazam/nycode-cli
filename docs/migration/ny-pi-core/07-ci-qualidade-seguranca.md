@@ -165,7 +165,10 @@ Legenda: **igual** (sem mudança além de nome), **caminho** (muda de→para), *
 - **5**. Etapa (nome no script): `biome (changed extensions ts)`. Destino: absorvida. O que muda: o Biome do fork
   (tabulação, 120) em `npm run check`; o do ny-pi some (D-06).
 - **6**. Etapa (nome no script): `shellcheck -x` (alterados). Destino: igual. O que muda: nenhuma.
-- **7**. Etapa (nome no script): `shfmt -i 2 -d` (alterados). Destino: igual. O que muda: nenhuma.
+- **7**. Etapa (nome no script): `shfmt -i 2 -d` (alterados). Destino: igual. O que muda: nenhuma. Os passos 6 e 7 pulam
+  os `.sh` do upstream que têm costura `ativa` em `scripts/fork/seams.txt` (lista em `scripts/ci/seams/seam-files.sh`) e
+  imprimem `skip (upstream seam): <arquivo>`: a regra 2 do [08](08-sincronizacao-upstream.md) §7 proíbe reformatar
+  arquivo do upstream, e o lint do estilo dele só geraria conflito no sync.
 - **8**. Etapa (nome no script): `markdownlint` (alterados). Destino: igual. O que muda: `scripts/ci/markdownlint.jsonc`
   desliga MD013 (linhas longas).
 - **9**. Etapa (nome no script): `structure (changed)`. Destino: caminho. O que muda: seção 3.5.
@@ -245,7 +248,9 @@ O script falha em PR quando um arquivo de código alterado passa de 800 linhas o
 passa de 7 arquivos de código; o legado não alterado nunca bloqueia. Para o nycode:
 
 - **Fonte da lista de sufixos de código**. De: `claude-home/bin/structure/structure.py`. Para:
-  `scripts/harness/structure/structure.py` (**proposta**, segue a pasta de ferramentas de 02).
+  `scripts/ci/lint/structure/structure.py` (anexo E, regra C09; F10 converteu; a proposta de `scripts/harness/` caiu: as instruções
+  embarcadas já citavam este caminho). `structure_changed.py` carrega a lista daí e mantém `DEFAULT_SUFFIXES` como cópia,
+  fixada por teste.
 - **Alcance do limite (D-06)**. De: todo arquivo alterado. Para: só arquivos criados pelo nycode (lista em 02, seção 9).
 - **Lista de base do upstream**. De: não existe. Para: `scripts/ci/lint/structure-upstream.txt`: arquivo do upstream
   alterado fica isento.

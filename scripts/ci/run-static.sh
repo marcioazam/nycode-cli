@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ci-static gate. Whole-repo checks: skill lint, refs, core-scope, oracles, python tests, diff coverage.
+# ci-static gate. Whole-repo checks: skill lint, refs, core-scope, criterio2, oracles, python tests, diff coverage.
 # Changed-files-only checks (legacy never blocks): ruff, mypy --strict, shellcheck, shfmt, markdownlint,
 # structure limits. TypeScript is checked by `npm run check` (the root Biome config), not here.
 # Every step runs; the exit code is non-zero if any failed.
@@ -52,6 +52,13 @@ for f in "${CHANGED[@]}"; do [[ $f =~ $FIXTURE_RE ]] || CHANGED_FILTERED+=("$f")
 CHANGED=("${CHANGED_FILTERED[@]}")
 mapfile -t PY < <(pick '\.py$')
 mapfile -t SH < <(pick_shell)
+# Upstream .sh files that carry an active seam keep the upstream style (08 section 7, rule 2): no shell lint, but visible.
+mapfile -t SEAM_FILES < <(bash "$CIDIR/seams/seam-files.sh")
+SH_CHECKED=()
+for f in "${SH[@]}"; do
+  if printf '%s\n' "${SEAM_FILES[@]}" | grep -qxF -- "$f"; then echo "skip (upstream seam): $f"; else SH_CHECKED+=("$f"); fi
+done
+SH=("${SH_CHECKED[@]}")
 mapfile -t MD < <(pick '\.md$')
 
 each() { # cmd... -- files...: run cmd once with all files, skip when none
@@ -194,6 +201,7 @@ step "markdownlint (changed)" each markdownlint -- "${MD[@]}"
 step "structure (changed)" structure_changed
 step "check-refs" python3 scripts/check-refs.py
 step "core-scope" python3 scripts/ci/lint/core_scope.py
+step "criterio2" python3 "$CIDIR/lint/criterio2/criterio2.py"
 step "bench oracles (no-op fails, oracle passes)" bench_oracles
 step "pytest + coverage" pytest_cov
 step "diff-cover >= 80" diff_cover

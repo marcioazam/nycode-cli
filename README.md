@@ -13,7 +13,7 @@ This README states what is measured and what is not. Where a number is a loss, i
 ## Contents
 
 - [The proposal](#the-proposal) · [What exists today and what is in migration](#what-exists-today-and-what-is-in-migration)
-- [Getting started](#getting-started) · [Run with Nix](#run-with-nix) · [Packages](#packages) · [Permissions and containerization](#permissions-and-containerization)
+- [Getting started](#getting-started) · [Packages](#packages) · [Permissions and containerization](#permissions-and-containerization)
 - [Benchmarks](#benchmarks)
 - [Contributing](#contributing) · [Development](#development) · [Building standalone binaries](#building-standalone-binaries) · [Supply-chain hardening](#supply-chain-hardening) · [License](#license)
 
@@ -79,18 +79,6 @@ nycode
 For a built-in AI provider, run `/login` inside Nycode to connect a subscription or API key. Then give Nycode a task.
 
 See the [documentation](packages/coding-agent/docs/) for full setup and usage instructions.
-
-## Run with Nix
-
-```bash
-nix run github:marcioazam/nycode/stable
-```
-
-`stable` points at the latest release. Install it with `nix profile add github:marcioazam/nycode/stable` and update with `nix profile upgrade nycode`. Use a release tag such as `github:marcioazam/nycode/v1.0.0` to pin a version, or `github:marcioazam/nycode` for unreleased changes on `main`. Nix builds Nycode from source.
-
-Supports ARM64 and x86-64 on Linux and macOS. Use `nix build .` or `nix run .` to build or run your checkout.
-
-The Nix build is currently broken: it needs an offline source for the bundled model data, which it used to download from a hosted catalog that nycode no longer uses (tracked in `nix/package.nix`).
 
 ## Packages
 

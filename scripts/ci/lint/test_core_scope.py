@@ -209,3 +209,32 @@ def test_row_waiting_in_import_is_pending(tmp_path: Path) -> None:
     ]
     assert pending == {("extension", "bash-timeout"), ("skill", "tdd")}
     assert core_scope.compare(found, rows, pending) == ["stale: extension gone"]
+
+
+def optional_skill(root: Path, hidden: bool) -> None:
+    fm = "disable-model-invocation: true\n" if hidden else ""
+    p = root / "packages/coding-agent/resources/skills/s1/SKILL.md"
+    p.write_text(f"---\nname: s1\n{fm}---\nbody\n")
+    spec(root, [ROWS[0].replace("core", "optional"), *ROWS[1:]])
+
+
+def test_optional_skill_must_be_hidden(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = tree(tmp_path)
+    optional_skill(root, hidden=False)
+    code, _, err = run(root, capsys)
+    assert code == 1
+    assert (
+        err.strip()
+        == "not hidden: skill s1 (optional needs disable-model-invocation: true)"
+    )
+
+
+def test_optional_skill_hidden_is_clean(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = tree(tmp_path)
+    optional_skill(root, hidden=True)
+    code, _, _ = run(root, capsys)
+    assert code == 0

@@ -5,8 +5,8 @@
  * embedded and is not an error.
  *
  * Root: `getPackageDir()/resources`, so it is found next to the sources, next to `dist/` and from a package installed
- * by npm. The standalone binary resolves it next to the executable (`dirname(execPath)/resources`); F11 copies the
- * directory there (`copy-binary-assets`), as it already does for `theme/` and `builtin-agents/`.
+ * by npm. The standalone binary resolves it next to the executable (`dirname(execPath)/resources`);
+ * `scripts/build-binaries.sh` copies the directory there (seam K6), as it does for `theme/` and `assets/`.
  */
 
 import { existsSync, statSync } from "node:fs";
