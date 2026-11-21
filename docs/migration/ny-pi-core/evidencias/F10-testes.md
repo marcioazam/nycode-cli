@@ -199,3 +199,24 @@ SUPERADOS pela remoção do widget.
   asserções são as mesmas, só que há caso homônimo.
 - "Verde" depende do gate de cada fase; esta evidência mostra a existência do equivalente. Execução desta unidade em
   "Verificação".
+
+## Verificação
+
+Ramo `docs/f10-test-map`, 2026-11-21. Registros em `~/.local/share/nycode-mig/f10c-*.log`.
+
+| Verificação | Resultado |
+|---|---|
+| `npm run check` | exit 0 |
+| `npm run build`, depois `env -u OPENROUTER_API_KEY npx vitest --run` em `packages/coding-agent` (suíte inteira, porque o `todo` mudou) | exit 0: 491 arquivos e 4394 testes passaram; 6 arquivos e 53 testes ficaram `skipped` (já eram assim) |
+| `vitest test/harness/todo test/harness/extensions/todo test/harness/plan-mode` | 13 arquivos, 116 testes verdes |
+| `pytest bench/tests/classify` | 36 testes verdes (32 antes mais 4) |
+| `pytest scripts/ci/lint/test_gerar_mapa.py` | 4 testes; cobertura de `gerar-mapa.py` 98% (só o `sys.exit` final fica de fora) |
+| Regeneração do anexo E (`gerar-mapa.py` sobre os 1485 caminhos do ny-pi `e4f8729`) | diff vazio contra o TSV e o resumo do ramo; sem `X01`, diff vazio contra o TSV de `999af08da` |
+| `run-static.sh` (Python 3.12, `BASE_SHA` = merge-base com `origin/main`) | `ci-static OK`, diff-cover 100% |
+| `check-refs.py` | 0 |
+| `core_scope.py` | OK (109 peças) |
+| `check-seams.sh` | exit 0 |
+
+Não rodado: `check-leaks.sh` (nenhum arquivo movido; só texto, um teste e um script do mapa). O venv de CI em
+`/tmp/ci312` sumiu durante a unidade e foi refeito em `~/.local/share/nycode-mig/ci312` com
+`scripts/ci/requirements-ci.txt` (hashes exigidos).
