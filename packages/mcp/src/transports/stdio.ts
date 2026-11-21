@@ -7,7 +7,7 @@ import { type McpTransport, TransportEvents } from "./transport.ts";
 
 const DEFAULT_CLOSE_TIMEOUT_MS = 2_000;
 /** How long a server gets to exit on its own after stdin closes, before it is sent SIGTERM. */
-const STDIN_CLOSE_GRACE_MS = 500;
+const STDIN_CLOSE_GRACE_MS = 100;
 const USE_PROCESS_GROUPS = process.platform !== "win32";
 
 /** Process groups of running servers, killed if the host exits without closing them. */
