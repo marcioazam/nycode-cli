@@ -1,14 +1,15 @@
 // Converted from no-context-files.test.ts (the removed no-context-files-covers-claude-md extension, D-10). That extension
 // armed CLAUDE_CODE_DISABLE_CLAUDE_MDS so pi-code's own CLAUDE.md/rules injection stayed out of the context. The embedded
 // claude-rules honors that switch where a rule would be delivered; these cases prove it against the built-in, and that
-// without the switch a rule reaches the prompt once, never duplicated. Not ported: omitClaudeMd frontmatter and the
-// child's `--system-prompt` name lookup (core's child.ts passes --no-context-files for the Explore/Plan built-ins only).
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+// without the switch a rule reaches the prompt once, never duplicated. The original's three cases (-nc, omitClaudeMd,
+// the child's `--system-prompt` name lookup) are ported at the end, against omit-claude-md.ts.
+import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ExtensionAPI, ExtensionContext } from "../../../../src/core/extensions/types.ts";
 import claudeRulesExtension from "../../../../src/extensions/claude-rules/index.ts";
+import { agentOmitsClaudeMd, shouldOmitClaudeMd } from "../../../../src/extensions/claude-rules/omit-claude-md.ts";
 
 const DISABLE = "CLAUDE_CODE_DISABLE_CLAUDE_MDS";
 const RULE_BODY = "Always answer in short sentences.";
@@ -88,5 +89,61 @@ describe("claude-rules keeps CLAUDE.md out of the context when disabled", () => 
 		const { turn } = await startSession();
 		process.env[DISABLE] = "1";
 		expect(await turn(freshEvent())).toBeUndefined();
+	});
+});
+
+describe("omitClaudeMd and --no-context-files (ex no-context-files-covers-claude-md)", () => {
+	function agentsDir(): string {
+		const dir = join(home, "agents-src");
+		mkdirSync(dir, { recursive: true });
+		writeFileSync(join(dir, "Explore.md"), "---\nname: Explore\nomitClaudeMd: true\n---\nbody\n");
+		writeFileSync(join(dir, "worker.md"), "---\nname: swarm-worker\nmodel: x\n---\nbody\n");
+		writeFileSync(join(dir, "off.md"), "---\nname: off\nomitClaudeMd: false\n---\n");
+		return dir;
+	}
+
+	it("omitClaudeMd: true omits; absent or false does not", () => {
+		const dir = agentsDir();
+		expect(agentOmitsClaudeMd("Explore", [dir])).toBe(true);
+		expect(agentOmitsClaudeMd("swarm-worker", [dir])).toBe(false);
+		expect(agentOmitsClaudeMd("off", [dir])).toBe(false);
+		expect(agentOmitsClaudeMd("inexistente", [dir, "/nao/existe"])).toBe(false);
+	});
+
+	it("-nc and --no-context-files always omit", () => {
+		expect(shouldOmitClaudeMd(["-p", "--no-context-files"])).toBe(true);
+		expect(shouldOmitClaudeMd(["-nc"])).toBe(true);
+		expect(shouldOmitClaudeMd(["-p", "oi"])).toBe(false);
+	});
+
+	it("the factory arms the switch for -nc", () => {
+		const savedArgv = process.argv;
+		process.argv = [...savedArgv.slice(0, 2), "-nc"];
+		try {
+			claudeRulesExtension({ on: () => {}, events: { emit: () => {} } } as unknown as ExtensionAPI);
+		} finally {
+			process.argv = savedArgv;
+		}
+		expect(process.env[DISABLE]).toBe("1");
+	});
+
+	it("subagent child: the name comes from --system-prompt; outside a subagent it does not", () => {
+		const src = agentsDir();
+		const agents = join(home, ".claude", "agents");
+		mkdirSync(agents, { recursive: true });
+		copyFileSync(join(src, "Explore.md"), join(agents, "Explore.md"));
+		copyFileSync(join(src, "worker.md"), join(agents, "worker.md"));
+		const savedSub = process.env.NYCODE_SUBAGENT;
+		const args = (n: string) => ["--mode", "json", "-p", "--system-prompt", `/tmp/pi-subagent-x/prompt-${n}.md`];
+		try {
+			process.env.NYCODE_SUBAGENT = "1";
+			expect(shouldOmitClaudeMd(args("Explore"))).toBe(true);
+			expect(shouldOmitClaudeMd(args("swarm-worker"))).toBe(false);
+			delete process.env.NYCODE_SUBAGENT;
+			expect(shouldOmitClaudeMd(args("Explore"))).toBe(false);
+		} finally {
+			if (savedSub === undefined) delete process.env.NYCODE_SUBAGENT;
+			else process.env.NYCODE_SUBAGENT = savedSub;
+		}
 	});
 });

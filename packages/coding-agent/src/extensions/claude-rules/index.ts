@@ -33,6 +33,7 @@ import { readManagedSettings } from "../_shared/settings/managed-settings.ts";
 import { stripBlockComments } from "../_shared/shell/strip-comments.ts";
 import { realpathOr } from "../_shared/util/values.ts";
 import { claudeMdExcludeFiles, isExcludedPath, readClaudeMdExcludes } from "../context-imports/excludes.ts";
+import { shouldOmitClaudeMd } from "./omit-claude-md.ts";
 
 export interface Frontmatter {
 	paths: string[];
@@ -406,6 +407,9 @@ export function pendingScopedRuleCount(): number {
 }
 
 export default function claudeRulesExtension(nycode: ExtensionAPI) {
+	// ex-no-context-files (02 §3.2): `-nc` and `omitClaudeMd` agents arm the switch both this extension and
+	// context-imports read at session_start/before_agent_start; this one loads first.
+	if (shouldOmitClaudeMd(process.argv.slice(2))) process.env.CLAUDE_CODE_DISABLE_CLAUDE_MDS = "1";
 	const globalRulesDir = path.join(claudeConfigDir(os.homedir()), "rules");
 	const globalRulesBase = userRulesBase(globalRulesDir, os.homedir());
 	let rules: PromptRules = NO_PROMPT_RULES;
