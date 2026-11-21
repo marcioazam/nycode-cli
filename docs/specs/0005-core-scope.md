@@ -132,6 +132,7 @@ chegam por fase e o `core_scope.py` é convertido em F3.
 | extension | dev-commands | ui | `/copy-code` e `/keybindings` |
 | extension | effort-sandwich | optional | Raciocínio high só no 1º turno do `pi -p` de topo (opt-in, spec 0009) |
 | extension | footer-no-stats | ui | Rodapé |
+| extension | git-checkpoint | core | Checkpoints git e `/rewind` |
 | extension | headless-lean | core | Custo sem interface |
 | extension | hooks | core | Hooks no formato do Claude Code |
 | extension | no-context-files-covers-claude-md | core | Contexto sem duplicata |
