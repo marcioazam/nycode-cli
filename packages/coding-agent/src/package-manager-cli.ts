@@ -10,7 +10,6 @@ import {
 } from "node:fs";
 import { delimiter, dirname, join, resolve } from "node:path";
 import { ModelsError } from "@nycode/ai";
-import { Markdown, type MarkdownTheme } from "@nycode/tui";
 import chalk from "chalk";
 import lockfile from "proper-lockfile";
 import { selectConfig } from "./cli/config-selector.ts";
@@ -42,7 +41,12 @@ import { spawnProcess, spawnProcessSync, waitForChildProcess } from "./utils/chi
 import { getNycodeUserAgent } from "./utils/nycode-user-agent.ts";
 import { canonicalizePath, getCwdRelativePath } from "./utils/paths.ts";
 import { stripBom } from "./utils/text.ts";
-import { formatVersionCheckError, getLatestNycodeRelease, isNewerPackageVersion } from "./utils/version-check.ts";
+import {
+	formatVersionCheckError,
+	getLatestNycodeRelease,
+	isNewerPackageVersion,
+	RELEASES_URL,
+} from "./utils/version-check.ts";
 import {
 	cleanupWindowsSelfUpdateQuarantine,
 	quarantineWindowsNativeDependencies,
@@ -52,7 +56,6 @@ export type PackageCommand = "install" | "remove" | "update" | "list";
 
 type UpdateTarget = { type: "all" } | { type: "self" } | { type: "extensions"; source?: string } | { type: "models" };
 
-const DEFAULT_INSTALLER_API_BASE = "https://pi.dev/api/installer/releases";
 const MANAGED_INSTALL_MARKER = "managed-install.json";
 const MANAGED_RELEASE_VERSION_RE = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 
@@ -226,10 +229,15 @@ async function runManagedSelfUpdate(managedRoot: string, version: string): Promi
 	let stageDir: string | undefined;
 	try {
 		cleanupManagedStaging(managedRoot);
-		const installerApiBase = (process.env.NYCODE_INSTALLER_API_BASE?.trim() || DEFAULT_INSTALLER_API_BASE).replace(
-			/\/+$/,
-			"",
-		);
+		// No default release server: the managed installer is not published yet (F11), so updating a
+		// managed install needs NYCODE_INSTALLER_API_BASE.
+		const configuredApiBase = process.env.NYCODE_INSTALLER_API_BASE?.trim();
+		if (!configuredApiBase) {
+			throw new Error(
+				`Managed ${APP_NAME} updates need NYCODE_INSTALLER_API_BASE. Download v${version} from ${RELEASES_URL} instead.`,
+			);
+		}
+		const installerApiBase = configuredApiBase.replace(/\/+$/, "");
 		const releaseUrl = `${installerApiBase}/${encodeURIComponent(version)}`;
 		const stagingRoot = join(managedRoot, "staging");
 		const releasesRoot = join(managedRoot, "releases");
@@ -261,23 +269,6 @@ async function runManagedSelfUpdate(managedRoot: string, version: string): Promi
 		await releaseLock();
 	}
 }
-
-const SELF_UPDATE_NOTE_MARKDOWN_THEME: MarkdownTheme = {
-	heading: (text) => chalk.bold(chalk.yellow(text)),
-	link: (text) => chalk.cyan(text),
-	linkUrl: (text) => chalk.dim(text),
-	code: (text) => chalk.yellow(text),
-	codeBlock: (text) => chalk.dim(text),
-	codeBlockBorder: (text) => chalk.dim(text),
-	quote: (text) => chalk.dim(text),
-	quoteBorder: (text) => chalk.dim(text),
-	hr: (text) => chalk.dim(text),
-	listBullet: (text) => chalk.yellow(text),
-	bold: (text) => chalk.bold(text),
-	italic: (text) => chalk.italic(text),
-	strikethrough: (text) => chalk.strikethrough(text),
-	underline: (text) => chalk.underline(text),
-};
 
 interface PackageCommandOptions {
 	command: PackageCommand;
@@ -688,32 +679,11 @@ function printPnpmSelfUpdateMetadataHint(): void {
 	console.error(chalk.yellow(`Run \`pnpm store prune\` and retry \`${APP_NAME} update --self\`.`));
 }
 
-function printSelfUpdateNote(note: string): void {
-	const trimmedNote = note.trim();
-	if (!trimmedNote) {
-		return;
-	}
-
-	console.log();
-	console.log(chalk.bold(chalk.yellow("Update note")));
-	try {
-		const width = Math.max(20, process.stdout.columns ?? 80);
-		const renderedLines = new Markdown(trimmedNote, 0, 0, SELF_UPDATE_NOTE_MARKDOWN_THEME)
-			.render(width)
-			.map((line) => line.trimEnd());
-		console.log(renderedLines.join("\n"));
-	} catch {
-		console.log(trimmedNote);
-	}
-	console.log();
-}
-
 interface SelfUpdatePlan {
 	packageName: string;
 	installSpec: string;
 	version: string;
 	shouldRun: boolean;
-	note?: string;
 }
 
 async function getSelfUpdatePlan(force: boolean): Promise<SelfUpdatePlan> {
@@ -729,16 +699,10 @@ async function getSelfUpdatePlan(force: boolean): Promise<SelfUpdatePlan> {
 		throw new Error(`Could not determine latest ${APP_NAME} version.`);
 	}
 
-	const packageName = latestRelease.packageName ?? PACKAGE_NAME;
+	const packageName = PACKAGE_NAME;
 	const installSpec = `${packageName}@${latestRelease.version}`;
-	if (force || packageName !== PACKAGE_NAME || isNewerPackageVersion(latestRelease.version, VERSION)) {
-		return {
-			packageName,
-			installSpec,
-			version: latestRelease.version,
-			...(latestRelease.note ? { note: latestRelease.note } : {}),
-			shouldRun: true,
-		};
+	if (force || isNewerPackageVersion(latestRelease.version, VERSION)) {
+		return { packageName, installSpec, version: latestRelease.version, shouldRun: true };
 	}
 
 	console.log(chalk.green(`${APP_NAME} is already up to date (v${VERSION})`));
@@ -771,9 +735,6 @@ async function runSelfUpdate(command: SelfUpdateCommand): Promise<void> {
 /** Run the user-configured self-update command, then report the version installed on disk. */
 async function runConfiguredSelfUpdate(argv: string[], plan: SelfUpdatePlan): Promise<void> {
 	const command = makeConfiguredSelfUpdateCommand(argv, plan);
-	if (plan.note) {
-		printSelfUpdateNote(plan.note);
-	}
 	try {
 		await runSelfUpdate(command);
 	} catch (error: unknown) {
@@ -1182,9 +1143,6 @@ export async function handlePackageCommand(
 						return true;
 					}
 					if (managedInstallRoot) {
-						if (selfUpdatePlan.note) {
-							printSelfUpdateNote(selfUpdatePlan.note);
-						}
 						try {
 							console.log(chalk.dim(`Updating managed ${APP_NAME} installation...`));
 							await runManagedSelfUpdate(managedInstallRoot, selfUpdatePlan.version);
@@ -1217,9 +1175,6 @@ export async function handlePackageCommand(
 						process.exitCode = 1;
 						return true;
 					}
-					if (selfUpdatePlan.note) {
-						printSelfUpdateNote(selfUpdatePlan.note);
-					}
 					try {
 						if (installMethod === "npm") {
 							prepareWindowsNpmSelfUpdate();
@@ -1236,18 +1191,10 @@ export async function handlePackageCommand(
 						return true;
 					}
 					console.log(chalk.green(`Updated ${APP_NAME} from ${VERSION} to ${selfUpdatePlan.version}`));
-					// The pi.dev installer migrates global npm installs to a managed install
-					// that pins all dependencies. It does not migrate pnpm, yarn, or bun installs.
 					if (installMethod === "npm") {
-						const installerCommand =
-							process.platform === "win32"
-								? 'powershell -c "irm https://pi.dev/install.ps1 | iex"'
-								: "curl -fsSL https://pi.dev/install.sh | sh";
 						console.log();
 						console.log(chalk.yellow(`This npm installation of ${APP_NAME} does not pin its dependencies.`));
-						console.log(chalk.yellow("Run the installer to migrate to a managed installation that does:"));
-						console.log();
-						console.log(`  ${chalk.bold(installerCommand)}`);
+						console.log(chalk.yellow(`Pinned releases are published at ${RELEASES_URL}`));
 					}
 				}
 				return true;

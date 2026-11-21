@@ -17,6 +17,7 @@ beforeEach(() => {
 
 afterEach(() => {
 	vi.unstubAllGlobals();
+	vi.unstubAllEnvs();
 	if (originalSkipVersionCheck === undefined) {
 		delete process.env.NYCODE_SKIP_VERSION_CHECK;
 	} else {
@@ -35,24 +36,24 @@ describe("version checks", () => {
 	});
 
 	it("returns only newer versions", async () => {
-		const fetchMock = vi.fn(async () => Response.json({ version: "1.2.3" }));
+		const fetchMock = vi.fn(async () => Response.json({ tag_name: "v1.2.3" }));
 		vi.stubGlobal("fetch", fetchMock);
 
 		await expect(checkForNewNycodeVersion("1.2.3")).resolves.toBeUndefined();
 		await expect(checkForNewNycodeVersion("1.2.2")).resolves.toEqual({ version: "1.2.3" });
 	});
 
-	it("uses the pi.dev version check api with a nycode user agent", async () => {
-		const fetchMock = vi.fn(async () => Response.json({ version: "1.2.4" }));
+	it("uses the GitHub Releases latest-release api of marcioazam/nycode with a nycode user agent", async () => {
+		const fetchMock = vi.fn(async () => Response.json({ tag_name: "v1.2.4" }));
 		vi.stubGlobal("fetch", fetchMock);
 
 		await expect(getLatestNycodeVersion("1.2.3")).resolves.toBe("1.2.4");
 		expect(fetchMock).toHaveBeenCalledWith(
-			"https://pi.dev/api/latest-version",
+			"https://api.github.com/repos/marcioazam/nycode/releases/latest",
 			expect.objectContaining({
 				headers: expect.objectContaining({
 					"User-Agent": expect.stringMatching(/^nycode\/1\.2\.3 /),
-					accept: "application/json",
+					accept: "application/vnd.github+json",
 				}),
 			}),
 		);
@@ -63,7 +64,7 @@ describe("version checks", () => {
 			.fn()
 			.mockRejectedValueOnce(new Error("fetch failed"))
 			.mockRejectedValueOnce(new Error("fetch failed"))
-			.mockResolvedValueOnce(Response.json({ version: "1.2.4" }));
+			.mockResolvedValueOnce(Response.json({ tag_name: "v1.2.4" }));
 		vi.stubGlobal("fetch", fetchMock);
 
 		await expect(getLatestNycodeRelease("1.2.3", { retry: true })).resolves.toEqual({ version: "1.2.4" });
@@ -89,26 +90,25 @@ describe("version checks", () => {
 		expect(formatVersionCheckError(error)).toBe("fetch failed (ETIMEDOUT, ENETUNREACH)");
 	});
 
-	it("returns the active package metadata from the version check api", async () => {
-		const fetchMock = vi.fn(async () =>
-			Response.json({
-				packageName: "@new-scope/nycode",
-				version: "1.2.4",
-			}),
-		);
-		vi.stubGlobal("fetch", fetchMock);
-
-		await expect(getLatestNycodeRelease("1.2.3")).resolves.toEqual({
-			packageName: "@new-scope/nycode",
-			version: "1.2.4",
-		});
+	it("reads the version from the release tag, with or without a leading v", async () => {
+		vi.stubGlobal("fetch", vi.fn(async () => Response.json({ tag_name: "1.2.4" })));
+		await expect(getLatestNycodeRelease("1.2.3")).resolves.toEqual({ version: "1.2.4" });
 	});
 
-	it("returns update notes from the version check api", async () => {
-		const fetchMock = vi.fn(async () => Response.json({ note: " **Read this** ", version: "1.2.4" }));
+	it("returns nothing for a release without a usable tag or a failed request", async () => {
+		vi.stubGlobal("fetch", vi.fn(async () => Response.json({ tag_name: " " })));
+		await expect(getLatestNycodeRelease("1.2.3")).resolves.toBeUndefined();
+		vi.stubGlobal("fetch", vi.fn(async () => new Response("rate limited", { status: 403 })));
+		await expect(getLatestNycodeRelease("1.2.3")).resolves.toBeUndefined();
+	});
+
+	it("requests nothing when NYCODE_OFFLINE is set", async () => {
+		vi.stubEnv("NYCODE_OFFLINE", "1");
+		const fetchMock = vi.fn();
 		vi.stubGlobal("fetch", fetchMock);
 
-		await expect(getLatestNycodeRelease("1.2.3")).resolves.toEqual({ note: "**Read this**", version: "1.2.4" });
+		await expect(getLatestNycodeRelease("1.2.3")).resolves.toBeUndefined();
+		expect(fetchMock).not.toHaveBeenCalled();
 	});
 
 	it("skips automatic api calls when version checks are disabled", async () => {
@@ -122,7 +122,7 @@ describe("version checks", () => {
 
 	it("allows direct api calls when automatic version checks are disabled", async () => {
 		process.env.NYCODE_SKIP_VERSION_CHECK = "1";
-		const fetchMock = vi.fn(async () => Response.json({ version: "1.2.4" }));
+		const fetchMock = vi.fn(async () => Response.json({ tag_name: "v1.2.4" }));
 		vi.stubGlobal("fetch", fetchMock);
 
 		await expect(getLatestNycodeVersion("1.2.3")).resolves.toBe("1.2.4");
