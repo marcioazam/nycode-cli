@@ -11,7 +11,7 @@ K3 | packages/coding-agent/src/cli/args.ts | nycode: K3[[:space:]] | packages/co
 K4 | packages/coding-agent/src/core/settings-schema.ts packages/coding-agent/src/core/settings-defaults.ts | nycode: K4[[:space:]] | packages/coding-agent/test/harness/core/settings-keys.test.ts | ativa
 K5 | packages/coding-agent/src/extensions/index.ts | nycode: K5[[:space:]] | - | ativa
 K6 | packages/coding-agent/src/core/resource-loader.ts | nycode: K6[[:space:]] | - | pendente: fase F8
-K7 | packages/coding-agent/src/core/system-prompt.ts | nycode: K7[[:space:]] | - | pendente: fase F7, F8
+K7 | packages/coding-agent/src/core/system-prompt.ts | nycode: K7[[:space:]] | - | pendente: fase F8
 K8 | packages/coding-agent/src/core/tools/bash.ts | nycode: K8[[:space:]] | - | pendente: fase F7
 K9 | packages/coding-agent/src/core/compaction/ packages/coding-agent/src/core/agent-session.ts | nycode: K9[[:space:]] | packages/coding-agent/test/harness/core/compact-threshold.test.ts | ativa
 K10 | packages/tui/src/ | nycode: K10[[:space:]] | - | pendente: fase F7

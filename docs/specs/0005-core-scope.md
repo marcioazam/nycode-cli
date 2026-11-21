@@ -133,6 +133,7 @@ chegam por fase e o `core_scope.py` é convertido em F3.
 | extension | context-imports | core | Imports @ do CLAUDE.md |
 | extension | context-usage | ui | Uso de contexto |
 | extension | dev-commands | ui | `/copy-code` e `/keybindings` |
+| extension | docs-pointer | core | Prompt menor |
 | extension | effort-sandwich | optional | Raciocínio high só no 1º turno do `pi -p` de topo (opt-in, spec 0009) |
 | extension | env-settings | core | Variáveis de ambiente do settings do Claude |
 | extension | footer-no-stats | ui | Rodapé |
@@ -146,7 +147,6 @@ chegam por fase e o `core_scope.py` é convertido em F3.
 | extension | no-web-search | core | Desliga busca que falha |
 | extension | notify | ui | Aviso de fim de turno |
 | extension | output-styles | core | Estilos de saída |
-| extension | pi-docs | core | Prompt menor |
 | extension | plan-gate | core | Plano aprovado vai ao fim |
 | extension | plan-mode | core | Modo de plano |
 | extension | prefix-cache-1h | core | Cache do prefixo |

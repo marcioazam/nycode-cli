@@ -114,7 +114,7 @@ Identificador: `C-F<fase>-<n>`. A coluna "prova" diz o que tem de ser observado.
 ## F7. Extensões próprias
 
 - [ ] C-F7-01 a C-F7-23 Uma por unidade da tabela 3.2 de [02](02-arquitetura-alvo.md#32-vindas-de-extensions-do-ny-pi): migrada, absorvida ou removida conforme a tabela, com o teste indicado no mapa.
-- [ ] C-F7-24 K7, K8, K9 no core com teste.
+- [ ] C-F7-24 K8, K9 no core com teste (K7 vai a F8, D-36).
 - [ ] C-F7-25 K10: API pública no `@nycode/tui`; nenhuma extensão embutida lê campo privado. Prova: busca por acesso a propriedade privada vazia.
 - [ ] C-F7-26 Temas `tokyo-night` e `mono` embarcados; `tokyo-night` é o padrão; `NO_COLOR` troca para `mono`.
 - [ ] C-F7-27 Nenhuma diferença visual em relação ao ny-pi. Prova: portões `pi-ui-final-gate.sh` e `terminal-sota` verdes.
