@@ -134,16 +134,20 @@ chegam por fase e o `core_scope.py` é convertido em F3.
 | extension | env-settings | core | Variáveis de ambiente do settings do Claude |
 | extension | footer-no-stats | ui | Rodapé |
 | extension | headless-lean | core | Custo sem interface |
+| extension | hooks | core | Hooks no formato do Claude Code |
 | extension | no-context-files-covers-claude-md | core | Contexto sem duplicata |
 | extension | no-web-search | core | Desliga busca que falha |
 | extension | pi-docs | core | Prompt menor |
 | extension | plan-gate | core | Plano aprovado vai ao fim |
 | extension | prefix-cache-1h | core | Cache do prefixo |
 | extension | puxar | optional | Importa sessão de outro perfil, uso pessoal |
+||||||| 7f88f51ce
+| extension | question | core | Pergunta ao usuário com opções |
 | extension | settings-flags | core | Flags de settings do Claude |
 | extension | sound-notify | optional | Som ao fim do turno, gosto pessoal |
 | extension | sticky-prompt | ui | Última mensagem fixa |
 | extension | syntax-check | core | Erro de sintaxe após edição |
+| extension | todo | core | Ferramenta de lista de tarefas |
 | extension | todo-sync | core | Lista de tarefas em dia |
 | extension | ui | ui | Editor, acessibilidade, `/diff` |
 | extension | ui-visual | ui | Cabeçalho e ícones |
