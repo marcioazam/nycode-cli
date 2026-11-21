@@ -133,6 +133,7 @@ chegam por fase e o `core_scope.py` é convertido em F3.
 | extension | effort-sandwich | optional | Raciocínio high só no 1º turno do `pi -p` de topo (opt-in, spec 0009) |
 | extension | footer-no-stats | ui | Rodapé |
 | extension | headless-lean | core | Custo sem interface |
+| extension | hooks | core | Hooks no formato do Claude Code |
 | extension | no-context-files-covers-claude-md | core | Contexto sem duplicata |
 | extension | no-web-search | core | Desliga busca que falha |
 | extension | pi-docs | core | Prompt menor |
@@ -143,6 +144,7 @@ chegam por fase e o `core_scope.py` é convertido em F3.
 | extension | sound-notify | optional | Som ao fim do turno, gosto pessoal |
 | extension | sticky-prompt | ui | Última mensagem fixa |
 | extension | syntax-check | core | Erro de sintaxe após edição |
+| extension | todo | core | Ferramenta de lista de tarefas |
 | extension | todo-sync | core | Lista de tarefas em dia |
 | extension | ui | ui | Editor, acessibilidade, `/diff` |
 | extension | ui-visual | ui | Cabeçalho e ícones |
