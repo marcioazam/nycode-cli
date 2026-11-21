@@ -470,7 +470,8 @@ reformatando só no terceiro. Arquivos em [03](03-mapa-de-migracao.md#f6-orquest
 os patches grandes (`subagent-panel`, 2547 linhas; `goal`, 872). Patch que cruza submódulos entra como está na árvore
 de referência (a divisão em PRs segue diretórios); submódulo que não compile sem um irmão vai no mesmo PR, com desvio.
 
-**Ordem interna** (um PR por item; testes vitest em `test/harness/`, movidos de
+**Ordem interna** (D-35: o código de `subagent` entra num PR só, porque os submódulos se importam em ciclo; os testes
+de cada item entram depois, em PRs por grupo; testes vitest em `test/harness/`, movidos de
 `import/ny-pi/claude-home/patches/pi-code/`):
 
 1. `subagent` núcleo (`run`, `modes`, `concurrency`, `index`, `params`): `subagent-nesting.test.ts`; `background`.
