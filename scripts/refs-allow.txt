@@ -2,3 +2,4 @@
 # Entries are repo-relative paths under packages/coding-agent/resources. None yet: the ny-pi entries named runtime files
 # of the old pi home, a location the nycode scan no longer matches (D-09).
 lead  # label of the main session in team messages (subagent/team/route.ts, store.ts), not an agent definition
+plan-reviewer  # agent file arrives in F8 (embedded agents); plan-gate only names it in its block message. Remove this entry when resources/agents/plan-reviewer.md lands

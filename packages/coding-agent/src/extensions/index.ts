@@ -22,6 +22,7 @@ import mcpExtension from "./mcp/index.ts";
 import memoryExtension from "./memory/index.ts";
 import notifyExtension from "./notify/index.ts";
 import outputStylesExtension from "./output-styles/index.ts";
+import planGateExtension from "./plan-gate/index.ts";
 import planModeExtension from "./plan-mode/index.ts";
 import prefixCache1hExtension from "./prefix-cache-1h/index.ts";
 import questionExtension from "./question/index.ts";
@@ -79,6 +80,7 @@ export const builtInExtensions: InlineExtension[] = [
 	{ name: "footer", factory: footerExtension, builtin: true },
 	{ name: "headless-lean", factory: headlessLeanExtension, builtin: true },
 	{ name: "docs-pointer", factory: docsPointerExtension, builtin: true },
+	{ name: "plan-gate", factory: planGateExtension, builtin: true },
 	{ name: "prefix-cache-1h", factory: prefixCache1hExtension, builtin: true },
 	{ name: "import-claude-session", factory: importClaudeSessionExtension, builtin: true, enabledByDefault: false },
 	{ name: "sound-notify", factory: soundNotifyExtension, builtin: true },
