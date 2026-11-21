@@ -31,12 +31,4 @@ export const VIRTUAL_MODULES: Record<string, unknown> = {
 	"@nycode/ai/oauth": bundledNycodeAiOauth,
 	"@nycode/ai/providers/all": bundledNycodeAiProviders,
 	"@nycode/coding-agent": bundledNycodeCodingAgent,
-	"@mariozechner/pi-agent-core": bundledNycodeAgentCore,
-	"@mariozechner/pi-tui": bundledNycodeTui,
-	"@mariozechner/pi-ai": bundledNycodeAiExtensionView,
-	"@mariozechner/pi-ai/compat": bundledNycodeAiExtensionView,
-	"@mariozechner/pi-ai/models": bundledNycodeAiModels,
-	"@mariozechner/pi-ai/oauth": bundledNycodeAiOauth,
-	"@mariozechner/pi-ai/providers/all": bundledNycodeAiProviders,
-	"@mariozechner/pi-coding-agent": bundledNycodeCodingAgent,
 };

@@ -11,7 +11,7 @@ describe("nycode-ai/models virtual module", () => {
 		expect(typeof models?.clampThinkingLevel).toBe("function");
 	});
 
-	it("exposes the same module under the legacy @mariozechner scope", () => {
-		expect(VIRTUAL_MODULES["@mariozechner/pi-ai/models"]).toBe(VIRTUAL_MODULES["@nycode/ai/models"]);
+	it("no longer exposes the legacy @mariozechner scope", () => {
+		expect(Object.keys(VIRTUAL_MODULES).filter((id) => id.startsWith("@mariozechner/"))).toEqual([]);
 	});
 });

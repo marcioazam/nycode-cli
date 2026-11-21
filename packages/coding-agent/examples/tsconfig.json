@@ -189,9 +189,6 @@
 			],
 			"@earendil-works/pi-agent-old/*": [
 				"../../../packages/agent-old/src/*"
-			],
-			"@mariozechner/pi-ai": [
-				"../../../packages/coding-agent/src/core/extensions/nycode-ai-extension-view.ts"
 			]
 		}
 	},

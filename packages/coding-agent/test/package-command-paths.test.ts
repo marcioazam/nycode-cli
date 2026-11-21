@@ -1127,7 +1127,7 @@ else fs.writeFileSync(${JSON.stringify(recordPath)},JSON.stringify(args));
 
 	it("installs the current package name during self-update", async () => {
 		const globalPrefix = join(tempDir, "global-prefix");
-		const selfPackageDir = join(globalPrefix, "lib", "node_modules", "@mariozechner", "nycode-coding-agent");
+		const selfPackageDir = join(globalPrefix, "lib", "node_modules", "@nycode", "coding-agent");
 		const fakeNpmPath = join(tempDir, "fake-npm.cjs");
 		const recordPath = join(tempDir, "self-update.json");
 		mkdirSync(selfPackageDir, { recursive: true });
@@ -1217,7 +1217,7 @@ else fs.writeFileSync(${JSON.stringify(recordPath)},JSON.stringify(args));
 
 	it("fails self-update when the npm package installation fails", async () => {
 		const globalPrefix = join(tempDir, "global-prefix");
-		const selfPackageDir = join(globalPrefix, "lib", "node_modules", "@mariozechner", "nycode-coding-agent");
+		const selfPackageDir = join(globalPrefix, "lib", "node_modules", "@nycode", "coding-agent");
 		const fakeNpmPath = join(tempDir, "fake-npm-fail.cjs");
 		const recordPath = join(tempDir, "self-update-fail.json");
 		mkdirSync(selfPackageDir, { recursive: true });

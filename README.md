@@ -47,7 +47,7 @@ nix run github:marcioazam/nycode/stable
 
 Supports ARM64 and x86-64 on Linux and macOS. Use `nix build .` or `nix run .` to build or run your checkout.
 
-Nix builds are offline; bundled model data is still pending an offline source in the Nix build (see `nix/package.nix`).
+The Nix build is currently broken: it needs an offline source for the bundled model data, which it used to download from a hosted catalog that nycode no longer uses (tracked in `nix/package.nix`).
 
 ## Packages
 
@@ -157,13 +157,6 @@ We treat npm dependency changes as reviewed code changes.
 - CI installs with `npm ci --ignore-scripts`, and a scheduled GitHub workflow runs `npm audit --omit=dev` plus `npm audit signatures --omit=dev`.
 - Install lock generation has an explicit allowlist for dependency lifecycle scripts; new lifecycle-script deps fail checks until reviewed.
 
-## Origin
-
-nycode is a fork of [pi](https://github.com/earendil-works/pi) by Mario Zechner and contributors (MIT). The harness
-built into nycode started as [ny-pi](https://github.com/marcioazam/ny-pi), a harness for pi. nycode is not affiliated
-with, nor endorsed by, the pi project. The base commit, the changes and the third-party licenses are in
-[NOTICE](NOTICE); the sync policy is in [docs/fork](docs/fork).
-
 ## License
 
-MIT
+MIT. See [LICENSE](LICENSE) and [NOTICE](NOTICE).

@@ -13,12 +13,15 @@
 - Changed Radius to have no default gateway: the built-in `radius` provider, `/bug` uploads, the Radius share and the Radius MCP server need `NYCODE_RADIUS_GATEWAY`; without it `/bug` offers only the zip export.
 - Changed the `$schema` and `$id` URLs of the JSON schemas and themes to raw files of `marcioazam/nycode` on GitHub.
 - Changed the defaults to the ny-pi ones: `defaultProjectTrust` is `"never"`, `quietStartup` is `"header"`, `retry.maxRetries` is `10`, and `shellCommandPrefix` exports `GIT_EDITOR=true`, `GIT_PAGER=cat` and related variables so git and pagers never wait on a terminal. Set the old values in `settings.json` to keep them.
+- Removed the `@mariozechner/pi-*` module aliases from the extension loader: extensions resolve only `@nycode/*` (and `typebox`, `@sinclair/typebox`). An extension that still imports a pi name fails to load with a "Cannot find module" error; rename the imports (`@mariozechner/pi-ai` becomes `@nycode/ai`, and likewise for `pi-coding-agent`, `pi-agent-core` and `pi-tui`). `nycode migrate from-pi` lists such imports in the plan.
+- Removed the global theme slot shared with pi (`Symbol.for("@mariozechner/pi-coding-agent:theme")`); only the `@nycode/coding-agent` slot is set.
 
 ### Added
 
 - Added the `--bypass`, `--dangerously-skip-permissions`, `--safe` and `--no-bypass` flags and the `permissions.bypass` setting; precedence is flag, then `NYCODE_BYPASS_PERMISSIONS`, then `settings.json`, then `false`.
 - Added the `compaction.maxContextTokens`, `harness`, `subagent`, `tools.bash`, `todo`, `plan`, `notify`, `terminal.{uiState,reducedMotion,nerdFont,asciiIcons}`, `knowledge`, `codegraph`, `mcp`, `hooks`, `statusLine` and `env` settings, each with its `NYCODE_*` variable as an override. See `docs/settings.md` and `docs/environment-variables.md`.
 - Added `nycode migrate from-pi`, a dry-run-by-default import of a pi agent directory (settings, `local.env`, MCP config, models, LSP, keybindings, sessions, project trust) into the nycode agent directory; `--apply` writes with backups
+- Added a warning to the `nycode migrate from-pi` plan for each pi extension or local package whose `.ts`, `.js` or `.mjs` files import `@mariozechner/*` or `@earendil-works/pi-*`, with the `@nycode/*` name to use. The scan is read only and never rewrites code
 
 ### Fixed
 
