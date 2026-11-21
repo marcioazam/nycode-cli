@@ -154,6 +154,20 @@ function getDefaultAgentDir(): string {
 }
 
 /**
+ * Same message for the provider: the same object, or the same role and fields apart from `timestamp`.
+ * Session projection recreates custom messages and summaries with new objects and timestamps; the JSON
+ * comparison only runs on messages that lost identity (the reprojected ones are small).
+ */
+export function nycodeSameContextMessage(a: any, b: any): boolean {
+	if (a === b) return true;
+	if (!a || !b || a.role !== b.role) return false;
+	for (const k of new Set([...Object.keys(a), ...Object.keys(b)])) {
+		if (k !== "timestamp" && a[k] !== b[k] && JSON.stringify(a[k]) !== JSON.stringify(b[k])) return false;
+	}
+	return true;
+}
+
+/**
  * Create an AgentSession with the specified options.
  *
  * @example
@@ -367,7 +381,7 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 				currentModel.provider === requestModel.provider &&
 				currentModel.id === requestModel.id &&
 				messages.length <= currentMessages.length &&
-				messages.every((message, index) => currentMessages[index] === message)
+				messages.every((message, index) => nycodeSameContextMessage(currentMessages[index], message))
 			);
 		};
 	};
