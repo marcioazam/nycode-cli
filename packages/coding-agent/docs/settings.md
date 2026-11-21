@@ -225,10 +225,13 @@ A guard that starts but crashes on a Bash call asks instead of allowing. `hook-d
 
 To turn hooks off or replace them:
 
-- One event: set it in `settings.json`, for example `"hooks": { "PreToolUse": [] }` drops the guard, and a non-empty
-  list replaces the default for that event. The other events keep their defaults.
-- Every hook: set `"disableAllHooks": true` in a Claude settings file (`~/.claude/settings.json` or the project's
-  `.claude/settings.json`).
+- One event: an entry in `settings.json` replaces the default of that event, for example a `Stop` list. `PreToolUse` is
+  the exception: with `permissions.engine` `"script"` the guard always runs, and the entries of the user's or the
+  project's `settings.json` add to it. Only the global `~/.nycode/agent/settings.json` can drop the guard, with
+  `"hooks": { "PreToolUse": [] }`; nycode then warns once per session. The same entry in a project file does nothing.
+- Every hook: set `"disableAllHooks": true` in a Claude settings file. In `~/.claude/settings.json` (or the
+  `--settings` file) it turns every hook off, the guard included. In the project's `.claude/settings.json` or
+  `settings.local.json` it turns the other hooks off and the guard keeps running.
 
 The ralph-loop `Stop` hook and the `ponytail` variables (`PONYTAIL_SUBAGENT_MATCHER`) belong to the optional packages of
 the same names and are not registered here.

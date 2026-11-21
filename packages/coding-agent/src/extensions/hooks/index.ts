@@ -97,7 +97,8 @@
 import * as os from "node:os";
 import { exportResourcesRoot } from "../../core/builtin-resources.ts";
 import type { ExtensionAPI, ExtensionContext } from "../../core/extensions/types.ts";
-import { hooksForEngine } from "../../core/permissions/gate.ts";
+import { guardHookEnabled, guardOptedOut } from "../../core/permissions/gate.ts";
+import { readGlobalSettings } from "../../core/permissions/global-settings.ts";
 import { INSTRUCTIONS_CHANNEL, isInstructionLoadEvent } from "../_shared/events/instruction-events.ts";
 import { isMcpToolAliases, MCP_TOOLS_CHANNEL } from "../_shared/events/mcp-alias.ts";
 import { isPlanModeState, PLAN_MODE_CHANNEL } from "../_shared/events/plan-mode-state.ts";
@@ -110,6 +111,7 @@ import { approvalRecheck, isProjectApproved } from "../_shared/project/project-a
 import { checkoutRoot } from "../_shared/project/project-root.ts";
 import { readManagedSettings } from "../_shared/settings/managed-settings.ts";
 import { installedPlugins, managedForceEnabled } from "../_shared/settings/plugins.ts";
+import { userSettingsFiles } from "../_shared/settings/settings-chain.ts";
 import { watchSettingsFiles } from "../_shared/settings/settings-watch.ts";
 import { registerCompactionEvents } from "./bridge/compaction-events.ts";
 import { registerStopEvents } from "./bridge/stop-events.ts";
@@ -190,6 +192,8 @@ export default function hooksExtension(nycode: ExtensionAPI) {
 	let hooksDisabled = false;
 	/** The `hooks` key of nycode's settings.json, read at session start (a reload must not call the API of a replaced session). */
 	let settingsHooks: Record<string, unknown> | undefined;
+	/** Whether the embedded guard.py default is in the PreToolUse: see guardHookEnabled. */
+	let guardEnabled = true;
 	/** Which settings file each resolved entry came from, for the /hooks viewer. */
 	const hookSources = new Map<HookMatcher, string>();
 	/** Claude sends session_id, transcript_path, cwd and effort on every payload. */
@@ -465,7 +469,11 @@ export default function hooksExtension(nycode: ExtensionAPI) {
 		// non-managed however the plugin came to be enabled. Only the managed policy hooks
 		// loaded above survive it. Putting the force-enable exemption ahead of this let an
 		// administrator's enabledPlugins entry defeat the user's own escape hatch.
-		if (readSettingsDisableAllHooks(files)) return;
+		if (readSettingsDisableAllHooks(files)) {
+			// nycode: K11 the guard is not a hook a repository may turn off: only the user's own files do (D-08)
+			if (guardEnabled && !readSettingsDisableAllHooks(userSettingsFiles(os.homedir()))) keepGuardHook();
+			return;
+		}
 		if (managedHooksOnly) {
 			// Claude: "Hooks from plugins force-enabled in managed settings `enabledPlugins`
 			// are exempt." That exemption is from allowManagedHooksOnly, not from the hatch.
@@ -475,13 +483,22 @@ export default function hooksExtension(nycode: ExtensionAPI) {
 		mergeNonManagedHooks(files);
 	}
 
+	/** The embedded guard.py hook alone, for a disableAllHooks that came from a project file. */
+	function keepGuardHook(): void {
+		exportResourcesRoot();
+		config.PreToolUse = [
+			...(config.PreToolUse ?? []),
+			...(loadSettingsHooks(undefined, hookSources).PreToolUse ?? []),
+		];
+	}
+
 	/** Merge the non-managed hook sources into the managed config resolveConfig loaded:
 	 * settings files, plugins, a subagent child's agent hooks, and this session's skill hooks. */
 	function mergeNonManagedHooks(files: string[]): void {
 		// The embedded commands name ${NYCODE_RESOURCES}; claude-rules exports it too, but nothing here may depend on its order.
 		exportResourcesRoot();
 		for (const [eventName, matchers] of [
-			...Object.entries(loadSettingsHooks(settingsHooks, hookSources)),
+			...Object.entries(loadSettingsHooks(settingsHooks, hookSources, guardEnabled)),
 			...Object.entries(loadHooks(files, hookSources)),
 		])
 			config[eventName] = [...(config[eventName] ?? []), ...matchers];
@@ -518,7 +535,14 @@ export default function hooksExtension(nycode: ExtensionAPI) {
 		// subdirectory session too.
 		projectDir = checkoutRoot(ctx.cwd);
 		// nycode: K11 with permissions.engine "native" the guard.py PreToolUse default does not run
-		settingsHooks = hooksForEngine(nycode.getSettings());
+		const globalSettings = readGlobalSettings();
+		guardEnabled = guardHookEnabled(globalSettings);
+		settingsHooks = nycode.getSettings().hooks;
+		if (guardOptedOut(globalSettings))
+			ctx.ui.notify(
+				'The guard.py permission hook is off: "PreToolUse": [] in your settings.json (a project settings file cannot do this).',
+				"warning",
+			);
 		resolveConfig(ctx.cwd, trusted);
 		// Claude picks up direct settings edits mid-session via a file watcher. The reload
 		// closes over the cwd value, never ctx: the poll has no awaiter, and every getter of

@@ -9,7 +9,7 @@ import { getBuiltinResourcesRoot } from "../builtin-resources.ts";
 import type { ExtensionContext, ToolCallEventResult } from "../extensions/types.ts";
 import type { Settings } from "../settings-schema.ts";
 import { isBypassOn } from "./bypass-state.ts";
-import { globalPermissionsEngine } from "./global-settings.ts";
+import { engineOf, globalPermissionsEngine } from "./global-settings.ts";
 import { decide } from "./guard/decide.ts";
 
 /** The tools the embedded guard judges: its hook matcher in settings-defaults.ts is `Bash|Edit|Write|Read`. */
@@ -80,11 +80,17 @@ export async function gateToolCall(
 	}
 }
 
+/** The guard opt-out the user wrote in the global settings.json (`"PreToolUse": []`); reported once per session. */
+export function guardOptedOut(global: Settings): boolean {
+	const preToolUse = global.hooks?.PreToolUse;
+	return Array.isArray(preToolUse) && preToolUse.length === 0;
+}
+
 /**
- * The `hooks` settings the hooks extension merges over its defaults. With the native engine the guard.py PreToolUse
- * default is replaced by an empty list (never both engines), unless settings.json names its own PreToolUse.
+ * Whether the embedded guard.py PreToolUse default runs. Never with the native engine (never both engines), and not
+ * when the user's own global settings.json opts out; a project cannot do either (D-08: the guard is never silently
+ * absent). `global` is readGlobalSettings().
  */
-export function hooksForEngine(settings: Settings): Record<string, unknown> | undefined {
-	if (globalPermissionsEngine() !== "native" || settings.hooks?.PreToolUse !== undefined) return settings.hooks;
-	return { ...settings.hooks, PreToolUse: [] };
+export function guardHookEnabled(global: Settings): boolean {
+	return !guardOptedOut(global) && engineOf(global) !== "native";
 }

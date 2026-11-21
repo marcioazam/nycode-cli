@@ -7,7 +7,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type * as BuiltinResources from "../../../src/core/builtin-resources.ts";
 import type { ExtensionContext } from "../../../src/core/extensions/types.ts";
 import { setBypassState } from "../../../src/core/permissions/bypass-state.ts";
-import { type GateHost, gateToolCall, hooksForEngine } from "../../../src/core/permissions/gate.ts";
+import { type GateHost, gateToolCall, guardHookEnabled } from "../../../src/core/permissions/gate.ts";
+import { readGlobalSettings } from "../../../src/core/permissions/global-settings.ts";
 import { InMemorySettingsStorage, SettingsManager } from "../../../src/core/settings-manager.ts";
 
 const { initialAgentDir, initialBypass, resourcesRoot } = vi.hoisted(() => ({
@@ -161,27 +162,24 @@ describe("gateToolCall", () => {
 	});
 });
 
-describe("hooksForEngine", () => {
-	const globalEngine = (engine: string) =>
-		writeFileSync(join(agentDir, "settings.json"), JSON.stringify({ permissions: { engine } }));
-
-	it("drops the guard.py PreToolUse default only for the global native engine", () => {
-		globalEngine("native");
-		expect(hooksForEngine({ hooks: { Stop: [] } })).toEqual({ Stop: [], PreToolUse: [] });
-		expect(hooksForEngine({})).toEqual({ PreToolUse: [] });
-		globalEngine("script");
-		expect(hooksForEngine({ hooks: { Stop: [] } })).toEqual({ Stop: [] });
-		expect(hooksForEngine({})).toBeUndefined();
+describe("guardHookEnabled", () => {
+	it("is on for the script engine, off for the native one and for the global opt-out", () => {
+		expect(guardHookEnabled({})).toBe(true);
+		expect(guardHookEnabled({ permissions: { engine: "script" } })).toBe(true);
+		expect(guardHookEnabled({ permissions: { engine: "native" } })).toBe(false);
+		expect(guardHookEnabled({ hooks: { PreToolUse: [] } })).toBe(false);
 	});
 
-	it("takes the engine from the same source as the gate: a project's native changes nothing", () => {
-		globalEngine("script");
-		expect(hooksForEngine({ permissions: { engine: "native" } })).toBeUndefined();
+	it("keeps the guard for a global PreToolUse that names hooks of its own", () => {
+		expect(guardHookEnabled({ hooks: { PreToolUse: [{ hooks: [] }] } })).toBe(true);
 	});
 
-	it("keeps a PreToolUse the user wrote", () => {
-		const hooks = { PreToolUse: [{ hooks: [] }] };
-		writeFileSync(join(agentDir, "settings.json"), JSON.stringify({ permissions: { engine: "native" } }));
-		expect(hooksForEngine({ hooks })).toBe(hooks);
+	it("reads the engine as the gate does", async () => {
+		const global = { permissions: { engine: "native" } };
+		writeFileSync(join(agentDir, "settings.json"), JSON.stringify(global));
+		expect(guardHookEnabled(readGlobalSettings())).toBe(false);
+		expect(await gateToolCall("bash", { command: "rm -rf /" }, host("native", { hasUI: false }))).toMatchObject({
+			block: true,
+		});
 	});
 });

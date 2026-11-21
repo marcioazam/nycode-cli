@@ -18,7 +18,8 @@ export function readGlobalSettings(): Settings {
 	}
 }
 
+/** The permission engine `global` (readGlobalSettings) names, or the default. */
+export const engineOf = (global: Settings): string => resolveNycodeSettings(global, process.env).permissions.engine;
+
 /** `permissions.engine` from the global settings only; the one source of the gate and of the hooks extension. */
-export function globalPermissionsEngine(): string {
-	return resolveNycodeSettings(readGlobalSettings(), process.env).permissions.engine;
-}
+export const globalPermissionsEngine = (): string => engineOf(readGlobalSettings());

@@ -210,15 +210,20 @@ export function loadHooks(files: string[], sources?: Map<HookMatcher, string>): 
 }
 
 /** The hooks of nycode's own settings: the embedded defaults, each event replaced whole by the settings.json
- * `hooks` entry of the same name (an empty list turns that event's default off). */
+ * `hooks` entry of the same name (an empty list turns that event's default off). PreToolUse is the exception: the
+ * embedded guard stays in front of the entries the settings add unless `guard` is false (native engine, or the
+ * user's global opt-out; see guardHookEnabled), so a project's hooks can never replace it. */
 export function loadSettingsHooks(
 	settingsHooks: Record<string, unknown> | undefined,
 	sources?: Map<HookMatcher, string>,
+	guard = true,
 ): HooksConfig {
 	const config: HooksConfig = {};
+	const added = settingsHooks?.PreToolUse;
+	const PreToolUse = [...(guard ? SETTINGS_DEFAULTS.hooks.PreToolUse : []), ...(Array.isArray(added) ? added : [])];
 	mergeHooksJson(
 		config,
-		JSON.stringify({ hooks: { ...SETTINGS_DEFAULTS.hooks, ...settingsHooks } }),
+		JSON.stringify({ hooks: { ...SETTINGS_DEFAULTS.hooks, ...settingsHooks, PreToolUse } }),
 		"nycode settings",
 		sources,
 	);
