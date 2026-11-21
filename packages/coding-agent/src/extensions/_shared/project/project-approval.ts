@@ -20,14 +20,14 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { getAgentDir } from "../../../config.ts";
+import { CONFIG_DIR_NAME, getAgentDir } from "../../../config.ts";
 import { hasTrustRequiringProjectResources, ProjectTrustStore } from "../../../core/trust-manager.ts";
 
 import { claudeConfigDir } from "../settings/config-dir.ts";
 import { localSettingsFile } from "../settings/settings-chain.ts";
 import { ROOT_MARKERS } from "./project-root.ts";
 
-/** Project files pi-code acts on that pi's own trust check does not look for. */
+/** Project files the harness acts on that the core trust check does not look for. */
 const CLAUDE_SHAPED = [
 	path.join(".claude", "settings.json"),
 	path.join(".claude", "settings.local.json"),
@@ -41,8 +41,9 @@ const CLAUDE_SHAPED = [
 	path.join(".claude", "CLAUDE.md"),
 	"CLAUDE.local.md",
 	".mcp.json",
-	path.join(".pi", "mcp.json"),
-	path.join(".pi", "agents"),
+	// pi-code gated `.pi/mcp.json` and `.pi/agents`; the project config directory is now CONFIG_DIR_NAME (D-33).
+	path.join(CONFIG_DIR_NAME, "mcp.json"),
+	path.join(CONFIG_DIR_NAME, "agents"),
 ];
 
 /** The folders whose `.claude` is the user's own configuration: the home directory, and
