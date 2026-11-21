@@ -121,6 +121,7 @@ Cada decisão tem um identificador estável (D-nn) citado nos outros documentos.
 - F8 (K11): com `native` o `PreToolUse` do `guard.py` não roda (um motor por vez) e o motor nativo que lança exceção, um valor
   desconhecido de `permissions.engine` e `"script"` sem o `guard.py` negam a chamada (C-F8-12), ao contrário do `guard.py`, que em erro interno pergunta (Bash) ou deixa passar. O padrão continua
   `"script"`: a troca espera `security-reviewer` e o benchmark (D-29).
+- Pré-condições para `native` por padrão: F5, F6 (laudo F8; [evidência F8](evidencias/F8.md)).
 
 ### D-12. Serviços do upstream
 
