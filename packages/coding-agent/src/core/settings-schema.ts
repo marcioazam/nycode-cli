@@ -1,6 +1,7 @@
 import { type Static, type TSchemaOptions, Type } from "typebox";
 import { ModelThinkingLevelSchema } from "./nycode-ai-schemas.ts";
 import { SETTINGS_DEFAULTS } from "./settings-defaults.ts";
+import { NycodeSettingsProperties } from "./settings-nycode-schema.ts";
 
 function nonNegativeSafeInteger(options: { default?: number } = {}) {
 	return Type.Integer({ minimum: 0, maximum: Number.MAX_SAFE_INTEGER, ...options });
@@ -19,6 +20,15 @@ const CompactionSettingsSchema = Type.Object({
 	enabled: Type.Optional(Type.Boolean({ default: SETTINGS_DEFAULTS.compaction.enabled })),
 	reserveTokens: Type.Optional(nonNegativeSafeInteger({ default: SETTINGS_DEFAULTS.compaction.reserveTokens })),
 	keepRecentTokens: Type.Optional(nonNegativeSafeInteger({ default: SETTINGS_DEFAULTS.compaction.keepRecentTokens })),
+	maxContextTokens: Type.Optional(
+		Type.Integer({
+			minimum: 1,
+			maximum: Number.MAX_SAFE_INTEGER,
+			description:
+				"Absolute context size in tokens that triggers compaction, whatever the model window. NYCODE_COMPACT_AT takes precedence.",
+			default: SETTINGS_DEFAULTS.compaction.maxContextTokens,
+		}),
+	),
 	modelOverrides: Type.Optional(
 		Type.Record(Type.String(), CompactionModelOverrideSchema, {
 			description: 'Per-model overrides keyed by exact "provider/modelId" strings.',
@@ -101,6 +111,30 @@ const TerminalSettingsSchema = Type.Object({
 		Type.Union([Type.Literal("kitty"), Type.Literal("iterm2"), Type.Literal("auto"), Type.Literal(false)]),
 	),
 	trueColor: Type.Optional(Type.Union([Type.Boolean(), Type.Literal("auto")])),
+	uiState: Type.Optional(
+		Type.String({
+			description:
+				"File that stores the editor UI state; defaults to ui-state.json in the agent directory. NYCODE_UI_STATE takes precedence.",
+		}),
+	),
+	reducedMotion: Type.Optional(
+		Type.Boolean({
+			description: "Reduce animation. NYCODE_REDUCED_MOTION takes precedence.",
+			default: SETTINGS_DEFAULTS.terminal.reducedMotion,
+		}),
+	),
+	nerdFont: Type.Optional(
+		Type.Union([Type.Boolean(), Type.Literal("auto")], {
+			description: "Use Nerd Font icons; auto detects kitty. NYCODE_NERD_FONT takes precedence.",
+			default: SETTINGS_DEFAULTS.terminal.nerdFont,
+		}),
+	),
+	asciiIcons: Type.Optional(
+		Type.Boolean({
+			description: "Use plain Unicode icons. NYCODE_ASCII_ICONS takes precedence.",
+			default: SETTINGS_DEFAULTS.terminal.asciiIcons,
+		}),
+	),
 });
 
 const ImageSettingsSchema = Type.Object({
@@ -275,7 +309,10 @@ export const SettingsSchema = Type.Object(
 			}),
 		),
 		shellCommandPrefix: Type.Optional(
-			Type.String({ description: "Prefix prepended to every bash command, for example to enable shell aliases." }),
+			Type.String({
+				description: "Prefix prepended to every bash command, for example to enable shell aliases.",
+				default: SETTINGS_DEFAULTS.shellCommandPrefix,
+			}),
 		),
 		npmCommand: Type.Optional(
 			Type.Array(Type.String(), {
@@ -454,6 +491,7 @@ export const SettingsSchema = Type.Object(
 				default: SETTINGS_DEFAULTS.fullscreenWheelScrollLines,
 			}),
 		),
+		...NycodeSettingsProperties,
 		queueMode: Type.Optional(
 			Type.Union([Type.Literal("all"), Type.Literal("one-at-a-time")], {
 				description: "Legacy setting migrated to steeringMode.",
