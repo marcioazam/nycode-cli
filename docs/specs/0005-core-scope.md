@@ -128,6 +128,7 @@ chegam por fase e o `core_scope.py` é convertido em F3.
 | extension | bypass-permissions | core | Modo de permissão |
 | extension | cache-prefix-probe | remove | Diagnóstico temporário |
 | extension | claude-rules | core | Regras do Claude Code em .claude/rules |
+| extension | commands | core | Comandos de barra do Claude Code |
 | extension | compact-at-400k | core | Compactação de segurança |
 | extension | completion-gate | core | Verificação antes de encerrar |
 | extension | context-imports | core | Imports @ do CLAUDE.md |
@@ -137,6 +138,7 @@ chegam por fase e o `core_scope.py` é convertido em F3.
 | extension | footer-no-stats | ui | Rodapé |
 | extension | headless-lean | core | Custo sem interface |
 | extension | hooks | core | Hooks no formato do Claude Code |
+| extension | init | core | `/init` |
 | extension | memory | core | Memória do projeto |
 | extension | no-context-files-covers-claude-md | core | Contexto sem duplicata |
 | extension | no-web-search | core | Desliga busca que falha |
@@ -147,6 +149,7 @@ chegam por fase e o `core_scope.py` é convertido em F3.
 | extension | puxar | optional | Importa sessão de outro perfil, uso pessoal |
 | extension | question | core | Pergunta ao usuário com opções |
 | extension | settings-flags | core | Flags de settings do Claude |
+| extension | skills-compat | core | Skills no formato do Claude Code |
 | extension | sound-notify | optional | Som ao fim do turno, gosto pessoal |
 | extension | sticky-prompt | ui | Última mensagem fixa |
 | extension | syntax-check | core | Erro de sintaxe após edição |
