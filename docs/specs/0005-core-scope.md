@@ -132,6 +132,7 @@ chegam por fase e o `core_scope.py` é convertido em F3.
 | extension | compact-at-400k | core | Compactação de segurança |
 | extension | completion-gate | core | Verificação antes de encerrar |
 | extension | context-imports | core | Imports @ do CLAUDE.md |
+| extension | context-usage | ui | Uso de contexto |
 | extension | dev-commands | ui | `/copy-code` e `/keybindings` |
 | extension | effort-sandwich | optional | Raciocínio high só no 1º turno do `pi -p` de topo (opt-in, spec 0009) |
 | extension | env-settings | core | Variáveis de ambiente do settings do Claude |
@@ -142,17 +143,20 @@ chegam por fase e o `core_scope.py` é convertido em F3.
 | extension | memory | core | Memória do projeto |
 | extension | no-context-files-covers-claude-md | core | Contexto sem duplicata |
 | extension | no-web-search | core | Desliga busca que falha |
+| extension | notify | ui | Aviso de fim de turno |
 | extension | output-styles | core | Estilos de saída |
 | extension | pi-docs | core | Prompt menor |
 | extension | plan-gate | core | Plano aprovado vai ao fim |
 | extension | prefix-cache-1h | core | Cache do prefixo |
 | extension | puxar | optional | Importa sessão de outro perfil, uso pessoal |
 | extension | question | core | Pergunta ao usuário com opções |
+| extension | session-title | ui | Título da sessão |
 | extension | settings-flags | core | Flags de settings do Claude |
 | extension | skills-compat | core | Skills no formato do Claude Code |
 | extension | sound-notify | optional | Som ao fim do turno, gosto pessoal |
 | extension | sticky-prompt | ui | Última mensagem fixa |
 | extension | syntax-check | core | Erro de sintaxe após edição |
+| extension | thinking | ui | Nível de raciocínio |
 | extension | todo | core | Ferramenta de lista de tarefas |
 | extension | todo-sync | core | Lista de tarefas em dia |
 | extension | ui | ui | Editor, acessibilidade, `/diff` |
