@@ -33,7 +33,7 @@ If a p2 already answers on the port, the app adopts it instead: it opens that se
 
 `.github/workflows/p2-mac-nightly.yml` builds the app every night from the newest commit on main that passed CI and publishes it on pkg.earendil.com, the app `nycode-mac`, channel `nightly`. Anyone can download it, no login needed:
 
-```
+```text
 https://pkg.earendil.com/-/apps/nycode-mac/nightly/download
 ```
 

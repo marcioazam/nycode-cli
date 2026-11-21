@@ -4,7 +4,7 @@ This file is the brief for agents implementing MCP (Model Context Protocol) supp
 `apps/p2`. Every work package (WP) below is self-contained: it says where the work happens, what to build, how to test
 it, and when it is done. Read sections 1 to 4 before any work package, then only the package you are given.
 
-The human-readable plan with background lives at https://radius.earendil.com/artifact/01m6em2r8gercbx2rn2y8mwwpq
+The human-readable plan with background lives at <https://radius.earendil.com/artifact/01m6em2r8gercbx2rn2y8mwwpq>
 (revision 4). Where it and this file differ, this file wins.
 
 ---
@@ -104,19 +104,19 @@ In `packages/env` (commit `9c9ce8547`):
 ```ts
 export function openProcess(connection: Connection, options: ProcessOptions): Promise<RemoteProcess>;
 export interface ProcessOptions {
-	cwd: string;
-	argv: readonly string[];           // run directly, no shell
-	env?: Record<string, string>;      // added to the daemon's environment
-	inheritEnv?: boolean;              // false: env is the whole environment
-	onStdout: (bytes: Uint8Array) => void;
-	onStderr?: (bytes: Uint8Array) => void;
+ cwd: string;
+ argv: readonly string[];           // run directly, no shell
+ env?: Record<string, string>;      // added to the daemon's environment
+ inheritEnv?: boolean;              // false: env is the whole environment
+ onStdout: (bytes: Uint8Array) => void;
+ onStderr?: (bytes: Uint8Array) => void;
 }
 export class RemoteProcess {
-	readonly pid: number;
-	readonly exited: Promise<number>;  // exit code; rejects (code "aborted") after close(), or on a lost connection
-	write(data: Uint8Array | string): void;   // stdin, in order; dropped once stdin is closed or the program ended
-	closeStdin(): void;                // after the input written before it
-	close(): void;                     // kills the process group
+ readonly pid: number;
+ readonly exited: Promise<number>;  // exit code; rejects (code "aborted") after close(), or on a lost connection
+ write(data: Uint8Array | string): void;   // stdin, in order; dropped once stdin is closed or the program ended
+ closeStdin(): void;                // after the input written before it
+ close(): void;                     // kills the process group
 }
 ```
 
@@ -268,21 +268,21 @@ so it gets a transport over an abstract pipe that `RemoteProcess` satisfies with
    ```ts
    /** A running program's stdio, as `@nycode/env`'s `RemoteProcess` provides it. */
    export interface McpPipe {
-   	write(data: Uint8Array | string): void;
-   	closeStdin(): void;
-   	/** Kill the program (and what it started). */
-   	close(): void;
-   	/** Settles when the program has ended, whatever the reason. */
-   	readonly exited: Promise<unknown>;
+    write(data: Uint8Array | string): void;
+    closeStdin(): void;
+    /** Kill the program (and what it started). */
+    close(): void;
+    /** Settles when the program has ended, whatever the reason. */
+    readonly exited: Promise<unknown>;
    }
    export interface PipeTransportOptions {
-   	/** Start the program; `onStdout`/`onStderr` receive its output from then on. */
-   	open(handlers: { onStdout(bytes: Uint8Array): void; onStderr(bytes: Uint8Array): void }): Promise<McpPipe>;
-   	maxMessageBytes?: number;
-   	maxStderrBytes?: number;
-   	onStderr?: (chunk: string) => void;
-   	/** After closing stdin, how long the program may take to exit before `close()` kills it. Default 2000. */
-   	closeTimeoutMs?: number;
+    /** Start the program; `onStdout`/`onStderr` receive its output from then on. */
+    open(handlers: { onStdout(bytes: Uint8Array): void; onStderr(bytes: Uint8Array): void }): Promise<McpPipe>;
+    maxMessageBytes?: number;
+    maxStderrBytes?: number;
+    onStderr?: (chunk: string) => void;
+    /** After closing stdin, how long the program may take to exit before `close()` kills it. Default 2000. */
+    closeTimeoutMs?: number;
    }
    export class PipeTransport extends TransportEvents implements McpTransport { ... }
    ```
@@ -297,7 +297,7 @@ so it gets a transport over an abstract pipe that `RemoteProcess` satisfies with
 
    ```ts
    const transport = new PipeTransport({
-   	open: (handlers) => openProcess(connection, { cwd, argv, ...handlers }),
+    open: (handlers) => openProcess(connection, { cwd, argv, ...handlers }),
    });
    ```
 
@@ -345,26 +345,26 @@ The split:
 ```ts
 /** First half: refresh if possible, else prepare the browser step. */
 export async function startMcpSignIn(options: {
-	serverUrl: string;
-	store: McpOAuthStateStore;
-	settings: McpOAuthSettings;
-	redirectUrl: string;                       // chosen by the caller: loopback, or an https callback route
-	clientMetadataDocuments?: { baseUrl: string };   // omitted: dynamic registration only
-	clientName: string;
-	challenge?: OAuthChallenge;
-	signal?: AbortSignal;
+ serverUrl: string;
+ store: McpOAuthStateStore;
+ settings: McpOAuthSettings;
+ redirectUrl: string;                       // chosen by the caller: loopback, or an https callback route
+ clientMetadataDocuments?: { baseUrl: string };   // omitted: dynamic registration only
+ clientName: string;
+ challenge?: OAuthChallenge;
+ signal?: AbortSignal;
 }): Promise<{ kind: "authorized" } | { kind: "redirect"; authorizationUrl: URL; redirectUrl: URL; state: string }>;
 
 /** Second half: exchange the code. `response` from a callback server, a route, or `responseFromRedirectUrl`. */
 export async function completeMcpSignIn(options: {
-	serverUrl: string;
-	store: McpOAuthStateStore;
-	settings: McpOAuthSettings;
-	redirectUrl: string;                       // the one passed to start (the flow may have made it server-specific)
-	response: { code: string; iss?: string };
-	clientMetadataDocuments?: { baseUrl: string };
-	clientName: string;
-	signal?: AbortSignal;
+ serverUrl: string;
+ store: McpOAuthStateStore;
+ settings: McpOAuthSettings;
+ redirectUrl: string;                       // the one passed to start (the flow may have made it server-specific)
+ response: { code: string; iss?: string };
+ clientMetadataDocuments?: { baseUrl: string };
+ clientName: string;
+ signal?: AbortSignal;
 }): Promise<void>;
 ```
 
@@ -451,44 +451,44 @@ plugins). Tests in `apps/p2/test/p2/mcp*.test.ts`.
 ```ts
 const Location = obj({ env: union([str(), nul()]), cwd: str() });   // p2's location; env null: the p2 host
 const Instance = obj({
-	id: str(),
-	server: str(),
-	source: oneOf("owner", "project"),
-	location: union([Location, nul()]),          // null: shared, or HTTP
-	runsOn: union([literal("host"), obj({ env: str() })]),
-	status: oneOf("starting", "connected", "sign-in", "failed"),
-	error: opt(str()),
-	tools: arr(Tool),                             // name, title, description, inputSchema, annotations
+ id: str(),
+ server: str(),
+ source: oneOf("owner", "project"),
+ location: union([Location, nul()]),          // null: shared, or HTTP
+ runsOn: union([literal("host"), obj({ env: str() })]),
+ status: oneOf("starting", "connected", "sign-in", "failed"),
+ error: opt(str()),
+ tools: arr(Tool),                             // name, title, description, inputSchema, annotations
 });
 
 export const McpManager = local("p2.mcp.manager", {
-	version: 1,
-	params: {},
-	members: {
-		instances: arr(Instance),
-		load: method(obj({ session: str(), location: Location, project: union([ProjectConfig, nul()]) }), Loaded),
-		unload: method(obj({ session: str(), location: Location })),
-		release: method(obj({ session: str() })),
-		call: method(obj({ session: str(), instance: str(), tool: str(), args: JsonObject }), CallResult),
-		restart: method(obj({ instance: str() })),
-		// sign-in members: WP8
-	},
+ version: 1,
+ params: {},
+ members: {
+  instances: arr(Instance),
+  load: method(obj({ session: str(), location: Location, project: union([ProjectConfig, nul()]) }), Loaded),
+  unload: method(obj({ session: str(), location: Location })),
+  release: method(obj({ session: str() })),
+  call: method(obj({ session: str(), instance: str(), tool: str(), args: JsonObject }), CallResult),
+  restart: method(obj({ instance: str() })),
+  // sign-in members: WP8
+ },
 });
 
 export const Mcp = remote("p2.mcp", {
-	version: 1,
-	hostAddress: /* the server, as the port addresses it */,
-	params: {},
-	variants: {
-		worker: {
-			state: { servers: arr(Instance) },
-			methods: { load, unload, call },        // session filled in by the view from the principal
-		},
-		owner: {
-			state: { instances: arr(Instance) },
-			methods: { restart },
-		},
-	},
+ version: 1,
+ hostAddress: /* the server, as the port addresses it */,
+ params: {},
+ variants: {
+  worker: {
+   state: { servers: arr(Instance) },
+   methods: { load, unload, call },        // session filled in by the view from the principal
+  },
+  owner: {
+   state: { instances: arr(Instance) },
+   methods: { restart },
+  },
+ },
 });
 ```
 
@@ -552,12 +552,12 @@ export const Mcp = remote("p2.mcp", {
 
 ```json
 {
-	"mcpServers": {
-		"filesystem": { "command": "npx", "args": ["-y", "@modelcontextprotocol/server-filesystem", "."] },
-		"browser": { "command": "npx", "args": ["-y", "@playwright/mcp"], "shared": true, "runOn": "host" },
-		"tools-on-gpu": { "command": "/opt/tools/mcp", "runOn": { "env": "gpu" } },
-		"docs": { "url": "https://example.com/mcp", "headers": { "Authorization": "Bearer ${DOCS_TOKEN}" } }
-	}
+ "mcpServers": {
+  "filesystem": { "command": "npx", "args": ["-y", "@modelcontextprotocol/server-filesystem", "."] },
+  "browser": { "command": "npx", "args": ["-y", "@playwright/mcp"], "shared": true, "runOn": "host" },
+  "tools-on-gpu": { "command": "/opt/tools/mcp", "runOn": { "env": "gpu" } },
+  "docs": { "url": "https://example.com/mcp", "headers": { "Authorization": "Bearer ${DOCS_TOKEN}" } }
+ }
 }
 ```
 
