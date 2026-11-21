@@ -12,7 +12,8 @@ function harness(withEvents = true) {
 	const api = { on: (name: string, handler: Handler) => handlers.set(name, handler) } as unknown as ExtensionAPI & {
 		events?: { on: (name: string, handler: (data: unknown) => void) => void };
 	};
-	if (withEvents) api.events = { on: (name, handler) => bus.set(name, handler) } as never;
+	if (withEvents)
+		api.events = { on: (name: string, handler: (data: unknown) => void) => bus.set(name, handler) } as never;
 	notifyExtension(api);
 	const written: string[] = [];
 	const run = (opts: { aborted?: boolean; userInput?: boolean } = {}) => {
