@@ -8,18 +8,18 @@
  * Os status são separados por " · " em dim.
  * Espelha dist/modes/interactive/components/footer.js do pi 1.5.2; custo e contexto seguem em /session e no HUD.
  */
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { truncateToWidth } from "@earendil-works/pi-tui";
+import { truncateToWidth } from "@nycode/tui";
+import type { ExtensionAPI } from "../../core/extensions/types.ts";
 
 const HIDDEN = new Set(["pi-code-status", "ponytail"]);
 /** Mesmo nome de FOOTER_BRIDGE_CHANNEL em pi-code/extensions/status-line.ts (sem import entre pacotes). */
 const FOOTER_BRIDGE_CHANNEL = "pi-code:footer-bridge";
 
-export default function (pi: ExtensionAPI) {
-	pi.on("session_start", (_event, ctx) => {
+export default function footerExtension(nycode: ExtensionAPI) {
+	nycode.on("session_start", (_event, ctx) => {
 		ctx.ui.setFooter((_tui, theme, footerData) => {
 			const absorbed = new Set<string>();
-			pi.events.emit(FOOTER_BRIDGE_CHANNEL, { footerData, absorbed });
+			nycode.events.emit(FOOTER_BRIDGE_CHANNEL, { footerData, absorbed });
 			return {
 				dispose() {},
 				invalidate() {},
