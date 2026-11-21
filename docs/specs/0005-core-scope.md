@@ -164,7 +164,6 @@ chegam por fase e o `core_scope.py` é convertido em F3.
 | extension | syntax-check | core | Erro de sintaxe após edição |
 | extension | thinking | ui | Nível de raciocínio |
 | extension | todo | core | Ferramenta de lista de tarefas |
-| extension | todo-sync | core | Lista de tarefas em dia |
 | extension | ui | ui | Editor, acessibilidade, `/diff` |
 | extension | ui-visual | ui | Cabeçalho e ícones |
 | extension | up-dequeue | ui | Seta para cima restaura a fila |

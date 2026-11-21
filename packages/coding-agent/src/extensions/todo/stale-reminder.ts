@@ -16,7 +16,7 @@
  * tem saída e repete a cada FOLLOW chamadas até haver mudança. Custo: uma chamada todo a cada ~10-13 chamadas, só em
  * sessões interativas. Sem interface (benchmarks) o comportamento e o texto seguem idênticos ao original.
  *
- * O estado vem do evento `pi-code:todos` que a extensão todo emite a cada mudança e ao recarregar a sessão.
+ * O estado vem da função devolvida por `registerStaleReminder`, que a extensão todo chama a cada mudança e ao recarregar a sessão.
  * NYCODE_TODO_SYNC=0 ou `todo.staleReminder: false` nas settings desliga (resolvedor de settings-nycode).
  */
 import { getAgentDir } from "../../config.ts";
@@ -55,7 +55,7 @@ export function reminder(items: Item[], calls: number): string | undefined {
 export const readStaleReminderEnabled = (cwd: string): boolean =>
 	SettingsManager.create(cwd, getAgentDir()).getNycodeSettings().todo.staleReminder;
 
-/** Registra o lembrete; a chave é lida uma vez, na primeira chamada de ferramenta (a fábrica não tem cwd). */
+/** Registra o lembrete e devolve o setter da lista; a chave é lida uma vez, na primeira chamada de ferramenta (a fábrica não tem cwd). */
 export function registerStaleReminder(
 	nycode: ExtensionAPI,
 	readEnabled: (cwd: string) => boolean = readStaleReminderEnabled,
@@ -63,9 +63,6 @@ export function registerStaleReminder(
 	let items: Item[] = [];
 	let calls = 0;
 	let enabled: boolean | undefined;
-	nycode.events.on("pi-code:todos", (data: unknown) => {
-		items = Array.isArray(data) ? (data as Item[]) : [];
-	});
 	nycode.on("tool_result", (event, ctx) => {
 		enabled ??= readEnabled(ctx?.cwd ?? process.cwd());
 		if (!enabled) return undefined;
@@ -82,4 +79,7 @@ export function registerStaleReminder(
 		if (!text || !Array.isArray(event.content)) return undefined;
 		return { content: [...event.content, { type: "text" as const, text }] };
 	});
+	return (next: Item[]) => {
+		items = next;
+	};
 }
