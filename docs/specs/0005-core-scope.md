@@ -140,6 +140,7 @@ chegam por fase e o `core_scope.py` é convertido em F3.
 | extension | plan-gate | core | Plano aprovado vai ao fim |
 | extension | prefix-cache-1h | core | Cache do prefixo |
 | extension | puxar | optional | Importa sessão de outro perfil, uso pessoal |
+| extension | session-title | ui | Título da sessão |
 | extension | sound-notify | optional | Som ao fim do turno, gosto pessoal |
 | extension | sticky-prompt | ui | Última mensagem fixa |
 | extension | syntax-check | core | Erro de sintaxe após edição |

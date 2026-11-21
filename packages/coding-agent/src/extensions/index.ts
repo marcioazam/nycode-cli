@@ -3,6 +3,7 @@ import codemodeExtension from "./codemode/index.ts";
 import llamaExtension from "./llama/index.ts";
 import mcpExtension from "./mcp/index.ts";
 import notifyExtension from "./notify/index.ts";
+import sessionTitleExtension from "./session-title/index.ts";
 import toolSearchExtension from "./tool-search/index.ts";
 
 export const builtInExtensions: InlineExtension[] = [
@@ -13,4 +14,5 @@ export const builtInExtensions: InlineExtension[] = [
 	{ name: "tool-search", factory: toolSearchExtension, replaceable: true, builtin: true },
 	{ name: "mcp", factory: mcpExtension, replaceable: true, builtin: true },
 	{ name: "notify", factory: notifyExtension, builtin: true },
+	{ name: "session-title", factory: sessionTitleExtension, builtin: true },
 ];
