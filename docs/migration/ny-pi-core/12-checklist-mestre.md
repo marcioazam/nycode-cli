@@ -113,12 +113,12 @@ Identificador: `C-F<fase>-<n>`. A coluna "prova" diz o que tem de ser observado.
 
 ## F7. Extensões próprias
 
-- [ ] C-F7-01 a C-F7-23 Uma por unidade da tabela 3.2 de [02](02-arquitetura-alvo.md#32-vindas-de-extensions-do-ny-pi): migrada, absorvida ou removida conforme a tabela, com o teste indicado no mapa.
-- [ ] C-F7-24 K8, K9 no core com teste (K7 vai a F8, D-36).
-- [ ] C-F7-25 K10: API pública no `@nycode/tui`; nenhuma extensão embutida lê campo privado. Prova: busca por acesso a propriedade privada vazia.
-- [ ] C-F7-26 Temas `tokyo-night` e `mono` embarcados; `tokyo-night` é o padrão; `NO_COLOR` troca para `mono`.
-- [ ] C-F7-27 Nenhuma diferença visual em relação ao ny-pi. Prova: portões `pi-ui-final-gate.sh` e `terminal-sota` verdes.
-- [ ] C-F7-28 22 arquivos de teste de `extensions/` com equivalente verde.
+- [x] C-F7-01 a C-F7-23 Uma por unidade da tabela 3.2 de [02](02-arquitetura-alvo.md#32-vindas-de-extensions-do-ny-pi): migrada, absorvida ou removida conforme a tabela, com o teste indicado no mapa. `permissions` é F8 pela tabela e fecha em C-F8-10.
+- [x] C-F7-24 K8, K9 no core com teste (K7 vai a F8, D-36).
+- [x] C-F7-25 K10: API pública no `@nycode/tui`; nenhuma extensão embutida lê campo privado. Prova: busca por acesso a propriedade privada vazia.
+- [x] C-F7-26 Temas `tokyo-night` e `mono` embarcados; `tokyo-night` é o padrão; `NO_COLOR` troca para `mono`.
+- [x] C-F7-27 Nenhuma diferença visual em relação ao ny-pi. Prova: portões `pi-ui-final-gate.sh` e `terminal-sota` verdes.
+- [x] C-F7-28 22 arquivos de teste de `extensions/` com equivalente verde.
 
 ## F8. Recursos embarcados e permissões
 

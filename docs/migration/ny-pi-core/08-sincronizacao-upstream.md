@@ -156,7 +156,7 @@ Abreviação: `CA` = `packages/coding-agent/src`; `core/` e `cli/` abaixo são d
 | K1 | `CA/core/sdk.ts:370` | Troca expressão de comparação | 12 / 3 | 1 (`.every(`) | médio |
 | K2 | `packages/mcp/src/transports/stdio.ts:10` | Troca constante 500 por 100 | 3 / 2 | 1 | baixo |
 | K3 | `CA/cli/args.ts` | Acrescenta 4 flags | 20 / 5 | 0 (`approve`) | alto |
-| K4 | `core/settings-schema.ts` e `-defaults.ts`; `settings-manager.ts` e `theme/theme.ts` (D-37) | Blocos novos, 3 padrões, tema padrão | 5+3 / 3+1 | 1 | médio |
+| K4 | `core/settings-schema.ts` e `-defaults.ts`; `theme/theme.ts` e `interactive-mode.ts` (D-37) | Blocos novos, 3 padrões, tema padrão | 5+3 / 3+1 | 1 | médio |
 | K5 | `CA/extensions/index.ts` | Uma linha por extensão | 2 / 0 | n. med. | baixo |
 | K6 | `CA/core/resource-loader.ts` | Escopo `builtin` | 11 / 3 | n. med. | médio |
 | K7 | `CA/core/system-prompt.ts` | Instruções embarcadas (F8; seção `docs` na extensão, D-36) | 8 / 1 | n. med. | médio |
@@ -215,7 +215,7 @@ Para cada costura: como reduzir (arquivo novo e chamada única) e o teste que fa
   4 flags.
 - **K4.** Chaves do harness num esquema novo (`harness-schema.ts`) composto em `settings-schema.ts` por uma linha; os 3
   padrões numa tabela nova. Teste: padrões de `defaultProjectTrust`, `quietStartup` e `retry`. Temas (D-37): `theme.ts`
-  chama uma função nova que acrescenta `tokyo-night` e `mono` aos embutidos, e `getThemeSetting()` cai em `tokyo-night`;
+  chama uma função nova que acrescenta `tokyo-night` e `mono` aos embutidos, e `interactive-mode.ts` passa `tokyo-night` como `initialThemeSetting` quando não há tema escolhido;
   teste: tema padrão e `mono` disponível.
 - **K5.** Uma linha por extensão, em ordem alfabética, num bloco com marcador. Teste: lista as `builtin:` esperadas.
 - **K6.** Resolução do escopo `builtin` em arquivo novo; `resource-loader.ts` chama uma função. Teste: carregador com
