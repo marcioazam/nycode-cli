@@ -170,7 +170,7 @@ Lista fechada. Cada linha é uma costura no upstream e entra em [08](08-sincroni
 | K9 | `packages/coding-agent/src/core/compaction/` | Limite absoluto de contexto para compactar | `compact-at-400k.ts` | F7 |
 | K10 | `packages/tui/src/` | API pública: widget fixo no topo, clique no cabeçalho, observador de entrada do terminal | `sticky-prompt`, `ui/a11y`, `ui/terminal` | F7 |
 | K11 | `packages/coding-agent/src/core/permissions/` (novo) + gancho em `tool_call` | Motor nativo de permissão | `claude-home/hooks/guard.py` | F8 |
-| K12 | `packages/coding-agent/src/migrations.ts` + `src/migrations/from-pi.ts` (novo) | `nycode migrate from-pi` | `install.sh --link/--restore` | F4 |
+| K12 | `packages/coding-agent/src/main.ts` (chamada) + `src/migrations/from-pi.ts` (novo) | `nycode migrate from-pi` | `install.sh --link/--restore` | F4 |
 | K13 | `packages/coding-agent/package.json` (`files`) | Inclui `resources/` | `publish.list` | F8 |
 | K14 | `packages/coding-agent/src/config.ts:605` | Título de reserva "π" vira "nycode" | — | F2 |
 

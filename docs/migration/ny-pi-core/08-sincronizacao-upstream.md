@@ -279,8 +279,8 @@ no `package.json`; `npm ci --ignore-scripts` antes); sem ele o script falha com 
 decisão do plano (2026-11-21): o renome do fork o rodou, e recalcular `P(U)` no `merge-policy` o inclui. `post2.sh` repete
 os dois últimos `sed` de `post.sh` (idempotente). `scripts/fork/image.sh --upstream U --prev R_prev --branch NOME` gera `R`
 num worktree temporário (pais `R_prev` e `U`; trailers `Upstream-Commit` e `Rename-Pipeline`, este o sha256 de
-`rename.py` e `post*.sh` concatenados em ordem `LC_ALL=C`; `all.sh`, `biome.sh`, a lista de workflows e a versão do
-`biome` ficam fora do hash).
+`all.sh`, `biome.sh`, `post*.sh` e `rename.py` concatenados em ordem `LC_ALL=C`, mais a versão do `biome` fixado;
+qualquer mudança de P muda o trailer).
 
 Mudança de regra: o #195 (`f76fb03b9`) renomeou o repositório para `marcioazam/nycode`; `rename.py`, `post.sh` e
 `post2.sh` passaram a emitir esse nome em vez de `marcioazam/nycode-cli`, neste PR de squash, antes de qualquer fusão

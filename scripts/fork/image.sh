@@ -39,8 +39,16 @@ git check-ref-format "refs/heads/$branch" || {
 }
 existing=$(git rev-parse --verify --quiet "refs/heads/$branch" || true)
 
-# Pipeline hash: rename.py then post*.sh, in C-locale order. all.sh (workflow list, lock regeneration) is not in it.
-pipeline=$(cd "$here" && cat rename.py post*.sh | sha256sum | cut -d' ' -f1)
+# Pipeline hash: every input of P (all.sh, biome.sh, post*.sh, rename.py, C-locale order) plus the pinned biome
+# version, so any change to the workflow list, the biome scope or the biome pin changes the trailer.
+biome_version=$("$here/../../node_modules/.bin/biome" --version) || {
+  echo "image.sh: biome not found in $here/../../node_modules (run npm ci --ignore-scripts)" >&2
+  exit 2
+}
+pipeline=$(cd "$here" && {
+  cat all.sh biome.sh post*.sh rename.py
+  printf '%s\n' "$biome_version"
+} | sha256sum | cut -d' ' -f1)
 
 tmp=$(mktemp -d)
 wt=$tmp/wt
