@@ -32,10 +32,10 @@ git -C ~/source/ny-pi ls-tree -r --name-only origin/main \
 
 | Ação | Significado | Arquivos |
 |---|---|---:|
-| mover | `git mv` sem mudar o conteúdo | 89 |
+| mover | `git mv` sem mudar o conteúdo | 90 |
 | converter | `git mv` e ajuste mecânico: caminhos, imports `@earendil-works/pi-*` para `@nycode/*`, nomes `PI_*`, formatação | 1318 |
 | fundir | O destino já existe no fork; o conteúdo é combinado | 11 |
-| absorver | O arquivo some e seu comportamento passa a morar em código do core ou de uma extensão | 33 |
+| absorver | O arquivo some e seu comportamento passa a morar em código do core ou de uma extensão | 32 |
 | remover | Não migra; o motivo está na regra | 34 |
 | **Total** | | **1485** |
 
@@ -74,7 +74,7 @@ Todo arquivo removido cujo comportamento precisa continuar tem um teste no desti
 `no-context-files` vira `test/harness/extensions/claude-rules/context-files.test.ts` (regra E03), que prova que
 `CLAUDE.md` do projeto não entra no contexto, agora sem a extensão de contorno.
 
-### 2.4 O que é absorvido (33 arquivos) e onde o comportamento passa a morar
+### 2.4 O que é absorvido (32 arquivos; `pi-docs` passou a mover, D-36) e onde o comportamento passa a morar
 
 | Origem | Destino do comportamento | Costura | Teste que prova |
 |---|---|---|---|
@@ -85,7 +85,6 @@ Todo arquivo removido cujo comportamento precisa continuar tem um teste no desti
 | 19 `*.patch` de pi-code | `src/extensions/<nome>/` (seção 3) | K5 | Os testes de cada patch (regras P07, P08, P10, P12, P14, P15) |
 | `extensions/bash-timeout/index.ts` | `core/tools/bash.ts` | K8 | `test/harness/core/bash-timeout.test.ts` |
 | `extensions/compact-at-400k.ts` | `core/compaction/` | K9 | `test/harness/core/compact-threshold.test.ts` |
-| `extensions/pi-docs/index.ts` | `core/system-prompt.ts` | K7 | `test/harness/core/docs-pointer.test.ts` |
 | `extensions/bypass-permissions/index.ts` | `core/permissions/` | K11 | Teste do comando `/bypass` e do estado (novo, F8) |
 | `extensions/syntax-check/package.json` e lock | `packages/coding-agent/package.json` | — | `check:pinned-deps` do fork |
 | `.githooks/pre-commit` | `.husky/pre-commit` | — | Commit de teste com segredo falso é barrado |
@@ -158,7 +157,7 @@ ligada; `remove` não migra. A especificação migra para `docs/specs/` em F2 e 
 | extension | headless-lean | core | Custo sem interface |
 | extension | no-context-files-covers-claude-md | core | Contexto sem duplicata |
 | extension | no-web-search | core | Desliga busca que falha |
-| extension | pi-docs | core | Prompt menor |
+| extension | docs-pointer (ex-`pi-docs`, D-36) | core | Prompt menor |
 | extension | plan-gate | core | Plano aprovado vai ao fim |
 | extension | prefix-cache-1h | core | Cache do prefixo |
 | extension | puxar | optional | Importa sessão de outro perfil, uso pessoal |
