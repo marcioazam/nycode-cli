@@ -139,6 +139,7 @@ chegam por fase e o `core_scope.py` é convertido em F3.
 | extension | goal | core | Objetivo de sessão (/goal) |
 | extension | headless-lean | core | Custo sem interface |
 | extension | hooks | core | Hooks no formato do Claude Code |
+| extension | import-claude-session | optional | Importa sessão de outro perfil, uso pessoal |
 | extension | init | core | `/init` |
 | extension | memory | core | Memória do projeto |
 | extension | notify | ui | Aviso de fim de turno |
@@ -146,7 +147,6 @@ chegam por fase e o `core_scope.py` é convertido em F3.
 | extension | plan-gate | core | Plano aprovado vai ao fim |
 | extension | plan-mode | core | Modo de plano |
 | extension | prefix-cache-1h | core | Cache do prefixo |
-| extension | puxar | optional | Importa sessão de outro perfil, uso pessoal |
 | extension | question | core | Pergunta ao usuário com opções |
 | extension | run | core | Processos em segundo plano e a seção de execução |
 | extension | session-title | ui | Título da sessão |
