@@ -21,18 +21,19 @@
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
-import type { ExtensionAPI } from '@earendil-works/pi-coding-agent'
+import type { ExtensionAPI } from '../../core/extensions/types.ts'
+import type { ThemeColor } from '../../modes/interactive/theme/theme-tokens.ts'
 
-import { claudeMdExcludeFiles, isExcludedPath, readClaudeMdExcludes } from './context-imports.ts'
-import { claudeConfigDir } from './internal/config-dir.ts'
-import { publishInstructionLoad } from './internal/instruction-events.ts'
-import { readManagedSettings } from './internal/managed-settings.ts'
-import { type CompiledGlob, compileGlobs, matchesCompiledGlobs } from './internal/path-rules.ts'
-import { isProjectApproved } from './internal/project-approval.ts'
-import { findNearestDir, sameLocation } from './internal/project-root.ts'
-import { stripBlockComments } from './internal/strip-comments.ts'
-import { fileToolTarget } from './internal/tool-target.ts'
-import { realpathOr } from './internal/values.ts'
+import { claudeMdExcludeFiles, isExcludedPath, readClaudeMdExcludes } from '../context-imports/excludes.ts'
+import { claudeConfigDir } from '../_shared/settings/config-dir.ts'
+import { publishInstructionLoad } from '../_shared/events/instruction-events.ts'
+import { readManagedSettings } from '../_shared/settings/managed-settings.ts'
+import { type CompiledGlob, compileGlobs, matchesCompiledGlobs } from '../_shared/rules/path-rules.ts'
+import { isProjectApproved } from '../_shared/project/project-approval.ts'
+import { findNearestDir, sameLocation } from '../_shared/project/project-root.ts'
+import { stripBlockComments } from '../_shared/shell/strip-comments.ts'
+import { fileToolTarget } from '../_shared/rules/tool-target.ts'
+import { realpathOr } from '../_shared/util/values.ts'
 
 export interface Frontmatter {
   paths: string[]
@@ -257,7 +258,7 @@ function readRules(rulesDir: string, isExcluded?: (realPath: string) => boolean)
 }
 
 /** The user's rules directory as a pointer names it, so the model's read resolves: against
- * `~` under home, and by its full path where CLAUDE_CONFIG_DIR moved it elsewhere. */
+ * `~` under home, and by its full path where the Claude config directory sits elsewhere. */
 function userRulesBase(rulesDir: string, home: string): string {
   const relative = path.relative(home, rulesDir)
   const outsideHome = relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)
@@ -349,15 +350,15 @@ function projectRulesDirFor(cwd: string, approved: boolean, globalRulesDir: stri
 
 /** Session-start notice: `⚖ regras  2 globais · nenhuma do projeto · sempre ativas`, or undefined when no rule loaded.
  * "sempre ativas" = unscoped (inlined) rules; "por arquivo" = path-scoped ones, attached on a matching touch. */
-type NoticeTheme = { fg: (color: string, text: string) => string; bold?: (text: string) => string }
-/** Gavel glyph where a Nerd Font is known to render (kitty or PI_NERD_FONT=1; ASCII request wins), else a section sign. */
+type NoticeTheme = { fg: (color: ThemeColor, text: string) => string; bold?: (text: string) => string }
+/** Gavel glyph where a Nerd Font is known to render (kitty or NYCODE_NERD_FONT=1; ASCII request wins), else a section sign. */
 const rulesGlyph = (env: Record<string, string | undefined>): string => {
-  const ascii = Boolean(env.PI_ASCII_ICONS) || env.TERM === 'dumb' || env.TERM === 'linux'
-  return !ascii && (env.PI_NERD_FONT === '1' || env.TERM === 'xterm-kitty' || Boolean(env.KITTY_WINDOW_ID)) ? '\uf0e3' : '§'
+  const ascii = Boolean(env.NYCODE_ASCII_ICONS) || env.TERM === 'dumb' || env.TERM === 'linux'
+  return !ascii && (env.NYCODE_NERD_FONT === '1' || env.TERM === 'xterm-kitty' || Boolean(env.KITTY_WINDOW_ID)) ? '\uf0e3' : '§'
 }
 /** Space after the glyph: kitty draws a Nerd Font icon over the following cell, so there it takes two to keep a gap. */
 const glyphGap = (env: Record<string, string | undefined>): string => {
-  const ascii = Boolean(env.PI_ASCII_ICONS) || env.TERM === 'dumb' || env.TERM === 'linux'
+  const ascii = Boolean(env.NYCODE_ASCII_ICONS) || env.TERM === 'dumb' || env.TERM === 'linux'
   return !ascii && (env.TERM === 'xterm-kitty' || Boolean(env.KITTY_WINDOW_ID)) ? '  ' : ' '
 }
 
@@ -367,7 +368,7 @@ export function rulesLoadedMessage(globalRules: RuleSet, projectRules: RuleSet, 
   if (globalCount === 0 && projectCount === 0) return undefined
   const always = globalRules.inline.length + projectRules.inline.length
   const scoped = globalRules.scoped.length + projectRules.scoped.length
-  const fg = theme ? (color: string, text: string) => theme.fg(color, text) : (_color: string, text: string) => text
+  const fg = theme ? (color: ThemeColor, text: string) => theme.fg(color, text) : (_color: ThemeColor, text: string) => text
   const bold = theme?.bold ? (text: string) => theme.bold!(text) : (text: string) => text
   const globalPart = globalCount === 0 ? 'nenhuma global' : `${globalCount} ${globalCount === 1 ? 'global' : 'globais'}`
   const projectPart = projectCount === 0 ? 'nenhuma do projeto' : `${projectCount} do projeto`
@@ -386,7 +387,7 @@ export function pendingScopedRuleCount(): number {
   return pendingScopedRules
 }
 
-export default function claudeRulesExtension(pi: ExtensionAPI) {
+export default function claudeRulesExtension(nycode: ExtensionAPI) {
   const globalRulesDir = path.join(claudeConfigDir(os.homedir()), 'rules')
   const globalRulesBase = userRulesBase(globalRulesDir, os.homedir())
   let rules: PromptRules = NO_PROMPT_RULES
@@ -397,7 +398,7 @@ export default function claudeRulesExtension(pi: ExtensionAPI) {
   // attached leaves the context (see rearm below).
   let scopedTargets: AttachTarget[] = []
 
-  pi.on('session_start', async (_event, ctx) => {
+  nycode.on('session_start', async (_event, ctx) => {
     // Project rules are repository text landing in the system prompt, so they load
     // only once the project is approved. isProjectTrusted alone is true for a repo
     // pi never asked about; see project-approval.
@@ -437,7 +438,7 @@ export default function claudeRulesExtension(pi: ExtensionAPI) {
     if (loaded !== undefined && !rulesDisabled()) ctx.ui.notify(`\u2063${loaded}`, 'info')
   })
 
-  pi.on('before_agent_start', (event) => {
+  nycode.on('before_agent_start', (event) => {
     if (rules.text.length === 0 || rulesDisabled()) return
 
     // Rules join the options the prompt is built from. A provider that rebuilds the prompt
@@ -465,14 +466,14 @@ export default function claudeRulesExtension(pi: ExtensionAPI) {
     attachTargets = scopedTargets
     pendingScopedRules = attachTargets.length
   }
-  pi.on('session_compact', rearm)
-  pi.on('session_tree', rearm)
+  nycode.on('session_compact', rearm)
+  nycode.on('session_tree', rearm)
 
   // Lazy attach: when a file tool touches a path a scoped rule covers, append the
   // rule body to that tool's result so it enters context, once per rule per session.
   // This mirrors Claude Code, which attaches a scoped rule when a matching file is
   // read or edited rather than inlining it upfront.
-  pi.on('tool_result', (event, ctx) => {
+  nycode.on('tool_result', (event, ctx) => {
     if (attachTargets.length === 0 || rulesDisabled()) return
     const rel = fileToolTarget(event)
     if (rel === undefined) return
@@ -496,7 +497,7 @@ export default function claudeRulesExtension(pi: ExtensionAPI) {
       // The lazy attach is Claude's path_glob_match instruction load; the hooks
       // extension bridges the bus event to the InstructionsLoaded hook. Leaving
       // the working list also bounds the events to one per rule per session.
-      publishInstructionLoad(pi.events, { file_path: target.file, memory_type: target.memoryType, load_reason: 'path_glob_match', globs: target.globs, trigger_file_path: abs })
+      publishInstructionLoad(nycode.events, { file_path: target.file, memory_type: target.memoryType, load_reason: 'path_glob_match', globs: target.globs, trigger_file_path: abs })
     }
     attachTargets = remaining
     pendingScopedRules = attachTargets.length
