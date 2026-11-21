@@ -131,9 +131,9 @@ Identificador: `C-F<fase>-<n>`. A coluna "prova" diz o que tem de ser observado.
 - [ ] C-F8-07 Nenhum texto embarcado cita `~/.pi`, `$CLAUDE_CONFIG_DIR` ou `claude-home`. Prova: `check-refs.py` e busca.
 - [ ] C-F8-08 Hooks fase A: `guard.py`, `graph_context.py`, `hook-dispatch.sh` registrados por padrão; `test_guard.py`, fuzz e demais testes Python verdes.
 - [ ] C-F8-09 Linha de status embarcada; 4 testes do HUD verdes.
-- [ ] C-F8-10 `/bypass` e o atalho no motor de permissão (K11).
-- [ ] C-F8-11 Hooks fase B: motor nativo com o mesmo veredito que `guard.py` em 100% do corpus e do fuzz. Prova: relatório do teste diferencial.
-- [ ] C-F8-12 Falha do motor de permissão nega a chamada. Prova: teste de falha.
+- [x] C-F8-10 `/bypass` e o atalho no motor de permissão (K11). Prova: `test/harness/permissions/bypass-command.test.ts`; [evidência F8](evidencias/F8.md).
+- [x] C-F8-11 Hooks fase B: motor nativo com o mesmo veredito que `guard.py` em 100% do corpus e do fuzz. Prova: relatório do teste diferencial.
+- [x] C-F8-12 Falha do motor de permissão nega a chamada. Prova: teste de falha (`gate.test.ts`, "denies the call when the engine itself fails").
 - [ ] C-F8-13 Revisão de segurança de F8 concluída.
 - [ ] C-F8-14 Ferramentas de `claude-home/bin` em `scripts/harness/`; testes verdes.
 - [ ] C-F8-15 `claude-home/docs` em `docs/harness/`; ligações internas válidas.

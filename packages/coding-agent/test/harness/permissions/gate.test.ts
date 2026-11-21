@@ -67,6 +67,14 @@ describe("gateToolCall", () => {
 		expect(await gateToolCall("bash", { command: "sudo ls" }, host("native", { hasUI: false }))).toBeUndefined();
 	});
 
+	it("denies the call when the engine itself fails (C-F8-12)", async () => {
+		// A NUL byte makes realpath throw, as it does in guard.py.
+		const result = await gateToolCall("read", { path: "/tmp/a\0b" }, host("native", { hasUI: true }));
+		expect(result).toEqual({ block: true, reason: expect.stringContaining("permission engine failed") });
+		const bash = await gateToolCall("bash", { command: 42 }, host("native", { hasUI: true }));
+		expect(bash).toEqual({ block: true, reason: expect.stringContaining("permission engine failed") });
+	});
+
 	it("judges file tools by the Claude shape (absolute file_path)", async () => {
 		const result = await gateToolCall("write", { path: "/etc/x", content: "" }, host("native", { hasUI: false }));
 		expect(result?.block).toBe(true);

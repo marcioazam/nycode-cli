@@ -1,13 +1,13 @@
 // K11: the permission gate in front of every tool call. `permissions.engine` picks who decides: "script" leaves the call
 // to the embedded guard.py (run by the `hooks` extension at PreToolUse), "native" decides here with the TypeScript port
-// of the guard. An internal error of the engine follows guard.py: Bash asks, the file tools pass.
+// of the guard. An engine that throws denies the call (C-F8-12), where guard.py itself would ask or pass.
 import { checkoutRoot } from "../../extensions/_shared/project/project-root.ts";
 import { claudeToolInput, claudeToolName } from "../../extensions/hooks/claude-tools.ts";
 import type { ExtensionContext, ToolCallEventResult } from "../extensions/types.ts";
 import type { NycodeSettings } from "../settings-nycode.ts";
 import type { Settings } from "../settings-schema.ts";
 import { isBypassOn } from "./bypass-state.ts";
-import { decide, type GuardVerdict } from "./guard/decide.ts";
+import { decide } from "./guard/decide.ts";
 
 /** The tools the embedded guard judges: its hook matcher in settings-defaults.ts is `Bash|Edit|Write|Read`. */
 const GUARDED_TOOLS = new Set(["Bash", "Edit", "Write", "Read"]);
@@ -20,24 +20,17 @@ export interface GateHost {
 
 type NativeOutcome = { kind: "pass" } | { kind: "ask"; reason: string } | { kind: "block"; reason: string };
 
-/** The native engine's outcome for one call; throws if the engine does. */
+/** The native engine's outcome for one call; throws when the engine does, and the caller denies the call. */
 function nativeOutcome(toolName: string, input: unknown, cwd: string): NativeOutcome {
 	const tool = claudeToolName(toolName);
 	if (tool === undefined || !GUARDED_TOOLS.has(tool)) return { kind: "pass" };
-	const bypass = isBypassOn();
-	let verdict: GuardVerdict;
-	try {
-		verdict = decide({
-			tool,
-			input: claudeToolInput(toolName, input, cwd) ?? {},
-			cwd,
-			project: checkoutRoot(cwd),
-			bypass,
-		});
-	} catch {
-		// guard.py's own rule for an internal error: Bash asks (unless bypass is on), the file tools pass.
-		verdict = tool === "Bash" && !bypass ? { kind: "ask", reason: "guard: erro interno" } : { kind: "allow" };
-	}
+	const verdict = decide({
+		tool,
+		input: claudeToolInput(toolName, input, cwd) ?? {},
+		cwd,
+		project: checkoutRoot(cwd),
+		bypass: isBypassOn(),
+	});
 	return verdict.kind === "allow"
 		? { kind: "pass" }
 		: { kind: verdict.kind === "ask" ? "ask" : "block", reason: verdict.reason };

@@ -118,6 +118,9 @@ Cada decisão tem um identificador estável (D-nn) citado nos outros documentos.
   só muda quando o teste diferencial der o mesmo veredito nos dois motores em 100% do corpus e do fuzz com semente
   fixa, e depois de revisão de segurança.
 - Nunca os dois desligados: se o motor escolhido falhar ao iniciar, a chamada é negada.
+- F8 (K11): com `native` o `PreToolUse` do `guard.py` não roda (um motor por vez) e o motor nativo que lança exceção nega a
+  chamada (C-F8-12), ao contrário do `guard.py`, que em erro interno pergunta (Bash) ou deixa passar. O padrão continua
+  `"script"`: a troca espera `security-reviewer` e o benchmark (D-29).
 
 ### D-12. Serviços do upstream
 

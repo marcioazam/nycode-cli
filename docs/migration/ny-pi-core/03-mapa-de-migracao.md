@@ -85,7 +85,7 @@ Todo arquivo removido cujo comportamento precisa continuar tem um teste no desti
 | 19 `*.patch` de pi-code | `src/extensions/<nome>/` (seção 3) | K5 | Os testes de cada patch (regras P07, P08, P10, P12, P14, P15) |
 | `extensions/bash-timeout/index.ts` | `core/tools/bash.ts` | K8 | `test/harness/core/bash-timeout.test.ts` |
 | `extensions/compact-at-400k.ts` | `core/compaction/` | K9 | `test/harness/core/compact-threshold.test.ts` |
-| `extensions/bypass-permissions/index.ts` | `core/permissions/` | K11 | Teste do comando `/bypass` e do estado (novo, F8) |
+| `extensions/bypass-permissions/index.ts` | `core/permissions/` | K11 | `test/harness/permissions/bypass-command.test.ts` |
 | `extensions/syntax-check/package.json` e lock | `packages/coding-agent/package.json` | — | `check:pinned-deps` do fork |
 | `.githooks/pre-commit` | `.husky/pre-commit` | — | Commit de teste com segredo falso é barrado |
 | `patches/third-party/pi-lsp.patch` | `src/extensions/lsp/` | K5 | Testes do pi-lsp que o patch altera |
