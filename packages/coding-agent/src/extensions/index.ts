@@ -28,6 +28,7 @@ import thinkingExtension from "./thinking/index.ts";
 import todoExtension from "./todo/index.ts";
 import toolSearchExtension from "./tool-search/index.ts";
 import uiExtension from "./ui/index.ts";
+import uiVisualExtension from "./ui-visual/index.ts";
 import webExtension from "./web/index.ts";
 
 export const builtInExtensions: InlineExtension[] = [
@@ -66,4 +67,5 @@ export const builtInExtensions: InlineExtension[] = [
 	{ name: "docs-pointer", factory: docsPointerExtension, builtin: true },
 	{ name: "sticky-prompt", factory: stickyPromptExtension, builtin: true },
 	{ name: "ui", factory: uiExtension, builtin: true },
+	{ name: "ui-visual", factory: uiVisualExtension, builtin: true },
 ];
