@@ -5,6 +5,7 @@ import contextImportsExtension from "./context-imports/index.ts";
 import llamaExtension from "./llama/index.ts";
 import mcpExtension from "./mcp/index.ts";
 import memoryExtension from "./memory/index.ts";
+import outputStylesExtension from "./output-styles/index.ts";
 import toolSearchExtension from "./tool-search/index.ts";
 
 export const builtInExtensions: InlineExtension[] = [
@@ -17,4 +18,5 @@ export const builtInExtensions: InlineExtension[] = [
 	{ name: "context-imports", factory: contextImportsExtension, builtin: true },
 	{ name: "claude-rules", factory: claudeRulesExtension, builtin: true },
 	{ name: "memory", factory: memoryExtension, builtin: true },
+	{ name: "output-styles", factory: outputStylesExtension, builtin: true },
 ];

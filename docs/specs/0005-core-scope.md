@@ -138,6 +138,7 @@ chegam por fase e o `core_scope.py` é convertido em F3.
 | extension | memory | core | Memória do projeto |
 | extension | no-context-files-covers-claude-md | core | Contexto sem duplicata |
 | extension | no-web-search | core | Desliga busca que falha |
+| extension | output-styles | core | Estilos de saída |
 | extension | pi-docs | core | Prompt menor |
 | extension | plan-gate | core | Plano aprovado vai ao fim |
 | extension | prefix-cache-1h | core | Cache do prefixo |
