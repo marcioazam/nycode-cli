@@ -6,6 +6,7 @@ import contextImportsExtension from "./context-imports/index.ts";
 import contextUsageExtension from "./context-usage/index.ts";
 import envSettingsExtension from "./env-settings/index.ts";
 import gitCheckpointExtension from "./git-checkpoint/index.ts";
+import goalExtension from "./goal/index.ts";
 import hooksExtension from "./hooks/index.ts";
 import initExtension from "./init/index.ts";
 import llamaExtension from "./llama/index.ts";
@@ -13,6 +14,7 @@ import mcpExtension from "./mcp/index.ts";
 import memoryExtension from "./memory/index.ts";
 import notifyExtension from "./notify/index.ts";
 import outputStylesExtension from "./output-styles/index.ts";
+import planModeExtension from "./plan-mode/index.ts";
 import questionExtension from "./question/index.ts";
 import runExtension from "./run/index.ts";
 import sessionTitleExtension from "./session-title/index.ts";
@@ -40,11 +42,13 @@ export const builtInExtensions: InlineExtension[] = [
 	{ name: "context-usage", factory: contextUsageExtension, builtin: true },
 	{ name: "env-settings", factory: envSettingsExtension, builtin: true },
 	{ name: "git-checkpoint", factory: gitCheckpointExtension, builtin: true },
+	{ name: "goal", factory: goalExtension, builtin: true },
 	{ name: "hooks", factory: hooksExtension, builtin: true },
 	{ name: "init", factory: initExtension, builtin: true },
 	{ name: "memory", factory: memoryExtension, builtin: true },
 	{ name: "notify", factory: notifyExtension, builtin: true },
 	{ name: "output-styles", factory: outputStylesExtension, builtin: true },
+	{ name: "plan-mode", factory: planModeExtension, builtin: true },
 	{ name: "question", factory: questionExtension, builtin: true },
 	{ name: "run", factory: runExtension, builtin: true },
 	{ name: "session-title", factory: sessionTitleExtension, builtin: true },
