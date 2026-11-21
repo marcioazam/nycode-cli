@@ -681,6 +681,9 @@ Decisões de F3 (`docs/migration/ny-pi-core/09-paridade-e-benchmark.md`):
 - Braço `ny-pi-pi160` (D-25): o mesmo `bench/arms/ny-pi` com `BENCH_PI_VERSION=1.6.0` (tabela `env` do `arms.toml`),
   estágio `bench-nypi160-<sha12>`; exige um pi 1.6.0 gerenciado em `BENCH_PI_INSTALL_DIR` (o `~/.pi/agent/install` do
   dono é 1.5.2 e não serve). Sai com F10.
+- Braço `ny-pi` (referência): `import/ny-pi` não traz mais `bin/pi` (F5). Aponte `BENCH_NYPI_SRC` para um checkout do
+  repositório ny-pi (ou um `git archive` dele extraído; sem `.git` ali, defina também `BENCH_STAGE`); sem a variável o
+  braço usa `import/ny-pi` e sai 2 dizendo que falta `install.sh`/`bin/pi`.
 - Tier `smoke`: apelido do `pr` (`[tier.smoke] alias = "pr"`, D-27); a rodada e o diretório usam o nome `pr`.
 - `bench gate --base <ref> --cand <rodada> --parity` (D-28): compara braços diferentes. Ignora `arm_version` e
   `overlay_sha`; `model` e `jobs` continuam exigindo igualdade; margem de custo 1,10; o `verdict.json` ganha

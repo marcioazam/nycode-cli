@@ -149,7 +149,7 @@ def prepare(name: str, root: Path, tag: str, port: int, creds: Path) -> Prepared
     stage, cache = root / f"stage-{name}-{tag}", root / f"tmp-{name}-{tag}"
     cache.mkdir(parents=True)
     env = {
-        **check.clean_env(os.environ, stage),
+        **check.clean_env(os.environ, stage, name),
         "BENCH_PI_VANILLA_DIR": str(stage / ".pi" / "agent"),
         "BENCH_CC_CREDENTIALS": str(creds),
         "TMPDIR": str(cache),  # jiti keeps its transpile cache in $TMPDIR/jiti
