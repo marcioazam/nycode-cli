@@ -22,14 +22,15 @@ Insumo bruto: `f10-tests-map.tsv` (280 linhas), em `~/.local/share/nycode-mig/`,
 
 | Situação | Início | Final |
 |---|---:|---:|
-| Equivalente com o mesmo caminho do anexo (`ok`) | 250 | 250 |
+| Equivalente com o mesmo caminho do anexo (`ok`) | 250 | 253 |
 | Equivalente em outro caminho (`destino-diferente`) | 28 | 24 |
 | Sem justificativa (`falta-justificativa`) | 2 | 0 |
-| Removido com linha em [03 §2.3](../03-mapa-de-migracao.md): `replay.test.ts` e `test_cache_probe_join.py` (já no início) e os 4 de 2026-11-21 | 0 | 6 |
+| Removido com linha em [03 §2.3](../03-mapa-de-migracao.md): `replay.test.ts` e `test_cache_probe_join.py` (já no início) e `test_plan_ab.py` | 0 | 3 |
 | **Total** | **280** | **280** |
 
-Final: 280 de 280 têm equivalente no nycode (274) ou remoção justificada no 03 (6). Os 4 testes removidos em
-2026-11-21 deixam o código testado só em `import/ny-pi/` (ver Riscos).
+Final: 280 de 280 têm equivalente no nycode (277) ou remoção justificada no 03 (3). Três dos quatro testes que só
+existiam em `import/ny-pi/` foram convertidos com o código que testam (ver "Pendências resolvidas"); só o de `plan_ab`
+saiu, junto com o `plan_ab`, que nada referencia.
 
 Correções feitas no anexo E (commit `999af08da`):
 
@@ -44,9 +45,11 @@ Correções feitas no anexo E (commit `999af08da`):
   (diagnóstico temporário). O anexo E já o marcava `remover`.
 
 `gerar-mapa.py` agora produz essas correções: ganhou `OVERRIDES` (os 24 destinos, `replay.test.ts`, mais as 4 linhas
-já editadas à mão por D-36 e D-37) e a regra `X01` (os 4 testes removidos), além de `--resumo <sha>`, que gera
+já editadas à mão por D-36 e D-37) e a regra `X01` (os 5 arquivos sem referência viva: `plan_ab.py`, `plan_ab_cases.jsonl`, `test_plan_ab.py`, `harbor/run.sh`,
+`harbor/README.md`), além de `--resumo <sha>`, que gera
 `E-resumo-por-regra.md` (antes só o TSV saía do script). Prova: com o ny-pi em `origin/main` `e4f8729` (1485 caminhos),
-o gerador sem `X01` dá o TSV idêntico ao de `999af08da` (diff vazio); com `X01`, o TSV difere só nas 4 linhas novas.
+o gerador sem `X01` e sem os 5 destinos de Harbor dá o TSV idêntico ao de `999af08da` (diff vazio). A conversão de
+2026-11-21 (segunda parte) mudou 22 linhas do TSV, todas em `claude-home/bin/evals/` e `claude-home/bin/structure/`.
 O resumo de `999af08da` estava defasado em duas células (F7 com `mover` 32 e `absorver` 5, total 89 e 33, quando o TSV
 tem 33, 4, 90 e 32 desde D-36): a regeneração as corrige.
 
@@ -172,29 +175,42 @@ SUPERADOS pela remoção do widget.
 
 ## Pendências resolvidas
 
-1. Os quatro testes que só existiam em `import/ny-pi/` viraram `remover` no anexo E (regra `X01`) com linha no 03 §2.3.
-   Em cada um, o código testado também só existe em `import/ny-pi/`, não foi convertido por F3 e sai com ele em F12:
+1. Os quatro testes que só existiam em `import/ny-pi/` primeiro viraram `remover` (regra `X01`). Depois, por decisão do
+   dono ("converter já o que o nycode usa; o que não usa sai"), o código testado foi convertido quando algo vivo o usa:
 
-   | Teste (origem) | Casos | Código testado | Situação |
+   | Teste (origem) | Casos | Código | Situação final |
    |---|---:|---|---|
-   | `claude-home/bin/evals/harbor/tests/test_pi_harness_agent.py` | 10 | `pi_harness_agent.py` | Só em `import/ny-pi/`; `bench/run.py` (`HARBOR_DIR`) ainda o usa no braço `ny-pi`. O agente do nycode é `bench/harbor/nycode_agent.py` (testes: 11, 4 e 4 casos) |
-   | `claude-home/bin/evals/harbor/tests/test_pi_vanilla_api_agent.py` | 6 | `pi_vanilla_api_agent.py` | Idem, braço `pi-vanilla` em modo API; importa `_models_merge` de `pi_harness_agent` |
-   | `claude-home/bin/evals/test_plan_ab.py` | 25 | `plan_ab.py` | Nada no nycode o referencia (`rg plan_ab` fora de `import/` e `docs/`) |
-   | `claude-home/bin/structure/test_structure.py` | 16 | `structure.py` | Só em `import/ny-pi/`; o CI usa `scripts/ci/lint/structure_changed.py` (D-06), que não importa o `structure.py` (usa a cópia `DEFAULT_SUFFIXES`) |
+   | `harbor/tests/test_pi_harness_agent.py` | 10 | `pi_harness_agent.py` | `bench/harbor/` e `bench/tests/harbor/`: `bench/run.py` o usa no braço `ny-pi` |
+   | `harbor/tests/test_pi_vanilla_api_agent.py` | 6 | `pi_vanilla_api_agent.py` | idem, braço `pi-vanilla` em modo API (importa `_models_merge` do anterior) |
+   | `structure/test_structure.py` | 16 | `structure.py` | `scripts/ci/lint/structure/`: as instruções embarcadas mandam rodar esse caminho |
+   | `test_plan_ab.py` | 25 | `plan_ab.py` | removido com o código: `rg plan_ab` fora de `import/` e `docs/` não acha nada |
 
-   Portar o código exigiria tipar em `mypy --strict`, trocar nomes e decidir o destino (`scripts/harness/` no 07 §3.5,
-   `scripts/ci/lint/` no anexo E): código de produção novo só para salvar um teste.
-2. `test_more_ui` e os casos do widget de todos: ver as seções acima.
-3. `gerar-mapa.py` recebeu as exceções (ver "Correções feitas no anexo E").
+   Para o Harbor, o `bundle.sh` do ny-pi virou `bench/harbor/pi_bundle.sh` (o `bundle.sh` do nycode já ocupa o nome) e
+   `bench/run.py` passou a ter `HARBOR_DIR = bench/harbor` para todos os braços, mais `OMP_DIR` só para o braço `omp`
+   (D-26), que ainda lê `omp_agent.py` e `omp-release.sh` de `import/`. `harbor/run.sh` e `harbor/README.md` saíram: eram
+   a execução manual do braço com credenciais do dono, que `bench/run.py` substitui. Os testes dos dois agentes agora
+   importam o módulo contra módulos `harbor` falsos e restauram `sys.modules` (`bench/tests/harbor/stubs.py`), em vez de
+   deixar os falsos no processo.
+
+   Nome com "pi": `pi_harness_agent.py` e `pi_vanilla_api_agent.py` ficam com o nome porque descrevem o produto medido
+   (os braços `ny-pi` e `pi-vanilla`), caso previsto em 05 §6 (D-31: "Pi Vanilla" e "ny-pi" nomeiam a referência do
+   benchmark). O código também cita `~/.pi/agent` e `pi --print`, que é o produto medido, e não pode ser renomeado.
+2. `structure.py`: `git mv` sem alteração, depois caminhos e nomes (cabeçalho, pinos do `VENDORED` do pi-code saem, o
+   verificador do `diagram-design` aponta para o checkout), tipos para `mypy --strict`, `ruff format` e o teste sem
+   carregar o módulo por `importlib` à mão. `python3 scripts/ci/lint/structure/structure.py --project-root . --json`
+   roda (8078 arquivos de código; os achados são arquivos do upstream acima de 800 linhas, fora do alcance do
+   `structure_changed.py`). `structure_changed.py` citava `scripts/harness/structure/structure.py`, que nunca existiu:
+   agora cita o caminho real. A cópia `DEFAULT_SUFFIXES` ficou (importar exigiria mudar o carregamento por raiz e os
+   testes que usam raízes de teste) e ganhou um teste que a mantém igual à lista do `structure.py`.
+3. `test_more_ui` e os casos do widget de todos: ver as seções acima.
+4. `gerar-mapa.py` recebeu as exceções (ver "Correções feitas no anexo E").
 
 ## Riscos
 
-- As linhas do anexo E do código testado (`pi_harness_agent.py`, `pi_vanilla_api_agent.py`, `plan_ab.py`,
-  `plan_ab_cases.jsonl`, `structure.py`) seguem `converter` F3, e a conversão não aconteceu. Decidir antes de F12:
-  converter ou marcar `remover`. Sem decisão, o braço `pi-vanilla` (D-26) perde o agente de Harbor quando `import/`
-  sair (`bench/run.py` lê `HARBOR_DIR` de lá), e as instruções embarcadas (`resources/instructions/contract.md`,
-  `rules/ref/harness-economy.md`, skills `engineering-standards` e `ripple-hunt`) continuam mandando rodar
-  `scripts/ci/lint/structure/structure.py`, que não existe.
+- O braço `omp` (D-26: não migra) ainda existe em `bench/` (`arms/omp`, `OMP_DIR` em `bench/run.py`) e lê
+  `omp_agent.py`, `omp-release.sh` e `test_omp_agent.py` de `import/`. Ao remover `import/` (F12), remover o braço junto.
+- `bench/arms/ny-pi` roda o `install.sh` de `import/ny-pi` (a árvore de instalação do ny-pi); `core_scope.py` e seu teste
+  citam `import/ny-pi` para saber que peças ainda esperam migração. São usos vivos de `import/`, tratados em F12.
 - A contagem de casos usa o nome do `test(`/`it(`/`def test_` (parametrizados contam uma vez); ela não prova que as
   asserções são as mesmas, só que há caso homônimo.
 - "Verde" depende do gate de cada fase; esta evidência mostra a existência do equivalente. Execução desta unidade em
