@@ -42,7 +42,22 @@ It also has the typed settings keys the harness will use (`harness.*`, `plan.gat
 
 ## Getting started
 
-Nycode is distributed as source from the public repository. Build it and run the CLI:
+Nycode is distributed as self-contained binaries (no Node.js and no `npm install`) attached to the [GitHub Releases](https://github.com/marcioazam/nycode/releases) of this repository. Nycode is not published to npm. The first release is `2.0.0`; until it is published, build from source (below).
+
+Download the archive for your platform (`darwin-arm64`, `darwin-x64`, `linux-x64`, `linux-arm64`, `windows-x64`, `windows-arm64`) together with `SHA256SUMS`, check the hash and unpack it (Linux x64 shown; Windows ships `nycode-<platform>.zip`):
+
+```bash
+b=https://github.com/marcioazam/nycode/releases/latest/download
+curl -fsSLO "$b/nycode-linux-x64.tar.gz"
+curl -fsSLO "$b/SHA256SUMS"
+grep " nycode-linux-x64.tar.gz\$" SHA256SUMS | sha256sum -c -
+tar -xzf nycode-linux-x64.tar.gz
+./nycode/nycode --version
+```
+
+Optionally verify the build provenance with the [GitHub CLI](https://cli.github.com/) 2.49 or newer: `gh attestation verify nycode-linux-x64.tar.gz -R marcioazam/nycode`. Put the `nycode` directory somewhere on your `PATH`. `nycode update` does not replace a binary: it prints the Releases URL to download the new one from.
+
+**Build from source** (requires Node.js 22.19 or newer; a normal installation does not need dependency lifecycle scripts, so `--ignore-scripts` is safe):
 
 ```bash
 git clone https://github.com/marcioazam/nycode.git
@@ -52,13 +67,13 @@ npm run build
 node packages/coding-agent/dist/bundle/cli.js
 ```
 
-To run it from sources without building, use `./nycode-test.sh` from the repository root. Nycode requires Node.js 22.19 or newer. A normal installation does not need dependency lifecycle scripts, so `--ignore-scripts` is safe.
+To run it from sources without building, use `./nycode-test.sh` from the repository root. Replace `node packages/coding-agent/dist/bundle/cli.js` with `nycode` if you put the command on your `PATH`, for example with `npm link` in `packages/coding-agent`.
 
-Start Nycode in the directory where you want it to work (replace `node packages/coding-agent/dist/bundle/cli.js` with `nycode` if you put the binary on your `PATH`, for example with `npm link` in `packages/coding-agent`):
+Start Nycode in the directory where you want it to work:
 
 ```bash
 cd /path/to/project
-node /path/to/nycode/packages/coding-agent/dist/bundle/cli.js
+nycode
 ```
 
 For a built-in AI provider, run `/login` inside Nycode to connect a subscription or API key. Then give Nycode a task.
@@ -337,7 +352,7 @@ the consumer. Re-run both commands after changing Nycode source.
 
 ## Building standalone binaries
 
-No release is published yet: distribution (npm, GitHub Releases, installer) is a later phase of the migration, so there are no prebuilt binaries to download. To build them from a checkout, hydrate the model data and run the build script:
+The binaries on the [Releases](https://github.com/marcioazam/nycode/releases) page are built by the `publish.yml` workflow with this script. To build them from a checkout, hydrate the model data and run the build script:
 
 ```bash
 npm ci --ignore-scripts
@@ -345,7 +360,7 @@ npm run hydrate:model-data
 ./scripts/build-binaries.sh --skip-install --platform linux-x64 --out "$PWD/out"
 ```
 
-The script builds the executable with its runtime assets for the platform you name (`darwin-arm64`, `darwin-x64`, `linux-x64`, `linux-arm64`, `windows-x64`, `windows-arm64`; all of them when `--platform` is omitted). Pass `--offline-model-data` to use the bundled model data instead of refreshing it. `./scripts/create-source-archive.sh --version <version> --ref <git-ref> --out <archive.tar.gz>` creates the deterministic source archive that releases will carry.
+The script builds the executable with its runtime assets for the platform you name (`darwin-arm64`, `darwin-x64`, `linux-x64`, `linux-arm64`, `windows-x64`, `windows-arm64`; all of them when `--platform` is omitted). Pass `--offline-model-data` to use the bundled model data instead of refreshing it. `./scripts/create-source-archive.sh --version <version> --ref <git-ref> --out <archive.tar.gz>` creates the deterministic source archive that releases carry.
 
 ## Supply-chain hardening
 
@@ -356,7 +371,7 @@ We treat npm dependency changes as reviewed code changes.
 - `package-lock.json` is the dependency ground truth. Pre-commit blocks accidental lockfile commits unless `NYCODE_ALLOW_LOCKFILE_CHANGE=1` is set.
 - `npm run check` verifies pinned direct deps, native TypeScript import compatibility, and the generated coding-agent install lock.
 - `packages/coding-agent/install-lock/` is generated from the root lockfile to pin transitive dependencies for release installs, and `npm run check` fails when it is out of date. The npm package does not pin transitive dependencies.
-- Nothing is published to npm or GitHub Releases yet. `npm run pack:packages` and `npm run release:local` build and smoke-test the tarballs locally.
+- Nycode is not published to npm. Releases are GitHub Releases of this repository with `SHA256SUMS` and build-provenance attestations (`gh attestation verify <file> -R marcioazam/nycode`). `npm run pack:packages` and `npm run release:local` build and smoke-test the tarballs locally.
 - `nycode update` installs with `--ignore-scripts`.
 - CI installs with `npm ci --ignore-scripts`, and a scheduled GitHub workflow (`npm-audit.yml`) runs a production dependency audit and `npm audit signatures --omit=dev`.
 - Install lock generation has an explicit allowlist for dependency lifecycle scripts; new lifecycle-script deps fail checks until reviewed.
