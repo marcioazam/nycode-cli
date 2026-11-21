@@ -55,7 +55,9 @@ def arm_command(
     """Command line and environment that make ``arm`` talk to the fake server on ``port``."""
     exe = str(check.ARMS_DIR / arm)
     prompt = PROMPT.format(scenario=scenario)
-    clean = check.clean_env(env, scratch / "stage", arm)
+    # BENCH_STAGE: a stage the caller built (same rule as bench/contract/check.py), reused by every scenario
+    stage = check.given_stage(env) or scratch / "stage"
+    clean = check.clean_env(env, stage, arm)
     if arm == "claude-vanilla":
         return [exe, "-p", prompt], {
             **clean,
@@ -69,7 +71,7 @@ def arm_command(
             **clean,
             "BENCH_PI_VANILLA_DIR": str(home),
         }
-    agent = check.prepare_stage(Path(exe), scratch / "stage", clean)
+    agent = check.prepare_stage(Path(exe), stage, clean)
     (agent / "models.json").write_text(models_json(port), encoding="utf-8")
     return [exe, "--no-session", "-p", prompt], clean
 

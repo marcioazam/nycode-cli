@@ -75,6 +75,14 @@ def clean_env(environ: Mapping[str, str], stage: Path, arm: str = "") -> dict[st
     return {**env, "BENCH_STAGE": str(stage), layout_of(arm).offline_env: "1"}
 
 
+def given_stage(environ: Mapping[str, str]) -> Path | None:
+    """The caller's own stage (``BENCH_STAGE``) or None; a shared ``bench-*`` stage is refused."""
+    given = environ.get("BENCH_STAGE")
+    if given and Path(given).name.startswith("bench-"):
+        raise EnvError("BENCH_STAGE aponta para um stage compartilhado do bench")
+    return Path(given).resolve() if given else None
+
+
 def run_arm(
     arm: Path, args: Sequence[str], cwd: Path, env: dict[str, str], timeout: float
 ) -> subprocess.CompletedProcess[str]:
@@ -366,20 +374,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--only", choices=GROUPS, help="roda só um grupo de casos")
     args = parser.parse_args(argv)
     groups = frozenset({args.only} if args.only else GROUPS)
-    given = os.environ.get("BENCH_STAGE")
-    if given and Path(given).name.startswith("bench-"):
-        print(
-            "ambiente indisponível: BENCH_STAGE aponta para um stage compartilhado do bench",
-            file=sys.stderr,
-        )
+    try:
+        given = given_stage(os.environ)
+        with tempfile.TemporaryDirectory(prefix="contract-") as tmp:
+            cases, inventory = collect(
+                ARMS_DIR / args.arm, given or Path(tmp) / "stage", Path(tmp), groups
+            )
+    except EnvError as exc:
+        print(f"ambiente indisponível: {exc}", file=sys.stderr)
         return 2
-    with tempfile.TemporaryDirectory(prefix="contract-") as tmp:
-        stage = Path(given).resolve() if given else Path(tmp) / "stage"
-        try:
-            cases, inventory = collect(ARMS_DIR / args.arm, stage, Path(tmp), groups)
-        except EnvError as exc:
-            print(f"ambiente indisponível: {exc}", file=sys.stderr)
-            return 2
     counts = {
         status: sum(1 for c in cases if c.status == status)
         for status in (cr.OK, cr.FAIL, cr.SKIP)

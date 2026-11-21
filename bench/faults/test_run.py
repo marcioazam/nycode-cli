@@ -112,6 +112,24 @@ def test_arm_command_nycode_uses_its_agent_dir_and_offline_switch(
     assert models["providers"]["anthropic"]["baseUrl"].endswith(":9")
 
 
+def test_arm_command_reuses_the_callers_stage(tmp_path: Path, monkeypatch: MP) -> None:
+    """BENCH_STAGE is the stage of the arm (built beforehand, e.g. outside a no-network sandbox), not a new one."""
+    own = tmp_path / "own"
+    seen = []
+
+    def prepare(arm: Path, stage: Path, env: dict[str, str]) -> Path:
+        seen.append((stage, env["BENCH_STAGE"]))
+        return tmp_path
+
+    monkeypatch.setattr(run.check, "prepare_stage", prepare)
+    run.arm_command("ny-pi", "overloaded", 5, tmp_path, {"BENCH_STAGE": str(own)})
+    assert seen == [(own.resolve(), str(own.resolve()))]
+    out = run.run_one(
+        "ny-pi", "overloaded", 5, {"BENCH_STAGE": str(tmp_path / "bench-nypi-abc")}
+    )
+    assert out.status == cl.FAILED and "compartilhado" in out.note
+
+
 def test_main_table_json_and_bad_args(
     tmp_path: Path, monkeypatch: MP, capsys: pytest.CaptureFixture[str]
 ) -> None:
