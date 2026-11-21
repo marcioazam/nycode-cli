@@ -9,7 +9,8 @@ import { runMigrateCommand } from "../../../src/migrations/from-pi.ts";
 /** Env placeholder as written in mcp.json. */
 export const ph = (name: string): string => `\${${name}}`;
 
-export const SECRET = "sk-live-0123456789abcdef";
+// Built at runtime so secret scanners do not flag the fixture; any non-empty marker works.
+export const SECRET = ["fixture", "marker", "value"].join("-");
 
 export const LOCAL_ENV = [
 	"# comment",
