@@ -9,18 +9,18 @@
  * how commands.ts restores a per-command model override on agent_settled.
  */
 
-import type { ExtensionAPI } from '../../core/extensions/types.ts'
-import { createTurnOverride } from '../_shared/commands/turn-override.ts'
+import type { ExtensionAPI } from "../../core/extensions/types.ts";
+import { createTurnOverride } from "../_shared/commands/turn-override.ts";
 
 // The pi ThinkingLevel union, taken from the setter's parameter so it tracks the SDK.
-type ThinkingLevel = Parameters<ExtensionAPI['setThinkingLevel']>[0]
+type ThinkingLevel = Parameters<ExtensionAPI["setThinkingLevel"]>[0];
 
 /** Lowest to highest, matching pi's ThinkingLevel union; rank is the index. */
-const THINKING_ORDER: readonly ThinkingLevel[] = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']
+const THINKING_ORDER: readonly ThinkingLevel[] = ["off", "minimal", "low", "medium", "high", "xhigh", "max"];
 
 export function thinkingRank(level: ThinkingLevel): number {
-  const i = THINKING_ORDER.indexOf(level)
-  return Math.max(i, 0)
+	const i = THINKING_ORDER.indexOf(level);
+	return Math.max(i, 0);
 }
 
 /** The reasoning level a prompt requests, or undefined when it names none.
@@ -37,72 +37,72 @@ export function thinkingRank(level: ThinkingLevel): number {
  * how deeper reasoning is requested, so the keyword raises the level for the turn and
  * restores it after. Same intent, the only mechanism pi has. */
 export function requestedThinkingLevel(text: string): ThinkingLevel | undefined {
-  return /\bultrathink\b/i.test(text) ? 'max' : undefined
+	return /\bultrathink\b/i.test(text) ? "max" : undefined;
 }
 
 export default function thinkingExtension(nycode: ExtensionAPI) {
-  // A per-turn escalation: the level to restore, captured the first time a turn escalates
-  // so back-to-back keywords still restore the original, and the target this extension
-  // moved to. The restore is conditional on the level still being that target at settle:
-  // commands.ts also restores an `effort:` override on agent_settled, so both fire on the
-  // same event. Keying the restore on the target makes the outcome order-independent: if a
-  // command's restore (or a manual change) already moved the level, thinking stands down
-  // instead of clobbering it. The capture clears on agent_settled, the run's true end past
-  // any retry/compaction/Stop continuation, the same clearing point commands.ts uses.
-  const override = createTurnOverride<ThinkingLevel>({
-    set: (level) => nycode.setThinkingLevel?.(level),
-    get: () => nycode.getThinkingLevel?.(),
-    conditional: true,
-  })
+	// A per-turn escalation: the level to restore, captured the first time a turn escalates
+	// so back-to-back keywords still restore the original, and the target this extension
+	// moved to. The restore is conditional on the level still being that target at settle:
+	// commands.ts also restores an `effort:` override on agent_settled, so both fire on the
+	// same event. Keying the restore on the target makes the outcome order-independent: if a
+	// command's restore (or a manual change) already moved the level, thinking stands down
+	// instead of clobbering it. The capture clears on agent_settled, the run's true end past
+	// any retry/compaction/Stop continuation, the same clearing point commands.ts uses.
+	const override = createTurnOverride<ThinkingLevel>({
+		set: (level) => nycode.setThinkingLevel?.(level),
+		get: () => nycode.getThinkingLevel?.(),
+		conditional: true,
+	});
 
-  nycode.on('session_start', () => {
-    // pi's CLI builds a fresh extension instance per session replacement; only RPC mode can
-    // reuse one across sessions. A mid-turn /new there fires session_start on
-    // the same instance while an escalation is still pending (its agent_settled never came),
-    // and that stale restore must be dropped rather than fired into the next session, whose
-    // level the new session owns. Drop only: do NOT setThinkingLevel here.
-    override.reset()
-  })
+	nycode.on("session_start", () => {
+		// pi's CLI builds a fresh extension instance per session replacement; only RPC mode can
+		// reuse one across sessions. A mid-turn /new there fires session_start on
+		// the same instance while an escalation is still pending (its agent_settled never came),
+		// and that stale restore must be dropped rather than fired into the next session, whose
+		// level the new session owns. Drop only: do NOT setThinkingLevel here.
+		override.reset();
+	});
 
-  nycode.on('input', (event, ctx) => {
-    // Only genuine user input escalates. sendUserMessage emits an input event with
-    // source 'extension' (a subagent prompt, a command body replayed through it); a
-    // think keyword the user did not type must not escalate, mirroring hooks.ts's guard.
-    if (event.source === 'extension') return
-    // A prompt that escalated but was then BLOCKED by a hook runs no turn, so no
-    // agent_settled ever fires to restore the level. The arrival of a new input is the
-    // signal that the prior prompt is gone: if this extension still owns the level (it is
-    // exactly our escalation target), restore before handling this input. In the normal
-    // path a settle already cleared pending, so this fires only for the blocked case.
-    const armedPrior = override.prior
-    if (armedPrior !== undefined && (nycode.getThinkingLevel?.() ?? ctx.thinkingLevel) === override.target) {
-      nycode.setThinkingLevel?.(armedPrior)
-      override.reset()
-    }
-    const target = requestedThinkingLevel(event.text)
-    if (!target) return
-    const current = nycode.getThinkingLevel?.() ?? ctx.thinkingLevel ?? 'off'
-    // A keyword only raises reasoning: leave a level already at or above the target.
-    if (thinkingRank(current) >= thinkingRank(target)) return
-    // Armed with the level pi actually stored: it clamps to what the model supports, and
-    // an override armed with the level asked for never recognises its own escalation.
-    nycode.setThinkingLevel?.(target)
-    override.arm(current, nycode.getThinkingLevel?.() ?? target)
-    // Return nothing so the input is neither consumed nor transformed: Claude keeps
-    // the keyword in the prompt.
-  })
+	nycode.on("input", (event, ctx) => {
+		// Only genuine user input escalates. sendUserMessage emits an input event with
+		// source 'extension' (a subagent prompt, a command body replayed through it); a
+		// think keyword the user did not type must not escalate, mirroring hooks.ts's guard.
+		if (event.source === "extension") return;
+		// A prompt that escalated but was then BLOCKED by a hook runs no turn, so no
+		// agent_settled ever fires to restore the level. The arrival of a new input is the
+		// signal that the prior prompt is gone: if this extension still owns the level (it is
+		// exactly our escalation target), restore before handling this input. In the normal
+		// path a settle already cleared pending, so this fires only for the blocked case.
+		const armedPrior = override.prior;
+		if (armedPrior !== undefined && (nycode.getThinkingLevel?.() ?? ctx.thinkingLevel) === override.target) {
+			nycode.setThinkingLevel?.(armedPrior);
+			override.reset();
+		}
+		const target = requestedThinkingLevel(event.text);
+		if (!target) return;
+		const current = nycode.getThinkingLevel?.() ?? ctx.thinkingLevel ?? "off";
+		// A keyword only raises reasoning: leave a level already at or above the target.
+		if (thinkingRank(current) >= thinkingRank(target)) return;
+		// Armed with the level pi actually stored: it clamps to what the model supports, and
+		// an override armed with the level asked for never recognises its own escalation.
+		nycode.setThinkingLevel?.(target);
+		override.arm(current, nycode.getThinkingLevel?.() ?? target);
+		// Return nothing so the input is neither consumed nor transformed: Claude keeps
+		// the keyword in the prompt.
+	});
 
-  // agent_settled never fires when pi is quit mid-run, and the escalation is already in the
-  // transcript: `pi -c` would resume at the raised level for good.
-  nycode.on('session_shutdown', async () => {
-    await override.settle()
-  })
+	// agent_settled never fires when pi is quit mid-run, and the escalation is already in the
+	// transcript: `pi -c` would resume at the raised level for good.
+	nycode.on("session_shutdown", async () => {
+		await override.settle();
+	});
 
-  nycode.on('agent_settled', () => {
-    // Restore the pre-escalation level, but only if nothing else moved it since (a
-    // command's effort restore, a manual change): the conditional override stands down in
-    // that case and restores unconditionally when the level cannot be read, the prior
-    // best-effort behavior.
-    void override.settle()
-  })
+	nycode.on("agent_settled", () => {
+		// Restore the pre-escalation level, but only if nothing else moved it since (a
+		// command's effort restore, a manual change): the conditional override stands down in
+		// that case and restores unconditionally when the level cannot be read, the prior
+		// best-effort behavior.
+		void override.settle();
+	});
 }

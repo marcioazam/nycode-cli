@@ -9,37 +9,40 @@
  * fallback when the usage snapshot does not carry one.
  */
 
-import type { ContextUsage, ExtensionAPI } from '../../core/extensions/types.ts'
+import type { ContextUsage, ExtensionAPI } from "../../core/extensions/types.ts";
 
-const fmt = (n: number): string => n.toLocaleString('en-US')
+const fmt = (n: number): string => n.toLocaleString("en-US");
 
 /** The breakdown text for a usage snapshot, or a friendly line when there is none.
  * `tokens` is null right after a compaction (before the next response recounts), so
  * that case reports a recalculating state instead of a bogus zero. */
 export function formatContextUsage(usage: ContextUsage | undefined, modelWindow?: number): string {
-  if (!usage) {
-    return 'Context usage is not available yet. It appears once the model has responded (and resets right after a compaction).'
-  }
-  const window = usage.contextWindow || modelWindow || 0
-  if (usage.tokens === null) {
-    const tail = window > 0 ? ` Window: ${fmt(window)} tokens.` : ''
-    return `Context usage: recalculating the token count (e.g. right after a compaction).${tail}`
-  }
-  const tokens = usage.tokens
-  const percent = usage.percent ?? (window > 0 ? (tokens / window) * 100 : null)
-  const percentSuffix = percent === null ? '' : ` (${percent.toFixed(1)}%)`
-  const lines = ['Context usage', `  Used:   ${fmt(tokens)} tokens${percentSuffix}`]
-  if (window > 0) {
-    lines.push(`  Window: ${fmt(window)} tokens`, `  Free:   ${fmt(Math.max(window - tokens, 0))} tokens`)
-  }
-  return lines.join('\n')
+	if (!usage) {
+		return "Context usage is not available yet. It appears once the model has responded (and resets right after a compaction).";
+	}
+	const window = usage.contextWindow || modelWindow || 0;
+	if (usage.tokens === null) {
+		const tail = window > 0 ? ` Window: ${fmt(window)} tokens.` : "";
+		return `Context usage: recalculating the token count (e.g. right after a compaction).${tail}`;
+	}
+	const tokens = usage.tokens;
+	const percent = usage.percent ?? (window > 0 ? (tokens / window) * 100 : null);
+	const percentSuffix = percent === null ? "" : ` (${percent.toFixed(1)}%)`;
+	const lines = ["Context usage", `  Used:   ${fmt(tokens)} tokens${percentSuffix}`];
+	if (window > 0) {
+		lines.push(`  Window: ${fmt(window)} tokens`, `  Free:   ${fmt(Math.max(window - tokens, 0))} tokens`);
+	}
+	return lines.join("\n");
 }
 
 export default function contextUsageExtension(nycode: ExtensionAPI) {
-  nycode.registerCommand('context', {
-    description: 'Show how much of the model context window this session is using',
-    handler: async (_args, ctx) => /* NOSONAR typescript:S7503 - pi types a command handler as returning Promise<void> */ {
-      ctx.ui.notify(formatContextUsage(ctx.getContextUsage(), ctx.model?.contextWindow), 'info')
-    },
-  })
+	nycode.registerCommand("context", {
+		description: "Show how much of the model context window this session is using",
+		handler: async (
+			_args,
+			ctx,
+		) => /* NOSONAR typescript:S7503 - pi types a command handler as returning Promise<void> */ {
+			ctx.ui.notify(formatContextUsage(ctx.getContextUsage(), ctx.model?.contextWindow), "info");
+		},
+	});
 }
