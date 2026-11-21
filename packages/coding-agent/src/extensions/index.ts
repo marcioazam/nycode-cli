@@ -1,32 +1,44 @@
 import type { InlineExtension } from "../core/extensions/types.ts";
+import autoResumeExtension from "./auto-resume/index.ts";
 import claudeRulesExtension from "./claude-rules/index.ts";
 import codemodeExtension from "./codemode/index.ts";
 import commandsExtension from "./commands/index.ts";
+import completionGateExtension from "./completion-gate/index.ts";
 import contextImportsExtension from "./context-imports/index.ts";
 import contextUsageExtension from "./context-usage/index.ts";
+import devCommandsExtension from "./dev-commands/index.ts";
 import docsPointerExtension from "./docs-pointer/index.ts";
+import effortSandwichExtension from "./effort-sandwich/index.ts";
 import envSettingsExtension from "./env-settings/index.ts";
 import footerExtension from "./footer/index.ts";
 import gitCheckpointExtension from "./git-checkpoint/index.ts";
 import goalExtension from "./goal/index.ts";
+import headlessLeanExtension from "./headless-lean/index.ts";
 import hooksExtension from "./hooks/index.ts";
+import importClaudeSessionExtension from "./import-claude-session/index.ts";
 import initExtension from "./init/index.ts";
 import llamaExtension from "./llama/index.ts";
 import mcpExtension from "./mcp/index.ts";
 import memoryExtension from "./memory/index.ts";
 import notifyExtension from "./notify/index.ts";
 import outputStylesExtension from "./output-styles/index.ts";
+import planGateExtension from "./plan-gate/index.ts";
 import planModeExtension from "./plan-mode/index.ts";
+import prefixCache1hExtension from "./prefix-cache-1h/index.ts";
 import questionExtension from "./question/index.ts";
 import runExtension from "./run/index.ts";
 import sessionTitleExtension from "./session-title/index.ts";
 import settingsFlagsExtension from "./settings-flags/index.ts";
 import skillsCompatExtension from "./skills-compat/index.ts";
+import soundNotifyExtension from "./sound-notify/index.ts";
 import statusLineExtension from "./status-line/index.ts";
+import stickyPromptExtension from "./sticky-prompt/index.ts";
 import subagentExtension from "./subagent/index.ts";
+import syntaxCheckExtension from "./syntax-check/index.ts";
 import thinkingExtension from "./thinking/index.ts";
 import todoExtension from "./todo/index.ts";
 import toolSearchExtension from "./tool-search/index.ts";
+import upDequeueExtension from "./up-dequeue/index.ts";
 import webExtension from "./web/index.ts";
 
 export const builtInExtensions: InlineExtension[] = [
@@ -62,6 +74,18 @@ export const builtInExtensions: InlineExtension[] = [
 	{ name: "todo", factory: todoExtension, builtin: true },
 	{ name: "web", factory: webExtension, builtin: true, enabledByDefault: false },
 	// Embedded ny-pi extensions, in ny-pi's load order (after pi-code, by source file name).
+	{ name: "auto-resume", factory: autoResumeExtension, builtin: true },
+	{ name: "completion-gate", factory: completionGateExtension, builtin: true },
+	{ name: "dev-commands", factory: devCommandsExtension, builtin: true },
+	{ name: "effort-sandwich", factory: effortSandwichExtension, builtin: true },
 	{ name: "footer", factory: footerExtension, builtin: true },
+	{ name: "headless-lean", factory: headlessLeanExtension, builtin: true },
 	{ name: "docs-pointer", factory: docsPointerExtension, builtin: true },
+	{ name: "plan-gate", factory: planGateExtension, builtin: true },
+	{ name: "prefix-cache-1h", factory: prefixCache1hExtension, builtin: true },
+	{ name: "import-claude-session", factory: importClaudeSessionExtension, builtin: true, enabledByDefault: false },
+	{ name: "sound-notify", factory: soundNotifyExtension, builtin: true },
+	{ name: "sticky-prompt", factory: stickyPromptExtension, builtin: true },
+	{ name: "syntax-check", factory: syntaxCheckExtension, builtin: true },
+	{ name: "up-dequeue", factory: upDequeueExtension, builtin: true },
 ];

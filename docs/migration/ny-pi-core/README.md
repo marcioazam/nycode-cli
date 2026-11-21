@@ -23,7 +23,7 @@ Levantamento: 2026-11-20, sobre `ny-pi@e4f8729` e `nycode@fb05db936`.
 | 08 | [Sincronização com o upstream](08-sincronizacao-upstream.md) | Como o fork continua recebendo o pi |
 | 09 | [Paridade e benchmark](09-paridade-e-benchmark.md) | Como provar que o nycode faz o que o ny-pi fazia |
 | 10 | [Riscos e reversão](10-riscos-e-rollback.md) | Registro de riscos, como desfazer cada fase |
-| 11 | [Decisões e pendências](11-decisoes-e-pendencias.md) | 36 decisões e 20 pendências |
+| 11 | [Decisões e pendências](11-decisoes-e-pendencias.md) | 37 decisões e 20 pendências |
 | 12 | [Checklist mestre](12-checklist-mestre.md) | 186 itens verificáveis |
 | 13 | [Fontes](13-fontes.md) | Comandos e fontes de cada fato; o que não foi verificado |
 | 14 | [Prompt de `/goal`](14-prompt-goal.md) | Condição pronta para executar a migração com `/goal` |
