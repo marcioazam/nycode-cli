@@ -176,8 +176,8 @@ const rows: Row[] = [
 	{
 		key: "notify.sound",
 		env: "NYCODE_SOUND_NOTIFY",
-		def: false,
-		set: true,
+		def: true, // ny-pi parity: sound-notify was on unless PI_SOUND_NOTIFY=0
+		set: false,
 		invalid: "loud",
 		envRaw: "0",
 		envExpected: false,

@@ -937,7 +937,7 @@
         "sound": {
           "type": "boolean",
           "description": "Play a sound when the agent finishes. NYCODE_SOUND_NOTIFY takes precedence.",
-          "default": false
+          "default": true
         }
       }
     },

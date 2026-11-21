@@ -83,5 +83,5 @@ export const SETTINGS_DEFAULTS = {
 	tools: { bash: { backgroundOnTimeout: false } },
 	todo: { staleReminder: true },
 	plan: { gate: true },
-	notify: { sound: false },
+	notify: { sound: true },
 } as const;

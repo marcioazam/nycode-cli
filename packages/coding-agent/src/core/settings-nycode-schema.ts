@@ -83,7 +83,7 @@ const PlanSettingsSchema = Type.Object({
 });
 
 const NotifySettingsSchema = Type.Object({
-	sound: flag("Play a sound when the agent finishes. NYCODE_SOUND_NOTIFY takes precedence.", false),
+	sound: flag("Play a sound when the agent finishes. NYCODE_SOUND_NOTIFY takes precedence.", true),
 });
 
 const text = (description: string) => Type.Optional(Type.String({ description }));

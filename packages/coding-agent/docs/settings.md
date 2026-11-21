@@ -184,7 +184,7 @@ These keys only exist, validate, and are read here; the built-in extensions that
 | `harness.autoResume` | boolean | `true` | `NYCODE_AUTO_RESUME` | Resume a turn cut short by a transient failure. |
 | `plan.gate` | boolean | `true` | `NYCODE_PLAN_GATE` | Keep plan mode open until the plan is submitted. |
 | `harness.completionGate` | boolean | `true` | `NYCODE_COMPLETION_GATE` | Block a final answer while the task has unfinished steps. |
-| `notify.sound` | boolean | `false` | `NYCODE_SOUND_NOTIFY` | Play a sound when the agent finishes. |
+| `notify.sound` | boolean | `true` | `NYCODE_SOUND_NOTIFY` | Play a sound when the agent finishes. |
 | `terminal.uiState` | string | `ui-state.json` in the agent directory | `NYCODE_UI_STATE` | File that stores the editor UI state. |
 | `terminal.reducedMotion` | boolean | `false` | `NYCODE_REDUCED_MOTION` | Reduce animation. |
 | `terminal.nerdFont` | boolean \| `"auto"` | `"auto"` | `NYCODE_NERD_FONT` | Use Nerd Font icons; `"auto"` detects kitty. |

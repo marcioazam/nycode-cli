@@ -198,7 +198,7 @@ retrocompatibilidade não pedida); a conversão é feita uma vez por `nycode mig
 | `PI_AUTO_RESUME` | `harness.autoResume` | `NYCODE_AUTO_RESUME` | ligado |
 | `PI_PLAN_GATE` | `plan.gate` | `NYCODE_PLAN_GATE` | ligado |
 | `PI_COMPLETION_GATE` | `harness.completionGate` | `NYCODE_COMPLETION_GATE` | ligado |
-| `PI_SOUND_NOTIFY` | `notify.sound` | `NYCODE_SOUND_NOTIFY` | desligado |
+| `PI_SOUND_NOTIFY` | `notify.sound` | `NYCODE_SOUND_NOTIFY` | ligado (o ny-pi só desligava com `PI_SOUND_NOTIFY=0`) |
 | `PI_UI_STATE`, `PI_REDUCED_MOTION`, `PI_NERD_FONT`, `PI_ASCII_ICONS` | `terminal.{uiState,reducedMotion,nerdFont,asciiIcons}` | `NYCODE_*` iguais | conforme o ny-pi |
 | `NO_COLOR`, `CLAUDE_CODE_DISABLE_TERMINAL_TITLE` | — | `NO_COLOR` (padrão externo), `NYCODE_DISABLE_TERMINAL_TITLE` | — |
 | `PI_KNOWLEDGE_VAULT`, `PI_GRAPHS_VAULT` | `knowledge.vault`, `knowledge.graphsVault` | `NYCODE_KNOWLEDGE_VAULT`, `NYCODE_GRAPHS_VAULT` | vazio |
