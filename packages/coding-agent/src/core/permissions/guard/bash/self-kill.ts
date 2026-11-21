@@ -1,5 +1,6 @@
 // `pkill -f` / `pgrep -f` whose pattern matches the command line of the shell that runs it (the `bash -c` kills itself,
 // exit 143/144). Port of the self-kill rules of guard.py.
+import { runInNewContext } from "node:vm";
 import { PY_SPACE, PY_WORD, pySplit } from "../py-path.ts";
 import { ShlexError, shlexSplit } from "../shlex.ts";
 import { type Finding, maskText, shortFlags } from "./parse.ts";
@@ -46,12 +47,23 @@ function repeatTooLarge(pattern: string): boolean {
 	);
 }
 
+// Milliseconds a pattern may run against the command before matchesSelf gives up.
+const MATCH_TIMEOUT_MS = 200;
+
 /** Whether `pattern` (a Python regex in guard.py, a JS one here) matches the command; invalid ones are literal text. */
 export function matchesSelf(pattern: string, cmd: string): boolean {
 	if (repeatTooLarge(pattern)) return cmd.includes(pattern);
 	try {
-		return new RegExp(pattern).test(cmd);
-	} catch {
+		return runInNewContext(
+			"new RegExp(pattern).test(cmd)",
+			{ pattern, cmd },
+			{ timeout: MATCH_TIMEOUT_MS },
+		) as boolean;
+	} catch (error) {
+		// Model-supplied pattern and command: V8 interrupts catastrophic backtracking (F5). Timing out means the
+		// pattern is too costly to prove safe, so answer "matches" and the pgrep|kill is denied (guard.py dies at its
+		// 30 s hook timeout and fails closed). Anything else is an invalid pattern, taken as literal text.
+		if ((error as NodeJS.ErrnoException).code === "ERR_SCRIPT_EXECUTION_TIMEOUT") return true;
 		return cmd.includes(pattern);
 	}
 }
