@@ -415,6 +415,9 @@ export class DefaultResourceLoader implements ResourceLoader {
 			agentDir: this.agentDir,
 			settingsManager: this.settingsManager,
 			builtinExtensions: [...this.builtinExtensions.keys()],
+			optInBuiltinExtensions: [...this.builtinExtensions.values()]
+				.filter((input) => input.enabledByDefault === false)
+				.map((input) => input.name),
 			commandOutput: options.packageCommandOutput,
 		});
 		this.packageManager.setProgressCallback(options.onPackageProgress);

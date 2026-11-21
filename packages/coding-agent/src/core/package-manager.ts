@@ -192,6 +192,8 @@ interface PackageManagerOptions {
 	commandOutput?: PackageCommandOutput;
 	/** Names of built-in extensions, resolved as `builtin:<name>` extension resources. */
 	builtinExtensions?: string[];
+	/** Names in `builtinExtensions` that load only when the `extensions` setting or `-e` turns them on. */
+	optInBuiltinExtensions?: string[];
 }
 
 type SourceScope = "user" | "project" | "temporary";
@@ -915,6 +917,7 @@ export class DefaultPackageManager implements PackageManager {
 	private agentDir: string;
 	private settingsManager: SettingsManager;
 	private builtinExtensions: string[];
+	private optInBuiltinExtensions: Set<string>;
 	private globalNpmRoot: string | undefined;
 	private globalNpmRootCommandKey: string | undefined;
 	private progressCallback: ProgressCallback | undefined;
@@ -925,6 +928,7 @@ export class DefaultPackageManager implements PackageManager {
 		this.agentDir = resolvePath(options.agentDir);
 		this.settingsManager = options.settingsManager;
 		this.builtinExtensions = options.builtinExtensions ?? [];
+		this.optInBuiltinExtensions = new Set(options.optInBuiltinExtensions);
 		this.commandOutput = options.commandOutput ?? "inherit";
 	}
 
@@ -1073,18 +1077,23 @@ export class DefaultPackageManager implements PackageManager {
 
 		// Built-in extensions are enabled unless the user `extensions` setting excludes them, for example
 		// with `-builtin:mcp`. A matching `+`, `-`, or `!` entry in the project setting overrides that.
+		// An opt-in built-in is the reverse: off until a plain or `+` entry turns it on.
 		for (const name of this.builtinExtensions) {
 			const path = `${BUILTIN_PATH_PREFIX}${name}`;
+			const optIn = this.optInBuiltinExtensions.has(name);
+			const projectEntries = projectSettings.extensions ?? [];
+			const globalEntries = globalSettings.extensions ?? [];
 			const projectEnabled = applyAutoloadDisabledPatterns(
 				[path],
-				getOverridePatterns(projectSettings.extensions ?? []),
+				optIn ? projectEntries : getOverridePatterns(projectEntries),
 				projectBaseDir,
 			).get(path);
+			const globalEnabled = isEnabledByOverrides(path, globalEntries, globalBaseDir);
 			this.addResource(
 				accumulator.extensions,
 				path,
 				{ source: "builtin", scope: projectEnabled === undefined ? "user" : "project", origin: "top-level" },
-				projectEnabled ?? isEnabledByOverrides(path, globalSettings.extensions ?? [], globalBaseDir),
+				projectEnabled ?? (globalEnabled && (!optIn || globalEntries.some((e) => e === path || e === `+${path}`))),
 			);
 		}
 

@@ -446,6 +446,21 @@ export function getThemesDir(): string {
 }
 
 /**
+ * Get path to the built-in output styles (shipped with package)
+ * - For Bun binary: builtin-styles/ next to executable
+ * - For Node.js (dist/): dist/extensions/_shared/builtin-styles/
+ * - For source (src/): src/extensions/_shared/builtin-styles/
+ */
+export function getBuiltinStylesDir(): string {
+	if (isBunBinary) {
+		return join(getPackageDir(), "builtin-styles");
+	}
+	const packageDir = getPackageDir();
+	const srcOrDist = existsSync(join(packageDir, "src")) ? "src" : "dist";
+	return join(packageDir, srcOrDist, "extensions", "_shared", "builtin-styles");
+}
+
+/**
  * Get path to HTML export template directory (shipped with package)
  * - For Bun binary: export-html/ next to executable
  * - For Node.js (dist/): dist/core/export-html/
